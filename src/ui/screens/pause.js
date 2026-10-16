@@ -34,6 +34,7 @@ import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import { requestCodexTab } from './codex.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
+import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
 import {
   PHOTO_EXPOSURE_DEFAULT,
   PHOTO_EXPOSURE_MAX,
@@ -331,6 +332,20 @@ function fmtSavedAt(value) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+// What the autosave setting really does, in the pause brief's voice. The old line was a fixed list
+// of triggers that ignored the Autosave row: a player on 120 s was told something else, and a
+// player on Off was never warned that quitting loses the run. Off stops only the timer
+// (saveSystem.update): requestAutosave never reads the setting, so docking, jumping and finishing
+// a contract still save, and the Off line says exactly that rather than claiming nothing saves. Missing or corrupt settings read as
+// the shipped default (the save loader normalizes them to it).
+const SHIPPED_AUTOSAVE_INTERVAL_S = 120;
+
+function autosaveIntervalOf(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  const value = gameplay ? Number(gameplay.autosaveIntervalS) : NaN;
+  return Number.isFinite(value) && value >= 0 ? value : SHIPPED_AUTOSAVE_INTERVAL_S;
+}
+
 export function saveLine(state) {
   // A Crucible run is ephemeral by contract and saving is refused for it (PQ-133 ruling 2).
   // Telling the player to press F5 here would be instructing them to attempt the one thing the
@@ -345,78 +360,47 @@ export function saveLine(state) {
   if (savedWhen) {
     return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
   }
+  const everyS = autosaveIntervalOf(state);
+  const autosaveSentence = everyS > 0
+    ? 'Use Save or F5 before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
+    : 'Timed autosave is Off. It still saves when you dock, jump or finish a contract — use Save or F5 before quitting.';
   if (slot) {
-    return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. Use Save or F5 before quitting.';
+    return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. ' + autosaveSentence;
   }
-  return 'Unsaved run. Use Save or F5 before quitting. Autosave runs on dock, undock, jump and job completion.';
+  return 'Unsaved run. ' + autosaveSentence;
 }
 
 // The combat trace (damage.routed / physics.impulse / collision.consequence) and the hull's
 // scar list are the receipts that already record what hit the player. A gun's impulse row is
 // written after its damage row and must stay a gun — only a later receipt may replace it.
-const PAUSE_HIT_CAUSES = new Set(['gun', 'shove', 'slam', 'rock']);
 const PAUSE_HIT_LINES = Object.freeze({
   gun: 'A gun hit you.',
   shove: 'A shove hit you.',
   slam: 'A slam hit you.',
   rock: 'A rock hit you.',
 });
-const PAUSE_SHOVE_TAGS = new Set(['inertial_shunt', 'impulse_charge_blast', 'bomb_blast']);
-const PAUSE_SHOVE_ORIGINS = new Set(['impulse_charge', 'bomb', 'massline_whip']);
-
-function pauseHitWord(value) {
-  return typeof value === 'string' && PAUSE_HIT_CAUSES.has(value) ? value : '';
-}
-
-function causeFromTraceEvent(event) {
-  if (!event || typeof event !== 'object') return '';
-  const named = pauseHitWord(event.cause);
-  if (named) return named;
-  if (event.kind === 'collision.consequence') {
-    if (event.surface === 'terrain') return 'rock';
-    if (event.control === 'tumble' || event.surface === 'structure') return 'slam';
-    if (event.surface === 'craft' || event.surface === 'debris') return 'shove';
-    return '';
-  }
-  if (event.kind === 'physics.impulse') {
-    const tag = typeof event.provenance === 'string' ? event.provenance : '';
-    if (pauseHitWord(tag)) return pauseHitWord(tag);
-    if (PAUSE_SHOVE_TAGS.has(tag)) return 'shove';
-    if (event.reason === 'weapon_hit' || event.reason === 'damage') return 'gun';
-    return '';
-  }
-  if (event.kind !== 'damage.routed' && event.kind !== 'damage') return '';
-  const origin = event.origin && typeof event.origin === 'object' ? event.origin : null;
-  const kind = origin && typeof origin.kind === 'string' ? origin.kind : '';
-  if (kind === 'weapon' || kind === 'legacy') return 'gun';
-  if (PAUSE_SHOVE_ORIGINS.has(kind)) return 'shove';
-  if (kind === 'collision' || kind.startsWith('collision')) {
-    const surface = String((origin && origin.id) || kind);
-    if (surface === 'terrain' || surface.endsWith('terrain')) return 'rock';
-    return 'slam';
-  }
-  return '';
-}
 
 function causeFromScar(scar) {
   if (!scar || typeof scar !== 'object') return '';
   if (scar.cause === 'weapon') return 'gun';
   if (scar.cause === 'slam') return scar.surface === 'terrain' ? 'rock' : 'slam';
-  return pauseHitWord(scar.cause);
+  return pauseImpactCause(scar.cause);
 }
 
 function newestTraceHit(state) {
-  const events = state && state.combat && state.combat.trace && state.combat.trace.events;
+  const trace = state && state.combat && state.combat.trace;
   const playerId = state && state.playerId;
-  if (!Array.isArray(events) || playerId == null) return null;
-  for (let i = events.length - 1; i >= 0; i--) {
-    const event = events[i];
-    if (!event || event.targetId !== playerId) continue;
-    const cause = causeFromTraceEvent(event);
-    if (!cause) continue;
-    return { tick: Number.isFinite(event.tick) ? event.tick : 0, cause };
+  if (!trace || playerId == null) return null;
+  const projected = trace.latestPlayerImpact;
+  if (trace.playerId === playerId && projected && typeof projected === 'object') {
+    const cause = pauseImpactCause(projected.cause);
+    if (cause && Number.isFinite(projected.tick)) {
+      return { tick: projected.tick, cause };
+    }
   }
-  return null;
+  // Compatibility path for in-process state, diagnostics, and malformed or
+  // stale projected receipts. The authoritative full trace remains readable.
+  return latestPlayerImpactFromTrace(trace, playerId);
 }
 
 function hullScarLists(state) {
@@ -534,6 +518,34 @@ export function pauseExitConfirmBody(state, target = 'menu') {
     ? 'Opening Load lets you review saves; choosing a slot replaces this session.'
     : 'Returning to the main menu ends this session.';
   return opening + '\n' + pauseExitSaveFact(state);
+}
+
+// PRO-19 — the pause footer names the running session's seed beside the build mark so a bug
+// report can quote it. The session seed only: state.meta.seed, never rng internals
+// (state.rng continuation state / draws stay out of the DOM).
+export function pauseRunSeedOf(state) {
+  const raw = state && state.meta ? Number(state.meta.seed) : NaN;
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return (raw >>> 0) || 0;
+}
+
+export function pauseRunSeedLine(state) {
+  const seed = pauseRunSeedOf(state);
+  return seed ? 'Seed ' + seed : '';
+}
+
+/** Write the seed line onto its footer span. Sync: the seed is known at mount. */
+export function paintPauseRunSeed(target, state) {
+  if (!target) return '';
+  const line = pauseRunSeedLine(state);
+  const text = line ? ' · ' + line : '';
+  if (target.textContent !== text) target.textContent = text;
+  return text;
+}
+
+function syncPauseRunSeed(ctx) {
+  if (!els || !els.seedText) return;
+  paintPauseRunSeed(els.seedText, ctx && ctx.state);
 }
 
 let els = null;
@@ -997,7 +1009,7 @@ export const pauseScreen = {
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
     // UI-polish scope this cycle; a first-class station tab would be promotion).
-    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
+    mk('Operations (Automation)', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
     // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.
@@ -1132,12 +1144,18 @@ export const pauseScreen = {
     const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
     versionText.title = leftoverVersionLabel(CREDITS);
     version.appendChild(versionText);
+    // PRO-19: the active run seed beside the build mark. Same etched line, no restyle —
+    // a plain span carrying only the session seed (never rng internals).
+    const seedText = el('span', '', '');
+    seedText.dataset.role = 'run-seed';
+    paintPauseRunSeed(seedText, ctx && ctx.state);
+    version.appendChild(seedText);
     foot.appendChild(version);
     rootEl.appendChild(foot);
     rootEl.setAttribute('aria-keyshortcuts', 'Escape');
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
-    els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText };
+    els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText, seedText };
     briefLast.objective = undefined;
     briefLast.next = undefined;
     briefLast.save = undefined;
@@ -1185,6 +1203,7 @@ export const pauseScreen = {
       ctx.bus.emit('save:loadSpeculationTarget', { slot: 'quick' });
     }
     renderFlightBrief(ctx);
+    syncPauseRunSeed(ctx);
     if (els) {
       if (els.title) settle(els.title, { from: 'left', state: 'pause-title' });
       if (els.stage) settle(els.stage, { from: 'left', delay: 60, state: 'pause-words' });
@@ -1232,5 +1251,5 @@ export const pauseScreen = {
     forceCloseClips();
     cue('close');
   },
-  refresh(ctx) { renderFlightBrief(ctx); },
+  refresh(ctx) { renderFlightBrief(ctx); syncPauseRunSeed(ctx); },
 };

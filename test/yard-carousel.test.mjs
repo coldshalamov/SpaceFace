@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createYardCarousel, yardRingPose } from '../src/ui/orrery/yardCarousel.js';
+import { createHullRing } from '../src/ui/orrery/hullRing.js';
 
 const HOST_RECT = { left: 0, top: 0, width: 1440, height: 900 };
 const STAGE_RECT = { left: 560, top: 60, width: 880, height: 840 };
@@ -100,6 +101,7 @@ function makeDoc() {
   const mk = (tag) => new FakeEl(tag, doc);
   doc.createElement = mk;
   doc.createElementNS = (ns, tag) => mk(tag);
+  doc.createTextNode = (s) => { const n = mk('#text'); n.data = String(s); return n; };
   doc.documentElement = mk('html');
   doc.head = mk('head');
   doc.body = mk('body');
@@ -717,4 +719,195 @@ test('an empty row emits no nonfinite turn indices', () => {
   car.update();
   assert.ok(turns.every(([a, b, f]) => Number.isFinite(a) && Number.isFinite(b) && Number.isFinite(f)), 'no NaN turn emission without items');
   car.dispose();
+});
+
+// ---- layout cost: the New Game screen opens and spins without forced layouts (demo ledger D198) ----
+// A build reads five boxes and rewrites the ring, the shells and the grab surface, so every extra build is
+// a forced layout. These count them in the fake DOM: builds as writes to the back layer's viewBox, reads as
+// getBoundingClientRect calls on the element that is measured.
+function watchBuilds() {
+  const orig = FakeEl.prototype.setAttribute;
+  const w = { count: 0 };
+  FakeEl.prototype.setAttribute = function setAttribute(name, value) {
+    if (name === 'viewBox' && String(this.attributes.class || '').includes('orr-yard__back')) w.count += 1;
+    return orig.call(this, name, value);
+  };
+  w.restore = () => { FakeEl.prototype.setAttribute = orig; };
+  return w;
+}
+
+function countReads(...els) {
+  const c = { n: 0 };
+  for (const e of els) {
+    const orig = e.getBoundingClientRect.bind(e);
+    e.getBoundingClientRect = () => { c.n += 1; return orig(); };
+  }
+  return c;
+}
+
+function installRO() {
+  const prev = globalThis.ResizeObserver;
+  const list = [];
+  globalThis.ResizeObserver = class {
+    constructor(cb) { this.cb = cb; this.targets = []; this.live = true; list.push(this); }
+    observe(t) { this.targets.push(t); }
+    disconnect() { this.live = false; }
+  };
+  return {
+    list,
+    fire() { for (const o of [...list]) if (o.live) o.cb([]); },
+    restore() { globalThis.ResizeObserver = prev; },
+  };
+}
+
+// one frame at a time with the clock moving, the way a page runs
+function frames(raf, clk, n) { for (let i = 0; i < n; i += 1) { clk.clock.now += 16.7; raf.step(1); } }
+
+function layoutRig() {
+  const env = makeEnv();
+  const raf = installRaf();
+  const clk = installClock();
+  const ro = installRO();
+  const builds = watchBuilds();
+  return {
+    env, raf, clk, ro, builds,
+    done() { builds.restore(); ro.restore(); clk.restore(); raf.restore(); },
+  };
+}
+
+test('opening the yard is one build: the frame, fonts, observer and re-show triggers find nothing changed', async () => {
+  const rig = layoutRig();
+  try {
+    rig.env.doc.fonts = { ready: Promise.resolve() };
+    const car = makeCarousel(rig.env);
+    assert.equal(rig.builds.count, 1, 'the mount builds once so the first gesture has geometry');
+    rig.ro.fire();
+    rig.ro.fire();
+    await Promise.resolve();
+    frames(rig.raf, rig.clk, 4);
+    car.setActive(true);
+    rig.ro.fire();
+    frames(rig.raf, rig.clk, 4);
+    assert.equal(rig.builds.count, 1, 'an unchanged layout is never rebuilt by a frame, fonts, the observer or a re-show');
+    car.dispose();
+  } finally { rig.done(); }
+});
+
+test('a layout that really moved is rebuilt once, however many triggers report it', async () => {
+  const rig = layoutRig();
+  try {
+    rig.env.doc.fonts = { ready: Promise.resolve() };
+    const car = makeCarousel(rig.env);
+    frames(rig.raf, rig.clk, 40);
+    assert.equal(rig.builds.count, 1);
+    const before = car.geometry.cx;
+    rig.env.heroBox._rect = { ...HERO_RECT, left: HERO_RECT.left + 90 };
+    rig.env.anchor._rect = { ...STAGE_RECT, left: STAGE_RECT.left + 90 };
+    for (let i = 0; i < 4; i += 1) rig.ro.fire();
+    car.setActive(true);
+    await Promise.resolve();
+    frames(rig.raf, rig.clk, 4);
+    assert.equal(rig.builds.count, 2, 'one move is one rebuild');
+    assert.ok(Math.abs(car.geometry.cx - before - 90) < 0.01, 'the yard re-centred on the moved hull');
+    car.dispose();
+  } finally { rig.done(); }
+});
+
+test('the hull-position watch rests once the stage holds still', () => {
+  const rig = layoutRig();
+  try {
+    const hero = countReads(rig.env.heroBox);
+    const car = makeCarousel(rig.env);
+    frames(rig.raf, rig.clk, 30);
+    const settledReads = hero.n;
+    assert.ok(settledReads <= 20, `a still stage costs a handful of reads, not one per frame (${settledReads})`);
+    frames(rig.raf, rig.clk, 120);
+    assert.equal(hero.n, settledReads, 'no hull-box read happens after the watch rests');
+    car.dispose();
+  } finally { rig.done(); }
+});
+
+test('a stage that slides without resizing is followed while it moves; the watch re-arms on re-show', () => {
+  const rig = layoutRig();
+  try {
+    const car = makeCarousel(rig.env);
+    frames(rig.raf, rig.clk, 3);
+    const slide = (dx) => {
+      rig.env.heroBox._rect = { ...HERO_RECT, left: HERO_RECT.left + dx };
+      rig.env.anchor._rect = { ...STAGE_RECT, left: STAGE_RECT.left + dx };
+    };
+    const start = car.geometry.cx;
+    slide(60);
+    frames(rig.raf, rig.clk, 2);
+    assert.ok(Math.abs(car.geometry.cx - start - 60) < 0.01, 'a slide the observer cannot see is picked up by the watch');
+    slide(120);
+    frames(rig.raf, rig.clk, 2);
+    assert.ok(Math.abs(car.geometry.cx - start - 120) < 0.01, 'and followed while it keeps moving');
+    frames(rig.raf, rig.clk, 40);
+    const rested = rig.builds.count;
+    slide(200);
+    frames(rig.raf, rig.clk, 4);
+    assert.equal(rig.builds.count, rested, 'a move after the watch rested waits for a trigger');
+    car.setActive(false);
+    car.setActive(true);
+    frames(rig.raf, rig.clk, 3);
+    assert.ok(Math.abs(car.geometry.cx - start - 200) < 0.01, 'showing the screen again re-seats the yard on the hull');
+    car.dispose();
+  } finally { rig.done(); }
+});
+
+test('onLayout reports each real build, never a skipped one', () => {
+  const rig = layoutRig();
+  try {
+    const seen = [];
+    const car = makeCarousel(rig.env, { onLayout: (g) => seen.push(g.cx) });
+    frames(rig.raf, rig.clk, 12);
+    assert.equal(seen.length, 1, 'the one mount build reports once');
+    rig.env.heroBox._rect = { ...HERO_RECT, left: HERO_RECT.left + 40 };
+    car.layout();
+    assert.equal(seen.length, 2, 'an explicit layout() always measures and reports');
+    car.layout();
+    assert.equal(seen.length, 3);
+    frames(rig.raf, rig.clk, 12);
+    assert.equal(seen.length, 3, 'frames at a held layout report nothing');
+    car.dispose();
+  } finally { rig.done(); }
+});
+
+test('spinning to another hull never rebuilds the yard and the ring round it reads its boxes once', () => {
+  const rig = layoutRig();
+  try {
+    const { env } = rig;
+    const statsHost = new FakeEl('div', env.doc);
+    statsHost._rect = { ...STAGE_RECT };
+    env.anchor.appendChild(statsHost);
+    const hostReads = countReads(statsHost);
+    const ringAnchor = new FakeEl('div', env.doc);
+    ringAnchor._rect = { ...HERO_RECT };
+    const anchorReads = countReads(ringAnchor);
+    const ring = createHullRing({ host: statsHost, anchor: ringAnchor });
+    const layer = statsHost.children[0];
+    const nodes = (n, out = []) => { for (const c of n.children) { out.push(c); nodes(c, out); } return out; };
+    const mix = (t) => ['Mass', 'Thrust', 'Line'].map((name, i) => ({ name, unit: i === 0 ? 't' : '', reading: String(Math.round(20 + 60 * t + i)), frac: 0.2 + 0.6 * t, ghosts: [0.2, 0.6, 1] }));
+    let paints = 0;
+    const car = makeCarousel(env, {
+      onTurn: (i0, i1, f) => { paints += 1; ring.paint(mix((i0 + f) / 3)); },
+      onLayout: () => ring.layout(),
+    });
+    frames(rig.raf, rig.clk, 40);
+    const ready = { builds: rig.builds.count, host: hostReads.n, hero: anchorReads.n, nodes: nodes(layer).length };
+    assert.ok(ready.nodes > 30, 'the ring was drawn');
+    env.row.children[2].querySelector('button').click();
+    car.update();
+    frames(rig.raf, rig.clk, 90);
+    assert.ok(paints >= 20, `the spin really painted the ring frame after frame (${paints})`);
+    assert.equal(car.rotation, -120, 'the ring arrived on the chosen hull');
+    assert.equal(rig.builds.count, ready.builds, 'the spin rebuilt nothing');
+    assert.equal(hostReads.n, ready.host, 'the spin read the ring\'s host box zero times');
+    assert.equal(anchorReads.n, ready.hero, 'and the hull box zero times');
+    assert.equal(nodes(layer).length, ready.nodes, 'the ring has the same elements before and after the spin');
+    assert.ok(ready.host <= 2, `the ring measured its host box at most twice since the mount (${ready.host})`);
+    ring.dispose();
+    car.dispose();
+  } finally { rig.done(); }
 });

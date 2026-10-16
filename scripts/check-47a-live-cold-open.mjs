@@ -49,7 +49,8 @@ try {
     { timeout: AUTHORED_START_TIMEOUT_MS },
   );
 
-  const report = await page.evaluate(({ scenarioId, scenarioPath }) => {
+  const report = await page.evaluate(async ({ scenarioId, scenarioPath }) => {
+    const { openingInstructionSolo } = await import('/src/ui/hudAttention.js');
     const sf = window.SF;
     const state = sf.state;
     const contract = sf.helpers.scenarioContract;
@@ -133,19 +134,7 @@ try {
         record.type === 'presentation:cueApplied' && record.payload && record.payload.id === 'scenario.signal.pulse'),
       kesslerCommsVisible: /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
       onboardingGateActive: !!(state.onboarding && state.onboarding.active && !state.onboarding.finished),
-      // Replicated from src/ui/hudAttention.js openingWindowActive + openingObjectivePending +
-      // openingInstructionSolo — the page does not export hudAttention, so the rule is spelled
-      // out here from the same state fields it reads.
-      openingSoloHolds: (() => {
-        const now = Number(state.simTime);
-        const startedAt = Number(state.onboarding && state.onboarding.startedAt);
-        const elapsed = now - (Number.isFinite(startedAt) ? startedAt : 0);
-        const windowActive = Number.isFinite(now) && elapsed >= 0 && elapsed < 120;
-        const pending = !!(state.onboarding && state.onboarding.active && !state.onboarding.finished)
-          || !!(state.nav && state.nav.waypoint
-            && String(state.nav.waypoint.reason || state.nav.waypoint.label || '').trim());
-        return windowActive && pending;
-      })(),
+      openingSoloHolds: openingInstructionSolo(state),
       ambientGateProbeVisible: (document.body.textContent || '').includes(ambientGateProbe),
       scenarioId,
       scenarioPath,
@@ -174,31 +163,31 @@ try {
     'ordinary ambient chatter should remain held while authored scenario dialogue bypasses the onboarding gate');
   // ff87322f3 ("Opening one-instruction rule") retires the authored-dialogue gate bypass while
   // openingInstructionSolo(state) holds — the Kessler line is now held in the comms queue until
-  // the player does the thing. The gate assertions above ran at the original moment; now prove
-  // the line EVENTUALLY renders: if it is still held and the solo rule holds, release the rule
-  // the cheap way a player would (finish the rail and clear the pending objective through the
-  // same state fields the rule reads), then wait out the held-line drip (~3.5 s cadence).
+  // the player does the thing or the opening window ends. The cold-open assertions above ran
+  // at the original moment; now stage the separate post-opening fixture and prove the held line
+  // renders even while ordinary attention remains occupied by the real tracked objective.
+  // Clearing nav is not a stable fixture: missions restores that objective every 0.75 sim seconds.
   if (!report.kesslerCommsVisible) {
     assert.equal(report.openingSoloHolds, true,
       'Kessler line held from the comms feed while the opening one-instruction rule does not hold — report this state, do not patch it');
-    await page.evaluate(() => {
+    const postOpening = await page.evaluate(async () => {
+      const { OPENING_INSTRUCTION_WINDOW_S, openingWindowActive, openingInstructionSolo }
+        = await import('/src/ui/hudAttention.js');
       const state = window.SF.state;
-      if (state.onboarding) { state.onboarding.active = false; state.onboarding.finished = true; }
-      if (state.nav) state.nav.waypoint = null;
-      if (state.ui) state.ui.trackedMissionId = null;
-      const splash = document.querySelector('.sf-firstrun-splash');
-      if (splash) splash.remove();
+      const waypoint = state.nav?.waypoint;
+      const trackedId = state.ui?.trackedMissionId;
+      state.onboarding.startedAt = Number(state.simTime) - OPENING_INSTRUCTION_WINDOW_S - 1;
+      return {
+        openingWindowActive: openingWindowActive(state),
+        openingSoloHolds: openingInstructionSolo(state),
+        waypointPreserved: state.nav?.waypoint === waypoint,
+        trackedMissionPreserved: state.ui?.trackedMissionId === trackedId,
+      };
     });
-    // The opening re-asserts its tracked objective (84420c421 pins an entry-tier writ for fresh
-    // operators, and the story nav refresh reinstalls the waypoint on onboarding finish), so a
-    // one-time field clear races the installer. Let the opening settle, then re-clear through
-    // the same fields before waiting out the held-line drip.
-    await page.waitForTimeout(3000);
-    await page.evaluate(() => {
-      const state = window.SF.state;
-      if (state.nav) state.nav.waypoint = null;
-      if (state.ui) state.ui.trackedMissionId = null;
-    });
+    assert.deepEqual(postOpening, {
+      openingWindowActive: false, openingSoloHolds: false,
+      waypointPreserved: true, trackedMissionPreserved: true,
+    }, 'the post-opening fixture should release only the timed instruction gate');
     await page.waitForFunction(
       () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
       null,
@@ -314,5 +303,8 @@ async function reachable(url) {
 function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
+  // This probe reads authoritative scenario state and stages the onboarding time boundary.
+  // Those reads/writes require the main lane; scenario is deliberately not a worker mirror.
+  u.searchParams.set('simLane', 'main');
   return String(u);
 }

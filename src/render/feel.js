@@ -393,6 +393,25 @@ function victimAcousticMass(receipt, state) {
   return 0;
 }
 
+// World-event kill feedback is only meaningful inside the local action envelope. A remote NPC
+// kill must not perturb the player's camera, while a nearby off-player kill still gets its light
+// punch so the surrounding fight has a readable consequence.
+const KILL_CAMERA_RELEVANCE_WU = 700;
+
+function killCameraIsMeaningfullyNearby(state, position) {
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.z)) return false;
+  const entities = state && state.entities;
+  const playerId = state && state.playerId;
+  const player = playerId != null && entities && typeof entities.get === 'function'
+    ? entities.get(playerId)
+    : null;
+  const playerPos = player && player.pos;
+  if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return false;
+  const dx = playerPos.x - position.x;
+  const dz = playerPos.z - position.z;
+  return dx * dx + dz * dz <= KILL_CAMERA_RELEVANCE_WU * KILL_CAMERA_RELEVANCE_WU;
+}
+
 const STYLE_ID = 'sf-feel-style';
 
 // Tunables — spec2/02 §3 exact numbers. Hit-stop is short so it reads as "weight," not "lag.
@@ -1283,7 +1302,9 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       const isCapital = p.capital || /capital|flagship|cruiser|gunship/i.test(String(p.victimClass || p.type || '')) || (p.radius || 0) >= 55;
       if (!playerInvolved) {
-        // Distant NPC kill: tiny punch only, never a hit-stop.
+        // Remote NPC kills stay silent at the camera; a local off-player kill keeps the small
+        // world-event punch so nearby action remains readable without stealing the beat.
+        if (!killCameraIsMeaningfullyNearby(state, p.pos)) return;
         this._trigger(0, FOV_PUNCH_KILL * 0.3, 0, null);
         return;
       }

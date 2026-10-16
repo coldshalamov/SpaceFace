@@ -52,7 +52,7 @@ import {
   isJettisonedCargoPod,
 } from './lootShards.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { KillCause, compactKillCausality } from '../combat/killCausality.js';
+import { KillCause, compactKillCausality, impactLinkFromPresentation } from '../combat/killCausality.js';
 import { isHostileToPlayer } from './scanner.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { patrolCanInitiateScan } from './encounterScripts.js';
@@ -131,6 +131,13 @@ export const AMBIENT_TOLL_VALUE_FLOOR = 120;
 export const CUSTOMS_SCAN_RANGE = 90;
 export const CUSTOMS_SCAN_HALF_ANGLE = 0.55;
 export const CUSTOMS_SCAN_DWELL_S = 0.70;
+
+// LAW-10 — mid-scan dump window. A hold scan opens the moment `player:scannedByPatrol`
+// carries hasContraband; the window is how long a later jettison still counts as
+// "mid-scan" (simTime, deterministic — patrol offers run ~10 s, so 15 s covers the
+// reaction without leaking into the next encounter). Expiry is silent: an evaded or
+// timed-out scan keeps whatever the engine already decided, never a second verdict.
+export const SCAN_DUMP_WATCH_WINDOW_S = 15;
 
 /** PQ-151.01 — nets-band tether-net roadblock on a lane. Reuses the customs cone + a span. */
 export const WANTED_NET_STANDOFF = 320;
@@ -267,6 +274,7 @@ export const lawSecurity = {
       this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
       this._observeInspectionSectorExit(payload);
       this._clearHarmWindows(); // victim ids recycle across sectors — history cannot cross the jump
+      this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
     };
     this._onSaveRestoring = () => {
@@ -274,6 +282,7 @@ export const lawSecurity = {
       this._resetInspectionTransient();
       this._resetWeirTransient();
       this._clearHarmWindows();
+      this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
@@ -282,6 +291,7 @@ export const lawSecurity = {
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
       this._lastCustomsSubmitTick = -1;
+      this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
@@ -313,6 +323,10 @@ export const lawSecurity = {
     };
     this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
     this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
+    this._scanDumpWatch = null;
+    this._onScannedByPatrol = (payload) => this._openScanDumpWatch(payload);
+    this._onScanDumpJettison = (payload) => this._noteScanDumpJettison(payload);
+    this._onScanDumpResolved = (payload) => this._observeScanDumpResolution(payload);
     this._lastCustomsSubmitTick = -1;
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
@@ -339,6 +353,9 @@ export const lawSecurity = {
       this.bus.on('heat:changed', this._onHeatChanged);
       this.bus.on('law:impoundPay', this._onImpoundPay);
       this.bus.on('customs:submit', this._onCustomsSubmit);
+      this.bus.on('player:scannedByPatrol', this._onScannedByPatrol);
+      this.bus.on('cargo:jettisoned', this._onScanDumpJettison);
+      this.bus.on('contraband:scanned', this._onScanDumpResolved);
       this.bus.on('law:fineChoice', this._onFineChoice);
       this.bus.on('law:playerSurrender', this._onPlayerSurrender);
       this.bus.on('law:audit', this._onRecordAudit);
@@ -357,6 +374,7 @@ export const lawSecurity = {
     if (this.state && this.state.player) delete this.state.player.lawfulInspection;
     this._resetInspectionTransient();
     this._resetWeirTransient();
+    this._resetScanDumpWatch();
     this._lastCustomsSubmitTick = -1;
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
@@ -460,6 +478,7 @@ export const lawSecurity = {
     if (shouldSkipFullTickSystems(state)) { this.keepalive(_dt); return; }
     this._reconcileJobResponses();
     this._updateFineWork(_dt, state);
+    this._pruneScanDumpWatch(state);
     this._updatePlayerSurrender(_dt, state);
     if (state.mode && state.mode !== 'flight') return;
     if (this._warrantWaves) this._warrantWaves.update(_dt, state);
@@ -2325,6 +2344,7 @@ export const lawSecurity = {
       witnessCount: receipt.witnessCount,
       responderAvailability: receipt.responderAvailability,
     });
+    if (kind === 'payload_theft') this._noteCrimeRestitution(victim, reportId);
     return receipt;
   },
 
@@ -2466,6 +2486,10 @@ export const lawSecurity = {
     // much a legal fact as WHO. A hull slammed into a rock is reckless endangerment, not murder —
     // the charge, the heat price, and the rep answer all key off this same cause.
     const causality = compactKillCausality(payload, state.playerId);
+    const impactLink = impactLinkFromPresentation(payload.presentation, {
+      impactTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+      playerId: state.playerId,
+    });
     const collisionKill = causality.cause === KillCause.TERRAIN_COLLISION
       || causality.cause === KillCause.SHIP_COLLISION;
     // SF-159: a collision kill's verdict reads the recent-harm window. An isolated contact —
@@ -2546,6 +2570,7 @@ export const lawSecurity = {
         cause: causality.cause,
         surface: causality.surface,
         playerCaused: causality.playerCaused === true,
+        impactLink,
         sustainedAssault: sustainedAssault === true,
         harmEvents: collisionKill ? harmEvents : null,
         kind: outcome === 'charged' ? chargeKind : null,
@@ -2580,6 +2605,8 @@ export const lawSecurity = {
       // Nobody saw it — the law cannot act, including when the victim flies for the network
       // or the body lies inside a protection ring. The wreck can still testify later. The
       // hull stays destroyed; this only records the case.
+      const pendingPerson = restitutionPerson(victim && victim.data);
+      const pendingCr = pricedCargoCr(victim && victim.data);
       this._recordUnreportedKill({
         victimEntityId: payload.id,
         victimStableId,
@@ -2593,6 +2620,7 @@ export const lawSecurity = {
         pos: { x: pos.x, z: pos.z },
         causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
         reportId: victimStableId != null ? cleanLawId(`kill:${victimStableId}`) : null,
+        ...(pendingPerson && pendingCr > 0 ? { forPerson: pendingPerson, restitutionCr: pendingCr } : {}),
       });
       this._lawResponse('kill_unwitnessed', {
         outcome: 'no_charge',
@@ -2636,6 +2664,7 @@ export const lawSecurity = {
         cause: existing.killCause || causality.cause,
         surface: causality.surface,
         playerCaused: causality.playerCaused === true,
+        impactLink,
         kind: existing.kind || (discovered ? null : chargeKind),
         reportId,
         stationId: existing.stationId || (jurisdiction ? jurisdiction.stationId : null),
@@ -2687,6 +2716,7 @@ export const lawSecurity = {
       stationId: receipt.stationId,
       text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : sustainedAssault ? 'sustained collision attack' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
     });
+    this._noteCrimeRestitution(victim, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
     this._lawResponse('crime_validated', {
       kind,
@@ -2840,6 +2870,7 @@ export const lawSecurity = {
       stationId: null,
       text: `CRIME DISCOVERED — wreck black box ties the kill to the suspect (${via === 'wreck_salvage' ? 'salvage' : 'scan'}).`,
     });
+    this._noteStoredRestitution(pending, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
     this._lawResponse('crime_discovered', {
       kind: pending.kind,
@@ -2909,6 +2940,7 @@ export const lawSecurity = {
       stationId: null,
       text: 'CONTRACTOR LOSS — a licensed hunter\'s transponder names the suspect.',
     });
+    this._noteStoredRestitution(pending, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
     return receipt;
   },
@@ -3090,6 +3122,177 @@ export const lawSecurity = {
       stationId: (payload && payload.stationId) || null,
       text: 'Compliance recorded — the scan proceeds on your submission.',
     });
+  },
+
+  // LAW-10 — a mid-scan dump downgrades the finding to suspicion. The engine owns the
+  // scan odds and every fine/confiscation/rep/heat effect; this watch only OBSERVES and
+  // NAMES. It opens on `player:scannedByPatrol` with contraband aboard (snapshotting the
+  // engine's own illicit read), notes `cargo:jettisoned` lots inside the window, and:
+  //   • full dump of the scanned lot(s) → resolves `aborted_dump`: one `customs:scanAborted`
+  //     seam event, one suspicion receipt, one bark. No fine, no standing move, no heat
+  //     write — the jettisoned pod stays contraband evidence, so the pod-cone/weir read
+  //     still prices heat through heat.js exactly as before (dumping is never heat-free).
+  //   • anything else (partial/no dump, scan completes) → `completed_full`: silent. The
+  //     engine's `contraband:scanned` stands verbatim as the full finding.
+  // The watch lives on the instance (session-scoped, never serialized): a save boundary,
+  // sector exit, or new run drops it like the weir dwell latches.
+  _resetScanDumpWatch() {
+    this._scanDumpWatch = null;
+  },
+
+  _scanDumpNow(state) {
+    return Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  },
+
+  _pruneScanDumpWatch(state) {
+    const watch = this._scanDumpWatch;
+    if (!watch || watch.phase !== 'scanning') return;
+    if (this._scanDumpNow(state) - watch.startedSimTime > SCAN_DUMP_WATCH_WINDOW_S) {
+      watch.phase = 'expired';
+      watch.resolvedAt = this._scanDumpNow(state);
+    }
+  },
+
+  _scanDumpSnapshotLots(state) {
+    try {
+      const economy = this._economy();
+      if (economy && typeof economy.illicitCargo === 'function') {
+        const illicit = economy.illicitCargo(state) || [];
+        return illicit
+          .filter((s) => s && typeof s.commodityId === 'string'
+            && Math.max(0, Math.floor(Number(s.qty) || 0)) > 0)
+          .map((s) => ({ commodityId: s.commodityId, qty: Math.max(0, Math.floor(Number(s.qty) || 0)) }));
+      }
+    } catch (_) { /* snapshot unavailable — the watch still opens, lots unknown */ }
+    return [];
+  },
+
+  _openScanDumpWatch(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.hasContraband !== true) return;
+    if (state.mode && state.mode !== 'flight') return;
+    this._pruneScanDumpWatch(state);
+    const prior = this._scanDumpWatch;
+    if (prior && prior.phase === 'scanning') return; // one window at a time — the first scan owns it
+    this._scanDumpWatch = {
+      factionId: (payload && payload.factionId) || 'faction_scn',
+      patrolId: (payload && payload.patrolId) ?? null,
+      stationId: (payload && payload.stationId) ?? null,
+      source: (payload && payload.source) || null,
+      lawfulInspectionCaseId: (payload && payload.lawfulInspectionCaseId) || null,
+      startedTick: state.tick | 0,
+      startedSimTime: this._scanDumpNow(state),
+      lots: this._scanDumpSnapshotLots(state),
+      dumped: [],
+      dumpedMidScan: false,
+      phase: 'scanning',
+      resolvedAt: null,
+    };
+  },
+
+  // True once every scanned lot reads empty in the hold. Prefers the engine's own illicit
+  // read (bay-only contraband correctly refuses the abort — jettison cannot clear the bay).
+  // Without an economy read, falls back to snapshot-minus-dumps, or to the cargo payload's
+  // own holdRemaining for an unknown lot.
+  _scanDumpLotsCleared(state, watch, payload) {
+    const dumpedById = new Map();
+    for (const row of watch.dumped) {
+      dumpedById.set(row.commodityId, (dumpedById.get(row.commodityId) || 0) + row.amount);
+    }
+    try {
+      const economy = this._economy();
+      if (economy && typeof economy.illicitCargo === 'function') {
+        const left = new Map();
+        for (const s of economy.illicitCargo(state) || []) {
+          if (!s || typeof s.commodityId !== 'string') continue;
+          left.set(s.commodityId, Math.max(0, Math.floor(Number(s.qty) || 0)));
+        }
+        if (!watch.lots.length) {
+          for (const qty of left.values()) if (qty > 0) return false;
+          return true;
+        }
+        return watch.lots.every((lot) => (left.get(lot.commodityId) || 0) <= 0);
+      }
+    } catch (_) { /* fall through to the snapshot comparison */ }
+    if (!watch.lots.length) {
+      const holdRemaining = payload && Number(payload.holdRemaining);
+      return Number.isFinite(holdRemaining) && holdRemaining <= 0;
+    }
+    return watch.lots.every((lot) => (dumpedById.get(lot.commodityId) || 0) >= lot.qty);
+  },
+
+  _noteScanDumpJettison(payload) {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return;
+    this._pruneScanDumpWatch(state);
+    if (watch.phase !== 'scanning') return;
+    const commodityId = payload && typeof payload.commodityId === 'string' ? payload.commodityId : '';
+    if (!commodityId) return;
+    const matches = watch.lots.length > 0
+      ? watch.lots.some((lot) => lot.commodityId === commodityId)
+      : commodityLegality(commodityId) !== 'legal';
+    if (!matches) return; // legal goods (or another manifest) overboard — not the scanned lot
+    watch.dumped.push({
+      commodityId,
+      amount: Math.max(0, Math.floor(Number(payload && payload.amount) || 0)),
+      tick: state.tick | 0,
+    });
+    watch.dumpedMidScan = true;
+    if (this._scanDumpLotsCleared(state, watch, payload)) this._resolveScanDumpAborted();
+  },
+
+  // A hold-scan verdict is a hold verdict: pod reads (cone/weir) and other sources resolve
+  // through their own owners and must never close or convert this watch. A correlated lawful
+  // case id must match when either side carries one.
+  _observeScanDumpResolution(payload) {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return;
+    this._pruneScanDumpWatch(state);
+    if (watch.phase !== 'scanning') return;
+    if (!payload || payload.found !== true) return;
+    if (payload.podId != null) return;
+    if (payload.source === 'customs_weir' || payload.source === 'customs_scan_cone'
+      || payload.source === 'customs_weir_bolt' || payload.source === 'dock'
+      || payload.source === 'jump') return;
+    if ((payload.lawfulInspectionCaseId || watch.lawfulInspectionCaseId)
+      && payload.lawfulInspectionCaseId !== watch.lawfulInspectionCaseId) return;
+    // The full finding stands: the engine's fine/confiscation/rep/heat route verbatim.
+    // The law adds nothing — no second receipt, no downgrade, no re-scan.
+    watch.phase = 'completed_full';
+    watch.resolvedAt = this._scanDumpNow(state);
+  },
+
+  _resolveScanDumpAborted() {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return false;
+    watch.phase = 'aborted_dump';
+    watch.resolvedAt = this._scanDumpNow(state);
+    const dumpedText = watch.dumped.length
+      ? watch.dumped.map((row) => `${row.commodityId} x${row.amount}`).join(', ')
+      : 'cargo';
+    this._say('bark', 'PATROL: jettison logged — the gap in your manifest is suspicion now.',
+      `law:scan-dump:${watch.factionId}:${state.tick | 0}`, watch.factionId);
+    this._recordReceipt({
+      cause: 'customs_scan', outcome: 'scan_aborted_dump',
+      attackerId: null, targetId: state.playerId,
+      patrolId: watch.patrolId,
+      stationId: watch.stationId,
+      text: `SCAN ABORTED — ${dumpedText} jettisoned mid-scan; suspicion noted.`,
+    });
+    this._emit('customs:scanAborted', {
+      reason: 'dumped_mid_scan',
+      factionId: watch.factionId,
+      patrolId: watch.patrolId,
+      stationId: watch.stationId,
+      source: watch.source,
+      dumped: watch.dumped.map((row) => ({ ...row })),
+      suspicion: true,
+      tick: state.tick | 0,
+    });
+    return true;
   },
 
   // Canonical law-response event: one named row per action leg so instruments, barks, and HUD
@@ -4587,6 +4790,27 @@ export const lawSecurity = {
     return publicMemorial(row, finder);
   },
 
+  // A named, priced harm. Zero cargo or a blank name opens nothing, and a second
+  // note of the same cause does not stack.
+  _noteCrimeRestitution(entity, causeId) {
+    const forPerson = restitutionPerson(entity && entity.data);
+    const amountCr = pricedCargoCr(entity && entity.data);
+    if (!forPerson || !(amountCr > 0) || !causeId) return null;
+    return this.noteComposedObligation({ kind: 'restitution', causeId, forPerson, amountCr });
+  },
+
+  _noteStoredRestitution(pending, causeId) {
+    const forPerson = pending && typeof pending.forPerson === 'string' ? pending.forPerson.trim() : '';
+    const amountCr = Math.round(Number(pending && pending.restitutionCr));
+    if (!forPerson || !(amountCr > 0) || !causeId) return null;
+    return this.noteComposedObligation({
+      kind: 'restitution',
+      causeId,
+      forPerson: forPerson.length > 80 ? forPerson.slice(0, 80) : forPerson,
+      amountCr,
+    });
+  },
+
   // PB-CONS-D / NXB-044 — toll, warrant, and restitution stay separate bills.
   // The same cause does not stack, and paying one does not clear the others.
   noteComposedObligation(request = {}) {
@@ -4638,6 +4862,15 @@ export const lawSecurity = {
     const pay = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : row.remainingCr;
     if (!(pay > 0)) return { accepted: false, reason: 'no_amount', obligation: publicObligation(row) };
     const applied = Math.min(pay, row.remainingCr);
+    const credits = state.player && state.player.credits;
+    if (credits != null && Number(credits) < applied) {
+      return {
+        accepted: false,
+        reason: 'short',
+        shortfall: applied - Number(credits),
+        obligation: publicObligation(row),
+      };
+    }
     this._emit('economy:chargeCredits', {
       amount: applied,
       reason: `law:${row.kind}`,
@@ -4724,6 +4957,25 @@ export const lawSecurity = {
   _chooseFine(payload = {}) {
     const state = this.state;
     if (!state) return null;
+    if (payload.kind === 'restitution') {
+      if ((payload.choice || payload.fineChoice) !== 'pay') {
+        return { accepted: false, reason: 'not_pay' };
+      }
+      const paid = this.payComposedObligation({
+        kind: 'restitution',
+        causeId: payload.causeId,
+        amountCr: payload.amountCr,
+      });
+      if (paid && paid.reason === 'short') {
+        this._emit('law:fineRefused', {
+          reason: 'short',
+          kind: 'restitution',
+          causeId: payload.causeId || null,
+          shortfall: paid.shortfall,
+        });
+      }
+      return paid;
+    }
     const choice = payload.choice || payload.fineChoice;
     if (choice !== 'pay' && choice !== 'work' && choice !== 'leave') return null;
     const own = ensureState(state);
@@ -4970,6 +5222,9 @@ export const lawSecurity = {
       if (this._onHeatChanged) this.bus.off('heat:changed', this._onHeatChanged);
       if (this._onImpoundPay) this.bus.off('law:impoundPay', this._onImpoundPay);
       if (this._onCustomsSubmit) this.bus.off('customs:submit', this._onCustomsSubmit);
+      if (this._onScannedByPatrol) this.bus.off('player:scannedByPatrol', this._onScannedByPatrol);
+      if (this._onScanDumpJettison) this.bus.off('cargo:jettisoned', this._onScanDumpJettison);
+      if (this._onScanDumpResolved) this.bus.off('contraband:scanned', this._onScanDumpResolved);
       if (this._onFineChoice) this.bus.off('law:fineChoice', this._onFineChoice);
       if (this._onPlayerSurrender) this.bus.off('law:playerSurrender', this._onPlayerSurrender);
       if (this._onRecordAudit) this.bus.off('law:audit', this._onRecordAudit);
@@ -4995,6 +5250,10 @@ export const lawSecurity = {
     this._onHeatChanged = null;
     this._onImpoundPay = null;
     this._onCustomsSubmit = null;
+    this._onScannedByPatrol = null;
+    this._onScanDumpJettison = null;
+    this._onScanDumpResolved = null;
+    this._scanDumpWatch = null;
     this._onFineChoice = null;
     this._onPlayerSurrender = null;
     this._onRecordAudit = null;
@@ -5100,6 +5359,44 @@ export function aggressionCauseFor(state, attacker, target) {
   if (ai.engagementTrigger === 'wanted_status') return 'wanted_status';
   if (ai.encounterId || DANGEROUS_CONTEXTS.has(String(ai.spawnContext || ''))) return 'authored_danger';
   return 'unmotivated';
+}
+
+function restitutionPerson(data) {
+  if (!data || typeof data !== 'object') return '';
+  const raw = data.ownerName || data.name || data.displayName || '';
+  const name = String(raw).trim();
+  if (!name) return '';
+  return name.length > 80 ? name.slice(0, 80) : name;
+}
+
+function pricedLineCr(id, qty) {
+  if (typeof id !== 'string' || !id) return 0;
+  const units = Math.floor(Number(qty));
+  if (!(units > 0)) return 0;
+  const unit = COMMODITY_VALUE.get(id);
+  return unit > 0 ? units * unit : 0;
+}
+
+/** One price source. A pod's commodity line wins; a manifest or a cargo map is the fallback. */
+function pricedCargoCr(data) {
+  if (!data || typeof data !== 'object') return 0;
+  const directId = typeof data.commodityId === 'string' ? data.commodityId : '';
+  if (directId) return pricedLineCr(directId, data.amount != null ? data.amount : data.qty);
+  const lines = data.cargoManifest && Array.isArray(data.cargoManifest.lines)
+    ? data.cargoManifest.lines : null;
+  if (lines) {
+    let total = 0;
+    for (const line of lines) {
+      if (!line || typeof line !== 'object') continue;
+      total += pricedLineCr(line.commodityId || line.id, line.amount != null ? line.amount : line.qty);
+    }
+    return total;
+  }
+  const cargo = data.cargo;
+  if (!cargo || typeof cargo !== 'object' || Array.isArray(cargo)) return 0;
+  let total = 0;
+  for (const id of Object.keys(cargo)) total += pricedLineCr(id, cargo[id]);
+  return total;
 }
 
 export function playerCargoValue(state) {
@@ -6458,7 +6755,10 @@ function normalizeUnreportedKillLedger(raw) {
     const kind = typeof e.kind === 'string' && e.kind.trim() ? e.kind : null;
     if (victimStableId == null || reportId == null || kind == null) continue;
     if (e.victimEntityId == null) continue;
-    out[victimStableId] = {
+    const forPerson = typeof e.forPerson === 'string' && e.forPerson.trim()
+      ? e.forPerson.trim().slice(0, 80) : '';
+    const restitutionCr = Math.round(Number(e.restitutionCr));
+    const row = {
       victimEntityId: e.victimEntityId,
       victimStableId,
       victimClass: typeof e.victimClass === 'string' && e.victimClass ? e.victimClass : null,
@@ -6470,6 +6770,11 @@ function normalizeUnreportedKillLedger(raw) {
       causalTick: Number.isInteger(e.causalTick) && e.causalTick >= 0 ? e.causalTick : 0,
       reportId,
     };
+    if (forPerson && restitutionCr > 0) {
+      row.forPerson = forPerson;
+      row.restitutionCr = restitutionCr;
+    }
+    out[victimStableId] = row;
     if (Object.keys(out).length >= UNREPORTED_KILL_CAP) break;
   }
   return out;
@@ -6602,6 +6907,27 @@ function lawfulResponderInCone(state, player) {
     if (found || !entity || entity.id === state.playerId || entity.type === 'station') return;
     if (!isLawful(entity)) return;
     if (playerInLawfulCone(entity, player)) found = entity;
+  });
+  return found;
+}
+
+// TEACH-10 — the first-wanted lesson's patrol read. A lawful patrol "on glass" is a live
+// lawful hull inside the law's own witness radius of the player: the authored distance at
+// which the law says a hull can see the scene (LAW_INCIDENT_WITNESS_RADIUS). Stations are
+// never patrols and the player is never their own witness. Pure read — no heat, rep,
+// credit, cargo, or ship write; no RNG; no clock (positions only, first match wins, so the
+// result is deterministic for a given scene).
+export function lawfulPatrolOnGlass(state) {
+  const player = state && entityById(state, state.playerId);
+  if (!player || player.alive === false || !player.pos) return null;
+  const limit = LAW_INCIDENT_WITNESS_RADIUS * LAW_INCIDENT_WITNESS_RADIUS;
+  let found = null;
+  forEachLivingWorldActor(state, (entity) => {
+    if (found || !entity || entity.id === state.playerId || entity.type === 'station') return;
+    if (entity.alive === false || !entity.pos) return;
+    if (!isLawful(entity)) return;
+    if (distance2(player.pos, entity.pos) > limit) return;
+    found = entity;
   });
   return found;
 }

@@ -499,7 +499,7 @@ export const physics = {
     const orchardRestoreInputs=needsOrchardInputs?captureOrchardRestoreInputs(context,state,entities,this,ORCHARD_RESTORE_CAPABILITIES.get(this)):null;
     if(needsOrchardInputs && (!orchardRestoreInputs || !orchardRestoreInputsCurrent(orchardRestoreInputs))){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     let adopted = false;
-    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
+    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION && payload.schema !== 4 ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
     else if (payload && (payload.frameOrigin?.x !== worldFrameOrigin(state).x
       || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
@@ -556,7 +556,7 @@ export const physics = {
     const orchardRestoreInputs=needsOrchardInputs?captureOrchardRestoreInputs(context,state,entities,this,ORCHARD_RESTORE_CAPABILITIES.get(this)):null;
     if(needsOrchardInputs && (!orchardRestoreInputs || !orchardRestoreInputsCurrent(orchardRestoreInputs))){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     let adopted = false;
-    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
+    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION && payload.schema !== 4 ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
     else if (payload && (payload.frameOrigin?.x !== worldFrameOrigin(state).x
       || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
@@ -665,15 +665,19 @@ export const physics = {
       }
       this._disableSg02DynamicAuthority();
     }
+    const initBeforePrepare = this._sg02Init;
     this._updateSg02DynamicAuthority(0, state);
     if (this._sg02Init) {
       let timer = null;
       const sg02TokenAtPrepare = this._sg02Token;
       const settled = await Promise.race([
         Promise.resolve(this._sg02Init).then(() => true, () => true),
-        // A mint issued by this call keeps the full bring-up envelope even when
-        // the caller plumbed a shorter budget for the joins above.
-        new Promise((resolve) => { timer = setTimeout(() => resolve(false), SG02_INIT_PREPARE_TIMEOUT_MS); }),
+        // Only a mint issued by this call owns a fresh bring-up envelope. Joining an
+        // existing promise must honor the caller's remaining budget, just like reset/adopt.
+        new Promise((resolve) => {
+          timer = setTimeout(() => resolve(false), this._sg02Init === initBeforePrepare
+            ? sg02InitJoinMs() : SG02_INIT_PREPARE_TIMEOUT_MS);
+        }),
       ]);
       if (timer !== null) clearTimeout(timer);
       // A retry/reset that landed during the wait owns the authority now: this stale

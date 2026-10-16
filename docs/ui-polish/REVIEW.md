@@ -1404,3 +1404,134 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `orrery-flight` findings went from 14 to 4 at 844×390, from 18 to 6 at 390×844, from 12 to 6 at 960×540, and from 8 to 6 at 1280×720. It is 4 at 801×390, 1024×440 and 1366×768, and 0 at 1920×1080. All the remaining findings are the Cluster's curved class line (HITCH · KESTREL CLASS · STARTER) touching its own Shield/Armor legend at cluster scale ≤.6. That also happens on master at 960 and 1280, and it lives in the shared `flightCluster.js`. The focused test `orrery-speed-dial` passes. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish58/{before,after}/flight/` and `compare-orrery-flight-*.png`.
 
 **Leftovers (not this pass):** the Cluster class line vs legend at scale ≤.6 (shared with the live HUD through `hudAdapter`, so fix it there and check it live). The live HUD cluster has no short-frame step (it stays at .6 at 844×390). My Ship hull callouts at 1101–1160 wide (in #423's `#sf-ship` CSS). Shipworks lower callouts at 844×390 (the berth scrolls by design).
+
+## My Ship (flight host) on small frames — session notes (2026-10-16, ui-polish-57)
+
+**Before (master 72d47e7bf8):** Pause → My Ship (`ship`) kept fixed 230 / 1fr / 285 columns at every size. At 844×390 the hull had a 185px column, so the hull's sentence, the slot callouts (Cargo / OPEN) and the ship ran into each other (bench: 6 ON TOP OF). At 960×540 the sentence and callouts crowded a 300px stage. In a 390×844 desktop window the hull column was 0px wide and the screen showed only the fleet card and a clipped systems rail.
+
+**After (`styles/station.css`, CSS only, scoped to `#sf-ship` on non-mobile hosts):**
+- **641–1100 wide:** the fleet card stands over the systems column (`clamp(220px, 28vw, 285px)`) and the hull takes the rest of the frame. The sentence gets a dissolved pad behind it and its scroll box ends on a whole line (4 lines). (Review fix: the split now runs 901–1100 wide, or 801–1100 on a window ≤460 tall. Narrower, it left the hull ~300–550px: at 641–800 the callouts printed over the stat strip — 641×800, 641×461, 761×460 went 0 → 2–6 vs master — and at 780–880 × 500–700 the sentence printed over the hull's top callouts, 6 → 10 vs master at 780–844×600. Those sizes now take the stacked layout below: 0 findings across 761–1100 × 390–800 except 801×390/460, 2 (master 6).)
+- **≤460 tall:** frame margin 14/20px instead of 48px, hull name 26px, sentence 12.5px in a 3-line scroll box.
+- **≤800 wide, or ≤900 wide above 460 tall (desktop window):** the fleet card, hull and systems stack and the screen scrolls; 420px stage, sentence in a 4-line box.
+- Real phones (`data-sf-mobile="1"`) keep `mobileScreenLayouts`' own flow. Selectors and IDs are unchanged.
+
+**Checked:** bench `ship` 0 findings at 844×390, 960×540, 1024×440, 1280×720, 1920×1080 and 390×844 (6 → 0 at 844×390). 1280×720 and 1920×1080 are pixel-identical to master. Focused tests `pause-ship-fit` and `instrument-hierarchy-six-screens` pass; `station-field-hardware` has one failure (stylesheet order) that also fails on master. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish57/{before,after}/`, `compare-ship-*.png`.
+
+**Second pass, desktop sizes (same PR):** the build hero (GENERALIST) joined the band row, but the old sizes still assumed four. At 1101–1366 wide the five numbers overprinted each other ("DOCKED CAN TOW GENERALIS", cut at the plate's edge); above 1366 GENERALIST dropped to a second row and pushed SAVE FIT under the plate (1440×900, 1920×1080). Now, at ≥1101 wide, the numbers size to the band's own width (`container-type: inline-size`, `clamp(18px, 5cqi − 10px, 47.52px)`), so the usual row holds on one line from ~1180 to 1920 and a long build name wraps whole instead of overprinting. At 1101–1240 the stage floor drops to 290px, the plate can take 56% and the handling columns close to a 12px gap, so SAVE FIT and Inertia/Brake stay on the plate. The sentence's dissolved pad now applies at every desktop width, since the hull runs under it up to ~1600 wide. Bench `ship` 0 findings at 1152×864, 1180×720, 1240×700, 1280×720, 1366×768, 1440×900, 1920×1080. Shots: `/workspace/spaceface-scratch/ui-shots/polish58/{before,after}/`, `compare-ship-*.png`, `crop-*.png`.
+
+**Leftovers (not this pass):** at 1101–1160 wide (e.g. 1120×700) the hull callouts still meet the sentence and the right handling column runs past the plate (also on master); the `orrery-flight` direction proof is cramped at 844×390 (preview, not the live HUD); Shipworks lower callouts @844×390 (berth scrolls by design).
+
+## Flight cluster: class ring clears Shield/Armor at scale ≤.6 (ui-polish-59)
+
+**Before (master b602ddebaf / post-#425 9026a5dcf8):** at `--orr-cluster-scale` ≤.6 (960×540 and 1280×720 — the live HUD and the `orrery-flight` proof both use that step under 1300 wide) the legend's `.orr-label` grows via `12 / scale`, so Shield and Armor meet the curved class ring (`HITCH · KESTREL CLASS · STARTER` at startDeg 160). Bench: 6 ON TOP OF (HITCH↔Shield/Armor) at 960 and at 1280. 1920 (scale .85) was already clean.
+
+**After (`src/ui/orrery/flightCluster.js` only, CSS):**
+- Legend (and the next-decision cue under it) nudge left by `(12/scale − 12) * 5` so the column clears the engraving's x≈303; scale 1 → 0 extra. startDeg stays 160 — 1920 keeps the same ring placement.
+- Cap `.orr-label` inverse scale at 15px local (~9px on-screen at .6) so Shield/Armor stay readable without growing into the ring.
+- Selectors and IDs unchanged. Shared cluster — live HUD via `hudAdapter` gets the same clearance.
+
+**Checked:** on tip with #425 merged, bench `orrery-flight` findings go to **0** at 844×390, 960×540, 1280×720 and 1920×1080 (the HITCH↔Shield/Armor ON TOP OFs that #425 left at 960/1280 are gone). Pre-#425 master baseline for this branch's before shots: 12→0 at 960, 8→0 at 1280, 0→0 at 1920; 844's preview-chrome notes were already owned by #425. Focused tests: `orrery-hud-adapter`, `orrery-speed-dial` pass. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish59/{before,after}/`, `compare-orrery-flight-{960x540,1280x720,1920x1080,844x390}.png`.
+
+**Leftovers (not this pass):** My Ship callouts @1101–1160 (open #423 `station.css`); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted state @960 (optional).
+
+**Review fix (Code Work):** the 15px label cap put Hull/Shield/Armor at ~9px on screen at scale .6 (live HUD ≤1300 wide) and 10.5px at .7 (1301–1700), under the 12 px type floor, and the live HUD's engraving (`HITCH · STARTER · TIER 0`) still met Armor at .7 and .85. The cap is gone (labels are 12 px on screen at every step again) and the engraving now starts at 135deg instead of 160, so it runs up the lower right clear of the legend. Live HUD probe (real game, ring glyph boxes vs legend boxes, full / hit / critical damage): 0 overlaps at 844×390, 960×540, 1280×720, 1440×900, 1920×1080, against 4–13 legend/engraving glyph overlaps on master (13 at 844 and 960, 11 at 1280, 8 at 1440, 4 at 1920).
+
+## Range on a very short / narrow desktop: RULES · BESTIARY · CLOSE stay on glass (ui-polish-60)
+
+**Before (master 9026a5dcf8):** the existing ≤1100 × ≤640 short block kept 960×540 clean, but under ~460px tall (844×390 / 801×390 / 900×420) the title + five-row ladder + dossier still outgrew the frame, so RULES / BESTIARY / CLOSE and the run gauge fell below the fold (bench: 3 OFF FRAME at each size). A narrow desktop window (390×844, not phone) wrapped the 16 rules into many rows and did the same.
+
+**After (`src/ui/screens/range.js` only, CSS, desktop via `html:root:not([data-sf-mobile="1"])`):**
+- New `@media (max-width:1100px) and (max-height:460px)`: tighter frame pad / row gap, smaller hero and one-line-clamped blurbs, denser ladder ticks, compact dossier and 28px run gauge so the tabs row stays on glass and the course keeps a slim band.
+- New `@media (max-width:520px)`: sideways-scrolling one-row ladder (phone-style fade) so a 390-wide desktop window no longer stacks sixteen rungs.
+- Selectors and IDs unchanged. Phones (`data-sf-mobile`) keep the mobile sheet.
+
+**Checked:** bench `range` findings 3→0 at 844×390, 801×390, 900×420 and 390×844; stay 0 at 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 960/1920 0%; 1280 ~0.1% noise; short/narrow frames change as intended. `--phone` 390×844 / 844×390 clean. `--walk` at 844×390 reaches all 22 controls including RULES / BESTIARY / CLOSE. Focused test `range-door-funnel` passes (6). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish60/{before,after,compare}/`, `compare-range-*.png`.
+
+**Leftovers (not this pass):** My Ship hull callouts @1101–1160 (#423); flightCluster class ring vs legend (#426, awaiting live HUD re-review); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional).
+
+**Review fix (Code Work):** the ≤460-tall block set four sizes under the 12 px type floor (second title line, ladder words, dossier, run gauge, all 11px). They are 12px now, with letter-spacing trimmed by .01–.02em. RULES / BESTIARY / CLOSE and the run gauge still sit on glass at 844×390, 801×390, 900×420 and 1100×460, where the ladder takes one more row at 801. Bench `range` is 0 at every size the PR touches, and the smallest computed text on the screen is 12px.
+
+## My Ship at 1101–1240 wide: the hull gets the frame (2026-10-16, ui-polish-61)
+
+**Before (master 8c1beaa539):** at 1101–1240 wide My Ship (`ship`) still used the 230 / 1fr / 285 columns, so the hull had ~460–560px. The slot callouts printed over the hull's sentence and over TAKE THE HITCH / RECORD / SELECT A SLOT, the ship was drawn tiny, the stat strip wrapped to two rows, GENERALIST dropped to a second row and the right handling column (Inertia / Brake) ran past the plate (bench: 12 findings at 1101×720, 1120×700, 1130×720; 2 at 1160×720; 10 at 1101×440, 1200×460, 1240×440).
+
+**After (`styles/station.css`, CSS only, `#sf-ship` on non-mobile hosts):**
+- The two-column split from ui-polish-57 (fleet card over the systems column, hull takes the rest) now runs to 1240 wide instead of 1100, on both of its media branches.
+- The 1101–1240 three-column patch (290px stage floor, 56% plate, 12px handling gap) is removed, since that layout no longer applies there.
+- ≥1241 wide and ≤1100 wide are unchanged. Selectors and IDs are unchanged.
+
+**Checked:** bench `ship` 0 findings at 1101×720, 1120×700, 1130×720, 1160×720, 1200×720, 1240×700, 1241×700, 1152×864, 1101×440, 1200×460, 1240×440, and still 0 at 844×390, 960×540, 1280×720, 1920×1080 and 390×844. Pixel Δ (>8): 844/960/1280/1920/390×844 0%; 1101–1160 ~30% (relayout). Focused tests `pause-ship-fit` (3) and `instrument-hierarchy-six-screens` (9) pass; `station-field-hardware` still has its one stylesheet-order failure, same as master. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish61/{before,after}/`, `compare-ship-*.png`.
+
+**Leftovers (not this pass):** in the split layout (901–1240 × ~720) the systems rail scrolls, so DOCK TO EXTEND sits half under the rail's bottom edge until it is scrolled (same as ≤1100 on master); at 901–1100 wide the heroes still stack in two columns, so SAVE FIT sits at the stats plate's scroll fold (1100×720: half shown); sizing the heroes like ≥1101 does not help there, since that band is a grid (tried, reverted); Shipworks lower callouts @844×390 (the berth scrolls by design); Automation conduct strip @960 (optional).
+
+**Code Work review (2026-10-16):** Ranges join with no gap or overlap: stacked ≤800 / ≤900 above 460 tall; split 801–1240 at ≤460 tall and 901–1240 above; three columns from 1241. Live bench `ship`, PR against master 042025912f: 1101–1240 at 720/700/461/460/440 tall goes from 2–12 findings to 0. At 1241×440/460/720, 1280, 1366, 1920, 1100×720/440, 900/901×600, 800×460, 844×390, 960×540, 390×844 and phone the counts match master (801×460 has 2 on both). SAVE FIT is on screen at 1101–1240×720 and reachable by scrolling at ≤460 tall, the same as master. The five numbers sit on one row from 1101 to 1240 (on master GENERALIST dropped to a second row at 1101–1160). Review fix: at ≤1100 the hero captions (`.k-hero__w`, TOP SPEED / POWER / …) were 11px, a leftover from ui-polish-38. They are now 12px with .1em tracking and still fit the two-up grid with no clipping (1100×720, 1024×768, 960×540, 844×390, 640×800, 390×844). The type-floor count drops 119 to 118, and no text is under 12px on My Ship at any size checked. Focused tests are identical to master. The player-truth pair (m, pr, pr, m in one worktree) has no PASS→FAIL, only the known `player_ship` boot flake on both sides.
+
+## Save/Load on a very short desktop: LOAD, SAVE HERE and DELETE back on the frame (ui-polish-63)
+
+**Before (master 042025912f):** under ~460px tall (844×390, 801×390, 900×420, 1024×440) the reading in the left column ran ~80px past the foot. The name field and LOAD / SAVE HERE / DELETE fell below the frame (half of LOAD showed at 1024×440), and the hull record's GRUDGE line printed through EXPORT / IMPORT. Bench `save-load`: 10 at 844×390 and 801×390 (4 OFF FRAME, 6 printed-on-top), 3 OFF FRAME at 900×420, 2 overlaps at 1024×440; `save-load-empty` had SAVE HERE over EXPORT at 844/801/900.
+
+**After (`src/ui/orrery/saveLayouts.js` only, CSS, desktop via `html:root:not([data-sf-mobile="1"])`, new `@media (max-width:1100px) and (max-height:460px)`):**
+- The way back (EXPORT · IMPORT · ‹ BACK ESC) moves under the filmstrip in the right column (`"page foot"`), so the reading takes the left column's full height.
+- The reading steps down: LOAD 34px (review), card title 26px, credits on one line (label beside a 28px numeral), a tighter hull record, the NAME label beside its field, and a 32px Lamp Key.
+- Selectors and IDs unchanged. 960×540 and up, and phones, keep their layout.
+
+**Checked:** bench `save-load`, `save-load-empty` and `save-load-live` are 0 at 844×390, 801×390, 900×420, 1024×440, 1100×460, 960×540, 1280×720 (before: 10/1/10, 10/1/10, 3/1/3, 2/0/2, then 0 from 960 up). 1101×460 matches master (outside the band: Grudge/Export overlap + LOAD/SAVE/DELETE off). Pixel Δ (>8): the short frames change as intended; 960/1280 are rolling-counter noise. `--walk` at 844×390 reaches all 7 controls and really save/load/export/import/delete. Focused tests match master (`ui-budgets` #8 digest staleness on both). Shots (not committed): `/workspace/orchestra/state/review-432/c1/shots/`.
+
+**Code Work review fixes:**
+- Type floor 12px in-band (strip name/badge/sub + context were 9–10.5px); filed berths hide the sub line (empty keeps "Empty slot"); ledger labels, fact unit, slot numerals, EXPORT/IMPORT, ESC floored at 12px.
+- Title 40→34, tighter ledger/context tracking, vacant word 12px — reclaim height so LOAD/SAVE HERE/DELETE stay on frame after a first save.
+- After a re-save the context runs three lines ("… PREVIOUS GENERATION KEPT (FILED EARLIER TODAY)") and LOAD/SAVE/DELETE fell ~20px off at 801/844×390: GRUDGE's unpaired last line spans the full row, and padding-top goes 16→10. Probe v5: no `load/save/delete:off-frame` at 801/844 populated; minFs ≥12 across the band.
+
+**Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) shows no filmstrip, and the slot names print on top of each other (bench 6 at 390×844, same on master). The rolling credits/saved counters are caught mid-roll in bench stills at every size. My Ship DOCK TO EXTEND / SAVE FIT @901–1240 (still open after #428 merged); Shipworks lower callouts @844×390 (berth scrolls by design).
+
+## Settings on a very short desktop: MUTE ALL clears MORE · ‹ BACK (ui-polish-62)
+
+**Before (master 042025912f):** stacked Settings (≤900 wide) kept the five-rung category ladder vertical (~208px). On a ≤460-tall window (844×390 / 801×390 / 900×420) the hang row ate the grid, the stage track collapsed to **0px**, and MUTE ALL overflowed through the MORE chip and ‹ BACK (bench: 4 ON TOP OF + 2 BURIED). At 1024×440 the preview caption "Scales every channel below it." also met MASTER.
+
+**After (`src/ui/orrery/settingsLayouts.js` only, desktop via `html:root:not([data-sf-mobile="1"])`):**
+- **≤900 × ≤460:** category tabs lay sideways (credits-style horizontal rail), title/foot compress, MORE parks inside the stage's bottom pad (no negative overhang into ‹ BACK). Stage gets a real ~250px band; MUTE ALL stays on the first row clear of MORE and BACK.
+- **901–1100 × ≤460:** hang stays vertical beside the pane; chrome compresses and MORE's overhang shrinks so it clears ‹ BACK.
+- Selectors and IDs unchanged. Phones (`data-sf-mobile`) keep the mobile sheet. 960×540 / 1280×720 / 1920×1080 are untouched by these queries.
+
+**Checked:** bench `settings` findings 6→0 at 844×390, 801×390 and 900×420; 4→0 at 1024×440; stay 0 at 960×540, 1280×720, 1920×1080 and 390×844. `--phone` 390×844 / 844×390 clean. Focused tests pass: `pro-15-settings-row-ownership`, `settings-controller-label-truth`, `fb-settings-a11y`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish62/{before,after}/settings/`, `compare-settings-*.png`.
+
+**Leftovers (not this pass):** My Ship DOCK TO EXTEND / SAVE FIT @901–1240 (addressed in ui-polish-64); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (under-beam labels look intentional; default + conducted walk clean this pass).
+
+**Code Work review (2026-10-16):** I clicked through every category with real mouse clicks at 844×390, 801×390, 900×420, 901×440, 1024×440, 1100×460, 1101×460, 645×390, 651×390, 900×460/461, 1100×461, 960×540, 1280×720, 1920×1080, 390×844 and on phones. Every control in every pane was scrolled into view and hit-tested, sliders were clicked on the track (all moved), on/off toggles were clicked both ways (all flipped), and the pane was wheel-scrolled to the end. At ≤900×≤460 the PR takes the pane from 34px to 257–322px, and nothing sits under MORE or ‹ BACK any more. Review fixes:
+- The new ESC overrides (10px) are gone, and the base ESC chip and the MORE chip go from 11 to 12px. The 901–1100 ladder numerals keep the base 12px instead of the new 10.5px override. With these, the chrome text is all 12px at every size checked.
+- The ≤900×≤460 block loses its 651px width floor. At 641–650 wide (and at 600×400 and 520×380) a short desktop window still had the 34px pane with MORE over BACK. Those sizes are now clean (bench 6 → 0). Phones are still excluded by `data-sf-mobile`.
+- Pre-existing, not this PR (same on master): 901–1100 pane labels and choice words at 11.5px; the preview's micro labels (10.8px "Helios control") at every desktop size; at 901 wide (901×440) the slider scale collapses so a click on the track does not move most sliders (keyboard and wider windows are fine).
+
+## My Ship DOCK TO EXTEND / SAVE FIT on the 901–1240 split (2026-10-16, ui-polish-64)
+
+**Before (master 12f87dbdff = #429):** in the two-column split (901–1240 wide) the systems rail's content ran ~24–40 px past its plate at ~700–720 tall, so **DOCK TO EXTEND** sat half under the scroll fade; at 901–1100 the heroes stayed two-up, so **SAVE FIT** sat at the stats plate's fold (1100×720 half shown; 1024×600 both off-frame). Geometry benches reported 0 findings — visual review required.
+
+**After (`styles/station.css` only, additions after the ≤1100 two-up heroes rule, desktop via `html:not([data-sf-mobile="1"])`):**
+- Split rail: fleet carousel sits closer, systems plate printed margin 16 px, system rows tighten (`padding-block: 2px`).
+- At 901–1100 (and short 801–1100 × ≤460): heroes run **three-up** (must follow the two-up rule in cascade), hero numerals 22 px, readings strip `column-gap: 20px`.
+- 461–720 tall × 901–1240: frame pad 24 / 32 px (between the 48 px desktop and 14 / 20 px short).
+- ≥650 tall × 901–1240: stage floor eases to 260 px and stats `max-height: 54%` so SAVE FIT clears without shrinking the hull on mid/short windows.
+- 580–640 tall × 901–1240: stage floor kept; plate chrome compresses (gauges pad, band margins, hide band meta + circuit instruction) and the rail tightens further so 1024×600 shows both verbs on first paint.
+- Selectors and IDs unchanged. Phones untouched.
+
+**Checked:** bench `ship` findings stay **0** at 901×700, 1024×600, 1024×768, 1100×720, 1101×720, 1120×700, 1200×720, 1240×700, 1100×440, 844×390, 960×540, 1280×720, 1920×1080 and 390×844 (visual: DOCK TO EXTEND + SAVE FIT clearly on-frame at 901–1240 × ≥600; short ≤460 still scrolls the plate/rail by design). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish64/{before,after}/`, `compare-ship-*.png`.
+
+**Leftovers (not this pass):** on very short split windows (≤460 tall, e.g. 1100×440 / 960×540) SAVE FIT / DOCK TO EXTEND still need a scroll — same class of leftover as Shipworks @844; Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional); station tabs / Crucible draft filter chips @844×390 (still open from #432 leftovers).
+
+## Crucible Armory on short desktops (2026-10-16, ui-polish-65)
+
+**Before (master e929771221 = #432):** at ≥761 wide and ≤500 tall (844×390, 801×390, 900×420, 1024×440, 1280×480, and phone landscape 844×390) the four-line title (~140 px) and a two-row foot (Launch and Rearrange wrapped) left the catalog and the reading a 24 px grid row. At 844×390 the filter chips, the offer cards and the whole reading below "RACK" were off the frame (bench 12 findings: filter chips CUT OFF / OFF FRAME); at 1024×440 only a sliver of the first card and no purchase key showed (bench 6); at 1280×480 one card was half visible and the purchase key was under the foot (bench 0, visual only).
+
+**After (`src/ui/orrery/cruciblePreparationLayouts.js` only, one additive `@media (min-width:761px) and (max-height:500px)` block under `${A}`):**
+- Title: h1 30 px, sub 13 px; the cradle line and the next-round preview share one row (cradle first, preview ellipsized; 12 px). Wallet numeral 30 px.
+- Columns go 1fr / 1fr so the filter chips wrap to two rows; the search joins the second row where 150 px fits (≥900 wide) and takes its own row at 801–844. Chips 32 px tall, search 32 px.
+- Offer cards 60 px (38 px glyph, 14 px name); dividers tighter.
+- Reading: one column, words first (name 22 px, blurb 13 px, tighter budget/buy margins, purchase key 40 px) so **Purchase** sits on first paint; the pip-spanner/jig follow below in the reading's own scroll.
+- Foot: one row — LAUNCH ROUND · ESC, REARRANGE LOADOUT and the 1 2 3 INSPECT · TAB BROWSE hints (words 14 px, 36 px tall).
+- Type floor 12 px kept. Selectors, IDs and the loadout catalog/data unchanged; heights >500 untouched.
+
+**Checked:** bench `crucible-draft` findings 12→0 at 844×390 (desktop and `--phone`), 12→0 at 900×420, 6→0 at 1024×440, 0→0 at 801×390 and 1280×480 (visual: filters, ≥1 full card and Purchase on-frame). 960×540, 1280×720, 1920×1080, 390×844 (desktop and `--phone`) are pixel-identical to master. `--walk` at 844×390: 0 findings across 24 controls (filters, cards); the only errors are pre-existing 404s for `assets/weapons/clips/*.mp4` missing from the local asset set. Focused tests pass: `crucible-visual-preparation`, `crucible-draft`, `inf-036-spare-contrast`; `arsenal-identity` fails 1 on master too (`wpn_saucer_death_ray has a custom glyph`, glyph data, not CSS). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish65/{before,after,after-walk}/`, `compare-crucible-draft-*.png`.
+
+**Leftovers (not this pass):** at 801–844×390 only one offer card shows above the fold (the list scrolls); Footprint dial rim text over the dial @844×390 (bench 7); tech-tree adjacent star hit boxes @844×390 (bench 5, nodes 17 px apart); station tabs @844×390; Shipworks lower callouts @844×390 (scroll by design).
+
+**Code Work review fixes:** (1) at 761–820 × ≤500 the one-row foot overflowed, and its right-packed verbs pushed LAUNCH ROUND 4 off the left edge (761×500; master keeps it on-frame). Under 821 wide the key hints take a second row and the verbs pack left. (2) The keycaps (ESC, 1 2 3, TAB) are 12px in the band (they were 11px). (3) The next-round preview takes two lines instead of one ellipsized line from 821 wide, and stays one line at 761–820, where the second foot row needs the height to keep PURCHASE on-frame; a touch phone at ≤400 tall (844×390 landscape, larger type) also keeps one line, or PURCHASE slid half under the foot. Bench crucible-draft: 0 findings at every band size (761×390–1920×480, phone landscape). 960×540, 1280×720, 1920×1080, 760×500, 761×501, 1280×501 and phone 390×844 are pixel-identical to master.

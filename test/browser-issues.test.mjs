@@ -101,6 +101,31 @@ test('an optional save-store deadline is ignored only on an explicitly store-les
   assert.equal(absent.issues.length, 2, 'asset failures and real transport faults remain visible');
 });
 
+test('failed store writes retain timing and byte counts without hiding failures or payload contents', () => {
+  const page = new FakePage();
+  const tracker = collectPageIssues(page, { playerStoreMounted: true });
+  const start = Date.now() - 150_000;
+  const payload = Buffer.from('private-save-payload');
+  page.emit('requestfailed', {
+    ...failedRequest('http://game.test/__spaceface_player_store', 'net::ERR_ABORTED', 'PUT'),
+    timing: () => ({ startTime: start }),
+    postDataBuffer: () => payload,
+    frame: () => ({ url: () => 'http://game.test/?private=not-retained#fragment' }),
+  });
+  assert.equal(tracker.errorIssues().length, 1, 'PUT abort remains a real error');
+  const detail = tracker.issues[0].storeRequest;
+  assert.equal(detail.startedAt, new Date(start).toISOString());
+  assert.ok(detail.elapsedMs >= 150_000);
+  assert.equal(detail.bodyBytes, payload.byteLength);
+  assert.equal(detail.frameUrl, 'http://game.test/');
+  assert.ok(!JSON.stringify(tracker.issues).includes('private-save-payload'));
+
+  page.emit('requestfailed', failedRequest('http://game.test/__spaceface_player_store', 'net::ERR_ABORTED', 'PUT'));
+  assert.deepEqual(tracker.issues[1].storeRequest, {
+    startedAt: null, elapsedMs: null, bodyBytes: null, frameUrl: null,
+  }, 'unavailable provenance stays explicit');
+});
+
 test('GLTF blob errors are ignored only during the harness-owned reload', () => {
   const blobError = "THREE.GLTFLoader: Couldn't load texture blob:http://game.test/texture";
   assert.equal(isExpectedNavigationTextureAbort(blobError, 'harness-reload'), true);

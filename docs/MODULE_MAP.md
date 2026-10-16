@@ -107,7 +107,7 @@
 | `src/systems/economyCycles.js` 📚 | Economic event cycles. Imported by `ui/screens/market.js`. Library module, not a registered system. |
 | `src/data/commodities.js` | The ONE commodity registry (ores, refined goods, trade goods, contraband, salvage) — unified `cmdty_*` IDs. |
 | `src/data/mining.js` | Ores→asteroids, beam tiers (`beam_mk1..beam_industrial`), recipes, fields. |
-| `src/ui/priceHistory.js` / `sparkline.js` | Market price history + sparkline rendering. |
+| `src/systems/economy.js` + `src/ui/station/screens/market.js` + `src/ui/views/marketPresentation.js` | Economy-owned market history, station lane backfill, and live chart rendering. |
 
 ---
 

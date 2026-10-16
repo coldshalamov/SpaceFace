@@ -145,9 +145,13 @@ export const customsPrompt = {
       }
       this._dismiss();
     }; // a generic bust/scan clears the generic panel
+    // LAW-10: a mid-scan dump aborts the scan the panel offered. The panel that offered
+    // the decision reports the downgrade — a suspicion note, never a second penalty.
+    this._onScanAborted = (p) => this._reportScanAborted(p);
     if (this._bus && this._bus.on) {
       this._bus.on('player:scannedByPatrol', this._onScanned);
       this._bus.on('contraband:scanned', this._onResolved);
+      this._bus.on('customs:scanAborted', this._onScanAborted);
       this._bus.on('sector:exit', this._onResolved);
     }
   },
@@ -292,6 +296,31 @@ export const customsPrompt = {
     }
   },
 
+  // LAW-10: the visible result of a mid-scan dump. The scan the panel offered aborted —
+  // the finding is suspicion, never a fine the engine did not charge. Reads the abort
+  // payload verbatim (dumped lots, faction) and names the goods through the commodity
+  // registry, with the raw id as fallback. Toast + dismiss only: no cargo, credit,
+  // standing, or heat write (single-writer — the panel never confiscates).
+  _reportScanAborted(p) {
+    const dumped = Array.isArray(p && p.dumped) ? p.dumped : [];
+    const names = dumped
+      .filter((row) => row && typeof row.commodityId === 'string')
+      .map((row) => {
+        const def = CMDTY_BY_ID.get(row.commodityId) || {};
+        const amount = Math.max(0, row.amount | 0);
+        return `${def.name || row.commodityId}${amount > 0 ? ` ×${amount}` : ''}`;
+      });
+    const detail = names.length ? `${names.join(', ')} jettisoned mid-scan` : 'cargo jettisoned mid-scan';
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('toast', {
+        text: `CUSTOMS SCAN ABORTED — ${detail}; suspicion noted.`,
+        kind: 'warn',
+        ttl: 4,
+      });
+    }
+    this._dismiss();
+  },
+
   // ── deck decision (the old inline-styled centered panel with inert text verbs is retired) ────
   _render(decision, now) {
     const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
@@ -320,12 +349,14 @@ export const customsPrompt = {
   destroy() {
     if (this._bus && this._bus.off) {
       if (this._onScanned) this._bus.off('player:scannedByPatrol', this._onScanned);
+      if (this._onScanAborted) this._bus.off('customs:scanAborted', this._onScanAborted);
       if (this._onResolved) {
         this._bus.off('contraband:scanned', this._onResolved);
         this._bus.off('sector:exit', this._onResolved);
       }
     }
     this._onScanned = null;
+    this._onScanAborted = null;
     this._onResolved = null;
     this._dismiss();
   },

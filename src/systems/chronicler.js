@@ -33,6 +33,76 @@ function priority(f) {
   return 40;
 }
 function due(at, now, cooldown) { return at === null || now - at >= cooldown; }
+
+/**
+ * STORY-08 — dockside weekly digest selection. Pure and read-only: a UI/query never
+ * advances the simulation or consumes a headline. Docking after seven-plus sim days
+ * (one line, not a screen) cites the week's biggest fresh fact, once per week.
+ */
+export const CHRONICLER_DIGEST_WEEK_S = 4200; // 7 sim days at 600 s each
+const DIGEST_SKIP_STAGES = new Set(['binding', 'cause']);
+
+export function chroniclerDigestWeek(now) {
+  return Math.floor(Math.max(0, finite(now)) / CHRONICLER_DIGEST_WEEK_S);
+}
+
+function digestCitedIds(state) {
+  const list = state && state.ui && state.ui.dockDigest && state.ui.dockDigest.citedFactIds;
+  return new Set(Array.isArray(list) ? list.filter(id => typeof id === 'string') : []);
+}
+
+/**
+ * The week's biggest fresh fact, or null. Fresh means a milestone fact stamped inside the
+ * current seven-day window; biggest means the highest-score public story view wins, and the
+ * highest-priority fresh fact inside that story is the citation. Already-cited facts never
+ * replay, and a week that already spoke stays silent until the next window.
+ */
+export function selectWeeklyDigest(state, now = finite(state && state.simTime)) {
+  if (!state) return null;
+  const t = Math.max(0, finite(now));
+  const week = chroniclerDigestWeek(t);
+  if (week < 1) return null;
+  const memory = state.chronicler;
+  if (!memory || !Array.isArray(memory.stories) || memory.stories.length === 0) return null;
+  const dock = state.ui && state.ui.dockDigest;
+  if (dock && Number.isInteger(dock.lastWeek) && dock.lastWeek === week) return null;
+  const cited = digestCitedIds(state);
+  const weekStart = week * CHRONICLER_DIGEST_WEEK_S;
+  let best = null;
+  for (const story of memory.stories) {
+    if (!story || !Array.isArray(story.nodes) || story.nodes.length === 0) continue;
+    const fresh = story.nodes.filter(n => n && Number.isFinite(n.t)
+      && n.t >= weekStart && n.t <= t && !cited.has(n.id) && !DIGEST_SKIP_STAGES.has(n.stage));
+    if (fresh.length === 0) continue;
+    let view = null;
+    try { view = buildStoryView(story); } catch { continue; }
+    if (!view || view.visibility !== 'public') continue;
+    let fact = fresh[0];
+    for (const candidate of fresh) {
+      const priorityOf = (f) => priority(f);
+      if (priorityOf(candidate) > priorityOf(fact)
+        || (priorityOf(candidate) === priorityOf(fact)
+          && (candidate.t > fact.t || (candidate.t === fact.t && candidate.seq > fact.seq)))) {
+        fact = candidate;
+      }
+    }
+    const score = Number.isFinite(view.score) ? view.score : 0;
+    if (!best || score > best.score
+      || (score === best.score && (fact.t > best.fact.t
+        || (fact.t === best.fact.t && fact.seq > best.fact.seq)))) {
+      best = { story, view, fact, score };
+    }
+  }
+  if (!best) return null;
+  return {
+    storyId: best.story.id,
+    factId: best.fact.id,
+    score: best.score,
+    title: best.view.title,
+    summary: best.view.summary,
+    week,
+  };
+}
 function storyPacket(view) {
   return { ...clone(view), source: 'chronicler', sourceRef: `${view.id}:r${view.revision}` };
 }

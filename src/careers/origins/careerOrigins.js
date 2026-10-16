@@ -35,6 +35,7 @@ import {
   applyHaulerOriginSaveBlob,
   createHaulerOriginState,
   ensureHaulerOriginState,
+  migrateHaulerOriginState,
   serializeHaulerOriginState,
 } from './haulerOriginSchema.js';
 import {
@@ -48,6 +49,7 @@ import {
   ensureHunterOriginState,
   failHunterPursuitLost,
   getHunterOriginState,
+  migrateHunterOrigin,
   HUNTER_OFFER_STATUS,
   HUNTER_ORIGIN_ID,
   HUNTER_PHASE,
@@ -79,6 +81,7 @@ import {
   progressSnapshot as prospectorProgressSnapshot,
   PROSPECTOR_ORIGIN_ID,
   PROSPECTOR_STATUS,
+  migrateProspectorOriginState,
   serializeProspectorOrigin,
 } from './prospectorOrigin.js';
 
@@ -255,13 +258,42 @@ export function ensureCareerOriginsState(state) {
   return origins;
 }
 
-export function getCareerOfferView(state, careerId = null) {
-  const origins = ensureCareerOriginsState(state);
+function readOnlyCareerState(state) {
+  const raw = state && state.careers && state.careers.origins;
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const metaBase = createMeta();
+  const rawMeta = source[META_KEY] && typeof source[META_KEY] === 'object'
+    ? source[META_KEY] : {};
+  const routes = {};
+  for (const careerId of CAREER_IDS) {
+    routes[careerId] = normalizeOriginRouteState(careerId, rawMeta.routes && rawMeta.routes[careerId]);
+  }
+  const meta = {
+    ...metaBase,
+    ...rawMeta,
+    routes,
+  };
+  const origins = {
+    ...source,
+    [META_KEY]: meta,
+    hauler: migrateHaulerOriginState(source.hauler),
+    hunter: migrateHunterOrigin(source.hunter, seedOf(state)),
+    prospector: migrateProspectorOriginState(source.prospector, simTimeOf(state)),
+  };
+  return {
+    ...(state || {}),
+    careers: {
+      ...((state && state.careers) || {}),
+      origins,
+    },
+  };
+}
+
+function buildCareerOfferView(state, origins, careerId = null, focusedCareerId = null) {
   const routes = origins[META_KEY].routes;
-  const focusedCareerId = syncCareerFocus(origins);
   const views = {
     hauler: (() => {
-      const own = ensureHaulerOriginState(state);
+      const own = origins.hauler;
       const step = HAULER_STEPS[own.stepIndex] || HAULER_STEPS[0];
       const choices = haulerChoicesForStep(step && step.id);
       const selectedChoiceId = own.choicesByStep && own.choicesByStep[step && step.id] || null;
@@ -358,6 +390,22 @@ export function getCareerOfferView(state, careerId = null) {
     primaryCareerId: origins[META_KEY].primaryCareerId,
     offers: CAREER_IDS.map((id) => views[id]),
   };
+}
+
+export function getCareerOfferView(state, careerId = null) {
+  const origins = ensureCareerOriginsState(state);
+  const focusedCareerId = syncCareerFocus(origins);
+  return buildCareerOfferView(state, origins, careerId, focusedCareerId);
+}
+
+/**
+ * Pure offer view for the main-side read facade.  Unlike getCareerOfferView,
+ * this path never creates/migrates origin records or writes focus metadata.
+ */
+export function getCareerOfferViewReadOnly(state, careerId = null) {
+  const viewState = readOnlyCareerState(state);
+  const origins = viewState.careers.origins;
+  return buildCareerOfferView(viewState, origins, careerId, activeCareerId(origins));
 }
 
 export function getCareerProgress(state, careerId = null) {

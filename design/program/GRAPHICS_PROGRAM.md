@@ -128,7 +128,7 @@ trim (13 hulls in one sitting, zero frame cost). The same loop, in ROI order, fo
 are `tools/blender/forge/mcp_design_kit.py`.
 
 **GFX-16 (owner, 2026-10-01): make the world feel alive.** Motion, blinking and ambient life with weight and micro-movement, plus
-the thruster plume. Plan and slice order: [`GFX16_ALIVE_MOTION_PLAN.md`](GFX16_ALIVE_MOTION_PLAN.md). Status 2026-10-02: slices 1 (thrusters), 2 (nav lamps), 3 (motion judge + smoothing) and 5 (pickup
+the thruster plume. Plan and slice order: the retired GFX16 plan (git history; carried-open decisions appended below). Status 2026-10-02: slices 1 (thrusters), 2 (nav lamps), 3 (motion judge + smoothing) and 5 (pickup
 shapes) landed; see the plan's §6 for what is next. GFX-15 status: Workflow A and B tiers 1-3 landed; C and tier 4 partly built, see the HANDOFF in `tools/blender/forge/briefs/`.
 
 ## 5. Directions beyond the backlog (where the picture goes next)
@@ -161,3 +161,10 @@ before dispatch.
 - **Compare against neighbours.** Check the contact sheet (`fleet-look --fleet`) and the whole station row. The failure mode of a big program is one body drifting off-palette.
 - **Stranger test.** Would someone who never saw the game say these belong to one game, and can they tell what each thing does?
 - **Push every packet.** The VM is ephemeral. Commit with pathspecs and push after every finished body or batch.
+
+## GFX-16 alive-motion — carried-open decisions (plan retired 2026-10-15; landed slices in git history)
+
+STILL OPEN (decided, not forgotten): trade-hub life stays baked flat: it is the biggest body, ~1350 WU from spawn, and `flight-static-v3` exists to keep the opening frame sacred; a carve-out
+needs an on-GPU frame measurement first. Animated-station draw cost (+9-14 draws each) and a real-GPU look at plume ramps, nav-lamp blink and station motion still want one owner flight;
+gate spin-up for NPC traffic needs traffic that uses gates (sim); debris variety (only more shape variants would help); more faction hulls only when a sector needs them.
+

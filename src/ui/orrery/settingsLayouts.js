@@ -24,6 +24,7 @@ const STYLE_ID = 'sf-orrery-settings-layouts';
 const S = 'html body #screens > .k-screen.of-settings.orr-settings';
 const C = 'html body #screens > .k-screen.of-credits.orr-credits';
 const CD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-credits.orr-credits';
+const SD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-settings.orr-settings';
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
@@ -40,15 +41,15 @@ const RAIL_BG = `linear-gradient(90deg, transparent 7px, rgb(${BONE} / .3) 7px, 
  * the rung's chosen state. At rest the Hand is warm bone; while focus or the pointer is in the list it
  * is the amber Hand (the one amber on the screen).
  */
-const ladder = (scope, list, item, chosen) => `
+const ladder = (scope, list, item, chosen, { numbered = false } = {}) => `
 ${scope} ${list} { ${PLAIN} position:relative !important; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; gap:0 !important;
-  margin:0 !important; padding:4px 0 !important; counter-reset:orrlad; background:${RAIL_BG} !important; }
-${scope} ${list} > li { position:relative !important; counter-increment:orrlad; width:100% !important; list-style:none !important; margin:0 !important; }
-${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
+  margin:0 !important; padding:4px 0 !important; ${numbered ? 'counter-reset:orrlad;' : ''} background:${RAIL_BG} !important; }
+${scope} ${list} > li { position:relative !important; ${numbered ? 'counter-increment:orrlad;' : ''} width:100% !important; list-style:none !important; margin:0 !important; }
+${numbered ? `${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
   ${LABEL} font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
-${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }
+${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }` : `${scope} ${list} > li::before { content:none !important; display:none !important; }`}
 ${scope} ${list} ${item} { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
-  width:100% !important; min-height:48px !important; padding:0 8px 0 74px !important; cursor:pointer !important; ${LABEL} font-size:13.5px !important;
+  width:100% !important; min-height:48px !important; padding:0 8px 0 ${numbered ? '74px' : '44px'} !important; cursor:pointer !important; ${LABEL} font-size:13.5px !important;
   letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap !important; transition:color .16s linear; }
 ${scope} ${list} ${item}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important;
   height:1.5px !important; margin:0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .55) !important;
@@ -69,7 +70,7 @@ ${scope} ${list}:is(:focus-within, :hover) ${item}:is(${chosen})::before { backg
 
 const SETTINGS_CSS = `
 /* ------------------------------------------------ the frame ------------------------------------ */
-${S} { grid-template-columns:minmax(168px, 212px) minmax(600px, 660px) minmax(0, 1fr) !important;
+${S} { grid-template-columns:minmax(148px, 196px) minmax(600px, 660px) minmax(0, 1fr) !important;
   grid-template-rows:auto minmax(0, 1fr) auto !important;
   grid-template-areas:"title title title" "hang stage preview" "foot foot foot" !important;
   column-gap:clamp(28px, 3.4vw, 72px) !important; row-gap:clamp(18px, 3.6vh, 44px) !important; }
@@ -85,16 +86,16 @@ ${S} > .orr-set-preview { grid-area:preview; align-self:stretch; justify-self:st
 /* ------------------------------------------------ the category ladder -------------------------- */
 ${S} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
 ${S} > .k-hang .of-settings-rail { display:none !important; }
-${ladder(S, '.sf-tabbar', '.sf-tab', '[aria-selected="true"], .active')}
+${ladder(S, '.sf-tabbar', '.sf-tab', '[aria-selected="true"], .active', { numbered: false })}
 
 /* ------------------------------------------------ the rows ------------------------------------- */
 ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; width:auto !important; max-width:none !important;
   justify-self:stretch !important; align-self:stretch !important; max-height:100% !important; min-height:0 !important; overflow:hidden auto !important;
   padding:0 20px 34px 0 !important; margin:0 !important; scrollbar-width:none; position:relative; --sf-fade-edge:0px !important; }
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
-/* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip on the stage's bottom edge while rows continue */
-${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:6px 14px 7px !important; cursor:pointer;
-  ${PLAIN} ${LABEL} font-size:11px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
+/* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip below the stage's bottom edge while rows continue */
+${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:5px 13px 6px !important; cursor:pointer;
+  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .88) !important;
   border:1px solid rgb(${BONE} / .42) !important; border-radius:999px !important; }
 ${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:var(--dp-hand-hot, #ffd98c); }
 ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
@@ -140,7 +141,7 @@ ${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-bo
    the value, a bone light cursor, the value as a thin numeral. The cursor is the Hand while it has focus. */
 ${S} #sf-settings-pane .k-row > div.k-words--row { ${PLAIN} display:grid !important; grid-template-columns:var(--orr-scale-w, 254px) 64px !important; align-items:center !important;
   column-gap:14px !important; justify-content:start !important; width:auto !important; }
-${S} #sf-settings-pane input.k-range { -webkit-appearance:none !important; appearance:none !important; ${PLAIN} display:block !important; width:var(--orr-scale-w, 254px) !important;
+${S} #sf-settings-pane input.k-range { -webkit-appearance:none !important; appearance:none !important; ${PLAIN} display:block !important; width:100% !important; max-width:var(--orr-scale-w, 254px) !important; min-width:0 !important;
   height:32px !important; margin:0 !important; padding:0 !important; cursor:pointer !important;
   background:
     linear-gradient(rgb(255 253 248 / .98) 0 0) 7px 12.5px / calc((100% - 14px) * var(--orr-v, .5)) 3.5px no-repeat,
@@ -280,7 +281,7 @@ ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
 ${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.16em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
   background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
@@ -289,7 +290,7 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
 @media (min-width:1501px) { ${S} { --orr-label-w:236px; } }
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${S}, ${C} { zoom:1.12; } }
 @media (max-width:1500px) {
-  ${S} { --orr-scale-w:174px; --orr-label-w:190px; grid-template-columns:minmax(168px, 176px) minmax(516px, 560px) minmax(0, 1fr) !important; }
+  ${S} { --orr-scale-w:174px; --orr-label-w:190px; grid-template-columns:minmax(144px, 156px) minmax(516px, 560px) minmax(0, 1fr) !important; }
   ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
   ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.09em !important; text-wrap:balance; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
@@ -302,18 +303,18 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
    collapsed to ~63–122px and the HUD fan / HULL·SHIELD·ARMOR ran off the right edge.
    Give the preview a real track and let the stage flex; tighten label/scale so rows still fit. */
 @media (min-width:901px) and (max-width:1100px) {
-  /* Hang stays wide enough for GAMEPLAY / CONTROLS; preview gets ≥250px so the HUD fan and
-     HULL·SHIELD·ARMOR stay on glass; stage flexes and keeps a readable FOV numeral (50°). */
-  ${S} { --orr-scale-w:140px; --orr-label-w:148px;
-    grid-template-columns:minmax(168px, 176px) minmax(0, 1fr) minmax(250px, 270px) !important;
+  /* Hang fits GAMEPLAY / CONTROLS without fake 01..05 prefixes; preview gets ≥250px so the HUD fan and
+     HULL·SHIELD·ARMOR stay on glass; stage flexes and keeps a readable scale + numeral. */
+  ${S} { --orr-scale-w:140px; --orr-label-w:144px;
+    grid-template-columns:minmax(138px, 146px) minmax(0, 1fr) minmax(250px, 270px) !important;
     column-gap:clamp(16px, 2vw, 24px) !important; }
   ${S} #sf-settings-pane { padding-right:10px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
-  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:11.5px !important; letter-spacing:.07em !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:12px !important; letter-spacing:.07em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:minmax(0, var(--orr-scale-w, 140px)) max-content !important; column-gap:8px !important; min-width:0 !important; }
-  /* the scale gives way before the readout: a fixed 140px scale pushed '55%' past the pane's clip edge */
+  /* the scale gives way before the readout: input.k-range is width:100% of its track so it shrinks cleanly */
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
-  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:11.5px !important; letter-spacing:.1em !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:12px !important; letter-spacing:.1em !important; }
   ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
 }
 
@@ -341,6 +342,46 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane { padding-right:8px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:12px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 150px) 46px !important; }
+}
+/* a very short desktop window (844×390 / ≤460): stacked ≤900 put the five-rung category ladder
+   in an auto row (~208px) so the stage track collapsed to 0 and MUTE ALL printed through MORE
+   and ‹ BACK. Lay the tabs sideways (credits-style) and compress chrome so the pane gets a real
+   band. Real phones in landscape use data-sf-mobile and stay out. No width floor: at 641–650
+   (and narrower) a short desktop window had the same 34px pane. */
+@media (max-width:900px) and (max-height:460px) {
+  ${SD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important; }
+  ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
+  ${SD} > .k-hang { min-width:0 !important; width:100% !important; }
+  ${SD} .sf-tabbar { flex-direction:row !important; width:100% !important; gap:4px !important; padding:0 !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; overscroll-behavior-x:contain;
+    background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; }
+  ${SD} .sf-tabbar::-webkit-scrollbar { display:none; }
+  ${SD} .sf-tabbar > li { width:auto !important; flex:0 0 auto; }
+  ${SD} .sf-tabbar > li::before { display:none !important; }
+  ${SD} .sf-tabbar .sf-tab { width:auto !important; min-height:32px !important; padding:6px 10px !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${SD} .sf-tabbar .sf-tab::before { display:none !important; }
+  ${SD} .sf-tabbar .sf-tab:is([aria-selected="true"], .active)::after { left:10px !important; right:10px !important;
+    top:auto !important; bottom:0 !important; width:auto !important; height:2px !important; margin:0 !important;
+    clip-path:none !important; background:rgb(${HOT} / .85) !important; transform:none !important; }
+  ${SD} .sf-tabbar .sf-tab:is([aria-selected="true"], .active)::before { display:none !important; }
+  ${SD} #sf-settings-pane { padding-bottom:28px !important; }
+  ${SD} #sf-settings-pane .k-row { min-height:36px !important; }
+  ${SD} > .orr-set-more { margin:0 0 -32px 140px !important; padding:4px 12px 5px !important; }
+  ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
+}
+/* short three-column desktop (1024×440 / 901–1100 × ≤460): hang stays beside the pane, and MORE parks
+   below the stage in the footer band (to the right of ‹ BACK) so it never covers the bottom row or readout. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:460px) {
+  ${SD} { padding-top:14px !important; padding-bottom:8px !important; row-gap:10px !important; }
+  ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(28px, 7vh, 38px) !important; line-height:1 !important; }
+  ${SD} .sf-tabbar .sf-tab { min-height:32px !important; padding-top:4px !important; padding-bottom:4px !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${SD} #sf-settings-pane { padding-bottom:28px !important; }
+  ${SD} > .orr-set-more { margin:0 0 -32px 24px !important; padding:4px 12px 5px !important; }
+  ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
 }
 html.sf-reduce-motion ${S} #sf-settings-pane .sf-bind-btn { animation:none !important; }
 @media (forced-colors: active) {
@@ -390,7 +431,7 @@ ${C} .orr-cr-orrery__hand path, ${C} .orr-cr-orrery__hand circle { stroke-lineca
 @media (min-width:1501px) { ${C} .orr-cr-orrery__svg text { paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:6px; stroke-linejoin:round; } }
 /* ------------------------------------------------ credits: the section ladder + progress -------- */
 ${C} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
-${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]')}
+${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]', { numbered: true })}
 /* the ladder on Credits stays bone at every state: the one amber here is the Hand on the orrery */
 ${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::after { background:rgb(${HOT} / .85) !important; }
 ${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::before { background:rgb(${HOT}) !important; filter:drop-shadow(0 0 5px rgb(255 250 236 / .45)); }
@@ -482,7 +523,7 @@ ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
@@ -567,29 +608,29 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${CD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important;
     column-gap:clamp(16px, 2.4vw, 40px) !important; }
   ${CD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
-  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:11px !important; letter-spacing:.2em !important; gap:10px; }
+  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:12px !important; letter-spacing:.2em !important; gap:10px; }
   ${CD} > .k-title > p::after { width:48px; }
   /* hang stays in its row: scroll if needed instead of painting through ‹ BACK */
   ${CD} > .k-hang { align-self:stretch !important; max-height:100% !important; min-height:0 !important;
     overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important; }
   ${CD} .k-hang > .k-words { padding:2px 0 !important; }
   ${CD} .k-hang > .k-words .k-word { min-height:26px !important; padding-top:3px !important; padding-bottom:3px !important;
-    font-size:11.5px !important; letter-spacing:.12em !important; line-height:1.25 !important; }
-  ${CD} .k-hang > .k-words > li::before { font-size:10.5px !important; }
+    font-size:12px !important; letter-spacing:.12em !important; line-height:1.25 !important; }
+  ${CD} .k-hang > .k-words > li::before { font-size:12px !important; }
   ${CD} .k-hang > .k-words .k-word:is([aria-current="true"])::before { height:9px !important; margin-top:-4.5px !important; }
   ${CD} .orr-cr-progress { display:none !important; }
   ${CD} .orr-cr-reel { padding:2vh 0 28vh !important; }
   ${CD} .orr-cr-sec { scroll-margin-top:2vh; }
   ${CD} .orr-cr-sec + .orr-cr-sec { margin-top:28px; }
-  ${CD} .orr-cr-head { margin-bottom:8px !important; gap:10px; font-size:11px !important; }
+  ${CD} .orr-cr-head { margin-bottom:8px !important; gap:10px; font-size:12px !important; }
   ${CD} .of-credits-name { font-size:clamp(28px, 9vh, 48px) !important; }
   ${CD} .of-credits-made { margin:0 0 10px !important; }
-  ${CD} .of-credits-ver, ${CD} .of-credits-made .k-row__sub { margin-top:6px !important; font-size:11px !important; }
+  ${CD} .of-credits-ver, ${CD} .of-credits-made .k-row__sub { margin-top:6px !important; font-size:12px !important; }
   ${CD} .orr-cr-sec > .k-sentence { font-size:13px !important; line-height:1.4 !important; }
   ${CD} .of-credits-rows .k-row { padding-top:6px !important; padding-bottom:6px !important; }
   ${CD} .of-credits-rows .k-row::before { top:14px !important; }
   ${CD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
-  ${CD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; font-size:10px !important; }
+  ${CD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; font-size:12px !important; }
   /* park the orrery further right so its Hand/name cannot sit on the reel head */
   ${CD} > .orr-cr-orrery { --orr-cr-d:min(64vh, 30vw); width:var(--orr-cr-d); height:var(--orr-cr-d);
     margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.52); }
@@ -599,7 +640,7 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
    reel does not print through ‹ BACK */
 @media (min-width:651px) and (max-width:900px) and (max-height:460px) {
   ${CD} .k-hang > .k-words .k-word { min-height:28px !important; padding:4px 8px !important;
-    font-size:11px !important; letter-spacing:.1em !important; }
+    font-size:12px !important; letter-spacing:.1em !important; }
   ${CD} .of-credits-name { font-size:clamp(26px, 8.5vh, 42px) !important; }
   ${CD} .orr-cr-reel { padding-top:1vh !important; padding-bottom:18vh !important; }
   ${CD} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important;

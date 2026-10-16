@@ -159,8 +159,21 @@ function passengerLinerLegIds(worldRecordId, legSeq) {
   };
 }
 
-function compactStableIds(value, cap) {
+// Live ID lists are short and usually unchanged. A bounded validation avoids rebuilding arrays
+// and Sets on every _ensureState call, while still observing edits made to the same live array.
+// Save/event boundaries keep the normalizers' default defensive copy.
+function stableIdsAlreadyNormalized(value, cap) {
+  if (!Array.isArray(value) || value.length > cap) return false;
+  for (let i = 0; i < value.length; i++) {
+    const item = value[i];
+    if (typeof item !== 'string' || !item || value.indexOf(item) !== i) return false;
+  }
+  return true;
+}
+
+function compactStableIds(value, cap, reuseLive = false) {
   if (!Array.isArray(value)) return [];
+  if (reuseLive && stableIdsAlreadyNormalized(value, cap)) return value;
   const out = [];
   const seen = new Set();
   for (const item of value) {
@@ -1172,7 +1185,10 @@ function leftoverSlotDestStationId(entry) {
   return null;
 }
 
-function leftoverNormalizeDisruptedStationIds(value) {
+function leftoverNormalizeDisruptedStationIds(value, reuseLive = false) {
+  // The normalizer remains uncapped for legacy saves. Only the common short live list takes
+  // the allocation-free path; longer lists keep the existing linear normalization.
+  if (reuseLive && stableIdsAlreadyNormalized(value, DISRUPTED_ROUTE_STATION_CAP)) return value;
   const ids = [];
   const seen = new Set();
   const list = Array.isArray(value) ? value : [];
@@ -12097,6 +12113,7 @@ export const traffic = {
     if (!Array.isArray(this.state.traffic.freighters)) this.state.traffic.freighters = [];
     this.state.traffic.disruptedStationIds = leftoverNormalizeDisruptedStationIds(
       this.state.traffic.disruptedStationIds,
+      true,
     );
     if (!Array.isArray(this.state.traffic.appliedArrivalIds)) this.state.traffic.appliedArrivalIds = [];
     if (!Array.isArray(this.state.traffic.appliedLossIds)) this.state.traffic.appliedLossIds = [];
@@ -12106,14 +12123,17 @@ export const traffic = {
     this.state.traffic.passengerReceiptIds = compactStableIds(
       this.state.traffic.passengerReceiptIds,
       PASSENGER_LINER_RECEIPT_CAP,
+      true,
     );
     this.state.traffic.passengerLinerSuspendedIds = compactStableIds(
       this.state.traffic.passengerLinerSuspendedIds,
       PASSENGER_LINER_SUSPENSION_CAP,
+      true,
     );
     this.state.traffic.passengerLinerInvalidatedIds = compactStableIds(
       this.state.traffic.passengerLinerInvalidatedIds,
       PASSENGER_LINER_INVALIDATED_CAP,
+      true,
     );
     const handoff = this.state.traffic.ceresMinerHaulerHandoff;
     const normalizedHandoff = normalizeCeresMinerHaulerHandoff(handoff, false);

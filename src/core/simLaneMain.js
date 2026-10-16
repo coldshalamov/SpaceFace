@@ -39,6 +39,7 @@ import {
   pushLaneCommand,
 } from '../../scripts/lib/simCommandChannel.mjs';
 import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
+import { readLocalTimeEffectsSnapshot, applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration } from './timeEffects.js';
 import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
 import {
   bindSabEnvelopeChannel,
@@ -53,6 +54,7 @@ import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSi
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
 import { normalizePadSensitivity } from '../systems/gamepad.js';
+import { applySharedPlayerStoreCapability } from '../save/sharedPlayerStore.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -110,6 +112,32 @@ function collectLaneSaveStorage() {
     }
   } catch (_) { /* storage enumeration unavailable — ship the empty map */ }
   return out;
+}
+
+// Worker save writes ride on the next reply. Keep the relay per-operation so one malformed or
+// quota-blocked write cannot suppress later operations, and keep clear scoped to SpaceFace keys.
+function applyLaneSaveStorageOps(ops) {
+  if (!Array.isArray(ops) || !ops.length) return;
+  let storage;
+  try { storage = globalThis.localStorage; } catch { return; }
+  if (!storage) return;
+  for (const op of ops) {
+    try {
+      if (!op) continue;
+      if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') {
+        storage.setItem(op.key, op.value);
+      } else if (op.op === 'remove' && typeof op.key === 'string') {
+        storage.removeItem(op.key);
+      } else if (op.op === 'clear') {
+        const doomed = [];
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
+          if (key && key.startsWith('sf.')) doomed.push(key);
+        }
+        for (const key of doomed) storage.removeItem(key);
+      }
+    } catch (_) { /* persistence relay is best-effort; quota policy stayed worker-side */ }
+  }
 }
 
 /**
@@ -227,7 +255,7 @@ export function createSimLaneRuntime({
     ? pumpScheduler.clearTimeout
     : (handle) => clearTimeout(handle);
   for (const w of resolved.warnings) console.warn(`[simLane] ${w}`);
-  console.warn('[simLane] worker lane active — the sim realm runs the whole authoritative step');
+  console.info('[simLane] worker lane active — the sim realm runs the whole authoritative step');
 
   // Worker channel first: a host without Worker support (or a construction-
   // time throw) degrades to the in-process sim while state is still untouched
@@ -388,6 +416,27 @@ export function createSimLaneRuntime({
   // Journal records also feed the facade's pose/removal fields so main-side
   // entity reads (state.entities.get(id).pos etc.) answer like live rows.
   const recordScratch = {};
+  // A full rebuild is a replacement history: its SPAWN records are the
+  // authoritative entity set even when the range contains no DESTROY for rows
+  // omitted from that replacement.
+  function retireMissingFullRebuildEntities(start, end, applied) {
+    if (!applied || !Number.isSafeInteger(start) || !Number.isSafeInteger(end)
+      || end <= start || !journal.hasRange(start, end)) return false;
+    const ids = new Set();
+    const visited = journal.visitRange(start, end, recordScratch, (record) => {
+      if (record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN
+        && Number.isSafeInteger(record.entityId)) ids.add(record.entityId);
+    });
+    // A malformed or partially installed range cannot establish replacement
+    // authority. Keep the existing facade rather than pruning from a bad pack.
+    if (visited !== end - start) return false;
+    const retiredIds = [];
+    for (const id of readModel.entities.keys()) {
+      if (!ids.has(id)) retiredIds.push(id);
+    }
+    if (retiredIds.length) applyDestroyIds(readModel, retiredIds);
+    return true;
+  }
   function foldPackIntoReadModel(start, end) {
     journal.visitRange(start, end, recordScratch, (rec) => {
       if (rec.kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) {
@@ -605,6 +654,7 @@ export function createSimLaneRuntime({
       generation: workerClockGeneration,
       lifecycleGeneration,
       timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+      timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     });
   }
 
@@ -707,11 +757,16 @@ export function createSimLaneRuntime({
   let consumedTickCount = 0;
   let skippedPresentationTicks = 0;
   let lifecycleGeneration = 0;
+  // Public worker read snapshots are epoch-bound. A facade can reject an older receipt
+  // during restore/new-game without mutating any mirrored authority state on main.
+  if (helpers) helpers.workerReadGeneration = () => laneClosed ? -1 : lifecycleGeneration;
 
   // ---- reply application ------------------------------------------------------------------
   function applyInitReply(msg) {
+    applyLaneSaveStorageOps(msg.storageOps);
     if (msg.initRebuild && msg.initRebuild.pack) {
-      journal.applyRebuildPack(msg.initRebuild);
+      const applied = journal.applyRebuildPack(msg.initRebuild);
+      retireMissingFullRebuildEntities(msg.initRebuild.start, msg.initRebuild.end, applied);
       foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end);
       if (Array.isArray(msg.initRebuild.spawnInfos)) {
         applySpawnInfos(readModel, msg.initRebuild.spawnInfos);
@@ -724,6 +779,7 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.auxUpserts)) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals)) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);
+    if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     reconcileEntities();
     const vp = viewportSize();
     if (vp.w && vp.h) laneViewport(vp.w, vp.h);
@@ -754,6 +810,10 @@ export function createSimLaneRuntime({
     replyCount++;
     if (Number.isSafeInteger(msg.stateTick)) lastShippedTick = msg.stateTick;
 
+    // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
+    // listeners must see the fresh index/envelope while the worker event is being dispatched.
+    applyLaneSaveStorageOps(msg.storageOps);
+
     // Input boundary: replay the worker's publishes into the ring via
     // publish() — reserve+capture atomically, the only order the ring accepts
     // (capture requires the slot to be the newest reserved). The main lane
@@ -772,7 +832,8 @@ export function createSimLaneRuntime({
     let journalLo = -1;
     let journalHi = -1;
     if (msg.journalFullRebuild === true && msg.pack) {
-      journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
+      const applied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
+      retireMissingFullRebuildEntities(msg.journalStart, msg.journalEnd, applied);
       journalLo = msg.journalStart; journalHi = msg.journalEnd;
     } else if (msg.pack && msg.pack.count > 0) {
       journal.applyPack(msg.pack);
@@ -792,6 +853,7 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.auxUpserts) && msg.auxUpserts.length) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);
+    if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     reconcileEntities();
 
     // Worker-emitted sim-bus events replay onto the main bus with forwarding
@@ -808,6 +870,11 @@ export function createSimLaneRuntime({
           if (ev && typeof ev.t === 'string') {
             try {
               const p = remapEventPayload(ev.p);
+              if (ev.t === 'save:store-synced') {
+                // Main-owned achievement mirrors must honor the worker's definitive boot probe
+                // before synchronous store-synced listeners can schedule another mirror.
+                applySharedPlayerStoreCapability(p?.storeCapability);
+              }
               if (ev.t === 'sector:enter' && p && typeof p === 'object') {
                 // The bridge ships a lite {id,name,seed} shell; renderer sector
                 // visuals need the full sector — resolve it from the world
@@ -861,24 +928,6 @@ export function createSimLaneRuntime({
     }
     if (Array.isArray(msg.spawnAcks) && msg.spawnAcks.length) {
       laneNotifySpawnAcks(msg.spawnAcks);
-    }
-
-    // Worker realm storage writes — the sim's own save bytes — persist to real
-    // localStorage here. Ordered with tick replies, same authority ordering the
-    // sim had when it wrote them.
-    if (Array.isArray(msg.storageOps) && msg.storageOps.length) {
-      for (const op of msg.storageOps) {
-        try {
-          if (!op) continue;
-          if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') localStorage.setItem(op.key, op.value);
-          else if (op.op === 'remove' && typeof op.key === 'string') localStorage.removeItem(op.key);
-          else if (op.op === 'clear') {
-            const doomed = [];
-            for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('sf.')) doomed.push(k); }
-            for (const k of doomed) localStorage.removeItem(k);
-          }
-        } catch (_) { /* persistence relay is best-effort; quota policy stayed worker-side */ }
-      }
     }
 
     if (Number.isSafeInteger(msg.stateTick)) state.tick = msg.stateTick;
@@ -1185,6 +1234,7 @@ export function createSimLaneRuntime({
       generation: lifecycleGeneration,
       lifecycleGeneration,
       timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+      timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     };
     pendingAckEnd = 0;
     postedSteps += Math.max(0, pendingSteps);
@@ -1358,7 +1408,7 @@ export function createSimLaneRuntime({
     });
     listen(window, 'keyup', (e) => {
       laneDomEvent({ type: 'keyup', code: eventCode(e), pressed: false });
-    });
+    }, { capture: true });
     listen(window, 'blur', () => laneDomEvent({ type: 'blur' }));
 
     const pointerDescriptor = (e) => ({
@@ -1382,7 +1432,14 @@ export function createSimLaneRuntime({
       laneDomEvent(d);
       if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault();
     });
-    listen(window, 'mouseup', (e) => laneDomEvent({ type: 'mouseup', button: e.button }));
+    listen(window, 'mouseup', (e) => laneDomEvent({ type: 'mouseup', button: e.button }), { capture: true });
+    listen(window, 'pointercancel', () => laneDomEvent({ type: 'blur' }));
+    const pointerLockTarget = typeof document !== 'undefined' ? document : null;
+    listen(pointerLockTarget, 'pointerlockchange', () => {
+      if (!pointerLockTarget || !pointerLockTarget.pointerLockElement) {
+        laneDomEvent({ type: 'blur' });
+      }
+    });
 
     // The mobile touch deck is DOM — it runs here and ships resolved gesture
     // frames as touchFrame descriptors to the worker's input reducer.
@@ -1631,6 +1688,7 @@ export function createSimLaneRuntime({
     },
     setLifecycleGeneration(value) {
       lifecycleGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
+      setTimeEffectsGeneration(state, lifecycleGeneration);
     },
     setClockActive(active) {
       if (laneClosed) return false;
@@ -1737,6 +1795,7 @@ export function createSimLaneRuntime({
     profile: 'production',
     clockMode: workerClockMode,
     timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+    timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     seed: (state.meta && Number.isSafeInteger(state.meta.seed) ? state.meta.seed : 1) >>> 0,
     settings: canonicalClone(state.settings || {}),
     domainMirroring,

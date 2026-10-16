@@ -13,6 +13,7 @@
 // without carrying stale rows into the first flight sample. The harness drains samples every second.
 
 import { encodePlayerTruthRows } from './packedRows.js';
+import { isKnownGeometryPreservingShaderHook } from '../../render/shaderPoseProvenance.js';
 
 export const PLAYER_TRUTH_CLASSES = Object.freeze([
   'player', 'enemy', 'asteroid', 'projectile', 'pickup', 'fx', 'neutral', 'station', 'other',
@@ -96,7 +97,8 @@ function unsupportedBodyMaskPose(THREE, root) {
     if (object.isSkinnedMesh || Object.keys(object.geometry?.morphAttributes || {}).length
       || object.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
       || materials.some(m => m && !m.transparent && (m.isShaderMaterial || m.isRawShaderMaterial
-        || m.displacementMap || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile))) unsupported = true;
+        || m.displacementMap || (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile
+          && !isKnownGeometryPreservingShaderHook(m.onBeforeCompile))))) unsupported = true;
   });
   return unsupported;
 }

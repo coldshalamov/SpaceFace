@@ -164,7 +164,8 @@ test('PQ-152.02 catalog stays eleven authored pieces and adds its own capital ty
   assert.equal(capital.ok, true, capital.errors.join('; '));
   // INF-082 added the Frame Coupler heavy_tow as a legitimate 11th authored row; the capital
   // boss must still be its own type, never an authored row.
-  assert.equal(AUTHORED_SET_PIECES.length, 11, 'AUTHORED_SET_PIECES must stay exactly 11');
+  // Six far-out pieces (Io Reach, Expanse, Sker, Ashcache, Drift) made it seventeen.
+  assert.equal(AUTHORED_SET_PIECES.length, 17, 'AUTHORED_SET_PIECES must stay exactly 17');
   // WF-08's Lung Run chain (e7cf3bb8b) legitimately grew the chains to six, and PB-MIS-C's
   // choir_vigil (9487e2390) grew them to seven; the pin exists to stop the CAPITAL row from
   // becoming an SP chain, not to freeze the family count.

@@ -26,8 +26,9 @@ test('the proving job exists on the ordinary authored board', () => {
   assert.ok(ROW, 'heavy_tow row registered');
   assert.equal(ROW.startStationId, 'station_beltout', 'posted at a working board');
   const validation = validateAuthoredSetPieceCatalog();
-  assert.equal(validation.ok, true, 'catalog validates at eleven rows: ' + validation.errors.join('; '));
-  assert.equal(AUTHORED_SET_PIECES.length, 11, 'catalog grew by exactly this job');
+  assert.equal(validation.ok, true, 'catalog validates: ' + validation.errors.join('; '));
+  // INF-082 made it eleven; six far-out pieces (Io Reach, Expanse, Sker, Ashcache, Drift) followed.
+  assert.equal(AUTHORED_SET_PIECES.length, 17, 'eleven near the core plus six far out');
   const offer = buildAuthoredSetPieceOffer('heavy_tow', 7);
   assert.ok(offer && offer.id.includes('heavy_tow'), 'an accept/decline offer builds');
   assert.equal(offer.stationId, 'station_beltout', 'offer carries its board');

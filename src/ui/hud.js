@@ -1,8 +1,8 @@
 // Flight HUD (ARCHITECTURE §5.5, design spec "HUD LAYOUT") — always-mounted flight overlay.
 //
 // Layout:
-//   bottom-left   : hull / shield / energy / heat vertical bars + numerics
-//   bottom-center : throttle + speed + cargo (used/cap) + credits
+//   bottom-left   : ORRERY hull / shield / armour / energy / heat / speed / ordnance Cluster
+//   bottom-center : contextual travel and braking tape
 //   bottom-right  : radar (radar.js) with target panel (targetPanel.js) above it
 //   top-center    : alert queue (alerts.js renders into #alerts directly)
 //   top-right     : active objective line + off-screen objective arrow
@@ -11,7 +11,7 @@
 //   - frame path: cheap local transforms/classes only.
 //   - numerics via textContent @10Hz.
 //   - compositor-heavy overlays use explicit time cadences instead of implicit per-frame work.
-//   - lists/credits/cargo rebuilt only on data events (credits:changed, cargo:changed, ship:statsChanged).
+//   - lists and contextual cargo panels rebuild only on their data events.
 //
 // The HUD READS state for display and never mutates sim state (§5, §0.6).
 
@@ -25,21 +25,19 @@ import { icon } from './station/icons.js';
 import { glyphSvg, hasGlyph } from './glyphs.js';
 import { wantedAlertText, wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
-import { SHIPS } from '../data/ships.js';
-import { swarmStakeFor } from '../data/swarmStakes.js';
-import { catalogHullFacts } from '../systems/ships.js';
 import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
-import { estimateBrakingSolution, evaluateArrivalCue } from '../core/flight/flightTelemetry.js';
-import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
+import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
@@ -51,10 +49,7 @@ import { resolveWorldPresentationEntity } from '../world/presentationSources.js'
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { objectiveText } from './screens/missionLog.js';
 import { adventureDecisionHudLine } from './adventureDecisions.js';
-import { weaponHeatSummary } from './weaponHeat.js';
-import { createPowerRail, readRailModel } from './powerRail.js';
 import { mountOrreryCluster } from './orrery/hudAdapter.js';
-import { arcGauge } from './orrery/instruments.js';
 import { createForkInstrument } from './forkInstrument.js';
 // FB-012 — the flight HUD mounts the stunt callout layer, so a wrecking ball, a clothesline or
 // a tow kill is NAMED in adventure too, not only inside a Crucible run. The layer self-gates:
@@ -72,21 +67,13 @@ import {
   recallObjective,
   objectiveVisible,
 } from './objectiveRecall.js';
-import {
-  shipConditionMarkup, updateShipCondition, hudBarMarkup,
-  speedGaugeMarkup, mountRadarKit, setKitBar, setKitGauge,
-} from './views/flightInstruments.js';
+import { mountRadarKit } from './views/flightInstruments.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
-import { createGaugeSettleSpring, planGaugeSettle } from './effects/gaugeSettle.js';
-import {
-  DEFAULTS as INPUT_DEFAULTS,
-  formatBindingCode,
-  resolveActionCodes,
-  resolveActionLabel,
-} from '../systems/input.js';
+import { planGaugeSettle } from './effects/gaugeSettle.js';
+import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 import { createHudDragController } from './hudLayout.js';
 import {
   MAX_GRAVITY_MARK_OVERLAYS,
@@ -197,31 +184,6 @@ export function calculateGLocIntensity(sustainedTime) {
 export function isSustainedMaxRateTurn(turnRate, turnCeiling, isBoosting = false) {
   if (!Number.isFinite(turnRate) || !Number.isFinite(turnCeiling) || turnCeiling <= 0) return false;
   return turnRate > turnCeiling * (isBoosting ? 0.48 : 0.75);
-}
-
-// Ship role → friendly archetype label (Phase 3 HUD class indicator).
-const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
-const ROLE_LABEL = {
-  starter: 'Starter', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
-  multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
-  corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
-  gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship', tug: 'Tug',
-};
-// Drive-family short label for the CLASS readout. Resolved from the hull's driveId so the player
-// feels the propulsion family (spec §6) without opening a stat screen.
-const DRIVE_FAMILY_LABEL = {
-  reaction: 'Reaction', gravimetric: 'Gravimetric', pulse_plate: 'Pulse Plate',
-  torch: 'Torch', field_sail: 'Field Sail',
-};
-function driveFamilyFor(def) {
-  const driveId = def && def.driveId;
-  if (!driveId) return '';
-  if (driveId.startsWith('drive_gravimetric')) return DRIVE_FAMILY_LABEL.gravimetric;
-  if (driveId.startsWith('drive_pulse_plate')) return DRIVE_FAMILY_LABEL.pulse_plate;
-  if (driveId.startsWith('drive_torch')) return DRIVE_FAMILY_LABEL.torch;
-  if (driveId.startsWith('drive_field_sail')) return DRIVE_FAMILY_LABEL.field_sail;
-  if (driveId.startsWith('drive_reaction')) return DRIVE_FAMILY_LABEL.reaction;
-  return '';
 }
 
 // ── Mission tracker helpers ──────────────────────────────────────────────────────────────────
@@ -685,6 +647,11 @@ function mtReadingsLine(bearing, distanceText, etaText, extra = '') {
  * (the tracker sets white-space:pre-line). Titles and GOAL restatements stay off.
  */
 export function flightDestinationSurface(state, command) {
+  // Crucible runs are sealed from campaign navigation. Keep the mission tracker quiet at its
+  // owner, rather than relying only on the run-focus stylesheet to catch inherited story state.
+  if (state && state.run && state.run.kind === 'survival' && isRunSealed(state)) {
+    return { show: false, line: '', urgent: false };
+  }
   if (!command) return { show: false, line: '', urgent: false };
   if (command.owner === 'tracked-mission') {
     const tracked = command.mission;
@@ -915,6 +882,28 @@ export function resolveBrakeStopPreview(player, profile, input) {
   if (!braking) return null;
   const mode = (player._flightFrame && player._flightFrame.assistMode) || input.assistMode || 'assisted';
   return previewBrakeStop(player, profile, mode);
+}
+
+// INST-35 — the HUD's velocity model: speed against the thruster cap, carrying the earned-speed
+// flag the readout marks. Pure. The ORRERY Speed Dial already owns the gauge, so this adds no
+// widget — just the flag and the text mark (`EARNED`), a non-colour carrier per the repo's
+// semantics rule and ORRERY's labelled-state direction. The cap is telemetry's
+// `resolveThrusterCap` (the catalog's governed combat speed), never re-derived here.
+export function buildVelocityReadout(playerOrSpeed, profileOrCap, out = null) {
+  const speed = typeof playerOrSpeed === 'number'
+    ? playerOrSpeed
+    : Math.hypot(
+      Number(playerOrSpeed && playerOrSpeed.vel && playerOrSpeed.vel.x) || 0,
+      Number(playerOrSpeed && playerOrSpeed.vel && playerOrSpeed.vel.z) || 0,
+    );
+  const thrusterCap = typeof profileOrCap === 'number' ? profileOrCap : resolveThrusterCap(profileOrCap);
+  const earnedSpeed = isEarnedSpeed(speed, thrusterCap);
+  const result = out && typeof out === 'object' ? out : {};
+  result.speed = speed;
+  result.thrusterCap = thrusterCap;
+  result.earnedSpeed = earnedSpeed;
+  result.text = `${Math.max(0, Math.round(speed))} WU/S${earnedSpeed ? ' · EARNED' : ''}`;
+  return result;
 }
 
 /** Non-colour flight feedback for the manufactured route read model. The travel owner publishes
@@ -1196,24 +1185,6 @@ function setScaleX(el, value, opts = null) {
   if (el._sfScaleX === next) return;
   el._sfScaleX = next;
   el.style.transform = `scaleX(${next})`;
-}
-// A vitals row's compact Arc Gauge (ORRERY §6): the library element mounted into the row's
-// existing .sf-bar slot. Same dial convention as the rest of the orrery library — 0 deg is
-// straight up, the 270 deg sweep leaves the foot of the dial open. The gauge's own spring is
-// never driven animated: frame paths feed settled values with { instant: true }, so it stays a
-// pure painter (the hud settle spring is the one animation owner) and costs no rAF of its own.
-const VITAL_ARC_SET = { instant: true };
-function mountVitalArc(barEl) {
-  const SVGNS = 'http://www.w3.org/2000/svg';
-  const svgEl = document.createElementNS(SVGNS, 'svg');
-  svgEl.setAttribute('class', 'orr-svg sf-vital-arc');
-  svgEl.setAttribute('viewBox', '0 0 30 30');
-  svgEl.setAttribute('aria-hidden', 'true');
-  const gauge = arcGauge({ cx: 15, cy: 15, r: 11.5, from: -135, to: 135, width: 3, tone: 'phos' });
-  svgEl.appendChild(gauge.el);
-  barEl.appendChild(svgEl);
-  barEl.classList.add('sf-vital-gauge');
-  return gauge;
 }
 // JS-side last-written cache — never read el.style/dataset (those can themselves dirty or miss).
 function setStyle(el, prop, value) {
@@ -1659,13 +1630,7 @@ export function createHud(ctx, alerts) {
   root.dataset.objectiveHierarchy = 'one-objective-one-action-one-threat';
   injectTravelTapeStyle();
 
-  // ---- bottom-left: ship schematic (hull + shield) + thin micro-bars (energy/heat/boost) ----
-  // Bottom-left anchor (SPEC3-36 three-anchor law, design/revamp/HUD_THREE_ANCHOR.md): one flex
-  // column — a CONTEXTUAL sub-column (mission tracker + objectives + nav readout, all relocated here
-  // from the old top-left/top-right/top-center straggler positions) sitting ABOVE the schematic +
-  // vitals. leftContext collapses to nothing when its children are all hidden (:empty).
-  const leftStack = document.createElement('div');
-  leftStack.className = 'sf-leftstack';
+  // The context rail stays separate from the ORRERY flight instrument.
   const leftContext = document.createElement('div');
   leftContext.className = 'sf-leftcontext';
   // FRONTEND_PROGRAM Wave 1: the contextual column (comms tape, log, objective, first-use card) is
@@ -1685,86 +1650,19 @@ export function createHud(ctx, alerts) {
   // layer's update returns false and stops listening for frames when nothing is on screen.
   ensureStuntCallout({ state, bus: ctx.bus });
 
-  // Lamina: authored hull laminae + a split, globally driven shield envelope.
-  // The view reads the same authoritative entity as all other vitals; it owns no simulation state.
-  const bars = document.createElement('div');
-  bars.className = 'sf-bars sf-bars--lamina';
-  const initialPlayer = state.entities.get(state.playerId);
-  const initialHull = initialPlayer?.data?.defId || initialPlayer?.data?.shipId || 'ship_kestrel';
-  const schematic = document.createElement('div');
-  schematic.className = 'sf-schematic sf-integrity';
-  schematic.innerHTML = shipConditionMarkup(initialHull);
-  bars.appendChild(schematic);
-  updateShipCondition(schematic, initialPlayer, 0, getMotionReduced(), getFlashReduced());
-
-  // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
-  const barDefs = [
-    ['energy', 'energy', 'energy'],
-    // W1-4 "one energy pool, one gauge" (D5: "All three draw one energy pool; one gauge").
-    // Dash and boost ALREADY share `p.boost` — there was never a second pool to merge, only a
-    // label that named one of its three consumers. Renamed at the READ SITE (the packet's explicit
-    // instruction, and gameState.js is quarantined) so the gauge is identified by the resource it
-    // measures rather than by whichever verb spends it. Travel burn is the third consumer and is
-    // shown on this same gauge; see the honest caveat where it is updated below.
-    ['boost', 'drive', 'boost'],   // shared drive-energy pool: dash + boost + burn (hidden if the ship can't boost)
-    ['heat', 'heat', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
-  ];
-  const fillEls = {}, numEls = {}, rowEls = {}, barEls = {};
-  // ORRERY §6 Flight: each vitals row is a compact Arc Gauge — the library element the Cluster's
-  // own arcs use (src/ui/orrery/instruments.js), seated in the row's existing gauge slot. The
-  // pinned contract DOM stays underneath: .sf-bar keeps its meter role and aria-valuenow, and
-  // .sf-bar__fill keeps its scaleX transform as the hidden scalar store the frame path and the
-  // headless fixtures pin; the arc painted beside it is the instrument (hudStyles mutes the
-  // plate, segments and fill paint). The hud settle springs stay the one smoothing owner, so
-  // the arcs are fed their settled values and never run a second animation loop.
-  const vitalArcs = {};
-  for (const [key, label, mod] of barDefs) {
-    const row = document.createElement('div');
-    row.className = 'sf-barrow';
-    row.innerHTML = hudBarMarkup(label, mod);
-    bars.appendChild(row);
-    fillEls[key] = row.querySelector('.sf-bar__fill');
-    barEls[key] = row.querySelector('.sf-bar');
-    numEls[key] = row.querySelector('.sf-barrow__num');
-    rowEls[key] = row;
-    if (barEls[key]) vitalArcs[key] = mountVitalArc(barEls[key]);
-  }
-  // One instrument cluster (FRONTEND_PROGRAM Wave 1): integrity, vitals and the speed deck are
-  // seated in ONE machined chassis with one baseline, instead of three plates that float apart.
-  // The chassis is paint and layout only; every instrument keeps its own contract DOM.
-  const clusterChassis = document.createElement('div');
-  clusterChassis.className = 'sf-cluster-chassis';
-  clusterChassis.appendChild(bars);
-  // The comms strip shares the left edge with the cluster. Publish the cluster's height so the
-  // strip always stops short of it; a ResizeObserver fires only when the size changes, so this
-  // costs no per-frame layout read. While ORRERY owns the bottom-left the chassis stays mounted
-  // but hidden — its (often much taller, compact-wrapped) layout height must not eat the strip,
-  // so the reserve is measured off the ORRERY Cluster's rendered box instead. Neither a chassis
-  // resize nor a viewport-driven --orr-cluster-scale step is observable by the other signal, so
-  // both feed the same publisher.
+  // Reserve the active Cluster's rendered height for the comms strip. A viewport scale
+  // step can change that height, so both ResizeObserver and resize publish the same value.
   const publishClusterReserve = () => {
-    const orrery = root.dataset && root.dataset.hud === 'orrery';
-    const occupant = orrery ? root.querySelector('.orr-hud-cluster .orr-cluster') : clusterChassis;
+    const occupant = root.querySelector('.orr-hud-cluster .orr-cluster');
     if (!occupant) return;
     const rect = occupant.getBoundingClientRect();
-    const h = orrery
-      ? Math.max(0, (typeof window !== 'undefined' ? window.innerHeight : 0) - rect.top)
-      : rect.height;
+    const h = Math.max(0, (typeof window !== 'undefined' ? window.innerHeight : 0) - rect.top);
     root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
   };
   let clusterSizeObserver = null;
-  if (typeof ResizeObserver === 'function') {
-    clusterSizeObserver = new ResizeObserver(publishClusterReserve);
-    clusterSizeObserver.observe(clusterChassis);
-  }
   if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('resize', publishClusterReserve);
   }
-  leftStack.appendChild(clusterChassis);   // the speed deck and threat lamp join it below
-  root.appendChild(leftStack);
-  // The chassis is always seated (it is never detached); the CSS hook that used to be
-  // #hud:has(.sf-cluster-chassis) is a class so per-frame writes no longer schedule :has()
-  // invalidation on #hud.
   root.classList.add('sf-hud--cluster');
   // Comms is initialized a few lines before createHud() by uiRoot. Adopt the existing feed into the
   // context rail now that its stable home exists; the module keeps an absolute fallback for boot.
@@ -1807,40 +1705,6 @@ export function createHud(ctx, alerts) {
   leftContext.prepend(commsTape);
   // marketNews owns the feed and may have initialized before this HUD rebuilt its tape host.
   if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('news:render');
-  // Other vitals retain their existing settle owner. Integrity has a bounded damage echo,
-  // never a spring that can visually overstate health.
-  const energySettle = createGaugeSettleSpring(1);
-  const heatSettle = createGaugeSettleSpring(0);
-  const boostSettle = createGaugeSettleSpring(0);
-  const fuelSettle = createGaugeSettleSpring(1);
-  let gaugesPrimed = false;
-  // Heat-row dwell: the vitals grid auto-places its children, so hiding the heat row shifts
-  // every row below it — tap-firing crossed the reveal gate twice a second and bobbed the
-  // whole left stack. The row arms at 6%, retires below 2%, and dwells after the last hot sample.
-  let _heatRowShown = false;
-  let _heatRowRetireAt = 0;
-  // Tether status word dwell (see the slow-clock tether readout for the why).
-  let _tetherText = '';
-  let _tetherTextAt = 0;
-  let _tetherWarn = false;
-  for (const key of ['energy', 'heat', 'boost', 'fuel']) {
-    if (fillEls[key]) setStyle(fillEls[key], 'transition', 'none');
-  }
-
-  // (The center framing arcs were removed — a wide "visor projection" around the crosshair reads as a
-  //  first-person cockpit/windshield motif, which is wrong for this third-person chase-cam game.
-  //  Shield now lives on the schematic ring; energy on the ENGY micro-bar.)
-
-  // ---- bottom-center: flight instrument deck (SPD / WPN / contextual chips) ----
-  // Permanent binding→action keycaps (FIRE / SAMPLE / BOOST / …) were retired: those are general
-  // flight keys learned from Settings → Controls / Help / onboarding, not a always-on hotbar.
-  // Contextual mode prompts (Massline while latched) still surface below the instrument row.
-  const commandDeck = document.createElement('div');
-  commandDeck.className = 'sf-command-deck';
-  clusterChassis.appendChild(commandDeck);   // seated beside integrity in the cluster
-  // The threat lamp is the THREAT row's lamp in fire control (below). It used to be a second,
-  // free-floating "THREAT" legend pinned above the chassis, which read as a stray label detached
-  // from the row that carries the same state.
   // The threat ring around the ship: bearing arcs to near hostiles (red is threat-only).
   const threatRing = document.createElement('div');
   threatRing.className = 'sf-threat-ring';
@@ -1864,9 +1728,6 @@ export function createHud(ctx, alerts) {
     if (!p || p.entityId == null) return;
     revealedWeakPoints.set(p.entityId, { label: p.label, hint: p.hint, until: p.until || 0 });
   });
-
-  // Damage/repair motion is derived by updateShipCondition from real resource changes.
-  // No combat-event reflow, hit timeout, or second animation clock is needed.
 
   // ---- top-left: mission tracker (shows the tracked mission objective + timer) ----
   const missionTracker = document.createElement('div');
@@ -1936,39 +1797,6 @@ export function createHud(ctx, alerts) {
     });
   }
 
-  // ---- bottom-center (HUD 2.0, GDD §9.4): only SPD + WPN live here permanently. Cargo, credits,
-  // and ship class are CONTEXTUAL CHIPS — they appear when their value changes, then fade. The old
-  // seven-stat text strip whispered everything at once; now the HUD only speaks when something
-  // changed. THR/STOP retired to the SPD hover tip (already carries the braking solution).
-  const center = document.createElement('div');
-  center.className = 'sf-cluster';
-  center.innerHTML = speedGaugeMarkup() + `
-    <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">weapons</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
-    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">tether</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden></span></div>
-    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">cargo</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
-    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">credits</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span><span class="sf-stat__hint mono" data-k="stake" hidden></span></div>
-    <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">class</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
-  // Massline line-control chips — only while latched. Separate from the status value so the
-  // instrument row never overflows with a tutorial paragraph of binds.
-  const masslineInstrument = document.createElement('div');
-  masslineInstrument.className = 'sf-ml-instrument';
-  masslineInstrument.hidden = true;
-  masslineInstrument.setAttribute('aria-label', 'Massline');
-  masslineInstrument.innerHTML =
-    '<div class="sf-ml-instrument__row">' +
-      '<span class="sf-ml-instrument__k">line</span>' +
-      '<span class="sf-ml-instrument__track"><span class="sf-ml-instrument__fill" data-k="mlfill"></span></span>' +
-      '<span class="sf-ml-instrument__v mono" data-k="mllen">—</span>' +
-    '</div>' +
-    '<div class="sf-ml-instrument__release mono" data-k="mlrel" hidden>RELEASE</div>';
-  commandDeck.prepend(center);   // seats .sf-speed: the gauge is always mounted, never removed
-  commandDeck.classList.add('sf-command-deck--speed');
-  root.classList.add('sf-hud--speed');
-  commandDeck.appendChild(masslineInstrument);
-  const mlFill = masslineInstrument.querySelector('[data-k=mlfill]');
-  const mlLen = masslineInstrument.querySelector('[data-k=mllen]');
-  const mlRel = masslineInstrument.querySelector('[data-k=mlrel]');
-
   // ---- Travel Burn instrument (atlas D5 / W1-6 / W1-9) -----------------------------------------
   // A CONTEXTUAL instrument, not a new permanent panel. D9.9 forbids permanent panels because the
   // reported density paradox ("too little useful information, yet crowded") is a progressive-
@@ -2013,101 +1841,20 @@ export function createHud(ctx, alerts) {
       // The drawn warn mark (glyphs.js), not the ▲ font character — same channel as the doctrine tells.
       '<span class="sf-vtape__brakeglyph" aria-hidden="true">' + glyphSvg('warn', 12) + '</span>' +
       '<span class="mono">BRAKE NOW</span></div>';
-  commandDeck.prepend(vtape);
+  root.appendChild(vtape);
 
-  // ---- fire control: TARGET and TETHER at a glance, seated above the speed window ----
-  // FRONTEND_PROGRAM Wave 1: speed, target, threat and tether must be one glance, in one place.
-  // The cluster already holds speed; this strip carries target, tether and threat as instrument
-  // rows, each with its LED (the THREAT row's LED is the threat lamp). Informational text, so no
-  // live region (alerts speak).
-  const fcStrip = document.createElement('div');
-  fcStrip.className = 'sf-fc-strip';
-  fcStrip.setAttribute('role', 'group');
-  fcStrip.setAttribute('aria-label', 'Fire control');
-  fcStrip.innerHTML =
-    '<div class="sf-fc-row" data-k="fctarget" data-state="none"><i class="sf-fc-led" aria-hidden="true"></i>'
-      + '<span class="sf-fc-k">Target</span><span class="sf-fc-v" data-k="fctname">No lock</span>'
-      + '<span class="sf-fc-r" data-k="fctrange"></span></div>'
-    + '<div class="sf-fc-row" data-k="fctether" data-state="idle"><i class="sf-fc-led" aria-hidden="true"></i>'
-      + '<span class="sf-fc-k">Tether</span><span class="sf-fc-v" data-k="fclname">Idle</span>'
-      + '<span class="sf-fc-r" data-k="fclmass"></span></div>'
-    + '<div class="sf-fc-row" data-k="fcthreat" data-state="clear"><i class="sf-fc-led sf-threat-lamp" aria-hidden="true"></i>'
-      + '<span class="sf-fc-k">Threat</span><span class="sf-fc-v" data-k="fchname">Clear</span>'
-      + '<span class="sf-fc-r" data-k="fchrange"></span></div>';
-  commandDeck.prepend(fcStrip);
-  const fc = {
-    targetRow: fcStrip.querySelector('[data-k=fctarget]'),
-    tname: fcStrip.querySelector('[data-k=fctname]'),
-    trange: fcStrip.querySelector('[data-k=fctrange]'),
-    tetherRow: fcStrip.querySelector('[data-k=fctether]'),
-    lname: fcStrip.querySelector('[data-k=fclname]'),
-    lmass: fcStrip.querySelector('[data-k=fclmass]'),
-    threatRow: fcStrip.querySelector('[data-k=fcthreat]'),
-    hname: fcStrip.querySelector('[data-k=fchname]'),
-    hrange: fcStrip.querySelector('[data-k=fchrange]'),
-  };
-  // Written by the roster scan (5 Hz), read by fire control (10 Hz): no second hostile scan.
-  const threatReadout = { state: 'clear', count: 0, nearest: Infinity };
-  // The annunciator prints TAKING FIRE / SHIELDS DOWN for 1.5 s on any hit to the player
-  // (alerts.js, combat:damage). A hit from something the roster scan does not list (out past the
-  // scan radius, a rock thrown by a hostile's line) would otherwise leave this row reading "Clear"
-  // under a TAKING FIRE banner. The row holds "Under fire" for the same window, so they agree.
-  const UNDER_FIRE_HOLD_MS = 1500;
-  let underFireUntilMs = 0;
-  if (ctx.bus && typeof ctx.bus.on === 'function') {
-    on('combat:damage', (hit) => {
-      if (hit && hit.isPlayer) underFireUntilMs = performance.now() + UNDER_FIRE_HOLD_MS;
-    }, { presentation: true });
-  }
-  function updateFireControl(p, tether, latching, ml) {
-    let underFire = false;
-    if (underFireUntilMs > 0) {
-      if (performance.now() < underFireUntilMs) underFire = threatReadout.state === 'clear';
-      else underFireUntilMs = 0;
-    }
-    setAttr(fc.threatRow, 'data-state', underFire ? 'contact' : threatReadout.state);
-    setText(fc.hname, underFire ? 'Under fire'
-      : threatReadout.state === 'clear' ? 'Clear'
-      : threatReadout.count + ' hostile' + (threatReadout.count === 1 ? '' : 's'));
-    setText(fc.hrange, Number.isFinite(threatReadout.nearest) ? Math.round(threatReadout.nearest) + ' WU' : '');
-    const tid = state.player && state.player.targetId;
-    const t = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
-    if (t && t.pos && p.pos) {
-      const d = t.data || {};
-      setText(fc.tname, String(d.callsign || d.name || t.name || d.trafficRole || d.role || t.type || 'Contact'));
-      setText(fc.trange, Math.round(Math.hypot(t.pos.x - p.pos.x, t.pos.z - p.pos.z)) + ' u');
-      setAttr(fc.targetRow, 'data-state', isHostileToPlayer(t, p.team, state) ? 'hostile' : 'locked');
-    } else {
-      setText(fc.tname, 'No lock');
-      setText(fc.trange, '');
-      setAttr(fc.targetRow, 'data-state', 'none');
-    }
+  // The visible tether ring and HUD state remain shared with the ORRERY Cluster.
+  function updateTetherFeedback(tether, latching, ml) {
     if (latching && tether) {
       const status = masslineTetherStatus(tether);
-      setText(fc.lname, status.text);
-      setText(fc.lmass, ml ? Math.round(ml.length) + ' WU' : '');
-      setAttr(fc.tetherRow, 'data-state', status.warn ? 'strain' : 'latched');
       setAttr(root, 'data-tether', status.warn ? 'strain' : 'latched');
-      // The ring's tether arc fills with the line's load (0..1); 67 is the arc's drawn length.
       const load = ml && Number.isFinite(ml.load) ? Math.max(0, Math.min(1, ml.load)) : 0;
       setAttr(tetherArc, 'stroke-dasharray', `${(load * 67).toFixed(1)} 200`);
       return;
     }
     setAttr(tetherArc, 'stroke-dasharray', '0 200');
-    const sel = state.masslineAcquisition && state.masslineAcquisition.selected;
-    if (sel) {
-      const cand = state.entities && typeof state.entities.get === 'function' ? state.entities.get(sel.targetId) : null;
-      const mass = Math.round(Number((cand && ((cand.physicsBody && cand.physicsBody.mass) || cand.mass)) || 0));
-      setText(fc.lname, String(sel.targetLabel || sel.targetType || 'Target'));
-      setText(fc.lmass, mass > 0 ? mass + ' t' : '');
-      setAttr(fc.tetherRow, 'data-state', sel.status === 'ready' ? 'ready' : 'blocked');
-      setAttr(root, 'data-tether', sel.status === 'ready' ? 'ready' : 'idle');
-    } else {
-      setText(fc.lname, 'Idle');
-      setText(fc.lmass, '');
-      setAttr(fc.tetherRow, 'data-state', 'idle');
-      setAttr(root, 'data-tether', 'idle');
-    }
+    const selected = state.masslineAcquisition && state.masslineAcquisition.selected;
+    setAttr(root, 'data-tether', selected && selected.status === 'ready' ? 'ready' : 'idle');
   }
   const vt = {
     root: vtape,
@@ -2126,147 +1873,6 @@ export function createHud(ctx, alerts) {
   let _vtapeAlpha = 0;      // smooth-damped reveal so it eases in rather than popping
   let _vtapeBrakeOn = false;
 
-  const speedGaugeEl = center.querySelector('.sf-kit-gauge');
-  const elSpeed = center.querySelector('[data-k=speed]');
-  const elCargo = center.querySelector('[data-k=cargo]');
-  const elCredits = center.querySelector('[data-k=credits]');
-  const elStake = center.querySelector('[data-k=stake]');
-  const elWeapons = center.querySelector('[data-k=weapons]');
-  const elWpnstat = center.querySelector('#sf-wpnstat');
-  const elRole = center.querySelector('[data-k=role]');
-  const elTetherStat = center.querySelector('#sf-tetherstat');
-  const elTether = center.querySelector('[data-k=tether]');
-  const elTetherKeys = center.querySelector('[data-k=tetherkeys]');
-  const chipEls = {
-    cargo: center.querySelector('[data-chip=cargo]'),
-    credits: center.querySelector('[data-chip=credits]'),
-    role: center.querySelector('[data-chip=role]'),
-  };
-  const _chipTimers = new Map();
-  // Show a chip for a beat, then let it fade. Repeat calls refresh the timer (a count-up animation
-  // keeps its chip alive until the number settles).
-  function chipShow(key, ms = 4000) {
-    const el = chipEls[key];
-    if (!el) return;
-    el.classList.add('sf-chip-show');
-    clearTimeout(_chipTimers.get(el));
-    _chipTimers.set(el, setTimeout(() => el.classList.remove('sf-chip-show'), ms));
-  }
-
-  // ---- HUD stat tooltips: populate on hover to show detailed info ----
-  const tipEls = {};
-  for (const tip of center.querySelectorAll('.sf-tip')) tipEls[tip.dataset.tip] = tip;
-
-  function buildSpeedTip(p) {
-    if (!p) return 'No ship data';
-    const sp = Math.hypot(p.vel.x, p.vel.z);
-    const maxSp = p.maxSpeed || 1;
-    const pct = Math.round(clamp01(sp / maxSp) * 100);
-    const drive = driveFamilyFor(SHIP_BY_ID.get(p.data && p.data.defId)) || 'Reaction';
-    let lines = [
-      `Speed: ${Math.round(sp)} / ${Math.round(maxSp)} wu/s (${pct}%)`,
-      `Velocity X: ${p.vel.x.toFixed(1)}, Z: ${p.vel.z.toFixed(1)}`,
-      `Drive: ${drive}`,
-    ];
-    // Braking solution (spec §15.3): turn physics from confusion into skill by showing the
-    // projected stop point, fastest stop mode, and stop time/distance.
-    if (sp > 0.5) {
-      const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p, state));
-      lines.push(`Best stop: ${brakeModeWords(brake.bestMode)}`);
-      lines.push(`Brake: ${brake.directDistance.toFixed(0)} wu / ${brake.directTimeS.toFixed(1)} s`);
-      lines.push(`Flip & burn: ${brake.flipBurnDistance.toFixed(0)} wu / ${brake.flipBurnTimeS.toFixed(1)} s`);
-    }
-    return lines.join('\n');
-  }
-  function buildThrottleTip(p) {
-    if (!p) return 'No ship data';
-    const sp = Math.hypot(p.vel.x, p.vel.z);
-    const maxSp = p.maxSpeed || 1;
-    const pct = Math.round(clamp01(sp / maxSp) * 100);
-    const mass = p.mass || 0;
-    const handling = p.handling != null ? p.handling.toFixed(2) : '—';
-    return `Throttle: ${pct}%\nMax speed: ${Math.round(maxSp)} wu/s\nMass: ${Math.round(mass)}\nHandling: ${handling}`;
-  }
-  // INF-086: compact live handling consequence for the load surface. The number is the
-  // SAME load factor that scales the flown accelerations (ships derived stats, refreshed
-  // on cargo:changed) — not a second cap: volume stays the only capacity, mass only
-  // bends handling. A full hold of feathers reads full volume with full thrust.
-  function liveDerived() {
-    const p = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    return (p && p.data && p.data.derived) || null;
-  }
-  function buildCargoTip() {
-    const c = (state.player || {}).cargo || {};
-    const items = c.items || {};
-    const used = Math.round(c.usedVolume || 0);
-    const cap = Math.round(c.capVolume || 40);
-    const note = cargoHandlingNote(liveDerived());
-    const massLine = cargoMassLine(liveDerived());
-    const keys = Object.keys(items);
-    // Slice D: kill loot lives in its own salvage bay, cashed in at the dock (systems/cargo.js).
-    const bay = salvageBayReading(state);
-    const bayLine = bay && bay.units > 0
-      ? `\nSalvage bay: ${bay.used} / ${bay.cap} u (cashed in when you dock)${bay.summary ? ` — ${bay.summary}` : ''}`
-      : '';
-    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty${massLine ? '\n' + massLine : ''}${bayLine}`;
-    const lines = [`Cargo: ${used} / ${cap} u`];
-    if (massLine) lines.push(massLine);
-    lines.push(note ? `Handling: ${note.text} (heavy)` : 'Handling: full thrust');
-    for (const id of keys.slice(0, 8)) {
-      const qty = items[id];
-      const name = cargoDisplayName(id);
-      if (qty > 0) lines.push(`  ${name}: ${qty}`);
-    }
-    if (keys.length > 8) lines.push(`  ... +${keys.length - 8} more`);
-    return lines.join('\n') + bayLine;
-  }
-  function buildCreditsTip() {
-    const player = state.player || {};
-    const cr = Math.round(player.credits || 0);
-    const st = player.stats || {};
-    // PRO-03: every figure in this tooltip reads in the player's own locale.
-    return `Credits: ${formatCount(cr, state)} CR\nLifetime profit: ${formatCount(st.lifetimeProfit, state)}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${formatCount(st.biggestSingleProfit, state)}`;
-  }
-  function buildWeaponsTip(p) {
-    if (!p || !p.data || !p.data.weapons || !p.data.weapons.length) return 'No weapons fitted';
-    const ws = p.data.weapons;
-    const lines = [`Weapons: ${ws.length} fitted`];
-    for (const w of ws) {
-      const name = w.name || w.id || 'Unknown';
-      const dps = w.dps != null ? ` ${w.dps} dps` : '';
-      const rng = w.range ? ` ${w.range}m` : '';
-      lines.push(`  ${name}${dps}${rng}`);
-    }
-    return lines.join('\n');
-  }
-  function buildClassTip(p) {
-    if (!p || !p.data) return 'No ship data';
-    const defId = p.data.defId;
-    const def = SHIP_BY_ID.get(defId);
-    if (!def) return 'Unknown hull';
-    const role = ROLE_LABEL[def.role] || def.role || '—';
-    const facts = catalogHullFacts(defId, p.data.fittings || [], state.player);
-    return `${def.name} — ${role}\nTier: ${def.tier}  Hull: ${facts.hull}  Shield: ${facts.shield}\nCargo cap: ${facts.cargo} u  Mass: ${facts.mass}  Speed: ${Math.round(facts.speed)}\nSlots: ${Object.entries(def.slots || {}).map(([k, v]) => k[0].toUpperCase() + ':' + v.length).join(' ')}`;
-  }
-
-  // Update tooltip content on mouseenter; the CSS handles show/hide.
-  for (const stat of center.querySelectorAll('.sf-stat--info')) {
-    stat.addEventListener('mouseenter', () => {
-      const tip = stat.querySelector('.sf-tip');
-      if (!tip) return;
-      const k = tip.dataset.tip;
-      const p = state.entities.get(state.playerId);
-      let text = '';
-      if (k === 'speed') text = buildSpeedTip(p);
-      else if (k === 'throttle') text = buildThrottleTip(p);
-      else if (k === 'cargo') text = buildCargoTip();
-      else if (k === 'credits') text = buildCreditsTip();
-      else if (k === 'weapons') text = buildWeaponsTip(p);
-      else if (k === 'class') text = buildClassTip(p);
-      tip.textContent = text;
-    });
-  }
-
   // ---- bottom-right: target panel + radar ----
   const rightDock = document.createElement('div');
   rightDock.className = 'sf-rightdock';
@@ -2281,28 +1887,17 @@ export function createHud(ctx, alerts) {
   rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
 
-  // J06 The Power Rail. Digit4-8 have fired five real physics verbs for a long time with no HUD
-  // surface at all — clearingCone and skimCollector had zero references anywhere in src/ui/. This
-  // mounts the shelf; powerRail.js owns the band contract, the slot-claim protocol and the
-  // CSS-driven cooldown sweep (no rAF — see check:ui-frame-sleep).
-  const powerRail = createPowerRail({ bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
-  root.appendChild(powerRail.el);
-  // ORRERY (design/frontend/ORRERY.md Phase 1): the one-pivot Cluster owns the bottom-left and the
-  // ordnance. It reads the same sources as the chassis and rail (src/ui/orrery/hudAdapter.js); those
-  // stay mounted and hidden (#hud[data-hud="orrery"]) until the live route is checked, because
-  // their DOM contracts are pinned by tests and the slot-claim protocol still drives the rail.
+  // ORRERY is the sole owner of the bottom-left vitals, speed and ordnance instruments.
   const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null, bus: ctx.bus });
-  // The radar keeps its canvas (contacts, rocks, trails); ORRERY takes its frame (rim, range, Hand).
   if (orreryCluster && radar && typeof radar.setOrreryFrame === 'function') radar.setOrreryFrame(true);
-  // ORRERY hides the leftstack chassis, but the tape's --on class re-shows it through the hidden
-  // parent and it lands on the cluster's ordnance crescent. Re-seat it on #hud so it takes the
-  // cleared bottom-centre band (the data-hud="orrery" rule in injectTravelTapeStyle).
-  if (orreryCluster) root.appendChild(vtape);
-  // The bottom-left occupant the comms strip reserves space for just changed hands.
-  if (orreryCluster) publishClusterReserve();
-  // Prompts borrow the number row rather than racing the rail for it.
-  on('hud:slotClaim', (p) => powerRail.claim(p));
-  on('hud:slotRelease', (p) => powerRail.release(p && p.claimId));
+  if (orreryCluster) {
+    const clusterEl = orreryCluster.host.querySelector('.orr-cluster');
+    if (clusterEl && typeof ResizeObserver === 'function') {
+      clusterSizeObserver = new ResizeObserver(publishClusterReserve);
+      clusterSizeObserver.observe(clusterEl);
+    }
+    publishClusterReserve();
+  }
   // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
   // competing with toasts in the upper-right corner while preserving all presenter state/listeners.
   const existingSectorLaw = document.getElementById('sf-sector-law');
@@ -2468,7 +2063,7 @@ export function createHud(ctx, alerts) {
   };
   const objectiveEdgeRecord = { x: 0, y: 0, edge: 'top', angleRad: 0 };
 
-  // ---- combat HUD: lock-on ring, weapon heat bars, target lock diamond ----
+  // ---- combat HUD: lock-on ring and target lock diamond ----
 
   // Lock-on instrument (SVG near reticle). Shows when a homing weapon is acquiring a lock.
   // ORRERY rebuild: the kit's own lock reticle construction (assets/ui/kit/assets/svg/reticle/
@@ -2619,46 +2214,8 @@ export function createHud(ctx, alerts) {
   const progradeScreenA = { x: 0, y: 0, onScreen: false };
   const progradeScreenB = { x: 0, y: 0, onScreen: false };
   const progradeTransformOptions = { offset: 'translate(-4px,-1px)', rotate: 0 };
-  const weaponHeatScratch = { frac: 0, pct: 0, overheated: false, armed: false };
-  // `motionReduce` is the key prefersReducedMotion actually reads: passing the resolved flag
-  // means the settle springs never reach its classList/matchMedia fallback — one fresh
-  // MediaQueryList per gauge per frame was the cost.
-  const settleMotion = { reducedMotion: false, motionReduce: false, shieldRegenRate: 0, inertia: 0 };
-  const gaugeScaleLimits = { min: -0.04, max: 1.08 };
   const defaultFuel = { current: 100, max: 100 };
   const targetPanelUpdateOptions = { slow: false, weakPoint: null };
-
-  // Per-weapon heat bars. Built once per ship load, updated per frame.
-  const wpnHeatsWrap = document.createElement('div');
-  wpnHeatsWrap.className = 'sf-wpn-heats';
-  wpnHeatsWrap.style.display = 'none';
-  bars.appendChild(wpnHeatsWrap);
-  let wpnHeatEls = []; // [{fill, row, lastHeat}]
-  let wpnHeatShipId = null;
-
-  function rebuildWeaponHeatBars(weapons) {
-    wpnHeatsWrap.innerHTML = '';
-    wpnHeatEls = [];
-    if (!weapons || !weapons.length) { setStyle(wpnHeatsWrap, 'display', 'none'); return; }
-    for (const w of weapons) {
-      const name = (w.name || w.defId || '').replace(/^wpn_/, '').replace(/_/g, ' ');
-      const row = document.createElement('div');
-      row.className = 'sf-wpn-heat';
-      const labelSpan = document.createElement('span');
-      labelSpan.className = 'sf-wpn-heat__label';
-      labelSpan.textContent = name;
-      const bar = document.createElement('div');
-      bar.className = 'sf-wpn-heat__bar';
-      const fill = document.createElement('div');
-      fill.className = 'sf-wpn-heat__fill';
-      bar.appendChild(fill);
-      row.appendChild(labelSpan);
-      row.appendChild(bar);
-      wpnHeatsWrap.appendChild(row);
-      wpnHeatEls.push({ fill, row, lastHeat: -1 });
-    }
-    setStyle(wpnHeatsWrap, 'display', 'flex');
-  }
 
   // Target lock sigil — follows the locked target's screen position. ORRERY rebuild: the three
   // shape variants quote the world-space selection sigil's own class emblems
@@ -4281,35 +3838,15 @@ export function createHud(ctx, alerts) {
   on('ui:toggleCargo', toggleCargoPanel);
   on('ui:closeCargo', closeCargoPanel);
 
-  // Make the CARGO stat tile clickable to open the panel
-  const cargoStat = center.querySelector('[data-k=cargo]');
-  if (cargoStat) {
-    const statTile = cargoStat.closest('.sf-stat');
-    if (statTile) {
-      statTile.style.cursor = 'pointer';
-      statTile.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        toggleCargoPanel();
-      });
-    }
-  }
-
   // Close on ESC when panel focus is inside it; ui/input.js handles the global flight case.
   cargoPanel.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') { ev.stopPropagation(); closeCargoPanel(); }
   });
 
   // ---------------------------------------------------------------------------
-  // Event-driven (rebuild) path — credits / cargo / objectives marked dirty.
+  // Event-driven objective refresh; cargo panels and HUD meta own their own data updates.
   // ---------------------------------------------------------------------------
-  let creditsDirty = true, cargoDirty = true, objDirty = true;
-  on('credits:changed', () => { creditsDirty = true; });
-  on('cargo:changed', () => { cargoDirty = true; });
-  on('ship:statsChanged', () => { cargoDirty = true; });
-  // INF-086: the handling suffix rides the derived refresh, which lands after the
-  // cargo event that caused it — refresh on both so collecting/jettisoning always
-  // repaint the consequence.
-  on('ship:massChanged', () => { cargoDirty = true; });
+  let objDirty = true;
   on('mission:updated', () => { objDirty = true; });
   on('mission:accepted', () => { objDirty = true; });
   on('mission:completed', () => { objDirty = true; });
@@ -4349,13 +3886,11 @@ export function createHud(ctx, alerts) {
   }
 
   // Forced weapon-heat vent (Micro-Loops): when the player's guns peg heatMax, weapons.js locks them
-  // out for ~2s while heat dumps. Flash the heat bars red + raise a top-center alert so the lockout
+  // out for ~2s while heat dumps. Raise a top-center alert so the lockout
   // reads as a rhythm beat ("vent, then resume"), not a dead trigger.
   on('weapons:vent', (p) => {
     if (!p || p.ownerId !== state.playerId) return;
     const venting = p.phase === 'start';
-    wpnHeatsWrap.classList.toggle('venting', venting);
-    if (rowEls.heat) rowEls.heat.classList.toggle('sf-bar--venting', venting);
     if (alerts) {
       if (venting) alerts.raise({ key: 'wpn-vent', sev: 'warn', text: 'WEAPONS VENTING', ttl: 2.3 });
       else alerts.clear('wpn-vent');
@@ -4363,70 +3898,6 @@ export function createHud(ctx, alerts) {
     if (venting) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
   });
 
-  // Credit count-up tween. Instead of snapping the digits to the new value on a credits:changed
-  // event, we ease the displayed number from the previously-shown value toward the target over
-  // CRED_TWEEN seconds. This makes a bounty / sale land as a fast count-up rather than an instant
-  // digit jump — the classic "numbers feel alive" polish. Retargets smoothly if credits change
-  // again mid-tween (animates from whatever is currently displayed).
-  let _credFrom = 0, _credTo = 0, _credT = 1;   // _credT in [0,1]; 1 = at rest at target
-  const CRED_TWEEN = 0.4;                        // seconds
-  function _credCurrent() {
-    // value currently shown (eases _credFrom -> _credTo)
-    if (_credT >= 1) return _credTo;
-    const e = 1 - (1 - _credT) * (1 - _credT);   // ease-out quad
-    return _credFrom + (_credTo - _credFrom) * e;
-  }
-  function refreshCredits() {
-    const target = Math.round((state.player || {}).credits || 0);
-    // Retarget from the value currently displayed (not the old target) so chained changes stay smooth
-    _credFrom = _credCurrent();
-    _credTo = target;
-    _credT = 0;
-    creditsDirty = false;
-    setText(elCredits, formatCount(_credFrom, state));
-    // The stake sits beside the run wallet whenever the wallet speaks (swarm only — it is the
-    // run's difficulty contract, constant for the run's life).
-    if (elStake) {
-      const run = state.run || {};
-      const stakeId = run.ruleset === 'swarm' && run.telemetry ? run.telemetry.swarmStake : null;
-      const stakeLabel = stakeId ? swarmStakeFor(stakeId).label.toLowerCase() : '';
-      elStake.hidden = !stakeLabel;
-      if (stakeLabel) setText(elStake, ` ${stakeLabel}`);
-    }
-    if (_credTo !== _credFrom) {
-      chipShow('credits');   // money moved — surface the chip
-      // Directional pulse: income mint / spend amber. Restart the one-shot CSS animation by
-      // removing classes this frame and adding on the next animation frame — never force a
-      // synchronous layout read to restart the pulse. Quiet settled profile on master tip
-      // attributed ~104 ms self to a single early-flight refreshCredits that forced reflow.
-      const chip = chipEls.credits;
-      if (chip) {
-        const pulse = _credTo > _credFrom ? 'sf-credits--gain' : 'sf-credits--spend';
-        restartCreditsChipPulse(chip, pulse);
-      }
-    }
-  }
-  // Advance the tween on the 10Hz slow tick while a tween is in flight. When at rest this is a no-op.
-  function tickCreditsTween(dt) {
-    if (_credT >= 1) return;
-    _credT = Math.min(1, _credT + (dt || 0.016) / CRED_TWEEN);
-    setText(elCredits, formatCount(_credCurrent(), state));
-  }
-  function refreshCargo() {
-    cargoDirty = false;
-    const c = (state.player || {}).cargo || {};
-    const used = Math.round(c.usedVolume || 0);
-    const cap = Math.round(c.capVolume || 40);
-    // INF-086: the chip keeps volume (the only capacity) and appends the live handling
-    // consequence when the load actually bends the ship. Collecting heavy cargo grows
-    // the suffix; jettisoning shrinks it; feathers never earn one.
-    const p = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    const note = cargoHandlingNote(p && p.data && p.data.derived);
-    const label = note ? `${used} / ${cap} u · ${note.text}` : `${used} / ${cap} u`;
-    if (elCargo && elCargo.textContent !== label) chipShow('cargo');   // hold changed — surface it
-    setText(elCargo, label);
-    setClass(elCargo, 'sf-warn', cap > 0 && used >= cap);
-  }
   let lastObjectivesSig = '';
   function refreshObjectives() {
     objDirty = false;
@@ -4440,7 +3911,7 @@ export function createHud(ctx, alerts) {
   }
 
   // ---------------------------------------------------------------------------
-  // Combat HUD update — lock ring + weapon heat bars + target lock diamond
+  // Combat HUD update — lock ring + target lock diamond
   // ---------------------------------------------------------------------------
   function updateCombatHud(p, slow, overlayTick) {
     if (!p) {
@@ -4450,7 +3921,6 @@ export function createHud(ctx, alerts) {
       setClass(lockDiamond, 'visible', false);
       setDisplay(targetEdge, false);
       setClass(leadPip, 'visible', false);
-      setStyle(wpnHeatsWrap, 'display', 'none');
       updateGravityMarkOverlays(null);
       updateMomentumSinkOverlays(null);
       threatHalo.update(null, null, null);
@@ -4459,7 +3929,6 @@ export function createHud(ctx, alerts) {
 
     const combat = p.data && p.data.combat;
     const weapons = p.data && p.data.weapons;
-    const hasWeapons = weapons && weapons.length > 0;
 
     // ---- Lock-on progress ring ----
     // Show when the player has a lock-requiring weapon and is building/holding a lock.
@@ -4533,33 +4002,6 @@ export function createHud(ctx, alerts) {
       if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
     }
     _wasLocked = isLocked;
-
-    // ---- Per-weapon heat bars ----
-    // Rebuild the weapon heat bar DOM when the ship or weapon loadout changes.
-    if (hasWeapons) {
-      const shipEntityId = p.id;
-      if (wpnHeatShipId !== shipEntityId || wpnHeatEls.length !== weapons.length) {
-        wpnHeatShipId = shipEntityId;
-        rebuildWeaponHeatBars(weapons);
-      }
-      // Update fills every frame (cheap transforms only).
-      for (let i = 0; i < weapons.length; i++) {
-        const w = weapons[i];
-        const el = wpnHeatEls[i];
-        if (!el) continue;
-        const hMax = w.heatMax != null ? w.heatMax : 100;
-        const hCur = w._heat || 0;
-        const frac = hMax > 0 ? clamp01(hCur / hMax) : 0;
-        setScaleX(el.fill, frac);
-        const overheated = hCur >= hMax && hMax > 0;
-        setClass(el.row, 'overheated', overheated);
-      }
-      // Aggregate weapon heat already lives in the condition panel. Individual bars earn the extra
-      // row only on a multi-weapon fit, where the player can act on the difference between guns.
-      setStyle(wpnHeatsWrap, 'display', weapons.length > 1 ? 'flex' : 'none');
-    } else {
-      setStyle(wpnHeatsWrap, 'display', 'none');
-    }
 
     // ---- Target lock diamond (world-space overlay on locked/selected target) ----
     const tid = (state.player || {}).targetId;
@@ -4652,7 +4094,6 @@ export function createHud(ctx, alerts) {
   // 60Hz cheap path
   // ---------------------------------------------------------------------------
   let lowShieldActive = false, lowHullActive = false, lowFuelActive = false, fuelWarnArmed = false;
-  let lastDefId = null;
   let elReticle = null;
   let cachedNavStationId = null;
   let cachedNavEntity = null;
@@ -5075,11 +4516,6 @@ export function createHud(ctx, alerts) {
     nearbyHostile = _threatNearLatch;
     const threatState = nearbyHostile ? 'near' : (hostileContacts ? 'contact' : 'clear');
     setAttr(root, 'data-threat', threatState);
-    let nearestHostile = Infinity;
-    for (const c of contacts) if (c.hostile && c.dist < nearestHostile) nearestHostile = c.dist;
-    threatReadout.state = threatState;
-    threatReadout.count = hostileContacts;
-    threatReadout.nearest = nearestHostile;
     // Threat bearings: a red arc on the ring around the ship points at each near hostile. The chase
     // view has a fixed orientation (tacticalMapGrammar projectRadarPoint: a world offset dx,dz
     // lies on screen toward -dx,-dz), so bearing needs no per-contact screen projection.
@@ -5421,6 +4857,9 @@ export function createHud(ctx, alerts) {
           : reason ? reason.replace(/_/g, ' ').toUpperCase() : '';
       }
       else if (nearCeiling) note = 'AT CEILING';
+      // INST-35: speed the pilot earned (above the thruster cap) reads differently from speed
+      // the thrusters bought — a text mark on the existing note, never a second gauge.
+      if (buildVelocityReadout(p, profile).earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
     }
@@ -5558,10 +4997,6 @@ export function createHud(ctx, alerts) {
       setLagTranslate(reticleInner, opticalGLag.x, opticalGLag.y);
     }
 
-    // J06: gated on the slow clock, and `update` is a no-op when the slot signature is unchanged.
-    // The cooldown sweep is a CSS animation, so a cooling slot needs no per-frame work either —
-    // the rail genuinely stops costing anything once the numbers settle.
-    if (slow) powerRail.update(readRailModel(state, state.simTime || 0), Date.now());
     // ORRERY Cluster: ordnance on the slow clock, speed/drift every frame; its own change detection
     // means a settled frame writes nothing.
     if (orreryCluster) orreryCluster.update(state, p, slow);
@@ -5569,104 +5004,13 @@ export function createHud(ctx, alerts) {
     // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
     if (slow) forkInstrument.update(state);
 
-    // --- integrity + arcs + micro-bars (existing frame owner; no independent animation loop) ---
-    if (!p) updateShipCondition(schematic, null, frameDt, getMotionReduced(), getFlashReduced());
+    // Safety alerts stay live independently of the visual instrument owner.
     if (p) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
-      const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
-      const wpnHeat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
-      const heatFrac = wpnHeat.frac;
-      settleMotion.reducedMotion = getMotionReduced();
-      settleMotion.motionReduce = isMotionReduced;
-      settleMotion.shieldRegenRate = p.shieldRegenRate;
-      settleMotion.inertia = p.flightModel && p.flightModel.inertia;
-      // A gauge never boots empty: the settle springs start at 0 and used to climb for seconds
-      // while the number beside them already read the true value ("DRIVE 100 ▸" over one lit
-      // segment). The first read of the ship primes every spring at its true value; the springs
-      // then only animate real changes.
-      if (!gaugesPrimed) {
-        gaugesPrimed = true;
-        energySettle.snap(capFrac);
-        heatSettle.snap(wpnHeat.frac);
-        fuelSettle.snap((state.fuel || defaultFuel).max > 0 ? clamp01((state.fuel || defaultFuel).current / (state.fuel || defaultFuel).max) : 1);
-        if (p.boost && p.boost.max > 0) boostSettle.snap(clamp01(p.boost.energy / p.boost.max));
-      }
-      const capVisual = energySettle.step(capFrac, frameDt, settleMotion);
-      const heatVisual = heatSettle.step(heatFrac, frameDt, settleMotion);
       const fuelState = state.fuel || defaultFuel;
       const fuelFrac = fuelState.max > 0 ? clamp01(fuelState.current / fuelState.max) : 1;
-      const fuelVisual = fuelSettle.step(fuelFrac, frameDt, settleMotion);
-
-      updateShipCondition(schematic, p, frameDt, getMotionReduced(), getFlashReduced());
-
-      setScaleX(fillEls.energy, capVisual, gaugeScaleLimits);
-      setScaleX(fillEls.heat, heatVisual, gaugeScaleLimits);
-      if (fillEls.fuel) setScaleX(fillEls.fuel, fuelVisual, gaugeScaleLimits);
-      setKitBar(barEls.energy, capVisual, capFrac < 0.2 ? 'hot' : 'on');
-      setKitBar(barEls.heat, heatVisual, wpnHeat.overheated ? 'hot' : 'on');
-      if (barEls.fuel) setKitBar(barEls.fuel, fuelVisual, fuelFrac < 0.25 ? 'hot' : 'on');
-      // The arc gauges read the same settled values the pinned fill drivers just stored.
-      if (vitalArcs.energy) vitalArcs.energy.set(capVisual, VITAL_ARC_SET);
-      if (vitalArcs.heat) vitalArcs.heat.set(heatVisual, VITAL_ARC_SET);
-      if (vitalArcs.fuel) vitalArcs.fuel.set(fuelVisual, VITAL_ARC_SET);
-
-      // Phase 3 boost micro-bar: energy fraction; the row is hidden entirely if the ship can't boost.
-      // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
-      const boost = p.boost;
-      const boostRow = rowEls.boost;
-      if (boost && boost.max > 0 && boostRow) {
-        setStyle(boostRow, 'display', '');
-        const bf = clamp01(boost.energy / boost.max);
-        const boostVisual = boostSettle.step(bf, frameDt, settleMotion);
-        setScaleX(fillEls.boost, boostVisual, gaugeScaleLimits);
-        const dashCost = Number.isFinite(boost.dashCost) ? boost.dashCost : 28;
-        const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= dashCost;
-        setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--ready', dashReady);
-        // Third consumer of the same gauge (W1-4). CAVEAT, stated rather than implied: the burn is
-        // currently shown on this pool but does not yet SPEND from it — a travel-drive energy
-        // demand would have to be produced as `resourceDelta` by the propulsion kernel, which this
-        // packet does not own. So this marks the gauge the burn belongs to; it is not yet a drain.
-        const burning = !!(travelFlag('travelBurn') && state.input && state.input.travelDrive
-          && state.input.travelDrive.state === 'engaged');
-        setKitBar(barEls.boost, boostVisual, burning ? 'hot' : 'on');
-        if (vitalArcs.boost) vitalArcs.boost.set(boostVisual, VITAL_ARC_SET);
-        setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--burn', burning);
-        if (slow) setText(numEls.boost, Math.round(bf * 100) + (burning ? ' ⟫' : (dashReady ? ' ▸' : '%')));
-      } else if (boostRow) {
-        boostSettle.snap(0);
-        setStyle(boostRow, 'display', 'none');   // no boost capacity (e.g. a stripped hull) — hide the row
-      }
-
-      const heatRow = rowEls.heat;
-      if (heatRow) {
-        if (wpnHeat.armed && (heatFrac > 0.06 || wpnHeat.overheated)) {
-          _heatRowShown = true;
-          _heatRowRetireAt = 0;
-        } else if (_heatRowShown && !_heatRowRetireAt && heatFrac < 0.02) {
-          _heatRowRetireAt = performance.now() + 1500;
-        } else if (_heatRowShown && _heatRowRetireAt && heatFrac >= 0.02) {
-          _heatRowRetireAt = 0;   // climbed back into the band before the dwell elapsed — keep it
-        }
-        if (_heatRowRetireAt && performance.now() >= _heatRowRetireAt) {
-          _heatRowShown = false;
-          _heatRowRetireAt = 0;
-        }
-        setStyle(heatRow, 'display', _heatRowShown ? '' : 'none');
-        setClass(barEls.heat, 'sf-bar--overheated', wpnHeat.overheated);
-      }
-      setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
-
-      // contextual low alerts via alerts module
       syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac);
-
-      if (slow) {
-        setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
-        setText(numEls.heat, wpnHeat.pct + '%');
-        // Phase 4 fuel gauge: low fuel flashes a warning.
-        if (numEls.fuel) setText(numEls.fuel, Math.round(fuelFrac * 100) + '%');
-        if (rowEls.fuel) setClass(rowEls.fuel, 'sf-fuel--low', fuelFrac < 0.25);
-      }
 
       // FR-1: prograde tick — where inertia is carrying us, projected each frame. Fades below
       // 2 wu/s so a stationary ship shows nothing (never animates at rest).
@@ -5707,18 +5051,6 @@ export function createHud(ctx, alerts) {
 
     updateTravelTape(p, frameDt, slow);
 
-    // --- speed (numerics @10Hz) — THR/STOP live in the SPD hover tip now (HUD 2.0) ---
-    if (p) {
-      const vx = p.vel && Number.isFinite(p.vel.x) ? p.vel.x : 0;
-      const vz = p.vel && Number.isFinite(p.vel.z) ? p.vel.z : 0;
-      const sp = Math.hypot(vx, vz);
-      // FB-008 — the 100% mark is the governed combat speed the kernel holds, not the
-      // legacy derived maxSpeed. Earned momentum above that cap stays on the band
-      // (data-overspeed) and does not move the mark.
-      const governed = resolveGovernedCombatSpeed(p, state, p.maxSpeed || 1);
-      setKitGauge(speedGaugeEl, sp, Math.max(1, governed || 1));
-      if (slow) setText(elSpeed, Math.round(sp) + '');
-    }
     if (slow && p) {
       // Tether readout: status + target while latched. Control chips paint separately so the
       // instrument value never becomes a rebind encyclopedia that overflows the deck.
@@ -5730,63 +5062,8 @@ export function createHud(ctx, alerts) {
       if (document.body && document.body.dataset) {
         setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether));
       }
-      setClass(commandDeck, 'sf-command-deck--latch', latching);
-      setHidden(masslineInstrument, !latching);
-      if (latching && ml) {
-        if (mlFill) setStyle(mlFill, 'transform', `scaleX(${ml.load.toFixed(3)})`);
-        if (mlLen) setText(mlLen, Math.round(ml.length) + 'u');
-        setHidden(mlRel, !ml.releaseOpen);
-        if (elTetherStat) {
-          const tetherStatus = masslineTetherStatus(tether);
-          setStyle(elTetherStat, 'display', '');
-          // Word dwell: a line load riding the LOADED/HIGH LOAD boundary flipped the status word
-          // (and with it the centered cluster's width) every slow tick. A new word must survive
-          // 500 ms before it is believed; a warn edge is honoured immediately.
-          const warnRose = tetherStatus.warn && !_tetherWarn;
-          if ((tetherStatus.text !== _tetherText || warnRose)
-            && (warnRose || performance.now() - _tetherTextAt > 500)) {
-            _tetherText = tetherStatus.text;
-            _tetherTextAt = performance.now();
-            setText(elTether, tetherStatus.text);
-          }
-          setClass(elTether, 'sf-warn', tetherStatus.warn);
-          _tetherWarn = tetherStatus.warn;
-          // While a line is attached the live movement/boost bindings reel, pay out, orbit and pump.
-          if (elTetherKeys) {
-            const glyph = (action) => formatBindingCode(resolveActionCodes(state, action)[0]);
-            const fwd = glyph('forward');
-            const rev = glyph('reverse');
-            const left = glyph('yawLeft');
-            const right = glyph('yawRight');
-            const orbit = left && right
-              ? (left.length <= 1 && right.length <= 1 ? `${left}${right}` : `${left}/${right}`)
-              : (left || right);
-            const boostCodes = resolveActionCodes(state, 'boost');
-            const pump = !boostCodes.length
-              ? ''
-              : (boostCodes.every((c) => String(c).startsWith('Shift'))
-                ? 'SHIFT'
-                : resolveActionLabel(state, 'boost').toUpperCase());
-            const parts = [];
-            if (fwd) parts.push(`${fwd} REEL`);
-            if (rev) parts.push(`${rev} PAY OUT`);
-            if (orbit) parts.push(`${orbit} ORBIT`);
-            if (pump) parts.push(`${pump} PUMP`);
-            setText(elTetherKeys, parts.join(' · '));
-            setHidden(elTetherKeys, false);
-          }
-        }
-      } else if (elTetherStat) {
-        setStyle(elTetherStat, 'display', 'none');
-        setHidden(elTetherKeys, true);
-      }
-      updateFireControl(p, tether, latching, ml);
-      const ws = p.data && p.data.weapons;
-      const nGuns = ws ? ws.length : 0;
+      updateTetherFeedback(tether, latching, ml);
       const auto = !!(state.input && state.input.autoFire);
-      const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
-      setText(elWeapons, primary + (auto ? ' · AUTO-TARGET' : ''));
-      setClass(elWeapons, 'sf-warn', auto);
       if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
       // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
@@ -5800,21 +5077,6 @@ export function createHud(ctx, alerts) {
             suffix: ` scale(${bloomScale})`,
             plain: `scale(${bloomScale})`,
           });
-        }
-      }
-      // Class/archetype label: surfaces the ship's role + drive family so the player feels the
-      // archetype and propulsion switch when they buy a new hull. Updates cheaply each slow tick.
-      const defId = p.data && p.data.defId;
-      if (defId !== lastDefId) {
-        const isFirst = lastDefId === undefined;
-        lastDefId = defId;
-        const def = SHIP_BY_ID.get(defId);
-        if (def) {
-          const drive = driveFamilyFor(def);
-          setText(elRole, def.name + ' · ' + (ROLE_LABEL[def.role] || def.role || 'Ship') + (drive ? ' · ' + drive : ''));
-          if (!isFirst) chipShow('role', 6000);   // new hull — worth a moment on screen
-        } else {
-          setText(elRole, '—');
         }
       }
     }
@@ -5851,12 +5113,7 @@ export function createHud(ctx, alerts) {
       }
     }
 
-    // --- credits / cargo / objectives (event-driven, applied lazily) ---
-    if (creditsDirty) refreshCredits();
-    if (cargoDirty) refreshCargo();
     if (objDirty) refreshObjectives();
-    // advance the credit count-up tween (no-op when at rest)
-    if (slow) tickCreditsTween(numericDt || frameDt);
 
     // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
     if (targetTick) {
@@ -5884,7 +5141,7 @@ export function createHud(ctx, alerts) {
       }
     }
 
-    // --- combat HUD: lock ring, weapon heat bars, target diamond (every frame for heat reactivity) ---
+    // --- combat HUD: lock ring and target diamond ---
     updateCombatHud(p, slow, overlayTick);
 
     // --- world-space DOM overlays: batch transform/opacity writes ---
@@ -6130,8 +5387,7 @@ export function createHud(ctx, alerts) {
   function objectiveEdgeObstacles() {
     if (!objectiveEdgeBoxes.stale) return objectiveEdgeBoxes;
     objectiveEdgeBoxes.stale = false;
-    // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
-    objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
+    objectiveEdgeBoxes.left = null;
     objectiveEdgeBoxes.right = plateBox(rightDock);
     const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
     objectiveEdgeBoxes.orreryEl = orreryEl;
@@ -6155,10 +5411,7 @@ export function createHud(ctx, alerts) {
     setStyle(laneRoot, 'left', `${Math.round(lane.x)}px`);
     setStyle(laneRoot, 'top', 'auto');
     setStyle(laneRoot, 'width', `${Math.round(lane.width)}px`);
-    // Bottom-anchored: the stack must clear the command-deck readout band (see
-    // receiptLaneRect) and grow upward, never down into the speed/weapon row.
-    // The inset clears the old command-deck band; with ORRERY on that band is hidden and the
-    // bottom-left instrument ends left of the lane, so the receipts sit low on the bottom edge.
+    // The bottom-left Cluster ends left of this lane, so receipts grow upward from the edge.
     setStyle(laneRoot, 'bottom', `${Math.round(orreryCluster ? ORRERY_RECEIPT_INSET : lane.bottomInset)}px`);
     setStyle(laneRoot, 'right', 'auto');
     setStyle(laneRoot, 'transform', 'none');
@@ -6178,28 +5431,14 @@ export function createHud(ctx, alerts) {
     setStyle(el, 'transform', 'none');
   }
 
-  // Owner, 2026-09-22, on the live HUD: "there's overlapping text". G12 pinned the speed readout
-  // and the weapon name to fixed boxes centred on the bottom band -- exactly where the ordnance rail
-  // lives -- and its check only kept the three readouts off EACH OTHER, never off the rail. Both
-  // readouts are seated in the cluster chassis now (its flex layout keeps them apart), so only the
-  // dock prompt keeps a computed box; any fixed placement G12 left on the other two is cleared.
+  // Only the dock prompt needs a computed box; the Cluster owns its instrument layout.
   function placeFlightReadouts(w, h) {
     const boxes = flightInstrumentRects(w, h);
-    unplaceFlightBox(speedGaugeEl);
-    unplaceFlightBox(elWpnstat);
     if (alertsEl === null) alertsEl = document.getElementById('alerts');
     // The dock alert is created/removed by alerts.js — a query must run each slow tick, but
     // scoped to the small #alerts subtree instead of a document-wide selector match.
     const dock = alertsEl ? alertsEl.querySelector('.sf-alert--dock') : null;
     if (dock) placeFlightBox(dock, boxes.dockPrompt);
-  }
-
-  function unplaceFlightBox(el) {
-    if (!el || !el.style || el.style.position !== 'fixed') return;
-    if (el.classList && el.classList.contains('sf-hud-positioned')) return; // a player's own drag
-    for (const prop of ['position', 'left', 'top', 'width', 'height', 'margin', 'right', 'bottom', 'transform']) {
-      el.style.removeProperty(prop);
-    }
   }
 
   function updateFirstUseHint(player) {
@@ -6269,14 +5508,11 @@ export function createHud(ctx, alerts) {
   }
 
   function forceRefresh() {
-    creditsDirty = true;
-    cargoDirty = true;
     objDirty = true;
     forceHudClock(numericClock);
     forceHudClock(targetClock);
     forceHudClock(overlayClock);
     forceHudClock(radarClock);
-    lastDefId = null;
     lastNavDist = '';
     lastNavEta = '';
     if (radar.invalidate) radar.invalidate();
@@ -6291,9 +5527,8 @@ export function createHud(ctx, alerts) {
     for (const t of arriveTimers) clearTimeout(t);
     arriveTimers = [];
     const steps = [
-      [leftStack, 'bottom'],
+      [orreryCluster && orreryCluster.host, 'bottom'],
       [leftContext, 'left'],
-      [powerRail.el, 'bottom'],
       [rightDock, 'right'],
     ];
     if (kitReducedMotion()) {
@@ -6312,7 +5547,7 @@ export function createHud(ctx, alerts) {
   refreshLeftContextClasses();
 
   return {
-    frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives, arrive,
+    frame, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
     getGLocVignetteOpacity: () => Number(glocVignette ? glocVignette.style.opacity || 0 : 0),
     triggerElectronicDisruption,
@@ -6332,7 +5567,6 @@ export function createHud(ctx, alerts) {
       }
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       clearCargoGaugeSettle(cargoGaugeSettle.risk);
-      powerRail.destroy();
       if (radar && typeof radar.destroy === 'function') radar.destroy();
       if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();
       if (hudMeta && typeof hudMeta.destroy === 'function') hudMeta.destroy();

@@ -67,12 +67,20 @@ const HELIOS_APPROACH_TIMEOUT_MS = readPositiveIntArg('--helios-approach-timeout
 // acceptance run 120 ms early, before a single asset had been examined. The default is unchanged,
 // so CI behaves exactly as before.
 const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 45000);
+const CDP_REQUEST_TIMEOUT_MS = 45000;
+// The live loader deduplicates by URL+slot and already bounds worker decode concurrency through
+// its shared budget. Probe independent optional catalog entries in small batches so the passive
+// inventory does not spend the whole absolute report deadline serializing 119 admissions.
+const AUTHORED_CATALOG_CONCURRENCY = 4;
+const FAILURE_DIAGNOSTICS_TIMEOUT_MS = 10000;
 const CHROME_PROFILE_PREFIX = 'spaceface-authored-assets-live-';
 const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'src/render/partsLibrary.js',
   'src/render/renderer.js',
   'src/render/assetLoader.js',
   'src/render/renderPackageManifest.js',
+  'src/render/rigidOpaqueBatchPolicy.js',
+  'src/render/materialBatchKey.js',
   'assets/ships/render-packages/pilots.json',
   'scripts/probe-authored-assets-live.mjs',
 ]);
@@ -106,20 +114,31 @@ assert.deepEqual(candidate.worktreeStatus, [],
 let server = null;
 let chrome = null;
 let ws = null;
+let cdp = null;
 let debugPort = null;
 let output = null;
 let runError = null;
 let cleanupProof = null;
+let stage = 'server readiness';
+let failureStage = null;
+const enterStage = (label, timeoutMs) => {
+  stage = label;
+  console.log(`[authored-assets] ${label}`);
+  cdp?.setStage(label, timeoutMs);
+};
 const profileDir = mkdtempSync(join(tmpdir(), CHROME_PROFILE_PREFIX));
 
 try {
+  enterStage('server readiness');
   server = await startFreshServer();
   await server.ready;
   debugPort = await findFreePort(9801);
+  enterStage('Chrome launch and CDP connection');
   chrome = await spawnChrome(debugPort, profileDir);
-  const cdp = await connectCdp(debugPort);
+  cdp = await connectCdp(debugPort);
   ws = cdp.ws;
 
+  enterStage('CDP setup');
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
   await cdp.send('Log.enable');
@@ -129,13 +148,16 @@ try {
 
   const pageIssues = collectPageIssues(cdp);
   const probeRoute = withDebugFlight(server.baseUrl);
+  enterStage('page navigation');
   await cdp.send('Page.navigate', { url: probeRoute });
+  enterStage('debug runtime boot', BOOT_READY_TIMEOUT_MS);
   try {
     await waitFor(cdp, isBootReady, BOOT_READY_TIMEOUT_MS, 'SpaceFace debug runtime');
   } catch (err) {
     const issues = pageIssues ? pageIssues.errorIssues() : [];
     throw new Error(`${err.message}; pageIssues=${JSON.stringify(issues)}`);
   }
+  enterStage('startup trace and seeded game intent');
   await installStartupTrace(cdp);
 
   await evalVoid(cdp, `(() => {
@@ -144,8 +166,10 @@ try {
   })()`);
   let playable;
   try {
+    enterStage('seeded flight session', PLAYABLE_TIMEOUT_MS);
     playable = await waitFor(cdp, isPlayable, PLAYABLE_TIMEOUT_MS, 'seeded flight session');
   } catch (error) {
+    enterStage('startup failure diagnostics', FAILURE_DIAGNOSTICS_TIMEOUT_MS);
     const startupReport = await collectAuthoredReport(cdp).catch((reportError) => ({
       error: reportError && reportError.message ? reportError.message : String(reportError),
     }));
@@ -156,6 +180,7 @@ try {
   }
   const startTick = playable.tick;
 
+  enterStage('authored ship admission');
   const report = await waitForAuthoredShips(cdp);
   // The starting hub is the only station that blocks flight readiness (`flightReadySet.js`:
   // `selectPlacePackageLayer` -> GAMEPLAY_SHELL, and `isPlaceLayerBlockingFlightReady` blocks on
@@ -166,6 +191,7 @@ try {
   //
   // This does not relax the bar: the assertion below still requires `authored`. It only stops the
   // probe from reading the clock before the work it is measuring can have happened.
+  enterStage('critical station admission', CRITICAL_STATION_TIMEOUT_MS);
   const stationDeadline = await waitForAuthoredAssetDeadline({
     timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
     pollIntervalMs: 100,
@@ -176,6 +202,7 @@ try {
     // catch. On a route where the hubs are out of reach this returns on the first poll.
     isReady: (snapshot) => !!(snapshot && Array.isArray(snapshot.criticalStations)
       && snapshot.criticalStations.length > 0
+      && snapshot.presentationUnknownCount === 0
       && snapshot.criticalStations.every((station) => (
         !station.presented || station.assetState === 'authored'
       ))),
@@ -192,8 +219,10 @@ try {
   if (stationSnapshot && Array.isArray(stationSnapshot.criticalStations)) {
     report.criticalStations = stationSnapshot.criticalStations;
   }
+  enterStage('advancing gameplay ticks', 10000);
   await waitFor(cdp, () => getTick(cdp, startTick + 2), 10000, 'advancing gameplay ticks');
 
+  enterStage('spawn screenshot and browser identity');
   await captureScreenshot(cdp, SHOT);
   const browserIdentity = await collectBrowserIdentity(cdp);
 
@@ -202,6 +231,7 @@ try {
   const badFlightSnapshots = startupTrace.filter((entry) => entry.mode === 'flight' && (
     entry.playerState !== 'authored'
     || entry.nonAuthored !== 0
+    || entry.presentationUnknownCount !== 0
     || entry.criticalStations.some((station) => station.presented && station.assetState !== 'authored')
   ));
   assert.equal(report.mode, 'flight', 'live probe should be in playable flight mode');
@@ -255,15 +285,18 @@ try {
   // Moving the player by pose is sanctioned rather than a write the sim undoes:
   // `_maybeResyncBodyPose` in `src/core/sg02DynamicBodyOwner.js` re-seats the Rapier body from
   // `entity.pos` whenever the two diverge beyond `POSE_RESYNC_EPS2`.
+  enterStage('Helios approach pose');
   const approach = await approachCriticalStation(cdp, 'station_helios', HELIOS_APPROACH_STANDOFF_WU);
   assert.equal(approach.moved, true,
     `probe could not bring the player within streaming reach of Helios: ${JSON.stringify(approach)}`);
+  enterStage('Helios approach admission', HELIOS_APPROACH_TIMEOUT_MS);
   const approachDeadline = await waitForAuthoredAssetDeadline({
     timeoutMs: HELIOS_APPROACH_TIMEOUT_MS,
     pollIntervalMs: 100,
     onPoll: () => forceShipRender(cdp),
     sample: () => collectCriticalStationSnapshot(cdp),
     isReady: (snapshot) => !!(snapshot && Array.isArray(snapshot.criticalStations)
+      && snapshot.presentationUnknownCount === 0
       && snapshot.criticalStations.some((station) => (
         station.stationId === 'station_helios' && station.assetState === 'authored'
       ))),
@@ -279,6 +312,7 @@ try {
     approach,
     snapshot: approachSnapshot,
   };
+  enterStage('Helios approach screenshot');
   await captureScreenshot(cdp, APPROACH_SHOT);
   assert.ok(approachDeadline.passed,
     `Helios must finish authored admission once the player is inside ${HELIOS_APPROACH_STANDOFF_WU} WU: ${JSON.stringify(report.criticalStationApproach, null, 2)}`);
@@ -308,14 +342,14 @@ try {
     'all visibly presented live ships should include a main hull/body-sized authored surface');
   assert.deepEqual(report.ships.filter((ship) => ship.presented && ship.state === 'authored' && ship.mode !== 'release').map(summarizeShip), [],
     'all visibly presented authored ships should use release asset mode');
-  // A non-presented ship may legitimately be in EITHER state. 'awaiting-authored-admission' is
-  // the one on its way in; 'authored' is one that has fully admitted its authored asset and is
-  // simply outside the spatial runway. Treating the second as a fallback identity had it
-  // backwards -- 'authored' is the state this whole probe exists to require, and ship_atlas was
-  // failing the gate for being in it while off camera. What must never appear here is an actual
-  // fallback: a procedural or placeholder identity standing in for an authored hull.
-  assert.deepEqual(report.ships.filter((ship) => !ship.presented && ship.state !== 'awaiting-authored-admission' && ship.state !== 'authored').map(summarizeShip), [],
+  // Off-camera roots may await, run, or retire an admission as their runway relevance changes.
+  // A lifecycle cancellation is not a substituted hull; terminal content fallback stays a failure.
+  assert.deepEqual(report.ships.filter((ship) => !ship.presented
+    && !['awaiting-authored-admission', 'authored', 'loading', 'compiling-pipelines',
+      'cancelled-before-load', 'orphaned-before-swap', 'orphaned-after-pipeline-compile'].includes(ship.state)).map(summarizeShip), [],
     'non-presented ship boundaries may wait for spatial admission but must not expose a fallback identity');
+  assert.equal(report.presentationUnknownCount, 0,
+    `live camera geometry must be measurable: ${JSON.stringify(report.presentationUnknownReasons)}`);
   assert.equal(report.loaderDiagnostics.available, true,
     `authored asset runtime diagnostics should be available: ${JSON.stringify(report.loaderDiagnostics)}`);
   assert.equal(report.loaderDiagnostics.release, true, 'live asset probe should exercise default release mode');
@@ -331,19 +365,26 @@ try {
     'authored opaque GLB primitives should be wired into scene static batches or instance pools');
   assert.ok(report.instancePoolLiveCount + report.staticBatchCount > 0,
     'scene should contain live authored GLB static batches or pooled instances');
-  assert.ok(report.repeatedPackageShipPoolKeys.length > 0,
-    `a real Wasp/freighter package surface should share one pool across at least two authored roots: ${JSON.stringify(report.packageShipPoolRoots)}`);
-  const repeatedPackagePoolProof = assessRepeatedAuthoredPackagePoolProof(report);
-  assert.equal(repeatedPackagePoolProof.pass, true,
-    `two frequent authored roots must own distinct live slots in one exact package pool chunk: ${JSON.stringify(repeatedPackagePoolProof, null, 2)}`);
+  const packagePoolApplicability = assessAuthoredPackagePoolApplicability(report);
+  assert.equal(packagePoolApplicability.pass, true,
+    `package pooling eligibility must be measured: ${JSON.stringify(packagePoolApplicability)}`);
+  const repeatedPackagePoolProof = packagePoolApplicability.status === 'required'
+    ? assessRepeatedAuthoredPackagePoolProof(report, { compatibleCandidates: packagePoolApplicability.compatibleCandidates })
+    : { pass: null, status: 'not-applicable', reason: packagePoolApplicability.reason,
+      representation: 'authored body proof required; retained rigid sharing not assessed' };
+  if (packagePoolApplicability.status === 'required') {
+    assert.ok(report.repeatedPackageShipPoolKeys.length > 0,
+      `eligible repeated package surfaces must share a real pool: ${JSON.stringify(report.packageShipPoolRoots)}`);
+    assert.equal(repeatedPackagePoolProof.pass, true,
+      `two frequent authored roots must own distinct live slots in one exact package pool chunk: ${JSON.stringify(repeatedPackagePoolProof, null, 2)}`);
+  }
   assert.deepEqual(report.ships.filter((ship) => (
     ship.packageInstancePoolKeys.length > 0 && !ship.packagePoolTextureResidency.allResident
   )).map(summarizeShip), [],
   'package pool proxies must retain the exact materials whose textures completed GPU residency');
   assert.equal(report.loaderDiagnostics.failureCount, 0,
     `all declared authored GLB parts should pass the live runtime loader: ${JSON.stringify(report.loaderDiagnostics.failures || [])}`);
-  assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentJobs <= 4,
-    `authored composition admission must stay bounded: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
+  assertAuthoredAdmissionSlotBound(report.authoredUpgradeDiagnostics);
   assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentDecode <= 1,
     `authored asset decode admission must remain serial: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
   assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.peakActivePlannedBytes < 3 * 1024 * 1024 * 1024,
@@ -370,6 +411,7 @@ try {
     instancePoolCount: report.instancePoolCount,
     instancePoolLiveCount: report.instancePoolLiveCount,
     packageShipPoolRoots: report.packageShipPoolRoots,
+    packagePoolApplicability,
     repeatedPackageShipPoolKeys: report.repeatedPackageShipPoolKeys,
     repeatedPackagePoolProof,
     staticBatchCount: report.staticBatchCount,
@@ -393,7 +435,13 @@ try {
   };
 } catch (error) {
   runError = error;
+  failureStage = cdp?.stage || stage;
+  if (error?.authoredShipDiagnostics) {
+    console.error(`[authored-assets] retained ship diagnostics ${JSON.stringify(error.authoredShipDiagnostics)}`);
+  }
 } finally {
+  enterStage('owned runtime cleanup');
+  cdp?.dispose();
   cleanupProof = await closeOwnedAuthoredProbeRuntime({
     ws,
     chrome,
@@ -426,12 +474,14 @@ if (runError || cleanupError || candidateError) {
   const errors = [runError, cleanupError, candidateError].filter(Boolean);
   const failure = {
     status: 'FAIL',
+    stage: failureStage,
     candidate,
     route: output && output.route || null,
     cleanup: cleanupProof,
     errors: errors.map((error) => ({
       name: error && error.name || 'Error',
       message: error && error.message || String(error),
+      ...(error?.authoredShipDiagnostics ? { authoredShipDiagnostics: error.authoredShipDiagnostics } : {}),
     })),
   };
   const renderedFailure = JSON.stringify(failure, null, 2);
@@ -522,6 +572,10 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
   const proofs = [];
   for (const group of groups.values()) {
     if (group.roots.size < 2 || group.tokens.size < 2) continue;
+    if (options.compatibleCandidates && !options.compatibleCandidates.some(candidate => (
+      candidate.poolKey === group.key
+        && candidate.rootIds.filter(id => group.roots.has(id)).length >= 2
+    ))) continue;
     proofs.push({
       key: group.key,
       chunk: group.chunk,
@@ -539,6 +593,207 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
   proofs.sort((a, b) => exactPoolIdentity(a.key, a.chunk).localeCompare(exactPoolIdentity(b.key, b.chunk)));
   if (!proofs.length) failures.push({ reason: 'no-two-root-two-slot-exact-package-pool-proof' });
   return { pass: proofs.length > 0, matrixEpsilon, proofs, failures };
+}
+
+export function assertAuthoredAdmissionSlotBound(diagnostics) {
+  assert.ok(diagnostics && Number.isSafeInteger(diagnostics.maxConcurrentAdmissionSlots)
+    && diagnostics.maxConcurrentAdmissionSlots >= 0 && diagnostics.maxConcurrentAdmissionSlots <= 4
+    && Number.isSafeInteger(diagnostics.activeAdmissionSlots) && diagnostics.activeAdmissionSlots >= 0
+    && diagnostics.activeAdmissionSlots <= diagnostics.maxConcurrentAdmissionSlots,
+  `authored decode/compose admission slots must stay bounded: ${JSON.stringify(diagnostics)}`);
+}
+
+// Serialized into the page so every snapshot reads the same live camera contract. An
+// unreadable bound/range is owed evidence, never a reason to call a core body off camera.
+export function createAuthoredPresentationReader(THREE, camera, scene) {
+  const unknown = new Map();
+  const worldSphere = THREE ? new THREE.Sphere() : null;
+  let frustum = null;
+  try {
+    if (!camera.projectionMatrix.elements.every(Number.isFinite)
+        || !camera.matrixWorldInverse.elements.every(Number.isFinite)) throw new Error('unreadable camera');
+    const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum = new THREE.Frustum().setFromProjectionMatrix(projection, camera.coordinateSystem, camera.reversedDepth);
+  } catch (_) { /* unknown camera stays conservative below */ }
+  const noteUnknown = (object, reason) => {
+    const key = String(object?.uuid || object?.name || 'unknown');
+    if (!unknown.has(key)) unknown.set(key, { name: String(object?.name || '').slice(0, 160), reason });
+    return true;
+  };
+  function isPresented(object, root) {
+    const proxy = object?.userData?.spacefaceRenderPackagePooled === true
+      && object?.userData?.spacefaceInstanceProxy === true;
+    if (!object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || proxy)) return false;
+    let reachedRoot = false, reachedScene = false;
+    for (let node = object; node; node = node.parent) {
+      if (node.visible === false) return false;
+      if (node === root) reachedRoot = true;
+      if (node === scene) { reachedScene = true; break; }
+    }
+    if (!reachedRoot || !reachedScene) return false;
+    if (camera?.layers && object.layers && !camera.layers.test(object.layers)) return false;
+    if (object.isInstancedMesh && object.count === 0) return false;
+    if (object.geometry?.isInstancedBufferGeometry && object.geometry.instanceCount === 0) return false;
+    if (!frustum) return noteUnknown(object, 'unreadable-live-camera');
+    try {
+      if (object.isSprite) {
+        if (!frustum.intersectsSprite(object)) return false;
+      } else {
+        const geometry = object.geometry;
+        if (!geometry) return noteUnknown(object, 'missing-draw-geometry');
+        // Instanced/SkinnedMesh own aggregate bounds. Falling back to one primitive's
+        // geometry sphere would misclassify displaced instances; missing caches are UNKNOWN.
+        const sphere = object.boundingSphere !== undefined ? object.boundingSphere : geometry.boundingSphere;
+        if (!sphere || !Number.isFinite(sphere.radius) || sphere.radius < 0
+            || ![sphere.center.x, sphere.center.y, sphere.center.z].every(Number.isFinite)
+            || !object.matrixWorld?.elements?.every(Number.isFinite)) {
+          return noteUnknown(object, 'unreadable-draw-bound');
+        }
+        worldSphere.copy(sphere).applyMatrix4(object.matrixWorld);
+        if (!frustum.intersectsSphere(worldSphere)) return false;
+      }
+    } catch (_) { return noteUnknown(object, 'unreadable-draw-bound'); }
+    const geometry = object.geometry;
+    if (object.isSprite) return object.material?.visible !== false;
+    if (object.isInstancedMesh && (!Number.isInteger(object.count) || object.count < 0)
+        || geometry.isInstancedBufferGeometry && !(geometry.instanceCount === Infinity
+          || Number.isInteger(geometry.instanceCount) && geometry.instanceCount >= 0)) {
+      return noteUnknown(object, 'unreadable-instance-count');
+    }
+    const count = geometry.index?.count ?? geometry.attributes?.position?.count;
+    const start = geometry.drawRange?.start ?? 0;
+    const range = geometry.drawRange?.count ?? Infinity;
+    if (!Number.isFinite(count) || count < 0 || !Number.isFinite(start) || start < 0
+        || !(range === Infinity || Number.isFinite(range) && range >= 0)) {
+      return noteUnknown(object, 'unreadable-draw-range');
+    }
+    const end = Math.min(count, start + range);
+    const minimum = object.isMesh || proxy ? 3 : object.isLine ? 2 : 1;
+    if (end - start < minimum) return false;
+    if (!object.material) return noteUnknown(object, 'missing-draw-material');
+    if (!Array.isArray(object.material)) return object.material.visible !== false;
+    if (!Array.isArray(geometry.groups)) return noteUnknown(object, 'unreadable-material-groups');
+    let visible = false;
+    for (const group of geometry.groups) {
+      if (!Number.isFinite(group.start) || !Number.isFinite(group.count)) {
+        visible = noteUnknown(object, 'unreadable-material-group');
+        continue;
+      }
+      if (Math.min(end, group.start + group.count) - Math.max(start, group.start) >= minimum
+          && object.material[group.materialIndex] && object.material[group.materialIndex].visible !== false) visible = true;
+    }
+    return visible;
+  }
+  return {
+    isPresented,
+    hasPresentedSurface(root) {
+      let presented = false;
+      root?.traverse(object => { if (isPresented(object, root)) presented = true; });
+      return presented;
+    },
+    unknownReasons: () => [...unknown.values()].slice(0, 12),
+    unknownCount: () => unknown.size,
+  };
+}
+
+// Read the actual package source plan, before per-instance material/drive specialization.
+// Known motion excludes generic pooling; a missing plan is UNKNOWN, not an exemption.
+export function inspectLegacyPackagePoolEligibility(root, isRigidOpaqueBatchableSurface, objectPrototype, contracts = {}) {
+  const result = { packageCount: 0, primitiveCount: 0, eligiblePrimitiveCount: 0,
+    unknownPrimitiveCount: 0, exclusions: {}, candidates: [] };
+  const exclude = reason => { result.exclusions[reason] = (result.exclusions[reason] || 0) + 1; };
+  root?.traverse(object => {
+    const instance = object.userData?.renderPackageInstance;
+    if (!instance) return;
+    result.packageCount++;
+    if (!Array.isArray(instance.planEntries) || instance.planEntries.length === 0) {
+      if (instance.root?.userData?.spacefaceFlightStaticV3 === true) exclude('flight-static-direct-route');
+      else { result.unknownPrimitiveCount++; exclude('unreadable-source-plan'); }
+      return;
+    }
+    for (let index = 0; index < instance.planEntries.length; index++) {
+      const entry = instance.planEntries[index];
+      const source = entry?.source;
+      if (!source?.isObject3D) { result.unknownPrimitiveCount++; exclude('unreadable-source-node'); continue; }
+      if (!source?.isMesh) continue;
+      result.primitiveCount++;
+      const tags = source.userData?.spacefaceTags || {};
+      if (!source.geometry || !source.material) {
+        result.unknownPrimitiveCount++; exclude('unreadable-source-primitive'); continue;
+      }
+      let moving = false;
+      for (let node = source; node; node = node.parent) {
+        const t = node.userData?.spacefaceTags || {};
+        if (t.motionGroup || t.animated || t.drive || t.fan || t.turret
+            || node.userData?.animated || node.userData?.isTurret) moving = true;
+      }
+      if (moving) { exclude('authored-motion'); continue; }
+      if (source.onBeforeRender !== objectPrototype.onBeforeRender
+          || source.onAfterRender !== objectPrototype.onAfterRender) {
+        exclude('per-object-render-hook'); continue;
+      }
+      if (tags.instance === false || source.material.depthWrite === false) {
+        exclude('dedicated-per-owner-surface'); continue;
+      }
+      if (!isRigidOpaqueBatchableSurface(source, tags)) { exclude('non-rigid-or-non-opaque-surface'); continue; }
+      result.eligiblePrimitiveCount++;
+      const live = instance.planNodes?.[index];
+      const poolKey = live?.userData?.spacefaceInstancePoolKey;
+      let programKey = null, expectedPoolKey = null;
+      try {
+        programKey = contracts.rigidOpaqueMaterialProgramKey?.(live?.material);
+        expectedPoolKey = contracts.instancePoolIdentity?.(live?.geometry, live?.material);
+      } catch (_) { /* unreadable canonical identity is UNKNOWN below */ }
+      if (!live?.geometry?.uuid || !live?.material?.uuid || live.geometry !== source.geometry
+          || typeof poolKey !== 'string' || !poolKey || poolKey !== expectedPoolKey
+          || typeof programKey !== 'string' || !programKey || !live.layers
+          || !Number.isFinite(live.renderOrder)) {
+        result.unknownPrimitiveCount++; exclude('unreadable-compatible-candidate-key'); continue;
+      }
+      const key = JSON.stringify([poolKey, live.geometry.uuid, live.material.uuid, programKey,
+        live.layers.mask, live.renderOrder, live.castShadow === true, live.receiveShadow === true]);
+      if (!result.candidates.some(candidate => candidate.key === key)) result.candidates.push({ key, poolKey });
+    }
+  });
+  if (!result.packageCount) exclude('no-render-package-source-plan');
+  return result;
+}
+
+export function assessAuthoredPackagePoolApplicability(report) {
+  const roots = (report?.ships || []).filter(ship => ship.presented === true
+    && ship.state === 'authored' && isFrequentAuthoredRoot(ship));
+  const unknown = roots.filter(ship => !ship.legacyPackagePoolEligibility
+    || ship.legacyPackagePoolEligibility.unknownPrimitiveCount > 0
+    || ship.legacyPackagePoolEligibility.eligiblePrimitiveCount > 0
+      && !ship.legacyPackagePoolEligibility.candidates?.length);
+  const eligible = roots.filter(ship => ship.legacyPackagePoolEligibility?.eligiblePrimitiveCount > 0);
+  const byCandidate = new Map();
+  for (const ship of eligible) {
+    for (const candidate of ship.legacyPackagePoolEligibility.candidates || []) {
+      if (!candidate?.key || !candidate.poolKey) {
+        if (!unknown.includes(ship)) unknown.push(ship);
+        continue;
+      }
+      let group = byCandidate.get(candidate.key);
+      if (!group) byCandidate.set(candidate.key, group = { key: candidate.key, poolKey: candidate.poolKey, rootIds: new Set() });
+      group.rootIds.add(ship.id);
+    }
+  }
+  const compatibleCandidates = [...byCandidate.values()].filter(candidate => candidate.rootIds.size >= 2)
+    .map(candidate => ({ ...candidate, rootIds: [...candidate.rootIds] }));
+  const applicable = compatibleCandidates.length > 0;
+  return {
+    status: unknown.length ? 'unknown' : applicable ? 'required' : 'not-applicable',
+    pass: unknown.length === 0,
+    presentedFrequentRootCount: roots.length,
+    eligibleRootCount: eligible.length,
+    compatibleCandidates,
+    unknownRootIds: unknown.map(ship => ship.id),
+    reason: unknown.length ? 'unreadable-package-source-eligibility'
+      : applicable ? 'two-compatible-authored-roots' : 'no-compatible-repeated-package-primitives',
+    roots: roots.map(ship => ({ id: ship.id, defId: ship.defId,
+      ...ship.legacyPackagePoolEligibility })),
+  };
 }
 
 // WHAT CAN ACTUALLY CHANGE THIS PROBE'S ANSWER.
@@ -699,33 +954,65 @@ function isMainModule() {
   return !!process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
 }
 
-async function waitForAuthoredShips(cdp) {
-  const deadline = await waitForAuthoredAssetDeadline({
+export async function waitForAuthoredShips(cdp, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : () => performance.now();
+  const pause = typeof options.sleep === 'function' ? options.sleep : sleep;
+  const startedAtMs = now();
+  let deadline = null, report = null, lastGateReply = null;
+  let reportStartedAtMs = null, lastReportCompletedAtMs = null, retryStartedAtMs = null;
+  let operation = 'admission', retryAttempts = 0;
+  try {
+  cdp.setStage('authored ship admission', 45000);
+  deadline = await waitForAuthoredAssetDeadline({
     timeoutMs: 45000,
     pollIntervalMs: 50,
-    onPoll: () => forceShipRender(cdp),
-    sample: () => collectAuthoredGateSnapshot(cdp),
+    now, sleep: pause,
+    onPoll: () => { operation = 'admission-render'; return forceShipRender(cdp); },
+    sample: async () => {
+      operation = 'admission-snapshot';
+      const snapshot = await collectAuthoredGateSnapshot(cdp);
+      lastGateReply = { completedAtMs: now(), snapshot };
+      return snapshot;
+    },
     isReady: (snapshot) => !!(
       snapshot
       && snapshot.playerState === 'authored'
       && snapshot.presentedShipCount >= MIN_AUTHORED_SHIPS
       && snapshot.authoredShipCount === snapshot.presentedShipCount
+      && snapshot.presentationUnknownCount === 0
     ),
   });
-  const diagnosticsStartedAtMs = performance.now();
-  let report = await collectAuthoredReport(cdp);
+  const diagnosticsStartedAtMs = reportStartedAtMs = now();
+  console.log('[authored-assets] authored ship report');
+  cdp.setStage('authored ship report', CDP_REQUEST_TIMEOUT_MS);
+  operation = 'report-collection';
+  report = await collectAdmittedAuthoredReport(cdp, deadline.passed, { now });
+  lastReportCompletedAtMs = now();
   for (let attempt = 0; attempt < 50; attempt++) {
+    if (!deadline.passed) break;
+    const applicability = assessAuthoredPackagePoolApplicability(report);
     if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
       && report.authoredShipCount === report.presentedShipCount
-      && report.repeatedPackageShipPoolKeys.length > 0) break;
-    await sleep(200);
+      && report.presentationUnknownCount === 0
+      && applicability.pass
+      && (applicability.status === 'not-applicable'
+        || assessRepeatedAuthoredPackagePoolProof(report, { compatibleCandidates: applicability.compatibleCandidates }).pass)) break;
+    retryAttempts++;
+    retryStartedAtMs ??= now();
+    operation = 'retry-wait';
+    await pause(200);
+    operation = 'retry-render';
     await forceShipRender(cdp);
-    report = await collectAuthoredReport(cdp);
+    operation = 'retry-snapshot';
+    const latest = await collectAuthoredReport(cdp);
+    latest.loaderDiagnostics = report.loaderDiagnostics;
+    report = latest;
+    lastReportCompletedAtMs = now();
   }
-  const diagnosticsCompletedAtMs = performance.now();
+  const diagnosticsCompletedAtMs = now();
   report.authoredDeadline = {
     passed: deadline.passed,
-    timeoutMs: deadline.timeoutMs,
+    timeoutMs: 45000,
     elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
     diagnosticsStartedAtMs,
     diagnosticsCompletedAtMs,
@@ -748,6 +1035,71 @@ async function waitForAuthoredShips(cdp) {
     }, null, 2)}`);
   }
   return report;
+  } catch (error) {
+    // These are already-returned replies, never replacement evidence for a failed
+    // deadline. A later CDP timeout must not erase the runtime state we did observe.
+    error.authoredShipDiagnostics = {
+      ...error.authoredShipDiagnostics,
+      operation,
+      elapsedMs: Math.round(now() - startedAtMs),
+      reportElapsedMs: reportStartedAtMs === null ? null : Math.round(now() - reportStartedAtMs),
+      retryElapsedMs: retryStartedAtMs === null ? null : Math.round(now() - retryStartedAtMs),
+      retryAttempts,
+      admission: deadline ? {
+        passed: deadline.passed, timeoutMs: 45000,
+        elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
+        lastOnTimeSnapshot: deadline.lastOnTimeSnapshot,
+        postDeadlineSnapshot: deadline.postDeadlineSnapshot || null,
+      } : null,
+      lastGateReply,
+      lastReportAgeMs: lastReportCompletedAtMs === null ? null : Math.round(now() - lastReportCompletedAtMs),
+      lastReport: compactAuthoredShipReport(report),
+      ...(report?.loaderDiagnostics ? { catalog: compactAuthoredCatalog(report.loaderDiagnostics) } : {}),
+    };
+    throw error;
+  }
+}
+
+function compactAuthoredCatalog(loader) {
+  if (!loader) return null;
+  return {
+    available: loader.available, declaredCount: loader.declaredCount, loadedCount: loader.loadedCount,
+    failureCount: loader.failureCount, wholeShipDeclaredCount: loader.wholeShipDeclaredCount,
+    wholeShipLoadedCount: loader.wholeShipLoadedCount, wholeShipFailureCount: loader.wholeShipFailureCount,
+    progress: loader.progress || null, failures: loader.failures?.slice(0, 8) || [], error: loader.error,
+  };
+}
+
+function compactAuthoredShipReport(report) {
+  if (!report) return null;
+  const scalarRow = value => Object.fromEntries(Object.entries(value || {})
+    .filter(([, item]) => item == null || ['string', 'number', 'boolean'].includes(typeof item))
+    .slice(0, 32).map(([key, item]) => [key, typeof item === 'string' ? item.slice(0, 400) : item]));
+  const ship = value => value ? {
+    ...scalarRow(value),
+    packageInstancePoolKeys: value.packageInstancePoolKeys?.slice(0, 8) || [],
+    packageSubmittedPoolKeys: value.packageSubmittedPoolKeys?.slice(0, 8) || [],
+    legacyPackagePoolEligibility: value.legacyPackagePoolEligibility || null,
+    authoredBodyProof: value.authoredBodyProof ? {
+      ...scalarRow(value.authoredBodyProof), failures: value.authoredBodyProof.failures?.slice(0, 8) || [],
+    } : null,
+  } : null;
+  const upgrade = report.authoredUpgradeDiagnostics;
+  return {
+    ...scalarRow(report), player: ship(report.player), ships: report.ships?.slice(0, 16).map(ship) || [],
+    presentationUnknownReasons: report.presentationUnknownReasons || [],
+    packagePoolApplicability: assessAuthoredPackagePoolApplicability(report),
+    repeatedPackageShipPoolKeys: report.repeatedPackageShipPoolKeys?.slice(0, 12) || [],
+    packageShipPoolRoots: report.packageShipPoolRoots?.slice(0, 12).map(pool => ({
+      ...scalarRow(pool), roots: pool.roots?.slice(0, 8).map(scalarRow) || [],
+    })) || [],
+    instancePools: report.instancePools?.slice(0, 12).map(scalarRow) || [],
+    criticalStations: report.criticalStations?.slice(0, 8).map(scalarRow) || [],
+    authoredUpgradeDiagnostics: upgrade ? {
+      ...scalarRow(upgrade), jobs: upgrade.jobs?.slice(-16).map(scalarRow) || [],
+      partLoads: upgrade.partLoads?.slice(-8).map(scalarRow) || [],
+    } : null,
+  };
 }
 
 /**
@@ -796,28 +1148,15 @@ function collectCriticalStationSnapshot(cdp) {
   // to the player because the two ways this gate can fail look identical in `assetState` alone:
   // a package that is still streaming, and a station that is simply outside the seeded route's
   // streaming reach. Only the geometry tells them apart, so a timeout here reports both.
-  return evalJson(cdp, `(() => {
+  return evalJson(cdp, `(async () => {
     const state = window.SF && window.SF.state || null;
+    const THREE = state?.render?.scene && state.render.camera ? await import('three') : null;
+    const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state?.render?.camera, state?.render?.scene);
+    const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
     const player = state && state.entities ? state.entities.get(state.playerId) : null;
     const px = player && player.pos ? Number(player.pos.x) : null;
     const pz = player && player.pos ? Number(player.pos.z) : null;
-    function hasPresentedSurface(root) {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    }
+
     const stations = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'station' && entity.alive !== false)
         .map((entity) => {
@@ -837,13 +1176,17 @@ function collectCriticalStationSnapshot(cdp) {
         })
         .filter((station) => station.stationId === 'station_helios' || station.archetypeGlb === 'place_station_trade_hub')
       : [];
-    return { player: { x: px, z: pz }, criticalStations: stations };
+    return { player: { x: px, z: pz }, criticalStations: stations,
+      presentationUnknownCount: presentation.unknownCount(), presentationUnknownReasons: presentation.unknownReasons() };
   })()`);
 }
 
 function collectAuthoredGateSnapshot(cdp) {
-  return evalJson(cdp, `(() => {
+  return evalJson(cdp, `(async () => {
     const state = window.SF && window.SF.state || null;
+    const THREE = state?.render?.scene && state.render.camera ? await import('three') : null;
+    const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state?.render?.camera, state?.render?.scene);
+    const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
@@ -858,24 +1201,10 @@ function collectAuthoredGateSnapshot(cdp) {
       if (presented && assetState === 'authored') authoredShipCount++;
       if (state && entity.id === state.playerId) playerState = assetState;
     }
-    function hasPresentedSurface(root) {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    }
+
     return {
+      presentationUnknownCount: presentation.unknownCount(),
+      presentationUnknownReasons: presentation.unknownReasons(),
       mode: state && state.mode || null,
       tick: state && state.tick || 0,
       shipCount: ships.length,
@@ -886,7 +1215,7 @@ function collectAuthoredGateSnapshot(cdp) {
   })()`);
 }
 
-async function collectAuthoredReport(cdp) {
+export async function collectAuthoredReport(cdp) {
   return evalJson(cdp, `(async () => {
     const requiredPlayerModularSlots = ${JSON.stringify(REQUIRED_PLAYER_MODULAR_SLOTS)};
     const requiredPlayerWholeShipSlots = ${JSON.stringify(REQUIRED_PLAYER_WHOLE_SHIP_SLOTS)};
@@ -894,9 +1223,14 @@ async function collectAuthoredReport(cdp) {
     const sf = window.SF || null;
     const state = sf && sf.state || null;
     const scene = state && state.render && state.render.scene || null;
-    // Loader diagnostics can yield while expensive first-use GLBs finish. Sample entities only
-    // afterward so authoredShipCount and per-job diagnostics describe the same moment in time.
-    const loaderDiagnostics = await collectLoaderDiagnostics(state);
+    const THREE = state?.render?.scene && state.render.camera ? await import('three') : null;
+    const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state?.render?.camera, state?.render?.scene);
+    const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
+    const { isRigidOpaqueBatchableSurface, rigidOpaqueMaterialProgramKey } = scene
+      ? await import('./src/render/rigidOpaqueBatchPolicy.js') : {};
+    const { instancePoolIdentity } = scene ? await import('./src/render/materialBatchKey.js') : {};
+    const inspectPoolEligibility = ${inspectLegacyPackagePoolEligibility.toString()};
+    const loaderDiagnostics = { available: false, skipped: true, error: 'collected in the explicit authored asset catalog step' };
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
@@ -974,6 +1308,8 @@ async function collectAuthoredReport(cdp) {
       entry.roots.filter(isFrequentShipRoot).length >= 2
     )).map((entry) => entry.key);
     return {
+      presentationUnknownCount: presentation.unknownCount(),
+      presentationUnknownReasons: presentation.unknownReasons(),
       mode: state && state.mode || null,
       tick: state && state.tick || 0,
       playerId: state && state.playerId || null,
@@ -1083,6 +1419,8 @@ async function collectAuthoredReport(cdp) {
         team: entity.team,
         factionId: entity.factionId || null,
         presented: hasPresentedSurface(root),
+        legacyPackagePoolEligibility: inspectPoolEligibility(root, isRigidOpaqueBatchableSurface, THREE.Object3D.prototype,
+          { instancePoolIdentity, rigidOpaqueMaterialProgramKey }),
         state: data.authoredAssetState || 'unknown',
         mode: data.authoredAssetMode || null,
         compositionId: data.authoredCompositionId || null,
@@ -1107,23 +1445,7 @@ async function collectAuthoredReport(cdp) {
       };
     }
 
-    function hasPresentedSurface(root) {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    }
+
 
     function inspectAuthoredBodyProof(root, entity) {
       const metrics = {
@@ -1161,7 +1483,7 @@ async function collectAuthoredReport(cdp) {
           || urls.some((url) => String(url || '').includes('readability/'));
         const isBody = urls.some(isAuthoredBodyUrl) && !isReadability;
         if (!isBody && !isReadability) return;
-        const visible = visibleThroughRoot(object, root) && materialIsVisible(object.material);
+        const visible = presentation.isPresented(object, root);
         const bounds = meshWorldBounds(object, Vector3);
         if (!bounds.ok) return;
         if (isReadability) {
@@ -1239,8 +1561,8 @@ async function collectAuthoredReport(cdp) {
       const geometry = object && object.geometry;
       if (!geometry) return { ok: false };
       try {
-        if (!geometry.boundingBox && typeof geometry.computeBoundingBox === 'function') geometry.computeBoundingBox();
-        const box = geometry.boundingBox;
+        const position = geometry.getAttribute && geometry.getAttribute('position');
+        const box = geometry.boundingBox || (position ? new THREE.Box3().setFromBufferAttribute(position) : null);
         if (!box) return { ok: false };
         object.updateWorldMatrix(true, false);
         const min = [Infinity, Infinity, Infinity];
@@ -1411,107 +1733,196 @@ async function collectAuthoredReport(cdp) {
       return String(url || '').includes('/wholeships/');
     }
 
-    function liveWholeShipFiles(partsLibrary) {
-      if (!partsLibrary || typeof partsLibrary.shipArchetypesForPrecompile !== 'function') return [];
-      try {
-        return [...new Set(partsLibrary.shipArchetypesForPrecompile()
-          .map((entry) => entry && entry.wholeShipFile)
-          .filter((file) => file && (typeof partsLibrary.isPackagedLiveWholeShipFile !== 'function' || partsLibrary.isPackagedLiveWholeShipFile(file))))];
-      } catch (_) {
-        return [];
-      }
-    }
-
-    async function collectLoaderDiagnostics(state) {
-      try {
-        const renderer = state && state.render && state.render.renderer || null;
-        if (!renderer) return { available: false, error: 'renderer unavailable' };
-        const [assetLoader, partsLibrary] = await Promise.all([
-          import('./src/render/assetLoader.js'),
-          import('./src/render/partsLibrary.js'),
-        ]);
-        const runtime = await assetLoader.getAuthoredAssetRuntimeInfo(renderer);
-        const failures = [];
-        const loaded = [];
-        const wholeShipFailures = [];
-        const wholeShipLoaded = [];
-        const contract = partsLibrary.PART_LIBRARY_CONTRACT || {};
-        const { isReleaseAssetMode } = await import('./src/render/releaseMode.js');
-        const release = isReleaseAssetMode();
-        const partRoot = release ? contract.releaseRoot : contract.root;
-        const slots = contract.slots || {};
-        const requiredWholeShipFiles = liveWholeShipFiles(partsLibrary);
-        for (const [slot, files] of Object.entries(slots)) {
-          for (const file of files || []) {
-            const url = String(partRoot || 'assets/ships/parts/') + file;
-            const record = await assetLoader.loadAuthoredPart(url, { renderer, slot, optional: true });
-            if (record) {
-              loaded.push({
-                slot,
-                url,
-                assetId: record.assetId || null,
-                primitiveCount: record.primitives ? record.primitives.length : 0,
-                markerCount: record.markers ? record.markers.length : 0,
-              });
-            } else {
-              const error = await assetLoader.getAuthoredAssetDiagnostic(renderer, url, slot);
-              failures.push({
-                slot,
-                url,
-                name: error && error.name || 'LoadFailure',
-                message: error && error.message || 'asset returned no authored blueprint',
-              });
-            }
-          }
-        }
-        for (const file of requiredWholeShipFiles) {
-          const url = String(partRoot || 'assets/ships/parts/') + file;
-          const record = await assetLoader.loadAuthoredPart(url, { renderer, slot: 'hull', optional: true });
-          if (record) {
-            wholeShipLoaded.push({
-              slot: 'wholeShip',
-              url,
-              assetId: record.assetId || null,
-              primitiveCount: record.primitives ? record.primitives.length : 0,
-              markerCount: record.markers ? record.markers.length : 0,
-            });
-          } else {
-            const error = await assetLoader.getAuthoredAssetDiagnostic(renderer, url, 'hull');
-            wholeShipFailures.push({
-              slot: 'wholeShip',
-              url,
-              name: error && error.name || 'LoadFailure',
-              message: error && error.message || 'whole-ship asset returned no authored hull/body blueprint',
-            });
-          }
-        }
-        const declaredPartCount = Object.values(slots).reduce((sum, files) => sum + ((files || []).length), 0);
-        return {
-          available: true,
-          runtime,
-          release,
-          partRoot,
-          declaredCount: declaredPartCount + requiredWholeShipFiles.length,
-          declaredPartCount,
-          loadedCount: loaded.length + wholeShipLoaded.length,
-          loadedSlots: loaded.reduce((slots, entry) => {
-            slots[entry.slot] = (slots[entry.slot] || 0) + 1;
-            return slots;
-          }, {}),
-          wholeShipDeclaredCount: requiredWholeShipFiles.length,
-          wholeShipLoadedCount: wholeShipLoaded.length,
-          wholeShipFailureCount: wholeShipFailures.length,
-          failureCount: failures.length + wholeShipFailures.length,
-          failures: [...failures, ...wholeShipFailures].slice(0, 12),
-        };
-      } catch (error) {
-        return {
-          available: false,
-          error: error && error.message ? error.message : String(error),
-        };
-      }
-    }
   })()`);
+}
+
+export async function collectAdmittedAuthoredReport(cdp, admissionPassed, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : () => performance.now();
+  const startedAtMs = now();
+  let loaderDiagnostics = null, snapshotStartedAtMs = null;
+  try {
+  loaderDiagnostics = admissionPassed
+    ? await collectAuthoredLoaderDiagnostics(cdp, options)
+    : null;
+  if (loaderDiagnostics && !loaderDiagnostics.available) {
+    throw new Error(`[authored-assets] authored catalog diagnostics failed: ${JSON.stringify(loaderDiagnostics)}`);
+  }
+  cdp.setStageLabel('authored ship report snapshot');
+  snapshotStartedAtMs = now();
+  const report = await collectAuthoredReport(cdp);
+  if (loaderDiagnostics) report.loaderDiagnostics = loaderDiagnostics;
+  return report;
+  } catch (error) {
+    error.authoredShipDiagnostics = {
+      reportPhase: snapshotStartedAtMs === null ? 'catalog' : 'ship-snapshot',
+      collectionElapsedMs: Math.round(now() - startedAtMs),
+      snapshotElapsedMs: snapshotStartedAtMs === null ? null : Math.round(now() - snapshotStartedAtMs),
+      catalog: compactAuthoredCatalog(loaderDiagnostics),
+    };
+    throw error;
+  }
+}
+
+export async function collectAuthoredLoaderDiagnostics(cdp, { now = () => performance.now() } = {}) {
+  const startedAtMs = now();
+  const progress = {
+    catalogElapsedMs: null,
+    totalEntries: 0,
+    completedEntries: 0,
+    lastCompletedUrl: null,
+    lastCompletedMs: null,
+    maxCompletedUrl: null,
+    maxCompletedMs: 0,
+    failedEntryIndex: null,
+    failedUrl: null,
+    failedAssetMs: null,
+    inFlightAtFailure: 0,
+    drainedInFlight: 0,
+    elapsedMs: null,
+  };
+  const elapsedMs = () => Math.max(0, now() - startedAtMs);
+  const roundedMs = (value) => Math.round(value * 100) / 100;
+  try {
+    cdp.setStageLabel('authored asset catalog');
+    const catalog = await evalJson(cdp, `(async () => {
+      const state = window.SF && window.SF.state || null;
+      const renderer = state && state.render && state.render.renderer || null;
+      if (!renderer) return { available: false, error: 'renderer unavailable' };
+      const [assetLoader, partsLibrary, releaseMode] = await Promise.all([
+        import('./src/render/assetLoader.js'),
+        import('./src/render/partsLibrary.js'),
+        import('./src/render/releaseMode.js'),
+      ]);
+      const runtime = await assetLoader.getAuthoredAssetRuntimeInfo(renderer);
+      const contract = partsLibrary.PART_LIBRARY_CONTRACT || {};
+      const release = releaseMode.isReleaseAssetMode();
+      const partRoot = release ? contract.releaseRoot : contract.root;
+      const slots = contract.slots || {};
+      const wholeShipFiles = [...new Set((typeof partsLibrary.shipArchetypesForPrecompile === 'function'
+        ? partsLibrary.shipArchetypesForPrecompile() : [])
+        .map((entry) => entry && entry.wholeShipFile)
+        .filter((file) => file && (typeof partsLibrary.isPackagedLiveWholeShipFile !== 'function'
+          || partsLibrary.isPackagedLiveWholeShipFile(file))))];
+      const entries = Object.entries(slots).flatMap(([slot, files]) => (files || []).map((file) => ({
+        slot, file, url: String(partRoot || 'assets/ships/parts/') + file, wholeShip: false,
+      })));
+      for (const file of wholeShipFiles) entries.push({
+        slot: 'hull', file, url: String(partRoot || 'assets/ships/parts/') + file, wholeShip: true,
+      });
+      return { available: true, runtime, release, partRoot, entries };
+    })()`);
+    progress.catalogElapsedMs = roundedMs(elapsedMs());
+    if (!catalog || !catalog.available) {
+      progress.elapsedMs = roundedMs(elapsedMs());
+      return { ...(catalog || { error: 'asset catalog unavailable' }), available: false, progress };
+    }
+    progress.totalEntries = catalog.entries.length;
+
+    const loaded = [];
+    const wholeShipLoaded = [];
+    const failures = [];
+    const wholeShipFailures = [];
+    let nextIndex = 0;
+    let firstFailure = null;
+    let activeEvaluations = 0;
+    const runWorker = async () => {
+      while (!firstFailure) {
+        const index = nextIndex++;
+        if (index >= catalog.entries.length) return;
+        const entry = catalog.entries[index];
+        cdp.setStageLabel(`authored asset ${entry.url}`);
+        const assetStartedAtMs = now();
+        let result;
+        activeEvaluations++;
+        try {
+          result = await evalJson(cdp, `(async () => {
+        const state = window.SF && window.SF.state || null;
+        const renderer = state && state.render && state.render.renderer || null;
+        if (!renderer) return { loaded: false, unavailable: 'renderer unavailable' };
+        const assetLoader = await import('./src/render/assetLoader.js');
+        const record = await assetLoader.loadAuthoredPart(${JSON.stringify(entry.url)}, {
+          renderer, slot: ${JSON.stringify(entry.slot)}, optional: true,
+        });
+        if (record) return { loaded: true, assetId: record.assetId || null,
+          primitiveCount: record.primitives ? record.primitives.length : 0,
+          markerCount: record.markers ? record.markers.length : 0 };
+        const diagnostic = await assetLoader.getAuthoredAssetDiagnostic(renderer,
+          ${JSON.stringify(entry.url)}, ${JSON.stringify(entry.slot)});
+        return { loaded: false, name: diagnostic && diagnostic.name || 'LoadFailure',
+          message: diagnostic && diagnostic.message || 'asset returned no authored blueprint' };
+      })()`);
+        } catch (error) {
+          if (!firstFailure) {
+            firstFailure = { error, index, url: entry.url };
+            progress.failedEntryIndex = index + 1;
+            progress.failedUrl = entry.url;
+            progress.failedAssetMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
+            progress.inFlightAtFailure = Math.max(0, activeEvaluations - 1);
+          }
+          return;
+        } finally {
+          activeEvaluations--;
+          if (firstFailure && index !== firstFailure.index) progress.drainedInFlight++;
+        }
+        const assetElapsedMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
+        progress.completedEntries++;
+        progress.lastCompletedUrl = entry.url;
+        progress.lastCompletedMs = assetElapsedMs;
+        if (assetElapsedMs >= progress.maxCompletedMs) {
+          progress.maxCompletedUrl = entry.url;
+          progress.maxCompletedMs = assetElapsedMs;
+        }
+        if (result.loaded) {
+          (entry.wholeShip ? wholeShipLoaded : loaded).push({
+            slot: entry.wholeShip ? 'wholeShip' : entry.slot,
+            url: entry.url,
+            assetId: result.assetId,
+            primitiveCount: result.primitiveCount,
+            markerCount: result.markerCount,
+          });
+        } else {
+          const failure = {
+            slot: entry.wholeShip ? 'wholeShip' : entry.slot,
+            url: entry.url,
+            name: result.name || 'LoadFailure',
+            message: result.message || result.unavailable || 'asset returned no authored blueprint',
+          };
+          (entry.wholeShip ? wholeShipFailures : failures).push(failure);
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(AUTHORED_CATALOG_CONCURRENCY, catalog.entries.length) }, runWorker));
+    if (firstFailure) throw firstFailure.error;
+    const declaredPartCount = catalog.entries.filter((entry) => !entry.wholeShip).length;
+    const wholeShipDeclaredCount = catalog.entries.length - declaredPartCount;
+    progress.elapsedMs = roundedMs(elapsedMs());
+    return {
+      available: true,
+      runtime: catalog.runtime,
+      release: catalog.release,
+      partRoot: catalog.partRoot,
+      declaredCount: catalog.entries.length,
+      declaredPartCount,
+      loadedCount: loaded.length + wholeShipLoaded.length,
+      loadedSlots: loaded.reduce((slots, entry) => {
+        slots[entry.slot] = (slots[entry.slot] || 0) + 1;
+        return slots;
+      }, {}),
+      wholeShipDeclaredCount,
+      wholeShipLoadedCount: wholeShipLoaded.length,
+      wholeShipFailureCount: wholeShipFailures.length,
+      failureCount: failures.length + wholeShipFailures.length,
+      failures: [...failures, ...wholeShipFailures].slice(0, 12),
+      progress,
+    };
+  } catch (error) {
+    progress.elapsedMs = roundedMs(elapsedMs());
+    return {
+      available: false,
+      error: error && error.message ? error.message : String(error),
+      progress,
+    };
+  }
 }
 
 async function forceShipRender(cdp) {
@@ -1523,16 +1934,6 @@ async function forceShipRender(cdp) {
     if (typeof render.warmPostProcess !== 'function') {
       throw new Error('authored asset probe requires the production-owned render epoch');
     }
-    for (const entity of state.entityList || []) {
-      if (!entity || entity.type !== 'ship' || !entity.mesh) continue;
-      entity.mesh.traverse((object) => { if (object) object.frustumCulled = false; });
-    }
-    try {
-      const partsLibrary = await import('./src/render/partsLibrary.js');
-      if (partsLibrary && typeof partsLibrary.syncAuthoredInstancePools === 'function') {
-        partsLibrary.syncAuthoredInstancePools(render.scene);
-      }
-    } catch (_) {}
     await render.warmPostProcess();
   })()`);
 }
@@ -1556,12 +1957,15 @@ function isBootReady(cdp) {
 }
 
 async function installStartupTrace(cdp) {
-  await evalVoid(cdp, `(() => {
+  await evalVoid(cdp, `(async () => {
     const sf = window.SF || null;
     if (!sf || !sf.bus || !sf.state || window.__SF_AUTHORED_ASSET_STARTUP_TRACE__) return;
     const trace = [];
+    const THREE = await import('three');
     const snapshot = (label, detail = {}) => {
       const state = sf.state || {};
+      const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state.render?.camera, state.render?.scene);
+      const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
       const ships = Array.isArray(state.entityList)
         ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
         : [];
@@ -1604,28 +2008,14 @@ async function installStartupTrace(cdp) {
         states,
         nonAuthored: Math.max(0, presentedShipCount - authoredPresentedCount),
         pendingInvisibleAdmissions: Math.max(0, ships.length - presentedShipCount),
+        presentationUnknownCount: presentation.unknownCount(),
+        presentationUnknownReasons: presentation.unknownReasons(),
         playerState,
         criticalStations,
         ...detail,
       });
     };
-    const hasPresentedSurface = (root) => {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    };
+
     window.__SF_AUTHORED_ASSET_STARTUP_TRACE__ = trace;
     sf.bus.on('mode:changed', () => snapshot('mode:changed'));
     sf.bus.on('game:started', () => snapshot('game:started'));
@@ -1823,12 +2213,13 @@ function spawnProbeServer(port) {
 }
 
 async function waitForReachable(url, child) {
-  for (let i = 0; i < 80; i++) {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
     if (child.exitCode != null) {
       throw new Error(`Dev server exited before becoming reachable at ${url}\n${child.probeOutput ? child.probeOutput() : ''}`);
     }
-    if (await reachable(url)) return;
-    await sleep(250);
+    if (await reachable(url, Math.max(1, Math.min(1000, deadline - Date.now())))) return;
+    await sleep(Math.min(250, Math.max(0, deadline - Date.now())));
   }
   child.kill();
   throw new Error(`Dev server did not become reachable at ${url}`);
@@ -1850,9 +2241,9 @@ function isPortFree(port) {
   });
 }
 
-async function reachable(url) {
+async function reachable(url, timeoutMs) {
   try {
-    const res = await fetch(url, { method: 'GET' });
+    const res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(timeoutMs) });
     return !!res.ok;
   } catch (_) {
     return false;
@@ -1948,50 +2339,115 @@ async function findChrome() {
 
 async function connectCdp(debugPort) {
   let wsUrl = null;
-  for (let i = 0; i < 240; i++) {
+  const deadline = Date.now() + 36000;
+  while (Date.now() < deadline) {
     try {
-      const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json`)).json();
+      const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json`, {
+        signal: AbortSignal.timeout(Math.max(1, Math.min(1000, deadline - Date.now()))),
+      })).json();
       const page = tabs.find((tab) => tab.type === 'page');
       if (page && page.webSocketDebuggerUrl) {
         wsUrl = page.webSocketDebuggerUrl;
         break;
       }
     } catch (_) {}
-    await sleep(150);
+    await sleep(Math.min(150, Math.max(0, deadline - Date.now())));
   }
   assert.ok(wsUrl, 'no Chrome DevTools Protocol page target found');
 
   const socket = new WebSocket(wsUrl);
-  await new Promise((resolve, reject) => {
-    socket.addEventListener('open', resolve, { once: true });
-    socket.addEventListener('error', reject, { once: true });
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      const finish = error => {
+        clearTimeout(timer);
+        socket.removeEventListener('open', opened);
+        socket.removeEventListener('error', failed);
+        socket.removeEventListener('close', closed);
+        if (error) reject(error); else resolve();
+      };
+      const opened = () => finish();
+      const failed = () => finish(new Error('authored asset CDP connection failed'));
+      const closed = () => finish(new Error('authored asset CDP connection closed before open'));
+      const timer = setTimeout(() => finish(new Error('authored asset CDP connection timed out')),
+        Math.max(1, deadline - Date.now()));
+      socket.addEventListener('open', opened, { once: true });
+      socket.addEventListener('error', failed, { once: true });
+      socket.addEventListener('close', closed, { once: true });
+    });
+  } catch (error) {
+    try { socket.close(); } catch (_) {}
+    throw error;
+  }
+  return createAuthoredProbeCdpSession(socket);
+}
 
+export function createAuthoredProbeCdpSession(socket, {
+  requestTimeoutMs = CDP_REQUEST_TIMEOUT_MS,
+  now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout,
+} = {}) {
   let nextId = 0;
+  let stage = 'CDP setup', stageDeadline = null, terminal = null;
   const pending = new Map();
   const listeners = new Set();
-  socket.addEventListener('message', (event) => {
-    const msg = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString());
-    for (const listener of listeners) listener(msg);
+  const settle = (id, error, value) => {
+    const row = pending.get(id);
+    if (!row) return;
+    pending.delete(id);
+    clearTimer(row.timer);
+    if (error) row.reject(new Error(`${row.label}: ${error}`));
+    else row.resolve(value);
+  };
+  const dispose = (reason = 'CDP session disposed') => {
+    if (terminal) return;
+    terminal = reason;
+    for (const id of pending.keys()) settle(id, reason);
+    listeners.clear();
+    socket.removeEventListener('message', message);
+    socket.removeEventListener('close', closed);
+    socket.removeEventListener('error', failed);
+  };
+  const message = event => {
+    let msg;
+    try { msg = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString()); }
+    catch (error) { dispose(`invalid CDP response: ${error.message}`); return; }
     if (msg.id && pending.has(msg.id)) {
-      const { resolve, reject } = pending.get(msg.id);
-      pending.delete(msg.id);
-      if (msg.error) reject(new Error(msg.error.message || JSON.stringify(msg.error)));
-      else resolve(msg.result || {});
+      settle(msg.id, msg.error ? msg.error.message || JSON.stringify(msg.error) : null, msg.result || {});
     }
-  });
+    for (const listener of listeners) listener(msg);
+  };
+  const closed = event => dispose(`CDP socket closed${event.code ? ` (${event.code})` : ''}`);
+  const failed = () => dispose('CDP socket error');
+  socket.addEventListener('message', message);
+  socket.addEventListener('close', closed);
+  socket.addEventListener('error', failed);
 
   return {
     ws: socket,
+    get stage() { return stage; },
+    setStage(label, timeoutMs) {
+      stage = label;
+      stageDeadline = Number.isFinite(timeoutMs) ? now() + timeoutMs : null;
+    },
+    setStageLabel(label) {
+      stage = label;
+    },
+    dispose,
     onMessage(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     send(method, params = {}) {
+      const label = `[authored-assets] ${stage} / ${method}`;
+      if (terminal) return Promise.reject(new Error(`${label}: ${terminal}`));
+      const timeoutMs = Math.min(requestTimeoutMs,
+        stageDeadline === null ? requestTimeoutMs : Math.max(0, stageDeadline - now()));
+      if (timeoutMs <= 0) return Promise.reject(new Error(`${label}: stage deadline expired`));
       return new Promise((resolve, reject) => {
         const id = ++nextId;
-        pending.set(id, { resolve, reject });
-        socket.send(JSON.stringify({ id, method, params }));
+        const timer = setTimer(() => settle(id, `no CDP reply within ${timeoutMs} ms`), timeoutMs);
+        pending.set(id, { resolve, reject, timer, label });
+        try { socket.send(JSON.stringify({ id, method, params })); }
+        catch (error) { settle(id, `CDP send failed: ${error.message}`); }
       });
     },
   };
@@ -2008,12 +2464,14 @@ async function closeWebSocket(socket) {
   try {
     if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) return;
     await new Promise((resolve) => {
-      const timeout = setTimeout(resolve, 1000);
-      socket.addEventListener('close', () => {
+      const finish = () => {
         clearTimeout(timeout);
+        socket.removeEventListener('close', finish);
         resolve();
-      }, { once: true });
-      socket.close();
+      };
+      const timeout = setTimeout(finish, 1000);
+      socket.addEventListener('close', finish, { once: true });
+      try { socket.close(); } catch (_) { finish(); }
     });
   } catch (_) {}
 }
@@ -2021,18 +2479,30 @@ async function closeWebSocket(socket) {
 async function closeOwnedAuthoredProbeRuntime({ ws, chrome, server, debugPort, profileDir }) {
   const failures = [];
   try {
-    const versionRes = await fetch(`http://127.0.0.1:${debugPort}/json/version`).catch(() => null);
+    const versionRes = await fetch(`http://127.0.0.1:${debugPort}/json/version`,
+      { signal: AbortSignal.timeout(1000) }).catch(() => null);
     if (versionRes && versionRes.ok) {
       const version = await versionRes.json().catch(() => null);
       if (version && version.webSocketDebuggerUrl) {
         const browserWs = new WebSocket(version.webSocketDebuggerUrl);
         await new Promise((resolve) => {
-          browserWs.addEventListener('open', () => {
-            browserWs.send(JSON.stringify({ id: 999999, method: 'Browser.close' }));
-            setTimeout(resolve, 500);
-          }, { once: true });
-          browserWs.addEventListener('error', resolve, { once: true });
-          setTimeout(resolve, 1000);
+          const finish = () => {
+            clearTimeout(timer);
+            browserWs.removeEventListener('open', opened);
+            browserWs.removeEventListener('error', finish);
+            browserWs.removeEventListener('close', finish);
+            resolve();
+          };
+          const opened = () => {
+            try { browserWs.send(JSON.stringify({ id: 999999, method: 'Browser.close' })); }
+            catch (_) { finish(); return; }
+            clearTimeout(timer);
+            timer = setTimeout(finish, 500);
+          };
+          let timer = setTimeout(finish, 1000);
+          browserWs.addEventListener('open', opened, { once: true });
+          browserWs.addEventListener('error', finish, { once: true });
+          browserWs.addEventListener('close', finish, { once: true });
         });
         try { browserWs.close(); } catch (_) {}
       }

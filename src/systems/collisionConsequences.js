@@ -26,6 +26,7 @@ import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   clearPendingSlam,
   closingSpeedFromImpact,
+  hotDebrisContactScale,
   isSlamFractureCandidate,
   noteLethalBlow,
   notePendingSlam,
@@ -352,6 +353,13 @@ export const collisionConsequences = {
       // A rope root (the player's line, or a Twin Bridle pair) is Massline work, never a gun hit.
       _provenanceScratch.tag = observed.root.kind === 'constraint' || observed.root.kind === 'bridle' ? 'massline' : 'weapon_hit';
       _provenanceScratch.tick = observed.root.tick;
+      // normalizeProvenance reads appliedTick, not tick. A missing applied tick becomes 0, so a
+      // cause the journal still holds looks older than the impulse window on the law card.
+      _provenanceScratch.appliedTick = Number.isFinite(observed.root.tick) ? observed.root.tick : tick;
+      const heldUntil = causalProvenance && Number.isFinite(causalProvenance.holdUntilTick)
+        ? causalProvenance.holdUntilTick : null;
+      // The scratch is reused. A dead or absent hold must not leak onto the next contact.
+      _provenanceScratch.holdUntilTick = heldUntil != null && tick <= heldUntil ? heldUntil : null;
       _provenanceScratch.rootId = observed.root.id;
       provenance = _provenanceScratch;
     }
@@ -431,7 +439,13 @@ export const collisionConsequences = {
       _slamArg.tick = tick;
       notePendingSlam(target, _slamArg);
     }
-    const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
+    // FIGHT-13 — hot capital debris gate: a fresh capital fragment deals the kernel's
+    // debris damage decaying over its authored window; a settled/expired fragment is
+    // salvage and deals none. Ordinary bodies read scale 1 (no behavior change).
+    const scaledImpact = scaledImpactForHotDebris(receipt, other, state);
+    const damageResult = scaledImpact > 0
+      ? this._routeImpactDamage(target, other, receipt, scaledImpact)
+      : null;
     if (target.alive !== false) clearPendingSlam(target.id);
 
     // fields spread into the trace's own raw record — the arg object is never retained.
@@ -529,16 +543,19 @@ export const collisionConsequences = {
     for (const shard of shards) this._tearOffLive.add(shard.id);
   },
 
-  _routeImpactDamage(target, other, receipt) {
+  _routeImpactDamage(target, other, receipt, damageOverride) {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
     const sourceKind = `collision_${receipt.surface}`;
+    // FIGHT-13: a hot-debris scale arrives here; otherwise the kernel receipt stands as is.
+    const impactDamage = Number.isFinite(damageOverride) ? Math.max(0, damageOverride)
+      : Math.max(0, Number(receipt.impactDamage) || 0);
     // routeDamage may synchronously cross the lethal threshold and invoke combat.kill. Snapshot the
     // live body/contact truth before that call so the sole death owner can publish an immutable
     // presentation receipt without querying a retired entity or inventing collision provenance.
     const collisionPresentation = buildCollisionPresentationProvenance(target, other, receipt);
     const packet = scalarHitToDamagePacket({
-      damage: receipt.impactDamage,
+      damage: impactDamage,
       damageType: 'kinetic',
       pos: receipt.pos,
       source: {
@@ -600,6 +617,14 @@ function combatKernel(host) {
 
 function entityById(state, id) {
   return state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) || null : null;
+}
+
+// FIGHT-13 — scale the kernel's contact damage for hot capital debris. Ordinary bodies
+// read scale 1, so the receipt stands as authored; only a stamped capital fragment decays.
+function scaledImpactForHotDebris(receipt, other, state) {
+  const base = Math.max(0, Number(receipt && receipt.impactDamage) || 0);
+  if (!(base > 0)) return 0;
+  return base * hotDebrisContactScale(other, state && state.simTime);
 }
 
 function pairKey(aId, bId) {
@@ -850,6 +875,20 @@ export function playerRamPlateImpact(entity, playerId, tick, provenance, state) 
 // Shared by every collision-consequence producer (this system and masslineThrow's tangent
 // meeting): the lethal packet must carry the same frozen provenance block or combat's kill
 // receipt cannot tell a thrown-hull slam from an unauthored hit.
+function freezeImpactLink(provenance) {
+  if (!provenance || typeof provenance !== 'object') return null;
+  const tag = typeof provenance.tag === 'string' ? provenance.tag : '';
+  if (!tag && provenance.actorId == null) return null;
+  const appliedTick = Number.isFinite(provenance.appliedTick) ? provenance.appliedTick : null;
+  const holdUntilTick = Number.isFinite(provenance.holdUntilTick) ? provenance.holdUntilTick : null;
+  return Object.freeze({
+    actorId: provenance.actorId ?? null,
+    tag,
+    appliedTick,
+    holdUntilTick,
+  });
+}
+
 export function buildCollisionPresentationProvenance(target, other, receipt) {
   return Object.freeze({
     position: freezeTransientPoint(receipt && receipt.pos),
@@ -862,6 +901,8 @@ export function buildCollisionPresentationProvenance(target, other, receipt) {
       exchangedMomentum: nonNegativeFinite(receipt && receipt.exchangedMomentum),
       impactDamage: nonNegativeFinite(receipt && receipt.impactDamage),
     }),
+    // Copy the fields. The live provenance scratch is reused on the next contact.
+    provenance: freezeImpactLink(receipt && receipt.provenance),
   });
 }
 

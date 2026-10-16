@@ -1192,6 +1192,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // detached group must live in this scope for the thrown-leg dispose to reach it.
     let detachedCommitGroup = null;
     const completion = loadPart(url, {
+      ...mintedAdmissionOptions,
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
       optional: true,

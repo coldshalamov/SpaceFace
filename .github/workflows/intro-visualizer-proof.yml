@@ -33,9 +33,11 @@ jobs:
             /tools/cinematic/signal-remix*
             /test/intro-signal-remix*.test.mjs
             /scripts/build-bundle.mjs
+            /scripts/lib/vercelReleaseBase.mjs
             /assets/cinematics/intro-visualizer.mp4
             /assets/cinematics/intro-visualizer.jpg
             /styles/intro.css
+            /styles/ui.css
             /index.html
             /package.json
       - uses: actions/setup-node@v4

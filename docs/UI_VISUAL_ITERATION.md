@@ -29,7 +29,7 @@ For every screen you changed, and every state that screen can open (tabs, panels
 - Walk the controls. Every control you can see has to do something you can name, and you have to have seen the state it opens. "No visible change" on a control that is sitting there as a choice is a bug. A disabled control has to look disabled.
 - The screen is done when you have opened the after pictures and they are clean: nothing overlapping, nothing clipped, nothing off the frame, no dead control, no state you failed to open, nothing you would be ashamed to show.
 
-The owner's bar: consistent, high-detail, creative, interactive, non-generic. Direction context is `design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`. Nothing under `design/frontend/direction/approved/` is an approved frame.
+The owner's bar: consistent, high-detail, creative, interactive, non-generic. Active direction is [`../design/frontend/ORRERY.md`](../design/frontend/ORRERY.md) (superseding `FIELD_HARDWARE_PROGRAM.md`, `ONE_PHOTOGRAPH.md`, and `THE_BAR.md`). Nothing under `design/frontend/direction/approved/` is an approved frame.
 
 ## When the bench is the wrong tool
 

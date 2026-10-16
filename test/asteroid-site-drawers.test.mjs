@@ -30,7 +30,7 @@ import { SITE_BALANCE } from '../src/data/sites.js';
 import { BINDINGS } from '../src/ui/bindings.js';
 import {
   DRAWER_TABS, drawerClock, ledgerDrawerRows, helpDrawerRows, machineModeLabel,
-  transferRefusalText, siteDrawerModel,
+  transferRefusalText, siteDrawerModel, createSessionMutationGate,
 } from '../src/ui/asteroid/asteroidScreen.js';
 
 const SCREEN_SRC = readFileSync(new URL('../src/ui/asteroid/asteroidScreen.js', import.meta.url), 'utf8');
@@ -568,4 +568,33 @@ test('mode labels read as words, never as recipe ids', () => {
   assert.equal(machineModeLabel('feedstock'), 'Feedstock');
   assert.equal(machineModeLabel(null), '');
   assert.ok(!/sr_/.test(machineModeLabel('sr_cast_regocrete')));
+});
+
+test('late worker mutation completion is fenced across teardown and session restart', async () => {
+  let open = true;
+  const gate = createSessionMutationGate(() => open);
+  const oldToken = gate.begin();
+  let releaseOld;
+  const oldReply = new Promise((resolve) => { releaseOld = resolve; });
+  const feedback = [];
+  const stale = gate.settle(oldReply, (result) => { feedback.push(result); return result; }, oldToken);
+
+  // Teardown invalidates the old session before the deferred worker acknowledgement arrives.
+  gate.invalidate();
+  open = false;
+  releaseOld({ ok: true, reason: 'old-session' });
+  await stale;
+  assert.deepEqual(feedback, [], 'teardown suppresses stale UI feedback');
+
+  // Reopening the same screen gets a fresh token; the old acknowledgement cannot settle into it.
+  open = true;
+  const newToken = gate.begin();
+  assert.equal(gate.accepts(oldToken), false);
+  assert.equal(gate.accepts(newToken), true);
+  const fresh = await gate.settle(Promise.resolve({ ok: true, reason: 'new-session' }), (result) => {
+    feedback.push(result);
+    return result;
+  }, newToken);
+  assert.deepEqual(fresh, { ok: true, reason: 'new-session' });
+  assert.deepEqual(feedback, [{ ok: true, reason: 'new-session' }]);
 });

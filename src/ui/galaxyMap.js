@@ -4158,6 +4158,7 @@ export const galaxyMapScreen = {
   _railMarker: null,
 
   mount(rootEl, ctx) {
+    this._releaseSensorLattice();
     injectStyle();
     this._ctx = ctx;
     installAftermathChartListener(ctx && ctx.bus, ctx && ctx.state);
@@ -4782,6 +4783,7 @@ export const galaxyMapScreen = {
 
   onHide() {
     this._visible = false;
+    this._releaseSensorLattice();
     if (this._lockTimer) { clearTimeout(this._lockTimer); this._lockTimer = null; }
     this._lock = null;
     if (this._engageButton && this._engageButton.classList) this._engageButton.classList.remove('is-locking');
@@ -8075,6 +8077,43 @@ _onCanvasDblClick(ev) {
     if (this._g) this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
   },
 
+  _releaseSensorLattice() {
+    const canvas = this._sensorLatticeCache?.canvas;
+    if (canvas) { canvas.width = 0; canvas.height = 0; }
+    this._sensorLatticeCache = null;
+  },
+
+  _drawSensorLattice(g, w, h, a) {
+    const pointer = this._pointer;
+    const fallback = () => drawSensorLattice(g, w, h, { pointer, a });
+    const doc = this._canvas?.ownerDocument;
+    if (!doc?.createElement || typeof g.drawImage !== 'function') { fallback(); return; }
+    let cache = this._sensorLatticeCache;
+    if (!cache) {
+      let canvas, context;
+      try { canvas = doc.createElement('canvas'); context = canvas.getContext('2d'); } catch (_) { /* direct fallback */ }
+      if (!context && canvas) { canvas.width = 0; canvas.height = 0; }
+      cache = this._sensorLatticeCache = { canvas: context ? canvas : null, context };
+    }
+    if (!cache.context) { fallback(); return; }
+    const dpr = this._dpr || 1;
+    const cw = this._canvas.width, ch = this._canvas.height;
+    const px = Number.isFinite(pointer?.x) ? pointer.x : null;
+    const py = Number.isFinite(pointer?.y) ? pointer.y : null;
+    if (cache.cw !== cw || cache.ch !== ch || cache.dpr !== dpr
+        || cache.w !== w || cache.h !== h || cache.px !== px || cache.py !== py || cache.a !== a) {
+      // One transparent layer at the chart's exact backing resolution. Its points and pointer
+      // lens do not change with the animated scan; avoid resubmitting thousands of identical dots.
+      if (cache.canvas.width !== cw) cache.canvas.width = cw;
+      if (cache.canvas.height !== ch) cache.canvas.height = ch;
+      cache.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cache.context.clearRect(0, 0, w, h);
+      drawSensorLattice(cache.context, w, h, { pointer, a });
+      Object.assign(cache, { cw, ch, dpr, w, h, px, py, a });
+    }
+    g.drawImage(cache.canvas, 0, 0, w, h);
+  },
+
 _draw() {
     const g0 = this._g;
     if (!g0 || !this._canvas) return;
@@ -8693,7 +8732,7 @@ _drawGalaxy(g, state, w, h) {
     const dpr = this._dpr || 1;
 
     // ORRERY: the sensor lattice behind the chart, brightening in a lens under the pointer.
-    drawSensorLattice(g, w, h, { pointer: this._pointer, a: 0.11 });
+    this._drawSensorLattice(g, w, h, 0.11);
 
     const field = this._clearField(w, h);
     const fieldPad = 14;
@@ -9337,7 +9376,7 @@ _drawSystem(g, state, w, h) {
       edgeTicks.push(edgeTickOnField(field, fieldCx, fieldCy, x, y, color, shape, target));
     };
 
-    drawSensorLattice(g, w, h, { pointer: this._pointer, a: 0.06 });
+    this._drawSensorLattice(g, w, h, 0.06);
 
     g.save();
     g.beginPath();
@@ -10003,7 +10042,7 @@ _drawLocal(g, state, w, h) {
       edgeTicks.push(ringPinTick(sx(px), sz(pz), pinRadius, x, y, color, shape, target));
     };
 
-    drawSensorLattice(g, w, h, { pointer: this._pointer, a: 0.055 });
+    this._drawSensorLattice(g, w, h, 0.055);
 
     // Range rings: bands of light round the ship, each reading its radius on its crown.
     const shipX = sx(px), shipY = sz(pz);

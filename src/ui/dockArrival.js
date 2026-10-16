@@ -10,6 +10,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { cardsForStation } from './marketNews.js';
 import { formatOfflineReceiptLine, isOfflineReceiptShowable } from './automationPayoff.js';
+import { CHRONICLER_DIGEST_WEEK_S, chroniclerDigestWeek, selectWeeklyDigest } from '../systems/chronicler.js';
 
 /** One sim day. A loaded save older than this may speak the offline summary. */
 const SIM_DAY_S = 600;
@@ -47,6 +48,47 @@ export function finishReturnSummary(state) {
   if (!state || !state.ui) return;
   if (state.ui.returnSummaryVisible) state.ui.returnSummaryHeard = true;
   state.ui.returnSummaryVisible = null;
+}
+
+/** STORY-08 — one cited digest line for a week with new history. Pure read; never a screen. */
+export function weeklyDigestLine(state) {
+  const selection = selectWeeklyDigest(state);
+  if (!selection) return null;
+  const summary = String(selection.summary == null ? '' : selection.summary).replace(/\s+/g, ' ').trim();
+  if (!summary) return null;
+  return `WEEKLY DIGEST: ${summary} [${selection.factId}]`;
+}
+
+/** The digest selection behind the line, for tests and callers that consume it. */
+export function weeklyDigestSelection(state) {
+  return selectWeeklyDigest(state);
+}
+
+/**
+ * Record a docked digest so the same week stays silent and old facts never replay.
+ * Pass the selection the line was built from when the caller already holds it; otherwise
+ * the current selection is consumed. Returns the cited fact id, or null when silent.
+ */
+export function noteWeeklyDigestDocked(state, selection = null) {
+  if (!state) return null;
+  const now = Math.max(0, Number(state.simTime) || 0);
+  const week = chroniclerDigestWeek(now);
+  if (week < 1) return null;
+  const picked = selection || selectWeeklyDigest(state);
+  if (!picked || !picked.factId) return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  const record = state.ui.dockDigest && typeof state.ui.dockDigest === 'object'
+    ? state.ui.dockDigest
+    : (state.ui.dockDigest = {});
+  if (Number.isInteger(record.lastWeek) && record.lastWeek === week) return null;
+  record.lastWeek = week;
+  if (!Array.isArray(record.citedFactIds)) record.citedFactIds = [];
+  if (!record.citedFactIds.includes(picked.factId)) record.citedFactIds.push(picked.factId);
+  if (record.citedFactIds.length > 128) {
+    record.citedFactIds.splice(0, record.citedFactIds.length - 128);
+  }
+  void CHRONICLER_DIGEST_WEEK_S;
+  return picked.factId;
 }
 
 export function berthArrivalNews(view, fallbackNews = '') {
@@ -493,11 +535,12 @@ export function buildDockArrival(state = {}, station = {}) {
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
   const berthLine = [yardBerthLine(state, stationId), factionBerth].filter(Boolean).join(' ') || null;
   const returnSummary = returningPilotLine(state);
+  const digest = weeklyDigestLine(state);
   const hull = activeHullIdentity(state);
   // serviceNotice rides position 4: the seven-line slice must never spend the berth's
   // missing-refuel/repair warning on flavor cards. A station with news, traffic and
   // paperwork still shows it; patch/ledger/mechanic dressing falls off first.
-  const lines = [action.label, berthLine, returnSummary, serviceNotice, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  const lines = [action.label, berthLine, returnSummary, serviceNotice, news, digest, traffic, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -506,6 +549,8 @@ export function buildDockArrival(state = {}, station = {}) {
     primaryAction: action.label,
     primaryTarget: action.target,
     returnSummary,
+    digest,
+    digestLine: digest,
     news,
     eventCard,
     rumor,

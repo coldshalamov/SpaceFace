@@ -64,6 +64,7 @@ import {
   compileScenePipelinesForRenderTarget,
   createUnreadyDrawableGuard,
   programWrapperDead,
+  retireScenePipelineReadinessPrograms,
   scenePipelineReadinessBatchOpen,
   warmScenePipelinesForRenderTarget,
   DEFAULT_BLOOM_STRENGTH,
@@ -134,6 +135,7 @@ import {
   queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { entityIsMissionCritical, hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
+import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION } from './wholeShipLodPolicy.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
@@ -281,7 +283,8 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
-import { installAuthoredMotionBus, createAuthoredClock } from './authoredMotion.js';
+import { installAuthoredMotionBus, createAuthoredClock, isAttestedRigidMotionOwner } from './authoredMotion.js';
+import { hasBoundRigidMotionNode } from '../contracts/motionBank.js';
 import { globalForgeCrown } from './forgeRegentCrown.js';
 import { globalLawArenaDressing } from './lawArenaDressing.js';
 import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
@@ -409,6 +412,8 @@ import { preloadPlanetDetailLibrary } from './planetDetailLibrary.js';
 import {
   beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
+  createOpeningLoadingAdmission,
+  openingFirstPictureIsReady,
   createPipelineAdmissionTracker,
   prepareMobileOpeningFirstPicture,
   createSlicedYield,
@@ -491,6 +496,7 @@ import {
 } from './openingSubmissionPlan.js';
 import {
   admitOpeningUnitsAcrossSlices,
+  beginOpeningFirstDrawObservation,
   captureOpeningAdmissionIdentity,
   captureOpeningAdmissionIdentitySteps,
   describeOpeningAdmissionIdentityDelta,
@@ -1747,6 +1753,60 @@ export function openingCompileIssueKey(subject) {
     + `${subject.isInstancedMesh === true && subject.morphTexture != null ? '|im' : ''}`
     + `${subject.isBatchedMesh === true && subject._colorsTexture != null ? '|bc' : ''}`
     + `|m${parts}`;
+}
+
+/** Exact preparation is reusable only while this leaf's upload and program inputs stay unchanged. */
+const openingResourceIds = new WeakMap();
+let nextOpeningResourceId = 0;
+function openingResourceVersion(resource) {
+  if (!resource || typeof resource !== 'object') return '';
+  if (!openingResourceIds.has(resource)) openingResourceIds.set(resource, ++nextOpeningResourceId);
+  return `${openingResourceIds.get(resource)}:${resource.version || resource.data?.version || 0}`
+    + `:${resource.array ? openingResourceVersion(resource.array) : ''}`;
+}
+export function openingPreparedLeafKey(subject, context = '') {
+  const program = openingCompileIssueKey(subject);
+  if (!program || !subject.geometry) return null;
+  const geometry = subject.geometry;
+  const versions = Object.entries(geometry.attributes || {}).map(([name, attribute]) => (
+    `${name}:${openingResourceVersion(attribute)}:${attribute.count || 0}`
+  )).join('|');
+  const materials = (Array.isArray(subject.material) ? subject.material : [subject.material]).filter(Boolean);
+  const materialState = materials.map((material) => {
+    const textures = Object.values(material).filter((value) => value?.isTexture)
+      .map((texture) => `${texture.uuid}:${texture.version}`).join(',');
+    return `${material.uuid}:${material.version}:${textures}`;
+  }).join('|');
+  const morphs = Object.values(geometry.morphAttributes || {}).flat().map(openingResourceVersion).join('|');
+  return `${context};${program};${geometry.uuid};${openingResourceVersion(geometry.index)};${versions};${morphs};${materialState}`
+    + `;${openingResourceVersion(subject.instanceMatrix)}:${openingResourceVersion(subject.instanceColor)}:${subject.count ?? ''}`;
+}
+
+/** Reuse a cook-owned drawable census only while it still belongs to this scene and generation. */
+export function resolveTouchDrawableSession(census, scene, generation = 0) {
+  return census && census.scene === scene && census.generation === (generation || 0)
+    ? census : null;
+}
+
+/** Required leaves stay strict; extra pool coverage only admits live, potentially drawn resources. */
+export function openingAdmissionSubjects(required, pooled, scene, { mobileFirstPicture = false } = {}) {
+  const requiredLeaves = new Set(required);
+  return required.concat(pooled.filter((subject) => {
+    if (!subject || requiredLeaves.has(subject) || subject.geometry?.id == null || !subject.material) return false;
+    // Immediate first-use producers publish on ordinary events/input without an async admission
+    // owner. They owe their live material's first draw while mobile loading owns the picture;
+    // other dormant effects keep their bounded on-use path outside the opening cohort.
+    if (mobileFirstPicture && subject.userData?.spacefaceOpeningImmediateFirstUse !== true) return false;
+    for (let owner = subject; owner; owner = owner.parent) {
+      const data = owner.userData;
+      // Warm exemplars have their own cook. Hidden authored fallbacks never present, while
+      // dormant real pools (count/range 0, hidden emitter parents) still owe their first draw.
+      if (data?.rosterPrewarm != null
+          || (data?.authoredReadableFallbackLayer === true && owner.visible === false)) return false;
+      if (owner === scene) return true;
+    }
+    return false; // A retired/detached pool is not a producer in this scene.
+  }));
 }
 
 // Long material signature -> compact id. Equal signatures share an id, so the key still dedupes
@@ -10257,6 +10317,9 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'gpuTimers', 'diagnostics', 'resetPostTelemetrySample', 'warmPostProcess',
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
   'touchSubjectExactTarget',
+  'beginOpeningLoadingAdmission', 'isRequiredOpeningEntity', 'trackOpeningLoadingWork',
+  'openingLiveSectorReady', 'openingFirstPicturePhase',
+  'openingFirstPictureOwner', 'releaseOpeningPresentationHold', 'cancelOpeningPresentationHold',
   'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
@@ -10484,6 +10547,8 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  try { owner._disarmDrawHistogram?.(); } catch (_) { /* diagnostic cleanup only */ }
+  owner._touchDrawableCensus = null;
   const contextLost = options.contextLost === true || owner._contextLost === true;
   disableRigidOpaqueBatchProbe(owner, contextLost ? 'context-lost' : 'renderer-destroyed');
   owner._rigidOpaqueBatchScene = null;
@@ -10758,11 +10823,12 @@ function normalizeWarmHullFile(file) {
 /**
  * The whole-ship files a scoped ship-exemplar cohort can actually resolve — each spec's live
  * selection (hostile id -> silhouette -> assetRef -> trafficRole -> defId, faction kits included)
- * plus its LOD family siblings, because a demoted live spawn draws the lod1/lod2 GLB the lod0
- * exemplar never carries. Keys are normalized 'wholeships/x.glb' paths matching the explicit
- * decode list's file strings and finish()'s normalizeFile(url) output.
+ * plus the policy-allowed LOD fallback. Runtime demotion is currently disabled, so the selected
+ * primary plus the low-detail LOD2 stand-in are the only whole-ship files the launch warm needs;
+ * LOD1 remains opt-in with the demotion policy. Keys are normalized 'wholeships/x.glb' paths
+ * matching the explicit decode list's file strings and finish()'s normalizeFile(url) output.
  */
-function warmHullFilesForSpecs(specs) {
+export function warmHullFilesForSpecs(specs) {
   const files = new Set();
   for (const spec of specs || []) {
     let visual = null;
@@ -10771,11 +10837,63 @@ function warmHullFilesForSpecs(specs) {
     if (!visual || !visual.file) continue;
     files.add(normalizeWarmHullFile(visual.file));
     const family = visual.lodFamily;
-    for (const sibling of [family && family.lod0, family && family.lod1, family && family.lod2]) {
+    // Admission builds the selected primary. LOD2 is still a required fallback for a cold
+    // boundary/stand-in even while runtime whole-ship demotion is disabled; decoding LOD1 here
+    // would pay a file nobody can select on the live top-down route. If the policy is enabled,
+    // retain both siblings because the runtime controller may request either one.
+    const siblings = WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
+      ? [family && family.lod1, family && family.lod2]
+      : [family && family.lod2];
+    for (const sibling of siblings) {
       if (sibling) files.add(normalizeWarmHullFile(sibling));
     }
   }
   return files;
+}
+
+// Ordinary Adventure has a smaller, deterministic opening cast than the Crucible roster.  Keep
+// the bounded warm's hull set on the same sources that own that picture: the current first-flight
+// cook entities, the two fixed embark flyby bodies, the starter/player hull, and the scripted
+// onboarding roster that _prefetchEmbarkVisuals warms during the embark dwell.  The generic
+// spawnable catalog is intentionally excluded here; it belongs to the explicit Crucible/Swarm
+// roster warm and the armory dwell, not an ordinary opening.
+function openingWarmHullFilesForState(state) {
+  const specs = [];
+  try {
+    specs.push(...collectFirstFlightCookEntities(state));
+  } catch (_) {
+    // The opening warm is best-effort; the live first-flight cook remains authoritative when a
+    // partially prepared state cannot be enumerated yet.
+  }
+  const playerSpec = cruciblePlayerShipExemplarSpec(state);
+  if (playerSpec) specs.push(playerSpec);
+  specs.push(
+    {
+      id: 'opening-warm:ship:wasp',
+      type: 'ship',
+      alive: true,
+      factionId: 'faction_reavers',
+      data: { defId: 'ship_wasp' },
+    },
+    {
+      id: 'opening-warm:ship:mule',
+      type: 'ship',
+      alive: true,
+      factionId: 'faction_free',
+      data: { defId: 'ship_mule' },
+    },
+  );
+  for (const row of scriptedOnboardingRosterRows()) {
+    if (!row || typeof row.archetype !== 'string' || !row.archetype) continue;
+    specs.push({
+      id: `opening-warm:roster:${row.archetype}`,
+      type: 'ship',
+      alive: true,
+      factionId: row.factionId || null,
+      data: { lootTableId: row.archetype },
+    });
+  }
+  return warmHullFilesForSpecs(specs);
 }
 
 const PRESENTATION_TEXTURE_KEYS = Object.freeze([
@@ -10920,6 +11038,7 @@ function disableRigidOpaqueBatchProbe(owner, reason = 'bench-disabled') {
     owner._rigidOpaqueBatchController = null;
   }
   owner._rigidOpaqueBatchProbeEnabled = false;
+  owner._rigidOpaqueBatchAshlineLifetimes?.clear();
   if (owner._rigidOpaqueBatchRootsScratch) owner._rigidOpaqueBatchRootsScratch.length = 0;
   const previous = owner._rigidOpaqueBatchLastDiagnostics
     || controller?.getDiagnostics?.()
@@ -10940,32 +11059,218 @@ function disableRigidOpaqueBatchProbe(owner, reason = 'bench-disabled') {
   return diagnostics;
 }
 
-function createRigidOpaqueBatchProbe(owner, scene) {
+// The retained rigid path is deliberately narrow on the live route. These are the surfaces
+// whose authored/material contracts are known to remain rigid within the player Kestrel root:
+// the cold retro shell/body/trim pair and the immutable Kestrel LOD0 mechanical cohorts. The
+// motion-tagged entries are admitted only through the explicit transform-only callback below;
+// the policy still rejects drive/fan/turret/damage/canopy/nav/custom-shader ownership.
+const RIGID_KESTREL_COHORT_SOURCE_NAMES = new Set([
+  'Retro_Shell_Port', 'Retro_Shell_Starboard',
+  'Retro_Body_Port', 'Retro_Body_Starboard',
+  'Retro_Trim_Port', 'Retro_Trim_Starboard',
+  'LOD0_Beacon_Amber_beacon',
+  'LOD0_Mechanical',
+  'LOD0_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_1_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_2_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_3_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_4_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_5_MechanicalDark',
+  'LOD0_MOTION_KESTREL_MINING_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_MINING_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical',
+  'LOD0_MOTION_KESTREL_STRUT_F_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_P_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_S_MechanicalDark',
+]);
+
+const RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES = new Set([
+  'Retro_Shell_Port', 'Retro_Shell_Starboard',
+  'Retro_Body_Port', 'Retro_Body_Starboard',
+  'Retro_Trim_Port', 'Retro_Trim_Starboard',
+  'LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_1_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_2_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_3_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_4_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_5_MechanicalDark',
+  'LOD0_MOTION_KESTREL_MINING_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_MINING_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical',
+  'LOD0_MOTION_KESTREL_STRUT_F_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_P_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_S_MechanicalDark',
+]);
+
+export const RIGID_OPAQUE_ASHLINE_COHORT_MAX_ROOTS = 16;
+const RIGID_ASHLINE_HULL_URL = 'assets/ships/release/parts/wholeships/ashline_dart.glb';
+const RIGID_ASHLINE_RETRO_SOURCE_NAMES = new Set([
+  'Retro_Shell_Port', 'Retro_Shell_Starboard',
+  'Retro_Body_Port', 'Retro_Body_Starboard',
+  'Retro_Trim_Port', 'Retro_Trim_Starboard',
+]);
+const RIGID_ASHLINE_BODY_SOURCE_NAMES = new Set([0, 1, 2].flatMap((level) => [
+  'Armor', 'BrushedMetal', 'Hull', 'Livery', 'Mechanical', 'MechanicalDark', 'Warning',
+].map((surface) => `LOD${level}_MOTION_HULL_CORE_${surface}`)));
+const RIGID_ASHLINE_MOTION_IDENTITY = Object.freeze({
+  packageAssetId: 'sf.render.ashline-dart',
+  packageContentHash: '091d9605495948305754979e1cce24eb3e475500788375575ea7dcc1f87ef4ac',
+  bankSha256: '89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e',
+  sourceAssetId: 'SF_WHOLESHIP_ASHLINE_DART', rigId: 'hull', bindingId: 'hull_core',
+});
+
+export function isRigidOpaqueAshlineCohortRoot(owner, root) {
+  const data = root?.userData, id = data?.presentationEntityId;
+  if (id == null || !root.parent || owner?._meshes?.get?.(id) !== root) return false;
+  const entity = owner.state?.entities?.get?.(id), ship = entity?.data;
+  // This exact ordinary hostile resolves to Ashline Dart before the generic ship_wasp map.
+  // Special authored owners can override that mapping, so they keep their direct presentation.
+  return entity?.alive !== false && entity?.type === 'ship'
+    && ship?.defId === 'ship_wasp' && ship.lootTableId === 'wasp_swarmer'
+    && ship.authoredAssetId == null && ship.authoredCharacter == null
+    && ship.persistenceOwner == null && ship.worldRecordId == null
+    && data.presentationEntityType === 'ship' && data.presentationShipDefId === ship.defId
+    && entity.occupantGeneration != null
+    && data.presentationOccupantGeneration === entity.occupantGeneration
+    && (data.authoredAssetState === 'authored' || data.authoredAssetState === 'authored-with-cleanup-error')
+    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.includes(RIGID_ASHLINE_HULL_URL);
+}
+
+function rigidOpaqueAshlineSourceRoot(owner, source) {
+  const retro = RIGID_ASHLINE_RETRO_SOURCE_NAMES.has(source?.name);
+  const body = RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name);
+  if ((!retro && !body) || source.isMesh !== true
+      || source.userData?.spacefaceInstanceProxy || source.userData?.spacefaceRenderPackagePooled) return null;
+  if (body && source.userData?.spacefacePartUrl !== RIGID_ASHLINE_HULL_URL) return null;
+  let packageMatched = retro;
+  for (let node = source; node; node = node.parent) {
+    const identity = node.userData?.spacefaceRenderPackage;
+    if (body && !packageMatched && identity) {
+      if (identity.assetId !== RIGID_ASHLINE_MOTION_IDENTITY.packageAssetId
+          || identity.contentHash !== RIGID_ASHLINE_MOTION_IDENTITY.packageContentHash) return null;
+      packageMatched = true;
+    }
+    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
+  }
+  return null;
+}
+
+function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
+  if (!RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name)) return false;
+  const root = rigidOpaqueAshlineSourceRoot(owner, source);
+  if (!root) return false;
+  let matched = null;
+  for (let node = source; node; node = node.parent) {
+    const controllers = node.userData?.authoredMotionControllers;
+    if (Array.isArray(controllers)) {
+      for (const controller of controllers) {
+        if (!hasBoundRigidMotionNode(controller, object, RIGID_ASHLINE_MOTION_IDENTITY.bindingId)) continue;
+        // A second transform writer is not the attested single-owner contract.
+        if (matched && matched !== controller) return false;
+        matched = controller;
+      }
+    }
+    if (node === root) break;
+  }
+  return !!matched && isAttestedRigidMotionOwner(matched, object, RIGID_ASHLINE_MOTION_IDENTITY);
+}
+
+function isRigidOpaqueKestrelPlayerRoot(owner, root) {
   const state = owner?.state;
+  const playerId = state?.playerId;
+  if (playerId == null || !root || owner?._meshes?.get?.(playerId) !== root) return false;
+  const entity = state?.entities?.get?.(playerId);
+  const defId = entity?.data?.defId || root.userData?.presentationShipDefId;
+  return defId === 'ship_kestrel';
+}
+
+function isRigidOpaqueKestrelPlayerSource(owner, source) {
+  const root = owner?._meshes?.get?.(owner?.state?.playerId);
+  if (!isRigidOpaqueKestrelPlayerRoot(owner, root) || !source) return false;
+  let current = source;
+  while (current && current !== root) current = current.parent;
+  return current === root;
+}
+
+export function isRigidOpaqueDefaultCohortSource(owner, source) {
+  return (RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
+      && isRigidOpaqueKestrelPlayerSource(owner, source))
+    || rigidOpaqueAshlineSourceRoot(owner, source) != null;
+}
+
+function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
+  const state = owner?.state;
+  const defaultCohort = options.defaultCohort === true;
+  const ashlineLifetimes = defaultCohort ? new Map() : null;
+  owner._rigidOpaqueBatchAshlineLifetimes = ashlineLifetimes;
+  const selectSource = defaultCohort
+    ? (source) => {
+      if (RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
+          && isRigidOpaqueKestrelPlayerSource(owner, source)) return true;
+      const root = rigidOpaqueAshlineSourceRoot(owner, source), life = root && ashlineLifetimes.get(root);
+      return !!life && life.id === root.userData.presentationEntityId
+        && life.generation === root.userData.presentationOccupantGeneration;
+    }
+    : undefined;
+  const isTransformOnlySource = defaultCohort
+    ? (source) => (isRigidOpaqueKestrelPlayerSource(owner, source)
+      && RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES.has(source?.name))
+      || rigidOpaqueAshlineSourceRoot(owner, source) != null
+    : undefined;
   return createRetainedRigidOpaqueBatchController({
     scene,
     supported: owner?._opaqueBatchSupported === true,
     assumeUniqueRoots: true,
+    selectSource,
+    isTransformOnlySource,
+    isAttestedRigidMotionOwner: defaultCohort
+      ? (object, source) => isRigidOpaqueAshlineMotionOwner(owner, object, source)
+      : undefined,
     prepare: async (batches, context = {}) => {
-      const compile = state?.render?.compileObjectPipelines;
+      const renderState = state?.render;
+      const compile = renderState?.compileObjectPipelines;
       if (typeof compile !== 'function') return { skipped: true, reason: 'compile-unavailable' };
+      const world = state.world, generation = renderState.admissionRunGeneration;
+      const serial = world?.enterSerial, sector = world?.currentSectorId;
+      const restore = state.contextRestoreSeq, nativeRenderer = owner.renderer;
+      const loading = state.mode === 'loading';
+      // Admission-only allocation: a kept root can be rebound while pipeline preparation waits.
+      const ashlineLives = defaultCohort ? (context.roots || []).filter((root) => (
+        ashlineLifetimes.has(root)
+      )).map((root) => ({ root, ...ashlineLifetimes.get(root) })) : [];
+      const isActive = () => owner.state === state && state.render === renderState
+        && state.world === world && world?.enterSerial === serial && world?.currentSectorId === sector
+        && renderState.admissionRunGeneration === generation && state.contextRestoreSeq === restore
+        && owner.renderer === nativeRenderer && owner._contextLost !== true
+        && owner._rendererResourcesDisposed !== true && (!loading || state.mode === 'loading')
+        && ashlineLives.every((life) => isRigidOpaqueAshlineCohortRoot(owner, life.root)
+          && life.root.userData.presentationEntityId === life.id
+          && life.root.userData.presentationOccupantGeneration === life.generation)
+        && (typeof context.isActive !== 'function' || context.isActive() === true);
       for (const batch of batches || []) {
-        if (owner?._contextLost === true || owner?._rendererResourcesDisposed === true
-            || (typeof context.isActive === 'function' && context.isActive() !== true)) {
-          return { skipped: true, reason: 'candidate-superseded' };
-        }
+        if (!isActive()) return { skipped: true, reason: 'candidate-superseded' };
         const result = await Promise.resolve(compile(batch, {
           explicit: true,
           strict: true,
           joinOutstanding: true,
+          // The loading facade otherwise returns a skipped receipt and queues detached ambient
+          // work. This finite default cohort must finish compile/residency/exact touch before seal.
+          openingRequired: defaultCohort && loading,
           debugBy: 'rigid-opaque-batch',
-          isActive: () => owner?._contextLost !== true
-            && owner?._rendererResourcesDisposed !== true
-            && (typeof context.isActive !== 'function' || context.isActive() === true),
+          isActive,
         }));
+        if (!isActive()) return { skipped: true, reason: 'candidate-superseded' };
         if (!result || result.skipped === true) {
           return { skipped: true, reason: result && result.reason || 'compile-incomplete' };
         }
+        assertCompleteAppearanceAdmission(result);
       }
       return { ready: true };
     },
@@ -11128,12 +11433,14 @@ export const render = {
     // write skip. With the compose off, the per-frame walk only rewrites subtrees whose nodes
     // actually re-posed this frame.
     scene.matrixAutoUpdate = false;
-    // Controlled A/B only: the retained rigid candidate is opt-in and requires the same
-    // WEBGL_multi_draw capability as the existing opaque bridge. Its source leaves remain in the
-    // ordinary path until the exact pipeline + residency callback below resolves successfully.
-    this._rigidOpaqueBatchProbeEnabled = !!(
-      query && query.get('rigidOpaqueBatch') === '1' && this._opaqueBatchSupported
-    );
+    // The live route uses the retained rigid candidate only for the exact Kestrel player cohort
+    // below. `?rigidOpaqueBatch=1` remains the broad diagnostic probe for the existing bench;
+    // both paths retain direct source draws until the exact pipeline + residency callback below
+    // resolves successfully. A supported GPU therefore gets the bounded default without making
+    // the bench flag part of the player route.
+    const rigidOpaqueBatchBenchRequested = !!(query && query.get('rigidOpaqueBatch') === '1');
+    this._rigidOpaqueBatchDefaultCohort = !rigidOpaqueBatchBenchRequested;
+    this._rigidOpaqueBatchProbeEnabled = this._opaqueBatchSupported === true;
     this._rigidOpaqueBatchScene = scene;
     this._rigidOpaqueBatchRootsScratch = [];
     this._rigidOpaqueBatchController = null;
@@ -11144,7 +11451,10 @@ export const render = {
     state.render.rigidOpaqueBatch = this._rigidOpaqueBatchLastDiagnostics;
     state.render.setRigidOpaqueBatchForBench = (enabled) => this.setRigidOpaqueBatchForBench(enabled);
     state.render.getRigidOpaqueBatchDiagnosticsForBench = () => this.getRigidOpaqueBatchDiagnosticsForBench();
-    if (this._rigidOpaqueBatchProbeEnabled) this.setRigidOpaqueBatchForBench(true);
+    if (this._rigidOpaqueBatchProbeEnabled) {
+      if (rigidOpaqueBatchBenchRequested) this.setRigidOpaqueBatchForBench(true);
+      else this._enableRigidOpaqueBatch(true);
+    }
     const dynamicBuffers = createDynamicBufferCoordinator(scene);
     this._dynamicBuffers = dynamicBuffers;
     state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
@@ -11201,7 +11511,28 @@ export const render = {
     state.render.spaceBg = spaceBg;
     // Generated backdrop producers publish their exact construction recipe in their constructors;
     // renderer only consumes those immutable boundaries.
-    const vf = createVisualFactory({ renderer });
+    const vf = createVisualFactory({
+      renderer,
+      planetDetailAdmission: {
+        generation: () => state.contextRestoreSeq,
+        prepare: async (texture, options = {}) => {
+          const world = state.world;
+          const render = state.render;
+          const context = state.contextRestoreSeq;
+          const active = () => this.state === state && state.world === world && state.render === render
+            && this.renderer === renderer && state.contextRestoreSeq === context
+            && this._rendererResourcesDisposed !== true && this._contextLost !== true
+            && (!options.isActive || options.isActive());
+          const admission = this._gpuResidencyAdmissions;
+          if (!admission || !active()) throw new Error('Planet detail residency owner is unavailable');
+          // Each binding keeps its own cancellation scope; the existing per-renderer
+          // residency stamps still dedupe uploads when planets request the same tile.
+          const result = await admission.prepare(texture, { isActive: active });
+          if (!active()) throw new Error('Planet detail residency owner became inactive');
+          return assertCompleteAppearanceAdmission(result);
+        },
+      },
+    });
     if (this._livingHullPresentation) this._livingHullPresentation.dispose();
     this._livingHullPresentation = createLivingHullPresentation();
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.dispose();
@@ -11320,6 +11651,7 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
+        retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
         this._sessionLiveSectorCookedId = null;
         if (state.render) state.render.sessionLiveSectorCookedId = null;
@@ -12178,14 +12510,11 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening admission');
             const restore = revealSubjectForCompile(subject);
             try {
-              // The cohort may yield before awaiting this compile. Observe the cleanup child
-              // immediately too; observing only the parent's promise leaves this one exposed.
-              return observePipelineAdmission(
-                Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)).finally(restore),
-              );
-            } catch (error) {
+              // Three traverses and issues the compile synchronously; the returned Promise
+              // only waits for driver readiness. Never hold the reveal during that wait.
+              return observePipelineAdmission(this._compilePostRoute(route, subject, cam.obj, scene));
+            } finally {
               restore();
-              throw error;
             }
           },
           touchOne: (subject) => {
@@ -12719,15 +13048,22 @@ export const render = {
     // geometry.uuid, frustum-tested like WebGLRenderer's own cull). Arms the S3
     // instancing question: fly to a bloom sector, read the logged window.
     try {
+      renderer.__sfDrawHistogramArmed = false;
+      renderer.__sfLastHiddenDrawables?.clear?.();
+      renderer.__sfLastHiddenDrawables = null;
       const drawhist = query && query.get('drawhist');
       this._drawHistogramWindow = drawhist != null ? Math.max(1, +drawhist || 120) : 0;
       if (this._drawHistogramWindow) {
+        renderer.__sfDrawHistogramArmed = true;
         // accumulate info.render.calls across the whole frame's passes; the sampler
         // reads + resets once per frame so glCalls covers shadow/post/producer too.
         if (renderer && renderer.info) renderer.info.autoReset = false;
         console.info(`[drawhist] armed: window=${this._drawHistogramWindow}f — result lands on globalThis.__sfDrawHistogram each window`);
       }
-    } catch (_) { this._drawHistogramWindow = 0; }
+    } catch (_) {
+      this._drawHistogramWindow = 0;
+      this._disarmDrawHistogram();
+    }
 
     state.render.scene = scene;
     state.render.renderer = renderer;
@@ -12793,20 +13129,74 @@ export const render = {
     };
     const touchExactTargetSubject = (subject) => {
       stampSubjectEnv(subject);
+      const drawableSession = resolveTouchDrawableSession(
+        this._touchDrawableCensus, scene, this._liveSectorCookGeneration || 0,
+      );
       if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
-        return this.bloom.touchScenePipelines(subject, cam.obj, scene);
+        return this.bloom.touchScenePipelines(subject, cam.obj, scene, { drawableSession });
       }
-      return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
+      return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene, { drawableSession });
+    };
+    const ownerInactiveTouchError = () => {
+      const error = new Error('exact-target touch owner became inactive');
+      error.name = 'AbortError';
+      error.code = 'SF_EXACT_TARGET_OWNER_INACTIVE';
+      return error;
+    };
+    const isOwnerInactiveTouchError = (error) => error && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE';
+    const submitExactSubjectTouch = (subject, isActive = null) => {
+      const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+      const submit = () => {
+        if (typeof isActive === 'function' && !isActive(subject)) throw ownerInactiveTouchError();
+        // The pacer may wait behind another producer. Reveal only inside its synchronous
+        // reservation: overlapping root/descendant jobs must never capture each other's
+        // temporary visibility/count/range and restore that warm state into live flight.
+        const restore = revealSubjectWithAncestors(subject);
+        try { return touchExactTargetSubject(subject); }
+        finally { restore(); }
+      };
+      const pending = pace?.submit
+        ? pace.submit(submit, { isActive: () => !isActive || isActive(subject) })
+        : Promise.resolve().then(submit);
+      return Promise.resolve(pending).then((result) => {
+        // The serial queue can reject a stale owner before running submit. Convert its tagged
+        // skip into the same cancellation used by the exact callback so awaited admission owners
+        // never mistake an inactive target for a successful exact draw.
+        if (result && result.skipped === true && result.reason === 'owner-inactive') {
+          throw ownerInactiveTouchError();
+        }
+        return result;
+      });
+    };
+    const openingStampContext = () => `${state.render.admissionRunGeneration}:${state.contextRestoreSeq || 0}`
+      + `:${this._envMap?.uuid || ''}:${this._shadowSettingOn === true}:${this._selectPostRoute()}`;
+    const rememberOpeningPreparedLeaves = (root) => {
+      if (state.mode !== 'loading' || !root) return;
+      const stamps = this._openingPreparedLeaves || (this._openingPreparedLeaves = new WeakMap());
+      const remember = (leaf) => {
+        const key = openingPreparedLeafKey(leaf, openingStampContext());
+        if (key) stamps.set(leaf, key);
+      };
+      if (root.traverse) root.traverse(remember); else remember(root);
     };
     // Loading-shell form of the touch above: one render draws the whole group on the same target.
     const touchExactTargetSubjects = async (subjects, drawableSession = null) => {
       const list = (Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean);
       if (list.length === 0) return { skipped: true, reason: 'empty touch group' };
       for (const subject of list) await stampSubjectEnvAsync(subject);
-      if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
-        return this.bloom.touchScenePipelines(list, cam.obj, scene, { drawableSession });
+      // Environment preparation can suspend behind other admission producers. Reveal only
+      // around the synchronous submitted draw: another group must never capture these
+      // ancestors' temporary warm visibility as their live state (idle rifts/beam pools).
+      const restores = [];
+      try {
+        for (const subject of list) restores.push(revealSubjectWithAncestors(subject));
+        if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
+          return this.bloom.touchScenePipelines(list, cam.obj, scene, { drawableSession });
+        }
+        return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
+      } finally {
+        for (let index = restores.length - 1; index >= 0; index--) restores[index]();
       }
-      return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
     // The session mint is an O(scene) drawable enumeration — pace its Steps twin
@@ -13027,7 +13417,7 @@ export const render = {
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
         });
-      if (shouldSliceFlightAdmission({
+      if ((state.mode === 'loading' && compileOptions?.openingRequired === true) || shouldSliceFlightAdmission({
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
         urgent: compileOptions && compileOptions.urgent === true,
@@ -13194,6 +13584,83 @@ export const render = {
       });
     });
     this._gpuResidencyAdmissions = gpuResidencyAdmissions;
+    state.render.isRequiredOpeningEntity = (entity) => state.mode === 'loading'
+      && this._openingLoadingAdmission?.owns(entity) === true;
+    state.render.trackOpeningLoadingWork = (entity, promise) => (
+      state.render.isRequiredOpeningEntity(entity)
+        ? this._openingLoadingAdmission.track(promise) : promise
+    );
+    state.render.beginOpeningLoadingAdmission = () => {
+      const existing = this._openingLoadingAdmission;
+      if (existing?.owns(state.entities?.get(state.playerId))) return this._openingLoadingMeshesReady;
+      const world = state.world;
+      const renderState = state.render;
+      const generation = state.render.admissionRunGeneration;
+      const serial = world?.enterSerial;
+      const sector = world?.currentSectorId;
+      const nativeRenderer = renderState.renderer;
+      const context = state.contextRestoreSeq;
+      const active = () => rendererGenerationIsActive() && state.mode === 'loading'
+        && state.render === renderState && state.world === world && world?.enterSerial === serial
+        && world?.currentSectorId === sector && renderState.renderer === nativeRenderer
+        && state.render.admissionRunGeneration === generation && state.contextRestoreSeq === context
+        && this._openingLoadingAdmission === cohort;
+      this._deferNoncriticalMeshStreaming = false;
+      renderState.deferNoncriticalMeshStreaming = false;
+      releaseOpeningGraphPublication(this);
+      this._openingFirstPicturePrepared = false;
+      cam.follow?.(0, undefined, undefined, this._cameraClearanceAt);
+      cam.obj?.updateMatrixWorld?.(true);
+      const camera = openingSubmissionCamera(cam.obj);
+      const sphere = new THREE.Sphere(new THREE.Vector3(), 1);
+      const cohort = createOpeningLoadingAdmission({
+        entities: state.entityList || [], isActive: active,
+        isRequired: (entity) => {
+          if (!entity || entity.alive === false || entity._noMesh) return false;
+          // The authored gate also owns runway payloads outside the opening camera.
+          // Schedule that same finite set before waiting for its pipeline status.
+          if (isInitialAuthoredCompositionEntity(entity, state)) return true;
+          if (!camera?.frustum || !entity.pos) return false;
+          const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
+          sphere.center.set(local.x, Number(entity.pos.y) || 0, local.z);
+          sphere.radius = Math.max(1, entityVisualCullRadius(entity, this._meshes.get(entity.id)));
+          return camera.frustum.intersectsSphere(sphere);
+        },
+      });
+      this._openingLoadingAdmission = cohort;
+      this._openingPreparedLeaves = new WeakMap();
+      const drive = async (steps) => {
+        let sliceAt = performance.now();
+        try {
+          for (;;) {
+            if (!active()) throw new Error('opening mesh preparation was superseded');
+            const step = steps.next();
+            if (step.done) return step.value;
+            if (performance.now() - sliceAt >= 4) { await yieldToBrowser(); sliceAt = performance.now(); }
+          }
+        } finally { steps.return?.(); }
+      };
+      const ready = (async () => {
+        await drive(enqueueMissingMeshBuildsSteps(cohort.entities(), this._meshes,
+          this._meshBuildQueuedIds, this._meshBuildQueue, (entity) => cohort.owns(entity)));
+        if (!active()) throw new Error('opening mesh preparation was superseded');
+        // Required roots lead, but the optional tail keeps its FIFO and ordinary sliced owner.
+        const tail = this._meshBuildQueue.slice(this._meshBuildQueueHead);
+        const requiredIds = new Set(cohort.entities().map((entity) => entity.id));
+        this._meshBuildQueue.splice(this._meshBuildQueueHead, tail.length,
+          ...tail.filter((id) => requiredIds.has(id)), ...tail.filter((id) => !requiredIds.has(id)));
+        while (this._meshBuildQueueHead < this._meshBuildQueue.length
+            && requiredIds.has(this._meshBuildQueue[this._meshBuildQueueHead])) {
+          await drive(this._drainMeshBuildQueueSteps(1));
+          await yieldToBrowser();
+        }
+        return true;
+      })();
+      this._openingLoadingMeshesReady = observePipelineAdmission(ready);
+      // Subject compiles/uploads overlap library loading. The post-visual readiness gate
+      // starts the broad sector cook once its composition prerequisites have committed.
+      return ready;
+    };
     const openingCohort = createOpeningAdmissionCohort();
     const openingStillBlocking = () => (
       state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
@@ -13338,6 +13805,7 @@ export const render = {
           // flight. While the loading shell is up the opening plan's scene sweep
           // owns mounted uploads, so the extra walk is skipped there.
           if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+              && admissionOptions.openingRequired !== true
               && admissionOptions.strict !== true) {
             return result;
           }
@@ -13361,7 +13829,8 @@ export const render = {
           );
         })
         .then(async (result) => {
-          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+              && admissionOptions.openingRequired !== true) {
             return result;
           }
           const recovering = state.render
@@ -13373,7 +13842,7 @@ export const render = {
           }
           if (typeof admissionOptions.isActive === 'function'
               && admissionOptions.isActive(subject) !== true) {
-            return result;
+            throw ownerInactiveTouchError();
           }
           // A cpu-detached package texture this draw would force-upload reads an emptied mip
           // chain inside uploadTexture and throws — the touch exists to keep exactly that work
@@ -13396,10 +13865,10 @@ export const render = {
           // color space). Draw the admitted subject once on the exact post target under live
           // state — the same touch the opening plan runs — so any residual variant links here,
           // behind the pending latch, instead of inside a presented bloom frame.
-          const restore = revealSubjectForCompile(subject);
           try {
-            touchExactTargetSubject(subject);
+            await submitExactSubjectTouch(subject, admissionOptions.isActive);
           } catch (error) {
+            if (isOwnerInactiveTouchError(error)) throw error;
             exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             // Identify which texture threw on upload and why: package-detach empties a
@@ -13450,11 +13919,13 @@ export const render = {
                   String(diagError && diagError.message || diagError));
               }
             }
-          } finally {
-            restore();
           }
           if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
             markAuthoredGeologyFallbackAdmitted(subject);
+            rememberOpeningPreparedLeaves(subject);
+          }
+          if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
+            throw new Error('Required authored appearance admission did not complete');
           }
           return result;
         })
@@ -13494,6 +13965,11 @@ export const render = {
       if (admissionOptions && admissionOptions.isActive !== undefined) lane.isActive = admissionOptions.isActive;
       if (admissionOptions && admissionOptions.joinOutstanding === true) lane.joinOutstanding = true;
       if (admissionOptions && admissionOptions.unSliced === true) lane.unSliced = true;
+      if (admissionOptions && admissionOptions.openingRequired === true) {
+        lane.openingRequired = true;
+        lane.urgent = true;
+        lane.strict = true;
+      }
       if (admissionOptions && admissionOptions.debugBy != null && debugBy == null) {
         lane.debugBy = admissionOptions.debugBy;
       }
@@ -13509,6 +13985,9 @@ export const render = {
       // variant Three's public compile() never prepares.
       if (this._postOpeningPipelineAdmissionReleased !== true) {
         if (state.mode === 'loading') {
+          if (admissionOptions.openingRequired === true) {
+            return admitSubjectPipelines(subject, preReleaseLaneOptions(admissionOptions));
+          }
           if (state.render.liveSectorGpuAdmission === true) {
             return subject ? admitSubjectPipelines(subject, preReleaseLaneOptions(admissionOptions)) : Promise.resolve({ skipped: true });
           }
@@ -13526,7 +14005,7 @@ export const render = {
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
       return admitSubjectPipelines(subject, admissionOptions);
     };
-    state.render.touchSubjectExactTarget = (subject) => {
+    state.render.touchSubjectExactTarget = (subject, admissionOptions = {}) => {
       // Publish-seam warm: an authored boundary calls this on its attached, final-state root
       // just before reveal. The pre-commit prepare touched the root while it was detached, and
       // publish-time state can still resolve a program key the detached touch never produced
@@ -13534,6 +14013,10 @@ export const render = {
       // residual variant links here — in the admission continuation — not inside the first
       // presented bloom pass.
       if (!subject || !this.scene || !cam.obj) return { skipped: true, reason: 'touch unavailable' };
+      if (typeof admissionOptions.isActive === 'function'
+          && admissionOptions.isActive(subject) !== true) {
+        return Promise.resolve({ skipped: true, reason: 'owner-inactive' });
+      }
       const recovery = this._contextRecovery;
       if (recovery && recovery.pending === true) {
         // A touch now would link into the dead context's program cache, and the restore
@@ -13583,16 +14066,18 @@ export const render = {
                 } catch (error) {
                   laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
                 }
-                const restoreDetached = revealSubjectWithAncestors(subject);
                 try {
-                  return touchExactTargetSubject(subject);
+                  const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
+                  rememberOpeningPreparedLeaves(subject);
+                  return result;
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
                   // on a best-effort caller.
+                  if (isOwnerInactiveTouchError(error)) {
+                    return { skipped: true, reason: 'owner-inactive' };
+                  }
                   laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
                   return { skipped: true, reason: 'touch-failed' };
-                } finally {
-                  restoreDetached();
                 }
               });
           }
@@ -13604,16 +14089,18 @@ export const render = {
           } catch (error) {
             laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
           }
-          const restore = revealSubjectWithAncestors(subject);
           try {
-            return touchExactTargetSubject(subject);
+            const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
+            rememberOpeningPreparedLeaves(subject);
+            return result;
           } catch (error) {
+            if (isOwnerInactiveTouchError(error)) {
+              return { skipped: true, reason: 'owner-inactive' };
+            }
             // The whole seam is async now, so mirror the detached branch's
             // anti-unhandled-rejection contract instead of propagating.
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             return { skipped: true, reason: 'touch-failed' };
-          } finally {
-            restore();
           }
         });
     };
@@ -13627,7 +14114,8 @@ export const render = {
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
-      if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+      if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+          && options.openingRequired !== true) {
         return Promise.resolve({
           skipped: true,
           reason: 'opening-submission-plan-owns-first-picture',
@@ -13920,13 +14408,7 @@ export const render = {
       // These renderer-owned pools are real first-picture draw roots once the final entity frame
       // populates them. They are not entity children and therefore cannot be discovered by the
       // entity-root census above.
-      const derivedPoolRoots = [
-        this._contactShadowPool && this._contactShadowPool.mesh,
-        this._shipAuxPool && this._shipAuxPool.shield && this._shipAuxPool.shield.mesh,
-        this._shipAuxPool && this._shipAuxPool.nav && this._shipAuxPool.nav.mesh,
-        ...collectAuthoredInstancePoolRoots(scene),
-        ...collectAsteroidInstancePoolRoots(this._asteroidInstancePool),
-      ];
+      const derivedPoolRoots = this._collectOpeningDerivedPoolRoots();
       for (const root of derivedPoolRoots) {
         if (collectOpeningSubmissionLeaves(root, { camera: submissionCamera }).length === 0) continue;
         addCandidate(root, {
@@ -14041,8 +14523,8 @@ export const render = {
       state.render.firstPlayableOpeningProgramKeys = producerCensus.openingProgramKeys;
       state.render.firstPlayableResourceIdentitySets = producerCensus.resourceIdentitySets;
     };
-    state.render.prepareOpeningFirstPicture = (timeoutMs) => (
-      this.prepareOpeningFirstPicture(timeoutMs)
+    state.render.prepareOpeningFirstPicture = (timeoutMs, options) => (
+      this.prepareOpeningFirstPicture(timeoutMs, options)
     );
     const warmOpeningShadowPipelines = (subjects) => driveCompileShadowDepthPipelines({
       renderer,
@@ -14057,7 +14539,13 @@ export const render = {
       lightSigFor: () => this._depthCollectLightSig(scene),
       stagingName: 'SF_OpeningShadowPipelineAdmission',
     }, yieldToBrowser);
-    const compileOpeningSubmissionPlan = async (plan) => {
+    const compileOpeningSubmissionPlan = async (plan, options = {}) => {
+      const assertActive = () => {
+        if (!rendererGenerationIsActive() || (options.isActive && !options.isActive())) {
+          throw new Error('opening submission owner became inactive');
+        }
+      };
+      assertActive();
       if (!plan || plan.complete !== true
         || !plan.firstPlayablePipelineSet
         || plan.firstPlayablePipelineSet.complete !== true) {
@@ -14132,19 +14620,23 @@ export const render = {
       const pooledSubjects = Array.isArray(plan.pooledResourceSubjects)
         ? plan.pooledResourceSubjects.filter((subject) => subject && !leafSubjectSet.has(subject))
         : [];
-      // The phone's required gate is the real first picture. Empty pools retain their resource
-      // identities in the plan and admit through their normal effect/streaming owner on use.
-      const allSubjects = isMobileRenderContext() && !survivalRunHoldsArena(state)
-        ? subjects
-        : subjects.concat(pooledSubjects);
+      // The phone keeps only its first picture plus the one live gas pool whose first emission
+      // otherwise links the density-march shader directly inside exposed bloomScene.
+      const allSubjects = openingAdmissionSubjects(subjects, pooledSubjects, scene, {
+        mobileFirstPicture: isMobileRenderContext() && !survivalRunHoldsArena(state),
+      });
+      const deltaSubjects = options.strict === true ? allSubjects.filter((subject) => {
+        const key = openingPreparedLeafKey(subject, openingStampContext());
+        return !key || this._openingPreparedLeaves?.get(subject) !== key;
+      }) : allSubjects;
       // Chunked like the seal/rockPool legs — the full opening draw set is the largest
       // subject list in the run; a monolithic dedupe lands inside the veil-lift frame.
       const unitSeenMaterials = new Set();
       const unitSeenGeometries = new Set();
       const unitProgramSubjects = [];
       const unitGeometrySubjects = [];
-      for (let i = 0; i < allSubjects.length; i += 1024) {
-        const part = uniqueAdmissionUnits(allSubjects, {
+      for (let i = 0; i < deltaSubjects.length; i += 1024) {
+        const part = uniqueAdmissionUnits(deltaSubjects, {
           start: i, end: i + 1024,
           seenMaterials: unitSeenMaterials,
           seenGeometries: unitSeenGeometries,
@@ -14159,27 +14651,49 @@ export const render = {
         materialCount: unitSeenMaterials.size,
         geometryCount: unitSeenGeometries.size,
       };
+      recordOpeningCookStep(state.render, 'exact.units', performance.now(), 'resolved', {
+        requiredLeaves: subjects.length, pooledLeaves: pooledSubjects.length,
+        deltaLeaves: deltaSubjects.length, materials: units.materialCount, geometries: units.geometryCount,
+      });
       const whileRevealed = (subject, run) => {
-        const restoreSubject = revealSubjectForCompile(subject);
+        const restoreSubject = revealSubjectWithAncestors(subject);
         try { return run(); } finally { restoreSubject(); }
       };
-      const result = allSubjects.length > 0
+      const result = deltaSubjects.length > 0
         ? await admitOpeningUnitsAcrossSlices({
           units,
           renderer,
-          beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: async (subject) => {
+          strict: options.strict === true,
+          isActive: () => { assertActive(); return true; },
+          beginReadinessBatch: () => {
+            const batch = beginScenePipelineReadinessBatch(renderer);
+            if (batch?.paceQueue?.submit) batch.submit = batch.paceQueue.submit;
+            return batch;
+          },
+          compileOne: async (subject, compileOptions = {}) => {
             // The env stamp is visibility-independent — pace it outside the
             // reveal; compile's light census walks traverseVisible, so the
             // reveal covers the synchronous compile call itself.
             await stampSubjectEnvAsync(subject);
-            return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
+            assertActive();
+            return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene, {
+              ...compileOptions, isActive: () => { assertActive(); return true; },
+            }));
           },
-          touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
+          touchOne: (subject) => whileRevealed(subject, () => {
+            const touched = touchExactTargetSubject(subject);
+            if (options.strict === true && touched?.skipped === true) {
+              throw new Error(`Opening exact drawable ${subject.name || subject.uuid || subject.type || 'unnamed'} skipped: `
+                + `${touched.reason || 'not drawn'} (geometry=${subject.geometry?.id ?? 'missing'}, visible=${subject.visible})`);
+            }
+            return touched;
+          }),
           yieldToMain: yieldToBrowser,
         })
         : { skipped: true, reason: 'empty opening draw set' };
       const shadowResult = await warmOpeningShadowPipelines(allSubjects);
+      assertActive();
+      for (const subject of allSubjects) rememberOpeningPreparedLeaves(subject);
       // A superseded drain resolving last must not clobber the live ceremony's
       // admission keys — same guard the capture/receipt stamps carry.
       if (!admissionStale()) this._openingShadowAdmission = shadowResult;
@@ -14214,7 +14728,7 @@ export const render = {
       while (!step.done) step = iterator.next();
       return step.value;
     };
-    state.render.drainOpeningSubmissionPlan = (plan) => compileOpeningSubmissionPlan(plan);
+    state.render.drainOpeningSubmissionPlan = (plan, options) => compileOpeningSubmissionPlan(plan, options);
     state.render.captureOpeningPipelinePlan = () => {
       if (state.mode === 'loading') {
         // Broad authored-root admissions are intentionally not part of the loading receipt.  The
@@ -14309,8 +14823,10 @@ export const render = {
         || cookWorld.currentSectorId !== cookSectorId
         || this._liveSectorCookGeneration !== expectedGeneration;
     };
-    state.render.prepareLiveSectorBeforeFlight = async () => {
-      const recookStale = captureLiveSectorCookStale();
+    state.render.prepareLiveSectorBeforeFlight = async (options = {}) => {
+      const ownerInactive = () => typeof options.isActive === 'function' && !options.isActive();
+      const capturedRecookStale = captureLiveSectorCookStale();
+      const recookStale = () => capturedRecookStale() || ownerInactive();
       if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
       if (state.mode !== 'loading') {
         // A late invocation must still leave no bounded warm root mounted into flight —
@@ -14447,17 +14963,18 @@ export const render = {
           }
         }
       }
-      // Publish the held next-sector upgrades behind the loading shell, drain
-      // their compiles, then touch the live materials. First-playable readiness
-      // still does not wait on this queue; this only spends time the player is
-      // already looking at the loading presenter.
+      // Publish the held current-sector upgrades behind the loading shell, drain
+      // their compiles, then touch the live materials. Launch joins this finite
+      // preparation before it seals and admits the exact first picture.
       // The exact first-picture census already froze child publication. Nearby
       // opening ships then sit at `loading` until first flight paint, and their
       // env-mapped hulls compile as 100 ms+ bloom bricks. Release only the
       // publication gate so they can commit here; keep mesh streaming deferred.
       const sectorId = state.world && state.world.currentSectorId;
       this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1;
-      const cookStale = captureLiveSectorCookStale();
+      const touchCensusGeneration = this._liveSectorCookGeneration;
+      const capturedCookStale = captureLiveSectorCookStale();
+      const cookStale = () => capturedCookStale() || ownerInactive();
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       try {
       releaseOpeningGraphPublication(this);
@@ -14809,16 +15326,6 @@ export const render = {
       // still ran the unguarded window below (player re-derive, rockHit query,
       // promote loop) under dead authority before the :10353-era guard.
       if (cookStale()) return cookSuperseded;
-      if (opening && opening.settled !== true) {
-        console.warn('[render] opening composition still pending at live-sector cook', {
-          pending: opening.pending,
-          ids: opening.ids,
-          statuses: opening.statuses,
-          reason: opening.reason,
-          queue: opening.queue,
-          upgrades,
-        });
-      }
       state.render.openingCompositionSettle = opening;
       // Opening composition is ships/places. Nearby 47-A payloads sit on the
       // table and first-draw in flight unless they are built here.
@@ -15395,6 +15902,7 @@ export const render = {
           holdLeftoverFx: true,
           warmFirstFlightFx: true,
           yieldToMain: yieldLiveSectorGpu,
+          isActive: () => !cookStale(),
           // Survival: the pool-warm/stamp/depth steps at the tail of the cook are what keep
           // mid-round registrations from creating cold chunks inside the fight — a 20 s
           // internal deadline under host load skips exactly those. The arena is bounded and
@@ -15520,14 +16028,7 @@ export const render = {
                   restore();
                 }
               },
-              touchMany: async (subjects) => {
-                const restores = subjects.map((subject) => revealSubjectWithAncestors(subject));
-                try {
-                  return await touchExactTargetSubjects(subjects, settleDrawableSession);
-                } finally {
-                  for (let index = restores.length - 1; index >= 0; index--) restores[index]();
-                }
-              },
+              touchMany: (subjects) => touchExactTargetSubjects(subjects, settleDrawableSession),
               touchBatchSize: state.mode === 'loading' ? 4 : 1,
               // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
@@ -15585,16 +16086,14 @@ export const render = {
         let firstPictureError = null;
         if (ownsFirstPictureBarrier) {
           try {
-            // An over-budget cook passes remainingMs()<=0 and the cohort deadline math inside
-            // throws "opening authored boundary cohort timed out" before the barrier even runs —
-            // the firstFramePoolCensus 'error' ledger row. The barrier is the coverage mechanism
-            // itself (committed authored leaves + pool chunks must exist before the census counts
-            // them), so survival keeps an absolute floor rather than skipping the only pass that
-            // makes the chunk buffers visible to it.
+            // The broad cook's 20s work budget is not the exact picture's deadline. Its residual
+            // may already be the 400ms floor when this required barrier begins; retain the same
+            // 20s picture window used by the public launch owner instead of starving this handover.
+            // Both remain bounded by the existing outer current-sector admission envelope.
             if (cookStale()) return cookSuperseded;
             await this.prepareOpeningFirstPicture(survivalRunHoldsArena(state)
               ? Math.max(30000, remainingMs())
-              : remainingMs());
+              : 20000, { isActive: () => !cookStale() });
             if (cookStale()) return cookSuperseded;
           } catch (error) {
               if (cookStale()) return cookSuperseded;
@@ -15970,20 +16469,10 @@ export const render = {
                   ? async (subjects) => {
                     const drawable = subjects.filter(sealTouchCanDraw);
                     if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
-                    // The reveal must stay held until the async touch settles:
-                    // the pacing driver resumes a suspended touch while the
-                    // live scene keeps presenting, so an early restore re-hides
-                    // the subjects mid-draw and the whole batch no-ops.
-                    // Mint the session before the reveal: the paced mint suspends,
-                    // and reveals must not be held across presented frames.
+                    // Both the session mint and environment stamping suspend; the grouped
+                    // touch owns its reveal only once its synchronous draw can run.
                     poolSealTouchSession = poolSealTouchSession || (await mintTouchDrawableSession(scene));
-                    const restores = [];
-                    try {
-                      for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                      return await touchExactTargetSubjects(drawable, poolSealTouchSession);
-                    } finally {
-                      for (let i = restores.length - 1; i >= 0; i--) restores[i]();
-                    }
+                    return touchExactTargetSubjects(drawable, poolSealTouchSession);
                   }
                   : null,
                 touchBatchSize: 24,
@@ -16113,6 +16602,7 @@ export const render = {
             error: firstPictureError || undefined,
             reason: firstFrameResidency && firstFrameResidency.reason,
           });
+        if (firstPictureError) throw new Error(firstPictureError);
       }
       // Final ambient seal: the post-opening sweep, the census and every late chunk admission
       // enqueue compiles through compileObjectPipelines, which fire-and-forgets into the shared
@@ -16525,10 +17015,51 @@ export const render = {
           { roots: parked.roots, nodes: parked.nodes });
       }
       if (cookStale()) return cookSuperseded;
-      this._sessionLiveSectorCookedId = sectorId;
-      state.render.sessionLiveSectorCookedId = sectorId;
-      return { skipped: false, resumed, opening, upgrades, pending, cook, leftover };
+      let finalOpening = opening;
+      if (!recook && opening?.settled !== true) {
+        // The initial composition wait is a bounded progress sample before the GPU cook. Its
+        // timeout can outlive the jobs it described: never reject the finished picture using that
+        // stale sample, and never turn it into success without the same owner's two-poll verdict.
+        const finalOpeningStarted = prepareNow();
+        finalOpening = await waitForOpeningCompositionSettled(state, {
+          stale: cookStale,
+          timeoutMs: Math.min(12000, remainingMs()),
+          yieldToMain: yieldAndFlushLiveSectorGpu,
+          renderer,
+          scene,
+          meshes: this._meshes,
+        });
+        if (cookStale()) return cookSuperseded;
+        recordOpeningCookStep(state.render, 'live.openingCompositionFinal', finalOpeningStarted,
+          finalOpening?.settled === true ? 'resolved' : (finalOpening?.reason || 'incomplete'), {
+            pending: finalOpening?.pending,
+            ids: finalOpening?.ids?.join('/'),
+            statuses: finalOpening?.statuses?.slice(0, 6).join('/'),
+          });
+        state.render.openingCompositionSettle = finalOpening;
+      }
+      if (opening?.settled !== true || finalOpening?.settled !== true) {
+        const recovered = finalOpening?.settled === true;
+        const report = recovered ? console.info : console.warn;
+        report.call(console, recovered
+          ? '[render] opening composition recovered after initial live-sector wait'
+          : '[render] opening composition still pending at final live-sector cook', {
+          pending: opening?.pending,
+          ids: opening?.ids,
+          statuses: opening?.statuses,
+          reason: opening?.reason,
+          queue: opening?.queue,
+          upgrades,
+          final: { settled: recovered, pending: finalOpening?.pending, reason: finalOpening?.reason },
+        });
+      }
+      if (finalOpening?.settled === true) {
+        this._sessionLiveSectorCookedId = sectorId;
+        state.render.sessionLiveSectorCookedId = sectorId;
+      }
+      return { skipped: false, resumed, opening: finalOpening, upgrades, pending, cook, leftover };
       } finally {
+        if (this._touchDrawableCensus?.generation === touchCensusGeneration) this._touchDrawableCensus = null;
         // A restore may replace the entry without starting another cook. Only the
         // captured entry and renderer owner may finalize these shared flags.
         if (!cookStale()) {
@@ -16550,7 +17081,9 @@ export const render = {
         return { skipped: true, reason: 'not-loading' };
       }
       // This nested stage observes its caller's generation; it must not mint another.
-      const cookStale = captureLiveSectorCookStale();
+      const capturedCookStale = captureLiveSectorCookStale();
+      const cookStale = () => capturedCookStale()
+        || (typeof options.isActive === 'function' && !options.isActive());
       const cookSuperseded = { skipped: true, reason: 'sector-superseded' };
       if (cookStale()) return cookSuperseded;
       const cookNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -17422,8 +17955,10 @@ export const render = {
           this._noteShadowMeshAdded?.(crucibleWarmRoot);
         }
         addFirstFlightBufferRoot(crucibleWarmRoot);
-        // Stays mounted hidden for the run — _releaseSurvivalRosterPrewarm tears the root
-        // down at run end, and the bare→PBR sweep reaches it via _rosterPrewarmRoots.
+        // Crucible roots stay mounted hidden for the run — _releaseSurvivalRosterPrewarm tears
+        // them down at run end. Ordinary opening roots are parked for the first picture and then
+        // released by _releaseOrdinaryOpeningWarm; both remain reachable through the shared list
+        // until their respective teardown.
         if (!this._rosterPrewarmRoots.includes(crucibleWarmRoot)) {
           this._rosterPrewarmRoots.push(crucibleWarmRoot);
         }
@@ -17685,7 +18220,16 @@ export const render = {
           // still have to drop or the mounted warm root can never park (its
           // hidden subtree then rides every presented frame for the run) and
           // its decode leases stay owner-pinned. Mirror finish()'s early
-          // building clear and arm the bounded settle.
+          // building clear and arm the bounded settle. Install the same idempotent
+          // teardown owner even though the census was skipped, so an ordinary opening
+          // still has a valid release path after first paint.
+          this._ensureCrucibleWarmResidencyTeardown(crucibleWarm);
+          crucibleWarm.censusActive = false;
+          crucibleWarm.censusFinished = true;
+          if (crucibleWarm.root && crucibleWarm.root.userData) {
+            crucibleWarm.root.userData.warmCensusActive = false;
+            crucibleWarm.root.userData.warmCensusFinished = true;
+          }
           crucibleWarm.building = false;
           this._armCrucibleWarmBuildingSettle(crucibleWarm);
         }
@@ -17891,13 +18435,7 @@ export const render = {
                   if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
                   // Mint the session before the reveal (paced mint suspends).
                   rockTouchSession = rockTouchSession || (await mintTouchDrawableSession(scene));
-                  const restores = [];
-                  try {
-                    for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                    return await touchExactTargetSubjects(drawable, rockTouchSession);
-                  } finally {
-                    for (let i = restores.length - 1; i >= 0; i--) restores[i]();
-                  }
+                  return touchExactTargetSubjects(drawable, rockTouchSession);
                 }
                 : null,
               touchBatchSize: 24,
@@ -18058,6 +18596,7 @@ export const render = {
       // epoch). Generations plus a currentSectorId re-check at every yield bail the stale
       // cook; the newest invocation owns the shared queues, flags, and its own finally tail.
       this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1;
+      const touchCensusGeneration = this._liveSectorCookGeneration;
       if (cookOwner) cookOwner.generation = this._liveSectorCookGeneration;
       const cookStale = captureLiveSectorCookStale();
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: cookSectorId || null };
@@ -18638,6 +19177,7 @@ export const render = {
           leftover,
         };
       } finally {
+        if (this._touchDrawableCensus?.generation === touchCensusGeneration) this._touchDrawableCensus = null;
         // Entry replacement can supersede this cook without minting another generation.
         if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
@@ -18966,31 +19506,6 @@ export const render = {
           restoreSubject();
         }
       };
-      // Group form of whileRevealed: reveal every subject (and its hidden ancestors) of a
-      // touch group, run once, restore last-in-first-out so shared ancestors and nested
-      // subjects return exactly to where they started.
-      const whileRevealedGroup = async (subjects, run) => {
-        const restores = [];
-        try {
-          for (const subject of subjects) {
-            const restoreSubject = revealSubjectForCompile(subject);
-            const savedAncestors = [];
-            for (let p = subject && subject.parent; p; p = p.parent) {
-              if (p.visible === false) { savedAncestors.push(p); p.visible = true; }
-            }
-            restores.push(() => {
-              for (const p of savedAncestors) p.visible = false;
-              restoreSubject();
-            });
-          }
-          // Await inside the try: the pacing driver resumes a suspended touch
-          // while the live scene keeps presenting — restoring at first suspend
-          // re-hides the subjects and the rest of the touch no-ops.
-          return await run();
-        } finally {
-          for (let i = restores.length - 1; i >= 0; i--) restores[i]();
-        }
-      };
       if (lateCompileRoots.length > 0) {
         const lateSubjectSet = await subjectsForCompileRoots(lateCompileRoots, postCensus.subjects);
         if (lateSubjectSet.superseded === true) return postSupersededResult();
@@ -19017,7 +19532,7 @@ export const render = {
               ? async (subjects) => {
                 // Mint the session before the reveal (paced mint suspends).
                 lateTouchSession = lateTouchSession || (await mintTouchDrawableSession(scene));
-                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, lateTouchSession));
+                return touchExactTargetSubjects(subjects, lateTouchSession);
               }
               : null,
             touchBatchSize: 24,
@@ -19224,7 +19739,7 @@ export const render = {
               ? async (subjects) => {
                 // Mint the session before the reveal (paced mint suspends).
                 rescanTouchSession = rescanTouchSession || (await mintTouchDrawableSession(scene));
-                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, rescanTouchSession));
+                return touchExactTargetSubjects(subjects, rescanTouchSession);
               }
               : null,
             touchBatchSize: 24,
@@ -19311,14 +19826,20 @@ export const render = {
       inFlight.then(clear, clear);
       return inFlight;
     };
-    state.render.prepareOpeningGpuResources = async () => {
+    state.render.prepareOpeningGpuResources = async (options = {}) => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
       // rock receives its final PBR maps on its first and only visual publication. The opening plan
       // requires bound PBR maps so parallax layers and rock instances capture matching pipeline keys.
       const openingStale = captureLiveSectorCookStale();
+      const assertOpeningActive = () => {
+        if (openingStale() || (options.isActive && !options.isActive())) {
+          throw new Error('opening GPU residency owner became inactive');
+        }
+      };
+      assertOpeningActive();
       const rockWaitStarted = performance.now();
       let rockTimedOut = false;
-      if (this.rockSurfaceLibraryReady) {
+      if (this.rockSurfaceLibraryReady && options.required !== true) {
         await Promise.race([
           this.rockSurfaceLibraryReady,
           new Promise((resolve) => setTimeout(() => { rockTimedOut = true; resolve(); }, 4000)),
@@ -19328,22 +19849,22 @@ export const render = {
         this.rockSurfaceLibraryReady ? (rockTimedOut ? 'timeout' : 'resolved') : 'skipped');
       // The asteroid warm groups below build their materials from the decoded families, so the final
       // programs compile behind the shell instead of on a first sighting in flight (same 4 s cap).
-      if (this.rockFamilyLibraryReady) {
+      if (this.rockFamilyLibraryReady && options.required !== true) {
         await Promise.race([this.rockFamilyLibraryReady, new Promise((resolve) => setTimeout(resolve, 4000))]);
       }
-      if (this.creatureSkinLibraryReady) {
+      if (this.creatureSkinLibraryReady && options.required !== true) {
         await Promise.race([this.creatureSkinLibraryReady, new Promise((resolve) => setTimeout(resolve, 4000))]);
       }
       parallaxLayers.seatReadyRockSurfaceTextures();
       const openingNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
       let openingStepStarted = openingNow();
-      const restoreLivingHullWarmup = this._livingHullPresentation
+      const restoreLivingHullWarmup = options.required !== true && this._livingHullPresentation
         ? this._livingHullPresentation.beginGpuWarmup()
         : null;
       try {
         openingStepStarted = openingNow();
-        if (this._firstPresentGpuAdmission) {
+        if (this._firstPresentGpuAdmission && options.required !== true) {
           const admissionOutcome = await Promise.race([
             Promise.resolve(this._firstPresentGpuAdmission).then(() => 'resolved'),
             new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000)),
@@ -19397,6 +19918,7 @@ export const render = {
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
           || plan.firstPlayablePipelineSet.complete !== true) {
+          if (options.required === true) throw new Error('Required opening submission plan is incomplete');
           // Refusing here left New Game on gpu-resources until the 90s playable
           // gate fired. Enter flight and keep admitting behind the first picture.
           const failRole = Array.isArray(plan && plan.blockingReasons)
@@ -19436,11 +19958,13 @@ export const render = {
             debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
           }),
           includeEmpty: true,
+          includeGeometry: true,
+          beforeSubmit: assertOpeningActive,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
-          deadlineMs: softGpuOpening ? residencyBudgetMs : undefined,
+          deadlineMs: options.required !== true && softGpuOpening ? residencyBudgetMs : undefined,
         });
-        const result = await Promise.race([
+        const result = options.required === true ? await residency : await Promise.race([
           residency,
           new Promise((resolve) => setTimeout(() => resolve({
             skipped: true,
@@ -19448,6 +19972,7 @@ export const render = {
             textures: 0,
           }), residencyBudgetMs)),
         ]);
+        assertOpeningActive();
         const residencyOutcome = result && (
           result.reason === 'loading-budget'
           || result.reason === 'loading-deadline'
@@ -19500,7 +20025,7 @@ export const render = {
         // Flush the captured queue before the binding snapshot so the receipt measures resident
         // programs rather than freezing an in-flight compile as a permanent first-draw refusal.
         openingStepStarted = openingNow();
-        const pendingPipelinePlan = pipelineAdmissions.capturePending();
+        const pendingPipelinePlan = options.required === true ? null : pipelineAdmissions.capturePending();
         let pipelineDrainOutcome = 'skipped';
         if (pendingPipelinePlan && pendingPipelinePlan.pendingCount > 0) {
           let pipelineDrainTimeout = null;
@@ -19549,6 +20074,7 @@ export const render = {
           shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
         });
         for (;;) {
+          if (options.required === true) assertOpeningActive();
           let receiptStep;
           try {
             receiptStep = receiptIter.next();
@@ -19861,6 +20387,9 @@ export const render = {
       // begins the bounded roster warm at the door — its GLB decodes and boundary kicks drain
       // through the ordinary loading window instead of starting inside the prepare cook.
       queueMicrotask(() => {
+        if (state.mode === 'loading') {
+          observePipelineAdmission(state.render.beginOpeningLoadingAdmission());
+        }
         try { this._beginEarlyCrucibleRosterWarm(); }
         catch (error) { stormWarn('early-crucible-roster-warm-failed', '[render] early crucible roster warm failed', error); }
       });
@@ -20639,7 +21168,7 @@ export const render = {
     // patrol) spawns during 'flight' with no wavePlanned lead — the default-route
     // prepareStartingScene publishes its specs during 'loading' so the same exemplar
     // machinery warms the hulls before first presentation.
-    onBus('onboarding:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
+    onBus('onboarding:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p, { scope: 'onboarding' }));
     // PQ-133.08: law-arena machinery is render-owned dressing installed/released on the arena's
     // own events (field anchors, shutter bars, crusher presses, current mouths). The tracker
     // self-gates on arenaId, so non-law rooms pass through untouched.
@@ -21164,7 +21693,18 @@ export const render = {
         };
       }
       if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
-      if (mode === 'loading') {
+      // Continue starts its cohort during save:loaded; the worker may acknowledge
+      // the loading MODE command afterward. That same-restore echo cannot retire
+      // the cohort. owns() checks the exact player plus world/run/context identity,
+      // so a replacement restore or generation still resets the departed owner.
+      if (mode === 'loading'
+          && !this._openingLoadingAdmission?.owns(state.entities?.get(state.playerId))) {
+        state.render.openingFirstPictureReady = false;
+        state.render.openingFirstPictureOwner = null;
+        state.render.openingLiveSectorReady = null;
+        state.render.openingFirstPicturePhase = null;
+        this._openingLoadingAdmission = null;
+        this._openingLoadingMeshesReady = null;
         const recook = this._sessionLiveSectorCookedId != null
           && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
           && this._contextLost !== true;
@@ -21249,6 +21789,7 @@ export const render = {
           this._openingPreSubmitRefusals = 0;
           state.render.openingFirstVisibleGpuCounts = null;
           state.render.openingFirstDrawIdentityCensus = null;
+          state.render.openingFirstDrawObservation = null;
           state.render.openingSubmissionPreSubmitValidation = null;
           state.render.openingSubmissionValidation = null;
           this._openingFirstDrawIdentityIter = null;
@@ -21310,6 +21851,7 @@ export const render = {
   },
 
   destroy() {
+    this._disarmDrawHistogram();
     this.vf?.clearReadyPackagedBodies?.('renderer-destroyed');
     this._racingCourseView?.dispose();
     this._racingCourseView = null;
@@ -21479,8 +22021,11 @@ export const render = {
   // The roots stay mounted-but-invisible until run:ended: retention keeps the programs resident
   // so the live spawn's first draw is a cache hit, not a link. Event-driven only — no per-frame
   // work, no sim-state writes.
-  _admitSurvivalRosterPrewarm(payload) {
+  _admitSurvivalRosterPrewarm(payload, options = {}) {
     const specs = payload && payload.specs;
+    // The ordinary opening cook owns generic intro families. This event requests only
+    // its two scripted hulls and weapons, not the survival catalog or another generic warm.
+    const includeGenericWarm = options.scope !== 'onboarding';
     const state = this.state;
     if (!Array.isArray(specs) || !this.vf || !this.scene || !this.renderer) return;
     const compilePipelines = (subject) => (
@@ -21491,18 +22036,19 @@ export const render = {
     // The ruleset also spawns wrecks: every kill lands one, and the packaged body is picked by
     // hashId(id) across the whole variant table. The renderer owns that family (there is no
     // enemyId), so the wreck exemplars are minted here through the same production build.
-    const exemplarSpecs = specs.concat(
+    const exemplarSpecs = includeGenericWarm ? specs.concat(
       wreckVisualExemplarSpecs(),
       combatSpawnableExemplarSpecs(),
       // Asteroid field records promote into entities on approach; one real build per canonical
       // type warms the leaf + detail material family the promotion can ever draw.
       asteroidVisualExemplarSpecs(),
-    );
+    ) : [...specs];
     // A re-emit with nothing new must queue zero census-hold work — the same
     // dedupe the per-spec ledger gives inside the drain, applied at mint time:
     // every exemplar/weapon already ledgered and the leaf + catalog legs already
     // attempted means there is genuinely nothing for a drain to do.
-    let needsWork = !this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted;
+    let needsWork = includeGenericWarm
+      && (!this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted);
     if (!needsWork) {
       for (const spec of exemplarSpecs) {
         if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
@@ -21539,6 +22085,9 @@ export const render = {
       // re-emit costs a few map writes, never another full-universe walk.
       const specQueue = this._rosterPrewarmSpecQueue
         || (this._rosterPrewarmSpecQueue = new Map());
+      // null cannot be a spec id. Retain the full-scope tail independently: a caller
+      // can need its catalog even when every hull is covered, or its spec list is empty.
+      if (includeGenericWarm) specQueue.set(null, { compilePipelines, exemplarSpecs, includeGenericWarm: true });
       for (const spec of specs) {
         if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
         if (specQueue.has(spec.id)) continue;
@@ -21554,7 +22103,7 @@ export const render = {
           });
           if (!newWeapon) continue;
         }
-        specQueue.set(spec.id, { spec, compilePipelines, exemplarSpecs });
+        specQueue.set(spec.id, { spec, compilePipelines, exemplarSpecs, includeGenericWarm });
       }
       return;
     }
@@ -21565,14 +22114,10 @@ export const render = {
     // ledgers.
     const runSeq = this._rosterPrewarmRunSeq | 0;
     const drive = (async () => {
-      for (let emit = { specs, compilePipelines, exemplarSpecs }; emit;) {
-        const list = emit.exemplarSpecs || emit.specs.concat(
-          wreckVisualExemplarSpecs(),
-          combatSpawnableExemplarSpecs(),
-          asteroidVisualExemplarSpecs(),
-        );
+      for (let emit = { specs, compilePipelines, exemplarSpecs, includeGenericWarm }; emit;) {
+        const list = emit.exemplarSpecs || emit.specs;
         try {
-          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines, runSeq);
+          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines, runSeq, emit.includeGenericWarm);
         } catch (error) {
           stormWarn('survival-roster-prewarm-drain-failed', '[render] survival roster prewarm drain failed', error);
         }
@@ -21587,10 +22132,12 @@ export const render = {
         const mergedExemplars = [];
         const seenExemplarIds = new Set();
         let mergedCompile = compilePipelines;
+        let mergedGenericWarm = false;
         for (const [id, row] of specQueue) {
           specQueue.delete(id);
-          if (!row || !row.spec) continue;
-          mergedSpecs.push(row.spec);
+          if (!row) continue;
+          if (row.spec) mergedSpecs.push(row.spec);
+          mergedGenericWarm ||= row.includeGenericWarm === true;
           mergedCompile = row.compilePipelines || mergedCompile;
           for (const exemplar of row.exemplarSpecs || []) {
             const key = exemplar && exemplar.id;
@@ -21601,7 +22148,8 @@ export const render = {
             mergedExemplars.push(exemplar);
           }
         }
-        if (mergedSpecs.length === 0 && mergedExemplars.length === 0) break;
+        if (mergedSpecs.length === 0 && mergedExemplars.length === 0
+            && !(mergedGenericWarm && (!this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted))) break;
         // Payload hulls warm ahead of the deduped family tail — a late
         // emit's front-row wave no longer waits behind the first emit's
         // exemplar concat. Coverage/order semantics otherwise unchanged.
@@ -21610,6 +22158,7 @@ export const render = {
         emit = {
           specs: mergedSpecs,
           compilePipelines: mergedCompile,
+          includeGenericWarm: mergedGenericWarm,
           exemplarSpecs: mergedSpecs.concat(
             mergedExemplars.filter((e) => !(e && mergedIds.has(e.id))),
           ),
@@ -21643,7 +22192,7 @@ export const render = {
     }
   },
 
-  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq) {
+  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq, includeGenericWarm = true) {
     // Yield the browser only once a slice of cohort work actually cost ~8ms —
     // big rosters pace across gaps while a small emit (or a CLI driver) still
     // mints the whole cohort inside its own task.
@@ -21760,6 +22309,8 @@ export const render = {
         if (specQueue && specQueue.size) {
           const splice = [];
           for (const [qid, row] of specQueue) {
+            // The outer drain owns the generic tail; this splice only consumes hulls.
+            if (qid === null) continue;
             specQueue.delete(qid);
             const qspec = row && row.spec;
             if (!qspec || qspec.id == null) continue;
@@ -21833,7 +22384,7 @@ export const render = {
     // per (type, variant) puts every shared geometry buffer + non-instanced program on the GPU
     // before flight — a late build then costs object creation only.
     // Flag-guarded: a merged re-drain must not build a second leaf group.
-    if (!this._rosterPrewarmLeafWarmed) {
+    if (includeGenericWarm && !this._rosterPrewarmLeafWarmed) {
       this._rosterPrewarmLeafWarmed = true;
       try {
         const leafWarm = buildAsteroidLeafWarmGroup();
@@ -21865,8 +22416,10 @@ export const render = {
         if (cohortOwed()) await yieldToBrowser();
       }
     } catch (_) { /* upgrade pass is best-effort */ }
-    this._rosterPrewarmCatalogAttempted = true;
-    this._admitRosterPartCatalog(compilePipelines, specs);
+    if (includeGenericWarm) {
+      this._rosterPrewarmCatalogAttempted = true;
+      this._admitRosterPartCatalog(compilePipelines, specs);
+    }
   },
 
   /**
@@ -22108,8 +22661,9 @@ export const render = {
    * the end-of-cook scene residency census. Palette coverage comes from
    * paletteWarmSubjectsForRecord — hidden meshes + count-0 instanced twins link the direct and
    * USE_INSTANCING palette-material families without publishing the per-(key x palette) chunk
-   * fleet that was itself the regression. The root stays mounted hidden for the run and
-   * releases through _releaseSurvivalRosterPrewarm.
+   * fleet that was itself the regression. A Crucible root stays mounted hidden for the run and
+   * releases through _releaseSurvivalRosterPrewarm; an ordinary opening root releases after the
+   * first playable picture through _releaseOrdinaryOpeningWarm.
    */
   _beginCrucibleBoundedRosterWarm(options = {}) {
     const { renderer, scene, state } = this;
@@ -22123,6 +22677,16 @@ export const render = {
       boundaryKicks: [],
       building: true,
       profile,
+      // The opening root may reach first paint while finish() is still walking decoded records.
+      // Keep the lifecycle state on the warm so the settle arm cannot tear down its scene root
+      // before the census has installed the residency owner and completed its last async yield.
+      censusActive: false,
+      censusSettled: false,
+      censusFinished: false,
+      residencyHookInstalled: false,
+      residencyReleased: false,
+      packageInstances: [],
+      warmPackageResidency: null,
     };
     const root = warm.root;
     root.name = profile === 'opening' ? 'SF_OpeningSpeciesWarm' : 'SF_CrucibleBoundedWarm';
@@ -22131,6 +22695,11 @@ export const render = {
     // Still building: _parkBoundedWarmRoots must skip this root — parked boundaries
     // fail boundaryBelongsToScene, so a queued attach/upgrade job would drop silently.
     root.userData.warmBuilding = true;
+    root.userData.warmCensusManaged = true;
+    root.userData.warmCensusActive = false;
+    root.userData.warmCensusSettled = false;
+    root.userData.warmCensusFinished = false;
+    root.userData.warmResidencyHookInstalled = false;
     // Mount immediately: queue-lane boundary requests refuse detached roots
     // (boundaryBelongsToScene), and the ship kicks below run through that check. The caller
     // re-adds the root after begin() returns — re-adding to the same parent is a no-op.
@@ -22572,20 +23141,21 @@ export const render = {
     // and the bounded substitute for the swept catalog where not.
     const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
       || 'assets/ships/release/parts/';
-    // Swarm-scoped crucible warm: the whole-ship decode list follows the same eligibility as the
-    // ship cohort above. spawnableShipArchetypePrewarmUrls() is the whole catalog — traffic and
-    // freight hulls the arena never fields plus wave-2+ archetypes whose GLB decodes belong to
-    // their own armory-dwell warm (the deferred kick loads the file on demand). Resolving the
-    // scoped specs through wholeShipVisualForEntity picks up faction-kit and LOD-sibling files a
-    // bare defId map would miss. finish() uses the same set to skip instantiating catalog hull
-    // records it never asked for. Non-swarm profiles keep the full catalog — no eligibility
-    // ladder exists to defer to.
+    // The whole-ship decode list follows the same eligibility as the profile's opening picture.
+    // Swarm-scoped Crucible uses the current wave's roster; ordinary Adventure uses the live
+    // first-flight/startup/embark cast above. spawnableShipArchetypePrewarmUrls() is the full
+    // catalog — traffic/freight hulls and later wave archetypes belong to their explicit menu or
+    // armory dwell, never the ordinary opening's bounded warm.
     const scopedHullFiles = profile === 'crucible' && swarmScoped === true
       ? warmHullFilesForSpecs(shipSpecs)
       : null;
-    // An empty scoped set means selection resolution produced nothing usable — fall back to the
-    // full catalog (and no finish() filtering) rather than warming no hulls at all.
-    const launchHullFiles = scopedHullFiles && scopedHullFiles.size > 0 ? scopedHullFiles : null;
+    const openingHullFiles = profile === 'opening' ? openingWarmHullFilesForState(state) : null;
+    // An empty Crucible-scoped set means selection resolution produced nothing usable — fall back
+    // to the full catalog. Opening keeps its (possibly empty) explicit set so it never expands the
+    // entire spawnable catalog while the live first-flight cook remains authoritative.
+    const launchHullFiles = profile === 'opening'
+      ? openingHullFiles
+      : scopedHullFiles && scopedHullFiles.size > 0 ? scopedHullFiles : null;
     warm.launchHullFiles = launchHullFiles;
     const explicitFiles = [
       ...PQ_193_05_WRECK_PACKAGED_FILES.map((file) => ({ file, slot: 'place' })),
@@ -22865,6 +23435,102 @@ export const render = {
     } catch (_) { /* teardown is best-effort */ }
   },
 
+  /**
+   * Ordinary Adventure's opening warm only owns the loading picture. Once that picture has
+   * appeared, release its root and residency lease instead of retaining it until a survival
+   * `run:ended` (ordinary Adventure does not emit that event on menu return). Crucible and other
+   * bounded roots remain in the shared roster list for their existing run-end release.
+   *
+   * The helper is intentionally gated by the first-playable stamp and the warm's settle flag:
+   * shared authored package owners may still be attaching while the first paint latch fires, and
+   * disposing that root early would turn a late attach into a cold live boundary. The settle arm
+   * calls this again after `warmBuilding` drops.
+   */
+  _releaseOrdinaryOpeningWarm(reason = 'opening-first-playable') {
+    const state = this.state;
+    const render = state && state.render;
+    if (!state || state.mode !== 'flight' || !render
+        || !Number.isFinite(render.firstPlayableFrameAt)) {
+      return { released: 0, pending: 0 };
+    }
+    const roots = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
+    let released = 0;
+    let pending = 0;
+    for (let index = roots.length - 1; index >= 0; index--) {
+      const root = roots[index];
+      if (!root || root.userData?.rosterPrewarm !== 'opening-species-warm') continue;
+      if (root.userData && root.userData.warmBuilding === true) {
+        pending += 1;
+        continue;
+      }
+      // A managed opening warm has an async finish/census owner. Its first-paint release can
+      // happen while that owner is still awaiting decoded records, so require both lifecycle
+      // latches before detaching. Roots created by older/skip paths without the managed marker
+      // retain the original best-effort release behavior.
+      if (root.userData && root.userData.warmCensusManaged === true
+          && (root.userData.warmCensusActive === true
+            || root.userData.warmCensusSettled !== true
+            || root.userData.warmCensusFinished !== true
+            || root.userData.warmResidencyHookInstalled !== true)) {
+        pending += 1;
+        continue;
+      }
+      roots.splice(index, 1);
+      const parked = render.parkedWarmRoots;
+      if (Array.isArray(parked)) {
+        const parkedIndex = parked.indexOf(root);
+        if (parkedIndex >= 0) parked.splice(parkedIndex, 1);
+      }
+      if (this._earlyCrucibleWarm && this._earlyCrucibleWarm.root === root) {
+        this._earlyCrucibleWarm = null;
+        this._earlyCrucibleWarmMenu = false;
+      }
+      try {
+        const wasMounted = !!root.parent;
+        if (root.parent) {
+          root.parent.remove(root);
+          // The ordinary warm can still be mounted when the settle arm wins the race with the
+          // first-paint park. A parked root was already counted out by _parkBoundedWarmRoots.
+          if (this._contextLost === true) {
+            this._noteShadowMeshRemoved?.(root);
+            if (root.userData) root.userData.sfDespawnNoted = true;
+          }
+        }
+        // A lost context already owns these buffers; detach only, matching the existing
+        // survival-roster release contract. Live contexts use the authored disposer when one
+        // exists, otherwise the paced warm teardown queue owns the subtree walk.
+        if (this._contextLost === true) {
+          released += 1;
+          continue;
+        }
+        if (!disposePreparedAuthoredBoundary(root)) {
+          if (!this._warmDisposeQueue) {
+            this._warmDisposeQueue = [];
+            this._warmDisposeHead = 0;
+          }
+          if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(root);
+        } else if (wasMounted) {
+          this._noteShadowMeshRemoved?.(root);
+        }
+        released += 1;
+      } catch (error) {
+        stormWarn('ordinary-opening-warm-release-failed',
+          '[render] ordinary opening warm release failed', reason, error);
+      }
+    }
+    if (released > 0) {
+      // Active touch sessions own their snapshot; only drop the renderer's cache reference.
+      this._touchDrawableCensus = null;
+      render.openingWarmReleased = {
+        reason,
+        released,
+        pending,
+      };
+    }
+    return { released, pending };
+  },
+
   // Park-safety: the root flag may drop only once every queued attach/upgrade
   // job settles — a parked boundary fails boundaryBelongsToScene and its queued
   // attaches drop silently. Post-snapshot pushes re-arm (the snapshot only
@@ -22890,8 +23556,21 @@ export const render = {
           settle(warm.pendingAttachments.length);
           return;
         }
+        warm.censusSettled = true;
         warm.building = false;
-        if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
+        if (warm.root && warm.root.userData) {
+          warm.root.userData.warmBuilding = false;
+          warm.root.userData.warmCensusSettled = true;
+        }
+        // An ordinary opening may have painted while this bounded settle was still waiting on a
+        // late attach. Release is permitted only after the finish/census wrapper has installed its
+        // residency owner and marked the census complete; otherwise the root stays owned until
+        // the wrapper's finally retry.
+        if (warm.profile === 'opening' && warm.censusFinished === true
+            && warm.residencyHookInstalled === true) {
+          try { this._releaseOrdinaryOpeningWarm('opening-warm-settled'); }
+          catch (_) { /* release is best-effort; the normal teardown remains authoritative */ }
+        }
       });
     };
     settle(warm.pendingAttachments.length);
@@ -22974,7 +23653,73 @@ export const render = {
     return reKickResult;
   },
 
+  _ensureCrucibleWarmResidencyTeardown(warm) {
+    if (!warm || !warm.root) return;
+    const root = warm.root;
+    if (!warm.warmPackageResidency) {
+      warm.warmPackageResidency = createCrucibleWarmPackageResidency({
+        residency: this._assetResidency || getAssetResidency(this.renderer),
+        profile: warm.profile || 'crucible',
+      });
+    }
+    if (!Array.isArray(warm.packageInstances)) warm.packageInstances = [];
+    if (warm.residencyHookInstalled === true) return;
+    root.userData.releaseAuthoredAssetResidency = () => {
+      if (warm.residencyReleased === true) return;
+      warm.residencyReleased = true;
+      for (const instance of warm.packageInstances) {
+        try { instance && typeof instance.dispose === 'function' && instance.dispose(); }
+        catch (_) { /* teardown is best-effort */ }
+      }
+      // Disposed instance closures still retain their decoded package generation.
+      warm.packageInstances.length = 0;
+      try { warm.warmPackageResidency.release(); } catch (_) { /* best-effort */ }
+    };
+    warm.residencyHookInstalled = true;
+    if (root.userData) root.userData.warmResidencyHookInstalled = true;
+  },
+
+  /**
+   * Finish the bounded warm behind one lifecycle fence. The settle arm can resolve on a
+   * microtask while the census is yielding between records, and first playable paint can fire
+   * during that same gap. Install the teardown owner before entering the core (and before its
+   * first await), then make the opening release wait for both the attachment settle and the
+   * complete census. The finally path is deliberate: a budget/loader failure still leaves a
+   * safe, idempotent owner for the release retry instead of leaking package leases.
+   */
   async _finishCrucibleBoundedRosterWarm(warm, options = {}) {
+    if (!warm || !warm.root) return null;
+    const root = warm.root;
+    warm.censusActive = true;
+    warm.censusSettled = warm.censusSettled === true;
+    warm.censusFinished = false;
+    if (root.userData) {
+      root.userData.warmCensusActive = true;
+      root.userData.warmCensusFinished = false;
+    }
+
+    // This owner must exist before any census/settle await. Package instances and retained
+    // records are appended to these same containers by the core; the hook therefore remains
+    // valid even if first paint wins the race immediately after the final record.
+    this._ensureCrucibleWarmResidencyTeardown(warm);
+
+    try {
+      return await this._finishCrucibleBoundedRosterWarmCore(warm, options);
+    } finally {
+      warm.censusActive = false;
+      warm.censusFinished = true;
+      if (root.userData) {
+        root.userData.warmCensusActive = false;
+        root.userData.warmCensusFinished = true;
+      }
+      // If first paint already stamped, this is the second (and final) release opportunity.
+      // _releaseOrdinaryOpeningWarm itself is latch- and disposal-idempotent.
+      try { this._releaseOrdinaryOpeningWarm('opening-warm-finished'); }
+      catch (_) { /* the next first-paint/settle edge retries through the same latch */ }
+    }
+  },
+
+  async _finishCrucibleBoundedRosterWarmCore(warm, options = {}) {
     const { renderer, scene, state } = this;
     if (!warm || !warm.root || !renderer || !scene) return null;
     const root = warm.root;
@@ -23095,6 +23840,7 @@ export const render = {
     // cook's compile sweep. Live entities' resolved files always stay — their palette shares are
     // what the instance pools promote from.
     const catalogHullFiles = (warm.profile === 'crucible' && warm.swarmScoped === true)
+      || warm.profile === 'opening'
       ? new Set(spawnableShipArchetypePrewarmUrls().map(normalizeWarmHullFile))
       : null;
     const launchHullKeepSet = catalogHullFiles
@@ -23159,17 +23905,20 @@ export const render = {
     // otherwise warmed only as an instanced chunk, which is the enemy path.
     const playerSpec = state ? cruciblePlayerShipExemplarSpec(state) : null;
     const playerHullFiles = playerSpec ? warmHullFilesForSpecs([playerSpec]) : new Set();
-    const packageInstances = [];
+    const packageInstances = Array.isArray(warm.packageInstances)
+      ? warm.packageInstances : (warm.packageInstances = []);
     let instantiated = 0;
     let paletteSubjects = 0;
     let chunkPromotions = 0;
-    // A census record is only cache/bootstrap-owned: retain each package under a dedicated warm
-    // owner before createInstance (a released or evicted package re-acquires through the normal
-    // loader), then drain every lease with one owner release at warm teardown.
-    const warmPackageResidency = createCrucibleWarmPackageResidency({
-      residency: this._assetResidency || getAssetResidency(renderer),
-      profile: warm.profile || 'crucible',
-    });
+    // A census record is only cache/bootstrap-owned: retain each package under the dedicated warm
+    // owner installed by the lifecycle wrapper before the first await. The wrapper's release hook
+    // drains these leases after the census, even when first paint wins the settle race.
+    const warmPackageResidency = warm.warmPackageResidency
+      || createCrucibleWarmPackageResidency({
+        residency: this._assetResidency || getAssetResidency(renderer),
+        profile: warm.profile || 'crucible',
+      });
+    warm.warmPackageResidency = warmPackageResidency;
     const reloadAuthoredPart = (partUrl, partOptions) => (
       loadAuthoredPart(partUrl, { renderer, ...partOptions })
     );
@@ -23208,7 +23957,11 @@ export const render = {
       // field yet — non-catalog hulls and every kept file still instantiate normally. An empty
       // keep set means selection resolution failed (or no cohort exists); fall back to the
       // unfiltered sweep rather than launching with every hull family cold.
-      if (slot === 'hull' && catalogHullFiles && launchHullKeepSet && launchHullKeepSet.size > 0) {
+      const filterCatalogHull = slot === 'hull'
+        && catalogHullFiles
+        && launchHullKeepSet
+        && (warm.profile === 'opening' || launchHullKeepSet.size > 0);
+      if (filterCatalogHull) {
         const file = normalizeFile(url);
         if (catalogHullFiles.has(file) && !launchHullKeepSet.has(file)) {
           censusSkippedRows += 1;
@@ -23361,18 +24114,9 @@ export const render = {
       if (budgetLeft() <= 4000) break;
     }
     notePacedFrameSpend(censusNow() - censusLastDebitAt);
-    // Let the package instances' residency leases release with the root at teardown — the hook
-    // is the one disposeObject already honours on userData. The warm owner's own retains drain
-    // through the same hook so a retain without an instance cannot leak.
-    if (packageInstances.length > 0 || warmPackageResidency.retained) {
-      root.userData.releaseAuthoredAssetResidency = () => {
-        for (const instance of packageInstances) {
-          try { instance && typeof instance.dispose === 'function' && instance.dispose(); }
-          catch (_) { /* teardown is best-effort */ }
-        }
-        warmPackageResidency.release();
-      };
-    }
+    // The lifecycle wrapper installed the residency hook before this census started. Keep it
+    // installed even for an empty result: a late retain cannot be allowed to outlive the warm,
+    // and the idempotent hook is the same boundary teardown uses for populated package rows.
     if (state && state.render) {
       // Per-kick evidence: the ship exemplar's request status ('admitted', 'cancelled-*', ...)
       // plus the boundary's terminal state and the record it actually composed. A live hull
@@ -24222,10 +24966,13 @@ export const render = {
     const parkStartedAt = parkNow();
     let lastDebitAt = parkStartedAt;
     for (const root of this._rosterPrewarmRoots || []) {
-      // Still-building roots keep their mount: a parked boundary fails
-      // boundaryBelongsToScene and its queued attach/upgrade jobs drop silently.
+      // Still-building or still-censused roots keep their mount: a parked boundary fails
+      // boundaryBelongsToScene and its queued attach/upgrade jobs drop silently. The census latch
+      // stays active after attachments settle so first paint cannot detach the root while the
+      // decoded-record pass is still appending authored package instances.
       if (!isBoundedWarmRoot(root) || !root.parent
-          || (root.userData && root.userData.warmBuilding === true)) continue;
+          || (root.userData && (root.userData.warmBuilding === true
+            || root.userData.warmCensusActive === true))) continue;
       try {
         // One walk feeds both the diagnostic node count and the receiver tally's
         // exact settle — the tally's own recount would re-traverse the same subtree.
@@ -24271,6 +25018,7 @@ export const render = {
   },
 
   _releaseSurvivalRosterPrewarm(reason) {
+    this._touchDrawableCensus = null;
     const roots = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
     this._rosterPrewarmRoots = [];
     if (this.state && this.state.render) this.state.render.parkedWarmRoots = [];
@@ -25734,6 +26482,7 @@ export const render = {
   },
 
   clearAllMeshes(keepPlayer) {
+    this._touchDrawableCensus = null;
     this._sectorBoundaryPreparations?.abortAll('render-mesh-clear');
     // Whole-tree teardown stays synchronous — flush the deferred corpse tails with it.
     flushDisposeQueueLane(this, '_despawnDisposeQueue', '_despawnDisposeHead');
@@ -26865,6 +27614,7 @@ export const render = {
       const e = resolveWorldPresentationEntity(this.state, id);
       const alreadyServed = !e || e.alive === false || e._noMesh || this._meshes.has(id);
       const irrelevant = !alreadyServed && !this._sectorBoundaryPreparations?.has(id)
+        && !this._openingLoadingAdmission?.owns(e)
         && !isEntityRenderRelevant(e, this.state, null, drainScanOpts);
       if (alreadyServed || this._sectorBoundaryPreparations?.has(id) || irrelevant) {
         // Persistent-for-this-drain-epoch classes: a dead/_noMesh/already-built row
@@ -28673,8 +29423,7 @@ export const render = {
   // Enabling is transactional: the controller keeps direct sources visible until its existing
   // compile/residency callback resolves. Disabling disposes the retained copies first, which
   // restores every source leaf before the next ordinary submission.
-  setRigidOpaqueBatchForBench(enabled) {
-    if (enabled !== true) return disableRigidOpaqueBatchProbe(this, 'bench-disabled');
+  _enableRigidOpaqueBatch(defaultCohort = false) {
     if (this._contextLost === true || this._rendererResourcesDisposed === true) {
       return disableRigidOpaqueBatchProbe(this, this._contextLost === true ? 'context-lost' : 'renderer-disposed');
     }
@@ -28683,13 +29432,31 @@ export const render = {
     }
     const scene = this.scene || this._rigidOpaqueBatchScene;
     if (!scene) return disableRigidOpaqueBatchProbe(this, 'scene-unavailable');
+    const requestedDefaultCohort = defaultCohort === true;
+    if (this._rigidOpaqueBatchController
+        && this._rigidOpaqueBatchDefaultCohort !== requestedDefaultCohort) {
+      // A bench can be armed after the default cohort has already activated. Dispose the old
+      // retained copies first so every source returns to the direct path before replanning the
+      // broader diagnostic candidate.
+      try { this._rigidOpaqueBatchController.dispose?.(); } catch (_) { /* best-effort restore */ }
+      this._rigidOpaqueBatchController = null;
+      if (this._rigidOpaqueBatchRootsScratch) this._rigidOpaqueBatchRootsScratch.length = 0;
+    }
     if (!this._rigidOpaqueBatchController) {
       this._rigidOpaqueBatchScene = scene;
-      this._rigidOpaqueBatchController = createRigidOpaqueBatchProbe(this, scene);
+      this._rigidOpaqueBatchController = createRigidOpaqueBatchProbe(this, scene, {
+        defaultCohort: requestedDefaultCohort,
+      });
+      this._rigidOpaqueBatchDefaultCohort = requestedDefaultCohort;
     }
     this._rigidOpaqueBatchProbeEnabled = true;
     if (this.state?.mode !== 'loading') this._syncRigidOpaqueBatchProbe?.();
     return { ...publishRigidOpaqueBatchDiagnostics(this) };
+  },
+
+  setRigidOpaqueBatchForBench(enabled) {
+    if (enabled !== true) return disableRigidOpaqueBatchProbe(this, 'bench-disabled');
+    return this._enableRigidOpaqueBatch(false);
   },
 
   getRigidOpaqueBatchDiagnosticsForBench() {
@@ -28698,30 +29465,87 @@ export const render = {
     return { ...publishRigidOpaqueBatchDiagnostics(this) };
   },
 
-  // Diagnostic-only retained rigid candidate. The normal path has no extra root walk and keeps
-  // the proven authored pool bridge unchanged; when explicitly armed, use the renderer's already
-  // resident entity-root map so hidden/camera-culled roots remain represented in the batch and can
-  // toggle per-instance visibility without repeatedly rebuilding the candidate.
+  // Retained rigid candidate. The default path walks only the already-resident player root; the
+  // explicit bench scope keeps the broader entity-root census so hidden/camera-culled roots remain
+  // represented and can toggle per-instance visibility without rebuilding the candidate.
   _syncRigidOpaqueBatchProbe() {
     const controller = this._rigidOpaqueBatchController;
     const state = this.state;
     if (!controller || this._rigidOpaqueBatchProbeEnabled !== true || !this._meshes) return;
-    if (state && state.mode === 'loading') return;
+    // The bounded default is allowed to submit its existing loading admission here. The prepare
+    // callback joins the renderer's paced compile queue and the controller keeps direct leaves
+    // visible until that queue resolves; this prewarms a supported Kestrel without adding a new
+    // first-flight shader/upload burst. The broad bench probe retains its old loading exclusion.
+    if (state && state.mode === 'loading' && this._rigidOpaqueBatchDefaultCohort !== true) return;
     const roots = this._rigidOpaqueBatchRootsScratch || (this._rigidOpaqueBatchRootsScratch = []);
     roots.length = 0;
-    for (const root of this._meshes.values()) {
-      if (!root || typeof root.traverse !== 'function') continue;
-      const userData = root.userData || {};
-      const authored = userData.authoredAssetState != null
-        || userData.authoredRenderContract != null
-        || userData.renderContract != null
-        || typeof userData.requestAuthoredUpgrade === 'function';
-      if (authored) roots.push(root);
+    if (this._rigidOpaqueBatchDefaultCohort === true) {
+      const playerRoot = this._meshes.get(state?.playerId);
+      if (isRigidOpaqueKestrelPlayerRoot(this, playerRoot)
+          && typeof playerRoot.traverse === 'function') roots.push(playerRoot);
+      const lifetimes = this._rigidOpaqueBatchAshlineLifetimes
+        || (this._rigidOpaqueBatchAshlineLifetimes = new Map());
+      let ashlineCount = 0;
+      // Retain admitted lives through brief camera exits. New slots belong to shown roots only,
+      // so hidden traffic cannot fill the finite cohort before actual presented hostiles arrive.
+      for (const [root, life] of lifetimes) {
+        if (!isRigidOpaqueAshlineCohortRoot(this, root)
+            || life.id !== root.userData.presentationEntityId
+            || life.generation !== root.userData.presentationOccupantGeneration) continue;
+        roots.push(root);
+        ashlineCount++;
+      }
+      // Classification already retained just the visible ship records. Filling from this list
+      // avoids scanning every prop/asteroid mesh to save three draws on one hostile.
+      const ships = this._entityFrame?.shipAux;
+      for (let index = 0; ships && index < ships.length; index++) {
+        if (ashlineCount >= RIGID_OPAQUE_ASHLINE_COHORT_MAX_ROOTS) break;
+        const record = ships[index], root = record.mesh;
+        if (record.viewCulled === true || record.visible === false) continue;
+        // A changed same-root life stays excluded for this sync; cleanup retires its old record
+        // before it can join a fresh candidate on the following sync.
+        if (lifetimes.has(root) || !isRigidOpaqueAshlineCohortRoot(this, root)
+            || typeof root.traverse !== 'function' || !root.parent) continue;
+        let shown = true;
+        for (let node = root; node; node = node.parent) {
+          if (node.visible === false) { shown = false; break; }
+        }
+        if (!shown) continue;
+        lifetimes.set(root, { id: root.userData.presentationEntityId,
+          generation: root.userData.presentationOccupantGeneration });
+        roots.push(root);
+        ashlineCount++;
+      }
+      for (const root of lifetimes.keys()) if (!roots.includes(root)) lifetimes.delete(root);
+    } else {
+      for (const root of this._meshes.values()) {
+        if (!root || typeof root.traverse !== 'function') continue;
+        const userData = root.userData || {};
+        const authored = userData.authoredAssetState != null
+          || userData.authoredRenderContract != null
+          || userData.renderContract != null
+          || typeof userData.requestAuthoredUpgrade === 'function';
+        if (authored) roots.push(root);
+      }
     }
-    void controller.sync(roots);
+    const completion = controller.sync(roots);
     if (state && state.render) {
       state.render.rigidOpaqueBatch = controller.getDiagnostics();
     }
+    return completion;
+  },
+
+  _collectOpeningDerivedPoolRoots() {
+    return [
+      this._contactShadowPool && this._contactShadowPool.mesh,
+      this._shipAuxPool && this._shipAuxPool.shield && this._shipAuxPool.shield.mesh,
+      this._shipAuxPool && this._shipAuxPool.nav && this._shipAuxPool.nav.mesh,
+      ...collectAuthoredInstancePoolRoots(this.scene),
+      ...collectAsteroidInstancePoolRoots(this._asteroidInstancePool),
+      // Retained copies are scene-owned, while the semantic player leaves use layer mask 0.
+      // Include the actual submitted roots in the exact first-picture producer/resource census.
+      ...(this.scene?.children || []).filter(root => root.userData?.spacefaceRigidOpaqueBatch === true),
+    ];
   },
 
   _syncWorldPresentationTableMeshes() {
@@ -29048,6 +29872,10 @@ export const render = {
       },
     )).map((candidate) => candidate.root));
     const pending = new Set();
+    if (state?.mode === 'loading' && this._rigidOpaqueBatchDefaultCohort === true) {
+      const retained = this._syncRigidOpaqueBatchProbe();
+      if (retained && typeof retained.then === 'function') pending.add(retained);
+    }
     let upgradeVisited = 0;
     // Same stride-cost bound as the shadow-caster census: each row can pay a
     // subtree bounds walk + an upgrade mint, so a fat 64-row stride yields
@@ -29102,7 +29930,20 @@ export const render = {
    * producer census is frozen. Hidden, offscreen, unmounted, and deferred roots never enter this
    * wait set and remain on the normal streaming runway.
    */
-  async prepareOpeningFirstPicture(timeoutMs = 20000) {
+  async prepareOpeningFirstPicture(timeoutMs = 20000, options = {}) {
+    const renderState = this.state?.render;
+    const world = this.state?.world;
+    const generation = renderState?.admissionRunGeneration;
+    const serial = world?.enterSerial;
+    const context = this.state?.contextRestoreSeq;
+    const assertActive = () => {
+      if (this.state?.render !== renderState || this.state?.world !== world
+          || world?.enterSerial !== serial || renderState?.admissionRunGeneration !== generation
+          || this.state?.contextRestoreSeq !== context || this._rendererResourcesDisposed === true
+          || (options.isActive && !options.isActive())) throw new Error('opening first-picture owner became inactive');
+    };
+    assertActive();
+    if (this._openingFirstPicturePrepared && renderState?.openingGraphPublicationFrozen) return true;
     const waitMs = Math.max(1, Number(timeoutMs) || 20000);
     const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -29117,10 +29958,14 @@ export const render = {
     // Freeze the render-owned root set at the same boundary as the exact census. Existing visible
     // roots may finish their authored child swap below; no new residency/build pass can introduce a
     // different root after capture and before the first draw.
-    this._deferNoncriticalMeshStreaming = true;
-    if (this.state && this.state.render) this.state.render.deferNoncriticalMeshStreaming = true;
-    this._openingFirstPicturePrepared = true;
     try {
+      await renderState?.beginOpeningLoadingAdmission?.();
+      assertActive();
+      // Seat maps before capturing program/resource identities. Required work has an outer
+      // recoverable deadline; a timed-out map is never silently replaced after flight starts.
+      if (this.rockSurfaceLibraryReady) await this.rockSurfaceLibraryReady;
+      assertActive();
+      parallaxLayers.seatReadyRockSurfaceTextures();
       // A replacement requested by the prior flight may already be between its post-paint yield and
       // activation when Continue enters loading. Let that finite job settle (it aborts when loading
       // owns the picture) before the exact opening census can capture a pool root. Bound the first
@@ -29146,6 +29991,7 @@ export const render = {
       // re-mint once (every leg is idempotent across the 8-pass envelope), then
       // degrade to the sync twin — degraded-but-alive over dead boot.
       const drivePublishFirstPicture = async () => {
+        assertActive();
         // Degrade memo per service epoch: a persistently sick publish leg used
         // to re-pay the stepped prefix + the atomic sync twin on every one of
         // the ≤8 settle passes. Once the twin has answered for this epoch,
@@ -29209,6 +30055,7 @@ export const render = {
               }
               if (driveStep.done) return driveStep.value;
               await yieldToBrowser();
+              assertActive();
             }
           }
           return [];
@@ -29287,6 +30134,8 @@ export const render = {
             if (survivalRunHoldsArena(this.state)) {
               if (this.state && this.state.render) this.state.render.openingVfxFrozen = true;
             } else {
+              await this._openingLoadingAdmission?.drain();
+              assertActive();
               freezeOpeningGraphPublication(this);
             }
             // Same source-dirty gate: an already-baked env of the current source needs no
@@ -29296,6 +30145,9 @@ export const render = {
               background: this.scene && this.scene.background,
             }) !== this._envMapSource) this._bakeEnv();
             this._openingEnvFrozen = true;
+            this._deferNoncriticalMeshStreaming = true;
+            if (renderState) renderState.deferNoncriticalMeshStreaming = true;
+            this._openingFirstPicturePrepared = true;
             succeeded = true;
             return true;
           }
@@ -29314,7 +30166,8 @@ export const render = {
       }
       throw new Error('opening first-picture boundary did not settle');
     } finally {
-      if (!succeeded) {
+      if (!succeeded && this.state?.render === renderState && renderState?.admissionRunGeneration === generation
+          && this.state?.world === world && world?.enterSerial === serial) {
         resumeAuthoredUpgradeQueueAfterOpening(this.scene);
         this._deferNoncriticalMeshStreaming = previousDefer;
         if (this.state && this.state.render) {
@@ -29849,6 +30702,7 @@ export const render = {
   _openingAdmissionPendingCount() {
     const renderState = this.state && this.state.render;
     if (!renderState) return 0;
+    if (openingFirstPictureIsReady(this.state)) return 0;
     const watch = this._openingAdmissionWatch
       || (this._openingAdmissionWatch = { seen: new WeakSet(), pending: 0 });
     for (const key of OPENING_ADMISSION_HANDLE_KEYS) {
@@ -29917,6 +30771,9 @@ export const render = {
     let openingFirstDraw = false;
     let openingFirstDrawCountsBefore = null;
     let openingFirstDrawIdentityBefore = null;
+    let openingFirstDrawObservation = null;
+    let openingFirstDrawObserver = null;
+    let openingFirstDrawSubmissionFailed = false;
     try {
       dynamicBufferEpoch = this._dynamicBuffers.arm();
       disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(
@@ -29970,7 +30827,8 @@ export const render = {
         // opening-picture failsafe so a dead chain degrades to the old fail-open instead of
         // wedging behind a black canvas.
         const pendingAdmission = this._openingAdmissionPendingCount()
-          + (typeof this.state.render.pendingPipelineAdmissions === 'function'
+          + (!openingFirstPictureIsReady(this.state)
+            && typeof this.state.render.pendingPipelineAdmissions === 'function'
             ? Number(this.state.render.pendingPipelineAdmissions()) || 0
             : 0);
         // Unsettled admission handles refuse this draw. Nothing already
@@ -30140,6 +30998,7 @@ export const render = {
             reason: 'missing-opening-submission-receipt',
             uncaptured: ['plan'],
           };
+        const priorPreSubmitValidation = this.state.render.openingSubmissionPreSubmitValidation;
         this.state.render.openingSubmissionPreSubmitValidation = preSubmitValidation;
         if (!preSubmitValidation.ok) {
           // Only program identities can be missing-and-needed: a required program key absent
@@ -30158,9 +31017,9 @@ export const render = {
           if (missingCount > 0) {
             this.state.render.openingSubmissionValidation = preSubmitValidation;
             // The gate re-probes the same bindings against the live renderer on every refused
-            // frame and reopens the moment deferred compiles land. A first refusal is the designed
-            // recovery path (drain below) and resolves within a frame or two, so it warns rather
-            // than errors; a persistent refusal still errors via the compact heartbeat — a 10KB
+            // frame and reopens the moment deferred compiles land. A first refusal is expected
+            // recovery progress (drain below), so report it informationally while the picture is
+            // held closed; a persistent refusal still errors via the compact heartbeat — a 10KB
             // console.error per frame is its own stall.
             const refusals = (this._openingPreSubmitRefusals || 0) + 1;
             this._openingPreSubmitRefusals = refusals;
@@ -30179,7 +31038,7 @@ export const render = {
                 missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
                 refusedFrames: refusals,
               };
-              (refusals === 1 ? console.warn : console.error)(
+              (refusals === 1 ? console.info : console.error)(
                 `[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`,
               );
             }
@@ -30285,6 +31144,14 @@ export const render = {
             };
           }
         }
+        // A refused frame stores its pre-submit failure in the final slot. Once that exact
+        // failure recovers, allow the real submitted-picture validation to replace it. A
+        // separately produced post-submit failure has different identity and stays intact.
+        if (priorPreSubmitValidation?.ok === false
+            && this.state.render.openingSubmissionValidation === priorPreSubmitValidation
+            && this.state.render.openingSubmissionPreSubmitValidation?.ok === true) {
+          this.state.render.openingSubmissionValidation = null;
+        }
       }
       // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so
       // retain the existing outer measurement only for those routes.
@@ -30340,20 +31207,25 @@ export const render = {
           // timer gaps must not stamp the pre-recook identity map — mirrors the
           // generator's own armed-plan bail and leaves the deferred flag clear so
           // the new plan can arm its own diagnostics.
-          if (this.state.render.openingSubmissionPlan !== armedPlan) {
+          if (openingFirstDrawSubmissionFailed || this.state.render.openingSubmissionPlan !== armedPlan) {
             this._openingFirstDrawDiagnosticsDeferred = false;
             return;
           }
           this.state.render.openingFirstDrawIdentityCensus = identityBefore;
-          // The delta attribution and post-submit receipt validation are diagnostic-only
-          // passes (another whole-scene traverse plus per-material program reads). They
-          // used to ride inside this presented frame — the persisted-census design
-          // already anticipates the deferral, so finish them after the paint, sliced
-          // across timer gaps so frame N+2 doesn't eat them whole either.
+          // Defer attribution/validation formatting, but not its observation window. The
+          // synchronous draw below freezes its submitted IDs/counts; later timer gaps must
+          // never sample a newer scene and relabel it as first-draw work.
           this._openingFirstDrawDiagnosticsDeferred = true;
-          const diagIter = this._finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan);
+          let diagIter = null;
           const scheduleGap = schedule || ((next) => setTimeout(next, 0));
           const driveDiagnostics = () => {
+            if (!openingFirstDrawObservation || openingFirstDrawSubmissionFailed) {
+              this._openingFirstDrawDiagnosticsDeferred = false;
+              return;
+            }
+            diagIter = diagIter || this._finishOpeningFirstDrawDiagnosticsSteps(
+              countsBefore, identityBefore, armedPlan, openingFirstDrawObservation,
+            );
             let step = null;
             try { step = diagIter.next(); }
             catch (_) { step = { done: true, value: undefined }; }
@@ -30400,20 +31272,37 @@ export const render = {
           scheduleGap(guardedDrain);
         }
       }
+      if (openingFirstDraw) {
+        openingFirstDrawObserver = beginOpeningFirstDrawObservation(this.renderer, {
+          plan: this.state.render.openingSubmissionPlan,
+          receipt: this.state.render.openingSubmissionReceipt,
+          preSubmitValidation: this.state.render.openingSubmissionPreSubmitValidation,
+        });
+      }
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
+        if (openingFirstDrawObserver) {
+          openingFirstDrawObservation = openingFirstDrawObserver.finish();
+          this.state.render.openingFirstDrawObservation = openingFirstDrawObservation;
+        }
         if (this._shadowRefreshScheduled === true) {
           this._shadowMapDirty = false;
           this._shadowRefreshScheduled = false;
         }
+      } catch (error) {
+        openingFirstDrawSubmissionFailed = true;
+        throw error;
       } finally {
+        if (openingFirstDrawObserver) openingFirstDrawObserver.cancel();
         if (gpuQueryBegan) gpu.end();
       }
     } finally {
       endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
       if (dynamicBufferEpoch !== null) this._dynamicBuffers.disarm(dynamicBufferEpoch);
       if (postFrameToken) endPostRenderTargetFrameOrigin(postFrameToken);
-      if (this._drawHistogramWindow) this._sampleDrawHistogram();
+      if (this.renderer?.__sfDrawHistogramArmed === true && this._drawHistogramWindow) {
+        this._sampleDrawHistogram();
+      }
     }
     if (this.state.mode === 'flight'
         && !this.state.render.openingSubmissionValidation
@@ -30423,11 +31312,12 @@ export const render = {
         this.state.render.openingSubmissionReceipt,
         this.renderer,
         this.state.render.openingFirstDrawIdentityCensus,
+        this.state.render.openingFirstDrawObservation,
       );
       const firstVisibleGpuCounts = this.state.render.openingFirstVisibleGpuCounts;
       const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (
-        firstVisibleGpuCounts.delta.geometries !== 0
-        || firstVisibleGpuCounts.delta.programs !== 0
+        firstVisibleGpuCounts.delta.geometries > 0
+        || firstVisibleGpuCounts.delta.programs > 0
       );
       const lateAdmissionIdentity = firstVisibleGpuCounts
         && firstVisibleGpuCounts.lateAdmissions;
@@ -30438,11 +31328,11 @@ export const render = {
       const unexplainedFirstVisibleAdmission = firstVisibleAdmissionDelta && (
         !lateAdmissionIdentity
         || lateAdmissionIdentity.unexplained === true
-        || (firstVisibleGpuCounts.delta.geometries !== 0 && !namedGeometryAdmission)
-        || (firstVisibleGpuCounts.delta.programs !== 0 && !namedProgramAdmission)
+        || (firstVisibleGpuCounts.delta.geometries > 0 && !namedGeometryAdmission)
+        || (firstVisibleGpuCounts.delta.programs > 0 && !namedProgramAdmission)
       );
       const firstVisibleAdmissionFailure = firstVisibleGpuCounts
-        && firstVisibleGpuCounts.delta.geometries !== 0
+        && firstVisibleGpuCounts.delta.geometries > 0
         ? { reason: 'first-visible-geometry-delta' }
         : { reason: 'first-visible-program-delta' };
       const validation = unexplainedFirstVisibleAdmission
@@ -30517,9 +31407,19 @@ export const render = {
         ? performance.now()
         : Date.now();
       const lifecycle = this._rendererLifecycle;
+      const paintRender = this.state.render;
+      const paintWorld = this.state.world;
+      const paintGeneration = paintRender.admissionRunGeneration;
+      const paintContext = this.state.contextRestoreSeq;
+      const releasePaint = () => {
+        if (this.state.render !== paintRender || this.state.world !== paintWorld
+            || paintRender.admissionRunGeneration !== paintGeneration
+            || this.state.contextRestoreSeq !== paintContext || this._contextLost === true) return;
+        applyFirstPlayablePaintRelease(this);
+      };
       const release = lifecycle
-        ? lifecycle.guard(() => applyFirstPlayablePaintRelease(this))
-        : () => applyFirstPlayablePaintRelease(this);
+        ? lifecycle.guard(releasePaint)
+        : releasePaint;
       const schedule = lifecycle
         ? (callback) => lifecycle.setTimeout(callback, 0)
         : null;
@@ -30542,34 +31442,28 @@ export const render = {
     return true;
   },
 
-  // Post-paint tail of the first presented draw: attributes the submit's renderer.info
-  // delta back to production objects, then runs the receipt validation. Both are
-  // diagnostic-only whole-scene passes the opening arm defers past the paint (D25).
-  // Steps twin: the deferred driver slices it across timer gaps so frame N+2
-  // doesn't pay the O(scene)+O(drawables) cluster in one callback.
-  *_finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan) {
+  // Post-paint attribution/validation consumes the immutable submit observation. Sorting and
+  // row formatting remain sliced across timer gaps; none of those gaps expands the measured
+  // frame to include a later scene, material mutation or unrelated resource retirement.
+  *_finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan, observation) {
     try {
       // A recook since the arm reset the slate and cleared the plan — writing the
       // stale census/validation into it would occupy the fresh sector's slot and
       // suppress its real receipt validation.
-      if (this.state.render.openingSubmissionPlan !== armedPlan) return;
-      const info = this.renderer && this.renderer.info || {};
-      const memory = info.memory || {};
-      const after = {
-        programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
-        geometries: Number(memory.geometries) || 0,
-      };
+      if (!observation || this.state.render.openingSubmissionPlan !== armedPlan) return;
+      countsBefore = observation.before.currentCounts;
+      const after = observation.currentCounts;
       const delta = {
         programs: after.programs - countsBefore.programs,
         geometries: after.geometries - countsBefore.geometries,
       };
-      const geometryOnlyBrick = delta.programs === 0 && delta.geometries !== 0;
+      const geometryOnlyBrick = delta.programs === 0 && delta.geometries > 0;
       const lateAdmissions = yield* describeOpeningAdmissionIdentityDeltaSteps(
         identityBefore,
         this.renderer,
         this.scene,
         this.state.render.openingSubmissionPlan,
-        { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS },
+        { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS, observation },
       );
       yield;
       // Computed into a local and persisted beside the validation write below — a throw
@@ -30593,10 +31487,11 @@ export const render = {
           this.state.render.openingSubmissionReceipt,
           this.renderer,
           this.state.render.openingFirstDrawIdentityCensus,
+          observation,
         );
         const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (
-          firstVisibleGpuCounts.delta.geometries !== 0
-          || firstVisibleGpuCounts.delta.programs !== 0
+          firstVisibleGpuCounts.delta.geometries > 0
+          || firstVisibleGpuCounts.delta.programs > 0
         );
         const lateAdmissionIdentity = firstVisibleGpuCounts
           && firstVisibleGpuCounts.lateAdmissions;
@@ -30607,11 +31502,11 @@ export const render = {
         const unexplainedFirstVisibleAdmission = firstVisibleAdmissionDelta && (
           !lateAdmissionIdentity
           || lateAdmissionIdentity.unexplained === true
-          || (firstVisibleGpuCounts.delta.geometries !== 0 && !namedGeometryAdmission)
-          || (firstVisibleGpuCounts.delta.programs !== 0 && !namedProgramAdmission)
+          || (firstVisibleGpuCounts.delta.geometries > 0 && !namedGeometryAdmission)
+          || (firstVisibleGpuCounts.delta.programs > 0 && !namedProgramAdmission)
         );
         const firstVisibleAdmissionFailure = firstVisibleGpuCounts
-          && firstVisibleGpuCounts.delta.geometries !== 0
+          && firstVisibleGpuCounts.delta.geometries > 0
           ? { reason: 'first-visible-geometry-delta' }
           : { reason: 'first-visible-program-delta' };
         pendingValidation = unexplainedFirstVisibleAdmission
@@ -33506,9 +34401,28 @@ export const render = {
     }
   },
 
+  _disarmDrawHistogram() {
+    this._drawHistogramWindow = 0;
+    const renderer = this.renderer;
+    if (renderer) {
+      renderer.__sfDrawHistogramArmed = false;
+      renderer.__sfLastHiddenDrawables?.clear?.();
+      renderer.__sfLastHiddenDrawables = null;
+    }
+    const state = this._drawHistState;
+    state?.byGeom?.clear?.();
+    if (state?.stack) state.stack.length = 0;
+    this._drawHistState = null;
+  },
+
   _sampleDrawHistogram() {
+    if (this.renderer?.__sfDrawHistogramArmed !== true) return;
+    const hiddenDrawn = this.renderer.__sfLastHiddenDrawables;
     const cam = this.cam && this.cam.obj;
-    if (!cam || !this.scene) return;
+    if (!cam || !this.scene) {
+      hiddenDrawn?.clear?.();
+      return;
+    }
     const st = this._drawHistState
       || (this._drawHistState = {
         frames: 0,
@@ -33519,7 +34433,6 @@ export const render = {
         byGeom: new Map(),
         stack: [],
       });
-    const hiddenDrawn = this.renderer && this.renderer.__sfLastHiddenDrawables;
     cam.updateMatrixWorld();
     st.projScreen.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     st.frustum.setFromProjectionMatrix(st.projScreen);
@@ -33846,7 +34759,10 @@ export function shouldScheduleFirstPlayablePaintRelease(owner) {
     // the latch forever: firstPlayableFrameAt gates mesh streaming, the residency
     // hold, and every opening-latch release. Re-arm once the arm outlives a grace
     // window far beyond the chain's ~33 ms transit.
-    if (!stampMissing) return false;
+    // A later mode:changed -> flight re-arms streaming while this completed paint flag and
+    // the old first-playable receipt can both survive.
+    // That old receipt only proves release while the current defer is actually cleared.
+    if (!stampMissing && owner._deferNoncriticalMeshStreaming !== true) return false;
     const armedAtMs = Number(owner._firstPlayablePaintScheduledAtMs) || 0;
     const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -33916,12 +34832,27 @@ export function applyFirstPlayablePaintRelease(owner) {
       // ~13k hidden nodes through every frame's updateMatrixWorld. Idempotent by design.
       try { owner._parkBoundedWarmRoots?.(); } catch (_) { /* parking is best-effort */ }
     }
+    // The ordinary opening warm has served its one first-picture purpose. Crucible/deferred
+    // roots remain owned by their run-end path; this tag-scoped release only drops the ordinary
+    // Adventure residency after the picture is ready.
+    try { owner?._releaseOrdinaryOpeningWarm?.('opening-first-playable'); }
+    catch (_) { /* the settle arm retries once any late attach has drained */ }
   } finally {
     releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null, {
       keepGraphFrozen: !!(owner && owner.state && owner.state.mode === 'flight'),
     });
     if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
+      // First-picture acceptance does not release the unrelated sector/FX backlog.
+      // The existing cook and selective readable-glass first-flight lanes own that policy.
       void render.resumeDeferredPipelineAdmissions();
+    }
+    if (render && typeof render.releaseOpeningPresentationHold === 'function') {
+      render.releaseOpeningPresentationHold();
+    }
+    if (owner) {
+      owner._openingLoadingAdmission = null;
+      owner._openingLoadingMeshesReady = null;
+      owner._openingPreparedLeaves = null;
     }
     // A survival arena's cook warmed the whole roster and its boundary settle drained the
     // authored upgrade queue to idle before the shell released, so the first-flight queue hold

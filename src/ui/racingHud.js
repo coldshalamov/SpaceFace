@@ -12,6 +12,12 @@ import { isRunSealed } from '../core/runSeal.js';
 import { applyWorldObjectSelection } from './worldObjectInteraction.js';
 import { createHudCombatLock } from './hudCombatLock.js';
 
+// These leaf properties also reflect to attributes. Rewriting a settled reading still
+// wakes DOM observers and style work, so only publish an actual change.
+function setProperty(node, name, value) {
+  if (node[name] !== value) node[name] = value;
+}
+
 export function mountRacingHud({ root, bus, state, screens }) {
   if (!root || typeof document === 'undefined') return null;
   injectDeckplate();
@@ -97,7 +103,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       // exist there; the compact Circuits tape was stealing combat mouse-fire clicks
       // (player-truth swarm frame ~0212 → raceBoard, sim frozen at 140.1 s).
       const crucibleLive = !!(st?.run && st.run.kind === 'survival' && isRunSealed(st));
-      panel.hidden = !inFlight || st.physicsVenuePublic?.active === true || crucibleLive;
+      setProperty(panel, 'hidden', !inFlight || st.physicsVenuePublic?.active === true || crucibleLive);
       if (!inFlight || crucibleLive) return;
       setRowLocked(combatLock.hot(st));
       const now=st.simTime||0;
@@ -105,13 +111,15 @@ export function mountRacingHud({ root, bus, state, screens }) {
       lastTick=now;
       const authored=activeAuthoredRace(st), race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
-      panel.dataset.compact=authored?'false':'true';
-      view.textContent=lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`;
-      view.disabled=!!lock; view.setAttribute('aria-pressed',String(viewMode==='racing'));
-      view.title=lock?'This section temporarily requires the chase camera.':'Toggle chase / overhead camera';
-      reset.hidden=leave.hidden=!authored;
-      select.hidden=true;selection=null;courseCue.textContent='';
-      mapHost.hidden=readings.hidden=!authored;
+      setProperty(panel.dataset, 'compact', authored?'false':'true');
+      setProperty(view, 'textContent', lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
+      setProperty(view, 'disabled', !!lock);
+      const pressed=String(viewMode==='racing');
+      if(view.getAttribute('aria-pressed')!==pressed)view.setAttribute('aria-pressed',pressed);
+      setProperty(view, 'title', lock?'This section temporarily requires the chase camera.':'Toggle chase / overhead camera');
+      setProperty(reset, 'hidden', !authored);setProperty(leave, 'hidden', !authored);
+      setProperty(select, 'hidden', true);selection=null;setProperty(courseCue, 'textContent', '');
+      setProperty(mapHost, 'hidden', !authored);setProperty(readings, 'hidden', !authored);
       if(!authored){if(missionId!==null){missionId=null;map=null;mapHost.replaceChildren();}return;}
       if(missionId!==race.id){
         missionId=race.id;lastTick=-Infinity;pulse='';lastHolding=false;lastPhase=null;

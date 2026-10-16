@@ -38,7 +38,8 @@ import {
   SAB_ENV_KIND,
 } from '../../scripts/lib/simSabEnvelope.mjs';
 
-const { tick, init, finalize, shutdown, drainStorageOps } = createSimHost();
+const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
+  applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({ onAsyncSaveReady: requestAsyncSaveReply });
 
 let chain = Promise.resolve();
 let sabEnv = null;
@@ -93,6 +94,7 @@ const localClock = {
   // behind the shared directive chain. The next tick samples the elapsed wall
   // interval and applies the normal catch-up/shedding policy instead.
   tickQueued: false,
+  saveReplyQueued: false,
   stopped: false,
 };
 
@@ -388,7 +390,7 @@ function localMergeReply(previous, next) {
     'tick', 'arrivalNs', 'journalRebuildGeneration', 'journalValid',
     'stateTick', 'simTime',
     'workMs', 'packMs', 'sendNs', 'clockAccumulator', 'clockDiagnostics',
-    'weaponVfxProjectiles',
+    'weaponVfxProjectiles', 'timeEffectsSnapshot',
   ]) {
     if (next && next[key] !== undefined) previous[key] = next[key];
   }
@@ -571,6 +573,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,
   });
+  refreshLocalClockScale();
   // Only advance the watermark after tick() returns. A thrown authoritative
   // batch must never look consumed to the main lane.
   if (commandSequence > localClock.appliedCommandSequence) {
@@ -612,7 +615,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   // the game is paused. When no coalesced presentation/durable reply is
   // waiting, that trim is an internal maintenance tick: emitting another
   // clockTick would make the main ACK feed back into this branch forever.
-  if (!publishReply && !localClock.sentAwaitingAck && !localClock.latestReply) return;
+  if (!publishReply && !localClock.sentAwaitingAck && !localClock.latestReply
+    && !localArrayLength(reply, 'events') && !localArrayLength(reply, 'storageOps')) return;
 
   if (localClock.sentAwaitingAck) {
     localClock.latestReply = localMergeReply(localClock.latestReply, reply);
@@ -632,6 +636,28 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     }
     await publishLocalReply(reply);
   }
+}
+
+function requestAsyncSaveReply() {
+  if (!localClock.enabled || localClock.stopped || localClock.saveReplyQueued
+    || (localClock.active && localClock.scale > 0)) return;
+  const generation = localClock.lifecycleGeneration;
+  localClock.saveReplyQueued = true;
+  let published = false;
+  chain = chain.then(async () => {
+    if (localClock.stopped || generation !== localClock.lifecycleGeneration
+      || (localClock.active && localClock.scale > 0) || !hasPendingDurable()) return;
+    // Force a reply, never a simulation step. The existing reply/ACK coalescer owns ordering.
+    await runLocalClockTick(true);
+    published = true;
+  }).catch((error) => {
+    self.postMessage({ kind: 'error', message: error?.message || String(error), stack: error?.stack || null });
+  }).finally(() => {
+    localClock.saveReplyQueued = false;
+    // Another async save may have settled after tick() drained its payload but before
+    // publication finished. Recheck actual queued data; an empty ACK never re-arms this.
+    if (published && generation === localClock.lifecycleGeneration && hasPendingDurable()) requestAsyncSaveReply();
+  });
 }
 
 function scheduleLocalClock() {
@@ -661,12 +687,27 @@ function scheduleLocalClock() {
   }, delayMs);
 }
 
+function refreshLocalClockScale(fallback) {
+  const authoritative = effectiveTimeScale();
+  const next = Number.isFinite(authoritative) ? authoritative
+    : Number.isFinite(fallback) ? Math.max(0, fallback) : localClock.scale;
+  if (next !== localClock.scale) {
+    localClock.scale = next;
+    // The pause interval is not catch-up debt. Keep the fractional fixed-step phase, but
+    // start the new rate at this boundary instead of charging hidden/paused wall time.
+    localClock.anchorMs = localNowMs();
+    localClock.deadlineMs = 0;
+  }
+}
+
 async function handleLocalClockControl(msg) {
   if (!localClock.enabled || localClock.stopped) return;
+  if (Number.isSafeInteger(msg.lifecycleGeneration) && msg.lifecycleGeneration < localClock.lifecycleGeneration) return;
   localClock.generation = Number.isSafeInteger(msg.generation) ? msg.generation : localClock.generation + 1;
   localClock.lifecycleGeneration = Number.isSafeInteger(msg.lifecycleGeneration)
     ? msg.lifecycleGeneration : localClock.lifecycleGeneration;
-  if (Number.isFinite(msg.timeScale)) localClock.scale = Math.max(0, msg.timeScale);
+  applyPresentationTimeEffects(msg.timeEffectsSnapshot, localClock.lifecycleGeneration);
+  refreshLocalClockScale(msg.timeScale);
   localClock.active = msg.active === true;
   localClock.anchorMs = localNowMs();
   if (localClock.timer !== null) {
@@ -715,10 +756,12 @@ async function handleLocalClockAck(msg) {
 
 async function handleLocalClockCommand(msg) {
   if (!localClock.enabled || localClock.stopped) return;
+  if (Number.isSafeInteger(msg.lifecycleGeneration) && msg.lifecycleGeneration < localClock.lifecycleGeneration) return;
   let retainedReplyPublished = false;
   localClock.commandCount++;
-  if (Number.isFinite(msg.timeScale)) localClock.scale = Math.max(0, msg.timeScale);
   if (Number.isSafeInteger(msg.lifecycleGeneration)) localClock.lifecycleGeneration = msg.lifecycleGeneration;
+  applyPresentationTimeEffects(msg.timeEffectsSnapshot, localClock.lifecycleGeneration);
+  refreshLocalClockScale(msg.timeScale);
   if (Number.isSafeInteger(msg.ackJournalEnd)) {
     localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, msg.ackJournalEnd);
   }
@@ -762,6 +805,7 @@ async function dispatchDirective(msg) {
       localClock.enabled = msg.clockMode === 'worker-local';
       localClock.stopped = false;
       localClock.scale = Number.isFinite(msg.timeScale) ? Math.max(0, msg.timeScale) : 0;
+      refreshLocalClockScale(msg.timeScale);
       localClock.lifecycleGeneration = Number.isSafeInteger(msg.generation) ? msg.generation : 0;
       localClock.anchorMs = localNowMs();
       localClock.deadlineMs = 0;

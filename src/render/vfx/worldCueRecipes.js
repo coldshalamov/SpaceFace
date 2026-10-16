@@ -243,3 +243,60 @@ export function richSeamGlintRecord(state) {
   const rec = state && state.presentation && state.presentation.richSeamGlint;
   return rec && rec.ended !== true ? rec : null;
 }
+
+/** PIC-32 — the distress lamp. The broadcasting hull of a live distress script pulses a
+ * lamp so the mayday is a thing on the glass, not only a comms line. One record per live
+ * encounter, keyed by encounterId (the director may run concurrent lives), riding the same
+ * presentation drawer the rich-seam glint opened. Fail closed: no resolvable hull, no lamp —
+ * a mayday with no body behind it is a lie, not a cue. */
+export function admitDistressLamp(state, payload = {}) {
+  if (!state) return null;
+  const encounterId = payload.encounterId;
+  if (!encounterId) return null;
+  const presentation = state.presentation && typeof state.presentation === 'object'
+    ? state.presentation
+    : (state.presentation = {});
+  const lamps = presentation.distressLamps && typeof presentation.distressLamps === 'object'
+    ? presentation.distressLamps
+    : (presentation.distressLamps = {});
+  const prev = lamps[encounterId];
+  if (prev && prev.ended !== true) return prev;
+  const victim = body(state, payload.targetId);
+  if (!victim || victim.alive === false || !point(victim.pos)) return null;
+  const record = {
+    id: 'distress-lamp',
+    kind: 'lamp',
+    encounterId,
+    targetId: victim.id,
+    pos: copy(victim.pos),
+    ended: false,
+    mapMarker: false,
+    pulseCadenceS: 0.6,
+  };
+  lamps[encounterId] = record;
+  if (!victim.data) victim.data = {};
+  victim.data.distressLamp = record.id;
+  return record;
+}
+
+/** encounter:resolved clears that encounter's lamp whichever way the script resolved —
+ * rescued, lost, ignored, escaped or abandoned all funnel through the one resolve emit.
+ * Resolutions of other shapes find no lamp and cost one map miss. */
+export function endDistressLamp(state, payload = {}) {
+  const lamps = state && state.presentation && state.presentation.distressLamps;
+  const encounterId = payload.encounterId;
+  if (!lamps || !encounterId) return null;
+  const rec = lamps[encounterId];
+  if (!rec || rec.ended === true) return null;
+  rec.ended = true;
+  const victim = body(state, rec.targetId);
+  if (victim && victim.data && victim.data.distressLamp === rec.id) delete victim.data.distressLamp;
+  delete lamps[encounterId];
+  return rec;
+}
+
+export function distressLampRecord(state, encounterId) {
+  const rec = state && state.presentation && state.presentation.distressLamps
+    && state.presentation.distressLamps[encounterId];
+  return rec && rec.ended !== true ? rec : null;
+}

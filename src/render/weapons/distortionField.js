@@ -154,6 +154,14 @@ export class DistortionField {
     return this.live > 0;
   }
 
+  clear() {
+    for (const slot of this.slots) slot.alive = 0;
+    this._cursor = 0;
+    this.live = 0;
+    this.mesh.count = 0;
+    this.mesh.visible = false;
+  }
+
   dispose() {
     this.geometry.dispose();
     this.material.dispose();

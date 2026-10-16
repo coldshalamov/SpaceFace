@@ -33,6 +33,7 @@
 //   --domain-profile=station|commodity
 //                         choose the diagnostic domain mirror shape before the worker initializes;
 //                         the default empty profile remains unchanged.
+//   --trace-stacks        with --trace, include style/layout invalidation records and source stacks.
 //   --drop-profile=NAME   delete that kept profile and exit
 //   --baseline-source=PATH serve the validated ignored source manifest for an immutable
 //                         historical comparison; assets and unlisted files remain canonical.
@@ -53,6 +54,12 @@ import { racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
 import { startSimulationWorkerProfile } from './lib/workerCpuProfile.mjs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
 import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
+import { formatPresentedCanvasContentSummary, selectPresentedCanvasFrames, summarizePresentedCanvasContent } from './lib/presentedCanvasContent.mjs';
+import {
+  flightStartFailureError,
+  installFlightStartFailureObserver,
+  normalizeFlightStartFailure,
+} from './lib/flightStartFailure.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -107,6 +114,7 @@ const sourceDigest = await digestServedSourcePaths();
 const probeDigest = await digestSourcePaths(ROOT, [
   'scripts/probe-main-thread-profile.mjs', 'scripts/lib/gameCadenceProbe.mjs',
   'scripts/lib/workerCpuProfile.mjs',
+  'scripts/lib/presentedCanvasContent.mjs',
 ]);
 let servedSourceOverlayIdentity = null;
 
@@ -159,6 +167,7 @@ const EXTRA_CHROMIUM_ARGS = process.argv
 // --trace records a Chrome timeline alongside the CPU profile and writes trace-summary.md: the
 // main-thread self time per event inside each loading stage, which names the non-JS "(program)" work.
 const TRACE = process.argv.includes('--trace');
+const TRACE_STACKS = TRACE && process.argv.includes('--trace-stacks');
 // --crucible profiles the swarm mode (seed 4242, default kit, drafts auto-answered) instead of open flight;
 // --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
 const CRUCIBLE = process.argv.includes('--crucible');
@@ -187,6 +196,10 @@ const SAMPLING_US = Math.max(100, Number(argValue('--sampling-us')) || 0);
 const EFFECTIVE_SAMPLING_US = SAMPLING_US > 100 ? SAMPLING_US : FROM_LAUNCH ? 500 : 200;
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
+  ...(TRACE_STACKS ? [
+    'disabled-by-default-devtools.timeline.stack',
+    'disabled-by-default-devtools.timeline.invalidationTracking',
+  ] : []),
 ];
 
 async function startTrace(cdp) {
@@ -757,6 +770,51 @@ async function installLaunchObservers(page) {
   });
 }
 
+// The public launch boundary reports a structured game:startFailed event before the state returns
+// to the menu. Keep this observer separate from the loading-stage recorder so each launch attempt
+// can be armed before its public control is clicked and disposed when the route reaches flight.
+// Passing the self-contained installer directly avoids adding a diagnostic module request to the
+// measured page, including when a historical source overlay predates this helper.
+async function installFlightFailureObserver(page, { timeoutMs = 60_000 } = {}) {
+  await page.waitForFunction(() => typeof window.SF?.bus?.on === 'function', null, { timeout: timeoutMs });
+  const result = await page.evaluate(installFlightStartFailureObserver).catch(() => ({ installed: false }));
+  if (!result.installed) throw new Error('game:startFailed observer could not arm after window.SF.bus became available');
+  return result;
+}
+
+async function disposeFlightFailureObserver(page) {
+  await page.evaluate(() => {
+    try { globalThis.__SF_PROFILE_FLIGHT_FAILURE_WATCH__?.dispose?.(); } catch { /* route teardown */ }
+  }).catch(() => {});
+}
+
+function flightWaitAbortError(signal) {
+  if (signal?.reason instanceof Error) return signal.reason;
+  const error = new Error('flight wait cancelled after the launch route settled');
+  error.name = 'AbortError';
+  return error;
+}
+
+async function waitForFlightPoll(page, pollMs, signal) {
+  if (!signal) return page.waitForTimeout(pollMs);
+  if (signal.aborted) throw flightWaitAbortError(signal);
+  await new Promise((resolve, reject) => {
+    let timer = setTimeout(() => {
+      timer = null;
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, pollMs);
+    function onAbort() {
+      if (timer == null) return;
+      clearTimeout(timer);
+      timer = null;
+      signal.removeEventListener('abort', onAbort);
+      reject(flightWaitAbortError(signal));
+    }
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 async function collectLaunchObservers(page) {
   return page.evaluate(() => {
     const trace = window.__SF_PROFILE_LAUNCH__;
@@ -822,17 +880,24 @@ async function clickNewGameAndLaunch(page) {
   }
 }
 
-async function waitForFlight(page, timeoutMs, pollMs) {
+async function waitForFlight(page, timeoutMs, pollMs, { signal = null } = {}) {
   const deadline = Date.now() + timeoutMs;
   let mode = null;
   while (Date.now() < deadline) {
-    mode = await page
+    if (signal?.aborted) throw flightWaitAbortError(signal);
+    const snapshot = await page
       .evaluate(() => {
-        try { return window.__SF_WITNESS__?.verdict?.()?.facts?.mode ?? null; } catch { return null; }
+        let mode = null;
+        let failure = null;
+        try { mode = window.__SF_WITNESS__?.verdict?.()?.facts?.mode ?? null; } catch { /* witness is best-effort */ }
+        try { failure = window.__SF_PROFILE_FLIGHT_FAILURE_WATCH__?.read?.() || null; } catch { /* route teardown */ }
+        return { mode, failure };
       })
-      .catch(() => null);
+      .catch(() => ({ mode: null, failure: null }));
+    mode = snapshot.mode;
+    if (snapshot.failure) throw flightStartFailureError(snapshot.failure, mode);
     if (mode === 'flight') return Date.now();
-    await page.waitForTimeout(pollMs);
+    await waitForFlightPoll(page, pollMs, signal);
   }
   throw new Error(`never entered flight (mode=${mode})`);
 }
@@ -869,11 +934,118 @@ async function installProfileFootageSource(page) {
   return status;
 }
 
+// This is serialized into page.evaluate, so keep it self-contained instead of importing a Node
+// helper through a served source overlay. It only reads the already-retained recorder ring.
+async function readPresentedFootageRingInPage() {
+  const module = await import('/src/ui/screens/flightFootage.js');
+  const active = module.getFlightFootage();
+  if (!active) return { installed: false };
+  const frames = active.ring.frames;
+  const last = frames.at(-1);
+  return {
+    installed: true,
+    ...active.status(),
+    frames: frames.map(frame => ({ tick: frame.tick, width: frame.width, height: frame.height })),
+    lastTick: last?.tick ?? null,
+    lastBytes: last?.byteSize ?? last?.blob?.size ?? last?.encoded?.byteLength
+      ?? last?.encoded?.data?.byteLength ?? 0,
+  };
+}
+
+// Pixel work runs only after the cadence window has stopped. The capture itself happened at the
+// existing successful-present hook and its bounded worker/codec pipeline; this reads small
+// thumbnails from those retained frames and never asks WebGL for a fresh readback.
+async function decodePresentedFootageSamplesInPage({ ticks = [], lastTick = null } = {}) {
+  const module = await import('/src/ui/screens/flightFootage.js');
+  const codec = await import('/src/ui/screens/footageVideoCodec.js');
+  const active = module.getFlightFootage();
+  if (!active) return { installed: false, samples: [], decodeFailures: 0, lastDecoded: null };
+  const frames = active.ring.frames;
+  const frameByTick = new Map(frames.map(frame => [frame.tick, frame]));
+  const last = frameByTick.get(lastTick) || frames.at(-1) || null;
+  let canvas = null;
+  let context = null;
+  let thumbnailError = null;
+  try {
+    canvas = typeof OffscreenCanvas === 'function'
+      ? new OffscreenCanvas(32, 18)
+      : Object.assign(document.createElement('canvas'), { width: 32, height: 18 });
+    context = canvas.getContext('2d', { willReadFrequently: true }) || canvas.getContext('2d');
+    if (!context) throw new Error('2D thumbnail context unavailable');
+  } catch (error) { thumbnailError = String(error); }
+  const signature = data => {
+    let a = 0x811c9dc5, b = 0x9e3779b9;
+    for (let index = 0; index < data.length; index += 4) {
+      a = Math.imul(a ^ data[index], 0x01000193);
+      a = Math.imul(a ^ data[index + 1], 0x01000193);
+      a = Math.imul(a ^ data[index + 2], 0x01000193);
+      b = Math.imul(b ^ data[index], 0x85ebca6b);
+      b = Math.imul(b ^ data[index + 1], 0xc2b2ae35);
+      b = Math.imul(b ^ data[index + 2], 0x27d4eb2f);
+    }
+    return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+  };
+  let lastDecoded = null;
+  let decodeFailures = 0;
+  const samples = [];
+  const decode = async (frame, includePixels) => {
+    const blob = await codec.decodeFootageFrameToBlob(frame);
+    if (!blob) throw new Error('frame codec returned no blob');
+    const bitmap = await createImageBitmap(blob);
+    try {
+      if (!includePixels) return { width: bitmap.width, height: bitmap.height };
+      if (!context) throw new Error(thumbnailError || '2D thumbnail context unavailable');
+      context.drawImage(bitmap, 0, 0, 32, 18);
+      const pixels = context.getImageData(0, 0, 32, 18).data;
+      return { width: bitmap.width, height: bitmap.height, signature: signature(pixels) };
+    } finally { bitmap.close(); }
+  };
+  try {
+    if (last) {
+      try { lastDecoded = await decode(last, false); }
+      catch (error) { lastDecoded = { error: String(error) }; }
+    }
+    for (const tick of ticks) {
+      const frame = frameByTick.get(tick);
+      if (!frame) { decodeFailures++; samples.push({ tick, error: 'frame no longer in recorder ring' }); continue; }
+      try { samples.push({ tick, ...(await decode(frame, true)) }); }
+      catch (error) { decodeFailures++; samples.push({ tick, error: String(error) }); }
+    }
+  } finally {
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  }
+  return { installed: true, samples, decodeFailures, lastDecoded };
+}
+
 async function runSteadyFlightProfile(page, cdp) {
-  if (RACING) await racingToFlight(page, (name, ok, detail) => log(`${name}: ${ok} ${detail}`));
-  else if (CRUCIBLE || GAUNTLET) await launchCrucible(page);
-  else await clickNewGameAndLaunch(page);
-  await waitForFlight(page, 180_000, 1000);
+  await installFlightFailureObserver(page, { timeoutMs: 150_000 });
+  try {
+    // racingToFlight owns a six-minute readiness deadline. Race it against the same event-aware
+    // reader so a real start failure exits immediately without shortening the genuine route wait.
+    if (RACING) {
+      const flightWaitAbort = new AbortController();
+      const route = racingToFlight(page, (name, ok, detail) => log(`${name}: ${ok} ${detail}`));
+      try {
+        await Promise.race([
+          route.then(() => Date.now()),
+          waitForFlight(page, 600_000, 1000, { signal: flightWaitAbort.signal }),
+        ]);
+      } finally {
+        // Promise.race does not cancel the losing reader. Abort its poll as soon as the route
+        // settles so a rejected route cannot keep evaluating a closing page for six minutes.
+        flightWaitAbort.abort();
+      }
+    } else {
+      if (CRUCIBLE || GAUNTLET) await launchCrucible(page);
+      else await clickNewGameAndLaunch(page);
+      await waitForFlight(page, 180_000, 1000);
+    }
+  } finally {
+    await disposeFlightFailureObserver(page);
+  }
   const launchedSeed = await readLaunchedRunSeed(page);
   const expectedSeed = CRUCIBLE || GAUNTLET ? 4242 : RACING ? null : FIXED_SEED;
   if (expectedSeed != null && launchedSeed !== expectedSeed) throw new Error(`Universe seed mismatch: requested ${expectedSeed}, launched ${launchedSeed}`);
@@ -973,6 +1145,10 @@ async function runSteadyFlightProfile(page, cdp) {
     return record;
   }, GPU_TIMERS);
   const summaryCadence = summarizeGameCadence(cadence);
+  const activeCadenceRows = (cadence.rows || []).filter(row => row.mode === 'flight'
+    && row.timeScale > 0 && Number.isSafeInteger(row.tick));
+  const measuredStartTick = activeCadenceRows[0]?.tick ?? null;
+  const measuredEndTick = activeCadenceRows.at(-1)?.tick ?? null;
   const clockEnd = await page.evaluate(() => ({ mainTimeScale: window.SF?.state?.timeScale, diagnostics: window.SF?.simLaneDiag?.() || null }));
   const machineEnd = os.cpus();
   const totals = cpus => cpus.reduce((out, cpu) => {
@@ -996,7 +1172,8 @@ async function runSteadyFlightProfile(page, cdp) {
     sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
     clockStart, clockEnd,
     observer: (CADENCE_ONLY ? 'cadence-only' : `cpu-profile-${EFFECTIVE_SAMPLING_US}us`)
-      + (TRACE ? '+trace' : '') + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
+      + (TRACE ? '+trace' : '') + (TRACE_STACKS ? '+trace-stacks' : '')
+      + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
   };
   fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify({ metadata, summary: summaryCadence, raw: cadence }, null, 1));
   log(`game cadence: ${JSON.stringify(summaryCadence)}`);
@@ -1042,26 +1219,44 @@ async function runSteadyFlightProfile(page, cdp) {
 
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
   const longTasks = await page.evaluate(() => window.__SF_PROFILE_LONGTASKS__ || []).catch(() => []);
-  // The flight-footage recorder (a JPEG ring behind the Moment clips) must still fill and decode.
-  const footage = await page.evaluate(async () => {
-    const module = await import('/src/ui/screens/flightFootage.js');
-    const active = module.getFlightFootage();
-    if (!active) return { installed: false };
-    const frames = active.ring.frames;
-    const last = frames.at(-1);
-    let decoded = null;
-    if (last) {
-      try { const bitmap = await createImageBitmap(last.blob); decoded = { width: bitmap.width, height: bitmap.height }; bitmap.close(); }
-      catch (error) { decoded = { error: String(error) }; }
-    }
-    return { installed: true, ...active.status(), lastBytes: last ? last.blob.size : 0, decoded };
-  }).catch((error) => ({ error: String(error) }));
+  // Both production ring formats must still fill and decode. Decode after the timed window.
+  const footageCapture = await page.evaluate(readPresentedFootageRingInPage)
+    .catch((error) => ({ error: String(error) }));
+  const footageFrames = Array.isArray(footageCapture?.frames) ? footageCapture.frames : [];
+  const presentedFramesInWindow = footageFrames.filter(frame => Number.isSafeInteger(frame?.tick)
+    && measuredStartTick != null && measuredEndTick != null
+    && frame.tick >= measuredStartTick && frame.tick <= measuredEndTick);
+  const selectedFootageFrames = footageCapture?.captureSource === 'presented'
+    ? selectPresentedCanvasFrames(footageFrames, { startTick: measuredStartTick, endTick: measuredEndTick })
+    : [];
+  const decodedFootage = await page.evaluate(decodePresentedFootageSamplesInPage, {
+    ticks: selectedFootageFrames.map(frame => frame.tick),
+    lastTick: footageCapture?.lastTick ?? null,
+  }).catch((error) => ({ error: String(error), samples: [], decodeFailures: selectedFootageFrames.length }));
+  const canvasContent = summarizePresentedCanvasContent({
+    captureSource: footageCapture?.captureSource,
+    samples: decodedFootage?.samples,
+    startTick: measuredStartTick,
+    endTick: measuredEndTick,
+    openingDelayMs: FOOTAGE_OPENING_DELAY_MS,
+    decodeFailures: decodedFootage?.decodeFailures ?? selectedFootageFrames.length,
+    eligibleFrameCount: footageCapture?.captureSource === 'presented' ? presentedFramesInWindow.length : 0,
+    analysisCapped: footageCapture?.captureSource === 'presented'
+      && presentedFramesInWindow.length > selectedFootageFrames.length,
+  });
+  const footage = {
+    ...footageCapture,
+    frames: undefined,
+    decoded: decodedFootage?.lastDecoded ?? null,
+    canvasContent,
+  };
   log(`flight footage: ${JSON.stringify(footage)}`);
   metadata.footage = {
     requestedSource: requestedFootageSource,
     actualSource: footage?.captureSource ?? null,
     openingDelayMs: FOOTAGE_OPENING_DELAY_MS,
     decoded: footage?.decoded ?? null,
+    canvasContent: footage?.canvasContent ?? null,
   };
   // Keep the original cadence payload, but publish the source and decode result beside it so an
   // A/B report cannot mistake a requested arm for the source the browser actually used.
@@ -1092,6 +1287,7 @@ async function runSteadyFlightProfile(page, cdp) {
   const summary = profile ? writeSteadyReport(profile, census, longTasks) : { entries: [], totalMicros: 0 };
   if (profile) fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   else fs.writeFileSync(path.join(OUT_DIR, 'report.md'), '# Game cadence\n\n' + JSON.stringify({ metadata, summary: summaryCadence }, null, 2) + '\n');
+  fs.appendFileSync(path.join(OUT_DIR, 'report.md'), `\n\n## Presented canvas content\n\n${formatPresentedCanvasContentSummary(canvasContent)}\n`, 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
 
   const top = summary.entries[0];
@@ -1166,10 +1362,10 @@ async function runLaunchProfile(page, cdp, profileNote) {
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
   if (!(await waitForButton(page, /^New Game$/, 120_000))) throw new Error('the title menu never showed New Game');
-  await page.waitForFunction(() => typeof window.SF?.bus?.on === 'function', null, { timeout: 60_000 })
-    .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
   if (MENU_DWELL_MS > 0) { log(`reading the title menu for ${MENU_DWELL_MS} ms first`); await page.waitForTimeout(MENU_DWELL_MS); }
   await installLaunchObservers(page);
+  await installFlightFailureObserver(page, { timeoutMs: 60_000 });
+  try {
   const heapMarks = [];
   const markHeap = async (label) => {
     const used = await page.evaluate(() => (performance.memory ? performance.memory.usedJSHeapSize : null)).catch(() => null);
@@ -1231,6 +1427,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
   if (TRACE) writeTraceSummary(traceFile, clockSync, timeline, trace.stages);
   log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
   log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);
+  } finally {
+    await disposeFlightFailureObserver(page);
+  }
 }
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -1255,6 +1454,8 @@ const profileNote = KEEP_PROFILE
   : 'fresh temporary evidence profile (cold GPU program cache and HTTP cache)';
 
 let app = null;
+let diagnosticPage = null;
+const startupIssues = [];
 let displayHz = null;
 let runtimeClosed = false;
 try {
@@ -1267,6 +1468,11 @@ try {
       ? display.displayFrequency : null;
   });
   const page = await app.firstWindow({ timeout: 180_000 });
+  diagnosticPage = page;
+  page.on('pageerror', error => startupIssues.push(String(error?.stack || error).slice(0, 4000)));
+  page.on('console', message => {
+    if (message.type() === 'error' && startupIssues.length < 40) startupIssues.push(message.text().slice(0, 4000));
+  });
   // A cold native source boot can outlast Playwright's default 30-second apparatus timeout.
   // This does not change the measured flight window or the game's loading-time result.
   await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
@@ -1296,6 +1502,103 @@ try {
     if (!record.metadata.sourceStable) log('source changed during capture; diagnostic only');
   }
   log(`report ${path.join(OUT_DIR, 'report.md')}`);
+} catch (error) {
+  // A failed startup has no cadence window. Preserve the visible route and its errors so
+  // the next investigation can distinguish missing controls from a failed module boot.
+  let route = null;
+  try {
+    route = await diagnosticPage?.evaluate(() => {
+      const state = window.SF?.state || null;
+      const render = state?.render || window.SF?.registry?.get?.('render')?.state?.render || null;
+      const isScalar = (value) => value == null
+        || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+      const scalarFields = (value, limit = 24) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const out = {};
+        for (const key of Object.keys(value).slice(0, limit)) {
+          try {
+            if (isScalar(value[key])) out[key] = value[key];
+          } catch { /* diagnostics must not invoke a throwing getter twice */ }
+        }
+        return out;
+      };
+      const ledger = Array.isArray(render?.openingCookLedger)
+        ? render.openingCookLedger.slice(-50).map((row) => scalarFields(row, 32))
+        : null;
+      const requiredPackageAdmission = scalarFields(render?.requiredPackageAdmission, 24);
+      const firstPictureState = render?.openingFirstPictureState || render?.openingFirstPicture || null;
+      const openingFirstPicture = {
+        ready: typeof render?.openingFirstPictureReady === 'boolean'
+          ? render.openingFirstPictureReady
+          : (typeof firstPictureState?.ready === 'boolean' ? firstPictureState.ready : null),
+        phase: typeof render?.openingFirstPicturePhase === 'string'
+          ? render.openingFirstPicturePhase
+          : (typeof render?.openingFirstPicturePhase?.stage === 'string'
+            ? render.openingFirstPicturePhase.stage
+            : (typeof firstPictureState?.phase === 'string' ? firstPictureState.phase : null)),
+      };
+      const capturedPlan = render?.capturedPlan || render?.capturedplan || render?.openingSubmissionPlan || null;
+      let counts = scalarFields(capturedPlan?.counts, 24);
+      if (counts == null && capturedPlan && typeof capturedPlan === 'object') {
+        counts = {};
+        for (const [key, value] of [
+          ['roots', capturedPlan.roots],
+          ['drawLeaves', capturedPlan.drawLeaves],
+          ['geometryBuffers', capturedPlan.geometryBuffers],
+          ['materials', capturedPlan.materials],
+          ['textures', capturedPlan.textures],
+          ['programCompileSubjects', capturedPlan.programCompileSubjects],
+          ['compileSubjects', capturedPlan.compileSubjects],
+        ]) {
+          if (Array.isArray(value)) counts[key] = value.length;
+        }
+      }
+      const blockingReasons = Array.isArray(capturedPlan?.blockingReasons)
+        ? capturedPlan.blockingReasons.slice(0, 50).map((reason) => scalarFields(reason, 16))
+        : null;
+      let pendingPipelineAdmissions = null;
+      try {
+        const pending = typeof render?.pendingPipelineAdmissions === 'function'
+          ? render.pendingPipelineAdmissions() : render?.pendingPipelineAdmissions;
+        pendingPipelineAdmissions = Number.isFinite(Number(pending)) ? Number(pending) : null;
+      } catch { /* diagnostics must not change the failure route */ }
+      return {
+        url: location.href,
+        text: document.body?.innerText?.slice(0, 12000),
+        buttons: [...document.querySelectorAll('button')].map(button => button.textContent),
+        mode: state?.mode,
+        render: {
+          openingCookLedger: ledger,
+          requiredPackageAdmission,
+          openingFirstPicture,
+          capturedPlan: {
+            complete: typeof capturedPlan?.complete === 'boolean' ? capturedPlan.complete : null,
+            blockingReasons,
+            counts,
+            roots: Array.isArray(capturedPlan?.roots)
+              ? capturedPlan.roots.slice(0, 50).map(root => ({
+                ...scalarFields(root, 48),
+                productionBoundary: scalarFields(root?.productionBoundary, 32),
+              })) : null,
+          },
+          pendingPipelineAdmissions,
+        },
+      };
+    });
+  } catch (_) { /* the failed runtime may have closed its page */ }
+  let flightFailure = error?.flightFailure || null;
+  if (!flightFailure) {
+    try {
+      const rawFlightFailure = await diagnosticPage?.evaluate(() =>
+        window.__SF_PROFILE_FLIGHT_FAILURE_WATCH__?.read?.() || null);
+      flightFailure = rawFlightFailure ? normalizeFlightStartFailure(rawFlightFailure) : null;
+    } catch (_) { /* the failed runtime may have closed its page */ }
+  }
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  fs.writeFileSync(path.join(OUT_DIR, 'failure.json'), JSON.stringify({
+    error: String(error?.stack || error), startupIssues, route, flightFailure,
+  }, null, 2));
+  throw error;
 } finally {
   try {
     await app?.close();

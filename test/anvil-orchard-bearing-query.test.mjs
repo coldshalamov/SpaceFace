@@ -121,7 +121,7 @@ for(const mutation of ['fixed-part-id','domain-id'])test(`runtime canonical bear
  assert.throws(()=>orchardPairClearance(prepareOrchardNativeObservation(owner,lane).scan(),rec.body.handle,moves,lane.constants,G),/orchard_query:bearing_source/);
  }finally{owner.dispose();sim.dispose();}`;
  const loaders=[];for(let i=0;i<process.execArgv.length;i++)if(['--loader','--experimental-loader'].includes(process.execArgv[i]))loaders.push(process.execArgv[i],process.execArgv[++i]);
- try{const result=spawnSync(process.execPath,[...loaders,'--loader',hook,'--input-type=module','-e',script],{encoding:'utf8',env:{...process.env,ORCHARD_BAD_BEARING:mutation}});assert.equal(result.status,0,result.stdout+result.stderr);}
+ try{const result=spawnSync(process.execPath,[...loaders,'--loader',pathToFileURL(hook).href,'--input-type=module','-e',script],{encoding:'utf8',env:{...process.env,ORCHARD_BAD_BEARING:mutation}});assert.equal(result.status,0,result.stdout+result.stderr);}
  finally{rmSync(temp,{recursive:true,force:true});}
 });
 

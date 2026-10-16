@@ -23,8 +23,10 @@
  * `edge_count` records in the flat `edges` array; `to_node` is a node-record offset.
  */
 
-import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { loadHeapSnapshot } from './heapSnapshotDiff.mjs';
 
+async function main() {
 const args = process.argv.slice(2);
 const filePath = args.find((a) => !a.startsWith('--'));
 const classArg = args.find((a) => a.startsWith('--class='));
@@ -44,10 +46,11 @@ const DEPTH = depthArg ? Math.max(1, parseInt(depthArg.slice(8), 10) || 30) : 30
 
 if (!filePath) {
   console.error('usage: node heapRetainerTrace.mjs <snapshot> [--class=Name] [--hops=N] [--top=N] [--min-size=B] [--size-hist] [--chain --seeds=N --depth=N]');
-  process.exit(2);
+  process.exitCode = 2;
+  return;
 }
 
-const snapshot = JSON.parse(await readFile(filePath, 'utf8'));
+const snapshot = await loadHeapSnapshot(filePath, { arrays: ['nodes', 'edges'], includeStrings: true });
 const meta = snapshot.snapshot.meta || snapshot.snapshot;
 const { node_fields: nodeFields, node_types: nodeTypes, edge_fields: edgeFields, edge_types: edgeTypes } = meta;
 const nodes = snapshot.nodes;
@@ -76,7 +79,7 @@ const edgeLabel = (base) => {
   const name = t === 'element' || t === 'hidden' ? String(n) : (strings[n] ?? String(n));
   return `${t}:${name}`;
 };
-const shortNode = (off) => `${classKey(off)} #${Math.floor(off / NW)} (${(nodes[off + fSize] / 1024).toFixed(0)}KB)`;
+const shortNode = (off) => `${classKey(off)} #${Math.floor(off / NW)} (${(Number(nodes[off + fSize]) / 1024).toFixed(0)}KB)`;
 
 // Edge-type ranks for "most semantic retainer" selection. Property/element edges name
 // the pinning field; internal/weak/backing edges are VM noise walked through first.
@@ -96,14 +99,14 @@ const targetOffsets = [];
     const name = nodeName(off);
     const key = `${typeName(off)}${name}`;
     if (key === CLASS || name === CLASS || name.endsWith(` / ${CLASS}`) || key.endsWith(CLASS)) {
-      if ((nodes[off + fSize] | 0) >= MIN_SIZE) targetOffsets.push(off);
+      if (Number(nodes[off + fSize]) >= MIN_SIZE) targetOffsets.push(off);
     }
   }
 }
 let targetBytes = 0;
 const buckets = new Map();
 for (const off of targetOffsets) {
-  const size = nodes[off + fSize] | 0;
+  const size = Number(nodes[off + fSize]);
   targetBytes += size;
   const bucket = size < 1024 ? '<1KB' : size < 16384 ? '1-16KB' : size < 131072 ? '16-128KB'
     : size < 1048576 ? '128K-1MB' : '>=1MB';
@@ -129,7 +132,7 @@ if (chainMode) {
   const parentEdge = new Int32Array(nodeCount).fill(-1);
   let edgeCursor = 0;
   for (let off = 0, i = 0; i < nodeCount; i++, off += NW) {
-    const count = nodes[off + fEdges] | 0;
+    const count = Number(nodes[off + fEdges]);
     for (let e = 0; e < count; e++, edgeCursor += EW) {
       const toIndex = Math.floor(edges[edgeCursor + eTo] / NW);
       if (toIndex < 0 || toIndex >= nodeCount) continue;
@@ -142,7 +145,7 @@ if (chainMode) {
     }
   }
   // Seed from the largest target nodes.
-  const seeds = [...targetOffsets].sort((a, b) => (nodes[b + fSize] | 0) - (nodes[a + fSize] | 0)).slice(0, SEEDS);
+  const seeds = [...targetOffsets].sort((a, b) => Number(nodes[b + fSize]) - Number(nodes[a + fSize])).slice(0, SEEDS);
   for (const seed of seeds) {
     console.log(`\n=== chain for ${shortNode(seed)} ===`);
     const seen = new Set();
@@ -157,11 +160,11 @@ if (chainMode) {
       const pOff = p * NW;
       const detail = nodeName(pOff);
       const extra = detail.length > 90 ? `${detail.slice(0, 90)}…` : detail;
-      console.log(`    <- ${label} <- ${typeName(pOff)}${JSON.stringify(extra.slice(0, 160))} [${(nodes[pOff + fSize] / 1024).toFixed(1)}KB]`);
+      console.log(`    <- ${label} <- ${typeName(pOff)}${JSON.stringify(extra.slice(0, 160))} [${(Number(nodes[pOff + fSize]) / 1024).toFixed(1)}KB]`);
       cur = p;
     }
   }
-  process.exit(0);
+  return;
 }
 
 // Histogram mode: hop-by-hop parent histograms.
@@ -176,7 +179,7 @@ for (let hop = 1; hop <= HOPS && frontier; hop++) {
   const parentMark = new Uint8Array(nodeCount);
   let edgeCursor = 0;
   for (let off = 0, i = 0; i < nodeCount; i++, off += NW) {
-    const count = nodes[off + fEdges] | 0;
+    const count = Number(nodes[off + fEdges]);
     for (let e = 0; e < count; e++, edgeCursor += EW) {
       const toIndex = Math.floor(edges[edgeCursor + eTo] / NW);
       if (toIndex < 0 || toIndex >= nodeCount || !frontier[toIndex]) continue;
@@ -194,4 +197,14 @@ for (let hop = 1; hop <= HOPS && frontier; hop++) {
   }
   if (parentCount === 0) break;
   frontier = parentMark;
+}
+}
+
+const isMainModule = process.argv[1]
+  && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
+  main().catch((error) => {
+    console.error(error?.stack || error);
+    process.exitCode = 1;
+  });
 }

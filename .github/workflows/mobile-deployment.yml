@@ -28,6 +28,8 @@ jobs:
           filter: blob:none
           sparse-checkout: |
             scripts/probe-deployed-mobile.mjs
+            scripts/lib/mobileCameraWitness.mjs
+            scripts/lib/mobileDrawErrorObserver.mjs
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
@@ -39,11 +41,12 @@ jobs:
           node "$RUNNER_TEMP/mobile-probe/node_modules/playwright/cli.js" install --with-deps "${MOBILE_PROBE_ENGINE}"
         env:
           MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
-      - name: Menu to New Game to flight to touch pause
+      - name: New Game, touch controls, rotation and persisted Continue
         run: node scripts/probe-deployed-mobile.mjs
         env:
           MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
           MOBILE_PROBE_URL: ${{ inputs.url }}
+          MOBILE_PROBE_CONTINUE: '1'
       - name: Preserve network evidence and screenshots, including failures
         if: always()
         uses: actions/upload-artifact@v4

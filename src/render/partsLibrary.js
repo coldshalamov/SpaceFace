@@ -50,6 +50,7 @@ import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packaged
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, attachAuthoredMotionDriverSteps, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
 import { lampShareToken } from './lampBus.js';
+import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
 import { armCallbackAfterPresent, postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
@@ -3404,7 +3405,9 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   const capsuleBuildTrace = { root: null };
   try {
     authored = await driveAuthoredBuildStepsAsync(
-      buildAuthoredCargoCapsuleRootSteps(entity, record, scene, boundary, capsuleBuildTrace),
+      buildAuthoredCargoCapsuleRootSteps(entity, record, scene, boundary, capsuleBuildTrace, {
+        isolatePreparedBatchGeometry: options.deferBoundaryPublication === true,
+      }),
       capsuleBuildTrace, entity, boundary, options,
     );
   } catch (error) {
@@ -3434,10 +3437,14 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   }
   registerPreparedAuthoredAdmission(scene, boundary, authored);
   let authoredDisposed = false;
-  const disposePreparedCargoCapsule = () => {
+  const disposePreparedCargoCapsule = async () => {
     if (authoredDisposed) return false;
     try {
-      disposeDetachedAuthoredCargoCapsule(authored.root, options.state);
+      // Preparation owns a settlement verdict, not a fire-and-forget reclaim. Build the same
+      // owner-local journal used by place admissions, then await every paced resource release
+      // before the boundary's generic Object3D teardown can inspect the authored root.
+      await collectPreparedPlaceCleanupResources(authored, options.state);
+      await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch);
       authoredDisposed = true;
     } finally {
       // A disposal throw must not strand the registry entry — it pins the boundary and the
@@ -3659,6 +3666,7 @@ function releaseDetachedCargoCapsuleSubstrate(root) {
   if (!root) return;
   // visualFactory payload geometry/materials are module-level caches shared by ordinary payloads.
   // Sever this one-shot Object3D graph without disposing those shared resources.
+  root.traverse((object) => { object.castShadow = false; });
   root.clear();
   root.userData.authoredSubstrateReleased = true;
 }
@@ -3676,7 +3684,14 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
 // let the async driver pace the build across frames exactly like
 // composedShipSteps; the sync twin above keeps single-pass semantics.
 // `buildTrace.root` carries the partial out so an aborted run can dispose it.
-function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundary, buildTrace = null) {
+function* buildAuthoredCargoCapsuleRootSteps(
+  entity,
+  record,
+  scene,
+  ownerBoundary,
+  buildTrace = null,
+  buildOptions = {},
+) {
   const palette = paletteFor(entity);
   const root = new THREE.Group();
   root.name = `GLTFKit_${entity.data.payloadStableId || 'cargo_capsule'}`;
@@ -3705,6 +3720,13 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
   yield;
   yield* staticBatches.flushSteps();
+  // The static-batch cache deliberately aliases immutable geometry between live consumers. A
+  // deferred cargo admission, however, has a private cleanup journal that must be able to retire
+  // its staged drawables without disposing the cache entry still available to another capsule.
+  // Keep the cache alias for normal committed cargo, but give prepared cargo a private clone.
+  const ownerLocalPreparedBatchGeometries = buildOptions.isolatePreparedBatchGeometry === true
+    ? isolatePreparedCargoBatchGeometries(root)
+    : EMPTY_ARRAY;
   yield;
   reconcileMaplessHullMaterialAliases(palette);
   yield* canonicalizeMaplessHullMaterials(root, palette);
@@ -3755,7 +3777,24 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
     root,
     authoredParts: [record.url],
     authoredSlots: authoredSlotMap,
+    ownerLocalGeometries: ownerLocalPreparedBatchGeometries,
   };
+}
+
+function isolatePreparedCargoBatchGeometries(root) {
+  const ownerLocalGeometries = [];
+  root?.traverse?.((object) => {
+    if (!object?.isMesh || object.userData?.spacefaceStaticBatch !== true) return;
+    const sharedGeometry = object.geometry;
+    if (!sharedGeometry || sharedGeometry.userData?.spacefaceSharedAsset !== true
+        || typeof sharedGeometry.clone !== 'function') return;
+    const ownerGeometry = sharedGeometry.clone();
+    ownerGeometry.userData = { ...(ownerGeometry.userData || {}) };
+    delete ownerGeometry.userData.spacefaceSharedAsset;
+    object.geometry = ownerGeometry;
+    ownerLocalGeometries.push(ownerGeometry);
+  });
+  return ownerLocalGeometries;
 }
 
 export function buildAuthoredStationArchetype(entity, options = {}) {
@@ -5866,7 +5905,7 @@ function specializeWreckCathedralClosedSurfaces(sources) {
   };
 }
 
-function installSingleSamplePackedOrmShader(material) {
+export function installSingleSamplePackedOrmShader(material) {
   if (!material || material.userData?.spacefacePackedOrmSingleSample === true) return material;
   const orm = material.roughnessMap;
   if (!sameTextureSamplingForPackedOrm(orm, material.metalnessMap)
@@ -5925,6 +5964,7 @@ function installSingleSamplePackedOrmShader(material) {
       shader.fragmentShader = shader.fragmentShader.replace(needle, replacement);
     }
   };
+  registerGeometryPreservingShaderHook(material.onBeforeCompile, originalOnBeforeCompile);
   material.customProgramCacheKey = () => canonicalizeSurfaceProgramFamilyKey(
     originalProgramCacheKey,
     'spaceface-packed-orm-single-sample-v1',
@@ -6434,6 +6474,8 @@ function upgradeQueueState(scene) {
         jobs: [],
         activeJobs: 0,
         maxConcurrentJobs: 0,
+        activeAdmissionSlots: 0,
+        maxConcurrentAdmissionSlots: 0,
         maxConcurrentDecode: 0,
         activePlannedBytes: 0,
         peakActivePlannedBytes: 0,
@@ -6892,6 +6934,7 @@ function abortStalledUpgradeJob(state, job) {
   // when their boundary never committed).
   if (job.serialSlotReleased !== true) state.inFlight = Math.max(0, state.inFlight - 1);
   job.serialSlotReleased = true;
+  state.diagnostics.activeAdmissionSlots = state.inFlight;
   cleanupQueuedJob(state, job);
   // The abandoned run may sit on a decoder task that will never settle — every later request
   // deduping onto it wedges identically. Drop the unfinished task entries (and the boundary's
@@ -7351,6 +7394,11 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const residency = capturePort('prepareAuthoredGpuResidency');
   const present = capturePort('yieldToNextPresent');
   const packagedShadowSync = capturePort('syncPackagedBodyShadowPolicy');
+  const opening = capturePort('isRequiredOpeningEntity');
+  const trackOpening = capturePort('trackOpeningLoadingWork');
+  const openingRequired = () => !!(opening && opening.call(boundaryLiveEntity(boundary, entity)));
+  const trackOpeningWork = (promise, required) => required && trackOpening
+    ? trackOpening.call(boundaryLiveEntity(boundary, entity), promise) : promise;
   const data = entity && entity.data || {};
   const sectorId = data.sectorId || entity && entity.homeSectorId
     || liveState && liveState.world && liveState.world.currentSectorId
@@ -7386,11 +7434,27 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
           const st = authoredRuntimeState();
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return compile.call(root, { urgent: onGlass, debugBy: 'authored-prepare', isActive: compile.isActive });
+          const required = openingRequired();
+          return trackOpeningWork(compile.call(root, {
+            urgent: onGlass, openingRequired: required,
+            debugBy: 'authored-prepare', isActive: compile.isActive,
+          }), required);
         }
       : null,
     touchAuthoredExactTarget: touch
-      ? (root) => touch.call(root)
+      ? (root) => {
+          const required = openingRequired();
+          const work = Promise.resolve(touch.call(root, { isActive: touch.isActive, strict: required }))
+            .then((result) => {
+              if (required && (result === false || result?.skipped === true || result?.ok === false)) {
+                throw new Error(`Required authored publish touch failed: ${result?.reason || 'not admitted'}`);
+              }
+              return result;
+            });
+          // Publication callers remain synchronous; the loading cohort owns the async tail.
+          work.catch(() => {});
+          return trackOpeningWork(work, required);
+        }
       : null,
     syncPackagedBodyShadowPolicy: packagedShadowSync
       ? (root, entity, addedSubtree) => packagedShadowSync.call(root, entity, addedSubtree)
@@ -7403,15 +7467,18 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
           // uploads already queued there.
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return residency.call(root, {
+          const required = openingRequired();
+          return trackOpeningWork(residency.call(root, {
             isActive: () => residency.isActive()
               && (typeof admissionOptions.isResidencyOwnerActive !== 'function'
                 || admissionOptions.isResidencyOwnerActive()),
             unSliced: admissionOptions.unSliced === true || onGlass,
-          });
+            openingRequired: required,
+          }), required);
         }
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
+    retainGpuOwnershipUntilSettled: !!(liveState && liveState.mode === 'loading'),
     yieldBetweenGpuStages: !!(liveState && liveState.mode === 'flight'),
     yieldToNextPresent: present
       ? async () => present.call()
@@ -8003,6 +8070,15 @@ function admitNextUpgradeJob(state) {
     isAdmissionBoundaryCurrent: isBoundaryCurrent,
     isResidencyOwnerActive: () => !admission.signal.aborted && isOwnerActive(),
   };
+  if (authoredRuntimeState()?.mode === 'flight') {
+    // A loading request may only begin after reveal. Re-grade its scheduling phase at
+    // admission, retaining its GPU lease policy while enabling the normal flight yields.
+    // Loading's unconditional overlap must not survive into watched flight frames.
+    job.options.yieldBetweenGpuStages = true;
+    if (job.options.retainGpuOwnershipUntilSettled === true) {
+      job.options.overlapAuthoredPipelineCompile = false;
+    }
+  }
   if (job.options && Object.isExtensible(job.options)
       && typeof job.options.isAbortedStalledAdmission !== 'function') {
     job.options.isAbortedStalledAdmission = () => job.abortedStalled === true;
@@ -8016,6 +8092,7 @@ function admitNextUpgradeJob(state) {
     if (job.serialSlotReleased || job.lifecycle !== 'in-flight') return false;
     job.serialSlotReleased = true;
     state.inFlight = Math.max(0, state.inFlight - 1);
+    state.diagnostics.activeAdmissionSlots = state.inFlight;
     scheduleNextUpgradeFrame(state);
     return true;
   };
@@ -8478,6 +8555,13 @@ function resourceBytesForUrls(urls) {
 }
 
 function publishUpgradeDiagnostics(state, renderer = null) {
+  // This semaphore covers decode/compose until exact GPU preparation is staged. Whole
+  // admission lifetimes above remain active through the overlapping GPU/commit tail.
+  state.diagnostics.activeAdmissionSlots = state.inFlight;
+  state.diagnostics.maxConcurrentAdmissionSlots = Math.max(
+    state.diagnostics.maxConcurrentAdmissionSlots,
+    state.inFlight,
+  );
   const decode = renderer && decodeAdmissionDiagnosticsByRenderer.get(renderer);
   if (decode) {
     state.diagnostics.maxConcurrentDecode = Math.max(state.diagnostics.maxConcurrentDecode, decode.maxConcurrent);
@@ -9526,7 +9610,21 @@ async function disposePreparedAuthoredShip(authored) {
   if (typeof authored.releaseFlightTemplate === 'function') {
     await attempt(authored.releaseFlightTemplate, () => authored.releaseFlightTemplate('authored-ship-preparation-failed'));
   }
-  await attempt(root, () => root.clear());
+  await attempt(root, async () => {
+    // clear() severs children but the maintained shadow registry still owns every
+    // flagged node. Retire this prepared tree before dropping its only walkable root.
+    const stack = [root];
+    let visited = 0;
+    while (stack.length) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % 128) === 0) await composeYield();
+      object.castShadow = false;
+      const children = object.children || EMPTY_ARRAY;
+      for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+    root.clear();
+  });
   notePacedFrameSpend(monotonicNow() - cleanupLegStarted);
   // Registry detachment cannot wait on disposal success: a thrown cleanup error must not leave
   // the boundary and its prepared roots pinned in sceneState.preparedAuthoredRoots forever.
@@ -11595,6 +11693,7 @@ function* disposeAbortPartialPreScanSteps(partial) {
     const object = stack.pop();
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
+    object.castShadow = false;
     const instance = object.userData ? object.userData.renderPackageInstance : null;
     if (instance && typeof instance.dispose === 'function') {
       try { instance.dispose('compose-aborted'); } catch { /* best-effort */ }
@@ -12045,6 +12144,7 @@ function* stripFlightPackageTemplateSubtreesSteps(root, recipes) {
       const object = detachedStack.pop();
       if ((++visited % 128) === 0) yield;
       if (!object) continue;
+      object.castShadow = false;
       const geometry = object.geometry;
       if (geometry && !retainedGeometries.has(geometry) && !disposedGeometries.has(geometry)) {
         disposedGeometries.add(geometry);
@@ -12690,6 +12790,7 @@ function finalizeFlightRootTemplateIfUnused(entry) {
   const geometries = new Set();
   const materials = new Set();
   entry.root?.traverse?.((object) => {
+    object.castShadow = false;
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material])
@@ -14366,7 +14467,10 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
   // ANI-00: the package's verified motion bank binds every same-named MOTION_* pivot in this
   // instance (one per mounted LOD file), so LOD switches never pop a transform. The template
   // path recreates packages through this same call, so cached roots rebind identically.
-  const motionController = bindInstanceMotion(packageRoot, record.motionBank);
+  const motionController = bindInstanceMotion(packageRoot, record.motionBank, {
+    sourceAssetId: record.assetId, packageIdentity: packageRoot.userData.spacefaceRenderPackage,
+    residencyOwner: owner,
+  });
   if (motionController) bindings.authoredMotions.push(motionController);
   return partRoot;
 }
@@ -14514,7 +14618,10 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
   const tier1 = tier1CausalCounters();
   if (tier1) tier1.countPlanInstantiation(planNodes.length - 1, 'package-instance-specialize');
 
-  const motionController = yield* bindInstanceMotionSteps(packageRoot, record.motionBank);
+  const motionController = yield* bindInstanceMotionSteps(packageRoot, record.motionBank, {
+    sourceAssetId: record.assetId, packageIdentity: packageRoot.userData.spacefaceRenderPackage,
+    residencyOwner: owner,
+  });
   if (motionController) bindings.authoredMotions.push(motionController);
   return partRoot;
 }
@@ -17496,15 +17603,18 @@ export function disposeDetachedObject(root, state = null) {
     }
   }
   root.traverse((object) => {
-    if (object.geometry && typeof object.geometry.dispose === 'function'
-      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
-      object.geometry.dispose();
-    }
-    const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-    for (const material of materials) {
-      if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
-      if (material && typeof material.dispose === 'function') material.dispose();
-    }
+    object.castShadow = false;
+    try {
+      if (object.geometry && typeof object.geometry.dispose === 'function'
+        && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+        object.geometry.dispose();
+      }
+      const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+      for (const material of materials) {
+        if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
+        if (material && typeof material.dispose === 'function') material.dispose();
+      }
+    } catch { /* best-effort — a bad node cannot keep the subtree registered */ }
   });
 }
 
@@ -17545,6 +17655,7 @@ export function* disposeDetachedObjectSteps(root, state = null) {
     const object = stack.pop();
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
+    object.castShadow = false;
     try {
       if (object.geometry && typeof object.geometry.dispose === 'function'
         && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
@@ -17596,6 +17707,7 @@ function disposeDetachedPlaceFallback(root, state = null) {
   const geometries = new Set();
   const materials = new Set();
   root.traverse((object) => {
+    object.castShadow = false;
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
     for (const material of list) if (material) materials.add(material);
@@ -17651,6 +17763,7 @@ function* disposeDetachedPlaceFallbackSteps(root, state = null) {
     const object = stack.pop();
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
+    object.castShadow = false;
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
     for (const material of list) if (material) materials.add(material);

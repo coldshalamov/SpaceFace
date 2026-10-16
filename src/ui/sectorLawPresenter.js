@@ -8,6 +8,7 @@ import { sectorLawProfile } from './securityReadout.js';
 import { INK_SHADOW } from './hudBrackets.js';
 import { openingInstructionSolo } from './hudAttention.js';
 import { isPlayerWanted } from '../systems/heat.js';
+import { classifyImpactResponsibility } from '../combat/killCausality.js';
 
 const STYLE_ID = 'sf-sector-law-style';
 const RECEIPT_TTL_S = 4;
@@ -126,10 +127,7 @@ export function firstLawOptionLine(payload, state) {
  * Why a collision kill is or is not the pilot's. Only collision causes — a gun kill
  * already has its own receipt. Returns null when this event is not that question.
  */
-export function collisionResponsibilityLine(payload) {
-  if (!payload || typeof payload !== 'object') return null;
-  const cause = payload.cause;
-  if (cause !== 'terrain_collision' && cause !== 'ship_collision') return null;
+function collisionChargeLine(payload) {
   if (payload.playerCaused !== true) return 'Not your collision. You are not responsible.';
   if (payload.outcome === 'lawful') return 'Your collision killed a hostile. Law clears it.';
   if (payload.outcome === 'unwitnessed') {
@@ -148,6 +146,18 @@ export function collisionResponsibilityLine(payload) {
     return 'Your collision killed a civilian. Charged reckless, not a continued attack.';
   }
   return null;
+}
+
+export function collisionResponsibilityLine(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const cause = payload.cause;
+  if (cause !== 'terrain_collision' && cause !== 'ship_collision') return null;
+  const classified = payload.impactLink ? classifyImpactResponsibility(payload.impactLink) : null;
+  if (classified && classified.responsible === false) return classified.line;
+  const charge = collisionChargeLine(payload);
+  if (classified && classified.responsible && charge) return `${classified.line} ${charge}`;
+  if (classified && classified.responsible) return classified.line;
+  return charge;
 }
 
 export function collisionResponsibilityReceipt(payload) {

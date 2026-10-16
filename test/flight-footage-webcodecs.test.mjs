@@ -10,6 +10,9 @@ import { installFlightFootage } from '../src/ui/screens/flightFootage.js';
 
 class CodecWorker {
   static instances = [];
+  static mode = 'success';
+  static videoEncodes = 0;
+  static holdJpeg = false;
 
   constructor(url, options) {
     this.url = url;
@@ -21,20 +24,40 @@ class CodecWorker {
 
   postMessage(data, transfer) {
     this.messages.push({ data, transfer });
-    if (data.kind === 'configure') {
+    if (this.options.name === 'spaceface-footage-video') {
+      if (data.kind === 'configure') {
+        if (CodecWorker.mode === 'config-error') {
+          queueMicrotask(() => this.onmessage?.({ data: { kind: 'error', error: 'codec configuration rejected' } }));
+        } else {
+          queueMicrotask(() => this.onmessage?.({ data: {
+            kind: 'ready',
+            config: { codec: 'vp8', width: 640, height: 340, framerate: 10 },
+          } }));
+        }
+      } else if (data.kind === 'encode') {
+        const encodeIndex = CodecWorker.videoEncodes++;
+        if (CodecWorker.mode === 'timeout') return;
+        if (CodecWorker.mode === 'encode-error'
+          || (CodecWorker.mode === 'encode-error-after-first' && encodeIndex > 0)) {
+          queueMicrotask(() => this.onmessage?.({ data: {
+            kind: 'encode-error', id: data.id, error: 'codec encode rejected',
+          } }));
+        } else {
+          queueMicrotask(() => this.onmessage?.({ data: {
+            kind: 'chunk',
+            id: data.id,
+            type: 'key',
+            timestamp: 1000,
+            data: new Uint8Array([1, 2, 3, 4]).buffer,
+            decoderConfig: { codec: 'vp8', codedWidth: 640, codedHeight: 340 },
+            codec: 'vp8',
+          } }));
+        }
+      }
+    } else if (this.options.name === 'spaceface-footage' && !CodecWorker.holdJpeg) {
       queueMicrotask(() => this.onmessage?.({ data: {
-        kind: 'ready',
-        config: { codec: 'vp8', width: 640, height: 340, framerate: 10 },
-      } }));
-    } else if (data.kind === 'encode') {
-      queueMicrotask(() => this.onmessage?.({ data: {
-        kind: 'chunk',
         id: data.id,
-        type: 'key',
-        timestamp: 1000,
-        data: new Uint8Array([1, 2, 3, 4]).buffer,
-        decoderConfig: { codec: 'vp8', codedWidth: 640, codedHeight: 340 },
-        codec: 'vp8',
+        blob: new Blob([new Uint8Array([9, 8, 7])], { type: 'image/jpeg' }),
       } }));
     }
   }
@@ -53,6 +76,130 @@ function makeScope() {
       revokeObjectURL(url) { revoked.push(url); },
     },
     revoked,
+  };
+}
+
+function flush() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+function makeFallbackBrowser(mode, { holdJpeg = true } = {}) {
+  const saved = new Map();
+  for (const name of [
+    'document', 'performance', 'Worker', 'Blob', 'OffscreenCanvas', 'VideoEncoder', 'VideoFrame',
+    'URL', 'createImageBitmap', 'setTimeout',
+  ]) saved.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+  const savedTimers = {
+    setInterval: globalThis.setInterval,
+    clearInterval: globalThis.clearInterval,
+    setTimeout: globalThis.setTimeout,
+  };
+  const calls = { streams: 0, videoElements: 0, bitmaps: 0 };
+  let poll = null;
+  let acceleratedTimeout = false;
+  CodecWorker.instances.length = 0;
+  CodecWorker.mode = mode;
+  CodecWorker.videoEncodes = 0;
+  CodecWorker.holdJpeg = holdJpeg;
+  const source = {
+    width: 1466,
+    height: 779,
+    captureStream() {
+      calls.streams += 1;
+      const track = { stop() {} };
+      return { getTracks: () => [track], getVideoTracks: () => [track] };
+    },
+  };
+  const state = {
+    mode: 'flight', paused: false, tick: 6,
+    render: { renderer: { domElement: source }, canvas: source, firstPlayableFrameAt: 0 },
+    replay: { latestPoseSample: { tick: 6, poses: [], events: [] } },
+  };
+  class Frame {
+    constructor(canvas, { timestamp }) {
+      this.canvas = canvas; this.timestamp = timestamp;
+      this.displayWidth = 1466; this.displayHeight = 779;
+    }
+    close() { this.closed = true; }
+  }
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: {
+    hidden: false,
+    addEventListener() {},
+    removeEventListener() {},
+    createElement(tag) {
+      if (tag === 'video') {
+        calls.videoElements += 1;
+        return {
+          readyState: 2,
+          play: () => Promise.resolve(),
+          pause() {}, load() {}, removeAttribute() {},
+          requestVideoFrameCallback() { return 1; },
+          cancelVideoFrameCallback() {},
+        };
+      }
+      return { width: 0, height: 0, getContext() { return {}; } };
+    },
+  } });
+  Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: () => 5000 } });
+  Object.defineProperty(globalThis, 'Worker', { configurable: true, writable: true, value: CodecWorker });
+  Object.defineProperty(globalThis, 'Blob', { configurable: true, writable: true, value: Blob });
+  Object.defineProperty(globalThis, 'OffscreenCanvas', { configurable: true, writable: true, value: class {} });
+  Object.defineProperty(globalThis, 'VideoEncoder', { configurable: true, writable: true, value: class {} });
+  Object.defineProperty(globalThis, 'VideoFrame', { configurable: true, writable: true, value: Frame });
+  Object.defineProperty(globalThis, 'URL', { configurable: true, writable: true, value: {
+    createObjectURL() { return 'blob:fallback-test'; }, revokeObjectURL() {},
+  } });
+  Object.defineProperty(globalThis, 'createImageBitmap', {
+    configurable: true, writable: true,
+    value: () => { calls.bitmaps += 1; return Promise.resolve({ close() {} }); },
+  });
+  if (mode === 'timeout') {
+    const realSetTimeout = saved.get('setTimeout')?.value || globalThis.setTimeout;
+    Object.defineProperty(globalThis, 'setTimeout', {
+      configurable: true, writable: true,
+      value: (callback, delay, ...args) => {
+        if (!acceleratedTimeout && delay === 5000) {
+          acceleratedTimeout = true;
+          return realSetTimeout(callback, 0, ...args);
+        }
+        return realSetTimeout(callback, delay, ...args);
+      },
+    });
+  }
+  globalThis.setInterval = (fn) => { poll = fn; return 1; };
+  globalThis.clearInterval = () => {};
+  const footage = installFlightFootage({ on: () => () => {} }, {
+    stateOf: () => state, startDelayMs: 0, captureSource: 'presented',
+  });
+  poll();
+  return {
+    calls, source, state, footage,
+    worker: (name) => CodecWorker.instances.find((entry) => entry.options.name === name),
+    async settle({ timer = false } = {}) {
+      for (let i = 0; i < 6; i += 1) await Promise.resolve();
+      if (timer) await new Promise((resolve) => savedTimers.setTimeout(resolve, 0));
+      await flush();
+      for (let i = 0; i < 6; i += 1) await Promise.resolve();
+    },
+    capture(tick) {
+      state.tick = tick;
+      state.replay.latestPoseSample.tick = tick;
+      const hook = state.render.flightFootagePresentHook;
+      assert.equal(typeof hook, 'function', `presented hook is live at tick ${tick}`);
+      hook(source);
+    },
+    cleanup() {
+      footage?.dispose?.();
+      for (const [name, descriptor] of saved) {
+        if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+        else delete globalThis[name];
+      }
+      globalThis.setInterval = savedTimers.setInterval;
+      globalThis.clearInterval = savedTimers.clearInterval;
+      CodecWorker.mode = 'success';
+      CodecWorker.videoEncodes = 0;
+      CodecWorker.holdJpeg = false;
+    },
   };
 }
 
@@ -197,7 +344,7 @@ test('encoded ring entries decode lazily to a genuine JPEG blob for exports', as
   assert.equal(FakeDecoder.last.config.codec, 'vp8');
 });
 
-test('installFlightFootage keeps WebCodecs opt-in and transfers presented frames without ImageBitmap/JPEG work', async () => {
+test('installFlightFootage prefers WebCodecs by default and transfers presented frames without ImageBitmap/JPEG work', async () => {
   CodecWorker.instances.length = 0;
   const saved = new Map();
   for (const name of ['document', 'performance', 'Worker', 'Blob', 'VideoEncoder', 'VideoFrame', 'URL', 'createImageBitmap']) {
@@ -239,7 +386,7 @@ test('installFlightFootage keeps WebCodecs opt-in and transfers presented frames
   globalThis.clearInterval = () => {};
   try {
     const footage = installFlightFootage({ on: () => () => {} }, {
-      stateOf: () => state, startDelayMs: 0, captureSource: 'presented', captureBackend: 'webcodecs',
+      stateOf: () => state, startDelayMs: 0, captureSource: 'presented',
     });
     poll();
     const hook = state.render.flightFootagePresentHook;
@@ -252,6 +399,7 @@ test('installFlightFootage keeps WebCodecs opt-in and transfers presented frames
     assert.equal(footage.ring.frames.length, 1);
     assert.ok(footage.ring.frames[0].encoded);
     assert.equal(footage.ring.frames[0].blob, undefined);
+    assert.equal(footage.status().requestedCaptureBackend, 'webcodecs');
     assert.equal(footage.status().captureBackend, 'webcodecs');
     footage.dispose();
   } finally {
@@ -259,6 +407,57 @@ test('installFlightFootage keeps WebCodecs opt-in and transfers presented frames
       if (descriptor) Object.defineProperty(globalThis, name, descriptor);
       else delete globalThis[name];
     }
+  }
+});
+
+for (const [mode, label, waitForTimeout] of [
+  ['config-error', 'configuration rejection', false],
+  ['encode-error', 'asynchronous encode error', false],
+  ['timeout', 'encode timeout', true],
+]) {
+  test(`WebCodecs ${label} reattaches presented JPEG on a canvas with captureStream`, async () => {
+    const browser = makeFallbackBrowser(mode);
+    try {
+      await browser.settle();
+      browser.capture(6);
+      await browser.settle({ timer: waitForTimeout });
+      assert.equal(browser.footage.status().captureSource, 'presented');
+      assert.equal(browser.footage.status().captureBackend, 'jpeg');
+      assert.equal(browser.calls.streams, 0, 'fallback stays on the submitted canvas');
+      assert.equal(browser.calls.videoElements, 0, 'fallback does not attach a detached video');
+
+      browser.capture(12);
+      await browser.settle();
+      assert.equal(browser.footage.status().captureSource, 'presented');
+      assert.equal(browser.footage.status().activeReadbackJobs, 1, 'JPEG fallback keeps one pending readback');
+      assert.equal(browser.footage.status().maxReadbackJobs, 1);
+      assert.equal(browser.footage.ring.frames.length, 0, 'the failed codec frame is not fabricated as JPEG');
+      assert.equal(browser.worker('spaceface-footage').messages.length, 1);
+    } finally {
+      browser.cleanup();
+    }
+  });
+}
+
+test('codec and JPEG frames can share the ring and both remain exportable after fallback', async () => {
+  const browser = makeFallbackBrowser('encode-error-after-first', { holdJpeg: false });
+  try {
+    await browser.settle();
+    browser.capture(6);
+    await browser.settle();
+    assert.equal(browser.footage.ring.frames.length, 1);
+    assert.ok(browser.footage.ring.frames[0].encoded);
+
+    browser.capture(12);
+    await browser.settle();
+    browser.capture(18);
+    await browser.settle();
+    assert.equal(browser.footage.ring.frames.length, 2);
+    assert.ok(browser.footage.ring.frames[0].encoded);
+    assert.ok(browser.footage.ring.frames[1].blob);
+    assert.equal(await decodeFootageFrameToBlob(browser.footage.ring.frames[1]), browser.footage.ring.frames[1].blob);
+  } finally {
+    browser.cleanup();
   }
 });
 

@@ -13,7 +13,8 @@ import { canQuit, requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { IS_DEMO } from '../../core/demoMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
-import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
@@ -97,8 +98,10 @@ function readSaveIndex(ctx) {
         const k = localStorage.key(i);
         if (!k || !k.startsWith(LS_PREFIX) || k === LS_PREFIX + 'index') continue;
         const slot = k.slice(LS_PREFIX.length);
+        if (!isSaveSlotId(slot)) continue;
         try {
           const env = JSON.parse(localStorage.getItem(k));
+          if (!env || (env.fmt !== 'spaceface-save' && env.fmt !== 'spaceface-save-gz')) continue;
           const data = env && env.data;
           const player = data && data.player;
           const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
@@ -123,11 +126,63 @@ function normalizeSlots(idx) {
   if (!idx) return {};
   const out = {};
   if (Array.isArray(idx)) {
-    for (const item of idx) if (item && item.slot != null) out[String(item.slot)] = Object.assign({ slot: String(item.slot) }, item);
+    for (const item of idx) {
+      if (!item || item.slot == null) continue;
+      const slot = String(item.slot);
+      if (isSaveSlotId(slot)) out[slot] = Object.assign({ slot }, item);
+    }
     return out;
   }
-  for (const slot in idx) if (idx[slot]) out[slot] = Object.assign({ slot }, idx[slot]);
+  for (const slot in idx) if (isSaveSlotId(slot) && idx[slot]) out[slot] = Object.assign({ slot }, idx[slot]);
   return out;
+}
+
+export function presentTitleContinueLoadFailure(target, payload) {
+  if (!target || !isTitleSaveReadFailure(payload)) return false;
+  target.setAttribute('role', 'alert');
+  target.setAttribute('aria-live', 'assertive');
+  target.setAttribute('aria-atomic', 'true');
+  target.textContent = saveErrorText(payload);
+  return true;
+}
+
+export function clearTitleContinueLoadFailure(target) {
+  if (!target) return;
+  target.removeAttribute('role');
+  target.removeAttribute('aria-live');
+  target.removeAttribute('aria-atomic');
+}
+
+/**
+ * Clear the title-owned Continue failure presentation when the player retries or leaves the
+ * title. The save event stream also contains routine write/index updates, so this state must not
+ * be inferred from whichever text a normal render most recently wrote.
+ */
+export function clearTitleContinueLoadFailureState(currentRefs) {
+  if (!currentRefs) return;
+  currentRefs.titleContinueFailure = null;
+  clearTitleContinueLoadFailure(currentRefs.saveSummary);
+  clearTitleContinueLoadFailure(currentRefs.status);
+}
+
+/** Reapply a classified Continue failure after a routine title render rewrites its copy. */
+export function reapplyTitleContinueLoadFailure(currentRefs) {
+  const payload = currentRefs && currentRefs.titleContinueFailure;
+  if (!payload) return false;
+  const target = currentRefs.status || currentRefs.saveSummary;
+  return presentTitleContinueLoadFailure(target, payload);
+}
+
+export function handleTitleContinueLoadFailure(ctx, currentRefs, payload) {
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr.top === 'function' && mgr.top() !== 'mainMenu') return false;
+  // The Continue note is intentionally clipped by the desktop arc rail. The title eyebrow is the
+  // existing visible ORRERY status line, so a failed Continue stays in the title composition rather
+  // than disappearing into an accessibility-only note or relying on a transient global toast.
+  const target = currentRefs && (currentRefs.status || currentRefs.saveSummary);
+  const presented = presentTitleContinueLoadFailure(target, payload);
+  if (presented && currentRefs) currentRefs.titleContinueFailure = { ...payload };
+  return presented;
 }
 
 function latestSave(slots) {
@@ -483,6 +538,11 @@ export const mainMenuScreen = {
     if (IS_DEMO) bNew.setAttribute('aria-label', coreText('newGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
+    if (bHelp) bHelp.setAttribute('aria-label', 'Help and flight controls');
+    if (bCircuits) bCircuits.setAttribute('aria-label', 'Logic circuit sandbox');
+    if (bSandbox) bSandbox.setAttribute('aria-label', 'Free flight sandbox');
+    if (bPhysics) bPhysics.setAttribute('aria-label', 'Orbital physics challenges');
+
     // Web build: no shell to quit, so no Quit verb (it stays in the DOM, hidden like an empty
     // Continue, so the hooks and the verb order are unchanged).
     if (!quitShown && bQuit.closest('li')) bQuit.closest('li').hidden = true;
@@ -526,6 +586,7 @@ export const mainMenuScreen = {
     refs = {
       root: rootEl, backdrop, title, list, version, versionText, bCredits, bAchievements, saveSummary, status,
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp, bPhysics,
+      titleContinueFailure: null,
       buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
@@ -564,6 +625,16 @@ export const mainMenuScreen = {
         const off = ctx.bus.on(evt, () => { if (refs) this._render(ctx); });
         if (typeof off === 'function') this._offBus.push(off);
       }
+      const offFailure = ctx.bus.on('save:error', (payload = {}) => {
+        if (refs) handleTitleContinueLoadFailure(ctx, refs, payload);
+      });
+      if (typeof offFailure === 'function') this._offBus.push(offFailure);
+      const offLoaded = ctx.bus.on('save:loaded', () => {
+        if (!refs) return;
+        clearTitleContinueLoadFailureState(refs);
+        this._render(ctx);
+      });
+      if (typeof offLoaded === 'function') this._offBus.push(offLoaded);
     }
 
     this._render(ctx);
@@ -573,6 +644,7 @@ export const mainMenuScreen = {
     // Any menu action ends the live title: the flag drops now and the stack change the
     // action triggers (push / load / quit) makes uiStage release the fight for real.
     this._attractLive = false;
+    clearTitleContinueLoadFailureState(refs);
     // Keep flag and stage in lockstep even on actions that do not move the stack
     // (e.g. continue with no save) — arming uses the same manager nudge.
     const mgr = getManager(ctx);
@@ -581,6 +653,8 @@ export const mainMenuScreen = {
     }
     switch (action) {
       case 'continue': {
+        // A fresh click is the retry path: restore the ordinary save summary before loading again.
+        this._render(ctx);
         const latest = this._latestSave !== undefined
           ? this._latestSave
           : latestSave(readSaveIndex(ctx));
@@ -632,6 +706,8 @@ export const mainMenuScreen = {
 
   _render(ctx) {
     if (!refs) return;
+    clearTitleContinueLoadFailure(refs.saveSummary);
+    clearTitleContinueLoadFailure(refs.status);
     this._menuSig = this._menuInputs(ctx);
     setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
@@ -656,6 +732,7 @@ export const mainMenuScreen = {
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
       this._syncCurrent();
+      reapplyTitleContinueLoadFailure(refs);
       return;
     }
     if (syncPending) this._syncCurrent();
@@ -684,6 +761,7 @@ export const mainMenuScreen = {
         : primaryAction === 'continue' ? refs.bContinue
           : refs.bNew);
     this._syncCurrent();
+    reapplyTitleContinueLoadFailure(refs);
   },
 
   /** The one lit verb. Exactly one item carries the primary treatment at any time. */

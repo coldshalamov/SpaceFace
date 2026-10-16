@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
@@ -24,7 +24,9 @@ const REPORT_PATH = '.devshots/electron-new-game-launch.json';
 const FLIGHT_TIMEOUT_MS = Number(process.env.SF_ELECTRON_NEW_GAME_TIMEOUT_MS) || 120000;
 assert(Number.isInteger(FLIGHT_TIMEOUT_MS) && FLIGHT_TIMEOUT_MS >= 5_000,
   'SF_ELECTRON_NEW_GAME_TIMEOUT_MS must be an integer of at least 5000ms');
+const processMessages = [];
 
+async function main() {
 const electronRuntime = provisionElectronRuntime({ root: ROOT });
 const { _electron: electron } = await loadPlaywright();
 
@@ -37,7 +39,6 @@ let isolatedLaunch = null;
 let rootUrl = null;
 let pageIssues = null;
 let primaryError = null;
-const processMessages = [];
 
 try {
   isolatedLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'electron-new-game' });
@@ -68,7 +69,7 @@ try {
   await page.waitForFunction(flightReadyInPage, null, { timeout: FLIGHT_TIMEOUT_MS });
   await page.waitForTimeout(1200);
 
-  const report = await page.evaluate(() => {
+  const report = await page.evaluate(async () => {
     function isVisible(el) {
       if (!el || el.hidden) return false;
       const style = getComputedStyle(el);
@@ -85,6 +86,42 @@ try {
     const sf = window.SF;
     const state = sf.state;
     const player = state.entities.get(state.playerId);
+    const render = state.render || {};
+    let isInitialAuthoredCompositionEntity = null;
+    try {
+      // Reuse the renderer's live startup-owner predicate instead of copying its distance,
+      // story, and current-sector rules into this diagnostic.
+      ({ isInitialAuthoredCompositionEntity } = await import('/src/render/partsLibrary.js'));
+    } catch {
+      // A missing owner module is itself a fail-closed diagnostic condition: unknown meshless
+      // entities are marked relevant below and cannot pass as an off-camera pending boundary.
+    }
+    const ownerPredicateReady = typeof isInitialAuthoredCompositionEntity === 'function';
+    const requiredIds = new Set();
+    const addRequiredIds = (ids) => {
+      if (!ids || typeof ids.forEach !== 'function') return;
+      ids.forEach((id) => requiredIds.add(id));
+    };
+    // These are the renderer's finite first-picture/current-sector admission sets.
+    // They are intentionally narrower than the complete entity list: off-camera
+    // pending ships may remain meshless until the player approaches them.
+    addRequiredIds(render.liveSectorFirstFlightIds);
+    const openingSubjects = Array.isArray(render.openingSubmissionPlan?.compileSubjects)
+      ? render.openingSubmissionPlan.compileSubjects
+      : [];
+    const belongsToOpeningPlan = (mesh) => {
+      if (!mesh || openingSubjects.length === 0) return false;
+      return openingSubjects.some((subject) => {
+        for (let cursor = subject; cursor; cursor = cursor.parent) {
+          if (cursor === mesh) return true;
+        }
+        return false;
+      });
+    };
+    const isRequired = (entity) => entity.id === state.playerId
+      || (ownerPredicateReady && isInitialAuthoredCompositionEntity(entity, state) === true)
+      || requiredIds.has(entity.id)
+      || belongsToOpeningPlan(entity.mesh);
     const gpu = state.render && state.render.gpu || null;
     const loaderDiagnostics = state.render && state.render.loaderDiagnostics || state.render && state.render.authoredAssets || null;
     const visibleOverlayText = visibleText('.sf-toast, .toast, .sf-alert, [role="alert"], [role="status"]');
@@ -104,18 +141,31 @@ try {
       } : null,
       ships: (state.entityList || [])
         .filter((entity) => entity && entity.alive !== false && entity.type === 'ship')
-        .map((entity) => ({
-          id: entity.id,
-          defId: entity.data && entity.data.defId || null,
-          isPlayer: entity.id === state.playerId,
-          presentationAdmission: entity.presentationAdmission || null,
-          authoredAssetState: entity.mesh && entity.mesh.userData
-            ? entity.mesh.userData.authoredAssetState || null
-            : null,
-          authoredAssetMode: entity.mesh && entity.mesh.userData
-            ? entity.mesh.userData.authoredAssetMode || null
-            : null,
-        })),
+        .map((entity) => {
+          const mesh = entity.mesh || null;
+          const required = isRequired(entity);
+          return {
+            id: entity.id,
+            defId: entity.data && entity.data.defId || null,
+            alive: entity.alive !== false,
+            isPlayer: entity.id === state.playerId,
+            hasMesh: !!mesh,
+            required,
+            // Keep the owner decision explicit in the receipt so a meshless
+            // pending ship cannot silently pass when it belongs to the first
+            // picture/current-sector cohort.
+            renderRelevance: required || !!mesh || (!mesh && !ownerPredicateReady),
+            presentationAdmission: entity.presentationAdmission || null,
+            authoredAssetState: mesh && mesh.userData
+              ? mesh.userData.authoredAssetState || null
+              : null,
+            authoredAssetMode: mesh && mesh.userData
+              ? mesh.userData.authoredAssetMode || null
+              : null,
+            presentationFallbackVisible: entity.presentationFallbackVisible === true
+              || mesh?.userData?.presentationFallbackVisible === true,
+          };
+        }),
       gpu,
       loaderDiagnostics,
       assetFailureVisible: /Game assets failed to load/i.test(visibleOverlayText),
@@ -237,6 +287,7 @@ try {
 }
 
 if (primaryError) throw primaryError;
+}
 
 async function collectFailureSnapshot(targetPage) {
   return targetPage.evaluate(async () => {
@@ -293,8 +344,23 @@ function captureElectronProcess(target) {
   if (proc.stderr) proc.stderr.on('data', capture('stderr'));
 }
 
-function hasAcceptableAuthoredPresentation(ship) {
-  if (!ship || ship.authoredAssetMode !== 'release') return false;
+export function hasAcceptableAuthoredPresentation(ship) {
+  if (!ship || ship.alive === false || ship.presentationFallbackVisible === true) return false;
+  const meshlessPending = ship.hasMesh === false
+    && ship.presentationAdmission === 'pending'
+    && ship.isPlayer !== true
+    && ship.required !== true
+    && ship.renderRelevance === false
+    && ship.authoredAssetState == null
+    && ship.authoredAssetMode == null;
+  if (meshlessPending) return true;
+  if (ship.authoredAssetMode !== 'release') return false;
+  if (ship.hasMesh !== true) return false;
+  if (ship.isPlayer === true || ship.required === true) {
+    return (ship.authoredAssetState === 'authored'
+      || ship.authoredAssetState === 'authored-with-cleanup-error')
+      && (ship.presentationAdmission === 'ready' || ship.presentationAdmission == null);
+  }
   if ((ship.authoredAssetState === 'authored' || ship.authoredAssetState === 'authored-with-cleanup-error')
       && (ship.presentationAdmission === 'ready' || ship.presentationAdmission == null)) return true;
   return ship.presentationAdmission === 'pending' && (
@@ -307,4 +373,8 @@ function hasAcceptableAuthoredPresentation(ship) {
 function writeReport(report) {
   mkdirSync(dirname(REPORT_PATH), { recursive: true });
   writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`);
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+  await main();
 }

@@ -34,7 +34,7 @@ test('page-evaluated witness needs no module closure and caps malformed/cyclic m
 test('probe captures diagnostics only at screenshot checkpoints and leaves visibility unverified',async()=>{
  const { readFileSync }=await import('node:fs');
  const source=readFileSync(new URL('../scripts/probe-deployed-mobile.mjs',import.meta.url),'utf8');
- assert.equal((source.match(/snapshot\(page, true\)/g)||[]).length,3);
+ assert.equal((source.match(/snapshot\(page, true\)/g)||[]).length,4); // flight, landscape, optional Continue flight, failure
  assert.doesNotMatch(source,/unobstructed mobile flight/);
  assert.match(source,/worldVisibility: 'unverified'/);
  assert.doesNotMatch(collectCameraWitness.toString(),/updateMatrixWorld\(|updateProjectionMatrix\(|setFromObject\(|\.raycast\(/);

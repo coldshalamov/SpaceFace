@@ -433,6 +433,8 @@ export class SelectionSigil {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = 'sf-selection-sigil';
     mesh.userData.presentationRole = 'target-instrument';
+    // A selection must answer immediately; prepare this live material before flight handoff.
+    mesh.userData.spacefaceOpeningImmediateFirstUse = true;
     mesh.frustumCulled = false;
     mesh.renderOrder = SELECTION_SIGIL_RENDER_ORDER;
     mesh.visible = false;

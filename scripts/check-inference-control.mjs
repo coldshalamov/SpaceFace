@@ -16,7 +16,6 @@ const errors = [];
 const activeFiles = [
   'design/program/AGENTS.md',
   'design/program/INFERENCE_LANES.md',
-  'design/program/INFERENCE_LEDGER.md',
   'design/inference-workflows/README.md',
   'design/inference-workflows/MASTER_AGENT_PROMPT.md',
   'design/inference-workflows/01_SCALE_AND_DISPATCH.md',

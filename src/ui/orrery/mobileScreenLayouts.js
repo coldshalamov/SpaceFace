@@ -118,7 +118,7 @@ export const MOBILE_SCREEN_CSS = `
   /* The purse rides the title band's right end. */
   ${B} .sxb-purse { position:absolute !important; grid-area:auto !important; top:0 !important; right:0 !important; left:auto !important; bottom:auto !important; width:100px !important; margin:0 !important; display:flex !important;
     flex-direction:column !important; align-items:flex-end !important; gap:3px !important; text-align:right; }
-  ${B} .sxb-purse__label { font-size:10px !important; letter-spacing:.16em !important; line-height:13px !important; margin:0 !important; }
+  ${B} .sxb-purse__label { font-size:12px !important; letter-spacing:.16em !important; line-height:14px !important; margin:0 !important; }
   ${B} .sxb-purse__value { font-size:24px !important; line-height:1.05 !important; }
   /* Find a service: no Ctrl K on glass, so the palette keeps a 44px icon key beside the tape. */
   ${B} .so-command-trigger { grid-area:find; justify-self:end; align-self:center; position:relative !important;
@@ -140,7 +140,7 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-tape > .sxb-event:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2;
     flex:0 0 100% !important; min-width:0 !important; max-width:100% !important; max-height:30px; overflow:hidden !important;
     scroll-snap-align:start; margin:0 !important; padding:0 !important; background:none !important; border:0 !important;
-    box-shadow:none !important; font-size:11px !important; line-height:15px !important; white-space:normal !important; }
+    box-shadow:none !important; font-size:12px !important; line-height:15px !important; white-space:normal !important; }
   ${B} .sxb-tape:has(> .sxb-event:not([hidden]) ~ .sxb-event:not([hidden])) > .sxb-event:not([hidden]) { flex-basis:86% !important; }
   /* The hull reading leads (a re-render keeps the strip on it); event and ledger peek in from the right. */
   ${B} .sxb-tape > .sxb-berth__mechanic { order:-1; }
@@ -148,19 +148,19 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-tape > .sxb-event:not(.sxb-berth__mechanic):not([hidden]) ~ .sxb-berth__ledger:not([hidden]) { padding-left:12px !important;
     border-left:1px solid rgb(236 230 216 / .22) !important; }
   ${B} .sxb-tape .sxb-event > * { display:inline !important; position:static !important; margin:0 6px 0 0 !important; padding:0 !important; }
-  ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { font-size:10px !important; letter-spacing:.14em !important; white-space:nowrap !important; }
-  ${B} .sxb-tape .sxb-event__body { font-size:11px !important; line-height:15px !important; opacity:.74; white-space:normal !important;
+  ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { font-size:12px !important; letter-spacing:.14em !important; white-space:nowrap !important; }
+  ${B} .sxb-tape .sxb-event__body { font-size:12px !important; line-height:15px !important; opacity:.74; white-space:normal !important;
     overflow:visible !important; text-overflow:clip !important; max-width:none !important; }
   /* Next step: one line, after the vitals. */
   ${B} .sxb-handoff { grid-area:hand; max-width:100% !important; min-width:0 !important; margin:0 !important;
     padding:0 !important; gap:4px 12px !important; flex-wrap:nowrap !important; align-items:center !important; overflow:hidden !important; }
   ${B} .sxb-next { flex:1 1 auto !important; min-width:0 !important; flex-wrap:nowrap !important; gap:6px 8px !important;
     align-items:center !important; overflow:hidden !important; padding:0 !important; }
-  ${B} .sxb-next__t { font-size:11px !important; letter-spacing:.12em !important; white-space:nowrap !important; flex:none !important; }
-  ${B} .sxb-next__w { font-size:11px !important; line-height:1.25 !important; padding-left:0 !important;
+  ${B} .sxb-next__t { font-size:12px !important; letter-spacing:.12em !important; white-space:nowrap !important; flex:none !important; }
+  ${B} .sxb-next__w { font-size:12px !important; line-height:1.25 !important; padding-left:0 !important;
     white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; min-width:0 !important; }
   ${B} .sxb-next__n { display:none !important; }
-  ${B} .sxb-next__x { min-height:44px !important; height:44px !important; padding:0 0 0 8px !important; font-size:10px !important;
+  ${B} .sxb-next__x { min-height:44px !important; height:44px !important; padding:0 0 0 8px !important; font-size:12px !important;
     letter-spacing:.12em !important; flex:none !important; }
   /* Crown: one row of small dials, every column on the 14px gutter; each service verb is a two-line key
      with a 44px hit box (the box reaches over the label above, never over another control). */
@@ -175,21 +175,22 @@ export const MOBILE_SCREEN_CSS = `
   ${B} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:60px !important; height:40px !important; }
   ${B} .sxb-vital__value { top:9px !important; }
   ${B} .sxb-vital__value .orr-vnum { font-size:13px !important; }
-  ${B} .sxb-vital__value .orr-vden { font-size:9.5px !important; letter-spacing:.02em !important; }
-  ${B} .sxb-vital__label { font-size:9.5px !important; letter-spacing:.1em !important; line-height:12px !important; white-space:nowrap !important; }
+  ${B} .sxb-vital__value .orr-vden { font-size:12px !important; letter-spacing:.02em !important; }
+  ${B} .sxb-vital__label { max-width:60px !important; min-height:28px !important; font-size:12px !important; letter-spacing:.08em !important; line-height:14px !important;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:center !important; }
   /* A word reading (LEDGER: CREDIT LINE OPEN) takes the dial's place, so its label lines up with the others. */
   ${B} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) > .orr-vdial-bare { display:none !important; }
   ${B} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) .sxb-vital__value { position:static !important; order:-1; height:40px !important;
     margin:0 !important; justify-content:center !important; }
-  ${B} .sxb-vital__value .orr-vnum.is-word { font-size:9.5px !important; line-height:11px !important; letter-spacing:.06em !important;
-    margin:0 !important; white-space:normal !important; text-align:center !important; max-width:100%; }
+  ${B} .sxb-vital__value .orr-vnum.is-word { font-size:12px !important; line-height:14px !important; letter-spacing:.06em !important;
+    margin:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; text-align:center !important; max-width:60px !important; }
   ${B} .sxb-vital__acts { margin-top:4px !important; gap:2px !important; display:flex !important; flex-direction:column !important;
     align-items:center !important; width:100% !important; }
   ${B} .sxb-vital [data-vital-act] { position:relative !important; display:flex !important; flex-direction:column !important; align-items:center !important;
     gap:0 !important; min-height:0 !important; min-width:0 !important; height:auto !important; width:100% !important; padding:2px 0 !important;
-    font-size:10px !important; line-height:12px !important; letter-spacing:.06em !important; white-space:nowrap !important; }
+    font-size:12px !important; line-height:14px !important; letter-spacing:.06em !important; white-space:nowrap !important; }
   ${B} .sxb-vital [data-vital-act]::before { display:none !important; }
-  ${B} .sxb-vital [data-vital-act] .orr-act__cost { font-size:9.5px !important; letter-spacing:.04em !important; }
+  ${B} .sxb-vital [data-vital-act] .orr-act__cost { font-size:12px !important; letter-spacing:.04em !important; }
   ${B} .sxb-vital [data-vital-act]::after { content:"" !important; display:block !important; position:absolute !important;
     left:-2px !important; right:-2px !important; top:-14px !important; bottom:-2px !important; width:auto !important; height:auto !important;
     background:none !important; border:0 !important; transform:none !important; }
@@ -231,6 +232,8 @@ export const MOBILE_SCREEN_CSS = `
      Each entry puts its cycle above the line, so the item and its figure get the whole row; the arrow-key hint
      has no keys to name on glass. */
   ${B} .sx-ledger .st-ledger-entry-body { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"time" "line" "note" !important; row-gap:3px !important; }
+  ${B} .sx-ledger .st-ledger-line .sx-ledger__item { min-width:0 !important; white-space:normal !important; overflow-wrap:anywhere !important;
+    overflow:visible !important; text-overflow:clip !important; }
   ${B} .sx-ledger > .sx-ledger__right { position:relative !important; inset:auto !important; left:auto !important; width:100% !important;
     display:flex !important; flex-direction:column !important; gap:6px !important; overflow:visible !important; }
   ${B} .sx-ledger > .st-ledger { padding-bottom:0 !important; }
@@ -258,11 +261,11 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-ops .sx-dock__group > li { margin:0 !important; min-width:0 !important; }
   ${B} .sxb-ops .sx-tile { display:inline-flex !important; align-items:center !important; justify-content:flex-start !important;
     min-height:34px !important; padding:0 !important; gap:0 !important; }
-  ${B} .sxb-ops .sx-tile__label { order:1; letter-spacing:.1em !important; font-size:10.5px !important; }
+  ${B} .sxb-ops .sx-tile__label { order:1; letter-spacing:.1em !important; font-size:12px !important; }
   /* A count is a badge on its own tab: a small pill after the word, never a loose numeral before it. */
   ${B} .sxb-ops .sx-tile__badge:not([hidden]) { order:2; display:inline-flex !important; align-items:center !important; justify-content:center !important;
     min-width:15px !important; height:15px !important; margin:0 0 0 4px !important; padding:0 4px !important; border-radius:8px !important;
-    background:var(--dp-hand, #f2b950) !important; color:#1c1406 !important; font-size:9.5px !important; font-weight:750 !important;
+    background:var(--dp-hand, #f2b950) !important; color:#1c1406 !important; font-size:12px !important; font-weight:750 !important;
     letter-spacing:0 !important; line-height:15px !important; transform:translateY(-5px); }
   ${B} .sxb-ops .orr-stationrow__rule { display:none !important; }
   ${B} .sxb-ops .sx-comms { order:2; margin:0 !important; }
@@ -327,11 +330,11 @@ export const MOBILE_SCREEN_CSS = `
     align-items:center !important; align-content:center !important; justify-items:start !important; width:100% !important; }
   ${M} .sx-trade > .sx-qty { grid-area:dial; width:128px !important; height:146px !important; position:relative !important; }
   ${M} .sx-qty .orr-qdial { left:8px !important; top:0 !important; width:112px !important; height:112px !important; }
-  ${M} .sx-qty .sx-qty__k { left:8px !important; width:112px !important; top:32px !important; font-size:8.5px !important; letter-spacing:.18em !important; }
+  ${M} .sx-qty .sx-qty__k { left:8px !important; width:112px !important; top:32px !important; font-size:12px !important; letter-spacing:.18em !important; }
   ${M} .sx-qty .sx-qty__in { left:24px !important; width:80px !important; top:44px !important; height:32px !important; min-height:32px !important;
     font-size:28px !important; line-height:32px !important; }
   ${M} .sx-qty .sx-qty__words { top:104px !important; left:0 !important; right:0 !important; justify-content:space-between !important; }
-  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:10px !important; letter-spacing:.08em !important; min-height:44px !important; padding:0 !important; min-width:40px !important;
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:12px !important; letter-spacing:.08em !important; min-height:44px !important; padding:0 !important; min-width:40px !important;
     justify-content:center !important; }
   /* Fewer / More read as − / + keys (their words stay the accessible name) */
   ${M} .sx-qty .sx-qty__b { font-size:0 !important; letter-spacing:0 !important; }
@@ -341,17 +344,17 @@ export const MOBILE_SCREEN_CSS = `
   ${M} .sx-qty .sx-qty__words li:has(.sx-qty__max) { order:1; }
   ${M} .sx-qty .sx-qty__words li:has([data-q="1"]) { order:2; }
   ${M} .so-trade-total { grid-area:total; display:flex !important; flex-direction:column !important; gap:3px !important; }
-  ${M} .so-trade-total > span { display:block !important; font-size:10px !important; letter-spacing:.18em !important; }
+  ${M} .so-trade-total > span { display:block !important; font-size:12px !important; letter-spacing:.18em !important; }
   ${M} .so-trade-total > strong { font-size:26px !important; white-space:nowrap !important; }
   ${M} .orr-mkt-holdarc { display:none !important; }
-  ${M} .sx-trade__note { grid-area:note; text-align:left !important; font-size:11.5px !important; line-height:1.35 !important; }
+  ${M} .sx-trade__note { grid-area:note; text-align:left !important; font-size:12px !important; line-height:1.35 !important; }
   ${M} .sx-trade__words { grid-area:verb; display:flex !important; flex-wrap:nowrap !important; align-items:center !important;
     justify-content:flex-start !important; gap:16px !important; margin:2px 0 0 !important; width:auto !important; }
   ${M} .sx-trade__go.orr-lampkey { min-height:44px !important; font-size:14px !important; padding:0 20px 0 14px !important; white-space:nowrap !important; }
-  ${M} .sx-trade__go:not([data-go]) { min-height:44px !important; font-size:11px !important; letter-spacing:.16em !important; padding:0 2px !important; }
+  ${M} .sx-trade__go:not([data-go]) { min-height:44px !important; font-size:12px !important; letter-spacing:.16em !important; padding:0 2px !important; }
   ${M} .so-trade-breakdown { grid-area:breakdown; display:block !important; justify-self:stretch !important; text-align:left !important; }
-  ${M} .so-trade-breakdown > summary { min-height:32px; display:flex; align-items:center; font-size:10px !important; letter-spacing:.14em !important; white-space:nowrap; }
-  ${M} .so-trade-breakdown .sx-trade__rows { margin:4px 0 0 !important; font-size:11px !important; }
+  ${M} .so-trade-breakdown > summary { min-height:32px; display:flex; align-items:center; font-size:12px !important; letter-spacing:.14em !important; white-space:nowrap; }
+  ${M} .so-trade-breakdown .sx-trade__rows { margin:4px 0 0 !important; font-size:12px !important; }
   /* The adventure decision: its sentence and each option as a full-width 44px row. */
   ${M} .sx-mkt__decision { display:block !important; padding:12px 0 2px !important; border-top:1px solid rgb(236 230 216 / .16) !important; }
   ${M} .sx-decision { gap:2px !important; align-items:stretch !important; }
@@ -360,28 +363,28 @@ export const MOBILE_SCREEN_CSS = `
     gap:2px !important; width:100% !important; min-height:44px !important; padding:6px 0 6px 16px !important; position:relative !important; text-align:left !important; }
   ${M} .sx-decision__opt::before { position:absolute !important; left:2px !important; top:50% !important; transform:translateY(-50%) !important; }
   ${M} .sx-decision__opt .k-row__name { white-space:normal !important; }
-  ${M} .sx-decision__opt .k-row__sub { font-size:11.5px !important; line-height:1.35 !important; white-space:normal !important; }
+  ${M} .sx-decision__opt .k-row__sub { font-size:12px !important; line-height:1.35 !important; white-space:normal !important; }
   /* The trace keeps its own width; its readings follow it instead of sitting on it. */
   ${M} .sx-mkt__quote > .sx-mkt-cause { font-size:12px !important; }
   ${M} .sx-mkt-instrument { display:block !important; padding:6px 0 0 !important; }
   ${M} .sx-mkt-instrument__plot { position:relative !important; height:96px !important; width:auto !important; margin:0 44px 0 40px !important; }
   ${M} .orr-mkt-spread { position:relative !important; right:auto !important; left:auto !important; width:auto !important; margin:8px 0 0 !important; }
-  ${M} .sx-mkt-chart-key { display:flex !important; flex-wrap:wrap !important; gap:2px 12px !important; margin:0 !important; font-size:10.5px !important; }
+  ${M} .sx-mkt-chart-key { display:flex !important; flex-wrap:wrap !important; gap:2px 12px !important; margin:0 !important; font-size:12px !important; }
   ${M} .orr-mkt-subkey { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:4px 12px !important; margin:0 !important; }
-  ${M} .orr-mkt-subkey__bit { font-size:10px !important; letter-spacing:.06em !important; white-space:nowrap !important; }
+  ${M} .orr-mkt-subkey__bit { font-size:12px !important; letter-spacing:.06em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${M} .orr-mkt-tape { overflow:hidden !important; }
   /* The register: legend + find, the families as one swipeable row, then the rows. */
   ${M} .sx-mkt__list { overflow:visible !important; }
   ${M} .sx-mkt-browser { display:block !important; position:relative !important; padding:0 !important; height:auto !important; max-height:none !important;
     overflow:visible !important; border-top:1px solid rgb(236 230 216 / .16) !important; padding-top:12px !important; }
-  ${M} .sx-mkt-browser__mode { padding:0 !important; margin:0 0 6px !important; min-height:0 !important; font-size:11px !important; letter-spacing:.18em !important; }
+  ${M} .sx-mkt-browser__mode { padding:0 !important; margin:0 0 6px !important; min-height:0 !important; font-size:12px !important; letter-spacing:.18em !important; }
   ${M} .sx-mkt-browser__filters { display:flex !important; flex-wrap:nowrap !important; gap:0 14px !important; margin:0 !important; padding:0 !important;
     overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; background:none !important; }
   ${M} .sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
   ${M} .sx-mkt-browser__filters { -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent) !important;
     mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent) !important; padding-right:28px !important; }
   ${M} .sx-mkt-browser__filters li { flex:none !important; margin:0 !important; padding:0 !important; }
-  ${M} .sx-mkt-filter { min-height:40px !important; padding:0 !important; font-size:10.5px !important; letter-spacing:.12em !important; white-space:nowrap !important; }
+  ${M} .sx-mkt-filter { min-height:40px !important; padding:0 !important; font-size:12px !important; letter-spacing:.12em !important; white-space:nowrap !important; }
   ${M} .orr-mkt-find { position:relative !important; inset:auto !important; width:100% !important; margin:4px 0 6px !important; padding:0 !important; }
   ${M} .sx-mkt-browser__rail { position:relative !important; inset:auto !important; height:auto !important; max-height:none !important; overflow:visible !important; }
   ${M} .sx-mkt-table { width:100% !important; table-layout:fixed !important; font-size:12px; }
@@ -410,7 +413,7 @@ export const MOBILE_SCREEN_CSS = `
   ${W} .orr-sw-node__num { display:none !important; }
   ${W} .orr-sw-node { gap:0 !important; padding:2px 0 3px !important; }
   ${W} .orr-sw-node__name { font-size:12.5px !important; }
-  ${W} .orr-sw-node__state { font-size:10.5px !important; letter-spacing:.1em !important;
+  ${W} .orr-sw-node__state { font-size:12px !important; letter-spacing:.1em !important;
     overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important; }
   ${W} .sx-sw__stats, ${W} .sx-sw-verbs { position:relative !important; inset:auto !important; transform:none !important;
     width:100% !important; max-width:100% !important; flex-wrap:wrap !important; flex:none !important; margin:0 !important;
@@ -433,13 +436,33 @@ export const MOBILE_SCREEN_CSS = `
   ${C} .gm-close { grid-column:3 !important; grid-row:1 !important; }
   ${C} .gm-title { white-space:normal !important; overflow:visible !important; font-size:20px !important; }
   ${C} .gm-search-container { grid-column:1 / -1 !important; grid-row:2 !important; width:100% !important; }
+  /* The hub gives the palette a 440px desktop reading width and right-anchors it. On a portrait
+     chart that puts the panel's left edge outside the viewport, cutting the first glyph of every
+     result. The search field is already the full phone column, so the palette follows that box. */
+  ${C}[data-layout="narrow"] .gm-search-results,
+  ${C}[data-layout="narrow"] .gm-search-results[data-palette="1"] {
+    left:0 !important; right:auto !important; width:100% !important; max-width:100% !important; box-sizing:border-box !important;
+  }
   ${C} .gm-weather { grid-column:1 / -1 !important; grid-row:3 !important; justify-self:start; text-align:left; }
   ${C} .gm-rail { grid-column:1 / -1 !important; grid-row:4 !important; }
   /* Zoom strip: on phone --gm-foot clears the stacked inspector + foot; +28px sits the strip
      in the map stage just above OVERVIEW/ROUTE, fully clear of the foot rail and detail lines. */
   ${C} .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 28px) !important; left:calc(var(--gm-stage-x, 14px) + 8px) !important; }
-  /* Portrait: the strip stands at the window's bottom-right, clear of the canvas "per bar" ruler. */
-  ${C}[data-layout="narrow"] .gmh-tools { left:auto !important; right:14px; bottom:auto !important; top:calc(var(--gm-sky-bottom, 600px) - 64px); }
+  /* Portrait: use the measured foot clearance instead of the sky's page coordinate. The latter put
+     the toolbar below POSITION/TRACKING after the inspector stacked under the sky. */
+  ${C}[data-layout="narrow"] .gmh-tools {
+    left:auto !important; right:14px; top:auto !important; bottom:calc(var(--gm-foot, 220px) + 40px) !important;
+  }
+  /* Keep long tips inside the portrait chart. Right-aligning to each 44px key avoids the right-edge
+     clip of the centered fit tip; wrapping preserves the complete label for touch and focus. */
+  ${C}[data-layout="narrow"] .gmh-tool[data-tip]::after {
+    left:auto !important; right:0 !important; bottom:calc(100% + 8px) !important;
+    width:max-content !important; max-width:calc(100vw - 28px) !important; white-space:normal !important; text-align:center !important;
+    transform:translate(0, 6px) !important;
+  }
+  ${C}[data-layout="narrow"] .gmh-tool[data-tip]:is(:hover, :focus-visible)::after {
+    transform:translate(0, 0) !important;
+  }
   ${C} .gm-navfoot { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px !important; }
   ${C} .gm-navfoot .gm-nav-row { flex-direction:column !important; align-items:flex-start !important; gap:4px !important; min-width:0; }
   ${C} .gm-navfoot .gm-nav-row-v { max-width:100%; white-space:normal !important; overflow-wrap:anywhere; }
@@ -453,6 +476,13 @@ export const MOBILE_SCREEN_CSS = `
   ${C}[data-layout="narrow"] .gm-viewport { position:relative !important; inset:auto !important; z-index:0 !important;
     grid-area:stage; height:clamp(260px, 44dvh, 420px); margin:0 -14px; }
   ${C}[data-layout="narrow"] .gm-right-inspector { max-height:none !important; overflow:visible !important; }
+  ${C}[data-layout="narrow"] .gm-inspector-content,
+  ${C}[data-layout="narrow"] .gm-frame-group { width:100% !important; max-width:100% !important; min-width:0 !important; }
+  ${C}[data-layout="narrow"] .gm-frame-group { flex-wrap:wrap !important; }
+  ${C}[data-layout="narrow"] .gm-frame-group .gm-frame-btn {
+    flex:1 1 100% !important; width:100% !important; max-width:100% !important; min-width:0 !important;
+    min-height:44px !important; white-space:normal !important; overflow-wrap:break-word !important; line-height:1.3 !important;
+  }
   ${C}[data-layout="narrow"] .gm-apron { max-height:none !important; }
   /* All nine inspector tabs stand on the page (three rows on the instrument's per-row scales);
      the one-row strip was 875px wide and ECONOMY…HISTORY sat past the edge, out of reach. */

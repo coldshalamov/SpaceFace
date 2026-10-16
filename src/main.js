@@ -26,6 +26,7 @@ import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
 import { createTimeEffects } from './core/timeEffects.js';
 
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
+import { installGameStartRecovery } from './core/gameStartRecovery.js';
 import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
 import {
   resolveNewGamePlusOverlay,
@@ -44,13 +45,11 @@ import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import { ruckusWarmReady } from './render/characters/ruckusModel.js';
-import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
   settleRequiredPackageAdmission,
-  waitForCurrentRenderPipelines as waitForRenderPipelineWarmup,
-  waitForOpeningGpuResources,
+  waitForOpeningFirstPicture,
+  holdOpeningPresentationUntilPaint,
 } from './render/pipelineReadiness.js';
-import { shouldAwaitOpeningGpuCook } from './render/renderCapabilityProfile.js';
 import { releaseUiStage } from './render/uiStage.js';
 import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
 
@@ -134,6 +133,7 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
+    installGameStartRecovery(bus);
     // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
     // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
     installLiveClipDirector(bus, {
@@ -303,6 +303,7 @@ async function boot() {
     let loopController = null;
     const closeRuntime = createPresentationRuntimeCloser({
       stopPresentation() {
+        state.render?.cancelOpeningPresentationHold?.();
         // Retire async Launch/Continue and GPU admissions before any teardown can settle their
         // gates. A late success must not publish flight into a runtime whose loop is stopped.
         const cancelledToken = runTransitionGuard.begin('runtime-closed');
@@ -351,7 +352,10 @@ async function boot() {
     bus.on('save:loaded', (payload) => {
       if (!(laneCommandSink && laneCommandSink())) return;
       try {
-        helpers.finalizeLoadedGame(payload || {});
+        // The shared finalizer owns menu recovery and failure receipts. Observe its
+        // rejection here as the save generator does on the main simulation lane.
+        Promise.resolve(helpers.finalizeLoadedGame(payload || {}))
+          .catch((err) => console.error('[SpaceFace] lane finalizeLoadedGame failed', err));
       } catch (err) { console.error('[SpaceFace] lane finalizeLoadedGame failed', err); }
     });
     // Ledger D15: the station sheet set used to arrive at first dock, so every screen rendered
@@ -391,6 +395,7 @@ async function boot() {
     });
 
     bus.on('game:exitToMenu', () => {
+      state.render?.cancelOpeningPresentationHold?.();
       // Returning to the menu also owns outstanding readiness work. Without a new generation,
       // an old Launch/Continue can settle afterward and put the player straight back in flight.
       const cancelledToken = runTransitionGuard.begin('exit-to-menu');
@@ -644,7 +649,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       bus, runTransitionGuard, transitionToken, 'new-game',
       'authored-library', 0.25, 'Loading the ships',
       (elapsed) => (elapsed > 8000 ? 'Still loading the ships' : 'Bringing the ships in for the first flight'),
-      () => waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
+      () => {
+        Promise.resolve(state.render?.beginOpeningLoadingAdmission?.()).catch(() => {});
+        return waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+      },
     ),
     waitForVisuals: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
@@ -670,22 +678,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       bus, runTransitionGuard, transitionToken, 'new-game',
       'render-pipelines', 0.78, 'Preparing the visuals',
       (elapsed) => (elapsed > 8000 ? 'Still preparing the visuals' : 'Linking the first-flight render pipelines'),
-      async () => {
-        // Hardware+KHR awaits the 20s live-sector cook next. Do not also start
-        // the 180s first-picture warmup on the same Intel context.
-        if (shouldAwaitOpeningGpuCook({
-          gpu: state.render && state.render.gpu,
-          renderer: state.render && state.render.renderer,
-        })) {
-          return true;
-        }
-        // Software WebGL links programs on the main thread. Awaiting warmup here
-        // keeps Launch on render-pipelines until the playable gate expires.
-        void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
-          console.warn('[startup] render pipeline warmup failed', error);
-        });
-        return true;
-      },
+      () => waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken)),
     ),
     waitForGpuResources: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
@@ -698,31 +691,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
           : 'Loading the opening stretch smoothly';
       },
-      async () => {
-        // Hardware with KHR_parallel_shader_compile can link behind the loading
-        // shell. Software WebGL links one program per bloomScene (1.3s+) with no
-        // parallel compile, so an awaited cook holds Launch past the playable gate.
-        const awaitCook = shouldAwaitOpeningGpuCook({
-          gpu: state.render && state.render.gpu,
-          renderer: state.render && state.render.renderer,
-        });
-        // PQ-210.02 — the composition-tail settle rides inside the cook now (both
-        // transition paths get it), finishing the serial lane's open composes/
-        // compiles/uploads while the shell still owns the picture.
-        const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
-        if (!awaitCook) {
-          void cook.catch((error) => {
-            console.warn('[startup] opening GPU cook failed', error);
-          });
-          return true;
-        }
-        try {
-          return await cook;
-        } catch (error) {
-          console.warn('[startup] opening GPU cook failed', error);
-          return false;
-        }
-      },
+      () => waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken)),
     ),
     waitForPhysics: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
@@ -761,7 +730,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     }),
     yieldForPresentation: nextPaintSliced,
     enterFlight() {
-      enterFlightMode(state, bus);
+      enterFlightMode(state, bus, { runTransitionGuard, transitionToken });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Worker lane: the receipt is generated inside the worker — the newGameBoot
       // rpc stages the payload and the post-boot 'flight' mode apply emits
@@ -773,6 +742,18 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
     },
   });
+}
+
+async function waitForRequiredOpeningPicture(state, isActive) {
+  try {
+    const budgetMs = state.run?.kind === 'survival' ? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS : 20000;
+    return await waitForOpeningFirstPicture(state, budgetMs, { isActive });
+  } catch (cause) {
+    const error = new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources',
+      cause?.message || 'The opening picture could not be prepared. Retry Launch.');
+    error.cause = cause;
+    throw error;
+  }
 }
 
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
@@ -845,6 +826,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
   if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+  Promise.resolve(state.render?.beginOpeningLoadingAdmission?.()).catch(() => {});
   const startGatePulse = (id, progress, label, detailOf) => startLoadingGatePulse(
     bus, runTransitionGuard, transitionToken, 'continue', id, progress, label, detailOf,
   );
@@ -893,7 +875,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
-      throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
+      throw new GameStartReadinessError('AUTHORED_LIBRARY_UNAVAILABLE', 'authored-library',
+        'Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
     }
     bus.emit('game:loadingProgress', {
       id: 'authored-visuals',
@@ -926,7 +909,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
-      throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
+      throw new GameStartReadinessError('AUTHORED_VISUALS_UNAVAILABLE', 'authored-visuals',
+        'Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
     }
     bus.emit('game:loadingProgress', {
       id: 'render-pipelines',
@@ -939,15 +923,6 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     // paint before the cook — this one only needs to yield.
     await nextFrame();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-    if (!shouldAwaitOpeningGpuCook({
-      gpu: state.render && state.render.gpu,
-      renderer: state.render && state.render.renderer,
-    })) {
-      void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
-        console.warn('[startup] continue pipeline warmup failed', error);
-      });
-    }
-    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     bus.emit('game:loadingProgress', {
       id: 'gpu-resources',
       progress: 0.9,
@@ -958,10 +933,6 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     await nextPaintSliced();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     {
-      const awaitCook = shouldAwaitOpeningGpuCook({
-        gpu: state.render && state.render.gpu,
-        renderer: state.render && state.render.renderer,
-      });
       const stopCookPulse = startGatePulse('gpu-resources', 0.9, 'Preparing the opening route', () => {
         const ledger = state.render && state.render.openingCookLedger;
         const rows = Array.isArray(ledger) ? ledger.filter((row) => row && row.step && row.step !== 'lane') : [];
@@ -970,21 +941,9 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
           ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
           : 'Loading the opening stretch smoothly';
       });
-      const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
       try {
-        if (!awaitCook) {
-          void cook.catch((error) => {
-            console.warn('[startup] continue GPU cook failed', error);
-          });
-        } else {
-          const gpuReady = await cook;
-          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-          // The awaited readiness verdict owns handover, just as it does for New Game.
-          // Refusal (including pending admission) must never silently release control.
-          if (gpuReady !== true) {
-            throw new Error('Loaded game GPU resources were not accepted; refusing to enter flight before the opening route is ready.');
-          }
-        }
+        await waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken));
+        if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
       } finally {
         stopCookPulse();
       }
@@ -1035,7 +994,11 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       transition: 'continue',
     });
     runTransitionGuard.commit(transitionToken, () => {
-      enterFlightMode(state, bus);
+      enterFlightMode(state, bus, {
+        runTransitionGuard,
+        transitionToken,
+        continueSlot: payload.slot || 'latest',
+      });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       bus.emit('ui:closeAll', {});
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
@@ -1044,10 +1007,21 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   } catch (error) {
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     console.error('[SpaceFace] loaded game startup failed', error);
+    const failure = describeGameStartFailure(error);
     failGameStart(
-      state, bus, error, 'Loaded game assets failed to load. See console.',
-      runTransitionGuard, transitionToken,
+      state, bus, error, failure.text,
+      runTransitionGuard, transitionToken, failure,
     );
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    // The worker restore cannot invoke the main realm's save-generator finalizer
+    // observer. Give its title route the same durable failure receipt, with the
+    // actual cause; the main lane keeps its existing single save-owner receipt.
+    if (laneCommandSink()) {
+      bus.emit('save:error', {
+        slot: payload.slot || 'latest', reason: 'load_failed',
+        error: error?.message || String(error), ...failure,
+      });
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     throw error;
   }
@@ -1057,6 +1031,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
 const _loadingClearColor = new THREE.Color();
 
 function enterLoadingMode(state, bus) {
+  state.render?.cancelOpeningPresentationHold?.();
   const timeEffects = createTimeEffects(state);
   timeEffects.set('runtime:loading', { scale: 0 });
   const previousMode = state.mode;
@@ -1080,9 +1055,41 @@ function enterLoadingMode(state, bus) {
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
-function enterFlightMode(state, bus) {
+function enterFlightMode(state, bus, options = {}) {
+  const runTransitionGuard = options && options.runTransitionGuard;
+  const transitionToken = options && options.transitionToken;
+  const continueSlot = options && options.continueSlot;
+  const holdOptions = options && options.holdOptions && typeof options.holdOptions === 'object'
+    ? options.holdOptions : {};
+  let lateFailureHandled = false;
+  const handleLateFailure = (error) => {
+    if (lateFailureHandled) return false;
+    if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+    // The worker lane accepts the flight command before its mirrored facade mode arrives on
+    // the main thread. A guarded hold belongs to this committed transition even while that
+    // mirror still says loading; an unguarded legacy caller still needs the mode fence.
+    if (!runTransitionGuard && state.mode !== 'flight') return false;
+    lateFailureHandled = true;
+    const failure = describeGameStartFailure(error);
+    if (!failGameStart(state, bus, error, failure.text, runTransitionGuard, transitionToken, failure)) return false;
+    if (continueSlot == null) return true;
+    const receipt = {
+      slot: continueSlot,
+      reason: 'load_failed',
+      error: error?.message || String(error),
+      ...failure,
+    };
+    const emitReceipt = () => {
+      if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return;
+      bus.emit('save:error', receipt);
+    };
+    if (typeof queueMicrotask === 'function') queueMicrotask(emitReceipt);
+    else Promise.resolve().then(emitReceipt);
+    return true;
+  };
   const timeEffects = createTimeEffects(state);
   const previousMode = state.mode;
+  holdOpeningPresentationUntilPaint(state, timeEffects, handleLateFailure, holdOptions);
   laneSetMode(state, bus, 'flight');
   timeEffects.clear('runtime:boot-menu');
   timeEffects.clear('runtime:loading');
@@ -1092,6 +1099,7 @@ function enterFlightMode(state, bus) {
 
 function failGameStart(state, bus, error, text, runTransitionGuard = null, transitionToken = null, failure = null) {
   if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  state.render?.cancelOpeningPresentationHold?.();
   const timeEffects = createTimeEffects(state);
   timeEffects.set('runtime:start-failed', { scale: 0 });
   timeEffects.clear('runtime:boot-menu');
@@ -1103,8 +1111,11 @@ function failGameStart(state, bus, error, text, runTransitionGuard = null, trans
   bus.emit('game:startFailed', {
     error: error && error.message ? error.message : String(error),
     ...(failure || {}),
+    text,
   });
-  bus.emit('toast', { text, kind: 'error', ttl: 8 });
+  if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  // The loading presenter retains the failure and public Retry/Back actions. Do not replace
+  // the failed route with a menu or an expiring toast that loses the original cause.
   return true;
 }
 

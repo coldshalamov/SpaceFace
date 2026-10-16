@@ -57,10 +57,16 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
     const held = new Set();
     let cursorX = 500, cursorY = 300;
     let nativeShots = 0;
+    const wantedHeading = player.rot + Math.PI / 2;
+    const degrees = Math.round((wantedHeading - Math.PI / 2) * 180 / Math.PI + 360) % 360;
+    const refreshRadar = () => publishRadarHostileCourse(radar, {
+      baseLabel: 'Local tactical radar.', mode: 'flight', simTime: state.simTime,
+      courseText: `Nearest hostile at 12 o'clock, dial bearing ${degrees} degrees.`,
+    });
     lane.host.bus.on('combat:fire', receipt => { if (receipt.ownerId === player.id) nativeShots++; });
     const page = {
       evaluate: async (fn, arg) => observe(fn, arg),
-      waitForTimeout: async () => { await send(3); },
+      waitForTimeout: async () => { await send(3); refreshRadar(); },
       keyboard: {
         down: async code => { held.add(code); await send(0, { kind: 'domEvent', d: { type: 'keydown', code, pressed: true, blocked: false } }); },
         up: async code => { held.delete(code); await send(0, { kind: 'domEvent', d: { type: 'keyup', code, pressed: false } }); },
@@ -92,10 +98,7 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
         up: async () => send(0, { kind: 'domEvent', d: { type: 'mouseup', button: 0 } }),
       },
     };
-    const wantedHeading = player.rot + Math.PI / 2;
-    const degrees = Math.round((wantedHeading - Math.PI / 2) * 180 / Math.PI + 360) % 360;
-    publishRadarHostileCourse(radar, { baseLabel: 'Local tactical radar.', mode: 'flight', simTime: state.simTime,
-      courseText: `Nearest hostile at 12 o'clock, dial bearing ${degrees} degrees.` });
+    refreshRadar();
     const before = Math.abs((await observe(readTarget)).radarRel);
     await fightBeat(page, 0);
     assert.ok(Math.abs(wrappedAngle(wantedHeading - player.rot)) < before / 2,
@@ -115,11 +118,13 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
     const reachable = await observe(readTarget);
     assert.equal(reachable.none, undefined);
     const attackError = Math.abs(reachable.rel);
+    const attackHeading = Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x);
     await fightBeat(page, 1);
-    assert.ok(Math.abs(wrappedAngle(Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x) - player.rot)) < attackError,
+    // Check native yaw against the observed heading. The completed chase can carry the player
+    // past this close contact during the beat, changing its bearing independently of yaw sign.
+    assert.ok(Math.abs(wrappedAngle(attackHeading - player.rot)) < attackError,
       `canvas pursuit uses the same native yaw sign: ${JSON.stringify({ before: reachable.rel,
-        after: wrappedAngle(Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x) - player.rot),
-        rot: player.rot, angVel: player.angVel, nativeShots })}`);
+        after: wrappedAngle(attackHeading - player.rot), rot: player.rot, angVel: player.angVel, nativeShots })}`);
     assert.ok(nativeShots > 0, 'trusted canvas firing reaches the real native weapon owner');
     assert.equal(held.size, 0);
   } finally {

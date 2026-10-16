@@ -3,9 +3,8 @@
 // performance.now()/Date.now() are the same determinism failure class as a Math.random draw:
 // a host-dependent value. Simulation-owner directories must not invoke them directly.
 // Diagnostics that genuinely need wall time read it through perfNow() in
-// src/core/perfRuntime.js — the single classified instrumentation seam. Every file in
-// ALLOWED_WALL_TIME_FILES carries its written classification in
-// docs/Spec/PHASE0_AUTHORITY_AUDIT.md (Wall-Clock Catalogue).
+// src/core/perfRuntime.js — the single classified instrumentation seam.
+// ALLOWED_WALL_TIME_FILES carries each exception's classification rationale beside its path.
 //
 // This module is the shared engine: scripts/check-phase0-slice-contract.mjs asserts the real
 // tree is clean; test/fb-determinism-wall-time-guard.test.mjs proves a planted Date.now() in a

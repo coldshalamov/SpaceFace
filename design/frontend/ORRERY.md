@@ -124,11 +124,21 @@ Three faces already vendored (offline-safe): **Archivo** (variable width 62–12
 **Instrument Sans**, **Spline Sans Mono**.
 - **Display:** Archivo, width 125, weight 800, tight tracking (−0.01em). Screen titles, hero words.
 - **Numerals:** Archivo, width 100, **weight 250**, tabular, at hero sizes (64–144 px). Thin, huge,
-  bright numerals are the single most "expensive" typographic signal in modern HUDs.
-- **Labels:** Archivo, width 112, weight 600, caps, tracking .10em, 11–12 px, `--dp-ink-dim`.
-  (Not monospace. The owner rejected mono labels.)
+  bright numerals are the single most "expensive" typographic signal in modern HUDs. Inside compact
+  rings or dials (`≤48 px`), condense width (`"wdth" 76–86`) so multi-digit fractions (`26/46`) sit
+  cleanly inside the aperture without colliding with the arc stroke.
+- **Labels:** Archivo, width 112, weight 600–650, caps, tracking `.10–.18em`, **12 px minimum**
+  (`--dp-ink-dim`). **Nothing renders below `12 px`, ever** (`node scripts/check-type-floor.mjs`;
+  never write `10–11.5 px` or un-clamped sub-12px `em` rules). When a narrow viewport (`≤1100 px`)
+  squeezes a label column, condense `Archivo`'s width axis (`"wdth" 92–100`) and tighten tracking
+  (`.01–.08em`) rather than dropping `font-size` below `12 px`. (Not monospace — the owner rejected
+  mono labels.)
 - **Body:** Instrument Sans 400/500, 14–17 px, line-height 1.45, `--dp-ink`.
 - **Codes only** (seeds, build codes, share codes): Spline Sans Mono.
+- **Structural numbering (`01 / 02 / 03`):** Only number ladder rungs when the items are a genuine
+  sequence (e.g., Credits reel sections or ordered story chapters). Never prefix non-sequential
+  category tabs (e.g., Settings `Audio / Video / Gameplay / Access / Controls`) with `01..05` — it
+  wastes ~30 px of horizontal track width and reads as templated AI chrome.
 Scale contrast is the tool: a screen pairs one 96 px thin numeral with 12 px labels, not five
 medium sizes.
 

@@ -10,11 +10,13 @@
 // drives the rupture update the render loop drives, so this fails again if explosions stop.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 
 const { vfx } = await import('../src/render/vfx.js');
 
-function makeVfxSystem() {
+function makeVfxSystem(coordinated = false) {
   const scene = new THREE.Scene();
+  if (coordinated) createDynamicBufferCoordinator(scene);
   const handlers = new Map();
   const state = {
     playerId: 1,
@@ -149,6 +151,72 @@ assert.equal(energySys._energy.rcsSystem.pool.activeImpulseCount, 1);
 energySys.__emitForTest('sector:enter');
 assert.equal(energySys._energy.rcsSystem.pool.activeImpulseCount, 0,
   'sector:enter must clear production RCS impulses at old-sector coordinates');
+
+// Cosmetic pools belong to the world that emitted them. A load/jump can reuse its local
+// coordinates while paused, so retirement must also publish empty draws before another update.
+for (const boundary of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
+  const coordinated = boundary === 'sector:enter' || boundary === 'save:loaded';
+  const system = makeVfxSystem(coordinated);
+  assert.equal(!!system._particleDynamicBufferOwner, coordinated,
+    `${boundary}: cover both production buffer coordination and standalone consumers`);
+  system.state.simTime = 40;
+  const fields = [{ id: 'durable-field', radius: 20 }];
+  system.state.fields = { active: fields };
+  const particleMesh = system._shardMesh;
+  const spriteBatches = system._spriteBatches;
+  const color = new THREE.Color('#ffb35c');
+  system._spawnParticle(10, 20, 4, 2, 3, 2, 0.2, color, color, 0, 0.2, 0);
+  for (const kind of [0, 1, 2, 4]) {
+    system._spawnSprite(kind, 10, 0.2, 20, 3, 2, 5, 0.8, 0, '#ffb35c', 0, 0);
+  }
+  system._integrateParticles(1 / 60);
+  system._integrateSprites(1 / 60);
+  system._gas.emitCombustion({ x: 10, z: 20, scale: 5 });
+  system._gas.update(40);
+  system._gas.update(40 + 1 / 60);
+  system._weaponPresenter.handleFire({ ownerId: 1, weaponId: 'wpn_pulse_laser_s' }, { x: 10, z: 20 }, 0);
+  system._weaponPresenter.update(1 / 60, { state: system.state });
+  const quarks = system._weaponPresenter.quarks;
+  quarks.spawnCollisionSpall(10, 0.2, 20, 1, 0, 0, 3);
+  quarks.update(1 / 60);
+  assert.equal(particleMesh.count, 1, `${boundary}: shard draw is live before the boundary`);
+  assert.equal(Object.values(spriteBatches).filter((bucket) => bucket?.mesh)
+    .reduce((sum, bucket) => sum + bucket.mesh.count, 0), 4,
+  `${boundary}: each transient-volume draw is live before the boundary`);
+  assert.equal(system._gas.liveCount, 1, `${boundary}: gas is live before the boundary`);
+  assert.ok(system._weaponPresenter.discharges.mesh.count > 0,
+    `${boundary}: real weapon discharge is drawn before the boundary`);
+  assert.ok(quarks.collisionSpall.particleNum > 0, `${boundary}: debris is live before the boundary`);
+
+  system.__emitForTest(boundary);
+  assert.equal(system.inspect().liveParticles, 0, `${boundary}: retire old-world shards`);
+  assert.equal(system.inspect().liveSprites, 0, `${boundary}: retire old-world transient volumes`);
+  assert.equal(particleMesh.count, 0, `${boundary}: paused draw cannot retain old-world shards`);
+  assert.ok(Object.values(spriteBatches).filter((bucket) => bucket?.mesh)
+    .every((bucket) => bucket.mesh.count === 0), `${boundary}: publish empty transient-volume draws`);
+  assert.equal(system._gas.liveCount, 0, `${boundary}: retire old-world gas`);
+  assert.equal(system._gas.mesh.count, 0, `${boundary}: publish empty gas draw`);
+  assert.equal(system._weaponPresenter.discharges.mesh.count, 0,
+    `${boundary}: publish empty old-world weapon discharge draw`);
+  assert.equal(quarks.collisionSpall.particleNum, 0, `${boundary}: retire old-world debris`);
+  assert.ok(quarks.renderer.batches.every((batch) => batch.geometry.instanceCount === 0),
+    `${boundary}: publish empty debris draws`);
+  assert.equal(system.state.fields.active, fields, `${boundary}: simulation fields remain owned by simulation`);
+  assert.equal(system._shardMesh, particleMesh, `${boundary}: retain the existing particle pool`);
+  assert.equal(system._spriteBatches, spriteBatches, `${boundary}: retain the existing volume pools`);
+
+  // Repeated boundary notifications must not duplicate free slots or strand the next event.
+  system.__emitForTest(boundary);
+  system._spawnParticle(30, 40, 1, 0, 1, 2, 0.2, color, color, 0, 0.2, 0);
+  system._spawnSprite(1, 30, 0.2, 40, 1, 2, 5, 0.8, 0, '#ffb35c', 0, 0);
+  system._integrateParticles(1 / 60);
+  system._integrateSprites(1 / 60);
+  assert.equal(system.inspect().liveParticles, 1, `${boundary}: next-world particle is admitted`);
+  assert.equal(system.inspect().liveSprites, 1, `${boundary}: next-world volume is admitted`);
+  assert.equal(system._freeParticleCount, system._cap - 1, `${boundary}: particle slots remain balanced`);
+  assert.equal(system._freeSpriteCount, system._spr.length - 1, `${boundary}: volume slots remain balanced`);
+  system.destroy();
+}
 
 // ── normal destroy: still produces destruction VFX ──────────────────────────
 const combatSys = makeVfxSystem();

@@ -35,6 +35,12 @@ const FORBIDDEN_GROUP_IDS = new Set([
 ]);
 const HEX64 = /^[0-9a-f]{64}$/;
 const RIG_ID = /^[a-z][a-z0-9_]*$/;
+// Weak metadata exposes the existing private binding's ownership without trusting copied userData.
+const BOUND_RIGID_NODE_OWNERSHIP = new WeakMap();
+
+export function hasBoundRigidMotionNode(controller, node, bindingId) {
+  return BOUND_RIGID_NODE_OWNERSHIP.get(controller)?.(node, bindingId) === true;
+}
 // Reduced-motion damping for authored clips: half amplitude on event deltas while the
 // ambient attach loop parks entirely — the same convention the ship/place systems use.
 const REDUCED_AMP = 0.5;
@@ -553,7 +559,8 @@ function quatMatches(a, b) {
   return Math.abs(1 - dot) <= REST_EPS_QUAT;
 }
 
-function markAnimated(node) {
+function markAnimated(node, ownedNodes) {
+  ownedNodes?.add(node);
   node.userData = { ...(node.userData || {}), animated: true };
   node.matrixAutoUpdate = true;
   // A frozen-matrix mark from an earlier static freeze would swallow every write the controller
@@ -562,7 +569,7 @@ function markAnimated(node) {
     if (walk.userData && walk.userData.sfMatrixFrozen) walk.userData.sfMatrixFrozen = false;
   }
   const children = node.children || [];
-  for (const child of children) markAnimated(child);
+  for (const child of children) markAnimated(child, ownedNodes);
 }
 
 function nodeHasVisibleMesh(node) {
@@ -652,6 +659,7 @@ function finishAuthoredMotionBind(checked, nodesByName) {
     const restT = binding.restPose.translation;
     const restQ = binding.restPose.rotation;
     const nodes = [];
+    const ownedNodes = new WeakSet();
     for (const node of matches) {
       const local = nodeLocalRest(node);
       const drift = Math.hypot(
@@ -664,7 +672,7 @@ function finishAuthoredMotionBind(checked, nodesByName) {
           + 'rest-relative and the GLB moved since the bake.',
         );
       }
-      markAnimated(node);
+      markAnimated(node, ownedNodes);
       nodes.push(node);
     }
     if (nodes.length === 0) {
@@ -680,6 +688,7 @@ function finishAuthoredMotionBind(checked, nodesByName) {
     groups.set(binding.id, {
       binding,
       nodes,
+      ownedNodes,
       delta: { t: [0, 0, 0], q: [0, 0, 0, 1], hasT: false, hasR: false, stamp: 0 },
     });
   }
@@ -1356,5 +1365,13 @@ function finishAuthoredMotionBind(checked, nodesByName) {
       restAll();
     },
   };
+  BOUND_RIGID_NODE_OWNERSHIP.set(controller, (node, bindingId) => {
+    const group = groups.get(bindingId);
+    if (disposed || !node || !group?.ownedNodes.has(node)) return false;
+    for (let current = node; current; current = current.parent) {
+      if (group.nodes.includes(current)) return true;
+    }
+    return false;
+  });
   return controller;
 }

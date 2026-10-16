@@ -821,10 +821,16 @@ export const cargo = {
   },
 
   update(dt, state) {
-    if (state && state.input && state.input.actions && state.input.actions.jettisonLot) {
-      state.input.actions.jettisonLot = false;
+    const actions = state && state.input && state.input.actions;
+    if (actions && (actions.jettisonLot || actions.jettisonLotAll)) {
+      // VERB-33: the modified edge dumps the whole selected lot — `qty == null` means every
+      // free unit, spawning the remainder as ONE payload body beside the rich-source pods.
+      // The unmodified tap stays the one-unit release VERB-13 authored.
+      const whole = !!actions.jettisonLotAll;
+      actions.jettisonLot = false;
+      actions.jettisonLotAll = false;
       const commodityId = selectedJettisonLot(state);
-      const dumped = commodityId ? this.jettison(commodityId, 1) : 0;
+      const dumped = commodityId ? this.jettison(commodityId, whole ? null : 1) : 0;
       if (!(dumped > 0) && this.bus) {
         this.bus.emit('toast', {
           text: commodityId ? 'Cargo could not be released — it stays aboard' : jettisonRefusalText(state),
@@ -1303,8 +1309,20 @@ export const cargo = {
         }
         // Accepted pods are already physical custody even if a later admission throws.
         // Their public verb receipt must land before the exception leaves this attempt.
+        // LAW-10: the receipt names the legality and what is left aboard, so an active
+        // customs scan can tell a dumped scanned lot (hold reads clean → aborted scan
+        // with a suspicion note) from an unrelated dump. Additive only — the pod keeps
+        // its contraband stamp, so a later cone/weir read still prices heat as before.
         if (dumped > 0 && this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('cargo:jettisoned', { commodityId, amount: dumped });
+          const lotDef = defOf(state, commodityId);
+          const holdRemaining = Math.max(0,
+            Math.floor(Number(state.player.cargo.items[commodityId]) || 0));
+          this.bus.emit('cargo:jettisoned', {
+            commodityId,
+            amount: dumped,
+            legality: (lotDef && lotDef.legality) || 'legal',
+            holdRemaining,
+          });
         }
       } finally { this._jettisonInFlight = false; }
     }

@@ -231,7 +231,7 @@ const CSS = `
 .orr-set-hud__cap.is-backed span { background:rgb(3 4 7 / .78); text-shadow:none; }
 .orr-set-hud__cap.is-small { font-size:13px; }
 .orr-set-hud__cap.is-large { font-size:19px; }
-.orr-set-hud__cap b { ${LABEL} font-size:.72em; letter-spacing:.18em; margin-right:10px; color:rgb(${BONE} / .8); }
+.orr-set-hud__cap b { ${LABEL} font-size:max(12px, .78em); letter-spacing:.18em; margin-right:10px; color:rgb(${BONE} / .8); }
 .orr-set-hud__fov { position:absolute; right:0; top:0; width:200px; height:150px; overflow:visible; opacity:0; transition:opacity .2s linear; }
 .orr-set-hud__fov.is-on { opacity:1; }
 .orr-set-hud__fovread { position:absolute; right:0; top:156px; width:200px; display:flex; justify-content:center; align-items:baseline; gap:8px; opacity:0; transition:opacity .2s linear; }

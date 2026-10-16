@@ -8,6 +8,7 @@ import {
   CAREER_ORIGINS_EVENTS,
   createCareerOriginsSystem,
   deserializeCareerOrigins,
+  getCareerOfferViewReadOnly,
   serializeCareerOrigins,
 } from '../src/careers/origins/careerOrigins.js';
 import { CAREER_ORIGIN_CONTRACTS } from '../src/careers/origins/careerOriginContracts.js';
@@ -92,6 +93,19 @@ function harness(seed = 12001) {
   bus.emit('game:started', {});
   return { state, bus, missionSystem, originSystem, registry, credits, completions };
 }
+
+test('career offer read view does not normalize or write focus on the mirrored state', () => {
+  const h = harness(12003);
+  h.state.careers.origins.hauler.status = 'active';
+  h.state.careers.origins.__meta.focusCareerId = null;
+  const before = JSON.stringify(h.state.careers);
+
+  const view = getCareerOfferViewReadOnly(h.state);
+
+  assert.equal(view.focusedCareerId, 'hauler');
+  assert.equal(view.offers.length, 3);
+  assert.equal(JSON.stringify(h.state.careers), before);
+});
 
 test('Hauler starts with a sealed physical manifest, delivers it, and persists the next contract', () => {
   const h = harness(12002);

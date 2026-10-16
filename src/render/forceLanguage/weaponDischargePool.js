@@ -502,5 +502,11 @@ export class WeaponDischargePool {
     this.batch.end();return live;
   }
   reproject(dx,dz){for(const s of this.slots)if(s.alive){s.x+=dx;s.z+=dz;}this.batch.reproject(dx,dz);}
+  clear(){
+    if(this.disposed)return;
+    for(const s of this.slots)s.alive=false;
+    this.activeCount=0;
+    this.batch.begin(this.time);this.batch.end();
+  }
   dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots)s.alive=false;this.activeCount=0;}
 }

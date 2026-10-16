@@ -295,3 +295,194 @@ function fakeElement() {
     setAttribute(name, value) { this.attributes.set(name, String(value)); },
   };
 }
+
+class FakeElement {
+  constructor(tag = 'div') {
+    this.tagName = tag.toUpperCase();
+    this.style = {};
+    this.dataset = {};
+    this.attributes = new Map();
+    this.children = [];
+    this.listeners = new Map();
+    this.parentNode = null;
+    this.className = '';
+    this._textContent = '';
+    this._innerHTML = '';
+    this.classList = {
+      contains: (name) => this.className.split(/\s+/).includes(name),
+      add: (name) => { if (!this.classList.contains(name)) this.className = `${this.className} ${name}`.trim(); },
+      remove: (name) => { this.className = this.className.split(/\s+/).filter((part) => part && part !== name).join(' '); },
+    };
+  }
+  set textContent(value) { this._textContent = String(value); }
+  get textContent() { return this._textContent + this.children.map((child) => child.textContent).join(''); }
+  set innerHTML(value) { this._innerHTML = String(value); }
+  get innerHTML() { return this._innerHTML; }
+  setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null; }
+  removeAttribute(name) { this.attributes.delete(name); }
+  appendChild(child) { child.parentNode?.removeChild(child); this.children.push(child); child.parentNode = this; return child; }
+  removeChild(child) { this.children = this.children.filter((item) => item !== child); child.parentNode = null; return child; }
+  addEventListener(type, fn) { const rows = this.listeners.get(type) || []; rows.push(fn); this.listeners.set(type, rows); }
+  dispatch(type) { for (const fn of this.listeners.get(type) || []) fn({ type, target: this }); }
+  focus() { this.focused = true; }
+  querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+  querySelectorAll(selector) {
+    const matches = (node) => selector.startsWith('.')
+      ? node.classList.contains(selector.slice(1))
+      : selector.startsWith('[') ? node.attributes.has(selector.slice(1, -1))
+        : selector === node.tagName.toLowerCase();
+    const out = [];
+    const visit = (node) => { for (const child of node.children) { if (matches(child)) out.push(child); visit(child); } };
+    visit(this);
+    return out;
+  }
+}
+
+class FakeBus {
+  constructor() { this.listeners = new Map(); this.events = []; }
+  on(name, fn) {
+    const rows = this.listeners.get(name) || [];
+    rows.push(fn); this.listeners.set(name, rows);
+    return () => this.listeners.set(name, rows.filter((row) => row !== fn));
+  }
+  emit(name, payload = {}) {
+    this.events.push({ name, payload });
+    for (const fn of [...(this.listeners.get(name) || [])]) fn(payload);
+  }
+}
+
+function fixture(mode = 'loading') {
+  const overlay = new FakeElement();
+  overlay.id = 'boot-overlay';
+  overlay.style.display = 'flex';
+  const lockup = new FakeElement();
+  lockup.className = 'boot-lockup';
+  overlay.appendChild(lockup);
+  const parts = {
+    '[data-loading-label]': new FakeElement('span'),
+    '[data-loading-detail]': new FakeElement('span'),
+    '[data-loading-progress]': new FakeElement('span'),
+    '[data-loading-pct]': new FakeElement('span'),
+  };
+  const doc = {
+    defaultView: {},
+    getElementById: (id) => id === 'boot-overlay' ? overlay : null,
+    querySelector: (selector) => parts[selector] || null,
+    createElement: (tag) => new FakeElement(tag),
+  };
+  const priorDocument = globalThis.document;
+  globalThis.document = doc;
+  const bus = new FakeBus();
+  const state = { mode, render: { admissionRunGeneration: 3 } };
+  return { doc, overlay, lockup, parts, bus, state, priorDocument };
+}
+
+async function makePresenter(f) {
+  const { createLoadingPresenter } = await import('../src/ui/loadingPresenter.js');
+  return createLoadingPresenter({ document: f.doc, bus: f.bus, state: f.state, hideDelayMs: 5 });
+}
+
+test('startup failure stays visible through late progress, menu and save-error events with explicit recovery actions', async () => {
+  const f = fixture();
+  const presenter = await makePresenter(f);
+  try {
+    presenter.show({ id: 'gpu-resources', progress: .8, label: 'Preparing flight materials' });
+    f.state.mode = 'menu';
+    f.bus.emit('mode:changed', { mode: 'menu' });
+    f.bus.emit('game:startFailed', {
+      code: 'GPU_RESIDENCY_UNAVAILABLE', stage: 'gpu-resources', error: '<img src=x onerror=alert(1)>',
+    });
+    const pane = f.overlay.querySelector('[data-startup-failure]');
+    assert.ok(pane);
+    assert.equal(f.overlay.getAttribute('aria-busy'), 'false');
+    assert.equal(f.overlay.classList.contains('hidden'), false);
+    assert.equal(f.lockup.style.display, 'none', 'busy logo and progress copy are removed');
+    assert.match(pane.querySelector('.sf-state__word').textContent, /GPU RESIDENCY UNAVAILABLE/);
+    assert.equal(pane.querySelector('.sf-state__fills').textContent, 'The launch stopped during gpu-resources.');
+    assert.equal(pane.querySelector('.sf-state__detail').textContent, '<img src=x onerror=alert(1)>');
+    assert.equal(pane.querySelectorAll('img').length, 0, 'untrusted error text is never parsed as markup');
+
+    f.bus.emit('game:loadingProgress', { id: 'render-pipelines', generation: 3, progress: .99, label: 'Nearly ready' });
+    f.bus.emit('game:loadingProgress', { id: 'stale', generation: 2, progress: .2, label: 'Old launch' });
+    f.bus.emit('mode:changed', { mode: 'menu' });
+    f.bus.emit('save:error', { reason: 'load_failed', error: 'late duplicate' });
+    assert.equal(f.overlay.querySelector('[data-startup-failure]'), pane);
+    assert.equal(f.overlay.classList.contains('hidden'), false);
+
+    const buttons = pane.querySelectorAll('button');
+    assert.deepEqual(buttons.map((button) => button.textContent), ['Retry', 'Back to menu']);
+    buttons[0].dispatch('click');
+    assert.equal(f.bus.events.at(-1).name, 'game:retryStart');
+    assert.equal(f.overlay.querySelector('[data-startup-failure]'), pane,
+      'retry keeps the explanation until the new launch actually begins');
+    buttons[1].dispatch('click');
+    assert.deepEqual(f.bus.events.slice(-3).map((event) => event.name),
+      ['game:exitToMenu', 'ui:closeAll', 'ui:pushScreen']);
+    assert.equal(f.bus.events.at(-1).payload.id, 'mainMenu');
+    assert.equal(f.overlay.querySelector('[data-startup-failure]'), null);
+    assert.equal(f.overlay.classList.contains('hidden'), true, 'Back is the explicit dismissal action');
+  } finally {
+    presenter.destroy(); globalThis.document = f.priorDocument;
+  }
+});
+
+test('only a current new session or matching loading mode clears the failure latch', async () => {
+  const f = fixture('menu');
+  const presenter = await makePresenter(f);
+  try {
+    f.bus.emit('game:startFailed', { code: 'GAME_START_FAILED', stage: 'startup', error: 'failed once' });
+    const originalPane = f.overlay.querySelector('[data-startup-failure]');
+    f.bus.emit('mode:changed', { mode: 'loading' });
+    assert.equal(f.overlay.querySelector('[data-startup-failure]'), originalPane,
+      'stale mode notifications cannot dismiss a current failure');
+
+    f.state.mode = 'loading';
+    f.bus.emit('mode:changed', { mode: 'loading' });
+    assert.equal(f.overlay.querySelector('[data-startup-failure]'), null);
+    assert.equal(f.overlay.getAttribute('aria-busy'), 'true');
+    assert.equal(f.lockup.style.display, '', 'the normal loading shell returns for the new session');
+
+    f.state.mode = 'menu';
+    f.bus.emit('game:startFailed', { code: 'GAME_START_FAILED', stage: 'startup', error: 'failed again' });
+    assert.ok(f.overlay.querySelector('[data-startup-failure]'));
+    f.bus.emit('game:new', { source: 'retry' });
+    assert.equal(f.overlay.querySelector('[data-startup-failure]'), null);
+    f.bus.emit('game:startFailed', { code: 'GAME_START_FAILED', stage: 'startup', error: 'load failed' });
+    assert.ok(f.overlay.querySelector('[data-startup-failure]'));
+    f.bus.emit('game:load', { source: 'continue' });
+    assert.equal(f.overlay.querySelector('[data-startup-failure]'), null,
+      'a new Continue intent also releases the prior failure');
+  } finally {
+    presenter.destroy(); globalThis.document = f.priorDocument;
+  }
+});
+
+test('load_failed during the active loading shell becomes a startup failure; ordinary save errors do not', async () => {
+  const f = fixture('menu'); // Worker mode can still mirror menu when the restore has begun.
+  const presenter = await makePresenter(f);
+  const startFailures = [];
+  f.bus.on('game:startFailed', (payload) => startFailures.push(payload));
+  try {
+    presenter.show({ id: 'restoring-save', progress: .4, label: 'Restoring save' });
+    f.bus.emit('save:error', { reason: 'load_failed', slot: 'latest', error: 'save header checksum mismatch' });
+    assert.ok(f.overlay.querySelector('[data-startup-failure]'));
+    assert.equal(startFailures.length, 1, 'retry ownership learns about pre-finalizer restore failure');
+    assert.equal(startFailures[0].stage, 'save-restore');
+    assert.equal(startFailures[0].code, 'SAVE_LOAD_FAILED');
+    assert.equal(f.overlay.querySelector('.sf-state__detail').textContent, 'save header checksum mismatch');
+  } finally {
+    presenter.destroy(); globalThis.document = f.priorDocument;
+  }
+
+  const ordinary = fixture('flight');
+  const ordinaryPresenter = await makePresenter(ordinary);
+  try {
+    ordinaryPresenter.show({ id: 'save-write', progress: .2, label: 'Saving' });
+    ordinary.bus.emit('save:error', { reason: 'disk_full', error: 'quota exceeded' });
+    assert.equal(ordinary.overlay.querySelector('[data-startup-failure]'), null);
+    assert.equal(ordinary.overlay.classList.contains('hidden'), true);
+  } finally {
+    ordinaryPresenter.destroy(); globalThis.document = ordinary.priorDocument;
+  }
+});

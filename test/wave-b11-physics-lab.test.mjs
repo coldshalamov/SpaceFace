@@ -379,6 +379,64 @@ test('Wave B11: Physics lab / Sandbox screen mounts on default route without dev
   }
 });
 
+test('hidden Sandbox telemetry sleeps until shown and owns only one visible refresh timer', () => {
+  const { doc, makeNode } = createDomStub();
+  const previousDocument = globalThis.document;
+  const previousSetInterval = globalThis.setInterval;
+  const previousClearInterval = globalThis.clearInterval;
+  const timers = new Map();
+  let nextTimer = 0;
+  globalThis.document = doc;
+  globalThis.setInterval = (fn, ms) => {
+    assert.equal(ms, 250);
+    const id = ++nextTimer;
+    timers.set(id, fn);
+    return id;
+  };
+  globalThis.clearInterval = id => timers.delete(id);
+  const { ctx, sim } = createLabHarness();
+  ctx.registry = { get() { return null; } };
+  const refreshTimers = () => { for (const fn of [...timers.values()]) fn(); };
+  try {
+    const root = makeNode('div');
+    sandboxScreen.mount(root, ctx); // uiRoot prewarming never calls onHide.
+    const findTick = node => String(node.className).includes('sf-lab-tel-tick') ? node
+      : node.children.map(findTick).find(Boolean);
+    const tick = findTick(root);
+    assert.ok(tick, 'the real mounted telemetry has a tick readout');
+    const hiddenTick = tick.textContent;
+    assert.equal(timers.size, 0, 'an unopened screen owns no recurring refresh');
+    ctx.state.tick = 41;
+    refreshTimers();
+    assert.equal(tick.textContent, hiddenTick, 'hidden prewarm cannot keep repainting telemetry');
+
+    sandboxScreen.onShow(ctx);
+    assert.equal(timers.size, 1);
+    assert.equal(tick.textContent, '41', 'show refreshes immediately');
+    sandboxScreen.onShow(ctx);
+    assert.equal(timers.size, 1, 'a repeated show cannot multiply timers');
+    ctx.state.tick = 42;
+    refreshTimers();
+    assert.equal(tick.textContent, '42', 'the visible timer still updates live telemetry');
+
+    sandboxScreen.onHide();
+    assert.equal(timers.size, 0);
+    ctx.state.tick = 43;
+    refreshTimers();
+    assert.equal(tick.textContent, '42', 'hide stops subsequent painting');
+    sandboxScreen.onShow(ctx);
+    sandboxScreen.onShow(ctx);
+    assert.equal(timers.size, 1, 'reopening resumes exactly one timer');
+    assert.equal(tick.textContent, '43');
+  } finally {
+    sandboxScreen.onHide();
+    sim.dispose();
+    globalThis.document = previousDocument;
+    globalThis.setInterval = previousSetInterval;
+    globalThis.clearInterval = previousClearInterval;
+  }
+});
+
 test('Wave B11: Lab controls slow time (time-scale) and restore cleanly', () => {
   const { ctx, timeEffects } = createLabHarness();
 

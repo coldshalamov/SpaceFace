@@ -4,6 +4,11 @@ import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTabl
 import { resolvePhysicsBodySpec, queuePhysicsImpulse, prepareExternalPhysicsImpulse } from '../core/physicsAuthority.js';
 import { environmentResponse, isEnvironmentalBody, isAnchoredPhysicalBody, isPhysicalMissionBody, PHYSICAL_REFERENCE_MASS } from '../core/physicalResponse.js';
 import { queryAsteroidField, getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { routeRecoilThroughWinchBrace } from './attachments.js';
+
+// Recoil provenances whose along-line component a taut winch brace (build_map §30.1 RW-01)
+// converts into line load instead of hull velocity. Every other impulse kind is untouched.
+const WINCH_BRACE_RECOIL_TAGS = new Set(['mass_driver_recoil', 'weapon_recoil']);
 
 export { environmentResponse, isEnvironmentalBody } from '../core/physicalResponse.js';
 const RUNTIMES = new WeakMap();
@@ -164,7 +169,13 @@ export function deliverPhysicalImpulseDetailed(state, entity, impulse, evidence 
   if (!eligible(entity) || entity.flags?.docked || (entity.id === state?.playerId && state?.ui?.docked)) {
     return { accepted: false, impulse: { x: 0, y: 0, z: 0 }, deltaV: 0 };
   }
-  const resolved = resolvePhysicalImpulse(entity, impulse, options);
+  let deliveredImpulse = impulse;
+  const recoilTag = String(evidence?.tag ?? evidence?.provenance?.tag ?? '');
+  if (WINCH_BRACE_RECOIL_TAGS.has(recoilTag)) {
+    const braced = routeRecoilThroughWinchBrace(state, entity.id, impulse);
+    if (braced) deliveredImpulse = { x: braced.appliedX, z: braced.appliedZ };
+  }
+  const resolved = resolvePhysicalImpulse(entity, deliveredImpulse, options);
   const meta = { ...evidence, tick: evidence?.tick ?? state?.tick ?? 0, externalEffect: true,
     continuous: options.continuous === true, dt: options.dt ?? 1 / 60,
     isPlayerTarget: entity.id === state?.playerId || entity.isPlayer === true };

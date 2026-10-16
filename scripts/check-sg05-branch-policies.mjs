@@ -20,8 +20,30 @@ const scenario = readJson(SCENARIO_PATH);
 const envelope = readJson('test/47a.telemetry.expected.json');
 const branches = scenario.branches || [];
 const tempDir = mkdtempSync(join(tmpdir(), 'spaceface-47a-policy-'));
+const prefixEnvelopePath = join(tempDir, '47a-policy-prefix-envelope.json');
 
 try {
+  const prefixTapePath = writePrefixTape();
+  // The simulator's tick count is exclusive: 36010 runs through tick 36009 and leaves the
+  // branch command at frame 36010 for every suffix. Share that exact prefix save instead of
+  // replaying 36k steps for each policy and reload branch.
+  runJson([
+    'scripts/sf-sim.mjs',
+    'run',
+    '47a',
+    '--seed',
+    String(baseTape.seed),
+    '--ticks',
+    String(BRANCH_COMMAND_TICK),
+    '--inputs',
+    prefixTapePath,
+    '--physics-backend',
+    'rapier-dynamic',
+    '--hash',
+    '--write-envelope',
+    prefixEnvelopePath,
+  ]);
+
   const completions = [];
   for (const branch of branches) {
     const tapePath = writePolicyTape(branch);
@@ -41,6 +63,8 @@ try {
       '420',
       '--physics-backend',
       'rapier-dynamic',
+      '--load-envelope',
+      prefixEnvelopePath,
     ]);
 
     assert.equal(trace.scenarioContract.activeBeatId, 'resolution_branch',
@@ -75,30 +99,38 @@ try {
     }
     assert(changedFactIds.size >= 1, `${branch.id} should change at least one immediate world fact`);
 
-    const reloadInspect = runJson([
+    // Inspect does not forward --load-envelope. Keep the reload assertion on the trace route,
+    // which consumes the same shared prefix and still exposes scenario/presentation evidence.
+    const reloadTrace = runJson([
       'scripts/sf-sim.mjs',
-      'inspect',
+      'trace',
       '47a',
       '--seed',
       String(baseTape.seed),
-      '--tick',
+      '--ticks',
       String(POLICY_TICKS),
       '--inputs',
       tapePath,
+      '--events',
+      'scenario.*,presentation.*',
+      '--limit',
+      '420',
       '--reload-at',
       String(RELOAD_AFTER_BRANCH_TICK),
       '--physics-backend',
       'rapier-dynamic',
+      '--load-envelope',
+      prefixEnvelopePath,
     ]);
-    assert.equal(reloadInspect.metrics.saveReloads, 1, `${branch.id} policy should execute a save/reload after resolution`);
-    assert.equal(reloadInspect.scenarioContract.activeBeatId, 'resolution_branch',
+    assert.equal(reloadTrace.metrics.saveReloads, 1, `${branch.id} policy should execute a save/reload after resolution`);
+    assert.equal(reloadTrace.scenarioContract.activeBeatId, 'resolution_branch',
       `${branch.id} reload should preserve the resolution beat`);
-    assert.equal(reloadInspect.scenarioContract.resolvedBranchId, branch.id,
+    assert.equal(reloadTrace.scenarioContract.resolvedBranchId, branch.id,
       `${branch.id} reload should preserve resolved branch`);
-    assert.deepEqual(reloadInspect.scenarioContract.resolution.lifecycle, branch.lifecycle,
+    assert.deepEqual(reloadTrace.scenarioContract.resolution.lifecycle, branch.lifecycle,
       `${branch.id} reload should preserve branch lifecycle text`);
     for (const effect of branch.worldFactEffects) {
-      assert.equal(reloadInspect.scenarioContract.factValues[effect.factId], effect.value,
+      assert.equal(reloadTrace.scenarioContract.factValues[effect.factId], effect.value,
         `${branch.id} reload should preserve ${effect.factId} as ${effect.value}`);
     }
 
@@ -111,6 +143,33 @@ try {
   console.log(`SG-05 branch policy checks OK (${completions.join(', ')})`);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
+}
+
+function writePrefixTape() {
+  const frames = baseTape.frames.map((frame) => {
+    const commands = (frame.commands || [])
+      .filter((command) => command && command.kind !== 'scenarioBranch')
+      .map((command) => ({ ...command }));
+    return {
+      tick: frame.tick,
+      input: { ...(frame.input || {}) },
+      ...(commands.length ? { commands } : {}),
+    };
+  });
+  const tape = {
+    ...baseTape,
+    id: '47a-policy-prefix',
+    notes: [
+      ...(baseTape.notes || []),
+      'Shared SG-05 policy prefix; branch commands begin at tick 36010.',
+    ],
+    frames,
+  };
+  const report = validateEvidenceDocument(tape, { file: `${tape.id}.json` });
+  assert(report.ok, report.issues.map(formatEvidenceIssue).join('\n'));
+  const tapePath = join(tempDir, `${tape.id}.json`);
+  writeFileSync(tapePath, JSON.stringify(tape, null, 2));
+  return tapePath;
 }
 
 function writePolicyTape(branch) {

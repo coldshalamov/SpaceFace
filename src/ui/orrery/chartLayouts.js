@@ -191,7 +191,7 @@ html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-char
 /* compact chart (761-1179, ~227px column): smaller, tighter words so three share a row (4 rows, not 5) */
 @media (min-width: 761px) and (max-width: 1179px) {
   ${C} .gm-tabs.k-words { gap:9px 12px !important; }
-  ${C} .gm-tab.k-word { font-size:11px !important; letter-spacing:.08em !important; padding:2px 0 9px !important; }
+  ${C} .gm-tab.k-word { font-size:12px !important; letter-spacing:.08em !important; padding:2px 0 9px !important; }
 }
 ${C} .orr-chart-tabscale { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:0; }
 /* the two ways back: words with their notch */

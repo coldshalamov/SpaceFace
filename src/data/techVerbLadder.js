@@ -364,6 +364,24 @@ export const ECONOMY_CURVE_GOALS = Object.freeze({
   ]),
 });
 
+/**
+ * The repeatable RP faucets that pay only once the pilot owns a path's entry node
+ * (RESEARCH_GRANTS rows with `requiresNode`: research:bounty, research:mining). Derived from the
+ * grant table so the ladder can never drift from what missions.js actually pays.
+ */
+export const CAREER_FAUCET_ROWS = Object.freeze(
+  Object.keys(RESEARCH_GRANTS)
+    .filter((key) => RESEARCH_GRANTS[key].repeatable === true && RESEARCH_GRANTS[key].requiresNode)
+    .map((key) => Object.freeze({
+      key,
+      requiresNode: RESEARCH_GRANTS[key].requiresNode,
+      types: RESEARCH_GRANTS[key].types,
+    })),
+);
+
+/** Which curve archetype's goal list must open with a faucet row's entry node. */
+const FAUCET_ARCHETYPE_BY_TYPE = Object.freeze({ bounty_hunt: 'hunter', mining_quota: 'miner' });
+
 export function treePathCost(nodes = TECH_NODES) {
   let credits = 0;
   let rp = 0;
@@ -516,6 +534,29 @@ export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
   }
   if (FIRST_UPGRADE.targetMinutes !== TARGET_FIRST_UPGRADE_MINUTES) {
     errors.push('15-minute wish constant drifted');
+  }
+  // The fighter/miner RP faucets pay only after their entry node is owned. That node must exist,
+  // cost no RP (else the faucet could never start), and head its archetype's goal list so the
+  // ten-hour sim buys it first — the guard and the goal order stay one story.
+  const costByNode = new Map(TECH_NODES.map((node) => [node.id, node]));
+  for (const row of CAREER_FAUCET_ROWS) {
+    const entry = costByNode.get(row.requiresNode);
+    if (!entry) {
+      errors.push(`${row.key} requires unknown node ${row.requiresNode}`);
+      continue;
+    }
+    if (Number(entry.cost && entry.cost.rp) > 0) {
+      errors.push(`${row.key} entry node ${row.requiresNode} costs RP — the faucet could never start`);
+    }
+    if (list(entry.prereqs).length) {
+      errors.push(`${row.key} entry node ${row.requiresNode} has prerequisites — it is not a path entry`);
+    }
+    for (const type of list(row.types)) {
+      const archetype = FAUCET_ARCHETYPE_BY_TYPE[type];
+      if (archetype && ECONOMY_CURVE_GOALS[archetype][0] !== row.requiresNode) {
+        errors.push(`${row.key} entry node ${row.requiresNode} is not the first ${archetype} goal`);
+      }
+    }
   }
   return { ok: errors.length === 0, errors, firstUpgrade: FIRST_UPGRADE };
 }

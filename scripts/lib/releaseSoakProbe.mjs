@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { closeSync, existsSync, openSync, unlinkSync, writeSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -93,6 +93,34 @@ export const POST_GC_OWNER_ROW_LIMIT = 256;
 // Six hours — the acceptance soak is two hours; the bound catches a dropped
 // or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
 export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
+
+// One public save must own immutable warmups, the heap baseline, and every measured
+// restore. Ordinary soaks still let each cycle create its own fresh quick-save.
+export function createReleaseSoakCycleRunner({ immutable = false, runCycle = runSoakCycle } = {}) {
+  let fixedSave = null;
+  return {
+    get fixedSave() { return fixedSave; },
+    async run(page, options) {
+      const cycle = await runCycle(page, { ...options, fixedSave });
+      if (immutable) {
+        assert(cycle.saveEnvelope?.available === true, 'immutable diagnostic could not establish a fixed save envelope');
+        const reference = fixedSave || {
+          slot: cycle.saveEnvelope.slot || 'quick',
+          saved: cycle.saved,
+          envelope: cycle.saveEnvelope,
+        };
+        const expectedHash = reference.envelope.serializedIdentity?.sha256;
+        assert(expectedHash && cycle.loadedEnvelope?.serializedIdentity?.sha256 === expectedHash
+          && cycle.fixedSaveUnchanged === true, 'immutable cycle did not restore the original quick-save bytes');
+        // Failed initial cycles never establish a reference; a retry keeps the last
+        // successfully validated reference rather than accepting a different slot.
+        fixedSave = reference;
+      }
+      return cycle;
+    },
+  };
+}
+
 export const DYNAMIC_BUFFER_FULL_SPAN_VARIANT = 'dynamic_buffer_full_span';
 // The teardown snapshot is emitted through the page's console while the page is still alive.
 // Keep the marker private to this probe so the normal issue tracker does not treat the diagnostic
@@ -438,11 +466,13 @@ export async function runReleaseSoakProbe({
     }).catch(() => {});
     let prevWarmupSnapshot = null;
     let lastWarmupRestorePopulation = null;
+    const immutableMeasured = immutableSaveCycles > 0;
+    const cycleRunner = createReleaseSoakCycleRunner({ immutable: immutableMeasured });
     for (let warmupIndex = 0; warmupIndex < WARMUP_MAX_CYCLES; warmupIndex++) {
       let warmupCycle = null;
       try {
         warmupCycle = await withTimeout(
-          runSoakCycle(page, { index: `warmup-${warmupIndex}`, outputDir, log: doLog, screenshots: false }),
+          cycleRunner.run(page, { index: `warmup-${warmupIndex}`, outputDir, log: doLog, screenshots: false }),
           cycleTimeoutMs,
           `release-soak warmup cycle ${warmupIndex}`,
         );
@@ -492,17 +522,14 @@ export async function runReleaseSoakProbe({
         doLog('warmup never plateaued; the baseline follows the last warmup cycle and the contract measures the remaining growth');
       }
     }
-    const baselineMemory = await withTimeout(
-      readPostGcMemorySnapshot(page, 'docked-market-start'),
-      30_000,
-      'release-soak baseline memory snapshot',
-    );
+    const baselineMemory = await readReleaseSoakBaselineMemory(page);
     // The baseline follows the final warmup cycle. Keep that cycle's restore scalar beside the
     // baseline for population-growth interpretation; it is diagnostic context, not a second
     // heap sample taken at the load boundary.
     baselineMemory.restorePopulation = lastWarmupRestorePopulation;
+    const immutableSaveReference = cycleRunner.fixedSave;
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
-      await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot')).catch(() => {});
+      await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot'));
     }
 
     // The soak window opens after the public route lands docked on the market: every
@@ -512,9 +539,7 @@ export async function runReleaseSoakProbe({
     const soakStartedAt = Date.now();
     const soakThreshold = readMinSpecHitchThreshold(root);
     await installSoakRecorder(page, { hitchThresholdMs: soakThreshold });
-    const immutableMeasured = immutableSaveCycles > 0;
     const measuredCycleCount = immutableMeasured ? immutableSaveCycles : cycles;
-    let immutableSaveReference = null;
     const immutableSaveRows = [];
     doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${measuredCycleCount}${immutableMeasured ? ', fixed quick-save' : minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
 
@@ -532,12 +557,11 @@ export async function runReleaseSoakProbe({
       for (let attempt = 0; attempt < 2 && !cycle && !cycleError; attempt++) {
         try {
           cycle = await withTimeout(
-            runSoakCycle(page, {
+            cycleRunner.run(page, {
               index,
               outputDir,
               log: doLog,
               screenshots: takeCycleScreenshots,
-              fixedSave: immutableSaveReference,
             }),
             cycleTimeoutMs,
             `release-soak cycle ${index}`,
@@ -584,14 +608,6 @@ export async function runReleaseSoakProbe({
           }
         } catch { /* trail dump is best-effort over the primary diag */ }
         throw cycleError;
-      }
-      if (immutableMeasured && !immutableSaveReference) {
-        assert(cycle.saveEnvelope?.available === true, 'immutable diagnostic could not establish a fixed save envelope');
-        immutableSaveReference = {
-          slot: cycle.saveEnvelope.slot || 'quick',
-          saved: cycle.saved,
-          envelope: cycle.saveEnvelope,
-        };
       }
       cycleResults.push(cycle);
       const checkpoint = await withTimeout(
@@ -654,7 +670,7 @@ export async function runReleaseSoakProbe({
       'release-soak final memory snapshot',
     );
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
-      await captureHeapSnapshot(page, path.join(outputDir, 'heap-end.heapsnapshot')).catch(() => {});
+      await captureHeapSnapshot(page, path.join(outputDir, 'heap-end.heapsnapshot'));
     }
 
     await setSoakTransition(page, 'undock');
@@ -5213,14 +5229,101 @@ async function readPlayerSnapshot(page) {
  */
 async function captureHeapSnapshot(page, filePath) {
   const cdp = await page.context().newCDPSession(page);
-  const chunks = [];
-  cdp.on('HeapProfiler.addHeapSnapshotChunk', (event) => { chunks.push(event.chunk || ''); });
+  const eventName = 'HeapProfiler.addHeapSnapshotChunk';
+  let fd = null;
+  let outputOpened = false;
+  let listenerAttached = false;
+  let captureError = null;
+  let trailingHighSurrogate = '';
+  let chunksReceived = 0;
+  let bytesWritten = 0;
+  let completed = false;
+  const cleanupErrors = [];
+  const writeText = (text) => {
+    if (!text) return;
+    const bytes = Buffer.from(text, 'utf8');
+    for (let offset = 0; offset < bytes.length;) {
+      const written = writeSync(fd, bytes, offset, bytes.length - offset);
+      if (!(written > 0)) throw new Error('heap snapshot write made no progress');
+      offset += written;
+      bytesWritten += written;
+    }
+  };
+  const onChunk = (event) => {
+    if (captureError || fd === null) return;
+    try {
+      chunksReceived += 1;
+      let chunk = typeof event?.chunk === 'string' ? event.chunk : '';
+      // Empty events do not end a split UTF-16 pair; retain its high surrogate until
+      // the next non-empty event or the final protocol completion.
+      if (!chunk) return;
+      if (trailingHighSurrogate) {
+        if (chunk && chunk.charCodeAt(0) >= 0xDC00 && chunk.charCodeAt(0) <= 0xDFFF) {
+          writeText(trailingHighSurrogate + chunk[0]);
+          chunk = chunk.slice(1);
+        } else {
+          writeText(trailingHighSurrogate);
+        }
+        trailingHighSurrogate = '';
+      }
+      if (!chunk) return;
+      const last = chunk.charCodeAt(chunk.length - 1);
+      if (last >= 0xD800 && last <= 0xDBFF) {
+        trailingHighSurrogate = chunk.slice(-1);
+        chunk = chunk.slice(0, -1);
+      }
+      writeText(chunk);
+    } catch (error) {
+      // CDP keeps delivering events after a local disk error. Remember the first concrete
+      // failure, stop writing subsequent chunks, and surface it after the protocol call settles.
+      captureError = error;
+    }
+  };
   try {
+    fd = openSync(filePath, 'w');
+    outputOpened = true;
+    cdp.on(eventName, onChunk);
+    listenerAttached = true;
     await cdp.send('HeapProfiler.enable');
     await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false });
-    await writeFile(filePath, chunks.join(''));
+    if (captureError) throw captureError;
+    if (trailingHighSurrogate) {
+      writeText(trailingHighSurrogate);
+      trailingHighSurrogate = '';
+    }
+    if (chunksReceived === 0 || bytesWritten === 0) {
+      throw new Error(`HeapProfiler.takeHeapSnapshot returned no snapshot bytes (chunks=${chunksReceived}, bytes=${bytesWritten})`);
+    }
+    completed = true;
+  } catch (error) {
+    captureError ||= error;
   } finally {
-    await cdp.detach().catch(() => {});
+    if (listenerAttached) {
+      try {
+        if (typeof cdp.off === 'function') cdp.off(eventName, onChunk);
+        else if (typeof cdp.removeListener === 'function') cdp.removeListener(eventName, onChunk);
+      } catch (error) { cleanupErrors.push(error); }
+    }
+    if (fd !== null) {
+      try { closeSync(fd); } catch (error) { cleanupErrors.push(error); }
+      fd = null;
+    }
+    try { await cdp.detach(); } catch (error) { cleanupErrors.push(error); }
+    if (outputOpened && !completed) {
+      try { unlinkSync(filePath); } catch (error) {
+        if (error?.code !== 'ENOENT') cleanupErrors.push(error);
+      }
+    }
+  }
+  if (captureError) {
+    captureError.message = `Heap snapshot capture failed for ${filePath}: ${captureError.message}`;
+    if (cleanupErrors.length) captureError.cleanupErrors = cleanupErrors;
+    throw captureError;
+  }
+  if (cleanupErrors.length) {
+    throw new Error(`Heap snapshot cleanup failed for ${filePath}: ${cleanupErrors[0].message}`, {
+      cause: cleanupErrors[0],
+    });
   }
 }
 
@@ -5344,6 +5447,65 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
     ...snapshot,
     assetResidencyOwners: canonicalPostGcOwnerRows(ownerDiagnostics),
   };
+}
+
+// The retained-heap baseline must not begin while the residency ledger still has known asset
+// requests in flight. This is deliberately narrower than renderer/pipeline quiescence: the soak
+// still records its raw population and resource deltas without removing ambient content or
+// changing the quality/heap contracts.
+export async function waitForKnownAssetRequests(page, { timeoutMs = 30_000 } = {}) {
+  try {
+    await page.waitForFunction(() => {
+      const renderSystem = window.SF?.registry?.get?.('render');
+      const residency = renderSystem?._assetResidency;
+      const diagnostics = residency && typeof residency.canonicalDiagnostics === 'function'
+        ? residency.canonicalDiagnostics()
+        : null;
+      return diagnostics?.pendingRequests === 0;
+    }, null, { timeout: timeoutMs });
+  } catch (error) {
+    const detail = await page.evaluate(() => {
+      const boundedText = (value) => value == null ? null : String(value).slice(0, 160);
+      const renderSystem = window.SF?.registry?.get?.('render');
+      const residency = renderSystem?._assetResidency;
+      const diagnostics = residency && typeof residency.diagnostics === 'function'
+        ? residency.diagnostics({ canonical: true, includeEvents: false, includeOwners: true })
+        : null;
+      return {
+        available: diagnostics !== null,
+        pendingRequests: Number.isFinite(Number(diagnostics?.pendingRequests))
+          ? Number(diagnostics.pendingRequests)
+          : null,
+        pendingOwners: Array.isArray(diagnostics?.owners)
+          ? diagnostics.owners
+            .filter((owner) => Number(owner?.requests) > 0)
+            .slice(0, 8)
+            .map((owner) => ({
+              owner: boundedText(owner.owner),
+              ownerName: boundedText(owner.ownerName),
+              contentHash: boundedText(owner.contentHash),
+              requests: Number(owner.requests) || 0,
+              requestKeys: Array.isArray(owner.requestKeys)
+                ? owner.requestKeys.slice(0, 8).map((key) => boundedText(key))
+                : [],
+            }))
+          : null,
+      };
+    }).catch(() => null);
+    error.message = `${error.message} | release-soak baseline residency readiness failed after ${timeoutMs} ms: ${JSON.stringify(detail)}`;
+    throw error;
+  }
+}
+
+export async function readReleaseSoakBaselineMemory(page, { timeoutMs = 30_000 } = {}) {
+  return withTimeout(
+    (async () => {
+      await waitForKnownAssetRequests(page, { timeoutMs });
+      return readPostGcMemorySnapshot(page, 'docked-market-start');
+    })(),
+    timeoutMs,
+    'release-soak baseline memory snapshot',
+  );
 }
 
 async function readSettingsTruth(page) {
@@ -5694,14 +5856,37 @@ function buildQualityEvidence(routeResult, startSettings, endSettings) {
   };
 }
 
-function buildErrorEvidence(runtime, tracker) {
+function boundedErrorNetworkProvenance(value) {
+  if (!value || typeof value !== 'object') return null;
+  const copy = {};
+  for (const key of ['source', 'requestId', 'method', 'resourceType', 'url',
+    'startedAt', 'startedPhase', 'responseAt', 'responsePhase']) {
+    const field = value[key];
+    if (field === null) copy[key] = null;
+    else if (typeof field === 'string') {
+      const limit = key === 'url' ? 2048 : 256;
+      copy[key] = field.slice(0, limit);
+      if (field.length > limit) (copy.truncatedFields || (copy.truncatedFields = [])).push(key);
+    }
+  }
+  if (Number.isFinite(value.status)) copy.status = value.status;
+  return copy;
+}
+
+export function buildErrorEvidence(runtime, tracker) {
   const raw = runtime === 'electron' ? tracker?.all?.() || [] : tracker?.issues || [];
-  const normalized = raw.map((issue) => ({
-    type: issue.type || issue.level || 'unknown',
-    source: issue.source || 'console',
-    text: String(issue.text || ''),
-    at: issue.at || undefined,
-  }));
+  const normalized = raw.map((issue) => {
+    const networkProvenance = boundedErrorNetworkProvenance(issue.networkProvenance);
+    return {
+      type: issue.type || issue.level || 'unknown',
+      source: issue.source || 'console',
+      text: String(issue.text || ''),
+      at: issue.at || undefined,
+      // Retain the tracker's exact requestId/method join so an optional GET, a failed PUT,
+      // and a deferred observer duplicate remain distinguishable in the saved evidence.
+      ...(networkProvenance ? { networkProvenance } : {}),
+    };
+  });
   const expectedWarnings = normalized.filter((issue) => issue.type === 'warning' && /WebGL context (?:lost|restored)/i.test(issue.text));
   // These two ANGLE translator diagnostics are stable Chromium/vendor compiler noise on this
   // machine, not application shader or resource-lifecycle defects. Keep them visible in evidence,
@@ -7331,5 +7516,6 @@ export {
   inspectSystemLoad,
   readPerformanceRouteFailureState,
   probeWebGlContextLoss,
+  captureHeapSnapshot,
   runPerformanceAttributionProbe,
 };

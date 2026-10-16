@@ -95,7 +95,7 @@ ${D} .k-foot .orr-door-hint { text-align:right; font:400 12px/1.45 var(--dp-face
 /* foot rail: ‹ BACK + ESC keycap (matches new-game / save / tech-tree) */
 ${D} .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important; padding:10px 0 12px !important; min-height:44px !important; font:600 13.5px var(--dp-face-label) !important; font-stretch:112% !important; letter-spacing:.22em !important; text-transform:uppercase !important; color:rgb(255 253 248) !important; background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${D} .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
-${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important; font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important; line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important; font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important; line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${D} .k-foot .sf-back.k-word :is(.k-kbd, .dp-kbd, kbd) { display:none !important; }
 ${D} .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
 ${D} .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
@@ -299,19 +299,19 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .sf-crd-modes .orr-tile { min-height:72px !important; padding:6px 6px 6px !important; }
  ${D} .sf-crd-modes .fh-tile-art, ${D} .sf-crd-modes .fh-tile-art svg { height:34px !important; }
  ${D} .sf-crd-modes .fh-tile-art svg { width:34px !important; }
- ${D} .sf-crd-modes .fh-tile-legend { font-size:11px !important; letter-spacing:.1em !important; }
+ ${D} .sf-crd-modes .fh-tile-legend { font-size:12px !important; letter-spacing:.1em !important; }
  ${D} .sf-crd-stakes .orr-tile { min-height:64px !important; padding:6px 4px !important; }
  ${D} .orr-prep-stake-number { font-size:20px !important; }
  /* UI polish: at 720p the stake mark gives its 30px back so purse, pressure and yield all fit the tile unclipped */
  ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
- ${D} .orr-prep-stake-yield { font-size:11px !important; letter-spacing:0 !important; }
- ${D} .orr-prep-stake-pressure { letter-spacing:.04em !important; font-size:11px !important; }
+ ${D} .orr-prep-stake-yield { font-size:12px !important; letter-spacing:0 !important; }
+ ${D} .orr-prep-stake-pressure { letter-spacing:.04em !important; font-size:12px !important; }
  ${D} :is(.orr-prep-stake-pressure,.orr-prep-stake-yield) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
  /* Arena above the fold: hero carries the rooms — drop strip thumbs so both rows fit */
  ${D} .sf-crd-arenas .fh-tile-art { display:none !important; }
  ${D} .sf-crd-arenas .orr-tile { min-height:34px !important; padding:6px 2px !important; }
- ${D} .sf-crd-arenas .fh-tile-legend { font-size:11px !important; }
- ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:2px !important; font-size:11.5px !important; line-height:1.3 !important; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+ ${D} .sf-crd-arenas .fh-tile-legend { font-size:12px !important; }
+ ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:2px !important; font-size:12px !important; line-height:1.3 !important; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
  ${D} .orr-prep-disclosure { padding:2px 0; font-size:12px; }
  ${D} .orr-door-hero__words { bottom:110px !important; }
  ${D} > .k-foot { padding:8px 0 0 !important; }
@@ -476,7 +476,7 @@ ${A} .sf-cru-fine .orr-armory-keycap {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
-  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
@@ -584,7 +584,7 @@ ${R} .k-foot .sf-cru-kbd {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
-  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
@@ -595,7 +595,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled):
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:10px !important; padding:3px 7px 4px !important; min-width:0 !important;
   width:auto !important; height:auto !important;
-  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
@@ -663,6 +663,66 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${R} .k-foot .k-word { font-size:17px !important; }
   ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { font-size:13px !important; bottom:172px; }
   ${R} > .k-foot { padding:18px 0 12px !important; }
+}
+
+/* Short desktop armory (≥761 wide, ≤500 tall: 844×390, 900×420, 1024×440, 1280×480). The tall
+   title and the two-row foot left the catalog and the reading a ~24px row, so the filters, the
+   offers and the purchase key printed off the frame. The title closes to three lines (cradle and
+   preview share one), the foot to one row, the search joins the filters' second row where it
+   fits, and the reading's words lead so the purchase key sits above the fold. Selectors, IDs and
+   the catalog are unchanged. */
+@media (min-width:761px) and (max-height:500px) {
+  ${A} { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; gap:10px 24px !important; padding:14px 24px 8px !important; }
+  ${A} > .k-title h1 { font-size:30px !important; }
+  ${A} > .k-title .sf-cru-sub { font-size:13px !important; margin-top:4px !important; }
+  ${A} > .k-title { display:grid !important; grid-template-columns:auto minmax(0,1fr); column-gap:20px; align-items:baseline; }
+  ${A} > .k-title > :is(h1,.sf-cru-sub) { grid-column:1 / -1; }
+  ${A} > .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin:4px 0 0 !important; font-size:12px !important; line-height:1.4 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${A} > .k-title .sf-cru-cradle { grid-column:1; grid-row:3; }
+  ${A} > .k-title .sf-cru-preview { grid-column:2; grid-row:3; }
+  ${A} .orr-armory-wallet strong { font-size:30px; }
+  ${A} .orr-armory-wallet span { margin-top:4px; }
+  ${A} .sf-cru-filters { gap:2px 10px !important; padding:0 0 6px !important; align-items:center !important; }
+  ${A} .sf-cru-filters > button { min-height:32px !important; padding:6px 0 !important; }
+  ${A} .sf-cru-search { order:0 !important; flex:1 1 150px !important; width:auto !important; min-width:150px !important; min-height:32px !important; margin:0 !important; padding:6px 10px !important; font-size:13px !important; }
+  ${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:8px !important; }
+  ${A} .sf-cru-card.sf-cru-card { min-height:60px !important; padding:8px 4px 8px 10px !important; grid-template-columns:40px minmax(0,1fr) auto !important; }
+  ${A} .sf-cru-card > .orr-equipment-glyph { width:38px; height:38px; }
+  ${A} .sf-cru-card .sf-cru-name { font-size:14px !important; }
+  ${A} .orr-rail-divider { margin:8px 0 2px 10px !important; }
+  ${A} .orr-armory-reading.orr-armory-reading { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:none !important; grid-auto-rows:max-content !important; align-content:start !important; padding:4px 2px 8px 16px !important; }
+  ${A} .orr-armory-reading__words { order:-1; }
+  ${A} .orr-armory-reading__name { font-size:22px !important; margin:4px 0 6px !important; }
+  ${A} .orr-armory-reading__blurb { font-size:13px !important; line-height:1.4 !important; }
+  ${A} .orr-armory-fitline { margin:0 0 6px; }
+  ${A} .orr-armory-reading__compare { margin:6px 0 !important; }
+  ${A} .orr-armory-reading__budget { margin:6px 0 !important; }
+  ${A} .orr-armory-reading__buy { margin:6px 0 8px !important; }
+  ${A} .orr-armory-purchase { min-height:40px; padding:9px 14px; font-size:14px; }
+  ${A} > .k-foot { padding:6px 0 0 !important; flex-wrap:nowrap !important; align-items:center !important; gap:16px !important; }
+  ${A} .k-foot .k-words { flex-wrap:nowrap !important; gap:20px !important; flex:0 1 auto !important; min-width:0; }
+  ${A} .k-foot .k-word { font-size:14px !important; min-height:36px !important; white-space:nowrap; }
+  ${A} .k-foot .sf-cru-kbd { margin-left:8px !important; }
+  ${A} .sf-cru-fine { margin:0 0 0 auto !important; flex:0 1 auto; }
+  ${A} .sf-cru-fine .sf-cru-hint { margin-left:0; }
+  /* review: the next-round line ran to one ellipsized line and lost its tail ("… Choir Ze…", "new: Choir
+     Zealot"); it takes two lines before it clips. */
+  ${A} > .k-title .sf-cru-preview { white-space:normal; display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; }
+  /* review: the keycaps (ESC, 1 2 3, TAB) were 11px; 12px in this band. */
+  ${A} .k-foot .sf-cru-kbd, ${A} .sf-cru-fine .orr-armory-keycap { font-size:12px !important; letter-spacing:.12em !important; }
+}
+/* review: under ~800 wide the one-row foot is wider than the frame, and its right-packed verbs
+   pushed LAUNCH ROUND off the left edge (761×500). There the key hints take a second row. */
+@media (min-width:761px) and (max-width:820px) and (max-height:500px) {
+  ${A} > .k-foot { flex-wrap:wrap !important; row-gap:0 !important; }
+  ${A} .k-foot .k-words { justify-content:flex-start !important; }
+  /* the second foot row costs the height the two-line preview needs, so here it stays one line (PURCHASE stays on-frame) */
+  ${A} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
+}
+/* review: a phone's larger type at ≤400 tall (844×390 landscape) has no room for the second preview line either;
+   it pushed PURCHASE half under the foot, so there it stays one line too. */
+@media (min-width:761px) and (max-height:400px) {
+  html[data-sf-mobile="1"] ${A.replace(/^html /, '')} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {

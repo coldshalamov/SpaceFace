@@ -15,9 +15,10 @@
 // detached texture is treated as already resident by the residency pass so an empty upload can
 // never reach the GPU.
 //
-// userData marks store only {contentHash, ordinal} — plain JSON. Texture.copy() JSON-clones
-// userData, so a structured manifest reference on userData would throw on its own cycle, and a
-// clone carrying a copied mark is rejected by the entry.texture identity check.
+// userData marks store only plain JSON identity data: {contentHash, manifestId, ordinal}.
+// Texture.copy() JSON-clones userData, so a structured manifest reference on userData would throw
+// on its own cycle, and a clone carrying a copied mark is rejected by the entry.texture identity
+// check.
 
 import { BufferAttribute, Box3, Sphere, Vector3 } from 'three';
 import {
@@ -36,7 +37,14 @@ import {
 // sites keep a single import site on this module (W143-H1).
 export { packageDetachSerialNow } from './imageSourceDedupe.js';
 
+// A content hash identifies immutable bytes, but not a decoded resource generation. Separate
+// loaders/registries can decode the same package concurrently; their textures/geometries need
+// separate marks and retirement callbacks so one generation cannot evict another generation's
+// manifest. The secondary index keeps hash-only legacy/test callers working while every live mark
+// resolves through its exact manifestId.
 const manifests = new Map();
+const manifestsByContentHash = new Map();
+let manifestSequence = 0;
 const GEOMETRY_CPU_KEEP_ATTRIBUTES = new Set(['position', 'sfHullPosition']);
 // Material slots a presented draw binds. An emptied compressed map in one of these is the
 // texStorage `mipmaps[0].width` throw; scanning uniforms would walk every sky shader per draw.
@@ -84,6 +92,48 @@ function detachedManifestList() {
     if (manifestHasDetachedEntries(manifest)) out.push(manifest);
   }
   return out;
+}
+
+function manifestResources(loaded) {
+  return (loaded && Array.isArray(loaded.resources) ? loaded.resources : [])
+    .filter((resource) => isTextureLike(resource) || isGeometryLike(resource));
+}
+
+function sameResourceGeneration(manifest, resources) {
+  const refs = manifest && manifest.resourceRefs;
+  if (!refs || refs.length !== resources.length) return false;
+  const candidates = new Set(resources);
+  return refs.every((resource) => candidates.has(resource));
+}
+
+function manifestsForHash(contentHash) {
+  const set = manifestsByContentHash.get(String(contentHash || ''));
+  if (!set) return [];
+  const live = [];
+  for (const manifest of set) {
+    if (manifest && !manifest.evicted && manifests.get(manifest.manifestId) === manifest) {
+      live.push(manifest);
+    }
+  }
+  return live;
+}
+
+function findManifestForResources(contentHash, resources) {
+  return manifestsForHash(contentHash)
+    .find((manifest) => sameResourceGeneration(manifest, resources)) || null;
+}
+
+function manifestForMark(mark) {
+  if (!mark || !mark.contentHash) return null;
+  const exact = Number.isInteger(mark.manifestId)
+    ? manifests.get(mark.manifestId)
+    : null;
+  if (exact && exact.contentHash === mark.contentHash && !exact.evicted) return exact;
+  // Marks minted before generation identity was added have no manifestId. Resolve those only
+  // while the hash remains unambiguous; choosing an arbitrary generation would re-open the same
+  // cross-loader lifetime bug this index is intended to prevent.
+  const candidates = manifestsForHash(mark.contentHash);
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 function isTextureLike(value) {
@@ -186,8 +236,9 @@ function payloadBytes(value) {
 }
 
 /**
- * Build the detach manifest for a freshly loaded render package. Called once per package by the
- * loader after its resources are registered; idempotent per content hash.
+ * Build the detach manifest for a freshly loaded render package. Called once per decoded resource
+ * generation by the loader after its resources are registered; repeated calls for the same
+ * resources are idempotent.
  *
  * @param {object} loaded      LoadedRenderPackage-shaped value (resources, contentHash, assetId).
  * @param {object} options
@@ -205,12 +256,14 @@ export function createPackageDetachManifest(loaded, options = {}) {
   }
   const contentHash = String(loaded.contentHash || '');
   if (!contentHash) return null;
-  const existing = manifests.get(contentHash);
+  const resources = manifestResources(loaded);
+  const existing = findManifestForResources(contentHash, resources);
   if (existing) return existing;
 
   const textures = loaded.resources.filter(isTextureLike);
   const geometries = loaded.resources.filter(isGeometryLike);
   const manifest = {
+    manifestId: ++manifestSequence,
     assetId: String(loaded.assetId || ''),
     contentHash,
     renderUrl: String(loaded.renderUrl || ''),
@@ -281,10 +334,17 @@ export function createPackageDetachManifest(loaded, options = {}) {
     },
     redecode: options.redecode,
     collectResources: options.collectResources,
+    resourceRefs: Object.freeze([...resources]),
   };
-  manifests.set(contentHash, manifest);
+  manifests.set(manifest.manifestId, manifest);
+  let hashManifests = manifestsByContentHash.get(contentHash);
+  if (!hashManifests) {
+    hashManifests = new Set();
+    manifestsByContentHash.set(contentHash, hashManifests);
+  }
+  hashManifests.add(manifest);
 
-  const mark = { schema: 'spaceface.cpuDetach.v1', contentHash };
+  const mark = { schema: 'spaceface.cpuDetach.v1', contentHash, manifestId: manifest.manifestId };
   manifest.entries.forEach((entry, ordinal) => {
     entry.texture.userData = {
       ...(entry.texture.userData || {}),
@@ -375,7 +435,9 @@ export function createSourceDetachManifest(url, textures, options = {}) {
   }
   const contentHash = String(options.contentHash || '');
   if (!contentHash) return null;
-  const existing = manifests.get(contentHash);
+  // Source-GLB manifests intentionally remain hash-shared: a second compile of the same source
+  // bytes is an adopted user of the first authored tree, and its fresh tree is left unmarked.
+  const existing = manifestsForHash(contentHash)[0] || null;
   if (existing) {
     // A second compile of the same source bytes shares the first manifest: its entries cover
     // the FIRST tree's texture objects only (the fresh tree's textures stay unmarked either
@@ -410,7 +472,7 @@ export function createSourceDetachManifest(url, textures, options = {}) {
 export function isPackageTextureDetached(texture) {
   const mark = texture && texture.userData && texture.userData.spacefaceCpuDetach;
   if (!mark) return false;
-  const manifest = manifests.get(mark.contentHash);
+  const manifest = manifestForMark(mark);
   const entry = manifest && manifest.entries[mark.ordinal];
   return !!entry && entry.texture === texture && textureEntryReleased(entry);
 }
@@ -424,7 +486,7 @@ export function isPackageTextureDetached(texture) {
 export function packageTextureDetachCovers(texture) {
   const mark = texture && texture.userData && texture.userData.spacefaceCpuDetach;
   if (!mark) return false;
-  const manifest = manifests.get(mark.contentHash);
+  const manifest = manifestForMark(mark);
   const entry = manifest && manifest.entries[mark.ordinal];
   return !!entry && entry.texture === texture;
 }
@@ -437,7 +499,7 @@ export function packageTextureDetachCovers(texture) {
 export function detachPackageTexture(texture) {
   const mark = texture && texture.userData && texture.userData.spacefaceCpuDetach;
   if (!mark) return false;
-  const manifest = manifests.get(mark.contentHash);
+  const manifest = manifestForMark(mark);
   if (!manifest || manifest.evicted) return false;
   const entry = manifest.entries[mark.ordinal];
   if (!entry || entry.texture !== texture || entry.detached) return false;
@@ -504,7 +566,7 @@ export function detachPackageTexture(texture) {
 export function isPackageGeometryDetached(geometry) {
   const mark = geometry && geometry.userData && geometry.userData.spacefaceCpuDetach;
   if (!mark || mark.kind !== 'geometry') return false;
-  const manifest = manifests.get(mark.contentHash);
+  const manifest = manifestForMark(mark);
   const entry = manifest && manifest.geometryEntries[mark.ordinal];
   return !!entry && entry.geometry === geometry && entry.detached === true;
 }
@@ -512,7 +574,7 @@ export function isPackageGeometryDetached(geometry) {
 function geometryManifestEntry(geometry) {
   const mark = geometry && geometry.userData && geometry.userData.spacefaceCpuDetach;
   if (!mark || mark.kind !== 'geometry') return null;
-  const manifest = manifests.get(mark.contentHash);
+  const manifest = manifestForMark(mark);
   if (!manifest || manifest.evicted) return null;
   const entry = manifest.geometryEntries[mark.ordinal];
   return (entry && entry.geometry === geometry) ? { manifest, entry } : null;
@@ -672,12 +734,37 @@ function detachedGeometryEntryUploadPending(entry, renderer) {
   return entry.uploadedOn.get(renderer) !== true;
 }
 
-/** Drop the manifest for an evicted/disposed package; its resources are gone with the entry. */
-export function dropPackageDetachManifest(contentHash) {
-  const manifest = manifests.get(String(contentHash || ''));
+/**
+ * Drop the manifest for an evicted package generation; its resources are gone with that entry.
+ *
+ * `owner` is the manifest returned by the registering decode. Hash-only callers are retained for
+ * source-GLB/test compatibility, but are allowed to release only an unambiguous live generation.
+ * That refusal is deliberate: a content hash alone cannot identify which decoded resources have
+ * actually retired when two registries hold the same immutable package.
+ */
+export function dropPackageDetachManifest(contentHash, owner = null) {
+  const hash = String(contentHash || '');
+  let manifest = null;
+  if (owner && typeof owner === 'object') {
+    const candidate = Number.isInteger(owner.manifestId)
+      ? manifests.get(owner.manifestId)
+      : null;
+    if (candidate && candidate === owner && candidate.contentHash === hash) manifest = candidate;
+  } else if (owner != null) {
+    const candidate = manifests.get(owner);
+    if (candidate && candidate.contentHash === hash) manifest = candidate;
+  } else {
+    const candidates = manifestsForHash(hash);
+    if (candidates.length === 1) manifest = candidates[0];
+  }
   if (!manifest) return false;
   manifest.evicted = true;
-  manifests.delete(manifest.contentHash);
+  manifests.delete(manifest.manifestId);
+  const hashManifests = manifestsByContentHash.get(manifest.contentHash);
+  if (hashManifests) {
+    hashManifests.delete(manifest);
+    if (hashManifests.size === 0) manifestsByContentHash.delete(manifest.contentHash);
+  }
   return true;
 }
 
@@ -823,7 +910,7 @@ function adoptManifestCompressedMips(texture) {
   if (!compressedMipsMissing(texture)) return false;
   const mark = texture.userData && texture.userData.spacefaceCpuDetach;
   if (!mark) return false;
-  const manifest = manifests.get(mark.contentHash);
+  const manifest = manifestForMark(mark);
   if (!manifest || manifest.evicted) return false;
   const entry = manifest.entries[mark.ordinal];
   const donor = entry && entry.texture;
@@ -864,7 +951,7 @@ export async function refillPresentedCompressedUploads(textures) {
   const wanted = new Set();
   for (const texture of needsManifest) {
     const mark = texture.userData.spacefaceCpuDetach;
-    const manifest = mark && manifests.get(mark.contentHash);
+    const manifest = mark && manifestForMark(mark);
     if (manifest && !manifest.evicted) wanted.add(manifest);
   }
   for (const manifest of wanted) await rehydrateManifestOnce(manifest);
@@ -927,7 +1014,7 @@ export function preparePresentedDraw(renderer, geometry, material) {
   let blocked = false;
   const geometryMark = geometry && geometry.userData && geometry.userData.spacefaceCpuDetach;
   if (geometryMark && geometryMark.kind === 'geometry') {
-    const manifest = manifests.get(geometryMark.contentHash);
+    const manifest = manifestForMark(geometryMark);
     const entry = manifest && !manifest.evicted && manifest.geometryEntries[geometryMark.ordinal];
     if (entry && entry.geometry === geometry && entry.detached) {
       blocked = hold || detachedGeometryEntryUploadPending(entry, renderer);
@@ -1103,7 +1190,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
   for (const texture of textures || []) {
     if (!isPackageTextureDetached(texture)) continue;
     const mark = texture.userData && texture.userData.spacefaceCpuDetach;
-    const manifest = mark && manifests.get(mark.contentHash);
+    const manifest = mark && manifestForMark(mark);
     if (manifest && !manifest.evicted) wanted.add(manifest);
   }
   const result = {
@@ -1140,7 +1227,7 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
   for (const geometry of geometries || []) {
     if (!isPackageGeometryDetached(geometry)) continue;
     const mark = geometry.userData && geometry.userData.spacefaceCpuDetach;
-    const manifest = mark && manifests.get(mark.contentHash);
+    const manifest = mark && manifestForMark(mark);
     if (manifest && !manifest.evicted) wanted.add(manifest);
   }
   const result = {
@@ -1232,6 +1319,8 @@ export function packageDetachDiagnostics() {
 /** Test/reset seam: drops every manifest (used by node --test isolation). */
 export function resetPackageDetachManifestsForTests() {
   manifests.clear();
+  manifestsByContentHash.clear();
+  manifestSequence = 0;
   orientationHolds = new WeakSet();
   presentedDetachRehydrate = null;
 }

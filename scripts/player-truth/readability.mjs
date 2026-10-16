@@ -256,10 +256,12 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
     classes[c] = { n: S.length, lowContrastFrac: S.length ? low.length / S.length : 0, exampleT: (low[0] || S[0] || {}).t, exampleBox: (low[0] || S[0] || {}).box,
       markerRate: S.length ? marked / S.length : 0, threatRate: S.length ? threat / S.length : 0, worst,
       meanLab: S.length ? [0, 1, 2].map((k) => +(S.reduce((s, x) => s + x.lab[k], 0) / S.length).toFixed(1)) : null,
-      // A fitted fighter is not an opaque radius square. This statistic mixes hull and sky;
-      // no enemy silhouette ownership was recorded to attribute the screenshot's pixels.
-      ...(c === 'enemy' && S.length ? { contrast: { status: 'unmeasured', method: 'radius-square',
-        reason: 'missing enemy silhouette pixel ownership; inner radius square mixes hull and backdrop' } } : {}) };
+      // Neither a fitted fighter nor an asteroid is an opaque physics-radius square.
+      // In particular VIS.pooled means only "no entity mesh, projection in view";
+      // it does not establish a submitted asteroid slot or its rendered silhouette.
+      // Retain pigment diagnostics without grading sky pixels as an owned body.
+      ...((c === 'enemy' || c === 'asteroid') && S.length ? { contrast: { status: 'unmeasured', method: 'radius-square',
+        reason: `missing ${c} silhouette pixel ownership; inner radius square mixes body and backdrop` } } : {}) };
   }
   const markerCreditFor = (a, b) => threatMarkerCredit(classes[a] ? classes[a].threatRate : 0, classes[b] ? classes[b].threatRate : 0);
   const pairs = [];

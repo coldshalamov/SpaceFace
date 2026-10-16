@@ -226,9 +226,49 @@ async function main() {
   const advance = (totalMs, stepMs = 16) => {
     for (let t = 0; t < totalMs; t += stepMs) stepFrame(stepMs);
   };
+  const settleAsync = async () => {
+    // The frame driver is synchronous; let promise-backed mission-lane commands finish before
+    // checking their emitted events.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  };
   const acceptEmits = (emitted) => emitted.filter((e) => e.type === 'ui:acceptMission').map((e) => e.payload.missionId);
 
   try {
+    // The clock keeps the authored hold + retract duration when frames are delayed.
+    // A compositor stall cannot turn one activation into a minimum frame count.
+    for (const source of ['auto', 'pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      sc.root.fire(source === 'auto' ? 'click' : source === 'pointer' ? 'pointerdown' : 'keydown',
+        { target: sc.dossier.currentAccept(), button: 0, key: 'Enter' });
+      stepFrame(200);
+      assert.deepEqual(acceptEmits(emitted), [], `${source} still requires the full hold`);
+      stepFrame(6000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} catches up elapsed hold and retract`);
+      advance(1000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} never repeats the completed acceptance`);
+      screen.dispose();
+    }
+
+    for (const source of ['pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire(source === 'pointer' ? 'pointerdown' : 'keydown', { target: key, button: 0, key: 'Enter' });
+      stepFrame(200);
+      dom.doc.fire(source === 'pointer' ? 'pointerup' : 'keyup', { key: 'Enter' });
+      stepFrame(6000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${source} release wins before the delayed frame`);
+      screen.dispose();
+    }
+
     // ── arm A → complete hold → remove A / paint B → the drain commits NOTHING ─────────────
     {
       const { ctx, state, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
@@ -247,6 +287,7 @@ async function main() {
         'the repaint detached A and painted B');
       assert.equal(keyA.isConnected, false, 'the armed key is detached');
       advance(600);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], 'no mission accepted — the drain never falls back to B');
       screen.dispose();
     }
@@ -266,6 +307,7 @@ async function main() {
       assert(keyA2 && keyA2.getAttribute('data-accept') === 'm_alpha' && keyA2 !== keyA,
         'the same offer repainted under a new node');
       advance(600);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'the held offer commits once through its fresh node');
       screen.dispose();
     }
@@ -282,6 +324,7 @@ async function main() {
       state.missions.boards.station_alpha.slots = [offer('m_alpha', 'Alpha Run', 9000, { collateral: 1200 })];
       screen.refresh(ctx); // same id, repriced — not the contract the player held
       advance(600);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], 'changed terms refuse the commit');
       screen.dispose();
     }
@@ -300,6 +343,7 @@ async function main() {
       const rowB = { closest: (sel) => (sel === '[data-mid]' ? rowB : null), getAttribute: () => 'm_beta', focus() {} };
       sc.board.fire('click', { target: rowB });
       advance(600);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], 'a mid-drain selection change commits nothing');
       screen.dispose();
     }
@@ -315,6 +359,7 @@ async function main() {
       advance(600);
       screen.onHide();
       advance(600);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], 'a hidden screen never commits behind the player');
       screen.dispose();
     }
@@ -329,6 +374,7 @@ async function main() {
       const keyA = sc.dossier.currentAccept();
       sc.root.fire('click', { target: keyA }); // no pointer/key held — assistive activation self-arms
       advance(800); // the auto hold still fills for 450 ms, then the motionless drain commits at once
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'reduced motion commits the held offer at once');
       screen.dispose();
       reduceMotion.flag = false;
@@ -343,6 +389,7 @@ async function main() {
       const keyA = sc.dossier.currentAccept();
       sc.root.fire('keydown', { target: keyA, key: 'Enter' });
       advance(1400);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'unchanged A accepts exactly once');
       sc.root.fire('keyup', { target: keyA, key: 'Enter' });
       screen.dispose();
@@ -363,6 +410,7 @@ async function main() {
       advance(120);
       screen.refresh(ctx);
       advance(700);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} accepts exactly once through unchanged repaints`);
       screen.dispose();
     }
@@ -390,6 +438,7 @@ async function main() {
         screen.refresh(ctx); // eligibility returning is not a new user activation
       }
       advance(10000);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], `${change} cancels the old active hold`);
       screen.dispose();
     }
@@ -405,6 +454,7 @@ async function main() {
       screen.refresh(ctx);
       sc.root.fire(release, { target: sc.dossier.currentAccept(), key: 'Enter' });
       advance(1000);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], `${release} still retracts the retained hold`);
       screen.dispose();
     }
@@ -422,6 +472,7 @@ async function main() {
       assert.equal(pressed.isConnected, false);
       dom.doc.fire(release, { target: dom.doc.body, key: 'Enter' });
       advance(1000);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], `${release} on the document cancels the retained hold`);
       screen.dispose();
       assert.equal((dom.doc.listeners[release] || []).length, 0, 'disposal removes release listeners');
@@ -436,6 +487,7 @@ async function main() {
       screen.refresh(ctx);
       if (stop === 'hide') screen.onHide(); else screen.dispose();
       advance(1000);
+      await settleAsync();
       assert.deepEqual(acceptEmits(emitted), [], `${stop} cancels a repainted active hold`);
       if (stop === 'hide') screen.dispose();
     }

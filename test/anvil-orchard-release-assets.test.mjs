@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
@@ -55,7 +56,7 @@ for (const [key, id, runtimeAssetId, collisionCount] of [
   const binding = RENDER_PACKAGE_PILOTS.find(p => p.key === key);
   assert.equal(binding.expectedContentHash, metadata.contentHash);
   assert.equal(binding.runtimeAssetId, runtimeAssetId);
-  const semantics = await derivePilotSemanticManifest(pilot, new URL('../' + pilot.sourceUrl, import.meta.url).pathname);
+  const semantics = await derivePilotSemanticManifest(pilot, fileURLToPath(new URL('../' + pilot.sourceUrl, import.meta.url)));
   assert.equal(semantics.collisions.length, collisionCount);
   assert.equal(metadata.runtime.hidden.length, collisionCount);
   assert.ok(metadata.runtime.primitives.every(p => !p.name.startsWith('COLLISION_')));

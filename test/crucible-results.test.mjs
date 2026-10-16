@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { runSession } from '../src/systems/runSession.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import {
   deathSentence,
   outcomeSentence,
@@ -140,6 +141,8 @@ test('the player dying ends the run and publishes a causal summary', () => {
   const harness = boot();
   beginActive(harness);
   harness.state.run.wave = 4;
+  // This played-round fixture must latch the same first-act admission as real flight input.
+  noteSwarmPilotAction(harness.state);
   cohortKill(harness);
   cohortKill(harness);
   harness.bus.emit('run:awardRequested', { credits: 40, xp: 260, score: 900 });
@@ -724,7 +727,9 @@ test('the plate renders rather than throwing on every empty shape the owner can 
   assert.equal(none.lines[0], 'Run Over');
   assert.ok(none.lines.includes('The run ended.'));
   assert.ok(none.lines.includes('No flight record was kept for that run.'));
-  assert.equal(none.buttons.length, 3, 'every way out is still offered');
+  assert.deepEqual(none.buttons.filter((button) => !button.textContent.startsWith('Copy '))
+    .map((button) => button.textContent),
+  ['Run it again — same seed', 'New run', 'Main menu'], 'every way out is still offered');
 
   // 2. A defeat with no receipt: run:ended defaults its outcome to 'defeat' regardless.
   const noReceipt = mountResults({
@@ -762,23 +767,27 @@ test('the results plate is presentation only and the three actions are untouched
   const { emitted, buttons } = mountResults(WAVE_6_DEATH);
   assert.equal(emitted.length, 0, 'mounting the plate emits nothing at all');
   assert.deepEqual(
-    buttons.map((b) => b.textContent),
+    buttons.filter((button) => !button.textContent.startsWith('Copy ')).map((b) => b.textContent),
     ['Run it again — same seed', 'New run', 'Main menu'],
   );
 
   clearCrucibleSetup();
-  const fire = (button) => button.listeners.click.forEach((fn) => fn());
+  const fire = (plate, label) => {
+    const button = plate.buttons.find((candidate) => candidate.textContent === label);
+    assert.ok(button, `missing action: ${label}`);
+    button.listeners.click.forEach((fn) => fn());
+  };
 
   const again = mountResults(WAVE_6_DEATH);
-  fire(again.buttons[0]);
+  fire(again, 'Run it again — same seed');
   assert.deepEqual(again.emitted, [{ event: 'ui:replaceScreen', payload: { id: 'crucible' } }]);
 
   const fresh = mountResults(WAVE_6_DEATH);
-  fire(fresh.buttons[1]);
+  fire(fresh, 'New run');
   assert.deepEqual(fresh.emitted, [{ event: 'ui:replaceScreen', payload: { id: 'crucible' } }]);
 
   const menu = mountResults(WAVE_6_DEATH);
-  fire(menu.buttons[2]);
+  fire(menu, 'Main menu');
   assert.deepEqual(menu.emitted.map((e) => e.event), [
     'game:over:dismissed', 'game:exitToMenu', 'ui:closeAll', 'ui:pushScreen',
   ]);

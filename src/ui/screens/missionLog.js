@@ -431,9 +431,59 @@ export function objectiveText(m) {
       return `Scan ${prog}/${tgt} targets`;
     case 'smuggling_run':
       return `Deliver contraband to ${dest}`;
-    default:
-      return `${prog}/${tgt}`;
+    // Physical-job contracts. Same sentences the sim keeps for the nav marker (missionNavReason),
+    // so the HUD tracker, local map, log and station Contracts all read as one instruction
+    // instead of a bare "0/1".
+    case 'tow_recovery': {
+      const load = p.variant === 'drift_hulk' ? 'dead freighter' : 'slag core';
+      return m.destStationId
+        ? `Tow the ${load} to ${dest}, or sling it into the yard`
+        : `Tow the ${load} home, or sling it into the yard`;
+    }
+    case 'demolition':
+      return `${p.variant === 'guarded_tower' ? 'Knock down the picketed tower' : 'Knock down the marked tower'}${inSector(m)}`;
+    case 'rescue_under_fire':
+      return tgt > 1
+        ? `Pull ${prog}/${tgt} life pods out of ${contractSectorName(m, 'the field')}`
+        : `Pull the life pods out of ${contractSectorName(m, 'the field')}`;
+    case 'race': {
+      const course = p.courseName ? `the ${p.courseName} gates` : 'the gate course';
+      return tgt > 1 ? `Run ${course} in order · ${prog}/${tgt} cleared` : `Run ${course} and finish`;
+    }
+    case 'bulk_haul':
+      return `Tether-haul ${prog}/${tgt}u bulk ore to ${dest}`;
+    case 'capital_boss':
+      return `Destroy the capital ship${inSector(m)}`;
+    case 'authored_set_piece':
+      return m.brief || m.title || `Finish the physical job${inSector(m)}`;
+    case 'split_manifest':
+      return tgt > 1 ? `Land the cargo nets on the yard pad · ${prog}/${tgt} landed` : 'Land the cargo net on the yard pad';
+    case 'quiet_berth':
+      return 'Pull the dead lighter into the west berth with its load intact';
+    case 'counterweight_watch':
+      return 'Hold the yard gate open on its counterweight while the tug walks the crates through';
+    case 'breakaway_recovery':
+      return 'Bring the broken-away flywheel home through the Concord catcher fork';
+    case 'heist_intercept':
+      return 'Intercept the launcher capsule and deliver it to the Quiet fence';
+    default: {
+      // Unknown or future types: the contract's own words first, the plain type name second.
+      // A bare count is only ever a suffix, and only when there is more than one thing to count.
+      const words = m.navReason || m.brief || prettyType(m.type);
+      return tgt > 1 ? `${words} · ${prog}/${tgt}` : words;
+    }
   }
+}
+
+/** " in <Sector>" when the contract names a destination sector, else "". */
+function inSector(m) {
+  const name = contractSectorName(m, '');
+  return name ? ` in ${name}` : '';
+}
+
+function contractSectorName(m, fallback) {
+  const sector = m.destSectorId ? SECTOR_BY_ID.get(m.destSectorId) : null;
+  return sector && sector.name ? sector.name : fallback;
 }
 
 /**
@@ -2537,7 +2587,7 @@ export const missionLogScreen = {
     this._listEl.innerHTML = '';
 
     if (!activeMissions.length) {
-      this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts.</p></div>';
+      this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts. Visit a station board or bar to accept work.</p></div>';
       this._focusedId = null;
       this._renderStage(state, null, tracked);
       if (this._compVisible) this._renderCompleted();

@@ -71,9 +71,8 @@ test('PRO-03: the HUD respawn toast reads in the player locale', () => {
   assert.ok(!en.includes(DE), `no de-DE grouping survives in an en-US readout, got: ${en}`);
 });
 
-test('PRO-03: the HUD credits tooltip reads in the player locale', () => {
-  // buildCreditsTip is closure-private, so it is proven through the exported number helper it now
-  // uses, and through the absence of the pinned tag in the source (next test).
+test('PRO-03: shared HUD count formatting follows the selected runtime locale', () => {
+  // HUD readouts use the shared number formatter when no state-specific locale is supplied.
   setGameLocale('en-US');
   assert.equal(formatCount(N, null), EN);
   setGameLocale('de-DE');

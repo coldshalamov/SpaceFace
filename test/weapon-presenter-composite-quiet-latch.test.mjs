@@ -226,3 +226,81 @@ test('dispose clears composite latch', () => {
   assert.equal(presenter._presenterQuietEmpty, false);
   clearShieldContacts();
 });
+
+test('world-boundary matter reset retires debris immediately and preserves the next emission clock', () => {
+  const state = quietState({ simTime: 40 });
+  const fields = state.fields.active;
+  const presenter = makePresenter(state);
+  try {
+    presenter.quarks.spawnCollisionSpall(10, 0.2, 20, 1, 0, 0, 3);
+    presenter.update(1 / 60, { state });
+    assert.ok(presenter.quarks.collisionSpall.particleNum > 0);
+
+    state.simTime = 0;
+    presenter.resetTransientMatter();
+    assert.equal(presenter.quarks.collisionSpall.particleNum, 0);
+    assert.ok(presenter.quarks.renderer.batches.every((batch) => batch.geometry.instanceCount === 0),
+      'paused presentation cannot retain the old debris draw');
+    assert.equal(state.fields.active, fields, 'field simulation is not reset by cosmetic cleanup');
+
+    presenter.quarks.spawnCollisionSpall(30, 0.2, 40, 1, 0, 0, 3);
+    presenter.update(1 / 60, { state });
+    assert.ok(presenter.quarks.collisionSpall.particleNum > 0,
+      'new-world debris is not mistaken for pre-rewind debris');
+    state.simTime += 1 / 60;
+    presenter.update(1 / 60, { state });
+    assert.ok(presenter.quarks.collisionSpall.particleNum > 0,
+      'new debris ages on the new simulation clock');
+    assert.ok(presenter.quarks.collisionSpall.particles[0].age > 0);
+  } finally { presenter.dispose(); }
+});
+
+test('world-boundary reset clears weapon transients while retaining hull history and live fields', () => {
+  const state = quietState({ render: { meshes: new Map([[1, new THREE.Group()]]) } });
+  const field = { id: 'well', kind: FIELD_KINDS.WELL, center: { x: 10, z: -4 },
+    distortionRadius: 190, distortionStrength: 240 };
+  state.fields.active.push(field);
+  const projectiles = state.entityIndex.projectiles;
+  projectiles.push({ id: 99, type: 'projectile', alive: true,
+    pos: { x: 5, z: 0 }, prevPos: { x: 0, z: 0 }, vel: { x: 10, z: 0 },
+    data: { weaponId: 'wpn_pulse_laser_s' } });
+  const presenter = makePresenter(state);
+  try {
+    presenter.retainHullMark(1, 0, 0.35, 0, 0, 1, 0, 'durable-scar');
+    presenter.handleFire({ ownerId: 1, weaponId: 'wpn_pulse_laser_s' }, { x: 0, z: 0 }, 0);
+    for (const weaponId of ['wpn_pulse_laser_s', 'wpn_railgun_m']) {
+      presenter.handleHit({ weaponId, ownerId: 1, targetId: 2, pos: { x: 20, z: 0 },
+        normal: { x: -1, z: 0 }, approach: { x: 1, z: 0 } }, false);
+    }
+    presenter.update(1 / 60, { state });
+    assert.ok(presenter.discharges.mesh.count > 0);
+    assert.ok(presenter.heavyImpacts.live > 0);
+    assert.ok(presenter.scorches.live > 1);
+    assert.ok(presenter.lights.live > 0);
+    assert.ok(presenter.distortion.live > 0);
+    assert.equal(presenter.bolts.live, 1);
+    assert.equal(presenter.ribbons.live, 1);
+
+    projectiles.length = 0;
+    presenter.resetTransientMatter();
+    assert.equal(presenter.discharges.mesh.count, 0);
+    assert.equal(presenter.heavyImpacts.mesh.count, 0);
+    assert.equal(presenter.bolts.mesh.count, 0);
+    assert.equal(presenter.bolts.byEntity.size, 0);
+    assert.equal(presenter.ribbons.live, 0);
+    assert.equal(presenter.ribbons.geometry.drawRange.count, 0);
+    assert.equal(presenter.ribbons.byEntity.size, 0);
+    assert.equal(presenter.distortion.mesh.count, 0);
+    assert.equal(presenter.wellDistortion.mesh.count, 0);
+    assert.equal(presenter.lights.live, 0);
+    assert.ok(presenter.lights.slots.every((slot) => slot.light.intensity === 0));
+    assert.equal(presenter.scorches.live, 1, 'durable damage history survives transient cleanup');
+    assert.equal(presenter.scorches.slots.find((slot) => slot.alive)?.scarId, 'durable-scar');
+    assert.equal(state.fields.active[0], field, 'the authoritative field is retained');
+
+    presenter.handleFire({ ownerId: 1, weaponId: 'wpn_pulse_laser_s' }, { x: 30, z: 0 }, 0);
+    presenter.update(1 / 60, { state });
+    assert.ok(presenter.discharges.mesh.count > 0, 'the cleared source pool can fire again');
+    assert.equal(presenter.wellDistortion.live, 1, 'live field distortion is rebuilt from current state');
+  } finally { presenter.dispose(); clearShieldContacts(); }
+});

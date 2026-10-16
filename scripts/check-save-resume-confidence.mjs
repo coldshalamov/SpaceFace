@@ -27,6 +27,7 @@ const menu = read('src/ui/screens/mainMenu.js');
 const save = read('src/save/saveSystem.js');
 const saveLoad = read('src/ui/screens/saveLoad.js');
 const uiRoot = read('src/ui/uiRoot.js');
+const saveFeedback = read('src/ui/saveFeedback.js');
 const missions = read('src/systems/missions.js');
 const localizedCoreCopy = read('src/ui/localizedCoreCopy.js');
 
@@ -226,16 +227,24 @@ assert.equal(latestOccupiedSlot({
 // UI save feedback: F5/F9/autosave and Save/Load screen actions all converge through save events.
 // 'save:started' is intentionally not toasted — the write lands in milliseconds and 'Saved …'
 // follows, so two receipts for one press only crowded the lane (wireSaveFeedback's own comment).
-assert.match(uiRoot, /function wireSaveFeedback\(bus\)/, 'uiRoot must centralize save/load feedback');
+assert.match(uiRoot, /function wireSaveFeedback\(bus(?:,\s*isTitleMenuActive\s*=\s*null)?\)/,
+  'uiRoot must centralize save/load feedback');
 for (const eventName of ['save:completed', 'save:loaded', 'save:error']) {
   assert.match(uiRoot, new RegExp(`bus\\.on\\('${eventName}'`), `uiRoot must listen for ${eventName}`);
 }
 assert.doesNotMatch(uiRoot, /bus\.on\('save:started'[\s\S]{0,200}emit\('toast'/,
   'save:started stays silent by design — the completion receipt is the one toast');
-assert.match(uiRoot, /function saveErrorText\(payload = \{\}\)/, 'uiRoot must translate save error reasons into player copy');
+assert.match(uiRoot, /import \{ saveErrorText, saveSlotLabel, shouldToastSaveError \} from '\.\/saveFeedback\.js'/,
+  'uiRoot must use the shared save feedback formatter and title suppression policy');
+assert.match(uiRoot, /export \{ saveErrorText \}/,
+  'uiRoot must preserve its public saveErrorText export');
+assert.match(saveFeedback, /function saveErrorText\(payload = \{\}\)/,
+  'shared save feedback module must translate save error reasons into player copy');
 assert.match(uiRoot, /Autosaved/, 'uiRoot should show a short autosave completion toast');
-assert.match(uiRoot, /Start or load a game before saving/, 'uiRoot should explain no-player save failures');
-assert.match(uiRoot, /No save found for /, 'uiRoot should explain load misses');
+assert.match(saveFeedback, /Start or load a game before saving/,
+  'shared save feedback should explain no-player save failures');
+assert.match(saveFeedback, /No save found for /,
+  'shared save feedback should explain load misses');
 assert.doesNotMatch(saveLoad, /Saving to /, 'saveLoad should not duplicate the centralized save:started toast');
 
 console.log('Save/resume confidence OK - title Continue shows latest-save context and loads the displayed slot.');

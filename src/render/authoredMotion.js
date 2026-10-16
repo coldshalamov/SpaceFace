@@ -37,13 +37,21 @@ import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfl
 // the instance (one per mounted LOD file) and parks invisible subtrees at rest, so a level swap
 // is just a visibility flip on an already-bound node.
 
-import { bindAuthoredMotion, bindAuthoredMotionSteps } from '../contracts/motionBank.js';
+import { bindAuthoredMotion, bindAuthoredMotionSteps, hasBoundRigidMotionNode } from '../contracts/motionBank.js';
 import { primeMotionTravelPad } from './visualCullRadius.js';
 
 const ACCEPTED_SCAN_SOURCE = 'player-scanner';
 
 // entityId -> Set<controller>. entity.id is the durable join key the scanner payload carries.
 const registry = new Map();
+const VERIFIED_MOTION_BANKS = new WeakMap();
+const ATTESTED_MOTION_CONTROLLERS = new WeakMap();
+
+function freezeMotionDocument(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) freezeMotionDocument(child);
+  return Object.freeze(value);
+}
 
 // A persistently-throwing controller on a hot event (scan:pulse, killed,
 // m:event) used to warn per dispatch for the session's life — warn rate ==
@@ -1254,17 +1262,57 @@ export async function loadMotionBank(ref, fetchImpl) {
   if (Number.isFinite(ref.bytes) && bytes.byteLength !== ref.bytes) {
     throw new Error(`motion bank byte length mismatch for ${ref.uri}: ${bytes.byteLength} != ${ref.bytes}.`);
   }
+  let verifiedSha256 = null;
   if (typeof ref.sha256 === 'string' && /^[0-9a-f]{64}$/.test(ref.sha256)) {
     const digest = await sha256Hex(bytes);
     if (digest && digest !== ref.sha256) {
       throw new Error(`motion bank SHA-256 mismatch for ${ref.uri}: ${digest} != ${ref.sha256}.`);
     }
+    if (digest) verifiedSha256 = digest;
   }
   const doc = JSON.parse(new TextDecoder().decode(bytes));
   if (doc.rigId && ref.rigId && doc.rigId !== ref.rigId) {
     throw new Error(`motion bank rigId mismatch for ${ref.uri}: ${doc.rigId} != ${ref.rigId}.`);
   }
-  return { ref, bank: doc };
+  if (!verifiedSha256) return { ref, bank: doc };
+  const loaded = Object.freeze({ ref: Object.freeze({ ...ref }), bank: freezeMotionDocument(doc) });
+  VERIFIED_MOTION_BANKS.set(loaded, Object.freeze({ bankSha256: verifiedSha256,
+    sourceAssetId: doc.sourceAssetId, rigId: doc.rigId }));
+  return loaded;
+}
+
+function attestInstanceMotion(root, motionBank, controller, options) {
+  const receipt = VERIFIED_MOTION_BANKS.get(motionBank), identity = options.packageIdentity;
+  const actual = root?.userData?.spacefaceRenderPackage, owner = options.residencyOwner;
+  const ownerId = owner?.userData?.presentationEntityId;
+  const ownerGeneration = owner?.userData?.presentationOccupantGeneration;
+  if (!receipt || !identity || typeof identity.assetId !== 'string' || !identity.assetId
+      || !/^[0-9a-f]{64}$/.test(identity.contentHash || '') || identity.assetId !== actual?.assetId
+      || identity.contentHash !== actual?.contentHash || options.sourceAssetId !== receipt.sourceAssetId
+      || ownerId == null || ownerGeneration == null) return controller;
+  ATTESTED_MOTION_CONTROLLERS.set(controller, { ...receipt, root, owner, ownerId, ownerGeneration,
+    packageAssetId: identity.assetId, packageContentHash: identity.contentHash });
+  return controller;
+}
+
+/** Qualification is backed by verified bytes and the live controller's exact original binding. */
+export function isAttestedRigidMotionOwner(controller, node, expected) {
+  const proof = ATTESTED_MOTION_CONTROLLERS.get(controller);
+  if (!proof || !expected || proof.bankSha256 !== expected.bankSha256
+      || proof.sourceAssetId !== expected.sourceAssetId || proof.rigId !== expected.rigId
+      || proof.packageAssetId !== expected.packageAssetId
+      || proof.packageContentHash !== expected.packageContentHash
+      || proof.owner.userData?.presentationEntityId !== proof.ownerId
+      || proof.owner.userData?.presentationOccupantGeneration !== proof.ownerGeneration) return false;
+  const identity = proof.root.userData?.spacefaceRenderPackage;
+  if (identity?.assetId !== proof.packageAssetId || identity?.contentHash !== proof.packageContentHash
+      || !hasBoundRigidMotionNode(controller, node, expected.bindingId)) return false;
+  let underPackage = false;
+  for (let current = node; current; current = current.parent) {
+    if (current === proof.root) underPackage = true;
+    if (current === proof.owner) return underPackage;
+  }
+  return false;
 }
 
 /**
@@ -1273,12 +1321,13 @@ export async function loadMotionBank(ref, fetchImpl) {
  */
 export function bindInstanceMotion(root, motionBank, options = {}) {
   if (!motionBank || !motionBank.bank) return null;
-  return bindAuthoredMotion(root, motionBank.bank, options);
+  return attestInstanceMotion(root, motionBank, bindAuthoredMotion(root, motionBank.bank, options), options);
 }
 
 // Stepped twin for paced commit legs — the name-map collect yields per 512
 // scanned nodes; the controller resolves only after the collect completes.
 export function* bindInstanceMotionSteps(root, motionBank, options = {}) {
   if (!motionBank || !motionBank.bank) return null;
-  return yield* bindAuthoredMotionSteps(root, motionBank.bank, options);
+  const controller = yield* bindAuthoredMotionSteps(root, motionBank.bank, options);
+  return attestInstanceMotion(root, motionBank, controller, options);
 }

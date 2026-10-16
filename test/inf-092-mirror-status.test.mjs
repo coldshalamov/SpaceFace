@@ -88,7 +88,8 @@ test('INF-092 missed mirror write reports failure and names the durable local st
     const synced = h.events.filter((e) => e.name === 'save:store-synced');
     assert.equal(synced.length, 1, 'one status event, no duplicate save or transition');
     assert.deepEqual(synced[0].payload,
-      { ok: false, durableStore: 'local', mirror: 'shared', error: 'mirror_unreachable' });
+      { ok: false, durableStore: 'local', mirror: 'shared', error: 'mirror_unreachable',
+        storeCapability: { origin: 'http://', status: 'available' } });
     assert.ok(!h.events.some((e) => e.name === 'toast'), 'no save write rides the status path');
   } finally { h.restore(); g.restore(); }
 });
@@ -155,6 +156,41 @@ test('INF-092 a hung mirror PUT cannot pin Continue at Checking saves', async ()
   } finally {
     AbortSignal.timeout = realTimeout;
     h.restore();
+    if (prev.location === undefined) delete globalThis.location; else globalThis.location = prev.location;
+    if (prev.fetch === undefined) delete globalThis.fetch; else globalThis.fetch = prev.fetch;
+    if (prev.localStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage = prev.localStorage;
+  }
+});
+
+test('INF-092 background mirrors retain the long PUT deadline', async () => {
+  const storage = makeStorage();
+  const prev = {
+    location: globalThis.location,
+    fetch: globalThis.fetch,
+    localStorage: globalThis.localStorage,
+  };
+  const realTimeout = AbortSignal.timeout;
+  const deadlines = [];
+  globalThis.location = { protocol: 'http:' };
+  globalThis.localStorage = storage;
+  AbortSignal.timeout = (ms) => {
+    deadlines.push(ms);
+    return new AbortController().signal;
+  };
+  globalThis.fetch = async (url, opts = {}) => {
+    if ((opts.method || 'GET') === 'PUT') return { ok: true, status: 200 };
+    return { ok: true, json: async () => ({ keys: {} }) };
+  };
+  const h = installSave();
+  try {
+    save._sharedStoreReady = true;
+    save._queueSharedStoreMirror({ 'sf.save.quick': '{"fmt":"x"}' });
+    await tick();
+    assert.deepEqual(deadlines, [150000], 'background mirror writes retain the long queue budget');
+    assert.equal(save.isSharedStoreMirrorHealthy(), true);
+  } finally {
+    h.restore();
+    AbortSignal.timeout = realTimeout;
     if (prev.location === undefined) delete globalThis.location; else globalThis.location = prev.location;
     if (prev.fetch === undefined) delete globalThis.fetch; else globalThis.fetch = prev.fetch;
     if (prev.localStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage = prev.localStorage;

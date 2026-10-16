@@ -7,6 +7,13 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### PR maturation — optics/admission sweep (2026-10-12, closed 2026-10-15)
+
+The PR_MATURATION_2026-10-12 sitting landed its maturation bands and player-truth verdict
+directories (swarm/adventure optics, admission hardening); the dated record file was retired in the
+2026-10-15 token-reduction pass (git history: design/program/PR_MATURATION_2026-10-12.md).
+Live state: design/program/player-truth/SUMMARY.md scoreboard.
+
 ### NXB-004 — damaged loaded ship stays controllable (2026-09-30)
 
 A hurt drive now spends the thrust it still has. The ship keeps steering, a loaded hull still accelerates less than a light one, and repairing the drive does not teleport the ship. Proof: test/next-wave-nxb-004.test.mjs. The ordinary flight route was not played in this session (`implemented / route-unproven`). Receipt: design/program/roadmap/receipts/NXB-004-DAMAGED-DRIVE-AUTHORITY.md.
@@ -745,3 +752,7 @@ by the integrator; nothing below is an owner ruling until the owner says so.
 - Cost: SP-07 spindle + capture fork authored through material-truth preflight and wired on the
   ordinary route; Wave 1b + Wave 2b PARTIAL + inline R1-R4 close + Wave 3 fixed-and-verified.
 
+
+### Polish pass 2026-10-03 (closed)
+
+Every row resolved in its sitting; the pass record was retired to git history in the 2026-10-15 token-reduction pass.

@@ -17,6 +17,17 @@ import {
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
+// The historical visual asset ledger was retired. Keep the live texture contract pinned to the
+// deterministic manifest and the renderer's recipe-driven path instead of depending on that file.
+const thrusterManifest = JSON.parse(readFileSync(join(REPO_ROOT, 'assets/fx/thruster/manifest.json'), 'utf8'));
+const thrusterVfx = readFileSync(join(REPO_ROOT, 'src/render/vfx.js'), 'utf8');
+assert.equal(thrusterManifest.schema, 'spaceface.thrusterTextureManifest.v1');
+assert.equal(thrusterManifest.generator, 'scripts/generate-thruster-textures.mjs');
+assert.equal(thrusterManifest.deterministic, true);
+assert.ok(thrusterManifest.textures.length > 0);
+assert.match(thrusterVfx, /collectThrusterTextureIds\(\)/);
+assert.match(thrusterVfx, /`assets\/fx\/thruster\/\$\{id\}\.png`/);
+
 // Minimal valid GLB: header + JSON chunk only, padded to 4 bytes. Enough for glbMetrics.
 function buildGlb(gltf) {
   const json = Buffer.from(JSON.stringify(gltf), 'utf8');

@@ -382,7 +382,12 @@ export function createRenderPackageLoader(options = {}) {
               entry.evicted = true;
               loaded.markEvicted();
               if (cache.get(contentHash) === entry) cache.delete(contentHash);
-              dropPackageDetachManifest(contentHash);
+              // A content hash can have multiple decoded generations in separate loaders. Retire
+              // only the manifest registered by this residency generation; a hash-only drop could
+              // erase a still-mounted sibling package during preview/runtime teardown.
+              if (entry.detachManifest) {
+                dropPackageDetachManifest(contentHash, entry.detachManifest);
+              }
               entry.admission.abort(new Error(`Render package ${metadata.assetId} was evicted mid-decode.`));
             },
           });
@@ -393,8 +398,18 @@ export function createRenderPackageLoader(options = {}) {
         retainConsumer(entry.key);
         const retained = entry.request.commit();
         entry.request = null;
-        if (!retained) {
-          throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
+        // `retain()` emits synchronously. A registry listener can retire the whole residency
+        // registry from that event, so the request can report success after this entry has
+        // already been evicted and its admission aborted. Do not build a detach manifest for
+        // that dead generation (it would otherwise outlive the registry entry as an orphan).
+        try {
+          entry.admission.assertActive();
+          if (!retained || entry.evicted || cache.get(contentHash) !== entry) {
+            throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
+          }
+        } catch (error) {
+          disposeDecodedResources(decoded, loaded.resources);
+          throw error;
         }
         // Mark the package's textures for post-upload CPU-payload detach. The manifest pairs each
         // texture with its ordinal in the deterministic resource walk so a context restore can
@@ -512,7 +527,6 @@ export function createRenderPackageLoader(options = {}) {
     verifiedMetadataCache.clear(); verifiedMetadataBytes = 0;
     for (const entry of cache.values()) {
       releasePackageOwner(entry, reason);
-      dropPackageDetachManifest(entry.metadata.contentHash);
     }
     for (const admission of [...activeAdmissions]) {
       admission.abort(new Error('Render package loader has been disposed.'));
@@ -806,6 +820,14 @@ class LoadedRenderPackage {
     }
   }
 
+  #assertExternalOwnerActive(owner) {
+    if (!owner) return;
+    const isOwnerReleased = this.#lifecycle.residency.isOwnerReleased;
+    if (typeof isOwnerReleased === 'function' && isOwnerReleased.call(this.#lifecycle.residency, owner)) {
+      throw new Error(`Render package ${this.assetId} residency owner has been released.`);
+    }
+  }
+
   markReleased() {
     if (this.released) return;
     this.released = true;
@@ -817,6 +839,8 @@ class LoadedRenderPackage {
   }
 
   markEvicted() {
+    // The decoded source graph is retiring; instances own distinct Object3Ds.
+    for (const entry of this.#plan?.entries || []) entry.source.castShadow = false;
     this.released = true;
     this.evicted = true;
     this.#notifyStale();
@@ -850,11 +874,13 @@ class LoadedRenderPackage {
       throw new Error(`Render package ${this.assetId} must be retained before creating an instance.`);
     }
     const externalOwner = instanceOptions.residencyOwner || null;
+    this.#assertExternalOwnerActive(externalOwner);
     const owner = externalOwner || this.#lifecycle.createOwner('render-instance', this.contentHash);
     const retained = this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, {
       role: instanceOptions.residencyRole || 'render-package-instance',
       sectorId: instanceOptions.sectorId || null,
     });
+    this.#assertExternalOwnerActive(externalOwner);
     if (!retained && !externalOwner) {
       throw new Error(`Render package ${this.assetId} could not retain instance residency.`);
     }
@@ -883,7 +909,10 @@ class LoadedRenderPackage {
       for (let i = 0; i < count; i++) {
         // objects[] is index-addressed so a stride boundary costs nothing; the
         // partial instance is unreachable outside this leg until it returns.
-        if (i > 0 && (i % 512) === 0) yield;
+        if (i > 0 && (i % 512) === 0) {
+          yield;
+          this.#assertExternalOwnerActive(externalOwner);
+        }
         const entry = entries[i];
         const created = createNode ? createNode({
           source: entry.source,
@@ -958,6 +987,8 @@ class LoadedRenderPackage {
         dynamicGroups.set(metaGroups[i].id, objects[plan.dynamicGroupPlanIndices[i]]);
       }
 
+      this.#assertExternalOwnerActive(externalOwner);
+
       let disposed = false;
       return Object.freeze({
         route: 'render-package',
@@ -980,6 +1011,7 @@ class LoadedRenderPackage {
         dispose: (reason = 'render-package-instance-disposed') => {
           if (disposed) return false;
           disposed = true;
+          for (const object of objects) object.castShadow = false;
           if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
           return true;
         },
@@ -1012,11 +1044,13 @@ class LoadedRenderPackage {
     }
 
     const externalOwner = instanceOptions.residencyOwner || null;
+    this.#assertExternalOwnerActive(externalOwner);
     const owner = externalOwner || this.#lifecycle.createOwner('flight-render-instance', this.contentHash);
     const retained = this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, {
       role: instanceOptions.residencyRole || 'flight-render-package-instance',
       sectorId: instanceOptions.sectorId || null,
     });
+    this.#assertExternalOwnerActive(externalOwner);
     if (!retained && !externalOwner) {
       throw new Error(`Render package ${this.assetId} could not retain flight instance residency.`);
     }
@@ -1077,6 +1111,8 @@ class LoadedRenderPackage {
         if (object) anchors.set(record.id, object);
       }
 
+      this.#assertExternalOwnerActive(externalOwner);
+
       const counters = this.#counters && this.#counters.isEnabled() ? this.#counters : null;
       if (counters) {
         counters.countPlanInstantiation(planNodes.length, 'flight-static-v3');
@@ -1100,6 +1136,7 @@ class LoadedRenderPackage {
         dispose: (reason = 'flight-render-package-instance-disposed') => {
           if (disposed) return false;
           disposed = true;
+          for (const object of planNodes) object.castShadow = false;
           if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
           return true;
         },
@@ -1325,9 +1362,10 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function collectImmutableResources(root, stats = null) {
+export function collectImmutableResources(root, stats = null, retireShadowCasters = false) {
   const resources = new Set();
   root.traverse((object) => {
+    if (retireShadowCasters) object.castShadow = false;
     if (stats) stats.nodes++;
     if (object.geometry) markImmutableResource(object.geometry, resources);
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
@@ -1367,7 +1405,7 @@ function disposeUnregisteredResources(resources) {
 export function disposeDecodedResources(decoded, extraResources = null) {
   const template = decoded?.scene || decoded;
   if (!template || typeof template.traverse !== 'function') return;
-  const resources = collectImmutableResources(template);
+  const resources = collectImmutableResources(template, null, true);
   if (extraResources) for (const resource of extraResources) resources.add(resource);
   disposeUnregisteredResources(resources);
 }

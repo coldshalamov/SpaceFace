@@ -11,6 +11,7 @@ import {
 import { BINDINGS } from '../src/ui/bindings.js';
 import { resolveDrillControlMap } from '../src/ui/screens/drill.js';
 import { controlPrompt, setPromptScheme } from '../src/ui/controlPrompts.js';
+import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
 
 function pilotState(bindings = null) {
   return {
@@ -95,4 +96,20 @@ test('interface keys stay on the UI registry and do not drift from README-facing
   assert.equal(BINDINGS.starmap.label, 'N');
   assert.equal(BINDINGS.codex.label, 'K');
   assert.equal(BINDINGS.missionLog.label, 'J');
+});
+
+test('active ORRERY line controls name only the actual bound keys and omit unbound axes', () => {
+  const state = pilotState({ tether: ['KeyP'], forward: ['KeyI'], reverse: [],
+    yawLeft: ['KeyJ'], yawRight: [], boost: [] });
+  state.player = { cargo: { items: {} }, tether: { active: true } };
+  state.entities = new Map();
+  const line = readOrdnanceModel(state, null)['3'];
+  assert.equal(line.key, 'P');
+  assert.match(line.tip, /Hold P.*I REEL.*J ORBIT/);
+  assert.doesNotMatch(line.tip, /PAY OUT|PUMP|Space|SHIFT|KeyI/);
+  const host = Object.create(input);
+  host._keys = { KeyI: true };
+  assert.equal(host._held(state, 'forward'), true);
+  host._keys = { KeyW: true };
+  assert.equal(host._held(state, 'forward'), false);
 });

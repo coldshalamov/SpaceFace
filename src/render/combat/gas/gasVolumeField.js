@@ -90,6 +90,8 @@ class GasVolumeField {
     // Under the additive burst layer (sprite buckets are 11) so flashes read on top of the body.
     this.mesh.renderOrder = 10;
     this.mesh.userData.spacefaceVfxGasBatch = true;
+    // Contact-driven publication cannot await a shader cook on its first live emit.
+    this.mesh.userData.spacefaceOpeningImmediateFirstUse = true;
     this.mesh.userData.spacefaceStructuredTransient = 'baked-density-film';
     const material = this.material;
     const mesh = this.mesh;

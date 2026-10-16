@@ -3,11 +3,15 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
+import { Object3D as VendoredObject3D, spacefaceShadowCastersIn } from '../vendor/three.module.js';
 
 import {
   initializePresentationAdmission,
 } from '../src/core/presentationAdmission.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
+
+Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
+  Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
 
 const REPO_ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CAPSULE_ASSET_ID = 'pod_cargo_container';
@@ -85,11 +89,18 @@ test('a throwing prepared-capsule disposer still releases the prepared-root regi
   // there exercises the exact ordering bug — disposal failure must not skip the unregister.
   const originalClear = THREE.Object3D.prototype.clear;
   let clears = 0;
+  let flaggedAtClear = 0;
+  const retiredMeshes = new Set();
   let resolveClear;
   const clearAttempted = new Promise((resolve) => { resolveClear = resolve; });
   THREE.Object3D.prototype.clear = function clear() {
     if (typeof this.name === 'string' && this.name.startsWith('GLTFKit_')) {
       clears++;
+      this.traverse((object) => {
+        if (!object.isMesh) return;
+        retiredMeshes.add(object);
+        if (object.castShadow) flaggedAtClear++;
+      });
       resolveClear();
       throw new Error('witness-forced dispose failure');
     }
@@ -115,6 +126,12 @@ test('a throwing prepared-capsule disposer still releases the prepared-root regi
   }
 
   assert.ok(clears > 0, 'the parked disposer must have attempted to clear the authored root');
+  assert.ok(retiredMeshes.size > 0, 'the real failed preparation created authored Mesh nodes');
+  assert.equal(flaggedAtClear, 0, 'prepared meshes leave the strong shadow registry before a throwing clear');
+  const retiredScene = new THREE.Scene();
+  retiredScene.add(...retiredMeshes);
+  assert.deepEqual(spacefaceShadowCastersIn(retiredScene), [],
+    'failed cleanup leaves no retired Mesh registered after reparenting');
 
   const registries = partsLibrary.inspectAuthoredBoundaryRegistrations(scene, boundary);
   assert.equal(registries.preparedRoots, 0,
@@ -136,7 +153,7 @@ test('every prepared-admission disposer unregisters under a failure-proof orderi
     'unregister must run before the cleanup-error throw or a failed dispose re-pins the registry');
 
   for (const name of ['disposePreparedCargoCapsule', 'disposePreparedPlace']) {
-    const body = source.match(new RegExp(`const ${name} = \\(\\) => \\{[\\s\\S]*?\\n  \\};`));
+    const body = source.match(new RegExp(`const ${name} = (?:async )?\\(\\) => \\{[\\s\\S]*?\\n  \\};`));
     assert.ok(body, `${name} not found`);
     const finallyAt = body[0].indexOf('} finally {');
     const unregisterIn = body[0].indexOf('unregisterPreparedAuthoredAdmission(authored)');

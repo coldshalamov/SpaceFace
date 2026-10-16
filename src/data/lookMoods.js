@@ -121,7 +121,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.88, 0.82, 1.22],
-      grade: 0.9, vignette: 0.34,
+      grade: 0.9, vignette: 0.26,
       highlightTint: [1.10, 0.97, 1.02],
       contrast: 1.08,
       saturation: 1.28,
@@ -145,7 +145,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.80, 0.94, 1.22],
-      grade: 0.85, vignette: 0.32,
+      grade: 0.85, vignette: 0.24,
       highlightTint: [1.14, 1.0, 0.84],
       contrast: 1.07,
       saturation: 1.26,
@@ -228,7 +228,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.78, 1.04, 1.02],
-      grade: 0.9, vignette: 0.34,
+      grade: 0.9, vignette: 0.26,
       highlightTint: [1.06, 0.96, 1.10],
       contrast: 1.08,
       saturation: 1.26,

@@ -3,11 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  buildOrdnanceGroups, createCooldownTracker, readOrdnanceModel, readClusterModel,
+  buildOrdnanceGroups, createCooldownTracker, readOrdnanceModel, readClusterModel, mountOrreryCluster,
 } from '../src/ui/orrery/hudAdapter.js';
 import { speedPhase } from '../src/ui/orrery/flightCluster.js';
 import { RAIL_SLOTS } from '../src/ui/powerRail.js';
 import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
+import { DEFAULTS } from '../src/systems/input.js';
+import { fakeDom, findAll } from './helpers/fake-dom.mjs';
 
 function fakeState(extra = {}) {
   const entities = new Map();
@@ -114,6 +116,61 @@ test('every ordnance key explains itself: bank sentence, live keys and live stat
   assert.equal(ordnance.slots[0].key, '1', 'the shelf reads as the 1–9 hotbar the player reaches for');
   const drive = groups.find((g) => g.name === 'DRIVE');
   assert.ok(drive && drive.slots.length === 1, 'the travel-drive lamp is its own group');
+});
+
+test('the mounted Cluster follows live rebinds, including an intentionally unbound Line', () => {
+  const previous = globalThis.document;
+  const doc = fakeDom();
+  const create = doc.createElement;
+  doc.createElement = tag => {
+    const node = create(tag);
+    node.remove = () => {
+      if (node.parentNode) node.parentNode.children = node.parentNode.children.filter(child => child !== node);
+      node.parentNode = null;
+    };
+    return node;
+  };
+  doc.createElementNS = (_, tag) => doc.createElement(tag);
+  doc.documentElement = doc.createElement('html');
+  doc.body = doc.createElement('body');
+  globalThis.document = doc;
+  const { state, player } = fakeState({ settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {
+    tether: ['KeyP'], forward: ['KeyI'], reverse: ['KeyK'], yawLeft: ['KeyJ'], yawRight: ['KeyL'], boost: ['KeyB'],
+  } } } });
+  state.player.tether = { active: true, targetId: 8, load: 0.2 };
+  state.entities.set(8, { mass: 40 });
+  const root = doc.createElement('div');
+  let mounted;
+  const socket = () => findAll(root, node => node.getAttribute('data-slot') === '3')[0];
+  const key = () => findAll(socket(), node => node.tagName === 'b')[0]?.textContent;
+  try {
+    // hud.js still passes the legacy default table; the live state is authoritative.
+    mounted = mountOrreryCluster(root, state, { bindings: DEFAULTS.BINDINGS });
+    mounted.update(state, player, true);
+    assert.equal(key(), 'P');
+    assert.match(socket().getAttribute('data-why'), /I REEL.*K PAY OUT.*J\/L ORBIT.*B PUMP/);
+    assert.match(socket().getAttribute('aria-label'), /I REEL/);
+    assert.equal(socket().getAttribute('tabindex'), '0', 'the contextual controls remain focusable');
+    state.settings.controls.bindings.tether = ['KeyU'];
+    state.settings.controls.bindings.forward = ['KeyO'];
+    mounted.update(state, player, true);
+    assert.equal(key(), 'U', 'a rebind after mount updates the visible key as well as its tip');
+    assert.match(socket().getAttribute('data-why'), /O REEL/);
+    assert.doesNotMatch(socket().getAttribute('data-why'), /I REEL|\(3 · Space · F\)/);
+    const settled = socket();
+    mounted.update(state, player, false);
+    assert.equal(socket(), settled, 'an unchanged frame does not rebuild the sockets');
+    state.settings.controls.bindings.tether = [];
+    mounted.update(state, player, true);
+    assert.equal(key(), '—', 'unbinding cannot silently restore a default key');
+    assert.doesNotMatch(socket().getAttribute('data-why'), /HOLD|REEL|PAY OUT|ORBIT|PUMP/,
+      'an unavailable line-control modifier cannot advertise the axes');
+    state.settings.controls.bindings.tether = ['KeyU'];
+    state.player.tether.active = false;
+    mounted.update(state, player, true);
+    assert.doesNotMatch(socket().getAttribute('data-why'), /REEL|PAY OUT|ORBIT|PUMP/,
+      'the active-line context disappears when the line is cut');
+  } finally { mounted?.dispose(); globalThis.document = previous; }
 });
 
 test('the Cluster writes each tip to a hoverable, focusable socket (the tier-2 seat)', () => {

@@ -44,6 +44,7 @@
 // Pure module: no argv reads, no self-execute, no process-global mutation.
 
 import { applyInput, applyTapeCommands } from './simScenarioDriver.mjs';
+import { applyRemoteTimeEffectsSnapshot } from '../../src/core/timeEffects.js';
 import {
   applyLaneInputWrites,
   applyLaneMode,
@@ -65,6 +66,7 @@ export const SIM_COMMAND_TYPES = Object.freeze({
   UI: 'ui',
   VIEWPORT: 'viewport',
   KEEPALIVE: 'keepalive',
+  TIME_EFFECTS: 'timeEffects',
 });
 
 export function createSimCommandRing() {
@@ -131,6 +133,7 @@ export function pushLaneCommand(ring, d) {
     case 'mode': return ring.push(SIM_COMMAND_TYPES.MODE, { mode: d.mode });
     case 'nav': return ring.push(SIM_COMMAND_TYPES.NAV, { waypoint: d.waypoint, clear: d.clear === true });
     case 'settings': return ring.pushSettings(d.key, d.value);
+    case 'timeEffects': return ring.push(SIM_COMMAND_TYPES.TIME_EFFECTS, d.snapshot);
     case 'spawn': return ring.push(SIM_COMMAND_TYPES.SPAWN, { token: d.token, spec: d.spec, meta: d.meta || null });
     case 'remove': return ring.push(SIM_COMMAND_TYPES.REMOVE, { token: d.token, id: d.id, opts: d.opts || null });
     case 'promote': return ring.push(SIM_COMMAND_TYPES.PROMOTE, { id: d.id, source: d.source, reason: d.reason });
@@ -156,6 +159,8 @@ export function applySimCommandEnvelope(env, ctx) {
   const { state, helpers, inputOptions } = ctx;
   const p = env && env.p;
   switch (env && env.t) {
+    case SIM_COMMAND_TYPES.TIME_EFFECTS:
+      return { type: SIM_COMMAND_TYPES.TIME_EFFECTS, ack: { ok: applyRemoteTimeEffectsSnapshot(state, 'presentation', p) } };
     case SIM_COMMAND_TYPES.INPUT: {
       const input = p && typeof p === 'object' && p.input && typeof p.input === 'object'
         ? p.input

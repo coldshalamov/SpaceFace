@@ -587,6 +587,15 @@ export function buildKillPresentationReceipt(state, target, killerId, lethal = {
     collision && collision.targetVelocity || target && target.vel,
   );
   const impact = freezeKillImpact(collision && collision.impact);
+  const rawLink = collision && collision.provenance;
+  const impactLink = rawLink && typeof rawLink === 'object'
+    ? Object.freeze({
+      actorId: rawLink.actorId ?? null,
+      tag: typeof rawLink.tag === 'string' ? rawLink.tag : '',
+      appliedTick: Number.isFinite(rawLink.appliedTick) ? rawLink.appliedTick : null,
+      holdUntilTick: Number.isFinite(rawLink.holdUntilTick) ? rawLink.holdUntilTick : null,
+    })
+    : null;
   return Object.freeze({
     version: 1,
     cause: KILL_PRESENTATION_CAUSES.has(cause) ? cause : 'generic',
@@ -597,6 +606,7 @@ export function buildKillPresentationReceipt(state, target, killerId, lethal = {
     targetVelocity,
     playerCaused: !!state && killerId === state.playerId,
     impact,
+    impactLink,
   });
 }
 

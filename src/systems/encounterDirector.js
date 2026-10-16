@@ -134,6 +134,7 @@ import {
 } from '../data/deniableAftermath.js'; // C11 follow-ups: burned / emboldened fences, quiet thanks
 import { fenceAmbushChance, sanitizeFenceLedger } from '../data/fences.js'; // U-B: fences with faces
 import { installFenceDesk } from './fenceDesk.js'; // U-B: the one writer of stats.fences
+import { admitDistressLamp, endDistressLamp } from '../render/vfx/worldCueRecipes.js'; // PIC-32
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -356,6 +357,11 @@ export const encounterDirector = {
       // C11 follow-ups: how the drop ended decides the fence's next beat. Outcomes are the
       // director's own encounter:resolved, the mission settling, and the pilot going down.
       this.bus.on('encounter:resolved', (p) => this._onDeniableEncounterResolved(p));
+      // PIC-32: the distress script mints one lamp on the broadcasting hull when it fires;
+      // every resolution path funnels through encounter:resolved, so the lamp dies with the
+      // script whichever way it ended. Other shapes find no lamp and cost one map miss.
+      this.bus.on('encounter:distressBroadcast', (p) => admitDistressLamp(this.state, p || {}));
+      this.bus.on('encounter:resolved', (p) => endDistressLamp(this.state, p || {}));
       this.bus.on('mission:completed', (p) => this._onDeniableMissionSettled(p, 'completed'));
       this.bus.on('mission:failed', (p) => this._onDeniableMissionSettled(p, 'failed'));
       this.bus.on('player:death', () => this._onDeniablePlayerDown());

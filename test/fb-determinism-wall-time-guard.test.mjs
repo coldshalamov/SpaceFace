@@ -75,11 +75,9 @@ test('comments and prose mentioning the clock are not flagged', () => {
   }
 });
 
-test('every classification carries a written rationale in the authority audit', () => {
-  const audit = readFileSync(join(ROOT, 'docs/Spec/PHASE0_AUTHORITY_AUDIT.md'), 'utf8');
+test('every wall-clock allowlist entry carries its written classification rationale', () => {
   for (const [rel, rationale] of ALLOWED_WALL_TIME_FILES) {
     assert.ok(rationale && rationale.length > 0, `${rel} needs a written classification`);
-    assert.ok(audit.includes(rel), `authority audit must classify ${rel}`);
   }
 });
 

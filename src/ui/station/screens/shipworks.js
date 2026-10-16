@@ -4239,7 +4239,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : purchase.state === 'locked' || purchase.state === 'standing' || purchase.state === 'noberth'
           ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
           : purchase.state === 'funding'
-            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding" title="${escapeHtml(advice ? `${purchase.title} ${jobImpact}`.trim() : purchase.title)}">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
+            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding" data-why="${escapeHtml(advice ? `${purchase.title} ${jobImpact}`.trim() : purchase.title)}">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
             : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +

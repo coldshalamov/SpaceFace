@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pushSharedPlayerStore, resetSharedPlayerStoreMemoForTests } from '../src/save/sharedPlayerStore.js';
+import {
+  pushSharedPlayerStore, resetSharedPlayerStoreMemoForTests, sharedPlayerStoreLastAcceptedWrite,
+} from '../src/save/sharedPlayerStore.js';
 
 async function flushMicrotasks() {
   for (let i = 0; i < 12; i++) await Promise.resolve();
@@ -16,10 +18,10 @@ function controlledStore(t) {
     active += 1; peak = Math.max(peak, active);
     return new Promise((resolve, reject) => {
       let settled = false;
-      requests.push({ options, finish(ok = true) {
+      requests.push({ options, finish(ok = true, body = null) {
         if (settled) return;
         settled = true; active -= 1;
-        if (ok) resolve({ ok: true, status: 200 });
+        if (ok) resolve({ ok: true, status: 200, body });
         else reject(new Error('injected store failure'));
       } });
     });
@@ -84,4 +86,59 @@ test('small page-exit keepalive still bypasses regular queue; oversized keepaliv
   assert.equal(store.requests.length, 4);
   assert.equal(store.requests[3].options.keepalive, false);
   store.requests[3].finish(); await large;
+});
+
+test('regular mirrors retain queue ownership until the acknowledgement body finishes', async t => {
+  const store = controlledStore(t);
+  let bodyController;
+  const body = new ReadableStream({ start(controller) { bodyController = controller; } });
+  t.after(() => { try { bodyController.close(); } catch (_) {} });
+  const first = pushSharedPlayerStore({ 'sf.save.1': 'first' });
+  const second = pushSharedPlayerStore({ 'sf.save.1': 'second' });
+  let firstSettled = false;
+  first.then(() => { firstSettled = true; });
+  store.requests[0].finish(true, body);
+  bodyController.enqueue(new Uint8Array(128 * 1024));
+  await flushMicrotasks();
+  assert.equal(firstSettled, false, 'HTTP 200 headers and one chunk are not a complete acknowledgement');
+  assert.equal(store.requests.length, 1, 'the next PUT waits for the current response body');
+  assert.equal(sharedPlayerStoreLastAcceptedWrite(), null, 'success is published only after the body completes');
+  bodyController.enqueue(new Uint8Array(128 * 1024));
+  bodyController.close();
+  assert.equal(await first, true);
+  assert.equal(body.locked, false, 'the completed stream reader is released');
+  await flushMicrotasks();
+  assert.equal(store.requests.length, 2);
+  store.requests[1].finish();
+  assert.equal(await second, true);
+  assert.equal(store.peak(), 1);
+});
+
+test('an acknowledgement body deadline remains a real failure and releases the next queued mirror', async t => {
+  const store = controlledStore(t);
+  const deadlines = [];
+  t.mock.method(AbortSignal, 'timeout', (ms) => {
+    const controller = new AbortController();
+    deadlines.push({ ms, controller });
+    return controller.signal;
+  });
+  const first = pushSharedPlayerStore({ 'sf.save.1': 'first' });
+  const second = pushSharedPlayerStore({ 'sf.save.1': 'second' });
+  let bodyController;
+  const body = new ReadableStream({ start(controller) { bodyController = controller; } });
+  const signal = store.requests[0].options.signal;
+  signal.addEventListener('abort', () => bodyController.error(signal.reason), { once: true });
+  store.requests[0].finish(true, body);
+  await flushMicrotasks();
+  assert.equal(store.requests.length, 1, 'a pending response body still owns the serialized queue');
+  assert.equal(deadlines[0].ms, 150000, 'the existing write deadline is unchanged');
+  deadlines[0].controller.abort(new DOMException('injected body deadline', 'TimeoutError'));
+  assert.equal(await first, false, 'a body abort cannot be relabeled successful after HTTP 200 headers');
+  assert.equal(body.locked, false, 'the failed stream reader is released');
+  assert.equal(sharedPlayerStoreLastAcceptedWrite(), null);
+  await flushMicrotasks();
+  assert.equal(store.requests.length, 2, 'a failed body cannot strand the queue');
+  store.requests[1].finish();
+  assert.equal(await second, true);
+  assert.equal(store.peak(), 1);
 });
