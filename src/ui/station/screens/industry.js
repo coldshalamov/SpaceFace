@@ -148,6 +148,7 @@ export function createIndustryScreen(ctx) {
   // as nodes, beams into the process, one beam out to the product, pulses when the line can run.
   let chain = null;
   const stopDecrypt = [];
+  let visible = false, disposed = false, generation = 0, landingTimer = 0;
 
   // the ladder's window ends on a whole rung: measured after paint, the list's height is snapped to the last rung
   // that fits, so no rung is ever half-dissolved
@@ -338,6 +339,7 @@ export function createIndustryScreen(ctx) {
   // a re-render during a hold (or while a finished run lands) waits for it: rebuilding the chain would drop the run
   let pendingRender = false;
   function renderAll(state) {
+    if (!visible || disposed) return;
     if (hold) { pendingRender = true; return; }
     pendingRender = false;
     renderList(state);
@@ -392,6 +394,7 @@ export function createIndustryScreen(ctx) {
     if (typeof requestAnimationFrame === 'function') hold.frame = requestAnimationFrame(stepHold);
   }
   function startHold(source) {
+    if (!visible || disposed) return;
     const key = buildKey();
     if (!key) return;
     if (hold && hold.done) return;
@@ -414,16 +417,34 @@ export function createIndustryScreen(ctx) {
     const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
     const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
     const fired = hold;
+    const firedGeneration = generation;
+    const firedChain = chain;
+    const isCurrent = () => visible && !disposed && generation === firedGeneration && hold === fired;
     // attemptIndustryBuild may return a Promise on the worker lane — the cue,
-    // refusal fallback, and landing all await its resolve. A newer hold armed
-    // in the gap is left alone.
-    Promise.resolve(attemptIndustryBuild({ crafting, bpId: fired.bpId, stationId: sid })).then((ok) => {
+    // refusal fallback, and landing all await its resolve. Retiring the view does
+    // not cancel an authoritative build; only its obsolete presentation goes away.
+    Promise.resolve(attemptIndustryBuild({ crafting, bpId: fired.bpId, stationId: sid,
+      onError() {
+        if (isCurrent() && ctx.bus) ctx.bus.emit('toast', {
+          text: 'Fabrication could not be confirmed. Check the queue before trying again.',
+          kind: 'warn', ttl: 4,
+        });
+      },
+    })).then((ok) => {
+      if (!isCurrent()) return;
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: ok ? 'ui_accept' : 'ui_back' });
-      const firedChain = chain;
       // a refused build never plays the landing: the chain falls back and the screen says why
       if (!ok) { if (hold === fired) hold = null; if (firedChain) firedChain.reset(); renderAll(ctx.state || {}); return; }
       // the run lands in the product, then the screen shows the hold as it now stands
-      const land = () => setTimeout(() => { if (hold === fired) hold = null; renderAll(ctx.state || {}); }, reducedMotion() ? 240 : 700);
+      const land = () => {
+        if (!isCurrent()) return;
+        landingTimer = setTimeout(() => {
+          landingTimer = 0;
+          if (!isCurrent()) return;
+          hold = null;
+          renderAll(ctx.state || {});
+        }, reducedMotion() ? 240 : 700);
+      };
       if (firedChain) firedChain.complete({ onDone: land }); else land();
     });
   }
@@ -523,9 +544,22 @@ export function createIndustryScreen(ctx) {
   const onCraftChanged = () => renderAll(ctx.state || {});
   if (ctx.bus && ctx.bus.on) { ctx.bus.on('craft:complete', onCraftChanged); ctx.bus.on('craft:queueChanged', onCraftChanged); }
 
+  function retirePresentation() {
+    generation += 1;
+    if (landingTimer) clearTimeout(landingTimer);
+    landingTimer = 0;
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
+    hold = null;
+    pendingRender = false;
+    if (chain) { chain.dispose(); chain = null; }
+  }
+
   return {
     el,
     onShow(c) {
+      if (disposed) return;
+      visible = true;
       const st = (c || ctx).state || {};
       if (!picked) {
         const stn = stationType(ctx);
@@ -535,26 +569,27 @@ export function createIndustryScreen(ctx) {
       }
       renderAll(st);
     },
+    onHide() { visible = false; retirePresentation(); },
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
+      disposed = true;
+      visible = false;
       if (ctx.bus && ctx.bus.off) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);
       }
-      for (const stop of stopDecrypt.splice(0)) stop();
-      if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
-      hold = null;
-      if (chain) { chain.dispose(); chain = null; }
+      retirePresentation();
     },
   };
 }
 
-export function attemptIndustryBuild({ crafting, bpId, stationId }) {
+export function attemptIndustryBuild({ crafting, bpId, stationId, onError }) {
   if (!crafting || typeof crafting.build !== 'function') return false;
+  const failed = () => { if (typeof onError === 'function') onError(); return false; };
   try {
     const out = crafting.build(bpId, stationId);
     // worker lane: the build commits sim-side and the rpc resolves the verdict
-    if (out && typeof out.then === 'function') return out.then((done) => done === true);
+    if (out && typeof out.then === 'function') return Promise.resolve(out).then((done) => done === true, failed);
     return out === true;
-  } catch (_) { return false; }
+  } catch (_) { return failed(); }
 }
