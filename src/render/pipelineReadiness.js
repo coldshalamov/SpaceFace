@@ -102,6 +102,31 @@ export function createOpeningLoadingAdmission({ entities = [], isRequired = () =
 const openingFirstPictureRuns = new WeakMap();
 const openingPresentationHolds = new WeakMap();
 
+const OPENING_INACTIVE_LIFECYCLE_STATES = new Set([
+  'hidden-or-minimized',
+  'system-suspended',
+]);
+
+function openingClockNow(options = {}) {
+  if (typeof options.now === 'function') {
+    const value = Number(options.now());
+    if (Number.isFinite(value)) return value;
+  }
+  const performanceNow = globalThis.performance?.now;
+  if (typeof performanceNow === 'function') return performanceNow.call(globalThis.performance);
+  return Date.now();
+}
+
+function openingLifecyclePort(options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'lifecyclePort')) return options.lifecyclePort;
+  return globalThis.window?.spacefaceLifecycle || null;
+}
+
+function openingVisibilityTarget(options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'visibilityTarget')) return options.visibilityTarget;
+  return globalThis.document || null;
+}
+
 export function openingFirstPictureIsReady(state) {
   const render = state?.render;
   const owner = render?.openingFirstPictureOwner;
@@ -121,12 +146,74 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
   const baseline = Number(render.worldSubmittedFrames) || 0;
   const schedule = options.schedule || setTimeout;
   const cancelTimer = options.cancel || clearTimeout;
+  const timeoutMs = Math.max(0, Number(options.timeoutMs ?? 20000) || 0);
+  const inactivePollMs = Math.max(25, Number(options.inactivePollMs ?? 250) || 0);
+  const visibilityTarget = openingVisibilityTarget(options);
+  const lifecyclePort = openingLifecyclePort(options);
+  let lifecycleForeground = true;
+  let active = true;
   let timer = null;
-  const current = () => openingPresentationHolds.get(state)?.release === release
+  let timerArmed = false;
+  let timerSequence = 0;
+  let activeElapsedMs = 0;
+  let lastAccountingAt = null;
+  let wasCounting = false;
+  let wasInContextRecovery = false;
+  let initialized = false;
+  let observedContextGeneration = Number.isFinite(Number(render.contextRecovery?.generation))
+    ? Number(render.contextRecovery.generation) : null;
+
+  const contextRecoveryActive = () => render.contextRecovery?.terminal === true || gpuContextIsLost(state);
+  const foreground = () => {
+    if (typeof options.isForeground === 'function') {
+      try { return options.isForeground() !== false; } catch { return false; }
+    }
+    if (visibilityTarget?.visibilityState === 'hidden' || visibilityTarget?.hidden === true) return false;
+    return lifecycleForeground;
+  };
+  const current = () => active && openingPresentationHolds.get(state)?.release === release
     && state.render === render && state.world === world
     && render.admissionRunGeneration === generation && render.releaseOpeningPresentationHold === release;
+  const sample = (now) => {
+    const contextGeneration = Number.isFinite(Number(render.contextRecovery?.generation))
+      ? Number(render.contextRecovery.generation) : null;
+    if (contextGeneration !== observedContextGeneration) {
+      observedContextGeneration = contextGeneration;
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    const recoveryActive = contextRecoveryActive();
+    if (recoveryActive !== wasInContextRecovery) {
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    wasInContextRecovery = recoveryActive;
+    const canCount = foreground() && !recoveryActive;
+    if (wasCounting && lastAccountingAt !== null) {
+      activeElapsedMs += Math.max(0, now - lastAccountingAt);
+    }
+    if (canCount) {
+      lastAccountingAt = now;
+      wasCounting = true;
+    } else {
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    return canCount;
+  };
   const cancel = () => {
-    if (timer !== null) { cancelTimer(timer); timer = null; }
+    active = false;
+    timerSequence += 1;
+    if (timerArmed) {
+      cancelTimer(timer);
+      timer = null;
+      timerArmed = false;
+    }
+    visibilityTarget?.removeEventListener?.('visibilitychange', onVisibilityChange);
+    if (typeof lifecycleUnsubscribe === 'function') lifecycleUnsubscribe();
+    lifecycleUnsubscribe = null;
     if (render.releaseOpeningPresentationHold === release) {
       render.releaseOpeningPresentationHold = null;
       render.cancelOpeningPresentationHold = null;
@@ -138,8 +225,60 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
       timeEffects.clear('runtime:first-picture');
     }
   };
+  let lifecycleUnsubscribe = null;
+  const reschedule = () => {
+    if (!active || !current()) return;
+    if (timerArmed) {
+      timerSequence += 1;
+      cancelTimer(timer);
+      timer = null;
+      timerArmed = false;
+    }
+    arm();
+  };
+  const onVisibilityChange = () => {
+    if (!active) return;
+    if (!current()) { cancel(); return; }
+    sample(openingClockNow(options));
+    if (initialized) reschedule();
+  };
+  const onLifecycle = (command) => {
+    const lifecycleState = command?.state;
+    if (OPENING_INACTIVE_LIFECYCLE_STATES.has(lifecycleState)) lifecycleForeground = false;
+    else if (lifecycleState === 'foreground-visible' || lifecycleState === 'foreground-occluded') lifecycleForeground = true;
+    if (!active) return;
+    if (!current()) { cancel(); return; }
+    sample(openingClockNow(options));
+    if (initialized) reschedule();
+  };
+  const onTimer = (sequence) => {
+    if (sequence !== timerSequence || !timerArmed) {
+      if (active && !current()) cancel();
+      return;
+    }
+    timer = null;
+    timerArmed = false;
+    if (!current()) { cancel(); return; }
+    const canCount = sample(openingClockNow(options));
+    if (!current()) { cancel(); return; }
+    if (canCount && activeElapsedMs >= timeoutMs) {
+      cancel();
+      onFailure?.(new Error('The first world picture could not be presented. Retry Launch.'));
+      return;
+    }
+    arm();
+  };
+  function arm() {
+    if (!active || !current()) return;
+    const canCount = foreground() && !contextRecoveryActive();
+    const delay = canCount ? Math.max(0, timeoutMs - activeElapsedMs) : inactivePollMs;
+    const sequence = ++timerSequence;
+    timerArmed = true;
+    timer = schedule(() => onTimer(sequence), delay);
+  }
   const release = () => {
-    if (!current() || state.mode !== 'flight' || !(Number(render.worldSubmittedFrames) > baseline)) return false;
+    if (!current()) { cancel(); return false; }
+    if (state.mode !== 'flight' || !(Number(render.worldSubmittedFrames) > baseline)) return false;
     cancel();
     return true;
   };
@@ -147,12 +286,11 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
   render.cancelOpeningPresentationHold = cancel;
   openingPresentationHolds.set(state, { release, cancel });
   timeEffects.set('runtime:first-picture', { scale: 0 });
-  timer = schedule(() => {
-    timer = null;
-    if (!current()) return;
-    cancel();
-    onFailure?.(new Error('The first world picture could not be presented. Retry Launch.'));
-  }, options.timeoutMs ?? 20000);
+  sample(openingClockNow(options));
+  visibilityTarget?.addEventListener?.('visibilitychange', onVisibilityChange);
+  if (typeof lifecyclePort?.subscribe === 'function') lifecycleUnsubscribe = lifecyclePort.subscribe(onLifecycle);
+  initialized = true;
+  arm();
   return cancel;
 }
 

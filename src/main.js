@@ -728,7 +728,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     }),
     yieldForPresentation: nextPaintSliced,
     enterFlight() {
-      enterFlightMode(state, bus);
+      enterFlightMode(state, bus, { runTransitionGuard, transitionToken });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Worker lane: the receipt is generated inside the worker — the newGameBoot
       // rpc stages the payload and the post-boot 'flight' mode apply emits
@@ -992,7 +992,11 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       transition: 'continue',
     });
     runTransitionGuard.commit(transitionToken, () => {
-      enterFlightMode(state, bus);
+      enterFlightMode(state, bus, {
+        runTransitionGuard,
+        transitionToken,
+        continueSlot: payload.slot || 'latest',
+      });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       bus.emit('ui:closeAll', {});
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
@@ -1049,12 +1053,41 @@ function enterLoadingMode(state, bus) {
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
-function enterFlightMode(state, bus) {
+function enterFlightMode(state, bus, options = {}) {
+  const runTransitionGuard = options && options.runTransitionGuard;
+  const transitionToken = options && options.transitionToken;
+  const continueSlot = options && options.continueSlot;
+  const holdOptions = options && options.holdOptions && typeof options.holdOptions === 'object'
+    ? options.holdOptions : {};
+  let lateFailureHandled = false;
+  const handleLateFailure = (error) => {
+    if (lateFailureHandled) return false;
+    if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+    // The worker lane accepts the flight command before its mirrored facade mode arrives on
+    // the main thread. A guarded hold belongs to this committed transition even while that
+    // mirror still says loading; an unguarded legacy caller still needs the mode fence.
+    if (!runTransitionGuard && state.mode !== 'flight') return false;
+    lateFailureHandled = true;
+    const failure = describeGameStartFailure(error);
+    if (!failGameStart(state, bus, error, failure.text, runTransitionGuard, transitionToken, failure)) return false;
+    if (continueSlot == null) return true;
+    const receipt = {
+      slot: continueSlot,
+      reason: 'load_failed',
+      error: error?.message || String(error),
+      ...failure,
+    };
+    const emitReceipt = () => {
+      if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return;
+      bus.emit('save:error', receipt);
+    };
+    if (typeof queueMicrotask === 'function') queueMicrotask(emitReceipt);
+    else Promise.resolve().then(emitReceipt);
+    return true;
+  };
   const timeEffects = createTimeEffects(state);
   const previousMode = state.mode;
-  holdOpeningPresentationUntilPaint(state, timeEffects, (error) => {
-    failGameStart(state, bus, error, error.message);
-  });
+  holdOpeningPresentationUntilPaint(state, timeEffects, handleLateFailure, holdOptions);
   laneSetMode(state, bus, 'flight');
   timeEffects.clear('runtime:boot-menu');
   timeEffects.clear('runtime:loading');

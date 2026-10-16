@@ -630,10 +630,12 @@ test('the exact delta key invalidates material, texture, geometry and context ch
 test('actual paint releases only the main hold and preserves pause or worker slow time', () => {
   const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
   const effects = createTimeEffects(state);
+  let now = 0;
   effects.set('bullet-time', { scale: .35 });
   effects.set('runtime:pause', { scale: 0 });
   let scheduled;
   holdOpeningPresentationUntilPaint(state, effects, assert.fail, {
+    now: () => now,
     schedule: (callback) => { scheduled = callback; return 1; }, cancel() { scheduled = null; },
   });
   assert.equal(state.render.releaseOpeningPresentationHold(), false);
@@ -663,7 +665,12 @@ test('an old paint cannot release a replacement launch, and a missing picture fa
   const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
   const effects = createTimeEffects(state);
   const timers = [];
-  const options = { schedule: (callback) => { timers.push(callback); return timers.length; }, cancel() {} };
+  let now = 0;
+  const options = {
+    timeoutMs: 20,
+    now: () => now,
+    schedule: (callback) => { timers.push(callback); return timers.length; }, cancel() {},
+  };
   holdOpeningPresentationUntilPaint(state, effects, assert.fail, options);
   const oldRelease = state.render.releaseOpeningPresentationHold;
   state.render.admissionRunGeneration++;
@@ -671,9 +678,169 @@ test('an old paint cannot release a replacement launch, and a missing picture fa
   holdOpeningPresentationUntilPaint(state, effects, (error) => { failure = error; }, options);
   state.render.worldSubmittedFrames++;
   assert.equal(oldRelease(), false); assert.equal(state.timeScale, 0);
+  now = 20;
   timers[1]();
   assert.match(failure.message, /Retry Launch/);
   assert.equal(state.timeScale, 1);
+});
+
+test('the first-picture deadline counts foreground time across hidden and resume transitions', () => {
+  const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
+  const effects = createTimeEffects(state);
+  const timers = [];
+  const listeners = new Set();
+  const visibilityTarget = {
+    visibilityState: 'visible',
+    addEventListener(_event, listener) { listeners.add(listener); },
+    removeEventListener(_event, listener) { listeners.delete(listener); },
+  };
+  let lifecycleUnsubscribed = 0;
+  const lifecyclePort = { subscribe() { return () => { lifecycleUnsubscribed++; }; } };
+  let now = 0;
+  let failure;
+  const options = {
+    timeoutMs: 10,
+    now: () => now,
+    visibilityTarget,
+    lifecyclePort,
+    schedule: (callback) => { timers.push(callback); return timers.length; },
+    cancel() {},
+  };
+  const dispatchVisibility = () => { for (const listener of [...listeners]) listener(); };
+  const runLatestTimer = () => timers.at(-1)();
+  holdOpeningPresentationUntilPaint(state, effects, (error) => { failure = error; }, options);
+
+  now = 5;
+  visibilityTarget.visibilityState = 'hidden';
+  dispatchVisibility();
+  now = 100;
+  timers[0]();
+  runLatestTimer();
+  assert.equal(failure, undefined, 'background time cannot fail the launch');
+
+  visibilityTarget.visibilityState = 'visible';
+  dispatchVisibility();
+  now = 104;
+  runLatestTimer();
+  assert.equal(failure, undefined, 'only four resumed foreground milliseconds have elapsed');
+  now = 105;
+  runLatestTimer();
+  assert.match(failure.message, /Retry Launch/);
+  assert.equal(listeners.size, 0);
+  assert.equal(lifecycleUnsubscribed, 1);
+});
+
+test('pending context recovery defers first-picture failure to the graphics recovery owner', () => {
+  const state = {
+    mode: 'flight',
+    timeScale: 1,
+    world: {},
+    render: {
+      admissionRunGeneration: 1,
+      worldSubmittedFrames: 0,
+      contextLost: true,
+      contextRecovery: { pending: true, generation: 0 },
+    },
+  };
+  const effects = createTimeEffects(state);
+  const timers = [];
+  let now = 0;
+  let failure;
+  const options = {
+    timeoutMs: 10,
+    now: () => now,
+    schedule: (callback) => { timers.push(callback); return timers.length; },
+    cancel() {},
+  };
+  const runLatestTimer = () => timers.at(-1)();
+  holdOpeningPresentationUntilPaint(state, effects, (error) => { failure = error; }, options);
+
+  now = 100;
+  runLatestTimer();
+  assert.equal(failure, undefined, 'context recovery remains the active failure authority');
+
+  state.render.contextLost = false;
+  state.render.contextRecovery.pending = false;
+  state.render.contextRecovery.generation = 1;
+  runLatestTimer();
+  assert.equal(failure, undefined, 'the healthy foreground budget starts after recovery');
+  now = 110;
+  runLatestTimer();
+  assert.match(failure.message, /Retry Launch/);
+});
+
+test('a queued stale first-picture deadline retires abandoned generation, world, or renderer ownership', () => {
+  for (const mutate of [
+    (state) => { state.render.admissionRunGeneration++; },
+    (state) => { state.world = {}; },
+    (state) => { state.render = { admissionRunGeneration: 2, worldSubmittedFrames: 0 }; },
+  ]) {
+    const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
+    const oldRender = state.render;
+    const effects = createTimeEffects(state);
+    const timers = [];
+    const listeners = new Set();
+    let lifecycleUnsubscribed = 0;
+    let failures = 0;
+    const visibilityTarget = {
+      visibilityState: 'visible',
+      addEventListener(_event, listener) { listeners.add(listener); },
+      removeEventListener(_event, listener) { listeners.delete(listener); },
+    };
+    const lifecyclePort = { subscribe() { return () => { lifecycleUnsubscribed++; }; } };
+    const cancel = holdOpeningPresentationUntilPaint(state, effects, () => { failures++; }, {
+      timeoutMs: 20,
+      visibilityTarget,
+      lifecyclePort,
+      schedule: (callback) => { timers.push(callback); return timers.length; },
+      cancel() {},
+    });
+    mutate(state);
+    timers[0]();
+    cancel();
+    assert.equal(failures, 0);
+    assert.equal(effects.describeRequests()['runtime:first-picture'], undefined);
+    assert.equal(listeners.size, 0);
+    assert.equal(lifecycleUnsubscribed, 1);
+    assert.equal(oldRender.releaseOpeningPresentationHold, null);
+    assert.equal(oldRender.cancelOpeningPresentationHold, null);
+  }
+});
+
+test('stale visibility and lifecycle callbacks retire their abandoned first-picture hold', () => {
+  for (const dispatchStale of ['visibility', 'lifecycle']) {
+    const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
+    const effects = createTimeEffects(state);
+    const listeners = new Set();
+    let lifecycleListener;
+    let lifecycleUnsubscribed = 0;
+    const visibilityTarget = {
+      visibilityState: 'visible',
+      addEventListener(_event, listener) { listeners.add(listener); },
+      removeEventListener(_event, listener) { listeners.delete(listener); },
+    };
+    const lifecyclePort = {
+      subscribe(listener) {
+        lifecycleListener = listener;
+        return () => { lifecycleUnsubscribed++; };
+      },
+    };
+    holdOpeningPresentationUntilPaint(state, effects, assert.fail, {
+      visibilityTarget,
+      lifecyclePort,
+      schedule: () => 1,
+      cancel() {},
+    });
+    state.world = {};
+    if (dispatchStale === 'visibility') {
+      for (const listener of [...listeners]) listener();
+    } else {
+      lifecycleListener({ state: 'foreground-visible' });
+    }
+    assert.equal(effects.describeRequests()['runtime:first-picture'], undefined);
+    assert.equal(listeners.size, 0);
+    assert.equal(lifecycleUnsubscribed, 1);
+  }
 });
 
 test('explicit cancellation retires its stale generation/world without clearing a replacement hold', () => {
