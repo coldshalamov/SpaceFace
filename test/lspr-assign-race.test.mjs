@@ -147,7 +147,7 @@ test('an awaited cook (hardware route) still runs the full present leg', async (
 });
 
 test('the opening warm touches only the barge family under the shell', async () => {
-  assert.match(rendererSource, /if \(profile === 'opening'\) this\._touchOpeningBargeFamilyUnderShell\(root\);/);
+  assert.match(rendererSource, /if \(profile === 'opening'\) this\._touchOpeningBargeFamilyUnderShell\(root, warm\);/);
   assert.match(rendererSource, /\^\(Forge_ore_barge\|Forge_massline_express_liner_ceramic\)/);
   assert.match(rendererSource, /legOptions\.parkOnly === true/);
   // Park-only claims and settles the unclaimed opening warm so it can actually park.
@@ -330,4 +330,34 @@ test('park-only without a renderer leg still assigns LSPR and never mints accept
   const admission = state.render.requiredPackageAdmission;
   assert.ok(!admission || admission.status !== 'accepted', 'park-only does not publish acceptance');
   assert.equal(verdict, true);
+});
+
+test('opening barge touch is one pass after the warm settles and yields to a covering live cook', async () => {
+  const touchOpeningBarge = extractedRendererMethod('_touchOpeningBargeFamilyUnderShell');
+  const late = authoredSubject('Forge_ore_barge_glows');
+  const root = { children: [authoredSubject('Forge_ore_barge_paint')] };
+  const state = { mode: 'loading', world: {}, contextRestoreSeq: 1, render: { renderer: {}, admissionRunGeneration: 9 } };
+  let touched = 0;
+  let releaseAttach;
+  const warm = { root, pendingAttachments: [new Promise((resolve) => { releaseAttach = resolve; })], settleDeadlineAt: Date.now() + 5000 };
+  const owner = renderOwner({ state, root, touchSubjectExactTarget: async () => { touched += 1; } });
+  touchOpeningBarge.call(owner, root, warm);
+  await wait(10);
+  assert.equal(touched, 0, 'no touch before the warm root\'s attaches settle');
+  root.children.push(late);
+  releaseAttach();
+  await wait(10);
+  assert.equal(touched, 2);
+  assert.equal(state.render.openingBargeWarm.reason, 'single-pass');
+  await wait(300);
+  assert.equal(touched, 2, 'no 250 ms re-sweep');
+
+  const covered = { mode: 'loading', world: {}, contextRestoreSeq: 1, render: { renderer: {}, admissionRunGeneration: 10, liveSectorGpuAdmission: true } };
+  let coveredTouches = 0;
+  const coveredRoot = { children: [authoredSubject('Forge_ore_barge_paint')] };
+  const coveredOwner = renderOwner({ state: covered, root: coveredRoot, touchSubjectExactTarget: async () => { coveredTouches += 1; } });
+  touchOpeningBarge.call(coveredOwner, coveredRoot);
+  await wait(10);
+  assert.equal(coveredTouches, 0);
+  assert.equal(covered.render.openingBargeWarm.reason, 'live-cook-covers');
 });
