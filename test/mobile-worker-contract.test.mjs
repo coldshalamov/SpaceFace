@@ -107,4 +107,3 @@ test('HTTP, MIME, worker error, timeout, and bad replies fail closed', () => {
     assert.ok(result.failures.length > 0, label);
   }
 });
-

@@ -296,4 +296,3 @@ export async function runMobileWorkerContract(page, { workerUrls, timeoutMs = 15
     throw new Error(`Mobile worker contract failed: ${String(error?.message || error)}`, { cause: error });
   }
 }
-
