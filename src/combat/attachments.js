@@ -1186,15 +1186,18 @@ export function createAttachmentService(context) {
   }
 
   function springForAttachment(def, owner, target, attachment = null) {
-    if (uses47aLegacyMassline(def, owner, target, state)) {
+    const legacyMassline = uses47aLegacyMassline(def, owner, target, state);
+    const canonicalizeReplay = legacyMassline
+      && Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0)) > 0;
+    if (legacyMassline) {
       const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
       if (reelRevision <= 0) return { mode: 'legacy_rope' };
     }
     const policy = policyForAttachment(def, owner, attachment);
     if (policy && policy.headId && policy.spring && typeof policy.spring === 'object') {
-      return { ...policy.spring };
+      return { ...policy.spring, canonicalizeReplay };
     }
-    return { ...((def && def.spring) || {}) };
+    return { ...((def && def.spring) || {}), canonicalizeReplay };
   }
 
   function breakForAttachment(def, owner, target, attachment = null) {
