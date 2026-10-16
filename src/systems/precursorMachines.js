@@ -30,6 +30,7 @@ import { spawnJettisonedCargoPod } from './lootShards.js';
 import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSiteRuntime.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
+import { judgePresentDirective, presentMissLine, presentOrderLine } from '../data/presentDirective.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -306,11 +307,14 @@ export function tickMachineLayer(world, dt) {
         // First directive: the site's issued instruction (protocol ask).
         if (site.directive && !rec.directiveIssued) {
           rec.directiveIssued = true;
+          const orderText = site.directive === 'PRESENT'
+            ? presentOrderLine(site, g)
+            : (site.directive === 'HOLD' || site.directive === 'WITNESS')
+              ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
+              : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`;
           world.bus.emit('comms:log', {
             from: site.name,
-            text: (site.directive === 'HOLD' || site.directive === 'WITNESS')
-              ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
-              : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`,
+            text: orderText,
             kind: 'machine',
           });
         }
@@ -367,6 +371,24 @@ export function tickMachineLayer(world, dt) {
             kind: 'machine',
           });
           refreshMachineLabels(world);
+        }
+      } else if (site.directive === 'PRESENT') {
+        const items = state.player && state.player.cargo && state.player.cargo.items;
+        const cargoCount = items ? Number(items[site.presentObject]) : 0;
+        const judged = judgePresentDirective(
+          { objectId: site.presentObject, radius: site.radius },
+          { distance: d, cargoCount },
+        );
+        rec.presentReason = judged.reason;
+        if (judged.accepted) {
+          rec.directiveResolved = true;
+          advanceMachineProtocol(state, 'satisfied');
+          grantProtocolSatisfiedUnique(world);
+          refreshMachineLabels(world);
+        } else if (rec.presentTold !== judged.reason) {
+          rec.presentTold = judged.reason;
+          const miss = presentMissLine(judged.reason, site.presentLabel || site.presentObject);
+          if (miss) world.bus.emit('comms:log', { from: site.name, text: miss, kind: 'machine' });
         }
       } else if (site.directive === 'HOLD' || site.directive === 'WITNESS') {
         const pv = player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;
