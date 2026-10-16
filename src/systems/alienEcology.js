@@ -1547,7 +1547,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
         const place = chartPlace(site, HUMAN_DOCK_CHART);
         const last = echoPoints[echoPoints.length - 1];
         if (place && last && Math.hypot(e.pos.x - last.x, e.pos.z - last.z) <= ECHO_REACH) {
-          fileChartDiscovery(world, site, place);
+          fileChartDiscovery(world, site, { text: place.text, x: last.x, z: last.z });
         }
         break;
       }
