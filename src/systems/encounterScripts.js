@@ -715,6 +715,16 @@ const distress = {
     live.data.onScene = false;
     live.data.toldTell = false;
     d.say(live, 'bark', 'distress_call', null, { primary: true });
+    // PIC-32 — the mayday is a lamp on the broadcasting hull (victim when genuine, the
+    // beacon when bait) while the script is live; the director clears it on encounter:resolved.
+    const lampTarget = d.entsOf(live, genuine ? 'victim' : 'bait')[0];
+    if (lampTarget) {
+      d.emit('encounter:distressBroadcast', {
+        encounterId: live.id,
+        targetId: lampTarget.id,
+        sectorId: live.sectorId,
+      });
+    }
     d.offerChoices(live, ['assist', 'scan', 'ignore'], 'ignore', live.deadlineAt);
   },
 
