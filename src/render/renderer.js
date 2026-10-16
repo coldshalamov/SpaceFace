@@ -8660,6 +8660,8 @@ const swarmWarmOutcomeClaims = (status) => {
 // releases and a late-settling attach drops silently via
 // boundaryBelongsToScene — the documented trade, confined to the hang.
 const WARM_BUILDING_SETTLE_DEADLINE_MS = 30000;
+// Park-only route: no cook compile pass consumes late warm attaches, so only a short settle.
+const UNCLAIMED_WARM_SETTLE_DEADLINE_MS = 1500;
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -14815,16 +14817,19 @@ export const render = {
         || cookWorld.currentSectorId !== cookSectorId
         || this._liveSectorCookGeneration !== expectedGeneration;
     };
-    state.render.prepareLiveSectorBeforeFlight = async (options = {}) => {
-      const ownerInactive = () => typeof options.isActive === 'function' && !options.isActive();
+    state.render.prepareLiveSectorBeforeFlight = async (legOptions = {}) => {
+      const ownerInactive = () => typeof legOptions.isActive === 'function' && !legOptions.isActive();
       const capturedRecookStale = captureLiveSectorCookStale();
       const recookStale = () => capturedRecookStale() || ownerInactive();
       if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
-      if (state.mode !== 'loading') {
+      // parkOnly: the caller does not hold the loading shell for this cook (software GL's
+      // fire-and-forget opening), so starting the whole-sector cook here would run it on into
+      // presented flight. Do only what must not leak into flight: park the bounded warm roots.
+      if (state.mode !== 'loading' || (legOptions && legOptions.parkOnly === true)) {
         // A late invocation must still leave no bounded warm root mounted into flight —
         // the early return below is what used to strand SF_OpeningSpeciesWarm on scene.
-        try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
-        return { skipped: true, reason: 'not-loading' };
+        this._settleAndParkUnclaimedOpeningWarm();
+        return { skipped: true, reason: state.mode !== 'loading' ? 'not-loading' : 'park-only' };
       }
       const recookSectorId = state.world && state.world.currentSectorId;
       // Same-sector evidence must stay valid across the whole keep-GPU path: a
@@ -23195,6 +23200,7 @@ export const render = {
       teardownWarm();
       return null;
     }
+    if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root);
     return warm;
   },
 
@@ -23529,7 +23535,7 @@ export const render = {
   // WARM_BUILDING_SETTLE_DEADLINE_MS; the arm also drains `warm.building`, the
   // residency-owner pin, so finish() being skipped over-budget or a single
   // never-settling job can't leave either flag up for the run.
-  _armCrucibleWarmBuildingSettle(warm) {
+  _armCrucibleWarmBuildingSettle(warm, onSettled = null) {
     if (!warm || !warm.root) return;
     if (!Number.isFinite(warm.settleDeadlineAt)) {
       warm.settleDeadlineAt = Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
@@ -23561,6 +23567,9 @@ export const render = {
             && warm.residencyHookInstalled === true) {
           try { this._releaseOrdinaryOpeningWarm('opening-warm-settled'); }
           catch (_) { /* release is best-effort; the normal teardown remains authoritative */ }
+        }
+        if (typeof onSettled === 'function') {
+          try { onSettled(); } catch (_) { /* best-effort */ }
         }
       });
     };
@@ -24786,6 +24795,143 @@ export const render = {
    * package instances hold. The roots stay in _rosterPrewarmRoots, so the late rock re-skin sweep
    * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
    */
+  /**
+   * Barge-family program warm (PQ perf-lane tw6/tw7). The ore-carrier traffic hull links its
+   * Forge_ore_barge_* surfaces (paint/glows/glass) and the express-liner ceramic it shares a key
+   * with on first draw in flight (557-1062 ms on software GL). The opening species warm root
+   * already carries authored aftermath sections that use exactly those materials, so touch only
+   * those children through the exact-target pass while the loading shell owns the picture.
+   * Nothing is composed or added; the sweep stops the moment loading releases.
+   */
+  _touchOpeningBargeFamilyUnderShell(root) {
+    const state = this.state;
+    if (!root || !state) return;
+    const BARGE_FAMILY = /^(Forge_ore_barge|Forge_massline_express_liner_ceramic)/;
+    const seen = new Set();
+    const receipt = { touched: 0, reason: 'pending', at: null };
+    const world = state.world;
+    const render = state.render;
+    const nativeRenderer = this.renderer;
+    const renderer = render && render.renderer;
+    const context = state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
+    // Root/generation guard: a torn-down warm (disposed root) or a fresh loading window must
+    // never be touched — that could resurrect disposed programs or buffers.
+    const owned = () => {
+      if (state !== this.state) return false;
+      if (state.world !== world || state.render !== render) return false;
+      if (this.renderer !== nativeRenderer) return false;
+      if ((render && render.renderer) !== renderer) return false;
+      if (state.contextRestoreSeq !== context) return false;
+      if ((render ? render.admissionRunGeneration : undefined) !== generation) return false;
+      const inList = Array.isArray(this._rosterPrewarmRoots) && this._rosterPrewarmRoots.includes(root);
+      // begin() schedules the first step before its caller registers the root. The callback
+      // must require live membership: a root removed during that macrotask is already stale.
+      return inList;
+    };
+    const loading = () => state.mode === 'loading' && owned();
+    const publish = (reason) => {
+      if (!owned()) return false;
+      receipt.reason = reason;
+      receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
+      if (render) render.openingBargeWarm = { ...receipt };
+      return true;
+    };
+    const carriesBargeFamily = (subject) => {
+      let hit = false;
+      subject.traverse((object) => {
+        if (hit || !object.material) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        if (materials.some((material) => material && BARGE_FAMILY.test(material.name || ''))) hit = true;
+      });
+      return hit;
+    };
+    const step = async () => {
+      if (!owned()) return;
+      if (state.mode !== 'loading') return publish('shell-released');
+      const touch = render && render.touchSubjectExactTarget;
+      if (typeof touch === 'function') {
+        for (const child of [...root.children]) {
+          if (!loading()) break;
+          if (seen.has(child) || !child.userData || child.userData.authoredAssetState !== 'authored') continue;
+          seen.add(child);
+          if (!carriesBargeFamily(child)) continue;
+          try {
+            await touch(child);
+            // The touch may yield across teardown, a context restore, or a new admission run.
+            // Do not count the old child or publish a receipt into that newer owner.
+            if (!loading()) return;
+            receipt.touched += 1;
+          } catch (error) {
+            if (!owned()) return;
+            laneWarn(this, 'openingBargeWarm', '[render] opening barge family touch failed', error);
+          }
+        }
+      }
+      if (!owned()) return;
+      if (state.mode !== 'loading') return publish('shell-released');
+      publish('pending');
+      if (!owned() || state.mode !== 'loading') return;
+      setTimeout(() => { void step(); }, 250);
+      return null;
+    };
+    setTimeout(() => { void step(); }, 0);
+  },
+
+  /**
+   * Park-only / late present leg: nothing will ever claim or finish the early opening warm
+   * (only the live cook does), so its root would stay mounted with warmBuilding === true for
+   * the whole run and _parkBoundedWarmRoots() would skip it. Mirror the cook's over-budget
+   * path — claim it, drop `building`, arm the bounded settle (short deadline: no compile pass
+   * will consume late attaches on this route) — then park once the settle lands and the
+   * loading shell no longer owns the picture (the barge-family touch reads the root under it).
+   */
+  _settleAndParkUnclaimedOpeningWarm() {
+    const invocationToken = Symbol('opening-warm-park');
+    this._openingWarmParkInvocationToken = invocationToken;
+    const state = this.state;
+    const world = state && state.world;
+    const render = state && state.render;
+    const nativeRenderer = this.renderer;
+    const renderer = render && render.renderer;
+    const context = state && state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
+    const warmRoots = this._rosterPrewarmRoots;
+    const warm = this._earlyCrucibleWarm || null;
+    const warmRoot = warm && warm.root;
+    const warmOwner = warm;
+    const current = () => this.state === state
+      && this._openingWarmParkInvocationToken === invocationToken
+      && (!state || state.world === world)
+      && (!state || state.render === render)
+      && this.renderer === nativeRenderer
+      && (!render || render.renderer === renderer)
+      && (!state || state.contextRestoreSeq === context)
+      && (!render || render.admissionRunGeneration === generation)
+      && this._rosterPrewarmRoots === warmRoots
+      && (!warmRoot || (Array.isArray(warmRoots) && warmRoots.includes(warmRoot)))
+      // The early slot is cleared below. A later warm claiming it means this callback is stale.
+      && (!warmOwner || !this._earlyCrucibleWarm || this._earlyCrucibleWarm === warmOwner);
+    const parkWhenReleased = (attempt = 0) => {
+      if (!current()) return;
+      if (state && state.mode === 'loading') {
+        if (attempt >= 240) return;
+        setTimeout(() => parkWhenReleased(attempt + 1), 250);
+        return;
+      }
+      if (!current()) return;
+      try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+    };
+    if (warm && warm.root) {
+      this._earlyCrucibleWarm = null;
+      this._earlyCrucibleWarmMenu = false;
+      warm.building = false;
+      if (!Number.isFinite(warm.settleDeadlineAt)) warm.settleDeadlineAt = Date.now() + UNCLAIMED_WARM_SETTLE_DEADLINE_MS;
+      this._armCrucibleWarmBuildingSettle(warm, () => parkWhenReleased());
+    }
+    parkWhenReleased();
+  },
+
   _parkBoundedWarmRoots() {
     let roots = 0;
     let nodes = 0;
