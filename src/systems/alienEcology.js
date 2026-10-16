@@ -50,6 +50,9 @@ import {
   COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
 } from '../data/collarService.js';
 import { HEAT_SITE_ID, stepWasteHeat } from '../data/wasteHeat.js';
+import {
+  LURE_FILAMENT, LURE_RESIN, LURE_SHOWN, LURE_SITE_ID, copyHeatDerivative, heatLureRecipe,
+} from '../data/heatLure.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -466,6 +469,47 @@ function noteWasteHeatCut(world, sectorId) {
   applyWasteHeat(world, site, rec, 'cut');
 }
 
+function lureRecord(ae) {
+  if (!ae.heatDerivative || typeof ae.heatDerivative !== 'object') ae.heatDerivative = {};
+  return ae.heatDerivative;
+}
+
+function noteHeatDerivative(world, sectorId) {
+  const site = ALIEN_SITES[LURE_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const ae = ensureAlienEcologyState(world.state);
+  if (ae.heatDerivative && ae.heatDerivative.lure) return;
+  const note = ae.heatTrial && ae.heatTrial.note;
+  if (typeof note !== 'string' || !note) return;
+  const items = world.state.player && world.state.player.cargo && world.state.player.cargo.items;
+  const recipe = heatLureRecipe(note, items && items[LURE_FILAMENT], items && items[LURE_RESIN]);
+  if (!recipe.text) return;
+  if (!recipe.ready) {
+    if (ae.heatDerivative && ae.heatDerivative.asked === true) return;
+    const book = lureRecord(ae);
+    book.asked = true;
+    if (world.bus && world.bus.emit) {
+      world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: recipe.text });
+    }
+    return;
+  }
+  const removed = removeCargo(world.state, recipe.material, 1);
+  if (!removed) return;
+  const book = lureRecord(ae);
+  book.lure = recipe.material;
+  book.edge = true;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: recipe.text });
+  }
+}
+
 function noteWreckCut(world, sectorId) {
   const site = ALIEN_SITES[WRECK_SITE_ID];
   if (!site || site.sectorId !== sectorId || !world || !world.state) return;
@@ -545,6 +589,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       noteWreckCut(world, sectorId);
       noteCollarDivert(world, sectorId);
       noteWasteHeatCut(world, sectorId);
+      noteHeatDerivative(world, sectorId);
       for (const s of alienSitesForSector(sectorId)) {
         const r = ae.sites[s.siteId];
         if (!r) continue;
@@ -1296,6 +1341,19 @@ export function tickAlienEcology(world, dt) {
           rec.heatEdge = false;
         }
       }
+      if (site.siteId === LURE_SITE_ID) {
+        const lureClose = dSite < site.arrivalBands.close;
+        const lure = ae.heatDerivative;
+        if (lureClose && lure && lure.lure && lure.edge !== true && lure.shown !== true) {
+          lure.edge = true;
+          lure.shown = true;
+          if (world.bus && world.bus.emit) {
+            world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: LURE_SHOWN });
+          }
+        } else if (!lureClose && lure && lure.edge === true) {
+          lure.edge = false;
+        }
+      }
       // AE-171 (G03): a fitted Host-Memory Cartography module resolves the site’s host
       // structure the first time the long band is crossed.
       if (fittedFlag(state, 'hostMapReveal') && dSite < site.arrivalBands.long && !rec.beats.hostMap) {
@@ -1944,6 +2002,7 @@ export function recordEvidence(state, id, sectorId = null) {
 // ── Persistence (world.serialize / deserialize fields) ──────────────────────────────────────
 export function serializeAlienEcologyState(state) {
   const ae = ensureAlienEcologyState(state);
+  const heatDerivative = copyHeatDerivative(ae.heatDerivative);
   return {
     schema: ae.schema,
     revelation: ae.revelation,
@@ -1960,6 +2019,7 @@ export function serializeAlienEcologyState(state) {
     // AE-170 (G05): the echo recorder's pulse log persists across saves.
     echoLog: Array.isArray(ae.echoLog) ? ae.echoLog.slice(-32) : [],
     heatTrial: noteHeatTrial(ae.heatTrial, null),
+    ...(heatDerivative ? { heatDerivative } : {}),
     chartFindings: ae.chartFindings && typeof ae.chartFindings === 'object'
       ? JSON.parse(JSON.stringify(ae.chartFindings)) : {},
     // AE-291 (P-table): machine-site records, the evidence ledger, and fired setpieces
@@ -1998,6 +2058,8 @@ export function deserializeAlienEcologyState(state, data) {
   if (data.heatTrial && typeof data.heatTrial === 'object') {
     ae.heatTrial = noteHeatTrial(data.heatTrial, null);
   }
+  const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
+  if (heatDerivative) ae.heatDerivative = heatDerivative;
   if (data.chartFindings && typeof data.chartFindings === 'object') {
     ae.chartFindings = JSON.parse(JSON.stringify(data.chartFindings));
   }
