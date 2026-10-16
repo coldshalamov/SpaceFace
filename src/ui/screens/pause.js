@@ -520,6 +520,34 @@ export function pauseExitConfirmBody(state, target = 'menu') {
   return opening + '\n' + pauseExitSaveFact(state);
 }
 
+// PRO-19 — the pause footer names the running session's seed beside the build mark so a bug
+// report can quote it. The session seed only: state.meta.seed, never rng internals
+// (state.rng continuation state / draws stay out of the DOM).
+export function pauseRunSeedOf(state) {
+  const raw = state && state.meta ? Number(state.meta.seed) : NaN;
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return (raw >>> 0) || 0;
+}
+
+export function pauseRunSeedLine(state) {
+  const seed = pauseRunSeedOf(state);
+  return seed ? 'Seed ' + seed : '';
+}
+
+/** Write the seed line onto its footer span. Sync: the seed is known at mount. */
+export function paintPauseRunSeed(target, state) {
+  if (!target) return '';
+  const line = pauseRunSeedLine(state);
+  const text = line ? ' · ' + line : '';
+  if (target.textContent !== text) target.textContent = text;
+  return text;
+}
+
+function syncPauseRunSeed(ctx) {
+  if (!els || !els.seedText) return;
+  paintPauseRunSeed(els.seedText, ctx && ctx.state);
+}
+
 let els = null;
 /** ORRERY: pause is the title's dial held mid-flight (design/frontend/ORRERY.md §6 Pause). */
 let pauseRail = null;
@@ -1116,12 +1144,18 @@ export const pauseScreen = {
     const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
     versionText.title = leftoverVersionLabel(CREDITS);
     version.appendChild(versionText);
+    // PRO-19: the active run seed beside the build mark. Same etched line, no restyle —
+    // a plain span carrying only the session seed (never rng internals).
+    const seedText = el('span', '', '');
+    seedText.dataset.role = 'run-seed';
+    paintPauseRunSeed(seedText, ctx && ctx.state);
+    version.appendChild(seedText);
     foot.appendChild(version);
     rootEl.appendChild(foot);
     rootEl.setAttribute('aria-keyshortcuts', 'Escape');
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
-    els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText };
+    els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText, seedText };
     briefLast.objective = undefined;
     briefLast.next = undefined;
     briefLast.save = undefined;
@@ -1169,6 +1203,7 @@ export const pauseScreen = {
       ctx.bus.emit('save:loadSpeculationTarget', { slot: 'quick' });
     }
     renderFlightBrief(ctx);
+    syncPauseRunSeed(ctx);
     if (els) {
       if (els.title) settle(els.title, { from: 'left', state: 'pause-title' });
       if (els.stage) settle(els.stage, { from: 'left', delay: 60, state: 'pause-words' });
@@ -1216,5 +1251,5 @@ export const pauseScreen = {
     forceCloseClips();
     cue('close');
   },
-  refresh(ctx) { renderFlightBrief(ctx); },
+  refresh(ctx) { renderFlightBrief(ctx); syncPauseRunSeed(ctx); },
 };
