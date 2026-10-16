@@ -1323,3 +1323,14 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440; Automation conduct-strip labels vs short beams @960; Achievements / Quit short-desktop; Shipworks lower callouts below the fold @844×390. Open #411–#413 own constellation / archive / settings — do not push those branches.
 
+## Pause on a short desktop: EXIT / MAIN MENU clears the foot keycaps (ui-polish-52)
+
+**Before (master 72df18627f):** the dial places its banks from the full-frame host, so its last bank (EXIT / MAIN MENU) lands at about 0.72 of the height. The foot sat a full 48px frame margin plus a 2vw row gap above the bottom edge, so at 844×390 and 1024×440 the keycap strip (ESC Resume · P Photo · F5 Quick save …) printed on top of EXIT / MAIN MENU (bench: 10 tangled/buried findings at each size). At 844×390 the brief's Next line also started at x 461, against the GAME bank's LOAD.
+
+**After (`src/ui/orrery/pauseLayouts.js` only, CSS):**
+- **≥701 wide × ≤520 tall:** the pause frame's bottom margin is 14px, the foot's row gap is 6px and the build mark loses its paragraph margins. The foot sits on the bottom edge, so at 844×390 the keycaps start at y≈326, about 30px under EXIT (y≈293), and at 1024×440 at y≈376, about 50px under it. The dial, rows and selectors are unchanged.
+- **701–900 wide × ≤460 tall:** the brief sits level with PAUSED (`top 26px`) and is `min(330px, 40vw)` wide, so it starts right of LOAD (x≈485). Next still fits on one line, above the SHIP bank.
+
+**Checked:** bench findings went from 10 to 0 at 844×390 and at 1024×440. 800×500, 1024×500 and 1280×480 also have 0 findings. `--walk` reaches all 18 controls at each of these sizes. 1280×720, 1920×1080 and 390×844 (`--phone`) are pixel-identical to master. At 960×540 the only change is sub-threshold dial drift (no pixel off by more than 24), since 540 is outside the band. Focused tests pass: `pause-save-line`, `pause-ship-fit`, `pq-194-06-pause-shell`, `sf-275-pause-ownership` and `wave-c3-pause-kit`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish52/{before,after}/` and `compare-pause-*.png`.
+
+**Leftovers (not this pass):** the Settings Automation conduct strip at 960 (settingsLayouts.js, open #413); Achievements / Quit on a short desktop; the lower Shipworks callouts below the fold at 844×390.
