@@ -243,6 +243,36 @@ const diagnoseScript = () => {
   };
 };
 
+// Failure evidence is best-effort: a stalled page or broken inspector must never
+// replace the original admission assertion. Each snapshot has a one-second ceiling.
+async function captureArrivalDiagnostics(page) {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => page.evaluate(diagnoseScript)),
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve({ diagnosticError: 'snapshot timed out after 1000ms' }), 1000);
+      }),
+    ]);
+  } catch (error) {
+    return { diagnosticError: String(error?.message || error).slice(0, 512) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function logArrivalDiagnostics(label, snapshot) {
+  try {
+    const text = JSON.stringify(snapshot);
+    const limit = 32768;
+    console.log(label, text.length <= limit ? text : JSON.stringify({
+      diagnosticTruncated: true,
+      omittedCharacters: text.length - limit,
+      prefix: text.slice(0, limit),
+    }));
+  } catch (_) { /* Preserve the admission assertion even if diagnostic output fails. */ }
+}
+
 /**
  * Menu readiness gate: the main menu is painted, the boot overlay has released the glass, and the
  * named action's button is mounted and armed (aria-disabled drops only once its target screen is
@@ -318,7 +348,8 @@ try {
   const origin = await page.evaluate(censusScript, RANGE_WU);
   console.log('ORIGIN census within', RANGE_WU, 'WU:', JSON.stringify(origin.tally),
     '| sector-wide:', JSON.stringify(origin.sectorTally));
-  if (DIAGNOSE) console.log('  diagnose origin:', JSON.stringify(await page.evaluate(diagnoseScript)));
+  const originDiagnostics = await captureArrivalDiagnostics(page);
+  if (DIAGNOSE) logArrivalDiagnostics('  diagnose origin:', originDiagnostics);
 
   if (JUMP_AT_SIM_S > 0) {
     await page.waitForFunction((target) => window.SF.state.simTime >= target,
@@ -399,6 +430,10 @@ try {
   const withinBudget = samples.filter((sample) => sample.wait <= arriveBudgetS);
   const budget = withinBudget[withinBudget.length - 1] || samples[samples.length - 1];
   const stranded = budget.census.pending;
+  if (stranded.length > 0) {
+    logArrivalDiagnostics('  diagnose failure origin:', originDiagnostics);
+    logArrivalDiagnostics('  diagnose failure arrival:', await captureArrivalDiagnostics(page));
+  }
   assert.equal(
     stranded.length,
     0,
