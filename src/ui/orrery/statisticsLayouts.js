@@ -118,7 +118,7 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
     mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 52px), transparent 100%) !important; }
   ${ST} .sf-statistics__group { margin-bottom:4px; }
   ${ST} .sf-statistics__group > .k-caps { margin-bottom:2px; gap:8px;
-    font-size:10px !important; letter-spacing:.16em !important; }
+    font-size:12px !important; letter-spacing:.16em !important; }
   ${ST} .sf-statistics__group > .k-sentence { font-size:12px; line-height:1.25; }
   ${ST} .sf-statistics .k-row { min-height:20px; padding:1px 0 !important; gap:10px; }
   ${ST} .sf-statistics .k-row__name { font-size:12px !important; }
@@ -139,7 +139,7 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
     mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 48px), transparent 100%) !important; }
   ${ST} .sf-statistics__group { margin-bottom:2px; }
   ${ST} .sf-statistics .k-row { min-height:18px; padding:0 !important; }
-  ${ST} .sf-statistics .k-row__name { font-size:11.5px !important; }
+  ${ST} .sf-statistics .k-row__name { font-size:12px !important; }
   ${ST} .sf-statistics .k-row__num { font-size:12px !important; }
   ${ST} > .k-foot .k-word.sf-back { padding:2px 0 4px !important; min-height:28px !important; }
 }

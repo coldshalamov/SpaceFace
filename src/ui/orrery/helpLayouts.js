@@ -346,7 +346,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
     padding:10px 3vw 8px !important; row-gap:4px !important; column-gap:16px !important; }
   ${HD} > .k-title { align-self:end; }
   ${HD} > .k-title .k-t-title { font-size:clamp(22px, 4.2vh, 34px) !important; }
-  ${HD} > .k-title > .sf-help-now { margin:2px 0 0 !important; font-size:10px !important; letter-spacing:.16em !important; gap:8px; }
+  ${HD} > .k-title > .sf-help-now { margin:2px 0 0 !important; font-size:12px !important; letter-spacing:.16em !important; gap:8px; }
   ${HD} > .k-title > .sf-help-now::after { content:none; }
   ${HD} > .k-hang { grid-area:hang; align-self:start; justify-self:stretch; -webkit-mask-image:none; mask-image:none; max-height:none !important; }
   ${HD} > .k-foot { grid-area:foot; }
@@ -356,7 +356,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
     background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1px) / 100% 6px no-repeat !important; }
   ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
   ${HD} .orr-help__tabs > li::before { display:none; }
-  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:24px !important; padding:1px 0 2px !important; font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:24px !important; padding:1px 0 2px !important; font-size:12px !important; letter-spacing:.12em !important; }
   ${HD} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-8px !important; width:2px !important; height:7px !important; margin:0 0 0 -1px !important; }
   ${HD} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
   html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
@@ -370,10 +370,10 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-hreg__head { gap:4px; padding:0 0 4px 0; }
   ${HD} .orr-hreg__title { font-size:14px; }
   ${HD} .orr-hreg__secs { padding-bottom:8px; gap:clamp(8px, 1.4vw, 16px); }
-  ${HD} .orr-hreg__secword { font-size:10.5px !important; letter-spacing:.12em; }
-  ${HD} .orr-hreg__fine { margin:4px 0 0; padding-left:24px; font-size:11px; line-height:1.3; }
+  ${HD} .orr-hreg__secword { font-size:12px !important; letter-spacing:.12em; }
+  ${HD} .orr-hreg__fine { margin:4px 0 0; padding-left:24px; font-size:12px; line-height:1.3; }
   ${HD} .orr-hreg__row { min-height:26px; padding:2px 0 2px 24px; }
-  ${HD} .orr-hreg__sec { padding:8px 0 3px 24px; font-size:11px !important; }
+  ${HD} .orr-hreg__sec { padding:8px 0 3px 24px; font-size:12px !important; }
   ${HD} .orr-hreg__name { font-size:12.5px; }
   ${HD} .orr-help__close.sf-back.k-word { padding:4px 0 6px !important; min-height:30px !important; }
   /* Loops fills the stage (instrument wakes at H≥260); list tabs keep a side ladder + reading */

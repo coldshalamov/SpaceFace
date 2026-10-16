@@ -1056,7 +1056,7 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:44px !important; }
   ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { gap:4px; }
   ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; font-size:12px !important; }
-  ${ML} .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; font-size:11px !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; font-size:12px !important; }
 }
 
 /* narrow desktop window (640–760): hang|stage stayed two equal columns, so the dial sat on the
