@@ -64,6 +64,7 @@ import {
   compileScenePipelinesForRenderTarget,
   createUnreadyDrawableGuard,
   programWrapperDead,
+  retireScenePipelineReadinessPrograms,
   scenePipelineReadinessBatchOpen,
   warmScenePipelinesForRenderTarget,
   DEFAULT_BLOOM_STRENGTH,
@@ -11636,6 +11637,7 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
+        retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
         this._sessionLiveSectorCookedId = null;
         if (state.render) state.render.sessionLiveSectorCookedId = null;

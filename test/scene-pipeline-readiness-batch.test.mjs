@@ -5,6 +5,7 @@ import {
   beginScenePipelineReadinessBatch,
   compilePipelinesContextSafe,
   programWrapperDead,
+  retireScenePipelineReadinessPrograms,
 } from '../src/render/bloom.js';
 
 // A stand-in for three's WebGLProgram readiness handle. `isReady()` reports the driver's
@@ -221,6 +222,45 @@ test('a program released while it links settles the cohort instead of polling a 
   assert.equal(result.contextLost, true);
   assert.equal(settled[0].reason, 'WebGL program invalidated during shader compilation');
   assert.equal(released.polls(), 0, 'a cleared native handle is never queried for readiness');
+});
+
+test('loss-time retirement rejects a never-polled cache wrapper on post-restore reenrollment', async () => {
+  const canvas = fakeCanvas();
+  let nativeValidityQueries = 0;
+  const gl = { canvas, isContextLost: () => false,
+    isProgram() { nativeValidityQueries += 1; throw new Error('no synchronous validity query'); } };
+  let staleQueries = 0;
+  const stale = { program: { name: 'pre-loss-native-handle' },
+    isReady() { staleQueries += 1; return null; } };
+  const renderer = { info: { programs: [stale] } };
+  // No readiness helper has seen this GL or wrapper yet. Three still owns the old
+  // cache during loss, then replaces that cache before a late admission resumes.
+  retireScenePipelineReadinessPrograms(renderer);
+  canvas.fire('webglcontextlost');
+  const settled = [];
+  const oldBatch = beginScenePipelineReadinessBatch(null);
+  let oldResult;
+  try {
+    oldBatch.join(gl, [stale], result => settled.push(result));
+    oldResult = await oldBatch.drain();
+  } finally { oldBatch.close(); }
+
+  const fresh = fakeProgram('post-restore-native-handle', 0);
+  renderer.info.programs = [fresh];
+  const freshBatch = beginScenePipelineReadinessBatch(null);
+  let freshResult;
+  try {
+    freshBatch.join(gl, renderer.info.programs, () => {});
+    freshResult = await freshBatch.drain();
+  } finally { freshBatch.close(); }
+
+  assert.equal(oldResult.contextLost, true);
+  assert.deepEqual(settled.map(result => result.contextLost), [true]);
+  assert.equal(staleQueries, 0, 'retired native handles must be rejected before isReady can warn');
+  assert.equal(programWrapperDead(gl, stale), true, 'the draw guard also rejects the intact retired wrapper');
+  assert.equal(freshResult.contextLost, false);
+  assert.equal(fresh.polls(), 1, 'new cache wrappers keep the normal readiness contract');
+  assert.equal(nativeValidityQueries, 0, 'retirement never polls native isProgram');
 });
 
 test('a batch refuses a foreign GL and its standalone fallback cancels the wrong-context wrapper', async () => {

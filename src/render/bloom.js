@@ -655,9 +655,20 @@ function contextLossGeneration(gl) {
 // never need a synchronous native check. If an already-seen wrapper crosses GL contexts, cancel
 // it before calling isReady() on the wrong context.
 const programSeenGenerations = new WeakMap();
+const retiredProgramWrappers = new WeakSet();
+
+// A wrapper can reach its first readiness poll only after restoration. Retire the
+// exact old cache while it still exists, before Three replaces info.programs.
+export function retireScenePipelineReadinessPrograms(renderer) {
+  const programs = renderer?.info?.programs;
+  if (!Array.isArray(programs)) return;
+  for (const program of programs) {
+    if (program && typeof program === 'object') retiredProgramWrappers.add(program);
+  }
+}
 
 export function programWrapperDead(gl, program) {
-  if (!program || !program.program) return true;
+  if (!program || !program.program || retiredProgramWrappers.has(program)) return true;
   if (!gl || typeof gl !== 'object') return false;
   const generation = contextLossGeneration(gl);
   const seen = programSeenGenerations.get(program);
@@ -680,7 +691,7 @@ export function programWrapperDead(gl, program) {
  * (programReadiness below).
  */
 function programHandleInvalid(gl, program, generation) {
-  if (!program || !program.program) return true;
+  if (!program || !program.program || retiredProgramWrappers.has(program)) return true;
   if (!gl || typeof gl !== 'object') return false;
   if (programHandleContext(gl).generation !== generation) return true;
 
