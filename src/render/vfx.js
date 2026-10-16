@@ -14162,18 +14162,16 @@ export const vfx = {
       }
     }
     let ribbon = false;
-    if (options.ribbonExemplar !== false) {
-      if (!this._openingRibbonExemplar) {
-        this._openingRibbonExemplar = createRibbonTrail(this._scene,
-          (player && this._engineColor(player)) || '#88AAFF', NPC_RIBBON_SEGMENTS, 1.45);
-      }
-      const mesh = this._openingRibbonExemplar.getMesh();
-      if (mesh) {
-        if (!mesh.parent) this._scene.add(mesh);
-        // Non-empty range for the touch draw (zeroed positions: degenerate, nothing visible).
-        mesh.geometry.setDrawRange(0, 6);
-        ribbon = true;
-      }
+    if (!this._openingRibbonExemplar) {
+      this._openingRibbonExemplar = createRibbonTrail(this._scene,
+        (player && this._engineColor(player)) || '#88AAFF', NPC_RIBBON_SEGMENTS, 1.45);
+    }
+    const mesh = this._openingRibbonExemplar.getMesh();
+    if (mesh) {
+      if (!mesh.parent) this._scene.add(mesh);
+      // Non-empty range for the touch draw (zeroed positions: degenerate, nothing visible).
+      mesh.geometry.setDrawRange(0, 6);
+      ribbon = true;
     }
     return { skipped: false, plasma, plumes, ribbon, initMs, ms: clock() - startedAt };
   },

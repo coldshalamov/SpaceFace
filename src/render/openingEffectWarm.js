@@ -14,6 +14,8 @@
 // The opening warm touches one live instance of each through the exact-target pass while the
 // loading shell owns the picture, so the ANGLE link is paid behind the veil, not in a frame.
 
+import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
+
 export const OPENING_EFFECT_ROOT_NAMES = Object.freeze([
   'sf-liquid-plasma-root',
   'SF_RibbonTrail',
@@ -31,13 +33,25 @@ export const OPENING_EFFECT_ROOT_NAMES = Object.freeze([
 // SF_ExplosionRupture_material-transport: fx6 cand run 10 paid 834 ms for it +1.4 s after the lift.
 export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_StructuralPlateMaterial|SF_FilteredForceParticleTransport|SF_ExplosionRupture_material-transport|plume:family_industrial_main_plume:core)$/;
 
-// Plume systems the loading warm drives (only these get real buffers); every other fleet family,
-// RCS family, the retro jets and per-NPC ribbons stay lazy, as on master.
 // Total wall time the warm may spend in touches, and how long it waits on any one before moving on.
 export const OPENING_WARM_TOUCH_BUDGET_MS = 4000;
 export const OPENING_WARM_TOUCH_TIMEOUT_MS = 1000;
 
+// Plume systems the loading warm drives (only these get real buffers); every other fleet family,
+// RCS family, the retro jets and per-NPC ribbons stay lazy, as on master.
 export const OPENING_EFFECT_PLUME_DRIVE_RE = /^plume:family_industrial_main_plume:core$/;
+
+/**
+ * The opening effect warm runs only on the software / no-KHR_parallel_shader_compile route, where
+ * the opening GPU cook is fire-and-forget (shouldAwaitOpeningGpuCook false) and the warm was
+ * measured and gated. On a parallel-compile GPU the awaited cook builds and compiles these same
+ * families itself (warmupLiveFlightEffects) and rests them on its own schedule
+ * (restLiveFlightEffectsAfterCook); a second builder/rester on a 250 ms timer could hide plumes
+ * and reset the overflow jets between that warmup and the cook's compile pass (#434 review, A).
+ */
+export function openingEffectWarmAllowed({ gpu, renderer } = {}) {
+  return !!gpu && !shouldAwaitOpeningGpuCook({ gpu, renderer });
+}
 
 function materialsOf(object) {
   if (!object || !object.material) return [];

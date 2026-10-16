@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 import {
   collectOpeningEffectSubjects,
+  openingEffectWarmAllowed,
   OPENING_EFFECT_PLUME_DRIVE_RE,
 } from '../src/render/openingEffectWarm.js';
 
@@ -116,4 +117,36 @@ test('warm touches run under a total budget with a per-touch timeout, and the li
   marks.name = 'sf-cause-marks'; marks.visible = false;
   scene.add(marks);
   assert.deepEqual(mod.collectOpeningEffectSubjects(scene, new Set()).map((row) => row.key), ['root:sf-cause-marks']);
+});
+
+test('the opening effect warm runs only where the opening cook is not awaited (#434 review A)', async () => {
+  const khr = { extensions: { get: (name) => (name === 'KHR_parallel_shader_compile' ? {} : null) } };
+  const noKhr = { extensions: { get: () => null } };
+  assert.equal(openingEffectWarmAllowed({ gpu: { software: true, tier: 'software' }, renderer: khr }), true);
+  assert.equal(openingEffectWarmAllowed({ gpu: { software: false, tier: 'integrated' }, renderer: noKhr }), true);
+  assert.equal(openingEffectWarmAllowed({ gpu: { software: false, tier: 'discrete' }, renderer: khr }), false);
+  assert.equal(openingEffectWarmAllowed({ gpu: null, renderer: khr }), false);
+  assert.equal(openingEffectWarmAllowed(), false);
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const a = renderer.indexOf('  _touchOpeningEffectFamilyUnderShell() {');
+  const body = renderer.slice(a, renderer.indexOf('  _parkBoundedWarmRoots() {', a));
+  const gate = body.indexOf('if (!openingEffectWarmAllowed({ gpu: state.render && state.render.gpu, renderer: this.renderer })) {');
+  assert.ok(gate > 0, 'gate present');
+  // The gate returns before the warm marks itself active, builds the subset or schedules a sweep.
+  assert.ok(gate < body.indexOf('this._openingEffectWarmActive = true;'));
+  assert.ok(gate < body.indexOf('warmupOpeningEffectSubset('));
+  assert.ok(gate < body.indexOf('setTimeout('));
+  assert.match(body.slice(gate, gate + 300), /reason: 'parallel-compile-cook'/);
+});
+
+test('exemplar teardown waits for a timed-out touch; a step error clears the active flag (#434 findings B, D)', async () => {
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const a = renderer.indexOf('  _touchOpeningEffectFamilyUnderShell() {');
+  const body = renderer.slice(a, renderer.indexOf('  _parkBoundedWarmRoots() {', a));
+  assert.match(body, /return settled \? settled\.then\(\(\) => true, \(\) => true\) : true;/);
+  assert.match(body, /settled = await timedTouch\(touch, key, subject\);/);
+  assert.match(body, /settled\.then\(teardown, teardown\)/);
+  assert.match(body, /return await sweep\(\);\s*\} catch \(error\) \{[\s\S]{0,160}return stop\('error'\);/);
+  const vfx = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(vfx, /options\.ribbonExemplar/);
 });

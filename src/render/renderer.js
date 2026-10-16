@@ -376,6 +376,7 @@ import {
 } from './latePipelineAdmission.js';
 import {
   collectOpeningEffectSubjects,
+  openingEffectWarmAllowed,
   OPENING_EFFECT_PLUME_DRIVE_RE,
   OPENING_WARM_TOUCH_BUDGET_MS,
   OPENING_WARM_TOUCH_TIMEOUT_MS,
@@ -24036,20 +24037,6 @@ export const render = {
   },
 
   /**
-   * Detach the bounded warm roots (Crucible roster warm, opening species warm) from the live scene
-   * once the loading cook is finished with them. They exist only so their programs link and their
-   * buffers upload behind the shell; they are hidden and never drawn in flight. Mounted, they were
-   * still a scene-graph subtree — 13,845 of the 16,506 nodes in a seed-4242 Crucible fight — and
-   * three's per-frame scene.updateMatrixWorld() walks hidden subtrees too: ~11 ms a frame on the
-   * owner's iGPU, the largest single cost in the fight, plus every scene.traverse() and every
-   * in-flight exact-target touch (which hides and restores the whole graph per subject).
-   *
-   * Detaching releases nothing: linked programs belong to the materials (released only on material
-   * dispose), uploaded buffers to the geometries, and decoded records to the residency leases the
-   * package instances hold. The roots stay in _rosterPrewarmRoots, so the late rock re-skin sweep
-   * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
-   */
-  /**
    * Effect-family program warm (see openingEffectWarm.js). Loading shell only: once the player
    * exists, build the narrow effect subset (vfx warmupOpeningEffectSubset: liquid plasma, the
    * industrial plume, one ribbon-trail exemplar), then every 250 ms exact-target touch one
@@ -24059,6 +24046,12 @@ export const render = {
   _touchOpeningEffectFamilyUnderShell() {
     const state = this.state;
     if (!state || this._openingEffectWarmActive === true) return;
+    // Software / no-parallel-compile route only (#434 review, A): an awaited parallel-compile
+    // cook runs warmupLiveFlightEffects and rests these families itself; this sweep would race it.
+    if (!openingEffectWarmAllowed({ gpu: state.render && state.render.gpu, renderer: this.renderer })) {
+      if (state.render) state.render.openingEffectWarm = { reason: 'parallel-compile-cook', touched: [], touchMs: {} };
+      return;
+    }
     this._openingEffectWarmActive = true;
     const generation = state.render ? state.render.admissionRunGeneration : undefined;
     const seen = new Set();
@@ -24101,9 +24094,11 @@ export const render = {
       }
       const touchStarted = clock();
       let timer = null;
+      let settled = null;
       try {
+        settled = Promise.resolve(touch(subject));
         const outcome = await Promise.race([
-          Promise.resolve(touch(subject)).then(() => 'done'),
+          settled.then(() => 'done'),
           new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), OPENING_WARM_TOUCH_TIMEOUT_MS); }),
         ]);
         if (outcome === 'timeout') {
@@ -24122,7 +24117,9 @@ export const render = {
         firstTouchCharged = true;
         receipt.touchMs[key] = Math.round(spent);
       }
-      return true;
+      // The touch's own completion: a timed-out touch keeps running after the sweep moves on, so
+      // callers that tear the subject down wait on this rather than on the race.
+      return settled ? settled.then(() => true, () => true) : true;
     };
     let restPending = false;
     const stop = (reason) => {
@@ -24130,6 +24127,14 @@ export const render = {
       publish(reason);
     };
     const step = async () => {
+      try {
+        return await sweep();
+      } catch (error) {
+        laneWarn(this, 'openingEffectWarm', '[render] opening effect warm step failed', error);
+        return stop('error');
+      }
+    };
+    const sweep = async () => {
       if (!owned()) return stop('superseded');
       if (!loading() || Date.now() - startedAt > 90000) return stop('shell-released');
       const render = state.render;
@@ -24162,17 +24167,25 @@ export const render = {
           ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
           if (!owned() || !loading()) break;
           let subject = null;
+          let settled = true;
           try {
             subject = make();
             this.scene.add(subject);
-            await timedTouch(touch, key, subject);
+            settled = await timedTouch(touch, key, subject);
           } catch (error) {
             receipt.failed += 1;
             laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
           } finally {
             if (subject) {
-              if (subject.parent) subject.parent.remove(subject);
-              try { subject.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
+              const owned_ = subject;
+              const teardown = () => {
+                if (owned_.parent) owned_.parent.remove(owned_);
+                try { owned_.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
+              };
+              // A touch that outlived its timeout still draws this subject: detach and dispose
+              // only once it settles (#434 review, finding B).
+              if (settled && typeof settled.then === 'function') settled.then(teardown, teardown);
+              else teardown();
             }
           }
         }
@@ -24199,6 +24212,20 @@ export const render = {
     setTimeout(() => { void step(); }, 0);
   },
 
+  /**
+   * Detach the bounded warm roots (Crucible roster warm, opening species warm) from the live scene
+   * once the loading cook is finished with them. They exist only so their programs link and their
+   * buffers upload behind the shell; they are hidden and never drawn in flight. Mounted, they were
+   * still a scene-graph subtree — 13,845 of the 16,506 nodes in a seed-4242 Crucible fight — and
+   * three's per-frame scene.updateMatrixWorld() walks hidden subtrees too: ~11 ms a frame on the
+   * owner's iGPU, the largest single cost in the fight, plus every scene.traverse() and every
+   * in-flight exact-target touch (which hides and restores the whole graph per subject).
+   *
+   * Detaching releases nothing: linked programs belong to the materials (released only on material
+   * dispose), uploaded buffers to the geometries, and decoded records to the residency leases the
+   * package instances hold. The roots stay in _rosterPrewarmRoots, so the late rock re-skin sweep
+   * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
+   */
   _parkBoundedWarmRoots() {
     let roots = 0;
     let nodes = 0;
