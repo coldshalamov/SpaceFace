@@ -286,8 +286,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
    left the hull and its filmstrip a 0–300px column, so at 390–700 the strip vanished or its five slot
    names printed on top of each other. The page stacks instead: title, reading, then the filmstrip across
    the full width, the way back along the foot. The hull's own berth steps aside (each slot's frame on
-   the strip still shows its hull); a filed slot shows its name and credits (the reading carries its line). */
-@media (max-width:760px) {
+   the strip still shows its hull); a filed slot shows its name and credits (the reading carries its line).
+   Review: at 740–760 a short window (≤460 tall) keeps the reviewed one-screen short-desktop layout above (bench
+   clean there on master; stacking pushed the strip and the way back below the fold). */
+@media (max-width:739px), (max-width:760px) and (min-height:461px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding:28px 24px clamp(18px, 3.4vh, 35px) !important; row-gap:10px !important;
     grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content minmax(max-content, 1fr) max-content !important;
     grid-template-areas:"title" "page" "hang" "foot" !important; overflow-x:hidden !important; overflow-y:auto !important; }
@@ -305,6 +307,11 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.04em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { white-space:normal; }
+}
+/* review: a narrow and short window (≤739 × ≤460) stacks too; the title keeps the short-desktop size so LOAD stays above the fold */
+@media (max-width:739px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; row-gap:6px !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:34px !important; }
 }
 /* ≤520 wide and short: the hull record's two-up grid (the ≤640-tall rule) split "No yard repairs" in a
    ~90px cell; one line per record reads cleanly, and the page scrolls to the strip and the foot */
