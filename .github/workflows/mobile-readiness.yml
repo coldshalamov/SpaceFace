@@ -25,6 +25,7 @@ jobs:
       PUPPETEER_SKIP_DOWNLOAD: 'true'
       MOBILE_PROBE_URL: http://127.0.0.1:8765/
       MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
+      MOBILE_PROBE_CONTINUE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,6 +63,13 @@ jobs:
           node scripts/check-retail-motion-banks.mjs | tee .devshots/mobile-build/runtime-assets.txt
       - name: Install acceptance browser
         run: npx playwright install --with-deps "$MOBILE_PROBE_ENGINE"
+      - name: Install WebKit process diagnostics
+        if: matrix.engine == 'webkit'
+        run: |
+          if ! command -v strace >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends strace
+          fi
       - name: Static retail route, real worker round trips, New Game and touch UI
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 --directory build/web > .devshots/mobile-build/http.log 2>&1 &
@@ -70,7 +78,11 @@ jobs:
           for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/ -o /dev/null && break; sleep 1; done
           node scripts/check-runtime-worker-browser.mjs
           set -o pipefail
-          DEBUG=pw:browser node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-build/browser-process.log
+          if [ "$MOBILE_PROBE_ENGINE" = "webkit" ]; then
+            DEBUG=pw:browser strace -f -tt -e trace=process,signal -s128 -o .devshots/mobile-build/browser-process-signals.log node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-build/browser-process.log
+          else
+            DEBUG=pw:browser node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-build/browser-process.log
+          fi
       - name: Preserve acceptance evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
