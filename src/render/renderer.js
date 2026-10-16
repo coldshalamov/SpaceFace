@@ -373,6 +373,7 @@ import {
   collectUncompiledSceneDrawables,
   collectUncompiledSceneDrawablesSteps,
 } from './latePipelineAdmission.js';
+import { collectOpeningEffectSubjects } from './openingEffectWarm.js';
 import {
   armAdmissionShadows,
   casterDepthMarkAnyCurrent,
@@ -22603,6 +22604,7 @@ export const render = {
       teardownWarm();
       return null;
     }
+    if (profile === 'opening') this._touchOpeningEffectFamilyUnderShell();
     return warm;
   },
 
@@ -24020,6 +24022,56 @@ export const render = {
    * package instances hold. The roots stay in _rosterPrewarmRoots, so the late rock re-skin sweep
    * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
    */
+  /**
+   * Effect-family program warm (see openingEffectWarm.js). While the loading shell owns the
+   * picture, sweep the live scene every 250 ms and exact-target touch one instance of each
+   * effect program family not yet touched; stop for good when loading releases or the
+   * admission generation changes. Nothing is created, composed or added to the scene.
+   */
+  _touchOpeningEffectFamilyUnderShell() {
+    const state = this.state;
+    if (!state || this._openingEffectWarmActive === true) return;
+    this._openingEffectWarmActive = true;
+    const generation = state.render ? state.render.admissionRunGeneration : undefined;
+    const seen = new Set();
+    const receipt = { touched: [], failed: 0, sweeps: 0, reason: 'pending', at: null };
+    const owned = () => state === this.state
+      && (state.render ? state.render.admissionRunGeneration : undefined) === generation;
+    const publish = (reason) => {
+      receipt.reason = reason;
+      receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
+      if (state.render) state.render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice() };
+    };
+    const stop = (reason) => {
+      this._openingEffectWarmActive = false;
+      publish(reason);
+    };
+    const step = async () => {
+      if (!owned()) return stop('superseded');
+      if (state.mode !== 'loading') return stop('shell-released');
+      const touch = state.render && state.render.touchSubjectExactTarget;
+      receipt.sweeps += 1;
+      if (typeof touch === 'function' && this.scene) {
+        for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
+          if (!owned() || state.mode !== 'loading') break;
+          try {
+            await touch(subject);
+            receipt.touched.push(key);
+          } catch (error) {
+            receipt.failed += 1;
+            laneWarn(this, 'openingEffectWarm', '[render] opening effect family touch failed', key, error);
+          }
+        }
+      }
+      publish('pending');
+      if (!owned()) return stop('superseded');
+      if (state.mode !== 'loading') return stop('shell-released');
+      setTimeout(() => { void step(); }, 250);
+      return null;
+    };
+    setTimeout(() => { void step(); }, 0);
+  },
+
   _parkBoundedWarmRoots() {
     let roots = 0;
     let nodes = 0;
