@@ -58,6 +58,13 @@ test('a crate passes, a coated hull sticks, and a creature turns aside', () => {
   assert.ok(creature.ax === 0);
   assert.equal(creature.az, 14);
   assert.equal(creature.ax * 40 + creature.az * 0, 0);
+  const south = sampleFieldAcceleration(
+    { x: ring.center.x, z: ring.center.z - 40 }, vel, [boundary], 0,
+    { mass: 6, type: 'fauna', id: 6 },
+  );
+  assert.equal(south.ax, 14);
+  assert.ok(south.az === 0);
+  assert.equal(south.ax * 0 + south.az * 40, 0);
   assert.deepEqual(vel, { x: 10, z: 4 });
   const outside = sampleFieldAcceleration(
     { x: ring.center.x + 181, z: ring.center.z }, vel, [boundary], 0,
