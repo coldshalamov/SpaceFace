@@ -83,6 +83,40 @@ function resolveTravelReadout(control, profile) {
 }
 
 /**
+ * INST-35 — the thruster cap presentation keys to: the speed the thrusters themselves could
+ * have bought (the governed combat speed at full throttle), read straight from the catalog's
+ * numbers, never re-derived. `entity.maxSpeed` is the legacy derived stat and is deliberately
+ * NOT read here (see resolveGovernedCombatSpeed in propulsionCatalog.js, the same reference).
+ * Pure and advisory; the flight law is untouched — this only names the line earned speed crosses.
+ */
+export function resolveThrusterCap(profile, fallback = 0) {
+  const combat = Number(profile && profile.combatSpeed);
+  if (Number.isFinite(combat) && combat > 0) return combat;
+  const top = Number(profile && profile.maxSpeed);
+  if (Number.isFinite(top) && top > 0) return top;
+  const fb = Number(fallback);
+  return Number.isFinite(fb) && fb > 0 ? fb : 0;
+}
+
+/**
+ * INST-35 — earned-speed predicate: true only while the hull moves faster than its thrusters
+ * could have taken it. A sling, a shove, a well fling or a leftover burn coasts above the cap;
+ * at or below the cap the speed is thruster-bought. Strictly greater, so riding the cap itself
+ * reads as thruster speed. Accepts a speed number or a body with `vel`, and a cap number or a
+ * profile — the HUD model passes entities, tests pass numbers, same rule either way.
+ */
+export function isEarnedSpeed(bodyOrSpeed, profileOrCap) {
+  const speed = typeof bodyOrSpeed === 'number'
+    ? bodyOrSpeed
+    : Math.hypot(
+      finite(bodyOrSpeed && bodyOrSpeed.vel && bodyOrSpeed.vel.x),
+      finite(bodyOrSpeed && bodyOrSpeed.vel && bodyOrSpeed.vel.z),
+    );
+  const cap = typeof profileOrCap === 'number' ? profileOrCap : resolveThrusterCap(profileOrCap);
+  return cap > 0 && Number.isFinite(speed) && speed > cap;
+}
+
+/**
  * Decide whether a manually-flown ship should be told to BRAKE NOW for an arrival (D5 / W1-9).
  *
  * Pure and advisory: it reports, it never commands. **This must never be wired to actually apply

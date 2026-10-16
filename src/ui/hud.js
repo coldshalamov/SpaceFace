@@ -31,7 +31,7 @@ import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
-import { evaluateArrivalCue } from '../core/flight/flightTelemetry.js';
+import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { travelFlag } from '../data/featureFlags.js';
@@ -882,6 +882,28 @@ export function resolveBrakeStopPreview(player, profile, input) {
   if (!braking) return null;
   const mode = (player._flightFrame && player._flightFrame.assistMode) || input.assistMode || 'assisted';
   return previewBrakeStop(player, profile, mode);
+}
+
+// INST-35 — the HUD's velocity model: speed against the thruster cap, carrying the earned-speed
+// flag the readout marks. Pure. The ORRERY Speed Dial already owns the gauge, so this adds no
+// widget — just the flag and the text mark (`EARNED`), a non-colour carrier per the repo's
+// semantics rule and ORRERY's labelled-state direction. The cap is telemetry's
+// `resolveThrusterCap` (the catalog's governed combat speed), never re-derived here.
+export function buildVelocityReadout(playerOrSpeed, profileOrCap, out = null) {
+  const speed = typeof playerOrSpeed === 'number'
+    ? playerOrSpeed
+    : Math.hypot(
+      Number(playerOrSpeed && playerOrSpeed.vel && playerOrSpeed.vel.x) || 0,
+      Number(playerOrSpeed && playerOrSpeed.vel && playerOrSpeed.vel.z) || 0,
+    );
+  const thrusterCap = typeof profileOrCap === 'number' ? profileOrCap : resolveThrusterCap(profileOrCap);
+  const earnedSpeed = isEarnedSpeed(speed, thrusterCap);
+  const result = out && typeof out === 'object' ? out : {};
+  result.speed = speed;
+  result.thrusterCap = thrusterCap;
+  result.earnedSpeed = earnedSpeed;
+  result.text = `${Math.max(0, Math.round(speed))} WU/S${earnedSpeed ? ' · EARNED' : ''}`;
+  return result;
 }
 
 /** Non-colour flight feedback for the manufactured route read model. The travel owner publishes
@@ -4835,6 +4857,9 @@ export function createHud(ctx, alerts) {
           : reason ? reason.replace(/_/g, ' ').toUpperCase() : '';
       }
       else if (nearCeiling) note = 'AT CEILING';
+      // INST-35: speed the pilot earned (above the thruster cap) reads differently from speed
+      // the thrusters bought — a text mark on the existing note, never a second gauge.
+      if (buildVelocityReadout(p, profile).earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
     }
