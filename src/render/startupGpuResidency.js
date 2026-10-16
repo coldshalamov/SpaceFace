@@ -110,12 +110,18 @@ function materialTextures(material, textures, seenMaterials) {
   // texture set already deduplicates the result. Keep this local so later passes see edits.
   if (seenMaterials.has(material)) return;
   seenMaterials.add(material);
-  for (const value of Object.values(material)) {
+  // Keep the own-enumerable census used by Object.values without allocating its
+  // value array for every material in each admission/restore pass.
+  for (const key in material) {
+    if (!Object.prototype.hasOwnProperty.call(material, key)) continue;
+    const value = material[key];
     if (value && value.isTexture) textures.add(value);
   }
   const uniforms = material.uniforms;
   if (!uniforms || typeof uniforms !== 'object') return;
-  for (const uniform of Object.values(uniforms)) {
+  for (const key in uniforms) {
+    if (!Object.prototype.hasOwnProperty.call(uniforms, key)) continue;
+    const uniform = uniforms[key];
     const value = uniform && uniform.value;
     if (value && value.isTexture) textures.add(value);
   }
@@ -136,10 +142,14 @@ export function collectStartupTextures(subjects) {
     }
     if (!root || typeof root.traverse !== 'function') continue;
     root.traverse((object) => {
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : object.material ? [object.material] : [];
-      for (const material of materials) materialTextures(material, textures, seenMaterials);
+      const material = object.material;
+      if (Array.isArray(material)) {
+        for (let i = 0; i < material.length; i++) {
+          materialTextures(material[i], textures, seenMaterials);
+        }
+      } else {
+        materialTextures(material, textures, seenMaterials);
+      }
     });
   }
   return [...textures];
@@ -176,10 +186,14 @@ export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
         // first stride yielded too (680 frame-long waits for no work in the 2026-10-13 warm launch).
         strideAt = clockNow();
       }
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : object.material ? [object.material] : [];
-      for (const material of materials) materialTextures(material, textures, seenMaterials);
+      const material = object.material;
+      if (Array.isArray(material)) {
+        for (let i = 0; i < material.length; i++) {
+          materialTextures(material[i], textures, seenMaterials);
+        }
+      } else {
+        materialTextures(material, textures, seenMaterials);
+      }
       const children = object.children;
       if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
     }

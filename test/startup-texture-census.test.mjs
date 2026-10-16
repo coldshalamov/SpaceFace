@@ -38,4 +38,31 @@ for (const [name, collect] of [
     assert.deepEqual(new Set(collect(root)), new Set([nextMap, uniformMap]));
     assert.equal(reads, 1, 'the census must observe later texture replacement');
   });
+
+  test(`${name} texture census preserves own enumerable texture and uniform order`, () => {
+    const inherited = new THREE.Texture();
+    const hidden = new THREE.Texture();
+    const symbol = new THREE.Texture();
+    const first = new THREE.Texture();
+    const second = new THREE.Texture();
+    const uniformTexture = new THREE.Texture();
+    const inheritedUniform = new THREE.Texture();
+    const uniforms = Object.assign(Object.create({ inherited: { value: inheritedUniform } }), {
+      surface: { value: uniformTexture },
+      duplicate: { value: first },
+    });
+    Object.defineProperty(uniforms, 'hidden', { value: { value: hidden } });
+    const material = Object.assign(Object.create({ inherited }), { map: first, normalMap: second, uniforms });
+    Object.defineProperty(material, 'hidden', { value: hidden });
+    material[Symbol('hidden texture')] = symbol;
+    const root = new THREE.Group();
+    const single = new THREE.Object3D();
+    single.material = material;
+    const multiple = new THREE.Object3D();
+    multiple.material = [null, material, { map: second }];
+    root.add(single, multiple, new THREE.Object3D());
+
+    assert.deepEqual(collect(root), [first, second, uniformTexture],
+      'only own enumerable values participate; first encounter determines upload order');
+  });
 }
