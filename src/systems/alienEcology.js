@@ -42,7 +42,8 @@ import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
 import { noteHeatTrial } from '../data/heatProximityTrial.js';
 import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
-import { echoApplies, stepEchoIndex } from '../data/faunaRouteEcho.js';
+import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.js';
+import { HUMAN_DOCK_CHART, chartPlace } from '../data/routeChart.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -1543,6 +1544,11 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
         targetX = echoPoints[i].x;
         targetZ = echoPoints[i].z;
         speed *= 0.45;
+        const place = chartPlace(site, HUMAN_DOCK_CHART);
+        const last = echoPoints[echoPoints.length - 1];
+        if (place && last && Math.hypot(e.pos.x - last.x, e.pos.z - last.z) <= ECHO_REACH) {
+          fileChartDiscovery(world, site, place);
+        }
         break;
       }
       // Slow meander around the anchor: deterministic wander from simTime + phase.
@@ -1743,6 +1749,30 @@ function clampStim(v, d) {
   return Math.min(2, Math.max(0, (v || 0) + d));
 }
 
+function fileChartDiscovery(world, site, place) {
+  const ae = ensureAlienEcologyState(world.state);
+  if (!ae.chartFindings || typeof ae.chartFindings !== 'object') ae.chartFindings = {};
+  if (ae.chartFindings[site.siteId]) return;
+  const spawned = world.helpers && typeof world.helpers.spawnEntity === 'function'
+    ? world.helpers.spawnEntity({
+      type: 'beacon',
+      pos: { x: place.x, z: place.z },
+      radius: 8,
+      name: 'Old dock mark',
+      scanLabel: place.text,
+    })
+    : null;
+  ae.chartFindings[site.siteId] = {
+    text: place.text,
+    x: place.x,
+    z: place.z,
+    entityId: spawned && spawned.id != null ? spawned.id : null,
+  };
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: place.text });
+  }
+}
+
 function setDrive(eco, next) {
   if (!next || eco.driveState === next) return;
   eco.driveState = next;
@@ -1800,6 +1830,8 @@ export function serializeAlienEcologyState(state) {
     // AE-170 (G05): the echo recorder's pulse log persists across saves.
     echoLog: Array.isArray(ae.echoLog) ? ae.echoLog.slice(-32) : [],
     heatTrial: noteHeatTrial(ae.heatTrial, null),
+    chartFindings: ae.chartFindings && typeof ae.chartFindings === 'object'
+      ? JSON.parse(JSON.stringify(ae.chartFindings)) : {},
     // AE-291 (P-table): machine-site records, the evidence ledger, and fired setpieces
     // all persist — a reload must not reset the mystery.
     machineSites: JSON.parse(JSON.stringify(ae.machineSites || {})),
@@ -1835,6 +1867,9 @@ export function deserializeAlienEcologyState(state, data) {
   }
   if (data.heatTrial && typeof data.heatTrial === 'object') {
     ae.heatTrial = noteHeatTrial(data.heatTrial, null);
+  }
+  if (data.chartFindings && typeof data.chartFindings === 'object') {
+    ae.chartFindings = JSON.parse(JSON.stringify(data.chartFindings));
   }
   if (data.taxonomy && typeof data.taxonomy === 'object') Object.assign(ae.taxonomy, data.taxonomy);
   if (data.sites && typeof data.sites === 'object') {
