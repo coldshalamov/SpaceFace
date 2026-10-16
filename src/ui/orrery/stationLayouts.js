@@ -441,6 +441,20 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-ops .sx-comms { display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
   ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
 }
+/* …and the whole 801-1100 × ≤460 band: the head drew 162px of a 390px window and the berth
+   scrolled, so every tab's first rows sat under the pinned destination rail and the tab's own list
+   scrolled inside a page that scrolled too. The head closes up (purse straight over the dials, the
+   next step tucked under the mechanic's note, Munitions' verb on one line over its price) and the
+   tab takes the rest of the window: one scroll per tab, nothing printed under the rail. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+  ${D} { padding-top:12px !important; grid-template-rows:max-content minmax(160px, 1fr) max-content !important; }
+  ${D} .sxb-berth.dp-frame__head { grid-template-rows:auto auto auto !important; align-content:start !important; row-gap:4px !important; padding-bottom:0 !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { margin-top:0 !important; padding-top:0 !important; }
+  ${D} .sxb-berth .sxb-crown { gap:0 !important; }
+  ${D} .sxb-crown .sxb-purse { margin-bottom:0 !important; }
+  ${D} .sxb-vital.sxb-vital--muni [data-vital-act] { width:auto !important; }
+  ${D} .sxb-ops.dp-frame__foot { padding:4px 32px 6px !important; }
+}
 /* …and at 651-800 wide, where a four-band head leaves no working tab, the crown shares the right
    column with the title, tape and handoff. The existing 12px readings stay intact; the body is allowed
    to take the remaining height and its station-specific scroll hosts keep every tab reachable. */
