@@ -508,8 +508,15 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
   ${CX} .cx-ladder .k-row::before { top:10px !important; }
   ${CX} > .k-hang > .cx-ladder { padding-bottom:10px !important; }
-  ${CX} > .cx-plate-host { top:calc(50% + 10px - var(--cx-plate) / 2); }
+  /* the plate stands on the hang's foot (8px pad + 32px foot + 8px gap above the frame's bottom), not
+     mid-height: the reading ends where the plate does, so it gains ~60px, and an entry's opening
+     paragraph shows above PREVIOUS / NEXT instead of a single line */
+  ${CX} > .cx-plate-host { top:calc(100% - 48px - var(--cx-plate)); }
   ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 20px) !important; }
+  /* ...and the rail's last rung, scrolled to the end, rests above the 34px fold instead of fading in it */
+  ${CX}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:calc(var(--cx-foot-gap, 0px) + 36px) !important; }
+  /* the scroll-extent thumb rides the reading's left gutter, not through the entry number's "0" */
+  ${CX} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-10px !important; }
   ${CX} .cx-reader__num-n { font-size:32px; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:17px !important; }
   ${CX} .sf-codex-entry > h2 { margin-top:4px !important; }
