@@ -19,8 +19,9 @@ const rendererSource = await readFile(canonicalRendererPath, 'utf8');
 const productionRendererDir = path.join(repoRoot, 'src/render');
 const absoluteImport = (specifier) => pathToFileURL(path.resolve(productionRendererDir, specifier)).href;
 const runtimeSource = rendererSource.replace(
-  /((?:\bfrom\s+|\bimport\s*\(\s*))(['"])(\.\.?\/[^'"]+)\2/g,
-  (_match, prefix, quote, specifier) => `${prefix}${quote}${absoluteImport(specifier)}${quote}`,
+  /((?:\bfrom\s+|\bimport\s*\(\s*))(['"])([^'"]+)\2/g,
+  (_match, prefix, quote, specifier) => `${prefix}${quote}${specifier.startsWith('.')
+    ? absoluteImport(specifier) : import.meta.resolve(specifier)}${quote}`,
 );
 await writeFile(runtimeRendererPath, runtimeSource, 'utf8');
 const { render: renderSystem } = await import(`${pathToFileURL(runtimeRendererPath).href}?opening-owner`);

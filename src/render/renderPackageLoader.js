@@ -382,7 +382,12 @@ export function createRenderPackageLoader(options = {}) {
               entry.evicted = true;
               loaded.markEvicted();
               if (cache.get(contentHash) === entry) cache.delete(contentHash);
-              dropPackageDetachManifest(contentHash);
+              // A content hash can have multiple decoded generations in separate loaders. Retire
+              // only the manifest registered by this residency generation; a hash-only drop could
+              // erase a still-mounted sibling package during preview/runtime teardown.
+              if (entry.detachManifest) {
+                dropPackageDetachManifest(contentHash, entry.detachManifest);
+              }
               entry.admission.abort(new Error(`Render package ${metadata.assetId} was evicted mid-decode.`));
             },
           });
@@ -393,8 +398,18 @@ export function createRenderPackageLoader(options = {}) {
         retainConsumer(entry.key);
         const retained = entry.request.commit();
         entry.request = null;
-        if (!retained) {
-          throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
+        // `retain()` emits synchronously. A registry listener can retire the whole residency
+        // registry from that event, so the request can report success after this entry has
+        // already been evicted and its admission aborted. Do not build a detach manifest for
+        // that dead generation (it would otherwise outlive the registry entry as an orphan).
+        try {
+          entry.admission.assertActive();
+          if (!retained || entry.evicted || cache.get(contentHash) !== entry) {
+            throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
+          }
+        } catch (error) {
+          disposeDecodedResources(decoded, loaded.resources);
+          throw error;
         }
         // Mark the package's textures for post-upload CPU-payload detach. The manifest pairs each
         // texture with its ordinal in the deterministic resource walk so a context restore can
@@ -512,7 +527,6 @@ export function createRenderPackageLoader(options = {}) {
     verifiedMetadataCache.clear(); verifiedMetadataBytes = 0;
     for (const entry of cache.values()) {
       releasePackageOwner(entry, reason);
-      dropPackageDetachManifest(entry.metadata.contentHash);
     }
     for (const admission of [...activeAdmissions]) {
       admission.abort(new Error('Render package loader has been disposed.'));

@@ -1533,7 +1533,6 @@ export function createUnreadyDrawableGuard(renderer) {
   }
 
   function hideOneUnreadySceneDrawable(object) {
-    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
     if (!object || object.visible !== true) return;
     if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
         || object.isLine || object.isSprite || object.isInstancedMesh)) {
@@ -1546,6 +1545,8 @@ export function createUnreadyDrawableGuard(renderer) {
       object.visible = false;
       return;
     }
+    // Detached holds must cover every released drawable, including the tail beyond this cap.
+    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
     const props = renderer.properties;
     const list = object.material;
     if (Array.isArray(list)) {

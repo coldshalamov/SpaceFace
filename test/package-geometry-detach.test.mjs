@@ -200,6 +200,95 @@ test('the pending gate covers version bumps, dead records, and un-uploaded rende
   loader.dispose();
 });
 
+test('a preview loader cannot retire a live same-hash package generation', async () => {
+  resetPackageDetachManifestsForTests();
+  const metadata = packageMetadata('fixture.same-hash-generation');
+  const decodedA = decodedFixture();
+  const decodedARefill = decodedFixture();
+  const decodedB = decodedFixture();
+  let decodesA = 0;
+  const residencyA = createAssetResidencyRegistry();
+  const residencyB = createAssetResidencyRegistry();
+  // This test deliberately uses two real loaders and registries. freshLoader() resets the global
+  // manifest table, which would hide the cross-loader retirement race this covers.
+  const loaderA = createRenderPackageLoader({
+    residency: residencyA,
+    loadGlb: async () => (decodesA++ === 0 ? decodedA : decodedARefill),
+  });
+  const loaderB = createRenderPackageLoader({
+    residency: residencyB,
+    loadGlb: async () => decodedB,
+  });
+
+  const loadedA = await loaderA.load(metadata, { baseUrl: 'https://fixtures.test/' });
+  const liveInstance = loadedA.createInstance();
+  await loaderB.load(metadata, { baseUrl: 'https://fixtures.test/' });
+  assert.notEqual(
+    decodedA.geometry.userData.spacefaceCpuDetach.manifestId,
+    decodedB.geometry.userData.spacefaceCpuDetach.manifestId,
+    'same bytes in separate registries receive separate generation marks',
+  );
+
+  const renderer = stubRenderer();
+  assert.equal(detachPackageGeometry(decodedA.geometry, renderer), true);
+  assert.equal(packageDetachDiagnostics().manifests, 2);
+
+  loaderB.dispose('preview-closed');
+  assert.equal(packageDetachDiagnostics().manifests, 1,
+    'preview retirement drops only its own generation manifest');
+  assert.equal(isPackageGeometryDetached(decodedA.geometry), true,
+    'the live mounted generation remains detached');
+  assert.equal(detachedGeometryUploadPending(decodedA.geometry, renderer), false,
+    'the live renderer residency stamp remains valid');
+
+  noteOrientationDetachedHold(renderer);
+  assert.equal(detachedPresentedDrawBlocked(renderer, decodedA.geometry, decodedA.material), true,
+    'the draw guard still protects the live detached generation');
+  const refill = presentedDetachRehydrateInFlight();
+  assert.ok(refill, 'the live generation remains refillable after preview disposal');
+  await refill;
+  assert.equal(isPackageGeometryDetached(decodedA.geometry), false,
+    'the live generation refills from its own immutable decode');
+  assert.ok(decodedA.geometry.getAttribute('normal').array.byteLength > 0,
+    'refill restores the released attribute bytes');
+  assert.equal(detachedPresentedDrawBlocked(renderer, decodedA.geometry, decodedA.material), false,
+    'the draw guard clears after the live generation refills');
+
+  loaderA.dispose('runtime-retired');
+  assert.equal(packageDetachDiagnostics().manifests, 1,
+    'disposing the loader keeps the exact manifest while its instance is still live');
+  liveInstance.dispose('flight-unmounted');
+  assert.equal(packageDetachDiagnostics().manifests, 0,
+    'final residency retirement releases the last generation manifest');
+});
+
+test('reentrant residency retirement rejects the load without an orphan detach manifest', async () => {
+  resetPackageDetachManifestsForTests();
+  const decoded = decodedFixture();
+  let registry = null;
+  let retired = false;
+  registry = createAssetResidencyRegistry({
+    onEvent(event) {
+      if (event.type !== 'asset-retained' || retired) return;
+      retired = true;
+      registry.disposeAll('reentrant-runtime-retirement');
+    },
+  });
+  const loader = freshLoader(async () => decoded, registry);
+
+  await assert.rejects(
+    loader.load(packageMetadata('fixture.reentrant-retirement'), { baseUrl: 'https://fixtures.test/' }),
+    'a synchronous registry retirement after commit rejects the dead generation',
+  );
+  assert.equal(retired, true, 'the regression exercised the real asset-retained event');
+  assert.equal(packageDetachDiagnostics().manifests, 0,
+    'an evicted decode cannot leave a manifest after its registry entry is gone');
+
+  loader.dispose('post-reentrant-cleanup');
+  assert.equal(packageDetachDiagnostics().manifests, 0,
+    'loader disposal remains idempotent after the cache entry was evicted');
+});
+
 test('rehydrate refills released arrays from an ordinal-paired donor and bumps versions', async () => {
   const decoded = decodedFixture();
   let decodes = 0;
@@ -406,6 +495,39 @@ test('orientation hold hides a detached mesh after the readiness walk has gone s
   guard.restore();
   assert.equal(hull.visible, true, 'the refill drops the hold and the ship draws again');
   prop.geometry.dispose();
+  loader.dispose();
+});
+
+test('orientation hold journals and restores every detached mesh beyond the ordinary cap', async () => {
+  const decoded = decodedFixture();
+  const loader = freshLoader(async () => decoded);
+  await loader.load(packageMetadata('fixture.orientation-cap'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const meshes = [decoded.scene.children[0]];
+  for (let i = 1; i < 513; i++) {
+    const mesh = new THREE.Mesh(geometry, decoded.material);
+    mesh.name = `DetachedMesh${i}`;
+    decoded.scene.add(mesh);
+    meshes.push(mesh);
+  }
+  const readyProgram = { isReady() { return true; }, program: { id: 1 } };
+  const renderer = {
+    properties: { get() { return { currentProgram: readyProgram }; } },
+    info: { programs: [readyProgram] },
+    getContext() { return null; },
+  };
+  const guard = createUnreadyDrawableGuard(renderer);
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  noteOrientationDetachedHold(renderer);
+
+  guard.hide(decoded.scene);
+  assert.equal(meshes.length, 513);
+  assert.equal(meshes.filter((mesh) => mesh.visible).length, 0,
+    'the orientation hold hides every detached mesh, including the 513th');
+  guard.restore();
+  assert.equal(meshes.filter((mesh) => mesh.visible).length, 513,
+    'restoration re-shows every journaled detached mesh');
+
   loader.dispose();
 });
 
