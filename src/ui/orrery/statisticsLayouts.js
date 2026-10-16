@@ -102,6 +102,47 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
   ${ST} .sf-statistics .k-row__name { font-size:13.5px !important; }
   ${ST} .sf-statistics .k-row__num { font-size:15px !important; }
 }
+
+/* very short desktop (≤460 tall, e.g. 1024×440 / 844×390): TRADE's lower rows hard-clipped
+   mid-glyph against ‹ BACK. Compress chrome, fade the stage foot so a partial row dissolves
+   instead of slicing letters, and keep Back clear of the last visible ink. */
+@media (max-height:460px) {
+  ${ST} { row-gap:3px !important; padding-top:8px !important; padding-bottom:4px !important;
+    padding-left:clamp(18px, 2.8vw, 40px) !important; padding-right:clamp(18px, 2.8vw, 40px) !important; }
+  ${ST} > .k-title .k-t-title, ${ST} > .k-title .fh-title { font-size:clamp(22px, 5.2vh, 34px) !important; line-height:.88 !important; }
+  ${ST} > .k-title .k-sentence, ${ST} > .k-title > p { margin-top:1px !important; font-size:12px !important; max-width:48ch;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${ST} > .sf-statistics.k-stage, ${ST} > .sf-statistics.k-hang {
+    padding:0 0 44px !important; max-width:min(560px, 100%) !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 52px), transparent 100%) !important;
+    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 52px), transparent 100%) !important; }
+  ${ST} .sf-statistics__group { margin-bottom:4px; }
+  ${ST} .sf-statistics__group > .k-caps { margin-bottom:2px; gap:8px;
+    font-size:10px !important; letter-spacing:.16em !important; }
+  ${ST} .sf-statistics__group > .k-sentence { font-size:12px; line-height:1.25; }
+  ${ST} .sf-statistics .k-row { min-height:20px; padding:1px 0 !important; gap:10px; }
+  ${ST} .sf-statistics .k-row__name { font-size:12px !important; }
+  ${ST} .sf-statistics .k-row__num { font-size:12.5px !important; }
+  ${ST} > .k-foot .k-word.sf-back { padding:4px 0 6px !important; min-height:32px !important;
+    font-size:12px !important; }
+}
+
+/* shortest band (≤400 tall, e.g. 844×390): one more notch so Biggest profit stays fully
+   opaque above the fade and ‹ BACK never slices a TRADE numeral. */
+@media (max-height:400px) {
+  ${ST} { padding-top:6px !important; padding-bottom:2px !important; row-gap:2px !important; }
+  ${ST} > .k-title .k-t-title, ${ST} > .k-title .fh-title { font-size:22px !important; }
+  ${ST} > .k-title .k-sentence, ${ST} > .k-title > p { display:none !important; }
+  ${ST} > .sf-statistics.k-stage, ${ST} > .sf-statistics.k-hang {
+    padding:0 0 40px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 48px), transparent 100%) !important;
+    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 48px), transparent 100%) !important; }
+  ${ST} .sf-statistics__group { margin-bottom:2px; }
+  ${ST} .sf-statistics .k-row { min-height:18px; padding:0 !important; }
+  ${ST} .sf-statistics .k-row__name { font-size:11.5px !important; }
+  ${ST} .sf-statistics .k-row__num { font-size:12px !important; }
+  ${ST} > .k-foot .k-word.sf-back { padding:2px 0 4px !important; min-height:28px !important; }
+}
 /* 1080p band + archive-matched 1440p/4K zoom */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${ST} { zoom:1.12; }

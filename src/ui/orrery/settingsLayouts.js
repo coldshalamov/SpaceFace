@@ -23,6 +23,7 @@ import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 const STYLE_ID = 'sf-orrery-settings-layouts';
 const S = 'html body #screens > .k-screen.of-settings.orr-settings';
 const C = 'html body #screens > .k-screen.of-credits.orr-credits';
+const CD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-credits.orr-credits';
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
@@ -558,6 +559,51 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${C} .of-credits-rows .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:3px !important; }
   ${C} .of-credits-rows .k-row > * { grid-column:1 !important; grid-row:auto !important; min-width:0; }
   ${C} .of-credits-rows .k-row__num { text-align:left !important; white-space:normal !important; line-height:1.4 !important; }
+}
+/* a very short desktop window (844×390 / ≤460): the five-rung section ladder (and on ≤900 the
+   stacked MADE BY reel head) ran into ‹ BACK. Compress title, hang, reel head and foot so CLOSE
+   clears and MADE BY / SPACEFACE stay readable. Real phones in landscape use data-sf-mobile and stay out. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+  ${CD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important;
+    column-gap:clamp(16px, 2.4vw, 40px) !important; }
+  ${CD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
+  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:11px !important; letter-spacing:.2em !important; gap:10px; }
+  ${CD} > .k-title > p::after { width:48px; }
+  /* hang stays in its row: scroll if needed instead of painting through ‹ BACK */
+  ${CD} > .k-hang { align-self:stretch !important; max-height:100% !important; min-height:0 !important;
+    overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${CD} .k-hang > .k-words { padding:2px 0 !important; }
+  ${CD} .k-hang > .k-words .k-word { min-height:26px !important; padding-top:3px !important; padding-bottom:3px !important;
+    font-size:11.5px !important; letter-spacing:.12em !important; line-height:1.25 !important; }
+  ${CD} .k-hang > .k-words > li::before { font-size:10.5px !important; }
+  ${CD} .k-hang > .k-words .k-word:is([aria-current="true"])::before { height:9px !important; margin-top:-4.5px !important; }
+  ${CD} .orr-cr-progress { display:none !important; }
+  ${CD} .orr-cr-reel { padding:2vh 0 28vh !important; }
+  ${CD} .orr-cr-sec { scroll-margin-top:2vh; }
+  ${CD} .orr-cr-sec + .orr-cr-sec { margin-top:28px; }
+  ${CD} .orr-cr-head { margin-bottom:8px !important; gap:10px; font-size:11px !important; }
+  ${CD} .of-credits-name { font-size:clamp(28px, 9vh, 48px) !important; }
+  ${CD} .of-credits-made { margin:0 0 10px !important; }
+  ${CD} .of-credits-ver, ${CD} .of-credits-made .k-row__sub { margin-top:6px !important; font-size:11px !important; }
+  ${CD} .orr-cr-sec > .k-sentence { font-size:13px !important; line-height:1.4 !important; }
+  ${CD} .of-credits-rows .k-row { padding-top:6px !important; padding-bottom:6px !important; }
+  ${CD} .of-credits-rows .k-row::before { top:14px !important; }
+  ${CD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${CD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; font-size:10px !important; }
+  /* park the orrery further right so its Hand/name cannot sit on the reel head */
+  ${CD} > .orr-cr-orrery { --orr-cr-d:min(64vh, 30vw); width:var(--orr-cr-d); height:var(--orr-cr-d);
+    margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.52); }
+  ${CD} .orr-cr-body.is-current text.orr-cr-body__name { font-size:0 !important; opacity:0 !important; }
+}
+/* stacked hang (≤900): the horizontal section rail + SPACEFACE head also need less chrome so the
+   reel does not print through ‹ BACK */
+@media (min-width:651px) and (max-width:900px) and (max-height:460px) {
+  ${CD} .k-hang > .k-words .k-word { min-height:28px !important; padding:4px 8px !important;
+    font-size:11px !important; letter-spacing:.1em !important; }
+  ${CD} .of-credits-name { font-size:clamp(26px, 8.5vh, 42px) !important; }
+  ${CD} .orr-cr-reel { padding-top:1vh !important; padding-bottom:18vh !important; }
+  ${CD} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important;
+    mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important; }
 }
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${C} { zoom:1.12; }
