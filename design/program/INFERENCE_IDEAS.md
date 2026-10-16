@@ -539,7 +539,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | ECON-05 | A sink charge posts a receipt line naming the kind | `src/systems/economy.js`, `src/ui/alerts.js` | On seed 4242 `economy:sinkCharged` raises one line per charge with its `SESSION_SINK_KINDS` word; a focused test pins it | Post for zero-credit charges. Add a screen | SHIPPED ECON-05 af6f3918f |
 | ECON-06 | Drone ore sales go through the economy's listener or the listener goes | `src/systems/economy.js`, `src/systems/automation.js` | A focused test proves `miningDrone:sellOre` has one real emitter on the drone unload path and the credit lands through the economy once; today the listener has no emitter | Let automation write credits. Sell twice | SHIPPED econ-06 — listener already retired 516241bba; unload emits economy:grantCredits once, lands once |
 | ECON-07 | The death screen names the insurance that would have covered this loss | `src/combat/playerDefeat.js`, `src/ui/screens/gameOver.js` | On seed 4242 an uninsured death's after-action model carries the hull policy name and the premium that would have applied; an insured death carries the deductible only; a focused test pins both | Sell the policy from the death screen. Change recovery cost | SHIPPED ECON-07 4c7fca809 |
-| ECON-08 | A loss you caused moves the price and the news names the cause | `src/systems/lossLedger.js`, `src/systems/economyCycles.js`, `src/ui/marketNews.js` | On seed 4242 a loss-ledger entry on a shipped commodity shifts its destination price and publishes one cited headline; a focused test pins the citation | Invent a new price model. Publish uncited | OPEN |
+| ECON-08 | A loss you caused moves the price and the news names the cause | `src/systems/lossLedger.js`, `src/systems/economyCycles.js`, `src/ui/marketNews.js` | On seed 4242 a loss-ledger entry on a shipped commodity shifts its destination price and publishes one cited headline; a focused test pins the citation | Invent a new price model. Publish uncited | SHIPPED |
 | ECON-09 | A bought-out listing reads sold out with its restock word instead of vanishing | `src/ui/station/screens/market.js`, `src/systems/economy.js` | On seed 4242 a zero-stock row stays listed and names the restock estimate; a focused test pins the row before and after restock | Change restock math. Hide empty rows | OPEN |
 | ECON-10 | Selling into a posted shortage pays the posted premium and the receipt says so | `src/systems/economy.js`, `src/systems/missions.js` | On seed 4242 a sale that relieves a posted shortage prints one premium line in the receipt; a focused test pins it and its absence on a normal sale | Change prices. Re-post the shortage (NXI-169) | OPEN |
 | ECON-11 | Freight you delivered under contract shows up in that station's stock | `src/systems/economy.js`, `src/systems/missions.js` | On seed 4242 delivering ten units under contract raises the station's listed stock of that good by ten; a focused test pins the stock before and after | Mint bonus goods. Change contract terms (NXI-109) | OPEN |
@@ -652,7 +652,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | WORLD-43 | 2026-10-16 | infer10-oct16 | `src/systems/fieldDepletion.js`, `src/systems/barkDirector.js`, `src/systems/npcJobsRuntime.js` |
 | INST-35 | 2026-10-16 | infer10-oct16 | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` |
 | FIGHT-13 | 2026-10-16 | infer10-oct16 | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` |
-| ECON-08 | 2026-10-16 | infer10-oct16 | `src/systems/lossLedger.js`, `src/systems/economyCycles.js`, `src/ui/marketNews.js` |
 | MACH-12 | 2026-10-16 | infer10-oct16 | `src/systems/traffic.js`, `src/data/laneContacts.js` |
 ## SHIPPED
 
@@ -664,6 +663,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | PRO-19 | pro-19-pause-seed | b708ff51b2 | Pause footer shows the session seed beside the build mark; seed-only, no rng internals, no restyle; focused 3/3 |
 | LAW-10 | law-10-scan-dump-suspicion | e3890eb692 | Mid-scan full dump of the scanned lot aborts to suspicion (toast + panel dismiss); completed scans keep the full finding; heat/scan-odds untouched; focused 5/5 |
 | PIC-31 | pic-31-damaged-hull-vent | 96af864a5e | Damaged-band entry vents at the hit side (one record, repair/death stops) through the status-attached loop to a pale matter draw; bands untouched, no health bar; focused 7/7 |
+| ECON-08 | econ-08-loss-moves-price | c09dbb1d4a | Player-caused laden kill drains the destination book via the existing pressure path + one cited headline; NPC/unladen kills stay ledger-only; focused 2/2 |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
