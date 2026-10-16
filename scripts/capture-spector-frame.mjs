@@ -3,6 +3,8 @@
 // Outputs .devshots/spector/spector-capture.json and an analyzed summary report.
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
@@ -10,6 +12,24 @@ import { bootToMenu, adventureToFlight } from './player-truth/routes.mjs';
 import { startBenchServer } from './lib/benchServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
+// Use the shared validated source overlay; assets and the public flight route stay canonical.
+const baselineSourceArg = process.argv.find(a => a.startsWith('--baseline-source='))?.slice('--baseline-source='.length);
+const baselineSourcePath = baselineSourceArg ? path.resolve(ROOT, baselineSourceArg) : null;
+let baselineSourceOverlay = null;
+let baselineSourceRelative = null;
+if (baselineSourcePath) {
+  baselineSourceRelative = path.relative(ROOT, baselineSourcePath).replace(/\\/g, '/');
+  if (!baselineSourceRelative.startsWith('.devshots/')) {
+    throw new Error('--baseline-source must point to an ignored manifest under .devshots/');
+  }
+  try {
+    execFileSync('git', ['check-ignore', '--quiet', '--', baselineSourceRelative], { cwd: ROOT });
+  } catch {
+    throw new Error('--baseline-source manifest must be ignored by Git');
+  }
+  baselineSourceOverlay = loadSourceOverlayManifest(baselineSourcePath);
+}
 const outputArg = process.argv.find(a => a.startsWith('--out='))?.slice(6);
 const OUT_DIR = path.resolve(ROOT, outputArg || path.join('.devshots', 'spector', new Date().toISOString().replace(/[:.]/g, '-')));
 if (!OUT_DIR.startsWith(path.join(ROOT, '.devshots') + path.sep)) throw new Error('--out must stay under .devshots');
@@ -27,10 +47,12 @@ if (!Number.isInteger(WIDTH) || WIDTH <= 0 || !Number.isInteger(HEIGHT) || HEIGH
   throw new Error('Expected positive integer width/height, positive dpr and nonnegative travel-ms');
 }
 
-function analyzeSpectorCapture(capture) {
+export function analyzeSpectorCapture(capture) {
   const commands = capture.commands || [];
   let drawCalls = 0;
   let instancedDrawCalls = 0;
+  let multiDrawCalls = 0;
+  let logicalDrawCalls = 0;
   let useProgramCalls = 0;
   let textureBinds = 0;
   let stateChanges = 0;
@@ -45,9 +67,13 @@ function analyzeSpectorCapture(capture) {
       const program = cmd.commandArguments?.[0];
       currentProgram = program?.__SPECTOR_Object_TAG?.displayText
         || (typeof program === 'string' ? program : 'program_' + useProgramCalls);
-    } else if (name.startsWith('draw')) {
+    } else if (name.startsWith('draw') || name.startsWith('multiDraw')) {
       drawCalls++;
       if (name.includes('Instanced')) instancedDrawCalls++;
+      if (name.startsWith('multiDraw')) {
+        multiDrawCalls++;
+        logicalDrawCalls += Number(cmd.commandArguments?.at(-1)) || 0;
+      } else logicalDrawCalls++;
       callsByProgram.set(currentProgram, (callsByProgram.get(currentProgram) || 0) + 1);
     } else if (name === 'bindTexture') {
       textureBinds++;
@@ -60,6 +86,8 @@ function analyzeSpectorCapture(capture) {
     totalCommands: commands.length,
     drawCalls,
     instancedDrawCalls,
+    multiDrawCalls,
+    logicalDrawCalls,
     useProgramCalls,
     textureBinds,
     stateChanges,
@@ -70,10 +98,23 @@ function analyzeSpectorCapture(capture) {
 async function main() {
   await mkdir(path.dirname(OUT_DIR), { recursive: true });
   await mkdir(OUT_DIR, { recursive: false });
-  const server = await startBenchServer();
+  const server = await startBenchServer({ sourceOverlay: baselineSourcePath });
 
   let browser = null;
   try {
+    const readOverlayIdentity = async () => {
+      if (!baselineSourceOverlay) return null;
+      const response = await fetch(`${server.baseUrl}__source_overlay_identity`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Source overlay identity endpoint returned ${response.status}`);
+      const identity = await response.json();
+      if (identity.sourceOverlayDigest !== baselineSourceOverlay.identity.sourceOverlayDigest
+        || identity.sourceCommit !== baselineSourceOverlay.identity.sourceCommit) {
+        throw new Error('Served source overlay differs from validated baseline manifest');
+      }
+      const { sourceCommit, sourceOverlayDigest, fileCount, totalBytes } = identity;
+      return { sourceCommit, sourceOverlayDigest, fileCount, totalBytes };
+    };
+    const servedOverlayStart = await readOverlayIdentity();
     const { chromium } = await loadPlaywright(ROOT);
     console.log(`[perf:spector] Launching Chromium (${HEADFUL ? 'headed' : 'headless'})...`);
     browser = await chromium.launch({
@@ -105,10 +146,12 @@ async function main() {
     console.log('[perf:spector] Waiting for SpaceFace boot...');
     await bootToMenu(page, targetUrl, (name, _ok, detail) => console.log(`[perf:spector] ${name}: ${detail}`));
 
+    let launchedRunSeed = null;
     // If starting a flight run
     if (ROUTE === 'flight') {
       console.log('[perf:spector] Starting flight scene...');
-      await adventureToFlight(page, (name, _ok, detail) => console.log(`[perf:spector] ${name}: ${detail}`), { seed: 47 });
+      const launch = await adventureToFlight(page, (name, _ok, detail) => console.log(`[perf:spector] ${name}: ${detail}`), { seed: 47 });
+      launchedRunSeed = launch.runSeed;
       // Wait for flight mode — authored-visual readiness can take a while on software WebGL.
       await page.waitForFunction(() => {
         const state = window.SF?.state;
@@ -134,8 +177,16 @@ async function main() {
         userAgent: navigator.userAgent, settings: st.settings, viewport: [innerWidth, innerHeight],
         buffer: [gl.drawingBufferWidth, gl.drawingBufferHeight], authority: 'single-frame GL diagnostic; capture disturbs timing' };
     });
+    if (launchedRunSeed != null) metadata.seed = launchedRunSeed;
     metadata.captureProfile = { route: ROUTE, width: WIDTH, height: HEIGHT, dpr: DPR,
       travelMs: TRAVEL_MS, settleMs: ROUTE === 'flight' ? 3000 : 2000 };
+    metadata.sourceOverlay = baselineSourceOverlay ? {
+      manifest: baselineSourceRelative,
+      ...servedOverlayStart,
+      servedStart: servedOverlayStart,
+      servedEnd: null,
+      stable: null,
+    } : null;
     await writeFile(path.join(OUT_DIR, 'metadata.json'), JSON.stringify(metadata, null, 2));
     const capture = await page.evaluate(async () => {
       if (!window.SF || !window.SF.perf || !window.SF.perf.spector) {
@@ -145,6 +196,12 @@ async function main() {
     });
 
     console.log(`[perf:spector] Frame capture successful! (${capture.commands?.length || 0} GL commands)`);
+    if (metadata.sourceOverlay) {
+      metadata.sourceOverlay.servedEnd = await readOverlayIdentity();
+      metadata.sourceOverlay.stable = JSON.stringify(servedOverlayStart)
+        === JSON.stringify(metadata.sourceOverlay.servedEnd);
+      await writeFile(path.join(OUT_DIR, 'metadata.json'), JSON.stringify(metadata, null, 2));
+    }
 
     const jsonPath = path.join(OUT_DIR, 'spector-capture.json');
     await writeFile(jsonPath, JSON.stringify(capture, null, 2), 'utf8');
@@ -163,6 +220,7 @@ async function main() {
       `- **Frame coverage**: ${completeFrame ? 'complete successful world draw' : 'INCOMPLETE; command limit or submission boundary unobserved'}`,
       `- **Total WebGL Commands**: ${analysis.totalCommands}`,
       `- **Total Draw Calls**: **${analysis.drawCalls}** (${analysis.instancedDrawCalls} instanced)`,
+      `- **Multi-draw Calls**: ${analysis.multiDrawCalls}; logical subdraws including ordinary calls: ${analysis.logicalDrawCalls}`,
       `- **Program Switches (\`useProgram\`)**: ${analysis.useProgramCalls}`,
       `- **Texture Bindings (\`bindTexture\`)**: ${analysis.textureBinds}`,
       `- **State Changes**: ${analysis.stateChanges}`,
@@ -199,7 +257,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('[perf:spector] Execution failed:', err);
-  process.exit(1);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error('[perf:spector] Execution failed:', err);
+    process.exit(1);
+  });
+}
