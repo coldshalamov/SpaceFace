@@ -238,7 +238,7 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
    (the right column), the reading takes the left column's full height, and its type steps down:
    credits read on one line, the name field sits beside its label, the hull record runs tighter. */
 @media (max-width:1100px) and (max-height:460px) {
-  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:16px !important; padding-bottom:12px !important; row-gap:6px !important;
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; padding-bottom:12px !important; row-gap:6px !important;
     grid-template-rows:auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:"title stage" "page stage" "page hang" "page foot" !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:34px !important; }
@@ -277,6 +277,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-actions .k-word.sf-save-verb,
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-foot .k-word:not(.sf-back) { font-size:12px !important; letter-spacing:.14em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-foot .k-word.sf-back::after { font-size:12px !important; letter-spacing:.14em !important; }
+  /* review: after a re-save the context line runs three lines ("… PREVIOUS GENERATION KEPT (FILED EARLIER
+     TODAY)") and LOAD / SAVE HERE / DELETE fell ~20px off the frame at 801-844x390. The record's last, unpaired
+     line (GRUDGE) takes the whole row instead of wrapping in half of it, and the top padding gives back 6px (16 -> 10). */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
 }
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }
