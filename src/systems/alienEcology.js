@@ -45,6 +45,7 @@ import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
 import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.js';
 import { HUMAN_DOCK_CHART, chartPlace } from '../data/routeChart.js';
 import { copyLifeRead, lifeSampleFromSite, readSiteLife } from '../data/siteLifeRead.js';
+import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -398,6 +399,25 @@ function emitEcologyOffer(world, site, sector) {
   if (emitted > 0 && world.bus) world.bus.emit('audio:cue', { id: 'scan_resolve' });
 }
 
+function noteWreckCut(world, sectorId) {
+  const site = ALIEN_SITES[WRECK_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const rec = siteRecord(world.state, site.siteId);
+  const next = stepWreckSuccession(rec.wreckStage, 'cut');
+  if (!next.text) return;
+  rec.wreckStage = next.stage;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+  }
+}
+
 // ── Event intake (world.init wires these onto the bus) ──────────────────────────────────────
 export function handleAlienEcologyEvent(world, type, payload) {
   const state = world && world.state;
@@ -455,6 +475,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       const ae = ensureAlienEcologyState(state);
       // A repeated scan records the press. It does not pay research points.
       ae.heatTrial = noteHeatTrial(ae.heatTrial, { kind: 'scan' });
+      noteWreckCut(world, sectorId);
       for (const s of alienSitesForSector(sectorId)) {
         const r = ae.sites[s.siteId];
         if (!r) continue;
@@ -1170,6 +1191,19 @@ export function tickAlienEcology(world, dt) {
         }
       } else if (dSite > site.arrivalBands.close * 1.5) {
         rec.offerArmed = false;
+      }
+      if (site.siteId === WRECK_SITE_ID) {
+        const close = dSite < site.arrivalBands.close;
+        if (close && rec.wreckEdge !== true) {
+          rec.wreckEdge = true;
+          const next = stepWreckSuccession(rec.wreckStage, 'enter');
+          rec.wreckStage = next.stage;
+          if (next.text && world.bus && world.bus.emit) {
+            world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+          }
+        } else if (dSite > site.arrivalBands.close * 1.5) {
+          rec.wreckEdge = false;
+        }
       }
       // AE-171 (G03): a fitted Host-Memory Cartography module resolves the site’s host
       // structure the first time the long band is crossed.
@@ -1905,6 +1939,9 @@ export function deserializeAlienEcologyState(state, data) {
         claimCrew: rec.claimCrew && typeof rec.claimCrew === 'object'
           ? JSON.parse(JSON.stringify(rec.claimCrew)) : null,
         ...(lifeRead ? { lifeRead } : {}),
+        ...(rec.wreckStage === 'warned' || rec.wreckStage === 'sealed'
+          ? { wreckStage: rec.wreckStage } : {}),
+        ...(rec.wreckEdge === true ? { wreckEdge: true } : {}),
       };
     }
   }
