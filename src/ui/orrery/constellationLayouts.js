@@ -295,6 +295,22 @@ ${T} .con-cost dt { align-self:end; }
   ${T} > .k-foot .con-back.sf-back.k-word::after { margin-left:10px !important; }
   ${T} .con-view { gap:8px; }
 }
+/* review: at 1101–1199 a cost cell is ~85px beside its gauge, and the single word "RESEARCH" still ran
+   past it ("RESEARCI" at 1101); there the cost word takes the cell's full width over gauge and figure */
+@media (min-width:1101px) and (max-width:1199px) {
+  ${T} .con-cost dt { grid-column:1 / -1; }
+  ${T} .con-cost__gauge { grid-row:2; }
+}
+/* review: just past 1500 the corner words go back to one line and ran together ("CREDITSRESEARCH POINTS"
+   at 1501–1680), and "RESEARCH POINTS" ran to the frame's edge. Up to the 1080p band the corner keeps
+   its three columns of wrapped words and the costs keep the 1101–1500 arrangement */
+@media (min-width:1501px) and (max-width:1799px) {
+  ${T} > .k-corner.con-corner { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:space-between; column-gap:12px !important; row-gap:0 !important; }
+  ${T} .con-read__w { white-space:normal; text-align:right; }
+  ${T} .con-cost dt, ${T} .con-cost__sub { min-width:0; white-space:normal; overflow-wrap:normal; }
+  ${T} .con-cost__gauge { grid-row:1 / span 2; align-self:center; }
+  ${T} .con-cost__sub { grid-column:1 / -1; }
+}
 /* 1080p band + achievements-matched 1440p/4K zoom */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${T}.k-screen { zoom:1.12; }
