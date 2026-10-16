@@ -8,6 +8,8 @@ const STYLE_ID = 'sf-orrery-newgame-layouts';
 const BONE = '236 230 216';
 const WARM = '248 244 234';
 const NG = 'html body #screens > .k-screen.orr-newgame.orr-newgame';
+// desktop only (the phone layout is its own sheet)
+const NGD = 'html:not([data-sf-mobile="1"]) body #screens > .k-screen.orr-newgame.orr-newgame';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
 
 export const NEW_GAME_LAYOUT_CSS = `
@@ -125,6 +127,55 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NG} .orr-ng-caption > .k-sentence { font-size:15.5px !important; line-height:1.5 !important; max-width:34em !important; }
   ${NG} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
   ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:13.5px !important; }
+}
+
+/* 801–1100 wide desktop, ≤600 tall (960×540): the stage is ~490px wide, so the fittings' column ran under the
+   hero render and the ring's right reading (LINE) ran off the frame. The fittings wrap as one dotted line
+   under the hull's sentence across the stage, and the hero box (which the yard and the stats ring both
+   measure) narrows and centres so MASS and LINE stand inside the stage. Phones keep their own layout. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:600px) {
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] {
+    display:flex !important; flex-direction:row !important; flex-wrap:wrap !important; gap:6px 22px !important;
+    width:auto !important; max-width:100% !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label {
+    display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:11.5px !important; }
+  ${NGD} .orr-ng-caption > .sf-slot-card-title { float:left !important; margin:0 24px 0 0 !important; }
+  ${NGD} .orr-ng-caption > .k-sentence { margin-top:0 !important; padding-top:2px !important; max-width:none !important; }
+  ${NGD} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { clear:both !important; margin-top:0 !important; padding-top:14px !important; }
+  /* the run keeps its titles only (the ≤800-tall intent); the hidden beats no longer hold ~90px under the scale */
+  ${NGD} .sf-ng-route .sf-ng-route__step { padding:0 !important; height:auto !important; }
+  ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { display:none !important; }
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { left:24% !important; width:52% !important; top:43% !important; height:21% !important; }
+  ${NGD} > .k-stage::before { left:24%; width:52%; top:61%; }
+}
+
+/* the same band at ≤460 tall (844×390, 900×420, 1024×440): the stage had ~305px for the name, the fittings,
+   the ring and the run, so the yard was forced up over the hull's name and the fittings, and the form column
+   showed only CASUAL. The frame's margin closes to 20px, the run's scale stands down to the accessibility
+   tree (the yard then centres on the hull alone) and the footnote does too, so every difficulty stop shows. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+  ${NGD} { padding-top:20px !important; padding-bottom:20px !important; row-gap:10px !important; }
+  ${NGD} > .k-fine,
+  ${NGD} .orr-ng-caption > .sf-ng-route {
+    position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important;
+    clip-path:inset(50%) !important; white-space:nowrap !important; }
+  ${NGD} > .sf-ng-header > p { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important;
+    clip-path:inset(50%) !important; white-space:nowrap !important; }
+  ${NGD} .sf-ng-launch:has(> .orr-lampkey__word) { min-height:46px !important; }
+  /* the hull's line stands beside its name (two lines at most); the fittings show three rows and scroll past that */
+  ${NGD} .orr-ng-caption > .sf-slot-card-title { font-size:28px !important; margin-right:20px !important; }
+  ${NGD} .orr-ng-caption > .k-sentence { overflow:hidden !important; font-size:12.5px !important; line-height:1.35 !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] {
+    gap:4px 16px !important; max-height:70px !important; overflow-y:auto !important; overscroll-behavior:contain;
+    scrollbar-width:thin; scrollbar-color:rgb(${BONE} / .45) transparent; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:10.5px !important; letter-spacing:.09em !important; }
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { left:25% !important; width:50% !important; top:51% !important; height:23% !important; }
+  ${NGD} > .k-stage::before { left:25%; width:50%; top:72%; }
 }
 `;
 
