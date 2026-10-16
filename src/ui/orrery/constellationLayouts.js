@@ -238,6 +238,63 @@ ${T} .con-cost dt { align-self:end; }
   ${T} .con-picker, ${T} .con-picker:not(:focus-within) { position:static; transform:none; flex:1 1 150px; flex-direction:column; align-items:stretch; margin:0; gap:2px; }
   ${T} select.k-select.con-select { flex:1 1 auto; min-width:0; min-height:44px; }
 }
+/* ui-polish-67: on desktop frames up to 1500 wide the three corner readings stand in their own grid
+   columns (their words overflowed a 9ch box and ran into each other: "RESEARCH" into "UNLOCKED"),
+   and the cost words wrap in their own cell instead of running off the frame ("RESEARCH POINT|" at
+   1280); below, the hour-verb curve reads as two balanced lines left of the dial */
+@media (min-width:761px) and (max-width:1500px) {
+  ${T} > .k-corner.con-corner { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:space-between; column-gap:12px !important; row-gap:0 !important; }
+  ${T} > .k-corner.con-corner .con-read { align-items:flex-end; }
+  ${T} .con-read__w { max-width:none; white-space:normal; text-align:right; letter-spacing:.16em; }
+  ${T} .con-cost dt, ${T} .con-cost__sub { min-width:0; white-space:normal; overflow-wrap:normal; }
+}
+/* 1101–1500: the two costs stay side by side; the "% held" line runs under its gauge and figure,
+   so only the cost word wraps ("RESEARCH / POINTS") and the subgrid keeps both figures level */
+@media (min-width:1101px) and (max-width:1500px) {
+  ${T} .con-cost__gauge { grid-row:1 / span 2; align-self:center; }
+  ${T} .con-cost__sub { grid-column:1 / -1; }
+}
+/* the 270px reading of a ≤1100 frame: the reading words close up a little so the three stand apart */
+@media (min-width:761px) and (max-width:1100px) {
+  ${T} .con-read__w { letter-spacing:.06em; }
+}
+@media (min-width:761px) {
+  /* the title stands over the dial's own rows, so a second curve line never pushes the reading down */
+  ${T} > .k-title { grid-row:1 / 3; }
+  ${T} > .k-title .con-curve { max-width:28ch; white-space:normal; text-wrap:balance; line-height:1.3;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+}
+/* ...except on a narrow short or mid-height frame (1024×480, 960×540), where the dial's top-left star
+   names stand at the curve's second line: there it keeps master's one clipped line */
+@media (min-width:761px) and (max-width:1100px) and (max-height:600px) {
+  ${T} > .k-title .con-curve { display:block; max-width:min(28ch, 20vw); white-space:nowrap; }
+}
+/* ui-polish-67: a short desktop frame (≤500 tall) gave the reading ~200px, so the costs stacked one
+   over the other and Unlock sat under the column's fade. The two costs stand side by side as words
+   and figures (the held-share gauge says what the "% held" line already says), the chrome tightens,
+   and Unlock stands on the first paint */
+@media (min-width:761px) and (max-height:500px) {
+  ${T} > .con-side { padding:8px 0 14px;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent); }
+  ${T} .con-dossier { gap:4px; }
+  ${T} .con-dossier__name { font-size:22px; }
+  ${T} .con-dossier__state { font-size:14px; line-height:1.3; }
+  ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:12px; row-gap:0; margin:2px 0 0 !important; }
+  ${T} .con-cost { grid-template-columns:minmax(0, 1fr); }
+  ${T} .con-cost__gauge { display:none; }
+  ${T} .con-cost dt { line-height:1.2; letter-spacing:.14em; }
+  ${T} .con-cost dd { font-size:24px; margin-top:1px; }
+  ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
+  ${T} .con-actions { margin:4px 0 2px; }
+  ${T} .con-actions .orr-lampkey { min-height:38px !important; }
+  /* the foot keeps Back and the zoom reading on one row where the column allows, and a tighter
+     second row where it does not */
+  ${T} > .k-foot.con-foot { column-gap:14px; }
+  ${T} > .k-foot .con-back.sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; letter-spacing:.18em !important; }
+  ${T} > .k-foot .con-back.sf-back.k-word::before { margin-right:8px !important; }
+  ${T} > .k-foot .con-back.sf-back.k-word::after { margin-left:10px !important; }
+  ${T} .con-view { gap:8px; }
+}
 /* 1080p band + achievements-matched 1440p/4K zoom */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${T}.k-screen { zoom:1.12; }

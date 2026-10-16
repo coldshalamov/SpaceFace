@@ -34,7 +34,6 @@ import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 /** Keep the hour-verb curve under the title; full string belongs on title=. */
 function clipHourVerbCurve(line, maxChars) {
   const s = String(line || '');
-  if (s.length <= maxChars) return s;
   const parts = s.split(' · ');
   let out = '';
   for (const part of parts) {
@@ -42,7 +41,8 @@ function clipHourVerbCurve(line, maxChars) {
     if (next.length > maxChars) break;
     out = next;
   }
-  return out || parts[0].slice(0, maxChars);
+  // the separator holds to the item before it, so a wrapped curve never opens a line on "·"
+  return (s.length <= maxChars ? s : out || parts[0].slice(0, maxChars)).replaceAll(' · ', '\u00a0· ');
 }
 
 // Branch -> sector, clockwise from the tier spoke at the top of the dial. Colour is by MEANING
