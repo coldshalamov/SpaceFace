@@ -1404,3 +1404,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `orrery-flight` findings went from 14 to 4 at 844×390, from 18 to 6 at 390×844, from 12 to 6 at 960×540, and from 8 to 6 at 1280×720. It is 4 at 801×390, 1024×440 and 1366×768, and 0 at 1920×1080. All the remaining findings are the Cluster's curved class line (HITCH · KESTREL CLASS · STARTER) touching its own Shield/Armor legend at cluster scale ≤.6. That also happens on master at 960 and 1280, and it lives in the shared `flightCluster.js`. The focused test `orrery-speed-dial` passes. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish58/{before,after}/flight/` and `compare-orrery-flight-*.png`.
 
 **Leftovers (not this pass):** the Cluster class line vs legend at scale ≤.6 (shared with the live HUD through `hudAdapter`, so fix it there and check it live). The live HUD cluster has no short-frame step (it stays at .6 at 844×390). My Ship hull callouts at 1101–1160 wide (in #423's `#sf-ship` CSS). Shipworks lower callouts at 844×390 (the berth scrolls by design).
+
+## Range on a very short / narrow desktop: RULES · BESTIARY · CLOSE stay on glass (ui-polish-60)
+
+**Before (master 9026a5dcf8):** the existing ≤1100 × ≤640 short block kept 960×540 clean, but under ~460px tall (844×390 / 801×390 / 900×420) the title + five-row ladder + dossier still outgrew the frame, so RULES / BESTIARY / CLOSE and the run gauge fell below the fold (bench: 3 OFF FRAME at each size). A narrow desktop window (390×844, not phone) wrapped the 16 rules into many rows and did the same.
+
+**After (`src/ui/screens/range.js` only, CSS, desktop via `html:root:not([data-sf-mobile="1"])`):**
+- New `@media (max-width:1100px) and (max-height:460px)`: tighter frame pad / row gap, smaller hero and one-line-clamped blurbs, denser ladder ticks, compact dossier and 28px run gauge so the tabs row stays on glass and the course keeps a slim band.
+- New `@media (max-width:520px)`: sideways-scrolling one-row ladder (phone-style fade) so a 390-wide desktop window no longer stacks sixteen rungs.
+- Selectors and IDs unchanged. Phones (`data-sf-mobile`) keep the mobile sheet.
+
+**Checked:** bench `range` findings 3→0 at 844×390, 801×390, 900×420 and 390×844; stay 0 at 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 960/1920 0%; 1280 ~0.1% noise; short/narrow frames change as intended. `--phone` 390×844 / 844×390 clean. `--walk` at 844×390 reaches all 22 controls including RULES / BESTIARY / CLOSE. Focused test `range-door-funnel` passes (6). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish60/{before,after,compare}/`, `compare-range-*.png`.
+
+**Leftovers (not this pass):** My Ship hull callouts @1101–1160 (#423); flightCluster class ring vs legend (#426, awaiting live HUD re-review); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional).
