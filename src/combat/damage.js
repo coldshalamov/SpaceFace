@@ -208,6 +208,11 @@ export function createDamageRouter(context, statusService, options = {}) {
     hullDamage = Math.min(Math.max(0, target.hull || 0), hullDamage);
     target.hull = Math.max(0, (target.hull || 0) - hullDamage);
     target.lastDamageT = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+    // PIC-31: a hull carried into the damaged band by this hit starts venting where it was
+    // hurt (one record on the combat runtime, side from the hit geometry). Repair-above-band
+    // and death stops are admitted on the presentation side; death also clears the latch
+    // here so a wreck carries no vent.
+    updateHullVent(state, target, runtime, packet, before.hull, target.hull);
 
     const heatBefore = runtime.heat;
     runtime.heat = clamp(runtime.heat + packet.heat, 0, runtime.heatMax);
@@ -589,6 +594,79 @@ function applySelectedComponentHit(state, input, target, runtime, packet) {
   if (!sub || sub.destroyed) return; // not serviceable → fall back to geometric selection (truthful)
   if (!packet.hit) packet.hit = {};
   packet.hit.subsystemId = sel.componentId;
+}
+
+// PIC-31 — damaged-hull vent. The damage bands are owned by the integrity instrument
+// (src/ui/views/hullIntegrity.js `stepIntegrity`: damaged is hull/hullMax in [0.25, 0.55)).
+// This module never changes them; it only mirrors the entry edge so a hit that carries a
+// hull below it starts exactly one vent record attached to the hit side. Pure geometry:
+// no RNG, no wall clock — the same hit always yields the same side.
+export const HULL_VENT_BAND_LO = 0.25;
+export const HULL_VENT_BAND_HI = 0.55;
+
+export function resolveHullVentSide(target, hit) {
+  const rot = Number(target && target.rot) || 0;
+  const fx = Math.cos(rot);
+  const fz = Math.sin(rot);
+  const px = Number(target && target.pos && target.pos.x) || 0;
+  const pz = Number(target && target.pos && target.pos.z) || 0;
+  if (hit && hit.pos && Number.isFinite(hit.pos.x) && Number.isFinite(hit.pos.z)) {
+    const cross = fx * (Number(hit.pos.z) - pz) - fz * (Number(hit.pos.x) - px);
+    if (Math.abs(cross) > 1e-6) return cross > 0 ? 1 : -1;
+  }
+  const approach = hit && hit.approach;
+  if (approach && Number.isFinite(approach.x) && Number.isFinite(approach.z)) {
+    const cross = fx * Number(approach.z) - fz * Number(approach.x);
+    if (Math.abs(cross) > 1e-6) return cross > 0 ? 1 : -1;
+  }
+  const id = target && target.id;
+  const parity = typeof id === 'number' ? Math.abs(id | 0) % 2 : String(id == null ? '' : id).length % 2;
+  return parity === 0 ? 1 : -1;
+}
+
+export function updateHullVent(state, target, runtime, packet, beforeHull, afterHull) {
+  if (!runtime || typeof runtime !== 'object') return null;
+  const max = Number(target && target.hullMax) || 0;
+  if (!(max > 0)) {
+    runtime.hullVent = null;
+    return null;
+  }
+  const beforeF = Math.max(0, Number(beforeHull) || 0) / max;
+  const afterF = Math.max(0, Number(afterHull) || 0) / max;
+  if (!(afterF > 0) || (target && target.alive === false)) {
+    if (runtime.hullVent != null) {
+      runtime.hullVent = null;
+      wakeStatusAttachedLoop(state);
+    } else {
+      runtime.hullVent = null;
+    }
+    return null;
+  }
+  if (beforeF >= HULL_VENT_BAND_HI && afterF < HULL_VENT_BAND_HI) {
+    const hit = packet && packet.hit;
+    const vent = {
+      side: resolveHullVentSide(target, hit),
+      x: hit && hit.pos && Number.isFinite(hit.pos.x) ? Number(hit.pos.x) : Number(target.pos && target.pos.x) || 0,
+      z: hit && hit.pos && Number.isFinite(hit.pos.z) ? Number(hit.pos.z) : Number(target.pos && target.pos.z) || 0,
+      startedTick: Number.isInteger(state && state.tick) ? state.tick : 0,
+    };
+    runtime.hullVent = vent;
+    wakeStatusAttachedLoop(state);
+    return vent;
+  }
+  return runtime.hullVent || null;
+}
+
+// PIC-31 — the status-attached loop sleeps while its victim flow is empty and wakes
+// on statusNextPendingSeq (owned by src/combat/statuses.js). A vent opening or
+// clearing during that sleep must wake it the same way, or a hull hurt quietly
+// would never show its trouble. Deterministic: called only from the damage router
+// on real latch transitions, so the same hits always bump the same count.
+function wakeStatusAttachedLoop(state) {
+  const combat = state && state.combat;
+  if (combat && Number.isInteger(combat.statusNextPendingSeq)) {
+    combat.statusNextPendingSeq += 1;
+  }
 }
 
 export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 'thermal', 'ion', 'plasma', 'phase']) {

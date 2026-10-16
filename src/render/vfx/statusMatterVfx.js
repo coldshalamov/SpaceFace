@@ -8,6 +8,7 @@ import { MOMENTUM_SINK_STATUS_ID } from '../../data/combatDefs.js';
 import {
   STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID, STATUS_ATTACHED_GRAVITY_ID,
   STATUS_ATTACHED_PINNED_ID, STATUS_ATTACHED_UNMOORED_ID,
+  STATUS_ATTACHED_VENT_ID, matterKindForStatusId,
 } from '../statusAttachedVfx.js';
 import { presentedAnchorXZ, presentedAnchorRot } from '../presentedAnchor.js';
 import { SweptSurfaceBatch } from '../forceLanguage/sweptSurfaceBatch.js';
@@ -31,6 +32,8 @@ const RECIPES=Object.freeze({
   crystalHeat:Object.freeze({color:new THREE.Color(0xb0e5ee),life:.38}),
   fuelHeat:Object.freeze({color:new THREE.Color(0xf7a14f),life:.46}),
   metalHeat:Object.freeze({color:new THREE.Color(0xdc7d48),life:.38}),
+  // PIC-31 — hurt-hull vent gas: pale steel, exhaled not burning.
+  vent:Object.freeze({color:new THREE.Color(0xcfe0ee),life:.7}),
 });
 function seedOf(id,status){
   const value=String(id)+status;let h=2166136261;
@@ -40,6 +43,9 @@ function seedOf(id,status){
 function getEntity(state,id){return state.entities?.get?.(id)||state.entities?.get?.(Number(id))||state.world?.asteroidField?.byId?.get?.(id);}
 const HEAT_STATUS='environment_heat';
 const HEAT_ACTIVE=Object.freeze({expiresTick:Infinity,stacks:1});
+// PIC-31 — the vent latch carries no expiry of its own; admission plus the
+// _source branch below bound it to the live hull band instead.
+const VENT_ACTIVE=Object.freeze({expiresTick:Infinity,stacks:1});
 const materialHeat=body=>Math.max(0,finite(body?.data?.materialCondition?.heat,finite(body?.data?.heat)));
 
 // Read only the nearby compact grid plus already materialized bodies, once per admission
@@ -72,7 +78,8 @@ export class StatusMatterVfx {
     this.burst={kind:'heat',x:0,y:0,z:0,dx:1,dz:0,radius:3,seed:0,count:2,life:.25,strength:.7,deferUpload:true};
     this.slots=Array.from({length:STATUS_CAP+SINK_CAP},()=>({alive:false,id:null,entity:null,statusId:null,
       kind:null,recipe:null,seed:0,born:0,last:0,stopped:-1,expiresTick:0,stacks:1,particlePulse:-1,
-      x:0,y:0,z:0,angle:0,hx:1,hz:1,top:0,axis:0,speed:0,opacity:1,truth:null}));
+      x:0,y:0,z:0,angle:0,hx:1,hz:1,top:0,axis:0,speed:0,opacity:1,truth:null,
+      ventSide:0,ventLx:0,ventLz:0}));
     this.live=0;this.time=0;this.disposed=false;
     this.stats={live:0,surfaces:0,particles:0,powered:0,dropped:0};
   }
@@ -104,10 +111,26 @@ export class StatusMatterVfx {
     return slot;
   }
   touchStatus(victim,state){
-    const id=victim?.statusId,kind=id===STATUS_ATTACHED_BURN_ID?'burn':id===STATUS_ATTACHED_GOO_ID?'goo':id===STATUS_ATTACHED_GRAVITY_ID?'gravity'
-      :id===STATUS_ATTACHED_PINNED_ID?'pinned':id===STATUS_ATTACHED_UNMOORED_ID?'unmoored':null;
+    const id=victim?.statusId,kind=matterKindForStatusId(id);
     if(!kind)return false;
-    const body=getEntity(state,victim.entityId),active=state.combat?.entities?.[victim.entityId]?.statuses?.[id];
+    const body=getEntity(state,victim.entityId);
+    // PIC-31 — the vent is not a status-bag entry: its latch lives on the
+    // combat runtime (owned by src/combat/damage.js). Admit it while latched;
+    // the per-frame _source branch below keeps it truthful to the hull band.
+    if(id===STATUS_ATTACHED_VENT_ID){
+      const vent=state.combat?.entities?.[victim.entityId]?.hullVent;
+      if(!vent||typeof vent!=='object')return false;
+      const slot=this._touch(body,id,kind,VENT_ACTIVE,state);
+      if(!slot)return false;
+      // Stamp the hit seat in hull-local frame so the draw breathes from where
+      // the hull was actually hurt, even as the ship turns.
+      const c=Math.cos(slot.angle),sn=Math.sin(slot.angle);
+      const wx=(Number(vent.x)||0)-slot.x,wz=(Number(vent.z)||0)-slot.z;
+      slot.ventSide=vent.side===-1?-1:1;
+      slot.ventLx=c*wx+sn*wz;slot.ventLz=-sn*wx+c*wz;
+      return !!slot;
+    }
+    const active=state.combat?.entities?.[victim.entityId]?.statuses?.[id];
     return !!this._touch(body,id,kind,active,state);
   }
   touchMomentum(body,active,plan,state){
@@ -147,6 +170,18 @@ export class StatusMatterVfx {
   _source(s,state,now){
     const body=getEntity(state,s.id);
     if(body!==s.entity||body?.alive===false||!valid(body?.pos))return false;
+    // PIC-31 — the vent stays truthful to the live hull, not to a status
+    // expiry: latched, alive, and still sitting below the damaged-band edge.
+    // Repair above the band and death both end it here (death also clears the
+    // latch in damage.js). Same rule the collectors pin.
+    if(s.statusId===STATUS_ATTACHED_VENT_ID){
+      const vent=state.combat?.entities?.[s.id]?.hullVent;
+      if(!vent||typeof vent!=='object')return false;
+      const max=finite(body.hullMax,0);
+      if(!(max>0)||(Math.max(0,finite(body.hull))/max)>=0.55)return false;
+      if(now-s.last>.27)return false;
+      return true;
+    }
     if(s.statusId===HEAT_STATUS){
       if(body.data?.materialCondition?.reacted||materialHeat(body)<.5||now-s.last>.27)return false;
       s.opacity=clamp(materialHeat(body)/(body.data?.material==='crystal'?48:36),.10,1);return true;
@@ -247,6 +282,19 @@ export class StatusMatterVfx {
             scale*.11,scale*.08,side*scale*.20*drift,0,0,seed+i*2.1+side,
             alpha*(reduced?.52:.68*(1-drift*.78)),smooth((age-i*.06)/.22),cold?retired*1.3-.1:-.1,cold?.05:.34);
         }
+      }
+    }else if(s.kind==='vent'){
+      // PIC-31 — a hurt hull breathes pale gas from the stamped hit seat: two
+      // parcels peel outward along the wound direction on staggered cycles and
+      // fade, so a loaded vent reads before it is repaired. Reduced motion
+      // holds one dim seat mark. Cutoff (repair/death) retires through the
+      // same fade every other kind uses. Hull-seated geometry, never a halo.
+      for(let i=0;i<2;i++){
+        const lap=reduced?.45:(clock*(.5+i*.13)+seed+i*.47)%1,drift=lap*lap*(3-2*lap);
+        this._at(s,s.ventLx*(1+drift*.8),s.ventLz*(1+drift*.8));
+        p.piece(2,this.pose.x,this.pose.z,s.angle+(s.ventSide<0?-1:1)*(.5+.3*drift),-scale*.10,scale*(.5+.22*drift),
+          scale*.11,scale*.08,(s.ventSide<0?-1:1)*scale*.16*drift,0,0,seed+i*2.1,
+          alpha*(reduced?.42:.62*(1-drift*.72)),smooth((age-i*.06)/.22),cold?retired*1.3-.1:-.1,cold?.05:.3);
       }
     }else if(s.statusId===HEAT_STATUS){
       // Loaded seams remain seated on the heated body: crystal separates pale fracture
