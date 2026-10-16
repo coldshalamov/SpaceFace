@@ -99,7 +99,8 @@ test('warm touches start with the subset instead of waiting for the burst to dra
   assert.ok(mod.OPENING_EFFECT_MATERIAL_RE.test('SF_ExplosionRupture_material-transport'));
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.doesNotMatch(renderer, /overflowBurstDrained/);
-  assert.match(renderer, /if \(firstTouchCharged\) touchSpentMs \+= spent;/);
+  const warm = await readFile(new URL('../src/render/openingEffectWarm.js', import.meta.url), 'utf8');
+  assert.match(warm, /if \(firstCharged\) spentMs \+= spent;/);
 });
 
 test('warm touches run under a total budget with a per-touch timeout, and the live cause-mark layer is a root', async () => {
@@ -108,9 +109,11 @@ test('warm touches run under a total budget with a per-touch timeout, and the li
   assert.ok(mod.OPENING_WARM_TOUCH_BUDGET_MS > 0 && mod.OPENING_WARM_TOUCH_TIMEOUT_MS > 0);
   assert.ok(mod.OPENING_WARM_TOUCH_TIMEOUT_MS < mod.OPENING_WARM_TOUCH_BUDGET_MS);
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(renderer, /touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS/);
-  assert.match(renderer, /resolve\('timeout'\), OPENING_WARM_TOUCH_TIMEOUT_MS/);
-  assert.match(renderer, /receipt\.timedOut\.push\(key\)/);
+  assert.match(renderer, /budgetMs: OPENING_WARM_TOUCH_BUDGET_MS,\s*timeoutMs: OPENING_WARM_TOUCH_TIMEOUT_MS,/);
+  const warm = await readFile(new URL('../src/render/openingEffectWarm.js', import.meta.url), 'utf8');
+  assert.match(warm, /if \(spentMs >= budgetMs\)/);
+  assert.match(warm, /resolve\('timeout'\), timeoutMs/);
+  assert.match(warm, /receipt\.timedOut\.push\(key\)/);
   const THREE = await import('three');
   const scene = new THREE.Scene();
   const marks = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial());
@@ -139,14 +142,80 @@ test('the opening effect warm runs only where the opening cook is not awaited (#
   assert.match(body.slice(gate, gate + 300), /reason: 'parallel-compile-cook'/);
 });
 
-test('exemplar teardown waits for a timed-out touch; a step error clears the active flag (#434 findings B, D)', async () => {
+test('exemplar teardown chains on the touch\'s own done; a step error clears the active flag (#434 B, C)', async () => {
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const a = renderer.indexOf('  _touchOpeningEffectFamilyUnderShell() {');
   const body = renderer.slice(a, renderer.indexOf('  _parkBoundedWarmRoots() {', a));
-  assert.match(body, /return settled \? settled\.then\(\(\) => true, \(\) => true\) : true;/);
-  assert.match(body, /settled = await timedTouch\(touch, key, subject\);/);
-  assert.match(body, /settled\.then\(teardown, teardown\)/);
+  assert.match(body, /result = await timedTouch\(touch, key, subject\);/);
+  assert.match(body, /if \(result && result\.done\) result\.done\.then\(teardown, teardown\);/);
+  assert.match(body, /try \{ flushExemplars\(\); \} catch \(_\) \{[^}]*\}\s*this\._openingEffectWarmActive = false;/);
   assert.match(body, /return await sweep\(\);\s*\} catch \(error\) \{[\s\S]{0,160}return stop\('error'\);/);
   const vfx = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
   assert.doesNotMatch(vfx, /options\.ribbonExemplar/);
+});
+
+const freshReceipt = () => ({ touched: [], touchMs: {}, failed: 0, timedOut: [], skipped: [] });
+
+test('timedTouch is bounded by its timeout and returns a non-thenable (1 s touch, 100 ms timeout -> ~100 ms)', async () => {
+  const { createTimedTouch } = await import('../src/render/openingEffectWarm.js');
+  const receipt = freshReceipt();
+  const timedTouch = createTimedTouch({ clock: () => performance.now(), budgetMs: 4000, timeoutMs: 100, receipt });
+  const slow = () => new Promise((resolve) => setTimeout(resolve, 1000));
+  const t0 = performance.now();
+  const result = await timedTouch(slow, 'slow', {});
+  const waited = performance.now() - t0;
+  assert.ok(waited >= 90 && waited < 400, `returned after ${Math.round(waited)} ms`);
+  assert.equal(typeof result.then, 'undefined', 'result must not be thenable');
+  assert.equal(result.started, true);
+  assert.deepEqual(receipt.timedOut, ['slow']);
+  const t1 = performance.now();
+  assert.equal(await result.done, true);
+  assert.ok(performance.now() - t1 > 700, 'done follows the touch itself');
+  // Never-settling touch: the call still returns at the timeout.
+  const t2 = performance.now();
+  const hung = await timedTouch(() => new Promise(() => {}), 'hung', {});
+  assert.ok(performance.now() - t2 < 400);
+  assert.equal(hung.started, true);
+  // Budget spent -> no touch starts.
+  const tight = createTimedTouch({ clock: () => performance.now(), budgetMs: 50, timeoutMs: 100, receipt: freshReceipt() });
+  await tight(slow, 'first', {}); // uncharged
+  await tight(slow, 'second', {}); // charged ~100 ms
+  assert.equal(tight.budgetSpent(), true);
+  const skipped = await tight(() => { throw new Error('must not start'); }, 'third', {});
+  assert.deepEqual(skipped, { started: false, done: null });
+});
+
+test('a touch that never settles leaves the warm inactive and no exemplar mounted once loading ends', async () => {
+  const THREE = await import('three');
+  const { render } = await import('../src/render/renderer.js');
+  const scene = new THREE.Scene();
+  const touched = [];
+  const state = {
+    mode: 'loading',
+    playerId: 1,
+    entities: new Map([[1, { id: 1 }]]),
+    render: {
+      gpu: { software: true, tier: 'software' },
+      admissionRunGeneration: 7,
+      touchSubjectExactTarget: (subject) => { touched.push(subject.name); return new Promise(() => {}); },
+      warmupOpeningEffectSubset: () => ({ skipped: false, plasma: false, plumes: 0, ribbon: false, initMs: 0, ms: 0 }),
+      restLiveFlightEffectsAfterCook: () => {},
+      releaseOpeningEffectSubset: () => ({ skipped: true }),
+    },
+  };
+  const owner = { state, scene, renderer: { extensions: { get: () => null } } };
+  render._touchOpeningEffectFamilyUnderShell.call(owner);
+  assert.equal(owner._openingEffectWarmActive, true);
+  // Both exemplars time out (1 s each) without ever settling; the sweep must keep moving.
+  await new Promise((resolve) => setTimeout(resolve, 2600));
+  assert.deepEqual(touched, ['SF_OpeningStandInWarm', 'SF_PhaseBlinkOpeningWarm']);
+  assert.ok(state.render.openingEffectWarm.sweeps >= 2, `sweeps ${state.render.openingEffectWarm.sweeps}`);
+  state.mode = 'flight';
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  assert.equal(owner._openingEffectWarmActive, false);
+  assert.equal(state.render.openingEffectWarm.reason, 'shell-released');
+  assert.deepEqual(state.render.openingEffectWarm.timedOut, ['exemplar:standIn', 'exemplar:phaseBlink']);
+  const left = [];
+  scene.traverse((o) => { if (/OpeningWarm/.test(o.name || '')) left.push(o.name); });
+  assert.deepEqual(left, []);
 });

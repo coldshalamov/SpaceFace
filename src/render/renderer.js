@@ -376,6 +376,7 @@ import {
 } from './latePipelineAdmission.js';
 import {
   collectOpeningEffectSubjects,
+  createTimedTouch,
   openingEffectWarmAllowed,
   OPENING_EFFECT_PLUME_DRIVE_RE,
   OPENING_WARM_TOUCH_BUDGET_MS,
@@ -24080,49 +24081,26 @@ export const render = {
     // Past the per-touch timeout the sweep moves on (the touch settles in the background); past
     // the total budget no further touch starts. Both are logged in the receipt.
     // The first touch is not charged: it absorbs the opening compile backlog described above.
-    let touchSpentMs = 0;
-    let firstTouchCharged = false;
     receipt.timedOut = [];
     receipt.skipped = [];
-    const timedTouch = async (touch, key, subject) => {
-      if (touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS) {
-        if (!receipt.skipped.includes(key)) {
-          receipt.skipped.push(key);
-          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch skipped: budget spent', key, Math.round(touchSpentMs));
-        }
-        return false;
-      }
-      const touchStarted = clock();
-      let timer = null;
-      let settled = null;
-      try {
-        settled = Promise.resolve(touch(subject));
-        const outcome = await Promise.race([
-          settled.then(() => 'done'),
-          new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), OPENING_WARM_TOUCH_TIMEOUT_MS); }),
-        ]);
-        if (outcome === 'timeout') {
-          receipt.timedOut.push(key);
-          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch timed out', key, OPENING_WARM_TOUCH_TIMEOUT_MS);
-        } else {
-          receipt.touched.push(key);
-        }
-      } catch (error) {
-        receipt.failed += 1;
-        laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, error);
-      } finally {
-        if (timer) clearTimeout(timer);
-        const spent = clock() - touchStarted;
-        if (firstTouchCharged) touchSpentMs += spent;
-        firstTouchCharged = true;
-        receipt.touchMs[key] = Math.round(spent);
-      }
-      // The touch's own completion: a timed-out touch keeps running after the sweep moves on, so
-      // callers that tear the subject down wait on this rather than on the race.
-      return settled ? settled.then(() => true, () => true) : true;
+    const timedTouch = createTimedTouch({
+      clock,
+      budgetMs: OPENING_WARM_TOUCH_BUDGET_MS,
+      timeoutMs: OPENING_WARM_TOUCH_TIMEOUT_MS,
+      receipt,
+      warn: (...args) => laneWarn(this, 'openingEffectWarm', ...args),
+    });
+    // Exemplars still mounted, keyed to their (idempotent) teardown. A touch that outlived its
+    // timeout keeps drawing its subject, so teardown chains on the touch's own `done`; the hard
+    // fallback below tears down anything left when the budget is spent or the warm ends, so a
+    // touch that never settles cannot keep a subject mounted into flight.
+    const pendingExemplars = new Set();
+    const flushExemplars = () => {
+      for (const teardown of [...pendingExemplars]) teardown();
     };
     let restPending = false;
     const stop = (reason) => {
+      try { flushExemplars(); } catch (_) { /* best-effort */ }
       this._openingEffectWarmActive = false;
       publish(reason);
     };
@@ -24167,24 +24145,29 @@ export const render = {
           ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
           if (!owned() || !loading()) break;
           let subject = null;
-          let settled = true;
+          let result = null;
           try {
             subject = make();
             this.scene.add(subject);
-            settled = await timedTouch(touch, key, subject);
+            result = await timedTouch(touch, key, subject);
           } catch (error) {
             receipt.failed += 1;
             laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
           } finally {
             if (subject) {
               const owned_ = subject;
+              let torn = false;
               const teardown = () => {
+                if (torn) return;
+                torn = true;
+                pendingExemplars.delete(teardown);
                 if (owned_.parent) owned_.parent.remove(owned_);
                 try { owned_.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
               };
+              pendingExemplars.add(teardown);
               // A touch that outlived its timeout still draws this subject: detach and dispose
-              // only once it settles (#434 review, finding B).
-              if (settled && typeof settled.then === 'function') settled.then(teardown, teardown);
+              // once it settles (#434 review, finding B); the fallback covers one that never does.
+              if (result && result.done) result.done.then(teardown, teardown);
               else teardown();
             }
           }
@@ -24196,6 +24179,7 @@ export const render = {
           await timedTouch(touch, key, subject);
         }
       }
+      if (timedTouch.budgetSpent()) flushExemplars();
       if (restPending) {
         restPending = false;
         try {

@@ -39,6 +39,58 @@ export const OPENING_WARM_TOUCH_TIMEOUT_MS = 1000;
 
 // Plume systems the loading warm drives (only these get real buffers); every other fleet family,
 // RCS family, the retro jets and per-NPC ribbons stay lazy, as on master.
+/**
+ * Bounded touch runner for the opening effect warm (#434 review, fix B follow-up).
+ * Returns `timedTouch(touch, key, subject)`, which resolves within `timeoutMs` of the touch
+ * starting (or at once when the budget is spent) to a NON-thenable `{ started, done }`.
+ * `done` is the touch's own completion (`true` once it settles either way; null when the touch
+ * never started). Returning a plain object matters: an async function that returns a promise
+ * adopts it, which made the sweep wait on every touch and let a touch that never settles hang
+ * the warm. Spend is measured to the race, so it is bounded by the timeout per touch; the first
+ * touch is not charged (it absorbs the opening compile backlog).
+ */
+export function createTimedTouch({ clock, budgetMs, timeoutMs, receipt, warn = () => {} }) {
+  let spentMs = 0;
+  let firstCharged = false;
+  const timedTouch = async (touch, key, subject) => {
+    if (spentMs >= budgetMs) {
+      if (!receipt.skipped.includes(key)) {
+        receipt.skipped.push(key);
+        warn('[render] opening warm touch skipped: budget spent', key, Math.round(spentMs));
+      }
+      return { started: false, done: null };
+    }
+    const touchStarted = clock();
+    let timer = null;
+    let settled = null;
+    try {
+      settled = Promise.resolve(touch(subject));
+      const outcome = await Promise.race([
+        settled.then(() => 'done'),
+        new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), timeoutMs); }),
+      ]);
+      if (outcome === 'timeout') {
+        receipt.timedOut.push(key);
+        warn('[render] opening warm touch timed out', key, timeoutMs);
+      } else {
+        receipt.touched.push(key);
+      }
+    } catch (error) {
+      receipt.failed += 1;
+      warn('[render] opening warm touch failed', key, error);
+    } finally {
+      if (timer) clearTimeout(timer);
+      const spent = clock() - touchStarted;
+      if (firstCharged) spentMs += spent;
+      firstCharged = true;
+      receipt.touchMs[key] = Math.round(spent);
+    }
+    return { started: true, done: settled ? settled.then(() => true, () => true) : null };
+  };
+  timedTouch.budgetSpent = () => spentMs >= budgetMs;
+  return timedTouch;
+}
+
 export const OPENING_EFFECT_PLUME_DRIVE_RE = /^plume:family_industrial_main_plume:core$/;
 
 /**
