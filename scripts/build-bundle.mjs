@@ -24,6 +24,7 @@ import {
   writeReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
 import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
+import { pinVercelReleaseHtml, vercelReleaseBase } from './lib/vercelReleaseBase.mjs';
 import { buildRetailRuntimeWorkers, moduleWorkerEntryPoints, validateRetailModuleWorkers, RETAIL_BROWSER_TARGETS } from './lib/retailRuntimeWorkers.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -74,6 +75,7 @@ async function jsSize(dir) {
 }
 
 async function build() {
+  const releaseBase = vercelReleaseBase(process.env.VERCEL_URL);
   await recoverPublishedOutput();
   const screens = await screenEntries();
   // bootEntry is the bundled entry: it paints the boot instrument, then imports the game graph.
@@ -115,6 +117,9 @@ async function build() {
       // Define the browser-facing process object too: guards test `typeof process` first.
       process: JSON.stringify({ env: { NODE_ENV: 'production' }, versions: {}, argv: [] }),
       __SPACEFACE_PRODUCTION__: 'true',
+      // Main and module-worker entries share this build, so every worker/chunk chain
+      // follows the same immutable release while the page keeps its canonical origin.
+      __SPACEFACE_RELEASE_BASE__: JSON.stringify(releaseBase),
       __SPACEFACE_DEMO__: DEMO ? 'true' : 'false',
     },
   });
@@ -269,7 +274,7 @@ async function buildBundledHtml() {
   if (/["'(]\s*\.\/src\//.test(html) || /from\s+['"]\.\/src\//.test(html)) {
     throw new Error('index.html rewrite missed a source-module reference; update buildBundledHtml');
   }
-  return html;
+  return pinVercelReleaseHtml(html, process.env.VERCEL_URL);
 }
 
 async function runLockedBuild() {

@@ -12,9 +12,9 @@
 //
 // The pacer yields one real task-queue slot first — a frame wait via rAF with a setTimeout
 // fallback — so the event loop keeps running between units, then calls gl.finish() to force the
-// queued work to drain while it is still ~one unit deep. The same drain is inevitable either way;
-// splitting it per unit keeps each main-thread block bounded to one unit's GPU cost instead of
-// the whole cohort's. (A fence + clientWaitSync poll was tried first: on this route the status
+// queued work to drain. Pacing alone does not bound independent producers: they can submit
+// together during that yield. The submit reservation below bounds only enrolled producers to
+// one active unit; direct opening/boot/cohort and presented-frame work can still overlap. (A fence + clientWaitSync poll was tried first: on this route the status
 // query itself stalls behind the queued stream — the fence never signaled within 30 s — so
 // polling the queue is not a usable drain signal here.)
 //
@@ -62,10 +62,9 @@ function waitForPresentedFrame(unstickMs = DEFAULT_UNSTICK_MS, scheduleTask = nu
  * driver reports KHR_parallel_shader_compile — the batched-overlap route where pacing would
  * serialize links the driver would otherwise overlap.
  *
- * Each call yields to the task queue once, then finishes the GL queue while it is still bounded
- * to about one unit. The finish() drain is synchronous — that is the point: it is the same
- * pattern rehearseScenePass already uses to move the driver drain into a held gate, just applied
- * per unit instead of once per cohort.
+ * Each call yields once, then synchronously finishes queued GL work. Calling it after direct
+ * submission does not exclude other producers. Use .submit(work) to reserve an enrolled unit
+ * through its drain; even that is not a global GL queue or hardware-duration bound.
  */
 export function makeGpuQueuePacer(renderer, options = {}) {
   if (!renderer || typeof renderer.getContext !== 'function') return null;
@@ -91,7 +90,7 @@ export function makeGpuQueuePacer(renderer, options = {}) {
   }
   if (parallel) return null;
   const unstickMs = Number.isFinite(options.unstickMs) ? options.unstickMs : DEFAULT_UNSTICK_MS;
-  return async function paceGpuQueue() {
+  const paceQueue = async function paceGpuQueue() {
     await waitForPresentedFrame(unstickMs, options.scheduleTask);
     let gl = null;
     try {
@@ -101,8 +100,70 @@ export function makeGpuQueuePacer(renderer, options = {}) {
     }
     if (!gl) return;
     if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
-    // Queue was kept shallow by the yield cadence, so this drain costs ~one unit of GPU work.
-    // Without it the backlog would drain inside the next forced boundary as one unbounded task.
+    // Drain whatever reached GL, including any unenrolled producer's overlapping work.
+    // Only callers using the shared submit reservation exclude other enrolled units.
     try { gl.finish(); } catch (_) { /* best effort — a lost/unsupported context must not wedge */ }
+  };
+  paceQueue.submit = createSerialSubmission(renderer, paceQueue);
+  return paceQueue;
+}
+
+// Queue ownership must begin BEFORE submission. Independent upload/compile producers can
+// otherwise all submit during the pacer's yield and leave one finish to drain their sum.
+const serialSubmissionQueues = new WeakMap();
+
+export function makeGpuQueueSubmitter(renderer, options = {}) {
+  const serialPacer = makeGpuQueuePacer(renderer, options);
+  if (!serialPacer) return null; // KHR programs deliberately overlap.
+  const paceQueue = typeof options.paceQueue === 'function' ? options.paceQueue : serialPacer;
+  return createSerialSubmission(renderer, paceQueue);
+}
+
+// Work must not await a nested reservation on this renderer. Current upload callbacks are
+// synchronous; the compile callback awaits environment stamping then the no-KHR submission
+// result. Do not release on an observer timeout: a late callback could still issue GL work.
+function createSerialSubmission(renderer, paceQueue) {
+  let queue = serialSubmissionQueues.get(renderer);
+  if (!queue) {
+    queue = { active: false, urgent: [], ordinary: [] };
+    serialSubmissionQueues.set(renderer, queue);
+  }
+  const pump = () => {
+    if (queue.active) return;
+    const entry = queue.urgent.shift() || queue.ordinary.shift();
+    if (!entry) return;
+    queue.active = true;
+    Promise.resolve().then(entry.work).then(entry.resolve, entry.reject).finally(() => {
+      queue.active = false;
+      pump();
+    });
+  };
+  return (submit, admission = {}) => {
+    if (typeof submit !== 'function') return Promise.reject(new TypeError('GPU submission requires work'));
+    const work = async () => {
+      if (typeof admission.isActive === 'function' && admission.isActive() !== true) {
+        return { skipped: true, reason: 'owner-inactive' };
+      }
+      const gl = renderer.getContext();
+      if (!gl || (typeof gl.isContextLost === 'function' && gl.isContextLost())) {
+        return { skipped: true, contextLost: true, reason: 'WebGL context lost before submission' };
+      }
+      let result, failure, failed = false;
+      try { result = await submit(); }
+      catch (error) { failed = true; failure = error; }
+      // A throwing producer may already have submitted a prefix. Drain that prefix before
+      // the next owner enters, but never replace its original error with a drain error.
+      try { await paceQueue(); }
+      catch (error) { if (!failed) { failed = true; failure = error; } }
+      if (failed) throw failure;
+      return result;
+    };
+    const promise = new Promise((resolve, reject) => {
+      (admission.urgent === true ? queue.urgent : queue.ordinary).push({ work, resolve, reject });
+      pump();
+    });
+    // Observation does not consume the error for the returned, awaited owner.
+    promise.catch(() => {});
+    return promise;
   };
 }

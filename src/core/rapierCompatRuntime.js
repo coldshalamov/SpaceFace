@@ -8,6 +8,15 @@
 // capability-limited constructor that accepts only that inert getter and rejects all other source.
 
 import { perfNow } from './perfRuntime.js';
+import { captureOrchardRapierBaseline, installOrchardMutationObservation } from './anvilOrchardCollarQuery.js';
+
+// Preserve the public worker route, where document import maps are unavailable.
+const DEFAULT_RAPIER_IMPORT = async () => {
+  try { return await import('@dimforge/rapier3d-compat'); }
+  catch (_) { return import(new URL('../../vendor/rapier3d-compat/rapier.mjs', import.meta.url).href); }
+};
+const ORCHARD_BASELINES = new WeakMap();
+export function orchardRapierBaseline(runtime) { return ORCHARD_BASELINES.get(runtime) || null; }
 
 const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
 const RAPIER_GLOBAL_GETTER_SOURCE = 'return this';
@@ -31,7 +40,7 @@ const RAPIER_INIT_BACKOFF_CAP_MS = 120000;
 const RAPIER_INIT_FAILURE_DECAY_MS = RAPIER_INIT_BACKOFF_CAP_MS;
 
 export function loadRapierCompatRuntime({
-  importModule = () => import('@dimforge/rapier3d-compat'),
+  importModule = DEFAULT_RAPIER_IMPORT,
   globalObject = globalThis,
 } = {}) {
   if (!rapierRuntimePromise) {
@@ -126,6 +135,14 @@ async function initializeRapierCompatRuntime({ importModule, globalObject }) {
     const module = await importModule();
     const RAPIER = module?.default || module;
     await runRapierInitWithFilteredWarning(RAPIER);
+    if (importModule === DEFAULT_RAPIER_IMPORT) {
+      try {
+        if (installOrchardMutationObservation(RAPIER)) {
+          ORCHARD_BASELINES.set(RAPIER, captureOrchardRapierBaseline(RAPIER));
+        }
+      }
+      catch (_) { /* Optional collar trust cannot fail ordinary physics bootstrap. */ }
+    }
     return RAPIER;
   }, globalObject, {
     retainAfterSuccess: isElectronRenderer(globalObject),

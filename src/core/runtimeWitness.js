@@ -653,7 +653,7 @@ export function formatRuntimeWitnessReport({
   return lines.join('\n');
 }
 
-export function createRuntimeWitness({ nowMs = () => Date.now(), readSample } = {}) {
+export function createRuntimeWitness({ nowMs = () => Date.now(), readSample, readCamera } = {}) {
   const ring = Array.from({ length: RUNTIME_WITNESS_RING }, () => emptySample());
   let count = 0;
   let head = 0;
@@ -661,6 +661,17 @@ export function createRuntimeWitness({ nowMs = () => Date.now(), readSample } = 
   let timer = 0;
   let timerHost = null;
   const scratch = emptySample();
+
+  // Explicit probe call only: never part of the 1 Hz ring or frame observation.
+  function cameraSnapshot() {
+    if (typeof readCamera !== 'function') return { available: false, reason: 'camera-reader-unavailable' };
+    try {
+      const value = readCamera();
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Invalid camera facts');
+      // Defensive plain-copy boundary: expose neither live objects nor callback handles.
+      return JSON.parse(JSON.stringify(value));
+    } catch { return { available: false, reason: 'camera-reader-failed' }; }
+  }
 
   function snapshot() {
     if (typeof readSample === 'function') {
@@ -726,6 +737,7 @@ export function createRuntimeWitness({ nowMs = () => Date.now(), readSample } = 
   return {
     schema: RUNTIME_WITNESS_SCHEMA,
     snapshot,
+    cameraSnapshot,
     observe,
     recent,
     verdict,

@@ -485,7 +485,7 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
    rungs need more than 390px, so STORY…LEDGER ran down through ‹ CLOSE. Thin the frame, shrink the
    dials and rungs and the plate, so the whole section list and the foot both fit above the fold */
 @media (max-width:1100px) and (min-width:801px) and (max-height:460px) {
-  ${CX} { padding-top:14px !important; padding-bottom:8px !important; row-gap:8px !important; --cx-plate:min(150px, 40vh, 18vw); --cx-foot-gap:0px; }
+  ${CX} { padding-top:14px !important; padding-bottom:8px !important; row-gap:8px !important; --cx-plate:min(138px, 38vh, 17vw); --cx-foot-gap:0px; }
   ${CX} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:30px !important; line-height:1 !important; }
   ${CX} > .k-title > p { margin-top:4px !important; font-size:12.5px !important; line-height:1.3 !important; }
   ${CX} .cx-index { row-gap:2px; }
@@ -516,8 +516,14 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-reader__num-n { font-size:32px; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:17px !important; }
   ${CX} .sf-codex-entry > h2 { margin-top:4px !important; }
-  ${CX} .sf-codex-entry .k-measure { margin-top:8px !important; padding-top:8px !important; }
+  /* filed + meta set smaller and tighter, so STORY · THE EIGHT BEATS / ARCHIVE · RECOVERED SIGNALS fit one line;
+     a longer filing (GRAFFITI · BULKHEAD — THE PREVIOUS CREW) still wraps rather than clipping mid-word */
+  ${CX} .cx-reader__filed { font-size:10.5px !important; letter-spacing:.05em !important; margin-top:0 !important; }
+  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:10.5px !important; letter-spacing:.05em !important; }
+  ${CX} .sf-codex-entry .k-measure { margin-top:6px !important; padding-top:6px !important; }
   ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.4 !important; }
+  /* ARCHIVE Play lamp sits above the reader fade instead of requiring a scroll to reach it */
+  ${CX} .sf-codex-entry > .cx-play { margin-top:6px !important; }
   ${CX} .cx-reader__turn { margin-top:8px !important; column-gap:18px !important; white-space:nowrap; }
   ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
 }
