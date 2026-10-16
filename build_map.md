@@ -905,6 +905,122 @@ Already-rowed parked work is the rest of the remainder and stays visible where i
 remote candidates), 270–273 (Swarm phases C–F on the owner's phase order), 284 (the quiet-host
 session), and the §F lanes. A PARKED row's gate is named on the row; it is still on this map.
 
+### Landed rows index (consolidated 2026-10-15)
+
+One line per landed board row whose narrative table was consolidated to git history in the
+2026-10-15 token-reduction pass. Status words: DONE = shipped with receipts; SHIPPED = landed on
+the player route; CLOSED = closed without build (already-true, superseded, or withdrawn). The
+seam table above still names these rows; this index keeps the board self-consistent.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 30 | VM-REPORTS | — narrative in git history | — | DONE |
+| 57 | PQ-129.11–.17 | — narrative in git history | — | DONE |
+| 60 | PQ-050.01–.22 | — narrative in git history | — | DONE |
+| 63 | PQ-161.00 | — narrative in git history | — | DONE |
+| 64 | ZH-STRANGER | — narrative in git history | — | DONE |
+| 74 | PB-ECON-A | — narrative in git history | — | DONE |
+| 83 | PB-MIS-B | — narrative in git history | — | DONE |
+| 84 | PB-MIS-C | — narrative in git history | — | DONE |
+| 85 | PB-MIS-D | — narrative in git history | — | DONE |
+| 86 | PB-MIS-E | — narrative in git history | — | DONE |
+| 100 | PB-SWARM-D | — narrative in git history | — | DONE |
+| 101 | PB-SWARM-E | — narrative in git history | — | DONE |
+| 106 | PB-HAND-B | — narrative in git history | — | DONE |
+| 107 | PB-ECON-B | — narrative in git history | — | DONE |
+| 108 | PB-ECON-C | — narrative in git history | — | DONE |
+| 109 | PB-ECON-D | — narrative in git history | — | DONE |
+| 110 | PB-ECON-E | — narrative in git history | — | DONE |
+| 117 | PB-BUILD-A | — narrative in git history | — | DONE |
+| 118 | PB-BUILD-B | — narrative in git history | — | DONE |
+| 119 | PB-BUILD-C | — narrative in git history | — | DONE |
+| 120 | PB-CONS-A | — narrative in git history | — | DONE |
+| 122 | PB-CONS-C | — narrative in git history | — | DONE |
+| 123 | PB-CONS-D | — narrative in git history | — | DONE |
+| 124 | PB-CONS-E | — narrative in git history | — | DONE |
+| 140 | PB-PERF-C | — narrative in git history | — | DONE |
+| 141 | PB-PERF-D | — narrative in git history | — | DONE |
+| 143 | PB-AUD-A | — narrative in git history | — | DONE |
+| 150 | PB-CONT-A | — narrative in git history | — | DONE |
+| 151 | PB-CONT-B | — narrative in git history | — | DONE |
+| 152 | PB-CONT-C | — narrative in git history | — | DONE |
+| 153 | PB-CONT-D | — narrative in git history | — | DONE |
+| 154 | PB-CONT-E | — narrative in git history | — | DONE |
+| 162 | BUILD | — narrative in git history | — | DONE |
+| 163 | BUILD | — narrative in git history | — | DONE |
+| 165 | BUILD | — narrative in git history | — | DONE |
+| 167 | BUILD | — narrative in git history | — | DONE |
+| 176 | BUILD | — narrative in git history | — | DONE |
+| 178 | BUILD | — narrative in git history | — | DONE |
+| 179 | BUILD | — narrative in git history | — | DONE |
+| 180 | BUILD | — narrative in git history | — | DONE |
+| 181 | BUILD | — narrative in git history | — | DONE |
+| 183 | BUILD | — narrative in git history | — | DONE |
+| 184 | BUILD | — narrative in git history | — | DONE |
+| 185 | BUILD | — narrative in git history | — | DONE |
+| 186 | BUILD | — narrative in git history | — | DONE |
+| 188 | BUILD | — narrative in git history | — | DONE |
+| 189 | BUILD | — narrative in git history | — | DONE |
+| 191 | BUILD | — narrative in git history | — | DONE |
+| 192 | BUILD | — narrative in git history | — | DONE |
+| 194 | BUILD | — narrative in git history | — | DONE |
+| 196 | BUILD | — narrative in git history | — | DONE |
+| 197 | BUILD | — narrative in git history | — | DONE |
+| 200 | BUILD | — narrative in git history | — | DONE |
+| 201 | BUILD | — narrative in git history | — | DONE |
+| 202 | BUILD | — narrative in git history | — | DONE |
+| 203 | BUILD | — narrative in git history | — | DONE |
+| 204 | BUILD | — narrative in git history | — | DONE |
+| 206 | BUILD | — narrative in git history | — | DONE |
+| 208 | BUILD | — narrative in git history | — | DONE |
+| 209 | BUILD | — narrative in git history | — | DONE |
+| 210 | BUILD | — narrative in git history | — | DONE |
+| 211 | BUILD | — narrative in git history | — | DONE |
+| 212 | BUILD | — narrative in git history | — | DONE |
+| 213 | BUILD | — narrative in git history | — | DONE |
+| 214 | BUILD | — narrative in git history | — | DONE |
+| 215 | BUILD | — narrative in git history | — | DONE |
+| 216 | BUILD | — narrative in git history | — | DONE |
+| 218 | BUILD | — narrative in git history | — | DONE |
+| 220 | BUILD | — narrative in git history | — | DONE |
+| 222 | BUILD | — narrative in git history | — | DONE |
+| 223 | ART | — narrative in git history | — | DONE |
+| 226 | BUILD | — narrative in git history | — | DONE |
+| 228 | FB-070+FB-080 | — narrative in git history | — | DONE |
+| 230 | FB-071+FB-021 | — narrative in git history | — | DONE |
+| 232 | FB-023+FB-024+FB-120+FB-027 | — narrative in git history | — | DONE |
+| 233 | FB-025+FB-026 | — narrative in git history | — | DONE |
+| 237 | FB-003+FB-004+FB-005+FB-113 | — narrative in git history | — | DONE |
+| 238 | FB-002+FB-116+FB-117+FB-118+FB-136 | — narrative in git history | — | DONE |
+| 240 | FB-015+FB-114+FB-093+FB-094+FB-109 | — narrative in git history | — | DONE |
+| 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | — narrative in git history | — | DONE |
+| 243 | FB-030 | — narrative in git history | — | DONE |
+| 244 | FB-033+FB-125+FB-038 | — narrative in git history | — | DONE |
+| 245 | FB-034+FB-036+FB-042+FB-045+FB-051+FB-052+FB-140 | — narrative in git history | — | DONE |
+| 246 | FB-035+FB-037+FB-131 | — narrative in git history | — | DONE |
+| 247 | FB-039+FB-040+FB-119+FB-041 | — narrative in git history | — | DONE |
+| 248 | FB-043+FB-044 | — narrative in git history | — | DONE |
+| 249 | FB-046+FB-047+FB-048+FB-050 | — narrative in git history | — | DONE |
+| 250 | FB-049+FB-124+FB-101+FB-111 | — narrative in git history | — | DONE |
+| 252 | FB-057+FB-058+FB-060+FB-061+FB-062 | — narrative in git history | — | DONE |
+| 253 | FB-063+FB-064+FB-129+FB-127 | — narrative in git history | — | DONE |
+| 254 | FB-065+FB-066+FB-067+FB-068+FB-137+FB-069 | — narrative in git history | — | DONE |
+| 255 | FB-072+FB-074+FB-077+FB-073+FB-075+FB-076+FB-142 | — narrative in git history | — | DONE |
+| 258 | FB-088+FB-089+FB-090+FB-095 | — narrative in git history | — | DONE |
+| 259 | FB-091+FB-092+FB-096+FB-097+FB-098+FB-141 | — narrative in git history | — | DONE |
+| 262 | FB-134+FB-138+FB-139+FB-011+FB-008 | — narrative in git history | — | DONE |
+| 263 | SWARM-01 | — narrative in git history | — | DONE |
+| 264 | SWARM-02 | — narrative in git history | — | DONE |
+| 265 | SWARM-03 | — narrative in git history | — | DONE |
+| 266 | SWARM-04 | — narrative in git history | — | DONE |
+| 267 | SWARM-05 | — narrative in git history | — | DONE |
+| 268 | SWARM-06 | — narrative in git history | — | DONE |
+| 269 | SWARM-07 | — narrative in git history | — | DONE |
+| 274 | CRAFT-INTEGRITY | — narrative in git history | — | DONE |
+| 275 | RELEASE-TRUTH | — narrative in git history | — | DONE |
+| 276 | MAP-INTENT | — narrative in git history | — | DONE |
+| 277 | CONTRACT-IDENTITY | — narrative in git history | — | DONE |
+
 ## 2. Product north star
 
 SpaceFace is an open-source systemic space game with the legible economic and navigational base of games such as Endless Sky, but its distinctive play is physical. Gravity, inertia, collision, Massline attachment, boost, payload mass, fields, recoil, orbital geometry, and improvised physical tricks should produce tactics that are visible, learnable, and surprising.
