@@ -441,6 +441,35 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-ops .sx-comms { display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
   ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
 }
+/* …and the whole 801-1100 × ≤460 band: the head drew 162px of a 390px window and the berth
+   scrolled, so every tab's first rows sat under the pinned destination rail and the tab's own list
+   scrolled inside a page that scrolled too. The head closes up (purse straight over the dials, the
+   next step tucked under the mechanic's note, Munitions' verb on one line over its price) and the
+   tab takes the rest of the window: one scroll per tab, nothing printed under the rail. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+  ${D} { padding-top:12px !important; grid-template-rows:max-content minmax(160px, 1fr) max-content !important; }
+  ${D} .sxb-berth.dp-frame__head { grid-template-rows:auto auto auto !important; align-content:start !important; row-gap:4px !important; padding-bottom:0 !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { margin-top:0 !important; padding-top:0 !important; }
+  ${D} .sxb-berth .sxb-crown { gap:0 !important; }
+  ${D} .sxb-crown .sxb-purse { margin-bottom:0 !important; }
+  ${D} .sxb-vital.sxb-vital--muni [data-vital-act] { width:auto !important; }
+  ${D} .sxb-ops.dp-frame__foot { padding:4px 32px 6px !important; }
+}
+/* …and in that band the 212px left column could not hold both notes: the mechanic's note was clamped
+   mid-sentence ("Tessera. Clean plate. Nothing on this hull to…") and the next step's sentence ran on
+   under DISMISS and the Hull dial's INSURE. The next step takes its own full-width line under the
+   head (title, count, sentence, DISMISS: one row, nothing ellipsized at 844) and the mechanic's note
+   gets the third line the crown's height already leaves free. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+  ${D} .sxb-berth.dp-frame__head { grid-template-areas:"title crown" "tape crown" "handoff handoff" !important; grid-template-rows:auto 1fr auto !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-column:1 / -1 !important; max-width:none !important; }
+  ${D} .sxb-tape .sxb-event:not([hidden]) { -webkit-line-clamp:3; }
+  ${D} .sxb-handoff { grid-template-rows:auto !important; align-items:baseline !important; }
+  ${D} .sxb-handoff > .sxb-next { grid-column:1; grid-row:1; flex-wrap:nowrap !important; }
+  ${D} .sxb-handoff > .sxb-next__x { grid-column:2; grid-row:1; }
+  ${D} .sxb-next__n { margin-left:8px !important; }
+  ${D} .sxb-next__w { flex:0 1 auto !important; padding-left:16px !important; }
+}
 /* …and at 651-800 wide, where a four-band head leaves no working tab, the crown shares the right
    column with the title, tape and handoff. The existing 12px readings stay intact; the body is allowed
    to take the remaining height and its station-specific scroll hosts keep every tab reachable. */
