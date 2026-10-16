@@ -432,6 +432,33 @@ export class WeaponVfxPresenter {
     return worldSizeForPixels(distance, 1, camera.fov, this._pxViewportHeight);
   }
 
+  resetTransientMatter() {
+    // Spatial transients belong to the departed world; durable hull scars remain target-bound.
+    // Rebuild active field distortion from simulation on the next update instead of retaining
+    // an old lens over reused scene coordinates. No simulation fields or damage history change.
+    this.bolts.beginFrame();
+    this.bolts.commit();
+    this.discharges.clear();
+    this.heavyImpacts.clear();
+    this.ribbons.clear();
+    this.scorches.releaseTransient();
+    this.scorches.update(0, this._scorchPoseCallback);
+    this.distortion.clear();
+    this.wellDistortion.clear();
+    this.lights.clear();
+    clearShieldContacts();
+    this.quarks?.reset();
+    // Pair particle reset with its clock so the first new-world emission is not erased by a
+    // second rewind reset or aged by an old scene's elapsed time.
+    this._quarksSimTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : null;
+    this._lastPlayerSurfaceSplashAt = -Infinity;
+    this._nearMissAcc = 0;
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
+    this._presenterQuietEmpty = false;
+  }
+
   update(dt, context = {}) {
     this.state = context.state || this.state;
     this.helpers = context.helpers || this.helpers;

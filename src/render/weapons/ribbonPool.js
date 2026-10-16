@@ -503,6 +503,21 @@ export class WeaponRibbonPool {
     return bytes;
   }
 
+  clear() {
+    this.alive.fill(0);
+    this.histLen.fill(0);
+    this.entityIds.fill(-1);
+    this.drawSlots.fill(-1);
+    this.byEntity.clear();
+    this.live = 0;
+    this._cursor = 0;
+    this._spanMin = Infinity;
+    this._spanMax = -Infinity;
+    this.uploadedBytesLastFrame = 0;
+    this.geometry.setDrawRange(0, 0);
+    this.mesh.visible = false;
+  }
+
   dispose() {
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
     this.geometry.dispose();

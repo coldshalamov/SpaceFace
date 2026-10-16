@@ -2601,6 +2601,7 @@ export const vfx = {
     add('dock:undocked', () => this._releaseDockingCradle());
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
+      add(name, () => this._clearWorldTransientMatter());
       add(name, () => this._resetDamagedPortVfx());
     }
     const clearTumbleCadenceFor = (p) => {
@@ -3183,6 +3184,32 @@ export const vfx = {
     this._tsHead = 0;
     if (this._trailStreakPool) this._commitTrailStreakInstances();
     return true;
+  },
+
+  _clearWorldTransientMatter() {
+    // A new world can reuse the same scene-local coordinates while the sim is paused. Retire
+    // the CPU residents and publish empty draws immediately; waiting for their ordinary lifetime
+    // would show the previous world's sparks, smoke and debris over the new scene.
+    if (this._activeParticles) {
+      while (this._liveCount > 0) {
+        this._retireParticle(this._activeParticles[this._liveCount - 1]);
+      }
+      this._head = 0;
+      this._particlesPublishedIdle = false;
+      this._integrateParticles(0);
+    }
+    if (this._activeSprites) {
+      while (this._liveSpriteCount > 0) {
+        this._retireSprite(this._activeSprites[this._liveSpriteCount - 1]);
+      }
+      this._sHead = 0;
+      this._spritesPublishedIdle = false;
+      this._integrateSprites(0);
+    }
+    this._gas?.clear();
+    this._gasAblationAt?.clear();
+    this._gasQuietEmpty = true;
+    this._weaponPresenter?.resetTransientMatter?.();
   },
 
   _writeTrailStreakInstance(i, packedIndex, scale, opacity) {
@@ -16380,7 +16407,7 @@ export const vfx = {
       // After one commit(0), mesh.count is already 0 — re-assert + bindings sweep is pure CPU.
       if (this._particlesPublishedIdle) return;
       assertDynamicBufferOwnerWritable(dynamicOwner);
-      commitDynamicBufferOwner(dynamicOwner, 0);
+      if (!commitDynamicBufferOwner(dynamicOwner, 0) && this._shardMesh) this._shardMesh.count = 0;
       this._particlesPublishedIdle = true;
       return;
     }
