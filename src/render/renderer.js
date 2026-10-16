@@ -24119,20 +24119,12 @@ export const render = {
       }
       if (!extrasDone && receipt.subset && overflowBurstDrained() && typeof touch === 'function' && this.scene) {
         extrasDone = true;
-        // Late first links outside the effect roots (fx3), behind the same burst gate: the bloom
-        // threshold/downsample pass when the opening post prepare was skipped, the ship_atlas
-        // stand-in + resolving marker of the first mid-flight ship admission, and both phase-blink
-        // programs (uKind/uZip). Exemplars only: touched once, then detached; their materials stay
-        // alive so the programs stay linked.
-        const extraStarted = clock();
-        try {
-          if (this.bloom && typeof this.bloom.prepareResources === 'function') {
-            await this.bloom.prepareResources(() => Promise.resolve());
-          }
-        } catch (error) {
-          laneWarn(this, 'openingEffectWarm', '[render] opening bloom prepare failed', error);
-        }
-        receipt.touchMs['post:bloom'] = Math.round(clock() - extraStarted);
+        // Late first links outside the effect roots that master links after the lift (50-run pool:
+        // stand-in 13, phase blink 8, marker 4), behind the same burst gate: the ship_atlas stand-in
+        // + resolving marker of the first mid-flight ship admission, and both phase-blink programs
+        // (uKind/uZip). The bloom threshold pass is left out (1 post-lift link in 50 master runs).
+        // Exemplars only: touched once, then detached; their materials stay alive so the programs
+        // stay linked.
         for (const [key, make] of [['exemplar:standIn', createOpeningStandInWarmSubject],
           ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
           if (!owned() || !loading()) break;

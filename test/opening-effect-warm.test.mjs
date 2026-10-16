@@ -36,6 +36,7 @@ test('one subject per measured effect family; families that do not link post-lif
   const keys = collectOpeningEffectSubjects(scene, seen).map((row) => row.key).sort();
   assert.deepEqual(keys, [
     'material:SF_ActionPrimitiveMatter',
+    'material:SF_FilteredForceParticleTransport',
     'material:plume:family_industrial_main_plume:core',
     'root:SF_RibbonTrail',
     'root:sf-liquid-plasma-root',
@@ -88,7 +89,7 @@ test('late first-link exemplars: stand-in + marker share the live materials; pha
   assert.ok(blink.children[0].material.uniforms.uZip);
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(renderer, /\['exemplar:standIn', createOpeningStandInWarmSubject\]/);
-  assert.match(renderer, /this\.bloom\.prepareResources\(\(\) => Promise\.resolve\(\)\)/);
+  assert.doesNotMatch(renderer, /this\.bloom\.prepareResources\(\(\) => Promise\.resolve\(\)\)/);
 });
 
 test('the overflow-jets touch waits out the opening compile burst', async () => {

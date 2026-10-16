@@ -20,7 +20,9 @@ export const OPENING_EFFECT_ROOT_NAMES = Object.freeze([
   'sf-overflow-jets',
 ]);
 
-export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_StructuralPlateMaterial|plume:family_industrial_main_plume:core)$/;
+// SF_FilteredForceParticleTransport: its program exists in every run but usually links under 60 ms;
+// fx4 cand run 9 paid 670 ms for it +169 ms after the lift (master: 3 post-lift links in 50 runs).
+export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_StructuralPlateMaterial|SF_FilteredForceParticleTransport|plume:family_industrial_main_plume:core)$/;
 
 // Plume systems the loading warm drives (only these get real buffers); every other fleet family,
 // RCS family, the retro jets and per-NPC ribbons stay lazy, as on master.
