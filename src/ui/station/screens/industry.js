@@ -293,7 +293,7 @@ export function createIndustryScreen(ctx) {
     if (!fab) return;
     const host = document.createElement('div');
     host.className = 'orr-ind-chain';
-    host.setAttribute('aria-hidden', 'true');
+    host.style.setProperty('--orr-chain-input-count', String(Object.keys(bp.inputs || {}).length));
     const heroes = fab.querySelector('.sx-fab-heroes');
     if (heroes && heroes.parentNode) heroes.parentNode.insertBefore(host, heroes); else fab.appendChild(host);
     // the one verb stands on the product's axis: the chain reports its geometry and the key follows

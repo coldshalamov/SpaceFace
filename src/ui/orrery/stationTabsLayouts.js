@@ -1750,12 +1750,12 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-talk__reply { max-width:calc(100% - 330px) !important; }
 }
 @media (max-width:1100px) and (max-height:640px) {
-  /* Industry: the blueprint's tier is on the ladder's head; the chain takes the rest of the body,
-     so both inputs, the ring, the output and FABRICATE stand on glass */
+  /* Industry: every material keeps room for its name, count and wrapped Source verb.
+     Dense recipes extend the existing scrollable stage instead of crushing the input labels. */
   ${D} .sx-fab-head__cat { display:none !important; }
   ${D} .sx-fab-head__name { font-size:20px !important; margin-top:0 !important; }
-  ${D} .sx-fab { grid-template-rows:auto auto auto minmax(0, 1fr) auto auto auto auto auto !important; }
-  ${D} .orr-ind-chain { height:170px !important; min-height:0 !important; margin:-10px 0 0 !important; }
+  ${D} .sx-fab { grid-template-rows:auto auto auto minmax(0, 1fr) auto auto auto auto auto !important; height:auto !important; min-height:100%; padding-bottom:48px !important; }
+  ${D} .orr-ind-chain { height:max(170px, calc(var(--orr-chain-input-count, 2) * 88px + 20px)) !important; min-height:0 !important; margin:-10px 0 0 !important; }
   /* the chain's right side is one column -- why it cannot run, what a run makes, the key -- since the
      reason's twelve o'clock slot and the key's place under the product both fall outside a 190px body */
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { left:auto !important; right:0 !important; top:-12px !important; width:auto !important; max-width:46% !important; white-space:normal !important; overflow-wrap:anywhere !important; text-align:right !important; }
@@ -1767,9 +1767,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
   ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
+  ${D} .sx-fab:has(.orr-chain.is-blocked) .sx-fab-status { display:none !important; }
   ${D} .sx-fab-foot { left:auto !important; right:0 !important; top:auto !important; bottom:0 !important; transform:none !important; }
-  /* a material's three lines close up so three inputs stack in the chain's 50px pitch without touching */
-  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) { transform:translateY(4px); max-width:46% !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  /* The label's own height centres it on its input node even when the source verb wraps. */
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) { transform:translateY(calc(16px - 50%)); max-width:46% !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__name { font-size:13px !important; line-height:15px !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { font-size:12px !important; line-height:14px !important; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { line-height:14px !important; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
