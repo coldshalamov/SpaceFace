@@ -49,6 +49,7 @@ import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
 import {
   COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
 } from '../data/collarService.js';
+import { HEAT_SITE_ID, stepWasteHeat } from '../data/wasteHeat.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -444,6 +445,27 @@ function noteCollarDivert(world, sectorId) {
   applyCollarStep(world, site, rec, 'divert');
 }
 
+function applyWasteHeat(world, site, rec, event) {
+  const next = stepWasteHeat(rec.heatOnline !== false, event);
+  rec.heatOnline = next.online;
+  if (!next.text || !world.bus || !world.bus.emit) return;
+  world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+}
+
+function noteWasteHeatCut(world, sectorId) {
+  const site = ALIEN_SITES[HEAT_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const rec = siteRecord(world.state, site.siteId);
+  applyWasteHeat(world, site, rec, 'cut');
+}
+
 function noteWreckCut(world, sectorId) {
   const site = ALIEN_SITES[WRECK_SITE_ID];
   if (!site || site.sectorId !== sectorId || !world || !world.state) return;
@@ -522,6 +544,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       ae.heatTrial = noteHeatTrial(ae.heatTrial, { kind: 'scan' });
       noteWreckCut(world, sectorId);
       noteCollarDivert(world, sectorId);
+      noteWasteHeatCut(world, sectorId);
       for (const s of alienSitesForSector(sectorId)) {
         const r = ae.sites[s.siteId];
         if (!r) continue;
@@ -1264,6 +1287,15 @@ export function tickAlienEcology(world, dt) {
           rec.collarEdge = false;
         }
       }
+      if (site.siteId === HEAT_SITE_ID) {
+        const heatClose = dSite < site.arrivalBands.close;
+        if (heatClose && rec.heatEdge !== true) {
+          rec.heatEdge = true;
+          applyWasteHeat(world, site, rec, 'arrive');
+        } else if (!heatClose) {
+          rec.heatEdge = false;
+        }
+      }
       // AE-171 (G03): a fitted Host-Memory Cartography module resolves the site’s host
       // structure the first time the long band is crossed.
       if (fittedFlag(state, 'hostMapReveal') && dSite < site.arrivalBands.long && !rec.beats.hostMap) {
@@ -2004,6 +2036,8 @@ export function deserializeAlienEcologyState(state, data) {
         ...(rec.collarStage === 'held' ? { collarStage: 'held' } : {}),
         ...(rec.collarEdge === true ? { collarEdge: true } : {}),
         ...(rec.collarGreeted === true ? { collarGreeted: true } : {}),
+        ...(rec.heatOnline === false ? { heatOnline: false } : {}),
+        ...(rec.heatEdge === true ? { heatEdge: true } : {}),
       };
     }
   }
