@@ -719,6 +719,11 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   /* the second foot row costs the height the two-line preview needs, so here it stays one line (PURCHASE stays on-frame) */
   ${A} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
 }
+/* review: a phone's larger type at ≤400 tall (844×390 landscape) has no room for the second preview line either;
+   it pushed PURCHASE half under the foot, so there it stays one line too. */
+@media (min-width:761px) and (max-height:400px) {
+  html[data-sf-mobile="1"] ${A.replace(/^html /, '')} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
+}
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;
