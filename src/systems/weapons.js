@@ -1235,6 +1235,16 @@ export const weapons = {
     const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
+    // RW-01: a siege-class beam pushes its firing hull backward for as long as it holds the beam.
+    // Continuous player_maneuver provenance — full strength, braceable through a taut winch line.
+    const beamRecoilPerSec = Number(def.recoilImpulsePerSec) || 0;
+    if (beamRecoilPerSec > 0) {
+      deliverPhysicalImpulseDetailed(state, e,
+        { x: -Math.cos(dir) * beamRecoilPerSec * dt, z: -Math.sin(dir) * beamRecoilPerSec * dt },
+        { tag: 'weapon_recoil', motionIntent: 'player_maneuver', weaponId: w.defId,
+          tick: state.tick, continuous: true, dt },
+        { scaleEnvironment: false });
+    }
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
     const damageType = w.damageType || def.damageType || 'energy';
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
@@ -1465,6 +1475,17 @@ export const weapons = {
     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
 
     this._emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec);
+
+    // RW-01: heavy single shots answer on the shooter. Full strength (player_maneuver provenance
+    // bypasses the external-impulse nudge scale); a taut winch brace against a massive anchor
+    // routes the along-line component into line load instead of hull velocity.
+    const recoilImpulse = Number(def.recoilImpulse) || 0;
+    if (recoilImpulse > 0) {
+      deliverPhysicalImpulseDetailed(state, e,
+        { x: -Math.cos(dir) * recoilImpulse, z: -Math.sin(dir) * recoilImpulse },
+        { tag: 'weapon_recoil', motionIntent: 'player_maneuver', weaponId: w.defId, tick: state.tick },
+        { scaleEnvironment: false });
+    }
 
     const origin = this._muzzle(e, w, dir);
     this.bus.emit('combat:fire', {

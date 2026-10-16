@@ -186,6 +186,10 @@ const SHIPPED_WEAPONS = [
     projSpeed: Infinity, range: 900, tracking: 'hitscan',
     continuous: true, heatPerSec: 50, heatMax: 100, heatDissip: 20,
     impulsePerHit: 30, tumbleTorque: 2.5, impulseProvenance: 'heavy_beam_pressure',
+    // RW-01: a sustained siege-class beam answers on the shooter too. Full strength reaches the
+    // hull (player_maneuver provenance); a taut winch brace against a massive anchor routes the
+    // along-line component into line load instead.
+    recoilImpulsePerSec: 2000,
   },
   {
     id: 'unique_lighthouse_heavy_beam', baseId: 'wpn_heavy_beam_l', name: 'Lighthouse Heavy Beam', slotType: 'weapon', size: 'L', tier: 4, mass: 16, price: 0,
@@ -195,6 +199,7 @@ const SHIPPED_WEAPONS = [
     purchasable: false, unique: true, salvageOnly: true,
     variantBonuses: { damagePct: 0.25, rangePct: 0.15, heatPerSecPct: 0.35 },
     impulsePerHit: 38, tumbleTorque: 3.5, impulseProvenance: 'lighthouse_beam_pressure',
+    recoilImpulsePerSec: 2500,
   },
   {
     id: 'wpn_torpedo_l', name: 'Torpedo L', slotType: 'weapon', size: 'L', tier: 4, mass: 24, price: 60000, requiresTech: 'tech_capital_weapons',
@@ -209,6 +214,8 @@ const SHIPPED_WEAPONS = [
     dmg: 420, rof: 0.5, dps: 210, damageType: 'kinetic', energyCost: 40,
     projSpeed: 600, range: 1600, tracking: 'fixed', armorPierce: 0.5,
     impulsePerHit: 420, tumbleTorque: 64, impulseProvenance: 'siege_lance_impact',
+    // RW-01: one spinal shot, one real shove on the firing hull — braceable through a taut line.
+    recoilImpulse: 340,
   },
   {
     // EMP Disruptor (spec §9 weapon-verb variety): a distinct DISABLE verb. Unlike hull weapons, it
