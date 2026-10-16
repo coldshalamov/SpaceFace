@@ -9,7 +9,7 @@ const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url
 const ignoreScript = fileURLToPath(new URL('../scripts/vercel-ignore-build.mjs', import.meta.url));
 const ignoreSource = readFileSync(ignoreScript, 'utf8');
 const allow = Array.from(runInNewContext(ignoreSource.match(/const allow = new Set\((\[[\s\S]*?\])\)/)[1]));
-const expected = ['master', 'main', 'codex/iphone14-mobile', 'codex/oct15-maturity-checkpoint',
+const expected = ['master', 'main', 'codex/iphone14-mobile', 'codex/oct15-maturity-checkpoint', 'codex/mobile-release-pinning',
   'devin/1791331347-gyre-snare', 'devin/1791416174-gyre-snare-polish'];
 
 test('Git deployment creation defaults off and mirrors every existing allowed branch', () => {
