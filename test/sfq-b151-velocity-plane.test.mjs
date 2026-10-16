@@ -95,5 +95,5 @@ test('the star marker installs one disk and a second tick does not stack another
 test('another sector does not grow the disk', () => {
   const w = worldIn('sector_ashfall_reach');
   w.tick();
-  assert.equal(w.fields.list.length, 0);
+  assert.equal(w.fields.list.filter((field) => field.id === VELOCITY_PLANE_ID).length, 0);
 });

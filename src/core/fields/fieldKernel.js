@@ -39,7 +39,8 @@ function isKnownKind(kind) {
     || kind === FIELD_KINDS.CONE
     || kind === FIELD_KINDS.SHEET
     || kind === FIELD_KINDS.PLANE
-    || kind === FIELD_KINDS.CURL;
+    || kind === FIELD_KINDS.CURL
+    || kind === FIELD_KINDS.LANE;
 }
 
 // Explicit opt-outs affect only these two Well consequences, never force/heat/target filters.
@@ -55,7 +56,7 @@ export function normalizeField(spec = {}) {
   const kind = isKnownKind(spec.kind) ? spec.kind : FIELD_KINDS.WELL;
   const center = spec.center || {};
   const dir = spec.dir || {};
-  const needsDir = kind === FIELD_KINDS.CONE || kind === FIELD_KINDS.SHEET || kind === FIELD_KINDS.PLANE;
+  const needsDir = kind === FIELD_KINDS.CONE || kind === FIELD_KINDS.SHEET || kind === FIELD_KINDS.PLANE || kind === FIELD_KINDS.LANE;
   let dx = finite(dir.x, needsDir ? 1 : 0);
   let dz = finite(dir.z, 0);
   const dlen = Math.hypot(dx, dz);
@@ -191,7 +192,7 @@ export function fieldContainsPoint(field, x, z) {
   if (!field || !(field.radius > 0)) return false;
   const dx = x - field.center.x;
   const dz = z - field.center.z;
-  if (field.kind === FIELD_KINDS.SHEET) {
+  if (field.kind === FIELD_KINDS.SHEET || field.kind === FIELD_KINDS.LANE) {
     const along = dx * field.dir.x + dz * field.dir.z;
     if (along < 0 || along >= field.radius) return false;
     const latX = dx - field.dir.x * along;
@@ -284,6 +285,20 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
   const dx = x - field.center.x;
   const dz = z - field.center.z;
 
+  if (field.kind === FIELD_KINDS.LANE) {
+    // Finite lane from the entry (center) to the exit (center + dir * radius).
+    // Acceleration runs along the lane. It does not squeeze sideways and it
+    // does not write the body's velocity.
+    const along = dx * field.dir.x + dz * field.dir.z;
+    if (along < 0 || along >= field.radius) return o;
+    const latX = dx - field.dir.x * along;
+    const latZ = dz - field.dir.z * along;
+    if (Math.hypot(latX, latZ) > positive(field.halfWidth, 36)) return o;
+    o.ax = field.dir.x * field.strength;
+    o.az = field.dir.z * field.strength;
+    return o;
+  }
+
   if (field.kind === FIELD_KINDS.SHEET) {
     // Scoop sheet: a finite slab along dir × halfWidth. Bodies in the slab are collected onto
     // the centerline (lateral squeeze) — a ribbon, never a sphere.
@@ -373,7 +388,7 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
 export function fieldInfluenceRadius(field) {
   if (!field) return 0;
   let reach = positive(field.radius, 0);
-  if (field.kind === FIELD_KINDS.SHEET) reach += positive(field.halfWidth, 0);
+  if (field.kind === FIELD_KINDS.SHEET || field.kind === FIELD_KINDS.LANE) reach += positive(field.halfWidth, 0);
   return reach;
 }
 
@@ -513,15 +528,16 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
       const field = fields[order[n]];
       if (!fieldAffectsBody(field, profile)) continue;
       fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
-      sx += _rawScratch.ax;
-      sz += _rawScratch.az;
+      // A lane hands the same push to cargo and a pilot. Other fields keep the
+      // mass shrug. Multiplying here is the same sum as scaling the total.
+      const scale = field.kind === FIELD_KINDS.LANE ? 1 : couple;
+      sx += _rawScratch.ax * scale;
+      sz += _rawScratch.az * scale;
       if (receipts) {
-        receipts.entries[n].ax = _rawScratch.ax * couple;
-        receipts.entries[n].az = _rawScratch.az * couple;
+        receipts.entries[n].ax = _rawScratch.ax * scale;
+        receipts.entries[n].az = _rawScratch.az * scale;
       }
     }
-    sx *= couple;
-    sz *= couple;
   }
   // PQ-147.02 — hitch lock is a frame lock. It does not shrug with boost or mass.
   if (profile.hitchedTo != null) {
