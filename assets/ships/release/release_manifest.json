@@ -5743,6 +5743,44 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 96,
       "contractNodeCount": 38
+    },
+    {
+      "id": "place_anvil_storm_orchard",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_anvil_storm_orchard.glb",
+      "release": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb",
+      "sourceSha256": "0b425bc62b694737db3110cb01a677aa96aa0c47e7a792d6224554b72e18de64",
+      "releaseSha256": "3fb008e52abfdfd4b3108b0ebd732dd09ff242939954a96b98bd6ee3e4823ff6",
+      "sourceBytes": 2845612,
+      "releaseBytes": 890644,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 160,
+      "contractNodeCount": 42,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_anvil_condensate_pod",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_anvil_condensate_pod.glb",
+      "release": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb",
+      "sourceSha256": "17d7596e9295e5f70af688ed9f296238de84d28f5b77e49a29b4a06f58079542",
+      "releaseSha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
+      "sourceBytes": 376512,
+      "releaseBytes": 192204,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 15,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

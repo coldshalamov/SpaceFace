@@ -190,7 +190,7 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
       role: dynamic ? 'dynamic' : 'immutable',
       parentId: rootId,
       mergeBoundary: nodeName,
-      pipelineKey: nodeName === 'COLLISION_HULL' ? 'non-render' : (blend ? 'blend' : 'opaque'),
+      pipelineKey: isNonRenderHelper(node) ? 'non-render' : (blend ? 'blend' : 'opaque'),
       transparency: blend ? 'blend' : 'opaque',
       cullingGroup: 'asset',
       independentlyCulled: false,
@@ -251,7 +251,7 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
       nodeId: record.id,
       kind: 'dynamic-surface',
     }));
-  const collision = byNodeName.get('COLLISION_HULL');
+  const collisions = deriveCollisionRecords(pilot, meshNodes, byNodeName);
 
   return {
     schema: RENDER_PACKAGE_SOURCE_SCHEMA,
@@ -273,11 +273,7 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
     mergeGroups: [],
     lods: [],
     hlods: [],
-    collisions: collision ? [{
-      id: `${pilot.assetId}.collision`,
-      nodeId: collision.id,
-      reference: 'COLLISION_HULL',
-    }] : [],
+    collisions,
   };
 }
 
@@ -337,7 +333,7 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
       role: dynamic ? 'dynamic' : 'immutable',
       parentId: parent ? semanticIds.get(parent) : null,
       mergeBoundary: lane?.key || nodeName,
-      pipelineKey: !mesh ? 'root' : nodeName === 'COLLISION_HULL'
+      pipelineKey: !mesh ? 'root' : isNonRenderHelper(node)
         ? 'non-render'
         : (lane?.key || (blend ? 'blend' : 'opaque')),
       transparency: blend ? 'blend' : 'opaque',
@@ -364,7 +360,7 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
       // binds the motion bank onto it rather than treating it as damage geometry.
       kind: record.node.includes('MOTION_') ? 'moving-part' : 'dynamic-surface',
     }));
-  const collision = byNodeName.get('COLLISION_HULL');
+  const collisions = deriveCollisionRecords(pilot, meshNodes, byNodeName);
   const mergeGroups = pilot.flightStaticV3 === true
     ? deriveFlightStaticMergeGroups(pilot, semanticNodes, meshNodes)
     : [];
@@ -379,12 +375,30 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
     mergeGroups,
     lods: [],
     hlods: [],
-    collisions: collision ? [{
-      id: `${pilot.assetId}.collision`,
-      nodeId: collision.id,
-      reference: 'COLLISION_HULL',
-    }] : [],
+    collisions,
   };
+}
+
+// Match the runtime loader's strict helper contract. A COLLISION_* prefix alone is not
+// permission to hide authored geometry, and string/number metadata is not a boolean opt-in.
+function isNonRenderHelper(node) {
+  const extras = node.getExtras();
+  return node.getName() === 'COLLISION_HULL'
+    || extras.nonRender === true || extras.spaceface?.nonRender === true;
+}
+
+function deriveCollisionRecords(pilot, meshNodes, byNodeName) {
+  // Keep the established single-hull reference (including an empty scene-root marker).
+  const legacy = byNodeName.get('COLLISION_HULL');
+  const collisions = legacy ? [{
+    id: `${pilot.assetId}.collision`, nodeId: legacy.id, reference: 'COLLISION_HULL',
+  }] : [];
+  return collisions.concat(meshNodes.filter((node) => node.getName() !== 'COLLISION_HULL'
+    && isNonRenderHelper(node) && node.getExtras().collision === true).map((node) => ({
+    id: `${byNodeName.get(node.getName()).id}.collision`,
+    nodeId: byNodeName.get(node.getName()).id,
+    reference: node.getName(),
+  })));
 }
 
 function assertPilotManifest(manifest) {

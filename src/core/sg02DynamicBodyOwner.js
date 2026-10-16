@@ -2,6 +2,7 @@ import { consumeSaucerVelocity } from './physicsAuthority.js';
 import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 // SG-02 dynamic body owner.
+import { claimsOrchardFrame, claimsOrchardPod, prepareOrchardFrameConstruction, initializeOrchardFrame, retainConstructedOrchardFrame, readOrchardFramePose, orchardFrameSnapshotReady, retainAdoptedOrchardFrame, prepareOrchardFrameTransfer, orchardFrameRootMatches, orchardConstructionCurrent, orchardFrameSpines, registerOrchardOwner, resetOrchardOwnerWorld, retireOrchardOwner, orchardOwnerAvailable, requestOrchardMotion, beginOrchardOwnerStep, orchardStepCurrent, finishOrchardOwnerStep, cancelOrchardOwnerStep, publishOrchardCompletedContacts, orchardNativeExportReady, publishOrchardPoseReceipts, detachOrchardFrame, prepareOrchardResidencyRetirement, retainOrchardResidentPod, permitOrchardNativeSolve, orchardNativeMutationReady, recoverOrchardFrame, permitOrchardConstructionRehomes, queryOrchardPodCavity, prepareOrchardPodInsertion, cancelOrchardPodInsertion, prepareOrchardPodFill, requestOrchardFiniteRelease, requestOrchardFiniteClose, prepareOrchardPodCollection, commitOrchardPodLoss, orchardFixedPodRootMatches, prepareOrchardPodHandoff, resumeOrchardPodHandoff, readOrchardPodReady, orchardReadyTransferEntryCurrent, orchardRestoreInputsCurrent, resolveOrchardRestoreBody } from './anvilOrchardNative.js';
 //
 // The same authority powers the focused laboratory checks and the explicit production
 // `rapier-dynamic` backend. Flight/combat write membrane commands; this owner consumes them,
@@ -35,7 +36,11 @@ import { SHIPS } from '../data/ships.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { occupantGenerationOf } from './entity.js';
-import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
+import { loadRapierCompatRuntime, orchardRapierBaseline } from './rapierCompatRuntime.js';
+import { createOrchardNativeLane } from './anvilOrchardCollarQuery.js';
+const ORCHARD_OWNER_CAPABILITIES = new WeakMap();
+const ORCHARD_OWNER_TAILS = new WeakMap();
+const ORCHARD_RECOVERY_FACTORIES = new WeakMap();
 import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
 import { SIM_TIER } from '../world/activityClassification.js';
@@ -367,12 +372,16 @@ export class Sg02DynamicBodyOwner {
     this.accumulator = 0;
     this.mode = String(options.mode || 'sg02-dynamic-lab');
     this.publishTelemetry = options.publishTelemetry !== false;
+    const orchardCapability=Object.freeze({});
+    ORCHARD_OWNER_CAPABILITIES.set(this,orchardCapability);
+    registerOrchardOwner(this,orchardCapability,createOrchardNativeLane(RAPIER,this.world,orchardRapierBaseline(RAPIER)),options.orchardRestoreCapability);
   }
 
   getFrameOrigin() { return this._frameOrigin; }
   getFrameOriginSeq() { return this._frameOriginSeq; }
 
   setFrameOrigin(origin, seq) {
+    if(!orchardNativeMutationReady(this))return false;
     const nx = finite(origin && origin.x);
     const nz = finite(origin && origin.z);
     const nseq = normalizeFrameOriginSeq(seq);
@@ -386,6 +395,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   syncFromEntities(entities = []) {
+    if(!orchardNativeMutationReady(this))return false;
     this._syncSerial++;
     const live = this._liveEntityIds;
     live.clear();
@@ -400,11 +410,12 @@ export class Sg02DynamicBodyOwner {
     }
 
     for (const [id, rec] of this.records) {
-      if (!live.has(id)) this._removeRecord(id, rec);
+      if (!live.has(id)) {const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world)return false;}
     }
     this._resumeSuspendedAttachments(live);
     this._staticLayerVersion = null;
     this._writeSyncDiagnostics('full', count, 0, 0, -1);
+    publishOrchardPoseReceipts(this,ORCHARD_OWNER_CAPABILITIES.get(this));
   }
 
   /**
@@ -412,7 +423,51 @@ export class Sg02DynamicBodyOwner {
    * still describe that body. A materially different save remains authoritative: the ordinary
    * sync path will resync the body from the restored scalars on the next pass.
    */
+  readOrchardPodReady(entity,state) {return readOrchardPodReady(this,entity,state);}
+  readOrchardFramePose(entity) { return readOrchardFramePose(this, entity); }
+  requestOrchardMotion(entity,socket,target,canonicalTick) { return requestOrchardMotion(this,ORCHARD_OWNER_CAPABILITIES.get(this),entity,socket,target,canonicalTick); }
+  requestOrchardFiniteRelease(entity,socket,state) { return requestOrchardFiniteRelease(this,ORCHARD_OWNER_CAPABILITIES.get(this),entity,socket,state); }
+  requestOrchardFiniteClose(entity,socket,state) { return requestOrchardFiniteClose(this,ORCHARD_OWNER_CAPABILITIES.get(this),entity,socket,state); }
+  prepareOrchardPodCollection(entity,state) { return prepareOrchardPodCollection(this,ORCHARD_OWNER_CAPABILITIES.get(this),entity,state); }
+  commitOrchardPodLoss(frame,entity,state,receipt) { return commitOrchardPodLoss(this,ORCHARD_OWNER_CAPABILITIES.get(this),frame,entity,state,receipt); }
+  prepareOrchardPodHandoff(frame,entity,socket,state) {
+    return prepareOrchardPodHandoff(this,ORCHARD_OWNER_CAPABILITIES.get(this),frame,entity,socket,state,(view,staged,bodySpec,replacing,ticket)=>{
+      ORCHARD_RECOVERY_FACTORIES.set(view,ticket);
+      try {const next=Sg02DynamicBodyOwner.prototype._createRecord.call(view,staged,bodySpec,replacing);
+        if(!ticket.current())throw Error('orchard_handoff_superseded');
+        Sg02DynamicBodyOwner.prototype._applyCcdGate.call(view,next,staged);
+        if(!ticket.current())throw Error('orchard_handoff_superseded');return next;}
+      finally {ORCHARD_RECOVERY_FACTORIES.delete(view);}
+    });
+  }
+  resumeOrchardPodHandoff() {return resumeOrchardPodHandoff(this,ORCHARD_OWNER_CAPABILITIES.get(this));}
+  prepareOrchardPodFill(frame,entity,socket,amount,finiteState) {
+    return prepareOrchardPodFill(this,ORCHARD_OWNER_CAPABILITIES.get(this),frame,entity,socket,amount,finiteState);
+  }
+
+  prepareOrchardPodInsertion(frame,entity,socket,finiteState) {
+    const spec=resolvePhysicsBodySpec(entity);
+    return prepareOrchardPodInsertion(this,ORCHARD_OWNER_CAPABILITIES.get(this),frame,entity,socket,spec,(view,staged,bodySpec,replacing,ticket)=>{
+      ORCHARD_RECOVERY_FACTORIES.set(view,ticket);
+      try {return Sg02DynamicBodyOwner.prototype._createRecord.call(view,staged,bodySpec,replacing);}
+      finally {ORCHARD_RECOVERY_FACTORIES.delete(view);}
+    },finiteState);
+  }
+  cancelOrchardPodInsertion() { return cancelOrchardPodInsertion(this,ORCHARD_OWNER_CAPABILITIES.get(this)); }
+  queryOrchardPodCavity(entity,socket) { return queryOrchardPodCavity(this,ORCHARD_OWNER_CAPABILITIES.get(this),entity,socket); }
+  orchardAuthorityAvailable() { return orchardOwnerAvailable(this); }
+  recoverOrchardFrame() {
+    return recoverOrchardFrame(this,ORCHARD_OWNER_CAPABILITIES.get(this),(view,entity,spec,replacing,ticket)=>{
+      ORCHARD_RECOVERY_FACTORIES.set(view,ticket);
+      try {return Sg02DynamicBodyOwner.prototype._createRecord.call(view,entity,spec,replacing);}
+      finally {ORCHARD_RECOVERY_FACTORIES.delete(view);}
+    },(body,colliders)=>orchardAllocationClaimed(this,this.world,this._eventQueue,body,colliders));
+  }
+  publishCompletedOrchardContacts(token,publisher) { return publishOrchardCompletedContacts(this,ORCHARD_OWNER_CAPABILITIES.get(this),token,publisher); }
+  completedOrchardTail() { return ORCHARD_OWNER_TAILS.get(this) || null; }
+
   rebindEntity(entity) {
+    if(!orchardNativeMutationReady(this))return false;
     if (!entity || entity.alive === false) return false;
     const rec = this.records.get(entity.id);
     if (!rec || !rec.spec || !rec.spec.dynamic || !bodyStateMatchesEntity(rec, entity, this._frameOrigin, this._frameScratch)) {
@@ -441,9 +496,12 @@ export class Sg02DynamicBodyOwner {
    * (entity ↔ body handles) is stored alongside so the restore can rebind without `userData`.
    */
   exportWorldSnapshot() {
+    if(!orchardNativeExportReady(this))return null;
     const world = this.world;
     if (!world || typeof world.takeSnapshot !== 'function'
       || this._contactImpacts.length) return null;
+    for (const record of this.records.values()) if (!orchardFrameSnapshotReady(this, record)) return null;
+    for (const pending of this._pendingNativeRebuilds.values()) if (pending.entity?.data?.orchardCollars !== undefined) return null;
     const nativeGeometryParameters = planarGeometryParameters(world);
     if (!nativeGeometryParameters || !matchesPlanarPrismGeometry(world, this.RAPIER, nativeGeometryParameters)) return null;
     let bytes;
@@ -502,6 +560,9 @@ export class Sg02DynamicBodyOwner {
    * Schema 1 had only raw IDs and cannot establish this contract; old saves remain loadable.
    */
   adoptWorldSnapshot(payload, entities = [], options = {}) {
+    if(options.orchardColdRestore!==true && !orchardReadyTransferEntryCurrent(this))return false;
+    if(options.orchardRestoreInputs && !orchardRestoreInputsCurrent(options.orchardRestoreInputs,this))return false;
+    const destinationBoundary = retainNativeDestination(this);
     if (!payload || payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION
       || payload.nativeGeometryRevision !== SG02_NATIVE_GEOMETRY_REVISION
       || !samePlanarGeometryParameters(payload.nativeGeometryParameters, planarGeometryParameters(this.world))
@@ -548,6 +609,7 @@ export class Sg02DynamicBodyOwner {
       });
       candidate.world.free();
       candidate.world = restored;
+      resetOrchardOwnerWorld(candidate, ORCHARD_OWNER_CAPABILITIES.get(candidate), createOrchardNativeLane(this.RAPIER, restored, orchardRapierBaseline(this.RAPIER)));
       restored = null;
       if (!sameNativeValue(nativeRuntimeContract(candidate), payload.runtime)) throw new Error('native_runtime_changed');
       candidate._restoringNative = true;
@@ -556,7 +618,7 @@ export class Sg02DynamicBodyOwner {
       });
       candidate.tick = Math.max(0, Math.trunc(finite(payload.tick)));
       candidate.accumulator = Math.max(0, finite(payload.accumulator));
-      const live = entities.filter(entity => entity && entity.alive !== false && resolvePhysicsBodySpec(entity));
+      const live = entities.filter(entity => {if(options.orchardColdRestore!==true && !orchardReadyTransferEntryCurrent(this))throw Error('orchard_ready_predecessor_changed');return entity && entity.alive !== false && (resolveOrchardRestoreBody(options.orchardRestoreInputs,entity)?.spec || resolvePhysicsBodySpec(entity));});
       const byId = new Map(live.map(entity => [String(entity.id), entity]));
       if (byId.size !== live.length) throw new Error('duplicate_current_identity');
       const claimed = new Set(), handles = new Set(), remapped = new Map();
@@ -575,12 +637,11 @@ export class Sg02DynamicBodyOwner {
         // Match its identity AND authored contract AND native pose uniquely, never raw ID.
         if (!entity && mappedId == null && options.entityIdRemap) {
           const matches = live.filter(value => {
-            const spec = resolvePhysicsBodySpec(value);
+            const spec = (resolveOrchardRestoreBody(options.orchardRestoreInputs,value)?.spec || resolvePhysicsBodySpec(value));
             return !spec.dynamic && !claimed.has(value.id)
               && sameNativeValue(nativeEntityIdentity(value), saved.identity)
               && sameNativeValue(nativeBodyContract(value, spec), saved.contract)
-              && bodyStateMatchesEntity({ body: candidate.world.getRigidBody(Number(saved.handle)) },
-                value, candidate._frameOrigin, candidate._frameScratch);
+              && snapshotBodyPoseMatches(candidate, candidate.world.getRigidBody(Number(saved.handle)), value, spec);
           });
           if (matches.length === 1) entity = matches[0];
         }
@@ -589,7 +650,7 @@ export class Sg02DynamicBodyOwner {
         // authorizes a newly spawned life; a reused live number alone never does.
         if (!options.entityIdRemap && saved.sourceLife != null
           && occupantGenerationOf(entity) !== saved.sourceLife) throw new Error('body_life_changed');
-        const spec = resolvePhysicsBodySpec(entity);
+        const spec = (resolveOrchardRestoreBody(options.orchardRestoreInputs,entity)?.spec || resolvePhysicsBodySpec(entity));
         const handle = Number(saved.handle), body = candidate.world.getRigidBody(handle);
         if (!body || handles.has(handle)
           || !sameNativeValue(nativeEntityIdentity(entity), saved.identity)
@@ -598,13 +659,14 @@ export class Sg02DynamicBodyOwner {
         const colliders = Array.from({ length: body.numColliders() }, (_, index) => body.collider(index));
         if (!sameNativeValue(nativeBodyProperties(body, colliders), saved.native)
           || !nativeMassMatches(body, spec, saved)
-          || !bodyStateMatchesEntity({ body }, entity, candidate._frameOrigin, candidate._frameScratch)) {
+          || !snapshotBodyPoseMatches(candidate, body, entity, spec)) {
           throw new Error('native_body_mismatch');
         }
         // Compare native geometry against an independently constructed current authored body,
         // not merely against metadata captured alongside the same opaque native bytes.
         const scratchEntity = { ...entity, pos: { ...entity.pos }, prevPos: { ...entity.prevPos },
           vel: { ...entity.vel }, flags: { ...entity.flags }, data: nativePlain(entity.data || {}) };
+        if (Object.hasOwn(entity, 'occupantGeneration')) Object.defineProperty(scratchEntity, 'occupantGeneration', Object.getOwnPropertyDescriptor(entity, 'occupantGeneration'));
         const expected = validator._createRecord(scratchEntity, spec);
         validator._applyBodyResponse(expected, { massScale: saved.bodyResponseMassScale, inertiaScale: saved.bodyResponseInertiaScale });
         if (saved.tumbleMaterial) validator._syncTumbleMaterial(expected, true);
@@ -695,7 +757,7 @@ export class Sg02DynamicBodyOwner {
       candidate._restoringNative = false;
       validator.dispose();
       validator = null;
-      this._commitNativeOwner(candidate);
+      this._commitNativeOwner(candidate, [], { destinationBoundary, orchardColdRestore:options.orchardColdRestore===true,orchardFiniteState:options.orchardFiniteState,orchardRestoreInputs:options.orchardRestoreInputs });
       candidate = null;
       return true;
     } catch (_) {
@@ -708,6 +770,11 @@ export class Sg02DynamicBodyOwner {
 
   // A fallback owns a fresh complete world, never old bodies with their owner maps cleared.
   rebuildWorldFromEntities(entities = [], options = {}) {
+    if(options.orchardRestoreInputs && !orchardRestoreInputsCurrent(options.orchardRestoreInputs,this))throw Error('orchard_restore_inputs_changed');
+    const destinationBoundary = retainNativeDestination(this);
+    const originalContracts = new Map(entities.filter(Boolean).map(entity => [entity, {
+      spec: entity.physicsBody, data: entity.data, life: entity.occupantGeneration,
+    }]));
     const candidate = new Sg02DynamicBodyOwner(this.RAPIER, {
       fixedDt: this.fixedDt, quantum: this.quantum, mode: this.mode,
       captureContactImpacts: this.captureContactImpacts, publishTelemetry: this.publishTelemetry,
@@ -723,9 +790,11 @@ export class Sg02DynamicBodyOwner {
         const scratch = { ...entity, pos: entity.pos && { ...entity.pos },
           prevPos: entity.prevPos && { ...entity.prevPos }, vel: entity.vel && { ...entity.vel },
           flags: entity.flags && { ...entity.flags } };
+        if (Object.hasOwn(entity, 'occupantGeneration')) Object.defineProperty(scratch, 'occupantGeneration', Object.getOwnPropertyDescriptor(entity, 'occupantGeneration'));
         originals.set(scratch, entity);
         return scratch;
       });
+      permitOrchardConstructionRehomes(candidate,ORCHARD_OWNER_CAPABILITIES.get(candidate),originals);
       candidate.syncFromEntities(staged);
       if (candidate._pendingNativeRebuilds.size) throw new Error('scalar_body_reconstruction_failed');
       const mirrors = [];
@@ -741,7 +810,7 @@ export class Sg02DynamicBodyOwner {
         rec.entity = entity;
         if (ceresWorkfleetSlideRole(entity)) {rec.ceresWorkfleetEntity=entity;rec.ceresWorkfleetLife=entity.occupantGeneration;}
       }
-      this._commitNativeOwner(candidate, mirrors);
+      this._commitNativeOwner(candidate, mirrors, { destinationBoundary, originalContracts, orchardColdRestore:options.orchardColdRestore===true,orchardFiniteState:options.orchardFiniteState,orchardRestoreInputs:options.orchardRestoreInputs });
     } catch (error) { candidate.dispose(); throw error; }
   }
 
@@ -749,6 +818,7 @@ export class Sg02DynamicBodyOwner {
   // yield every `yieldEvery` collider mints so a mature save's rebuild paces across
   // presented beats instead of one atomic WASM-build span inside the veil window.
   *syncFromEntitiesSteps(entities = [], yieldEvery = 16) {
+    if(!orchardNativeMutationReady(this))return false;
     const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
     this._syncSerial++;
     const live = this._liveEntityIds;
@@ -766,17 +836,23 @@ export class Sg02DynamicBodyOwner {
     }
 
     for (const [id, rec] of this.records) {
-      if (!live.has(id)) this._removeRecord(id, rec);
+      if (!live.has(id)) {const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world)return false;}
     }
     this._resumeSuspendedAttachments(live);
     this._staticLayerVersion = null;
     this._writeSyncDiagnostics('full', count, 0, 0, -1);
+    publishOrchardPoseReceipts(this,ORCHARD_OWNER_CAPABILITIES.get(this));
   }
 
   // Stepped twin of rebuildWorldFromEntities: candidate construction, scratch staging,
   // the paced collider mints, mirror collection, then the atomic _commitNativeOwner —
   // commit still lands in one step so a suspended drive can never publish a torn world.
   *rebuildWorldFromEntitiesSteps(entities = [], options = {}, yieldEvery = 16) {
+    if(options.orchardRestoreInputs && !orchardRestoreInputsCurrent(options.orchardRestoreInputs,this))throw Error('orchard_restore_inputs_changed');
+    const destinationBoundary = retainNativeDestination(this);
+    const originalContracts = new Map(entities.filter(Boolean).map(entity => [entity, {
+      spec: entity.physicsBody, data: entity.data, life: entity.occupantGeneration,
+    }]));
     const candidate = new Sg02DynamicBodyOwner(this.RAPIER, {
       fixedDt: this.fixedDt, quantum: this.quantum, mode: this.mode,
       captureContactImpacts: this.captureContactImpacts, publishTelemetry: this.publishTelemetry,
@@ -793,9 +869,11 @@ export class Sg02DynamicBodyOwner {
         const scratch = { ...entity, pos: entity.pos && { ...entity.pos },
           prevPos: entity.prevPos && { ...entity.prevPos }, vel: entity.vel && { ...entity.vel },
           flags: entity.flags && { ...entity.flags } };
+        if (Object.hasOwn(entity, 'occupantGeneration')) Object.defineProperty(scratch, 'occupantGeneration', Object.getOwnPropertyDescriptor(entity, 'occupantGeneration'));
         originals.set(scratch, entity);
         return scratch;
       });
+      permitOrchardConstructionRehomes(candidate,ORCHARD_OWNER_CAPABILITIES.get(candidate),originals);
       yield 'native-rebuild-staged';
       yield* candidate.syncFromEntitiesSteps(staged, yieldEvery);
       if (candidate._pendingNativeRebuilds.size) throw new Error('scalar_body_reconstruction_failed');
@@ -813,7 +891,7 @@ export class Sg02DynamicBodyOwner {
         if (ceresWorkfleetSlideRole(entity)) {rec.ceresWorkfleetEntity=entity;rec.ceresWorkfleetLife=entity.occupantGeneration;}
       }
       yield 'native-rebuild-mirrored';
-      this._commitNativeOwner(candidate, mirrors);
+      this._commitNativeOwner(candidate, mirrors, { destinationBoundary, originalContracts, orchardColdRestore:options.orchardColdRestore===true,orchardFiniteState:options.orchardFiniteState,orchardRestoreInputs:options.orchardRestoreInputs });
       committed = true;
     } finally {
       // A generator abandoned mid-drive (iterator.return on a parked drive)
@@ -823,7 +901,11 @@ export class Sg02DynamicBodyOwner {
     }
   }
 
-  _commitNativeOwner(candidate, mirrors = []) {
+  _commitNativeOwner(candidate, mirrors = [], options = {}) {
+    const destinationBoundary = options.destinationBoundary || retainNativeDestination(this);
+    if (!destinationBoundary()) throw new Error('native_owner_superseded');
+    const collarTransfer = prepareOrchardFrameTransfer(candidate, this, options.originalContracts, {coldMotor:options.orchardColdRestore===true,finiteState:options.orchardFiniteState,restoreInputs:options.orchardRestoreInputs});
+    mirrors.push(...collarTransfer.mirrors);
     const previousWorld = this.world, previousQueue = this._eventQueue;
     const previousFailures = this._pendingNativeRebuilds;
     const contactCallback = this._contactManifoldCb;
@@ -847,6 +929,7 @@ export class Sg02DynamicBodyOwner {
     for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(this))) {
       if (!descriptor.configurable) throw new Error('native_owner_slot_not_configurable');
     }
+    if (!destinationBoundary() || !collarTransfer.current()) throw new Error('native_owner_superseded');
     let written = 0;
     try {
       for (const mirror of mirrors) {
@@ -854,9 +937,12 @@ export class Sg02DynamicBodyOwner {
           ? { ...mirror.descriptor, value: mirror.value }
           : { value: mirror.value, writable: true, configurable: true, enumerable: true });
         written++;
+        if (!destinationBoundary()) throw new Error('native_owner_superseded');
       }
+      if (!collarTransfer.current(true) || !collarTransfer.nativeCurrent() || !collarTransfer.current(true) || !destinationBoundary()) throw new Error('orchard_source_changed_during_publication');
+      if (!Object.isExtensible(this) || Object.values(Object.getOwnPropertyDescriptors(this)).some(d => !d.configurable)) throw new Error('native_owner_slot_not_configurable');
     } catch (error) {
-      for (let index = written - 1; index >= 0; index--) {
+      for (let index = written - 1; destinationBoundary() && index >= 0; index--) {
         const mirror = mirrors[index];
         if (mirror.descriptor) Object.defineProperty(mirror.entity, mirror.key, mirror.descriptor);
         else delete mirror.entity[mirror.key];
@@ -867,6 +953,9 @@ export class Sg02DynamicBodyOwner {
     descriptors._contactManifoldCb.value = contactCallback;
     for (const key of Object.keys(this)) if (!(key in descriptors)) delete this[key];
     Object.defineProperties(this, descriptors);
+    ORCHARD_OWNER_CAPABILITIES.set(this,ORCHARD_OWNER_CAPABILITIES.get(candidate));
+    ORCHARD_OWNER_CAPABILITIES.delete(candidate);ORCHARD_OWNER_TAILS.delete(this);
+    collarTransfer.commit();
     for (const pending of previousFailures.values()) {
       clearPhysicsBodyNativeFailure(pending.entity, this, pending.failureReceipt);
     }
@@ -991,6 +1080,7 @@ export class Sg02DynamicBodyOwner {
         revision: spec.revision,
       },
     };
+    retainAdoptedOrchardFrame(this, record);
     for (const owned of colliders) this._colliderOwners.set(owned.handle, { rec: record, collider: owned });
     this.records.set(entity.id, record);
     if (spec.dynamic) this.dynamicRecords.add(record);
@@ -1006,6 +1096,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
+    if(!orchardNativeMutationReady(this))return false;
     this._syncSerial++;
     const version = Math.max(0, Math.trunc(finite(staticVersion)));
     const staticChanged = this._staticLayerVersion !== version;
@@ -1034,7 +1125,7 @@ export class Sg02DynamicBodyOwner {
         this._syncRecord(entity, spec);
       }
       for (const [id, rec] of this.records) {
-        if (!rec.spec.dynamic && !staticLive.has(id)) this._removeRecord(id, rec);
+        if (!rec.spec.dynamic && !staticLive.has(id)) {const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world)return false;}
       }
       this._staticLayerVersion = version;
     }
@@ -1056,11 +1147,12 @@ export class Sg02DynamicBodyOwner {
       this._syncRecord(entity, spec);
     }
     for (const [id, rec] of this.records) {
-      if (rec.spec.dynamic && !dynamicLive.has(id)) this._removeRecord(id, rec);
+      if (rec.spec.dynamic && !dynamicLive.has(id)) {const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world)return false;}
     }
     this._resumeSuspendedAttachments(dynamicLive, this._liveStaticEntityIds);
 
     this._writeSyncDiagnostics('layered', 0, staticCount, dynamicCount, version);
+    publishOrchardPoseReceipts(this,ORCHARD_OWNER_CAPABILITIES.get(this));
   }
 
   _reuseUnchangedStaticRecord(entity, spec) {
@@ -1099,13 +1191,22 @@ export class Sg02DynamicBodyOwner {
         `SG-02 owner step cannot progress: accumulator=${carried}, dt=${dt}, fixedDt=${fixedDt}`
         + ` would require ${estimatedSteps} substeps (max ${MAX_OWNER_SUBSTEPS})`);
     }
+    const capability=ORCHARD_OWNER_CAPABILITIES.get(this), boundary=beginOrchardOwnerStep(this,capability);
+    if(!boundary) return this.diagnostics();
     this._simTick = Number.isFinite(simTick) ? Math.max(0, Math.trunc(simTick)) : null;
+    const canonicalTick=this._simTick;
     this.accumulator = prospectiveTotal;
-    while (this.accumulator + 1e-12 >= this.fixedDt) {
-      this._stepFixed();
-      this.accumulator -= this.fixedDt;
-    }
-    return this.diagnostics();
+    let completed=0;
+    try {
+      while (this.accumulator + 1e-12 >= this.fixedDt) {
+        this._stepFixed();
+        // An old stack must never subtract a completed old-world slice from successor debt.
+        if(!orchardStepCurrent(this,capability,boundary)) return this.diagnostics();
+        this.accumulator -= this.fixedDt; completed++;
+      }
+      ORCHARD_OWNER_TAILS.set(this,finishOrchardOwnerStep(this,capability,boundary,canonicalTick,completed));
+      return this.diagnostics();
+    } catch(error) {cancelOrchardOwnerStep(this,capability,boundary);throw error;}
   }
 
   quantizedSnapshot(options = {}) {
@@ -1143,6 +1244,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   dispose() {
+    retireOrchardOwner(this, ORCHARD_OWNER_CAPABILITIES.get(this));
     for (const attachment of this.attachments.values()) this._removeAttachmentJoints(attachment);
     this.attachments.clear();
     this._suspendedAttachments.clear();
@@ -1166,6 +1268,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   applyImpulse(input = {}) {
+    if(!orchardNativeMutationReady(this))return false;
     const rec = this.records.get(input.entityId);
     if (!rec) return false;
     if (!rec.spec.dynamic) {
@@ -1212,6 +1315,7 @@ export class Sg02DynamicBodyOwner {
   /** Boundary-owned passive settling. Native mass includes the live field/body response;
    * publish the impulse result immediately when the boundary runs after this tick's solve. */
   settlePassiveBody(input = {}) {
+    if (!orchardNativeMutationReady(this)) return false;
     let rec = this.records.get(input.entityId);
     const entity = input.entity ?? rec?.entity;
     if (input.reason !== 'swarm_round_settle' || !entity || entity.id !== input.entityId
@@ -1248,6 +1352,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   applyTorqueImpulse(input = {}) {
+    if(!orchardNativeMutationReady(this))return false;
     const rec = this.records.get(input.entityId);
     return applyYawTorqueImpulse(rec, input.impulse, input);
   }
@@ -1318,6 +1423,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   createAttachment(input = {}) {
+    if(!orchardNativeMutationReady(this))return false;
     const attachmentId = String(input.attachmentId || '');
     if (!attachmentId || this.attachments.has(attachmentId) || this._suspendedAttachments.has(attachmentId)) return false;
     const owner = this.records.get(input.ownerId);
@@ -1361,6 +1467,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   setAttachmentReel(input = {}) {
+    if(!orchardNativeMutationReady(this))return false;
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
     const requested = positive(input.restLength, attachment.restLength);
@@ -1386,6 +1493,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   cutAttachment(input = {}) {
+    if(!orchardNativeMutationReady(this))return false;
     const parkedId = String(input.attachmentId || input.physicsHandle?.id || input.physicsHandle || '');
     if (this._suspendedAttachments.delete(parkedId)) {
       observeRelease(parkedId,input.tick??this.tick,input.reason||'cut');
@@ -1585,6 +1693,7 @@ export class Sg02DynamicBodyOwner {
     }
 
     let stepReceipts = [];
+    if(!permitOrchardNativeSolve(this,ORCHARD_OWNER_CAPABILITIES.get(this)))throw new Error('orchard_native_solve_refused');
     if (this._eventQueue) {
       this.world.step(this._eventQueue);
       stepReceipts = this._captureContactImpacts() || [];
@@ -2443,6 +2552,13 @@ export class Sg02DynamicBodyOwner {
   }
 
   _createRecord(entity, spec, replacing = null) {
+    const recovery = ORCHARD_RECOVERY_FACTORIES.get(this);
+    const orchardPreparation = prepareOrchardFrameConstruction(entity,this);
+    const constructionWorld = this.world, constructionQueue = this._eventQueue;
+    const assertConstructionCurrent = () => {
+      if(recovery && !recovery.current())throw new Error('orchard_recovery_superseded');
+      if (orchardPreparation && (this._eventQueue !== constructionQueue || !orchardConstructionCurrent(this, orchardPreparation, constructionWorld))) throw new Error('orchard_construction_superseded');
+    };
     const R = this.RAPIER;
     const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
     let posX = local.x;
@@ -2458,6 +2574,7 @@ export class Sg02DynamicBodyOwner {
       && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
       const slotted = this._resolveCoincidentSpawnSlot(posX, posZ, entity, spec, replacing);
       if (slotted !== posX) {
+        if (orchardPreparation) throw new Error('orchard_frame_root_nudge_refused');
         posX = slotted;
         const g = frameToGlobal({ x: posX, z: posZ }, this._frameOrigin, this._globalScratch);
         entity.pos.x = g.x;
@@ -2514,7 +2631,10 @@ export class Sg02DynamicBodyOwner {
         body.setAngvel({ x: 0, y: -boundedYawRate(entity.angVel), z: 0 }, true);
         body.setEnabled(true);
       } else {
-        body = this.world.createRigidBody(desc);
+        assertConstructionCurrent();
+        body = constructionWorld.createRigidBody(desc);
+        if(recovery){recovery.body=body;recovery.bodyHandle=body.handle;}
+        assertConstructionCurrent();
         proxyManifest = proxyManifestForBody(entity, spec);
         let colliderDescs;
         if (proxyManifest) {
@@ -2524,7 +2644,14 @@ export class Sg02DynamicBodyOwner {
         } else {
           colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts, entity)];
         }
-        colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
+        colliders = [];
+        for (const colliderDesc of colliderDescs) {
+          assertConstructionCurrent();
+          const collider = constructionWorld.createCollider(colliderDesc, body);
+          colliders.push(collider); // Retain allocation custody before the post-call fence.
+          if(recovery){recovery.colliders.push(collider);if(recovery.colliderHandles)recovery.colliderHandles.push(collider.handle);}
+          assertConstructionCurrent();
+        }
       }
       // Colliders are all density-0: the body's whole mass is the additional properties on the
       // creation desc. rapier-compat defers computing those into effective mass until the first
@@ -2550,13 +2677,17 @@ export class Sg02DynamicBodyOwner {
         && typeof body.sleep === 'function') {
         body.sleep();
       }
+      initializeOrchardFrame(this, entity, body, colliders, orchardPreparation);
     } catch (error) {
       // Failed authored collider construction must not leave an unmanaged native body.
-      if (body) this.world.removeRigidBody(body);
+      if (!recovery && body && this.world === constructionWorld && this._eventQueue === constructionQueue && constructionWorld.getRigidBody(body.handle) === body
+        && (!orchardPreparation || !orchardAllocationClaimed(this, constructionWorld, constructionQueue, body, colliders))) {
+        if (this.world === constructionWorld && this._eventQueue === constructionQueue) constructionWorld.removeRigidBody(body);
+      }
       throw error;
     }
     const collider = colliders[0];
-    const ccdEnabled = typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd;
+    const ccdEnabled = orchardPreparation ? false : (typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd);
     const record = {
       entity,
       spec,
@@ -2568,7 +2699,7 @@ export class Sg02DynamicBodyOwner {
       // Body-local degenerate windows for the coincident-spawn ladder (spine segments for
       // capsules, centre points for balls/offset primitives). Captured at creation, then
       // updated in place when an explicitly articulated compound changes its local pose.
-      coincidentSpines: colliders.map((owned) => coincidentSpineForCollider(owned)),
+      coincidentSpines: orchardPreparation ? orchardFrameSpines(orchardPreparation) : colliders.map((owned) => coincidentSpineForCollider(owned)),
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
       _postStepSleepSkip: false,
       _postStepReadTick: -1,
@@ -2625,6 +2756,7 @@ export class Sg02DynamicBodyOwner {
     // Old saves may carry a mirrored entity.playerContactGive episode record; nothing reads it —
     // contact velocity is the solver's answer now, so a rebuilt body simply keeps solving from
     // its live pose.
+    retainConstructedOrchardFrame(this, record, orchardPreparation);
     for (const ownedCollider of colliders) this._colliderOwners.set(ownedCollider.handle, { rec: record, collider: ownedCollider });
     this._syncCeresWorkfleetRecord(record);
     return record;
@@ -2665,7 +2797,8 @@ export class Sg02DynamicBodyOwner {
   // Returns false when a live attachment refuses the remove: the body stays in the world and
   // this record stays managed, so the caller must not create a replacement — that would leave
   // an orphaned body still stepped and colliding but invisible to every records-map consumer.
-  _removeRecord(id, rec) {
+  _removeRecord(id, rec, options={}) {
+    if (!rec || this.records.get(id) !== rec) return false;
     this._reboundEntityIds.delete(id);
     const live = rec && rec.entity && rec.entity.alive !== false;
     // Explicit withdrawal is different from distant towing residency: no invisible collider
@@ -2683,10 +2816,13 @@ export class Sg02DynamicBodyOwner {
     for (const attachment of Array.from(this.attachments.values())) {
       if (attachment.owner === rec || attachment.target === rec) this.cutAttachment({ attachmentId: attachment.id });
     }
+    const orchardRetirement=options.orchardResidency===true?prepareOrchardResidencyRetirement(this,rec):null;
+    if(orchardRetirement)return orchardRetirement.run();
+    detachOrchardFrame(this,rec);
     this.dynamicRecords.delete(rec);
     this.ceresWorkfleetRecords.delete(rec);
     const colliders = Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders : [rec.collider];
-    if (rec.ghostPoolKey != null && typeof rec.body.setEnabled === 'function') {
+    if (rec.ghostPoolKey != null && this.world.getRigidBody(rec.body.handle) === rec.body && typeof rec.body.setEnabled === 'function') {
       // Retire, don't free: disabled bodies/colliders leave the broad phase and the solver.
       rec.body.setEnabled(false);
       let bucket = this._ghostProjectilePool.get(rec.ghostPoolKey);
@@ -2700,11 +2836,11 @@ export class Sg02DynamicBodyOwner {
       return true;
     }
     for (const collider of colliders) {
-      this._colliderOwners.delete(collider.handle);
-      this.world.removeCollider(collider, false);
+      if (this._colliderOwners.get(collider.handle)?.rec === rec) this._colliderOwners.delete(collider.handle);
+      if (this.world.getCollider(collider.handle) === collider) this.world.removeCollider(collider, false);
     }
-    this.world.removeRigidBody(rec.body);
-    this.records.delete(id);
+    if (this.world.getRigidBody(rec.body.handle) === rec.body) this.world.removeRigidBody(rec.body);
+    if (this.records.get(id) === rec) this.records.delete(id);
     return true;
   }
 
@@ -2901,6 +3037,7 @@ export class Sg02DynamicBodyOwner {
       this.records.set(entity.id, next);
       if (next.spec.dynamic) this.dynamicRecords.add(next);
       this._applyCcdGate(next, entity);
+      retainOrchardResidentPod(this,next);
       return next;
     }
     rec.entity = entity;
@@ -3059,6 +3196,9 @@ export class Sg02DynamicBodyOwner {
         tick: this.tick + 1,
         aId: a.entity.id,
         bId: b.entity.id,
+        // Capture lives before any contact listener can recycle an endpoint id.
+        aGeneration: a.entity.occupantGeneration,
+        bGeneration: b.entity.occupantGeneration,
         impulse,
         pos: { x: finite(global.x), z: finite(global.z) },
         normal,
@@ -3109,6 +3249,15 @@ export class Sg02DynamicBodyOwner {
     const dz = local.z - finite(pz);
     const noInterp = !!(entity.flags && entity.flags.noInterp);
     if (!noInterp && dx * dx + dz * dz <= POSE_RESYNC_EPS2) return false;
+    // Continue marks restored entities noInterp even when a fixed authored root is
+    // already exact. Rapier's setter normalizes the descriptor's f32 quaternion again;
+    // that unnecessary rewrite invalidates Orchard's strict native geometry custody.
+    // Only the existing exact canonical check permits this no-op, never a tolerance.
+    if ((claimsOrchardFrame(entity) && orchardFrameRootMatches(this, rec.body, entity))
+      || (!rec.spec.dynamic && claimsOrchardPod(entity) && orchardFixedPodRootMatches(this, rec.body, entity))) {
+      if (noInterp && entity.flags) entity.flags.noInterp = false;
+      return false;
+    }
 
     let resyncX = local.x;
     const resyncZ = local.z;
@@ -3864,19 +4013,7 @@ export class Sg02DynamicBodyOwner {
 }
 
 async function loadRapierCompat() {
-  return loadRapierCompatRuntime({ importModule: importRapierCompatModule });
-}
-
-// Module Workers resolve specifiers without the document's import map, so the
-// bare specifier path (document main thread, node_modules on the node lanes)
-// is tried first and the vendored bundle by URL second — the same build the
-// page itself loads, addressed relative to this module.
-async function importRapierCompatModule() {
-  try {
-    return await import('@dimforge/rapier3d-compat');
-  } catch (_) {
-    return import(new URL('../../vendor/rapier3d-compat/rapier.mjs', import.meta.url).href);
-  }
+  return loadRapierCompatRuntime();
 }
 
 function resetBodyForces(body) {
@@ -5113,6 +5250,14 @@ function massPropertiesOnlyChanged(rec, spec) {
     contactOverrideEquals(current.contact, spec.contact);
 }
 
+// Authored fixed Orchard roots require exact source pose validation. A failed strict
+// match must never fall through to the ordinary moving-body numerical tolerance.
+function snapshotBodyPoseMatches(owner, body, entity, spec) {
+  if (claimsOrchardFrame(entity)) return orchardFrameRootMatches(owner, body, entity);
+  if (!spec.dynamic && claimsOrchardPod(entity)) return orchardFixedPodRootMatches(owner, body, entity);
+  return bodyStateMatchesEntity({ body }, entity, owner._frameOrigin, owner._frameScratch);
+}
+
 function bodyStateMatchesEntity(rec, entity, frameOrigin, frameScratch) {
   if (!rec || !rec.body || !entity) return false;
   const p = rec.body.translation();
@@ -5194,4 +5339,58 @@ function contactPrimitiveId(rec,index) {
   if (Array.isArray(manifest?.convexParts)) return manifest.convexParts[index]?.id ?? `native:${index}`;
   if (!manifest || manifest.compactHull || manifest.planarPolygon) return `native:${index}`;
   return expandProxyPrimitives(manifest,{entity:rec.entity})[index]?.id ?? `native:${index}`;
+}
+
+
+// Cold owner replacement retains its destination before any callback-capable native staging.
+function retainNativeDestination(owner) {
+  const slots = ['world', '_eventQueue', 'records', '_colliderOwners', 'dynamicRecords', 'attachments', '_suspendedAttachments'];
+  const refs = slots.map(key => [key, owner[key]]);
+  const maps = refs.filter(([, value]) => value instanceof Map).map(([key, value]) => [key, [...value]]);
+  const sets = refs.filter(([, value]) => value instanceof Set).map(([key, value]) => [key, [...value]]);
+  const colliderEntries = [...owner._colliderOwners.values()].map(entry => ({ entry, rec: entry.rec, collider: entry.collider }));
+  const records = [...owner.records.values()].map(rec => ({ rec, entity: rec.entity, body: rec.body, spec: rec.spec,
+    collider: rec.collider, colliders: rec.colliders, members: [...rec.colliders] }));
+  return () => colliderEntries.every(r => r.entry.rec === r.rec && r.entry.collider === r.collider)
+    && records.every(r => r.rec.entity === r.entity && r.rec.body === r.body && r.rec.spec === r.spec
+      && r.rec.collider === r.collider && r.rec.colliders === r.colliders && r.colliders.length === r.members.length
+      && r.members.every((c, i) => r.colliders[i] === c))
+    && refs.every(([key, value]) => owner[key] === value)
+    && maps.every(([key, entries]) => owner[key].size === entries.length && entries.every(([id, value]) => owner[key].get(id) === value))
+    && sets.every(([key, entries]) => owner[key].size === entries.length && entries.every(value => owner[key].has(value)));
+}
+
+// A callback may have deliberately published a just-allocated object before construction
+// refuses its source lease. Cleanup must not retire that exact new claim or its constraints.
+function orchardAllocationClaimed(owner, world, queue, body, colliders = []) {
+  const current = () => owner.world === world && owner._eventQueue === queue;
+  const touches = rec => rec?.body === body || colliders.includes(rec?.collider)
+    || rec?.colliders?.some(c => colliders.includes(c));
+  const semanticClaim = () => [...owner.records.values()].some(touches)
+    || [...owner._colliderOwners.values()].some(e => touches(e.rec) || colliders.includes(e.collider))
+    || [owner.attachments, owner._suspendedAttachments].some(map => [...map.values()].some(a =>
+      touches(a.owner) || touches(a.target) || touches(a.attachment?.owner) || touches(a.attachment?.target)));
+  if (!current() || semanticClaim()) return true;
+  for (const entry of owner._colliderOwners.values()) {
+    if (touches(entry.rec) || colliders.includes(entry.collider)) return true;
+    if (!current()) return true;
+    const parent = entry.collider?.parent();
+    if (!current() || parent === body) return true;
+  }
+  for (const entries of [owner.attachments, owner._suspendedAttachments]) {
+    for (const a of entries.values()) if (touches(a.owner) || touches(a.target)
+      || touches(a.attachment?.owner) || touches(a.attachment?.target)) return true;
+  }
+  for (const joints of [world.impulseJoints, world.multibodyJoints]) {
+    let claimed = false;
+    joints.forEach(joint => {
+      if (claimed || !current()) { claimed = true; return; }
+      const first = joint.body1();
+      if (!current() || first === body) { claimed = true; return; }
+      const second = joint.body2();
+      if (!current() || second === body) claimed = true;
+    });
+    if (claimed || !current()) return true;
+  }
+  return !current() || semanticClaim();
 }

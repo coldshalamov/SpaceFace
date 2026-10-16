@@ -6,6 +6,7 @@
 
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { ANVIL_ORCHARD } from './anvilOrchard.js';
 
 export const CINDER_SLUICE_SITE_ID = 'world_site_ceres_cinder_sluice';
 export const CINDER_SLUICE_SECTOR_ID = 'sector_ceres_belt';
@@ -19,6 +20,56 @@ export const CINDER_SLUICE_LOCAL_POS = Object.freeze({ x: 1950, z: -1250 });
 export const CINDER_SLUICE_GLOBAL_POS = Object.freeze(
   sectorLocalToGlobalForSector(CINDER_SLUICE_LOCAL_POS, CINDER_SLUICE_SECTOR_ID),
 );
+
+// The Orchard gust is an authored, finite cone around the already-resident Orchard frame.
+// Its geometry is deliberately local to that frame: planetRuntime remains the sole Anvil
+// placement/band owner, while the phase still comes from the Orchard's saved finite ledger.
+// +X is the frame's forward axis; the scheduler rotates it once by the frame's current yaw.
+export const ANVIL_ORCHARD_GUST_PROFILE = Object.freeze({
+  id: 'environment_tethys_anvil_storm_orchard_gust',
+  kind: 'cone',
+  localCenter: Object.freeze({ x: 0, z: 0 }),
+  localDir: Object.freeze({ x: 1, z: 0 }),
+  radius: 360,
+  strength: 180,
+  falloff: 1.1,
+  halfAngleRad: 0.42,
+  edgeSoftRad: 0.12,
+  // The HUD may describe the phase from a nearby safe pocket before the pilot commits.
+  // This is an observation bound only; it never widens the actual force cone.
+  observationRadius: 560,
+  sourceId: ANVIL_ORCHARD.id,
+  team: null,
+  forecastTicks: ANVIL_ORCHARD.forecastTicks,
+});
+
+/** Live frame-relative geometry shared by the force owner and the HUD's forecast voice. */
+export function anvilOrchardGustGeometry(frame, out = null) {
+  if (!frame?.pos || !Number.isFinite(frame.pos.x) || !Number.isFinite(frame.pos.z)
+    || !Number.isFinite(frame.rot)) return null;
+  const result = out || { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
+  const c = Math.cos(frame.rot), s = Math.sin(frame.rot);
+  const localCenter = ANVIL_ORCHARD_GUST_PROFILE.localCenter;
+  const localDir = ANVIL_ORCHARD_GUST_PROFILE.localDir;
+  result.center.x = frame.pos.x + c * localCenter.x - s * localCenter.z;
+  result.center.z = frame.pos.z + s * localCenter.x + c * localCenter.z;
+  result.dir.x = c * localDir.x - s * localDir.z;
+  result.dir.z = s * localDir.x + c * localDir.z;
+  return result;
+}
+
+/** Cone occupancy projection using the same authored radius and angular soft edge as fields. */
+export function pointInsideAnvilOrchardGust(point, geometry) {
+  if (!point || !geometry?.center || !geometry?.dir
+    || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return false;
+  const dx = point.x - geometry.center.x, dz = point.z - geometry.center.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance >= ANVIL_ORCHARD_GUST_PROFILE.radius) return false;
+  if (distance < 1e-6) return true;
+  const dot = (dx * geometry.dir.x + dz * geometry.dir.z) / distance;
+  const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+  return angle < ANVIL_ORCHARD_GUST_PROFILE.halfAngleRad + ANVIL_ORCHARD_GUST_PROFILE.edgeSoftRad;
+}
 
 // The machine faces back into the belt, while its current exhausts toward the Helios arrival side.
 // The root is the apex: cutting the ballast ejects it downstream, so returning it to the receiver

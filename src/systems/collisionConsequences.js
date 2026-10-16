@@ -91,6 +91,9 @@ export const collisionConsequences = {
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('physics:impact', (payload) => this._onImpact(payload || {})));
+      this._unsubs.push(this.bus.on('physics:contactsCompleted', (payload) => {
+        if (payload?.backend === 'rapier-dynamic') this._resolveOrchardContactsAtTick(payload.tick);
+      }));
       this._unsubs.push(this.bus.on('tether:whipImpact', (payload) => this._onWhipImpact(payload || {})));
       this._unsubs.push(this.bus.on(RESOLVE_PENDING_CRAFT_CONTACT_EVENT,
         (payload) => this._resolvePendingCraftContact(payload || {})));
@@ -152,6 +155,18 @@ export const collisionConsequences = {
     // environment-attributed kill merely because the impulse was recorded on the incoming hull.
     const causalProvenance = contactImpulseProvenance(a, b, tick)
       || explicitContactProvenance(payload, tick);
+    if ((a.type === 'payload' && a.data?.orchardKind === 'pod')
+      || (b.type === 'payload' && b.data?.orchardKind === 'pod')) {
+      // Native Orchard observation is intentionally closed during contact publication.
+      // Reuse this owner's end-of-step queue and revalidate lives/custody after the tail.
+      const nativeOwner = this.registry?.get?.('physics')?._sg02;
+      const key = `${craftContactKey(tick, a.id, b.id)}:orchard`;
+      this._pendingCraftContacts.set(key, { key, a, b, exchangedMomentum, tick,
+        causalProvenance, orchardOnly: true, nativeOwner, nativeWorld: nativeOwner?.world,
+        payload: Object.freeze({ ...snapshotContactPayload(payload, tick),
+          backend: payload.backend, aGeneration: payload.aGeneration, bGeneration: payload.bGeneration }) });
+      this.bus?.queue?.(RESOLVE_PENDING_CRAFT_CONTACT_EVENT, { key });
+    }
     if (isPotentialMasslineWhipContact(state, a, b)) {
       this._deferCraftContact(a, b, payload, exchangedMomentum, tick, causalProvenance);
       return;
@@ -238,7 +253,21 @@ export const collisionConsequences = {
     }
   },
 
+  _resolveOrchardContactsAtTick(tick) {
+    if (tick !== this.state?.tick) return;
+    for (const [key, pending] of this._pendingCraftContacts) {
+      if (!pending.orchardOnly || pending.tick !== tick) continue;
+      this._pendingCraftContacts.delete(key);
+      this._resolveDeferredCraftContact(pending, false);
+    }
+  },
+
   _resolveDeferredCraftContact(pending, suppressCraftDamage) {
+    if (pending.orchardOnly) {
+      this._resolveOrchardPodShock(pending.a, pending.b, pending);
+      this._resolveOrchardPodShock(pending.b, pending.a, pending);
+      return;
+    }
     this._resolveContact(
       pending.a,
       pending.b,
@@ -259,6 +288,31 @@ export const collisionConsequences = {
     const looseB = projectiles && isLooseHull(this.state, b);
     this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseB);
     this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseA);
+  },
+
+  _resolveOrchardPodShock(target, other, pending) {
+    const state = this.state;
+    const { payload, exchangedMomentum, tick, causalProvenance } = pending;
+    if (target.type === 'payload' && target.alive !== false) {
+      // Orchard shock shares the existing collision law and combat writer, but never
+      // enters craft hitstun/fracture/tear-off paths. Labels are only a cheap prefilter;
+      // current native-ready custody is the authority for this exact released life.
+      if (!combatFlag('weaponImpulseConsequences') || state.mode !== 'flight'
+        || entityById(state,target.id) !== target || entityById(state,other.id) !== other
+        || target.data?.orchardKind !== 'pod' || payload.backend !== 'rapier-dynamic'
+        || payload.tick !== state.tick
+        || !Number.isSafeInteger(payload.aGeneration) || !Number.isSafeInteger(payload.bGeneration)
+        || payload.aGeneration !== entityById(state, payload.aId)?.occupantGeneration
+        || payload.bGeneration !== entityById(state, payload.bId)?.occupantGeneration) return;
+      const physics = this.registry?.get?.('physics');
+      if (!pending.nativeOwner || physics?._sg02 !== pending.nativeOwner
+        || physics._sg02.world !== pending.nativeWorld || !physics.readOrchardPodReady?.(target)) return;
+      const receipt = resolveCollisionConsequence({ target, other, exchangedMomentum, tick,
+        provenance: causalProvenance, pos: payload.pos, normal: payload.normal,
+        preSolveClosingSpeed: payload.preSolveClosingSpeed, payloadDamageOnly: true });
+      if (receipt?.impactDamage > 0) this._routeImpactDamage(target, other, receipt);
+      return;
+    }
   },
 
   _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false) {

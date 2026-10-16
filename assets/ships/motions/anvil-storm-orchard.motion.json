@@ -1,0 +1,291 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "anvil_storm_orchard_jaws",
+  "sourceAssetId": "SF_PLACE_ANVIL_STORM_ORCHARD",
+  "sourceGlbSha256": "0b425bc62b694737db3110cb01a677aa96aa0c47e7a792d6224554b72e18de64",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "orchard_s0_port",
+      "node": "MOTION_ORCHARD_S0_PORT",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          5,
+          0,
+          -44.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "orchard_s0_starboard",
+      "node": "MOTION_ORCHARD_S0_STARBOARD",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          5,
+          0,
+          -35.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "orchard_s1_port",
+      "node": "MOTION_ORCHARD_S1_PORT",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          11,
+          0,
+          -4.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "orchard_s1_starboard",
+      "node": "MOTION_ORCHARD_S1_STARBOARD",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          11,
+          0,
+          4.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "orchard_s2_port",
+      "node": "MOTION_ORCHARD_S2_PORT",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          5,
+          0,
+          35.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "orchard_s2_starboard",
+      "node": "MOTION_ORCHARD_S2_STARBOARD",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          5,
+          0,
+          44.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "events": {},
+  "clips": [
+    {
+      "name": "nativeRest",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "rest",
+      "channels": [
+        {
+          "group": "orchard_s0_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "orchard_s0_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "orchard_s1_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "orchard_s1_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "orchard_s2_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "orchard_s2_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ],
+  "simulationAuthority": "Orchard native actual jaw body pose; renderer applies after bank update. No event-driven clip owns jaw travel."
+}
