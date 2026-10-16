@@ -639,7 +639,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | TEACH-07 | A returning pilot hears one line about what changed since the last save | `src/systems/onboarding.js`, `src/ui/dockArrival.js` | On seed 4242 loading a save older than one sim day produces one summary line from the offline summary; a focused test pins it and none for a fresh save | Replay the first-hour rail. Add a screen | SHIPPED TEACH-07 f32458145 |
 | TEACH-08 | A death caused by a control verb offers the Range rung for that verb from the death screen | `src/combat/playerDefeat.js`, `src/systems/onboarding.js` | On seed 4242 a death attributed to a slack-line snap offers the reel rung once; a focused test pins the offer and its absence for a combat death | Force the Range. Change the death summary | SHIPPED already true — isSlackLineSnapDeath + defeatRangeOffer attach receipt.rangeOffer once via ui.deathRangeOfferedRung; deathRangeOfferText renders it on the death screen without opening the Range; pinned twice in infer-b-world-teach.test.mjs (offer+once, weapon death silent) |
 | TEACH-09 | The Help screen lists the live pad chords, read from the live binding table | `src/ui/screens/help.js`, `src/systems/gamepad.js` | A focused test proves the help model lists every entry of `GAMEPAD_DEFAULT_BINDINGS` (chords included) with `GAMEPAD_BUTTON_LABELS` from the active glyph set and updates after a rebind | Hardcode the list. Restyle Help (ORRERY) | SHIPPED TEACH-09 de93113c9 |
-| TEACH-10 | The first wanted escalation teaches the stand-down path | `src/systems/lawSecurity.js`, `src/systems/onboarding.js` | On seed 4242 the first transition to wanted with a patrol on glass produces one hint naming the surrender verb; a focused test pins once per profile | Hint on every heat gain. Change heat law | OPEN |
+| TEACH-10 | The first wanted escalation teaches the stand-down path | `src/systems/lawSecurity.js`, `src/systems/onboarding.js` | On seed 4242 the first transition to wanted with a patrol on glass produces one hint naming the surrender verb; a focused test pins once per profile | Hint on every heat gain. Change heat law | SHIPPED |
 | TEACH-11 | The first full-hold refusal names the jettison key | `src/core/pickupAcceptance.js`, `src/systems/onboarding.js` | On seed 4242 the first full-hold refusal produces one hint naming the bound jettison key; a focused test pins once per profile | Repeat per rock. Change hold size | OPEN |
 | TEACH-12 | The first latch on a far heavier body teaches the brace | `src/systems/tetherGameplay.js`, `src/systems/onboarding.js` | On seed 4242 the first latch above the authored mass-ratio threshold produces one hint about boost and brace; a focused test pins once per profile | Change the tow law. Hint for NPC tows | OPEN |
 | TEACH-13 | The first inbound missile lock with decoys in stock names the countermeasure key | `src/systems/countermeasures.js`, `src/systems/onboarding.js` | On seed 4242 the first lock warning with stock above zero produces one hint naming the bound key; zero stock stays silent (NXI-045 boundary); a focused test pins both | Add a HUD meter. Change the lock warning | OPEN |
@@ -649,7 +649,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| TEACH-10 | 2026-10-16 | infer10-oct16 | `src/systems/lawSecurity.js`, `src/systems/onboarding.js` |
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
@@ -665,6 +664,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | INST-35 | inst-35-earned-speed | 579203723e | HUD velocity model carries earnedSpeed (strictly above the catalog thruster cap) with an EARNED text mark; no flight-law change, no new gauge; focused 4/4 |
 | FIGHT-13 | fight-13-hot-debris | 8cfd5d6c64 | Fresh capital fragments deal decaying contact damage over the authored window, settled fragments none; counts/permanence untouched; focused 4/4 |
 | MACH-12 | mach-12-traffic-determinism | already true (no commit) | Double seed-4242 twenty-sim-minute sessions (6 sectors, 72k updates each) produce byte-identical named-contact sequences; kill/recovery paths deterministic too; no code change |
+| TEACH-10 | teach-10-wanted-standdown | 8dcbf948e5 | First wanted transition with a patrol on glass speaks the surrender verb once per profile; repeats/patrol-absent stay silent; heat law untouched; focused 5/5 |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
