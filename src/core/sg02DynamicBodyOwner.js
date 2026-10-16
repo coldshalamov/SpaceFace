@@ -343,6 +343,7 @@ export class Sg02DynamicBodyOwner {
     this._impactStamp = 0;
     this._contactPointScratch = { x: 0, z: 0 };
     this._impactNormalScratch = { x: 1, z: 0 };
+    this._playerFixedBrakingScratch = { x: 0, z: 0 };
     // Bound once so the per-event contactPair callback does not allocate a closure per event.
     // Reads/writes _contactPointScratch; last manifold wins, same as the inline closure did.
     this._contactManifoldCb = (manifold) => {
@@ -2140,6 +2141,72 @@ export class Sg02DynamicBodyOwner {
     return incomingSpeed > 1e-3 ? maxClosing / incomingSpeed : 0;
   }
 
+  // A compound fixed body can stop a hull on a surface whose normal is almost tangent to the
+  // pair's centre-to-centre axis. The receipt's closing fraction is therefore a weak measure of
+  // braking: it may stay below the ordinary-contact threshold even while Rapier has removed the
+  // player's incoming normal velocity. Record only that normal stopping component; a simultaneous
+  // dynamic shove remains subject to the ordinary give budget.
+  _playerHasNativeFixedContactBraking(rec) {
+    const allowance = this._playerFixedBrakingScratch;
+    allowance.x = 0;
+    allowance.z = 0;
+    const receipts = this._stepContactReceipts;
+    if (!receipts || !receipts.length) return false;
+    const own = rec.entity && rec.entity.id;
+    const e = rec.expected;
+    const post = rec.postStep && rec.postStep.vDirty !== true
+      ? rec.postStep.v : rec.body.linvel();
+    const postVx = finite(post && post.x);
+    const postVz = finite(post && post.z);
+    for (let i = 0; i < receipts.length; i++) {
+      const r = receipts[i];
+      if (r.aId !== own && r.bId !== own) continue;
+      const otherId = r.aId === own ? r.bId : r.aId;
+      const other = this.records.get(otherId);
+      if (!other || !other.spec || other.spec.dynamic !== false) continue;
+      if (typeof other.body.isFixed === 'function' && other.body.isFixed() !== true) continue;
+      const preSolveNormal = r.preSolveClosingNormal || r.normal;
+      let nx = finite(preSolveNormal && preSolveNormal.x);
+      let nz = finite(preSolveNormal && preSolveNormal.z);
+      const normalLength = Math.hypot(nx, nz);
+      if (!(normalLength > DIRECT_CONTACT_CAUSAL_EPSILON)) continue;
+      nx /= normalLength;
+      nz /= normalLength;
+      // Receipts are oriented aId -> bId. Convert that axis to the fixed body's outward normal
+      // at the player: for player A, negate a->b; for player B, a->b already points outward.
+      if (r.aId === own) {
+        nx = -nx;
+        nz = -nz;
+      }
+      const expectedNormal = finite(e && e.vx) * nx + finite(e && e.vz) * nz;
+      const incoming = -expectedNormal;
+      if (!(incoming > PLAYER_CONTACT_ACTIVITY_EPSILON)) continue;
+      const nativeBraking = postVx * nx + postVz * nz - expectedNormal;
+      const cancellation = Math.min(Math.max(nativeBraking, 0), incoming);
+      if (!(cancellation > PLAYER_CONTACT_ACTIVITY_EPSILON)) continue;
+      allowance.x += cancellation * nx;
+      allowance.z += cancellation * nz;
+    }
+    // A compound pair may merge several solver events with the same entity pair. Keep the
+    // allowance inside the solver's actual per-axis delta so duplicate faces cannot manufacture
+    // extra unbudgeted motion, and so a tangential shove cannot be reclassified as wall braking.
+    const rawDvx = postVx - finite(e && e.vx);
+    const rawDvz = postVz - finite(e && e.vz);
+    if (Number.isFinite(rawDvx)) {
+      if (allowance.x * rawDvx <= 0) allowance.x = 0;
+      else allowance.x = Math.min(Math.abs(allowance.x), Math.abs(rawDvx)) * Math.sign(rawDvx);
+    } else {
+      allowance.x = 0;
+    }
+    if (Number.isFinite(rawDvz)) {
+      if (allowance.z * rawDvz <= 0) allowance.z = 0;
+      else allowance.z = Math.min(Math.abs(allowance.z), Math.abs(rawDvz)) * Math.sign(rawDvz);
+    } else {
+      allowance.z = 0;
+    }
+    return Math.hypot(allowance.x, allowance.z) > PLAYER_CONTACT_ACTIVITY_EPSILON;
+  }
+
   // Authoritative "is the player's hull actually touching anything" answer, straight from the
   // narrow phase. Contact-force receipts are a gameplay signal gated by a per-pair force
   // threshold; a light grind or a scrape distributed over compound colliders does contact
@@ -2201,6 +2268,12 @@ export class Sg02DynamicBodyOwner {
     const rawDvx = Number(v.x) - e.vx;
     const rawDvz = Number(v.z) - e.vz;
     const rawDv = Math.hypot(rawDvx, rawDvz);
+    const hasNativeFixedBraking = this._playerHasNativeFixedContactBraking(rec);
+    const nativeFixedBrakingX = hasNativeFixedBraking ? this._playerFixedBrakingScratch.x : 0;
+    const nativeFixedBrakingZ = hasNativeFixedBraking ? this._playerFixedBrakingScratch.z : 0;
+    const residualDvx = rawDvx - nativeFixedBrakingX;
+    const residualDvz = rawDvz - nativeFixedBrakingZ;
+    const residualDv = Math.hypot(residualDvx, residualDvz);
 
     const closingFraction = this._playerContactClosingFraction(rec);
     const unexplained = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
@@ -2228,6 +2301,22 @@ export class Sg02DynamicBodyOwner {
       || this._sleepHeld.has(rec)
       || closingFraction > 0.55
       || (closingFraction == null && !receiptlessContact);
+    let eventBudget = 5;
+    let remainingBudget = 0;
+    if (!preservesSolverResponse || hasNativeFixedBraking) {
+      const fallback = (rec.entity && (rec.entity.combatSpeed || rec.entity.maxSpeed)) || 0;
+      const cruise = resolveGovernedCombatSpeed(rec.entity, null, fallback);
+      eventBudget = (Number.isFinite(cruise) && cruise > 0)
+        ? Math.min(5, PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise)
+        : 5;
+      remainingBudget = Math.max(0, eventBudget - cumulative);
+    }
+    // Native fixed-wall stopping is admitted componentwise below. Once the ordinary branch is
+    // otherwise active, only the unrelated residual solver delta draws on the give budget.
+    const usesNativeFixedAllowance = hasNativeFixedBraking && !preservesSolverResponse;
+    const budgetDvx = usesNativeFixedAllowance ? residualDvx : rawDvx;
+    const budgetDvz = usesNativeFixedAllowance ? residualDvz : rawDvz;
+    const budgetDv = Math.hypot(budgetDvx, budgetDvz);
     let contactDvBudget;
     if (preservesSolverResponse) {
       contactDvBudget = (!Number.isFinite(rawDv)
@@ -2235,32 +2324,45 @@ export class Sg02DynamicBodyOwner {
         ? this._contactResponseDvBudget(rec)
         : Infinity;
     } else {
-      const fallback = (rec.entity && (rec.entity.combatSpeed || rec.entity.maxSpeed)) || 0;
-      const cruise = resolveGovernedCombatSpeed(rec.entity, null, fallback);
-      const eventBudget = (Number.isFinite(cruise) && cruise > 0)
-        ? Math.min(5, PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise)
-        : 5;
-      const remainingBudget = Math.max(0, eventBudget - cumulative);
-      contactDvBudget = (!Number.isFinite(rawDv) || rawDv > remainingBudget)
+      contactDvBudget = (!Number.isFinite(budgetDv) || budgetDv > remainingBudget)
         ? remainingBudget
         : Infinity;
     }
+    // A fixed-wall-only response may exceed MAX_CONTACT_DV while its unrelated remainder stays
+    // inside one ordinary event budget. Preserve the solver's de-penetration pose in that case;
+    // mixed contacts keep the budgeted post-solve pose path.
+    const fixedWallPoseRewrite = usesNativeFixedAllowance
+      && Number.isFinite(rawDv)
+      && rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV)
+      && Number.isFinite(residualDv)
+      && residualDv <= eventBudget;
+    const preservesSolverPose = preservesSolverResponse || fixedWallPoseRewrite;
     let acceptedVx = vx;
     let acceptedVz = vz;
-    if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
-      if (Number.isFinite(rawDv) && rawDv > 0 && contactDvBudget > 0) {
-        const scale = contactDvBudget / rawDv;
-        acceptedVx = e.vx + rawDvx * scale;
-        acceptedVz = e.vz + rawDvz * scale;
+    const needsRewrite = !Number.isFinite(budgetDv) || budgetDv > contactDvBudget || fixedWallPoseRewrite;
+    if (needsRewrite) {
+      if (Number.isFinite(budgetDv) && budgetDv > 0 && contactDvBudget > 0) {
+        // A fixed-wall pose rewrite can be requested even when the residual already fits the
+        // event budget, whose sentinel is Infinity. Never let that sentinel turn a finite
+        // residual into NaN/Infinity; a fitting residual passes through at scale one.
+        const scale = Number.isFinite(contactDvBudget)
+          ? Math.min(1, contactDvBudget / budgetDv) : 1;
+        if (usesNativeFixedAllowance) {
+          acceptedVx = e.vx + nativeFixedBrakingX + budgetDvx * scale;
+          acceptedVz = e.vz + nativeFixedBrakingZ + budgetDvz * scale;
+        } else {
+          acceptedVx = e.vx + rawDvx * scale;
+          acceptedVz = e.vz + rawDvz * scale;
+        }
       } else {
-        acceptedVx = e.vx;
-        acceptedVz = e.vz;
+        acceptedVx = e.vx + (usesNativeFixedAllowance ? nativeFixedBrakingX : 0);
+        acceptedVz = e.vz + (usesNativeFixedAllowance ? nativeFixedBrakingZ : 0);
       }
       _vecWriteScratch.x = acceptedVx;
       _vecWriteScratch.y = 0;
       _vecWriteScratch.z = acceptedVz;
       rec.body.setLinvel(_vecWriteScratch, true);
-      if (preservesSolverResponse) {
+      if (preservesSolverPose) {
         const predictedX = Number.isFinite(e.x)
           ? e.x : finite(rec._bodyPoseX) + e.vx * this.fixedDt;
         const predictedZ = Number.isFinite(e.z)
@@ -2293,7 +2395,11 @@ export class Sg02DynamicBodyOwner {
     // serialized entity metadata decides whether the player is physically coupled.
     const actualPlayerDeltaV = Math.hypot(acceptedVx - e.vx, acceptedVz - e.vz);
     if (isActive && !preservesSolverResponse) {
-      rec._playerContactCumulativeDeltaV = cumulative + actualPlayerDeltaV;
+      const budgetedAppliedDeltaV = usesNativeFixedAllowance
+        ? Math.hypot(acceptedVx - e.vx - nativeFixedBrakingX,
+          acceptedVz - e.vz - nativeFixedBrakingZ)
+        : actualPlayerDeltaV;
+      rec._playerContactCumulativeDeltaV = cumulative + budgetedAppliedDeltaV;
     }
 
     const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
@@ -3193,6 +3299,9 @@ export class Sg02DynamicBodyOwner {
       // and restores thrust velocity while the solver correctly keeps the hull outside.
       const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
+      const preSolveClosingNormal = existing && closingSpeed <= finite(existing.preSolveClosingSpeed, -Infinity)
+        ? (existing.preSolveClosingNormal || existing.normal)
+        : normal;
       const receipt = {
         schemaVersion: 1,
         tick: this.tick + 1,
@@ -3210,6 +3319,10 @@ export class Sg02DynamicBodyOwner {
           : closingSpeed,
       };
       if (isPlayerReceipt) {
+        // Compound pairs may report several force events in one step. Keep the normal beside
+        // the largest closing measurement for the player braking classifier; public receipt
+        // normal remains the current event's normal for impact/VFX consumers.
+        receipt.preSolveClosingNormal = preSolveClosingNormal;
         receipt.appliedPlayerDeltaV = 0;
         // Filled by _distributeAppliedPlayerDeltaV. Present from birth so a reader can tell
         // "the rule reported nothing" from "the field does not exist on this build".
