@@ -75,18 +75,36 @@ test('a crate passes, a coated hull sticks, and a creature turns aside', () => {
   assert.ok(pull.az === 0);
 });
 
-test('a live coating marks the hull and an expired one does not', () => {
+test('a live goo mark sticks and a primer or prism coat still passes', () => {
   const hull = { id: 9, type: 'ship', pos: { x: 0, z: 0 }, physicsBody: { mass: 12, dynamic: true } };
+  const boundary = boundaryAt();
+  const vel = { x: 10, z: 4 };
+  const at = { x: ring.center.x + 40, z: ring.center.z };
   const fresh = fieldBodyProfile(hull, {
+    tick: 10,
     simTime: 10,
-    emergent: { coatings: [{ hostId: 9, until: 20 }] },
+    combat: { entities: { 9: { statuses: { status_goo: { stacks: 2, expiresTick: 100 } } } } },
+    emergent: { coatings: [{ hostId: 9, until: 40 }, { hostId: 9, until: 40, kind: 'reflect' }] },
   });
   assert.equal(fresh.coated, true);
+  const stuck = sampleFieldAcceleration(at, vel, [boundary], 0, fresh);
+  assert.equal(stuck.ax, -15);
+  assert.equal(stuck.az, -6);
+  assert.deepEqual(vel, { x: 10, z: 4 });
   const spent = fieldBodyProfile(hull, {
+    tick: 100,
     simTime: 30,
-    emergent: { coatings: [{ hostId: 9, until: 20 }] },
+    combat: { entities: { 9: { statuses: { status_goo: { stacks: 2, expiresTick: 100 } } } } },
   });
   assert.equal(spent.coated, false);
+  const primer = fieldBodyProfile(hull, {
+    tick: 10,
+    simTime: 10,
+    emergent: { coatings: [{ hostId: 9, until: 40 }, { hostId: 9, until: 40, kind: 'reflect' }] },
+  });
+  assert.equal(primer.coated, false);
+  const passed = sampleFieldAcceleration(at, vel, [boundary], 0, primer);
+  assert.ok(passed.ax === 0 && passed.az === 0);
 });
 
 test('the ring installs one boundary and a second tick does not stack it', () => {
