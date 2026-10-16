@@ -1,8 +1,9 @@
 // §22 B7 — every authored set piece ends in a new contract, never a fail-and-reload.
 // A convoy loss becomes salvage, a heist becomes an escape, a disabled ship becomes a tow, and
-// the other eight pieces (the ace, the reef, the crusher, the impound cradle, the pod rescue,
-// both tows and the wrecking ball) each post one distinct follow-on built from the board's
-// existing mission types.
+// the other fourteen pieces (the ace, the reef, the crusher, the impound cradle, the pod rescue,
+// both tows, the wrecking ball and the six far-out jobs at Sker, Io Reach, the Mercenary Outpost,
+// the Expanse, Drift Market and Ash Cache) each post one distinct follow-on built from the
+// board's existing mission types.
 
 import { AUTHORED_SET_PIECE_TYPE, authoredSetPieceById } from './missions.js';
 
@@ -10,7 +11,7 @@ export const SET_PIECE_FOLLOW_ON_SOURCE = 'setPieceFollowOn';
 
 const FOLLOW_ON_LIFE_EPOCHS = 3;
 
-// The eight consequences beside the convoy, the heist and the door-jam. Each row is a job the
+// The fourteen consequences beside the convoy, the heist and the door-jam. Each row is a job the
 // board already knows how to run, so it is playable the moment it posts. The thread is the same
 // every time: the board line names what the player did (assess), the pod or the contract's own
 // body sits at the scene (approach), accepting commits, the job's built-in pressure is the
@@ -124,6 +125,91 @@ const AFTERMATH = Object.freeze({
     params: Object.freeze({ cmdtyId: 'cmdty_comp_hullplate', qty: 5, fValue: 1, taskTime: 30 }),
     pod: Object.freeze({ scanLabel: 'TOWER PLATING', radius: 6, mass: 26, hull: 36 }),
   }),
+  // The far-out jobs. Each posts at the far station the player just worked, so the place that
+  // gave the physical job also gives the next one. Every row answers a person or a thing the
+  // piece itself put on the scene: the barge's claimants, the skiff's scavengers, the range
+  // deserter's squad, the hopper's first batch, the gate's warden and the liner's second hold.
+  ore_barge_tow: Object.freeze({
+    type: 'cargo_delivery',
+    title: "Carry the barge's ingots to the Bazaar",
+    brief: 'The tow shook ingots loose off the shelf. Scoop them up and bring them to the Bazaar buyers.',
+    summary: 'The ore barge shed ingots on the shelf.',
+    reward_cr: 960,
+    distance: 500,
+    destStationId: 'station_sker',
+    destSectorId: 'sector_sker_haven',
+    params: Object.freeze({ cmdtyId: 'cmdty_ore_silverium', qty: 4, fValue: 1, taskTime: 20 }),
+    pod: Object.freeze({ scanLabel: 'BARGE INGOTS', radius: 5, mass: 22, hull: 32 }),
+  }),
+  skiff_tether_rescue: Object.freeze({
+    type: 'escort',
+    title: 'Walk the skiff crew to the Outpost',
+    brief: "The scavengers lost the hull but not the crew's trail. Walk the skiff crew in to the Mercenary Outpost.",
+    summary: 'The skiff crew had scavengers on their trail.',
+    reward_cr: 880,
+    distance: 500,
+    destStationId: 'station_io_merc',
+    destSectorId: 'sector_io_reach',
+    inheritFaction: true,
+    params: Object.freeze({
+      targetStrength: 1.2, convoySize: 2, ambushSize: 2, fValue: 1.2, taskTime: 90,
+    }),
+    pod: null,
+  }),
+  deserter_throw: Object.freeze({
+    type: 'patrol_clear',
+    title: "Clear the deserter's squad off the range",
+    brief: 'The deserter had friends, and they still hold the far end of the range. Run them off.',
+    summary: "The deserter's squad held the range.",
+    reward_cr: 900,
+    distance: 600,
+    params: Object.freeze({
+      clearCount: 2, killCount: 0, targetStrength: 1.8, fValue: 1.8, taskTime: 100,
+    }),
+    pod: null,
+  }),
+  refinery_hopper: Object.freeze({
+    type: 'cargo_delivery',
+    title: 'Carry the first batch to the Ceres yard',
+    brief: 'The hopper is fed and the first batch is hot. Scoop it up and carry it to Ceres Refinery.',
+    summary: 'The fed hopper turned out its first batch.',
+    reward_cr: 1020,
+    distance: 1400,
+    destStationId: 'station_ceres',
+    destSectorId: 'sector_ceres_belt',
+    params: Object.freeze({ cmdtyId: 'cmdty_refined_metals', qty: 6, fValue: 1, taskTime: 20 }),
+    pod: Object.freeze({ scanLabel: 'HOPPER BATCH', radius: 6, mass: 30, hull: 40 }),
+  }),
+  toll_gate_ram: Object.freeze({
+    type: 'tow_recovery',
+    title: 'Tow the broken gate off the lane',
+    brief: 'The toll gate is down across the lane. Put it on the line and tow it clear before the warden bills you.',
+    summary: 'The broken gate blocked the Drift lane.',
+    reward_cr: 1100,
+    distance: 700,
+    params: Object.freeze({
+      massU: 90,
+      bodyRadius: 20,
+      scanLabel: 'TOLL GATE SPAN',
+      tetherPayload: true,
+      cargoValue: 1980,
+      fValue: 1.2,
+      taskTime: 40,
+      physicalVerb: 'tow',
+      completionMethods: Object.freeze(['tow_in', 'sling_in']),
+    }),
+    pod: null,
+  }),
+  liner_locker: Object.freeze({
+    type: 'salvage_retrieval',
+    title: "Strip the liner's second hold",
+    brief: 'The sealed locker is out and the next hold stands open. Wreckers are already cutting at it. Beat them to it.',
+    summary: "The liner's second hold stood open.",
+    reward_cr: 1150,
+    distance: 900,
+    params: Object.freeze({ cmdtyId: 'cmdty_medical', qty: 3, fValue: 1, taskTime: 30 }),
+    pod: Object.freeze({ scanLabel: 'LINER HOLD', radius: 6, mass: 24, hull: 36 }),
+  }),
 });
 
 /** True for 47-A story work: it ends in its story, never in a sandbox follow-on. */
@@ -133,7 +219,7 @@ function isStoryMission(mission) {
 }
 
 /**
- * The eight newer consequences answer only the authored set piece itself. A procedural board tow
+ * The fourteen newer consequences answer only the authored set piece itself. A procedural board tow
  * or demolition that happens to share the piece's id is ordinary work, not the situation.
  */
 function aftermathFor(pieceId, mission) {
