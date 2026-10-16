@@ -244,7 +244,7 @@ not to invent.
 | INST-32 | A revealed build identity is heard once as a scan resolve, not read off a panel | `src/systems/buildIdentity.js`, `src/audio/audioSystem.js` | On seed 4242 `buildIdentity:revealed` plays the scan-resolve cue once per target; a focused test pins once-only | Reveal beyond the scan stage. Add samples | SHIPPED |
 | INST-33 | Flak has its own muzzle voice instead of sharing the autocannon's | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_flak_turret_s` fire resolves a flak recipe id and `wpn_autocannon_s` keeps `sfx_wpn_autocannon`; a focused test pins the ids differ | Add samples. Change flak damage | SHIPPED INST-33 — infer-audio-01; the interceptor flag classifies flak from weapon data; focused-green (27 tests); baseline's 4 failures proven pre-existing by pristine-HEAD replay |
 | INST-34 | Heavy beams sound heavier than the beam laser | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` | On seed 4242 `wpn_heavy_beam_l` resolves a lower-register beam recipe than `wpn_beam_laser_m`; a focused test pins the two ids and the rate order | Add samples. Change beam dps | SHIPPED INST-34 — infer-audio-01; capital split is a momentum threshold and the loop drone is per-owner recipe-aware; focused-green; baseline's 4 failures proven pre-existing by pristine-HEAD replay |
-| INST-35 | Speed you earned reads differently from speed the thrusters bought | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` | On seed 4242 the HUD model carries an earned-speed flag true only above the thruster cap and the velocity readout marks it; a focused test pins both sides of the cap | Change the flight law. Add a second gauge | OPEN |
+| INST-35 | Speed you earned reads differently from speed the thrusters bought | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` | On seed 4242 the HUD model carries an earned-speed flag true only above the thruster cap and the velocity readout marks it; a focused test pins both sides of the cap | Change the flight law. Add a second gauge | SHIPPED |
 | INST-36 | A full hold chirps once when it fills, not once per rejected rock | `src/core/pickupAcceptance.js`, `src/audio/audioSystem.js` | On seed 4242 the full-hold crossing plays one soft cue and stays silent until capacity frees; a focused test pins one play per crossing | Chirp per rejected unit. Add a hold bar | OPEN |
 | INST-37 | A surrendered ship's target chip says so before you fire again | `src/systems/surrenderRecovery.js`, `src/ui/hud.js` | On seed 4242 an accepted surrender rewords the hull's lock chip within one tick and a cleared surrender restores it; a focused test pins both | Make surrendered ships untargetable. Add a toast | OPEN |
 | INST-38 | A locked station's contact card names its services before you dock | `src/ui/hud.js`, `src/data/sectors.js` | On seed 4242 locking Helios and the Vesta depot shows each station's authored service words from its data row; a focused test pins both stations | Reveal hidden services; a black market stays hidden. Add a station screen | OPEN |
@@ -649,7 +649,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| INST-35 | 2026-10-16 | infer10-oct16 | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` |
 | FIGHT-13 | 2026-10-16 | infer10-oct16 | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` |
 | MACH-12 | 2026-10-16 | infer10-oct16 | `src/systems/traffic.js`, `src/data/laneContacts.js` |
 ## SHIPPED
@@ -663,7 +662,8 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | LAW-10 | law-10-scan-dump-suspicion | e3890eb692 | Mid-scan full dump of the scanned lot aborts to suspicion (toast + panel dismiss); completed scans keep the full finding; heat/scan-odds untouched; focused 5/5 |
 | PIC-31 | pic-31-damaged-hull-vent | 96af864a5e | Damaged-band entry vents at the hit side (one record, repair/death stops) through the status-attached loop to a pale matter draw; bands untouched, no health bar; focused 7/7 |
 | ECON-08 | econ-08-loss-moves-price | c09dbb1d4a | Player-caused laden kill drains the destination book via the existing pressure path + one cited headline; NPC/unladen kills stay ledger-only; focused 2/2 |
-| WORLD-43 | world-43-miner-worked-out | c6408c46d7 | Depleting an NPC-worked field speaks one miner-register line and retargets the job to a live seam; yield/depletion untouched; focused 2/2 |
+| WORLD-43 | world-43-miner-worked-out | c6408c46d7 | Depleting an NPC-worked field speaks one miner-register line and retargets the job to a live seam; yield/depletion untouched; focused 2/2 (adopts unclaimed barkDirector hunk, disclosed in commit body) |
+| INST-35 | inst-35-earned-speed | 579203723e | HUD velocity model carries earnedSpeed (strictly above the catalog thruster cap) with an EARNED text mark; no flight-law change, no new gauge; focused 4/4 |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
