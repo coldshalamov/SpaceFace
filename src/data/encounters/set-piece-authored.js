@@ -43,15 +43,26 @@ export const AUTHORED_SET_PIECE_ENCOUNTERS = Object.freeze({
       actor: 'faction_dmc',
     },
     placeName: 'Belt hauler wreck',
-    twist: 'Pods are fragile. The escorts want the line more than the hulls.',
+    twist: 'Two pods stagger across a broken lane. Wasp escorts flank the approach; clear them to reel from stand-off.',
     actors: [
       {
         role: 'life_pod', kind: 'wreck', scanLabel: 'LIFE POD',
-        count: 2, radius: 7, mass: 10, hull: 36, tetherable: true,
+        actorId: 'rescue-capsule', count: 2, radius: 7, mass: 10, hull: 36, tetherable: true,
+        // Fixed +X-forward / +Z-starboard offsets keep both pods within the stock 220 WU line;
+        // the staggered second pod makes the stand-off corridor a distinct approach.
+        stagingByIndex: Object.freeze([
+          Object.freeze({ forwardWu: 154, sideWu: -28 }),
+          Object.freeze({ forwardWu: 198, sideWu: 28 }),
+        ]),
       },
       {
         role: 'rescue_escort', kind: 'ship', scanLabel: 'RESCUE ESCORT',
-        count: 2, archetype: 'wasp_swarmer', hostile: true,
+        actorId: 'wasp-screen', count: 2, archetype: 'wasp_swarmer', hostile: true,
+        // Each Wasp screens a pod's outward flank, with room through the middle to pass.
+        stagingByIndex: Object.freeze([
+          Object.freeze({ forwardWu: 254, sideWu: -115 }),
+          Object.freeze({ forwardWu: 316, sideWu: 115 }),
+        ]),
       },
     ],
   }),

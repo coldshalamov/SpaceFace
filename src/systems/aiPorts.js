@@ -1,3 +1,4 @@
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mothlightGunCadence } from '../data/mothlight.js';
 import {
   AI_CONTRACT_VERSION,
@@ -1880,6 +1881,14 @@ function contactKindFor(entity) {
   if (entity.type === 'pickup' || (entity.type === 'payload'
     && entity.data?.kind === 'cargo' && typeof entity.data?.commodityId === 'string'
     && Number(entity.data?.amount) > 0)) return ContactKind.OBJECTIVE;
+  // Non-cargo payloads are still physical freight/assembly obstacles. Keep them
+  // out of objective/attack selection while exposing solid bodies to navigation.
+  if (entity.type === 'payload' && entity.collides === true && entity.physicsBody !== false) {
+    const spec = entity.physicsBody;
+    const material = spec?.material || 'payload';
+    const ghost = spec?.contact?.ghost ?? PHYSICS_MATERIALS[material]?.ghost;
+    if (!ghost) return ContactKind.HAZARD;
+  }
   return null;
 }
 

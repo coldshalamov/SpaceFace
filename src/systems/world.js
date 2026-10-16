@@ -1,3 +1,5 @@
+import {TALLY_THREE} from '../data/tallyThree.js';
+import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
 // World / Sectors / Navigation system (ARCHITECTURE §2.3 step 13, §3.8, design 05).
 //
 // Owns: the sector graph (loaded copy of SECTORS), the active sector's live contents
@@ -2009,7 +2011,8 @@ export const world = {
     if (!rec || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     const state = this.state;
     let spec = null;
-    if (rec.enemyTypeId && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss)) {
+    if(rec.recordId===TALLY_THREE.assessorId){spec=tallyAssessorRecordSpec(state,rec);if(!spec)return null;}
+    else if (rec.enemyTypeId && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss)) {
       const pos = { x: rec.pos.x, z: rec.pos.z };
       const level = Number.isFinite(rec.level) ? rec.level : 1;
       spec = makeEnemySpawnSpec(rec.enemyTypeId, level, pos, {

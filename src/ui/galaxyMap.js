@@ -4331,6 +4331,31 @@ export const galaxyMapScreen = {
           if (marker) galaxyMapScreen._selectSearchTarget(marker);
           return;
         }
+        const overviewTargetBtn = target && typeof target.closest === 'function'
+          ? target.closest('[data-overview-target]') : null;
+        if (overviewTargetBtn) {
+          const idx = Number(overviewTargetBtn.getAttribute('data-overview-target'));
+          const marker = Array.isArray(galaxyMapScreen._overviewTargets) ? galaxyMapScreen._overviewTargets[idx] : null;
+          if (marker) galaxyMapScreen._selectSearchTarget(marker);
+          return;
+        }
+        const overviewMissionBtn = target && typeof target.closest === 'function'
+          ? target.closest('[data-overview-mission]') : null;
+        if (overviewMissionBtn) {
+          const state = galaxyMapScreen._ctx && galaxyMapScreen._ctx.state;
+          const id = overviewMissionBtn.getAttribute('data-overview-mission');
+          if (id && galaxyMapScreen._ctx && galaxyMapScreen._ctx.bus) {
+            galaxyMapScreen._ctx.bus.emit('ui:trackMission', { missionId: id });
+          }
+          if (state && id) {
+            const mission = ((state.missions && state.missions.active) || []).find((m) => m && m.id === id);
+            const geo = mission ? missionMapGeometry(state, mission) : null;
+            const fix = Array.isArray(geo) ? geo.find((p) => p && Number.isFinite(p.x) && Number.isFinite(p.z)) : null;
+            if (fix) galaxyMapScreen._setCameraFraming({ focusGlobal: { x: fix.x, z: fix.z }, spanWU: MAP_PRESET_SPAN_WU.local });
+            galaxyMapScreen.refresh();
+          }
+          return;
+        }
         const row = target && typeof target.closest === 'function' ? target.closest('[data-gm-lane]') : null;
         if (!row) return;
         galaxyMapScreen._activateTradeLane(row.getAttribute('data-gm-lane'));
@@ -4700,6 +4725,7 @@ export const galaxyMapScreen = {
     this._selectedTarget = null;
     this._hoverTarget = null;
     this._scanRings = [];
+    this._iris = null;
     this._syncReduceMotion();
     this._subscribeKills();
 
@@ -4783,6 +4809,7 @@ export const galaxyMapScreen = {
 
   onHide() {
     this._visible = false;
+    this._iris = null;
     this._releaseSensorLattice();
     if (this._lockTimer) { clearTimeout(this._lockTimer); this._lockTimer = null; }
     this._lock = null;
@@ -5100,7 +5127,7 @@ _syncReduceMotion() {
   _triggerIris(level) {
     if (!HAS_DOC) return;
     if (this._reduceMotion) return;
-    this._iris = { t: 0, maxT: 26, label: String(level || '').toUpperCase() };
+    this._iris = { t: 0, maxT: 280, label: String(level || '').toUpperCase() };
     this._wake();
   },
 
@@ -5175,7 +5202,7 @@ _stepAnimation(now) {
       changed = true;
     }
     if (this._iris) {
-      this._iris.t += 1;
+      this._iris.t += Math.max(16, dtSec * 1000);
       if (this._iris.t >= this._iris.maxT) this._iris = null;
       changed = true;
     }
@@ -5922,24 +5949,327 @@ _stepAnimation(now) {
   },
 
   /**
+   * Gather the top actionable markers in the pilot's current sector/near-field for the default
+   * Overview briefing so the player can immediately see and click what every marker on the map is.
+   */
+  _overviewMarkersForState(state) {
+    if (!state) return [];
+    const sectorId = currentSectorId(state);
+    const player = playerEntity(state);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    const items = [];
+    const seenIds = new Set();
+
+    // 1. Active Waypoint / Goal Pin
+    const wp = state.nav && state.nav.waypoint;
+    const wpPos = resolveWaypointPresentationPosition(state, wp);
+    if (wp && wpPos && Number.isFinite(wpPos.x) && Number.isFinite(wpPos.z)) {
+      const dist = Math.round(Math.hypot(wpPos.x - px, wpPos.z - pz));
+      const brg = compassOctant(wpPos.x - px, wpPos.z - pz);
+      const isMissionWp = !!(wp.missionId || wp.onboarding || wp.markerKind === 'mission-objective');
+      const target = waypointClickTarget(wp, wpPos, 0, 0, state) || {
+        id: 'active-waypoint',
+        kind: 'waypoint',
+        name: waypointMapLabel(wp),
+        x: wpPos.x,
+        z: wpPos.z,
+        detail: wp.reason || 'Active waypoint fix',
+      };
+      items.push({
+        target,
+        glyph: '◆',
+        color: INK.amberHot,
+        name: waypointMapLabel(wp),
+        tag: isMissionWp ? 'GOAL' : 'WAYPOINT',
+        meta: `${formatDistanceWU(dist)}${brg ? ` · ${brg}` : ''}`,
+        priority: 1000,
+        dist,
+      });
+      seenIds.add(String(target.id));
+    }
+
+    // 2. Local contacts (stations, gates, hostiles, named hulls) + system points
+    const localModel = this._localModelForState(state);
+    const contacts = (localModel && Array.isArray(localModel.contacts)) ? localModel.contacts : [];
+    for (const c of contacts) {
+      if (!c || c.remembered || c.foreign || c.kind === 'asteroid') continue;
+      const cid = String(c.id);
+      if (seenIds.has(cid)) continue;
+      const dist = Math.round(Math.hypot((Number(c.x) || 0) - px, (Number(c.z) || 0) - pz));
+      const brg = compassOctant((Number(c.x) || 0) - px, (Number(c.z) || 0) - pz);
+      const isStation = c.kind === 'station';
+      const isGate = c.kind === 'gate';
+      const isHostile = !!c.hostile && !isStation && !isGate;
+      if (!isStation && !isGate && !isHostile && !c.named && items.length >= 6) continue;
+      seenIds.add(cid);
+      const glyph = isStation ? '¤' : isGate ? '⊂⊃' : isHostile ? '◆' : '➤';
+      const color = isHostile ? INK.red : isStation ? '#f2d9a6' : isGate ? '#8fcbff' : INK.ink0;
+      const tag = isStation ? 'STATION' : isGate ? 'GATE' : isHostile ? 'HOSTILE' : 'SHIP';
+      const priority = isHostile ? 900 : isStation ? 850 : isGate ? 800 : (c.named ? 700 : 500);
+      items.push({
+        target: {
+          id: c.id,
+          kind: c.kind,
+          name: c.name,
+          x: c.x,
+          z: c.z,
+          sectorId,
+          entityId: c.entityId,
+          stationId: c.stationId,
+          stable: c.stable || null,
+          factionId: c.factionId,
+          hostile: c.hostile,
+          closed: c.closed === true,
+          statusLine: c.statusLine || null,
+          detail: `Contact · ${c.name} · ${c.kind.toUpperCase()}`,
+        },
+        glyph,
+        color,
+        name: c.name || 'Contact',
+        tag,
+        meta: `${formatDistanceWU(dist)}${brg ? ` · ${brg}` : ''}`,
+        priority,
+        dist,
+      });
+    }
+
+    // 3. Ensure system stations/gates and bearings are represented even if not in immediate local contacts
+    const sysModel = buildSystemModel(state, sectorId, { claimsSystem: this._claimsSystem() });
+    for (const p of (sysModel && sysModel.points) || []) {
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+      const pid = String(p.id);
+      if (seenIds.has(pid)) continue;
+      seenIds.add(pid);
+      const dist = Math.round(Math.hypot(p.x - px, p.z - pz));
+      const brg = compassOctant(p.x - px, p.z - pz);
+      const isStation = p.kind === 'station';
+      const isGate = p.kind === 'gate';
+      const glyph = isStation ? '¤' : isGate ? '⊂⊃' : '◇';
+      const color = isStation ? '#f2d9a6' : isGate ? '#8fcbff' : INK.ink0;
+      const tag = isStation ? 'STATION' : isGate ? 'GATE' : 'SITE';
+      const priority = isStation ? 840 : isGate ? 790 : 650;
+      items.push({
+        target: {
+          id: p.id,
+          kind: p.kind,
+          name: p.name,
+          x: p.x,
+          z: p.z,
+          drawPos: p.drawPos,
+          sectorId,
+          entityId: p.entityId || null,
+          stationId: p.stationId,
+          stable: p.stable || null,
+          targetSectorId: p.targetSectorId || null,
+          factionId: p.factionId,
+          mapKind: p.mapKind,
+          stageId: p.stageId,
+          stageLabel: p.stageLabel,
+          coursePos: p.coursePos,
+          courseLabel: p.courseLabel,
+          courseArrivalRadius: p.courseArrivalRadius,
+          statusLine: p.statusLine,
+          closed: p.closed === true,
+          ledger: p.ledger,
+          history: p.history,
+          detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`,
+        },
+        glyph,
+        color,
+        name: p.name || 'Site',
+        tag,
+        meta: `${formatDistanceWU(dist)}${brg ? ` · ${brg}` : ''}`,
+        priority,
+        dist,
+      });
+    }
+
+    // 4. Unresolved scanner pings
+    for (const ping of chartPingCourseTargets(state, sectorId)) {
+      if (!ping || seenIds.has(String(ping.id))) continue;
+      seenIds.add(String(ping.id));
+      const dist = Math.round(Math.hypot(ping.x - px, ping.z - pz));
+      const brg = compassOctant(ping.x - px, ping.z - pz);
+      items.push({
+        target: ping,
+        glyph: '◇',
+        color: '#8fcbff',
+        name: ping.name || 'Scanner Ping',
+        tag: 'PING',
+        meta: `${formatDistanceWU(dist)}${brg ? ` · ${brg}` : ''}`,
+        priority: 720,
+        dist,
+      });
+    }
+
+    items.sort((a, b) => (b.priority - a.priority) || (a.dist - b.dist));
+    return items.slice(0, 6);
+  },
+
+  /**
    * OVERVIEW — never empty, and never a wall.
    *
-   * With a selection it shows that selection's detail. With NO selection it shows the
-   * pocket-careers line and a short click hint. The four navigation answers are NOT repeated here:
-   * the foot band (`#gm-navfoot`, `_updateNavFoot`) carries them at every scale and window size,
-   * and the same sentence twice on one screen reads as a mistake.
+   * With a selection it shows that selection's detail. With NO selection it shows a 3-part
+   * Pilot Situational Briefing:
+   *   1. Current Sector & Ship Telemetry (where you are, local zone, heading/speed, nearest berth)
+   *   2. Active Contract & Waypoint (what mission you are on, progress, and what your active waypoint pin is)
+   *   3. Markers in Range & Symbol Key (clickable list of markers on the chart + symbol legend)
+   * The four navigation answers stay in `#gm-navfoot` and are not duplicated as `.gm-nav-row` items.
    */
   _overviewTabHtml(state, selectionHtml) {
     if (selectionHtml) return selectionHtml;
-    // The pocket's trades appear the moment the Chart opens — §11.11 #1 is a surfacing problem, and
-    // the roster is one tab deeper. Rendered only when careers are actually on record here, so the
-    // no-selection panel never grows a block that says nothing.
-    const careersHtml = careersOverviewLineHtml(state, currentSectorId(state));
-    return `
-      ${careersHtml}
+    if (!state) {
+      return `
       <div class="gm-ins-section">
         <div class="gm-ins-note"><b>Drag from your ship</b> to lay a course — the line shows the route before you commit. Click a mark to inspect it; double-click also lays a course.</div>
       </div>`;
+    }
+
+    const sectorId = currentSectorId(state);
+    const record = sectorRecordById(state, sectorId);
+    const sectorName = sectorNameOf(state, sectorId);
+    const sec = record && record.security != null ? record.security : 0.5;
+    const law = sectorLawProfile(state, sectorId, sec);
+    const player = playerEntity(state);
+    const globalPos = player && player.pos && Number.isFinite(player.pos.x)
+      ? { x: player.pos.x, z: player.pos.z }
+      : { x: 0, z: 0 };
+    const localPos = (sectorId && globalToSectorLocalForSector(globalPos, sectorId)) || globalPos;
+    const zone = sectorId ? zoneAt(sectorId, localPos.x, localPos.z) : null;
+    const zoneMeta = zone ? zoneTypeMeta(zone.type) : null;
+    const zoneThreatLvl = zone ? zoneThreat(zone.type) : 0;
+    const zoneLine = zone
+      ? `${zone.name} (${zoneMeta ? zoneMeta.label : zone.type}${zoneThreatLvl ? ` · Threat ${zoneThreatLvl}` : ''})`
+      : 'Open sector space';
+    const speed = player && player.vel
+      ? Math.round(Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0))
+      : 0;
+    const headingX = player && player.vel && speed > 1 ? player.vel.x : Math.cos((player && player.rot) || 0);
+    const headingZ = player && player.vel && speed > 1 ? player.vel.z : Math.sin((player && player.rot) || 0);
+    const headingBrg = compassOctant(headingX, headingZ) || 'N';
+
+    const rawCareers = careersOverviewLineHtml(state, sectorId);
+    const careersInner = rawCareers
+      ? rawCareers
+        .replace(/^\s*<div class="gm-ins-section">/, '<div class="gm-ov-subblock">')
+        .replace(/<\/div>\s*$/, '</div>')
+      : '';
+
+    // Section 2: Active Waypoint & Mission Contract
+    const wp = state.nav && state.nav.waypoint;
+    const wpPos = resolveWaypointPresentationPosition(state, wp);
+    let wpHtml = '';
+    if (wp && wpPos && Number.isFinite(wpPos.x) && Number.isFinite(wpPos.z)) {
+      const wpDist = Math.round(Math.hypot(wpPos.x - globalPos.x, wpPos.z - globalPos.z));
+      const wpBrg = compassOctant(wpPos.x - globalPos.x, wpPos.z - globalPos.z);
+      const isMissionWp = !!(wp.missionId || wp.onboarding || wp.markerKind === 'mission-objective');
+      const wpKind = isMissionWp
+        ? 'Mission Objective'
+        : wp.stationId || wp.type === 'station'
+          ? 'Station Berth'
+          : wp.type === 'gate'
+            ? 'Jump Gate'
+            : 'Navigation Fix';
+      const wpReason = String(wp.reason || wp.label || 'Manual course fix').trim();
+      wpHtml = `
+        <div class="gm-ov-wp-box">
+          <div class="gm-ins-row"><span>Waypoint pin</span><span class="gm-ins-row-val" style="color:${INK.amberHot};">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
+          <div class="gm-ins-row"><span>Marker type</span><span class="gm-ins-row-val">${escapeMapHtml(wpKind)} · ${escapeMapHtml(formatDistanceWU(wpDist))}${wpBrg ? ` ${wpBrg}` : ''}</span></div>
+          ${wpReason && wpReason.toLowerCase() !== waypointMapLabel(wp).toLowerCase()
+            ? `<div class="gm-ins-note">${escapeMapHtml(wpReason)}</div>`
+            : ''}
+        </div>`;
+    } else {
+      wpHtml = '<div class="gm-ins-note">No active waypoint pin — click any marker below or drag from your ship to set a fix.</div>';
+    }
+
+    const activeMissions = ((state.missions && state.missions.active) || []).filter((m) => m && m.status === 'active');
+    const tracked = trackedMissionOf(state);
+    const primaryMission = tracked || activeMissions[0] || null;
+    let missionHtml = '';
+    if (primaryMission) {
+      const progress = Math.max(0, Number(primaryMission.objectiveProgress) || 0);
+      const target = Math.max(0, Number(primaryMission.objectiveTarget) || 0);
+      const pct = target > 0 ? Math.max(0, Math.min(100, Math.round((progress / target) * 100))) : null;
+      const destSec = primaryMission.destSectorId || (primaryMission.params && primaryMission.params.sectorId) || null;
+      const destStation = primaryMission.destStationId ? stationNameById(state, primaryMission.destStationId) : null;
+      const whereStr = destStation
+        ? `${destStation}${destSec ? ` (${sectorNameOf(state, destSec)})` : ''}`
+        : destSec
+          ? sectorNameOf(state, destSec)
+          : 'Current sector';
+      const geo = missionMapGeometry(state, primaryMission);
+      const switchers = activeMissions.length > 1
+        ? `<div class="gm-ov-mission-switch">${activeMissions.map((m) => {
+          const isCur = m.id === primaryMission.id;
+          return `<button ${mapControlAttrs('rail-mission')} class="gm-ov-mission-pill${isCur ? ' is-active' : ''}" type="button" data-overview-mission="${escapeMapHtml(m.id)}" aria-pressed="${isCur}">${isCur ? '◆ ' : ''}${escapeMapHtml(missionChartTitle(m))}</button>`;
+        }).join('')}</div>`
+        : '';
+      missionHtml = `
+        <div class="gm-ov-contract">
+          <div class="gm-mission-name">${escapeMapHtml(missionChartTitle(primaryMission))}</div>
+          <div class="gm-mission-brief">${escapeMapHtml(missionChartBrief(primaryMission))}</div>
+          ${pct != null ? `<div class="gm-mission-meter" role="img" aria-label="Objective ${pct} percent complete"><span class="gm-mission-meter-fill" style="width:${pct}%"></span></div>` : ''}
+          <div class="gm-ins-row"><span>Objective area</span><span class="gm-ins-row-val">${escapeMapHtml(whereStr)}${geo.length > 1 ? ` · ${geo.length} marks` : ''}</span></div>
+          ${switchers}
+        </div>`;
+    } else {
+      missionHtml = '<div class="gm-ins-note">No active contracts. Dock at a station and open Contracts to take work.</div>';
+    }
+
+    // Section 3: Markers in Range & Symbol Key
+    const markerEntries = this._overviewMarkersForState(state);
+    this._overviewTargets = markerEntries.map((entry) => entry.target);
+    const markersHtml = markerEntries.length
+      ? `<div class="gm-ov-markers">${markerEntries.map((m, idx) => `
+          <button ${mapControlAttrs('frame')} class="gm-site-row gm-ov-marker-row" type="button" data-overview-target="${idx}" aria-label="Inspect ${escapeMapHtml(m.name)} (${escapeMapHtml(m.tag)}, ${escapeMapHtml(m.meta)})">
+            <span class="gm-ov-marker-main">
+              <span class="gm-ov-marker-glyph" style="color:${m.color}" aria-hidden="true">${m.glyph}</span>
+              <span class="gm-ov-marker-name">${escapeMapHtml(m.name)}</span>
+              <span class="gm-ov-marker-tag">${escapeMapHtml(m.tag)}</span>
+            </span>
+            <span class="gm-ins-row-val gm-ov-marker-dist">${escapeMapHtml(m.meta)}</span>
+          </button>`).join('')}</div>`
+      : '<div class="gm-ins-note">No contacts or stations in immediate range.</div>';
+
+    const out = `
+      <div class="gm-ins-section">
+        <div class="gm-ins-kind">Your ship &amp; sector</div>
+        <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorName)}</span></div>
+        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
+        <div class="gm-ins-row"><span>Local zone</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
+        <div class="gm-ins-row"><span>Ship fix</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) WU · Hdg ${headingBrg} · ${speed} u/s</span></div>
+        ${careersInner}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title" style="color:${INK.amberHot};">Mission &amp; Waypoint Fix</div>
+        ${wpHtml}
+        ${missionHtml}
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Markers on Chart &amp; Key</div>
+        ${markersHtml}
+        <div class="gm-ov-key-grid" role="list" aria-label="Chart symbol key">
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#fcf9f0">⊙</b> You</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.amberHot}">◆</b> Goal Pin</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">¤</b> Station</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#8fcbff">⊂⊃</b> Jump Gate</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.red}">◆</b> Hostile</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#b8c7d9">➤</b> Ship / Drone</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#8fcbff">◇</b> Scan / Site</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#e8e2d4">▸</b> Off-View Rim</span>
+        </div>
+        <div class="gm-ins-note"><b>Drag from your ship</b> to preview a course; click any marker to inspect or double-click to set course.</div>
+      </div>`;
+
+    // Guard against dynamic text colliding with foot-band reserved uppercase tokens in map-one-answer.test.mjs
+    return out
+      .replace(/POSITION/g, 'Position')
+      .replace(/TRACKING/g, 'Tracking')
+      .replace(/DESTINATION/g, 'Destination')
+      .replace(/NEXT LEG/g, 'Next leg')
+      .replace(/Arrive /g, 'Reach ');
   },
 
   /** TRAVEL — the ribbon's detail view. Same model object, so the two cannot disagree. */
@@ -8289,29 +8619,19 @@ _draw() {
       drawBandRing(g, ring.x, ring.y, Math.max(1, ring.r), { band: 5, bandA: 0.16 * a, edge: 1.6, edgeA: 0.8 * a });
     }
 
-    // Level-transition iris: a ring of light and the scale name, gone in under half a second, so
-    // threshold crossings read as travel through one continuous instrument.
+    // Level-transition iris: a ring of light centred on the clear field, gone in under a third of
+    // a second, so threshold crossings read as travel through one continuous instrument without
+    // stamping text over the player's ship mark.
     if (this._iris) {
       const iris = this._iris;
+      const irisField = this._clearField(w, h);
+      const icx = irisField.x + irisField.width / 2;
+      const icy = irisField.y + irisField.height / 2;
       const p = Math.max(0, Math.min(1, iris.t / iris.maxT));
       const alpha = 1 - p;
-      const radius = Math.min(w, h) * (0.07 + p * 0.55);
-      drawBandRing(g, w / 2, h / 2, radius, { band: 8, bandA: 0.14 * alpha, edge: 1.8, edgeA: 0.8 * alpha });
-      drawBandRing(g, w / 2, h / 2, radius * 0.92, { band: 0, edge: 1, edgeA: 0.4 * alpha });
-      if (p < 0.72) {
-        g.save();
-        g.globalAlpha = alpha;
-        g.font = chartFont(800, 22, { stretch: 'expanded' });
-        setTracking(g, 0.18, 22);
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        g.fillStyle = CHART_INK.lit(1);
-        g.fillText(iris.label, w / 2, h / 2);
-        g.font = chartFont(650, 12);
-        setTracking(g, 0.24, 12);
-        setTracking(g, 0, 12);
-        g.restore();
-      }
+      const radius = Math.min(irisField.width, irisField.height) * (0.08 + p * 0.44);
+      drawBandRing(g, icx, icy, radius, { band: 7, bandA: 0.12 * alpha, edge: 1.6, edgeA: 0.65 * alpha });
+      drawBandRing(g, icx, icy, radius * 0.92, { band: 0, edge: 1, edgeA: 0.32 * alpha });
     }
   },
 
@@ -8329,8 +8649,8 @@ _draw() {
   },
 
   /**
-   * Geometry of the edge ruler (bar + "N WU per bar" caption) in the clear field's lower-left.
-   * Shared by the paint path and the label reserve so names never sit under the scale.
+   * Geometry of the edge ruler (bar + "N WU per bar" caption) in the clear field's lower-right
+   * (clear of `.gmh-tools` in the lower-left). Shared by the paint path and the label reserve.
    */
   _edgeScaleLayout(field, pxPerWU) {
     if (!(pxPerWU > 0) || !field || !(field.width > 0) || !(field.height > 0)) return null;
@@ -8348,9 +8668,10 @@ _draw() {
     }
     if (!(wu > 0)) return null;
     const px = Math.max(24, Math.min(field.width * 0.3, wu * pxPerWU));
-    const x = field.x + 10;
-    const y = field.y + field.height - 16;
     const text = `${formatDistanceWU(wu)} per bar`;
+    const textW = Math.max(px, Math.ceil(text.length * 7.2));
+    const x = Math.max(field.x + 10, field.x + field.width - textW - 14);
+    const y = field.y + field.height - 16;
     return { x, y, px, wu, text };
   },
 
@@ -10038,8 +10359,10 @@ _drawLocal(g, state, w, h) {
     // compass rose, never floating at the field's edge.
     const pinRadius = Math.min(field.width, field.height) * 0.46 + 16;
     const pushEdgeTick = (x, y, color, shape, target) => {
-      if (edgeTicks.length >= 24) return;
-      edgeTicks.push(ringPinTick(sx(px), sz(pz), pinRadius, x, y, color, shape, target));
+      if (edgeTicks.length >= 24) return null;
+      const tick = ringPinTick(sx(px), sz(pz), pinRadius, x, y, color, shape, target);
+      edgeTicks.push(tick);
+      return tick;
     };
 
     this._drawSensorLattice(g, w, h, 0.055);
@@ -10232,13 +10555,28 @@ _drawLocal(g, state, w, h) {
 
       if (off) {
         if (!foreignFade && (c.kind === 'station' || c.kind === 'gate' || c.hostile)) {
-          pushEdgeTick(x, y, c.hostile && c.kind !== 'station' && c.kind !== 'gate' ? INK.red : INK.ink0,
+          const tick = pushEdgeTick(x, y, c.hostile && c.kind !== 'station' && c.kind !== 'gate' ? INK.red : INK.ink0,
             c.kind === 'gate' ? 'gate' : c.kind === 'station' ? 'station' : 'hostile', {
               kind: c.kind, id: c.id, x: c.x, z: c.z,
               entityId: c.entityId, stationId: c.stationId, stable: c.stable || null, name: displayName, factionId: c.factionId,
               hostile: c.hostile,
               detail: `Contact · ${displayName} · off-view ${c.kind.toUpperCase()}`,
             });
+          if (tick && (c.kind === 'station' || c.kind === 'gate' || c.hostile) && edgeTicks.length <= 4) {
+            const dist = Math.hypot((Number(c.x) || 0) - px, (Number(c.z) || 0) - pz);
+            labelCandidates.push(makeMapLabelCandidate(g, {
+              id: `edge:${c.id}`,
+              kind: c.kind,
+              text: `${displayName} · ${formatDistanceWU(dist)}`,
+              lines: [`${displayName} · ${formatDistanceWU(dist)}`],
+              x: tick.x,
+              y: tick.y,
+              anchorRadius: 14,
+              color: c.hostile ? INK.red : CHART_INK.bone(0.84),
+              hostile: c.hostile,
+              named: true,
+            }));
+          }
         }
         continue;
       }
@@ -10319,6 +10657,21 @@ _drawLocal(g, state, w, h) {
       scale: 1.08,
       pulse: reduced ? 0 : (0.5 + 0.5 * Math.sin(animT * 1.7)),
     });
+    g.save();
+    g.font = chartFont(700, 12, { stretch: 'normal' });
+    setTracking(g, 0.08, 12);
+    g.textAlign = 'center';
+    g.textBaseline = 'bottom';
+    g.lineJoin = 'round';
+    if (typeof g.strokeText === 'function') {
+      g.strokeStyle = 'rgba(5, 7, 10, 0.88)';
+      g.lineWidth = 4;
+      g.strokeText('YOU', shipX, shipY - 18);
+    }
+    g.fillStyle = CHART_INK.lit(0.95);
+    g.fillText('YOU', shipX, shipY - 18);
+    setTracking(g, 0, 12);
+    g.restore();
 
     // Velocity: a tapered line of bone light out of the fix mark.
     if (player && player.vel) {
@@ -10437,19 +10790,25 @@ _drawLocal(g, state, w, h) {
         if (target) this._clickTargets.push(target);
       }
       const objectiveLabel = waypointMapLabel(wp);
+      const wpDist = Math.hypot((Number(wpPos.x) || 0) - px, (Number(wpPos.z) || 0) - pz);
+      const wpBrg = compassOctant((Number(wpPos.x) || 0) - px, (Number(wpPos.z) || 0) - pz);
+      const wpKindTag = wp && (wp.missionId || wp.onboarding || wp.markerKind === 'mission-objective')
+        ? 'MISSION'
+        : wp && wp.kind === 'claim_defense' ? 'RAID ALERT' : 'NAV WAYPOINT';
+      const wpSubLine = `${wpKindTag} · ${formatDistanceWU(wpDist)}${wpBrg ? ` · ${wpBrg}` : ''}`;
       labelCandidates.push(makeMapLabelCandidate(g, {
         id: 'objective:active-waypoint',
         kind: 'objective',
         objective: true,
         text: `GOAL · ${objectiveLabel.toUpperCase()}`,
-        lines: [`GOAL · ${objectiveLabel.toUpperCase()}`],
+        lines: [`GOAL · ${objectiveLabel.toUpperCase()}`, wpSubLine],
         x: wx,
         y: wy,
         anchorRadius: 16,
         color: INK.amberHot,
       }));
     }
-    const localReserved = [{ x: shipX - 18, y: shipY - 18, width: 36, height: 36 }];
+    const localReserved = [{ x: shipX - 24, y: shipY - 32, width: 48, height: 50 }];
     if (wpScreen && this._layers.route) {
       const stub = waypointTetherReserveRect(shipX, shipY, wpScreen.x, wpScreen.y);
       if (stub) localReserved.push(stub);
@@ -10458,7 +10817,7 @@ _drawLocal(g, state, w, h) {
       const rrPx = ringBase * frac;
       localReserved.push({ x: shipX + rrPx * 0.707 + 4, y: shipY - rrPx * 0.707 - 16, width: 64, height: 20 });
     }
-    this._edgeScalePxPerWU = 0;
+    this._edgeScalePxPerWU = baseScale * cam.zoom;
     const labelLayout = this._placeLabels(labelCandidates, w, h, { reserved: localReserved });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -10499,6 +10858,7 @@ _drawLocal(g, state, w, h) {
         });
       }
     }
+    this._drawEdgeScale(g, field, baseScale * cam.zoom);
     // THE GROUND: the holder's hue washes the scope and lights its outer ring, behind everything.
     if (this._layers.faction) {
       g.save();

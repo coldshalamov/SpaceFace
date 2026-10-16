@@ -147,7 +147,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
     ]) }),
     missionBoardContract: B({
       type: 'rescue_under_fire', storyTag: 'campaign47a:b2:elroy',
-      title: 'Pull the pods under fire', brief: 'Tow a pod home, or open a corridor and reel from stand-off.',
+      title: 'Pull the pods under fire', brief: 'Tow a pod to Expanse, or clear both Wasp escorts and reel a pod from stand-off.',
       factionId: 'faction_scn',
       stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
       reward_cr: 800, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,

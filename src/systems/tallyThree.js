@@ -1,7 +1,7 @@
+import {tallyAssessorOccupancy,validTallyRecordIdentity,validTallyAssessor,tallyAssessorTerminal,decorateTallyAssessorSpec} from '../world/tallyThreeIdentity.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint, tallyThreeClaimStatus } from '../data/tallyThree.js';
 import { makeShipEntitySpec } from './ships.js';
 import { deliverTallyThreeCrate } from './cargo.js';
-import { TALLY_THREE_RADIUS, tallyThreePhysicalBody } from '../data/tallyThreeBody.js';
 
 function receiverOf(state) {
   let result=null;
@@ -25,11 +25,13 @@ export const tallyThree={
   name:'tallyThree',
   init(ctx){
     this.state=ctx.state;this.bus=ctx.bus;this.helpers=ctx.helpers;this.registry=ctx.registry;
-    this._offers=new Map();this._unsubs=[];this._nextTick=0;
+    this._offers=new Map();this._unsubs=[];this._nextTick=0;this._assessorLives=new Map();
     const on=(event,fn)=>this._unsubs.push(this.bus.on(event,fn));
+    on('entity:spawned',p=>{const e=p?.entity;if(validTallyAssessor(e))this._assessorLives.set(e.id,{entity:e,life:e.occupantGeneration,data:e.data});});
+    on('entity:destroyed',p=>{const id=p?.entityId??p?.id;const retained=this._assessorLives.get(id);if(retained&&this.state.entities.get(id)!==retained.entity)this._assessorLives.delete(id);});
     on('sector:enter',()=>{this._offers.clear();this._nextTick=0;});
-    on('save:restoring',()=>{this._offers.clear();this._nextTick=0;});
-    on('game:new',()=>{this._offers.clear();this._nextTick=0;});
+    on('save:restoring',()=>{this._assessorLives.clear();this._offers.clear();this._nextTick=0;});
+    on('game:new',()=>{this._assessorLives.clear();this._offers.clear();this._nextTick=0;});
     on('game:newGame',()=>this.newGame());
     on('sector:exit',()=>this._releaseAssessor());
     on('scan:completed',p=>{
@@ -43,7 +45,8 @@ export const tallyThree={
     });
     on('entity:killed',p=>{
       const body=this.state.entities.get(p?.entityId??p?.id??p?.targetId);
-      if(body?.data?.worldRecordId===TALLY_THREE.assessorId){
+      const retained=this._assessorLives.get(body?.id);
+      if(body?.alive===false&&retained?.entity===body&&retained.life===body.occupantGeneration&&retained.data===body.data&&validTallyAssessor(body)){
         this.helpers.salvage?.noteTally('assessorLost');this.helpers.spawnBudget?.releaseEntity(body.id,body);
       }
       if(body?.data?.worldRecordId===TALLY_THREE.worldRecordId){
@@ -61,30 +64,29 @@ export const tallyThree={
     if(source?.delivery&&!state.economy?.committedIntents?.[source.delivery.receiptId])
       this.registry.get('economy')?.settleTallyThreeDelivery(source.delivery);
     const existing=tallyThreeBody(state,TALLY_THREE.assessorId),budget=this.helpers.spawnBudget;
-    if(!source||source.assessorLost){if(existing)this._releaseAssessor();return;}
+    const durable=state.world?.records?.byId?.[TALLY_THREE.assessorId];
+    if(durable&&!validTallyRecordIdentity(durable))return;
+    if(tallyAssessorTerminal(state)){if(existing)this._releaseAssessor();return;}
+    const occupancy=tallyAssessorOccupancy(state);
+    if(occupancy.kind!=='absent' && (occupancy.kind!=='live'||occupancy.entity!==existing||!validTallyAssessor(existing)))return;
     if(existing){
       if(budget?.ownerForEntity(existing.id)!==TALLY_THREE.assessorId){
         if(!budget||budget.request(1,TALLY_THREE.assessorId)!==1||!budget.bindEntity(existing.id,TALLY_THREE.assessorId))this._releaseAssessor();
       }
       return;
     }
+    if(durable)return; // The world record owns restoration, including its existing cargo/job/phase.
     const crate=tallyThreeBody(state,TALLY_THREE.worldRecordId);
     if(!crate||typeof this.helpers.spawnEntity!=='function'||!budget||budget.request(1,TALLY_THREE.assessorId)!==1)return;
     const spec=makeShipEntitySpec(TALLY_THREE.assessorShipId,{
       team:2,factionId:'faction_dmc',pos:{x:crate.pos.x+150,z:crate.pos.z+90},
       ai:{passive:true,archetype:'fleeing_trader'},
     });
-    spec.radius=TALLY_THREE_RADIUS;
-    spec.physicsBody=tallyThreePhysicalBody(spec.mass);
-    spec.data={...spec.data,worldRecordId:TALLY_THREE.assessorId,sectorId:TALLY_THREE.sectorId,homeSectorId:TALLY_THREE.sectorId,
-        derived:{...spec.data.derived,radius:TALLY_THREE_RADIUS},
-        placeId:'place_tally_three',archetypeGlb:'place_tally_three',placeScale:1,
-        callsign:'Tally-3',name:'Tally-3',role:'claim_assessor',trafficRole:'tug',transientSector:true,
-        tallyThree:{phase:'patrol',tick:state.tick}};
+    decorateTallyAssessorSpec(spec);spec.data.tallyThree={phase:'patrol',tick:state.tick};
     let actor;
     try{actor=this.helpers.spawnEntity(spec);}catch(error){budget.release(TALLY_THREE.assessorId);throw error;}
     if(!actor||!budget.bindEntity(actor.id,TALLY_THREE.assessorId)){
-      if(actor)this.helpers.removeEntity?.(actor.id);budget.release(TALLY_THREE.assessorId);
+      if(actor&&validTallyAssessor(actor))this.helpers.removeEntity?.(actor.id);budget.release(TALLY_THREE.assessorId);
     }
   },
   offer(availability,requestId,expiresAt){
@@ -131,9 +133,9 @@ export const tallyThree={
   },
   _releaseAssessor(){
     const actor=tallyThreeBody(this.state,TALLY_THREE.assessorId);
-    if(actor)this.helpers.removeEntity?.(actor.id);
+    if(actor&&validTallyAssessor(actor))this.helpers.removeEntity?.(actor.id);
     this.helpers.spawnBudget?.release(TALLY_THREE.assessorId);
   },
-  newGame(){this._releaseAssessor();this._offers?.clear();this._nextTick=0;},
-  destroy(){this._releaseAssessor();for(const off of this._unsubs||[])if(typeof off==='function')off();this._unsubs=[];this._offers?.clear();},
+  newGame(){this._releaseAssessor();this._assessorLives?.clear();this._offers?.clear();this._nextTick=0;},
+  destroy(){this._releaseAssessor();this._assessorLives?.clear();for(const off of this._unsubs||[])if(typeof off==='function')off();this._unsubs=[];this._offers?.clear();},
 };

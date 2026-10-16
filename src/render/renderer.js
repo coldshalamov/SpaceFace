@@ -57,7 +57,7 @@ import {
   resolveIblSource,
 } from './foundryEnvironment.js';
 import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
+import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -296,7 +296,7 @@ import { globalProjectileMotion } from './projectileMotionPresentation.js';
 import { globalOrdnanceMotion } from './ordnanceMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
-import { createPhaseBlinkPresentation } from './phaseBlinkPresentation.js';
+import { createPhaseBlinkPresentation, createPhaseBlinkWarmSubject } from './phaseBlinkPresentation.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
@@ -377,6 +377,13 @@ import {
   collectUncompiledSceneDrawables,
   collectUncompiledSceneDrawablesSteps,
 } from './latePipelineAdmission.js';
+import {
+  collectOpeningEffectSubjects,
+  openingEffectWarmAllowed,
+  OPENING_EFFECT_PLUME_DRIVE_RE,
+  OPENING_WARM_TOUCH_BUDGET_MS,
+  OPENING_WARM_TOUCH_TIMEOUT_MS,
+} from './openingEffectWarm.js';
 import {
   armAdmissionShadows,
   casterDepthMarkAnyCurrent,
@@ -8660,6 +8667,8 @@ const swarmWarmOutcomeClaims = (status) => {
 // releases and a late-settling attach drops silently via
 // boundaryBelongsToScene — the documented trade, confined to the hang.
 const WARM_BUILDING_SETTLE_DEADLINE_MS = 30000;
+// Park-only route: no cook compile pass consumes late warm attaches, so only a short settle.
+const UNCLAIMED_WARM_SETTLE_DEADLINE_MS = 1500;
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -13514,7 +13523,11 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
-      deferAutoFlush: () => shouldDeferPipelineAutoFlush({
+      // While the flight veil holds the sim after the first playable paint, nothing playable is
+      // on screen and simTime is frozen (the first-flight hold below is sim-clocked): let queued
+      // admissions flush now, so their per-object admission draws land under the veil.
+      deferAutoFlush: () => !(state.render && state.render.flightVeilHoldsSim === true
+        && Number.isFinite(state.render.firstPlayableFrameAt)) && shouldDeferPipelineAutoFlush({
         postOpeningReleased: this._postOpeningPipelineAdmissionReleased === true,
         firstPlayableFrameAt: state.render && state.render.firstPlayableFrameAt,
         mode: state.mode,
@@ -14815,16 +14828,19 @@ export const render = {
         || cookWorld.currentSectorId !== cookSectorId
         || this._liveSectorCookGeneration !== expectedGeneration;
     };
-    state.render.prepareLiveSectorBeforeFlight = async (options = {}) => {
-      const ownerInactive = () => typeof options.isActive === 'function' && !options.isActive();
+    state.render.prepareLiveSectorBeforeFlight = async (legOptions = {}) => {
+      const ownerInactive = () => typeof legOptions.isActive === 'function' && !legOptions.isActive();
       const capturedRecookStale = captureLiveSectorCookStale();
       const recookStale = () => capturedRecookStale() || ownerInactive();
       if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
-      if (state.mode !== 'loading') {
+      // parkOnly: the caller does not hold the loading shell for this cook (software GL's
+      // fire-and-forget opening), so starting the whole-sector cook here would run it on into
+      // presented flight. Do only what must not leak into flight: park the bounded warm roots.
+      if (state.mode !== 'loading' || (legOptions && legOptions.parkOnly === true)) {
         // A late invocation must still leave no bounded warm root mounted into flight —
         // the early return below is what used to strand SF_OpeningSpeciesWarm on scene.
-        try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
-        return { skipped: true, reason: 'not-loading' };
+        this._settleAndParkUnclaimedOpeningWarm();
+        return { skipped: true, reason: state.mode !== 'loading' ? 'not-loading' : 'park-only' };
       }
       const recookSectorId = state.world && state.world.currentSectorId;
       // Same-sector evidence must stay valid across the whole keep-GPU path: a
@@ -16025,7 +16041,9 @@ export const render = {
               // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
               // the owner's laptop. The jump shell keeps one item per frame.
-              yieldToMain: state.mode === 'loading'
+              // The flight reveal veil covers the canvas like the loading shell, so spill-over keeps
+              // the shell's sliced cadence (same in the cook touch/buffer/rock-pool yields below).
+              yieldToMain: (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
                 ? createSlicedYield(yieldAndFlushLiveSectorGpu, {
                   shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
                   debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
@@ -17762,7 +17780,7 @@ export const render = {
           // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
           // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
           // every one). The jump shell keeps one touch per frame.
-          const touchYield = yieldTouch && state.mode === 'loading'
+          const touchYield = yieldTouch && (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
             ? createSlicedYield(yieldTouch, {
               shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
               debit: notePacedFrameSpend,
@@ -17834,7 +17852,7 @@ export const render = {
       // does not upload vertex buffers, and first bloom then bricks on Intel.
       // Loading shell: texture and geometry uploads share a frame until ~8 ms of upload work
       // (laneB-fixA: 123 opening textures, one whole frame each). The jump shell keeps its cadence.
-      const yieldBuffers = state.mode === 'loading'
+      const yieldBuffers = (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
         ? createSlicedYield(yieldBufferFrame, {
           shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
           debit: notePacedFrameSpend,
@@ -18377,7 +18395,7 @@ export const render = {
           // unit (the old cadence) made this step O(units x frame time). The jump shell keeps its
           // per-unit cadence, exactly as cook.touch and cook.buffers do above.
           const rockPoolYieldBase = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
-          const rockPoolYield = state.mode === 'loading'
+          const rockPoolYield = (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
             ? createSlicedYield(rockPoolYieldBase, {
               sliceMs: 16,
               shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
@@ -23195,6 +23213,8 @@ export const render = {
       teardownWarm();
       return null;
     }
+    if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root);
+    if (profile === 'opening') this._touchOpeningEffectFamilyUnderShell();
     return warm;
   },
 
@@ -23529,7 +23549,7 @@ export const render = {
   // WARM_BUILDING_SETTLE_DEADLINE_MS; the arm also drains `warm.building`, the
   // residency-owner pin, so finish() being skipped over-budget or a single
   // never-settling job can't leave either flag up for the run.
-  _armCrucibleWarmBuildingSettle(warm) {
+  _armCrucibleWarmBuildingSettle(warm, onSettled = null) {
     if (!warm || !warm.root) return;
     if (!Number.isFinite(warm.settleDeadlineAt)) {
       warm.settleDeadlineAt = Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
@@ -23561,6 +23581,9 @@ export const render = {
             && warm.residencyHookInstalled === true) {
           try { this._releaseOrdinaryOpeningWarm('opening-warm-settled'); }
           catch (_) { /* release is best-effort; the normal teardown remains authoritative */ }
+        }
+        if (typeof onSettled === 'function') {
+          try { onSettled(); } catch (_) { /* best-effort */ }
         }
       });
     };
@@ -24773,6 +24796,267 @@ export const render = {
   },
 
   /**
+   * Effect-family program warm (see openingEffectWarm.js). Loading shell only: once the player
+   * exists, build the narrow effect subset (vfx warmupOpeningEffectSubset: liquid plasma, the
+   * industrial plume, one ribbon-trail exemplar), then every 250 ms exact-target touch one
+   * instance of each effect family not yet touched. Stops for good when loading releases or the
+   * admission generation changes; timed-out touches may finish in the background, with their
+   * exemplar retained until the draw settles.
+   */
+  _touchOpeningEffectFamilyUnderShell() {
+    const state = this.state;
+    if (!state) return;
+    const render = state.render;
+    const world = state.world;
+    const nativeRenderer = this.renderer;
+    const context = state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
+    const isCurrentOwner = (owner) => owner != null
+      && this._openingEffectWarmInvocationToken === owner.token
+      && owner.state === this.state
+      && owner.state.render === owner.render
+      && owner.state.world === owner.world
+      && this.renderer === owner.nativeRenderer
+      && owner.state.contextRestoreSeq === owner.context
+      && (owner.render ? owner.render.admissionRunGeneration : undefined) === owner.generation;
+    if (this._openingEffectWarmActive === true
+        && isCurrentOwner(this._openingEffectWarmOwner)) return;
+    const previousOwner = this._openingEffectWarmOwner;
+    if (this._openingEffectWarmActive === true && previousOwner && !isCurrentOwner(previousOwner)) {
+      // A replacement run may share the scene with a queued exact-target draw from the old run.
+      // Hide its subject now; the port can still reveal it for that draw before teardown settles.
+      for (const subject of previousOwner.pendingExemplars || []) subject.visible = false;
+    }
+    // Software / no-parallel-compile route only (#434 review, A): an awaited parallel-compile
+    // cook runs warmupLiveFlightEffects and rests these families itself; this sweep would race it.
+    if (!openingEffectWarmAllowed({ gpu: state.render && state.render.gpu, renderer: this.renderer })) {
+      if (state.render) state.render.openingEffectWarm = { reason: 'parallel-compile-cook', touched: [], touchMs: {} };
+      return;
+    }
+    const invocationToken = (this._openingEffectWarmInvocationToken || 0) + 1;
+    this._openingEffectWarmInvocationToken = invocationToken;
+    const owner = {
+      token: invocationToken, state, render, world, nativeRenderer, context, generation,
+      pendingExemplars: new Set(),
+    };
+    this._openingEffectWarmOwner = owner;
+    this._openingEffectWarmActive = true;
+    const seen = new Set();
+    const clock = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const receipt = { touched: [], touchMs: {}, failed: 0, sweeps: 0, subset: null, reason: 'pending', at: null };
+    const owned = () => isCurrentOwner(owner);
+    const publish = (reason) => {
+      if (!owned()) return false;
+      receipt.reason = reason;
+      receipt.at = Math.round(clock());
+      if (render) {
+        render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice(), touchMs: { ...receipt.touchMs } };
+      }
+      return true;
+    };
+    const loading = () => state.mode === 'loading';
+    const startedAt = Date.now();
+    let extrasDone = false;
+    // Touches run as soon as the subset exists, inside the opening compile burst. The first
+    // link-status read there waits out the burst's compile backlog (fx3: 4.8-8.3 s on whichever
+    // touch came first), but loading waits on that backlog anyway: fx3 (early touches) loaded at
+    // master -0.37 s to flight, while fx4-fx6 (touches held until the burst drained, >=4 s in)
+    // put their own links on the critical path and reached flight +0.7-1.5 s after master.
+    // Touch budget: a link-status read is synchronous, so no timer can cut one short once it has
+    // started; the budget bounds how many touches start and how long the sweep waits on each.
+    // Past the per-touch timeout the sweep moves on (the touch settles in the background); past
+    // the total budget no further touch starts. Both are logged in the receipt.
+    // The first touch is not charged: it absorbs the opening compile backlog described above.
+    let touchSpentMs = 0;
+    let firstTouchCharged = false;
+    receipt.timedOut = [];
+    receipt.skipped = [];
+    const timedTouch = async (touch, key, subject, { hideOnTimeout = false } = {}) => {
+      const completion = (promise) => promise
+        ? promise.then(() => true, () => true)
+        : Promise.resolve(true);
+      if (!owned() || !loading()) return { started: false, completion: Promise.resolve(true) };
+      if (touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS) {
+        if (owned() && !receipt.skipped.includes(key)) {
+          receipt.skipped.push(key);
+          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch skipped: budget spent', key, Math.round(touchSpentMs));
+        }
+        return { started: false, completion: Promise.resolve(true) };
+      }
+      const touchStarted = clock();
+      let timer = null;
+      let settled = null;
+      let outcome = 'failed';
+      let didFail = false;
+      let failure = null;
+      try {
+        settled = Promise.resolve(touch(subject));
+        outcome = await Promise.race([
+          settled.then(() => 'done'),
+          new Promise((resolve) => {
+            timer = setTimeout(() => {
+              // The exact-target port reveals subjects only for its synchronous draw and restores
+              // the prior visibility afterward. Keep a pending exemplar out of normal flight while
+              // its queued draw finishes; it remains mounted until completion so the port can reveal it.
+              if (hideOnTimeout && subject) subject.visible = false;
+              resolve('timeout');
+            }, OPENING_WARM_TOUCH_TIMEOUT_MS);
+          }),
+        ]);
+      } catch (error) {
+        didFail = true;
+        failure = error;
+      } finally {
+        if (timer) clearTimeout(timer);
+        const spent = clock() - touchStarted;
+        if (owned()) {
+          if (firstTouchCharged) touchSpentMs += spent;
+          firstTouchCharged = true;
+          receipt.touchMs[key] = Math.round(spent);
+          if (outcome === 'timeout') {
+            receipt.timedOut.push(key);
+            laneWarn(this, 'openingEffectWarm', '[render] opening warm touch timed out', key, OPENING_WARM_TOUCH_TIMEOUT_MS);
+          } else if (didFail) {
+            receipt.failed += 1;
+            laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, failure);
+          } else {
+            receipt.touched.push(key);
+          }
+        }
+      }
+      // The touch's own completion: a timed-out touch keeps running after the sweep moves on, so
+      // callers that tear the subject down wait on this rather than on the race. Keep it in a
+      // plain record: returning a promise from this async function would make `await timedTouch`
+      // assimilate the completion and defeat the timeout.
+      return { completion: completion(settled), timedOut: outcome === 'timeout' };
+    };
+    let restPending = false;
+    const stop = (reason) => {
+      for (const subject of owner.pendingExemplars) subject.visible = false;
+      if (!owned()) return false;
+      if (restPending && (reason === 'shell-released' || reason === 'error')) {
+        restPending = false;
+        if (reason === 'error' && loading()) {
+          try {
+            if (typeof render.restLiveFlightEffectsAfterCook === 'function') {
+              render.restLiveFlightEffectsAfterCook();
+            }
+          } catch (_) { /* best-effort */ }
+        }
+        try {
+          // Remove the warm ribbon root on release/error without resetting plumes or overflow
+          // jets after flight owns the picture.
+          if (owned() && typeof render.releaseOpeningEffectSubset === 'function') {
+            render.releaseOpeningEffectSubset();
+          }
+        } catch (_) { /* best-effort */ }
+      }
+      if (!owned()) return false;
+      this._openingEffectWarmActive = false;
+      this._openingEffectWarmOwner = null;
+      publish(reason);
+      return true;
+    };
+    const step = async () => {
+      try {
+        return await sweep();
+      } catch (error) {
+        if (owned()) laneWarn(this, 'openingEffectWarm', '[render] opening effect warm step failed', error);
+        return stop('error');
+      }
+    };
+    const sweep = async () => {
+      if (!owned()) return stop('superseded');
+      if (!loading() || Date.now() - startedAt > 90000) return stop('shell-released');
+      const touch = render && render.touchSubjectExactTarget;
+      receipt.sweeps += 1;
+      if (!receipt.subset && state.playerId != null
+          && state.entities && typeof state.entities.get === 'function' && state.entities.get(state.playerId)
+          && typeof render.warmupOpeningEffectSubset === 'function') {
+        restPending = true;
+        try {
+          const r = render.warmupOpeningEffectSubset({ plumeMaterialRe: OPENING_EFFECT_PLUME_DRIVE_RE });
+          receipt.subset = r && r.skipped !== true
+            ? { plasma: r.plasma === true, plumes: r.plumes | 0, ribbon: r.ribbon === true,
+              initMs: Math.round(r.initMs || 0), ms: Math.round(r.ms || 0) }
+            : { skipped: true, reason: (r && r.reason) || 'unknown' };
+        } catch (error) {
+          if (owned()) {
+            receipt.subset = { error: true };
+            laneWarn(this, 'openingEffectWarm', '[render] opening effect subset warmup failed', error);
+          }
+        }
+      }
+      if (!extrasDone && receipt.subset && typeof touch === 'function' && this.scene) {
+        extrasDone = true;
+        // Late first links outside the effect roots that master links after the lift (50-run pool:
+        // stand-in 13, phase blink 8, marker 4): the ship_atlas stand-in
+        // + resolving marker of the first mid-flight ship admission, and both phase-blink programs
+        // (uKind/uZip). The bloom threshold pass is left out (1 post-lift link in 50 master runs).
+        // Exemplars only: touched once, then detached; their materials stay alive so the programs
+        // stay linked.
+        for (const [key, make] of [['exemplar:standIn', createOpeningStandInWarmSubject],
+          ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
+          if (!owned() || !loading()) break;
+          let subject = null;
+          let touchResult = { completion: Promise.resolve(true) };
+          try {
+            subject = make();
+            this.scene.add(subject);
+            owner.pendingExemplars.add(subject);
+            touchResult = await timedTouch(touch, key, subject, { hideOnTimeout: true });
+          } catch (error) {
+            if (owned()) {
+              receipt.failed += 1;
+              laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
+            }
+          } finally {
+            if (subject) {
+              const owned_ = subject;
+              const teardown = () => {
+                owner.pendingExemplars.delete(owned_);
+                if (owned_.parent) owned_.parent.remove(owned_);
+                try { owned_.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
+              };
+              // A touch that outlived its timeout still draws this subject: detach and dispose
+              // only once it settles (#434 review, finding B).
+              touchResult.completion.then(teardown, teardown);
+            }
+          }
+          if (!owned()) return stop('superseded');
+          if (!loading()) return stop('shell-released');
+        }
+      }
+      if (typeof touch === 'function' && this.scene) {
+        for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
+          if (!owned() || !loading()) break;
+          await timedTouch(touch, key, subject);
+          if (!owned()) return stop('superseded');
+          if (!loading()) return stop('shell-released');
+        }
+      }
+      if (!owned()) return stop('superseded');
+      if (!loading()) return stop('shell-released');
+      if (restPending) {
+        restPending = false;
+        try {
+          if (typeof render.restLiveFlightEffectsAfterCook === 'function') render.restLiveFlightEffectsAfterCook();
+        } catch (_) { /* best-effort */ }
+        try {
+          if (typeof render.releaseOpeningEffectSubset === 'function') render.releaseOpeningEffectSubset();
+        } catch (_) { /* best-effort */ }
+      }
+      publish('pending');
+      if (!owned()) return stop('superseded');
+      if (!loading()) return stop('shell-released');
+      setTimeout(() => { void step(); }, 250);
+      return null;
+    };
+    setTimeout(() => { void step(); }, 0);
+  },
+
+  /**
    * Detach the bounded warm roots (Crucible roster warm, opening species warm) from the live scene
    * once the loading cook is finished with them. They exist only so their programs link and their
    * buffers upload behind the shell; they are hidden and never drawn in flight. Mounted, they were
@@ -24786,6 +25070,143 @@ export const render = {
    * package instances hold. The roots stay in _rosterPrewarmRoots, so the late rock re-skin sweep
    * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
    */
+  /**
+   * Barge-family program warm (PQ perf-lane tw6/tw7). The ore-carrier traffic hull links its
+   * Forge_ore_barge_* surfaces (paint/glows/glass) and the express-liner ceramic it shares a key
+   * with on first draw in flight (557-1062 ms on software GL). The opening species warm root
+   * already carries authored aftermath sections that use exactly those materials, so touch only
+   * those children through the exact-target pass while the loading shell owns the picture.
+   * Nothing is composed or added; the sweep stops the moment loading releases.
+   */
+  _touchOpeningBargeFamilyUnderShell(root) {
+    const state = this.state;
+    if (!root || !state) return;
+    const BARGE_FAMILY = /^(Forge_ore_barge|Forge_massline_express_liner_ceramic)/;
+    const seen = new Set();
+    const receipt = { touched: 0, reason: 'pending', at: null };
+    const world = state.world;
+    const render = state.render;
+    const nativeRenderer = this.renderer;
+    const renderer = render && render.renderer;
+    const context = state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
+    // Root/generation guard: a torn-down warm (disposed root) or a fresh loading window must
+    // never be touched — that could resurrect disposed programs or buffers.
+    const owned = () => {
+      if (state !== this.state) return false;
+      if (state.world !== world || state.render !== render) return false;
+      if (this.renderer !== nativeRenderer) return false;
+      if ((render && render.renderer) !== renderer) return false;
+      if (state.contextRestoreSeq !== context) return false;
+      if ((render ? render.admissionRunGeneration : undefined) !== generation) return false;
+      const inList = Array.isArray(this._rosterPrewarmRoots) && this._rosterPrewarmRoots.includes(root);
+      // begin() schedules the first step before its caller registers the root. The callback
+      // must require live membership: a root removed during that macrotask is already stale.
+      return inList;
+    };
+    const loading = () => state.mode === 'loading' && owned();
+    const publish = (reason) => {
+      if (!owned()) return false;
+      receipt.reason = reason;
+      receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
+      if (render) render.openingBargeWarm = { ...receipt };
+      return true;
+    };
+    const carriesBargeFamily = (subject) => {
+      let hit = false;
+      subject.traverse((object) => {
+        if (hit || !object.material) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        if (materials.some((material) => material && BARGE_FAMILY.test(material.name || ''))) hit = true;
+      });
+      return hit;
+    };
+    const step = async () => {
+      if (!owned()) return;
+      if (state.mode !== 'loading') return publish('shell-released');
+      const touch = render && render.touchSubjectExactTarget;
+      if (typeof touch === 'function') {
+        for (const child of [...root.children]) {
+          if (!loading()) break;
+          if (seen.has(child) || !child.userData || child.userData.authoredAssetState !== 'authored') continue;
+          seen.add(child);
+          if (!carriesBargeFamily(child)) continue;
+          try {
+            await touch(child);
+            // The touch may yield across teardown, a context restore, or a new admission run.
+            // Do not count the old child or publish a receipt into that newer owner.
+            if (!loading()) return;
+            receipt.touched += 1;
+          } catch (error) {
+            if (!owned()) return;
+            laneWarn(this, 'openingBargeWarm', '[render] opening barge family touch failed', error);
+          }
+        }
+      }
+      if (!owned()) return;
+      if (state.mode !== 'loading') return publish('shell-released');
+      publish('pending');
+      if (!owned() || state.mode !== 'loading') return;
+      setTimeout(() => { void step(); }, 250);
+      return null;
+    };
+    setTimeout(() => { void step(); }, 0);
+  },
+
+  /**
+   * Park-only / late present leg: nothing will ever claim or finish the early opening warm
+   * (only the live cook does), so its root would stay mounted with warmBuilding === true for
+   * the whole run and _parkBoundedWarmRoots() would skip it. Mirror the cook's over-budget
+   * path — claim it, drop `building`, arm the bounded settle (short deadline: no compile pass
+   * will consume late attaches on this route) — then park once the settle lands and the
+   * loading shell no longer owns the picture (the barge-family touch reads the root under it).
+   */
+  _settleAndParkUnclaimedOpeningWarm() {
+    const invocationToken = Symbol('opening-warm-park');
+    this._openingWarmParkInvocationToken = invocationToken;
+    const state = this.state;
+    const world = state && state.world;
+    const render = state && state.render;
+    const nativeRenderer = this.renderer;
+    const renderer = render && render.renderer;
+    const context = state && state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
+    const warmRoots = this._rosterPrewarmRoots;
+    const warm = this._earlyCrucibleWarm || null;
+    const warmRoot = warm && warm.root;
+    const warmOwner = warm;
+    const current = () => this.state === state
+      && this._openingWarmParkInvocationToken === invocationToken
+      && (!state || state.world === world)
+      && (!state || state.render === render)
+      && this.renderer === nativeRenderer
+      && (!render || render.renderer === renderer)
+      && (!state || state.contextRestoreSeq === context)
+      && (!render || render.admissionRunGeneration === generation)
+      && this._rosterPrewarmRoots === warmRoots
+      && (!warmRoot || (Array.isArray(warmRoots) && warmRoots.includes(warmRoot)))
+      // The early slot is cleared below. A later warm claiming it means this callback is stale.
+      && (!warmOwner || !this._earlyCrucibleWarm || this._earlyCrucibleWarm === warmOwner);
+    const parkWhenReleased = (attempt = 0) => {
+      if (!current()) return;
+      if (state && state.mode === 'loading') {
+        if (attempt >= 240) return;
+        setTimeout(() => parkWhenReleased(attempt + 1), 250);
+        return;
+      }
+      if (!current()) return;
+      try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+    };
+    if (warm && warm.root) {
+      this._earlyCrucibleWarm = null;
+      this._earlyCrucibleWarmMenu = false;
+      warm.building = false;
+      if (!Number.isFinite(warm.settleDeadlineAt)) warm.settleDeadlineAt = Date.now() + UNCLAIMED_WARM_SETTLE_DEADLINE_MS;
+      this._armCrucibleWarmBuildingSettle(warm, () => parkWhenReleased());
+    }
+    parkWhenReleased();
+  },
+
   _parkBoundedWarmRoots() {
     let roots = 0;
     let nodes = 0;
@@ -29763,18 +30184,37 @@ export const render = {
    * wait set and remain on the normal streaming runway.
    */
   async prepareOpeningFirstPicture(timeoutMs = 20000, options = {}) {
-    const renderState = this.state?.render;
-    const world = this.state?.world;
-    const generation = renderState?.admissionRunGeneration;
-    const serial = world?.enterSerial;
-    const context = this.state?.contextRestoreSeq;
-    const assertActive = () => {
-      if (this.state?.render !== renderState || this.state?.world !== world
-          || world?.enterSerial !== serial || renderState?.admissionRunGeneration !== generation
-          || this.state?.contextRestoreSeq !== context || this._rendererResourcesDisposed === true
-          || (options.isActive && !options.isActive())) throw new Error('opening first-picture owner became inactive');
+    const ownerState = this.state;
+    const ownerRenderState = ownerState && ownerState.render;
+    const ownerWorld = ownerState && ownerState.world;
+    const ownerEnterSerial = ownerWorld && ownerWorld.enterSerial;
+    const ownerGeneration = ownerRenderState && ownerRenderState.admissionRunGeneration;
+    const ownerContextRestoreSeq = ownerState && ownerState.contextRestoreSeq;
+    const ownerRendererGeneration = this._rendererGeneration;
+    const ownerNativeRenderer = this.renderer || (ownerRenderState && ownerRenderState.renderer) || null;
+    const ownerContextRecoveryGeneration = this._contextRecovery && this._contextRecovery.generation;
+    const ownerIsCurrent = () => (
+      this.state === ownerState
+      && this.state && this.state.render === ownerRenderState
+      && this.state.world === ownerWorld
+      && ownerWorld && ownerWorld.enterSerial === ownerEnterSerial
+      && ownerRenderState && ownerRenderState.admissionRunGeneration === ownerGeneration
+      && this.state.contextRestoreSeq === ownerContextRestoreSeq
+      && this._rendererGeneration === ownerRendererGeneration
+      && (this.renderer || (ownerRenderState && ownerRenderState.renderer) || null) === ownerNativeRenderer
+      && (this._contextRecovery && this._contextRecovery.generation) === ownerContextRecoveryGeneration
+      && this._rendererResourcesDisposed !== true
+      && this._contextLost !== true
+      && (typeof options.isActive !== 'function' || options.isActive() === true)
+    );
+    const assertOwnerCurrent = () => {
+      if (!ownerIsCurrent()) throw new Error('opening first-picture owner became inactive');
     };
-    assertActive();
+    assertOwnerCurrent();
+    const renderState = ownerRenderState;
+    const generation = ownerGeneration;
+    const world = ownerWorld;
+    const serial = ownerEnterSerial;
     if (this._openingFirstPicturePrepared && renderState?.openingGraphPublicationFrozen) return true;
     const waitMs = Math.max(1, Number(timeoutMs) || 20000);
     const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -29792,11 +30232,11 @@ export const render = {
     // different root after capture and before the first draw.
     try {
       await renderState?.beginOpeningLoadingAdmission?.();
-      assertActive();
+      assertOwnerCurrent();
       // Seat maps before capturing program/resource identities. Required work has an outer
       // recoverable deadline; a timed-out map is never silently replaced after flight starts.
       if (this.rockSurfaceLibraryReady) await this.rockSurfaceLibraryReady;
-      assertActive();
+      assertOwnerCurrent();
       parallaxLayers.seatReadyRockSurfaceTextures();
       // A replacement requested by the prior flight may already be between its post-paint yield and
       // activation when Continue enters loading. Let that finite job settle (it aborts when loading
@@ -29816,6 +30256,7 @@ export const render = {
       } finally {
         if (auxGrowthTimeout !== null) clearTimeout(auxGrowthTimeout);
       }
+      assertOwnerCurrent();
       // Each settle pass's leg chain (entity sync, forced compose, pool/shadow
       // band, second compose) runs one atomic span — drive the stepped twin so
       // the legs pace between browser beats like the upgrade-promises walk.
@@ -29823,7 +30264,7 @@ export const render = {
       // re-mint once (every leg is idempotent across the 8-pass envelope), then
       // degrade to the sync twin — degraded-but-alive over dead boot.
       const drivePublishFirstPicture = async () => {
-        assertActive();
+        assertOwnerCurrent();
         // Degrade memo per service epoch: a persistently sick publish leg used
         // to re-pay the stepped prefix + the atomic sync twin on every one of
         // the ≤8 settle passes. Once the twin has answered for this epoch,
@@ -29833,35 +30274,55 @@ export const render = {
           return this._openingPublishDegradeVerdict;
         }
         for (let attempt = 0; attempt < 2; attempt += 1) {
-          const iter = this._publishOpeningFirstPictureSteps();
-          for (;;) {
-            let publishStep;
-            try {
-              publishStep = iter.next();
-            } catch (publishError) {
-              closeCookStepsIter(iter);
-              noteLaneFault(this.state, 'openingFirstPicture', attempt > 0);
-              if (attempt === 0) {
+          assertOwnerCurrent();
+          let iter = this._publishOpeningFirstPictureSteps();
+          try {
+            for (;;) {
+              let publishStep;
+              try {
+                assertOwnerCurrent();
+                publishStep = iter.next();
+              } catch (publishError) {
+                closeCookStepsIter(iter);
+                iter = null;
+                assertOwnerCurrent();
+                noteLaneFault(this.state, 'openingFirstPicture', attempt > 0);
+                assertOwnerCurrent();
+                if (attempt === 0) {
+                  laneWarn(this, 'openingPublish',
+                    '[boot] opening first-picture publish step faulted; re-minting', publishError);
+                  break;
+                }
                 laneWarn(this, 'openingPublish',
-                  '[boot] opening first-picture publish step faulted; re-minting', publishError);
-                break;
+                  '[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
+                assertOwnerCurrent();
+                const degradedVerdict = runCookSyncTwin('opening-first-picture-publish',
+                  () => this._publishOpeningFirstPicture(), true);
+                assertOwnerCurrent();
+                this._openingPublishDegradeEpoch = serviceFaultEpoch(this.state);
+                this._openingPublishDegradeVerdict = degradedVerdict;
+                return degradedVerdict;
               }
-              laneWarn(this, 'openingPublish',
-                '[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
-              const degradedVerdict = runCookSyncTwin('opening-first-picture-publish',
-                () => this._publishOpeningFirstPicture(), true);
-              this._openingPublishDegradeEpoch = serviceFaultEpoch(this.state);
-              this._openingPublishDegradeVerdict = degradedVerdict;
-              return degradedVerdict;
+              if (publishStep.done) {
+                assertOwnerCurrent();
+                iter = null;
+                return publishStep.value;
+              }
+              await yieldToBrowser();
+              assertOwnerCurrent();
             }
-            if (publishStep.done) return publishStep.value;
-            await yieldToBrowser();
+          } finally {
+            closeCookStepsIter(iter);
+            iter = null;
           }
         }
+        assertOwnerCurrent();
         return false;
       };
       for (let pass = 0; pass < 8; pass++) {
-        if (!(await drivePublishFirstPicture())) {
+        const published = await drivePublishFirstPicture();
+        assertOwnerCurrent();
+        if (!published) {
           throw new Error('opening first-picture render publication unavailable');
         }
         // Each settle pass pays a shadow-candidate census + the _meshes wait-set
@@ -29870,29 +30331,46 @@ export const render = {
         // applies; a walk that faults twice skips the settle wait ([] answers
         // "no pending upgrades") instead of failing the boot.
         const driveUpgradePromises = async () => {
+          assertOwnerCurrent();
           for (let attempt = 0; attempt < 2; attempt += 1) {
-            const iter = this._openingFirstPictureUpgradePromisesSteps();
-            for (;;) {
-              let driveStep;
-              try {
-                driveStep = iter.next();
-              } catch (upgradeError) {
-                closeCookStepsIter(iter);
-                if (attempt === 0) {
-                  stormWarn('boot-upgrade-promise-walk', '[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
-                  break;
+            assertOwnerCurrent();
+            let iter = this._openingFirstPictureUpgradePromisesSteps();
+            try {
+              for (;;) {
+                let driveStep;
+                try {
+                  assertOwnerCurrent();
+                  driveStep = iter.next();
+                } catch (upgradeError) {
+                  closeCookStepsIter(iter);
+                  iter = null;
+                  assertOwnerCurrent();
+                  if (attempt === 0) {
+                    stormWarn('boot-upgrade-promise-walk', '[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
+                    break;
+                  }
+                  console.warn('[boot] opening upgrade-promise walk faulted twice; skipping the settle wait', upgradeError);
+                  assertOwnerCurrent();
+                  return [];
                 }
-                console.warn('[boot] opening upgrade-promise walk faulted twice; skipping the settle wait', upgradeError);
-                return [];
+                if (driveStep.done) {
+                  assertOwnerCurrent();
+                  iter = null;
+                  return driveStep.value;
+                }
+                await yieldToBrowser();
+                assertOwnerCurrent();
               }
-              if (driveStep.done) return driveStep.value;
-              await yieldToBrowser();
-              assertActive();
+            } finally {
+              closeCookStepsIter(iter);
+              iter = null;
             }
           }
+          assertOwnerCurrent();
           return [];
         };
         const pending = await driveUpgradePromises();
+        assertOwnerCurrent();
         if (pending === null) throw new Error('opening first-picture camera unavailable');
         if (pending.length === 0) {
           // Re-publish once after the final boundary settles so the exact census sees the committed
@@ -29900,11 +30378,15 @@ export const render = {
           // capture, not a settle retry: a degrade verdict memoized on an earlier transient fault
           // must not answer for it — the presented frame would freeze on the pre-swap children for
           // the epoch's lifetime.
+          assertOwnerCurrent();
           this._openingPublishDegradeVerdict = undefined;
-          if (!(await drivePublishFirstPicture())) {
+          const republished = await drivePublishFirstPicture();
+          assertOwnerCurrent();
+          if (!republished) {
             throw new Error('opening first-picture final publication unavailable');
           }
           const late = await driveUpgradePromises();
+          assertOwnerCurrent();
           if (late === null) throw new Error('opening first-picture camera unavailable');
           if (late.length === 0) {
             if (!preparedHandoffCohort) {
@@ -29928,6 +30410,7 @@ export const render = {
               } finally {
                 if (cohortTimeout !== null) clearTimeout(cohortTimeout);
               }
+              assertOwnerCurrent();
               if (cohort === null) throw new Error('opening authored boundary cohort timed out');
               if (this.state && this.state.render) {
                 this.state.render.openingAuthoredBoundaryCohort = cohort;
@@ -29955,6 +30438,7 @@ export const render = {
               } finally {
                 if (auxLateTimeout !== null) clearTimeout(auxLateTimeout);
               }
+              assertOwnerCurrent();
               if (!auxGrowthReady) throw new Error('opening ship auxiliary pool admission timed out');
               continue;
             }
@@ -29964,10 +30448,11 @@ export const render = {
             // gate-parked jobs, and the queued commits burst into the round as late mounts.
             // Keep only the VFX hold; the cook's boundary settle is the real barrier.
             if (survivalRunHoldsArena(this.state)) {
+              assertOwnerCurrent();
               if (this.state && this.state.render) this.state.render.openingVfxFrozen = true;
             } else {
               await this._openingLoadingAdmission?.drain();
-              assertActive();
+              assertOwnerCurrent();
               freezeOpeningGraphPublication(this);
             }
             // Same source-dirty gate: an already-baked env of the current source needs no
@@ -29976,6 +30461,7 @@ export const render = {
               foundryTexture: this._foundryEnvTexture,
               background: this.scene && this.scene.background,
             }) !== this._envMapSource) this._bakeEnv();
+            assertOwnerCurrent();
             this._openingEnvFrozen = true;
             this._deferNoncriticalMeshStreaming = true;
             if (renderState) renderState.deferNoncriticalMeshStreaming = true;
@@ -29994,12 +30480,12 @@ export const render = {
           Promise.all(pending),
           new Promise((resolve) => setTimeout(() => resolve(null), remaining)),
         ]);
+        assertOwnerCurrent();
         if (settled === null) throw new Error('opening first-picture preparation timed out');
       }
       throw new Error('opening first-picture boundary did not settle');
     } finally {
-      if (!succeeded && this.state?.render === renderState && renderState?.admissionRunGeneration === generation
-          && this.state?.world === world && world?.enterSerial === serial) {
+      if (!succeeded && ownerIsCurrent()) {
         resumeAuthoredUpgradeQueueAfterOpening(this.scene);
         this._deferNoncriticalMeshStreaming = previousDefer;
         if (this.state && this.state.render) {

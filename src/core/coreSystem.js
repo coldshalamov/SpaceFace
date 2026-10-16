@@ -307,6 +307,18 @@ export const core = {
       if(fence && !fence())throw new Error('staged_spawn_superseded');
       // Measured skins ride fixed bodies and eligible solid dynamics alike; authored physicsBody
       // geometry (shape, collisionProxyManifest, useMeasuredSkin:false) opts out — Package C.
+      // Survival-room furniture is represented as `station` for shared collision/material rules,
+      // but an anonymous room toy has authored primitive geometry rather than station artwork.
+      // Do not let modelTruth's default trade-hub identity replace that geometry. Explicit visual
+      // station identities still take their measured skins, and body manifests resolve below.
+      const anonymousArenaToy = e?.type === 'station'
+        && e.data?.roomOwner === 'survival-arena'
+        && typeof e.data.roomToyId === 'string'
+        && !(e.data.archetypeGlb || e.data.stationTypeId || e.data.placeId);
+      if (anonymousArenaToy && e.physicsBody && typeof e.physicsBody === 'object'
+        && e.physicsBody.useMeasuredSkin !== false) {
+        e.physicsBody = { ...e.physicsBody, useMeasuredSkin: false };
+      }
       const measuredSkin = e && e.collides !== false && measuredSkinAllowedFor(e)
         ? modelTruthProxyManifest(e)
         : null;

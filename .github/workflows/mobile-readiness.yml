@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   retail-phone:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.engine == 'webkit' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -63,14 +63,114 @@ jobs:
           node scripts/check-retail-motion-banks.mjs | tee .devshots/mobile-build/runtime-assets.txt
       - name: Install acceptance browser
         run: npx playwright install --with-deps "$MOBILE_PROBE_ENGINE"
-      - name: Static retail route, worker round trips, New Game, touch UI and Continue
+      - name: Install WebKit process diagnostics
+        if: matrix.engine == 'webkit'
         run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gdb strace gstreamer1.0-gl gstreamer1.0-tools
+          set -o pipefail
+          timeout 30s gst-inspect-1.0 glsinkbin 2>&1 | tee .devshots/mobile-build/gstreamer-glsinkbin.txt
+          timeout 30s gst-inspect-1.0 glimagesink 2>&1 | tee .devshots/mobile-build/gstreamer-glimagesink.txt
+      - name: Static retail route, real worker round trips, New Game, touch UI and Continue
+        run: |
+          set -o pipefail
+          if [ "$MOBILE_PROBE_ENGINE" = "webkit" ]; then
+            CORE_DIR="${RUNNER_TEMP:?RUNNER_TEMP must be set}/cores"
+            mkdir -p "$CORE_DIR"
+            CORE_DIR="$(realpath "$CORE_DIR")"
+            printf 'core_pattern=%s/core.%%e.%%P.%%s\n' "$CORE_DIR" | tee .devshots/mobile-build/webkit-core-setup.txt
+            if ! ulimit -c unlimited; then
+              echo 'ulimit -c unlimited failed; WebKit core collection may be unavailable' | tee -a .devshots/mobile-build/webkit-core-setup.txt
+            fi
+            if ! sudo sysctl -w "kernel.core_pattern=$CORE_DIR/core.%e.%P.%s" | tee -a .devshots/mobile-build/webkit-core-setup.txt; then
+              echo 'kernel.core_pattern could not be configured; preserving the probe result and diagnostics' | tee -a .devshots/mobile-build/webkit-core-setup.txt
+            fi
+          fi
           python3 -m http.server 8765 --bind 127.0.0.1 --directory build/web > .devshots/mobile-build/http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/ -o /dev/null && break; sleep 1; done
           node scripts/check-runtime-worker-browser.mjs
-          node scripts/probe-deployed-mobile.mjs
+          set -o pipefail
+          if [ "$MOBILE_PROBE_ENGINE" = "webkit" ]; then
+            DEBUG=pw:browser strace -f -tt -e trace=process,signal -s128 -o .devshots/mobile-build/browser-process-signals.log node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-build/browser-process.log
+          else
+            DEBUG=pw:browser node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-build/browser-process.log
+          fi
+      - name: Collect bounded WebKit core postmortem
+        if: always() && matrix.engine == 'webkit'
+        run: |
+          set +e
+          POSTMORTEM=.devshots/mobile-build/webkit-core
+          mkdir -p "$POSTMORTEM"
+          CORE_DIR="${RUNNER_TEMP:?RUNNER_TEMP must be set}/cores"
+          mapfile -t CORE_CANDIDATES < <(find "$CORE_DIR" -maxdepth 1 -type f -name 'core.*' -print 2>/dev/null | sort)
+          CORE=''
+          for candidate in "${CORE_CANDIDATES[@]}"; do
+            case "$(basename "$candidate")" in
+              core.WPEWebProcess.*|core.WebKitWebProcess.*) CORE="$candidate"; break ;;
+            esac
+          done
+          printf 'core=%s\n' "${CORE:-none}" > "$POSTMORTEM/status.txt"
+          PLAYWRIGHT_EXECUTABLE="$(node --input-type=module -e "import { webkit } from 'playwright'; process.stdout.write(webkit.executablePath());" 2>/dev/null)"
+          PLAYWRIGHT_ROOT=''
+          WPE_EXECUTABLE=''
+          if [ -n "$PLAYWRIGHT_EXECUTABLE" ]; then
+            PLAYWRIGHT_ROOT="$(dirname "$PLAYWRIGHT_EXECUTABLE")"
+            for process_name in WPEWebProcess WebKitWebProcess MiniBrowser minibrowser; do
+              WPE_EXECUTABLE="$(find "$PLAYWRIGHT_ROOT" -type f -name "$process_name" -print 2>/dev/null | sort | head -n 1)"
+              [ -n "$WPE_EXECUTABLE" ] && break
+            done
+          fi
+          {
+            printf 'playwrightExecutable=%s\n' "${PLAYWRIGHT_EXECUTABLE:-unresolved}"
+            printf 'playwrightRoot=%s\n' "${PLAYWRIGHT_ROOT:-unresolved}"
+            printf 'wpeExecutable=%s\n' "${WPE_EXECUTABLE:-unresolved}"
+          } > "$POSTMORTEM/playwright-paths.txt"
+          if [ -n "$PLAYWRIGHT_ROOT" ]; then
+            find "$PLAYWRIGHT_ROOT" -maxdepth 3 -type f \( -name 'libWPEWebKit*.so*' -o -name 'libwebkit2gtk*.so*' \) -print 2>/dev/null | sort | head -n 64 > "$POSTMORTEM/playwright-libraries.txt"
+          else
+            echo 'Playwright WebKit root unresolved' > "$POSTMORTEM/playwright-libraries.txt"
+          fi
+          if [ -n "$WPE_EXECUTABLE" ] && [ -f "$WPE_EXECUTABLE" ]; then
+            {
+              printf 'Executable: %s\n' "$WPE_EXECUTABLE"
+              readelf -n "$WPE_EXECUTABLE" 2>&1 | grep -E 'Build ID|File' || true
+              if [ -s "$POSTMORTEM/playwright-libraries.txt" ]; then
+                while IFS= read -r library; do
+                  [ -n "$library" ] || continue
+                  printf '\nLibrary: %s\n' "$library"
+                  readelf -n "$library" 2>&1 | grep -E 'Build ID|File' || true
+                done < "$POSTMORTEM/playwright-libraries.txt"
+              fi
+            } > "$POSTMORTEM/elf-build-id.txt"
+            if [ -n "$CORE" ] && [ -f "$CORE" ]; then
+              timeout 60s gdb -batch -nx -q "$WPE_EXECUTABLE" "$CORE" \
+                -ex 'set pagination off' \
+                -ex 'set confirm off' \
+                -ex "set solib-search-path $PLAYWRIGHT_ROOT" \
+                -ex 'info files' \
+                -ex 'info proc mappings' \
+                -ex 'info sharedlibrary' \
+                -ex 'info registers' \
+                -ex 'x/8i $pc' \
+                -ex 'thread apply all bt 24' \
+                > "$POSTMORTEM/gdb.txt" 2>&1
+              GDB_STATUS=$?
+              printf 'gdbExit=%s\n' "$GDB_STATUS" >> "$POSTMORTEM/status.txt"
+              if [ -f "$POSTMORTEM/gdb.txt" ] && [ "$(wc -c < "$POSTMORTEM/gdb.txt")" -gt 4000000 ]; then
+                head -c 4000000 "$POSTMORTEM/gdb.txt" > "$POSTMORTEM/gdb.txt.tmp"
+                printf '\n[bounded at 4 MiB; original core remains excluded]\n' >> "$POSTMORTEM/gdb.txt.tmp"
+                mv "$POSTMORTEM/gdb.txt.tmp" "$POSTMORTEM/gdb.txt"
+              fi
+            else
+              echo 'No WPE core found; probe output and status are preserved.' > "$POSTMORTEM/gdb.txt"
+            fi
+          else
+            echo 'The downloaded Playwright WebKit WPE executable was not resolved; no system binary was substituted.' > "$POSTMORTEM/gdb.txt"
+            echo 'ELF build ID unavailable' > "$POSTMORTEM/elf-build-id.txt"
+          fi
+          echo 'Core files remain in RUNNER_TEMP and are intentionally excluded from upload.' >> "$POSTMORTEM/status.txt"
       - name: Preserve acceptance evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4

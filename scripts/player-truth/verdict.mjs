@@ -3,6 +3,20 @@ import { formatHarnessOverhead } from './checks.mjs';
 
 const ICON = { PASS: 'PASS', FAIL: 'FAIL', UNKNOWN: 'UNKNOWN', 'N/A': 'n/a', ENVIRONMENT: 'ENVIRONMENT', ADVISORY: 'ADVISORY' };
 
+/**
+ * One line for the opening effect-family warm (#434): whether it ran or was skipped on this GPU and
+ * why. A KHR_parallel_shader_compile GPU skips it ('parallel-compile-cook'), so a real-GPU A/B there
+ * shows no regression rather than the warm's benefit. null when the run recorded nothing.
+ */
+export function openingEffectWarmLine(warm) {
+  if (!warm) return null;
+  const gpu = `KHR_parallel_shader_compile ${warm.khr === true ? 'yes' : warm.khr === false ? 'no' : '?'}${warm.software ? ' · software GPU' : ''}`;
+  if (!warm.present) return `not run (no receipt) · ${gpu}`;
+  const n = (list) => Array.isArray(list) ? list.length : 0;
+  const ran = warm.reason !== 'parallel-compile-cook';
+  return `${ran ? 'ran' : 'skipped'} · reason ${warm.reason ?? '?'} · ${gpu}${ran ? ` · ${n(warm.touched)} touched, ${n(warm.timedOut)} timed out, ${n(warm.skipped)} skipped, ${warm.failed ?? 0} failed, ${warm.sweeps ?? '?'} sweeps` : ''}`;
+}
+
 export function renderVerdict({ meta, results, overall, paths }) {
   const L = [];
   L.push(`# Player-truth verdict: ${overall} — ${meta.label}`);
@@ -14,6 +28,8 @@ export function renderVerdict({ meta, results, overall, paths }) {
     L.push(`- Source at end: ${meta.endCommit} · ${paths(meta.endDirtySourcePaths)}`);
   }
   L.push(`- Renderer: ${meta.renderer}${meta.softwareGl ? ' — SOFTWARE GL (SwiftShader): absolute frame times are software-renderer evidence, graded only against --baseline' : ''}`);
+  const warmLine = openingEffectWarmLine(meta.openingEffectWarm);
+  if (warmLine) L.push(`- Opening effect warm: ${warmLine}`);
   L.push(`- Browser: ${meta.headed ? 'headed' : 'headless'} Chromium ${meta.browserVersion} · ${meta.resolution} · ${meta.when}`);
   if (meta.performanceContext) {
     const context = meta.performanceContext, observer = context.observer || {};

@@ -1716,12 +1716,16 @@ export const vfx = {
     this._prepareOpeningVfxFrame = () => this._publishOpeningPersistentVfx();
     this._warmupLiveFlightEffects = () => this.warmupLiveFlightEffectsForLoading();
     this._restLiveFlightEffectsAfterCook = () => this.restLiveFlightEffectsAfterCook();
+    this._warmupOpeningEffectSubset = (options) => this.warmupOpeningEffectSubsetForLoading(options);
+    this._releaseOpeningEffectSubset = () => this.releaseOpeningEffectSubset();
     if (ctx.state && ctx.state.render) {
       ctx.state.render.collectVfxGpuResidencyRoots = this._collectVfxGpuResidencyRoots;
       ctx.state.render.collectVfxContextLossResources = this._collectVfxContextLossResources;
       ctx.state.render.prepareOpeningVfxFrame = this._prepareOpeningVfxFrame;
       ctx.state.render.warmupLiveFlightEffects = this._warmupLiveFlightEffects;
       ctx.state.render.restLiveFlightEffectsAfterCook = this._restLiveFlightEffectsAfterCook;
+      ctx.state.render.warmupOpeningEffectSubset = this._warmupOpeningEffectSubset;
+      ctx.state.render.releaseOpeningEffectSubset = this._releaseOpeningEffectSubset;
     }
     // Measurement-only VFX owner seam. It snapshots only roots this system owns;
     // event lights remain visible/intensity-driven to avoid shader recompiles.
@@ -1771,6 +1775,12 @@ export const vfx = {
       }
       if (render.restLiveFlightEffectsAfterCook === this._restLiveFlightEffectsAfterCook) {
         delete render.restLiveFlightEffectsAfterCook;
+      }
+      if (render.warmupOpeningEffectSubset === this._warmupOpeningEffectSubset) {
+        delete render.warmupOpeningEffectSubset;
+      }
+      if (render.releaseOpeningEffectSubset === this._releaseOpeningEffectSubset) {
+        delete render.releaseOpeningEffectSubset;
       }
       if (render.perfVfxIsolation === this._perfVfxIsolationPort) delete render.perfVfxIsolation;
       if (render.vfxReprojectFrame === this._vfxReprojectFramePort) delete render.vfxReprojectFrame;
@@ -1980,6 +1990,12 @@ export const vfx = {
     this._prepareOpeningVfxFrame = null;
     this._warmupLiveFlightEffects = null;
     this._restLiveFlightEffectsAfterCook = null;
+    this._warmupOpeningEffectSubset = null;
+    this._releaseOpeningEffectSubset = null;
+    if (this._openingRibbonExemplar) {
+      try { this._openingRibbonExemplar.dispose(); } catch (_) { /* scene already torn down */ }
+      this._openingRibbonExemplar = null;
+    }
     this._pirateInterceptScratch = null;
     this._perfVfxIsolationRestore = null;
     this._perfVfxIsolationPort = null;
@@ -14087,6 +14103,116 @@ export const vfx = {
       retro: !!energy.retroVolume,
       plasma: !!energy.plasmaStream,
     };
+  },
+
+  // Opening effect warm subset (software GL never runs the live cook that calls the full warmup
+  // above). Builds only what still first-links inside presented flight on master: the player's
+  // liquid-plasma strands, plume systems whose layers match options.plumeMaterialRe, and one
+  // hidden NPC ribbon-trail exemplar. No RCS, retro jets, other fleet families or per-NPC ribbons:
+  // each of those queued its own pipeline admission on the opening critical path.
+  warmupOpeningEffectSubsetForLoading(options = {}) {
+    if (!this._scene) return { skipped: true, reason: 'no-scene' };
+    const clock = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const startedAt = clock();
+    if (!this._energy) this._initEnergy();
+    const initMs = clock() - startedAt;
+    const energy = this._energy;
+    if (!energy) return { skipped: true, reason: 'no-energy' };
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const dt = 1 / 60;
+    const video = this.state.settings && this.state.settings.video || {};
+    const particleQuality = video.particleQuality || 'high';
+    const compactPropulsion = !this._extendedEngineTrailsEnabled();
+    const a11y = {
+      reducedMotion: false,
+      reducedFlash: false,
+      lowQuality: particleQuality === 'low' || compactPropulsion,
+      qualityTier: compactPropulsion ? 'low' : (particleQuality === 'med' ? 'medium' : particleQuality),
+    };
+    let socketCount = 0;
+    if (player && typeof this._writeProductionPlumeSockets === 'function') {
+      socketCount = this._writeProductionPlumeSockets(player);
+    }
+    const sockets = socketCount > 0
+      ? this._productionPlumeSocketView
+      : [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
+    let plasma = false;
+    if (energy.plasmaStream && typeof energy.plasmaStream.update === 'function') {
+      const driveInfo = {
+        drive: 1, throttle: 1, speed: 0.45, speedDrive: 0.45, boost: 0.4,
+        cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+      };
+      const warmSockets = [];
+      for (let i = 0; i < sockets.length; i++) {
+        const sock = sockets[i] || {};
+        warmSockets.push({
+          x: sock.x || 0, y: sock.y || 0, z: sock.z || 0,
+          ax: sock.ax == null ? 1 : sock.ax, ay: sock.ay || 0, az: sock.az || 0,
+        });
+      }
+      // Same nozzle walk as the full warmup: one parked sample leaves drawRange 0.
+      for (let step = 0; step < 8; step++) {
+        for (let i = 0; i < warmSockets.length; i++) warmSockets[i].x -= 0.75;
+        energy.plasmaStream.update(dt, warmSockets, driveInfo, a11y, player || null);
+      }
+      plasma = true;
+    }
+    let plumes = 0;
+    const plumeRe = options.plumeMaterialRe instanceof RegExp ? options.plumeMaterialRe : null;
+    if (plumeRe) {
+      const livePlumes = [];
+      if (energy.plumeSystem) livePlumes.push(energy.plumeSystem);
+      if (energy.ceresWorkfleet && energy.ceresWorkfleet.plume) livePlumes.push(energy.ceresWorkfleet.plume);
+      if (energy.latchNine && energy.latchNine.plume) livePlumes.push(energy.latchNine.plume);
+      if (energy.fleet && Array.isArray(energy.fleet.families)) {
+        for (const family of energy.fleet.families) if (family && family.plume) livePlumes.push(family.plume);
+      }
+      const seen = new Set();
+      const matches = (plume) => {
+        let hit = false;
+        const group = plume.group;
+        if (!group || typeof group.traverse !== 'function') return false;
+        group.traverse((node) => {
+          if (hit || !node.material) return;
+          const mats = Array.isArray(node.material) ? node.material : [node.material];
+          for (const m of mats) if (m && plumeRe.test(String(m.name || ''))) { hit = true; break; }
+        });
+        return hit;
+      };
+      for (const plume of livePlumes) {
+        if (!plume || seen.has(plume) || typeof plume.update !== 'function') continue;
+        seen.add(plume);
+        if (!matches(plume)) continue;
+        plume.update(dt, 1, sockets, { boost: 0.4, a11y });
+        plumes += 1;
+      }
+    }
+    let ribbon = false;
+    if (!this._openingRibbonExemplar) {
+      this._openingRibbonExemplar = createRibbonTrail(this._scene,
+        (player && this._engineColor(player)) || '#88AAFF', NPC_RIBBON_SEGMENTS, 1.45);
+    }
+    const mesh = this._openingRibbonExemplar.getMesh();
+    if (mesh) {
+      if (!mesh.parent) this._scene.add(mesh);
+      // Non-empty range for the touch draw (zeroed positions: degenerate, nothing visible).
+      mesh.geometry.setDrawRange(0, 6);
+      ribbon = true;
+    }
+    return { skipped: false, plasma, plumes, ribbon, initMs, ms: clock() - startedAt };
+  },
+
+  releaseOpeningEffectSubset() {
+    const trail = this._openingRibbonExemplar;
+    const mesh = trail && typeof trail.getMesh === 'function' ? trail.getMesh() : null;
+    if (!mesh) return { skipped: true };
+    // Detach, do not dispose: disposing the material releases the linked program and the first
+    // live NPC trail would link it again inside a presented frame.
+    mesh.geometry.setDrawRange(0, 0);
+    mesh.visible = false;
+    if (mesh.parent) mesh.parent.remove(mesh);
+    return { skipped: false };
   },
 
   restLiveFlightEffectsAfterCook() {

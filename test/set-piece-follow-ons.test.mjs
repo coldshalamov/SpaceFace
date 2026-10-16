@@ -23,7 +23,12 @@ const ORIGINAL_THREE = Object.freeze({
   loud_heist: Object.freeze({ type: 'smuggling_run', title: 'Run the take to the den', reward_cr: 1400 }),
   station_door_jam: Object.freeze({ type: 'tow_recovery', title: 'Tow the dead frigate clear', reward_cr: 1200 }),
 });
-const NEW_EIGHT = PIECE_IDS.filter((id) => !ORIGINAL_THREE[id]);
+// The eight near-station pieces plus the six far-out jobs (Sker, Io Reach, the Mercenary Outpost,
+// the Expanse, Drift Market, Ash Cache) that 28d579f93dd added without a consequence of their own.
+const NEW_FOURTEEN = PIECE_IDS.filter((id) => !ORIGINAL_THREE[id]);
+const FAR_OUT = Object.freeze([
+  'ore_barge_tow', 'skiff_tether_rescue', 'deserter_throw', 'refinery_hopper', 'toll_gate_ram', 'liner_locker',
+]);
 const RAW_ID = /\b[a-z]+(?:_[a-z0-9]+)+\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b/;
 
 function parentMission(definition, extra = {}) {
@@ -58,6 +63,15 @@ function boot(seed) {
         entranceRun: { runId: TETHYS_BLACK_MARKET_RUN.runId, phase: 'delivered' },
       },
     },
+  };
+  // A pilot reading the Sker Bazaar, Ash Cache or Mercenary Outpost board has already docked
+  // there, so the house standing that opened the berth is already earned. A delivery back to a
+  // gated berth is refused at the board without it (the contract could never settle).
+  state.factions = {
+    ...(state.factions || {}),
+    faction_reach: { rep: 5 },
+    faction_vael: { rep: 5 },
+    faction_quiet: { rep: 5 },
   };
   const failed = [];
   const toasts = [];
@@ -96,8 +110,9 @@ function finishPiece(seed, pieceId) {
   return { h, definition, mission, next };
 }
 
-test('all eleven authored set pieces mint a schema-valid follow-on offer', () => {
-  assert.equal(PIECE_IDS.length, 11, 'the catalog is the eleven authored set pieces');
+test('all seventeen authored set pieces mint a schema-valid follow-on offer', () => {
+  assert.equal(PIECE_IDS.length, 17, 'the catalog is the seventeen authored set pieces');
+  assert.equal(NEW_FOURTEEN.length, 14);
   const titles = new Set();
   const minted = [];
   for (const definition of AUTHORED_SET_PIECES) {
@@ -127,7 +142,7 @@ test('all eleven authored set pieces mint a schema-valid follow-on offer', () =>
     assert.ok(!titles.has(offer.title), `${definition.id} title is its own: ${offer.title}`);
     titles.add(offer.title);
   }
-  assert.equal(minted.length, 11, '11 of 11 pieces answer (3 of 11 before this change)');
+  assert.equal(minted.length, 17, '17 of 17 pieces answer (11 of 17 before the far-out jobs got theirs)');
 });
 
 test('the convoy, the heist and the door-jam still return their original offers', () => {
@@ -222,7 +237,11 @@ for (const pieceId of ['ace_duel', 'reef_clearance']) {
 
 test('the new bodies are scoopable pods that hold what their contract wants', () => {
   const mission = { id: 'm-body', destStationId: 'station_forge' };
-  for (const pieceId of ['ace_duel', 'reef_clearance', 'ore_crusher', 'impound_break', 'wrecking_ball']) {
+  const podPieces = [
+    'ace_duel', 'reef_clearance', 'ore_crusher', 'impound_break', 'wrecking_ball',
+    'ore_barge_tow', 'refinery_hopper', 'liner_locker',
+  ];
+  for (const pieceId of podPieces) {
     const definition = AUTHORED_SET_PIECES.find((row) => row.id === pieceId);
     const offer = setPieceFollowOnOffer(pieceId, parentMission(definition), 0);
     const body = setPieceFollowOnBody(pieceId, parentMission(definition), { x: 10, z: 20 });
@@ -237,14 +256,16 @@ test('the new bodies are scoopable pods that hold what their contract wants', ()
       `${pieceId} pod covers the contract quantity`);
     assert.ok(body.mass > 0 && body.mass < 60, `${pieceId} pod is liftable`);
   }
-  // The tows, the pod rescue and the pallet of claim jumpers spawn their own bodies on accept.
-  for (const pieceId of ['long_tow', 'heavy_tow', 'pod_rescue']) {
+  // The tows, the rescues, the squad and the gate span spawn their own bodies on accept.
+  for (const pieceId of [
+    'long_tow', 'heavy_tow', 'pod_rescue', 'skiff_tether_rescue', 'deserter_throw', 'toll_gate_ram',
+  ]) {
     assert.equal(setPieceFollowOnBody(pieceId, mission, { x: 0, z: 0 }), null, pieceId);
   }
 });
 
 test('each consequence is the kind of job its fiction says', () => {
-  const byPiece = Object.fromEntries(NEW_EIGHT.map((id) => {
+  const byPiece = Object.fromEntries(NEW_FOURTEEN.map((id) => {
     const definition = AUTHORED_SET_PIECES.find((row) => row.id === id);
     return [id, setPieceFollowOnOffer(id, parentMission(definition), 0)];
   }));
@@ -268,14 +289,33 @@ test('each consequence is the kind of job its fiction says', () => {
   assert.equal(byPiece.long_tow.type, 'patrol_clear');
   assert.equal(byPiece.heavy_tow.type, 'tow_recovery');
   assert.ok(byPiece.heavy_tow.params.massU > 0);
-  // Eight different board lines, each naming a different deed.
-  assert.equal(new Set(NEW_EIGHT.map((id) => byPiece[id].summary)).size, 8);
-  assert.equal(new Set(NEW_EIGHT.map((id) => byPiece[id].brief)).size, 8);
+  // The far-out jobs answer the person or the thing their own piece put on the scene, and each
+  // posts at the far station the player just worked.
+  assert.equal(byPiece.ore_barge_tow.type, 'cargo_delivery', 'the barge sheds ingots to carry in');
+  assert.equal(byPiece.ore_barge_tow.destStationId, 'station_sker');
+  assert.equal(byPiece.skiff_tether_rescue.type, 'escort', 'the rescued crew needs walking in');
+  assert.equal(byPiece.skiff_tether_rescue.destStationId, 'station_io_merc');
+  assert.equal(byPiece.deserter_throw.type, 'patrol_clear', 'the deserter had a squad');
+  assert.equal(byPiece.deserter_throw.params.clearCount, 2);
+  assert.equal(byPiece.refinery_hopper.type, 'cargo_delivery', 'the first batch goes down the lane');
+  assert.equal(byPiece.refinery_hopper.destStationId, 'station_ceres');
+  assert.equal(byPiece.toll_gate_ram.type, 'tow_recovery', 'the broken gate is a hulk to clear');
+  assert.ok(byPiece.toll_gate_ram.params.massU > 0);
+  assert.equal(byPiece.liner_locker.type, 'salvage_retrieval', 'the next hold is open to wreckers');
+  for (const id of FAR_OUT) {
+    const definition = AUTHORED_SET_PIECES.find((row) => row.id === id);
+    assert.equal(byPiece[id].stationId, definition.startStationId, `${id} follows at the station that posted it`);
+    assert.equal(definition.startStationId, definition.destStationId, `${id} is worked at one far station`);
+  }
+  // Fourteen different board lines, each naming a different deed.
+  assert.equal(new Set(NEW_FOURTEEN.map((id) => byPiece[id].summary)).size, 14);
+  assert.equal(new Set(NEW_FOURTEEN.map((id) => byPiece[id].brief)).size, 14);
+  assert.equal(new Set(NEW_FOURTEEN.map((id) => byPiece[id].title)).size, 14);
 });
 
 test('every new follow-on runs end to end on seed 4242: its pressure spawns on arrival and the dock settles it', () => {
-  const salvageLike = ['ace_duel', 'reef_clearance', 'wrecking_ball'];
-  for (const pieceId of NEW_EIGHT) {
+  const salvageLike = ['ace_duel', 'reef_clearance', 'wrecking_ball', 'liner_locker'];
+  for (const pieceId of NEW_FOURTEEN) {
     const { h, definition, next } = finishPiece(4242, pieceId);
     const lines = [...h.said.filter((line) => line.channel === 'news'), ...h.toasts
       .filter((line) => line.source === SET_PIECE_FOLLOW_ON_SOURCE)];
@@ -293,17 +333,20 @@ test('every new follow-on runs end to end on seed 4242: its pressure spawns on a
       assert.equal(spawned[0].type, 'wreck');
       assert.ok(spawned[0].data.salvagePool[next.params.cmdtyId] >= next.params.qty,
         `${pieceId} the contested wreck holds the contracted cargo`);
-    } else if (pieceId === 'pod_rescue') {
-      assert.equal(next.factionId, definition.factionId, 'the escort flies the yard faction livery');
+    } else if (pieceId === 'pod_rescue' || pieceId === 'skiff_tether_rescue') {
+      assert.equal(next.factionId, definition.factionId, 'the escort flies the posting faction livery');
       assert.ok(spawned.length >= 1, 'the rescued crews launch as a convoy');
       assert.ok(spawned.some((e) => e.data && e.data.escortee === 'lead'), 'with a named lead');
     } else if (pieceId === 'long_tow') {
       assert.equal(live.objectiveTarget, 3);
       assert.equal(spawned.length, 3, 'three claim jumpers hold the lane');
-    } else if (pieceId === 'heavy_tow') {
-      assert.equal(spawned.length, 1, 'the yard core spawns on accept');
+    } else if (pieceId === 'deserter_throw') {
+      assert.equal(live.objectiveTarget, 2);
+      assert.equal(spawned.length, 2, "two of the deserter's squad hold the range");
+    } else if (pieceId === 'heavy_tow' || pieceId === 'toll_gate_ram') {
+      assert.equal(spawned.length, 1, 'the contract body spawns on accept');
       assert.equal(spawned[0].type, 'asteroid');
-      assert.equal(spawned[0].data.scanLabel, 'DEAD-WEIGHT CORE');
+      assert.equal(spawned[0].data.scanLabel, next.params.scanLabel);
       assert.ok(spawned[0].mass >= next.params.massU, 'its mass is the contract mass');
     }
 
@@ -322,7 +365,7 @@ test('every new follow-on runs end to end on seed 4242: its pressure spawns on a
 });
 
 test('a board refresh keeps every new follow-on until its epoch lifetime ends', () => {
-  for (const pieceId of NEW_EIGHT) {
+  for (const pieceId of NEW_FOURTEEN) {
     const { h, next } = finishPiece(4242, pieceId);
     const stationId = next.stationId;
     const epoch = h.missionsSys._epoch();

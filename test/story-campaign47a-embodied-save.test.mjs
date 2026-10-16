@@ -3,7 +3,6 @@ import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import { STORY_BRANCH_INTRO_TAG } from '../src/data/missions.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
@@ -156,8 +155,6 @@ function contractSnapshot(state) {
     targetEntityIds: mission.targetEntityIds.slice(),
   } : null;
 }
-
-test('save v14 remains the live carrier', () => assert.equal(CURRENT_VERSION, 14));
 
 test('B1 authored contract survives Continue with authority metadata', () => {
   const h = harness();

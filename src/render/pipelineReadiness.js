@@ -1726,6 +1726,11 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   const capturedGeneration = render ? render.admissionRunGeneration : undefined;
   const generationNow = () => (render ? render.admissionRunGeneration : undefined);
   const sameGeneration = () => generationNow() === capturedGeneration;
+  // The present leg belongs to the opening this call was started for. Capture whether the
+  // loading shell owned the picture at entry: on software GL the cook is fire-and-forget, so by
+  // the time prepare settles (~0.7 s) the mode is already 'flight' and a live read of state.mode
+  // skipped the present leg outright — liveScenePresentReady was never assigned.
+  const shellOwnedAtEntry = !!(state && state.mode === 'loading');
   const resident = !!(render
     && render.requiredPackageAdmission
     && render.requiredPackageAdmission.status === 'accepted'
@@ -1833,7 +1838,7 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   // Same-sector F9 recook skips the opening 1x1; programs/buffers are resident.
   // That shortcut runs only after this generation already accepted the package.
   // A stamp this generation did not accept is not a shortcut and not a refusal.
-  if (!(state && state.mode === 'loading')) {
+  if (!shellOwnedAtEntry) {
     finishLedger();
     if (prepareClassification && prepareClassification.status === 'rejected') return false;
     if (prepareClassification && prepareClassification.status === 'pending'
@@ -1845,10 +1850,14 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     return false;
   }
   const presentStarted = ledgerNow();
+  // settleTail === false is the software-GL route that does not await this cook (main.js):
+  // the shell will not hold for it, so the present leg only parks — it never starts the
+  // whole-sector cook that would otherwise race on into presented flight.
+  const parkOnly = options.settleTail === false;
   const presentCook = Promise.resolve().then(() => (
     typeof render.prepareLiveSectorBeforeFlight === 'function'
-      ? render.prepareLiveSectorBeforeFlight()
-      : cookLiveSceneGpu(state, { present: true, skipBuffers: true })
+      ? (parkOnly ? render.prepareLiveSectorBeforeFlight({ parkOnly: true }) : render.prepareLiveSectorBeforeFlight())
+      : (parkOnly ? { skipped: true, reason: 'park-only' } : cookLiveSceneGpu(state, { present: true, skipBuffers: true }))
   ));
   if (sameGeneration()) render.liveScenePresentReady = presentCook;
   // PQ-210.00 — a survival arena cooks its whole bounded field (hulls, promoted rock
@@ -1880,6 +1889,14 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   const lost = gpuContextIsLost(state) === true;
   if (options.throwOnError === true && presentResult.error) throw presentResult.error;
   if (options.throwOnError === true && lost) assertMobileOpeningGraphicsHealthy(render);
+  if (parkOnly) {
+    // The park-only leg cooked nothing, so it must not mint acceptance after flight: keep the
+    // pre-fix software-route verdict (refusals still refuse; otherwise only a lost context fails).
+    if (prepareClassification && prepareClassification.status === 'rejected') return false;
+    if (prepareClassification && prepareClassification.status === 'pending'
+        && prepareClassification.continueOpening !== true) return false;
+    return !lost;
+  }
   if (prepareClassification && prepareClassification.status === 'rejected') return false;
   if (prepareClassification && prepareClassification.status === 'pending'
       && prepareClassification.continueOpening !== true) return false;
