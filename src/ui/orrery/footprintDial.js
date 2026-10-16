@@ -359,11 +359,14 @@ export function dialGeometry(w, h) {
   const tok = Math.round(clamp(R * 0.116, 32, 56));
   const rTok = rS - SB / 2 - tok / 2 - clamp(R * 0.03, 7, 14);
   const clockW = clamp(R * 0.03, 9, 14);
-  // On a short dial (R under ~157: a 390-460 px tall window) the 96px hub floor ran the escape clock through the source
-  // band and the hub's lines across the band's names. There the hub shrinks to sit inside the band, and under 80px the
-  // dial is `small`: the hub keeps the heat and its tier, and the lines the title already says step aside (see CSS).
-  const hubR = Math.min(clamp(R * 0.5, 96, 260), Math.max(48, rS - SB / 2 - clockW - 4));
-  const small = hubR < 80;
+  // On a short dial (R under ~157: a 390-500 px tall window) the 96px hub floor ran the escape clock through the source
+  // band and the hub's lines across the band's names. There the hub shrinks to sit inside the band, and whenever it
+  // shrinks the dial is `small`: the hub keeps the heat and its tier, and the lines the title already says step aside
+  // (see CSS). The full hub's lines need the whole 96px floor: a capped 80-95px hub kept them and ran the clears and
+  // bounty lines across the clock ring (1024x468-499).
+  const hubFloor = clamp(R * 0.5, 96, 260);
+  const hubR = Math.min(hubFloor, Math.max(48, rS - SB / 2 - clockW - 4));
+  const small = hubR < hubFloor;
   // The crest pads sit between the escape clock (its band and ticks) and the source band. On a dial under ~510px
   // (960x540, phones) the hub's 96px floor puts the clock where the pads go, so the pads printed over the clock and
   // over the hub's tier, clears and bounty lines. There the pads yield: the band still names each source, the reading

@@ -1542,8 +1542,9 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **After (`src/ui/orrery/footprintDial.js` only):**
 - `dialGeometry` caps `hubR` so the hub sits inside the source band (`min(old floor, rS − SB/2 − clockW − 4)`, floor 48).
-- When `hubR < 80` the dial is `is-small`: hub keeps heat + wrapping tier; clears / bounty / top engrave / WANTED / drag hint step aside (title already says them); keys tighten to the settled-sliver pitch; clear-arc text prefers the short word when the arc is tight.
-- Selectors and IDs unchanged. Larger dials (`hubR ≥ 80`) keep prior geometry.
+- Whenever the cap bites (`hubR` under its old 96px floor, i.e. dial square < 386px) the dial is `is-small`: hub keeps heat + wrapping tier; clears / bounty / top engrave / WANTED / drag hint step aside (title already says them); keys tighten to the settled-sliver pitch; clear-arc text prefers the short word when the arc is tight.
+- Selectors and IDs unchanged. Dials with a square ≥ 386px (uncapped hub, e.g. 1024×500, 960×540 and up, 390×844) are pixel-identical to master.
+- Review fix (Code Work): `is-small` first started at `hubR < 80`, so the capped-but-not-small band (dial 354–385px, e.g. 1024×468–499) kept the full hub lines in an 80–95px hub and ran CLEARS IN / bounty across the clock ring; `small` now tracks the cap itself.
 
 **Checked:** bench `footprint` / `footprint-marked` / `footprint-clean` findings **7→0 / 6→0 / 4→0** at 844×390; **0** at 900×420 and 1024×440; stay **0** at 960×540, 1280×720, 1920×1080 and 390×844. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish66/{before,after}/`.
 
