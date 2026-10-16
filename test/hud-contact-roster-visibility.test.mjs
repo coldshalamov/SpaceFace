@@ -68,6 +68,31 @@ test('persistent roster stays in the reserved right stack at target resolutions'
     'roster, selected-target detail, and radar must remain one non-overlapping vertical stack');
 });
 
+test('the live HUD mounts only its active ORRERY instruments and retains flight feedback', () => {
+  const fixture = mountHudFixture();
+  try {
+    assert.ok(fixture.document.querySelector('.orr-hud-cluster'), 'the active flight instrument mounts');
+    for (const selector of ['.sf-leftstack', '.sf-cluster-chassis', '.sf-prail', '.sf-command-deck', '.sf-wpn-heats']) {
+      assert.equal(fixture.document.querySelector(selector), null, `${selector} has retired from the live HUD`);
+    }
+    assert.ok(fixture.document.querySelector('.sf-vtape'), 'the contextual travel instrument remains reachable');
+    fixture.state.player.tether = { active: true, length: 120, restLength: 120, load: 0.4 };
+    fixture.hud.frame(0.2);
+    assert.equal(fixture.document.getElementById('hud').dataset.tether, 'latched', 'tether feedback survives retirement');
+    assert.equal(fixture.document.getElementById('hud').dataset.threat, 'contact', 'hostile contact feedback survives retirement');
+    const hostile = fixture.contacts.find((entity) => entity.id === 'threat-1');
+    hostile.pos.x = 2000;
+    fixture.hud.frame(0.2);
+    assert.equal(fixture.document.getElementById('hud').dataset.threat, 'near', 'approaching hostiles still raise the threat channel');
+    assert.ok(fixture.document.querySelector('.sf-threat-ring__arc').getAttribute('d'), 'the visible threat ring still points at the hostile');
+    fixture.state.player.tether.active = false;
+    fixture.hud.frame(0.1);
+    assert.equal(fixture.document.getElementById('hud').dataset.tether, 'idle', 'release clears tether feedback');
+  } finally {
+    fixture.restore();
+  }
+});
+
 test('mounted HUD roster stays visible, capped, clickable, and rebuild-free at high refresh', () => {
   for (const fps of [60, 144, 240]) {
     const fixture = mountHudFixture();
@@ -185,21 +210,17 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
       else assert.deepEqual(presentation, expectedPresentation,
         `${fps} FPS preserves the same final prograde placement and visibility`);
       assert.equal(prograde.style.opacity, '0.900', `${fps} FPS leaves the moving prograde cue visible`);
-      const heatBar = fixture.document.querySelector('.sf-bar--heat');
-      const heatFill = heatBar?.querySelector('.sf-bar__fill');
-      const heatRow = heatBar?.parentNode;
+      const heatReadout = fixture.document.querySelectorAll('.orr-cluster__read')
+        .find((row) => row.querySelector('.orr-label')?.textContent === 'Heat');
+      const heatValue = heatReadout?.querySelector('.orr-value');
       fixture.player.data.weapons.push({ _heat: 87, heatMax: 100 });
-      // The heat fill eases through the gauge settle spring (~180 ms); run enough frames for it
-      // to converge before checking the repainted value. The row reveal is immediate.
       for (let i = 0; i < Math.ceil(fps * 0.5); i += 1) fixture.hud.frame(1 / fps);
-      assert.equal(heatFill?.style.transform, 'scaleX(0.87)',
-        `${fps} FPS retained heat summary repaints a newly armed mount every frame`);
-      assert.equal(heatRow?.style.display, '', `${fps} FPS reveals the newly armed heat row`);
+      assert.equal(heatValue?.textContent, '87%',
+        `${fps} FPS active heat instrument repaints a newly armed mount every frame`);
       fixture.player.data.weapons.length = 0;
       for (let i = 0; i < Math.ceil(fps * 0.5); i += 1) fixture.hud.frame(1 / fps);
-      assert.equal(heatFill?.style.transform, 'scaleX(0)',
-        `${fps} FPS retained heat summary clears after the last mount is removed`);
-      assert.equal(heatRow?.style.display, 'none', `${fps} FPS retires the unarmed heat row`);
+      assert.equal(heatValue?.textContent, '0%',
+        `${fps} FPS active heat instrument clears after the last mount is removed`);
     } finally {
       fixture.restore();
     }
@@ -466,6 +487,7 @@ function mountHudFixture({
   return {
     state, player, bus, hud: mounted, document, contacts,
     restore() {
+      mounted.destroy();
       globalThis.document = globals.document;
       globalThis.window = globals.window;
       globalThis.performance = globals.performance;
@@ -565,6 +587,7 @@ class HudElement {
     if (child.parentNode === this) child.parentNode = null;
     return child;
   }
+  remove() { if (this.parentNode) this.parentNode.removeChild(this); }
   setAttribute(name, value) {
     const text = String(value);
     this.attributes.set(name, text);
@@ -620,6 +643,7 @@ class HudDocument {
   }
   createElement(tagName) { return new HudElement(this, tagName); }
   createElementNS(_ns, tagName) { return this.createElement(tagName); }
+  createTextNode(value) { return new HudText(String(value)); }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }
   querySelectorAll(selector) { return [...this.head.querySelectorAll(selector), ...this.body.querySelectorAll(selector)]; }

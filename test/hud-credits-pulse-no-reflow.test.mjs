@@ -53,14 +53,3 @@ test('portable A/B: modern pulse path records zero sync layout reads', () => {
   assert.equal(ab.layoutEliminated, true);
   assert.equal(ab.layoutReduction, 4000);
 });
-
-test('source: refreshCredits no longer forces chip.offsetWidth', async () => {
-  const src = await import('node:fs/promises').then((fs) =>
-    fs.readFile(new URL('../src/ui/hud.js', import.meta.url), 'utf8'));
-  const fnStart = src.indexOf('function refreshCredits()');
-  assert.ok(fnStart >= 0);
-  const slice = src.slice(fnStart, fnStart + 1600);
-  assert.match(slice, /restartCreditsChipPulse/);
-  const codeOnly = slice.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-  assert.doesNotMatch(codeOnly, /offsetWidth/);
-});

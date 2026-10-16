@@ -1,10 +1,7 @@
 // ORRERY ↔ the live flight HUD (design/frontend/ORRERY.md §7 Phase 1).
 //
-// hud.js keeps every system it already runs (targeting, the roster scan, prompts, the slot-claim
-// protocol); this adapter only READS the same sources the old instruments read and hands the ORRERY
-// Cluster one plain model. Nothing here owns game state. The old cluster chassis and power rail stay
-// mounted and hidden while ORRERY is on (their DOM contracts are pinned by tests); they are deleted in
-// a later commit once the live route has been checked.
+// hud.js owns targeting, the roster scan and prompts. This adapter reads the authoritative
+// instrument sources and hands the sole flight Cluster one plain model. Nothing here owns game state.
 //
 // Sources (each is the one the old HUD reads, so both always agree):
 //   hull/shield/armour  p.hull/hullMax · p.shield/shieldMax · p.armorHp/armorMax
@@ -178,8 +175,6 @@ const HOST_CSS = `
 @media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; } }
 @media (max-width:1400px) { #hud .orr-hud-cluster { left:8px; } }
 @media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.6; } }
-/* ORRERY owns the bottom-left and the ordnance: the old chassis and rail stay mounted, hidden. */
-#hud[data-hud="orrery"] .sf-leftstack, #hud[data-hud="orrery"] .sf-prail { visibility:hidden !important; pointer-events:none !important; }
 `;
 
 /**

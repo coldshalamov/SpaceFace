@@ -95,46 +95,32 @@ test('stable active Massline controls do not rewrite their accessible label at H
     };
     fx.step(12); // settle the initial 10 Hz numeric/HUD sample
 
-    // Retargeted 2026-08-23. This looked for `.sf-tether-controls`, a class that exists only in a
-    // stylesheet and is created by nothing — so the test failed on its first line and had been
-    // protecting nothing. The accessibility owner is now `.sf-ml-instrument`, labelled once at
-    // construction, and the live control words sit in the tether hint span. The invariant this test
-    // exists for is unchanged and is asserted below: an unchanged Massline must not rewrite an
-    // accessible surface at HUD cadence, because a screen reader re-announces on every write.
-    const controls = fx.document.querySelector('.sf-ml-instrument');
-    assert.ok(controls, 'the active Massline mounts its control-chip accessibility owner');
-    assert.equal(controls.getAttribute('aria-label'), 'Massline',
-      'the instrument keeps a stable accessible name');
-    const hint = fx.document.querySelector('[data-k="tetherkeys"]');
-    assert.ok(hint, 'the Massline binds surface must exist for a screen reader to read');
-    assert.match(hint.textContent || '', /REEL|PAY OUT|ORBIT|PUMP/,
-      'the settled hint still exposes the live Massline controls');
+    // The Line socket is the active Massline accessibility surface. Its tip is derived from
+    // the live rail state, so watch the label and tip writes after that state has settled.
+    const controls = fx.document.querySelector('[data-slot="3"]');
+    assert.ok(controls, 'the active Cluster exposes its Massline socket');
+    assert.equal(controls.getAttribute('tabindex'), '0', 'the socket stays keyboard reachable');
+    const labelBefore = controls.getAttribute('aria-label');
+    const tipBefore = controls.getAttribute('data-why');
+    assert.match(labelBefore, /Line.*Space.*F/, 'the accessible name carries the live Massline keys');
+    assert.match(tipBefore, /Line/, 'the socket still explains its verb');
 
     let ariaLabelWrites = 0;
+    let tipWrites = 0;
     const setAttribute = controls.setAttribute.bind(controls);
     controls.setAttribute = (name, value) => {
       if (name === 'aria-label') ariaLabelWrites++;
+      if (name === 'data-why') tipWrites++;
       return setAttribute(name, value);
     };
-    // Counting aria-label writes alone has no teeth here: the instrument is labelled once at
-    // construction and nothing writes it again, so that count is zero whatever the HUD does. The
-    // surface that can actually churn is the hint text, which is rebuilt from live tether state, so
-    // watch that too — otherwise this test goes green by construction rather than by behaviour.
-    const hintBefore = hint.textContent;
-    let hintWrites = 0;
-    let hintValue = hintBefore;
-    Object.defineProperty(hint, 'textContent', {
-      configurable: true,
-      get: () => hintValue,
-      set: (v) => { if (v !== hintValue) hintWrites++; hintValue = v; },
-    });
     fx.step(60);
 
     assert.equal(ariaLabelWrites, 0,
       'an unchanged active Massline must not rewrite the same aria-label ten times per second');
-    assert.equal(hintWrites, 0,
-      'an unchanged active Massline must not rewrite its binds hint at HUD cadence either');
-    assert.equal(hintValue, hintBefore, 'the hint still reads the same after sixty steps');
+    assert.equal(tipWrites, 0,
+      'an unchanged active Massline must not rewrite its explanation at HUD cadence either');
+    assert.equal(controls.getAttribute('aria-label'), labelBefore, 'the accessible name still reads the same');
+    assert.equal(controls.getAttribute('data-why'), tipBefore, 'the tip still reads the same after sixty steps');
   } finally {
     fx.restore();
   }

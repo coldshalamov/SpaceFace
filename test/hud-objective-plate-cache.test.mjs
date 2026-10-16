@@ -16,11 +16,6 @@ test('objective edge plates invalidate on resize, not a 500ms timer', () => {
   assert.doesNotMatch(hudSrc, /objectiveEdgeObstacles\(performance\.now\(\)\)/);
 });
 
-test('plate refresh still gates left column when ORRERY is mounted', () => {
-  assert.match(hudSrc, /objectiveEdgeBoxes\.left = orreryCluster \? null : plateBox\(leftStack\)/);
-  assert.match(hudSrc, /objectiveEdgeBoxes\.orrery = orreryCluster/);
-});
-
 /**
  * Portable A/B of the layout-tax gate: timer cadence vs resize-only.
  * Counts sync layout reads; does not claim Node wall time.

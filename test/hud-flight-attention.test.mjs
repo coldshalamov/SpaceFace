@@ -185,14 +185,6 @@ test('ship numbers appear only when hull or shields are actually low', () => {
   assert.equal(vitalNumericVisible(NaN), false);
 });
 
-test('Lamina owns the complete integrity readout and removes the reflow-driven hit flask', () => {
-  assert.match(HUD_SRC, /shipConditionMarkup/);
-  assert.match(HUD_SRC, /updateShipCondition\(schematic, p, frameDt, getMotionReduced\(\), getFlashReduced\(\)\)/);
-  assert.match(HUD_SRC, /sf-bars sf-bars--lamina/);
-  assert.doesNotMatch(HUD_SRC, /sf-sch-ship--empty|sf-sch-ship--fill|schematic\.offsetWidth|_schFlashTimer/);
-  assert.doesNotMatch(HUD_SRC, /SHIP CONDITION/);
-});
-
 test('one destination line already carries distance and ETA', () => {
   assert.equal(
     formatDestinationLine({
