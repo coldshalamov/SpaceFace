@@ -430,6 +430,8 @@ try {
   const mirrorResponse = await mirrorPut;
   assert.ok(mirrorResponse.ok(),
     'the undock autosave mirror must reach the shared player store: HTTP ' + mirrorResponse.status());
+  assert.equal(await mirrorResponse.finished(), null,
+    'the undock autosave acknowledgement must finish on the wire without a later body abort');
 
   // The boot store probe caps itself at 10s (sharedPlayerStore.js) so a stalled store can never
   // pin the main menu's Continue button; under heavy load the loopback GET can exceed that cap and
