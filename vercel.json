@@ -7,6 +7,7 @@
       "main": true,
       "codex/iphone14-mobile": true,
       "codex/oct15-maturity-checkpoint": true,
+      "codex/mobile-release-pinning": true,
       "devin/1791331347-gyre-snare": true,
       "devin/1791416174-gyre-snare-polish": true
     }
@@ -16,6 +17,12 @@
   "installCommand": "ELECTRON_SKIP_BINARY_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci",
   "buildCommand": "npm run build:bundle",
   "outputDirectory": "build/web",
+  "rewrites": [
+    {
+      "source": "/_releases/:deployment(spaceface-play-demo-[a-z0-9]+-robin-gattis-projects\\.vercel\\.app)/:path*",
+      "destination": "https://:deployment/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/workers/:path*",
