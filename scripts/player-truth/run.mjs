@@ -914,6 +914,21 @@ async function runOne(args, arena, extra = {}) {
     await drain({ all: true }).catch(() => {});
   }
   await finalizeImpulseObserver();
+  // #434 bar 2.5: record whether the opening effect warm ran or was skipped on this GPU (and why).
+  trace.meta.openingEffectWarm = await page.evaluate(() => {
+    const render = window.SF && window.SF.state && window.SF.state.render;
+    const warm = render && render.openingEffectWarm;
+    let khr = null;
+    try { khr = !!(render && render.renderer && render.renderer.extensions.get('KHR_parallel_shader_compile')); } catch (_) {}
+    const list = (value) => Array.isArray(value) ? value.slice(0, 40) : [];
+    return {
+      present: !!warm, reason: warm ? warm.reason ?? null : null, khr,
+      software: !!(render && render.gpu && (render.gpu.software || render.gpu.tier === 'software')),
+      tier: (render && render.gpu && render.gpu.tier) || null,
+      touched: list(warm && warm.touched), timedOut: list(warm && warm.timedOut), skipped: list(warm && warm.skipped),
+      failed: warm && Number.isFinite(warm.failed) ? warm.failed : 0, sweeps: warm && Number.isFinite(warm.sweeps) ? warm.sweeps : null,
+    };
+  }).catch(() => null);
   if (args.fight) {
     trace.pacing = summarizePacing(await page.evaluate(() => window.__ptPacing || []).catch(() => []));
     trace.pacing.director = await page.evaluate(() => {
