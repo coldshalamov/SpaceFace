@@ -1,3 +1,4 @@
+import { expandNativeAttestationTables } from '../save/nativeAttestationTables.js';
 import { consumeSaucerVelocity } from './physicsAuthority.js';
 import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
@@ -563,7 +564,8 @@ export class Sg02DynamicBodyOwner {
     if(options.orchardColdRestore!==true && !orchardReadyTransferEntryCurrent(this))return false;
     if(options.orchardRestoreInputs && !orchardRestoreInputsCurrent(options.orchardRestoreInputs,this))return false;
     const destinationBoundary = retainNativeDestination(this);
-    if (!payload || payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION
+    payload = expandNativeAttestationTables(payload);
+    if (!payload || payload.schema !== 3
       || payload.nativeGeometryRevision !== SG02_NATIVE_GEOMETRY_REVISION
       || !samePlanarGeometryParameters(payload.nativeGeometryParameters, planarGeometryParameters(this.world))
       || payload.backend !== 'rapier-dynamic' || !payload.bodies || !payload.attachments
