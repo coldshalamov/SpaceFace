@@ -31,6 +31,7 @@ import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSit
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
 import { judgePresentDirective, presentMissLine, presentOrderLine } from '../data/presentDirective.js';
+import { ensureVelocityPlane } from '../data/velocityPlane.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -288,6 +289,7 @@ export function tickMachineLayer(world, dt) {
     _machineSiteLocalPos.x = site.center.x;
     _machineSiteLocalPos.z = site.center.z;
     const g = world._toGlobal(_machineSiteLocalPos, sectorId, _machineSiteGlobalPos);
+    if (site.siteId === 'charon_star_marker') ensureVelocityPlane(world, site, g);
 
     // First observation: entering the site's radius is the 'seen' beat — protocol becomes
     // 'observed' and story.verge.revealed flips (galaxy map learns the layer exists).

@@ -37,7 +37,8 @@ function isKnownKind(kind) {
   return kind === FIELD_KINDS.WELL
     || kind === FIELD_KINDS.REPULSOR
     || kind === FIELD_KINDS.CONE
-    || kind === FIELD_KINDS.SHEET;
+    || kind === FIELD_KINDS.SHEET
+    || kind === FIELD_KINDS.PLANE;
 }
 
 // Explicit opt-outs affect only these two Well consequences, never force/heat/target filters.
@@ -53,7 +54,7 @@ export function normalizeField(spec = {}) {
   const kind = isKnownKind(spec.kind) ? spec.kind : FIELD_KINDS.WELL;
   const center = spec.center || {};
   const dir = spec.dir || {};
-  const needsDir = kind === FIELD_KINDS.CONE || kind === FIELD_KINDS.SHEET;
+  const needsDir = kind === FIELD_KINDS.CONE || kind === FIELD_KINDS.SHEET || kind === FIELD_KINDS.PLANE;
   let dx = finite(dir.x, needsDir ? 1 : 0);
   let dz = finite(dir.z, 0);
   const dlen = Math.hypot(dx, dz);
@@ -249,6 +250,22 @@ function viscosityAccel(field, vel, fall) {
 export function fieldRawAcceleration(field, x, z, out, vel = null) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
+  if (field && field.kind === FIELD_KINDS.PLANE) {
+    // Finite disk. Acceleration opposes only the speed into the face, measured
+    // against the face's own motion. Sideways speed is not in this vector.
+    if (!(field.radius > 0) || !(field.damping > 0) || !vel) return o;
+    const dx = x - field.center.x;
+    const dz = z - field.center.z;
+    if (Math.hypot(dx, dz) >= field.radius) return o;
+    const nx = field.dir.x;
+    const nz = field.dir.z;
+    const relX = finite(vel.x) - finite(field.frame && field.frame.x);
+    const relZ = finite(vel.z) - finite(field.frame && field.frame.z);
+    const intoFace = relX * nx + relZ * nz;
+    o.ax = -field.damping * intoFace * nx;
+    o.az = -field.damping * intoFace * nz;
+    return o;
+  }
   if (!field || field.strength <= 0 || !(field.radius > 0)) return o;
   const dx = x - field.center.x;
   const dz = z - field.center.z;
@@ -361,6 +378,7 @@ function segmentPointDistance(ax, az, bx, bz, px, pz) {
  */
 export function fieldCanApplyTo(field, profile) {
   if (!fieldAffectsBody(field, profile)) return false;
+  if (field && field.kind === FIELD_KINDS.PLANE) return field.damping > 0 && field.radius > 0;
   if (field.strength > 0) return true;
   const hitchId = profile && profile.hitchedTo;
   return field.lockStrength > 0

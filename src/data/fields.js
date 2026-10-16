@@ -18,6 +18,7 @@ export const FIELD_KINDS = Object.freeze({
   REPULSOR: 'repulsor',
   CONE: 'cone',
   SHEET: 'sheet',
+  PLANE: 'plane',
 });
 
 // PQ-147.00 — field volumes are machines, not orbs. A sphere is a forbidden construction.
@@ -29,6 +30,7 @@ const VOLUME_BY_KIND = Object.freeze({
   [FIELD_KINDS.REPULSOR]: FIELD_VOLUMES.RING,
   [FIELD_KINDS.CONE]: FIELD_VOLUMES.CONE,
   [FIELD_KINDS.SHEET]: FIELD_VOLUMES.SHEET,
+  [FIELD_KINDS.PLANE]: FIELD_VOLUMES.RING,
   seed: FIELD_VOLUMES.RING,
   skim: FIELD_VOLUMES.SHEET,
 });
