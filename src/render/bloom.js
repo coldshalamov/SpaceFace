@@ -1334,13 +1334,13 @@ function installUnreadyDrawGuard(renderer) {
           const current = rec && rec.currentProgram;
           if (current) {
             const variant = linkedInstancingVariant(rec, material, object);
-            if (variant !== current) {
-              // A cached sibling can outlive its GL handle. Three's isReady closes
-              // over that deleted handle even after destroy clears .program.
-              compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
-              if (compiled && typeof variant.isReady === 'function') {
-                try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
-              }
+            // The current wrapper can still be linking when the scoped scene scan
+            // misses a live bind, just as a cached sibling can. Validate either
+            // selected wrapper before first-use discovery can block this draw.
+            // Three caches ready=true; warm draws issue no new GL readiness query.
+            compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
+            if (compiled && typeof variant.isReady === 'function') {
+              try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
             }
           } else if (stamped) {
             compiled = false;

@@ -2,15 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 
-import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
+import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
 import { revealSubjectForCompile } from '../src/render/compilePresentSlice.js';
 import { render } from '../src/render/renderer.js';
 
 // Draw-time safety net: while a hide→render→restore presented pass is active, a
 // stamped authored/shared material with no currentProgram must not link inside the
 // frame — the draw is skipped and pipeline admission is queued for that mesh instead.
-// Explicit zero-instance pools skip setup in every pass. Other unstamped/compiled
-// materials and draws outside the readiness pass window retain their existing path.
+// Explicit zero-instance pools skip setup in every pass. Ready compiled and cold
+// unstamped materials, and draws outside the pass, retain their existing path.
 
 function rendererHarness() {
   const draws = [];
@@ -38,7 +38,7 @@ function rendererHarness() {
     renderer,
     draws,
     admissions,
-    compile(material, program = { name: 'program' }) { programsByMaterial.set(material, program); },
+    compile(material, program = { name: 'program', program: {} }) { programsByMaterial.set(material, program); },
   };
 }
 
@@ -138,6 +138,111 @@ test('guard draws a cold stamped material once the presented pass ends', () => {
 
   assert.equal(draws.length, 2);
   assert.equal(admissions.length, 0);
+});
+
+test('current pending wrapper missed by the scoped prescan queues once and recovers when ready', async () => {
+  const { renderer, draws, admissions, compile } = rendererHarness();
+  let finishAdmission;
+  const admission = new Promise((resolve) => { finishAdmission = resolve; });
+  renderer.userData.spacefaceQueuePipelineAdmission = (subject) => {
+    admissions.push(subject);
+    return admission;
+  };
+  const warm = { program: {}, isReady: () => true };
+  let pendingReady = false;
+  const pending = { program: {}, isReady: () => pendingReady };
+  const material = new THREE.MeshBasicMaterial();
+  material.userData.spacefaceProgramCanon = 1;
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene();
+  scene.add(mesh);
+  compile(material, warm);
+  renderer.info.programs.push(warm);
+  const guard = createUnreadyDrawableGuard(renderer);
+
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn');
+  } finally { guard.restore(); }
+
+  // A live material rebind creates a new wrapper without mounting another root.
+  // The pending-program prepass scans only its scoped cohort on this frame.
+  compile(material, pending);
+  renderer.info.programs.push(pending);
+  guard.hide(scene);
+  try {
+    assert.equal(mesh.visible, true, 'this existing mesh was not hidden by the scoped prescan');
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined);
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined);
+    assert.deepEqual(admissions, [mesh], 'draw-time refusal deduplicates the pending admission');
+    assert.deepEqual(draws, [mesh], 'the pending current wrapper never reaches first-use discovery');
+    pendingReady = true;
+    finishAdmission({ queued: true });
+    await admission;
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn');
+    assert.deepEqual(draws, [mesh, mesh], 'the same selected wrapper draws as soon as it becomes ready');
+  } finally {
+    guard.restore();
+    finishAdmission({ queued: true });
+    mesh.geometry.dispose(); material.dispose();
+  }
+});
+
+test('dead and foreign-context current wrappers queue recovery without querying stale handles', () => {
+  for (const staleKind of ['destroyed', 'foreign-context']) {
+    const { renderer, draws, admissions, compile } = rendererHarness();
+    const gl = {
+      isContextLost: () => false,
+      isProgram() { assert.fail('liveness must not issue a native isProgram query'); },
+    };
+    renderer.getContext = () => gl;
+    let readinessReads = 0;
+    const stale = {
+      program: staleKind === 'destroyed' ? undefined : {},
+      isReady() { readinessReads++; assert.fail('the stale current wrapper must never be queried'); },
+    };
+    if (staleKind === 'foreign-context') {
+      assert.equal(programWrapperDead({ isContextLost: () => false }, stale), false,
+        'the wrapper first belongs to its original GL context');
+    }
+    const material = canonStampedMaterial();
+    compile(material, stale);
+    const mesh = { isMesh: true, material };
+    const scene = { traverse() {} };
+    const guard = createUnreadyDrawableGuard(renderer);
+    guard.hide(scene);
+    try {
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), undefined);
+      assert.equal(readinessReads, 0);
+      assert.deepEqual(admissions, [mesh]);
+      assert.equal(draws.length, 0);
+      compile(material);
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn',
+        'a fresh live wrapper can recover the draw');
+    } finally { guard.restore(); }
+  }
+});
+
+test('ready current wrappers keep warm draws free of native readiness and liveness queries', () => {
+  const { renderer, draws, admissions, compile } = rendererHarness();
+  renderer.getContext = () => ({
+    isContextLost: () => false,
+    isProgram() { assert.fail('warm draws must not issue a native liveness query'); },
+    getProgramParameter() { assert.fail('the guard must not add a native readiness query'); },
+  });
+  const material = canonStampedMaterial();
+  compile(material, { program: {}, isReady: () => true });
+  const mesh = { isMesh: true, material };
+  const scene = { traverse() {} };
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    for (let i = 0; i < 8; i++) {
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn');
+    }
+    assert.equal(draws.length, 8);
+    assert.equal(admissions.length, 0);
+  } finally { guard.restore(); }
 });
 
 test('unarmed readiness cleanup does not retain hidden drawable roots', () => {
