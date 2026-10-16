@@ -1310,3 +1310,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** DOM at 1024×440 — last rung bottom 232, foot top 402 (gap ~170); at 844×390 — SPACEFACE bottom 176, foot top 352 (gap ~176). Bench `credits` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080; phone 390×844 and phone-land 844×390 stay ~pixel-identical (0.1–0.4% churn). Walk at 1024×440: 14 controls. Shots: `/workspace/spaceface-scratch/ui-shots/polish50/{before,after}/`, `compare-1024x440{,-crop}.png`, `compare-844x390.png`, `compare-801x390.png`, `compare-900x420.png` (not committed).
 
 **Leftovers (not this pass):** Settings Automation conduct-strip labels vs short beams at 960; Achievements / Quit / pause / statistics short-desktop or phone clipping; STORY · THE EIGHT BEATS wrap @801×390 and ARCHIVE image under reader fade @844×390 (Codex — owned by open #412). Shipworks / Research dial / Codex short-desktop owned by open #410–#412 — do not push those branches.
+## Statistics on a very short desktop: TRADE clears ‹ BACK; LAW on first paint (ui-polish-51)
+
+**Before (master 72df18627f):** at ≤460 tall the existing ≤820 short rule still left TRADE's lower rows hard-clipped mid-glyph against ‹ BACK. At 1024×440 "Biggest profit" was sliced under the foot; at 844×390 only "Trades" showed and LAW never reached first paint.
+
+**After (`src/ui/orrery/statisticsLayouts.js` only, CSS):**
+- New `@media (max-height:460px)`: tighter title / rows / caps, compact Back, stage foot fade (`mask-image`) so a partial row dissolves instead of slicing letters.
+- New `@media (max-height:400px)` (e.g. 844×390): subtitle sleeps, rows ~18px, so Flight → Law (Status / Heat) fit above ‹ BACK on first paint.
+- Selectors and IDs unchanged. 960×540 / 1280×720 / 1920×1080 are pixel-identical to master (rules need ≤460 / ≤400 tall).
+
+**Checked:** bench `statistics` 0 findings at 844×390, 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 844 8.1%, 1024 6.4%, 960/1280/1920 0%. Shots: `/workspace/spaceface-scratch/ui-shots/polish51/{before,after}/`, `compare-{844x390,1024x440,960x540,1280x720,1920x1080}.png` (not committed).
+
+**Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440; Automation conduct-strip labels vs short beams @960; Achievements / Quit short-desktop; Shipworks lower callouts below the fold @844×390. Open #411–#413 own constellation / archive / settings — do not push those branches.
+
