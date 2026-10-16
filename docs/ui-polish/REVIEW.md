@@ -1495,9 +1495,25 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Checked:** bench `settings` findings 6→0 at 844×390, 801×390 and 900×420; 4→0 at 1024×440; stay 0 at 960×540, 1280×720, 1920×1080 and 390×844. `--phone` 390×844 / 844×390 clean. Focused tests pass: `pro-15-settings-row-ownership`, `settings-controller-label-truth`, `fb-settings-a11y`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish62/{before,after}/settings/`, `compare-settings-*.png`.
 
-**Leftovers (not this pass):** My Ship DOCK TO EXTEND / SAVE FIT @901–1240 (open #428 `station.css`); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (under-beam labels look intentional; default + conducted walk clean this pass).
+**Leftovers (not this pass):** My Ship DOCK TO EXTEND / SAVE FIT @901–1240 (addressed in ui-polish-64); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (under-beam labels look intentional; default + conducted walk clean this pass).
 
 **Code Work review (2026-10-16):** I clicked through every category with real mouse clicks at 844×390, 801×390, 900×420, 901×440, 1024×440, 1100×460, 1101×460, 645×390, 651×390, 900×460/461, 1100×461, 960×540, 1280×720, 1920×1080, 390×844 and on phones. Every control in every pane was scrolled into view and hit-tested, sliders were clicked on the track (all moved), on/off toggles were clicked both ways (all flipped), and the pane was wheel-scrolled to the end. At ≤900×≤460 the PR takes the pane from 34px to 257–322px, and nothing sits under MORE or ‹ BACK any more. Review fixes:
 - The new ESC overrides (10px) are gone, and the base ESC chip and the MORE chip go from 11 to 12px. The 901–1100 ladder numerals keep the base 12px instead of the new 10.5px override. With these, the chrome text is all 12px at every size checked.
 - The ≤900×≤460 block loses its 651px width floor. At 641–650 wide (and at 600×400 and 520×380) a short desktop window still had the 34px pane with MORE over BACK. Those sizes are now clean (bench 6 → 0). Phones are still excluded by `data-sf-mobile`.
 - Pre-existing, not this PR (same on master): 901–1100 pane labels and choice words at 11.5px; the preview's micro labels (10.8px "Helios control") at every desktop size; at 901 wide (901×440) the slider scale collapses so a click on the track does not move most sliders (keyboard and wider windows are fine).
+
+## My Ship DOCK TO EXTEND / SAVE FIT on the 901–1240 split (2026-10-16, ui-polish-64)
+
+**Before (master 12f87dbdff = #429):** in the two-column split (901–1240 wide) the systems rail's content ran ~24–40 px past its plate at ~700–720 tall, so **DOCK TO EXTEND** sat half under the scroll fade; at 901–1100 the heroes stayed two-up, so **SAVE FIT** sat at the stats plate's fold (1100×720 half shown; 1024×600 both off-frame). Geometry benches reported 0 findings — visual review required.
+
+**After (`styles/station.css` only, additions after the ≤1100 two-up heroes rule, desktop via `html:not([data-sf-mobile="1"])`):**
+- Split rail: fleet carousel sits closer, systems plate printed margin 16 px, system rows tighten (`padding-block: 2px`).
+- At 901–1100 (and short 801–1100 × ≤460): heroes run **three-up** (must follow the two-up rule in cascade), hero numerals 22 px, readings strip `column-gap: 20px`.
+- 461–720 tall × 901–1240: frame pad 24 / 32 px (between the 48 px desktop and 14 / 20 px short).
+- ≥650 tall × 901–1240: stage floor eases to 260 px and stats `max-height: 54%` so SAVE FIT clears without shrinking the hull on mid/short windows.
+- 580–640 tall × 901–1240: stage floor kept; plate chrome compresses (gauges pad, band margins, hide band meta + circuit instruction) and the rail tightens further so 1024×600 shows both verbs on first paint.
+- Selectors and IDs unchanged. Phones untouched.
+
+**Checked:** bench `ship` findings stay **0** at 901×700, 1024×600, 1024×768, 1100×720, 1101×720, 1120×700, 1200×720, 1240×700, 1100×440, 844×390, 960×540, 1280×720, 1920×1080 and 390×844 (visual: DOCK TO EXTEND + SAVE FIT clearly on-frame at 901–1240 × ≥600; short ≤460 still scrolls the plate/rail by design). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish64/{before,after}/`, `compare-ship-*.png`.
+
+**Leftovers (not this pass):** on very short split windows (≤460 tall, e.g. 1100×440 / 960×540) SAVE FIT / DOCK TO EXTEND still need a scroll — same class of leftover as Shipworks @844; Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional); station tabs / Crucible draft filter chips @844×390 (still open from #432 leftovers).
