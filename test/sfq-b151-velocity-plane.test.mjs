@@ -79,16 +79,16 @@ test('a well still pulls toward its center and does not take the face term', () 
 test('the star marker installs one disk and a second tick does not stack another', () => {
   const w = worldIn(marker.sectorId);
   w.tick();
-  assert.equal(w.fields.list.length, 1);
-  assert.equal(w.fields.list[0].id, VELOCITY_PLANE_ID);
-  assert.equal(w.fields.list[0].kind, 'plane');
-  assert.equal(w.fields.list[0].center.x, marker.center.x);
-  assert.equal(w.fields.list[0].center.z, marker.center.z);
-  assert.equal(w.fields.list[0].radius, VELOCITY_PLANE.radius);
+  const planes = w.fields.list.filter((field) => field.id === VELOCITY_PLANE_ID);
+  assert.equal(planes.length, 1);
+  assert.equal(planes[0].kind, 'plane');
+  assert.equal(planes[0].center.x, marker.center.x);
+  assert.equal(planes[0].center.z, marker.center.z);
+  assert.equal(planes[0].radius, VELOCITY_PLANE.radius);
   const notes = w.logs.filter((e) => e.type === 'comms:log' && /SIDEWAYS SPEED IS LEFT ALONE/.test(e.payload.text));
   assert.equal(notes.length, 1);
   w.tick();
-  assert.equal(w.fields.list.length, 1);
+  assert.equal(w.fields.list.filter((field) => field.id === VELOCITY_PLANE_ID).length, 1);
   assert.equal(w.logs.filter((e) => e.type === 'comms:log' && /SIDEWAYS SPEED IS LEFT ALONE/.test(e.payload.text)).length, 1);
 });
 

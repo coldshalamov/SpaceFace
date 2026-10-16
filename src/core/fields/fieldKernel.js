@@ -38,7 +38,8 @@ function isKnownKind(kind) {
     || kind === FIELD_KINDS.REPULSOR
     || kind === FIELD_KINDS.CONE
     || kind === FIELD_KINDS.SHEET
-    || kind === FIELD_KINDS.PLANE;
+    || kind === FIELD_KINDS.PLANE
+    || kind === FIELD_KINDS.CURL;
 }
 
 // Explicit opt-outs affect only these two Well consequences, never force/heat/target filters.
@@ -250,6 +251,19 @@ function viscosityAccel(field, vel, fall) {
 export function fieldRawAcceleration(field, x, z, out, vel = null) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
+  if (field && field.kind === FIELD_KINDS.CURL) {
+    // Finite disk. Acceleration is sideways around the center. The inward
+    // component is zero, and nothing is written onto the body's velocity.
+    if (!(field.radius > 0) || !(field.strength > 0)) return o;
+    const dx = x - field.center.x;
+    const dz = z - field.center.z;
+    const r = Math.hypot(dx, dz);
+    if (r >= field.radius || r < 1e-4) return o;
+    const a = field.strength * (1 - r / field.radius);
+    o.ax = (-dz / r) * a;
+    o.az = (dx / r) * a;
+    return o;
+  }
   if (field && field.kind === FIELD_KINDS.PLANE) {
     // Finite disk. Acceleration opposes only the speed into the face, measured
     // against the face's own motion. Sideways speed is not in this vector.
