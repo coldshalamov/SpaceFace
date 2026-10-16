@@ -71,3 +71,31 @@ test('the subset warm drives no RCS, retro jets or per-NPC ribbons and never dis
   const release = body.slice(body.indexOf('  releaseOpeningEffectSubset() {'));
   assert.doesNotMatch(release, /dispose\(/);
 });
+
+test('late first-link exemplars: stand-in + marker share the live materials; phase blink keeps both programs alive', async () => {
+  const { createOpeningStandInWarmSubject } = await import('../src/render/visualOverrides.js');
+  const { createPhaseBlinkWarmSubject } = await import('../src/render/phaseBlinkPresentation.js');
+  const standIn = createOpeningStandInWarmSubject();
+  assert.equal(standIn.name, 'SF_OpeningStandInWarm');
+  assert.equal(standIn.children.length, 2);
+  for (const mesh of standIn.children) assert.ok(mesh.material.isMeshStandardMaterial);
+  assert.equal(standIn.children[0].material.userData.authoredResolvingMarker, true);
+  // The stand-in material is the cached shared one: a second exemplar reuses it.
+  assert.equal(createOpeningStandInWarmSubject().children[0].material, standIn.children[0].material);
+  const blink = createPhaseBlinkWarmSubject();
+  assert.equal(blink.children.length, 2);
+  assert.notEqual(blink.children[0].material.fragmentShader, blink.children[1].material.fragmentShader);
+  assert.ok(blink.children[0].material.uniforms.uZip);
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /\['exemplar:standIn', createOpeningStandInWarmSubject\]/);
+  assert.match(renderer, /this\.bloom\.prepareResources\(\(\) => Promise\.resolve\(\)\)/);
+});
+
+test('the overflow-jets touch waits out the opening compile burst', async () => {
+  const mod = await import('../src/render/openingEffectWarm.js');
+  assert.ok(mod.OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS >= 4000);
+  assert.ok(mod.OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS > mod.OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS);
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /key === 'root:sf-overflow-jets' && !overflowBurstDrained\(\)/);
+  assert.match(renderer, /seen\.delete\(key\);/);
+});

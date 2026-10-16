@@ -24,6 +24,12 @@ export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_Structu
 
 // Plume systems the loading warm drives (only these get real buffers); every other fleet family,
 // RCS family, the retro jets and per-NPC ribbons stay lazy, as on master.
+// The overflow-jets touch waits out the opening compile burst (fx3: 4.8-8.3 s when touched in the
+// first ~1 s of loading, 75-317 ms from ~6 s on): at least MIN after the warm starts, then as soon
+// as no pipeline admission is pending, and unconditionally at MAX.
+export const OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS = 4000;
+export const OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS = 8000;
+
 export const OPENING_EFFECT_PLUME_DRIVE_RE = /^plume:family_industrial_main_plume:core$/;
 
 function materialsOf(object) {

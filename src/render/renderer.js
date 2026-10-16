@@ -57,7 +57,7 @@ import {
   resolveIblSource,
 } from './foundryEnvironment.js';
 import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
+import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -293,7 +293,7 @@ import { globalProjectileMotion } from './projectileMotionPresentation.js';
 import { globalOrdnanceMotion } from './ordnanceMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
-import { createPhaseBlinkPresentation } from './phaseBlinkPresentation.js';
+import { createPhaseBlinkPresentation, createPhaseBlinkWarmSubject } from './phaseBlinkPresentation.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
@@ -374,7 +374,12 @@ import {
   collectUncompiledSceneDrawables,
   collectUncompiledSceneDrawablesSteps,
 } from './latePipelineAdmission.js';
-import { collectOpeningEffectSubjects, OPENING_EFFECT_PLUME_DRIVE_RE } from './openingEffectWarm.js';
+import {
+  collectOpeningEffectSubjects,
+  OPENING_EFFECT_PLUME_DRIVE_RE,
+  OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS,
+  OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS,
+} from './openingEffectWarm.js';
 import {
   armAdmissionShadows,
   casterDepthMarkAnyCurrent,
@@ -24071,6 +24076,21 @@ export const render = {
     };
     const loading = () => state.mode === 'loading';
     const startedAt = Date.now();
+    let extrasDone = false;
+    // A link status read is a sync point. Landing inside the opening compile burst, the
+    // overflow-jets touch waited 4.8-8.3 s on a frozen main thread (fx3); once the burst drained it
+    // took 75-317 ms. Late touches wait at least MIN, then for an empty admission queue, at most MAX.
+    const overflowBurstDrained = () => {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS) return false;
+      if (elapsed >= OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS) return true;
+      let pending = 0;
+      try {
+        pending = typeof state.render.pendingPipelineAdmissions === 'function'
+          ? Number(state.render.pendingPipelineAdmissions()) || 0 : 0;
+      } catch (_) { pending = 0; }
+      return pending === 0;
+    };
     const stop = (reason) => {
       this._openingEffectWarmActive = false;
       publish(reason);
@@ -24097,9 +24117,51 @@ export const render = {
           laneWarn(this, 'openingEffectWarm', '[render] opening effect subset warmup failed', error);
         }
       }
+      if (!extrasDone && receipt.subset && overflowBurstDrained() && typeof touch === 'function' && this.scene) {
+        extrasDone = true;
+        // Late first links outside the effect roots (fx3), behind the same burst gate: the bloom
+        // threshold/downsample pass when the opening post prepare was skipped, the ship_atlas
+        // stand-in + resolving marker of the first mid-flight ship admission, and both phase-blink
+        // programs (uKind/uZip). Exemplars only: touched once, then detached; their materials stay
+        // alive so the programs stay linked.
+        const extraStarted = clock();
+        try {
+          if (this.bloom && typeof this.bloom.prepareResources === 'function') {
+            await this.bloom.prepareResources(() => Promise.resolve());
+          }
+        } catch (error) {
+          laneWarn(this, 'openingEffectWarm', '[render] opening bloom prepare failed', error);
+        }
+        receipt.touchMs['post:bloom'] = Math.round(clock() - extraStarted);
+        for (const [key, make] of [['exemplar:standIn', createOpeningStandInWarmSubject],
+          ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
+          if (!owned() || !loading()) break;
+          let subject = null;
+          const touchStarted = clock();
+          try {
+            subject = make();
+            this.scene.add(subject);
+            await touch(subject);
+            receipt.touched.push(key);
+          } catch (error) {
+            receipt.failed += 1;
+            laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
+          } finally {
+            if (subject) {
+              if (subject.parent) subject.parent.remove(subject);
+              try { subject.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
+            }
+          }
+          receipt.touchMs[key] = Math.round(clock() - touchStarted);
+        }
+      }
       if (typeof touch === 'function' && this.scene) {
         for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
           if (!owned() || !loading()) break;
+          if (key === 'root:sf-overflow-jets' && !overflowBurstDrained()) {
+            seen.delete(key);
+            continue;
+          }
           const touchStarted = clock();
           try {
             await touch(subject);
