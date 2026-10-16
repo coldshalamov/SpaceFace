@@ -242,6 +242,46 @@ ${C} .gm-ins-plate .gm-ins-target-name { margin:0; font-size:clamp(18px, 1.15vw,
 ${C} .gm-ins-plate .gm-ins-kind { white-space:nowrap; }
 html.sf-reduce-motion ${C} .gm-ins-plate__art { transition:none; transform:none; }
 
+/* Pilot Situational Briefing (Overview default tab) */
+${C} .gm-ov-wp-box { border-left:2px solid var(--dp-hand, #f2b950); background:linear-gradient(90deg, rgb(242 185 80 / .1), rgb(242 185 80 / .01) 88%); padding:6px 8px 6px 10px; margin:4px 0 8px; }
+${C} .gm-ov-wp-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:2px; }
+${C} .gm-ov-wp-kind { ${LABEL} font-size:12px !important; letter-spacing:.12em !important; color:var(--dp-hand-hot, #ffd98c) !important; }
+${C} .gm-ov-wp-dist { font-family:var(--dp-face-mono, "JetBrains Mono", monospace); font-size:12px; font-weight:600; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; }
+${C} .gm-ov-wp-name { font-size:14px; font-weight:700; color:rgb(252 249 240); line-height:1.25; margin-bottom:2px; }
+${C} .gm-ov-wp-reason { font-size:12px; color:rgb(${BONE} / .78); line-height:1.35; }
+${C} .gm-ov-contract { padding:6px 0 4px; margin-top:4px; border-top:1px solid rgb(${BONE} / .16); }
+${C} .gm-ov-contract-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:2px; }
+${C} .gm-ov-contract-tag { ${LABEL} font-size:12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .72) !important; }
+${C} .gm-ov-contract-prog { font-family:var(--dp-face-mono, "JetBrains Mono", monospace); font-size:12px; font-weight:600; color:var(--dp-phos, #dfeeff); }
+${C} .gm-ov-contract-title { font-size:14px; font-weight:700; color:rgb(252 249 240); line-height:1.25; margin-bottom:4px; }
+${C} .gm-ov-contract-bar { height:3px; background:rgb(${BONE} / .16); margin:4px 0 6px; overflow:hidden; }
+${C} .gm-ov-contract-bar > span { display:block; height:100%; background:linear-gradient(90deg, var(--dp-hand, #f2b950), var(--dp-hand-hot, #ffd98c)); }
+${C} .gm-ov-contract-brief { font-size:12px; color:rgb(${BONE} / .84); line-height:1.35; margin-bottom:3px; }
+${C} .gm-ov-contract-loc { font-size:12px; color:var(--dp-phos, #dfeeff); line-height:1.3; }
+${C} .gm-ov-mission-switch { margin-top:6px; padding-top:5px; border-top:1px dashed rgb(${BONE} / .14); }
+${C} .gm-ov-mission-switch-k { ${LABEL} display:block; font-size:12px !important; letter-spacing:.1em !important; color:rgb(${BONE} / .64) !important; margin-bottom:4px; }
+${C} .gm-ov-mission-pills { display:flex; flex-direction:column; gap:3px; }
+${C} .gm-ov-mission-pill { ${PLAIN} display:flex !important; align-items:center; gap:6px; width:100%; min-height:24px !important; padding:2px 6px 2px 8px !important; font-size:12px !important; color:rgb(${BONE} / .78) !important; text-align:left; cursor:pointer; }
+${C} .gm-ov-mission-pill.is-active { color:rgb(252 249 240) !important; background:linear-gradient(90deg, rgb(242 185 80 / .16), transparent) !important; border-left:2px solid var(--dp-hand, #f2b950) !important; }
+${C} .gm-ov-mission-pill:is(:hover, :focus-visible) { color:rgb(252 249 240) !important; outline:none !important; ${SEG()} }
+${C} .gm-ov-mission-pill-g { color:var(--dp-hand-hot, #ffd98c); font-size:12px; flex:0 0 12px; }
+${C} .gm-ov-mission-pill-t { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${C} .gm-ov-markers { display:flex; flex-direction:column; gap:2px; margin:4px 0 8px; }
+${C} .gm-ov-marker-row { ${PLAIN} display:grid !important; grid-template-columns:16px minmax(0, 1fr) auto auto; align-items:center; gap:6px; width:100%; min-height:26px !important; padding:3px 4px 3px 6px !important; font-size:12px !important; color:rgb(${BONE} / .88) !important; text-align:left; cursor:pointer; border-bottom:1px solid rgb(${BONE} / .08) !important; }
+${C} .gm-ov-marker-row:is(:hover, :focus-visible) { color:rgb(252 249 240) !important; outline:none !important; background:linear-gradient(90deg, rgb(${BONE} / .1), transparent) !important; }
+${C} .gm-ov-marker-row[data-marker-tone="goal"] { background:linear-gradient(90deg, rgb(242 185 80 / .14), transparent) !important; }
+${C} .gm-ov-marker-row[data-marker-tone="goal"] .gm-ov-marker-g { color:var(--dp-hand-hot, #ffd98c); }
+${C} .gm-ov-marker-row[data-marker-tone="hostile"] :is(.gm-ov-marker-g, .gm-ov-marker-n) { color:var(--dp-danger, #ff5038); }
+${C} .gm-ov-marker-g { font-size:13px; text-align:center; color:rgb(248 244 234); }
+${C} .gm-ov-marker-n { font-weight:600; color:rgb(252 249 240); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${C} .gm-ov-marker-k { font-size:12px; color:rgb(${BONE} / .64); white-space:nowrap; }
+${C} .gm-ov-marker-d { font-family:var(--dp-face-mono, "JetBrains Mono", monospace); font-size:12px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; white-space:nowrap; }
+${C} .gm-ov-key-grid { display:flex; flex-wrap:wrap; gap:4px 10px; padding-top:4px; border-top:1px solid rgb(${BONE} / .14); }
+${C} .gm-ov-key-item { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:rgb(${BONE} / .72); white-space:nowrap; }
+${C} .gm-ov-key-g { color:rgb(252 249 240); font-weight:700; }
+${C} .gm-ov-key-item[data-key-tone="goal"] .gm-ov-key-g { color:var(--dp-hand-hot, #ffd98c); }
+${C} .gm-ov-key-item[data-key-tone="hostile"] .gm-ov-key-g { color:var(--dp-danger, #ff5038); }
+
 /* ============================ THE FOOT: ONE TAPE ==================================== */
 ${C} .gm-navfoot { position:relative; padding-top:24px !important; border:0 !important;
   background:linear-gradient(180deg, transparent 6px, rgb(${BONE} / .56) 6px, rgb(${BONE} / .56) 7.5px, transparent 7.5px) 0 0 / 100% 100% no-repeat,
