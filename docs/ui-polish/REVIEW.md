@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | **`chart`** / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | **DONE** (desktop shell + phone sheet, ui-polish-34) | See § Chart on a phone below |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15); Ledger purse @800 DONE (ui-polish-45); one-line callouts @801–1100 × ≤460 (ui-polish-46) |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15); Ledger purse @800 DONE (ui-polish-45); one-line callouts @801–1100 × ≤460 (ui-polish-46); chooser head CARGO · S / COMPATIBLE (ui-polish-47) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -1265,8 +1265,32 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Checked:** 1024×440, 900×420 and 1100×460 (whole column on-frame at first view), and 844×390 (better, but Mining, Drive and Cargo are still below the fold there; the berth scrolls by design). 960×540, 1280×720 and 1920×1080 are pixel-identical to master (the rule needs ≤460 tall). 390×844 is out of the band (≥801 wide only), and the bench reads it clean. Bench findings at 1024×440 stay 6 → 6 and at 844×390 14 → 14 (the head's next-step and mechanic notes, plus the below-fold remainder). Shots: `/workspace/spaceface-scratch/ui-shots/polish46/{before,after}/`, `compare-1024x440.png`, `compare-1024x440-crop.png`, `compare-900x420.png`, `compare-1100x460.png`, `compare-844x390.png`.
 
-**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~Station Ledger right column at 800×600~~ (fixed ui-polish-45); at 844×390 the lower Shipworks callouts start below the fold; with a slot chosen at 1024×440 the chooser's CARGO · S / COMPATIBLE MODULES 1 heading stacks tight.
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~Station Ledger right column at 800×600~~ (fixed ui-polish-45); at 844×390 the lower Shipworks callouts start below the fold; ~~with a slot chosen at 1024×440 the chooser's CARGO · S / COMPATIBLE MODULES 1 heading stacks tight~~ (fixed ui-polish-47).
 
+## Shipworks chooser head on a short desktop: CARGO · S / COMPATIBLE MODULES (ui-polish-47)
+
+**Before (master be835243a1):** with a hardpoint chosen at 801–1100 × ≤460 the 190px rail showed Back, then "CARGO · S", then "COMPATIBLE MODULES 1" wrapping under a 10.8px line-height at .2em tracking — three tight lines (~75px head) before the module list.
+
+**After (`src/ui/orrery/shipworksLayouts.js`, CSS only, the existing `801–1100 × ≤460` hover block):** Back keeps its row; the kicker and title share one wrap band as "CARGO · S /" over "COMPATIBLE MODULES · N" (nowrap each, .1em / .03em tracking, 1.3 line-height; review fix: at .06em a two-digit count — Utility 45, Weapon 19 — ran 6px past the 190px rail and clipped, so the title tightens to .03em and a longer count drops under the title instead of clipping). Head height 75→59px; list starts earlier. Selectors and IDs are unchanged.
+
+**Checked:** Cargo chooser at 1024×440, 900×420, 1100×460 and 844×390. 960×540 / 1280×720 / 1920×1080 idle Shipworks are effectively pixel-identical to master (rule needs ≤460 tall; >8Δ pixels = 0%). 390×844 is out of the band. Shots: `/workspace/spaceface-scratch/ui-shots/polish47/{before,after}/`, `compare-1024x440.png`, `compare-1024x440-crop.png`.
+
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; at 844×390 the lower Shipworks callouts (Mining / Drive / Cargo) still start below the fold (berth scrolls by design).
+
+## Research dial on short viewports (ui-polish-48)
+
+**Before (master c5f81484da):** at ≤500px tall the Research grid kept its full-width foot row (`‹ Back` · ESC · zoom, ≥44px plus a row gap), and the dial's stage stopped above it. The dial is height-bound there (its radius is half the stage height less the rim-word margin), so the stage lost ~50px and the dial shrank to ~245px across at 1024×440 and ~180px at 844×390. The stars piled into each other and the label solver dropped most of the names, while the band under the dial held only Back on the left. At 1101–1400 wide and ≤640 tall the reading scrolls, and its gutter cut "RESEARCH POINTS" to "RESEARCH POI" (1280×480).
+
+**After (`src/ui/orrery/constellationLayouts.js` only, CSS):**
+- New `min-width:761px and max-height:500px` block. The foot moves under the reading (`". foot"` in the grid areas, column 2, row 3) and the stage spans all three rows of column 1, so the dial gets the full height. The foot wraps if `› Recentre` doesn't fit. The legend sleeps here, as it already does at ≤1100 wide. The reading column keeps its height, because the foot row is unchanged.
+- In the existing `761+ × ≤640` block, cost words (`.con-cost dt`) can wrap, so "Research / points" lifts like it does at ≤1100 wide.
+- Approximate dial size: 1024×440 ~245→~300px across, 960×480 ~285→~315px, 1280×480 ~310→~360px, 844×390 ~180→~210px. More stars stand apart and more names print (Attack Topology, Strike Craft, Heat Lure, Long-Range Survey, Kinetic Drivers…). Selectors, IDs and `constellation.js` are unchanged.
+
+**Checked:** bench `tech-tree` and `tech-tree-progress` at 1024×440, 960×480, 1280×480, 844×390 (plus walk clicks at 844×390 and 1024×440, where Back · 1.0× · › RECENTRE fits on one line under the reading), and 390×844, 960×540, 1280×720, 1920×1080. No new rule matches the regression sizes. At 960×540 the dt rule matches but the ≤1100 rule already wraps, so the only pixel churn is the name type-on and star twinkle animations (<0.3% of pixels). Bench findings for tech-tree-progress: 1024×440 4→0 (the hour-verb line no longer sits over the COMBAT 4/17 rim word), 960×480 0→0, 1280×480 4→4 (the pre-existing hour-verb box vs the faint Deflector Theory label; the text doesn't touch), 844×390 6→6 (adjacent star hit boxes, 17px). Shots: `/workspace/spaceface-scratch/ui-shots/polish48/{before,after,after-walk}/`, `compare-1024x440.png`, `compare-960x480.png`, `compare-1280x480.png`, `compare-844x390.png`, `compare-1280x480-reading-crop.png`, plus the regression compares (not committed).
+
+**Leftovers (not this pass):** ~~Research dial crowded under ~500px of stage~~ (short frames fixed in ui-polish-48). It is still dense where the dial's column is narrow, because the dial is width-bound there (side labels need ~150px each side): 800×600, and 844×390 in the Combat sector. Fixing that needs instrument geometry. Also, at 844×390 the lower Shipworks callouts start below the fold.
+
+**Review fix (Code Work):** at 1401+ wide × ≤500 tall the foot (now in the reading's column) wrapped on "DRAG TO PAN · WHEEL TO ZOOM" and took a row from the reading (1440×500 lost Pulse Laser S under UNLOCKS). The short-frame block now sleeps `.con-view__word` as ≤1400 already does, so the foot keeps one line and the reading matches master height at 1440×500, 1600×480 and 1920×500. Note: in this band (≥1101 wide × ≤500 tall) the legend and the pan/zoom hint no longer show — the same trade the ≤1100/≤1400 rules already make.
 
 ## Codex on a very short desktop window: the reading gets the height (ui-polish-49)
 
@@ -1275,3 +1299,4 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 - **Checked:** bench `codex`, `codex-record` at 844×390, 801×390, 900×420, 1024×440 are 0 findings. `--walk` at 844×390 exercised all nine sections, NEXT and CLOSE. 960×540, 1280×720 and 1920×1080 are outside the band and match master up to plate needle/wedge animation noise. 390×844 phone is pixel-identical. Focused tests `fb-codex-world-tab`, `packet-codex-b-contracts`, `world-remembers-codex` and `infer-ending-archive-entry` pass.
 - **Shots:** `/workspace/spaceface-scratch/ui-shots/polish49/{before,after}/`, `compare-codex-{844x390,801x390,900x420}.png`, `compare-codex-record-{844x390,801x390,900x420}.png` (before left, after right).
 - **Leftovers:** at 801×390 the meta line STORY · THE EIGHT BEATS wraps to two lines. The ARCHIVE section's still sits under the reader fade at 844×390, so you have to scroll to reach it.
+
