@@ -137,26 +137,52 @@ function normalizeSlots(idx) {
   return out;
 }
 
-export function presentTitleContinueLoadFailure(saveSummary, payload) {
-  if (!saveSummary || !isTitleSaveReadFailure(payload)) return false;
-  saveSummary.setAttribute('role', 'alert');
-  saveSummary.setAttribute('aria-live', 'assertive');
-  saveSummary.setAttribute('aria-atomic', 'true');
-  saveSummary.textContent = saveErrorText(payload);
+export function presentTitleContinueLoadFailure(target, payload) {
+  if (!target || !isTitleSaveReadFailure(payload)) return false;
+  target.setAttribute('role', 'alert');
+  target.setAttribute('aria-live', 'assertive');
+  target.setAttribute('aria-atomic', 'true');
+  target.textContent = saveErrorText(payload);
   return true;
 }
 
-export function clearTitleContinueLoadFailure(saveSummary) {
-  if (!saveSummary) return;
-  saveSummary.removeAttribute('role');
-  saveSummary.removeAttribute('aria-live');
-  saveSummary.removeAttribute('aria-atomic');
+export function clearTitleContinueLoadFailure(target) {
+  if (!target) return;
+  target.removeAttribute('role');
+  target.removeAttribute('aria-live');
+  target.removeAttribute('aria-atomic');
+}
+
+/**
+ * Clear the title-owned Continue failure presentation when the player retries or leaves the
+ * title. The save event stream also contains routine write/index updates, so this state must not
+ * be inferred from whichever text a normal render most recently wrote.
+ */
+export function clearTitleContinueLoadFailureState(currentRefs) {
+  if (!currentRefs) return;
+  currentRefs.titleContinueFailure = null;
+  clearTitleContinueLoadFailure(currentRefs.saveSummary);
+  clearTitleContinueLoadFailure(currentRefs.status);
+}
+
+/** Reapply a classified Continue failure after a routine title render rewrites its copy. */
+export function reapplyTitleContinueLoadFailure(currentRefs) {
+  const payload = currentRefs && currentRefs.titleContinueFailure;
+  if (!payload) return false;
+  const target = currentRefs.status || currentRefs.saveSummary;
+  return presentTitleContinueLoadFailure(target, payload);
 }
 
 export function handleTitleContinueLoadFailure(ctx, currentRefs, payload) {
   const mgr = getManager(ctx);
   if (mgr && typeof mgr.top === 'function' && mgr.top() !== 'mainMenu') return false;
-  return presentTitleContinueLoadFailure(currentRefs && currentRefs.saveSummary, payload);
+  // The Continue note is intentionally clipped by the desktop arc rail. The title eyebrow is the
+  // existing visible ORRERY status line, so a failed Continue stays in the title composition rather
+  // than disappearing into an accessibility-only note or relying on a transient global toast.
+  const target = currentRefs && (currentRefs.status || currentRefs.saveSummary);
+  const presented = presentTitleContinueLoadFailure(target, payload);
+  if (presented && currentRefs) currentRefs.titleContinueFailure = { ...payload };
+  return presented;
 }
 
 function latestSave(slots) {
@@ -560,6 +586,7 @@ export const mainMenuScreen = {
     refs = {
       root: rootEl, backdrop, title, list, version, versionText, bCredits, bAchievements, saveSummary, status,
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp, bPhysics,
+      titleContinueFailure: null,
       buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
@@ -602,6 +629,12 @@ export const mainMenuScreen = {
         if (refs) handleTitleContinueLoadFailure(ctx, refs, payload);
       });
       if (typeof offFailure === 'function') this._offBus.push(offFailure);
+      const offLoaded = ctx.bus.on('save:loaded', () => {
+        if (!refs) return;
+        clearTitleContinueLoadFailureState(refs);
+        this._render(ctx);
+      });
+      if (typeof offLoaded === 'function') this._offBus.push(offLoaded);
     }
 
     this._render(ctx);
@@ -611,6 +644,7 @@ export const mainMenuScreen = {
     // Any menu action ends the live title: the flag drops now and the stack change the
     // action triggers (push / load / quit) makes uiStage release the fight for real.
     this._attractLive = false;
+    clearTitleContinueLoadFailureState(refs);
     // Keep flag and stage in lockstep even on actions that do not move the stack
     // (e.g. continue with no save) — arming uses the same manager nudge.
     const mgr = getManager(ctx);
@@ -673,6 +707,7 @@ export const mainMenuScreen = {
   _render(ctx) {
     if (!refs) return;
     clearTitleContinueLoadFailure(refs.saveSummary);
+    clearTitleContinueLoadFailure(refs.status);
     this._menuSig = this._menuInputs(ctx);
     setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
@@ -697,6 +732,7 @@ export const mainMenuScreen = {
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
       this._syncCurrent();
+      reapplyTitleContinueLoadFailure(refs);
       return;
     }
     if (syncPending) this._syncCurrent();
@@ -725,6 +761,7 @@ export const mainMenuScreen = {
         : primaryAction === 'continue' ? refs.bContinue
           : refs.bNew);
     this._syncCurrent();
+    reapplyTitleContinueLoadFailure(refs);
   },
 
   /** The one lit verb. Exactly one item carries the primary treatment at any time. */
