@@ -376,7 +376,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {
     } else if (state.run?.kind === 'survival') {
       phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
       startPhase('current-sector');
-      const cooked = await bounded(waitForOpeningGpuResources(state, timeoutMs, { settleTail: true }), phaseBudgetMs);
+      const cooked = await bounded(waitForOpeningGpuResources(state, timeoutMs, { settleTail: true, throwOnError: true }), phaseBudgetMs);
       assertActive();
       if (cooked !== true) throw new Error(render.requiredPackageAdmission?.reason || 'arena GPU admission did not complete');
     }
@@ -1794,7 +1794,12 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     }
     if (gpuContextIsLost(state)) {
       finishLedger();
+      if (options.throwOnError === true) assertMobileOpeningGraphicsHealthy(render);
       return false;
+    }
+    if (options.throwOnError === true && result.error) {
+      finishLedger();
+      throw result.error;
     }
     prepareValue = result && result.ok === true ? result.value : null;
     prepareClassification = classifyRequiredPackageAdmission({
@@ -1873,6 +1878,8 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     return false;
   }
   const lost = gpuContextIsLost(state) === true;
+  if (options.throwOnError === true && presentResult.error) throw presentResult.error;
+  if (options.throwOnError === true && lost) assertMobileOpeningGraphicsHealthy(render);
   if (prepareClassification && prepareClassification.status === 'rejected') return false;
   if (prepareClassification && prepareClassification.status === 'pending'
       && prepareClassification.continueOpening !== true) return false;
