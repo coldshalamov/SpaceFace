@@ -3659,6 +3659,7 @@ function releaseDetachedCargoCapsuleSubstrate(root) {
   if (!root) return;
   // visualFactory payload geometry/materials are module-level caches shared by ordinary payloads.
   // Sever this one-shot Object3D graph without disposing those shared resources.
+  root.traverse((object) => { object.castShadow = false; });
   root.clear();
   root.userData.authoredSubstrateReleased = true;
 }
@@ -9526,7 +9527,21 @@ async function disposePreparedAuthoredShip(authored) {
   if (typeof authored.releaseFlightTemplate === 'function') {
     await attempt(authored.releaseFlightTemplate, () => authored.releaseFlightTemplate('authored-ship-preparation-failed'));
   }
-  await attempt(root, () => root.clear());
+  await attempt(root, async () => {
+    // clear() severs children but the maintained shadow registry still owns every
+    // flagged node. Retire this prepared tree before dropping its only walkable root.
+    const stack = [root];
+    let visited = 0;
+    while (stack.length) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % 128) === 0) await composeYield();
+      object.castShadow = false;
+      const children = object.children || EMPTY_ARRAY;
+      for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+    root.clear();
+  });
   notePacedFrameSpend(monotonicNow() - cleanupLegStarted);
   // Registry detachment cannot wait on disposal success: a thrown cleanup error must not leave
   // the boundary and its prepared roots pinned in sceneState.preparedAuthoredRoots forever.
@@ -11595,6 +11610,7 @@ function* disposeAbortPartialPreScanSteps(partial) {
     const object = stack.pop();
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
+    object.castShadow = false;
     const instance = object.userData ? object.userData.renderPackageInstance : null;
     if (instance && typeof instance.dispose === 'function') {
       try { instance.dispose('compose-aborted'); } catch { /* best-effort */ }
@@ -12045,6 +12061,7 @@ function* stripFlightPackageTemplateSubtreesSteps(root, recipes) {
       const object = detachedStack.pop();
       if ((++visited % 128) === 0) yield;
       if (!object) continue;
+      object.castShadow = false;
       const geometry = object.geometry;
       if (geometry && !retainedGeometries.has(geometry) && !disposedGeometries.has(geometry)) {
         disposedGeometries.add(geometry);
@@ -12690,6 +12707,7 @@ function finalizeFlightRootTemplateIfUnused(entry) {
   const geometries = new Set();
   const materials = new Set();
   entry.root?.traverse?.((object) => {
+    object.castShadow = false;
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material])
@@ -17496,15 +17514,18 @@ export function disposeDetachedObject(root, state = null) {
     }
   }
   root.traverse((object) => {
-    if (object.geometry && typeof object.geometry.dispose === 'function'
-      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
-      object.geometry.dispose();
-    }
-    const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-    for (const material of materials) {
-      if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
-      if (material && typeof material.dispose === 'function') material.dispose();
-    }
+    object.castShadow = false;
+    try {
+      if (object.geometry && typeof object.geometry.dispose === 'function'
+        && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+        object.geometry.dispose();
+      }
+      const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+      for (const material of materials) {
+        if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
+        if (material && typeof material.dispose === 'function') material.dispose();
+      }
+    } catch { /* best-effort — a bad node cannot keep the subtree registered */ }
   });
 }
 
@@ -17545,6 +17566,7 @@ export function* disposeDetachedObjectSteps(root, state = null) {
     const object = stack.pop();
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
+    object.castShadow = false;
     try {
       if (object.geometry && typeof object.geometry.dispose === 'function'
         && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
@@ -17596,6 +17618,7 @@ function disposeDetachedPlaceFallback(root, state = null) {
   const geometries = new Set();
   const materials = new Set();
   root.traverse((object) => {
+    object.castShadow = false;
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
     for (const material of list) if (material) materials.add(material);
@@ -17651,6 +17674,7 @@ function* disposeDetachedPlaceFallbackSteps(root, state = null) {
     const object = stack.pop();
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
+    object.castShadow = false;
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
     for (const material of list) if (material) materials.add(material);

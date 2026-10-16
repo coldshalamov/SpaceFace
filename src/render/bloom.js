@@ -1533,7 +1533,6 @@ export function createUnreadyDrawableGuard(renderer) {
   }
 
   function hideOneUnreadySceneDrawable(object) {
-    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
     if (!object || object.visible !== true) return;
     if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
         || object.isLine || object.isSprite || object.isInstancedMesh)) {
@@ -1546,6 +1545,10 @@ export function createUnreadyDrawableGuard(renderer) {
       object.visible = false;
       return;
     }
+    // Keep the ordinary readiness walk bounded. Orientation holds must journal every released
+    // drawable first, though, so a large detached package cannot leave the tail visible long
+    // enough for Three to upload its empty attributes before the draw guard runs.
+    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
     const props = renderer.properties;
     const list = object.material;
     if (Array.isArray(list)) {

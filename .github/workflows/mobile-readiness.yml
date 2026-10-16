@@ -66,10 +66,11 @@ jobs:
       - name: Install WebKit process diagnostics
         if: matrix.engine == 'webkit'
         run: |
-          if ! command -v strace >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends strace
-          fi
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends strace gstreamer1.0-gl gstreamer1.0-tools
+          set -o pipefail
+          timeout 30s gst-inspect-1.0 glsinkbin 2>&1 | tee .devshots/mobile-build/gstreamer-glsinkbin.txt
+          timeout 30s gst-inspect-1.0 glimagesink 2>&1 | tee .devshots/mobile-build/gstreamer-glimagesink.txt
       - name: Static retail route, real worker round trips, New Game and touch UI
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 --directory build/web > .devshots/mobile-build/http.log 2>&1 &

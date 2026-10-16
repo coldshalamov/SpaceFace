@@ -820,6 +820,14 @@ class LoadedRenderPackage {
     }
   }
 
+  #assertExternalOwnerActive(owner) {
+    if (!owner) return;
+    const isOwnerReleased = this.#lifecycle.residency.isOwnerReleased;
+    if (typeof isOwnerReleased === 'function' && isOwnerReleased.call(this.#lifecycle.residency, owner)) {
+      throw new Error(`Render package ${this.assetId} residency owner has been released.`);
+    }
+  }
+
   markReleased() {
     if (this.released) return;
     this.released = true;
@@ -831,6 +839,8 @@ class LoadedRenderPackage {
   }
 
   markEvicted() {
+    // The decoded source graph is retiring; instances own distinct Object3Ds.
+    for (const entry of this.#plan?.entries || []) entry.source.castShadow = false;
     this.released = true;
     this.evicted = true;
     this.#notifyStale();
@@ -864,11 +874,13 @@ class LoadedRenderPackage {
       throw new Error(`Render package ${this.assetId} must be retained before creating an instance.`);
     }
     const externalOwner = instanceOptions.residencyOwner || null;
+    this.#assertExternalOwnerActive(externalOwner);
     const owner = externalOwner || this.#lifecycle.createOwner('render-instance', this.contentHash);
     const retained = this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, {
       role: instanceOptions.residencyRole || 'render-package-instance',
       sectorId: instanceOptions.sectorId || null,
     });
+    this.#assertExternalOwnerActive(externalOwner);
     if (!retained && !externalOwner) {
       throw new Error(`Render package ${this.assetId} could not retain instance residency.`);
     }
@@ -897,7 +909,10 @@ class LoadedRenderPackage {
       for (let i = 0; i < count; i++) {
         // objects[] is index-addressed so a stride boundary costs nothing; the
         // partial instance is unreachable outside this leg until it returns.
-        if (i > 0 && (i % 512) === 0) yield;
+        if (i > 0 && (i % 512) === 0) {
+          yield;
+          this.#assertExternalOwnerActive(externalOwner);
+        }
         const entry = entries[i];
         const created = createNode ? createNode({
           source: entry.source,
@@ -972,6 +987,8 @@ class LoadedRenderPackage {
         dynamicGroups.set(metaGroups[i].id, objects[plan.dynamicGroupPlanIndices[i]]);
       }
 
+      this.#assertExternalOwnerActive(externalOwner);
+
       let disposed = false;
       return Object.freeze({
         route: 'render-package',
@@ -994,6 +1011,7 @@ class LoadedRenderPackage {
         dispose: (reason = 'render-package-instance-disposed') => {
           if (disposed) return false;
           disposed = true;
+          for (const object of objects) object.castShadow = false;
           if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
           return true;
         },
@@ -1026,11 +1044,13 @@ class LoadedRenderPackage {
     }
 
     const externalOwner = instanceOptions.residencyOwner || null;
+    this.#assertExternalOwnerActive(externalOwner);
     const owner = externalOwner || this.#lifecycle.createOwner('flight-render-instance', this.contentHash);
     const retained = this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, {
       role: instanceOptions.residencyRole || 'flight-render-package-instance',
       sectorId: instanceOptions.sectorId || null,
     });
+    this.#assertExternalOwnerActive(externalOwner);
     if (!retained && !externalOwner) {
       throw new Error(`Render package ${this.assetId} could not retain flight instance residency.`);
     }
@@ -1091,6 +1111,8 @@ class LoadedRenderPackage {
         if (object) anchors.set(record.id, object);
       }
 
+      this.#assertExternalOwnerActive(externalOwner);
+
       const counters = this.#counters && this.#counters.isEnabled() ? this.#counters : null;
       if (counters) {
         counters.countPlanInstantiation(planNodes.length, 'flight-static-v3');
@@ -1114,6 +1136,7 @@ class LoadedRenderPackage {
         dispose: (reason = 'flight-render-package-instance-disposed') => {
           if (disposed) return false;
           disposed = true;
+          for (const object of planNodes) object.castShadow = false;
           if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
           return true;
         },
@@ -1339,9 +1362,10 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function collectImmutableResources(root, stats = null) {
+export function collectImmutableResources(root, stats = null, retireShadowCasters = false) {
   const resources = new Set();
   root.traverse((object) => {
+    if (retireShadowCasters) object.castShadow = false;
     if (stats) stats.nodes++;
     if (object.geometry) markImmutableResource(object.geometry, resources);
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
@@ -1381,7 +1405,7 @@ function disposeUnregisteredResources(resources) {
 export function disposeDecodedResources(decoded, extraResources = null) {
   const template = decoded?.scene || decoded;
   if (!template || typeof template.traverse !== 'function') return;
-  const resources = collectImmutableResources(template);
+  const resources = collectImmutableResources(template, null, true);
   if (extraResources) for (const resource of extraResources) resources.add(resource);
   disposeUnregisteredResources(resources);
 }

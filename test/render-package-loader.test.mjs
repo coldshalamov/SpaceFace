@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 import * as THREE from 'three';
+import { Object3D as VendoredObject3D, spacefaceShadowCastersIn } from '../vendor/three.module.js';
 
 import {
   RENDER_PACKAGE_SCHEMA,
@@ -16,6 +17,9 @@ import { createAssetResidencyRegistry, getAssetResidency } from '../src/render/a
 import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
+
+Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
+  Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
 
 const HASH = '1'.repeat(64);
 
@@ -297,6 +301,9 @@ test('flight-static instances materialise one root per prepared primitive and ma
   assert.notStrictEqual(firstMesh, secondMesh, 'flight instances have independent Mesh objects');
   assert.strictEqual(firstMesh.geometry, secondMesh.geometry, 'flight instances share geometry');
   assert.strictEqual(firstMesh.material, secondMesh.material, 'flight instances share material');
+  const scene = new THREE.Scene();
+  scene.add(first.root, second.root);
+  firstMesh.castShadow = secondMesh.castShadow = true;
 
   // The generic route remains the full load-time plan, including the anchor and turret nodes.
   const generic = loaded.createInstance();
@@ -305,8 +312,12 @@ test('flight-static instances materialise one root per prepared primitive and ma
   assert.ok(objectCount(first.root) < generic.planNodes.length,
     'flight-static route is smaller than generic plan cloning');
 
-  first.dispose();
+  assert.equal(first.dispose(), true);
+  assert.equal(first.dispose(), false);
+  assert.deepEqual(spacefaceShadowCastersIn(scene), [secondMesh],
+    'retiring one flat flight plan preserves the sharing live instance');
   second.dispose();
+  assert.deepEqual(spacefaceShadowCastersIn(scene), []);
   generic.dispose();
   loader.dispose();
 });
@@ -429,6 +440,92 @@ test('loader exposes one prepared blueprint and lets a render boundary own insta
   assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1);
 });
 
+test('released external owners cannot create an instance or leave a live package untracked', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => preparedFlightFixture(decoded),
+  });
+  const loaded = await loader.load(flightPackageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  assert.equal(residency.isOwnerReleased(owner), true);
+
+  assert.throws(
+    () => loaded.createInstance({ residencyOwner: owner }),
+    /residency owner has been released/i,
+  );
+  assert.throws(
+    () => loaded.createFlightInstance({ residencyOwner: owner }),
+    /residency owner has been released/i,
+  );
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1,
+    'the rejected external owner does not mint a hidden instance hold');
+  assert.deepEqual(disposals, { geometry: 0, material: 0, texture: 0 });
+
+  assert.equal(loaded.release('fixture-package-released'), true);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 },
+    'the package retires cleanly after the rejected instance attempts');
+  loader.dispose();
+});
+
+test('stepped instance creation rejects an external owner released during a yield', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  for (let i = 0; i < 510; i++) decoded.scene.add(new THREE.Object3D());
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const loaded = await loader.load(packageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+
+  const steps = loaded.createInstanceSteps({ residencyOwner: owner });
+  const yielded = steps.next();
+  assert.equal(yielded.done, false, 'the expanded fixture reaches the paced clone boundary');
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  assert.throws(
+    () => steps.next(),
+    /residency owner has been released/i,
+    'a released owner cannot publish the partially cloned instance after yielding',
+  );
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1,
+    'the failed stepped creation leaves only the package owner');
+  assert.equal(loaded.release('fixture-package-released'), true);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  loader.dispose();
+});
+
+test('live external owners still share generic and flight-static instances', async () => {
+  const decoded = decodedFixture();
+  const prepared = preparedFlightFixture(decoded);
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => prepared,
+  });
+  const loaded = await loader.load(flightPackageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+  const generic = loaded.createInstance({ residencyOwner: owner });
+  const flight = loaded.createFlightInstance({ residencyOwner: owner });
+  assert.equal(generic.disposed, false);
+  assert.equal(flight.disposed, false);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2,
+    'duplicate retains share the existing live external owner');
+  assert.equal(generic.dispose(), true);
+  assert.equal(flight.dispose(), true);
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  loader.dispose();
+});
+
 test('loader validates metadata and declared content identity before decoding', async () => {
   let decodeCount = 0;
   const decoded = decodedFixture();
@@ -523,6 +620,7 @@ test('loader rejects missing and duplicate compiler-owned semantic IDs', async (
 test('package and instance owners dispose shared resources only at the final residency release', async () => {
   const disposals = { geometry: 0, material: 0, texture: 0 };
   const decoded = decodedFixture(disposals);
+  decoded.scene.traverse((object) => { if (object.isMesh) object.castShadow = true; });
   const residency = createAssetResidencyRegistry();
   const loader = createRenderPackageLoader({
     residency,
@@ -532,6 +630,11 @@ test('package and instance owners dispose shared resources only at the final res
   const loaded = await loader.load(metadata);
   const first = loaded.createInstance();
   const second = loaded.createInstance();
+  const scene = new THREE.Scene();
+  scene.add(decoded.scene, first.root, second.root);
+  const sourceCasters = spacefaceShadowCastersIn(decoded.scene);
+  const secondCasters = spacefaceShadowCastersIn(second.root);
+  assert.equal(spacefaceShadowCastersIn(scene).length, sourceCasters.length * 3);
 
   assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 3);
   assert.equal(loaded.release('fixture-package-released'), true);
@@ -544,8 +647,12 @@ test('package and instance owners dispose shared resources only at the final res
   assert.equal(loaded.release('fixture-package-released-again'), true);
   assert.equal(first.dispose(), true);
   assert.equal(first.dispose(), false);
+  assert.deepEqual(new Set(spacefaceShadowCastersIn(scene)), new Set([...sourceCasters, ...secondCasters]),
+    'instance retirement only unregisters its own flat plan nodes');
   assert.deepEqual(disposals, { geometry: 0, material: 0, texture: 0 });
   assert.equal(second.dispose(), true);
+  assert.deepEqual(spacefaceShadowCastersIn(scene), [],
+    'final eviction also unregisters the retired decoded template');
   assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
   assert.equal(residency.canonicalDiagnostics().residentAssets, 0);
   assert.equal(loader.diagnostics().cacheEntries, 0);
@@ -555,6 +662,8 @@ test('package and instance owners dispose shared resources only at the final res
 test('loader disposal cancels an in-flight package generation and releases decoded resources', async () => {
   const disposals = { geometry: 0, material: 0, texture: 0 };
   const decoded = decodedFixture(disposals);
+  decoded.scene.traverse((object) => { if (object.isMesh) object.castShadow = true; });
+  assert.equal(spacefaceShadowCastersIn(decoded.scene).length, 2);
   let resolveDecode;
   let markDecodeStarted;
   const decodeStarted = new Promise((resolve) => { markDecodeStarted = resolve; });
@@ -572,6 +681,8 @@ test('loader disposal cancels an in-flight package generation and releases decod
   await assert.rejects(pending, { name: 'AbortError' });
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  assert.deepEqual(spacefaceShadowCastersIn(decoded.scene), [],
+    'a decode finishing after cancellation releases source Mesh shadow membership');
   assert.equal(loader.diagnostics().residency.residentAssets, 0);
   await assert.rejects(loader.load(packageMetadata()), /loader has been disposed/i);
 });

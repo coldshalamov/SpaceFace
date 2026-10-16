@@ -59,6 +59,19 @@ bundle bytes, save/schema or deterministic simulation effect. Keep it diagnostic
 update through the official wrapper. Existing CDP/Playwright, Spector.js, stats-gl and MemLab
 remain the browser profiling tools. Execution: `design/program/PERF_2026_10_14.md`.
 
+Native-process diagnostic intake, 2026-10-16: **[strace](https://github.com/strace/strace)**,
+[LGPL-2.1-or-later](https://github.com/strace/strace/blob/master/COPYING), installed only in the
+Ubuntu24.04 WebKit CI job from its distribution package. Process/signal traces distinguish a
+pre-cleanup child exit from shutdown signals. It adds no game dependency or bundle bytes and
+does not alter simulation, saves, or gameplay. Trace runs are diagnostic, never frame-time
+acceptance. Maintain it with the runner image; retain logs on failure.
+The same WebKit job installs Ubuntu's [gstreamer1.0-gl](https://packages.ubuntu.com/en/noble/libs/gstreamer1.0-gl)
+and inspection tools to supply the separately packaged GL video factories. The
+[OpenGL plugin](https://github.com/GStreamer/gstreamer/blob/1.24.2/subprojects/gst-plugins-base/ext/gl/gstopengl.c)
+is LGPL v2-or-later; it is a runner-only media dependency. Factory inspection proves discovery,
+not a functioning GL context or the cause of a boot hang. Stop the dependency experiment if
+the same hang remains; do not relaunch an unchanged candidate.
+
 Inspect `package.json`, the current asset builders, and the release manifests before adding a tool.
 Extend the established glTF Transform, meshoptimizer, KTX2/Basis, Playwright, Three.js, Rapier, and
 Blender/export/validation paths when they already own the required transformation.
