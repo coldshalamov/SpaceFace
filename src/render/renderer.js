@@ -24061,6 +24061,21 @@ export const render = {
       if (!veilUp() || Date.now() - startedAt > 90000) return stop('shell-released');
       const touch = state.render && state.render.touchSubjectExactTarget;
       receipt.sweeps += 1;
+      // The player's engine effects (liquid-plasma strands, retro jets, every fleet plume/RCS
+      // family, overflow jets) are created lazily on the first plume-relevant frame — in flight,
+      // after the lift. The full live cook builds them under the shell through vfx's
+      // warmupLiveFlightEffects, but software GL never runs that cook. Build them once here
+      // (loading only), touch them below, then rest them to the hidden idle state.
+      let warmedNow = false;
+      if (!receipt.liveFx && state.mode === 'loading' && state.playerId != null
+          && state.entities && typeof state.entities.get === 'function' && state.entities.get(state.playerId)
+          && typeof state.render.warmupLiveFlightEffects === 'function') {
+        receipt.liveFx = true;
+        warmedNow = true;
+        try { state.render.warmupLiveFlightEffects(); } catch (error) {
+          laneWarn(this, 'openingEffectWarm', '[render] opening live flight effect warmup failed', error);
+        }
+      }
       if (typeof touch === 'function' && this.scene) {
         for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
           if (!owned() || !veilUp()) break;
@@ -24072,6 +24087,9 @@ export const render = {
             laneWarn(this, 'openingEffectWarm', '[render] opening effect family touch failed', key, error);
           }
         }
+      }
+      if (warmedNow && typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
+        try { state.render.restLiveFlightEffectsAfterCook(); } catch (_) { /* best-effort */ }
       }
       publish('pending');
       if (!owned()) return stop('superseded');
