@@ -216,7 +216,7 @@ if (!drift && !mainMissing.length) {
 
 let next;
 if (hasBlock) {
-  next = html.slice(0, beginIdx) + block + html.slice(endIdx + END.length);
+  next = html.slice(0, beginLine) + block + html.slice(endIdx + END.length);
 } else {
   // First install: anchor the generated block just before </head>.
   next = html.replace('</head>', `${block}\n</head>`);
