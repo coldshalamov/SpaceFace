@@ -520,7 +520,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | FIGHT-10 | A swarm reinforcement surge is called before it lands | `src/data/swarmMode.js`, `src/systems/survivalAnnounce.js` | On seed 4242 each reinforcement batch is preceded by one announce line at least 60 ticks before the spawn; a focused test pins the lead time | Delay the surge. Announce every spawn | SHIPPED FIGHT-10 — swarm:pressureTelegraph announces surge with >= 60 ticks lead time |
 | FIGHT-11 | A mine-layer's halo counts its armed mines, so the screen it laid is countable | `src/ui/threatHalo.js`, `src/systems/mines.js` | On seed 4242 a mine-layer's halo label carries its armed mine count and tracks lay and detonate; a focused test pins both transitions | Reveal unarmed cargo. Restyle the halo (ORRERY) | OPEN |
 | FIGHT-12 | A specialist that counters your Massline says what it did, once | `src/data/masslineCounters.js`, `src/systems/barkDirector.js` | On seed 4242 the first countered latch in an engagement produces one bark in the specialist's register and the second produces none; a focused test pins once per engagement | Change counter rules. Toast the player instead | OPEN |
-| FIGHT-13 | Fresh capital debris is dangerous for its first seconds, then it is salvage | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` | On seed 4242 a fresh capital fragment deals contact damage decaying over its authored window and a settled fragment deals none; a focused test pins hot and cold | Change fragment counts. Make wrecks permanent hazards | OPEN |
+| FIGHT-13 | Fresh capital debris is dangerous for its first seconds, then it is salvage | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` | On seed 4242 a fresh capital fragment deals contact damage decaying over its authored window and a settled fragment deals none; a focused test pins hot and cold | Change fragment counts. Make wrecks permanent hazards | SHIPPED |
 | FIGHT-14 | A pirate that has disengaged drops out of auto-target, so letting it go is a real choice | `src/systems/autoTargetAssist.js`, `src/systems/pirateDisengage.js` | On seed 4242 a hull in the disengage state leaves the auto-target candidate set while a fighting hull stays; a focused test pins both | Change disengage rules. Block manual locks | OPEN |
 | FIGHT-15 | Clearing a raid's escorts flips the survivors to looting the spill | `src/systems/encounterScripts.js`, `src/systems/encounterDirector.js` | On seed 4242 destroying the escort wing of a live raid changes the remaining raiders' doctrine to the loot sweep; a focused test pins the doctrine change | Add a new encounter shape. Change raid spawn counts | OPEN |
 
@@ -649,7 +649,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| FIGHT-13 | 2026-10-16 | infer10-oct16 | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` |
 | MACH-12 | 2026-10-16 | infer10-oct16 | `src/systems/traffic.js`, `src/data/laneContacts.js` |
 ## SHIPPED
 
@@ -664,6 +663,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | ECON-08 | econ-08-loss-moves-price | c09dbb1d4a | Player-caused laden kill drains the destination book via the existing pressure path + one cited headline; NPC/unladen kills stay ledger-only; focused 2/2 |
 | WORLD-43 | world-43-miner-worked-out | c6408c46d7 | Depleting an NPC-worked field speaks one miner-register line and retargets the job to a live seam; yield/depletion untouched; focused 2/2 (adopts unclaimed barkDirector hunk, disclosed in commit body) |
 | INST-35 | inst-35-earned-speed | 579203723e | HUD velocity model carries earnedSpeed (strictly above the catalog thruster cap) with an EARNED text mark; no flight-law change, no new gauge; focused 4/4 |
+| FIGHT-13 | fight-13-hot-debris | 8cfd5d6c64 | Fresh capital fragments deal decaying contact damage over the authored window, settled fragments none; counts/permanence untouched; focused 4/4 |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
