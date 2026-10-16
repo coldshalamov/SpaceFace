@@ -3,8 +3,10 @@ import test from 'node:test';
 
 import {
   clearTitleContinueLoadFailure,
+  clearTitleContinueLoadFailureState,
   handleTitleContinueLoadFailure,
   presentTitleContinueLoadFailure,
+  reapplyTitleContinueLoadFailure,
 } from '../src/ui/screens/mainMenu.js';
 import { isTitleSaveReadFailure, saveErrorText, shouldToastSaveError } from '../src/ui/saveFeedback.js';
 
@@ -88,4 +90,56 @@ test('the title presenter ignores a load failure while another screen is on top'
   assert.equal(handleTitleContinueLoadFailure({ screenManager: { top: () => 'mainMenu' } }, refs, failure), true);
   assert.equal(target.textContent, saveErrorText(failure));
   assert.equal(target.attributes.get('role'), 'alert');
+});
+
+test('title Continue failure uses the visible ORRERY status line when the rail note is clipped', () => {
+  const summary = liveTextTarget();
+  const status = liveTextTarget();
+  const failure = { reason: 'load_failed', slot: 'quick', error: 'damaged save' };
+
+  assert.equal(handleTitleContinueLoadFailure(
+    { screenManager: { top: () => 'mainMenu' } },
+    { saveSummary: summary, status },
+    failure,
+  ), true);
+  assert.equal(summary.textContent, 'Quick · saved today', 'the clipped note remains the save metadata');
+  assert.equal(status.textContent, saveErrorText(failure));
+  assert.equal(status.attributes.get('role'), 'alert');
+  assert.equal(status.attributes.get('aria-live'), 'assertive');
+
+  clearTitleContinueLoadFailure(status);
+  assert.equal(status.attributes.size, 0, 'the next render can reclaim the status line');
+});
+
+test('routine title renders retain a classified Continue failure until retry or successful load', () => {
+  const summary = liveTextTarget();
+  const status = liveTextTarget();
+  const refs = { saveSummary: summary, status, titleContinueFailure: null };
+  const failure = { reason: 'load_failed', slot: 'quick', error: 'damaged save' };
+
+  assert.equal(handleTitleContinueLoadFailure(
+    { screenManager: { top: () => 'mainMenu' } },
+    refs,
+    failure,
+  ), true);
+  assert.deepEqual(refs.titleContinueFailure, failure);
+
+  // This is the tail of the real save:completed/save:slotsValidated render path: ordinary title
+  // copy and accessibility state are rewritten, then the title-owned failure is reapplied.
+  clearTitleContinueLoadFailure(summary);
+  clearTitleContinueLoadFailure(status);
+  summary.textContent = 'Quick · saved again';
+  status.textContent = 'Continue · Quick · saved again';
+  assert.equal(reapplyTitleContinueLoadFailure(refs), true);
+  assert.equal(status.textContent, saveErrorText(failure));
+  assert.equal(status.attributes.get('role'), 'alert');
+  assert.equal(status.attributes.get('aria-live'), 'assertive');
+
+  // A retry or a successful save:loaded event owns the explicit clear; routine write events do not.
+  clearTitleContinueLoadFailureState(refs);
+  assert.equal(refs.titleContinueFailure, null);
+  assert.equal(status.attributes.size, 0);
+  status.textContent = 'Continue · Quick · saved again';
+  assert.equal(reapplyTitleContinueLoadFailure(refs), false);
+  assert.equal(status.textContent, 'Continue · Quick · saved again');
 });
