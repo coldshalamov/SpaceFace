@@ -63,19 +63,17 @@ const CSS = `
 .orr-cluster .orr-soft::before { content:""; position:absolute; inset:-18px -26px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .72), rgb(3 4 7 / .38) 55%, transparent); }
 .orr-cluster__legend { position:absolute; top:${P.y + 68}px; width:124px; display:grid; grid-template-columns:16px auto 1fr; column-gap:7px; row-gap:4px; align-items:center;
-  /* At --orr-cluster-scale ≤.6 (960/1280) inverse-scaled Shield/Armor meet the class
-     ring (HITCH · … at startDeg 160, x≈303). Nudge the plate left by the extra label
-     size so the column clears the engraving; scale 1 → 0. startDeg stays 160 so 1920
-     keeps the same ring placement. */
+  /* At --orr-cluster-scale ≤.6 (960/1280) the inverse-scaled labels widen the plate.
+     Nudge it left by the extra label size so the column keeps its place under the
+     hull; scale 1 → 0. */
   left: calc(${P.x - 62}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5); }
 .orr-cluster__legend svg { width:16px; height:8px; overflow:visible; }
 .orr-cluster__legend b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; text-align:right; }
 .orr-cluster__legend b.is-hull { font-weight:300; font-size:26px; line-height:.9; }
 .orr-cluster__legend b.is-hull i { font-style:normal; font-size:12px; font-weight:500; color:var(--dp-ink-dim, #b7b4a6); margin-left:1px; }
-.orr-cluster__legend .orr-label {
-  /* Cap inverse scale: full 12/scale at ≤.6 makes Shield/Armor meet the class ring.
-     15px local → ~9px on-screen at .6 — still readable, clears HITCH · … (960/1280). */
-  font-size:max(12px, min(15px, calc(12px / var(--orr-cluster-scale, 1)))); }
+/* Inverse-scaled so Hull/Shield/Armor stay 12 px on screen at every cluster step (the type floor).
+   The class engraving starts at 135deg, clear of the legend's widest row at every step. */
+.orr-cluster__legend .orr-label { font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
 /* SFQ-B202 / B208 / B209 — the next decision sits under the legend, off the hull art and off
    the arrival fade. Large text uses the same scale token as the rest of the UI. Reduced motion
@@ -181,7 +179,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     svg('path', { d: `M ${hx} ${hy - 4.5} L ${hx} ${hy - 9} M ${hx - 4.5} ${hy} L ${hx - 8} ${hy} M ${hx + 4.5} ${hy} L ${hx + 8} ${hy}`, class: 'orr-core orr-phos', 'stroke-width': 1.2 }),
   );
   s.appendChild(driftPip);
-  const ringLegend = circularText(P.x, P.y, R.orbit + 9, ringLegendText({ defName: name, classLine }), { startDeg: 160, size: 6.5, className: 'orr-micro', upright: true });
+  // The engraving starts at 135deg (lower right). At 160 it ran under the legend's Shield/Armor
+  // labels at every live HUD step (.6/.7/.85); 135 clears them with the labels at the 12 px floor.
+  const ringLegend = circularText(P.x, P.y, R.orbit + 9, ringLegendText({ defName: name, classLine }), { startDeg: 135, size: 6.5, className: 'orr-micro', upright: true });
   s.appendChild(ringLegend);
   let ringLegendShown = ringLegendText({ defName: name, classLine });
 
