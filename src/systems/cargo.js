@@ -1,3 +1,4 @@
+import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 // Cargo system (ARCHITECTURE §0.6 single-writer, §0.12/§0.13 cargo shape, spec 02-mining-ores-cargo).
 // Owns state.player.cargo = { items:{[cmdtyId]:qty}, usedVolume, usedMass, capVolume, capMass }.
 // VOLUME is the only hard cap; MASS is informational (flight reads it as a handling penalty, never blocks).
@@ -613,6 +614,7 @@ export const cargo = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this.registry = ctx.registry || null;
     const binding = attachBinding(this.state, this.bus, this);
     this._binding = binding;
     this._unsubs = binding.unsubs;
@@ -680,6 +682,76 @@ export const cargo = {
           || pickup && pickup.data && (pickup.data.richLotSource || pickup.data.lotSource)
           || null;
         // Kill loot (the player's own kill burst; never a run wallet's) goes to the salvage bay, not the trade hold.
+        const orchardPod = pickup && pickup.data && pickup.data.orchardId === ANVIL_ORCHARD.id
+          && pickup.data.orchardKind === 'pod' && typeof pickup.data.worldRecordId === 'string'
+          && pickup.data.worldRecordId.startsWith(`${ANVIL_ORCHARD.id}:`);
+        if (orchardPod) {
+          // Orchard pods represent a conserved finite-ledger lot. Refuse them whole unless
+          // both the hold and the native owner can atomically retire that exact pod custody.
+          const def = defOf(state, commodityId);
+          const volume = def ? volumePerUnit(def) : NaN;
+          const cargo = state.player.cargo, items = cargo.items;
+          const capVolume = cargo.capVolume, usedVolume = cargo.usedVolume, usedMass = cargo.usedMass;
+          const itemDescriptor = items && Object.getOwnPropertyDescriptor(items, commodityId);
+          const volumeDescriptor = Object.getOwnPropertyDescriptor(cargo, 'usedVolume');
+          const massDescriptor = Object.getOwnPropertyDescriptor(cargo, 'usedMass');
+          const itemValue = itemDescriptor && 'value' in itemDescriptor ? itemDescriptor.value : 0;
+          const mass = def && def.mass;
+          const free = capVolume - usedVolume;
+          const fits = qty > 0 && qty === finiteWholePickupAmount(pickup.data.amount)
+            && Number.isFinite(volume) && Number.isFinite(mass) && Number.isFinite(itemValue)
+            && items && (Object.getPrototypeOf(items) === Object.prototype || Object.getPrototypeOf(items) === null)
+            && (!itemDescriptor || 'value' in itemDescriptor && itemDescriptor.writable)
+            && (itemDescriptor || Object.isExtensible(items))
+            && volumeDescriptor && 'value' in volumeDescriptor && volumeDescriptor.writable
+            && massDescriptor && 'value' in massDescriptor && massDescriptor.writable
+            && (volume === 0 || Number.isFinite(free) && Math.floor(free / volume) >= qty);
+          const cargoCurrent = () => {
+            const currentItem = Object.getOwnPropertyDescriptor(items, commodityId);
+            return state.player.cargo === cargo && cargo.items === items
+              && cargo.capVolume === capVolume && cargo.usedVolume === usedVolume && cargo.usedMass === usedMass
+              && (itemDescriptor ? currentItem && 'value' in currentItem && currentItem.value === itemValue
+                && currentItem.writable === itemDescriptor.writable : currentItem === undefined)
+              && Object.getOwnPropertyDescriptor(cargo, 'usedVolume')?.value === usedVolume
+              && Object.getOwnPropertyDescriptor(cargo, 'usedMass')?.value === usedMass;
+          };
+          let physics, orchard;
+          try { physics = this.registry?.get?.('physics'); orchard = physics?._sg02; } catch (_) {}
+          const ticket = fits && orchard && typeof orchard.prepareOrchardPodCollection === 'function'
+            ? orchard.prepareOrchardPodCollection(pickup, state) : null;
+          if (!fits) {
+            payload.acceptedAmount = 0;
+            payload.rejectedAmount = qty;
+            payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
+            if (qty <= 0) payload.invalidAmount = true;
+            if (qty > 0) this.bus.emit('cargo:full', { commodityId });
+            return;
+          }
+          if (!ticket || !cargoCurrent() || !ticket.preflight()) {
+            payload.acceptedAmount = 0;
+            payload.rejectedAmount = qty;
+            payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
+            return;
+          }
+          // The native ticket commits finite custody first. The following cargo mutation is
+          // callback-free; only after both owners agree do observers receive cargo:changed.
+          if (!ticket.commit()) {
+            payload.acceptedAmount = 0;
+            payload.rejectedAmount = qty;
+            payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
+            return;
+          }
+          // All dynamic descriptors and capacity arithmetic were prepared before finite
+          // settlement; this commit is only data-property writes with no intervening callback.
+          if (itemDescriptor) items[commodityId] = itemValue + qty;
+          else Object.defineProperty(items, commodityId, { value: itemValue + qty, writable: true, enumerable: true, configurable: true });
+          cargo.usedVolume = usedVolume + qty * volume;
+          cargo.usedMass = usedMass + qty * mass;
+          payload.acceptedAmount = qty;
+          payload.rejectedAmount = 0;
+          emitChanged(state, cargo);
+          return;
+        }
         const combatLoot = combatFlag('salvageBay') && pickup && pickup.data
           && pickup.data.combatLoot === true && pickup.data.wallet !== 'run';
         const accepted = combatLoot ? addSalvage(state, commodityId, qty) : addCargo(state, commodityId, qty, source);

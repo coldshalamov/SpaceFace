@@ -1,3 +1,4 @@
+import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 import { isPhysicalMachinery, machineryHasEffectivePresentation } from './machineryPresentation.js';
 // Simulation-safe receipt shared with the renderer. The core never imports Three.js: render owners
 // publish only this small state token when an exact authored identity is ready. In headless runs there
@@ -46,6 +47,7 @@ export function hasExplicitAuthoredGeologyPresentation(entity) {
  * PQ-195.00: the SP-07 flywheel assembly opts into its own exact authored spindle the same way.
  */
 export function hasExplicitAuthoredPayloadPresentation(entity) {
+  if (isOrchardPod(entity)) return true;
   if (entity?.alive !== false && entity?.type === 'wreck'
     && entity.data?.persistenceOwner === 'borrowedVoice' && entity.data.borrowedVoiceKind === 'ring'
     && entity.data.authoredPayloadAssetId === 'SF_PLACE_BORROWED_VOICE_RING') return true;
@@ -64,7 +66,7 @@ export function hasExplicitAuthoredPayloadPresentation(entity) {
 
 export function entityRequiresAuthoredPresentation(entity) {
   if (!entity || entity.alive === false) return false;
-  if (entity.type === 'ship' || entity.type === 'station' || isPhysicalMachinery(entity)) return true;
+  if (isOrchardFrame(entity) || entity.type === 'ship' || entity.type === 'station' || isPhysicalMachinery(entity)) return true;
   if (hasExplicitAuthoredGeologyPresentation(entity)) return true;
   if (hasExplicitAuthoredPayloadPresentation(entity)) return true;
   const data = entity.data || {};

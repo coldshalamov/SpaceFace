@@ -1,3 +1,4 @@
+import { createOrchardEncounter } from '../world/anvilOrchardEncounter.js';
 // BP-05.1/BARK-01 situational radio cadence.
 //
 // Observer-only voice surfacing for already-live ship state. It reads AI/contact transitions,
@@ -527,6 +528,7 @@ export const barkDirector = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this._orchardEncounter = createOrchardEncounter(ctx);
     this._bodyNearMisses = new Map();
     this._barkQuiet = null;
     this._barkWakeSeq = 0;
@@ -713,6 +715,7 @@ export const barkDirector = {
   },
 
   newGame() {
+    this._orchardEncounter?.reset();
     if (this.state) {
       this.state.barkDirector = freshState();
       // Ephemeral absolute-simTime deadlines must not carry into the fresh clock — the
@@ -738,6 +741,7 @@ export const barkDirector = {
   },
 
   update(_dt, state) {
+    this._orchardEncounter?.update(state);
     if (state.mode && state.mode !== 'flight') return;
     this.state = state;
     // Quiet open flight: no eligible bark/hail/near-miss/stunt work still paid
@@ -2212,6 +2216,8 @@ export const barkDirector = {
   },
 
   destroy() {
+    this._orchardEncounter?.destroy();
+    this._orchardEncounter = null;
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onEntitySpawnedBark) this.bus.off('entity:spawned', this._onEntitySpawnedBark);
       if (this._onFlee) this.bus.off('ai:flee', this._onFlee);

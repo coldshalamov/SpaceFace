@@ -38,6 +38,8 @@ import { commodityCatalogLegality, restrictedSalvageForWreck } from '../data/sal
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
+import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { targetConditionReadout } from './targetCondition.js';
 import { BINDINGS } from './bindings.js';
 
@@ -470,10 +472,35 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
   });
 }
 
+// The worker publishes this bounded, generation-bound view. Never infer cold cargo
+// from missing history or read native custody from the presentation realm.
+function orchardThermalFacts(target, state) {
+  const d = target.data;
+  const rec = state?.planet?.ships?.[target.id];
+  const life = occupantGenerationOf(target);
+  if (state?.world?.currentSectorId !== ANVIL_ORCHARD.sectorId
+    || (state.planet?.siteId !== undefined && state.planet.siteId !== ANVIL_ORCHARD.planetId)
+    || target.type !== 'payload' || target.alive === false || state.entities?.get?.(target.id) !== target
+    || d?.orchardId !== ANVIL_ORCHARD.id || d.orchardKind !== 'pod' || d.masslineTetherable !== true
+    || !Number.isSafeInteger(life) || life < 1 || rec?.occupantGeneration !== life
+    || (rec.lotId !== undefined && rec.lotId !== d.worldRecordId)
+    || !Number.isFinite(rec.lastThermalAt) || rec.lastThermalAt < 0
+    || (Number.isFinite(state.simTime) && rec.lastThermalAt > state.simTime)
+    || !Number.isFinite(rec.heat) || rec.heat < 0 || rec.heat > 1
+    || ![null, 'skim', 'commit', 'breakup', 'descent'].includes(rec.stage)) return [];
+  const stage = { skim: ['skim', 'danger', 'reentry'].includes(rec.region) ? 'HEATING' : 'COOLING', commit: 'COMMIT WINDOW', breakup: 'BREAKING UP', descent: 'DESCENT' }[rec.stage];
+  const facts = [`POD HEAT ${Math.round(rec.heat * 100)}%`];
+  if (stage) facts.push(stage);
+  if (Number.isFinite(target.hull) && Number.isFinite(target.hullMax) && target.hullMax > 0) {
+    facts.push(`HULL ${Math.round(Math.max(0, Math.min(1, target.hull / target.hullMax)) * 100)}%`);
+  }
+  return facts;
+}
+
 export function objectInfoLine(t, state, p, dist) {
   if (t.type === 'ship' || t.type === 'drone') return presentationStatusWord(t) || '';
   const d = t.data || {};
-  const facts = [];
+  const facts = orchardThermalFacts(t, state);
   if (t.type === 'asteroid') {
     facts.push(d.respawnAt != null ? 'Mined out' : 'Ore-bearing');
   } else if (t.type === 'payload' || t.type === 'wreck' || t.type === 'pickup') {

@@ -112,16 +112,58 @@ export function writePickupRemainder(data, remainder) {
   return left;
 }
 
+// Native Orchard custody retains the exact data tree. Retry bookkeeping is transient and
+// must not add/delete even an incidental field on that tree. This classification grants no
+// custody authority: the usual collector/cargo owners still decide every attempted receipt.
+const protectedPickupRetries = new WeakMap();
+function protectedPickupData(data) {
+  return data.orchardId === 'anvil_storm_orchard' && data.orchardKind === 'pod';
+}
+
+function retryContextCurrent(data, context) {
+  const { state, pickup, collector } = context || {};
+  return !!state && !!pickup && !!collector && pickup.data === data
+    && pickup.alive === true && collector.alive === true
+    && state.entities?.get(pickup.id) === pickup
+    && state.entities?.get(collector.id) === collector;
+}
+
+function protectedRetryCurrent(data, hold, context, now) {
+  const { state, pickup } = context || {};
+  return retryContextCurrent(data, context) && hold.state === state
+    && hold.pickup === pickup && hold.pickupId === pickup.id
+    && hold.life === pickup.occupantGeneration
+    && hold.entities === state.entities && hold.world === state.world
+    && hold.sector === state.world?.currentSectorId && hold.enterSerial === state.world?.enterSerial
+    && hold.row === state.sites?.anvilOrchard
+    && state.entities.get(hold.collectorId) === hold.collector
+    && hold.collector.id === hold.collectorId
+    && hold.collector.alive === true && hold.collector.occupantGeneration === hold.collectorLife
+    && now >= hold.lastTime;
+}
+
 export function clearPickupAcceptanceRetry(data) {
   if (!data || typeof data !== 'object') return;
+  protectedPickupRetries.delete(data);
+  if (protectedPickupData(data)) return;
   delete data.pickupAcceptanceRetryAt;
   delete data.pickupAcceptanceRetryCollectorId;
 }
 
-export function pickupAcceptanceRetryBlocks(data, collectorId, playerId, simTime) {
+export function pickupAcceptanceRetryBlocks(data, collectorId, playerId, simTime, context) {
   if (!data || typeof data !== 'object') return false;
-  const retryAt = Number(data.pickupAcceptanceRetryAt);
   const now = Number.isFinite(Number(simTime)) ? Number(simTime) : 0;
+  if (protectedPickupData(data)) {
+    const hold = protectedPickupRetries.get(data);
+    if (!hold) return false;
+    if (!protectedRetryCurrent(data, hold, context, now) || now >= hold.retryAt) {
+      protectedPickupRetries.delete(data);
+      return false;
+    }
+    hold.lastTime = now;
+    return hold.collectorId === collectorId && context.collector === hold.collector;
+  }
+  const retryAt = Number(data.pickupAcceptanceRetryAt);
   if (!Number.isFinite(retryAt) || now >= retryAt) {
     clearPickupAcceptanceRetry(data);
     return false;
@@ -135,11 +177,26 @@ export function pickupAcceptanceRetryBlocks(data, collectorId, playerId, simTime
   return retryCollectorId === collectorId;
 }
 
-export function setPickupAcceptanceRetry(data, collectorId, retryAt) {
+export function setPickupAcceptanceRetry(data, collectorId, retryAt, context) {
   if (!data || typeof data !== 'object') return;
   const deadline = Number(retryAt);
   if (!Number.isFinite(deadline)) {
     clearPickupAcceptanceRetry(data);
+    return;
+  }
+  if (protectedPickupData(data)) {
+    protectedPickupRetries.delete(data);
+    if (!retryContextCurrent(data, context) || context.collector.id !== collectorId) return;
+    const { state, pickup, collector } = context;
+    const now = Number(state.simTime);
+    if (!Number.isFinite(now) || deadline <= now) return;
+    protectedPickupRetries.set(data, {
+      state, pickup, pickupId: pickup.id, life: pickup.occupantGeneration,
+      entities: state.entities, world: state.world, sector: state.world?.currentSectorId,
+      enterSerial: state.world?.enterSerial, row: state.sites?.anvilOrchard,
+      collector, collectorId, collectorLife: collector.occupantGeneration,
+      retryAt: deadline, lastTime: now,
+    });
     return;
   }
   data.pickupAcceptanceRetryAt = deadline;
