@@ -1412,7 +1412,12 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     }
     if (gpuContextIsLost(state)) {
       finishLedger();
+      if (options.throwOnError === true) assertMobileOpeningGraphicsHealthy(render);
       return false;
+    }
+    if (options.throwOnError === true && result.error) {
+      finishLedger();
+      throw result.error;
     }
     prepareValue = result && result.ok === true ? result.value : null;
     prepareClassification = classifyRequiredPackageAdmission({
@@ -1495,6 +1500,8 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     return false;
   }
   const lost = gpuContextIsLost(state) === true;
+  if (options.throwOnError === true && presentResult.error) throw presentResult.error;
+  if (options.throwOnError === true && lost) assertMobileOpeningGraphicsHealthy(render);
   if (prepareClassification && prepareClassification.status === 'rejected') return false;
   if (prepareClassification && prepareClassification.status === 'pending'
       && prepareClassification.continueOpening !== true) return false;

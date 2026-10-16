@@ -51,7 +51,7 @@ import {
   waitForCurrentRenderPipelines as waitForRenderPipelineWarmup,
   waitForOpeningGpuResources,
 } from './render/pipelineReadiness.js';
-import { shouldAwaitOpeningGpuCook } from './render/renderCapabilityProfile.js';
+import { isMobileRenderContext, shouldAwaitOpeningGpuCook } from './render/renderCapabilityProfile.js';
 import { releaseUiStage } from './render/uiStage.js';
 import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
 
@@ -704,14 +704,14 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         // Hardware with KHR_parallel_shader_compile can link behind the loading
         // shell. Software WebGL links one program per bloomScene (1.3s+) with no
         // parallel compile, so an awaited cook holds Launch past the playable gate.
-        const awaitCook = shouldAwaitOpeningGpuCook({
+        const awaitCook = isMobileRenderContext() || shouldAwaitOpeningGpuCook({
           gpu: state.render && state.render.gpu,
           renderer: state.render && state.render.renderer,
         });
         // PQ-210.02 — the composition-tail settle rides inside the cook now (both
         // transition paths get it), finishing the serial lane's open composes/
         // compiles/uploads while the shell still owns the picture.
-        const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
+        const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook, throwOnError: true });
         if (!awaitCook) {
           void cook.catch((error) => {
             console.warn('[startup] opening GPU cook failed', error);
@@ -722,7 +722,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           return await cook;
         } catch (error) {
           console.warn('[startup] opening GPU cook failed', error);
-          return false;
+          throw error;
         }
       },
     ),
@@ -960,7 +960,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     await nextPaintSliced();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     {
-      const awaitCook = shouldAwaitOpeningGpuCook({
+      const awaitCook = isMobileRenderContext() || shouldAwaitOpeningGpuCook({
         gpu: state.render && state.render.gpu,
         renderer: state.render && state.render.renderer,
       });
@@ -972,7 +972,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
           ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
           : 'Loading the opening stretch smoothly';
       });
-      const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
+      const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook, throwOnError: true });
       try {
         if (!awaitCook) {
           void cook.catch((error) => {
