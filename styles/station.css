@@ -2039,14 +2039,14 @@ html body #screens #sf-ship .sx-sw__stats .k-caps { font-size: 12px; }
   html body #screens #sf-ship .sx-sw__stats { margin-top: 10px; }
 }
 /* Under ~1100 the main column is too narrow for four 30px heroes on one row
-   (+12/s landed on DOCKED, top speed on power). Two-up grid keeps each reading whole. */
+   (+12/s landed on DOCKED, top speed on power). Two-up grid keeps each reading whole; captions stay at the 12px type floor. */
 @media (max-width: 1100px) {
   html body #screens #sf-ship .sx-sw-bands {
     display: grid; grid-template-columns: 1fr 1fr; gap: 2px 18px; flex-wrap: unset;
   }
   html body #screens #sf-ship .sx-sw-hero { padding: 2px 6px 4px; }
   html body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: 24px; }
-  html body #screens #sf-ship .sx-sw-hero .k-hero__w { font-size: 11px; letter-spacing: .12em; }
+  html body #screens #sf-ship .sx-sw-hero .k-hero__w { font-size: 12px; letter-spacing: .1em; }
 }
 /* S2: on a short frame the rail compresses — dial, rows, helper, rack — so the helper
    and DOCK TO EXTEND keep their floor above y=700. */
