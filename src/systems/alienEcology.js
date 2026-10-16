@@ -44,6 +44,7 @@ import { noteHeatTrial } from '../data/heatProximityTrial.js';
 import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
 import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.js';
 import { HUMAN_DOCK_CHART, chartPlace } from '../data/routeChart.js';
+import { copyLifeRead, lifeSampleFromSite, readSiteLife } from '../data/siteLifeRead.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -909,22 +910,26 @@ export function tickAlienEcology(world, dt) {
         if (meterSite) {
           const r = siteRecord(state, meterSite.siteId);
           const coherent = r.relaySevered !== true && r.state !== 'severed';
+          const life = readSiteLife(lifeSampleFromSite(meterSite, r, true));
+          r.lifeRead = life;
           world.bus.emit('ecology:coherence', {
             siteId: meterSite.siteId,
             coherent,
             contamination: sectorC,
             t: now,
+            life,
           });
           // The 1 Hz event is the sample. The flight log speaks only when the
           // reading changes, so a meter inside the field is not a toast every second.
-          const shown = `${meterSite.siteId}:${coherent ? 'coherent' : 'severed'}`;
+          // A quiet relay on a site that still has biomass says suppressed.
+          const shown = `${meterSite.siteId}:${life.reading}`;
           if (ae._cohShown !== shown) {
             ae._cohShown = shown;
             const name = meterSite.name || meterSite.siteId;
             world.bus.emit('comms:log', {
               from: 'Coherence meter',
               kind: 'ecology',
-              text: coherent ? `${name} is still coherent.` : `${name} has been severed.`,
+              text: `${name}: ${life.text}`,
             });
           }
         }
@@ -1875,6 +1880,7 @@ export function deserializeAlienEcologyState(state, data) {
   if (data.sites && typeof data.sites === 'object') {
     for (const [siteId, rec] of Object.entries(data.sites)) {
       if (!rec || typeof rec !== 'object') continue;
+      const lifeRead = copyLifeRead(rec.lifeRead);
       ae.sites[siteId] = {
         state: typeof rec.state === 'string' ? rec.state : 'dormant',
         // Legacy saves encoded severance only in state; fold it into the flag.
@@ -1898,6 +1904,7 @@ export function deserializeAlienEcologyState(state, data) {
         // must know the claim settled, lapsed, or was driven off, and never re-arm it.
         claimCrew: rec.claimCrew && typeof rec.claimCrew === 'object'
           ? JSON.parse(JSON.stringify(rec.claimCrew)) : null,
+        ...(lifeRead ? { lifeRead } : {}),
       };
     }
   }
