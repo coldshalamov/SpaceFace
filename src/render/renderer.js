@@ -1774,6 +1774,12 @@ export function openingPreparedLeafKey(subject, context = '') {
     + `;${openingResourceVersion(subject.instanceMatrix)}:${openingResourceVersion(subject.instanceColor)}:${subject.count ?? ''}`;
 }
 
+/** Reuse a cook-owned drawable census only while it still belongs to this scene and generation. */
+export function resolveTouchDrawableSession(census, scene, generation = 0) {
+  return census && census.scene === scene && census.generation === (generation || 0)
+    ? census : null;
+}
+
 /** Required leaves stay strict; extra pool coverage only admits live, potentially drawn resources. */
 export function openingAdmissionSubjects(required, pooled, scene, { mobileFirstPicture = false } = {}) {
   const requiredLeaves = new Set(required);
@@ -13115,10 +13121,13 @@ export const render = {
     };
     const touchExactTargetSubject = (subject) => {
       stampSubjectEnv(subject);
+      const drawableSession = resolveTouchDrawableSession(
+        this._touchDrawableCensus, scene, this._liveSectorCookGeneration || 0,
+      );
       if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
-        return this.bloom.touchScenePipelines(subject, cam.obj, scene);
+        return this.bloom.touchScenePipelines(subject, cam.obj, scene, { drawableSession });
       }
-      return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
+      return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene, { drawableSession });
     };
     const ownerInactiveTouchError = () => {
       const error = new Error('exact-target touch owner became inactive');

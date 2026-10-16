@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
+import * as THREE from 'three';
 
 import {
   bindEnvironmentToStandardMaterials,
@@ -8,8 +9,9 @@ import {
   collectFirstFlightLayerDrawables,
 } from '../src/render/latePipelineAdmission.js';
 import { shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
-import { isEntityRenderRelevant } from '../src/render/renderer.js';
+import { isEntityRenderRelevant, resolveTouchDrawableSession } from '../src/render/renderer.js';
 import { cookLiveSceneGpu } from '../src/render/liveSceneCook.js';
+import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { waitForCurrentRenderPipelines, waitForOpeningGpuResources } from '../src/render/pipelineReadiness.js';
 
 test('loading waitForCurrentRenderPipelines drains optional post-opening pipelines after the exact plan', async () => {
@@ -432,4 +434,53 @@ test('admission queues compiles during loading and retries the starting sector a
   assert.doesNotMatch(renderer, /deferredStartupPrecompile|backgroundPipelinePrecompileReady/);
   assert.doesNotMatch(renderer, /scheduleUpgradeFrame/,
     'must not relitigate upgrade-frame scheduling');
+});
+
+test('individual exact-target touches reuse only the current cook drawable census on both routes', async () => {
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const scene = {}, otherScene = {}, census = { scene, generation: 7, drawables: [] };
+  assert.strictEqual(resolveTouchDrawableSession(census, scene, 7), census);
+  assert.equal(resolveTouchDrawableSession(census, otherScene, 7), null);
+  assert.equal(resolveTouchDrawableSession(census, scene, 8), null);
+  assert.equal(resolveTouchDrawableSession(null, scene, 7), null);
+  assert.match(renderer, /touchScenePipelines\(subject, cam\.obj, scene, \{ drawableSession \}\)/);
+  assert.match(renderer, /touchSubjectOnExactTarget\(renderer, null, subject, cam\.obj, scene, \{ drawableSession \}\)/);
+  assert.match(renderer, /const restore = revealSubjectWithAncestors\(subject\);[\s\S]{0,140}touchExactTargetSubject\(subject\)/,
+    'the owner reveal/submit cancellation envelope remains in place');
+  assert.match(renderer, /typeof isActive === 'function' && !isActive\(subject\)\) throw ownerInactiveTouchError\(\)/,
+    'the exact touch still checks the source owner before drawing');
+});
+
+test('exact-target touch restores the cached-session visibility state after a draw failure', () => {
+  const scene = new THREE.Scene();
+  const subject = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const sibling = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  scene.add(subject, sibling);
+  const drawableSession = { scene, generation: 7, drawables: [subject, sibling] };
+  const failure = new Error('injected-touch-failure');
+  const renderer = {
+    autoClear: true,
+    getRenderTarget: () => null,
+    setRenderTarget() {},
+    render() {
+      assert.equal(sibling.visible, false, 'the cached census hides non-subject drawables for the touch');
+      throw failure;
+    },
+  };
+  try {
+    assert.throws(
+      () => touchSubjectOnExactTarget(renderer, null, subject, {}, scene, { drawableSession }),
+      (error) => error === failure,
+    );
+    assert.equal(subject.visible, true);
+    assert.equal(sibling.visible, true, 'the per-call census hide restores after a throwing draw');
+    assert.equal(subject.frustumCulled, true);
+    assert.equal(sibling.frustumCulled, true);
+    assert.equal(renderer.autoClear, true);
+  } finally {
+    subject.geometry.dispose();
+    sibling.geometry.dispose();
+    subject.material.dispose();
+    sibling.material.dispose();
+  }
 });
