@@ -5,6 +5,8 @@ import { CERES_WORKFLEET_CONTRACT as C, ceresWorkfleetPose } from '../src/data/c
 import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
 import { ceresWorkfleetHardwareSpec,ceresWorkfleetWorldPose,driveCeresWorkfleetBody,
   ceresWorkfleetAtPose,ceresWorkfleetSocket } from '../src/systems/ceresWorkfleet.js';
+import { restoreCeresWorkfleetReacquire, restoreCeresWorkfleetReacquireReturnBudget, CERES_REACQUIRE_LIMITS } from '../src/systems/ceresWorkfleetRecovery.js';
+import { captureProductionWorkfleet, allowProductionRecovery } from './ceres-production-recovery-budget.mjs';
 const DT=1/60;
 function body(id,boxes,mass,at,dynamic=true){
   const radius=120;
@@ -306,8 +308,10 @@ test('complete production factory commissions the public site worker and yields 
     assert.equal(await prepareProductionNative(runtime),true);
     const brace=withProductionFeatures(runtime,()=>sites.applyWorldSiteBeamOperation({siteId:C.siteId,componentId:'long_plate_clamp',verb:'repair',amount:24,
       requestStreamId:'player-industrial-beam',requestSequence:state.tick}));assert.equal(brace.ok,true);
-    let sawThrust=false,maxTravel=0;
-    // 7600 -> 12000: since the pressed-contact fix stopped tunneling through the breaker's
+    let sawThrust=false,maxTravel=0,originalBodies=null;
+    // This remains the normal-path cutoff. An already-active authored recovery
+    // may finish under its original finite deadline below; no retries reset it.
+    // Historical 7600 -> 12000: since the pressed-contact fix stopped tunneling through the breaker's
     // hull, the head's real collided transit through the well takes ~10000 ticks to reach
     // extract under the full production registry (deterministic seed 47). Isolated 2026-10-14:
     // the PR #360 pre-merge branch head (ecbea9f2) was still in head_retract at 12000, but the
@@ -316,10 +320,23 @@ test('complete production factory commissions the public site worker and yields 
     // carries ~70% headroom and no fixture change is warranted.
     for(let i=0;i<12000;i++) {
       runtime.step(DT);
+      originalBodies ||= captureProductionWorkfleet(state,C);
       const worker=state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.worker);
       if(worker){maxTravel=Math.max(maxTravel,Math.hypot(worker.pos.x-(C.sitePlacement.pos.x-80),worker.pos.z-(C.sitePlacement.pos.z-220)));
         sawThrust ||= worker._flightFrame?.driveState==='thrust';}
       if(state.npcJobs?.ceresWorkfleet?.phase==='extract'&&maxTravel>2)break;
+    }
+    if(state.npcJobs?.ceresWorkfleet?.phase!=='extract'){
+      const allowance=allowProductionRecovery({state,native:runtime.getSystem('physics')._sg02,originalBodies,
+        restorePlan:restoreCeresWorkfleetReacquire,restoreReturnBudget:restoreCeresWorkfleetReacquireReturnBudget,
+        atPose:ceresWorkfleetAtPose,settleTicks:Math.ceil(CERES_REACQUIRE_LIMITS.settleSeconds/DT)});
+      while(state.tick<allowance.deadline){
+        runtime.step(DT);
+        const worker=originalBodies[0].e;
+        maxTravel=Math.max(maxTravel,Math.hypot(worker.pos.x-(C.sitePlacement.pos.x-80),worker.pos.z-(C.sitePlacement.pos.z-220)));
+        sawThrust ||= worker._flightFrame?.driveState==='thrust';
+        if(allowance.check())break;
+      }
     }
     let job=state.npcJobs?.ceresWorkfleet,section=state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.payload);
     assert.deepEqual(productionProofSourceHashes(),sourceHashes,'production proof source must stay immutable during the probe');
