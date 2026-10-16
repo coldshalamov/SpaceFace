@@ -1267,3 +1267,13 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~Station Ledger right column at 800×600~~ (fixed ui-polish-45); at 844×390 the lower Shipworks callouts start below the fold; with a slot chosen at 1024×440 the chooser's CARGO · S / COMPATIBLE MODULES 1 heading stacks tight.
 
+
+## Credits short desktop: section ladder clears ‹ BACK (ui-polish-50)
+
+**Before (master c5f81484da):** on a short desktop window (651–1100 × ≤460, e.g. 1024×440) the five-rung Credits section ladder kept 48px rungs and spilled through ‹ BACK; at ≤900 (844×390 / 801×390) the stacked MADE BY reel head (SPACEFACE) printed over the foot. Real phones in landscape (`data-sf-mobile="1"`) already used the mobile layout and were clean.
+
+**After (`src/ui/orrery/settingsLayouts.js` only, CSS, `html:root:not([data-sf-mobile="1"])`):** in `651–1100 × ≤460` the frame pads and row gap close up, title/subtitle shrink, hang stays in its row (`overflow: auto` instead of painting through the foot), ladder rungs drop to ~26px, reel head / SPACEFACE / foot compress, and the orrery parks further right with its body name hidden (ladder + reel already name the section). A tighter `≤900 × ≤460` block further trims the horizontal rail and reel padding so SPACEFACE clears ‹ BACK. Selectors and IDs are unchanged.
+
+**Checked:** DOM at 1024×440 — last rung bottom 232, foot top 402 (gap ~170); at 844×390 — SPACEFACE bottom 176, foot top 352 (gap ~176). Bench `credits` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080; phone 390×844 and phone-land 844×390 stay ~pixel-identical (0.1–0.4% churn). Walk at 1024×440: 14 controls. Shots: `/workspace/spaceface-scratch/ui-shots/polish50/{before,after}/`, `compare-1024x440{,-crop}.png`, `compare-844x390.png`, `compare-801x390.png`, `compare-900x420.png` (not committed).
+
+**Leftovers (not this pass):** Settings Automation conduct-strip labels vs short beams at 960; Achievements / Quit / pause / statistics short-desktop or phone clipping; STORY · THE EIGHT BEATS wrap @801×390 and ARCHIVE image under reader fade @844×390 (Codex — owned by open #412). Shipworks / Research dial / Codex short-desktop owned by open #410–#412 — do not push those branches.
