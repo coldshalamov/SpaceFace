@@ -925,7 +925,7 @@ async function runOne(args, arena, extra = {}) {
       present: !!warm, reason: warm ? warm.reason ?? null : null, khr,
       software: !!(render && render.gpu && (render.gpu.software || render.gpu.tier === 'software')),
       tier: (render && render.gpu && render.gpu.tier) || null,
-      touched: list(warm && warm.touched), timedOut: list(warm && warm.timedOut), skipped: list(warm && warm.skipped),
+      touched: list(warm && warm.touched), timedOut: list(warm && warm.timedOut), skipped: list(warm && warm.skipped), portSkipped: list(warm && warm.portSkipped),
       failed: warm && Number.isFinite(warm.failed) ? warm.failed : 0, sweeps: warm && Number.isFinite(warm.sweeps) ? warm.sweeps : null,
     };
   }).catch(() => null);

@@ -24844,14 +24844,14 @@ export const render = {
     const seen = new Set();
     const clock = (typeof performance !== 'undefined' && typeof performance.now === 'function')
       ? () => performance.now() : () => Date.now();
-    const receipt = { touched: [], touchMs: {}, failed: 0, sweeps: 0, subset: null, reason: 'pending', at: null };
+    const receipt = { touched: [], portSkipped: [], touchMs: {}, failed: 0, sweeps: 0, subset: null, reason: 'pending', at: null };
     const owned = () => isCurrentOwner(owner);
     const publish = (reason) => {
       if (!owned()) return false;
       receipt.reason = reason;
       receipt.at = Math.round(clock());
       if (render) {
-        render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice(), touchMs: { ...receipt.touchMs } };
+        render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice(), portSkipped: receipt.portSkipped.slice(), touchMs: { ...receipt.touchMs } };
       }
       return true;
     };
@@ -24872,6 +24872,8 @@ export const render = {
     let firstTouchCharged = false;
     receipt.timedOut = [];
     receipt.skipped = [];
+    // Touches the exact-target port declined ({ skipped: true, reason }) did not touch anything:
+    // they go to receipt.portSkipped, not `touched`, so the receipt and verdict count real touches.
     const timedTouch = async (touch, key, subject, { hideOnTimeout = false } = {}) => {
       const completion = (promise) => promise
         ? promise.then(() => true, () => true)
@@ -24893,7 +24895,8 @@ export const render = {
       try {
         settled = Promise.resolve(touch(subject));
         outcome = await Promise.race([
-          settled.then(() => 'done'),
+          settled.then((value) => (value && value.skipped === true
+            ? `port-skipped:${value.reason || 'unknown'}` : 'done')),
           new Promise((resolve) => {
             timer = setTimeout(() => {
               // The exact-target port reveals subjects only for its synchronous draw and restores
@@ -24920,7 +24923,9 @@ export const render = {
           } else if (didFail) {
             receipt.failed += 1;
             laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, failure);
-          } else {
+          } else if (outcome.startsWith('port-skipped:')) {
+            receipt.portSkipped.push(`${key} (${outcome.slice('port-skipped:'.length)})`);
+          } else if (outcome === 'done') {
             receipt.touched.push(key);
           }
         }
