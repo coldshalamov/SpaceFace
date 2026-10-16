@@ -198,7 +198,7 @@ not to invent.
 | WORLD-40 | A busy lane carries two named contacts so repeat trips meet a second face | `src/data/laneContacts.js`, `src/systems/traffic.js` | On seed 4242 Helios and Ceres each stamp two distinct named contacts across 20 minutes of traffic; a focused test pins the count | Stamp two names on one hull. Add roles | SHIPPED |
 | WORLD-41 | A retired aftermath wreck clears its chart marker and its cause line | `src/systems/aftermathWrecks.js`, `src/ui/galaxyMap.js` | On seed 4242 `aftermathWreck:retired` removes the marker and the map model no longer lists the wreck; a focused test pins removal | Retire wrecks earlier. Add a wreck list screen | SHIPPED WORLD-41 f32458145 |
 | WORLD-42 | A hauler that arrives to an empty lot grumbles about it | `src/systems/npcJobsRuntime.js`, `src/systems/barkDirector.js` | On seed 4242 `npcjobs:loadEmpty` produces one hauler-register bark within the ambient gap; a focused test pins one per empty load | Bark off-glass. Change lot rules | SHIPPED WORLD-42 5d76b0e12 |
-| WORLD-43 | A miner that works a seam out says so and moves to the next rock | `src/systems/fieldDepletion.js`, `src/systems/barkDirector.js`, `src/systems/npcJobsRuntime.js` | On seed 4242 depleting an NPC-worked field produces one miner bark and the miner's job retargets a live seam; a focused test pins both | Change yield or depletion rate. Add a map marker | OPEN |
+| WORLD-43 | A miner that works a seam out says so and moves to the next rock | `src/systems/fieldDepletion.js`, `src/systems/barkDirector.js`, `src/systems/npcJobsRuntime.js` | On seed 4242 depleting an NPC-worked field produces one miner bark and the miner's job retargets a live seam; a focused test pins both | Change yield or depletion rate. Add a map marker | SHIPPED |
 | WORLD-44 | A witnessed pirate kill becomes a cited headline naming the hull you saved | `src/systems/aftermathWrecks.js`, `src/ui/marketNews.js`, `src/systems/lawSecurity.js` | On seed 4242 a lawful witnessed raider kill publishes one cited headline and an unwitnessed kill publishes none; a focused test pins both branches (LAW-08 boundary) | Publish uncited. Add a news screen | OPEN |
 | WORLD-45 | Tourists scatter when a firefight reaches the memorial | `src/systems/traffic.js`, `src/data/regionalEcology.js`, `src/systems/barkDirector.js` | On seed 4242 weapon fire inside `zone_helios_memorial` sends tourist hulls to a flee state with one bark; a focused test pins the reaction and the quiet case | Spawn hostiles at the memorial. Change tourist counts (WORLD-20) | OPEN |
 | WORLD-46 | A hauler whose raiders you killed remembers you at the next crossing | `src/systems/moralMemory.js`, `src/systems/barkDirector.js` | On seed 4242 clearing a live raid on a lane hauler stamps one memory and the next meeting speaks one thank-you line; a focused test pins once-only | Pay a reward. Write a side quest | OPEN |
@@ -649,7 +649,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| WORLD-43 | 2026-10-16 | infer10-oct16 | `src/systems/fieldDepletion.js`, `src/systems/barkDirector.js`, `src/systems/npcJobsRuntime.js` |
 | INST-35 | 2026-10-16 | infer10-oct16 | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` |
 | FIGHT-13 | 2026-10-16 | infer10-oct16 | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` |
 | MACH-12 | 2026-10-16 | infer10-oct16 | `src/systems/traffic.js`, `src/data/laneContacts.js` |
@@ -664,6 +663,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | LAW-10 | law-10-scan-dump-suspicion | e3890eb692 | Mid-scan full dump of the scanned lot aborts to suspicion (toast + panel dismiss); completed scans keep the full finding; heat/scan-odds untouched; focused 5/5 |
 | PIC-31 | pic-31-damaged-hull-vent | 96af864a5e | Damaged-band entry vents at the hit side (one record, repair/death stops) through the status-attached loop to a pale matter draw; bands untouched, no health bar; focused 7/7 |
 | ECON-08 | econ-08-loss-moves-price | c09dbb1d4a | Player-caused laden kill drains the destination book via the existing pressure path + one cited headline; NPC/unladen kills stay ledger-only; focused 2/2 |
+| WORLD-43 | world-43-miner-worked-out | c6408c46d7 | Depleting an NPC-worked field speaks one miner-register line and retargets the job to a live seam; yield/depletion untouched; focused 2/2 |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
