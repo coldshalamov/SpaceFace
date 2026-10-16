@@ -304,6 +304,14 @@ const CSS = `
 .fp-dial.is-scrubbing .fp-hub__scrub { display:block; }
 .fp-dial.is-scrubbing :is(.fp-hub__tier, .fp-hub__clears) { display:none; }
 .fp-hub__preview { display:none; }
+/* a small dial (a short window): the hub keeps the heat and its tier (wrapping at its word); the clears and bounty
+   lines, the top engraving and the WANTED word, all said by the title over the dial, step aside so the rule along
+   the rim (the heat's rule, a scrub's forecast, a verb's effect) has the rim to itself; the drag hint goes too */
+.fp-dial.is-small :is(.fp-hub__clears, .fp-hub__bounty) { display:none; }
+.fp-dial.is-small .fp-hub__k { margin-bottom:2px; letter-spacing:.24em; }
+.fp-dial.is-small .fp-hub__tier { margin-top:6px; max-width:100%; white-space:normal; font-size:12px; line-height:1.25; letter-spacing:.14em; }
+.fp-dial.is-small :is(.fp-engrave:not(.fp-engrave--rule), .fp-wanted text, .fp-hint) { display:none; }
+.fp-dial.is-small .fp-engrave--rule text { letter-spacing:.06em !important; }
 /* the sector keys: one real button per source, on the band (the band itself shows focus) */
 .fp-key { position:absolute; left:0; top:0; width:var(--fp-key, 40px); height:var(--fp-key, 40px); margin:calc(var(--fp-key, 40px) / -2) 0 0 calc(var(--fp-key, 40px) / -2);
   padding:0; border:0; border-radius:50%; background:none; box-shadow:none; color:transparent; font-size:0; cursor:pointer; opacity:1; outline:none; z-index:2; }
@@ -350,8 +358,15 @@ export function dialGeometry(w, h) {
   const rS = R - B - gap - SB / 2;
   const tok = Math.round(clamp(R * 0.116, 32, 56));
   const rTok = rS - SB / 2 - tok / 2 - clamp(R * 0.03, 7, 14);
-  const hubR = clamp(R * 0.5, 96, 260);
   const clockW = clamp(R * 0.03, 9, 14);
+  // On a short dial (R under ~157: a 390-500 px tall window) the 96px hub floor ran the escape clock through the source
+  // band and the hub's lines across the band's names. There the hub shrinks to sit inside the band, and whenever it
+  // shrinks the dial is `small`: the hub keeps the heat and its tier, and the lines the title already says step aside
+  // (see CSS). The full hub's lines need the whole 96px floor: a capped 80-95px hub kept them and ran the clears and
+  // bounty lines across the clock ring (1024x468-499).
+  const hubFloor = clamp(R * 0.5, 96, 260);
+  const hubR = Math.min(hubFloor, Math.max(48, rS - SB / 2 - clockW - 4));
+  const small = hubR < hubFloor;
   // The crest pads sit between the escape clock (its band and ticks) and the source band. On a dial under ~510px
   // (960x540, phones) the hub's 96px floor puts the clock where the pads go, so the pads printed over the clock and
   // over the hub's tier, clears and bounty lines. There the pads yield: the band still names each source, the reading
@@ -360,7 +375,7 @@ export function dialGeometry(w, h) {
   const arm0 = hubR + 4;
   const arm1 = tokens ? rTok - tok * 0.62 - 3 : rS - SB / 2 - 3;
   const ts = clamp(R / 380, 1, 1.35);
-  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, tokens, hubR, clockW, arm0, arm1, ts };
+  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, tokens, hubR, clockW, arm0, arm1, ts, small };
 }
 
 /** Shortest signed turn from a to b, degrees. */
@@ -499,12 +514,14 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     Object.assign(pool.style, { left: `${f(g.cx - poolR)}px`, top: `${f(g.cy - poolR)}px`, width: `${f(poolR * 2)}px`, height: `${f(poolR * 2)}px` });
     hub.style.left = `${f(g.cx)}px`;
     hub.style.top = `${f(g.cy)}px`;
-    host.style.setProperty('--fp-hub-n', `${Math.round(clamp(g.R * 0.38, 58, 156))}px`);
-    host.style.setProperty('--fp-hub-w', `${Math.round(g.hubR * 1.56)}px`);
-    host.style.setProperty('--fp-key', `${Math.round(g.SB + 18)}px`);
+    host.style.setProperty('--fp-hub-n', `${Math.round(g.small ? clamp(g.hubR * 0.8, 40, 58) : clamp(g.R * 0.38, 58, 156))}px`);
+    host.style.setProperty('--fp-hub-w', `${Math.round(g.hubR * (g.small ? 1.76 : 1.56))}px`);
+    // a small dial's settled slivers stand ~.28 rS apart, so their keys narrow to that pitch (never under 24px)
+    host.style.setProperty('--fp-key', `${Math.round(g.small ? clamp(g.rS * 0.27, 24, g.SB + 18) : g.SB + 18)}px`);
     host.style.setProperty('--fp-tok', `${g.tok}px`);
     // the dial's words grow with it past the 1920 size (never below the 12 px floor)
     host.style.setProperty('--fp-ts', String(f(g.ts)));
+    host.classList.toggle('is-small', g.small);
 
     // ---- the bezel ----
     const bz = svg('g', { class: 'fp-dial__bezel' });
@@ -697,8 +714,13 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       const a1 = clearArc.to - (sectors.length ? gapDeg / 2 : 0);
       cg.appendChild(svg('path', { class: 'fp-clear__band', d: arcOf(g.rS, a0, a1), 'stroke-width': f(g.SB) }));
       cg.appendChild(svg('path', { class: 'fp-clear__edge', d: arcOf(g.rS + g.SB / 2 - 1, a0, a1) }));
-      const text = engraving.clear || 'Clean record';
-      cg.appendChild(along(g.rS, sectors.length ? clearArc.mid : 180, String(text).toUpperCase(), ''));
+      // the clear arc's line, or its short word where a small dial's arc can't hold the line (never half a word);
+      // on a small dial prefer the short word first so a near-full clear arc doesn't wrap a long sentence through the hub
+      const room = Math.min((g.rS * Math.PI * Math.max(0, a1 - a0)) / 180, g.rS * Math.PI);
+      const clearWords = g.small ? ['Clean record', engraving.clear] : [engraving.clear, 'Clean record'];
+      const text = clearWords.filter(Boolean).map((w) => String(w).toUpperCase())
+        .find((w) => room >= w.length * 12 * g.ts * 0.86 + 14);
+      if (text) cg.appendChild(along(g.rS, sectors.length ? clearArc.mid : 180, text, ''));
       bezel.sourcesG.appendChild(cg);
     }
     buildTokens();
