@@ -1303,8 +1303,20 @@ export const cargo = {
         }
         // Accepted pods are already physical custody even if a later admission throws.
         // Their public verb receipt must land before the exception leaves this attempt.
+        // LAW-10: the receipt names the legality and what is left aboard, so an active
+        // customs scan can tell a dumped scanned lot (hold reads clean → aborted scan
+        // with a suspicion note) from an unrelated dump. Additive only — the pod keeps
+        // its contraband stamp, so a later cone/weir read still prices heat as before.
         if (dumped > 0 && this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('cargo:jettisoned', { commodityId, amount: dumped });
+          const lotDef = defOf(state, commodityId);
+          const holdRemaining = Math.max(0,
+            Math.floor(Number(state.player.cargo.items[commodityId]) || 0));
+          this.bus.emit('cargo:jettisoned', {
+            commodityId,
+            amount: dumped,
+            legality: (lotDef && lotDef.legality) || 'legal',
+            holdRemaining,
+          });
         }
       } finally { this._jettisonInFlight = false; }
     }

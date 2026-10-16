@@ -132,6 +132,13 @@ export const CUSTOMS_SCAN_RANGE = 90;
 export const CUSTOMS_SCAN_HALF_ANGLE = 0.55;
 export const CUSTOMS_SCAN_DWELL_S = 0.70;
 
+// LAW-10 — mid-scan dump window. A hold scan opens the moment `player:scannedByPatrol`
+// carries hasContraband; the window is how long a later jettison still counts as
+// "mid-scan" (simTime, deterministic — patrol offers run ~10 s, so 15 s covers the
+// reaction without leaking into the next encounter). Expiry is silent: an evaded or
+// timed-out scan keeps whatever the engine already decided, never a second verdict.
+export const SCAN_DUMP_WATCH_WINDOW_S = 15;
+
 /** PQ-151.01 — nets-band tether-net roadblock on a lane. Reuses the customs cone + a span. */
 export const WANTED_NET_STANDOFF = 320;
 export const WANTED_NET_RADIUS = 22;
@@ -267,6 +274,7 @@ export const lawSecurity = {
       this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
       this._observeInspectionSectorExit(payload);
       this._clearHarmWindows(); // victim ids recycle across sectors — history cannot cross the jump
+      this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
     };
     this._onSaveRestoring = () => {
@@ -274,6 +282,7 @@ export const lawSecurity = {
       this._resetInspectionTransient();
       this._resetWeirTransient();
       this._clearHarmWindows();
+      this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
@@ -282,6 +291,7 @@ export const lawSecurity = {
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
       this._lastCustomsSubmitTick = -1;
+      this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
@@ -313,6 +323,10 @@ export const lawSecurity = {
     };
     this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
     this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
+    this._scanDumpWatch = null;
+    this._onScannedByPatrol = (payload) => this._openScanDumpWatch(payload);
+    this._onScanDumpJettison = (payload) => this._noteScanDumpJettison(payload);
+    this._onScanDumpResolved = (payload) => this._observeScanDumpResolution(payload);
     this._lastCustomsSubmitTick = -1;
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
@@ -339,6 +353,9 @@ export const lawSecurity = {
       this.bus.on('heat:changed', this._onHeatChanged);
       this.bus.on('law:impoundPay', this._onImpoundPay);
       this.bus.on('customs:submit', this._onCustomsSubmit);
+      this.bus.on('player:scannedByPatrol', this._onScannedByPatrol);
+      this.bus.on('cargo:jettisoned', this._onScanDumpJettison);
+      this.bus.on('contraband:scanned', this._onScanDumpResolved);
       this.bus.on('law:fineChoice', this._onFineChoice);
       this.bus.on('law:playerSurrender', this._onPlayerSurrender);
       this.bus.on('law:audit', this._onRecordAudit);
@@ -357,6 +374,7 @@ export const lawSecurity = {
     if (this.state && this.state.player) delete this.state.player.lawfulInspection;
     this._resetInspectionTransient();
     this._resetWeirTransient();
+    this._resetScanDumpWatch();
     this._lastCustomsSubmitTick = -1;
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
@@ -460,6 +478,7 @@ export const lawSecurity = {
     if (shouldSkipFullTickSystems(state)) { this.keepalive(_dt); return; }
     this._reconcileJobResponses();
     this._updateFineWork(_dt, state);
+    this._pruneScanDumpWatch(state);
     this._updatePlayerSurrender(_dt, state);
     if (state.mode && state.mode !== 'flight') return;
     if (this._warrantWaves) this._warrantWaves.update(_dt, state);
@@ -3105,6 +3124,177 @@ export const lawSecurity = {
     });
   },
 
+  // LAW-10 — a mid-scan dump downgrades the finding to suspicion. The engine owns the
+  // scan odds and every fine/confiscation/rep/heat effect; this watch only OBSERVES and
+  // NAMES. It opens on `player:scannedByPatrol` with contraband aboard (snapshotting the
+  // engine's own illicit read), notes `cargo:jettisoned` lots inside the window, and:
+  //   • full dump of the scanned lot(s) → resolves `aborted_dump`: one `customs:scanAborted`
+  //     seam event, one suspicion receipt, one bark. No fine, no standing move, no heat
+  //     write — the jettisoned pod stays contraband evidence, so the pod-cone/weir read
+  //     still prices heat through heat.js exactly as before (dumping is never heat-free).
+  //   • anything else (partial/no dump, scan completes) → `completed_full`: silent. The
+  //     engine's `contraband:scanned` stands verbatim as the full finding.
+  // The watch lives on the instance (session-scoped, never serialized): a save boundary,
+  // sector exit, or new run drops it like the weir dwell latches.
+  _resetScanDumpWatch() {
+    this._scanDumpWatch = null;
+  },
+
+  _scanDumpNow(state) {
+    return Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  },
+
+  _pruneScanDumpWatch(state) {
+    const watch = this._scanDumpWatch;
+    if (!watch || watch.phase !== 'scanning') return;
+    if (this._scanDumpNow(state) - watch.startedSimTime > SCAN_DUMP_WATCH_WINDOW_S) {
+      watch.phase = 'expired';
+      watch.resolvedAt = this._scanDumpNow(state);
+    }
+  },
+
+  _scanDumpSnapshotLots(state) {
+    try {
+      const economy = this._economy();
+      if (economy && typeof economy.illicitCargo === 'function') {
+        const illicit = economy.illicitCargo(state) || [];
+        return illicit
+          .filter((s) => s && typeof s.commodityId === 'string'
+            && Math.max(0, Math.floor(Number(s.qty) || 0)) > 0)
+          .map((s) => ({ commodityId: s.commodityId, qty: Math.max(0, Math.floor(Number(s.qty) || 0)) }));
+      }
+    } catch (_) { /* snapshot unavailable — the watch still opens, lots unknown */ }
+    return [];
+  },
+
+  _openScanDumpWatch(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.hasContraband !== true) return;
+    if (state.mode && state.mode !== 'flight') return;
+    this._pruneScanDumpWatch(state);
+    const prior = this._scanDumpWatch;
+    if (prior && prior.phase === 'scanning') return; // one window at a time — the first scan owns it
+    this._scanDumpWatch = {
+      factionId: (payload && payload.factionId) || 'faction_scn',
+      patrolId: (payload && payload.patrolId) ?? null,
+      stationId: (payload && payload.stationId) ?? null,
+      source: (payload && payload.source) || null,
+      lawfulInspectionCaseId: (payload && payload.lawfulInspectionCaseId) || null,
+      startedTick: state.tick | 0,
+      startedSimTime: this._scanDumpNow(state),
+      lots: this._scanDumpSnapshotLots(state),
+      dumped: [],
+      dumpedMidScan: false,
+      phase: 'scanning',
+      resolvedAt: null,
+    };
+  },
+
+  // True once every scanned lot reads empty in the hold. Prefers the engine's own illicit
+  // read (bay-only contraband correctly refuses the abort — jettison cannot clear the bay).
+  // Without an economy read, falls back to snapshot-minus-dumps, or to the cargo payload's
+  // own holdRemaining for an unknown lot.
+  _scanDumpLotsCleared(state, watch, payload) {
+    const dumpedById = new Map();
+    for (const row of watch.dumped) {
+      dumpedById.set(row.commodityId, (dumpedById.get(row.commodityId) || 0) + row.amount);
+    }
+    try {
+      const economy = this._economy();
+      if (economy && typeof economy.illicitCargo === 'function') {
+        const left = new Map();
+        for (const s of economy.illicitCargo(state) || []) {
+          if (!s || typeof s.commodityId !== 'string') continue;
+          left.set(s.commodityId, Math.max(0, Math.floor(Number(s.qty) || 0)));
+        }
+        if (!watch.lots.length) {
+          for (const qty of left.values()) if (qty > 0) return false;
+          return true;
+        }
+        return watch.lots.every((lot) => (left.get(lot.commodityId) || 0) <= 0);
+      }
+    } catch (_) { /* fall through to the snapshot comparison */ }
+    if (!watch.lots.length) {
+      const holdRemaining = payload && Number(payload.holdRemaining);
+      return Number.isFinite(holdRemaining) && holdRemaining <= 0;
+    }
+    return watch.lots.every((lot) => (dumpedById.get(lot.commodityId) || 0) >= lot.qty);
+  },
+
+  _noteScanDumpJettison(payload) {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return;
+    this._pruneScanDumpWatch(state);
+    if (watch.phase !== 'scanning') return;
+    const commodityId = payload && typeof payload.commodityId === 'string' ? payload.commodityId : '';
+    if (!commodityId) return;
+    const matches = watch.lots.length > 0
+      ? watch.lots.some((lot) => lot.commodityId === commodityId)
+      : commodityLegality(commodityId) !== 'legal';
+    if (!matches) return; // legal goods (or another manifest) overboard — not the scanned lot
+    watch.dumped.push({
+      commodityId,
+      amount: Math.max(0, Math.floor(Number(payload && payload.amount) || 0)),
+      tick: state.tick | 0,
+    });
+    watch.dumpedMidScan = true;
+    if (this._scanDumpLotsCleared(state, watch, payload)) this._resolveScanDumpAborted();
+  },
+
+  // A hold-scan verdict is a hold verdict: pod reads (cone/weir) and other sources resolve
+  // through their own owners and must never close or convert this watch. A correlated lawful
+  // case id must match when either side carries one.
+  _observeScanDumpResolution(payload) {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return;
+    this._pruneScanDumpWatch(state);
+    if (watch.phase !== 'scanning') return;
+    if (!payload || payload.found !== true) return;
+    if (payload.podId != null) return;
+    if (payload.source === 'customs_weir' || payload.source === 'customs_scan_cone'
+      || payload.source === 'customs_weir_bolt' || payload.source === 'dock'
+      || payload.source === 'jump') return;
+    if ((payload.lawfulInspectionCaseId || watch.lawfulInspectionCaseId)
+      && payload.lawfulInspectionCaseId !== watch.lawfulInspectionCaseId) return;
+    // The full finding stands: the engine's fine/confiscation/rep/heat route verbatim.
+    // The law adds nothing — no second receipt, no downgrade, no re-scan.
+    watch.phase = 'completed_full';
+    watch.resolvedAt = this._scanDumpNow(state);
+  },
+
+  _resolveScanDumpAborted() {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return false;
+    watch.phase = 'aborted_dump';
+    watch.resolvedAt = this._scanDumpNow(state);
+    const dumpedText = watch.dumped.length
+      ? watch.dumped.map((row) => `${row.commodityId} x${row.amount}`).join(', ')
+      : 'cargo';
+    this._say('bark', 'PATROL: jettison logged — the gap in your manifest is suspicion now.',
+      `law:scan-dump:${watch.factionId}:${state.tick | 0}`, watch.factionId);
+    this._recordReceipt({
+      cause: 'customs_scan', outcome: 'scan_aborted_dump',
+      attackerId: null, targetId: state.playerId,
+      patrolId: watch.patrolId,
+      stationId: watch.stationId,
+      text: `SCAN ABORTED — ${dumpedText} jettisoned mid-scan; suspicion noted.`,
+    });
+    this._emit('customs:scanAborted', {
+      reason: 'dumped_mid_scan',
+      factionId: watch.factionId,
+      patrolId: watch.patrolId,
+      stationId: watch.stationId,
+      source: watch.source,
+      dumped: watch.dumped.map((row) => ({ ...row })),
+      suspicion: true,
+      tick: state.tick | 0,
+    });
+    return true;
+  },
+
   // Canonical law-response event: one named row per action leg so instruments, barks, and HUD
   // can follow the loop without reading system internals.
   _lawResponse(action, fields) {
@@ -5032,6 +5222,9 @@ export const lawSecurity = {
       if (this._onHeatChanged) this.bus.off('heat:changed', this._onHeatChanged);
       if (this._onImpoundPay) this.bus.off('law:impoundPay', this._onImpoundPay);
       if (this._onCustomsSubmit) this.bus.off('customs:submit', this._onCustomsSubmit);
+      if (this._onScannedByPatrol) this.bus.off('player:scannedByPatrol', this._onScannedByPatrol);
+      if (this._onScanDumpJettison) this.bus.off('cargo:jettisoned', this._onScanDumpJettison);
+      if (this._onScanDumpResolved) this.bus.off('contraband:scanned', this._onScanDumpResolved);
       if (this._onFineChoice) this.bus.off('law:fineChoice', this._onFineChoice);
       if (this._onPlayerSurrender) this.bus.off('law:playerSurrender', this._onPlayerSurrender);
       if (this._onRecordAudit) this.bus.off('law:audit', this._onRecordAudit);
@@ -5057,6 +5250,10 @@ export const lawSecurity = {
     this._onHeatChanged = null;
     this._onImpoundPay = null;
     this._onCustomsSubmit = null;
+    this._onScannedByPatrol = null;
+    this._onScanDumpJettison = null;
+    this._onScanDumpResolved = null;
+    this._scanDumpWatch = null;
     this._onFineChoice = null;
     this._onPlayerSurrender = null;
     this._onRecordAudit = null;
