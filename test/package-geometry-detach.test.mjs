@@ -498,6 +498,39 @@ test('orientation hold hides a detached mesh after the readiness walk has gone s
   loader.dispose();
 });
 
+test('orientation hold journals and restores every detached mesh beyond the ordinary cap', async () => {
+  const decoded = decodedFixture();
+  const loader = freshLoader(async () => decoded);
+  await loader.load(packageMetadata('fixture.orientation-cap'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const meshes = [decoded.scene.children[0]];
+  for (let i = 1; i < 513; i++) {
+    const mesh = new THREE.Mesh(geometry, decoded.material);
+    mesh.name = `DetachedMesh${i}`;
+    decoded.scene.add(mesh);
+    meshes.push(mesh);
+  }
+  const readyProgram = { isReady() { return true; }, program: { id: 1 } };
+  const renderer = {
+    properties: { get() { return { currentProgram: readyProgram }; } },
+    info: { programs: [readyProgram] },
+    getContext() { return null; },
+  };
+  const guard = createUnreadyDrawableGuard(renderer);
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  noteOrientationDetachedHold(renderer);
+
+  guard.hide(decoded.scene);
+  assert.equal(meshes.length, 513);
+  assert.equal(meshes.filter((mesh) => mesh.visible).length, 0,
+    'the orientation hold hides every detached mesh, including the 513th');
+  guard.restore();
+  assert.equal(meshes.filter((mesh) => mesh.visible).length, 513,
+    'restoration re-shows every journaled detached mesh');
+
+  loader.dispose();
+});
+
 test('exact-target touch skips a detached mesh while the orientation hold is set', async () => {
   const decoded = decodedFixture();
   let decodes = 0;
