@@ -395,13 +395,10 @@ export const combatOutcome = {
       // The receipt stays one object, but this death is now the latest salvage.
       if (payload && payload.sourceEvent === 'entity:killed') {
         prior.dead = true;
-        // A trimmed receipt is still in byEntity and would block this death. Put it
-        // back at the end so the latest destruction is the salvage again.
         const priorIndex = own.outcomes.indexOf(prior);
-        if (priorIndex >= 0) own.outcomes.splice(priorIndex, 1);
-        own.outcomes.push(prior);
-        if (own.outcomes.length > MAX_OUTCOMES) {
-          own.outcomes.splice(0, own.outcomes.length - MAX_OUTCOMES);
+        if (priorIndex >= 0 && priorIndex !== own.outcomes.length - 1) {
+          own.outcomes.splice(priorIndex, 1);
+          own.outcomes.push(prior);
         }
       }
       this._publishAftermath();

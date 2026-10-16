@@ -1656,7 +1656,6 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
 
   const approach = resolveFaunaApproachDrive(species, {
     playerD,
-    noticeR: alertR,
     awake,
     heatSaturated: (eco.heatSat || 0) > 3,
     reacted,
@@ -1672,8 +1671,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     aeTrial.heatTrial = noteHeatTrial(aeTrial.heatTrial, {
       heat: (eco.heatSat || 0) > 3,
       drive: eco.driveState,
-      // The whole notice band outside the panic ring is one range.
-      geometryKey: 0,
+      geometryKey: Math.round(playerD / 40),
     });
     if (!hadNote && aeTrial.heatTrial.note && !aeTrial.heatTrial.spoken && world.bus && world.bus.emit) {
       aeTrial.heatTrial.spoken = true;
@@ -1774,7 +1772,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
         const place = chartPlace(site, HUMAN_DOCK_CHART);
         const last = echoPoints[echoPoints.length - 1];
         if (place && last && Math.hypot(e.pos.x - last.x, e.pos.z - last.z) <= ECHO_REACH) {
-          fileChartDiscovery(world, site, { text: place.text, x: last.x, z: last.z });
+          fileChartDiscovery(world, site, place);
         }
         break;
       }
@@ -2101,7 +2099,6 @@ export function deserializeAlienEcologyState(state, data) {
   }
   const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
   if (heatDerivative) ae.heatDerivative = heatDerivative;
-  else delete ae.heatDerivative;
   const surveyCopy = copySurveySale(data && data.surveyCopy);
   if (surveyCopy) ae.surveyCopy = surveyCopy;
   else delete ae.surveyCopy;

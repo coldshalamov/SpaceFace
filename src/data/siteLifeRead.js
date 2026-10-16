@@ -47,9 +47,8 @@ export function lifeSampleFromSite(site, rec, sampled) {
   const cast = site && site.faunaCast && typeof site.faunaCast === 'object' ? site.faunaCast : {};
   const castLiving = Object.keys(cast).some((key) => Number(cast[key]) > 0);
   const biomassGone = !!(rec && rec.biomassGone === true);
-  // The nursery's sterile flag only skips infestation dressing. A living cast is still biomass.
-  const sterile = !!(site && site.sterile === true) && !castLiving;
-  const living = castLiving && !biomassGone;
+  const sterile = !!(site && site.sterile === true);
+  const living = castLiving && !biomassGone && !sterile;
   const relayQuiet = !!(rec && (rec.relaySevered === true || rec.state === 'severed'));
   return {
     sampled: sampled === true,
