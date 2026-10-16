@@ -957,10 +957,10 @@ function makeRosterPrewarmSpec(enemyId) {
 // A room solid is immovable. Stamped over the pilot (a later round's room is laid out around wherever
 // the ship sits), it pinned the ship inside a fixed body: thrust built speed for a few frames, then the
 // solver snapped the hull back to rest - the owner's round-2 "could not move" (player-truth m2-active,
-// station solid at 2 u from the ship). The toy keeps its place in the room's grammar, pushed straight out
-// from the ship until it clears the hull with a margin.
-// 64u keeps a furnace (radius ~16) and the player's screen box from sharing pixels.
-// 24u cleared the collision hull and still left the toy over the ship on camera.
+// station solid at 2 u from the ship). Keep authored solids clear of the ship; when a toy starts exactly
+// at the pilot, put it aft of current motion (or facing if stationary). The old +X tie-break placed the
+// centered furnace in the first thrust path, where its camera projection covered the ship after takeoff.
+// 64u remains the spawn-view margin; it is not a substitute for choosing a safe side of the pilot.
 export const ROOM_SOLID_PILOT_CLEARANCE = 64;
 function clearOfPilot(state, at, radius) {
   const pos = { x: at.x, z: at.z };
@@ -973,8 +973,15 @@ function clearOfPilot(state, at, radius) {
   const dz = pos.z - player.pos.z;
   const d = Math.hypot(dx, dz);
   if (d >= need) return pos;
-  const ux = d > 1e-3 ? dx / d : 1;
-  const uz = d > 1e-3 ? dz / d : 0;
+  const vx = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
+  const vz = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
+  const speed = Math.hypot(vx, vz);
+  const heading = Number.isFinite(player.rot) ? player.rot : 0;
+  const fallback = speed > 0.5
+    ? { x: -vx / speed, z: -vz / speed }
+    : { x: -Math.cos(heading), z: -Math.sin(heading) };
+  const ux = d > 1e-3 ? dx / d : fallback.x;
+  const uz = d > 1e-3 ? dz / d : fallback.z;
   return { x: player.pos.x + ux * need, z: player.pos.z + uz * need };
 }
 

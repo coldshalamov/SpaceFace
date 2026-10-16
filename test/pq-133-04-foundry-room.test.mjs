@@ -21,6 +21,7 @@ import { resolveRicochet } from '../src/combat/surfaceReflection.js';
 import { consumePhysicsCommand, writePhysicsTelemetry } from '../src/core/physicsAuthority.js';
 import {
   ARENA_FIELD_SLOT_IDS,
+  ROOM_SOLID_PILOT_CLEARANCE,
   SURVIVAL_ARENA_PHASES,
   dominantGate,
   planArenaInstall,
@@ -232,6 +233,54 @@ test('materialization agrees with the authored geometry, tag for tag, on every p
     }
     h.bus.emit('run:waveCleared', { wave: 2 });
   }
+});
+
+test('a centered furnace is displaced aft of the pilot instead of into the first thrust path', () => {
+  const h = boot({ anchor: { x: 400, z: -120 } });
+  h.player.rot = 0; // forward flight is +X; the centered furnace must sit behind the pilot.
+  installFoundryWave(h, { wave: 2, phase: 'furnace_active' });
+  const furnace = roomSolids(h).find((entity) => entity.data.roomKind === 'furnace');
+  assert.ok(furnace, 'the authored furnace remains a physical room solid');
+  assert.equal(furnace.radius, 34, 'pilot clearance does not shrink the authored solid');
+  const gap = Math.hypot(furnace.pos.x - h.player.pos.x, furnace.pos.z - h.player.pos.z);
+  assert.ok(gap >= furnace.radius + h.player.radius + ROOM_SOLID_PILOT_CLEARANCE - 1e-6,
+    'the full physical hull and spawn margin clear the pilot');
+  assert.ok(furnace.pos.x < h.player.pos.x,
+    'the zero-distance fallback places the furnace aft of routine forward thrust');
+  assert.equal(furnace.data.roomToyId, 'foundry_furnace',
+    'the authored Foundry furniture plan still includes its furnace');
+  h.bus.emit('run:waveCleared', { wave: 2 });
+});
+
+test('a centered furnace uses the direction of travel when the pilot is already moving', () => {
+  const h = boot({ anchor: { x: 400, z: -120 } });
+  h.player.rot = 0; // Heading points +X, but this pilot is moving +Z.
+  h.player.vel = { x: 0, z: 20 };
+  installFoundryWave(h, { wave: 2, phase: 'furnace_active' });
+  const furnace = roomSolids(h).find((entity) => entity.data.roomKind === 'furnace');
+  assert.ok(furnace, 'the authored furnace remains a physical room solid');
+  assert.ok(furnace.pos.z < h.player.pos.z,
+    'a moving pilot gets the furnace behind its current travel direction');
+  assert.ok(Math.abs(furnace.pos.x - h.player.pos.x) < 1e-6,
+    'movement direction takes precedence over the different stationary heading');
+  h.bus.emit('run:waveCleared', { wave: 2 });
+});
+
+test('an already-clear authored furnace keeps its planned position', () => {
+  const h = boot({ anchor: { x: 400, z: -120 } });
+  const authored = { x: 520, z: -120 };
+  survivalArena._materializeRoom([{
+    id: 'already-clear-furnace',
+    kind: 'furnace',
+    solid: true,
+    radius: 34,
+    pos: authored,
+  }], 2);
+  const furnace = roomSolids(h).find((entity) => entity.data.roomToyId === 'already-clear-furnace');
+  assert.ok(furnace, 'the already-clear authored furnace materialized');
+  assert.deepEqual(furnace.pos, authored,
+    'a position outside the pilot margin is not moved by the fallback');
+  survivalArena.destroy();
 });
 
 test('materialization is idempotent: the same room never doubles a solid', () => {
