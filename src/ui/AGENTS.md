@@ -2,18 +2,19 @@
 
 DOM/CSS overlay. Reads state and emits gameplay intents. Narrow direct-write exception:
 UI/input-owned selection such as `state.player.targetId`. Root `AGENTS.md` §6 first.
-**Deckplate (`src/ui/deckplate/`) is the design system.** Every colour, size, radius, duration, face
-and panel recipe on a player surface comes from `--dp-*` and the `.dp-*` classes; a screen assembles
-them and never restyles them. Adding another token root is the defect. Older briefs quote census
-counts for `--k-`, `--sf-`, `--fh-`, and `--dp-` that are not the live sheets — count the file you
-are editing, do not copy those numbers. The standard is
-[`../../design/frontend/THE_BAR.md`](../../design/frontend/THE_BAR.md); progress and order are
-[`../../design/frontend/UNIFICATION_LEDGER.md`](../../design/frontend/UNIFICATION_LEDGER.md).
+**ORRERY (`design/frontend/ORRERY.md`, `src/ui/orrery/`) over Deckplate (`src/ui/deckplate/`) is the live design system.**
+Every colour, size, duration, face, and instrument recipe on a player surface comes from `--dp-*`
+tokens (`src/ui/deckplate/tokens.js` + `src/ui/orrery/tokens.js`), the ORRERY instrument library
+(`src/ui/orrery/`), and the shared `.dp-*` / `.k-*` / `.orr-*` classes. Adding another token root is
+a defect. The active direction is [`../../design/frontend/ORRERY.md`](../../design/frontend/ORRERY.md)
+(handoff & lane status: [`../../design/frontend/ORRERY_HANDOFF.md`](../../design/frontend/ORRERY_HANDOFF.md)).
+`THE_BAR.md`, `ONE_PHOTOGRAPH.md`, and `FIELD_HARDWARE_PROGRAM.md` are superseded as direction (only
+their no-fake-CSS-material law and the `12px` type floor in `scripts/check-type-floor.mjs` still bind).
 
-A screen owning a stylesheet is a defect. Screen-specific CSS is *placement* and belongs in
-`deckplate/screens.js`; material never does. The produced renders under `assets/ui/kit/` remain the
-texture budget — retire the `--fh-` tokens, not the assets. Historical direction, for context only:
-`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`.
+Screen composition and responsive placement live in `src/ui/orrery/*Layouts.js` (and `src/ui/deckplate/screens.js`
+for legacy Deckplate placements). When narrow viewports squeeze a column, condense `Archivo`'s
+variable width (`"wdth" 82–100`) and letter-spacing (`.04–.08em`) rather than dropping below the
+`12px` type floor (`node scripts/check-type-floor.mjs`).
 
 ## Standing rules
 

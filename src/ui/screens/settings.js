@@ -615,8 +615,8 @@ export const settingsScreen = {
     rootEl.appendChild(more);
     const syncMore = () => {
       const left = (Number(pane.scrollHeight) || 0) - (Number(pane.scrollTop) || 0) - (Number(pane.clientHeight) || 0);
-      more.classList.toggle('is-on', left > 8);
-      pane.classList.toggle('has-more', left > 8);
+      more.classList.toggle('is-on', left > 36);
+      pane.classList.toggle('has-more', left > 36);
     };
     if (typeof pane.addEventListener === 'function') {
       pane.addEventListener('scroll', syncMore, { passive: true });

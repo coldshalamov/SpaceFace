@@ -70,9 +70,9 @@ ${CX} .cx-index__item { position:relative; display:grid !important; grid-templat
 ${CX} .cx-index__dial { grid-row:1; grid-column:1; width:58px; height:58px; display:block; }
 ${CX} .cx-index__dial > svg { width:100%; height:100%; }
 ${CX} .cx-index__n { grid-row:1; grid-column:1; align-self:center; justify-self:center; margin:0 !important; padding-top:2px; order:0 !important;
-  font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 420 !important; font-weight:420 !important;
-  font-size:16px !important; line-height:1 !important; letter-spacing:-.01em; font-variant-numeric:tabular-nums lining-nums; color:rgb(223 238 255) !important; text-shadow:none !important; white-space:nowrap; }
-${CX} .cx-index__of { font-size: 12px; font-variation-settings:"wdth" 100, "wght" 500; color:rgb(${BONE} / .8); margin-left:1px; }
+  font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:86%; font-variation-settings:"wdth" 86, "wght" 460 !important; font-weight:460 !important;
+  font-size:15px !important; line-height:1 !important; letter-spacing:-.02em; font-variant-numeric:tabular-nums lining-nums; color:rgb(223 238 255) !important; text-shadow:none !important; white-space:nowrap; }
+${CX} .cx-index__of { font-size: 12px; font-stretch:84%; font-variation-settings:"wdth" 84, "wght" 500; letter-spacing:-.02em; color:rgb(${BONE} / .8); margin-left:.5px; }
 ${CX} .cx-index__w { grid-row:2; grid-column:1; margin:4px 0 0 !important; ${LABEL} font-size: 12px !important; letter-spacing:.07em !important; line-height:1.25 !important;
   color:rgb(${BONE} / .8) !important; text-align:center; text-wrap:balance; }
 /* the dials fill once on arrival (reduced motion: they rest filled) */
@@ -391,7 +391,7 @@ ${CX} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "
 ${CX} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
 ${CX} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 ${CX} .cx-index__num.orr-counter { height:1em; }
-${CX} .cx-index__num .orr-counter__digit { width:.6em; }
+${CX} .cx-index__num .orr-counter__digit { width:.5em; }
 /* arrival: the lore rises line by line under its title (reduced motion: it simply is there) */
 ${CX} .cx-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
 ${CX}.cx-arrive .sf-tabbar > li, ${CX}.cx-arrive .cx-index__item { animation:orr-rise 420ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
@@ -400,7 +400,7 @@ ${RCX} .sf-tabbar > li, ${RCX} .cx-index__item, ${RCX} .cx-plate__art { animatio
 ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 @media (max-width:1400px) {
   ${CX} { --cx-sections:124px; --cx-gap:30px; }
-  ${CX} .cx-index__n { font-size:14px !important; }
+  ${CX} .cx-index__n { font-size:13.5px !important; }
 }
 /* a short screen: the ladder's rungs close up so a section's closing note is not cut by the fold */
 @media (max-height:820px) {
@@ -415,12 +415,14 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-index { row-gap:4px; }
   ${CX} .cx-index__cap { font-size:12px !important; letter-spacing:.2em !important; }
   ${CX} .cx-index__list { gap:0 4px; }
-  ${CX} .cx-index__item { grid-template-rows:44px auto; width:64px; }
-  ${CX} .cx-index__dial { width:44px; height:44px; }
-  ${CX} .cx-index__n { font-size:12.5px !important; }
-  ${CX} .cx-index__of { font-size:12px; }
+  ${CX} .cx-index__item { grid-template-rows:46px auto; width:64px; }
+  ${CX} .cx-index__dial { width:46px; height:46px; }
+  ${CX} .cx-index__n { font-size:12px !important; font-stretch:78% !important; font-variation-settings:"wdth" 78, "wght" 480 !important; letter-spacing:-.03em !important; }
+  ${CX} .cx-index__num .orr-counter__digit { width:.45em; }
+  ${CX} .cx-index__of { font-size:12px; font-stretch:76%; font-variation-settings:"wdth" 76, "wght" 500; letter-spacing:-.03em; margin-left:0; }
   ${CX} .cx-index__w { margin-top:3px !important; font-size:12px !important; letter-spacing:.04em !important; }
   ${CX} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
+  ${CX} .cx-ladder .orr-arc-hand { --orr-hand-x:15px; }
   ${CX} .cx-ladder .k-row { padding-left:32px !important; }
   ${CX} .cx-ladder .k-row.k-row--static .k-caps { letter-spacing:.14em !important; }
   ${CX} > .cx-plate-host { top:calc(50% + 34px - var(--cx-plate) / 2); }
@@ -452,8 +454,8 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-index { row-gap:2px !important; }
   ${CX} .cx-index__list { flex-wrap:wrap !important; row-gap:4px !important; align-content:start !important; }
   ${CX} .cx-index__w { line-height:1.15 !important; white-space:normal !important; max-width:100%; overflow-wrap:anywhere; }
-  ${CX} .cx-index__item { grid-template-rows:36px auto; width:48px; }
-  ${CX} .cx-index__dial { width:34px; height:34px; }
+  ${CX} .cx-index__item { grid-template-rows:38px auto; width:48px; }
+  ${CX} .cx-index__dial { width:38px; height:38px; }
   ${CX} .cx-index__n { font-size:12px !important; }
   ${CX} .cx-index__of { font-size:12px; }
   ${CX} .cx-index__w { margin-top:2px !important; font-size:12px !important; letter-spacing:.02em !important; }
@@ -494,8 +496,8 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} > .k-title > p { margin-top:4px !important; font-size:12.5px !important; line-height:1.3 !important; }
   ${CX} .cx-index { row-gap:2px; }
   ${CX} .cx-index__cap { font-size:12px !important; }
-  ${CX} .cx-index__item { grid-template-rows:34px auto; width:58px; }
-  ${CX} .cx-index__dial { width:34px; height:34px; }
+  ${CX} .cx-index__item { grid-template-rows:38px auto; width:58px; }
+  ${CX} .cx-index__dial { width:38px; height:38px; }
   ${CX} .cx-index__n { font-size:12px !important; }
   ${CX} .cx-index__of { font-size:12px; }
   ${CX} .cx-index__w { margin-top:1px !important; font-size:12px !important; line-height:1.1 !important; white-space:normal !important; max-width:100%; overflow-wrap:anywhere; }
@@ -520,10 +522,10 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-reader__num-n { font-size:32px; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:17px !important; }
   ${CX} .sf-codex-entry > h2 { margin-top:4px !important; }
-  /* filed + meta set smaller and tighter, so STORY · THE EIGHT BEATS / ARCHIVE · RECOVERED SIGNALS fit one line;
+  /* filed + meta stay at the 12px floor with condensed width/tracking, so STORY · THE EIGHT BEATS / ARCHIVE · RECOVERED SIGNALS fit one line;
      a longer filing (GRAFFITI · BULKHEAD — THE PREVIOUS CREW) still wraps rather than clipping mid-word */
-  ${CX} .cx-reader__filed { font-size:10.5px !important; letter-spacing:.05em !important; margin-top:0 !important; }
-  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:10.5px !important; letter-spacing:.05em !important; }
+  ${CX} .cx-reader__filed { font-size:12px !important; font-stretch:92% !important; font-variation-settings:"wdth" 92, "wght" 600 !important; letter-spacing:.01em !important; margin-top:0 !important; }
+  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:12px !important; font-stretch:92% !important; font-variation-settings:"wdth" 92, "wght" 600 !important; letter-spacing:.01em !important; }
   ${CX} .sf-codex-entry .k-measure { margin-top:6px !important; padding-top:6px !important; }
   ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.4 !important; }
   /* ARCHIVE Play lamp sits above the reader fade instead of requiring a scroll to reach it */

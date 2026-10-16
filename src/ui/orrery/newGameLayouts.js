@@ -10,7 +10,7 @@ const WARM = '248 244 234';
 const NG = 'html body #screens > .k-screen.orr-newgame.orr-newgame';
 // desktop only (the phone layout is its own sheet)
 const NGD = 'html:not([data-sf-mobile="1"]) body #screens > .k-screen.orr-newgame.orr-newgame';
-const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
+const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 
 export const NEW_GAME_LAYOUT_CSS = `
 /* title + tagline: warmer, clearer on the void */
@@ -140,7 +140,7 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none !important; }
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label {
-    display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:11.5px !important; }
+    display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:12px !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 620 !important; letter-spacing:.06em !important; }
   ${NGD} .orr-ng-caption > .sf-slot-card-title { float:left !important; margin:0 24px 0 0 !important; }
   ${NGD} .orr-ng-caption > .k-sentence { margin-top:0 !important; padding-top:2px !important; max-width:none !important; }
   ${NGD} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { clear:both !important; margin-top:0 !important; padding-top:14px !important; }
@@ -169,10 +169,10 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-ng-caption > .sf-slot-card-title { font-size:28px !important; margin-right:20px !important; }
   ${NGD} .orr-ng-caption > .k-sentence { overflow:hidden !important; font-size:12.5px !important; line-height:1.35 !important; }
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] {
-    gap:4px 16px !important; max-height:70px !important; overflow-y:auto !important; overscroll-behavior:contain;
+    gap:4px 14px !important; max-height:70px !important; overflow-y:auto !important; overscroll-behavior:contain;
     scrollbar-width:thin; scrollbar-color:rgb(${BONE} / .45) transparent; }
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
-  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:10.5px !important; letter-spacing:.09em !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:12px !important; font-stretch:96% !important; font-variation-settings:"wdth" 96, "wght" 600 !important; letter-spacing:.04em !important; line-height:1.2 !important; }
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:25% !important; width:50% !important; top:51% !important; height:23% !important; }
   ${NGD} > .k-stage::before { left:25%; width:50%; top:72%; }

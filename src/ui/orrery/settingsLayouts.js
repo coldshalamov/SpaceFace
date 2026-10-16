@@ -41,15 +41,15 @@ const RAIL_BG = `linear-gradient(90deg, transparent 7px, rgb(${BONE} / .3) 7px, 
  * the rung's chosen state. At rest the Hand is warm bone; while focus or the pointer is in the list it
  * is the amber Hand (the one amber on the screen).
  */
-const ladder = (scope, list, item, chosen) => `
+const ladder = (scope, list, item, chosen, { numbered = false } = {}) => `
 ${scope} ${list} { ${PLAIN} position:relative !important; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; gap:0 !important;
-  margin:0 !important; padding:4px 0 !important; counter-reset:orrlad; background:${RAIL_BG} !important; }
-${scope} ${list} > li { position:relative !important; counter-increment:orrlad; width:100% !important; list-style:none !important; margin:0 !important; }
-${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
+  margin:0 !important; padding:4px 0 !important; ${numbered ? 'counter-reset:orrlad;' : ''} background:${RAIL_BG} !important; }
+${scope} ${list} > li { position:relative !important; ${numbered ? 'counter-increment:orrlad;' : ''} width:100% !important; list-style:none !important; margin:0 !important; }
+${numbered ? `${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
   ${LABEL} font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
-${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }
+${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }` : `${scope} ${list} > li::before { content:none !important; display:none !important; }`}
 ${scope} ${list} ${item} { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
-  width:100% !important; min-height:48px !important; padding:0 8px 0 74px !important; cursor:pointer !important; ${LABEL} font-size:13.5px !important;
+  width:100% !important; min-height:48px !important; padding:0 8px 0 ${numbered ? '74px' : '44px'} !important; cursor:pointer !important; ${LABEL} font-size:13.5px !important;
   letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap !important; transition:color .16s linear; }
 ${scope} ${list} ${item}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important;
   height:1.5px !important; margin:0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .55) !important;
@@ -70,7 +70,7 @@ ${scope} ${list}:is(:focus-within, :hover) ${item}:is(${chosen})::before { backg
 
 const SETTINGS_CSS = `
 /* ------------------------------------------------ the frame ------------------------------------ */
-${S} { grid-template-columns:minmax(168px, 212px) minmax(600px, 660px) minmax(0, 1fr) !important;
+${S} { grid-template-columns:minmax(148px, 196px) minmax(600px, 660px) minmax(0, 1fr) !important;
   grid-template-rows:auto minmax(0, 1fr) auto !important;
   grid-template-areas:"title title title" "hang stage preview" "foot foot foot" !important;
   column-gap:clamp(28px, 3.4vw, 72px) !important; row-gap:clamp(18px, 3.6vh, 44px) !important; }
@@ -86,16 +86,16 @@ ${S} > .orr-set-preview { grid-area:preview; align-self:stretch; justify-self:st
 /* ------------------------------------------------ the category ladder -------------------------- */
 ${S} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
 ${S} > .k-hang .of-settings-rail { display:none !important; }
-${ladder(S, '.sf-tabbar', '.sf-tab', '[aria-selected="true"], .active')}
+${ladder(S, '.sf-tabbar', '.sf-tab', '[aria-selected="true"], .active', { numbered: false })}
 
 /* ------------------------------------------------ the rows ------------------------------------- */
 ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; width:auto !important; max-width:none !important;
   justify-self:stretch !important; align-self:stretch !important; max-height:100% !important; min-height:0 !important; overflow:hidden auto !important;
   padding:0 20px 34px 0 !important; margin:0 !important; scrollbar-width:none; position:relative; --sf-fade-edge:0px !important; }
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
-/* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip on the stage's bottom edge while rows continue */
-${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:6px 14px 7px !important; cursor:pointer;
-  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
+/* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip below the stage's bottom edge while rows continue */
+${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:5px 13px 6px !important; cursor:pointer;
+  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .88) !important;
   border:1px solid rgb(${BONE} / .42) !important; border-radius:999px !important; }
 ${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:var(--dp-hand-hot, #ffd98c); }
 ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
@@ -141,7 +141,7 @@ ${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-bo
    the value, a bone light cursor, the value as a thin numeral. The cursor is the Hand while it has focus. */
 ${S} #sf-settings-pane .k-row > div.k-words--row { ${PLAIN} display:grid !important; grid-template-columns:var(--orr-scale-w, 254px) 64px !important; align-items:center !important;
   column-gap:14px !important; justify-content:start !important; width:auto !important; }
-${S} #sf-settings-pane input.k-range { -webkit-appearance:none !important; appearance:none !important; ${PLAIN} display:block !important; width:var(--orr-scale-w, 254px) !important;
+${S} #sf-settings-pane input.k-range { -webkit-appearance:none !important; appearance:none !important; ${PLAIN} display:block !important; width:100% !important; max-width:var(--orr-scale-w, 254px) !important; min-width:0 !important;
   height:32px !important; margin:0 !important; padding:0 !important; cursor:pointer !important;
   background:
     linear-gradient(rgb(255 253 248 / .98) 0 0) 7px 12.5px / calc((100% - 14px) * var(--orr-v, .5)) 3.5px no-repeat,
@@ -290,7 +290,7 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
 @media (min-width:1501px) { ${S} { --orr-label-w:236px; } }
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${S}, ${C} { zoom:1.12; } }
 @media (max-width:1500px) {
-  ${S} { --orr-scale-w:174px; --orr-label-w:190px; grid-template-columns:minmax(168px, 176px) minmax(516px, 560px) minmax(0, 1fr) !important; }
+  ${S} { --orr-scale-w:174px; --orr-label-w:190px; grid-template-columns:minmax(144px, 156px) minmax(516px, 560px) minmax(0, 1fr) !important; }
   ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
   ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.09em !important; text-wrap:balance; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
@@ -303,16 +303,16 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
    collapsed to ~63–122px and the HUD fan / HULL·SHIELD·ARMOR ran off the right edge.
    Give the preview a real track and let the stage flex; tighten label/scale so rows still fit. */
 @media (min-width:901px) and (max-width:1100px) {
-  /* Hang stays wide enough for GAMEPLAY / CONTROLS; preview gets ≥250px so the HUD fan and
-     HULL·SHIELD·ARMOR stay on glass; stage flexes and keeps a readable FOV numeral (50°). */
-  ${S} { --orr-scale-w:140px; --orr-label-w:148px;
-    grid-template-columns:minmax(168px, 176px) minmax(0, 1fr) minmax(250px, 270px) !important;
+  /* Hang fits GAMEPLAY / CONTROLS without fake 01..05 prefixes; preview gets ≥250px so the HUD fan and
+     HULL·SHIELD·ARMOR stay on glass; stage flexes and keeps a readable scale + numeral. */
+  ${S} { --orr-scale-w:140px; --orr-label-w:144px;
+    grid-template-columns:minmax(138px, 146px) minmax(0, 1fr) minmax(250px, 270px) !important;
     column-gap:clamp(16px, 2vw, 24px) !important; }
   ${S} #sf-settings-pane { padding-right:10px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
   ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:12px !important; letter-spacing:.07em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:minmax(0, var(--orr-scale-w, 140px)) max-content !important; column-gap:8px !important; min-width:0 !important; }
-  /* the scale gives way before the readout: a fixed 140px scale pushed '55%' past the pane's clip edge */
+  /* the scale gives way before the readout: input.k-range is width:100% of its track so it shrinks cleanly */
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:12px !important; letter-spacing:.1em !important; }
   ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
@@ -367,19 +367,19 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${SD} .sf-tabbar .sf-tab:is([aria-selected="true"], .active)::before { display:none !important; }
   ${SD} #sf-settings-pane { padding-bottom:28px !important; }
   ${SD} #sf-settings-pane .k-row { min-height:36px !important; }
-  ${SD} > .orr-set-more { margin:0 0 2px 24px !important; padding:4px 12px 5px !important; }
+  ${SD} > .orr-set-more { margin:0 0 -32px 140px !important; padding:4px 12px 5px !important; }
   ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
   ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
 }
-/* short three-column desktop (1024×440 / 901–1100 × ≤460): hang stays beside the pane, but full
-   chrome left MORE on ‹ BACK. Compress title/hang/foot so MORE parks in the stage's bottom pad. */
+/* short three-column desktop (1024×440 / 901–1100 × ≤460): hang stays beside the pane, and MORE parks
+   below the stage in the footer band (to the right of ‹ BACK) so it never covers the bottom row or readout. */
 @media (min-width:901px) and (max-width:1100px) and (max-height:460px) {
   ${SD} { padding-top:14px !important; padding-bottom:8px !important; row-gap:10px !important; }
   ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(28px, 7vh, 38px) !important; line-height:1 !important; }
   ${SD} .sf-tabbar .sf-tab { min-height:32px !important; padding-top:4px !important; padding-bottom:4px !important;
     font-size:12px !important; letter-spacing:.12em !important; }
   ${SD} #sf-settings-pane { padding-bottom:28px !important; }
-  ${SD} > .orr-set-more { margin:0 0 -8px 20px !important; padding:4px 12px 5px !important; }
+  ${SD} > .orr-set-more { margin:0 0 -32px 24px !important; padding:4px 12px 5px !important; }
   ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
   ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
 }
@@ -431,7 +431,7 @@ ${C} .orr-cr-orrery__hand path, ${C} .orr-cr-orrery__hand circle { stroke-lineca
 @media (min-width:1501px) { ${C} .orr-cr-orrery__svg text { paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:6px; stroke-linejoin:round; } }
 /* ------------------------------------------------ credits: the section ladder + progress -------- */
 ${C} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
-${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]')}
+${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]', { numbered: true })}
 /* the ladder on Credits stays bone at every state: the one amber here is the Hand on the orrery */
 ${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::after { background:rgb(${HOT} / .85) !important; }
 ${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::before { background:rgb(${HOT}) !important; filter:drop-shadow(0 0 5px rgb(255 250 236 / .45)); }

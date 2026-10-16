@@ -2211,7 +2211,7 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
   .orr-clips__count { font-size:clamp(36px, 5.2vw, 56px); }
   .orr-clips__runtime { font-size:16px; margin-top:4px; }
   .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; }
-  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:10px; letter-spacing:.1em; }
+  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px; letter-spacing:.06em; }
 }
 .orr-clips__pos:empty { display:none; }
 html.sf-reduce-motion .orr-clip__plate { transition:none; }
