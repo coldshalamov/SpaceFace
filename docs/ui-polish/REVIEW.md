@@ -1347,3 +1347,18 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** DOM at 844×390 — stage 265→315, `is-off` → medals on-frame; kicker one line. Bench `achievements` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 844 20.4%, 1024 20.5%, 960/1280/1920 0%. Phone 390×844 pixel-identical. Quit stays web-hidden (`quitGame.js`). Automation conduct strip re-benched at 960×540 — labels sit under the beams (polish28w layout); no new tangle this pass. Shots: `/workspace/spaceface-scratch/ui-shots/polish53/{before,after}/`, `compare-achievements-{844x390,1024x440,960x540,1280x720,1920x1080}.png` (not committed).
 
 **Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440 (owned by open #415 — do not push `ui-polish-52`); Automation conduct-strip @960 (looks intentional under-beam layout; re-check if a live conducted state still tangles); Shipworks lower callouts below the fold @844×390 (berth scrolls by design); Codex STORY wrap @801×390 / ARCHIVE fade @844×390 if still open after #412 merge.
+
+## Codex short desktop: STORY filed one line; ARCHIVE Play above the fade (ui-polish-54)
+
+**Before (master b4fa1e24fb / post-#412):** at 801×390 the reader filed line `STORY · THE EIGHT BEATS` (`.cx-reader__filed`, 12px / `.2em`) wrapped to two lines in the ~217px reading column. On ARCHIVE at 844×390 the entry overflowed (`data-overflow=1`): the Play lamp sat under the reader fade mask, so you had to scroll to reach the still's Play control.
+
+**After (`src/ui/orrery/archiveLayouts.js` only, CSS, inside the existing `@media (max-width:1100px) and (min-width:801px) and (max-height:460px)` block):**
+- Plate slightly smaller (`min(138px, 38vh, 17vw)`) so the reading gains a few px of width.
+- `.cx-reader__filed` at 10.5px / `.05em` + `nowrap` — STORY · THE EIGHT BEATS and ARCHIVE · RECOVERED SIGNALS stay one line.
+- Meta / legend use the same smaller tracking (wrap allowed so long ARCHIVE meta is not clipped).
+- Tighter measure padding and `.cx-play { margin-top:6px }` so ARCHIVE Play fits in the first view; overflow clears and the fade mask sleeps.
+- Selectors and IDs unchanged.
+
+**Checked:** bench `codex` / `codex-record` 0 findings at 801×390 and 844×390. ARCHIVE probe: overflow 0, mask none, Play on first paint; STORY filed 1 line at 801. Smoke 960×540 / 1920×1080 / phone 390×844 clean (band is ≤460 tall). 1280×720 outside the band. Shots: `/workspace/spaceface-scratch/ui-shots/polish54/{before,after}/`, `compare-codex-801x390.png`, `compare-archive-844x390.png` (not committed).
+
+**Leftovers (not this pass):** Automation conduct-strip live conducted state @960 (optional; under-beam layout looked intentional on last recheck); Shipworks lower callouts below the fold @844×390 (berth scrolls by design — only reopen if labels are truly clipped/unreadable).
