@@ -251,8 +251,9 @@
     "Exact hash, required event families, acceptance bounds, five-run minimum and reload equivalence remain enforced. This updates the curated legacy47a V3 fixture to shipped contact behavior; it is not a new production-manifest claim.",
     "2026-10-11 deliberate re-record over 0830a8aff..9d86b046b (78 commits). The prior authoritativeHash was 4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08; reload60 and reload600 both reproduce the new uninterrupted hash.",
     "scripts/sim-golden-diff.mjs --flight-system v3 against 0830a8aff: 15,244 leaves differ, all under $.economy — c1226a5fc authored cmdty_regocrete/cmdty_control_unit starter produce lines and MAX_LINES_PER_SIDE 4->6. ZERO entity motion fields changed.",
-    "2026-10-16 native-save compaction version-only migration: exact public base b602ddebafbfba8f0fc48f31034f4e12b1a98314 reproduces the prior authoritative hash; PR424 merge 00a627b87f70e9b06fbcf643503b3300b0854c84 reproduces the CI-observed hash.",
-    "Full base/head snapshots differ only at $.meta.version (15 to 16). Every entity and native-physics field, all economy/gameplay fields, metrics and trace counts are unchanged. Reversing only that version restores the exact prior canonical hash; forwarding it reproduces the new hash.",
-    "Seed47/tick720 runs retain the stock canonical-baseline/reload equivalence assertions. Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact whole-snapshot hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged."
+    "2026-10-16 native-save version-only migration: exact public base b602ddeb reproduces the prior authoritative hash; PR424 merge00a627b8 reproduces the CI-observed hash.",
+    "Full paired base/head snapshots differ only at $.meta.version (15 to16). Every entity, native-physics and economy/gameplay field is unchanged; metrics and trace counts match.",
+    "Changing only meta.version in either direction reproduces the exact old/new canonical hash. Seed47/tick720 runs retain the stock canonical-baseline/reload equivalence assertions.",
+    "Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact canonical hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged."
   ]
 }
