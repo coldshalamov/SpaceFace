@@ -5,7 +5,7 @@
 // round-trip: the probe must not infer worker health from a capped response
 // journal or from a mocked worker.
 
-import { RUNTIME_WORKERS, runtimeWorkerUrl } from '../../../../../../src/render/runtimeWorkers.js';
+import { RUNTIME_WORKERS, runtimeWorkerUrl } from '../../src/render/runtimeWorkers.js';
 
 const CONTRACT_IDS = Object.freeze(['digest', 'prepass']);
 const MAX_CRITICAL_RECORDS = 64;
