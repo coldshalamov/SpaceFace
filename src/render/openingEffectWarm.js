@@ -13,6 +13,7 @@ export const OPENING_EFFECT_ROOT_NAMES = Object.freeze([
   'SF_TrailStreakInstances',
   'SF_RibbonTrail',
   'SF_VFX_explosion_rupture',
+  'sf-overflow-jets',
 ]);
 
 export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ExplosionRupture_material-transport|SF_ActionPrimitiveMatter|SF_FilteredForceParticleTransport|SF_ArcadePhysicalShardMaterial|plume:[^:]+:(core|distortion))$/;

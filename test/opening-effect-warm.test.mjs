@@ -43,5 +43,5 @@ test('the opening warm starts the effect sweep, guarded by loading and admission
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(renderer, /if \(profile === 'opening'\) this\._touchOpeningEffectFamilyUnderShell\(\);/);
   assert.match(renderer, /admissionRunGeneration : undefined\) === generation/);
-  assert.match(renderer, /if \(state\.mode !== 'loading'\) return stop\('shell-released'\);/);
+  assert.match(renderer, /if \(!veilUp\(\) \|\| Date\.now\(\) - startedAt > 90000\) return stop\('shell-released'\);/);
 });

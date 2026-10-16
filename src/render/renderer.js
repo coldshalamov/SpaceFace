@@ -24042,18 +24042,28 @@ export const render = {
       receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
       if (state.render) state.render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice() };
     };
+    // The player ship's engine effects (liquid-plasma strands, plume layers, overflow jets) only
+    // mount at the flight transition, so keep sweeping while the boot veil still covers the first
+    // flight frames — those links then land before the lift instead of inside played frames.
+    const veilUp = () => {
+      if (state.mode === 'loading') return true;
+      if (state.mode !== 'flight' || typeof document === 'undefined') return false;
+      const overlay = document.getElementById('boot-overlay');
+      return !!(overlay && !overlay.classList.contains('hidden'));
+    };
+    const startedAt = Date.now();
     const stop = (reason) => {
       this._openingEffectWarmActive = false;
       publish(reason);
     };
     const step = async () => {
       if (!owned()) return stop('superseded');
-      if (state.mode !== 'loading') return stop('shell-released');
+      if (!veilUp() || Date.now() - startedAt > 90000) return stop('shell-released');
       const touch = state.render && state.render.touchSubjectExactTarget;
       receipt.sweeps += 1;
       if (typeof touch === 'function' && this.scene) {
         for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
-          if (!owned() || state.mode !== 'loading') break;
+          if (!owned() || !veilUp()) break;
           try {
             await touch(subject);
             receipt.touched.push(key);
@@ -24065,7 +24075,7 @@ export const render = {
       }
       publish('pending');
       if (!owned()) return stop('superseded');
-      if (state.mode !== 'loading') return stop('shell-released');
+      if (!veilUp()) return stop('shell-released');
       setTimeout(() => { void step(); }, 250);
       return null;
     };
