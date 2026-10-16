@@ -562,6 +562,22 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty .sx-qty__words { flex-wrap:wrap !important; justify-content:center !important; gap:2px 6px !important; }
   ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { line-height:1.2 !important; white-space:normal !important; }
 }
+/* …the dial's three words (FEWER, MORE, MAX) needed ~170px with their chevrons in a 138px console,
+   so MAX wrapped to a second row and printed over the "36 cr" total. The console takes 146px (the
+   gap beside it gives back 6px, so the analysis keeps its width to within 2px) and the words sit
+   on one row, spaced apart; the chevrons step aside (the words say it). */
+@media (max-width:1100px) and (max-height:800px) {
+  ${M} .sx-mkt__stage { grid-template-columns:minmax(0, 1fr) 146px !important; column-gap:4px !important; }
+  ${M} .sx-mkt__console { width:146px !important; }
+  ${M} .sx-trade > .sx-qty { width:146px; }
+  ${M} .sx-qty .orr-qdial { left:25px; }
+  ${M} .sx-qty .sx-qty__in { left:38px; }
+  ${M} .sx-qty .sx-qty__k { left:25px; }
+  ${M} .sx-trade__words { width:146px; }
+  ${M} .sx-qty .sx-qty__words { flex-wrap:nowrap !important; justify-content:space-between !important; gap:0 4px !important; top:89px; }
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.06em !important; white-space:nowrap !important; }
+  ${M} .sx-qty .sx-qty__b[data-q]::before, ${M} .sx-qty .sx-qty__b[data-q]::after { content:none !important; }
+}
 /* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
 @media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
   ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
