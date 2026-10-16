@@ -455,8 +455,10 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
   const timeoutMs = Math.max(1, Number(options.timeoutMs) || 20000);
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
   let active = true;
+  const isActive = () => active
+    && (typeof options.isActive !== 'function' || options.isActive());
   const assertActive = () => {
-    if (!active || (typeof options.isActive === 'function' && !options.isActive())) {
+    if (!isActive()) {
       throw new Error('mobile opening admission superseded');
     }
   };
@@ -489,9 +491,14 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     if (submission === false || submission?.ok === false) {
       throw new Error('mobile opening submission admission failed');
     }
-    const resources = await render.prepareOpeningGpuResources();
+    const resources = await render.prepareOpeningGpuResources({ required: true, isActive });
     assertActive();
-    if (!resources || resources.skipped === true || resources.ok === false) {
+    if (!resources || resources.skipped === true || resources.ok === false
+        || resources.partial === true || resources.contextLost === true
+        || resources.geometryResidency?.partial === true
+        || resources.geometryResidency?.contextLost === true
+        || (resources.geometryResidency?.skipped === true
+          && resources.geometryResidency.reason !== 'no drawable geometry')) {
       throw new Error('mobile opening GPU resources were not admitted');
     }
     return { plan, submission, resources };
