@@ -1,3 +1,4 @@
+import {claimsTallyAssessor} from './tallyThreeIdentity.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
 // Pure durable world-entity record schema + rematerialization helpers (M2-C2).
@@ -894,7 +895,8 @@ export function captureEntityRecord(entity, opts = {}) {
     scheduledEventIds,
     regeneration,
     deactivation,
-    extra: opts.extra !== undefined ? opts.extra : (previous && previous.extra) || null,
+    extra: claimsTallyAssessor(entity) ? {...(opts.extra !== undefined ? opts.extra : previous?.extra),tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
+      : opts.extra !== undefined ? opts.extra : (previous && previous.extra) || null,
   });
   return rec;
 }

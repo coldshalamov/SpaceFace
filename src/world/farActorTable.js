@@ -1,3 +1,4 @@
+import {claimsTallyAssessor,canPromoteTallyAssessor,decorateTallyAssessorSpec} from './tallyThreeIdentity.js';
 // LAST_ARGUMENT_INTEGRATION_V1
 
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
@@ -402,6 +403,7 @@ function leanIdentityData(entity) {
   const ai = d.ai && typeof d.ai === 'object' ? d.ai
     : (entity && entity.ai && typeof entity.ai === 'object' ? entity.ai : null);
   if (ai) out.ai = ai;
+  if(claimsTallyAssessor(entity))for(const key of ['placeId','archetypeGlb','placeScale','callsign','name','transientSector','tallyThree','cargoManifest','route','itinerary','carrying','cargoDumped','freightDockSeq'])if(Object.hasOwn(d,key))out[key]=cloneTree(d[key]);
   return out;
 }
 
@@ -502,6 +504,7 @@ export function catchUpFarRecord(rec, simTime, table = null) {
 export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   const table = ensureFarActorTable(state);
   const rec = snapshotActor(entity, simTime);
+  if(claimsTallyAssessor(entity))rec.physicsBody=cloneTree(entity.physicsBody);
   if (!rec.intent) {
     // The entity's live control intent ({moveX,moveZ,...}) carries no itinerary kind, so
     // snapshotActor normalizes it to null — resume the durable record's canonical intent
@@ -745,6 +748,7 @@ export function promoteFarActor(state, id, helpers) {
   // A legacy shelf row can arrive before the site owner's restore/sync. Do not admit even
   // one native frame of generic geometry; that owner will discard the row and reauthor it.
   if (isWorldSiteStaticAnatomy(rec)) return null;
+  if(claimsTallyAssessor(rec)&&!canPromoteTallyAssessor(state,rec)){rec.restoreRefusal='tally_assessor_identity';return null;}
   const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
   if (!spawn) return null;
   // Re-acquire the slot this body released when it was shelved. A saturated cap defers the
@@ -797,6 +801,7 @@ export function promoteFarActor(state, id, helpers) {
     collides: rec.collides,
     data,
   };
+  if(claimsTallyAssessor(rec)){decorateTallyAssessorSpec(spec);spec.physicsBody=cloneTree(rec.physicsBody);}
   const ent = spawn(spec);
   if (!ent) {
     if (granted) budget.releaseSome(requester, 1);

@@ -1,3 +1,4 @@
+import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
 import { registerMachineryReconciliation, unregisterMachineryReconciliation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
@@ -5020,7 +5021,7 @@ export const traffic = {
     const tracked = new Set((this.state.traffic.freighters || []).map((f) => f && f.id));
     let adoptIdx = 0;
     forEachLivingWorldActor(this.state, (e) => {
-      if (e.type !== 'ship' || e.isPlayer) return;
+      if (e.type !== 'ship' || e.isPlayer || claimsTallyAssessor(e)) return;
       const d = e.data || {};
       if (!d.trafficRole && !d.worldRecordId) return;
       // Only adopt freighters that look like traffic/convoy.
