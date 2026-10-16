@@ -114,33 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-190",
-      "date": "2026-10-01",
-      "wf": "WF-05",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "normalizeStoryNewGamePlusRecord is schema-bounded; stray entityId/liveEntityHandle/entityRef fields never reach the stored record",
-      "fingerprint": "verb=carry,subject=newgameplus-record,domain=nxi,layer=schema",
-      "references": [],
-      "integration": "live",
-      "commit": "c6bd43336",
-      "verification": "route_accepted",
-      "evidence": "test/new-game-plus.test.mjs"
-    },
-    {
-      "id": "NXI-191",
-      "date": "2026-10-01",
-      "wf": "WF-05",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "leftoverNewRunLine now states cargo/credits/contracts/claims reset beside the carries; confirmation no longer implies obligations survive",
-      "fingerprint": "verb=describe,subject=newgameplus-reset,domain=nxi,layer=confirm",
-      "references": [],
-      "integration": "live",
-      "commit": "c6bd43336",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-192",
       "date": "2026-10-01",
       "wf": "WF-05",
@@ -1690,6 +1663,32 @@
       "references": [],
       "integration": "live",
       "commit": "8dcbf948e5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pic-32-distress-lamp",
+      "date": "2026-10-16",
+      "wf": "WF-12",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A live distress encounter now carries one lamp record on the broadcasting hull (victim or bait beacon), admitted by the script's fire and cleared by the one encounter:resolved funnel; pinned on seed 4242 across ignore, lost and bait_broken outcomes",
+      "fingerprint": "verb=present-witness,subject=distress-broadcast-hull,sector=any,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "b74aac87f9",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-33-modifier-jettison",
+      "date": "2026-10-16",
+      "wf": "WF-15",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Holding the boost grip (Shift / pad boost) through the jettison key dumps the whole selected lot as one payload body with one cargo:jettisoned receipt; the tap stays a one-unit release, the modifier reads the raw hold not the hold-to-toggle latch, and the chord follows rebound keys",
+      "fingerprint": "verb=jettison-all,subject=selected-cargo-lot,sector=any,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "3beb61352b",
       "verification": "focused_green"
     }
   ],
