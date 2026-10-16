@@ -192,6 +192,9 @@ ${T} .con-cost dt { align-self:end; }
   ${T} > .k-stage.con-stage { grid-row:1 / 4; }
   ${T} > .k-foot.con-foot { grid-column:2; grid-row:3; flex-wrap:wrap; column-gap:18px; row-gap:0; }
   ${T} .con-legend { display:none; }
+  /* ...and the pan/zoom hint sleeps as it does at ≤1400 wide, so the foot keeps one line in the reading's
+     column at any width (at 1440×500 "DRAG TO PAN · WHEEL TO ZOOM" wrapped it and took a row from the reading) */
+  ${T} .con-view__word { display:none; }
 }
 /* a narrow window or a phone: one column that scrolls — title, the three readings, the dial,
    the reading — with Back (and on a phone the node list) held at the foot */
