@@ -1150,6 +1150,23 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:flex !important; align-items:baseline !important; gap:0 8px !important;
     line-height:15px !important; padding-block:1px !important; }
   ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { display:inline !important; line-height:15px !important; }
+  /* chooser head: in the 190px rail, "COMPATIBLE MODULES 1" at .2em tracking wraps onto a 10.8px
+     line-height under "CARGO · S", so the heading stacks three deep and reads crushed. Back keeps
+     its row; the kicker and title share one wrap band as "CARGO · S / COMPATIBLE MODULES · N"
+     with tracking that fits each part on its own line when the pair wraps. */
+  ${W} .sx-chooser__head { display:flex !important; flex-wrap:wrap !important; align-items:baseline !important;
+    column-gap:6px !important; row-gap:2px !important; margin:0 0 6px !important; }
+  ${W} .sx-chooser__head > .k-words { flex:1 0 100% !important; margin:0 !important; }
+  ${W} .sx-chooser__head .sx-chooser__kicker { margin:0 !important; display:inline !important;
+    letter-spacing:.1em !important; line-height:1.3 !important; white-space:nowrap !important; }
+  ${W} .sx-chooser__head .sx-chooser__kicker::after { content:" /" !important; letter-spacing:.08em !important;
+    color:rgb(${BONE} / .45) !important; }
+  ${W} .sx-chooser__head h3 { display:inline !important; margin:0 !important;
+    letter-spacing:.03em !important; line-height:1.3 !important; white-space:nowrap !important; }
+  /* a two-digit count ("COMPATIBLE MODULES 45", Utility / Weapon) still fits the 190px rail at .03em;
+     past that the count drops under the title instead of clipping at the rail's edge */
+  ${W} .sx-chooser__head h3:has(.k-38) { white-space:normal !important; }
+  ${W} .sx-chooser__head h3 .k-38 { letter-spacing:0 !important; white-space:nowrap !important; }
 }
 /* …and at 651-800 wide (the identity rides over the nameplate as above). The verbs (in flow
    under the stage here) always break after TAKE THE HITCH, so LEFT · CENTER · RIGHT stand on the
