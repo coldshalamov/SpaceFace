@@ -23,6 +23,8 @@ import { dockDenyReason } from '../data/dockDeny.js';
 import { worldSiteManifestById } from '../data/worldSiteManifests.js';
 import { worldSiteOperationReadiness } from './worldSiteKernel.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardPhase } from '../data/anvilOrchard.js';
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import {
   VERB_TYPE_MEMBERSHIP, verbAcceptsType, DENIAL,
   COMPONENT_KINDS, COMPONENT_KIND_VERB, stableEntityKey, capabilityFlagsForEntity,
@@ -68,6 +70,9 @@ export function listComponents(state, entity) {
 
   const authoredSiteComponent = siteComponentForEntity(state, entity, key);
   if (authoredSiteComponent) return [authoredSiteComponent];
+
+  const orchardComponents = orchardSocketComponents(state, entity, key);
+  if (orchardComponents) return orchardComponents;
 
   // Combat subsystems (ship / drone / station) — the DAMAGE-serviced components.
   const profile = profileForEntity(entity);
@@ -292,6 +297,58 @@ function siteComponentForEntity(state, entity, stableKey) {
     presentationOwnerWorldRecordId: data.presentationOwnerWorldRecordId || `${manifest.worldObjectId}/root`,
     live: true,
   };
+}
+
+// The Orchard's three physical pod sockets are ordinary selectable components on the admitted
+// authored frame. Their display is a pure projection of the saveable finite ledger; neither
+// enumeration nor selection writes a motor request, changes weather, or reserves the pod.
+function orchardSocketComponents(state, entity, stableKey) {
+  if (!isOrchardFrame(entity)) return null;
+  const row = normalizeOrchardRecord(state && state.sites && state.sites.anvilOrchard);
+  if (!row) return [];
+  const phase = orchardPhase(row, state && state.tick);
+  return row.sockets.map((slot, socket) => {
+    const lot = slot.lotId && row.lots.find((candidate) => candidate.id === slot.lotId);
+    const opening = slot.status === 'releasing'
+      && slot.handoff === 'fixed'
+      && ['opening', 'open'].includes(slot.operation);
+    const stowed = slot.status === 'stowed'
+      && slot.operation === 'closed'
+      && slot.progress === 0
+      && slot.handoff === 'fixed'
+      && !!lot;
+    const phaseReady = phase && phase.phase === 'calm';
+    let inactiveReason = null;
+    if (row.frameStatus !== 'intact') inactiveReason = 'frame-destroyed';
+    else if (!phaseReady) inactiveReason = 'phase-ineligible';
+    else if (!stowed && !opening) inactiveReason = slot.status === 'empty' ? 'empty-socket' : 'already-released';
+    const statusLabel = inactiveReason === 'phase-ineligible'
+      ? `${slot.status} · ${phase?.phase || 'unavailable'}`
+      : slot.status;
+    return {
+      componentId: `orchard_socket_${socket}`,
+      kind: COMPONENT_KINDS.MACHINE,
+      verb: COMPONENT_KIND_VERB.machine,
+      operationId: 'release',
+      label: `POD SOCKET ${socket + 1} · ${String(statusLabel).toUpperCase()}`,
+      key: `${stableKey}::orchard_socket_${socket}`,
+      socket,
+      siteId: ANVIL_ORCHARD.id,
+      status: slot.status,
+      cycle: slot.cycle,
+      lotId: slot.lotId,
+      units: lot ? lot.units : 0,
+      operation: slot.operation,
+      workApplied: slot.progress,
+      workThreshold: ANVIL_ORCHARD.openingSteps,
+      workRemaining: Math.max(0, ANVIL_ORCHARD.openingSteps - slot.progress),
+      handoff: slot.handoff,
+      phase: phase && phase.phase || null,
+      active: !!(phaseReady && row.frameStatus === 'intact' && (stowed || opening)),
+      inactiveReason,
+      live: true,
+    };
+  });
 }
 
 function playerTeamOf(state) {

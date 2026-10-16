@@ -1,3 +1,4 @@
+import { resolveOrchardForecast, validateMirroredOrchardForecast } from '../world/anvilOrchardForecast.js';
 // PQ-012 / SF-12 — Field HUD (DOM-guarded "own module" pattern, massSeedHud sibling).
 //
 // The HUD's ONLY job is what world-space form cannot carry (bible §8.1): the exact remaining
@@ -18,6 +19,7 @@
 // the lamp driven red; good news reads in bone). No hand-mixed card survives here.
 
 import {
+  ANVIL_ORCHARD_GUST_PROFILE,
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   cinderSluicePhase,
@@ -88,6 +90,11 @@ export const fieldHud = {
     this._visible = false;
     this._laneSeat = '';
     this._cinderPhaseOut = {};
+    this._orchardGeometry = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
+    this._orchardPhaseOut = {};
+    this._orchardSampleFields = [null];
+    this._orchardSampleOut = { ax: 0, az: 0 };
+    this._orchardBodyProfile = {};
   },
 
   destroy() {
@@ -133,9 +140,24 @@ export const fieldHud = {
     // The hull burst while it is LIVE: a few seconds the player lit on purpose, and the one number they
     // are racing. It outranks a held cone or a deployed field and the calm state of a hazard clock, never a
     // fresh denial and never a hazard's WARNING or SURGE (that timer is about staying alive).
-    const hazardHot = !!environmental && (environmental.phase === 'warning' || environmental.phase === 'surge');
+    const hazardHot = !!environmental && (environmental.phase === 'warning'
+      || environmental.phase === 'surge' || environmental.phase === 'forecast' || environmental.phase === 'gust');
     if (burst && burst.live && !hazardHot) return { text: burst.text, cls: burst.cls };
     if (environmental) {
+      if (environmental.kind === 'orchard-gust') {
+        const seconds = Math.max(0, Math.ceil(environmental.remainingTicks / 60));
+        const degrees = Math.round((Math.atan2(environmental.dir.z, environmental.dir.x) * 180 / Math.PI + 360) % 360);
+        const bearing = `${String(degrees).padStart(3, '0')}°`;
+        const local = `${Math.round(environmental.localStrength)} WU/s²`;
+        const peak = `PEAK ${Math.round(ANVIL_ORCHARD_GUST_PROFILE.strength)}`;
+        if (environmental.phase === 'gust') {
+          return { text: `ANVIL ORCHARD — GUST ${seconds}s · ${bearing} · LOCAL ${local} · ${peak}`, cls: 'field-current-surge' };
+        }
+        if (environmental.phase === 'forecast') {
+          return { text: `ANVIL ORCHARD — FORECAST ${seconds}s · ${bearing} · LOCAL ${local} · ${peak}`, cls: 'field-current-warning' };
+        }
+        return { text: `ANVIL ORCHARD — CALM ${seconds}s · ${bearing} · LOCAL ${local} · ${peak}`, cls: 'field-current-calm' };
+      }
       if (environmental.phase === 'quiet') {
         return { text: 'CINDER SLUICE — CURRENT QUIET', cls: 'field-current-calm' };
       }
@@ -214,6 +236,8 @@ export const fieldHud = {
   },
 
   _resolveEnvironmental(state, now) {
+    const orchard = this._resolveOrchardEnvironmental(state);
+    if (orchard) return orchard;
     if (!state || state.mode !== 'flight'
       || !state.world || state.world.currentSectorId !== CINDER_SLUICE_SECTOR_ID) return null;
     const record = state.sites && state.sites.worldById
@@ -224,6 +248,13 @@ export const fieldHud = {
     if (!record || !player || player.alive === false || !pointInsideCinderSluice(player.pos)) return null;
     if (!this._cinderPhaseOut) this._cinderPhaseOut = {};
     return cinderSluicePhase(record, now, this._cinderPhaseOut);
+  },
+
+  _resolveOrchardEnvironmental(state) {
+    if (Object.hasOwn(state?.planet || {}, 'orchardForecast')) {
+      return validateMirroredOrchardForecast(state, state.planet.orchardForecast);
+    }
+    return resolveOrchardForecast(state, this);
   },
 
   _apply(dom, text, cls) {

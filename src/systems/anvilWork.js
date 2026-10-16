@@ -1,3 +1,4 @@
+import { validateOrchardTowQuote, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 // Stormshift's first normal shift, mixed into the existing traffic owner. The itinerary and
 // cargoManifest are existing world-record fields. No private inventory or offscreen production.
 // Mule gameplay stats remain canonical; the collector role selects its authored body.
@@ -111,6 +112,27 @@ function manifest(owner, e, qty, prior = null) {
 }
 
 export const anvilTrafficMethods = {
+  requestOrchardTowAssist(worker, quote) {
+    if (actor(this,'receiver') !== worker || worker.data.jobId
+      || this.state.npcJobs?.byId?.[`job:${worker.data.worldRecordId}`]) return { granted:false, reason:'crew_busy' };
+    const physics=this._registry?.get?.('physics'), jobs=this._registry?.get?.('npcJobsRuntime');
+    const pod=validateOrchardTowQuote(this.state,worker,quote,physics);
+    if (!pod || !jobs?.assign || !jobs?.requestTowAssist) return { granted:false, reason:'orchard_quote_expired' };
+    if (!(this.state.player?.credits >= quote.feeCr)) return { granted:false, reason:'insufficient_credits' };
+    const pos={x:worker.pos.x,z:worker.pos.z};
+    const jobId=jobs.assign(worker,{kind:'tender',sectorId:PLANET_SITE.sectorId,
+      route:[{id:'orchard-berth',pos},{id:'orchard-service',pos:{...pos}}]});
+    if(!jobId)return {granted:false,reason:'no_job'};
+    const entry=this.state.npcJobs?.byId?.[jobId];
+    entry.orchardAssist=true;entry.orchardWorkerRef=worker;entry.orchardWorkerLife=worker.occupantGeneration;
+    const result=jobs.requestTowAssist(worker.id,pod.id,quote.destination,{holder:ORCHARD_TOW_HOLDER,
+      claimId:`orchard-tow:${quote.lotId}:${quote.targetGeneration}`,feeCr:quote.feeCr,
+      deliverW:quote.deliverW,orchardQuote:quote});
+    if(!result?.granted)jobs.release(jobId);
+    persist(this,worker);
+    return result || {granted:false,reason:'crew_unavailable'};
+  },
+
   ensureAnvilWorker(state, spawnEntity, center) {
     if (state !== this.state || state.world?.currentSectorId !== PLANET_SITE.sectorId) return null;
     this._ensureState();
