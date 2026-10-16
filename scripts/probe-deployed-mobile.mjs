@@ -1,5 +1,13 @@
 import { collectMobileCameraWitness } from './lib/mobileCameraWitness.mjs';
 import { installMobileDrawErrorObserver } from './lib/mobileDrawErrorObserver.mjs';
+import {
+  createMobileResponseLedger,
+  observedWorkerFailures,
+  recordMobileRequestFailure,
+  recordMobileResponse,
+  resolveWorkerContractUrls,
+  runMobileWorkerContract,
+} from './lib/mobileWorkerContract.mjs';
 // Real-route startup/control acceptance (world visibility requires separate evidence): fresh profile, real menu taps, no debug/state/storage injection.
 // MOBILE_PROBE_URL=https://... MOBILE_PROBE_ENGINE=webkit node scripts/probe-deployed-mobile.mjs
 // MOBILE_PROBE_CONTINUE=1 also reloads the same browser context and taps the public Continue route.
@@ -27,8 +35,9 @@ const report = { url: url.href, engine, startedAt: new Date().toISOString(), pas
     hasTouch: mobileDeviceProfile.hasTouch === true, viewport: mobileDeviceProfile.viewport,
     deviceScaleFactor: mobileDeviceProfile.deviceScaleFactor }, effective: null, mismatches: [] },
   acceptance: { startupAndControls: 'pending', mobileCapabilities: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
-    rendererHealth: 'pending', worldVisibility: 'unverified' },
-  responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
+    workerContract: 'pending', rendererHealth: 'pending', worldVisibility: 'unverified' },
+  continue: { requested: checkContinue, status: checkContinue ? 'pending' : 'not-requested' },
+  ...createMobileResponseLedger(), pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
   startupErrors: [], runtimeMessages: [], rendererErrors: [], rendererErrorCount: 0,
   menuWaitObservations: [], finalDiagnosticErrors: [] };
 const pendingDiagnosticReads = new Set();
@@ -168,6 +177,11 @@ async function waitForContinueEnabled(page, timeoutMs = 60000) {
     throw new Error(`Continue remained disabled after reload for ${timeoutMs / 1000} seconds: ${error?.message || error}`);
   }
 }
+function assertContinuePageHealth(pageErrors, baseline = 0) {
+  const observed = Array.isArray(pageErrors) ? pageErrors.length : 0;
+  if (observed > baseline)
+    throw new Error(`Continue produced ${observed - baseline} page error(s)`);
+}
 const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
   const shown = e => !e.hidden && e.getBoundingClientRect().width > 0
     && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
@@ -242,8 +256,6 @@ async function captureFailureDiagnostics(page, { report, snapshot, screenshotPat
   }
 }
 const visible = async (page, selector) => boundedBrowserRead(() => page.locator(selector).first().isVisible()).catch(() => false);
-const critical = response => response.status >= 400 && (
-  /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
 try {
   browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: !headed,
     ...(channel ? { channel } : {}),
@@ -329,14 +341,18 @@ try {
     }
   });
   page.on('requestfailed', request => {
-    if (report.requestFailures.length < 500) report.requestFailures.push({ url: request.url(), error: request.failure()?.errorText });
+    recordMobileRequestFailure(report, {
+      url: request.url(), error: request.failure()?.errorText,
+      resourceType: request.resourceType?.() || null, actorStage,
+      timestamp: new Date().toISOString(),
+    });
   });
   page.on('framenavigated', frame => {
     if (frame === page.mainFrame() && report.lifecycle.length < 64)
       report.lifecycle.push({ event: 'main-frame-navigation', url: frame.url(), at: new Date().toISOString() });
   });
   page.on('response', response => {
-    if (report.responses.length < 3000) report.responses.push({ url: response.url(), status: response.status(),
+    recordMobileResponse(report, { url: response.url(), status: response.status(),
       type: response.request().resourceType(), mime: response.headers()['content-type'], bytes: response.headers()['content-length'] });
   });
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -538,20 +554,31 @@ try {
       throw new Error(`Control clipped after rotation: ${selector} ${JSON.stringify(box)}`);
   }
   if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
-  if (report.responses.some(critical)) throw new Error('Runtime script, model or decoder returned an HTTP error');
-  actorStage = 'new-game-post-rotation';
-  for (const name of ['renderPackageDigestWorker.js', 'glbPrepassWorker.js']) {
-    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-    const worker = report.responses.find(r => {
-      const path = new URL(r.url).pathname;
-      return r.status === 200 && (path.endsWith(`/workers/${name}`)
-        || (local && path.endsWith(`/src/render/${name}`)));
-    });
-    if (!worker || !/(javascript|ecmascript)/i.test(worker.mime || ''))
-      throw new Error(`Worker not loaded with JavaScript MIME: ${name}`);
-  }
+  actorStage = 'new-game-worker-contract';
+  const pageUrl = new URL(page.url());
+  const detectedReleaseBase = report.html?.match(/(?:https?:\/\/[^"']+)?(\/_releases\/[^"']+\/)main\.js/)?.[1] || '';
+  const releaseBase = process.env.MOBILE_WORKER_RELEASE_BASE || detectedReleaseBase;
+  const workerMode = process.env.MOBILE_WORKER_MODE || (releaseBase ? 'pinned' : 'retail');
+  if (!['raw', 'retail', 'pinned'].includes(workerMode)) throw new Error(`Unknown MOBILE_WORKER_MODE: ${workerMode}`);
+  if (workerMode === 'pinned' && !releaseBase)
+    throw new Error('Pinned worker mode requires MOBILE_WORKER_RELEASE_BASE or a pinned main.js URL');
+  const workerUrls = resolveWorkerContractUrls({ moduleUrl: pageUrl.href, production: workerMode !== 'raw',
+    documentBase: pageUrl.href, releaseBase: workerMode === 'pinned' ? releaseBase : '' });
+  report.workerUrls = workerUrls;
+  report.workerObservedFailures = observedWorkerFailures(report.responses, workerUrls,
+    report.workerResponseFailures, report.workerResponseSuccesses);
+  // A lazy worker may not have produced a response during startup. Exercise the real
+  // deployment URL in a native Worker and verify its transfer and reply contract.
+  report.workerContract = await runMobileWorkerContract(page, { workerUrls });
+  if (report.workerObservedFailures.length)
+    throw new Error(`Observed runtime worker response failure: ${JSON.stringify(report.workerObservedFailures)}`);
+  if (report.criticalResponseCount || report.criticalRequestFailureCount)
+    throw new Error(`Runtime script, model or decoder returned ${report.criticalResponseCount
+      + report.criticalRequestFailureCount} critical HTTP failure(s)`);
   report.acceptance.startupAndControls = 'passed';
+  report.acceptance.workerContract = 'passed';
   if (checkContinue) {
+    const continuePageErrorsBefore = report.pageErrors.length;
     activeRoute = 'continue';
     actorStage = 'continue-save-open-pause';
     await page.locator('.mf-pause').tap();
@@ -607,9 +634,19 @@ try {
     for (const selector of ['.mf-gun', '.mf-tether', '.mf-pause']) {
       if (!(await visible(page, selector))) throw new Error(`Continue is missing a visible touch control: ${selector}`);
     }
-    if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
-    if (report.responses.some(critical)) throw new Error('Runtime script, model or decoder returned an HTTP error');
+    assertContinuePageHealth(report.pageErrors, continuePageErrorsBefore);
+    report.workerObservedFailures = observedWorkerFailures(report.responses, report.workerUrls,
+      report.workerResponseFailures, report.workerResponseSuccesses);
+    report.continueHttp = { responseCount: report.responseCount,
+      criticalResponseCount: report.criticalResponseCount,
+      criticalRequestFailureCount: report.criticalRequestFailureCount,
+      workerResponseFailureCount: report.workerResponseFailureCount };
+    if (report.workerObservedFailures.length)
+      throw new Error(`Continue observed runtime worker response failure: ${JSON.stringify(report.workerObservedFailures)}`);
+    if (report.criticalResponseCount || report.criticalRequestFailureCount)
+      throw new Error(`Continue observed ${report.criticalResponseCount + report.criticalRequestFailureCount} critical HTTP failure(s)`);
     report.acceptance.continue = 'passed';
+    report.continue.status = 'passed';
   }
   report.passed = report.acceptance.mobileCapabilities === 'passed'; // Renderer health is applied below; world visibility remains unverified.
   if (report.acceptance.mobileCapabilities === 'mismatch') {
@@ -618,10 +655,19 @@ try {
   }
 } catch (error) {
   report.failedStage = actorStage;
-  if (activeRoute === 'continue') report.acceptance.continue = 'failed';
+  if (activeRoute === 'continue') {
+    report.acceptance.continue = 'failed';
+    report.continue.status = 'failed';
+  }
   else {
     report.acceptance.startupAndControls = 'failed';
-    if (checkContinue) report.acceptance.continue = 'not-run-new-game-failed';
+    if (report.acceptance.workerContract === 'pending') {
+      report.acceptance.workerContract = actorStage === 'new-game-worker-contract' ? 'failed' : 'not-run';
+    }
+    if (checkContinue) {
+      report.acceptance.continue = 'not-run-new-game-failed';
+      report.continue.status = 'not-run-new-game-failed';
+    }
   }
   report.failure = String(error?.stack || error);
   const page = browser?.contexts()[0]?.pages()[0];
@@ -662,5 +708,8 @@ try {
   console.log(JSON.stringify({ engine, passed: report.passed, acceptance: report.acceptance,
     launchMs: report.launchMs, continueLaunchMs: report.continueLaunchMs, rendererErrorCount: report.rendererErrorCount,
     failure: report.failure, final: report.final, pageErrors: report.pageErrors,
-    failedHttp: report.responses.filter(r => r.status >= 400) }, null, 2));
+    failedHttp: report.criticalResponses, criticalResponseCount: report.criticalResponseCount,
+    workerResponseFailures: report.workerResponseFailures, rendererErrors: report.rendererErrors,
+    failedRequests: report.criticalRequestFailures,
+    criticalRequestFailureCount: report.criticalRequestFailureCount }, null, 2));
 }

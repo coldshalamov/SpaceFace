@@ -10,7 +10,8 @@
       "codex/mobile-release-pinning": true,
       "codex/mobile-startup-cause": true,
       "devin/1791331347-gyre-snare": true,
-      "devin/1791416174-gyre-snare-polish": true
+      "devin/1791416174-gyre-snare-polish": true,
+      "codex/phone-startup-recovery": true
     }
   },
   "framework": null,
@@ -28,14 +29,23 @@
     {
       "source": "/workers/:path*",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
       ]
     },
     {
       "source": "/main.js",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
       ]
     }
   ]
