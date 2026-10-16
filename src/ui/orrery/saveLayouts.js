@@ -241,7 +241,7 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:16px !important; padding-bottom:12px !important; row-gap:6px !important;
     grid-template-rows:auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:"title stage" "page stage" "page hang" "page foot" !important; }
-  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:40px !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:34px !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-emph { margin-top:4px; font-size:13px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-stage__foot.sf-save-ledger { gap:4px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-card-title { font-size:26px; }
@@ -267,10 +267,11 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { font-size:12px; letter-spacing:.04em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__sub.sf-slot-sub { font-size:12px !important; line-height:1.25; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
-  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:12px; letter-spacing:.06em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:12px; letter-spacing:.03em; }
   /* the labels whose max(10px, …) floor bottoms out at this --sv: CREDITS / SECTOR / PLAYED / SAVED, HULL RECORD,
      SCARS / TITLES / …, CR, the slot's credits, the small verbs, EXPORT / IMPORT and the ESC chip */
-  html:root:not([data-sf-mobile="1"]) ${SLD} :is(.sf-ledger-fact dt, .sf-ledger-head, .sf-ledger-k) { font-size:12px; letter-spacing:.1em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} :is(.sf-ledger-fact dt, .sf-ledger-head, .sf-ledger-k) { font-size:12px; letter-spacing:.06em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .sf-save-stage > .sf-save-vacant > .sf-save-vacant__word { font-size:12px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-u { font-size:12px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { font-size:12px !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-actions .k-word.sf-save-verb,
