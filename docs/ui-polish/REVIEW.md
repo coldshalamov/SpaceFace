@@ -1404,3 +1404,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `orrery-flight` findings went from 14 to 4 at 844×390, from 18 to 6 at 390×844, from 12 to 6 at 960×540, and from 8 to 6 at 1280×720. It is 4 at 801×390, 1024×440 and 1366×768, and 0 at 1920×1080. All the remaining findings are the Cluster's curved class line (HITCH · KESTREL CLASS · STARTER) touching its own Shield/Armor legend at cluster scale ≤.6. That also happens on master at 960 and 1280, and it lives in the shared `flightCluster.js`. The focused test `orrery-speed-dial` passes. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish58/{before,after}/flight/` and `compare-orrery-flight-*.png`.
 
 **Leftovers (not this pass):** the Cluster class line vs legend at scale ≤.6 (shared with the live HUD through `hudAdapter`, so fix it there and check it live). The live HUD cluster has no short-frame step (it stays at .6 at 844×390). My Ship hull callouts at 1101–1160 wide (in #423's `#sf-ship` CSS). Shipworks lower callouts at 844×390 (the berth scrolls by design).
+
+## Flight cluster: class ring clears Shield/Armor at scale ≤.6 (ui-polish-59)
+
+**Before (master b602ddebaf / post-#425 9026a5dcf8):** at `--orr-cluster-scale` ≤.6 (960×540 and 1280×720 — the live HUD and the `orrery-flight` proof both use that step under 1300 wide) the legend's `.orr-label` grows via `12 / scale`, so Shield and Armor meet the curved class ring (`HITCH · KESTREL CLASS · STARTER` at startDeg 160). Bench: 6 ON TOP OF (HITCH↔Shield/Armor) at 960 and at 1280. 1920 (scale .85) was already clean.
+
+**After (`src/ui/orrery/flightCluster.js` only, CSS):**
+- Legend (and the next-decision cue under it) nudge left by `(12/scale − 12) * 5` so the column clears the engraving's x≈303; scale 1 → 0 extra. startDeg stays 160 — 1920 keeps the same ring placement.
+- Cap `.orr-label` inverse scale at 15px local (~9px on-screen at .6) so Shield/Armor stay readable without growing into the ring.
+- Selectors and IDs unchanged. Shared cluster — live HUD via `hudAdapter` gets the same clearance.
+
+**Checked:** on tip with #425 merged, bench `orrery-flight` findings go to **0** at 844×390, 960×540, 1280×720 and 1920×1080 (the HITCH↔Shield/Armor ON TOP OFs that #425 left at 960/1280 are gone). Pre-#425 master baseline for this branch's before shots: 12→0 at 960, 8→0 at 1280, 0→0 at 1920; 844's preview-chrome notes were already owned by #425. Focused tests: `orrery-hud-adapter`, `orrery-speed-dial` pass. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish59/{before,after}/`, `compare-orrery-flight-{960x540,1280x720,1920x1080,844x390}.png`.
+
+**Leftovers (not this pass):** My Ship callouts @1101–1160 (open #423 `station.css`); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted state @960 (optional).
