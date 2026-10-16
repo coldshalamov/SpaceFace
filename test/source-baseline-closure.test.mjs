@@ -43,7 +43,7 @@ function assertExactEntry(manifest, relativePath, expected) {
   assert.deepEqual(Buffer.from(entry.contentBase64, 'base64'), expected, relativePath);
 }
 
-test('all-runtime frozen baselines include the command channel, source JSON, and style/runtime closure', async (t) => {
+test('all-runtime frozen baselines include Three, the command channel, source JSON, and style/runtime closure', async (t) => {
   const name = `source-baseline-closure-${process.pid}-${Date.now()}`;
   const output = runCreator(name, ['--commit=HEAD~1', '--all-runtime']);
   t.after(() => rm(output, { force: true }));
@@ -55,7 +55,7 @@ test('all-runtime frozen baselines include the command channel, source JSON, and
   assert.equal(manifest.workingTree, false);
   assert.equal(
     manifest.runtimePathPolicy,
-    'index.html + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*',
+    'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*',
   );
   assert.deepEqual(manifest.omittedPaths, []);
   assert.equal(manifest.sourceOverlayDigest, sourceOverlayDigest(manifest.files));
@@ -64,6 +64,7 @@ test('all-runtime frozen baselines include the command channel, source JSON, and
   const knownCss = 'styles/ui.css';
   const importedJson = 'src/data/anvilOrchardGeometry.json';
   const fetchedJson = 'src/data/scenarios/rescue-opening.scenario.json';
+  assertExactEntry(manifest, 'vendor/three.module.js', frozenBytes(manifest.sourceCommit, 'vendor/three.module.js'));
   assertExactEntry(manifest, commandChannel, frozenBytes(manifest.sourceCommit, commandChannel));
   assertExactEntry(manifest, knownCss, frozenBytes(manifest.sourceCommit, knownCss));
   assertExactEntry(manifest, importedJson, frozenBytes(manifest.sourceCommit, importedJson));
@@ -83,7 +84,7 @@ test('all-runtime frozen baselines include the command channel, source JSON, and
   }
 });
 
-test('all-runtime working-tree baselines pin imported, fetched, and newly added JSON bytes', async (t) => {
+test('all-runtime working-tree baselines pin Three and imported, fetched, and newly added JSON bytes', async (t) => {
   const name = `source-baseline-working-tree-${process.pid}-${Date.now()}`;
   const newScenarioPath = `src/data/scenarios/source-baseline-${process.pid}-${Date.now()}.scenario.json`;
   const newScenarioFile = path.join(ROOT, newScenarioPath);
@@ -105,6 +106,7 @@ test('all-runtime working-tree baselines pin imported, fetched, and newly added 
   assert.equal(manifest.workingTree, true);
   assert.equal(manifest.sourceOverlayDigest, sourceOverlayDigest(manifest.files));
   assert.deepEqual(manifest.omittedPaths, []);
+  assertExactEntry(manifest, 'vendor/three.module.js', await readFile(path.join(ROOT, 'vendor/three.module.js')));
   assertExactEntry(manifest, 'scripts/lib/simCommandChannel.mjs', currentCommandChannel);
   assertExactEntry(manifest, 'styles/ui.css', currentCss);
   assertExactEntry(manifest, importedJson, await readFile(path.join(ROOT, importedJson)));

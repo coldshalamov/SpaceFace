@@ -93,6 +93,35 @@ test('source overlay fails closed on a tampered entry', () => {
   }), /allowlist/i);
 });
 
+test('only the exact Three vendor module can be pinned and served with verified frozen bytes', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-three-overlay-'));
+  await mkdir(path.join(root, 'vendor'), { recursive: true });
+  await writeFile(path.join(root, 'vendor', 'three.module.js'), 'export const version = "current";\n');
+  await writeFile(path.join(root, 'vendor', 'three.core.js'), 'canonical-core');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const frozen = Buffer.from('export const version = "frozen";\n');
+  const pinned = manifest([['vendor/three.module.js', frozen]]);
+  const baseUrl = await listen(t, root, pinned);
+  const response = await fetch(`${baseUrl}/vendor/three.module.js?version=old`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), frozen);
+  assert.match(response.headers.get('content-type'), /javascript/);
+  assert.equal(response.headers.get('x-spaceface-source-file-sha256'), pinned.files[0].sha256);
+  assert.equal(response.headers.get('x-spaceface-source-overlay-digest'), pinned.sourceOverlayDigest);
+  assert.equal(await (await fetch(`${baseUrl}/vendor/three.core.js`)).text(), 'canonical-core');
+
+  for (const filePath of [
+    'vendor/three.core.js', 'vendor/three.module.js.map', 'vendor/addons/Other.js',
+    '.env', 'vendor/.env', 'vendor/../secrets.json', '../vendor/three.module.js',
+    'vendor/three.module.js/../../outside.js',
+  ]) {
+    assert.throws(() => loadSourceOverlayManifest(manifest([[filePath, 'forbidden']])), /allowlist/i, filePath);
+  }
+  const tampered = manifest([['vendor/three.module.js', frozen]]);
+  tampered.files[0].contentBase64 = Buffer.from('export const version = "broken";\n').toString('base64');
+  assert.throws(() => loadSourceOverlayManifest(tampered), /hash mismatch/i);
+});
+
 test('source overlay accepts the complete runtime budget and rejects totals above 128 MiB', () => {
   const payload = Buffer.alloc(8 * 1024 * 1024, 0x5a);
   const makeLargeManifest = (fileCount, byteLength) => {
@@ -155,10 +184,11 @@ test('creator captures exact frozen git bytes into an ignored manifest', async (
     '--name=' + name,
     '--path=index.html',
     '--path=src/main.js',
+    '--path=vendor/three.module.js',
   ], { cwd: ROOT, encoding: 'utf8', windowsHide: true });
   const created = JSON.parse(await readFile(output, 'utf8'));
   assert.match(created.sourceCommit, /^[a-f0-9]{40}$/);
-  assert.equal(created.files.length, 2);
+  assert.equal(created.files.length, 3);
   for (const entry of created.files) {
     const expected = execFileSync('git', ['show', `${created.sourceCommit}:${entry.path}`], {
       cwd: ROOT, encoding: 'buffer', windowsHide: true,

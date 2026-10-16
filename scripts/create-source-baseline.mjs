@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Create an immutable, probe-only source overlay from one frozen git commit.
 // The output belongs under .devshots/ and embeds either explicitly named runtime files or,
-// with --all-runtime, the complete index.html + src/**/*.{js,json} + scripts/lib runtime + styles trees.
+// with --all-runtime, index.html + vendor/three.module.js + the complete src/**/*.{js,json},
+// scripts/lib runtime and styles trees.
 // Assets, node_modules, and every other unlisted working-tree file stay outside the capture.
 
 import { createHash } from 'node:crypto';
@@ -45,7 +46,7 @@ const DEFAULT_PERFORMANCE_PATHS = Object.freeze([
   'src/world/activityRuntime.js',
 ]);
 
-const ALL_RUNTIME_PATH_POLICY = 'index.html + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+const ALL_RUNTIME_PATH_POLICY = 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
 const SOURCE_RUNTIME_EXTENSIONS = Object.freeze(new Set(['.js', '.json']));
 const SCRIPT_RUNTIME_EXTENSIONS = Object.freeze(new Set(['.js', '.mjs', '.cjs']));
 
@@ -176,6 +177,7 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
       if (allRuntime) {
         fileList = [
           'index.html',
+          'vendor/three.module.js',
           ...(workingTree
             ? await listWorkingTreePaths('src', (relativePath) =>
               SOURCE_RUNTIME_EXTENSIONS.has(path.extname(relativePath).toLowerCase()))

@@ -200,7 +200,8 @@ function normalizeSourceOverlayPath(value) {
   if (!raw || raw.includes('\0') || raw.startsWith('/') || /^[a-zA-Z]:/.test(raw)) return null;
   const normalized = path.posix.normalize(raw);
   if (normalized === '.' || normalized === '..' || normalized.startsWith('../') || normalized.includes('/../')) return null;
-  if (normalized === 'index.html' || normalized.startsWith('src/') || normalized.startsWith('scripts/lib/') || normalized.startsWith('styles/')) {
+  if (normalized === 'index.html' || normalized === 'vendor/three.module.js'
+    || normalized.startsWith('src/') || normalized.startsWith('scripts/lib/') || normalized.startsWith('styles/')) {
     return normalized;
   }
   return null;
@@ -341,7 +342,8 @@ function isAllowedStateChangingRequest(req) {
  *                                      payload inline so src/data merges it at module-eval time.
  *                                      Omitted → the game boots with no mods mounted.
  * @param {string|object} [opts.sourceOverlay] Optional probe-only immutable source manifest. Only
- *                                      index.html, src/**, scripts/lib/** and styles/** entries are eligible.
+ *                                      index.html, vendor/three.module.js, src/**, scripts/lib/**
+ *                                      and styles/** entries are eligible.
  * @returns {http.Server}               An http.Server (not yet listening).
  */
 function createGameServer(opts) {
