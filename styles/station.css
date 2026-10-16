@@ -2048,6 +2048,50 @@ html body #screens #sf-ship .sx-sw__stats .k-caps { font-size: 12px; }
   html body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: 24px; }
   html body #screens #sf-ship .sx-sw-hero .k-hero__w { font-size: 12px; letter-spacing: .1em; }
 }
+/* ui-polish-64: after the ≤1100 two-up heroes (above). In the 901-1240 split the systems
+   column ran ~24-40 px past its plate at 700-720 tall, so DOCK TO EXTEND sat under the scroll
+   fade, and at 901-1100 the two-up heroes pushed SAVE FIT to the stats plate's fold. The fleet
+   card sits closer, the plate's printed margin is 16 px, system rows lose 2 px a side, heroes
+   run three-up (must follow the two-up rule), the six readings close their gap, and on
+   ≥650-tall splits the stage floor eases so the plate can keep SAVE FIT (short windows
+   keep the 340 floor). A 461-720 tall window gets a 24 / 32 px frame margin between the
+   48 px desktop one and the 14 / 20 px short one. */
+@media (min-width: 801px) and (max-width: 1240px) and (max-height: 460px), (min-width: 901px) and (max-width: 1240px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__carousel { margin-top: 6px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__side { padding-top: 10px; border-width: 16px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-flow { min-height: 0; padding-block: 2px; }
+}
+/* Tall split (≥650): ease the stage's 340 floor so SAVE FIT clears at 901×700 / 1100×720
+   without shrinking the hull on mid/short windows (1024×600 / 960 / 844 callout regressions). */
+@media (min-width: 901px) and (max-width: 1240px) and (min-height: 650px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stage { min-height: 260px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stats { max-height: 54%; }
+}
+@media (min-width: 801px) and (max-width: 1100px) and (max-height: 460px), (min-width: 901px) and (max-width: 1100px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-bands {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 12px; flex-wrap: unset;
+  }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-hero { padding: 2px 4px 4px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: 22px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__main > .sx-sw__gauges { column-gap: 20px; }
+}
+/* Mid-height split (580-640): keep the stage floor; compress plate chrome + rail so SAVE FIT /
+   DOCK TO EXTEND reach the first paint (1024×600). */
+@media (min-width: 901px) and (max-width: 1240px) and (min-height: 580px) and (max-height: 640px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__carousel { margin-top: 2px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__side { padding-top: 6px; border-width: 12px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-circuit__instruction { display: none; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__main > .sx-sw__gauges { padding: 6px 14px 6px; margin-top: 6px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-band { margin-top: 4px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-band--presets { margin-top: 4px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__stats { margin-top: 4px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-band__meta { display: none; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: 20px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-bars { gap: 0 16px; }
+}
+@media (min-width: 901px) and (max-width: 1240px) and (min-height: 461px) and (max-height: 720px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame { padding: 24px 32px; }
+}
 /* S2: on a short frame the rail compresses — dial, rows, helper, rack — so the helper
    and DOCK TO EXTEND keep their floor above y=700. */
 @media (max-height: 800px) {
