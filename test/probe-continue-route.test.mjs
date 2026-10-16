@@ -34,6 +34,12 @@ test('the focused fixture reads the Continue candidate and keeps the route actor
   assert.match(source, /frame\?\.simTime/);
   assert.match(source, /report\.continueHttp =/);
   assert.match(source, /report\.workerObservedFailures = observedWorkerFailures\(report\.responses, report\.workerUrls/);
+  assert.match(source, /rendererHealth: 'pending'/);
+  assert.match(source, /function isConcreteRendererConsoleError/);
+  assert.match(source, /MAX_RENDERER_ERROR_SAMPLES = 32/);
+  assert.match(source, /isConcreteRendererConsoleError\(message\.type\(\), text\)/);
+  assert.match(source, /finalizeRendererHealth\(report\)/);
+  assert.match(source, /rendererErrors: \[\]/);
   assert.match(source, /report\.acceptance\.continue = 'passed'/);
   assert.match(source, /report\.passed = true/);
   assert.ok(source.indexOf("report.acceptance.continue = 'passed'") < source.indexOf('report.passed = true'),
@@ -51,6 +57,13 @@ function extractHealthGuard() {
   const start = source.indexOf('function assertContinuePageHealth');
   const end = source.indexOf('\nfunction installStartupObserver', start);
   assert.ok(start >= 0 && end > start, 'found Continue page-error guard in candidate');
+  return source.slice(start, end);
+}
+
+function extractRendererHealth() {
+  const start = source.indexOf('const MAX_RENDERER_ERROR_SAMPLES = 32;');
+  const end = source.indexOf('\nlet browser;', start);
+  assert.ok(start >= 0 && end > start, 'found renderer-health helpers in candidate');
   return source.slice(start, end);
 }
 
@@ -105,6 +118,34 @@ test('an uncaught Save/reload pageerror rejects an otherwise successful Continue
     () => context.assertContinuePageHealth(fixture.report.pageErrors, baseline),
     /Continue produced 1 page error\(s\)/,
   );
+});
+
+test('a concrete console WebGL error fails renderer health after Continue succeeds', () => {
+  const context = { Date };
+  vm.runInNewContext(`${extractRendererHealth()}
+globalThis.isConcreteRendererConsoleError = isConcreteRendererConsoleError;
+globalThis.noteRendererError = noteRendererError;
+globalThis.finalizeRendererHealth = finalizeRendererHealth;`, context);
+  const drawError = 'WebGL: INVALID_OPERATION: glDrawElements: Vertex buffer is not big enough for the draw call.';
+  const warning = 'WebGL: shader warning: precision qualifier was downgraded';
+  assert.equal(context.isConcreteRendererConsoleError('error', drawError), true);
+  assert.equal(context.isConcreteRendererConsoleError('warning', drawError), false,
+    'warning-level WebGL diagnostics remain non-gating');
+  assert.equal(context.isConcreteRendererConsoleError('error', warning), false,
+    'generic WebGL warnings remain non-gating');
+  const report = {
+    passed: true,
+    acceptance: { startupAndControls: 'passed', continue: 'passed', rendererHealth: 'pending' },
+    rendererErrors: [], rendererErrorCount: 0,
+  };
+  context.noteRendererError(report, drawError, 'continue', 'continue-flight-controls');
+  context.noteRendererError(report, 'WebGL: CONTEXT_LOST_WEBGL: context lost', 'continue', 'rotation');
+  assert.equal(context.finalizeRendererHealth(report), false);
+  assert.equal(report.rendererErrorCount, 2);
+  assert.equal(report.rendererErrors.length, 2);
+  assert.equal(report.acceptance.continue, 'passed', 'Continue leg result remains visible');
+  assert.equal(report.acceptance.rendererHealth, 'failed');
+  assert.equal(report.passed, false, 'overall result fails on concrete renderer errors');
 });
 
 test('bus-free storage envelope is a read-only save receipt and a new selected-slot error fails', async () => {

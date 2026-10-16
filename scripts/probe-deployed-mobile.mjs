@@ -22,9 +22,37 @@ const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment
 const checkContinue = process.env.MOBILE_PROBE_CONTINUE === '1';
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
-  acceptance: { startupAndControls: 'pending', continue: checkContinue ? 'pending' : 'not-requested', worldVisibility: 'unverified' },
+  acceptance: { startupAndControls: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
+    rendererHealth: 'pending', worldVisibility: 'unverified' },
   continue: { requested: checkContinue, status: checkContinue ? 'pending' : 'not-requested' },
+  rendererErrors: [], rendererErrorCount: 0,
   ...createMobileResponseLedger(), pageErrors: [], console: [], stages: [], observations: [], lifecycle: [] };
+const MAX_RENDERER_ERROR_SAMPLES = 32;
+// Concrete WebGL failures are renderer-health evidence. Ordinary warnings remain
+// diagnostics, while error-level INVALID/context-loss messages fail the run.
+function isConcreteRendererConsoleError(type, text) {
+  if (type !== 'error') return false;
+  const value = String(text || '');
+  if (!/(?:WebGL|GL_INVALID|CONTEXT_LOST_WEBGL)/i.test(value)) return false;
+  return /(?:CONTEXT_LOST_WEBGL|GL_INVALID_[A-Z_]+|WebGL[^\n]*(?:INVALID_[A-Z_]+|CONTEXT_LOST_WEBGL)|WebGL[^\n]*(?:context\s+(?:was\s+)?lost)|WebGL[^\n]*(?:draw(?:Range)?Elements(?:Instanced)?|Vertex buffer|out of bounds|OUT_OF_MEMORY))/i.test(value);
+}
+function noteRendererError(target, text, route, stage, source = 'console') {
+  target.rendererErrorCount++;
+  if (target.rendererErrors.length < MAX_RENDERER_ERROR_SAMPLES) {
+    target.rendererErrors.push({ route, actorStage: stage, at: new Date().toISOString(), source,
+      text: String(text || '').slice(0, 3000) });
+  }
+}
+function finalizeRendererHealth(target) {
+  target.acceptance.rendererHealth = target.rendererErrorCount ? 'failed'
+    : target.acceptance.startupAndControls === 'passed' ? 'passed' : 'unverified';
+  if (target.rendererErrorCount) {
+    target.passed = false;
+    target.failure ||= `Renderer health failed: ${target.rendererErrorCount} concrete WebGL error(s); see rendererErrors`;
+    return false;
+  }
+  return true;
+}
 let browser;
 let activeRoute = 'new-game';
 let actorStage = 'boot-menu';
@@ -216,6 +244,8 @@ try {
   page.on('pageerror', error => report.pageErrors.push(String(error?.stack || error)));
   page.on('console', message => {
     const text = message.text();
+    if (isConcreteRendererConsoleError(message.type(), text))
+      noteRendererError(report, text, activeRoute, actorStage);
     if (message.type() === 'log' && /\[render\] GPU:|\[opening-cook\]/.test(text))
       console.log(`[mobile:${engine}] ${text}`);
     if (['error', 'warning'].includes(message.type()) && !/was preloaded using link preload/.test(text)) {
@@ -494,6 +524,16 @@ try {
   }
   process.exitCode = 1;
 } finally {
+  const contextFailures = new Set();
+  for (const state of [...report.stages, ...report.observations, report.final].filter(Boolean)) {
+    for (const event of state.startupObserver?.events || []) {
+      if (event.canvasId === 'gl-canvas' && ['webglcontextlost', 'webglcontextcreationerror'].includes(event.type))
+        contextFailures.add(`main canvas ${event.type}: ${event.statusMessage || 'no driver message'}`);
+    }
+  }
+  for (const text of contextFailures)
+    noteRendererError(report, text, report.activeRoute, report.actorStage, 'runtime-context');
+  finalizeRendererHealth(report);
   // Persist diagnostics before a crashed renderer can stall browser shutdown.
   await writeFile(join(out, 'report.json'), JSON.stringify(report, null, 2));
   await Promise.race([browser?.close(), new Promise(resolve => {
@@ -502,6 +542,7 @@ try {
   console.log(JSON.stringify({ engine, passed: report.passed, launchMs: report.launchMs,
     failure: report.failure, final: report.final, pageErrors: report.pageErrors,
     failedHttp: report.criticalResponses, criticalResponseCount: report.criticalResponseCount,
-    workerResponseFailures: report.workerResponseFailures,
+    workerResponseFailures: report.workerResponseFailures, rendererErrorCount: report.rendererErrorCount,
+    rendererErrors: report.rendererErrors,
     failedRequests: report.criticalRequestFailures, criticalRequestFailureCount: report.criticalRequestFailureCount }, null, 2));
 }
