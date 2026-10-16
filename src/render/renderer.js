@@ -13523,7 +13523,11 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
-      deferAutoFlush: () => shouldDeferPipelineAutoFlush({
+      // While the flight veil holds the sim after the first playable paint, nothing playable is
+      // on screen and simTime is frozen (the first-flight hold below is sim-clocked): let queued
+      // admissions flush now, so their per-object admission draws land under the veil.
+      deferAutoFlush: () => !(state.render && state.render.flightVeilHoldsSim === true
+        && Number.isFinite(state.render.firstPlayableFrameAt)) && shouldDeferPipelineAutoFlush({
         postOpeningReleased: this._postOpeningPipelineAdmissionReleased === true,
         firstPlayableFrameAt: state.render && state.render.firstPlayableFrameAt,
         mode: state.mode,
@@ -16037,7 +16041,9 @@ export const render = {
               // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
               // the owner's laptop. The jump shell keeps one item per frame.
-              yieldToMain: state.mode === 'loading'
+              // The flight reveal veil covers the canvas like the loading shell, so spill-over keeps
+              // the shell's sliced cadence (same in the cook touch/buffer/rock-pool yields below).
+              yieldToMain: (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
                 ? createSlicedYield(yieldAndFlushLiveSectorGpu, {
                   shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
                   debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
@@ -17774,7 +17780,7 @@ export const render = {
           // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
           // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
           // every one). The jump shell keeps one touch per frame.
-          const touchYield = yieldTouch && state.mode === 'loading'
+          const touchYield = yieldTouch && (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
             ? createSlicedYield(yieldTouch, {
               shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
               debit: notePacedFrameSpend,
@@ -17846,7 +17852,7 @@ export const render = {
       // does not upload vertex buffers, and first bloom then bricks on Intel.
       // Loading shell: texture and geometry uploads share a frame until ~8 ms of upload work
       // (laneB-fixA: 123 opening textures, one whole frame each). The jump shell keeps its cadence.
-      const yieldBuffers = state.mode === 'loading'
+      const yieldBuffers = (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
         ? createSlicedYield(yieldBufferFrame, {
           shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
           debit: notePacedFrameSpend,
@@ -18389,7 +18395,7 @@ export const render = {
           // unit (the old cadence) made this step O(units x frame time). The jump shell keeps its
           // per-unit cadence, exactly as cook.touch and cook.buffers do above.
           const rockPoolYieldBase = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
-          const rockPoolYield = state.mode === 'loading'
+          const rockPoolYield = (state.mode === 'loading' || state.render?.flightVeilHoldsSim === true)
             ? createSlicedYield(rockPoolYieldBase, {
               sliceMs: 16,
               shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,

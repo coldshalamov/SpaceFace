@@ -417,8 +417,35 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   // rAF only presents the newest completed snapshot for either owner.
   const workerPumpOwnsClock = simulationRunner.clockOwner === 'worker-pump'
     || simulationRunner.clockOwner === 'worker-local';
+  // The flight reveal veil (loadingPresenter) holds the sim at its spawn state until the world is
+  // on screen. On the worker lane the clock runs in the worker, so the hold must reach it the
+  // moment the veil arms (not at the next rAF, which a slow first draw delays by seconds), and
+  // no lifecycle resume may restart the clock while the veil still holds.
+  const flightVeilHeld = () => !!(state.render && state.render.flightVeilHoldsSim === true);
+  let veilClockHeld = false;
+  let workerClockWanted = false;
+  function syncFlightVeilClock() {
+    if (!workerPumpOwnsClock || typeof simulationRunner.setClockActive !== 'function') return;
+    const held = flightVeilHeld();
+    if (held === veilClockHeld) return;
+    veilClockHeld = held;
+    simulationRunner.setClockActive(held ? false : workerClockWanted, held ? 'flight-veil' : 'flight-veil-lift');
+  }
+  function bindFlightVeilHook() {
+    const render = state.render;
+    if (render && render.onFlightVeilHoldChanged !== syncFlightVeilClock) {
+      render.onFlightVeilHoldChanged = syncFlightVeilClock;
+    }
+  }
+  bindFlightVeilHook();
   function setWorkerClockActive(active, reason) {
     if (!workerPumpOwnsClock || typeof simulationRunner.setClockActive !== 'function') return;
+    workerClockWanted = active === true;
+    if (workerClockWanted && flightVeilHeld()) {
+      veilClockHeld = true;
+      simulationRunner.setClockActive(false, 'flight-veil');
+      return;
+    }
     simulationRunner.setClockActive(active === true, reason);
   }
 
@@ -1074,7 +1101,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // simulation. rAF still calls prepareWithoutAdvance to flush presentation-side commands and
     // read the current accumulator, but it never advances the worker a second time. Main fallback
     // has no clockOwner marker and keeps the established rAF advance path byte-for-byte in policy.
-    const stepResult = restoring || workerPumpOwnsClock
+    // The flight reveal veil (loadingPresenter) also holds the main-lane sim at its spawn state
+    // until the world is on screen.
+    const veilHeld = flightVeilHeld();
+    bindFlightVeilHook();
+    syncFlightVeilClock();
+    const stepResult = restoring || workerPumpOwnsClock || veilHeld
       ? simulationRunner.prepareWithoutAdvance()
       : simulationRunner.advance(frameDt, state.timeScale, stepCap);
     if (!restoring && !workerPumpOwnsClock && stepCap === HITCH_CATCHUP_STEPS) {

@@ -214,3 +214,54 @@ test('presentation rAF consumes a worker snapshot without advancing the worker c
   }
   assert.equal(clockStates.at(-1).active, false, 'teardown disposes the worker clock');
 });
+
+test('the flight veil hold stops a worker-owned clock when it arms and blocks lifecycle restarts', () => {
+  const queued = [];
+  let now = 0;
+  const clockStates = [];
+  const simulation = {
+    fixedDt: LOOP_FIXED_DT,
+    maxSteps: MAX_CATCHUP_STEPS,
+    clockOwner: 'worker-local',
+    setClockActive(active, reason) { clockStates.push({ active, reason }); },
+    setLifecycleGeneration() {},
+    advance() { throw new Error('rAF must not advance a worker-owned clock'); },
+    prepareWithoutAdvance() { return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    close() {},
+    getDiagnostics() { return { clockOwner: 'worker-local' }; },
+  };
+  const state = {
+    accumulator: 0, timeScale: 1, tick: 0, simTime: 0,
+    input: { actions: {} },
+    render: { displayHz: 60 },
+    settings: { video: { vsync: false, frameCap: 0 } },
+  };
+  const loop = createPresentationRunner(state, { renderUpdate() {}, get() { return null; } }, simulation, {
+    requestFrame(callback) { queued.push(callback); return queued.length; },
+    cancelFrame() { queued.length = 0; },
+    nowMs: () => now,
+    visibilityTarget: null,
+    lifecyclePort: null,
+    inputResumeTarget: null,
+  });
+  try {
+    assert.deepEqual(clockStates.at(-1), { active: true, reason: 'startup' });
+    assert.equal(typeof state.render.onFlightVeilHoldChanged, 'function', 'the runner publishes the veil hook');
+    // loadingPresenter arms the hold on mode:changed('flight') — before any rAF runs.
+    state.render.flightVeilHoldsSim = true;
+    state.render.onFlightVeilHoldChanged(true);
+    assert.deepEqual(clockStates.at(-1), { active: false, reason: 'flight-veil' },
+      'the worker clock stops the moment the veil arms, not at the next frame');
+    now += 1000 / 60;
+    queued.shift()(now);
+    assert.equal(clockStates.at(-1).active, false, 'frames under the veil keep the clock stopped');
+    state.render.flightVeilHoldsSim = false;
+    state.render.onFlightVeilHoldChanged(false);
+    assert.deepEqual(clockStates.at(-1), { active: true, reason: 'flight-veil-lift' },
+      'the lift resumes the clock the lifecycle wanted');
+  } finally {
+    loop.close();
+  }
+});

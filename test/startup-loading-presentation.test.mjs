@@ -254,6 +254,79 @@ test('flight handoff keeps the shell up until the renderer presents past the mod
   }
 });
 
+test('flight reveal also waits for the opening first draw, bounded by a cap', (t) => {
+  // HUD over a black world: a presented frame is not the world when the opening submission's
+  // first draw is still pending. The veil waits for that stamp; the cap lifts it anyway and says so.
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let rafQueue = [];
+  const prevRaf = globalThis.requestAnimationFrame;
+  const prevCancel = globalThis.cancelAnimationFrame;
+  const prevInfo = console.info;
+  const infos = [];
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
+  globalThis.cancelAnimationFrame = () => { rafQueue = []; };
+  console.info = (...a) => infos.push(a);
+  try {
+    const pump = (frames) => { for (let i = 0; i < frames; i++) { const q = rafQueue; rafQueue = []; for (const fn of q) fn(i * 16.7); } };
+    const run = () => {
+      const bus = createBus();
+      const overlay = fakeElement();
+      const document = { getElementById: () => overlay, querySelector: () => null };
+      const info = { render: { frame: 10 } };
+      const state = { render: { renderer: { info }, firstPlayableFrameAt: null } };
+      const presenter = createLoadingPresenter({ document, bus, state });
+      bus.emit('game:loadingProgress', { id: 'entering-flight', progress: 0.96 });
+      bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+      info.render.frame = 11;
+      pump(3);
+      return { overlay, state, presenter };
+    };
+
+    const a = run();
+    assert.equal(a.overlay.classList.contains('hidden'), false,
+      'a presented frame before the first playable paint must keep the veil up');
+    assert.equal(a.state.render.flightVeilHoldsSim, true, 'the veil holds the sim while it waits');
+    a.state.render.firstPlayableFrameAt = 1234;
+    pump(2);
+    assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first playable paint landed');
+    assert.equal(a.state.render.veilLiftReason, 'first-draw');
+    assert.equal(a.state.render.veilStage, undefined, 'a quick first draw never shows the stage label');
+    assert.equal(a.state.render.flightVeilHoldsSim, true,
+      'the sim stays held through the fade so the first steerable frame is the spawn state');
+    t.mock.timers.tick(600); pump(1);
+    assert.equal(a.state.render.flightVeilHoldsSim, true, 'held until a frame is presented after the fade');
+    a.state.render.renderer.info.render.frame += 1; pump(1);
+    assert.equal(a.state.render.flightVeilHoldsSim, false, 'a presented frame after the fade releases the sim');
+    a.presenter.destroy();
+
+    const b = run();
+    t.mock.timers.tick(2900); pump(1);
+    assert.equal(b.state.render.veilStage, undefined, 'no stage label inside the short grace');
+    t.mock.timers.tick(200); pump(1);
+    assert.equal(b.state.render.veilStage, 'rendering-sector', 'a long first-draw wait names its stage');
+    t.mock.timers.tick(16800); pump(1);
+    assert.equal(b.overlay.classList.contains('hidden'), false, 'still waiting before the cap');
+    t.mock.timers.tick(200); pump(1);
+    assert.equal(b.overlay.classList.contains('hidden'), true, 'the cap lifts the veil so it cannot stick');
+    assert.equal(b.state.render.veilLiftReason, 'cap');
+    t.mock.timers.tick(600 + 1000); pump(1);
+    assert.equal(b.state.render.flightVeilHoldsSim, false, 'a capped lift releases the sim too (bounded fallback)');
+    assert.ok(infos.some((x) => /first-draw cap/.test(String(x[0]))), 'a capped lift is logged');
+    b.presenter.destroy();
+  } finally {
+    globalThis.requestAnimationFrame = prevRaf;
+    globalThis.cancelAnimationFrame = prevCancel;
+    console.info = prevInfo;
+  }
+});
+
+test('the flight veil holds the sim: presentationRunner advances nothing while flightVeilHoldsSim', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/core/presentationRunner.js', import.meta.url), 'utf8');
+  assert.match(src, /const flightVeilHeld = \(\) => !!\(state\.render && state\.render\.flightVeilHoldsSim === true\);/);
+  assert.match(src, /const veilHeld = flightVeilHeld\(\);[\s\S]{0,200}const stepResult = restoring \|\| workerPumpOwnsClock \|\| veilHeld\s*\? simulationRunner\.prepareWithoutAdvance\(\)/);
+});
+
 test('Continue yields its destructive restore until the loading shell can paint', () => {
   const bus = createBus();
   const deferred = [];
