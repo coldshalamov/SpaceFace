@@ -384,3 +384,14 @@ test('an owned sweep error rests loading effects and releases the warm subset', 
     timers.restore();
   }
 });
+
+test('player-truth records whether the opening effect warm ran or was skipped on this GPU (#434 bar 2.5)', async () => {
+  const { openingEffectWarmLine } = await import('../scripts/player-truth/verdict.mjs');
+  assert.equal(openingEffectWarmLine(null), null);
+  assert.match(openingEffectWarmLine({ present: true, reason: 'parallel-compile-cook', khr: true }), /^skipped · reason parallel-compile-cook · KHR_parallel_shader_compile yes$/);
+  assert.match(openingEffectWarmLine({ present: true, reason: 'shell-released', khr: false, software: true, touched: ['a', 'b'], timedOut: [], skipped: [], failed: 0, sweeps: 14 }),
+    /^ran · reason shell-released · KHR_parallel_shader_compile no · software GPU · 2 touched, 0 timed out, 0 skipped, 0 failed, 14 sweeps$/);
+  assert.match(openingEffectWarmLine({ present: false, khr: true }), /^not run \(no receipt\)/);
+  const run = await readFile(new URL('../scripts/player-truth/run.mjs', import.meta.url), 'utf8');
+  assert.match(run, /trace\.meta\.openingEffectWarm = await page\.evaluate/);
+});
