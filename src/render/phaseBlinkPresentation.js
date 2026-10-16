@@ -491,6 +491,28 @@ function headingOf(rot) {
   return { x: Math.cos(r), z: Math.sin(r) };
 }
 
+// Opening veil warm exemplar (software GL): the core and light-pass programs first linked inside
+// presented flight on the first phase blink (~+15-22 s, 96-348 ms). Materials made here are kept
+// referenced and never disposed so the linked programs stay resident for the live blink's own
+// materials (same program cache key); only the sheet geometry is the caller's to dispose.
+const OPENING_WARM_MATERIALS = [];
+export function createPhaseBlinkWarmSubject() {
+  const group = new THREE.Group();
+  group.name = 'SF_PhaseBlinkOpeningWarm';
+  const geometry = sheetGeometry();
+  for (const pass of [0, 1]) {
+    const material = makeMaterial(0, pass);
+    OPENING_WARM_MATERIALS.push(material);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `PhaseBlinkOpeningWarm_${pass}`;
+    mesh.frustumCulled = false;
+    group.add(mesh);
+  }
+  group.userData.openingWarmExemplar = true;
+  group.userData.disposeOpeningWarm = () => { geometry.dispose(); };
+  return group;
+}
+
 export function createPhaseBlinkPresentation() {
   let scene = null;
   let unlisten = null;

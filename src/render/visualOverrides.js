@@ -349,6 +349,31 @@ function lodStandInFor(entity, record, target = null) {
   return group;
 }
 
+/**
+ * Opening veil warm exemplar (software GL): one hidden stand-in mesh on the shared stand-in material
+ * and one resolving marker, so both programs link behind the loading shell instead of on the first
+ * mid-flight ship admission (fx3: StandIn_*_Armor first link 0.4-1.1 s at ~+9.5 s after the lift).
+ * The stand-in material is cached with a no-op dispose and the marker material is module-level, so
+ * the linked programs stay resident for every later stand-in/marker; only the box geometry is the
+ * caller's to dispose.
+ */
+export function createOpeningStandInWarmSubject() {
+  const group = new THREE.Group();
+  group.name = 'SF_OpeningStandInWarm';
+  const standIn = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), standInMaterialFor(null));
+  standIn.name = 'StandIn_OpeningWarm';
+  standIn.castShadow = false;
+  standIn.receiveShadow = false;
+  standIn.userData.authoredResolvingMarker = true;
+  const marker = new THREE.Mesh(RESOLVING_MARKER_GEOMETRY, RESOLVING_MARKER_MATERIAL);
+  marker.name = 'AuthoredResolvingMarker_OpeningWarm';
+  marker.userData.authoredResolvingMarker = true;
+  group.add(standIn, marker);
+  group.userData.openingWarmExemplar = true;
+  group.userData.disposeOpeningWarm = () => { standIn.geometry.dispose(); };
+  return group;
+}
+
 function resolvingMarkerFor(entity, targetLengthX = null) {
   const marker = new THREE.Mesh(RESOLVING_MARKER_GEOMETRY, RESOLVING_MARKER_MATERIAL);
   marker.name = 'AuthoredResolvingMarker';

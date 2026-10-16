@@ -57,7 +57,7 @@ import {
   resolveIblSource,
 } from './foundryEnvironment.js';
 import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
+import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -296,7 +296,7 @@ import { globalProjectileMotion } from './projectileMotionPresentation.js';
 import { globalOrdnanceMotion } from './ordnanceMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
-import { createPhaseBlinkPresentation } from './phaseBlinkPresentation.js';
+import { createPhaseBlinkPresentation, createPhaseBlinkWarmSubject } from './phaseBlinkPresentation.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
@@ -377,6 +377,13 @@ import {
   collectUncompiledSceneDrawables,
   collectUncompiledSceneDrawablesSteps,
 } from './latePipelineAdmission.js';
+import {
+  collectOpeningEffectSubjects,
+  openingEffectWarmAllowed,
+  OPENING_EFFECT_PLUME_DRIVE_RE,
+  OPENING_WARM_TOUCH_BUDGET_MS,
+  OPENING_WARM_TOUCH_TIMEOUT_MS,
+} from './openingEffectWarm.js';
 import {
   armAdmissionShadows,
   casterDepthMarkAnyCurrent,
@@ -23201,6 +23208,7 @@ export const render = {
       return null;
     }
     if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root);
+    if (profile === 'opening') this._touchOpeningEffectFamilyUnderShell();
     return warm;
   },
 
@@ -24779,6 +24787,182 @@ export const render = {
     }
     if (minted > 0) canonicalizeObjectSurfaceProgramKeys(root);
     notePacedFrameSpend(scanNow() - lastDebitAt);
+  },
+
+  /**
+   * Effect-family program warm (see openingEffectWarm.js). Loading shell only: once the player
+   * exists, build the narrow effect subset (vfx warmupOpeningEffectSubset: liquid plasma, the
+   * industrial plume, one ribbon-trail exemplar), then every 250 ms exact-target touch one
+   * instance of each effect family not yet touched. Stops for good when loading releases or the
+   * admission generation changes — no touches in flight, so nothing extends the flight veil.
+   */
+  _touchOpeningEffectFamilyUnderShell() {
+    const state = this.state;
+    if (!state || this._openingEffectWarmActive === true) return;
+    // Software / no-parallel-compile route only (#434 review, A): an awaited parallel-compile
+    // cook runs warmupLiveFlightEffects and rests these families itself; this sweep would race it.
+    if (!openingEffectWarmAllowed({ gpu: state.render && state.render.gpu, renderer: this.renderer })) {
+      if (state.render) state.render.openingEffectWarm = { reason: 'parallel-compile-cook', touched: [], touchMs: {} };
+      return;
+    }
+    this._openingEffectWarmActive = true;
+    const generation = state.render ? state.render.admissionRunGeneration : undefined;
+    const seen = new Set();
+    const clock = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const receipt = { touched: [], touchMs: {}, failed: 0, sweeps: 0, subset: null, reason: 'pending', at: null };
+    const owned = () => state === this.state
+      && (state.render ? state.render.admissionRunGeneration : undefined) === generation;
+    const publish = (reason) => {
+      receipt.reason = reason;
+      receipt.at = Math.round(clock());
+      if (state.render) {
+        state.render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice(), touchMs: { ...receipt.touchMs } };
+      }
+    };
+    const loading = () => state.mode === 'loading';
+    const startedAt = Date.now();
+    let extrasDone = false;
+    // Touches run as soon as the subset exists, inside the opening compile burst. The first
+    // link-status read there waits out the burst's compile backlog (fx3: 4.8-8.3 s on whichever
+    // touch came first), but loading waits on that backlog anyway: fx3 (early touches) loaded at
+    // master -0.37 s to flight, while fx4-fx6 (touches held until the burst drained, >=4 s in)
+    // put their own links on the critical path and reached flight +0.7-1.5 s after master.
+    // Touch budget: a link-status read is synchronous, so no timer can cut one short once it has
+    // started; the budget bounds how many touches start and how long the sweep waits on each.
+    // Past the per-touch timeout the sweep moves on (the touch settles in the background); past
+    // the total budget no further touch starts. Both are logged in the receipt.
+    // The first touch is not charged: it absorbs the opening compile backlog described above.
+    let touchSpentMs = 0;
+    let firstTouchCharged = false;
+    receipt.timedOut = [];
+    receipt.skipped = [];
+    const timedTouch = async (touch, key, subject) => {
+      if (touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS) {
+        if (!receipt.skipped.includes(key)) {
+          receipt.skipped.push(key);
+          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch skipped: budget spent', key, Math.round(touchSpentMs));
+        }
+        return false;
+      }
+      const touchStarted = clock();
+      let timer = null;
+      let settled = null;
+      try {
+        settled = Promise.resolve(touch(subject));
+        const outcome = await Promise.race([
+          settled.then(() => 'done'),
+          new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), OPENING_WARM_TOUCH_TIMEOUT_MS); }),
+        ]);
+        if (outcome === 'timeout') {
+          receipt.timedOut.push(key);
+          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch timed out', key, OPENING_WARM_TOUCH_TIMEOUT_MS);
+        } else {
+          receipt.touched.push(key);
+        }
+      } catch (error) {
+        receipt.failed += 1;
+        laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, error);
+      } finally {
+        if (timer) clearTimeout(timer);
+        const spent = clock() - touchStarted;
+        if (firstTouchCharged) touchSpentMs += spent;
+        firstTouchCharged = true;
+        receipt.touchMs[key] = Math.round(spent);
+      }
+      // The touch's own completion: a timed-out touch keeps running after the sweep moves on, so
+      // callers that tear the subject down wait on this rather than on the race.
+      return settled ? settled.then(() => true, () => true) : true;
+    };
+    let restPending = false;
+    const stop = (reason) => {
+      this._openingEffectWarmActive = false;
+      publish(reason);
+    };
+    const step = async () => {
+      try {
+        return await sweep();
+      } catch (error) {
+        laneWarn(this, 'openingEffectWarm', '[render] opening effect warm step failed', error);
+        return stop('error');
+      }
+    };
+    const sweep = async () => {
+      if (!owned()) return stop('superseded');
+      if (!loading() || Date.now() - startedAt > 90000) return stop('shell-released');
+      const render = state.render;
+      const touch = render && render.touchSubjectExactTarget;
+      receipt.sweeps += 1;
+      if (!receipt.subset && state.playerId != null
+          && state.entities && typeof state.entities.get === 'function' && state.entities.get(state.playerId)
+          && typeof render.warmupOpeningEffectSubset === 'function') {
+        restPending = true;
+        try {
+          const r = render.warmupOpeningEffectSubset({ plumeMaterialRe: OPENING_EFFECT_PLUME_DRIVE_RE });
+          receipt.subset = r && r.skipped !== true
+            ? { plasma: r.plasma === true, plumes: r.plumes | 0, ribbon: r.ribbon === true,
+              initMs: Math.round(r.initMs || 0), ms: Math.round(r.ms || 0) }
+            : { skipped: true, reason: (r && r.reason) || 'unknown' };
+        } catch (error) {
+          receipt.subset = { error: true };
+          laneWarn(this, 'openingEffectWarm', '[render] opening effect subset warmup failed', error);
+        }
+      }
+      if (!extrasDone && receipt.subset && typeof touch === 'function' && this.scene) {
+        extrasDone = true;
+        // Late first links outside the effect roots that master links after the lift (50-run pool:
+        // stand-in 13, phase blink 8, marker 4): the ship_atlas stand-in
+        // + resolving marker of the first mid-flight ship admission, and both phase-blink programs
+        // (uKind/uZip). The bloom threshold pass is left out (1 post-lift link in 50 master runs).
+        // Exemplars only: touched once, then detached; their materials stay alive so the programs
+        // stay linked.
+        for (const [key, make] of [['exemplar:standIn', createOpeningStandInWarmSubject],
+          ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
+          if (!owned() || !loading()) break;
+          let subject = null;
+          let settled = true;
+          try {
+            subject = make();
+            this.scene.add(subject);
+            settled = await timedTouch(touch, key, subject);
+          } catch (error) {
+            receipt.failed += 1;
+            laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
+          } finally {
+            if (subject) {
+              const owned_ = subject;
+              const teardown = () => {
+                if (owned_.parent) owned_.parent.remove(owned_);
+                try { owned_.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
+              };
+              // A touch that outlived its timeout still draws this subject: detach and dispose
+              // only once it settles (#434 review, finding B).
+              if (settled && typeof settled.then === 'function') settled.then(teardown, teardown);
+              else teardown();
+            }
+          }
+        }
+      }
+      if (typeof touch === 'function' && this.scene) {
+        for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
+          if (!owned() || !loading()) break;
+          await timedTouch(touch, key, subject);
+        }
+      }
+      if (restPending) {
+        restPending = false;
+        try {
+          if (typeof render.restLiveFlightEffectsAfterCook === 'function') render.restLiveFlightEffectsAfterCook();
+          if (typeof render.releaseOpeningEffectSubset === 'function') render.releaseOpeningEffectSubset();
+        } catch (_) { /* best-effort */ }
+      }
+      publish('pending');
+      if (!owned()) return stop('superseded');
+      if (!loading()) return stop('shell-released');
+      setTimeout(() => { void step(); }, 250);
+      return null;
+    };
+    setTimeout(() => { void step(); }, 0);
   },
 
   /**
