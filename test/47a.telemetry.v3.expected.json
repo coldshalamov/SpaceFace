@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "e148b05f70c851a4a35d219d7aa4bfc5f1d10543195c37b8d2655c32c93d3f70",
+    "authoritativeHash": "2cdf07a5c27c82577581c94b11cf04e7d69d8f3a6062a595ed0593022370fa90",
     "authoritativeHashByReloadAt": {
-      "60": "e148b05f70c851a4a35d219d7aa4bfc5f1d10543195c37b8d2655c32c93d3f70",
-      "600": "e148b05f70c851a4a35d219d7aa4bfc5f1d10543195c37b8d2655c32c93d3f70"
+      "60": "2cdf07a5c27c82577581c94b11cf04e7d69d8f3a6062a595ed0593022370fa90",
+      "600": "2cdf07a5c27c82577581c94b11cf04e7d69d8f3a6062a595ed0593022370fa90"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -250,6 +250,9 @@
     "Current reload60 and reload600 produce the same canonical hash and each matches save-canonicalized uninterrupted simulation. Clean committed source5214f5f38 reproduces the current result; foreign working-tree edits do not set this expectation.",
     "Exact hash, required event families, acceptance bounds, five-run minimum and reload equivalence remain enforced. This updates the curated legacy47a V3 fixture to shipped contact behavior; it is not a new production-manifest claim.",
     "2026-10-11 deliberate re-record over 0830a8aff..9d86b046b (78 commits). The prior authoritativeHash was 4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08; reload60 and reload600 both reproduce the new uninterrupted hash.",
-    "scripts/sim-golden-diff.mjs --flight-system v3 against 0830a8aff: 15,244 leaves differ, all under $.economy — c1226a5fc authored cmdty_regocrete/cmdty_control_unit starter produce lines and MAX_LINES_PER_SIDE 4->6. ZERO entity motion fields changed."
+    "scripts/sim-golden-diff.mjs --flight-system v3 against 0830a8aff: 15,244 leaves differ, all under $.economy — c1226a5fc authored cmdty_regocrete/cmdty_control_unit starter produce lines and MAX_LINES_PER_SIDE 4->6. ZERO entity motion fields changed.",
+    "2026-10-16 native-save compaction version-only migration: exact public base b602ddebafbfba8f0fc48f31034f4e12b1a98314 reproduces the prior authoritative hash; PR424 merge 00a627b87f70e9b06fbcf643503b3300b0854c84 reproduces the CI-observed hash.",
+    "Full base/head snapshots differ only at $.meta.version (15 to 16). Every entity and native-physics field, all economy/gameplay fields, metrics and trace counts are unchanged. Reversing only that version restores the exact prior canonical hash; forwarding it reproduces the new hash.",
+    "Seed47/tick720 runs retain the stock canonical-baseline/reload equivalence assertions. Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact whole-snapshot hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged."
   ]
 }

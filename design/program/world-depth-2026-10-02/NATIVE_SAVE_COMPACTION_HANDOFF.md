@@ -40,3 +40,9 @@ For an explicitly pure local run:
 `COMPACT_PURE_ONLY` skips only the two new native cases, not the native tests already present in the existing entrypoint. A future all-tests glob that discovers the new suites directly and also runs the importing entrypoint can execute those suites twice in separate test processes; this is harmless duplication, not extra coverage.
 
 Remote CI for the eventual public commit, full-game/browser Continue, long native campaigns and full-world acceptance remain to be verified. The focused tests do not claim those broader results.
+
+## CI golden correction (2026-10-16)
+
+The exact public base b602ddeb and PR424 merge 00a627b8 were compared with seed47,720ticks and reload600 for both legacy and V3; V3 reload60 was checked separately. Base reproduces both old authoritative hashes; head reproduces both CI-observed hashes. Each complete paired snapshot differs only at meta.version15 to16. Entity/native-physics/gameplay state, metrics and trace counts are unchanged. Bidirectional version-only counterfactuals reproduce the exact old/new canonical hashes.
+
+The two telemetry fixtures update their exact authoritative hashes, including both V3 reload-point overrides. No production code, physics, save validation, acceptance bounds, event counts or repeat minimum is changed. Local diagnostic commands use repeat1 with stock canonical-baseline/reload assertions; the normal CI repeat requirements remain mandatory. Other UI/browser failures remain separately unresolved; this is not whole-game acceptance.
