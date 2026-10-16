@@ -6911,6 +6911,27 @@ function lawfulResponderInCone(state, player) {
   return found;
 }
 
+// TEACH-10 — the first-wanted lesson's patrol read. A lawful patrol "on glass" is a live
+// lawful hull inside the law's own witness radius of the player: the authored distance at
+// which the law says a hull can see the scene (LAW_INCIDENT_WITNESS_RADIUS). Stations are
+// never patrols and the player is never their own witness. Pure read — no heat, rep,
+// credit, cargo, or ship write; no RNG; no clock (positions only, first match wins, so the
+// result is deterministic for a given scene).
+export function lawfulPatrolOnGlass(state) {
+  const player = state && entityById(state, state.playerId);
+  if (!player || player.alive === false || !player.pos) return null;
+  const limit = LAW_INCIDENT_WITNESS_RADIUS * LAW_INCIDENT_WITNESS_RADIUS;
+  let found = null;
+  forEachLivingWorldActor(state, (entity) => {
+    if (found || !entity || entity.id === state.playerId || entity.type === 'station') return;
+    if (entity.alive === false || !entity.pos) return;
+    if (!isLawful(entity)) return;
+    if (distance2(player.pos, entity.pos) > limit) return;
+    found = entity;
+  });
+  return found;
+}
+
 function builtRecordEntries(state, subjectId) {
   const own = state && state.lawSecurity || {};
   const out = [];
