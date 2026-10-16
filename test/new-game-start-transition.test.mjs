@@ -179,6 +179,8 @@ test('authored-library failure remains fail-closed and yields retryable player c
         stage: 'authored-library',
         retryable: true,
         text: 'The authored starter ship could not be loaded. Retry Launch; saved games are unchanged.',
+        error: error.message,
+        causes: [error.message],
       });
       return true;
     },
@@ -186,6 +188,24 @@ test('authored-library failure remains fail-closed and yields retryable player c
   assert.equal(prepared, 1, 'the run must have a deterministic player/world before the gate settles');
   assert.equal(discarded, 1, 'a current failed start must discard its staged player/world before returning to menu');
   assert.equal(flights, 0, 'asset failure must never enter flight or permit procedural fallback');
+});
+
+test('a rejected graphics operation retains its stage and original driver error', async () => {
+  const guard = createRunTransitionGuard();
+  const cause = new Error('FRAMEBUFFER_UNSUPPORTED: opening HDR attachment');
+  const operation = runNewGameStartTransition({
+    guard, token: guard.begin('new-game'),
+    prepareRun() {}, waitForLibrary: () => true, waitForVisuals: () => true,
+    waitForGpuResources: () => Promise.reject(cause), enterFlight() { assert.fail('must not enter flight'); },
+  });
+  await assert.rejects(operation, (error) => {
+    assert.equal(error.stage, 'gpu-resources');
+    assert.equal(error.cause, cause);
+    const failure = describeGameStartFailure(error);
+    assert.equal(failure.error, cause.message);
+    assert.deepEqual(failure.causes, [cause.message]);
+    return true;
+  });
 });
 
 test('authored-visual failure is distinct from library failure and remains fail-closed', async () => {

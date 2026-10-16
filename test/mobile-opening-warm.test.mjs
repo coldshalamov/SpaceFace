@@ -4,6 +4,30 @@ import { isMobileRenderContext } from '../src/render/renderCapabilityProfile.js'
 import { prepareMobileOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 import { render as rendererOwner } from '../src/render/renderer.js';
 
+test('a mobile shader incompatibility preserves the driver log instead of becoming a timeout', async () => {
+  const fixture = mobileAdmissionFixture({ renderer: { info: { programs: [{
+    name: 'opening hull', diagnostics: { runnable: false, programLog: 'unsupported sampler precision',
+      vertexShader: { log: '' }, fragmentShader: { log: 'ERROR: sampler type not supported' } },
+  }] } } });
+  await assert.rejects(prepareMobileOpeningFirstPicture(fixture.render), (error) => {
+    assert.equal(error.code, 'GPU_SHADER_LINK_FAILED');
+    assert.equal(error.stage, 'gpu-resources');
+    assert.match(error.message, /opening hull.*unsupported sampler precision/);
+    assert.match(error.message, /sampler type not supported/);
+    return true;
+  });
+  assert.deepEqual(fixture.calls, ['prepare', 'capture', 'admit'], 'do not continue uploading after shader failure');
+});
+
+test('mobile context loss is reported distinctly from unfinished resources', async () => {
+  const fixture = mobileAdmissionFixture({ contextLost: true });
+  await assert.rejects(prepareMobileOpeningFirstPicture(fixture.render), (error) => {
+    assert.equal(error.code, 'GPU_CONTEXT_LOST');
+    assert.match(error.message, /context was lost/);
+    return true;
+  });
+});
+
 test('iPhone Chrome uses the mobile warm scheduler even when its WebKit GPU links in parallel', () => {
   assert.equal(isMobileRenderContext({ navigator: {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/131.0.0.0 Mobile/15E148 Safari/604.1',

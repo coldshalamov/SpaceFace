@@ -464,7 +464,7 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
   };
   const work = (async () => {
     assertActive();
-    if (await render.prepareOpeningFirstPicture(timeoutMs) === false) {
+    if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
       throw new Error('mobile opening first-picture preparation failed');
     }
     assertActive();
@@ -488,11 +488,13 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     }
     const submission = await render.drainOpeningSubmissionPlan(plan);
     assertActive();
+    assertMobileOpeningGraphicsHealthy(render);
     if (submission === false || submission?.ok === false) {
       throw new Error('mobile opening submission admission failed');
     }
     const resources = await render.prepareOpeningGpuResources({ required: true, isActive });
     assertActive();
+    assertMobileOpeningGraphicsHealthy(render);
     if (!resources || resources.skipped === true || resources.ok === false
         || resources.partial === true || resources.contextLost === true
         || resources.geometryResidency?.partial === true
@@ -509,6 +511,27 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     throw settled.error || new Error('mobile opening first-picture admission timed out');
   }
   return settled.value;
+}
+
+// The link reporter already records driver failures. Read that result rather than issuing
+// another synchronous shader query or replacing an incompatible shader with a loading timeout.
+export function assertMobileOpeningGraphicsHealthy(render) {
+  const renderer = render?.renderer;
+  let failure = null;
+  if (gpuContextIsLost({ render })) {
+    failure = new Error('The WebGL graphics context was lost while preparing the opening scene.');
+    failure.code = 'GPU_CONTEXT_LOST';
+  } else {
+    const program = renderer?.info?.programs?.find((entry) => entry?.diagnostics?.runnable === false);
+    if (program) {
+      const diagnostic = program.diagnostics;
+      const logs = [diagnostic.programLog, diagnostic.vertexShader?.log, diagnostic.fragmentShader?.log]
+        .filter(Boolean).join('\n');
+      failure = new Error(`Opening shader failed to link (${program.name || program.type || 'unnamed material'}): ${logs || 'driver reported LINK_STATUS=false'}`);
+      failure.code = 'GPU_SHADER_LINK_FAILED';
+    }
+  }
+  if (failure) { failure.stage = 'gpu-resources'; throw failure; }
 }
 
 function ledgerNow() {
