@@ -26,6 +26,7 @@ import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
 import { createTimeEffects } from './core/timeEffects.js';
 
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
+import { installGameStartRecovery } from './core/gameStartRecovery.js';
 import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
 import {
   resolveNewGamePlusOverlay,
@@ -134,6 +135,7 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
+    installGameStartRecovery(bus);
     // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
     // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
     installLiveClipDirector(bus, {
@@ -1104,7 +1106,7 @@ function failGameStart(state, bus, error, text, runTransitionGuard = null, trans
     error: error && error.message ? error.message : String(error),
     ...(failure || {}),
   });
-  bus.emit('toast', { text, kind: 'error', ttl: 8 });
+  // Keep the failed launch visible with its original cause and explicit Retry/Back actions.
   return true;
 }
 

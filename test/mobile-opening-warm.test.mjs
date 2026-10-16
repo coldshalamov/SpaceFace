@@ -4,6 +4,30 @@ import { isMobileRenderContext } from '../src/render/renderCapabilityProfile.js'
 import { prepareMobileOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 import { render as rendererOwner } from '../src/render/renderer.js';
 
+test('a mobile shader incompatibility preserves the driver log instead of becoming a timeout', async () => {
+  const fixture = mobileAdmissionFixture({ renderer: { info: { programs: [{
+    name: 'opening hull', diagnostics: { runnable: false, programLog: 'unsupported sampler precision',
+      vertexShader: { log: '' }, fragmentShader: { log: 'ERROR: sampler type not supported' } },
+  }] } } });
+  await assert.rejects(prepareMobileOpeningFirstPicture(fixture.render), (error) => {
+    assert.equal(error.code, 'GPU_SHADER_LINK_FAILED');
+    assert.equal(error.stage, 'gpu-resources');
+    assert.match(error.message, /opening hull.*unsupported sampler precision/);
+    assert.match(error.message, /sampler type not supported/);
+    return true;
+  });
+  assert.deepEqual(fixture.calls, ['prepare', 'capture', 'admit'], 'do not continue uploading after shader failure');
+});
+
+test('mobile context loss is reported distinctly from unfinished resources', async () => {
+  const fixture = mobileAdmissionFixture({ contextLost: true });
+  await assert.rejects(prepareMobileOpeningFirstPicture(fixture.render), (error) => {
+    assert.equal(error.code, 'GPU_CONTEXT_LOST');
+    assert.match(error.message, /context was lost/);
+    return true;
+  });
+});
+
 test('iPhone Chrome uses the mobile warm scheduler even when its WebKit GPU links in parallel', () => {
   assert.equal(isMobileRenderContext({ navigator: {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/131.0.0.0 Mobile/15E148 Safari/604.1',
@@ -16,6 +40,7 @@ test('iPhone Chrome uses the mobile warm scheduler even when its WebKit GPU link
 
 function mobileAdmissionFixture(overrides = {}) {
   const calls = [];
+  const resourceOptions = [];
   const plan = { complete: true, firstPlayablePipelineSet: { complete: true },
     drawLeaves: [{ id: 'player' }], contentHashVerified: true };
   const resources = { skipped: false, textures: 3, openingSubmissionPlan: plan };
@@ -23,10 +48,14 @@ function mobileAdmissionFixture(overrides = {}) {
     async prepareOpeningFirstPicture() { calls.push('prepare'); return true; },
     *captureOpeningSubmissionPlanSteps() { calls.push('capture'); yield; return plan; },
     async drainOpeningSubmissionPlan(captured) { assert.equal(captured, plan); calls.push('admit'); return { materials: 2 }; },
-    async prepareOpeningGpuResources() { calls.push('resources'); return resources; },
+    async prepareOpeningGpuResources(options = {}) {
+      calls.push('resources');
+      resourceOptions.push(options);
+      return options.required === true ? resources : { skipped: true, reason: 'loading-budget' };
+    },
     ...overrides,
   };
-  return { calls, plan, resources, render };
+  return { calls, plan, resources, resourceOptions, render };
 }
 
 test('mobile first-picture gate admits the real producer plan before stamping its GPU resources', async () => {
@@ -35,6 +64,10 @@ test('mobile first-picture gate admits the real producer plan before stamping it
   assert.equal(result.plan, fixture.plan);
   assert.equal(result.resources, fixture.resources);
   assert.deepEqual(fixture.calls, ['prepare', 'capture', 'admit', 'resources']);
+  assert.equal(fixture.resourceOptions.length, 1);
+  assert.equal(fixture.resourceOptions[0].required, true,
+    'mobile opening must use the required residency path instead of the optional loading budget');
+  assert.equal(typeof fixture.resourceOptions[0].isActive, 'function');
 });
 
 test('incomplete producer plans and rejected GPU admission fail mobile launch', async () => {
@@ -48,6 +81,58 @@ test('incomplete producer plans and rejected GPU admission fail mobile launch', 
   assert.deepEqual(failed.calls, ['prepare', 'capture']);
   const resources = mobileAdmissionFixture({ async prepareOpeningGpuResources() { return { skipped: true, reason: 'loading-budget' }; } });
   await assert.rejects(prepareMobileOpeningFirstPicture(resources.render, { yieldToMain: async () => {} }), /resources were not admitted/);
+});
+
+test('mobile required residency exposes its outer timeout as the active owner', async () => {
+  let requiredOptions = null;
+  const fixture = mobileAdmissionFixture({
+    prepareOpeningGpuResources(options) {
+      requiredOptions = options;
+      return new Promise(() => {});
+    },
+  });
+  await assert.rejects(prepareMobileOpeningFirstPicture(fixture.render, {
+    timeoutMs: 10,
+    yieldToMain: async () => {},
+  }), /admission timed out/);
+  assert.equal(requiredOptions.required, true);
+  assert.equal(requiredOptions.isActive(), false,
+    'the required residency owner is cancelled when the outer mobile bound expires');
+});
+
+test('mobile required residency stops publishing after replacement', async () => {
+  let active = true;
+  let requiredOptions = null;
+  const fixture = mobileAdmissionFixture();
+  fixture.render.prepareOpeningGpuResources = async (options) => {
+    requiredOptions = options;
+    active = false;
+    return fixture.resources;
+  };
+  await assert.rejects(prepareMobileOpeningFirstPicture(fixture.render, {
+    isActive: () => active,
+    yieldToMain: async () => {},
+  }), /superseded/);
+  assert.equal(requiredOptions.isActive(), false,
+    'a replaced mobile opening invalidates the required residency owner');
+});
+
+test('mobile required residency rejects partial and lost-context results', async () => {
+  for (const value of [
+    { partial: true },
+    { contextLost: true },
+    { geometryResidency: { partial: true } },
+    { geometryResidency: { contextLost: true } },
+  ]) {
+    const fixture = mobileAdmissionFixture({
+      async prepareOpeningGpuResources() { return value; },
+    });
+    await assert.rejects(
+      prepareMobileOpeningFirstPicture(fixture.render, { yieldToMain: async () => {} }),
+      /resources were not admitted/,
+      `partial/context-lost residency result must reject: ${JSON.stringify(value)}`,
+    );
+  }
 });
 
 test('a replaced opening never captures or publishes into the new generation', async () => {

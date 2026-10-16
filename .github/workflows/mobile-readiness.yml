@@ -54,7 +54,7 @@ jobs:
         run: |
           mkdir -p .devshots/mobile-build
           set -o pipefail
-          node --test test/mobile-runtime-workers.test.mjs test/mobile-runtime-assets.test.mjs test/render-package-digest.test.mjs test/glb-prepass.test.mjs test/mobile-flight.test.mjs test/mobile-deck-instrument.test.mjs | tee .devshots/mobile-build/unit-tests.txt
+          node --test test/game-start-recovery.test.mjs test/new-game-start-transition.test.mjs test/startup-loading-presentation.test.mjs test/mobile-required-residency.test.mjs test/mobile-opening-warm.test.mjs test/opening-first-picture-lifetime.test.mjs test/mobile-runtime-workers.test.mjs test/mobile-runtime-assets.test.mjs test/render-package-digest.test.mjs test/glb-prepass.test.mjs test/mobile-flight.test.mjs test/mobile-deck-instrument.test.mjs | tee .devshots/mobile-build/unit-tests.txt
       - name: Build real retail assets and verify receipt parity
         run: |
           set -o pipefail

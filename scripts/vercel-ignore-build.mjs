@@ -8,6 +8,7 @@ const allow = new Set([
   'master',
   'main',
   'codex/iphone14-mobile',
+  'codex/mobile-startup-cause',
   'codex/oct15-maturity-checkpoint',
   'codex/mobile-release-pinning',
   'devin/1791331347-gyre-snare',

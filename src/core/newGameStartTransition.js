@@ -37,15 +37,20 @@ export async function runNewGameStartTransition(options = {}) {
   if (!current()) return stale();
 
   let preparationStarted = false;
+  let activeStage = 'preparing-run';
+  const reportStage = (stage) => {
+    activeStage = stage.id;
+    if (typeof reportProgress === 'function') reportProgress(stage);
+  };
   try {
-    publishProgress(reportProgress, current, 'preparing-run', 0.08, 'Preparing flight systems');
+    publishProgress(reportStage, current, 'preparing-run', 0.08, 'Preparing flight systems');
     if (typeof yieldForPresentation === 'function') await yieldForPresentation();
     if (!current()) return stale();
     preparationStarted = true;
     await prepareRun();
     if (!current()) return stale();
 
-    publishProgress(reportProgress, current, 'authored-library', 0.25, 'Loading the ships');
+    publishProgress(reportStage, current, 'authored-library', 0.25, 'Loading the ships');
     if (typeof yieldForPresentation === 'function') await yieldForPresentation();
     if (!current()) return stale();
     const libraryReady = await waitForLibrary();
@@ -58,7 +63,7 @@ export async function runNewGameStartTransition(options = {}) {
       );
     }
 
-    publishProgress(reportProgress, current, 'authored-visuals', 0.5, 'Building the opening scene');
+    publishProgress(reportStage, current, 'authored-visuals', 0.5, 'Building the opening scene');
     if (typeof yieldForPresentation === 'function') await yieldForPresentation();
     if (!current()) return stale();
     const visualsReady = await waitForVisuals();
@@ -72,7 +77,7 @@ export async function runNewGameStartTransition(options = {}) {
     }
 
     if (typeof waitForWarmup === 'function') {
-      publishProgress(reportProgress, current, 'render-pipelines', 0.78, 'Preparing the visuals');
+      publishProgress(reportStage, current, 'render-pipelines', 0.78, 'Preparing the visuals');
       if (typeof yieldForPresentation === 'function') await yieldForPresentation();
       if (!current()) return stale();
       const warmupReady = await waitForWarmup();
@@ -87,7 +92,7 @@ export async function runNewGameStartTransition(options = {}) {
     }
     if (!current()) return stale();
     if (typeof waitForGpuResources === 'function') {
-      publishProgress(reportProgress, current, 'gpu-resources', 0.9, 'Preparing the opening route');
+      publishProgress(reportStage, current, 'gpu-resources', 0.9, 'Preparing the opening route');
       if (typeof yieldForPresentation === 'function') await yieldForPresentation();
       if (!current()) return stale();
       let gpuReady = await waitForGpuResources();
@@ -97,7 +102,7 @@ export async function runNewGameStartTransition(options = {}) {
         const detail = admission.packageId
           ? `Still preparing ${admission.packageId}`
           : 'The opening package is still preparing';
-        publishProgress(reportProgress, current, 'gpu-resources', 0.9, 'Preparing the opening route', detail);
+        publishProgress(reportStage, current, 'gpu-resources', 0.9, 'Preparing the opening route', detail);
         if (typeof awaitSettledPackageAdmission === 'function') {
           admission = await awaitSettledPackageAdmission();
         }
@@ -125,7 +130,7 @@ export async function runNewGameStartTransition(options = {}) {
       // Rapier/SG-02 bring-up and early-return until it resolved — thrust demanded,
       // speed and displacement exactly 0 (D26). Hand over flight only with the
       // authority already stepped-ready.
-      publishProgress(reportProgress, current, 'physics-authority', 0.94, 'Preparing flight dynamics');
+      publishProgress(reportStage, current, 'physics-authority', 0.94, 'Preparing flight dynamics');
       if (typeof yieldForPresentation === 'function') await yieldForPresentation();
       if (!current()) return stale();
       const physicsReady = await waitForPhysics();
@@ -139,7 +144,7 @@ export async function runNewGameStartTransition(options = {}) {
       }
     }
     if (!current()) return stale();
-    publishProgress(reportProgress, current, 'entering-flight', 0.96, 'Handing over flight control');
+    publishProgress(reportStage, current, 'entering-flight', 0.96, 'Handing over flight control');
     const enteredFlight = guard.commit(token, enterFlight);
     return enteredFlight ? { stale: false, enteredFlight: true } : stale();
   } catch (error) {
@@ -149,7 +154,15 @@ export async function runNewGameStartTransition(options = {}) {
       catch (cleanupError) { error.cleanupError = cleanupError; }
     }
     if (!current()) return stale();
-    throw error;
+    if (error instanceof GameStartReadinessError) throw error;
+    const failure = new GameStartReadinessError(
+      typeof error?.code === 'string' ? error.code : 'GAME_START_FAILED',
+      typeof error?.stage === 'string' ? error.stage : activeStage,
+      error?.message || String(error),
+    );
+    failure.cause = error;
+    failure.retryable = error?.retryable !== false;
+    throw failure;
   }
 }
 
@@ -183,7 +196,14 @@ export function describeGameStartFailure(error) {
   } else if (code === 'NEW_GAME_PLUS_UNAVAILABLE') {
     text = 'That New Run+ legacy could not be restored. Choose it again or launch a fresh run; saved games are unchanged.';
   }
-  return { code, stage, retryable, text };
+  const causes = [];
+  const seen = new Set();
+  for (let cause = error; cause != null && causes.length < 4 && !seen.has(cause); cause = cause?.cause) {
+    seen.add(cause);
+    const message = String(cause?.message || cause).slice(0, 2000);
+    if (!causes.includes(message)) causes.push(message);
+  }
+  return { code, stage, retryable, text, error: causes[0] || text, causes };
 }
 
 function requireTransitionDependencies({ guard, prepareRun, waitForLibrary, waitForVisuals, enterFlight }) {

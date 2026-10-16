@@ -72,14 +72,16 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
   const timeoutMs = Math.max(1, Number(options.timeoutMs) || 20000);
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
   let active = true;
+  const isActive = () => active
+    && (typeof options.isActive !== 'function' || options.isActive());
   const assertActive = () => {
-    if (!active || (typeof options.isActive === 'function' && !options.isActive())) {
+    if (!isActive()) {
       throw new Error('mobile opening admission superseded');
     }
   };
   const work = (async () => {
     assertActive();
-    if (await render.prepareOpeningFirstPicture(timeoutMs) === false) {
+    if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
       throw new Error('mobile opening first-picture preparation failed');
     }
     assertActive();
@@ -103,12 +105,19 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     }
     const submission = await render.drainOpeningSubmissionPlan(plan);
     assertActive();
+    assertMobileOpeningGraphicsHealthy(render);
     if (submission === false || submission?.ok === false) {
       throw new Error('mobile opening submission admission failed');
     }
-    const resources = await render.prepareOpeningGpuResources();
+    const resources = await render.prepareOpeningGpuResources({ required: true, isActive });
     assertActive();
-    if (!resources || resources.skipped === true || resources.ok === false) {
+    assertMobileOpeningGraphicsHealthy(render);
+    if (!resources || resources.skipped === true || resources.ok === false
+        || resources.partial === true || resources.contextLost === true
+        || resources.geometryResidency?.partial === true
+        || resources.geometryResidency?.contextLost === true
+        || (resources.geometryResidency?.skipped === true
+          && resources.geometryResidency.reason !== 'no drawable geometry')) {
       throw new Error('mobile opening GPU resources were not admitted');
     }
     return { plan, submission, resources };
@@ -119,6 +128,27 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     throw settled.error || new Error('mobile opening first-picture admission timed out');
   }
   return settled.value;
+}
+
+// The link reporter already records driver failures. Read that result rather than issuing
+// another synchronous shader query or replacing an incompatible shader with a loading timeout.
+export function assertMobileOpeningGraphicsHealthy(render) {
+  const renderer = render?.renderer;
+  let failure = null;
+  if (gpuContextIsLost({ render })) {
+    failure = new Error('The WebGL graphics context was lost while preparing the opening scene.');
+    failure.code = 'GPU_CONTEXT_LOST';
+  } else {
+    const program = renderer?.info?.programs?.find((entry) => entry?.diagnostics?.runnable === false);
+    if (program) {
+      const diagnostic = program.diagnostics;
+      const logs = [diagnostic.programLog, diagnostic.vertexShader?.log, diagnostic.fragmentShader?.log]
+        .filter(Boolean).join('\n');
+      failure = new Error(`Opening shader failed to link (${program.name || program.type || 'unnamed material'}): ${logs || 'driver reported LINK_STATUS=false'}`);
+      failure.code = 'GPU_SHADER_LINK_FAILED';
+    }
+  }
+  if (failure) { failure.stage = 'gpu-resources'; throw failure; }
 }
 
 function ledgerNow() {
