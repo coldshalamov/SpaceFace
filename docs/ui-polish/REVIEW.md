@@ -1375,3 +1375,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `new-game` findings went from 6 to 0 at 844×390, and stay 0 at 801×390, 900×420, 1024×440, 960×540, 1024×600 and 1100×540. `--walk` at 844×390 and 960×540 reaches all 12 controls, and the turned Pelican and Wasp hold the layout. 1024×768, 1100×620, 1280×720, 1366×768, 1920×1080 and the phone (`--phone` at 390×844 and 844×390) are pixel-identical to master. Focused tests pass: `new-game-seed-input` and `new-game-start-transition`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish55/{before,after,walk6}/` and `compare-new-game-*.png`.
 
 **Leftovers (not this pass):** Clips' empty state at 844×390 (A KILL / SCORE A KILL over the LAND A NAMED STUNT line); the legacy `ship` screen at 844×390 (Cargo / OPEN callouts over the hull's sentence); the `orrery-flight` direction proof is cramped at 844×390 (a preview, not the live HUD); Shipworks lower callouts @844×390 (berth scrolls by design).
+
+## Clips empty reel on a short frame — session notes (2026-10-15, ui-polish-56)
+
+**Before (master 72d47e7bf8):** at ≤460 tall (844×390 / 801×390 desktop and phone landscape) the empty-reel ghosts sat on the rail with the readout still at `bottom:92`, so "SCORE A KILL" / "LAND A NAMED TRICK" / "PULL OFF A SAVE" printed through "LAND A NAMED STUNT OR A KILL — THE REEL CATCHES IT HERE" (bench: 4 ON TOP OF findings).
+
+**After (`src/ui/screens/clips.js` + `styles/ui.css`):**
+- `layoutGhosts` on hosts ≤460 tall shrinks ghost art (`artRatio` 0.36) and lifts plates farther above the rail (mid 108 / side 72) so the subs clear the readout.
+- Short CSS (`min-width:641px` × `max-height:460px`): rail `top:12%`, readout `bottom:64px`, tighter count/runtime and ghost type. (Review fixes: the rail lift and readout drop are scoped to the empty reel, `.orr-clips:has(.orr-clip__plate.is-ghost)` — un-scoped, they put a populated reel's trim instructions under EXPORT at 844×390 — and follow `layoutGhosts`' own gate, `max-height:460px` at any width, so 640×400 / 600×400 ghosts no longer sit on the readout.)
+- Phone portrait and every size above 460 tall are untouched.
+
+**Checked:** bench `clips` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080, phone 390×844, and `--phone` 844×390. Pixel Δ (>8): short frames ~8–9%; 960/1280/1920/phone-portrait 0%. Focused tests pass: `pq-160-01-auto-clip`, `verb-22-amended-clip-rating`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish56/{before,after}/`, `compare-clips-*.png`, `phone-land*`.
+
+**Leftovers (not this pass):** the legacy `ship` screen at 844×390 (Cargo / OPEN callouts over the hull's sentence); the `orrery-flight` direction proof cramped at 844×390 (preview, not the live HUD); Shipworks lower callouts @844×390 (berth scrolls by design).
