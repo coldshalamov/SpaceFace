@@ -658,7 +658,8 @@ function buildPlate(clip, view, geo, { ghost = null } = {}) {
   plate.style.width = Math.round(geo.plateW) + 'px';
   if (ghost) {
     plate.setAttribute('aria-label', ghost.label + ', no moment yet');
-    const artH = Math.round(geo.plateW * 0.52);
+    const artRatio = Number.isFinite(geo.artRatio) && geo.artRatio > 0 ? geo.artRatio : 0.52;
+    const artH = Math.round(geo.plateW * artRatio);
     const box = el('div', 'orr-clip__art');
     box.style.height = artH + 'px';
     box.appendChild(ghostArt(ghost.kind, ghost.label, Math.round(geo.plateW), artH));
@@ -804,18 +805,26 @@ function layoutGhosts(view, geo, railW, cx, ghosts) {
   const gap = Math.max(10, Math.min(48, railW * 0.03));
   const ghostW = Math.floor(Math.min(geo.plateW * 0.85, (railW - gutter * 2 - gap * 2) / ghosts.length));
   const spread = Math.min(geo.spacing * 1.8, (railW - ghostW) / 2 - gutter);
-  const ghostGeo = { ...geo, plateW: ghostW };
+  // Short frames (desktop windows or phone landscape, e.g. 844×390): the empty readout
+  // sits at bottom:92 and used to print through the ghost subs. Lift the plates and shrink
+  // their art so the line clears. Phone portrait (≥700 tall) is untouched.
+  const hostH = (view.container && view.container.clientHeight) || 0;
+  const short = hostH > 0 && hostH <= 460;
+  const artRatio = short ? 0.36 : 0.52;
+  const ghostGeo = { ...geo, plateW: ghostW, artRatio };
+  const liftMid = short ? 108 : 64;
+  const liftSide = short ? 72 : 40;
   ghosts.forEach((ghost, k) => {
     const off = (k - 1) * spread;
     const plate = buildPlate(null, view, ghostGeo, { ghost });
     plate.style.opacity = '0.85';
     plate.style.zIndex = String(20 - Math.abs(k - 1));
     view.platesHost.appendChild(plate);
-    const h = plate.offsetHeight || Math.round(ghostW * 0.52) + 60;
+    const h = plate.offsetHeight || Math.round(ghostW * artRatio) + 60;
     const railAt = geo.railY(off / geo.spacing);
     const x = cx + off - ghostW / 2;
     // Clear the Hand: it stands ~50px proud of the crown and points at the middle ghost.
-    const y = railAt - h - (k === 1 ? 64 : 40);
+    const y = railAt - h - (k === 1 ? liftMid : liftSide);
     plate._reelBase = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     plate.style.transform = plate._reelBase;
   });
