@@ -81,7 +81,10 @@ export const mines = {
 
   /**
    * Place a physical mine. Enforces per-owner caps. Returns the entity or null.
-   * @param {{ ownerId: number, pos: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean }} opts
+   * VERB-32: a mine dropped at speed keeps the deploying ship's velocity at the
+   * deploy tick, so laying a screen at cruise works. Explicit `opts.vel`
+   * overrides; otherwise the owner's current velocity vector is copied.
+   * @param {{ ownerId: number, pos: {x:number,z:number}, vel?: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean }} opts
    */
   placeMine(opts = {}) {
     const state = this.state;
@@ -109,11 +112,12 @@ export const mines = {
     const triggerRadius = Number.isFinite(opts.triggerRadius) ? Math.max(0, opts.triggerRadius) : MINE_TRIGGER_RADIUS;
     const hull = Number.isFinite(opts.hull) ? Math.max(1, opts.hull) : MINE_HULL;
     const team = opts.team != null ? opts.team : teamOf(state, ownerId);
+    const deployVel = resolveDeployVelocity(opts, state, ownerId);
 
     const ent = spawnEntity({
       type: MINE_TYPE,
       pos: { x: opts.pos.x, z: opts.pos.z },
-      vel: { x: 0, z: 0 },
+      vel: { x: deployVel.x, z: deployVel.z },
       radius: 6,
       mass: 8,
       hull,
@@ -353,4 +357,22 @@ function teamOf(state, ownerId) {
   if (ownerId == null || !state || !state.entities) return 1;
   const owner = state.entities.get(ownerId);
   return owner && owner.team != null ? owner.team : 1;
+}
+
+// VERB-32 — mine spawn velocity is the deploying ship's velocity vector at the
+// deploy tick. Explicit opts.vel wins; otherwise copy the owner's live vel.
+// Anything non-finite falls back to rest. Values are copied, never aliased.
+function resolveDeployVelocity(opts, state, ownerId) {
+  const fromOpts = opts && opts.vel;
+  if (fromOpts && Number.isFinite(fromOpts.x) && Number.isFinite(fromOpts.z)) {
+    return { x: fromOpts.x, z: fromOpts.z };
+  }
+  const owner = ownerId != null && state && state.entities
+    ? state.entities.get(ownerId)
+    : null;
+  const ov = owner && owner.vel;
+  if (ov && Number.isFinite(ov.x) && Number.isFinite(ov.z)) {
+    return { x: ov.x, z: ov.z };
+  }
+  return { x: 0, z: 0 };
 }

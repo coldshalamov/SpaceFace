@@ -142,7 +142,7 @@ not to invent.
 | VERB-29 | The orbit assist shows the ring it is holding you to | `src/core/flight/orbitAssist.js`, `src/ui/masslineHud.js` | On seed 4242 with orbit assist above 0 the HUD model carries the assist's target radius and zero when the assist is idle; a focused test pins both | Change the assist strength. Draw the ring for NPCs | SHIPPED VERB-29 5940b3576 — dashed anchor-centered ring off _flightFrame.orbitAssist |
 | VERB-30 | The impulse charge count on the verb shelf reads the fitted capacity, not a hardcoded rack size | `src/systems/impulseCharges.js`, `src/ui/powerRail.js` | On seed 4242 fitting `mod_charge_vector_rack` changes the rail's charge capacity through `resolveImpulseChargeCapacity`; a focused test pins two capacities | Change charge cost. Redesign the rail (ORRERY) | SHIPPED VERB-30 ac6aeed05 |
 | VERB-31 | A cut bridle, a well fling, and an inertial shunt say what just happened | `src/ui/stuntCallout.js` | On seed 4242 `massline:bridleCut` says BRIDLE CUT, a primed `well:fling` of the player says FLING, and a `weapons:inertialShunt` the player is in says SHUNT with the rounded delta-v; another body's fling or shunt stays quiet | Edit gamepad haptics. Edit voiceArbiter. Hand-edit EVENT_ROUTING.md | SHIPPED VERB-31 toy-hand-line |
-| VERB-32 | A mine dropped at speed keeps your velocity, so laying a screen at cruise works | `src/systems/mines.js` | On seed 4242 a mine deployed at 90 WU/s spawns with the ship's velocity (today the row is `vel: {x: 0, z: 0}`); a focused test pins the initial drift | Change fuse, cap, or trigger radius | OPEN |
+| VERB-32 | A mine dropped at speed keeps your velocity, so laying a screen at cruise works | `src/systems/mines.js` | On seed 4242 a mine deployed at 90 WU/s spawns with the ship's velocity (today the row is `vel: {x: 0, z: 0}`); a focused test pins the initial drift | Change fuse, cap, or trigger radius | SHIPPED |
 | VERB-33 | A held modifier dumps the whole selected lot as one payload | `src/systems/input.js`, `src/systems/cargo.js` | On seed 4242 the modified jettison emits one `cargo:jettisoned` carrying the full selected lot as a single payload body; input edits carry the focused input/rebind validation the contract requires | Add a quantity slider. Change the drop-kick impulse (TEACH-01) | OPEN |
 | VERB-34 | An impulse charge fired at your own latched body sticks to it, so you can throw what you tow | `src/systems/impulseCharges.js`, `src/systems/tetherGameplay.js` | On seed 4242 the dart attaches to the latched body and detonation throws the body and releases the line; a focused test pins attach and release | Change charge capacity or blast radius. Auto-aim the dart | OPEN |
 | VERB-35 | A second latch edge on the current anchor releases the rope | `src/systems/masslineInputGrammar.js`, `src/systems/tetherGameplay.js` | On seed 4242 latch then latch on the same target nets one release receipt and zero live ropes for that slot; a focused test pins it (NXI-011 ordering holds) | Add a dedicated release key. Change release impulse | OPEN |
@@ -649,12 +649,22 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
+| PIC-31 | 2026-10-16 | infer10-oct16 | `src/render/statusAttachedVfx.js`, `src/combat/damage.js` |
+| WORLD-43 | 2026-10-16 | infer10-oct16 | `src/systems/fieldDepletion.js`, `src/systems/barkDirector.js`, `src/systems/npcJobsRuntime.js` |
+| INST-35 | 2026-10-16 | infer10-oct16 | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` |
+| FIGHT-13 | 2026-10-16 | infer10-oct16 | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` |
+| ECON-08 | 2026-10-16 | infer10-oct16 | `src/systems/lossLedger.js`, `src/systems/economyCycles.js`, `src/ui/marketNews.js` |
+| STORY-08 | 2026-10-16 | infer10-oct16 | `src/systems/chronicler.js`, `src/ui/dockArrival.js` |
+| LAW-10 | 2026-10-16 | infer10-oct16 | `src/ui/customsPrompt.js`, `src/systems/lawSecurity.js`, `src/systems/cargo.js` |
+| MACH-12 | 2026-10-16 | infer10-oct16 | `src/systems/traffic.js`, `src/data/laneContacts.js` |
+| PRO-19 | 2026-10-16 | infer10-oct16 | `src/ui/screens/pause.js` |
 
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
 | NXI-022 | nxi-022-kinematic-proxy-not-offered | 6eca0bd9a | isAttachable applies the physicsBody:false exclusion (and world-site machine roles) to the offer: machine/fauna/route proxies denied, loose payloads beside them still offered, stations/asteroids/mines/beacons/survival wrecks keep latching; focused test pins all of it on seed 4242 |
+| VERB-32 | verb-32-mine-keeps-velocity | TBD | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
