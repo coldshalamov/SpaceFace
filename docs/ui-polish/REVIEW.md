@@ -1535,3 +1535,17 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Leftovers (not this pass):** at 801–844×390 only one offer card shows above the fold (the list scrolls); Footprint dial rim text over the dial @844×390 (bench 7); tech-tree adjacent star hit boxes @844×390 (bench 5, nodes 17 px apart); station tabs @844×390; Shipworks lower callouts @844×390 (scroll by design).
 
 **Code Work review fixes:** (1) at 761–820 × ≤500 the one-row foot overflowed, and its right-packed verbs pushed LAUNCH ROUND 4 off the left edge (761×500; master keeps it on-frame). Under 821 wide the key hints take a second row and the verbs pack left. (2) The keycaps (ESC, 1 2 3, TAB) are 12px in the band (they were 11px). (3) The next-round preview takes two lines instead of one ellipsized line from 821 wide, and stays one line at 761–820, where the second foot row needs the height to keep PURCHASE on-frame; a touch phone at ≤400 tall (844×390 landscape, larger type) also keeps one line, or PURCHASE slid half under the foot. Bench crucible-draft: 0 findings at every band size (761×390–1920×480, phone landscape). 960×540, 1280×720, 1920×1080, 760×500, 761×501, 1280×501 and phone 390×844 are pixel-identical to master.
+
+## Footprint dial hub clears the source band on short desktops (ui-polish-66)
+
+**Before (master bf4966038e / tip merged to 7ac10849f2):** at ≤460-tall desktops (844×390 / 900×420 / 1024×440) the dial stage is a ~300px square, so the 96px hub floor put the escape clock and hub lines through the source band. Bench: 7 / 6 / 4 tangled+overlap findings across wanted / marked / clean at 844×390; similar at 900×420. 960×540 and up were already clean.
+
+**After (`src/ui/orrery/footprintDial.js` only):**
+- `dialGeometry` caps `hubR` so the hub sits inside the source band (`min(old floor, rS − SB/2 − clockW − 4)`, floor 48).
+- Whenever the cap bites (`hubR` under its old 96px floor, i.e. dial square < 386px) the dial is `is-small`: hub keeps heat + wrapping tier; clears / bounty / top engrave / WANTED / drag hint step aside (title already says them); keys tighten to the settled-sliver pitch; clear-arc text prefers the short word when the arc is tight.
+- Selectors and IDs unchanged. Dials with a square ≥ 386px (uncapped hub, e.g. 1024×500, 960×540 and up, 390×844) are pixel-identical to master.
+- Review fix (Code Work): `is-small` first started at `hubR < 80`, so the capped-but-not-small band (dial 354–385px, e.g. 1024×468–499) kept the full hub lines in an 80–95px hub and ran CLEARS IN / bounty across the clock ring; `small` now tracks the cap itself.
+
+**Checked:** bench `footprint` / `footprint-marked` / `footprint-clean` findings **7→0 / 6→0 / 4→0** at 844×390; **0** at 900×420 and 1024×440; stay **0** at 960×540, 1280×720, 1920×1080 and 390×844. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish66/{before,after}/`.
+
+**Leftovers (not this pass):** tech-tree node overlap @844×390; station-tab rows under the tab bar @844×390; Shipworks lower callouts @844×390 (berth scrolls by design); My Ship SAVE FIT / DOCK on very short split windows (≤460 tall) still scroll by design.
