@@ -608,7 +608,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 308 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -854,6 +854,7 @@ SFQ-B161 landed 2026-10-15: a player can test whether an organism responds to he
 SFQ-B162 landed 2026-10-15: a repeated route can be compared to an old human record and followed to a place (`test/sfq-b162-route-chart.test.mjs`). Row 305 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B163 landed 2026-10-16: a suppressed living site never reads eradicated merely because its relay quieted (`test/sfq-b163-site-life.test.mjs`). Row 306 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B164 landed 2026-10-16: a wreck progresses through a small authored sequence after meaningful events. Leave, return and reload yield the same stage, and the player can intervene before a clearly telegraphed threshold (`test/sfq-b164-wreck-succession.test.mjs`). Row 307 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+| 308 | SFQ-B165 | A site changes one service or route because of a visible local biological event. | BUILD | OPEN |
 
 SFQ-B111 landed 2026-10-15: a collision is classed direct, indirect, accidental, or stale, and the law card says which (`test/sfq-b111-impact-class.test.mjs`). Row 292 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 
