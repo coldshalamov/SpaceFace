@@ -232,6 +232,34 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait .sf-ledger-k { letter-spacing:.08em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait .sf-ledger-line .k-sentence { font-size:12px; line-height:1.3; }
 }
+/* UI polish (ui-polish-63): a very short desktop (≤1100 × ≤460: 844×390, 801×390, 900×420, 1024×440).
+   The reading ran ~80px past the foot, so LOAD / SAVE HERE / DELETE and the name field fell off the
+   frame and the hull record printed through EXPORT / IMPORT. The way back moves under the filmstrip
+   (the right column), the reading takes the left column's full height, and its type steps down:
+   credits read on one line, the name field sits beside its label, the hull record runs tighter. */
+@media (max-width:1100px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:16px !important; padding-bottom:12px !important; row-gap:6px !important;
+    grid-template-rows:auto minmax(0, 1fr) auto auto !important;
+    grid-template-areas:"title stage" "page stage" "page hang" "page foot" !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:40px !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-emph { margin-top:4px; font-size:13px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-stage__foot.sf-save-ledger { gap:4px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-card-title { font-size:26px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-detail { font-size:12.5px; line-height:1.3; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-facts { row-gap:5px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-fact--figure { display:flex; align-items:baseline; gap:14px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-fact--figure dd { margin:0; gap:8px; align-items:baseline; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-n { font-size:28px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-u { padding-bottom:0; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-fact dd { margin-top:2px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-portrait { row-gap:2px; margin-bottom:0; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-head { margin-bottom:0; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-label { grid-template-columns:auto minmax(0, 1fr); align-items:baseline; column-gap:14px; width:min(34ch, 100%) !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-label > .k-input { padding:2px 0; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-actions { margin-top:2px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-actions .k-word.orr-lampkey { min-height:32px !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-foot { align-self:end; gap:26px; padding-top:4px !important; }
+}
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }
 @media (forced-colors: active) {

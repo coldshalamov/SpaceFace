@@ -1450,3 +1450,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Leftovers (not this pass):** My Ship hull callouts @1101–1160 (#423); flightCluster class ring vs legend (#426, awaiting live HUD re-review); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional).
 
 **Review fix (Code Work):** the ≤460-tall block set four sizes under the 12 px type floor (second title line, ladder words, dossier, run gauge, all 11px). They are 12px now, with letter-spacing trimmed by .01–.02em. RULES / BESTIARY / CLOSE and the run gauge still sit on glass at 844×390, 801×390, 900×420 and 1100×460, where the ladder takes one more row at 801. Bench `range` is 0 at every size the PR touches, and the smallest computed text on the screen is 12px.
+
+## Save/Load on a very short desktop: LOAD, SAVE HERE and DELETE back on the frame (ui-polish-63)
+
+**Before (master 042025912f):** under ~460px tall (844×390, 801×390, 900×420, 1024×440) the reading in the left column ran ~80px past the foot. The name field and LOAD / SAVE HERE / DELETE fell below the frame (half of LOAD showed at 1024×440), and the hull record's GRUDGE line printed through EXPORT / IMPORT. Bench `save-load`: 10 at 844×390 and 801×390 (4 OFF FRAME, 6 printed-on-top), 3 OFF FRAME at 900×420, 2 overlaps at 1024×440; `save-load-empty` had SAVE HERE over EXPORT at 844/801/900.
+
+**After (`src/ui/orrery/saveLayouts.js` only, CSS, desktop via `html:root:not([data-sf-mobile="1"])`, new `@media (max-width:1100px) and (max-height:460px)`):**
+- The way back (EXPORT · IMPORT · ‹ BACK ESC) moves under the filmstrip in the right column (`"page foot"`), so the reading takes the left column's full height.
+- The reading steps down: LOAD 40px, card title 26px, credits on one line (label beside a 28px numeral), a tighter hull record, the NAME label beside its field, and a 32px Lamp Key.
+- Selectors and IDs unchanged. 960×540 and up, and phones, keep their layout.
+
+**Checked:** bench `save-load`, `save-load-empty` and `save-load-live` are 0 at 844×390, 801×390, 900×420, 1024×440, 960×540, 1280×720 and 1920×1080 (before: 10/1/10, 10/1/10, 3/1/3, 2/0/2, then 0 from 960 up). Pixel Δ (>8): the short frames change as intended (12–16%); 960/1280/1920 are 0.1–0.6%, which is the rolling credits/saved counters mid-roll, not layout. `--walk` at 844×390 and 1024×440 reaches all 7 controls (name, LOAD, SAVE HERE, DELETE, EXPORT, IMPORT, Back), and the confirm dialogs open over the page. Focused tests `instrument-hierarchy-six-screens` and `fb-repaired-save-notice` pass; `ui-budgets` #8 (digest staleness) fails the same way on master. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish63/{before,after,after-walk}/`, `compare-save-load{,-empty}-{844x390,801x390,900x420,1024x440,960x540,1280x720,1920x1080}.png`.
+
+**Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) shows no filmstrip, and the slot names print on top of each other (bench 6 at 390×844, same on master). The rolling credits/saved counters are caught mid-roll in bench stills at every size. My Ship DOCK TO EXTEND / SAVE FIT @901–1240 (#428); Shipworks lower callouts @844×390 (berth scrolls by design).
