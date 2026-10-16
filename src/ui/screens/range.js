@@ -250,7 +250,7 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-hero__n { font-size: 26px; line-height: 1; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p { font-size: 12px; line-height: 15px;
     display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p + p { font-size: 11px; line-height: 14px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p + p { font-size: 12px; line-height: 15px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs { margin-top: 2px; column-gap: 14px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs .orr-lampkey { min-height: 28px !important; font-size: 12px !important; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-foot { row-gap: 3px; }
@@ -258,10 +258,10 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder::before { height: 6px; margin-bottom: 0; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li { padding-bottom: 5px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li::before { height: 5px; bottom: 0; }
-  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder .sf-range__word { padding: 1px 0; letter-spacing: .05em; font-size: 11px; }
-  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 2px 2px; font-size: 11px; gap: 12px; letter-spacing: .1em; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder .sf-range__word { padding: 1px 0; letter-spacing: .04em; font-size: 12px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 2px 2px; font-size: 12px; gap: 12px; letter-spacing: .08em; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__tabs { column-gap: 14px; }
-  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 11px; gap: 6px; padding-left: 8px; letter-spacing: .08em; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 12px; gap: 6px; padding-left: 8px; letter-spacing: .06em; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 28px; height: 28px; }
   html:root:not([data-sf-mobile="1"]) body #screens #sf-range .sf-range__drawer.fh-plate { width: 240px; border-width: 8px 10px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(240px + var(--k-gap)); }
