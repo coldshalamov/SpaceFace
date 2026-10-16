@@ -388,6 +388,18 @@ export function fieldBodyProfile(entity, state, out = null) {
   profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
+  profile.coated = false;
+  const coats = state && state.emergent && state.emergent.coatings;
+  if (coats && entity && entity.id != null) {
+    const now = Number(state.simTime) || 0;
+    for (let i = 0; i < coats.length; i++) {
+      const coat = coats[i];
+      if (coat && coat.hostId === entity.id && !(coat.until <= now)) {
+        profile.coated = true;
+        break;
+      }
+    }
+  }
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
     : 1;

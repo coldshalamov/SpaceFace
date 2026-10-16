@@ -40,7 +40,8 @@ function isKnownKind(kind) {
     || kind === FIELD_KINDS.SHEET
     || kind === FIELD_KINDS.PLANE
     || kind === FIELD_KINDS.CURL
-    || kind === FIELD_KINDS.LANE;
+    || kind === FIELD_KINDS.LANE
+    || kind === FIELD_KINDS.BOUNDARY;
 }
 
 // Explicit opt-outs affect only these two Well consequences, never force/heat/target filters.
@@ -252,6 +253,7 @@ function viscosityAccel(field, vel, fall) {
 export function fieldRawAcceleration(field, x, z, out, vel = null) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
+  if (field && field.kind === FIELD_KINDS.BOUNDARY) return o;
   if (field && field.kind === FIELD_KINDS.CURL) {
     // Finite disk. Acceleration is sideways around the center. The inward
     // component is zero, and nothing is written onto the body's velocity.
@@ -407,6 +409,13 @@ function segmentPointDistance(ax, az, bx, bz, px, pz) {
  */
 export function fieldCanApplyTo(field, profile) {
   if (!fieldAffectsBody(field, profile)) return false;
+  if (field && field.kind === FIELD_KINDS.BOUNDARY) {
+    if (!(field.radius > 0)) return false;
+    const type = profile && profile.type;
+    if (type === 'fauna') return field.strength > 0;
+    if (profile && profile.coated && (type === 'ship' || type === 'drone')) return field.damping > 0;
+    return false;
+  }
   if (field && field.kind === FIELD_KINDS.PLANE) return field.damping > 0 && field.radius > 0;
   if (field.strength > 0) return true;
   const hitchId = profile && profile.hitchedTo;
@@ -505,6 +514,29 @@ function fieldSumOrder(fields) {
  */
 // Optional pooled receipts attribute each field AFTER coupling and the shared total clamp.
 // The ordinary summation order and arithmetic remain unchanged. Receipts do not own force.
+// Class response for one boundary. A crate and a plain hull pass. A coated hull
+// is slowed against its motion. A creature is pushed aside. Velocity is not written.
+export function boundaryAcceleration(field, x, z, vel, profile, out) {
+  const o = out || { ax: 0, az: 0 };
+  o.ax = 0;
+  o.az = 0;
+  if (!field || field.kind !== FIELD_KINDS.BOUNDARY || !(field.radius > 0)) return o;
+  const dx = x - field.center.x;
+  const dz = z - field.center.z;
+  if (Math.hypot(dx, dz) >= field.radius) return o;
+  const type = profile && profile.type;
+  if (type === 'fauna' && field.strength > 0) {
+    o.az = field.strength;
+    return o;
+  }
+  if (profile && profile.coated && (type === 'ship' || type === 'drone') && field.damping > 0 && vel) {
+    o.ax = -field.damping * finite(vel.x);
+    o.az = -field.damping * finite(vel.z);
+    return o;
+  }
+  return o;
+}
+
 export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, out, receipts) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
@@ -527,6 +559,16 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
     for (let n = 0; n < order.length; n++) {
       const field = fields[order[n]];
       if (!fieldAffectsBody(field, profile)) continue;
+      if (field.kind === FIELD_KINDS.BOUNDARY) {
+        boundaryAcceleration(field, pos.x, pos.z, vel, profile, _rawScratch);
+        sx += _rawScratch.ax;
+        sz += _rawScratch.az;
+        if (receipts) {
+          receipts.entries[n].ax = _rawScratch.ax;
+          receipts.entries[n].az = _rawScratch.az;
+        }
+        continue;
+      }
       fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
       // A lane hands the same push to cargo and a pilot. Other fields keep the
       // mass shrug. Multiplying here is the same sum as scaling the total.

@@ -31,6 +31,7 @@ import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSit
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
 import { judgePresentDirective, presentMissLine, presentOrderLine } from '../data/presentDirective.js';
+import { ensureBoundaryField } from '../data/boundaryField.js';
 import { ensureCurlField } from '../data/curlField.js';
 import { ensureLaneField } from '../data/laneField.js';
 import { ensureVelocityPlane } from '../data/velocityPlane.js';
@@ -294,6 +295,7 @@ export function tickMachineLayer(world, dt) {
     if (site.siteId === 'charon_star_marker') ensureVelocityPlane(world, site, g);
     if (site.siteId === 'charon_broken_shepherd') ensureCurlField(world, site, g);
     if (site.siteId === 'ashfall_the_line') ensureLaneField(world, site, g);
+    if (site.siteId === 'veil_containment_ring') ensureBoundaryField(world, site, g);
 
     // First observation: entering the site's radius is the 'seen' beat — protocol becomes
     // 'observed' and story.verge.revealed flips (galaxy map learns the layer exists).
