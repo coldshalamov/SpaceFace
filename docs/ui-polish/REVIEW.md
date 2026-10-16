@@ -1450,3 +1450,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Leftovers (not this pass):** My Ship hull callouts @1101–1160 (#423); flightCluster class ring vs legend (#426, awaiting live HUD re-review); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional).
 
 **Review fix (Code Work):** the ≤460-tall block set four sizes under the 12 px type floor (second title line, ladder words, dossier, run gauge, all 11px). They are 12px now, with letter-spacing trimmed by .01–.02em. RULES / BESTIARY / CLOSE and the run gauge still sit on glass at 844×390, 801×390, 900×420 and 1100×460, where the ladder takes one more row at 801. Bench `range` is 0 at every size the PR touches, and the smallest computed text on the screen is 12px.
+
+## Settings on a very short desktop: MUTE ALL clears MORE · ‹ BACK (ui-polish-62)
+
+**Before (master 042025912f):** stacked Settings (≤900 wide) kept the five-rung category ladder vertical (~208px). On a ≤460-tall window (844×390 / 801×390 / 900×420) the hang row ate the grid, the stage track collapsed to **0px**, and MUTE ALL overflowed through the MORE chip and ‹ BACK (bench: 4 ON TOP OF + 2 BURIED). At 1024×440 the preview caption "Scales every channel below it." also met MASTER.
+
+**After (`src/ui/orrery/settingsLayouts.js` only, desktop via `html:root:not([data-sf-mobile="1"])`):**
+- **≤900 × ≤460:** category tabs lay sideways (credits-style horizontal rail), title/foot compress, MORE parks inside the stage's bottom pad (no negative overhang into ‹ BACK). Stage gets a real ~250px band; MUTE ALL stays on the first row clear of MORE and BACK.
+- **901–1100 × ≤460:** hang stays vertical beside the pane; chrome compresses and MORE's overhang shrinks so it clears ‹ BACK.
+- Selectors and IDs unchanged. Phones (`data-sf-mobile`) keep the mobile sheet. 960×540 / 1280×720 / 1920×1080 are untouched by these queries.
+
+**Checked:** bench `settings` findings 6→0 at 844×390, 801×390 and 900×420; 4→0 at 1024×440; stay 0 at 960×540, 1280×720, 1920×1080 and 390×844. `--phone` 390×844 / 844×390 clean. Focused tests pass: `pro-15-settings-row-ownership`, `settings-controller-label-truth`, `fb-settings-a11y`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish62/{before,after}/settings/`, `compare-settings-*.png`.
+
+**Leftovers (not this pass):** My Ship DOCK TO EXTEND / SAVE FIT @901–1240 (open #428 `station.css`); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (under-beam labels look intentional; default + conducted walk clean this pass).
