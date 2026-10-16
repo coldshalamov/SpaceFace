@@ -244,6 +244,11 @@ test('one sample becomes a lure, and coming back is the trial', () => {
   assert.equal(lureLogs(shown.events).length, 0);
   assert.equal(lureOf(shown.state).shown, true);
   assert.equal(lureOf(shown.state).lure, LURE_FILAMENT);
+  const stripped = serializeAlienEcologyState(shown.state);
+  delete stripped.heatDerivative;
+  deserializeAlienEcologyState(shown.state, stripped);
+  assert.equal(lureOf(shown.state), null);
+  assert.equal(ensureAlienEcologyState(shown.state).heatTrial.note, HEAT_TRIAL_NOTE);
 
   const resinOnly = worldAt(inside.x, inside.z, { [LURE_RESIN]: 1 });
   fileNote(resinOnly.state);

@@ -2060,6 +2060,7 @@ export function deserializeAlienEcologyState(state, data) {
   }
   const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
   if (heatDerivative) ae.heatDerivative = heatDerivative;
+  else delete ae.heatDerivative;
   if (data.chartFindings && typeof data.chartFindings === 'object') {
     ae.chartFindings = JSON.parse(JSON.stringify(data.chartFindings));
   }
