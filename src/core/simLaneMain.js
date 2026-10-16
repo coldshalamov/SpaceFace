@@ -53,6 +53,7 @@ import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSi
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
 import { normalizePadSensitivity } from '../systems/gamepad.js';
+import { applySharedPlayerStoreCapability } from '../save/sharedPlayerStore.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -808,6 +809,11 @@ export function createSimLaneRuntime({
           if (ev && typeof ev.t === 'string') {
             try {
               const p = remapEventPayload(ev.p);
+              if (ev.t === 'save:store-synced') {
+                // Main-owned achievement mirrors must honor the worker's definitive boot probe
+                // before synchronous store-synced listeners can schedule another mirror.
+                applySharedPlayerStoreCapability(p?.storeCapability);
+              }
               if (ev.t === 'sector:enter' && p && typeof p === 'object') {
                 // The bridge ships a lite {id,name,seed} shell; renderer sector
                 // visuals need the full sector — resolve it from the world
