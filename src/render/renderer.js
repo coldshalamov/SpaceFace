@@ -379,6 +379,8 @@ import {
   OPENING_EFFECT_PLUME_DRIVE_RE,
   OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS,
   OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS,
+  OPENING_WARM_TOUCH_BUDGET_MS,
+  OPENING_WARM_TOUCH_TIMEOUT_MS,
 } from './openingEffectWarm.js';
 import {
   armAdmissionShadows,
@@ -24091,6 +24093,46 @@ export const render = {
       } catch (_) { pending = 0; }
       return pending === 0;
     };
+    // Touch budget: a link-status read is synchronous, so no timer can cut one short once it has
+    // started; the budget bounds how many touches start and how long the sweep waits on each.
+    // Past the per-touch timeout the sweep moves on (the touch settles in the background); past
+    // the total budget no further touch starts. Both are logged in the receipt.
+    let touchSpentMs = 0;
+    receipt.timedOut = [];
+    receipt.skipped = [];
+    const timedTouch = async (touch, key, subject) => {
+      if (touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS) {
+        if (!receipt.skipped.includes(key)) {
+          receipt.skipped.push(key);
+          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch skipped: budget spent', key, Math.round(touchSpentMs));
+        }
+        return false;
+      }
+      const touchStarted = clock();
+      let timer = null;
+      try {
+        const outcome = await Promise.race([
+          Promise.resolve(touch(subject)).then(() => 'done'),
+          new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), OPENING_WARM_TOUCH_TIMEOUT_MS); }),
+        ]);
+        if (outcome === 'timeout') {
+          receipt.timedOut.push(key);
+          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch timed out', key, OPENING_WARM_TOUCH_TIMEOUT_MS);
+        } else {
+          receipt.touched.push(key);
+        }
+      } catch (error) {
+        receipt.failed += 1;
+        laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, error);
+      } finally {
+        if (timer) clearTimeout(timer);
+        const spent = clock() - touchStarted;
+        touchSpentMs += spent;
+        receipt.touchMs[key] = Math.round(spent);
+      }
+      return true;
+    };
+    let restPending = false;
     const stop = (reason) => {
       this._openingEffectWarmActive = false;
       publish(reason);
@@ -24101,11 +24143,10 @@ export const render = {
       const render = state.render;
       const touch = render && render.touchSubjectExactTarget;
       receipt.sweeps += 1;
-      let warmedNow = false;
       if (!receipt.subset && state.playerId != null
           && state.entities && typeof state.entities.get === 'function' && state.entities.get(state.playerId)
           && typeof render.warmupOpeningEffectSubset === 'function') {
-        warmedNow = true;
+        restPending = true;
         try {
           const r = render.warmupOpeningEffectSubset({ plumeMaterialRe: OPENING_EFFECT_PLUME_DRIVE_RE });
           receipt.subset = r && r.skipped !== true
@@ -24129,12 +24170,10 @@ export const render = {
           ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
           if (!owned() || !loading()) break;
           let subject = null;
-          const touchStarted = clock();
           try {
             subject = make();
             this.scene.add(subject);
-            await touch(subject);
-            receipt.touched.push(key);
+            await timedTouch(touch, key, subject);
           } catch (error) {
             receipt.failed += 1;
             laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
@@ -24144,28 +24183,19 @@ export const render = {
               try { subject.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
             }
           }
-          receipt.touchMs[key] = Math.round(clock() - touchStarted);
         }
       }
-      if (typeof touch === 'function' && this.scene) {
+      // Every family touch waits out the opening compile burst, not only the overflow jets: fx5's
+      // ActionPrimitive touch paid 5.6-7.9 s when it landed inside the burst (median 64 ms after).
+      const drained = overflowBurstDrained();
+      if (drained && typeof touch === 'function' && this.scene) {
         for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
           if (!owned() || !loading()) break;
-          if (key === 'root:sf-overflow-jets' && !overflowBurstDrained()) {
-            seen.delete(key);
-            continue;
-          }
-          const touchStarted = clock();
-          try {
-            await touch(subject);
-            receipt.touched.push(key);
-          } catch (error) {
-            receipt.failed += 1;
-            laneWarn(this, 'openingEffectWarm', '[render] opening effect family touch failed', key, error);
-          }
-          receipt.touchMs[key] = Math.round(clock() - touchStarted);
+          await timedTouch(touch, key, subject);
         }
       }
-      if (warmedNow) {
+      if (restPending && drained) {
+        restPending = false;
         try {
           if (typeof render.restLiveFlightEffectsAfterCook === 'function') render.restLiveFlightEffectsAfterCook();
           if (typeof render.releaseOpeningEffectSubset === 'function') render.releaseOpeningEffectSubset();

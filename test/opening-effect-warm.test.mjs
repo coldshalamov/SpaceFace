@@ -97,6 +97,24 @@ test('the overflow-jets touch waits out the opening compile burst', async () => 
   assert.ok(mod.OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS >= 4000);
   assert.ok(mod.OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS > mod.OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS);
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(renderer, /key === 'root:sf-overflow-jets' && !overflowBurstDrained\(\)/);
-  assert.match(renderer, /seen\.delete\(key\);/);
+  assert.match(renderer, /const drained = overflowBurstDrained\(\);/);
+  assert.match(renderer, /if \(drained && typeof touch === 'function' && this\.scene\)/);
+  assert.match(renderer, /if \(restPending && drained\)/);
+});
+
+test('warm touches run under a total budget with a per-touch timeout, and the live cause-mark layer is a root', async () => {
+  const mod = await import('../src/render/openingEffectWarm.js');
+  assert.ok(mod.OPENING_EFFECT_ROOT_NAMES.includes('sf-cause-marks'));
+  assert.ok(mod.OPENING_WARM_TOUCH_BUDGET_MS > 0 && mod.OPENING_WARM_TOUCH_TIMEOUT_MS > 0);
+  assert.ok(mod.OPENING_WARM_TOUCH_TIMEOUT_MS < mod.OPENING_WARM_TOUCH_BUDGET_MS);
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS/);
+  assert.match(renderer, /resolve\('timeout'\), OPENING_WARM_TOUCH_TIMEOUT_MS/);
+  assert.match(renderer, /receipt\.timedOut\.push\(key\)/);
+  const THREE = await import('three');
+  const scene = new THREE.Scene();
+  const marks = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial());
+  marks.name = 'sf-cause-marks'; marks.visible = false;
+  scene.add(marks);
+  assert.deepEqual(mod.collectOpeningEffectSubjects(scene, new Set()).map((row) => row.key), ['root:sf-cause-marks']);
 });

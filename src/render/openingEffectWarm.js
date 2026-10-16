@@ -18,6 +18,12 @@ export const OPENING_EFFECT_ROOT_NAMES = Object.freeze([
   'sf-liquid-plasma-root',
   'SF_RibbonTrail',
   'sf-overflow-jets',
+  // The live cause-mark layer (vfx/causeMarks.js) is invisible at drawRange 0 until the first scar,
+  // kill or field edge, so no warm or salvo ever draws it: its single LineBasicMaterial program
+  // (one key on both arms) linked on the first mark, after the lift in most runs on both arms,
+  // and cost 1.0-1.24 s when that landed beside a ship admission (fx4/fx5 cand, +9-10 s). The
+  // exact-target touch reveals the live mesh itself, so the warmed key is the played key.
+  'sf-cause-marks',
 ]);
 
 // SF_FilteredForceParticleTransport: its program exists in every run but usually links under 60 ms;
@@ -31,6 +37,9 @@ export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_Structu
 // as no pipeline admission is pending, and unconditionally at MAX.
 export const OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS = 4000;
 export const OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS = 8000;
+// Total wall time the warm may spend in touches, and how long it waits on any one before moving on.
+export const OPENING_WARM_TOUCH_BUDGET_MS = 4000;
+export const OPENING_WARM_TOUCH_TIMEOUT_MS = 1000;
 
 export const OPENING_EFFECT_PLUME_DRIVE_RE = /^plume:family_industrial_main_plume:core$/;
 
