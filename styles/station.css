@@ -1780,8 +1780,11 @@ html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:h
    Review fix: the two-column split stops at 800 wide, and at 900 wide above 460 tall. Below that it
    left the hull ~300-550 px: at 641-800 its callouts printed over the stat strip (641x800, 641x461,
    761x460) and at 780-880 x 500-700 the four-line sentence printed over the hull's top callouts.
-   The sentence's scroll box ends on a whole line. Selectors and IDs are unchanged. */
-@media (min-width: 801px) and (max-width: 1100px) and (max-height: 460px), (min-width: 901px) and (max-width: 1100px) {
+   The sentence's scroll box ends on a whole line. Selectors and IDs are unchanged.
+   ui-polish-61: the split now runs to 1240 wide. At 1101-1240 the three columns left the hull
+   ~460-560 px, so its callouts printed over the sentence and the verbs, the strip wrapped and the
+   right handling column ran past the plate (bench 12 at 1101-1130x720, 10 at 1101-1240x440). */
+@media (min-width: 801px) and (max-width: 1240px) and (max-height: 460px), (min-width: 901px) and (max-width: 1240px) {
   html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw {
     grid-template-columns: minmax(0, 1fr) clamp(220px, 28vw, 285px);
     grid-template-rows: auto minmax(0, 1fr);
@@ -1811,14 +1814,6 @@ html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:h
   html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-bands { container-type: inline-size; flex-wrap: wrap; gap: 4px 8px; }
   html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-hero { padding: 6px clamp(8px, 1cqi, 12px) 8px; min-width: 0; }
   html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: clamp(18px, calc(5cqi - 10px), 47.52px); white-space: nowrap; }
-}
-/* Under ~1180 the build drops to a second row; the plate takes a little more of the column so
-   SAVE FIT stays on it instead of scrolling out of view, and the two handling columns share the
-   plate's width instead of running 6px past its edge. */
-@media (min-width: 1101px) and (max-width: 1240px) {
-  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stage { min-height: calc(290px * var(--dp-s, 1)); }
-  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stats { max-height: 56%; }
-  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-bars { column-gap: 12px; }
 }
 @media (min-width: 641px) and (max-height: 460px) {
   html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame { padding: 14px 20px; }
