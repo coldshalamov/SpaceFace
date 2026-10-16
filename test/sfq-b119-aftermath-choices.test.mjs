@@ -458,6 +458,36 @@ test('a ship that fled earlier is the salvage when it is destroyed later', () =>
   assert.equal(h.state.paused, undefined);
 });
 
+test('a disabled ship destroyed after its receipt fell off the list is the salvage', () => {
+  const h = makeHarness();
+  const disabled = spawnHostile(h, 400);
+  h.bus.emit('combat:subsystemDisabled', { targetId: disabled.id, subsystemId: 'subsystem_drive' });
+  const receipt = h.state.combatOutcome.byEntity[disabled.id];
+  let guard = 0;
+  while (h.state.combatOutcome.outcomes.includes(receipt) && guard < 200) {
+    const ship = spawnHostile(h, 2000 + guard * 40);
+    h.bus.emit('entity:killed', { id: ship.id, killerId: h.state.playerId });
+    guard += 1;
+  }
+  assert.ok(guard < 200);
+  assert.equal(h.state.combatOutcome.outcomes.includes(receipt), false);
+  assert.equal(h.state.combatOutcome.byEntity[disabled.id], receipt);
+  h.state.aftermathWrecks = {
+    bySector: { [SECTOR]: [{ markerId: 'disabled-hulk', victimId: disabled.id, kind: 'battle-aftermath' }] },
+  };
+  h.bus.emit('entity:killed', { id: disabled.id, killerId: h.state.playerId });
+  assert.equal(h.state.combatOutcome.outcomes.includes(receipt), true);
+  assert.equal(receipt.dead, true);
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, disabled.id);
+  disabled.alive = false;
+  h.state.entities.delete(disabled.id);
+  h.bus.emit('entity:destroyed', { id: disabled.id, entity: disabled, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'disabled-hulk');
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'disabled-hulk');
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {
