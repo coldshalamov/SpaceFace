@@ -5,7 +5,7 @@
 export const COLLAR_SITE_ID = 'breathing_dock';
 
 export const COLLAR_CLEAR = 'The collar is clear. It will take a ship.';
-export const COLLAR_HELD = 'The carrier is in the collar, breathing in. The berth will not take a ship. The quiet tender still lifts samples, and a mark on the carrier opens the collar again.';
+export const COLLAR_HELD = 'The carrier is breathing in. Berth closed. The quiet tender still lifts samples. A mark on the carrier opens the collar.';
 export const COLLAR_RESTORED = 'The carrier is marked. The collar is clear again and will take a ship.';
 
 export function collarCause(site) {
