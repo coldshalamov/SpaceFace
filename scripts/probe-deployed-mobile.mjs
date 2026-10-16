@@ -1,4 +1,12 @@
 import { collectMobileCameraWitness } from './lib/mobileCameraWitness.mjs';
+import {
+  createMobileResponseLedger,
+  observedWorkerFailures,
+  recordMobileRequestFailure,
+  recordMobileResponse,
+  resolveWorkerContractUrls,
+  runMobileWorkerContract,
+} from './lib/mobileWorkerContract.mjs';
 // Real-route startup/control acceptance (world visibility requires separate evidence): fresh profile, real menu taps, no debug/state/storage injection.
 // MOBILE_PROBE_URL=https://... MOBILE_PROBE_ENGINE=webkit node scripts/probe-deployed-mobile.mjs
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -13,7 +21,7 @@ const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
   acceptance: { startupAndControls: 'pending', worldVisibility: 'unverified' },
-  responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [] };
+  ...createMobileResponseLedger(), pageErrors: [], console: [], stages: [], observations: [], lifecycle: [] };
 let browser;
 async function boundedBrowserRead(read, timeoutMs = 20000) {
   let timer;
@@ -64,8 +72,6 @@ const snapshot = async (page, includeCamera = false) => {
   return result;
 };
 const visible = async (page, selector) => boundedBrowserRead(() => page.locator(selector).first().isVisible()).catch(() => false);
-const critical = response => response.status >= 400 && (
-  /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
 try {
   browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true,
     ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio'] } : {}) });
@@ -96,10 +102,10 @@ try {
     }
   });
   page.on('requestfailed', request => {
-    if (report.requestFailures.length < 500) report.requestFailures.push({ url: request.url(), error: request.failure()?.errorText });
+    recordMobileRequestFailure(report, { url: request.url(), error: request.failure()?.errorText });
   });
   page.on('response', response => {
-    if (report.responses.length < 3000) report.responses.push({ url: response.url(), status: response.status(),
+    recordMobileResponse(report, { url: response.url(), status: response.status(),
       type: response.request().resourceType(), mime: response.headers()['content-type'], bytes: response.headers()['content-length'] });
   });
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -179,19 +185,28 @@ try {
       throw new Error(`Control clipped after rotation: ${selector} ${JSON.stringify(box)}`);
   }
   if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
-  if (report.responses.some(critical)) throw new Error('Runtime script, model or decoder returned an HTTP error');
-  for (const name of ['renderPackageDigestWorker.js', 'glbPrepassWorker.js']) {
-    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-    const worker = report.responses.find(r => {
-      const path = new URL(r.url).pathname;
-      return r.status === 200 && (path.endsWith(`/workers/${name}`)
-        || (local && path.endsWith(`/src/render/${name}`)));
-    });
-    if (!worker || !/(javascript|ecmascript)/i.test(worker.mime || ''))
-      throw new Error(`Worker not loaded with JavaScript MIME: ${name}`);
+  const pageUrl = new URL(page.url());
+  const detectedReleaseBase = report.html?.match(/(?:https?:\/\/[^"']+)?(\/_releases\/[^"']+\/)main\.js/)?.[1] || '';
+  const releaseBase = process.env.MOBILE_WORKER_RELEASE_BASE || detectedReleaseBase;
+  const mode = process.env.MOBILE_WORKER_MODE || (releaseBase ? 'pinned' : 'retail');
+  if (!['raw', 'retail', 'pinned'].includes(mode)) throw new Error(`Unknown MOBILE_WORKER_MODE: ${mode}`);
+  if (mode === 'pinned' && !releaseBase) throw new Error('Pinned worker mode requires MOBILE_WORKER_RELEASE_BASE or a pinned main.js URL');
+  const workerUrls = resolveWorkerContractUrls({ moduleUrl: pageUrl.href, production: mode !== 'raw',
+    documentBase: pageUrl.href, releaseBase: mode === 'pinned' ? releaseBase : '' });
+  report.workerUrls = workerUrls;
+  report.workerObservedFailures = observedWorkerFailures(report.responses, workerUrls, report.workerResponseFailures);
+  // A lazy worker may have no response entry at all.  The native contract is
+  // authoritative in that case; observed bad status/MIME remains a failure.
+  report.workerContract = await runMobileWorkerContract(page, { workerUrls });
+  if (report.workerObservedFailures.length) {
+    throw new Error(`Observed runtime worker response failure: ${JSON.stringify(report.workerObservedFailures)}`);
+  }
+  if (report.criticalResponseCount || report.criticalRequestFailureCount) {
+    throw new Error(`Runtime script, model or decoder returned ${report.criticalResponseCount
+      + report.criticalRequestFailureCount} critical HTTP failure(s)`);
   }
   report.passed = true; // Startup/control contract only; no world-visibility assertion.
-  report.acceptance = { startupAndControls: 'passed', worldVisibility: 'unverified' };
+  report.acceptance = { startupAndControls: 'passed', workerContract: 'passed', worldVisibility: 'unverified' };
 } catch (error) {
   report.acceptance.startupAndControls = 'failed';
   report.failure = String(error?.stack || error);
@@ -209,5 +224,7 @@ try {
   })]);
   console.log(JSON.stringify({ engine, passed: report.passed, launchMs: report.launchMs,
     failure: report.failure, final: report.final, pageErrors: report.pageErrors,
-    failedHttp: report.responses.filter(r => r.status >= 400) }, null, 2));
+    failedHttp: report.criticalResponses, criticalResponseCount: report.criticalResponseCount,
+    workerResponseFailures: report.workerResponseFailures,
+    failedRequests: report.criticalRequestFailures, criticalRequestFailureCount: report.criticalRequestFailureCount }, null, 2));
 }

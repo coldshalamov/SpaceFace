@@ -69,7 +69,8 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/ -o /dev/null && break; sleep 1; done
           node scripts/check-runtime-worker-browser.mjs
-          node scripts/probe-deployed-mobile.mjs
+          set -o pipefail
+          DEBUG=pw:browser node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-build/browser-process.log
       - name: Preserve acceptance evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
