@@ -526,7 +526,10 @@ export function boundaryAcceleration(field, x, z, vel, profile, out) {
   if (Math.hypot(dx, dz) >= field.radius) return o;
   const type = profile && profile.type;
   if (type === 'fauna' && field.strength > 0) {
-    o.az = field.strength;
+    const r = Math.hypot(dx, dz);
+    if (r < 1e-4) return o;
+    o.ax = (-dz / r) * field.strength;
+    o.az = (dx / r) * field.strength;
     return o;
   }
   if (profile && profile.coated && (type === 'ship' || type === 'drone') && field.damping > 0 && vel) {
