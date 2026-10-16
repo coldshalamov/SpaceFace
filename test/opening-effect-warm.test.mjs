@@ -92,14 +92,13 @@ test('late first-link exemplars: stand-in + marker share the live materials; pha
   assert.doesNotMatch(renderer, /this\.bloom\.prepareResources\(\(\) => Promise\.resolve\(\)\)/);
 });
 
-test('the overflow-jets touch waits out the opening compile burst', async () => {
+test('warm touches start with the subset instead of waiting for the burst to drain (fx4-fx6 load)', async () => {
   const mod = await import('../src/render/openingEffectWarm.js');
-  assert.ok(mod.OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS >= 4000);
-  assert.ok(mod.OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS > mod.OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS);
+  assert.equal(mod.OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS, undefined);
+  assert.ok(mod.OPENING_EFFECT_MATERIAL_RE.test('SF_ExplosionRupture_material-transport'));
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(renderer, /const drained = overflowBurstDrained\(\);/);
-  assert.match(renderer, /if \(drained && typeof touch === 'function' && this\.scene\)/);
-  assert.match(renderer, /if \(restPending && drained\)/);
+  assert.doesNotMatch(renderer, /overflowBurstDrained/);
+  assert.match(renderer, /if \(firstTouchCharged\) touchSpentMs \+= spent;/);
 });
 
 test('warm touches run under a total budget with a per-touch timeout, and the live cause-mark layer is a root', async () => {

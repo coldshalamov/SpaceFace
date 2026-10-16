@@ -377,8 +377,6 @@ import {
 import {
   collectOpeningEffectSubjects,
   OPENING_EFFECT_PLUME_DRIVE_RE,
-  OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS,
-  OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS,
   OPENING_WARM_TOUCH_BUDGET_MS,
   OPENING_WARM_TOUCH_TIMEOUT_MS,
 } from './openingEffectWarm.js';
@@ -24079,25 +24077,18 @@ export const render = {
     const loading = () => state.mode === 'loading';
     const startedAt = Date.now();
     let extrasDone = false;
-    // A link status read is a sync point. Landing inside the opening compile burst, the
-    // overflow-jets touch waited 4.8-8.3 s on a frozen main thread (fx3); once the burst drained it
-    // took 75-317 ms. Late touches wait at least MIN, then for an empty admission queue, at most MAX.
-    const overflowBurstDrained = () => {
-      const elapsed = Date.now() - startedAt;
-      if (elapsed < OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS) return false;
-      if (elapsed >= OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS) return true;
-      let pending = 0;
-      try {
-        pending = typeof state.render.pendingPipelineAdmissions === 'function'
-          ? Number(state.render.pendingPipelineAdmissions()) || 0 : 0;
-      } catch (_) { pending = 0; }
-      return pending === 0;
-    };
+    // Touches run as soon as the subset exists, inside the opening compile burst. The first
+    // link-status read there waits out the burst's compile backlog (fx3: 4.8-8.3 s on whichever
+    // touch came first), but loading waits on that backlog anyway: fx3 (early touches) loaded at
+    // master -0.37 s to flight, while fx4-fx6 (touches held until the burst drained, >=4 s in)
+    // put their own links on the critical path and reached flight +0.7-1.5 s after master.
     // Touch budget: a link-status read is synchronous, so no timer can cut one short once it has
     // started; the budget bounds how many touches start and how long the sweep waits on each.
     // Past the per-touch timeout the sweep moves on (the touch settles in the background); past
     // the total budget no further touch starts. Both are logged in the receipt.
+    // The first touch is not charged: it absorbs the opening compile backlog described above.
     let touchSpentMs = 0;
+    let firstTouchCharged = false;
     receipt.timedOut = [];
     receipt.skipped = [];
     const timedTouch = async (touch, key, subject) => {
@@ -24127,7 +24118,8 @@ export const render = {
       } finally {
         if (timer) clearTimeout(timer);
         const spent = clock() - touchStarted;
-        touchSpentMs += spent;
+        if (firstTouchCharged) touchSpentMs += spent;
+        firstTouchCharged = true;
         receipt.touchMs[key] = Math.round(spent);
       }
       return true;
@@ -24158,10 +24150,10 @@ export const render = {
           laneWarn(this, 'openingEffectWarm', '[render] opening effect subset warmup failed', error);
         }
       }
-      if (!extrasDone && receipt.subset && overflowBurstDrained() && typeof touch === 'function' && this.scene) {
+      if (!extrasDone && receipt.subset && typeof touch === 'function' && this.scene) {
         extrasDone = true;
         // Late first links outside the effect roots that master links after the lift (50-run pool:
-        // stand-in 13, phase blink 8, marker 4), behind the same burst gate: the ship_atlas stand-in
+        // stand-in 13, phase blink 8, marker 4): the ship_atlas stand-in
         // + resolving marker of the first mid-flight ship admission, and both phase-blink programs
         // (uKind/uZip). The bloom threshold pass is left out (1 post-lift link in 50 master runs).
         // Exemplars only: touched once, then detached; their materials stay alive so the programs
@@ -24185,16 +24177,13 @@ export const render = {
           }
         }
       }
-      // Every family touch waits out the opening compile burst, not only the overflow jets: fx5's
-      // ActionPrimitive touch paid 5.6-7.9 s when it landed inside the burst (median 64 ms after).
-      const drained = overflowBurstDrained();
-      if (drained && typeof touch === 'function' && this.scene) {
+      if (typeof touch === 'function' && this.scene) {
         for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
           if (!owned() || !loading()) break;
           await timedTouch(touch, key, subject);
         }
       }
-      if (restPending && drained) {
+      if (restPending) {
         restPending = false;
         try {
           if (typeof render.restLiveFlightEffectsAfterCook === 'function') render.restLiveFlightEffectsAfterCook();

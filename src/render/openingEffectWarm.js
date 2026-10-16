@@ -28,15 +28,11 @@ export const OPENING_EFFECT_ROOT_NAMES = Object.freeze([
 
 // SF_FilteredForceParticleTransport: its program exists in every run but usually links under 60 ms;
 // fx4 cand run 9 paid 670 ms for it +169 ms after the lift (master: 3 post-lift links in 50 runs).
-export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_StructuralPlateMaterial|SF_FilteredForceParticleTransport|plume:family_industrial_main_plume:core)$/;
+// SF_ExplosionRupture_material-transport: fx6 cand run 10 paid 834 ms for it +1.4 s after the lift.
+export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_StructuralPlateMaterial|SF_FilteredForceParticleTransport|SF_ExplosionRupture_material-transport|plume:family_industrial_main_plume:core)$/;
 
 // Plume systems the loading warm drives (only these get real buffers); every other fleet family,
 // RCS family, the retro jets and per-NPC ribbons stay lazy, as on master.
-// The overflow-jets touch waits out the opening compile burst (fx3: 4.8-8.3 s when touched in the
-// first ~1 s of loading, 75-317 ms from ~6 s on): at least MIN after the warm starts, then as soon
-// as no pipeline admission is pending, and unconditionally at MAX.
-export const OPENING_OVERFLOW_TOUCH_MIN_DELAY_MS = 4000;
-export const OPENING_OVERFLOW_TOUCH_MAX_DELAY_MS = 8000;
 // Total wall time the warm may spend in touches, and how long it waits on any one before moving on.
 export const OPENING_WARM_TOUCH_BUDGET_MS = 4000;
 export const OPENING_WARM_TOUCH_TIMEOUT_MS = 1000;
