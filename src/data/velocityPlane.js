@@ -22,6 +22,7 @@ export function velocityPlaneRecord(center) {
     damping: VELOCITY_PLANE.damping,
     strength: 0,
     frame: { x: VELOCITY_PLANE.frame.x, z: VELOCITY_PLANE.frame.z },
+    filters: { types: ['ship', 'drone'] },
     durationS: Infinity,
   };
 }
@@ -37,7 +38,7 @@ export function ensureVelocityPlane(world, site, center) {
     world.bus.emit('comms:log', {
       from: site.name,
       kind: 'machine',
-      text: `VELOCITY PLANE. THE FACE MOVES AT ${VELOCITY_PLANE.frame.x} ALONG +X INSIDE RADIUS ${VELOCITY_PLANE.radius} OF CENTER ${Math.round(center.x)}, ${Math.round(center.z)}. SIDEWAYS SPEED IS LEFT ALONE.`,
+      text: `VELOCITY PLANE. THE FACE MOVES AT ${VELOCITY_PLANE.frame.x} ALONG +X INSIDE RADIUS ${VELOCITY_PLANE.radius} OF CENTER ${Math.round(center.x)}, ${Math.round(center.z)}. SIDEWAYS SPEED IS LEFT ALONE. HULLS ARE SLOWED. CARGO PASSES.`,
     });
   }
   return true;
