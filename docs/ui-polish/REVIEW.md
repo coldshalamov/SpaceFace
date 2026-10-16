@@ -1466,6 +1466,24 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Code Work review (2026-10-16):** Ranges join with no gap or overlap: stacked ≤800 / ≤900 above 460 tall; split 801–1240 at ≤460 tall and 901–1240 above; three columns from 1241. Live bench `ship`, PR against master 042025912f: 1101–1240 at 720/700/461/460/440 tall goes from 2–12 findings to 0. At 1241×440/460/720, 1280, 1366, 1920, 1100×720/440, 900/901×600, 800×460, 844×390, 960×540, 390×844 and phone the counts match master (801×460 has 2 on both). SAVE FIT is on screen at 1101–1240×720 and reachable by scrolling at ≤460 tall, the same as master. The five numbers sit on one row from 1101 to 1240 (on master GENERALIST dropped to a second row at 1101–1160). Review fix: at ≤1100 the hero captions (`.k-hero__w`, TOP SPEED / POWER / …) were 11px, a leftover from ui-polish-38. They are now 12px with .1em tracking and still fit the two-up grid with no clipping (1100×720, 1024×768, 960×540, 844×390, 640×800, 390×844). The type-floor count drops 119 to 118, and no text is under 12px on My Ship at any size checked. Focused tests are identical to master. The player-truth pair (m, pr, pr, m in one worktree) has no PASS→FAIL, only the known `player_ship` boot flake on both sides.
 
+## Save/Load on a very short desktop: LOAD, SAVE HERE and DELETE back on the frame (ui-polish-63)
+
+**Before (master 042025912f):** under ~460px tall (844×390, 801×390, 900×420, 1024×440) the reading in the left column ran ~80px past the foot. The name field and LOAD / SAVE HERE / DELETE fell below the frame (half of LOAD showed at 1024×440), and the hull record's GRUDGE line printed through EXPORT / IMPORT. Bench `save-load`: 10 at 844×390 and 801×390 (4 OFF FRAME, 6 printed-on-top), 3 OFF FRAME at 900×420, 2 overlaps at 1024×440; `save-load-empty` had SAVE HERE over EXPORT at 844/801/900.
+
+**After (`src/ui/orrery/saveLayouts.js` only, CSS, desktop via `html:root:not([data-sf-mobile="1"])`, new `@media (max-width:1100px) and (max-height:460px)`):**
+- The way back (EXPORT · IMPORT · ‹ BACK ESC) moves under the filmstrip in the right column (`"page foot"`), so the reading takes the left column's full height.
+- The reading steps down: LOAD 34px (review), card title 26px, credits on one line (label beside a 28px numeral), a tighter hull record, the NAME label beside its field, and a 32px Lamp Key.
+- Selectors and IDs unchanged. 960×540 and up, and phones, keep their layout.
+
+**Checked:** bench `save-load`, `save-load-empty` and `save-load-live` are 0 at 844×390, 801×390, 900×420, 1024×440, 1100×460, 960×540, 1280×720 (before: 10/1/10, 10/1/10, 3/1/3, 2/0/2, then 0 from 960 up). 1101×460 matches master (outside the band: Grudge/Export overlap + LOAD/SAVE/DELETE off). Pixel Δ (>8): the short frames change as intended; 960/1280 are rolling-counter noise. `--walk` at 844×390 reaches all 7 controls and really save/load/export/import/delete. Focused tests match master (`ui-budgets` #8 digest staleness on both). Shots (not committed): `/workspace/orchestra/state/review-432/c1/shots/`.
+
+**Code Work review fixes:**
+- Type floor 12px in-band (strip name/badge/sub + context were 9–10.5px); filed berths hide the sub line (empty keeps "Empty slot"); ledger labels, fact unit, slot numerals, EXPORT/IMPORT, ESC floored at 12px.
+- Title 40→34, tighter ledger/context tracking, vacant word 12px — reclaim height so LOAD/SAVE HERE/DELETE stay on frame after a first save.
+- After a re-save the context runs three lines ("… PREVIOUS GENERATION KEPT (FILED EARLIER TODAY)") and LOAD/SAVE/DELETE fell ~20px off at 801/844×390: GRUDGE's unpaired last line spans the full row, and padding-top goes 16→10. Probe v5: no `load/save/delete:off-frame` at 801/844 populated; minFs ≥12 across the band.
+
+**Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) shows no filmstrip, and the slot names print on top of each other (bench 6 at 390×844, same on master). The rolling credits/saved counters are caught mid-roll in bench stills at every size. My Ship DOCK TO EXTEND / SAVE FIT @901–1240 (still open after #428 merged); Shipworks lower callouts @844×390 (berth scrolls by design).
+
 ## Settings on a very short desktop: MUTE ALL clears MORE · ‹ BACK (ui-polish-62)
 
 **Before (master 042025912f):** stacked Settings (≤900 wide) kept the five-rung category ladder vertical (~208px). On a ≤460-tall window (844×390 / 801×390 / 900×420) the hang row ate the grid, the stage track collapsed to **0px**, and MUTE ALL overflowed through the MORE chip and ‹ BACK (bench: 4 ON TOP OF + 2 BURIED). At 1024×440 the preview caption "Scales every channel below it." also met MASTER.
