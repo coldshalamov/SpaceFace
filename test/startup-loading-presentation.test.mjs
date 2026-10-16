@@ -417,7 +417,9 @@ test('startup failure stays visible through late progress, menu and save-error e
     assert.equal(f.overlay.querySelector('[data-startup-failure]'), pane,
       'retry keeps the explanation until the new launch actually begins');
     buttons[1].dispatch('click');
-    assert.equal(f.bus.events.at(-1).name, 'game:exitToMenu');
+    assert.deepEqual(f.bus.events.slice(-3).map((event) => event.name),
+      ['game:exitToMenu', 'ui:closeAll', 'ui:pushScreen']);
+    assert.equal(f.bus.events.at(-1).payload.id, 'mainMenu');
     assert.equal(f.overlay.querySelector('[data-startup-failure]'), null);
     assert.equal(f.overlay.classList.contains('hidden'), true, 'Back is the explicit dismissal action');
   } finally {
@@ -457,7 +459,7 @@ test('only a current new session or matching loading mode clears the failure lat
 });
 
 test('load_failed during the active loading shell becomes a startup failure; ordinary save errors do not', async () => {
-  const f = fixture();
+  const f = fixture('menu'); // Worker mode can still mirror menu when the restore has begun.
   const presenter = await makePresenter(f);
   const startFailures = [];
   f.bus.on('game:startFailed', (payload) => startFailures.push(payload));

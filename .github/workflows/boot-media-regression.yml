@@ -47,8 +47,10 @@ jobs:
             /test/boot-media*.test.mjs
             /test/intro-signal-remix*.test.mjs
             /scripts/build-bundle.mjs
+            /scripts/lib/vercelReleaseBase.mjs
             /assets/ui/generated/emblem/emblem.thumb.webp
             /styles/intro.css
+            /styles/ui.css
             /styles/boot-instrument.css
             /styles/boot-visualizer.css
             /docs/BOOT_VISUALIZER.md
