@@ -1672,8 +1672,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     aeTrial.heatTrial = noteHeatTrial(aeTrial.heatTrial, {
       heat: (eco.heatSat || 0) > 3,
       drive: eco.driveState,
-      // The whole notice band outside the panic ring is one range.
-      geometryKey: 0,
+      geometryKey: Math.round(playerD / 40),
     });
     if (!hadNote && aeTrial.heatTrial.note && !aeTrial.heatTrial.spoken && world.bus && world.bus.emit) {
       aeTrial.heatTrial.spoken = true;

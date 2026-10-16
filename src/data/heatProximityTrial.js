@@ -29,11 +29,7 @@ export function noteHeatTrial(book, sample) {
   const drive = sample.drive;
   if (slot === 'cold' && drive !== 'shadow') return next;
   if (slot === 'hot' && drive !== 'charge') return next;
-  // A later pass in a different bucket replaces the frozen one.
-  // The notice band is one range, so a moved body can still complete the pair.
-  if (!next[slot] || next[slot].geometryKey !== sample.geometryKey) {
-    next[slot] = { drive, geometryKey: sample.geometryKey };
-  }
+  if (!next[slot]) next[slot] = { drive, geometryKey: sample.geometryKey };
   if (next.cold && next.hot
       && next.cold.geometryKey === next.hot.geometryKey
       && next.cold.drive === 'shadow'
