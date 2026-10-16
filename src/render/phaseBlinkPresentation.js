@@ -500,9 +500,11 @@ export function createPhaseBlinkWarmSubject() {
   const group = new THREE.Group();
   group.name = 'SF_PhaseBlinkOpeningWarm';
   const geometry = sheetGeometry();
+  if (OPENING_WARM_MATERIALS.length === 0) {
+    OPENING_WARM_MATERIALS.push(makeMaterial(0, 0), makeMaterial(0, 1));
+  }
   for (const pass of [0, 1]) {
-    const material = makeMaterial(0, pass);
-    OPENING_WARM_MATERIALS.push(material);
+    const material = OPENING_WARM_MATERIALS[pass];
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `PhaseBlinkOpeningWarm_${pass}`;
     mesh.frustumCulled = false;

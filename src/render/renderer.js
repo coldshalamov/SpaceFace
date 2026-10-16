@@ -24800,31 +24800,60 @@ export const render = {
    * exists, build the narrow effect subset (vfx warmupOpeningEffectSubset: liquid plasma, the
    * industrial plume, one ribbon-trail exemplar), then every 250 ms exact-target touch one
    * instance of each effect family not yet touched. Stops for good when loading releases or the
-   * admission generation changes — no touches in flight, so nothing extends the flight veil.
+   * admission generation changes; timed-out touches may finish in the background, with their
+   * exemplar retained until the draw settles.
    */
   _touchOpeningEffectFamilyUnderShell() {
     const state = this.state;
-    if (!state || this._openingEffectWarmActive === true) return;
+    if (!state) return;
+    const render = state.render;
+    const world = state.world;
+    const nativeRenderer = this.renderer;
+    const context = state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
+    const isCurrentOwner = (owner) => owner != null
+      && this._openingEffectWarmInvocationToken === owner.token
+      && owner.state === this.state
+      && owner.state.render === owner.render
+      && owner.state.world === owner.world
+      && this.renderer === owner.nativeRenderer
+      && owner.state.contextRestoreSeq === owner.context
+      && (owner.render ? owner.render.admissionRunGeneration : undefined) === owner.generation;
+    if (this._openingEffectWarmActive === true
+        && isCurrentOwner(this._openingEffectWarmOwner)) return;
+    const previousOwner = this._openingEffectWarmOwner;
+    if (this._openingEffectWarmActive === true && previousOwner && !isCurrentOwner(previousOwner)) {
+      // A replacement run may share the scene with a queued exact-target draw from the old run.
+      // Hide its subject now; the port can still reveal it for that draw before teardown settles.
+      for (const subject of previousOwner.pendingExemplars || []) subject.visible = false;
+    }
     // Software / no-parallel-compile route only (#434 review, A): an awaited parallel-compile
     // cook runs warmupLiveFlightEffects and rests these families itself; this sweep would race it.
     if (!openingEffectWarmAllowed({ gpu: state.render && state.render.gpu, renderer: this.renderer })) {
       if (state.render) state.render.openingEffectWarm = { reason: 'parallel-compile-cook', touched: [], touchMs: {} };
       return;
     }
+    const invocationToken = (this._openingEffectWarmInvocationToken || 0) + 1;
+    this._openingEffectWarmInvocationToken = invocationToken;
+    const owner = {
+      token: invocationToken, state, render, world, nativeRenderer, context, generation,
+      pendingExemplars: new Set(),
+    };
+    this._openingEffectWarmOwner = owner;
     this._openingEffectWarmActive = true;
-    const generation = state.render ? state.render.admissionRunGeneration : undefined;
     const seen = new Set();
     const clock = (typeof performance !== 'undefined' && typeof performance.now === 'function')
       ? () => performance.now() : () => Date.now();
     const receipt = { touched: [], touchMs: {}, failed: 0, sweeps: 0, subset: null, reason: 'pending', at: null };
-    const owned = () => state === this.state
-      && (state.render ? state.render.admissionRunGeneration : undefined) === generation;
+    const owned = () => isCurrentOwner(owner);
     const publish = (reason) => {
+      if (!owned()) return false;
       receipt.reason = reason;
       receipt.at = Math.round(clock());
-      if (state.render) {
-        state.render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice(), touchMs: { ...receipt.touchMs } };
+      if (render) {
+        render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice(), touchMs: { ...receipt.touchMs } };
       }
+      return true;
     };
     const loading = () => state.mode === 'loading';
     const startedAt = Date.now();
@@ -24843,60 +24872,103 @@ export const render = {
     let firstTouchCharged = false;
     receipt.timedOut = [];
     receipt.skipped = [];
-    const timedTouch = async (touch, key, subject) => {
+    const timedTouch = async (touch, key, subject, { hideOnTimeout = false } = {}) => {
+      const completion = (promise) => promise
+        ? promise.then(() => true, () => true)
+        : Promise.resolve(true);
+      if (!owned() || !loading()) return { started: false, completion: Promise.resolve(true) };
       if (touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS) {
-        if (!receipt.skipped.includes(key)) {
+        if (owned() && !receipt.skipped.includes(key)) {
           receipt.skipped.push(key);
           laneWarn(this, 'openingEffectWarm', '[render] opening warm touch skipped: budget spent', key, Math.round(touchSpentMs));
         }
-        return false;
+        return { started: false, completion: Promise.resolve(true) };
       }
       const touchStarted = clock();
       let timer = null;
       let settled = null;
+      let outcome = 'failed';
+      let didFail = false;
+      let failure = null;
       try {
         settled = Promise.resolve(touch(subject));
-        const outcome = await Promise.race([
+        outcome = await Promise.race([
           settled.then(() => 'done'),
-          new Promise((resolve) => { timer = setTimeout(() => resolve('timeout'), OPENING_WARM_TOUCH_TIMEOUT_MS); }),
+          new Promise((resolve) => {
+            timer = setTimeout(() => {
+              // The exact-target port reveals subjects only for its synchronous draw and restores
+              // the prior visibility afterward. Keep a pending exemplar out of normal flight while
+              // its queued draw finishes; it remains mounted until completion so the port can reveal it.
+              if (hideOnTimeout && subject) subject.visible = false;
+              resolve('timeout');
+            }, OPENING_WARM_TOUCH_TIMEOUT_MS);
+          }),
         ]);
-        if (outcome === 'timeout') {
-          receipt.timedOut.push(key);
-          laneWarn(this, 'openingEffectWarm', '[render] opening warm touch timed out', key, OPENING_WARM_TOUCH_TIMEOUT_MS);
-        } else {
-          receipt.touched.push(key);
-        }
       } catch (error) {
-        receipt.failed += 1;
-        laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, error);
+        didFail = true;
+        failure = error;
       } finally {
         if (timer) clearTimeout(timer);
         const spent = clock() - touchStarted;
-        if (firstTouchCharged) touchSpentMs += spent;
-        firstTouchCharged = true;
-        receipt.touchMs[key] = Math.round(spent);
+        if (owned()) {
+          if (firstTouchCharged) touchSpentMs += spent;
+          firstTouchCharged = true;
+          receipt.touchMs[key] = Math.round(spent);
+          if (outcome === 'timeout') {
+            receipt.timedOut.push(key);
+            laneWarn(this, 'openingEffectWarm', '[render] opening warm touch timed out', key, OPENING_WARM_TOUCH_TIMEOUT_MS);
+          } else if (didFail) {
+            receipt.failed += 1;
+            laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, failure);
+          } else {
+            receipt.touched.push(key);
+          }
+        }
       }
       // The touch's own completion: a timed-out touch keeps running after the sweep moves on, so
-      // callers that tear the subject down wait on this rather than on the race.
-      return settled ? settled.then(() => true, () => true) : true;
+      // callers that tear the subject down wait on this rather than on the race. Keep it in a
+      // plain record: returning a promise from this async function would make `await timedTouch`
+      // assimilate the completion and defeat the timeout.
+      return { completion: completion(settled), timedOut: outcome === 'timeout' };
     };
     let restPending = false;
     const stop = (reason) => {
+      for (const subject of owner.pendingExemplars) subject.visible = false;
+      if (!owned()) return false;
+      if (restPending && (reason === 'shell-released' || reason === 'error')) {
+        restPending = false;
+        if (reason === 'error' && loading()) {
+          try {
+            if (typeof render.restLiveFlightEffectsAfterCook === 'function') {
+              render.restLiveFlightEffectsAfterCook();
+            }
+          } catch (_) { /* best-effort */ }
+        }
+        try {
+          // Remove the warm ribbon root on release/error without resetting plumes or overflow
+          // jets after flight owns the picture.
+          if (owned() && typeof render.releaseOpeningEffectSubset === 'function') {
+            render.releaseOpeningEffectSubset();
+          }
+        } catch (_) { /* best-effort */ }
+      }
+      if (!owned()) return false;
       this._openingEffectWarmActive = false;
+      this._openingEffectWarmOwner = null;
       publish(reason);
+      return true;
     };
     const step = async () => {
       try {
         return await sweep();
       } catch (error) {
-        laneWarn(this, 'openingEffectWarm', '[render] opening effect warm step failed', error);
+        if (owned()) laneWarn(this, 'openingEffectWarm', '[render] opening effect warm step failed', error);
         return stop('error');
       }
     };
     const sweep = async () => {
       if (!owned()) return stop('superseded');
       if (!loading() || Date.now() - startedAt > 90000) return stop('shell-released');
-      const render = state.render;
       const touch = render && render.touchSubjectExactTarget;
       receipt.sweeps += 1;
       if (!receipt.subset && state.playerId != null
@@ -24910,8 +24982,10 @@ export const render = {
               initMs: Math.round(r.initMs || 0), ms: Math.round(r.ms || 0) }
             : { skipped: true, reason: (r && r.reason) || 'unknown' };
         } catch (error) {
-          receipt.subset = { error: true };
-          laneWarn(this, 'openingEffectWarm', '[render] opening effect subset warmup failed', error);
+          if (owned()) {
+            receipt.subset = { error: true };
+            laneWarn(this, 'openingEffectWarm', '[render] opening effect subset warmup failed', error);
+          }
         }
       }
       if (!extrasDone && receipt.subset && typeof touch === 'function' && this.scene) {
@@ -24926,39 +25000,50 @@ export const render = {
           ['exemplar:phaseBlink', createPhaseBlinkWarmSubject]]) {
           if (!owned() || !loading()) break;
           let subject = null;
-          let settled = true;
+          let touchResult = { completion: Promise.resolve(true) };
           try {
             subject = make();
             this.scene.add(subject);
-            settled = await timedTouch(touch, key, subject);
+            owner.pendingExemplars.add(subject);
+            touchResult = await timedTouch(touch, key, subject, { hideOnTimeout: true });
           } catch (error) {
-            receipt.failed += 1;
-            laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
+            if (owned()) {
+              receipt.failed += 1;
+              laneWarn(this, 'openingEffectWarm', '[render] opening exemplar touch failed', key, error);
+            }
           } finally {
             if (subject) {
               const owned_ = subject;
               const teardown = () => {
+                owner.pendingExemplars.delete(owned_);
                 if (owned_.parent) owned_.parent.remove(owned_);
                 try { owned_.userData.disposeOpeningWarm(); } catch (_) { /* best-effort */ }
               };
               // A touch that outlived its timeout still draws this subject: detach and dispose
               // only once it settles (#434 review, finding B).
-              if (settled && typeof settled.then === 'function') settled.then(teardown, teardown);
-              else teardown();
+              touchResult.completion.then(teardown, teardown);
             }
           }
+          if (!owned()) return stop('superseded');
+          if (!loading()) return stop('shell-released');
         }
       }
       if (typeof touch === 'function' && this.scene) {
         for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
           if (!owned() || !loading()) break;
           await timedTouch(touch, key, subject);
+          if (!owned()) return stop('superseded');
+          if (!loading()) return stop('shell-released');
         }
       }
+      if (!owned()) return stop('superseded');
+      if (!loading()) return stop('shell-released');
       if (restPending) {
         restPending = false;
         try {
           if (typeof render.restLiveFlightEffectsAfterCook === 'function') render.restLiveFlightEffectsAfterCook();
+        } catch (_) { /* best-effort */ }
+        try {
           if (typeof render.releaseOpeningEffectSubset === 'function') render.releaseOpeningEffectSubset();
         } catch (_) { /* best-effort */ }
       }

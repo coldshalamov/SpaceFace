@@ -8,6 +8,76 @@ import {
   openingEffectWarmAllowed,
   OPENING_EFFECT_PLUME_DRIVE_RE,
 } from '../src/render/openingEffectWarm.js';
+import { render } from '../src/render/renderer.js';
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+function flushMicrotasks(times = 12) {
+  let chain = Promise.resolve();
+  for (let i = 0; i < times; i++) chain = chain.then(() => {});
+  return chain;
+}
+
+function installFakeTimers() {
+  const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
+  const realNow = performance.now.bind(performance);
+  const jobs = new Map();
+  let nextId = 0;
+  let now = 0;
+  globalThis.setTimeout = (callback, delay = 0) => {
+    const id = ++nextId;
+    jobs.set(id, { callback, delay: Number(delay) || 0 });
+    return id;
+  };
+  globalThis.clearTimeout = (id) => { jobs.delete(id); };
+  performance.now = () => now;
+  return {
+    runNext(delay) {
+      const entry = [...jobs.entries()].find(([, job]) => delay === undefined || job.delay === delay);
+      if (!entry) return false;
+      jobs.delete(entry[0]);
+      now += entry[1].delay;
+      entry[1].callback();
+      return true;
+    },
+    pending(delay) {
+      return [...jobs.values()].filter((job) => delay === undefined || job.delay === delay).length;
+    },
+    restore() {
+      globalThis.setTimeout = realSetTimeout;
+      globalThis.clearTimeout = realClearTimeout;
+      performance.now = realNow;
+    },
+  };
+}
+
+function makeWarmOwner(state, touchSubjectExactTarget) {
+  const owner = Object.create(render);
+  owner.state = state;
+  owner.renderer = { extensions: { get: () => null } };
+  owner.scene = new THREE.Scene();
+  state.render.warmupOpeningEffectSubset = () => ({ plasma: true, plumes: 1, ribbon: true });
+  state.render.touchSubjectExactTarget = touchSubjectExactTarget;
+  return owner;
+}
+
+function warmState() {
+  const state = {
+    mode: 'loading',
+    playerId: 'player',
+    entities: { get: () => ({ id: 'player' }) },
+    world: {},
+    contextRestoreSeq: 0,
+    render: { gpu: { software: true, tier: 'software' }, admissionRunGeneration: 1 },
+  };
+  return state;
+}
 
 const mesh = (name, materialName) => {
   const m = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial());
@@ -55,7 +125,6 @@ test('the effect warm runs under loading only and builds the narrow subset, not 
   assert.match(renderer, /if \(profile === 'opening'\) this\._touchOpeningEffectFamilyUnderShell\(\);/);
   const a = renderer.indexOf('  _touchOpeningEffectFamilyUnderShell() {');
   const body = renderer.slice(a, renderer.indexOf('  _parkBoundedWarmRoots() {', a));
-  assert.match(body, /admissionRunGeneration : undefined\) === generation/);
   assert.match(body, /if \(!loading\(\) \|\| Date\.now\(\) - startedAt > 90000\) return stop\('shell-released'\);/);
   assert.match(body, /warmupOpeningEffectSubset\(\{ plumeMaterialRe: OPENING_EFFECT_PLUME_DRIVE_RE \}\)/);
   assert.doesNotMatch(body, /warmupLiveFlightEffects\(/);
@@ -88,6 +157,11 @@ test('late first-link exemplars: stand-in + marker share the live materials; pha
   assert.equal(blink.children.length, 2);
   assert.notEqual(blink.children[0].material.fragmentShader, blink.children[1].material.fragmentShader);
   assert.ok(blink.children[0].material.uniforms.uZip);
+  const blinkAgain = createPhaseBlinkWarmSubject();
+  assert.equal(blinkAgain.children[0].material, blink.children[0].material);
+  assert.equal(blinkAgain.children[1].material, blink.children[1].material);
+  blink.userData.disposeOpeningWarm();
+  blinkAgain.userData.disposeOpeningWarm();
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(renderer, /\['exemplar:standIn', createOpeningStandInWarmSubject\]/);
   assert.doesNotMatch(renderer, /this\.bloom\.prepareResources\(\(\) => Promise\.resolve\(\)\)/);
@@ -109,8 +183,6 @@ test('warm touches run under a total budget with a per-touch timeout, and the li
   assert.ok(mod.OPENING_WARM_TOUCH_TIMEOUT_MS < mod.OPENING_WARM_TOUCH_BUDGET_MS);
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(renderer, /touchSpentMs >= OPENING_WARM_TOUCH_BUDGET_MS/);
-  assert.match(renderer, /resolve\('timeout'\), OPENING_WARM_TOUCH_TIMEOUT_MS/);
-  assert.match(renderer, /receipt\.timedOut\.push\(key\)/);
   const THREE = await import('three');
   const scene = new THREE.Scene();
   const marks = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial());
@@ -139,14 +211,176 @@ test('the opening effect warm runs only where the opening cook is not awaited (#
   assert.match(body.slice(gate, gate + 300), /reason: 'parallel-compile-cook'/);
 });
 
-test('exemplar teardown waits for a timed-out touch; a step error clears the active flag (#434 findings B, D)', async () => {
-  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  const a = renderer.indexOf('  _touchOpeningEffectFamilyUnderShell() {');
-  const body = renderer.slice(a, renderer.indexOf('  _parkBoundedWarmRoots() {', a));
-  assert.match(body, /return settled \? settled\.then\(\(\) => true, \(\) => true\) : true;/);
-  assert.match(body, /settled = await timedTouch\(touch, key, subject\);/);
-  assert.match(body, /settled\.then\(teardown, teardown\)/);
-  assert.match(body, /return await sweep\(\);\s*\} catch \(error\) \{[\s\S]{0,160}return stop\('error'\);/);
-  const vfx = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(vfx, /options\.ribbonExemplar/);
+test('a timed-out exemplar releases the sweep but remains attached until its touch settles (#434 findings B, D)', async () => {
+  const timers = installFakeTimers();
+  const unfinishedTouch = deferred();
+  const touches = [];
+  let deferredDrawSawVisible = false;
+  const state = warmState();
+  const owner = makeWarmOwner(state, (subject) => {
+    touches.push(subject.name);
+    if (touches.length !== 1) return Promise.resolve();
+    return unfinishedTouch.promise.then(() => {
+      const priorVisible = subject.visible;
+      subject.visible = true;
+      deferredDrawSawVisible = subject.visible;
+      subject.visible = priorVisible;
+    });
+  });
+  state.render.restLiveFlightEffectsAfterCook = () => {};
+  state.render.releaseOpeningEffectSubset = () => {};
+  try {
+    owner._touchOpeningEffectFamilyUnderShell();
+    assert.equal(timers.runNext(0), true, 'the initial loading-shell sweep starts');
+    await flushMicrotasks();
+    assert.deepEqual(touches, ['SF_OpeningStandInWarm']);
+
+    assert.equal(timers.runNext(1000), true, 'the per-touch deadline fires');
+    await flushMicrotasks();
+    assert.deepEqual(touches, ['SF_OpeningStandInWarm', 'SF_PhaseBlinkOpeningWarm'],
+      'a pending draw no longer keeps the sweep waiting after its timeout');
+    const standIn = owner.scene.children.find((child) => child.name === 'SF_OpeningStandInWarm');
+    assert.ok(standIn, 'the timed-out subject stays mounted while its draw is still pending');
+    assert.equal(standIn.visible, false, 'the pending exemplar is hidden from ordinary scene draws');
+    assert.ok(state.render.openingEffectWarm.timedOut.includes('exemplar:standIn'));
+
+    unfinishedTouch.resolve();
+    await flushMicrotasks();
+    assert.equal(deferredDrawSawVisible, true, 'the exact-target port can reveal the hidden exemplar for its draw');
+    assert.equal(standIn.parent, null, 'the subject is detached when the draw finally settles');
+  } finally {
+    unfinishedTouch.resolve();
+    await flushMicrotasks();
+    timers.restore();
+  }
+});
+
+test('a superseded warm cannot publish, rest effects, or clear a newer invocation', async () => {
+  const timers = installFakeTimers();
+  const unfinishedTouch = deferred();
+  const touches = [];
+  const firstState = warmState();
+  const owner = makeWarmOwner(firstState, (subject) => {
+    touches.push(subject.name);
+    return touches.length === 1 ? unfinishedTouch.promise : Promise.resolve();
+  });
+  let firstRestCount = 0;
+  let firstReleaseCount = 0;
+  firstState.render.restLiveFlightEffectsAfterCook = () => { firstRestCount += 1; };
+  firstState.render.releaseOpeningEffectSubset = () => { firstReleaseCount += 1; };
+  try {
+    owner._touchOpeningEffectFamilyUnderShell();
+    assert.equal(timers.runNext(0), true);
+    await flushMicrotasks();
+    assert.deepEqual(touches, ['SF_OpeningStandInWarm']);
+    const pendingExemplar = owner.scene.children.find((child) => child.name === 'SF_OpeningStandInWarm');
+    assert.ok(pendingExemplar);
+
+    const secondState = warmState();
+    const secondTouches = [];
+    let secondRestCount = 0;
+    let secondReleaseCount = 0;
+    secondState.render.touchSubjectExactTarget = (subject) => {
+      secondTouches.push(subject.name);
+      return Promise.resolve();
+    };
+    secondState.render.warmupOpeningEffectSubset = () => ({ plasma: true, plumes: 1, ribbon: true });
+    secondState.render.restLiveFlightEffectsAfterCook = () => { secondRestCount += 1; };
+    secondState.render.releaseOpeningEffectSubset = () => { secondReleaseCount += 1; };
+    owner.state = secondState;
+    owner._touchOpeningEffectFamilyUnderShell();
+    assert.equal(pendingExemplar.visible, false,
+      'starting a replacement state hides the old exemplar while its touch remains pending');
+    assert.equal(timers.runNext(0), true, 'the replacement state starts its own warm');
+    await flushMicrotasks();
+    assert.deepEqual(secondTouches, ['SF_OpeningStandInWarm', 'SF_PhaseBlinkOpeningWarm']);
+    const currentReceipt = secondState.render.openingEffectWarm;
+    assert.ok(currentReceipt);
+    assert.equal(secondRestCount, 1);
+    assert.equal(secondReleaseCount, 1);
+    assert.equal(owner._openingEffectWarmActive, true);
+
+    unfinishedTouch.resolve();
+    await flushMicrotasks();
+    assert.equal(secondState.render.openingEffectWarm, currentReceipt,
+      'the old completion does not replace the new receipt');
+    assert.equal(owner._openingEffectWarmActive, true,
+      'the old completion cannot clear the new invocation active flag');
+    assert.equal(firstState.render.openingEffectWarm, undefined,
+      'the old completion cannot publish a receipt after its state is superseded');
+    assert.equal(firstRestCount, 0, 'the old completion does not rest effects after supersession');
+    assert.equal(firstReleaseCount, 0, 'the old completion does not release the replacement subset');
+  } finally {
+    unfinishedTouch.resolve();
+    await flushMicrotasks();
+    timers.restore();
+  }
+});
+
+test('a timed-out warm that crosses the shell release never rests live flight effects', async () => {
+  const timers = installFakeTimers();
+  const unfinishedTouch = deferred();
+  const touches = [];
+  const state = warmState();
+  const owner = makeWarmOwner(state, (subject) => {
+    touches.push(subject.name);
+    return unfinishedTouch.promise;
+  });
+  let restCount = 0;
+  let releaseCount = 0;
+  state.render.restLiveFlightEffectsAfterCook = () => { restCount += 1; };
+  state.render.releaseOpeningEffectSubset = () => { releaseCount += 1; };
+  try {
+    owner._touchOpeningEffectFamilyUnderShell();
+    assert.equal(timers.runNext(0), true);
+    await flushMicrotasks();
+    assert.deepEqual(touches, ['SF_OpeningStandInWarm']);
+
+    state.mode = 'flight';
+    assert.equal(timers.runNext(1000), true);
+    await flushMicrotasks();
+    assert.equal(state.render.openingEffectWarm.reason, 'shell-released');
+    assert.equal(owner._openingEffectWarmActive, false);
+    const exemplar = owner.scene.children.find((child) => child.name === 'SF_OpeningStandInWarm');
+    assert.ok(exemplar, 'the pending exact-target draw retains its subject until settlement');
+    assert.equal(exemplar.visible, false, 'the pending exemplar is hidden from normal flight');
+    assert.equal(restCount, 0);
+    assert.equal(releaseCount, 1, 'the warm-only ribbon root is detached without resetting flight effects');
+
+    unfinishedTouch.resolve();
+    await flushMicrotasks();
+    assert.equal(owner._openingEffectWarmActive, false);
+    assert.equal(restCount, 0, 'late draw completion leaves the flight effects alone');
+    assert.equal(exemplar.parent, null, 'the pending exemplar is detached after its draw settles');
+  } finally {
+    unfinishedTouch.resolve();
+    await flushMicrotasks();
+    timers.restore();
+  }
+});
+
+test('an owned sweep error rests loading effects and releases the warm subset', async () => {
+  const timers = installFakeTimers();
+  const state = warmState();
+  const owner = makeWarmOwner(state, () => Promise.resolve());
+  let restCount = 0;
+  let releaseCount = 0;
+  state.render.restLiveFlightEffectsAfterCook = () => { restCount += 1; };
+  state.render.releaseOpeningEffectSubset = () => { releaseCount += 1; };
+  const brokenNode = { name: 'fixture-error-node' };
+  Object.defineProperty(brokenNode, 'children', {
+    get() { throw new Error('fixture traversal failure'); },
+  });
+  owner.scene.children.push(brokenNode);
+  try {
+    owner._touchOpeningEffectFamilyUnderShell();
+    assert.equal(timers.runNext(0), true);
+    await flushMicrotasks();
+    assert.equal(state.render.openingEffectWarm.reason, 'error');
+    assert.equal(restCount, 1, 'an owned loading error restores the live effect state');
+    assert.equal(releaseCount, 1, 'an owned loading error removes the warm-only subset');
+    assert.equal(owner._openingEffectWarmActive, false);
+  } finally {
+    timers.restore();
+  }
 });
