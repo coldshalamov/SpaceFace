@@ -93,6 +93,34 @@ export const POST_GC_OWNER_ROW_LIMIT = 256;
 // Six hours — the acceptance soak is two hours; the bound catches a dropped
 // or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
 export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
+
+// One public save must own immutable warmups, the heap baseline, and every measured
+// restore. Ordinary soaks still let each cycle create its own fresh quick-save.
+export function createReleaseSoakCycleRunner({ immutable = false, runCycle = runSoakCycle } = {}) {
+  let fixedSave = null;
+  return {
+    get fixedSave() { return fixedSave; },
+    async run(page, options) {
+      const cycle = await runCycle(page, { ...options, fixedSave });
+      if (immutable) {
+        assert(cycle.saveEnvelope?.available === true, 'immutable diagnostic could not establish a fixed save envelope');
+        const reference = fixedSave || {
+          slot: cycle.saveEnvelope.slot || 'quick',
+          saved: cycle.saved,
+          envelope: cycle.saveEnvelope,
+        };
+        const expectedHash = reference.envelope.serializedIdentity?.sha256;
+        assert(expectedHash && cycle.loadedEnvelope?.serializedIdentity?.sha256 === expectedHash
+          && cycle.fixedSaveUnchanged === true, 'immutable cycle did not restore the original quick-save bytes');
+        // Failed initial cycles never establish a reference; a retry keeps the last
+        // successfully validated reference rather than accepting a different slot.
+        fixedSave = reference;
+      }
+      return cycle;
+    },
+  };
+}
+
 export const DYNAMIC_BUFFER_FULL_SPAN_VARIANT = 'dynamic_buffer_full_span';
 // The teardown snapshot is emitted through the page's console while the page is still alive.
 // Keep the marker private to this probe so the normal issue tracker does not treat the diagnostic
@@ -438,11 +466,13 @@ export async function runReleaseSoakProbe({
     }).catch(() => {});
     let prevWarmupSnapshot = null;
     let lastWarmupRestorePopulation = null;
+    const immutableMeasured = immutableSaveCycles > 0;
+    const cycleRunner = createReleaseSoakCycleRunner({ immutable: immutableMeasured });
     for (let warmupIndex = 0; warmupIndex < WARMUP_MAX_CYCLES; warmupIndex++) {
       let warmupCycle = null;
       try {
         warmupCycle = await withTimeout(
-          runSoakCycle(page, { index: `warmup-${warmupIndex}`, outputDir, log: doLog, screenshots: false }),
+          cycleRunner.run(page, { index: `warmup-${warmupIndex}`, outputDir, log: doLog, screenshots: false }),
           cycleTimeoutMs,
           `release-soak warmup cycle ${warmupIndex}`,
         );
@@ -497,6 +527,7 @@ export async function runReleaseSoakProbe({
     // baseline for population-growth interpretation; it is diagnostic context, not a second
     // heap sample taken at the load boundary.
     baselineMemory.restorePopulation = lastWarmupRestorePopulation;
+    const immutableSaveReference = cycleRunner.fixedSave;
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
       await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot'));
     }
@@ -508,9 +539,7 @@ export async function runReleaseSoakProbe({
     const soakStartedAt = Date.now();
     const soakThreshold = readMinSpecHitchThreshold(root);
     await installSoakRecorder(page, { hitchThresholdMs: soakThreshold });
-    const immutableMeasured = immutableSaveCycles > 0;
     const measuredCycleCount = immutableMeasured ? immutableSaveCycles : cycles;
-    let immutableSaveReference = null;
     const immutableSaveRows = [];
     doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${measuredCycleCount}${immutableMeasured ? ', fixed quick-save' : minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
 
@@ -528,12 +557,11 @@ export async function runReleaseSoakProbe({
       for (let attempt = 0; attempt < 2 && !cycle && !cycleError; attempt++) {
         try {
           cycle = await withTimeout(
-            runSoakCycle(page, {
+            cycleRunner.run(page, {
               index,
               outputDir,
               log: doLog,
               screenshots: takeCycleScreenshots,
-              fixedSave: immutableSaveReference,
             }),
             cycleTimeoutMs,
             `release-soak cycle ${index}`,
@@ -580,14 +608,6 @@ export async function runReleaseSoakProbe({
           }
         } catch { /* trail dump is best-effort over the primary diag */ }
         throw cycleError;
-      }
-      if (immutableMeasured && !immutableSaveReference) {
-        assert(cycle.saveEnvelope?.available === true, 'immutable diagnostic could not establish a fixed save envelope');
-        immutableSaveReference = {
-          slot: cycle.saveEnvelope.slot || 'quick',
-          saved: cycle.saved,
-          envelope: cycle.saveEnvelope,
-        };
       }
       cycleResults.push(cycle);
       const checkpoint = await withTimeout(

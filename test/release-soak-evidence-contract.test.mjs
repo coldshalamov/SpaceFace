@@ -23,6 +23,7 @@ import {
 } from '../scripts/lib/releaseSoakContracts.mjs';
 import {
   canonicalPostGcOwnerRows,
+  createReleaseSoakCycleRunner,
   evaluateSourceStability,
   POST_GC_OWNER_ROW_LIMIT,
   postGcOwnerEvaluateArgument,
@@ -249,6 +250,80 @@ test('restore population receipt compares the loaded envelope with a bounded pos
     postLoadEntities: saved,
   });
   assert.equal(stable.newlyMaterialized, null, 'equal populations need no extra histogram');
+});
+
+test('immutable cycle runner fixes warmup0 bytes before the baseline and all measured restores', async () => {
+  const calls = [];
+  let saves = 0;
+  const runner = createReleaseSoakCycleRunner({
+    immutable: true,
+    async runCycle(_page, options) {
+      calls.push(options);
+      const envelope = options.fixedSave?.envelope || {
+        available: true, slot: 'quick', serializedIdentity: { sha256: `save-${++saves}` },
+        envelopeEntities: [{ id: 'player' }, { id: 'persistent-wreck' }],
+      };
+      return {
+        saved: options.fixedSave?.saved || { tick: 42 }, saveEnvelope: envelope,
+        loadedEnvelope: { serializedIdentity: envelope.serializedIdentity }, fixedSaveUnchanged: true,
+        restorePopulation: { envelopeEntityCount: envelope.envelopeEntities.length },
+      };
+    },
+  });
+  await runner.run(null, { index: 'warmup-0' });
+  const original = runner.fixedSave;
+  await runner.run(null, { index: 'warmup-1' });
+  const lastWarmup = await runner.run(null, { index: 'warmup-2' });
+  assert.equal(lastWarmup.restorePopulation.envelopeEntityCount, original.envelope.envelopeEntities.length,
+    'the pre-measurement baseline population belongs to the same fixed envelope');
+  for (let index = 0; index < 3; index++) await runner.run(null, { index });
+  assert.equal(saves, 1, 'only the successful initial warmup creates the public save');
+  assert.equal(calls[0].fixedSave, null);
+  assert(calls.slice(1).every((call) => call.fixedSave === original),
+    'later warmups and measured restores all reuse the exact validated reference');
+  assert.deepEqual(calls.filter((call) => Number.isInteger(call.index)).map((call) => call.index), [0, 1, 2],
+    'warmup cycles do not consume the three measured rows');
+});
+
+test('ordinary soak cycles retain fresh-save behavior', async () => {
+  const calls = [];
+  const runner = createReleaseSoakCycleRunner({
+    async runCycle(_page, options) { calls.push(options); return { index: options.index }; },
+  });
+  for (const index of ['warmup-0', 'warmup-1', 0, 1, 2]) await runner.run(null, { index });
+  assert(calls.every((call) => call.fixedSave === null));
+  assert.equal(runner.fixedSave, null, 'normal cycles never acquire an immutable save reference');
+});
+
+test('immutable reference requires successful restore validation and survives a failed retry', async () => {
+  let outcome = 'reject';
+  const envelope = { available: true, slot: 'quick', serializedIdentity: { sha256: 'original-bytes' } };
+  const calls = [];
+  const runner = createReleaseSoakCycleRunner({
+    immutable: true,
+    async runCycle(_page, options) {
+      calls.push(options);
+      if (outcome === 'reject') throw new Error('public restore failed');
+      return {
+        saveEnvelope: envelope, saved: { tick: 42 }, fixedSaveUnchanged: outcome === 'valid',
+        loadedEnvelope: { serializedIdentity: { sha256: outcome === 'valid' ? 'original-bytes' : 'changed-bytes' } },
+      };
+    },
+  });
+  await assert.rejects(runner.run(null, { index: 'warmup-0' }), /public restore failed/);
+  assert.equal(runner.fixedSave, null);
+  outcome = 'mutated';
+  await assert.rejects(runner.run(null, { index: 'warmup-0' }), /original quick-save bytes/);
+  assert.equal(runner.fixedSave, null, 'an invalid initial result cannot establish baseline authority');
+  outcome = 'valid';
+  await runner.run(null, { index: 'warmup-0' });
+  const original = runner.fixedSave;
+  outcome = 'reject';
+  await assert.rejects(runner.run(null, { index: 0 }), /public restore failed/);
+  assert.equal(runner.fixedSave, original);
+  outcome = 'valid';
+  await runner.run(null, { index: 0 });
+  assert.equal(calls.at(-1).fixedSave, original, 'retry preserves the last validated fixed envelope');
 });
 
 test('immutable save diagnostic binds repeated materialization to one serialized envelope', () => {
