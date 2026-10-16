@@ -24,6 +24,7 @@ const STYLE_ID = 'sf-orrery-settings-layouts';
 const S = 'html body #screens > .k-screen.of-settings.orr-settings';
 const C = 'html body #screens > .k-screen.of-credits.orr-credits';
 const CD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-credits.orr-credits';
+const SD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-settings.orr-settings';
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
@@ -94,7 +95,7 @@ ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backd
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
 /* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip on the stage's bottom edge while rows continue */
 ${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:6px 14px 7px !important; cursor:pointer;
-  ${PLAIN} ${LABEL} font-size:11px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
+  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
   border:1px solid rgb(${BONE} / .42) !important; border-radius:999px !important; }
 ${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:var(--dp-hand-hot, #ffd98c); }
 ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
@@ -280,7 +281,7 @@ ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
 ${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.16em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
   background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
@@ -341,6 +342,46 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane { padding-right:8px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:12px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 150px) 46px !important; }
+}
+/* a very short desktop window (844×390 / ≤460): stacked ≤900 put the five-rung category ladder
+   in an auto row (~208px) so the stage track collapsed to 0 and MUTE ALL printed through MORE
+   and ‹ BACK. Lay the tabs sideways (credits-style) and compress chrome so the pane gets a real
+   band. Real phones in landscape use data-sf-mobile and stay out. No width floor: at 641–650
+   (and narrower) a short desktop window had the same 34px pane. */
+@media (max-width:900px) and (max-height:460px) {
+  ${SD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important; }
+  ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
+  ${SD} > .k-hang { min-width:0 !important; width:100% !important; }
+  ${SD} .sf-tabbar { flex-direction:row !important; width:100% !important; gap:4px !important; padding:0 !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; overscroll-behavior-x:contain;
+    background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; }
+  ${SD} .sf-tabbar::-webkit-scrollbar { display:none; }
+  ${SD} .sf-tabbar > li { width:auto !important; flex:0 0 auto; }
+  ${SD} .sf-tabbar > li::before { display:none !important; }
+  ${SD} .sf-tabbar .sf-tab { width:auto !important; min-height:32px !important; padding:6px 10px !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${SD} .sf-tabbar .sf-tab::before { display:none !important; }
+  ${SD} .sf-tabbar .sf-tab:is([aria-selected="true"], .active)::after { left:10px !important; right:10px !important;
+    top:auto !important; bottom:0 !important; width:auto !important; height:2px !important; margin:0 !important;
+    clip-path:none !important; background:rgb(${HOT} / .85) !important; transform:none !important; }
+  ${SD} .sf-tabbar .sf-tab:is([aria-selected="true"], .active)::before { display:none !important; }
+  ${SD} #sf-settings-pane { padding-bottom:28px !important; }
+  ${SD} #sf-settings-pane .k-row { min-height:36px !important; }
+  ${SD} > .orr-set-more { margin:0 0 2px 24px !important; padding:4px 12px 5px !important; }
+  ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
+}
+/* short three-column desktop (1024×440 / 901–1100 × ≤460): hang stays beside the pane, but full
+   chrome left MORE on ‹ BACK. Compress title/hang/foot so MORE parks in the stage's bottom pad. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:460px) {
+  ${SD} { padding-top:14px !important; padding-bottom:8px !important; row-gap:10px !important; }
+  ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(28px, 7vh, 38px) !important; line-height:1 !important; }
+  ${SD} .sf-tabbar .sf-tab { min-height:32px !important; padding-top:4px !important; padding-bottom:4px !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${SD} #sf-settings-pane { padding-bottom:28px !important; }
+  ${SD} > .orr-set-more { margin:0 0 -8px 20px !important; padding:4px 12px 5px !important; }
+  ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
 }
 html.sf-reduce-motion ${S} #sf-settings-pane .sf-bind-btn { animation:none !important; }
 @media (forced-colors: active) {
