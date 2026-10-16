@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   retail-phone:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.engine == 'webkit' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
