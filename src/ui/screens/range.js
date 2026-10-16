@@ -239,6 +239,33 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(280px + var(--k-gap)); }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__drawer :is(.fh-legend, .k-row__name, .k-row__sub) { text-shadow: 0 1px 2px rgb(4 6 9 / .9); }
 }
+/* Very short desktop (≤1100 × ≤460, e.g. 844×390 / 801×390 / 900×420): the ≤640 short
+   block still left the foot's RULES / BESTIARY / CLOSE and the run gauge below the frame
+   (title + five-row ladder + dossier outgrew ~390px). Compress further so the tabs stay on
+   glass and the course keeps a slim band. Desktop only — phones keep the mobile sheet. */
+@media (max-width: 1100px) and (max-height: 460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range { padding: 10px 24px 6px; row-gap: 4px; }
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range > .k-corner { top: 10px; right: 24px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title { padding-right: 120px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-hero__n { font-size: 26px; line-height: 1; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p { font-size: 12px; line-height: 15px;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p + p { font-size: 12px; line-height: 15px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs { margin-top: 2px; column-gap: 14px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs .orr-lampkey { min-height: 28px !important; font-size: 12px !important; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-foot { row-gap: 3px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder { column-gap: 8px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder::before { height: 6px; margin-bottom: 0; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li { padding-bottom: 5px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li::before { height: 5px; bottom: 0; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder .sf-range__word { padding: 1px 0; letter-spacing: .04em; font-size: 12px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 2px 2px; font-size: 12px; gap: 12px; letter-spacing: .08em; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__tabs { column-gap: 14px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 12px; gap: 6px; padding-left: 8px; letter-spacing: .06em; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 28px; height: 28px; }
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range .sf-range__drawer.fh-plate { width: 240px; border-width: 8px 10px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(240px + var(--k-gap)); }
+}
 /* Mid-height desktop frames (641–900px tall at any width, or ≤640px past 1100px wide; e.g.
    1280×720, 1024×768, 1366×768, 1440×900): the kit's 48px row gaps, the 64px top pad, a
    four-row ladder at 42px a row and the 64px run gauge left the course ~85px at 1280×720.
@@ -256,6 +283,34 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 7px 2px; font-size: 14px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 14px; padding-top: 0; padding-bottom: 0; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 48px; height: 48px; }
+}
+/* Narrow desktop window (≤520 wide, not phone — e.g. 390×844): the 16-rule ladder wraps into
+   many rows and pushes RULES / BESTIARY / CLOSE below the frame. Use a sideways-scrolling one-row
+   ladder like the phone sheet, without taking the phone title/course layout. */
+@media (max-width: 520px) {
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range { padding: 16px 16px 12px; row-gap: 10px; }
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range > .k-corner { top: 16px; right: 16px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title { padding-right: 88px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-hero__n { font-size: 28px; line-height: 1.05; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p { font-size: 13px; line-height: 17px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p + p { font-size: 12px; line-height: 16px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs { margin-top: 6px; flex-wrap: wrap; row-gap: 4px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-foot { row-gap: 6px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder {
+    flex-wrap: nowrap; overflow: auto hidden; width: 100%; max-width: 100%; box-sizing: border-box;
+    column-gap: 18px; row-gap: 0; padding-top: 8px; scrollbar-width: none; overscroll-behavior-x: contain;
+    background: linear-gradient(rgb(236 230 216 / .46), rgb(236 230 216 / .46)) 0 4px / 100% 1.5px no-repeat local,
+      linear-gradient(rgb(236 230 216 / .085), rgb(236 230 216 / .085)) 0 0 / 100% 8px no-repeat local;
+    -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0) calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, rgb(0 0 0) calc(100% - 28px), transparent); }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder::-webkit-scrollbar { display: none; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder::before { display: none; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li { flex: 0 0 auto; padding-bottom: 10px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li:last-child { padding-right: 28px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder .sf-range__word { white-space: nowrap; padding: 2px 1px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 5px 2px; font-size: 12px; gap: 12px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 12px; gap: 6px; padding-left: 8px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 32px; height: 32px; }
 }
 /* Phone (data-sf-mobile): the 16 rules wrapped into a ten-row ladder (44px touch rows) and the
    four-line title took the whole frame, so the course was 0px. Here the ladder is one row that

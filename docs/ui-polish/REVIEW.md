@@ -1404,3 +1404,49 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `orrery-flight` findings went from 14 to 4 at 844×390, from 18 to 6 at 390×844, from 12 to 6 at 960×540, and from 8 to 6 at 1280×720. It is 4 at 801×390, 1024×440 and 1366×768, and 0 at 1920×1080. All the remaining findings are the Cluster's curved class line (HITCH · KESTREL CLASS · STARTER) touching its own Shield/Armor legend at cluster scale ≤.6. That also happens on master at 960 and 1280, and it lives in the shared `flightCluster.js`. The focused test `orrery-speed-dial` passes. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish58/{before,after}/flight/` and `compare-orrery-flight-*.png`.
 
 **Leftovers (not this pass):** the Cluster class line vs legend at scale ≤.6 (shared with the live HUD through `hudAdapter`, so fix it there and check it live). The live HUD cluster has no short-frame step (it stays at .6 at 844×390). My Ship hull callouts at 1101–1160 wide (in #423's `#sf-ship` CSS). Shipworks lower callouts at 844×390 (the berth scrolls by design).
+
+## My Ship (flight host) on small frames — session notes (2026-10-16, ui-polish-57)
+
+**Before (master 72d47e7bf8):** Pause → My Ship (`ship`) kept fixed 230 / 1fr / 285 columns at every size. At 844×390 the hull had a 185px column, so the hull's sentence, the slot callouts (Cargo / OPEN) and the ship ran into each other (bench: 6 ON TOP OF). At 960×540 the sentence and callouts crowded a 300px stage. In a 390×844 desktop window the hull column was 0px wide and the screen showed only the fleet card and a clipped systems rail.
+
+**After (`styles/station.css`, CSS only, scoped to `#sf-ship` on non-mobile hosts):**
+- **641–1100 wide:** the fleet card stands over the systems column (`clamp(220px, 28vw, 285px)`) and the hull takes the rest of the frame. The sentence gets a dissolved pad behind it and its scroll box ends on a whole line (4 lines). (Review fix: the split now runs 901–1100 wide, or 801–1100 on a window ≤460 tall. Narrower, it left the hull ~300–550px: at 641–800 the callouts printed over the stat strip — 641×800, 641×461, 761×460 went 0 → 2–6 vs master — and at 780–880 × 500–700 the sentence printed over the hull's top callouts, 6 → 10 vs master at 780–844×600. Those sizes now take the stacked layout below: 0 findings across 761–1100 × 390–800 except 801×390/460, 2 (master 6).)
+- **≤460 tall:** frame margin 14/20px instead of 48px, hull name 26px, sentence 12.5px in a 3-line scroll box.
+- **≤800 wide, or ≤900 wide above 460 tall (desktop window):** the fleet card, hull and systems stack and the screen scrolls; 420px stage, sentence in a 4-line box.
+- Real phones (`data-sf-mobile="1"`) keep `mobileScreenLayouts`' own flow. Selectors and IDs are unchanged.
+
+**Checked:** bench `ship` 0 findings at 844×390, 960×540, 1024×440, 1280×720, 1920×1080 and 390×844 (6 → 0 at 844×390). 1280×720 and 1920×1080 are pixel-identical to master. Focused tests `pause-ship-fit` and `instrument-hierarchy-six-screens` pass; `station-field-hardware` has one failure (stylesheet order) that also fails on master. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish57/{before,after}/`, `compare-ship-*.png`.
+
+**Second pass, desktop sizes (same PR):** the build hero (GENERALIST) joined the band row, but the old sizes still assumed four. At 1101–1366 wide the five numbers overprinted each other ("DOCKED CAN TOW GENERALIS", cut at the plate's edge); above 1366 GENERALIST dropped to a second row and pushed SAVE FIT under the plate (1440×900, 1920×1080). Now, at ≥1101 wide, the numbers size to the band's own width (`container-type: inline-size`, `clamp(18px, 5cqi − 10px, 47.52px)`), so the usual row holds on one line from ~1180 to 1920 and a long build name wraps whole instead of overprinting. At 1101–1240 the stage floor drops to 290px, the plate can take 56% and the handling columns close to a 12px gap, so SAVE FIT and Inertia/Brake stay on the plate. The sentence's dissolved pad now applies at every desktop width, since the hull runs under it up to ~1600 wide. Bench `ship` 0 findings at 1152×864, 1180×720, 1240×700, 1280×720, 1366×768, 1440×900, 1920×1080. Shots: `/workspace/spaceface-scratch/ui-shots/polish58/{before,after}/`, `compare-ship-*.png`, `crop-*.png`.
+
+**Leftovers (not this pass):** at 1101–1160 wide (e.g. 1120×700) the hull callouts still meet the sentence and the right handling column runs past the plate (also on master); the `orrery-flight` direction proof is cramped at 844×390 (preview, not the live HUD); Shipworks lower callouts @844×390 (berth scrolls by design).
+
+## Flight cluster: class ring clears Shield/Armor at scale ≤.6 (ui-polish-59)
+
+**Before (master b602ddebaf / post-#425 9026a5dcf8):** at `--orr-cluster-scale` ≤.6 (960×540 and 1280×720 — the live HUD and the `orrery-flight` proof both use that step under 1300 wide) the legend's `.orr-label` grows via `12 / scale`, so Shield and Armor meet the curved class ring (`HITCH · KESTREL CLASS · STARTER` at startDeg 160). Bench: 6 ON TOP OF (HITCH↔Shield/Armor) at 960 and at 1280. 1920 (scale .85) was already clean.
+
+**After (`src/ui/orrery/flightCluster.js` only, CSS):**
+- Legend (and the next-decision cue under it) nudge left by `(12/scale − 12) * 5` so the column clears the engraving's x≈303; scale 1 → 0 extra. startDeg stays 160 — 1920 keeps the same ring placement.
+- Cap `.orr-label` inverse scale at 15px local (~9px on-screen at .6) so Shield/Armor stay readable without growing into the ring.
+- Selectors and IDs unchanged. Shared cluster — live HUD via `hudAdapter` gets the same clearance.
+
+**Checked:** on tip with #425 merged, bench `orrery-flight` findings go to **0** at 844×390, 960×540, 1280×720 and 1920×1080 (the HITCH↔Shield/Armor ON TOP OFs that #425 left at 960/1280 are gone). Pre-#425 master baseline for this branch's before shots: 12→0 at 960, 8→0 at 1280, 0→0 at 1920; 844's preview-chrome notes were already owned by #425. Focused tests: `orrery-hud-adapter`, `orrery-speed-dial` pass. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish59/{before,after}/`, `compare-orrery-flight-{960x540,1280x720,1920x1080,844x390}.png`.
+
+**Leftovers (not this pass):** My Ship callouts @1101–1160 (open #423 `station.css`); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted state @960 (optional).
+
+**Review fix (Code Work):** the 15px label cap put Hull/Shield/Armor at ~9px on screen at scale .6 (live HUD ≤1300 wide) and 10.5px at .7 (1301–1700), under the 12 px type floor, and the live HUD's engraving (`HITCH · STARTER · TIER 0`) still met Armor at .7 and .85. The cap is gone (labels are 12 px on screen at every step again) and the engraving now starts at 135deg instead of 160, so it runs up the lower right clear of the legend. Live HUD probe (real game, ring glyph boxes vs legend boxes, full / hit / critical damage): 0 overlaps at 844×390, 960×540, 1280×720, 1440×900, 1920×1080, against 4–13 legend/engraving glyph overlaps on master (13 at 844 and 960, 11 at 1280, 8 at 1440, 4 at 1920).
+
+## Range on a very short / narrow desktop: RULES · BESTIARY · CLOSE stay on glass (ui-polish-60)
+
+**Before (master 9026a5dcf8):** the existing ≤1100 × ≤640 short block kept 960×540 clean, but under ~460px tall (844×390 / 801×390 / 900×420) the title + five-row ladder + dossier still outgrew the frame, so RULES / BESTIARY / CLOSE and the run gauge fell below the fold (bench: 3 OFF FRAME at each size). A narrow desktop window (390×844, not phone) wrapped the 16 rules into many rows and did the same.
+
+**After (`src/ui/screens/range.js` only, CSS, desktop via `html:root:not([data-sf-mobile="1"])`):**
+- New `@media (max-width:1100px) and (max-height:460px)`: tighter frame pad / row gap, smaller hero and one-line-clamped blurbs, denser ladder ticks, compact dossier and 28px run gauge so the tabs row stays on glass and the course keeps a slim band.
+- New `@media (max-width:520px)`: sideways-scrolling one-row ladder (phone-style fade) so a 390-wide desktop window no longer stacks sixteen rungs.
+- Selectors and IDs unchanged. Phones (`data-sf-mobile`) keep the mobile sheet.
+
+**Checked:** bench `range` findings 3→0 at 844×390, 801×390, 900×420 and 390×844; stay 0 at 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 960/1920 0%; 1280 ~0.1% noise; short/narrow frames change as intended. `--phone` 390×844 / 844×390 clean. `--walk` at 844×390 reaches all 22 controls including RULES / BESTIARY / CLOSE. Focused test `range-door-funnel` passes (6). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish60/{before,after,compare}/`, `compare-range-*.png`.
+
+**Leftovers (not this pass):** My Ship hull callouts @1101–1160 (#423); flightCluster class ring vs legend (#426, awaiting live HUD re-review); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional).
+
+**Review fix (Code Work):** the ≤460-tall block set four sizes under the 12 px type floor (second title line, ladder words, dossier, run gauge, all 11px). They are 12px now, with letter-spacing trimmed by .01–.02em. RULES / BESTIARY / CLOSE and the run gauge still sit on glass at 844×390, 801×390, 900×420 and 1100×460, where the ladder takes one more row at 801. Bench `range` is 0 at every size the PR touches, and the smallest computed text on the screen is 12px.

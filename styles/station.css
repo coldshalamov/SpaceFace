@@ -1771,6 +1771,79 @@ html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:h
 }
 .sf-ship.dp-frame .sx-sw__stats { margin-right: 0; flex: 0 1 auto; min-height: 0; max-height: 48%; overflow: hidden auto; }
 .sf-ship.dp-frame .sx-sw__main > .sx-sw-verbs { margin-right: 0; }
+/* THE SHIP on a small frame (ui-polish-57). The three fixed columns (230 / 1fr / 285) left the hull
+   185 px at 844 wide and nothing at all on a phone, so the hull's sentence and the slot callouts
+   printed over each other. Where the hull has the room (901-1100 wide, or 801-1100 on a window
+   460 tall or less) the fleet card stands over the systems column and the hull takes the rest; on a
+   short window the frame margin and the sentence step down; on a narrower window the three regions
+   stack and the screen scrolls. Real phones keep mobileScreenLayouts' own flow.
+   Review fix: the two-column split stops at 800 wide, and at 900 wide above 460 tall. Below that it
+   left the hull ~300-550 px: at 641-800 its callouts printed over the stat strip (641x800, 641x461,
+   761x460) and at 780-880 x 500-700 the four-line sentence printed over the hull's top callouts.
+   The sentence's scroll box ends on a whole line. Selectors and IDs are unchanged. */
+@media (min-width: 801px) and (max-width: 1100px) and (max-height: 460px), (min-width: 901px) and (max-width: 1100px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw {
+    grid-template-columns: minmax(0, 1fr) clamp(220px, 28vw, 285px);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__rail { grid-column: 2; grid-row: 1; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__main { grid-column: 1; grid-row: 1 / -1; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__side { grid-column: 2; grid-row: 2; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__chooser { grid-column: 2; grid-row: 1 / -1; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__nameplate .sx-sw__blurb { max-height: calc(1.35em * 4 + 8px); }
+}
+/* The hull is drawn large enough to run under the sentence at most desktop sizes (up to ~1600 wide):
+   the sentence gets the callouts' dissolved pad so it reads over the paint. */
+@media (min-width: 641px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__nameplate .sx-sw__blurb {
+    padding: 4px 12px 4px 0;
+    background: linear-gradient(90deg, rgb(6 8 11 / .74) 0%, rgb(6 8 11 / .6) 78%, transparent);
+    text-shadow: 0 1px 2px rgb(4 6 9 / .9);
+  }
+}
+/* Five heroes (the build joined the row) no longer fit the old one-row sizes: at 1101-1366 they
+   overflowed into each other ("DOCKED CAN TOW GENERALIS", clipped at the plate's edge), and above
+   1366 GENERALIST wrapped to a second row that pushed SAVE FIT under the plate. The numbers now size
+   to the band's own width so the usual row holds on one line; a long build name wraps whole
+   instead of overprinting. */
+@media (min-width: 1101px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-bands { container-type: inline-size; flex-wrap: wrap; gap: 4px 8px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-hero { padding: 6px clamp(8px, 1cqi, 12px) 8px; min-width: 0; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: clamp(18px, calc(5cqi - 10px), 47.52px); white-space: nowrap; }
+}
+/* Under ~1180 the build drops to a second row; the plate takes a little more of the column so
+   SAVE FIT stays on it instead of scrolling out of view, and the two handling columns share the
+   plate's width instead of running 6px past its edge. */
+@media (min-width: 1101px) and (max-width: 1240px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stage { min-height: calc(290px * var(--dp-s, 1)); }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stats { max-height: 56%; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw-bars { column-gap: 12px; }
+}
+@media (min-width: 641px) and (max-height: 460px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame { padding: 14px 20px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw { row-gap: 12px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__name { font-size: 26px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__nameplate .sx-sw__blurb { font-size: 12.5px; line-height: 1.4; max-height: calc(1.4em * 3 + 8px); }
+}
+@media (max-width: 800px), (max-width: 900px) and (min-height: 461px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame { padding: 12px; overflow: hidden auto; overscroll-behavior: contain; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas: none;
+    align-self: start; height: auto; min-height: 0;
+  }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__rail { grid-column: 1; grid-row: 1; overflow: visible; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__main { grid-column: 1; grid-row: 2; overflow: visible; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__side { grid-column: 1; grid-row: 3; overflow: visible; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame > .sx-sw > .sx-sw__chooser { grid-column: 1; grid-row: 2 / -1; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stage { flex: 0 0 auto; min-height: 420px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship.dp-frame .sx-sw__stats { max-height: none; overflow: visible; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__name { font-size: 30px; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__nameplate { max-width: 62%; }
+  html:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw__nameplate .sx-sw__blurb { max-height: calc(1.35em * 4); }
+}
 /* The fleet card: the hull's role on its own line, whole, under the name; "Active" rides the
    name's line instead of squeezing the role into "STARTER SC..." beside it. */
 .sx-sw-row.k-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name flag" "sub sub"; align-items: baseline; row-gap: 2px; }
