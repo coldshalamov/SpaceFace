@@ -2198,6 +2198,15 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
   .orr-clips__rail { top:calc(27% + 7vh); }
   .orr-clips__readline { bottom:calc(92px + 5vh); }
 }
+/* Short frame (desktop window or phone landscape): empty-reel ghosts clear the readout. */
+@media (min-width:641px) and (max-height:460px) {
+  .orr-clips__rail { top:12%; }
+  .orr-clips__readline { bottom:64px; }
+  .orr-clips__count { font-size:clamp(36px, 5.2vw, 56px); }
+  .orr-clips__runtime { font-size:16px; margin-top:4px; }
+  .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; }
+  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:10px; letter-spacing:.1em; }
+}
 .orr-clips__pos:empty { display:none; }
 html.sf-reduce-motion .orr-clip__plate { transition:none; }
 @media (forced-colors:active) {
