@@ -608,7 +608,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 295, 303, 304, 305, 306, 307, 308, 310 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 303, 304, 305, 306, 307, 308, 310 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -838,7 +838,6 @@ real missing capability, never by another lane's sitting.
 | 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
 | 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
 | 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves; decompose disjoint M-rows and Depth tables in parallel | ADMIT | OPEN — parallel |
-| 295 | SFQ-B122 | The same approach reads as feeding, alarm, defense, or retreat, and a quiet watch does not turn the animal aggressive. | BUILD | OPEN |
 | 303 | SFQ-B157 | A physical human object, a goo-coated hull and a passive organism encounter one boundary. | BUILD | OPEN |
 | 304 | SFQ-B161 | A player can test whether an organism responds to heat rather than proximity. | BUILD | OPEN |
 | 305 | SFQ-B162 | A repeated route can be compared to an old human record and followed to a place. | BUILD | OPEN |
