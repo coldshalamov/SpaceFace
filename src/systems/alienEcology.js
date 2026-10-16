@@ -40,6 +40,7 @@ import {
 } from '../data/alienEcology.js';
 import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
+import { noteHeatTrial } from '../data/heatProximityTrial.js';
 import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
 import { echoApplies, stepEchoIndex } from '../data/faunaRouteEcho.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
@@ -450,6 +451,8 @@ export function handleAlienEcologyEvent(world, type, payload) {
       const sectorId = payload.sectorId;
       if (!sectorId) break;
       const ae = ensureAlienEcologyState(state);
+      // A repeated scan records the press. It does not pay research points.
+      ae.heatTrial = noteHeatTrial(ae.heatTrial, { kind: 'scan' });
       for (const s of alienSitesForSector(sectorId)) {
         const r = ae.sites[s.siteId];
         if (!r) continue;
@@ -1435,6 +1438,24 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   if (approach) setDrive(eco, approach);
   else if (eco.driveState === 'idle') setDrive(eco, species.drives.idle);
 
+  if (species.heatHunter && playerD >= (Number(species.threatenR) || 0) && playerD < alertR) {
+    const aeTrial = ensureAlienEcologyState(state);
+    const hadNote = !!(aeTrial.heatTrial && aeTrial.heatTrial.note);
+    aeTrial.heatTrial = noteHeatTrial(aeTrial.heatTrial, {
+      heat: (eco.heatSat || 0) > 3,
+      drive: eco.driveState,
+      geometryKey: Math.round(playerD / 40),
+    });
+    if (!hadNote && aeTrial.heatTrial.note && !aeTrial.heatTrial.spoken && world.bus && world.bus.emit) {
+      aeTrial.heatTrial.spoken = true;
+      world.bus.emit('comms:log', {
+        from: species.name || 'Field notebook',
+        kind: 'ecology',
+        text: aeTrial.heatTrial.note,
+      });
+    }
+  }
+
   // AE-172 flee wave (D09): a kill at this site scatters the whole cast — the killed
   // species panics instantly; unrelated species flip after the propagation delay. Applied
   // after stimulus resolution so the panic cascade outranks curiosity/defend overrides.
@@ -1777,6 +1798,7 @@ export function serializeAlienEcologyState(state) {
     factionConsequences: JSON.parse(JSON.stringify(ae.factionConsequences || {})),
     // AE-170 (G05): the echo recorder's pulse log persists across saves.
     echoLog: Array.isArray(ae.echoLog) ? ae.echoLog.slice(-32) : [],
+    heatTrial: noteHeatTrial(ae.heatTrial, null),
     // AE-291 (P-table): machine-site records, the evidence ledger, and fired setpieces
     // all persist — a reload must not reset the mystery.
     machineSites: JSON.parse(JSON.stringify(ae.machineSites || {})),
@@ -1809,6 +1831,9 @@ export function deserializeAlienEcologyState(state, data) {
   }
   if (data.uniqueGrants && typeof data.uniqueGrants === 'object') {
     ae.uniqueGrants = JSON.parse(JSON.stringify(data.uniqueGrants));
+  }
+  if (data.heatTrial && typeof data.heatTrial === 'object') {
+    ae.heatTrial = noteHeatTrial(data.heatTrial, null);
   }
   if (data.taxonomy && typeof data.taxonomy === 'object') Object.assign(ae.taxonomy, data.taxonomy);
   if (data.sites && typeof data.sites === 'object') {

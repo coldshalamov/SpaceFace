@@ -41,7 +41,12 @@ export function resolveFaunaApproachDrive(species, ctx = {}) {
   // A direct call uses the species ring.
   const noticeR = Number.isFinite(ctx.noticeR) ? ctx.noticeR : (Number(species.alertR) || 0);
   const threatenR = Number(species.threatenR) || 0;
-  if (species.heatHunter && ctx.heatSaturated && playerD < noticeR) return 'charge';
+  // A heat hunter at one range holds shadow until the plume is hot.
+  // Inside the close ring it still panics. Other animals keep the proximity rule.
+  if (species.heatHunter && playerD < noticeR) {
+    if (playerD < threatenR) return species.drives.panic;
+    return ctx.heatSaturated ? 'charge' : species.drives.curious;
+  }
   if (playerD < threatenR) return species.drives.panic;
   if (playerD < noticeR) return ctx.awake ? species.drives.tense : species.drives.curious;
   const current = ctx.currentDrive;
