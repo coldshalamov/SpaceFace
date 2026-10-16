@@ -1151,6 +1151,24 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-ct__jobs .sx-job { grid-template-areas:"title track" !important; align-items:center !important; }
   ${T} .sx-ct__jobs .sx-job .sx-job__meta { display:none !important; }
 }
+/* …and on short desktops (801-1100 × ≤460) the dossier is ~150-200px tall, so the wrapped column
+   flow spilled into a third, off-frame column (the risk sentence cut at the right edge @844×390) and
+   ACCEPT sat under the fold. Two fixed columns instead: what the job is and pays on the left; ACCEPT,
+   the risk sentence and the terms on the right, where the terms scroll. ACCEPT is on first paint. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+  ${T} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows:repeat(4, max-content) 1fr !important; grid-auto-rows:max-content !important;
+    align-content:start !important; column-gap:16px !important; overflow-y:auto !important; overscroll-behavior:contain; }
+  ${T} .sx-dossier::after { content:none !important; }
+  ${T} .sx-dossier > * { grid-column:1 !important; width:auto !important; }
+  ${T} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 !important; }
+  ${T} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 6 !important; width:auto !important; align-self:start !important; }
+  ${T} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:6 !important; }
+  ${T} .sx-dossier > .k-caps { margin:0 !important; }
+  ${T} .sx-dossier__title { font-size:15px !important; }
+  ${T} .sx-dossier .k-hero--hero { margin:0 0 4px !important; }
+  ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
+}
 /* the Ledger's purse has the width of its words */
 ${T} .orr-ledger-purse { width:260px; }
 @media (max-height:800px) { ${T} .orr-ledger-purse { width:230px; } }
