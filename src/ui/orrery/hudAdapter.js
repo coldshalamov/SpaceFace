@@ -1,10 +1,7 @@
 // ORRERY ↔ the live flight HUD (design/frontend/ORRERY.md §7 Phase 1).
 //
-// hud.js keeps every system it already runs (targeting, the roster scan, prompts, the slot-claim
-// protocol); this adapter only READS the same sources the old instruments read and hands the ORRERY
-// Cluster one plain model. Nothing here owns game state. The old cluster chassis and power rail stay
-// mounted and hidden while ORRERY is on (their DOM contracts are pinned by tests); they are deleted in
-// a later commit once the live route has been checked.
+// hud.js owns targeting, the roster scan and prompts. This adapter reads the authoritative
+// instrument sources and hands the sole flight Cluster one plain model. Nothing here owns game state.
 //
 // Sources (each is the one the old HUD reads, so both always agree):
 //   hull/shield/armour  p.hull/hullMax · p.shield/shieldMax · p.armorHp/armorMax
@@ -24,6 +21,7 @@ import { SHIPS } from '../../data/ships.js';
 import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
 import { travelFlag } from '../../data/featureFlags.js';
+import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
@@ -79,15 +77,40 @@ export function createCooldownTracker() {
 const REST_SLOT_INDEX = (RAIL_SLOTS.find((slot) => slot.action === 'tether') || RAIL_SLOTS[0] || { index: 1 }).index;
 const RAIL_STATE = Object.freeze({ ready: 'ready', armed: 'armed', cooling: 'cooldown', empty: 'empty', locked: 'locked', unaffordable: 'locked' });
 
+function readClusterBindings(state) {
+  const bindings = {};
+  for (const slot of RAIL_SLOTS) if (slot.action) bindings[slot.action] = resolveActionCodes(state, slot.action);
+  return bindings;
+}
+
+function activeLineControlHint(state) {
+  const player = state.player || {};
+  const tether = player.tether?.active ? player.tether : player.remoteMassline;
+  if (!masslineInstrumentReadout(tether)) return '';
+  const hold = resolveActionLabel(state, 'tether');
+  if (!hold) return '';
+  const first = action => formatBindingCode(resolveActionCodes(state, action)[0]);
+  const forward = first('forward'); const reverse = first('reverse');
+  const orbit = [first('yawLeft'), first('yawRight')].filter(Boolean).join('/');
+  const boost = resolveActionLabel(state, 'boost');
+  const parts = [];
+  if (forward) parts.push(`${forward} REEL`);
+  if (reverse) parts.push(`${reverse} PAY OUT`);
+  if (orbit) parts.push(`${orbit} ORBIT`);
+  if (boost) parts.push(`${boost} PUMP`);
+  return parts.length ? `Hold ${hold} for line control: ${parts.join(' · ')}` : '';
+}
+
 export function readOrdnanceModel(state, tracker, bindings) {
   const rail = readRailModel(state, Number(state && state.simTime) || 0);
+  bindings ??= readClusterBindings(state);
   const labels = resolveSlotLabels(bindings);
   const keys = resolveSlotKeys(bindings);
   const out = {};
   for (const slot of RAIL_SLOTS) {
     const r = rail[slot.index] || {};
     const st = RAIL_STATE[r.state] || 'ready';
-    const entry = { state: st, arsenalId: slot.index === 9 && r.glyph?.startsWith('bomb_') ? r.glyph : SLOT_ARSENAL[slot.index] || '' };
+    const entry = { state: st, key: labels[slot.index] || '', arsenalId: slot.index === 9 && r.glyph?.startsWith('bomb_') ? r.glyph : SLOT_ARSENAL[slot.index] || '' };
     if (slot.index === 1 || slot.index === 9) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
@@ -104,6 +127,10 @@ export function readOrdnanceModel(state, tracker, bindings) {
       description: r.description || slotDescription(slot.index),
       why: r.why || '',
     });
+    if (slot.action === 'tether') {
+      const hint = activeLineControlHint(state);
+      if (hint) entry.tip += `\n${hint}`;
+    }
     out[String(slot.index)] = entry;
   }
   return out;
@@ -178,8 +205,6 @@ const HOST_CSS = `
 @media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; } }
 @media (max-width:1400px) { #hud .orr-hud-cluster { left:8px; } }
 @media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.6; } }
-/* ORRERY owns the bottom-left and the ordnance: the old chassis and rail stay mounted, hidden. */
-#hud[data-hud="orrery"] .sf-leftstack, #hud[data-hud="orrery"] .sf-prail { visibility:hidden !important; pointer-events:none !important; }
 `;
 
 /**
@@ -187,7 +212,7 @@ const HOST_CSS = `
  * `slow` gates the ordnance read (it scans charges) to the HUD's slow clock; everything else is
  * guarded by the Cluster's own change detection, so a settled frame writes nothing.
  */
-export function mountOrreryCluster(root, state, { bindings = null, bus = null } = {}) {
+export function mountOrreryCluster(root, state, { bus = null } = {}) {
   if (!root || typeof document === 'undefined') return null;
   injectOrrery();
   if (!document.getElementById('sf-orrery-hud-host')) {
@@ -208,7 +233,7 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
     shipId: defId,
     name: customName || defName,
     classLine,
-    groups: buildOrdnanceGroups(bindings),
+    groups: buildOrdnanceGroups(readClusterBindings(state)),
     // before anything is engaged the Hand rests on the Line: the game's signature verb
     restSlot: String(REST_SLOT_INDEX),
   });
@@ -251,7 +276,7 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
       if (slow && typeof cluster.setRingLegend === 'function') syncLegend(liveState, p);
       if (slow && typeof cluster.setHull === 'function') syncHull(liveState, p);
       if (!p) return;
-      if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, bindings);
+      if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker);
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
       const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling });
       if (model) cluster.update(model);

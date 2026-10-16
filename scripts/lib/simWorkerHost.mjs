@@ -78,7 +78,10 @@ import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js'
 import { partitionUpdateSystems } from '../../src/core/catchupPolicy.js';
 import { createBus } from '../../src/core/eventBus.js';
 import { createGameState } from '../../src/core/gameState.js';
-import { readTimeEffectsRequests } from '../../src/core/timeEffects.js';
+import {
+  createTimeEffects, readTimeEffectsRequests, readLocalTimeEffectsSnapshot,
+  applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration,
+} from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
@@ -522,7 +525,7 @@ const BRIDGE_EVENTS = [
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
 ];
 
-export function createSimHost() {
+export function createSimHost({ onAsyncSaveReady } = {}) {
   // The save system's synchronous localStorage contract runs against a staged
   // snapshot in worker realms (browser worker, node worker_threads): main
   // stages its sf.* keyspace on load/save forwards via stageLaneStorage, and
@@ -616,6 +619,7 @@ export function createSimHost() {
     pendingGameStarted: null,
     gameStartedEmits: 0,
     playerTruthImpulseObserver: null,
+    missionBoardMirrorUnsubscribe: null,
   };
 
   function drainEvents() {
@@ -762,8 +766,28 @@ export function createSimHost() {
     host.draftReadDirty = false;
   }
 
+  function refreshResultsReadView(state) {
+    const owner = host.registry?.get('survivalResults');
+    if (!owner || typeof owner.lastResult !== 'function' || typeof owner.resultRevision !== 'function') {
+      state.survivalResultsPublic = null;
+      host.resultsReadOwner = null;
+      return;
+    }
+    const revision = owner.resultRevision();
+    const generation = host.lifecycleGeneration || 0;
+    if (host.resultsReadOwner === owner && host.resultsReadRevision === revision
+        && host.resultsReadGeneration === generation) return;
+    // lastResult() detaches the native owner's private receipt. This immutable worker-owned
+    // read snapshot travels before run:resultsReady; UI code never writes the authority slot.
+    state.survivalResultsPublic = { result: owner.lastResult(), revision, generation };
+    host.resultsReadOwner = owner;
+    host.resultsReadRevision = revision;
+    host.resultsReadGeneration = generation;
+  }
+
   function diffDomains(state, seq) {
     refreshDraftReadView(state);
+    refreshResultsReadView(state);
     const r = host.domainDiffer.diff(state, seq);
     host.domainDiffNsTotal += BigInt(Math.round(r.diffMs * 1e6));
     if (r.diffMs > host.domainDiffMsMax) host.domainDiffMsMax = r.diffMs;
@@ -892,9 +916,21 @@ export function createSimHost() {
       m: host.state ? host.state.mode : undefined,
       es: host.state && host.state.world ? host.state.world.enterSerial : undefined,
     });
+    // Paused saves finish on later task turns, after the command's tick reply. Their real
+    // bytes and terminal event need a transport wake even when no sim timer is running.
+    if (type === 'save:completed' || type === 'save:error') onAsyncSaveReady?.();
   }
 
   function installBridgeCapture(bus, captureAll) {
+    host.missionBoardMirrorUnsubscribe?.();
+    // Posted/withdrawn board rows must accompany their event/RPC even while the worker is
+    // paused and has no future timer ticks. Progress and tracking use non-null mission ids;
+    // those retain their normal cold root cadence and existing hot active-mission mirror.
+    const offBoardUpdate = bus.on('mission:updated', (payload) => {
+      if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
+    });
+    const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
+    host.missionBoardMirrorUnsubscribe = () => { offBoardUpdate(); offAccepted(); };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
       const origQueue = typeof bus.queue === 'function' ? bus.queue.bind(bus) : null;
@@ -1183,6 +1219,26 @@ export function createSimHost() {
         if (!c || typeof c.build !== 'function') return { ok: false, reason: 'crafting-system-unavailable' };
         return { ok: c.build((args && args.bpId) || null, (args && args.stationId) || null) === true };
       }],
+      // The machinery UI reads detached projections on main; commits remain on the native
+      // site owner. Exact allowlisting prevents this RPC from exposing private system methods.
+      ['asteroidSitesCall', (args) => {
+        const owner = registry.get('asteroidSites');
+        if (!owner) return { ok: false, reason: 'asteroid-sites-system-unavailable' };
+        const arities = {
+          installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3,
+          setExportFlag: 3, setPodTarget: 2, setPodDestination: 2, transferGoods: 5,
+          tickWorkbench: 2,
+        };
+        const method = args?.method;
+        const values = args?.args;
+        if (!Object.hasOwn(arities, method) || typeof owner[method] !== 'function') {
+          return { ok: false, reason: 'unknown-asteroid-sites-method' };
+        }
+        if (!Array.isArray(values) || values.length > arities[method]) {
+          return { ok: false, reason: 'bad-asteroid-sites-args' };
+        }
+        return { ok: true, result: owner[method](...values) };
+      }],
       // Generic method passthroughs for facade coverage — the main side's
       // capability checks see the method names; the lane's folded ops (like
       // racingArm) call the same methods inside one directive window.
@@ -1286,6 +1342,10 @@ export function createSimHost() {
           mode: state.mode,
           timeScale: state.timeScale,
           timeEffects: readTimeEffectsRequests(state),
+          bulletTime: state.massline2?.bulletTime ? {
+            active: state.massline2.bulletTime.active === true,
+            energy: state.massline2.bulletTime.energy,
+          } : null,
           playerId: state.playerId,
           skipFullTick: shouldSkipFullTickSystems(state),
           input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ, boost: state.input.boost, blocked: state.input.blocked } : null,
@@ -1410,6 +1470,12 @@ export function createSimHost() {
     // (rng) and Maps do not survive a transport clone, and menu-time state has
     // no sim-authored data worth carrying anyway.
     const state = createGameState(seed);
+    if (msg.timeEffectsSnapshot) {
+      createTimeEffects(state);
+      setTimeEffectsGeneration(state, msg.timeEffectsSnapshot.generation);
+      applyRemoteTimeEffectsSnapshot(state, 'presentation', msg.timeEffectsSnapshot);
+      host.timeEffectsAuthority = true;
+    }
     if (msg.settings && typeof msg.settings === 'object') {
       deepAssignInPlace(state.settings, canonicalClone(msg.settings));
     }
@@ -1497,6 +1563,7 @@ export function createSimHost() {
       storageOps: drainStorageOps(),
       collectProbe: null,
       domainUpdates: initDomains.updates,
+      timeEffectsSnapshot: host.timeEffectsAuthority ? readLocalTimeEffectsSnapshot(state) : undefined,
       domainProbe: null,
       domainShipBytes: initDomains.shipBytes,
       domainDiffMs: initDomains.diffMs,
@@ -1718,7 +1785,9 @@ export function createSimHost() {
     // folded in wire order through the shared channel.
     if (Number.isSafeInteger(msg.generation) && msg.generation >= 0) {
       host.lifecycleGeneration = msg.generation;
+      setTimeEffectsGeneration(state, msg.generation);
     }
+    applyPresentationTimeEffects(msg.timeEffectsSnapshot, host.lifecycleGeneration);
     const drain = drainSimCommandEnvelopes(msg.commands || [], {
       state,
       helpers: sim.helpers,
@@ -1805,6 +1874,9 @@ export function createSimHost() {
         if (mode !== 'flight' || !host.pendingGameStarted || !host.bus) return false;
         const payload = host.pendingGameStarted;
         host.pendingGameStarted = null;
+        // The main realm releases its own veil separately. Retire only the sim boot lease;
+        // any mirrored loading/pause hold continues to own the first-picture boundary.
+        createTimeEffects(state).clear('runtime:loading');
         host.gameStartedEmits += 1;
         try { host.bus.emit('game:started', payload); } catch (_) {}
         return true;
@@ -2008,6 +2080,7 @@ export function createSimHost() {
       // flag off = zero probe allocation on production ticks.
       collectProbe: (completedTick && msg.aux === true) ? collectProbeBlock(state) : null,
       domainUpdates: domains.updates,
+      timeEffectsSnapshot: host.timeEffectsAuthority ? readLocalTimeEffectsSnapshot(state) : undefined,
       domainProbe: (completedTick && host.domainProbeEnabled) ? domains.probe : null,
       domainShipBytes: domains.shipBytes,
       domainMarketShipBytes: domains.marketShipBytes || 0,
@@ -2098,6 +2171,8 @@ export function createSimHost() {
   }
 
   function handleShutdown() {
+    host.missionBoardMirrorUnsubscribe?.();
+    host.missionBoardMirrorUnsubscribe = null;
     host.draftReadUnsubscribe?.();
     host.draftReadUnsubscribe = null;
     host.playerTruthImpulseObserver?.unsubscribe?.();
@@ -2106,6 +2181,14 @@ export function createSimHost() {
       if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
       else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();
     } catch (_) { /* spike teardown */ }
+  }
+
+  function applyPresentationTimeEffects(snapshot, generation) {
+    if (!host.state || !snapshot) return false;
+    host.timeEffectsAuthority = true;
+    createTimeEffects(host.state);
+    setTimeEffectsGeneration(host.state, generation);
+    return applyRemoteTimeEffectsSnapshot(host.state, 'presentation', snapshot);
   }
 
   // Dispatch table — the adapters (worker_threads or in-process) call this;
@@ -2117,5 +2200,11 @@ export function createSimHost() {
     async finalize() { return handleFinalize(); },
     shutdown() { handleShutdown(); },
     drainStorageOps,
+    hasPendingDurable() { return pendingStorageOps.length > 0 || host.pendingEvents.length > 0; },
+    applyPresentationTimeEffects,
+    effectiveTimeScale() {
+      return host.timeEffectsAuthority && host.state
+        ? createTimeEffects(host.state).getEffectiveScale() : null;
+    },
   };
 }

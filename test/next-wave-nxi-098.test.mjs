@@ -4,7 +4,12 @@ import assert from 'node:assert/strict';
 
 import { isUnsellableCargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
-import { createMarketScreen } from '../src/ui/station/screens/market.js';
+import {
+  createMarketHistoryBackfill,
+  createMarketScreen,
+  marketPriceHistorySeries,
+} from '../src/ui/station/screens/market.js';
+import { installSimCommandSink, uninstallSimCommandSink } from '../src/core/simLaneCommands.js';
 
 const CHIPS = 'cmdty_microchips';
 const FOOD = 'cmdty_food';
@@ -823,6 +828,146 @@ test('NXI-098: quantity planning probes do not clear an authoritative buy refusa
       'the retry keeps the worker refusal after quantity-limit planning probes');
     screen.dispose();
   } finally {
+    dom.restore();
+  }
+});
+
+test('market history backfill is lifecycle-scoped, bounded on failure, and never fabricates a flat chart', async () => {
+  const state = holdState(0, 0);
+  const entry = state.economy.markets[STATION][FOOD];
+  const def = { basePrice: 10 };
+  const requests = [];
+  const scheduled = new Map();
+  let nextScheduleId = 0;
+  let backfill;
+  let activeContext = 'world-a';
+  backfill = createMarketHistoryBackfill({
+    request(_op, args) {
+      return new Promise((resolve, reject) => requests.push({ args, resolve, reject }));
+    },
+    scheduleRefresh(callback, delay) {
+      const id = ++nextScheduleId;
+      scheduled.set(id, { callback, delay });
+      return id;
+    },
+    cancelRefresh(id) {
+      scheduled.delete(id);
+    },
+    onChange() {
+      // The production screen re-enters ensure from its render callback. Keeping that seam here
+      // makes the retry assertion exercise the same bounded automatic retry.
+      backfill.ensure(state, STATION, activeContext);
+    },
+  });
+
+  backfill.reset(STATION, 'world-a');
+  backfill.ensure(state, STATION, 'world-a');
+  assert.equal(backfill.status, 'inflight');
+  assert.equal(backfill.chartState(STATION, FOOD, entry), 'loading');
+  assert.deepEqual(marketPriceHistorySeries(backfill.pointsFor(STATION, FOOD, entry), entry, def, 100), [],
+    'pending history stays empty instead of becoming [current,current]');
+  requests[0].resolve({ ok: true, result: { histories: { [FOOD]: [{ t: 40, mid: 12 }, { t: 100, mid: 18 }] } } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(marketPriceHistorySeries(backfill.pointsFor(STATION, FOOD, entry), entry, def, 100).map((p) => p.mid), [12, 18]);
+  assert.equal(requests.length, 1, 'a confirmed response does not trigger an early duplicate request');
+  assert.equal(scheduled.size, 1, 'one visible refresh is armed after the confirmed response');
+  const firstRefresh = scheduled.entries().next().value;
+  scheduled.delete(firstRefresh[0]);
+  assert.equal(firstRefresh[1].delay, 15_000, 'refresh follows the economy history sample cadence');
+  firstRefresh[1].callback();
+  assert.equal(requests.length, 2, 'the scheduled cadence starts one coalesced refresh');
+  assert.equal(backfill.status, 'inflight');
+  assert.equal(backfill.chartState(STATION, FOOD, entry), 'confirmed',
+    'the last confirmed series remains visible while a refresh is pending');
+  assert.deepEqual(marketPriceHistorySeries(backfill.pointsFor(STATION, FOOD, entry), entry, def, 100).map((p) => p.mid), [12, 18]);
+  backfill.ensure(state, STATION, activeContext);
+  assert.equal(requests.length, 2, 'renders during a pending refresh do not queue another RPC');
+  requests[1].resolve({ ok: true, result: { histories: { [FOOD]: [{ t: 40, mid: 22 }, { t: 100, mid: 28 }] } } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(marketPriceHistorySeries(backfill.pointsFor(STATION, FOOD, entry), entry, def, 100).map((p) => p.mid), [22, 28],
+    'a changed station history replaces the prior series after the refresh ACK');
+  const secondRefresh = scheduled.entries().next().value;
+  scheduled.delete(secondRefresh[0]);
+  secondRefresh[1].callback();
+  assert.equal(requests.length, 3, 'the next cadence starts one more refresh after the changed ACK');
+  assert.deepEqual(marketPriceHistorySeries(backfill.pointsFor(STATION, FOOD, entry), entry, def, 100).map((p) => p.mid), [22, 28]);
+
+  // Reopening the same station is a new generation and must fetch again.
+  activeContext = 'world-a';
+  backfill.reset(STATION, 'world-a');
+  assert.equal(scheduled.size, 0, 'reopening cancels the prior visible refresh timer');
+  backfill.ensure(state, STATION, 'world-a');
+  assert.equal(requests.length, 4);
+  assert.equal(backfill.chartState(STATION, FOOD, entry), 'loading');
+
+  // A Continue/new-world reset invalidates both the in-flight refresh and the reopened station
+  // request. Their late ACKs cannot populate the new station cache, even though the station id
+  // is unchanged.
+  activeContext = 'world-b';
+  await Promise.resolve();
+  backfill.reset(STATION, 'world-b');
+  backfill.ensure(state, STATION, 'world-b');
+  assert.equal(requests.length, 5);
+  requests[2].resolve({ ok: true, result: { histories: { [FOOD]: [{ t: 40, mid: 91 }, { t: 100, mid: 99 }] } } });
+  await Promise.resolve();
+  assert.equal(backfill.chartState(STATION, FOOD, entry), 'loading');
+  assert.deepEqual(backfill.pointsFor(STATION, FOOD, entry), undefined,
+    'late ACK from the replaced refresh does not mutate the new cache');
+  requests[3].resolve({ ok: true, result: { histories: { [FOOD]: [{ t: 40, mid: 81 }, { t: 100, mid: 89 }] } } });
+  await Promise.resolve();
+  assert.equal(backfill.chartState(STATION, FOOD, entry), 'loading');
+  assert.deepEqual(backfill.pointsFor(STATION, FOOD, entry), undefined,
+    'late ACK from the reopened generation does not mutate the new cache');
+  requests[4].resolve({ ok: true, result: { histories: { [FOOD]: [{ t: 40, mid: 31 }, { t: 100, mid: 36 }] } } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(backfill.pointsFor(STATION, FOOD, entry).map((p) => p.mid), [31, 36]);
+
+  // Retry one transient failure, then stop after the bounded second attempt.
+  activeContext = 'world-c';
+  backfill.reset(STATION, 'world-c');
+  backfill.ensure(state, STATION, 'world-c');
+  assert.equal(requests.length, 6);
+  requests[5].reject(new Error('worker unavailable'));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(requests.length, 7, 'one retry is issued after the first failure');
+  requests[6].reject(new Error('worker still unavailable'));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(requests.length, 7, 'retry budget is bounded');
+  assert.equal(backfill.status, 'failed');
+
+  // The real screen exposes the pending state in the existing chart slot, then replaces it with
+  // the authoritative values when the worker response arrives.
+  const dom = installDom();
+  const laneRequests = [];
+  installSimCommandSink((_descriptor) => new Promise((resolve, reject) => laneRequests.push({ resolve, reject })));
+  try {
+    const screenState = holdState(0, 0);
+    const { screen } = openSellWithEventBus(screenState, { total: 30 }, 'buy');
+    assert.equal(laneRequests.length, 1);
+    const loading = screen.el.querySelector('[data-market-history="loading"]');
+    assert.ok(loading, 'pending chart has a loading marker');
+    assert.equal(loading.textContent, 'Loading price history…');
+    laneRequests[0].resolve({ ok: true, result: { histories: {
+      [CHIPS]: [{ t: 1, mid: 44 }, { t: 2, mid: 49 }],
+      [FOOD]: [{ t: 1, mid: 12 }, { t: 2, mid: 18 }],
+    } } });
+    await Promise.resolve();
+    await Promise.resolve();
+    const chart = screen.el.querySelector('.sx-mkt-chart');
+    assert.equal(chart.getAttribute('data-history-mids'), '44,49',
+      'the selected instrument paints returned samples rather than a flat quote');
+    screen.onShow({ state: screenState });
+    assert.equal(laneRequests.length, 2, 'same-station onShow starts a fresh history request');
+    assert.ok(screen.el.querySelector('[data-market-history="loading"]'),
+      'same-station reopen does not reuse the prior generation while pending');
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
     dom.restore();
   }
 });

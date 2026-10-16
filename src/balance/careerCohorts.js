@@ -415,6 +415,9 @@ function findBoardOffer(ctx, typeId, stationIds, options = {}) {
   const fromSectorId = options.fromSectorId || ctx.state.world?.currentSectorId;
   const seed = options.seed != null ? options.seed : (ctx.seed || 0);
   const excluded = options.excludeOfferIds || null;
+  // Optional per-offer filter (the type alone is not enough when a board posts several offers of
+  // one type and only some are playable by the strategy). Absent = the first-match behavior.
+  const accept = typeof options.accept === 'function' ? options.accept : null;
   const ordered = preferSectorId
     ? [
       ...stationIds.filter((id) => STATION_TO_SECTOR.get(id)?.id === preferSectorId),
@@ -431,7 +434,8 @@ function findBoardOffer(ctx, typeId, stationIds, options = {}) {
       && s.type === typeId
       && !String(s.storyTag || '').startsWith('campaign47a:')
       && !String(s.id || '').startsWith('offer_sp1_')
-      && !(excluded && s.id != null && excluded.has(s.id)));
+      && !(excluded && s.id != null && excluded.has(s.id))
+      && (!accept || accept(s)));
     if (!offer) continue;
     const boardSector = STATION_TO_SECTOR.get(stationId)?.id;
     const boardToll = (boardSector && fromSectorId && boardSector !== fromSectorId)
@@ -2119,6 +2123,8 @@ function runProspector(horizonS, options = {}) {
       'cargo addCargo/removeCargo',
       'economy.execute sell + market restock via economy.update',
       'ships.buyShip pelican',
+      'ships.unlockTech tech_industrial_mining',
+      'missions.ensureBoard/acceptMission mining_quota → researchPoints (research:mining)',
       'economy.update time authority',
       'save.serializeData/_restore mid-run (cohort proof)',
     ],
@@ -2162,6 +2168,28 @@ function runProspector(horizonS, options = {}) {
     }
     return starterBeam;
   };
+
+  // The miner's RP path: Industrial Mining (the Ironback license; no RP cost) is the entry node
+  // that opens the research:mining faucet, and mining_quota contracts then pay RP through the
+  // missions writer. The miner buys the entry node once the wallet clears it plus a toll
+  // reserve, and takes a quota only for an ore this field actually yields (never the persistent
+  // starter cut, which needs a Drill Amp fit the strategy does not model).
+  const oreKeys = new Set(Object.keys(ast.oreTable || {}));
+  const MINING_ENTRY_NODE = 'tech_industrial_mining';
+  const MINING_TECH_RESERVE_CR = 1500;
+  const isPlayableQuota = (slot) => !!slot && slot.type === 'mining_quota'
+    && !!slot.params && !slot.params.starterJobId && oreKeys.has(slot.params.cmdtyId)
+    && (slot.reward_cr | 0) > 0;
+  const activeQuota = () => (ctx.state.missions.active || []).find((m) => m
+    && m.status === 'active' && m.type === 'mining_quota'
+    && isPlayableQuota({ type: m.type, params: m.params, reward_cr: 1 })) || null;
+  ctx.bus.on('mission:completed', (p) => {
+    if (!p || p.type !== 'mining_quota') return;
+    receipt.authorityReceipts.push({
+      kind: 'mission_complete', type: 'mining_quota', id: p.missionId, atS: round1(ctx.state.simTime),
+      authority: 'missions mining:yield→_completeMission (RP writer)',
+    });
+  });
 
   while (t < horizonS) {
     const opening = fieldMemoryReadout(ctx.state, fieldId);
@@ -2208,12 +2236,17 @@ function runProspector(horizonS, options = {}) {
       simTime: ctx.state.simTime, asteroidId: `${fieldId}:ast_${asteroidsMined}`, tick: asteroidsMined,
     });
     asteroidsMined += 1;
-    const added = addCargo(ctx.state, primaryOre, yieldU);
+    // An accepted quota names the ore to work; the field yields it (oreTable) or the miner works
+    // the usual primary ore. Rock rolls above are unchanged, so an unquota'd run is byte-identical.
+    const quota = activeQuota();
+    const rockOre = quota && (quota.objectiveProgress || 0) < (quota.objectiveTarget || 0)
+      ? quota.params.cmdtyId : primaryOre;
+    const added = addCargo(ctx.state, rockOre, yieldU);
     cargoCreated += added;
     // Notify missions mining_quota observers through the production mining:yield event.
     if (added > 0) {
       ctx.bus.emit('mining:yield', {
-        commodityId: primaryOre, qty: added, minerId: ctx.state.playerId,
+        commodityId: rockOre, qty: added, minerId: ctx.state.playerId,
         fieldId, pos: { x: 0, z: 0 },
       });
     }
@@ -2279,6 +2312,40 @@ function runProspector(horizonS, options = {}) {
         receipt.equipment.activePhase = 'pelican';
         receipt.equipment.currentShipId = midShip.id;
         receipt.equipment.upgradedAtLoop = loops;
+      }
+    }
+
+    // At the dock, with the sale banked: open the miner's RP path, then take a quota for an ore
+    // this field yields. Both go through the live seams (ships.unlockTech, missions board accept).
+    if (!(ctx.state.player.researchedNodes || []).includes(MINING_ENTRY_NODE)) {
+      const entry = TECH_BY_ID.get(MINING_ENTRY_NODE);
+      if (entry && (ctx.state.player.researchPoints || 0) >= (entry.cost.rp || 0)
+        && (ctx.state.player.credits | 0) >= ((entry.cost.credits || 0) + MINING_TECH_RESERVE_CR)
+        && tryUnlockTechLive(ctx, MINING_ENTRY_NODE, receipt, costs)) {
+        receipt.authorityReceipts.push({
+          kind: 'tech_unlock', techId: MINING_ENTRY_NODE,
+          atS: round1(ctx.state.simTime), authority: 'ships.unlockTech',
+        });
+      }
+    }
+    if (!activeQuota()) {
+      const quotaHit = findBoardOffer(ctx, 'mining_quota', [sellStationId], {
+        preferSectorId: currentSectorId,
+        fromSectorId: currentSectorId,
+        maxCredits: ctx.state.player.credits | 0,
+        seed,
+        accept: isPlayableQuota,
+      });
+      if (quotaHit) {
+        completeDeliveryAtDock(ctx, quotaHit.stationId);
+        const quotaInst = acceptBoardOffer(ctx, quotaHit.offer.id, costs, receipt);
+        if (quotaInst && quotaInst.type === 'mining_quota') {
+          receipt.authorityReceipts.push({
+            kind: 'mission_accept', type: 'mining_quota', id: quotaInst.id,
+            cmdtyId: quotaInst.params.cmdtyId, qty: quotaInst.params.qty,
+            atS: round1(ctx.state.simTime), authority: 'missions.acceptMission',
+          });
+        }
       }
     }
 

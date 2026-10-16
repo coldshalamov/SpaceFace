@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
+import * as THREE from 'three';
 
 import {
   collectCompileSubjects,
   collectUniqueCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
+  revealSubjectForCompileSteps,
   revealSubjectWithAncestors,
   shouldSliceCompileAcrossPresents,
   shouldSliceFlightAdmission,
@@ -207,6 +209,75 @@ test('reveal for compile opens a zero drawRange so residency can upload the buff
   restore();
   assert.equal(mesh.visible, false);
   assert.equal(geometry.drawRange.count, 0);
+});
+
+function sharedInstancedGeometryFixture(t) {
+  const geometry = new THREE.InstancedBufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 0, 1], 3));
+  geometry.setAttribute('aOffset', new THREE.InstancedBufferAttribute(new Float32Array(12), 3));
+  geometry.instanceCount = 0;
+  geometry.setDrawRange(0, 0);
+  const material = new THREE.MeshBasicMaterial();
+  t.after(() => { geometry.dispose(); material.dispose(); });
+  const root = new THREE.Group(); root.visible = false;
+  const meshes = Array.from({ length: 2 }, () => {
+    const mesh = new THREE.Mesh(geometry, material); mesh.visible = false; root.add(mesh); return mesh;
+  });
+  return { root, meshes, geometry,
+    assertRestored() {
+      assert.equal(root.visible, false);
+      assert.ok(meshes.every(mesh => mesh.visible === false && mesh.frustumCulled === true));
+      assert.equal(geometry.instanceCount, 0, 'shared instance count is restored once to its original value');
+      assert.equal(geometry.drawRange.count, 0);
+    } };
+}
+
+const finishSteps = iterator => {
+  let step;
+  do { step = iterator.next(); } while (!step.done);
+  return step.value;
+};
+
+test('normal and stepped reveals warm shared instanced geometry and restore its dormant count', t => {
+  for (const stepped of [false, true]) {
+    const f = sharedInstancedGeometryFixture(t);
+    const result = stepped ? finishSteps(revealSubjectForCompileSteps(f.root, 1))
+      : { restore: revealSubjectForCompile(f.root) };
+    assert.equal(f.geometry.instanceCount, 1, 'an actual instanced draw can issue');
+    assert.equal(f.geometry.drawRange.count, 3);
+    assert.ok(f.meshes.every(mesh => mesh.visible === true));
+    if (stepped) finishSteps(result.restoreSteps);
+    else result.restore();
+    f.assertRestored();
+  }
+});
+
+test('normal reveal failure restores a shared instanced geometry before propagating the error', t => {
+  const f = sharedInstancedGeometryFixture(t);
+  f.root.traverse = visit => { visit(f.meshes[0]); throw new Error('reveal rejected'); };
+  assert.throws(() => revealSubjectForCompile(f.root), /reveal rejected/);
+  f.assertRestored();
+});
+
+test('stepped reveal cancellation or rejection restores its already revealed prefix', t => {
+  for (const reject of [false, true]) {
+    const f = sharedInstancedGeometryFixture(t);
+    const iterator = revealSubjectForCompileSteps(f.root, 1);
+    while (f.geometry.instanceCount === 0) assert.equal(iterator.next().done, false);
+    assert.equal(f.geometry.instanceCount, 1);
+    if (reject) assert.throws(() => iterator.throw(new Error('reveal rejected')), /reveal rejected/);
+    else iterator.return();
+    f.assertRestored();
+  }
+});
+
+test('canceling a paced restore still restores all shared instanced geometry and visibility', t => {
+  const f = sharedInstancedGeometryFixture(t);
+  const result = finishSteps(revealSubjectForCompileSteps(f.root, 1));
+  assert.equal(result.restoreSteps.next().done, false, 'restore paused after the root');
+  assert.equal(f.geometry.instanceCount, 1, 'the drawable prefix has not yet been restored');
+  result.restoreSteps.return();
+  f.assertRestored();
 });
 
 test('reveal for compile hides a null-geometry sprite instead of revealing it into the draw', () => {

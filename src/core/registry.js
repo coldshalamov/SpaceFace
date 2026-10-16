@@ -116,7 +116,13 @@ import { cargo } from '../systems/cargo.js';
 import { fragileCargo } from '../systems/fragileCargo.js';
 import { economy, economyReadView } from '../systems/economy.js';
 import { automation } from '../systems/automation.js';
-import { asteroidSites } from '../systems/asteroidSites.js'; // durable in-asteroid machine sites (ASTEROID_SITES_BRIEF)
+import {
+  asteroidSites,
+  canInstallAsteroidSiteFromState,
+  findAsteroidSiteFromState,
+  getAsteroidSiteFromState,
+  projectAsteroidSiteFromState,
+} from '../systems/asteroidSites.js'; // durable in-asteroid machine sites (ASTEROID_SITES_BRIEF)
 import { asteroidFormations } from '../systems/asteroidFormations.js'; // discovered-formation knowledge owner (A02)
 import { wingmen } from '../systems/wingmen.js';
 import { world } from '../systems/world.js';
@@ -130,8 +136,12 @@ import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
 import { postEndingReplay } from '../systems/postEndingReplay.js';
 import { economyContracts } from '../systems/economyContracts.js';
-import { careerOrigins } from '../careers/origins/careerOrigins.js';
-import { careerLadders } from '../careers/ladders/careerLadders.js';
+import {
+  careerOrigins,
+  getCareerOfferViewReadOnly,
+  getCareerProgress,
+} from '../careers/origins/careerOrigins.js';
+import { careerLadders, listLadderDefinitions } from '../careers/ladders/careerLadders.js';
 import { liveCareerLadderBranches } from '../careers/ladders/liveCareerLadderBranches.js';
 import { story } from '../systems/story.js';
 import { scenarioRuntime } from '../systems/scenarioRuntime.js';
@@ -266,6 +276,42 @@ function uniqueSystemsInOrder(systems) {
     unique.push(system);
   }
   return unique;
+}
+
+// Presentation-lane facades must hand callers detached data.  Keep the clone small and local so
+// read selectors cannot acquire a reference to the mirrored authority object.  The JSON fallback
+// is for older probe hosts that do not expose structuredClone; all mirrored values are save-safe
+// plain data at this boundary.
+function cloneReadValue(value) {
+  if (value === undefined || value === null) return value;
+  try {
+    if (typeof structuredClone === 'function') return structuredClone(value);
+  } catch (_) { /* fall through to the plain-data fallback */ }
+  try { return JSON.parse(JSON.stringify(value)); } catch (_) { return value; }
+}
+
+// asteroidSites' projection/preview methods use its transient runtime caches.  Run those methods
+// against an isolated prototype view over one cloned mirrored site so a presentation read cannot
+// normalize or reconcile the main-lane mirror.  Volatile survey state is deliberately absent here;
+// durable survey records still read correctly and an unknown volatile assay stays unknown.
+function asteroidReadViewFor(state, siteId) {
+  const source = getAsteroidSiteFromState(state, siteId);
+  if (!source || typeof source !== 'object') return null;
+  const sites = state && state.sites && typeof state.sites === 'object' ? state.sites : {};
+  const isolated = {
+    ...(state || {}),
+    sites: {
+      ...sites,
+      byId: { ...(sites.byId || {}), [siteId]: cloneReadValue(source) },
+    },
+  };
+  const view = Object.create(asteroidSites);
+  view.state = isolated;
+  view._rt = new Map();
+  view._surveyByAsteroid = new Map();
+  view._accessCache = null;
+  view.siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(view.state, asteroidId);
+  return view;
 }
 
 /**
@@ -939,6 +985,39 @@ export function createRegistry(ctx) {
           refitRows: () => read('refitRows', []),
         };
       }
+      case 'survivalResults': {
+        // The worker owns the private receipt.  Its detached public snapshot is mirrored with
+        // the worker lifecycle generation so a late result from a prior New Game/restore cannot
+        // reopen the current plate. Keep the facade read-only; the worker publishes this
+        // generation-matched snapshot before its run:resultsReady event reaches presentation.
+        const readSnapshot = () => {
+          const snapshot = st && st.survivalResultsPublic;
+          if (!snapshot || typeof snapshot !== 'object') return null;
+          const readGeneration = ctx && ctx.helpers && ctx.helpers.workerReadGeneration;
+          if (typeof readGeneration === 'function') {
+            const current = readGeneration();
+            if (!Number.isSafeInteger(current) || current < 0
+              || !Number.isSafeInteger(snapshot.generation)
+              || snapshot.generation !== current) return null;
+          }
+          return snapshot;
+        };
+        return {
+          name: 'survivalResults',
+          lastResult: () => {
+            const snapshot = readSnapshot();
+            return snapshot ? cloneReadValue(snapshot.result || null) : null;
+          },
+          resultRevision: () => {
+            const snapshot = readSnapshot();
+            return snapshot && Number.isSafeInteger(snapshot.revision) ? snapshot.revision : 0;
+          },
+          resultGeneration: () => {
+            const snapshot = readSnapshot();
+            return snapshot && Number.isSafeInteger(snapshot.generation) ? snapshot.generation : 0;
+          },
+        };
+      }
       case 'save':
         return {
           name: 'save',
@@ -966,6 +1045,16 @@ export function createRegistry(ctx) {
           },
           get slots() { return (st && st.save && st.save.slots) || []; },
           get currentSlot() { return st && st.save ? st.save.currentSlot : null; },
+          isSharedStoreSyncPending: () => {
+            const value = st && st.save && st.save.sharedStoreStatus
+              && st.save.sharedStoreStatus.syncPending;
+            return typeof value === 'boolean' ? value : true;
+          },
+          isSharedStoreMirrorHealthy: () => {
+            const value = st && st.save && st.save.sharedStoreStatus
+              && st.save.sharedStoreStatus.mirrorHealthy;
+            return typeof value === 'boolean' ? value : false;
+          },
           deferRunTransition: () => false,
           deferLoadedGameRestore: () => false,
         };
@@ -1066,6 +1155,112 @@ export function createRegistry(ctx) {
           build: (bpId, stationId) => Promise.resolve(laneRpc('craftingBuild', { bpId, stationId }))
             .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true)),
         };
+      case 'asteroidSites': {
+        // Site reads run over the mirrored state.  Runtime-backed reads use an isolated clone;
+        // writes stay on the worker through the narrow allowlist installed by simWorkerHost.
+        const call = (method, args) => Promise.resolve(
+          laneRpc('asteroidSitesCall', { method, args }),
+        ).then((ack) => {
+          if (!ack || ack.ok === false) {
+            return { ok: false, reason: ack && (ack.reason || ack.error) || 'asteroid-sites-rpc-failed' };
+          }
+          const native = ack.result;
+          // The worker handler returns { ok, result: nativeValue }; unwrap exactly that envelope
+          // and leave the native denial/result untouched.  A native boolean (tickWorkbench) stays
+          // a boolean so callers can distinguish a real answer from an absent response.
+          if (native && typeof native === 'object'
+            && Object.hasOwn(native, 'ok') && Object.hasOwn(native, 'result')) {
+            return native.result;
+          }
+          if (native === undefined) return { ok: false, reason: 'asteroid-sites-empty-result' };
+          return native;
+        });
+        const readView = (siteId) => asteroidReadViewFor(st, siteId);
+        // These selectors are cheap identity reads used by the screen's dirty probe. Callers only
+        // inspect the records; projection and preview paths below are the mutation-safe selectors
+        // that run over isolated clones.
+        const siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(st, asteroidId);
+        const getSite = (siteId) => getAsteroidSiteFromState(st, siteId);
+        const projection = (siteId) => projectAsteroidSiteFromState(st, siteId);
+        const canInstall = (request) => canInstallAsteroidSiteFromState(st, request || {});
+        return {
+          name: 'asteroidSites',
+          state: st,
+          bus: ctx && ctx.bus,
+          getSite,
+          siteForAsteroid,
+          projection,
+          canInstall,
+          machineAt: (site, col, row) => asteroidSites.machineAt(site, col, row),
+          hasCore: (site) => asteroidSites.hasCore(site),
+          previewBreak: (siteId, col, row) => {
+            const view = readView(siteId);
+            return view ? view.previewBreak(siteId, col, row) : null;
+          },
+          previewMachineRemoval: (siteId, machineId) => {
+            const view = readView(siteId);
+            return view ? view.previewMachineRemoval(siteId, machineId) : { spilledTotal: 0, spilled: [], placed: [] };
+          },
+          previewOverlayRemoval: (siteId, kind, col, row) => {
+            const view = readView(siteId);
+            return view ? view.previewOverlayRemoval(siteId, kind, col, row) : { spilledTotal: 0, spilled: [], placed: [] };
+          },
+          surveyStatusFor: (asteroidId) => {
+            const site = siteForAsteroid(asteroidId);
+            const view = site ? readView(site.id) : null;
+            return view ? view.surveyStatusFor(asteroidId) : null;
+          },
+          surveyCellRole: (asteroidId, index) => {
+            const site = siteForAsteroid(asteroidId);
+            const view = site ? readView(site.id) : null;
+            return view ? view.surveyCellRole(asteroidId, index) : null;
+          },
+          _fundingStoresFor: (site, col, row) => {
+            const view = site && readView(site.id);
+            const isolatedSite = view && view.getSite(site.id);
+            return view && isolatedSite ? view._fundingStoresFor(isolatedSite, col, row) : null;
+          },
+          _missingMaterials: (site, cost, stores) => {
+            const view = site && readView(site.id);
+            const isolatedSite = view && view.getSite(site.id);
+            return view && isolatedSite ? view._missingMaterials(isolatedSite, cost, stores) : {};
+          },
+          installMachine: (request) => call('installMachine', [request]),
+          removeMachine: (siteId, machineId, opts) => call('removeMachine', [siteId, machineId, opts]),
+          setOverlay: (siteId, kind, col, row, on, opts) => call('setOverlay', [siteId, kind, col, row, on, opts]),
+          setMachineMode: (siteId, machineId, mode) => call('setMachineMode', [siteId, machineId, mode]),
+          setExportFlag: (siteId, goodId, exported) => call('setExportFlag', [siteId, goodId, exported]),
+          setPodTarget: (siteId, target) => call('setPodTarget', [siteId, target]),
+          setPodDestination: (siteId, stationId) => call('setPodDestination', [siteId, stationId]),
+          transferGoods: (siteId, machineId, goodId, qty, dir) => call(
+            'transferGoods', [siteId, machineId, goodId, qty, dir],
+          ),
+          tickWorkbench: (dt, siteId) => call('tickWorkbench', [dt, siteId]),
+        };
+      }
+      case 'careerLadders': {
+        // Definitions are process-local data. The presenter derives offers/progress from the
+        // mirrored leaves; native getters hydrate state and must stay on the simulation owner.
+        return {
+          name: 'careerLadders',
+          getDefinition: (careerId) => careerLadders.getDefinition(careerId),
+          listLadderDefinitions,
+        };
+      }
+      case 'careerOrigins': {
+        // Origin reads must not call the native ensure/migrate path against a presentation mirror.
+        // getCareerProgress is run on a detached careers tree because its legacy projection still
+        // normalizes missing leaves; the normalization therefore cannot write worker-owned state.
+        const readState = () => ({
+          ...(st || {}),
+          careers: cloneReadValue(st && st.careers ? st.careers : {}),
+        });
+        return {
+          name: 'careerOrigins',
+          getOfferView: (careerId) => getCareerOfferViewReadOnly(readState(), careerId),
+          getProgress: (careerId) => getCareerProgress(readState(), careerId),
+        };
+      }
       case 'drill': {
         // The drill clock is the screen's rAF, not a sim tick — per-frame
         // held-state ships as ordered domEvent descriptors inside the tick

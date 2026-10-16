@@ -1,4 +1,5 @@
 import { addEnvironmentHeat } from './environmentMaterials.js';
+import { CRYO_QUENCH, environmentMaterialOf, stampEnvironmentMaterial } from '../data/environmentMaterials.js';
 import { steerAfterBounce } from '../combat/surfaceReflection.js';
 import { applyReflectedVelocity } from '../core/surfaceContact.js';
 // Weapons system (ARCHITECTURE §2.3 step 4 — runs after ai/flight, before physics.integrate).
@@ -134,6 +135,72 @@ function weaponHeatDissipScale(state, entity) {
 }
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
+
+// RW-04 slag quench (build_map §30.1): while a Frame Coupler line holds onto cryo ice, the
+// rock is a heat sink. Every mount sheds at the authored rate, the rock's cold reserve pays
+// for it, and the heat lands on the rock through the ordinary environment material owner —
+// so a drained rock warms to its fracture heat and cracks apart like any other body. The
+// same coupling to ordinary rock does nothing; there is no quench without the cold.
+const CRYO_QUENCH_EMIT_TICKS = 10;
+const cryoQuenchLastEmit = new WeakMap();
+
+export function applyCryoQuench(state, entity, dt, hooks = {}) {
+  if (!(dt > 0) || !state || entity?.type !== 'ship' || entity.alive === false) return false;
+  const rock = cryoQuenchRockFor(state, entity);
+  if (!rock) return false;
+  const data = rock.data;
+  if (!(data.cryoReserve > 0)) return false; // spent ice is just rock
+  const ws = entity.data && entity.data.weapons;
+  if (!ws || !ws.length) return false;
+  let shed = 0;
+  for (const w of ws) {
+    if (!(w._heat > 0)) continue;
+    const take = Math.min(w._heat, CRYO_QUENCH.heatPerSecPerMount * dt);
+    w._heat -= take;
+    shed += take;
+  }
+  if (shed <= 0) return false;
+  data.cryoReserve = Math.max(0, data.cryoReserve - shed * CRYO_QUENCH.reservePerHeat);
+  addEnvironmentHeat(state, rock, shed * CRYO_QUENCH.rockHeatPerHeat, {
+    kind: 'cryo_quench', actorId: entity.id, weaponOwner: entity.id,
+  });
+  const tick = state.tick | 0;
+  if (tick - (cryoQuenchLastEmit.get(entity) ?? -Infinity) >= CRYO_QUENCH_EMIT_TICKS) {
+    cryoQuenchLastEmit.set(entity, tick);
+    // The plume reads through the ordinary thermal-field grammar — the same cold well the
+    // kilnback's coolant casks paint, at the rock, while the quench holds.
+    hooks.fields?.registerThermal?.({
+      id: `cryo_quench:${rock.id}`,
+      kind: 'well',
+      center: { x: rock.pos.x, z: rock.pos.z },
+      radius: 90,
+      durationS: 2,
+      thermal: { family: 'cryo_quench', kind: 'coolant', sourceKey: `cryo_quench:${rock.id}` },
+    });
+    hooks.emit?.('weapons:cryoQuench', {
+      actorId: entity.id, rockId: rock.id, shed, reserve: data.cryoReserve, tick,
+    });
+  }
+  return true;
+}
+
+function cryoQuenchRockFor(state, hull) {
+  const map = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!map) return null;
+  for (const attachment of Object.values(map)) {
+    if (attachment.state !== 'active' || attachment.defId !== 'tether_standard') continue;
+    if (attachment.tetherPolicy?.headId !== 'frame_coupler') continue;
+    const rockId = attachment.ownerId === hull.id ? attachment.targetId
+      : attachment.targetId === hull.id ? attachment.ownerId : null;
+    if (rockId == null) continue;
+    const rock = state.entities && state.entities.get ? state.entities.get(rockId) : null;
+    if (!rock || rock.alive === false || rock.type !== 'asteroid') continue;
+    if (environmentMaterialOf(rock) !== 'cryo') continue;
+    stampEnvironmentMaterial(rock, 'cryo');
+    return rock;
+  }
+  return null;
+}
 
 // SF-2b #6: a continuous beam pays the target's flat armor once per BEAM_ARMOR_PACKET_S, not once
 // per tick. The damage router deducts armorFlat once per packet and a beam emits one packet per
@@ -313,6 +380,7 @@ export const weapons = {
 
   init(ctx) {
     this.destroy();
+    this.ctx = ctx;
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -689,6 +757,7 @@ export const weapons = {
           const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, player);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
+        applyCryoQuench(state, player, dt, this._quenchHooks());
         this._tickVent(player, dt, state);
         this._tickLock(player, dt);
       }
@@ -698,8 +767,15 @@ export const weapons = {
   },
 
   // --- per-instance timers (cooldown, heat dissipation, lock decay) ---
+  _quenchHooks() {
+    const fields = this.ctx && this.ctx.registry && this.ctx.registry.get('fields');
+    const emit = (type, payload) => this.bus.emit(type, payload);
+    return { fields: fields && typeof fields.registerThermal === 'function' ? fields : null, emit };
+  },
+
   _tickWeapons(dt, state) {
     const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships)) || state.entityList;
+    const quenchHooks = this._quenchHooks();
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
       if (e.physicsSleeping === true && !npcWeaponsNeedTick(e, state)) continue;
@@ -712,6 +788,7 @@ export const weapons = {
           const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, e);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
+        applyCryoQuench(state, e, dt, quenchHooks);
         // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
         // freshly-pegged gun trips the vent this tick.
         this._tickVent(e, dt, state);
@@ -1235,6 +1312,16 @@ export const weapons = {
     const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
+    // RW-01: a siege-class beam pushes its firing hull backward for as long as it holds the beam.
+    // Continuous player_maneuver provenance — full strength, braceable through a taut winch line.
+    const beamRecoilPerSec = Number(def.recoilImpulsePerSec) || 0;
+    if (beamRecoilPerSec > 0) {
+      deliverPhysicalImpulseDetailed(state, e,
+        { x: -Math.cos(dir) * beamRecoilPerSec * dt, z: -Math.sin(dir) * beamRecoilPerSec * dt },
+        { tag: 'weapon_recoil', motionIntent: 'player_maneuver', weaponId: w.defId,
+          tick: state.tick, continuous: true, dt },
+        { scaleEnvironment: false });
+    }
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
     const damageType = w.damageType || def.damageType || 'energy';
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
@@ -1465,6 +1552,17 @@ export const weapons = {
     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
 
     this._emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec);
+
+    // RW-01: heavy single shots answer on the shooter. Full strength (player_maneuver provenance
+    // bypasses the external-impulse nudge scale); a taut winch brace against a massive anchor
+    // routes the along-line component into line load instead of hull velocity.
+    const recoilImpulse = Number(def.recoilImpulse) || 0;
+    if (recoilImpulse > 0) {
+      deliverPhysicalImpulseDetailed(state, e,
+        { x: -Math.cos(dir) * recoilImpulse, z: -Math.sin(dir) * recoilImpulse },
+        { tag: 'weapon_recoil', motionIntent: 'player_maneuver', weaponId: w.defId, tick: state.tick },
+        { scaleEnvironment: false });
+    }
 
     const origin = this._muzzle(e, w, dir);
     this.bus.emit('combat:fire', {

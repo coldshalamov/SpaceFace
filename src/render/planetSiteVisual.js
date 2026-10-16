@@ -210,7 +210,7 @@ function stormArcLayout(seed) {
  * registration transaction). Returns a group whose origin sits on the gameplay plane at the
  * entity position; the body is offset to site.centerY inside it.
  */
-export function buildPlanetSiteVisual(e) {
+export function buildPlanetSiteVisual(e, { detailAdmission = null } = {}) {
   const site = e && e.data && e.data.planetSite;
   if (!site) return null;
   const R = site.radius;
@@ -239,18 +239,68 @@ export function buildPlanetSiteVisual(e) {
     fog: false,
   });
   const detailParams = planetDetailParams(site.planetType, R);
-  const applyDetail = () => {
-    const tile = planetDetailFor(site.planetType);
-    if (!tile) return;
-    surfaceMat.uniforms.uDetail.value = tile;
-    surfaceMat.uniforms.uDetailScale.value = detailParams.scale;
-    surfaceMat.uniforms.uDetailAmt.value = detailParams.amount;
+  // Decode readiness does not prove GPU residency. Keep the authored neutral/previous
+  // detail until this planet's requested tile finishes the existing paced upload lane.
+  let detailDisposed = false;
+  let detailSerial = 0;
+  let detailGeneration;
+  let detailBound = false;
+  const detail = { status: 'unavailable', error: null, ready: Promise.resolve(null), cancel: null };
+  const generation = () => detailAdmission?.generation?.();
+  const requestDetail = () => {
+    if (detailDisposed || detailBound || typeof detailAdmission?.prepare !== 'function') return detail.ready;
+    const serial = ++detailSerial;
+    const context = detailGeneration = generation();
+    const prior = surfaceMat.uniforms.uDetail.value;
+    const active = () => !detailDisposed && serial === detailSerial && generation() === context
+      && surfaceMat.uniforms.uDetail.value === prior;
+    detail.status = 'decoding';
+    detail.error = null;
+    detail.ready = Promise.resolve(whenPlanetDetailReady()).then(async () => {
+      if (!active()) return { skipped: true, reason: 'owner-inactive' };
+      const tile = planetDetailFor(site.planetType);
+      if (!tile) { detail.status = 'unavailable'; return { skipped: true, reason: 'detail-unavailable' }; }
+      detail.status = 'admitting';
+      const result = await detailAdmission.prepare(tile, { isActive: active });
+      if (!active()) return { skipped: true, reason: 'owner-inactive' };
+      if (!result || result.skipped === true || result.contextLost === true
+          || result.partial === true || result.cancelled === true
+          || result.ok === false || result.complete === false) {
+        throw new Error('Planet detail texture residency was not completed');
+      }
+      surfaceMat.uniforms.uDetail.value = tile;
+      surfaceMat.uniforms.uDetailScale.value = detailParams.scale;
+      surfaceMat.uniforms.uDetailAmt.value = detailParams.amount;
+      detailBound = true;
+      detail.status = 'ready';
+      return result;
+    }).catch(error => {
+      if (serial === detailSerial && !detailDisposed) {
+        detail.status = active() ? 'error' : 'cancelled';
+        detail.error = String(error?.message || error);
+      }
+      return { skipped: true, reason: 'detail-admission-failed', error: String(error?.message || error) };
+    });
+    return detail.ready;
   };
-  applyDetail();
-  if (surfaceMat.uniforms.uDetailAmt.value === 0) {
-    // Not decoded yet (a planet built before the library published): swap the tile in when it lands.
-    whenPlanetDetailReady().then(applyDetail);
-  }
+  const beforeDetailRender = surfaceMat.onBeforeRender;
+  const checkDetailContext = function (renderer, scene, camera, geometry, object, group) {
+    beforeDetailRender?.call(this, renderer, scene, camera, geometry, object, group);
+    // A lost generation cannot publish its completion. Retry an unbound tile through
+    // the same owner after restore; already-bound tiles use the ordinary scene rebuild.
+    if (!detailDisposed && !detailBound && detailGeneration !== generation()) requestDetail();
+  };
+  surfaceMat.onBeforeRender = checkDetailContext;
+  detail.cancel = () => {
+    if (detailDisposed) return;
+    detailDisposed = true;
+    detailSerial++;
+    detail.status = 'cancelled';
+    surfaceMat.removeEventListener('dispose', detail.cancel);
+    if (surfaceMat.onBeforeRender === checkDetailContext) surfaceMat.onBeforeRender = beforeDetailRender;
+  };
+  surfaceMat.addEventListener('dispose', detail.cancel);
+  requestDetail();
   const body = new THREE.Mesh(geo, surfaceMat);
   body.scale.setScalar(R);
   body.position.y = site.centerY;
@@ -307,7 +357,7 @@ export function buildPlanetSiteVisual(e) {
   const storm = bandDefs[1].mat;
   if (storm.uniforms.uTension) storm.uniforms.uTension.value = 0.6;
 
-  group.userData.planetVisual = { siteId: site.siteId, timeMats, bodyMat: surfaceMat, shellMat };
+  group.userData.planetVisual = { siteId: site.siteId, timeMats, bodyMat: surfaceMat, shellMat, detail };
   group.userData.noWobble = true; // a world does not idle-bob
   return group;
 }

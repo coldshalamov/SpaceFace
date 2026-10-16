@@ -187,6 +187,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
   step('canvas');
   const canvasShot = await screenshotCanvas(page);
   const pixels = await sampleCanvas(page, canvasShot);
+  const openingAdmission = await getOpeningAdmissionDiagnostics(page, pageIssues.issues);
   const suffix = cleanRuns > 1 ? `-run${runIndex}` : '';
   let screenshot = null;
   if (writeShots) {
@@ -236,6 +237,13 @@ async function runViewportProbe(browser, viewport, runIndex) {
       && sg02Diagnostics.sg02Bodies > 0
       && sg02Diagnostics.snapshotBodies > 0,
     canvasNonBlank: pixels.nonDark > 0 && pixels.maxLum > 45 && pixels.dataUrlLen > 10000,
+    openingPostSubmitReady: openingAdmission.available === true && openingAdmission.final?.ok === true,
+    openingFirstPlayableReady: Number.isFinite(openingAdmission.firstPlayableFrameAt)
+      && openingAdmission.firstPlayableFrameAt > 0
+      && openingAdmission.flightVeilHoldsSim === false,
+    openingCompositionSettled: openingAdmission.composition?.settled === true
+      && openingAdmission.composition.pending === 0,
+    openingNoBindingFailsafe: openingAdmission.missingBindingFailsafe === false,
     noPageErrors: errorIssues.length === 0,
     noConsoleWarnings: !strictWarnings || warningSummary.clean,
   };
@@ -263,6 +271,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
     diagnostics,
     sg02Diagnostics,
     pixels,
+    openingAdmission,
     warningSummary,
     issueCount: issues.length,
     ignoredIssueCount: ignoredIssues.length,
@@ -275,6 +284,96 @@ async function runViewportProbe(browser, viewport, runIndex) {
       try { await page.close(); } catch (_) {}
     }
   }
+}
+
+async function getOpeningAdmissionDiagnostics(page, issues) {
+  const warnings = issues.filter((issue) => /\[render\] opening /.test(issue.text || ''))
+    .slice(0, 8).map((issue) => ({ type: issue.type, at: issue.at || null,
+      text: String(issue.text || '').slice(0, 4096) }));
+  const labels = [...new Set(warnings.flatMap((issue) =>
+    [...issue.text.matchAll(/plan:\d+:material:\d+/g)].map((match) => match[0])))].slice(0, 8);
+  return page.evaluate(({ warnings, labels }) => {
+    const sf = window.SF, state = sf?.state, render = state?.render;
+    if (!render) return { available: false, warnings };
+    const owner = sf.registry?.get?.('render');
+    const text = (value) => value == null ? null : String(value).slice(0, 240);
+    const finite = (value) => Number.isFinite(value) ? value : null;
+    const list = (value) => Array.isArray(value) ? value.slice(0, 16).map(text) : null;
+    const validation = (value) => value ? {
+      ok: value.ok === true, reason: text(value.reason),
+      uncaptured: list(value.uncaptured), missingProgramKeys: list(value.missingProgramKeys),
+      missingProgramBindings: list(value.missingProgramBindings),
+      delta: value.delta ? { programs: finite(value.delta.programs),
+        geometries: finite(value.delta.geometries), textures: finite(value.delta.textures) } : null,
+    } : null;
+    const settle = render.openingCompositionSettle;
+    const queue = settle?.queue;
+    const visible = render.openingFirstVisibleGpuCounts;
+    const late = visible?.lateAdmissions;
+    const counts = (value) => value ? { programs: finite(value.programs), geometries: finite(value.geometries) } : null;
+    const plan = render.openingSubmissionReceipt?.plan;
+    // Labels are scoped to the current terminal receipt: a recovered/rebuilt plan may have
+    // replaced the one named by an earlier warning, so do not present this as warning-time identity.
+    const subjects = labels.map((label) => {
+      const [, planIndex, materialIndex] = /^plan:(\d+):material:(\d+)$/.exec(label);
+      const subject = plan?.compileSubjects?.[Number(planIndex)];
+      if (!subject) return { label, available: false };
+      const material = Array.isArray(subject.material)
+        ? subject.material[Number(materialIndex)] : subject.material;
+      const ancestors = [];
+      let node = subject, identity = null, asset = null, authoredState = null;
+      while (node && ancestors.length < 6) {
+        const data = node.userData || {};
+        ancestors.push({ name: text(node.name), type: text(node.type) });
+        if (!identity && data.presentationEntityId != null) identity = {
+          entityId: text(data.presentationEntityId), generation: text(data.presentationOccupantGeneration),
+        };
+        asset ||= data.spacefaceRenderPackage || data.flightRenderPackage || null;
+        authoredState ||= data.authoredAssetState || null;
+        node = node.parent;
+      }
+      return { label, available: true, name: text(subject.name), uuid: text(subject.uuid),
+        type: text(subject.type), ancestors, identity, authoredState: text(authoredState),
+        asset: asset ? { assetId: text(asset.assetId), contentHash: text(asset.contentHash) } : null,
+        material: material ? { name: text(material.name), uuid: text(material.uuid),
+          type: text(material.type), version: finite(material.version) } : null };
+    });
+    return { available: true, observedAt: performance.now(), mode: state.mode,
+      tick: finite(state.tick), simTime: finite(state.simTime), warnings,
+      firstPlayableFrameAt: finite(render.firstPlayableFrameAt),
+      flightVeilHoldsSim: render.flightVeilHoldsSim === true,
+      firstPicturePhase: render.openingFirstPicturePhase ? {
+        stage: text(render.openingFirstPicturePhase.stage), outcome: text(render.openingFirstPicturePhase.outcome),
+        ms: finite(render.openingFirstPicturePhase.ms), budgetMs: finite(render.openingFirstPicturePhase.budgetMs),
+      } : null,
+      preSubmit: validation(render.openingSubmissionPreSubmitValidation),
+      final: validation(render.openingSubmissionValidation),
+      refusedFrames: owner ? finite(owner._openingPreSubmitRefusals) : null,
+      missingBindingFailsafe: owner ? owner._openingMissingHoldFailOpen === true : null,
+      firstVisible: visible ? { before: counts(visible.before), after: counts(visible.after), delta: counts(visible.delta),
+        lateAdmissions: late ? { unexplained: late.unexplained === true,
+          newProgramFamilyKeys: list(late.newProgramFamilyKeys),
+          unattributedProgramFamilyKeys: list(late.unattributedProgramFamilyKeys),
+          rows: (late.lateAdmissions || []).slice(0, 16).map((row) => ({
+            root: text(row.root), object: text(row.object), material: text(row.material), materialType: text(row.materialType),
+            geometryAdmitted: row.geometryAdmitted === true, planned: row.planned === true,
+            exempted: row.exempted === true, exemptionReason: text(row.exemptionReason),
+            programFamilyKeys: list(row.programFamilyKeys),
+          })) } : null } : null,
+      composition: settle ? { settled: settle.settled === true, reason: text(settle.reason),
+        waitedMs: finite(settle.waitedMs), pending: finite(settle.pending),
+        ids: list(settle.ids), statuses: list(settle.statuses),
+        queue: queue ? { pending: finite(queue.pending), inFlight: finite(queue.inFlight),
+          compiling: finite(queue.compiling), held: queue.held === true,
+          jobs: (queue.jobs || []).slice(0, 8).map((job) => ({ key: text(job.key),
+            lifecycle: text(job.lifecycle), status: text(job.status) })) } : null } : null,
+      compositionSteps: (render.openingCookLedger || [])
+        .filter((row) => /^live\.openingComposition/.test(row.step || '')).slice(0, 4)
+        .map((row) => ({ step: text(row.step), outcome: text(row.outcome), ms: finite(row.ms),
+          reason: text(row.reason), pending: finite(row.pending), ids: text(row.ids), statuses: text(row.statuses) })),
+      subjectScope: 'terminal-current-receipt', subjects,
+    };
+  }, { warnings, labels }).catch((error) => ({ available: false, warnings, error: String(error.message).slice(0, 400) }));
 }
 
 function logProgress(message) {
@@ -302,6 +401,7 @@ function compactProbeResult(result) {
     ignoredIssueCount: result.ignoredIssueCount,
     issues: result.issues,
     ignoredIssues: result.ignoredIssues,
+    openingAdmission: result.openingAdmission,
     pixels: result.pixels && {
       width: result.pixels.width,
       height: result.pixels.height,
@@ -821,16 +921,30 @@ async function sampleCanvas(page, screenshotBuffer = null) {
     let nonDark = 0;
     let maxLum = 0;
     let samples = 0;
-    for (let yi = 0; yi < 12; yi++) {
-      for (let xi = 0; xi < 12; xi++) {
-        const x = Math.floor((xi + 0.5) * w / 12);
-        const y = Math.floor((yi + 0.5) * h / 12);
-        gl.readPixels(x, h - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-        const lum = px[0] + px[1] + px[2];
-        if (lum > 45) nonDark++;
-        if (lum > maxLum) maxLum = lum;
-        samples++;
+    const webgl2 = typeof gl.readBuffer === 'function' && gl.READ_FRAMEBUFFER !== undefined;
+    const target = webgl2 ? gl.READ_FRAMEBUFFER : gl.FRAMEBUFFER;
+    const priorFramebuffer = gl.getParameter(webgl2 ? gl.READ_FRAMEBUFFER_BINDING : gl.FRAMEBUFFER_BINDING);
+    let canvasReadBuffer;
+    try {
+      gl.bindFramebuffer(target, null);
+      if (webgl2) {
+        canvasReadBuffer = gl.getParameter(gl.READ_BUFFER);
+        gl.readBuffer(gl.BACK);
       }
+      for (let yi = 0; yi < 12; yi++) {
+        for (let xi = 0; xi < 12; xi++) {
+          const x = Math.floor((xi + 0.5) * w / 12);
+          const y = Math.floor((yi + 0.5) * h / 12);
+          gl.readPixels(x, h - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          const lum = px[0] + px[1] + px[2];
+          if (lum > 45) nonDark++;
+          if (lum > maxLum) maxLum = lum;
+          samples++;
+        }
+      }
+    } finally {
+      try { if (canvasReadBuffer !== undefined) gl.readBuffer(canvasReadBuffer); }
+      finally { gl.bindFramebuffer(target, priorFramebuffer); }
     }
     return { source: 'webgl-readPixels', width: w, height: h, samples, nonDark, maxLum, dataUrlLen: canvas.toDataURL('image/png').length };
   });
@@ -946,6 +1060,10 @@ async function reachable(url) {
 function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
+  // This controlled mechanics probe resets bodies, isolates actors and reads native physics
+  // diagnostics. Those fixture writes must reach the authoritative realm, not the worker mirror.
+  // Default worker-route acceptance remains the separate player-truth/native campaign.
+  u.searchParams.set('simLane', 'main');
   return String(u);
 }
 

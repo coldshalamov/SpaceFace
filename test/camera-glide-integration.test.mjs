@@ -68,15 +68,18 @@ test('cameraRoofAt agrees with the legacy floor query where both apply', () => {
   assert.equal(cameraRoofAt(owner, 10, 10, 0), legacy);
 });
 
-function chaseHarness() {
+function chaseHarness(view = 'overhead', position = { x: 0, z: -1500 }) {
   const player = {
     id: 1, type: 'ship', alive: true,
-    pos: { x: 0, z: -1500 }, prevPos: { x: 0, z: -1500 },
+    pos: { x: position.x, z: position.z }, prevPos: { x: position.x, z: position.z },
     vel: { x: 0, z: 0 }, rot: 0, bank: 0, radius: 6, mass: 24,
     flags: { boosting: false }, maxSpeed: 320,
   };
   const state = {
-    settings: { video: { fov: 50, motionReduce: false } },
+    settings: {
+      video: { fov: 50, motionReduce: false },
+      gameplay: { steeringView: view, racingHeight: 6, racingDistance: 24, racingLookAhead: 0 },
+    },
     camera: { zoom: 144, tilt: 60, lerp: 18, lookAhead: 0 },
     input: { actions: {} },
     entities: new Map([[1, player]]),
@@ -124,5 +127,73 @@ test('chase camera flying through a station: never inside, keeps its aim, settle
   assert.ok(peakY > 200, `camera really cleared a 210 WU hull (peak ${peakY.toFixed(0)})`);
   assert.ok(sawRiseBeforeWall, 'rose before the camera column reached the hull');
   assert.ok(state.camera.clearanceScale < 1.02, `dolly returned to the set framing (scale ${state.camera.clearanceScale.toFixed(3)})`);
+});
+
+function assertCameraOutsideRoof(owner, cam, label) {
+  const p = cam.obj.position;
+  const roof = cameraRoofAt(owner, p.x, p.z, 0);
+  assert.ok(p.y >= roof - 1e-6,
+    `${label}: eye entered roof at [${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}] (roof ${roof.toFixed(2)})`);
+}
+
+test('low stern rig clears a full-size authored station at rest', () => {
+  const owner = ownerWith(solid(0, 0, 1300, 1300, 364));
+  const clearanceAt = (x, z, y) => cameraClearanceFloorAt(owner, x, z, y);
+  clearanceAt.roofAt = (x, z, pad) => cameraRoofAt(owner, x, z, pad);
+  const { state, cam } = chaseHarness('racing', { x: 0, z: 0 });
+
+  cam.follow(0, 1, undefined, clearanceAt);
+  let peakScale = state.camera.clearanceScale;
+  for (let i = 0; i < 180; i++) {
+    cam.follow(1 / 60, 1, undefined, clearanceAt);
+    peakScale = Math.max(peakScale, state.camera.clearanceScale);
+    assertCameraOutsideRoof(owner, cam, `low stern frame ${i}`);
+  }
+  assert.ok(peakScale > 16, `the stern escape must exceed the aesthetic cap (peak ${peakScale.toFixed(3)})`);
+});
+
+test('overhead and stern transition frames all keep the real eye outside the roof', () => {
+  const owner = ownerWith(solid(0, 0, 1300, 1300, 364));
+  const clearanceAt = (x, z, y) => cameraClearanceFloorAt(owner, x, z, y);
+  clearanceAt.roofAt = (x, z, pad) => cameraRoofAt(owner, x, z, pad);
+  const { state, cam } = chaseHarness('overhead', { x: 0, z: 0 });
+
+  cam.follow(0, 1, undefined, clearanceAt);
+  for (let i = 0; i < 30; i++) {
+    cam.follow(1 / 60, 1, undefined, clearanceAt);
+    assertCameraOutsideRoof(owner, cam, `overhead hold frame ${i}`);
+  }
+  state.settings.gameplay.steeringView = 'racing';
+  for (let i = 0; i < 180; i++) {
+    cam.follow(1 / 60, 1, undefined, clearanceAt);
+    assertCameraOutsideRoof(owner, cam, `overhead-to-stern frame ${i}`);
+  }
+  state.settings.gameplay.steeringView = 'overhead';
+  for (let i = 0; i < 180; i++) {
+    cam.follow(1 / 60, 1, undefined, clearanceAt);
+    assertCameraOutsideRoof(owner, cam, `stern-to-overhead frame ${i}`);
+  }
+});
+
+test('snap and reprime keep the low stern eye clear without crossing the far plane', () => {
+  const owner = ownerWith(solid(0, 0, 1300, 1300, 364));
+  const clearanceAt = (x, z, y) => cameraClearanceFloorAt(owner, x, z, y);
+  clearanceAt.roofAt = (x, z, pad) => cameraRoofAt(owner, x, z, pad);
+  const { state, player, cam } = chaseHarness('racing', { x: 0, z: 0 });
+  state.settings.gameplay.racingDistance = 140;
+  state.settings.gameplay.racingLookAhead = 120;
+
+  const dt = 1 / 60;
+  for (let i = 0; i < 240; i++) cam.follow(dt, 1, undefined, clearanceAt);
+  assert.ok(cam.snapToPlayer(), 'public snap API accepted the player');
+  cam.follow(dt, 1, undefined, clearanceAt);
+
+  assertCameraOutsideRoof(owner, cam, 'snap/reprime');
+  assert.ok(cam.obj.position.x > -1000,
+    `snap/reprime stayed near the station edge instead of overzooming (eye X ${cam.obj.position.x.toFixed(2)})`);
+  cam.obj.updateMatrixWorld(true);
+  const shipNdc = new THREE.Vector3(player.pos.x, 0, player.pos.z).project(cam.obj);
+  assert.ok(shipNdc.z <= 1 + 1e-6,
+    `snap/reprime kept the ship inside the far plane (NDC z ${shipNdc.z.toFixed(8)})`);
 });
 

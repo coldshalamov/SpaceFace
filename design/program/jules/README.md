@@ -45,8 +45,9 @@ It avoids open-ended “improve the game” prompts, broad subsystem rewrites, s
 | **Total** | **171** | **162 Flash / 9 Pro** |
 
 The canonical data is [`task-bank.json`](./task-bank.json). The schema is
-[`task-bank.schema.json`](./task-bank.schema.json). The generated catalogs start at
-[`catalog/INDEX.md`](./catalog/INDEX.md).
+[`task-bank.schema.json`](./task-bank.schema.json). The human-readable `catalog/` rendering was
+removed in the 2026-10-15 token-reduction pass (recoverable from git history); render prompts from
+the bank JSON directly.
 
 ## Authority boundary
 
@@ -225,17 +226,5 @@ review_minutes
 
 The useful number is not PR count. It is **merged independent value per local-review minute**. Increase quotas where that rises; cut lanes where Flash produces plausible garbage faster than the integrator can reject it.
 
-## Catalogs
-
-- [Deterministic test hardening (40)](./catalog/test-hardening.md)
-- [Bounded bug hunts and surgical fixes (50)](./catalog/bug-hunt.md)
-- [Determinism, replay, save, and lifecycle (5)](./catalog/determinism-save.md)
-- [Performance, allocation, residency, and disposal (1)](./catalog/performance-lifecycle.md)
-- [UI, UX, input reachability, and accessibility (15)](./catalog/ui-ux-accessibility.md)
-- [Flight, combat, AI, and game feel (22)](./catalog/ai-combat-flight.md)
-- [World, economy, missions, mining, and progression (17)](./catalog/world-economy-missions-mining.md)
-- [Rendering, assets, VFX, camera, and audio (5)](./catalog/render-assets-vfx-audio.md)
-- [Tooling, data integrity, diagnostics (7)](./catalog/tooling-data-docs.md)
-- [Small creative production slices (9)](./catalog/creative-expansion.md)
 
 The catalogs are generated views for review and browsing. `task-bank.json` is canonical. Do not hand-edit catalog entries independently.

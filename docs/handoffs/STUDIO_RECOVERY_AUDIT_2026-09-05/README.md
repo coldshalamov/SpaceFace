@@ -1,6 +1,5 @@
 # Tombstone
 
-The Studio Recovery Audit (2026-09-05) was removed from the working tree in the 2026-09-08
-owner-directed docs consolidation. Its thesis is preserved in `build_map.md` §15.9b; its
-analytical reference modules remain under `tools/reference/`. This file exists only because queue
-rows still name it as a source.
+The studio-recovery audit was completed and its handoff retired to git history in the
+2026-10-15 token-reduction pass. This file remains only because program-queue rows
+name it as a source.

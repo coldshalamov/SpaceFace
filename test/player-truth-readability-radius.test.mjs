@@ -37,7 +37,7 @@ test('small-body sampling and genuinely dim large bodies retain their contrast v
   assert.ok(Math.abs(dim.lab[0] - dim.bg[0]) < THRESHOLDS.readabilityLowDeltaL);
 });
 
-async function analyzeLargeBody(value, overlays = []) {
+async function analyzeLargeBody(value, overlays = [], vis = VIS.onscreen, key = 7) {
   const file = await sharp(bodyImage(value), {
     raw: { width: SIZE, height: SIZE, channels: 3 },
   }).png().toBuffer();
@@ -46,25 +46,28 @@ async function analyzeLargeBody(value, overlays = []) {
     const t = i * 100;
     shots.push({ t, endT: t + 5, file, play: true, overlays });
     for (const offset of [0, 5]) samples.push({ t: t + offset, mode: 'flight', vw: SIZE, vh: SIZE,
-      e: [[1, CLS.asteroid, 0, 0, 0, 0, CENTER, CENTER, RADIUS, VIS.onscreen, 7, 1]] });
+      e: [[1, CLS.asteroid, 0, 0, 0, 0, CENTER, CENTER, RADIUS, vis, key, 1]] });
   }
   const nearest = t => samples.reduce((best, s) => Math.abs(s.t - t) < Math.abs(best.t - t) ? s : best);
   const readability = await analyzeReadability(shots, nearest, samples);
   return { readability, verdict: checkReadability({ readability }) };
 }
 
-test('frame analysis passes the true body bounds to the backdrop sampler', async () => {
+test('frame analysis retains the full backdrop radius without claiming body pixel ownership', async () => {
   const { readability, verdict } = await analyzeLargeBody(60);
   assert.equal(readability.classes.asteroid.n, 5);
   assert.equal(readability.classes.asteroid.lowContrastFrac, 0);
-  assert.equal(verdict.status, 'PASS');
+  assert.equal(readability.classes.asteroid.contrast.status, 'unmeasured');
+  assert.equal(readability.classes.asteroid.contrast.method, 'radius-square');
+  assert.equal(verdict.status, 'UNKNOWN', 'a bright patch alone cannot establish a visible asteroid silhouette');
 });
 
-test('frame analysis still fails genuinely faint large opaque bodies', async () => {
+test('a faint radius-square contrast diagnostic remains unknown without an opaque silhouette', async () => {
   const { readability, verdict } = await analyzeLargeBody(12);
   assert.equal(readability.classes.asteroid.n, 5);
   assert.equal(readability.classes.asteroid.lowContrastFrac, 1);
-  assert.equal(verdict.status, 'FAIL');
+  assert.equal(verdict.status, 'UNKNOWN', 'the analyzer has no geometry-owned pixels to attribute to this body');
+  assert.match(verdict.detail, /missing asteroid silhouette pixel ownership/);
 });
 
 test('a target panel over the body or its sky ring cannot grade HUD text as asteroid pigment', async () => {
@@ -76,5 +79,21 @@ test('a target panel over the body or its sky ring cannot grade HUD text as aste
   }
   const { readability, verdict } = await analyzeLargeBody(12, [[0, 0, 20, 20]]);
   assert.equal(readability.classes.asteroid.n, 5);
-  assert.equal(verdict.status, 'FAIL', 'uncovered faint bodies still fail the unchanged threshold');
+  assert.equal(verdict.status, 'UNKNOWN', 'an uncovered patch still needs asteroid silhouette ownership');
+});
+
+test('a pooled physics projection over empty sky cannot become a measured asteroid contrast failure', async () => {
+  const { readability, verdict } = await analyzeLargeBody(10, [], VIS.pooled, -1);
+  assert.equal(readability.classes.asteroid.n, 5, 'projection samples remain available for diagnosis');
+  assert.equal(readability.classes.asteroid.lowContrastFrac, 1, 'the empty sky statistic is retained');
+  assert.equal(readability.classes.asteroid.contrast.status, 'unmeasured');
+  assert.equal(verdict.status, 'UNKNOWN', 'unbound pooled rows cannot supply a pass or an authored-contrast failure');
+});
+
+test('unowned asteroid pixels do not waive a measured low-contrast projectile failure', async () => {
+  const { readability } = await analyzeLargeBody(10, [], VIS.pooled, -1);
+  readability.classes.projectile = { n: 5, lowContrastFrac: 1 };
+  const verdict = checkReadability({ readability });
+  assert.equal(verdict.status, 'FAIL');
+  assert.match(verdict.value, /projectile 100% low-contrast/);
 });

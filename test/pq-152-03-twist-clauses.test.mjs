@@ -201,7 +201,8 @@ test('catalog: five twist clauses, authored catalog stays 11, capital boss stays
     assert.deepEqual([...def.appliesTo], [...TWIST_CLAUSE_LIVE_TYPES[id]]);
   }
   // INF-082 added the Frame Coupler heavy_tow as a legitimate 11th authored row.
-  assert.equal(AUTHORED_SET_PIECES.length, 11, 'AUTHORED_SET_PIECES stays 11');
+  // Six far-out pieces (Io Reach, Expanse, Sker, Ashcache, Drift) made it seventeen.
+  assert.equal(AUTHORED_SET_PIECES.length, 17, 'AUTHORED_SET_PIECES stays 17');
   assert.equal(MISSION_TYPES.some((row) => row.type === CAPITAL_BOSS_TYPE), true);
   assert.equal(MISSION_TYPES.filter((row) => row.type === 'authored_set_piece').length, 1);
   assert.equal(MISSION_TYPES[MISSION_TYPES.length - 1].type, 'heist_intercept');

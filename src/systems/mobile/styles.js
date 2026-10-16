@@ -358,6 +358,10 @@ const SCREEN_CSS = `
  /* Receipts grow upward above the stick and Dock key. Keep the power handle's edge clear;
     the cluster width also carries the player's control-size setting into this reserved lane. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:auto!important; bottom:calc(max(224px,94px + var(--mf-cluster-w,196px) * .8) + var(--sf-safe-bottom,0px))!important; width:min(320px,calc(100vw - 26px - max(58px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important; max-width:none!important; }
+ /* Informational arrivals stay two thin receipt rows, rather than wrapping a zone paragraph
+    upward across the ship. Full text remains in the receipt and its live announcement. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info { box-sizing:border-box; width:100%; max-width:100%; min-width:0; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info .sf-toast__text { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
  /* Receipts remain information, so a touch through their text still starts the flight stick. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(#toasts,#toasts *) { pointer-events:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
@@ -391,6 +395,11 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(64px + var(--sf-safe-top,0px))!important; right:calc(104px + var(--sf-safe-right,0px))!important; width:min(236px,32vw)!important; max-height:150px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(68px + var(--sf-safe-top,0px)); right:calc(84px + var(--sf-safe-right,0px)); width:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+ /* Short landscape HUD owns the first 118px; anchor the receipt stack below it so multiple rows
+    flow down toward, but remain clear of, the left stick. Portrait keeps its bottom-up placement. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(118px + var(--sf-safe-top,0px))!important; bottom:auto!important; }
 }
 @media (max-width:600px) {
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] { top:calc(172px + var(--sf-safe-top,0px)); left:14px; right:14px; max-height:calc(100dvh - 372px); }

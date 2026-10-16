@@ -44,6 +44,11 @@ export const SWARM_CHAIN_STEP = 1;
 export const SWARM_CHAIN_VARIED_STEP = 2;
 /** Remaining seconds at which the chain says its one final warning. INF-032. */
 export const SWARM_CHAIN_WARN_S = 1;
+/**
+ * The last-second warning's own sound: a soft falling double tick. It used to share the plain
+ * alert beep with the chain-tier milestone, so a reward and a warning sounded identical.
+ */
+export const SWARM_CHAIN_WARN_CUE = 'swarm.chainWarn';
 /** Nothing above this pays more; the number keeps climbing, the score stops running away. */
 export const SWARM_CHAIN_SCORE_CAP = 60;
 
@@ -133,7 +138,9 @@ export const swarmChain = {
     if (this._pendingMilestone > 0) {
       const mark = this._pendingMilestone;
       this._pendingMilestone = 0;
-      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8 });
+      // `audio: false`: the mark already has its own voice (swarmJuice's chain-tier chord); the
+      // toast's generic click would sit under it as a second sound for one moment.
+      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8, audio: false });
     }
     if (this._chain <= 0) return;
     const run = liveSwarmRun(st);
@@ -159,7 +166,7 @@ export const swarmChain = {
     // The last second gets exactly one soft warning per chain — no countdown chatter. INF-032.
     if (remaining <= SWARM_CHAIN_WARN_S && !this._warned) {
       this._warned = true;
-      this._emit('audio:cue', { id: 'ui_alert', gain: 0.45 });
+      this._emit('audio:cue', { id: SWARM_CHAIN_WARN_CUE, gain: 0.45 });
     }
   },
 

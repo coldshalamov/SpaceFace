@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { BINDINGS } from '../src/ui/bindings.js';
+import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
 
 const settingsSource = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
 const helpSource = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
 const hudSource = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+const clusterSource = readFileSync(new URL('../src/ui/orrery/flightCluster.js', import.meta.url), 'utf8');
 const promptSource = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
 
 assert.match(settingsSource, /import \{ BINDINGS \} from '\.\.\/bindings\.js';/,
@@ -64,12 +66,16 @@ assert.match(helpSource, /resolveActionLabel/,
   assert.deepEqual(massline, ['Massline', null, 'A / Cross'],
     'Help must teach the gamepad Massline key');
 }
-// aa95391f5 routed the write through the setText(el, text) helper (skip-unchanged writes); either
-// spelling is the same print.
-assert.match(hudSource, /elTetherKeys\.textContent|setText\(elTetherKeys,/,
-  'The active tether HUD must print live line-control keys');
-assert.match(hudSource, /resolveActionCodes/,
-  'The tether HUD hint must resolve from the live flight bindings');
+assert.match(hudSource, /mountOrreryCluster\(/,
+  'the active flight HUD must mount the shared ORRERY instrument');
+assert.match(clusterSource, /if \(tip\) sk\.el\.setAttribute\('data-why', tip\)/,
+  'the active Line control context must reach the existing hover/focus reveal');
+const line = readOrdnanceModel({ settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {
+  tether: ['KeyP'], forward: ['KeyI'], reverse: ['KeyK'], yawLeft: ['KeyJ'], yawRight: ['KeyL'], boost: ['KeyB'],
+} } }, player: { cargo: { items: {} }, tether: { active: true } }, entities: new Map() }, null)['3'];
+assert.equal(line.key, 'P', 'the Line socket must name the actual rebound key');
+assert.match(line.tip, /Hold P.*I REEL.*K PAY OUT.*J\/L ORBIT.*B PUMP/,
+  'the active tether HUD must teach the live line-control axes');
 assert.match(promptSource, /resolveActionLabel/,
   'Persistent keyboard hints must resolve flight keys from input.js');
 

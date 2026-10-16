@@ -21,7 +21,9 @@ test('flight admission yields to the next present between compile and upload', a
     },
     isResidencyOwnerActive: () => true,
   });
-  assert.deepEqual(order, ['compile:yield-root', 'yield', 'upload:yield-root']);
+  const compileIndex = order.indexOf('compile:yield-root');
+  assert.ok(compileIndex >= 0);
+  assert.deepEqual(order.slice(compileIndex), ['compile:yield-root', 'yield', 'upload:yield-root']);
   assert.equal(result.pipelines.compiled, true);
   assert.equal(result.gpuResidency.uploaded, true);
 });

@@ -44,8 +44,9 @@ let readyTextures = null;
 let readyPromise = null;
 
 /**
- * Decode every tile and warm it on the GPU. Failure is not fatal: nothing is published, the promise resolves null and
- * every planet keeps the plain baked surface it always had.
+ * Decode/configure every tile. A planet's existing residency admission uploads only its requested tile
+ * before publication; decoding the catalog must not allocate every unused tile on the GPU.
+ * Failure is not fatal: nothing is published and every planet keeps its baked surface.
  */
 export function preloadPlanetDetailLibrary(renderer, options = {}) {
   if (readyTextures) return Promise.resolve(readyTextures);
@@ -69,7 +70,6 @@ export function preloadPlanetDetailLibrary(renderer, options = {}) {
       texture.userData = { ...(texture.userData || {}), spacefaceSurfaceRole: `planet-detail-${name}` };
       texture.needsUpdate = true;
       out[name] = texture;
-      if (renderer && typeof renderer.initTexture === 'function') renderer.initTexture(texture);
     });
     readyTextures = Object.freeze(out);
     return readyTextures;

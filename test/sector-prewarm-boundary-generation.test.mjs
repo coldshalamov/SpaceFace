@@ -541,6 +541,7 @@ test('prepared cargo capsule installs an owner cleanup journal before publicatio
   assert.equal(upgraded, true);
   assert.equal(boundary.userData.authoredAssetState, 'authored-prepared');
   assert.equal(typeof boundary.userData.__disposePreparedAuthoredBoundary, 'function');
+  const preparedDisposer = boundary.userData.__disposePreparedAuthoredBoundary;
   assert.ok(stagedRoot);
   entity.mesh = boundary;
   entity.view = { root: boundary };
@@ -567,6 +568,11 @@ test('prepared cargo capsule installs an owner cleanup journal before publicatio
   });
 
   assert.ok(stagedGeometryDisposals > 0, 'the staged owner-local batch geometry is retired');
+  const stagedDisposalsAfterFirstCleanup = stagedGeometryDisposals;
+  assert.equal(await preparedDisposer(), true,
+    'repeating the captured prepared disposer resolves the same cleanup completion');
+  assert.equal(stagedGeometryDisposals, stagedDisposalsAfterFirstCleanup,
+    'repeating the prepared disposer does not dispose owner resources twice');
   assert.equal(stagedRoot.children.length, 0);
   assert.equal(renderablesAtGenericCleanup, 0,
     'the authored cleanup journal runs before ordinary boundary traversal');

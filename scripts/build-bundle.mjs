@@ -12,7 +12,7 @@
 // import becomes its own file loaded on demand).
 import * as esbuild from 'esbuild';
 import { spawn } from 'node:child_process';
-import { readFile, writeFile, mkdir, readdir, rename, stat, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, stat, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,7 @@ import {
   acquireReleaseBuildLock,
   assertReleasePathSafe,
   copyReleaseRuntimeTrees,
+  renameReleasePathWithRetry,
   validateReleaseBuildReceipt,
   writeReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
@@ -197,7 +198,7 @@ async function runNodeGate(relativeScript, args = []) {
 async function recoverPublishedOutput() {
   await assertReleasePathSafe({ root: ROOT, path: FINAL_OUT, label: 'release output', allowMissing: true });
   await assertReleasePathSafe({ root: ROOT, path: PREVIOUS_OUT, label: 'release backup', allowMissing: true });
-  if (!existsSync(FINAL_OUT) && existsSync(PREVIOUS_OUT)) await rename(PREVIOUS_OUT, FINAL_OUT);
+  if (!existsSync(FINAL_OUT) && existsSync(PREVIOUS_OUT)) await renameReleasePathWithRetry(PREVIOUS_OUT, FINAL_OUT);
   if (existsSync(FINAL_OUT) && existsSync(PREVIOUS_OUT)) {
     await rm(PREVIOUS_OUT, { recursive: true, force: true });
   }
@@ -228,13 +229,13 @@ async function publishOutputDir() {
   let previousMoved = false;
   try {
     if (existsSync(FINAL_OUT)) {
-      await rename(FINAL_OUT, PREVIOUS_OUT);
+      await renameReleasePathWithRetry(FINAL_OUT, PREVIOUS_OUT);
       previousMoved = true;
     }
-    await rename(OUT, FINAL_OUT);
+    await renameReleasePathWithRetry(OUT, FINAL_OUT);
   } catch (error) {
     if (previousMoved && !existsSync(FINAL_OUT) && existsSync(PREVIOUS_OUT)) {
-      try { await rename(PREVIOUS_OUT, FINAL_OUT); }
+      try { await renameReleasePathWithRetry(PREVIOUS_OUT, FINAL_OUT); }
       catch (restoreError) {
         throw new AggregateError([error, restoreError], '[bundle] publish failed and prior output restoration failed');
       }

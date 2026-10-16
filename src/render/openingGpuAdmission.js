@@ -32,6 +32,10 @@ import {
   collectStartupTexturesSteps,
 } from './startupGpuResidency.js';
 import { dedupWarn } from '../core/warnDedup.js';
+import {
+  captureOpeningResourceIdentitySets,
+  captureOpeningSubmissionValidationState,
+} from './openingSubmissionPlan.js';
 
 /**
  * A package texture whose CPU mirror was released after its proven upload still reaches three's
@@ -172,6 +176,94 @@ function materialLabel(material) {
   return String(material && (material.name || material.type || material.uuid) || 'no-material');
 }
 
+function combineResourceIdentities(values) {
+  const result = {};
+  for (const key of ['geometryBufferIds', 'blockingTextureIds', 'shadowResourceIds']) {
+    result[key] = Object.freeze([...new Set(values.flatMap((value) => value && value[key] || []))].sort());
+  }
+  return Object.freeze(result);
+}
+
+// One synchronous submission only. Preserve any guard/instrumentation already installed and
+// restore it even when the render throws. Three returns undefined for both a successful draw
+// and a guard refusal, so only an increased renderer.info.render.calls proves submission.
+export function beginOpeningFirstDrawObservation(renderer, { plan = null, receipt = null, preSubmitValidation = null } = {}) {
+  const scene = plan && plan.scene;
+  const before = captureOpeningSubmissionValidationState(null, renderer,
+    preSubmitValidation && preSubmitValidation.currentResources);
+  const previous = renderer && renderer.renderBufferDirect;
+  const records = [];
+  let active = true;
+  let finished = null;
+  let complete = typeof previous === 'function'
+    && Number.isFinite(renderer && renderer.info && renderer.info.render && renderer.info.render.calls);
+  const wrapper = function openingFirstDrawObserver(camera, drawScene, geometry, material, object, group) {
+    const callsBefore = renderer.info && renderer.info.render && renderer.info.render.calls;
+    let result;
+    try { result = previous.call(this, camera, drawScene, geometry, material, object, group); }
+    catch (error) { close(); throw error; }
+    const callsAfter = renderer.info && renderer.info.render && renderer.info.render.calls;
+    if (!Number.isFinite(callsBefore) || !Number.isFinite(callsAfter)) complete = false;
+    if (!(callsAfter > callsBefore)) return result;
+    if (scene) {
+      let ancestor = object;
+      while (ancestor && ancestor !== scene) ancestor = ancestor.parent;
+      if (ancestor !== scene) return result;
+    }
+    try {
+      const resources = captureOpeningResourceIdentitySets([{
+        geometry, material, castShadow: object && object.castShadow,
+        customDepthMaterial: object && object.customDepthMaterial,
+        customDistanceMaterial: object && object.customDistanceMaterial,
+      }], plan && plan.route || {});
+      records.push(Object.freeze({
+        object,
+        root: objectLabel(admissionRoot(object, scene)),
+        objectName: objectLabel(object),
+        materialName: materialLabel(material),
+        materialType: String(material && material.type || 'Material'),
+        geometryId: resources.geometryBufferIds[0] || null,
+        geometryDisposeListeners: geometryDisposeListenerCount(geometry),
+        programKeys: Object.freeze([...materialProgramKeys(renderer, material)]),
+        resourceIdentitySets: resources,
+      }));
+    } catch (_) {
+      // Diagnostic capture cannot turn a successfully submitted draw into an application throw.
+      // An incomplete observation still refuses to certify the first-draw receipt.
+      complete = false;
+    }
+    return result;
+  };
+  if (typeof previous === 'function') renderer.renderBufferDirect = wrapper;
+  const close = () => {
+    if (!active) return;
+    active = false;
+    if (renderer && renderer.renderBufferDirect === wrapper) renderer.renderBufferDirect = previous;
+  };
+  return {
+    before,
+    cancel: close,
+    finish() {
+      if (finished) return finished;
+      close();
+      const explicitTextures = scene ? [scene.background, scene.environment]
+        .filter((texture) => texture && texture.isTexture === true) : [];
+      const resources = combineResourceIdentities([
+        before.currentResources,
+        ...records.map((record) => record.resourceIdentitySets),
+        captureOpeningResourceIdentitySets([], {}, explicitTextures),
+      ]);
+      finished = Object.freeze({
+        ...captureOpeningSubmissionValidationState(receipt, renderer, resources),
+        before,
+        complete,
+        draws: Object.freeze(records.slice()),
+      });
+      return finished;
+    },
+  };
+}
+
 export function openingProgramFamilyKey(key) {
   const value = String(key || 'unknown').trim();
   if (!value) return 'unknown';
@@ -183,8 +275,8 @@ export function openingProgramFamilyKey(key) {
 /**
  * Capture the one-frame identity baseline used to attribute a renderer.info count delta back to
  * production objects. Three does not expose WebGLGeometries, so the geometry marker observes the
- * dispose listener installed by WebGLGeometries.get() on first admission. This is diagnostic only;
- * the aggregate renderer.info delta remains the gate authority.
+ * dispose listener installed by WebGLGeometries.get() on first admission. Resource IDs are frozen
+ * during this existing walk, so a later mutation of a retained Object3D cannot rewrite the census.
  */
 export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
   const planned = new Set(Array.isArray(plan && plan.compileSubjects)
@@ -202,12 +294,14 @@ export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
         geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
         materials,
         planned: planned.has(object),
+        resourceIdentitySets: captureOpeningResourceIdentitySets([object], plan && plan.route || {}),
       });
     });
   }
   return {
     programKeys: rendererProgramKeys(renderer),
     objects,
+    resourceIdentitySets: combineResourceIdentities([...objects.values()].map((value) => value.resourceIdentitySets)),
   };
 }
 
@@ -233,6 +327,7 @@ export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = nu
           geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
           materials,
           planned: planned.has(object),
+          resourceIdentitySets: captureOpeningResourceIdentitySets([object], plan && plan.route || {}),
         });
       }
       const children = object && object.children;
@@ -245,6 +340,7 @@ export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = nu
   return {
     programKeys: rendererProgramKeys(renderer),
     objects,
+    resourceIdentitySets: combineResourceIdentities([...objects.values()].map((value) => value.resourceIdentitySets)),
   };
 }
 
@@ -357,6 +453,9 @@ export function describeOpeningAdmissionIdentityDelta(
 export function* describeOpeningAdmissionIdentityDeltaSteps(
   before, renderer, scene, plan = null, options = {},
 ) {
+  if (options.observation) {
+    return yield* describeObservedOpeningAdmissionDeltaSteps(before, options.observation, plan, options);
+  }
   const baseline = before || { programKeys: new Set(), objects: new Map() };
   const afterProgramKeys = rendererProgramKeys(renderer);
   const newProgramKeys = [...afterProgramKeys]
@@ -446,6 +545,58 @@ export function* describeOpeningAdmissionIdentityDeltaSteps(
     exemptedProgramFamilyKeys,
     unexplained: lateAdmissions.some((row) => row.exempted !== true)
       || unexplainedProgramFamilies.length > 0,
+  };
+}
+
+function* describeObservedOpeningAdmissionDeltaSteps(before, observation, plan, options) {
+  const newProgramKeys = observation.programKeys
+    .filter((key) => !observation.before.programKeys.includes(key)).sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const knownGeometry = new Set(observation.before.currentResources.geometryBufferIds);
+  const planned = new Set(plan && plan.compileSubjects || []);
+  const attributed = new Set();
+  const lateAdmissions = [];
+  const seen = new Set();
+  let visited = 0;
+  for (const draw of observation.draws) {
+    if (++visited % 128 === 0) yield;
+    const prior = before && before.objects && before.objects.get(draw.object);
+    const geometryAdmitted = !!draw.geometryId && (!knownGeometry.has(draw.geometryId)
+      || (prior && draw.geometryDisposeListeners > prior.geometryDisposeListeners));
+    const programKeys = draw.programKeys.filter((key) => newProgramSet.has(key)).sort();
+    if (!geometryAdmitted && programKeys.length === 0) continue;
+    const row = {
+      root: draw.root, object: draw.objectName, material: draw.materialName,
+      materialType: draw.materialType, geometryAdmitted,
+      programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+      programKeys, planned: planned.has(draw.object) || !!(prior && prior.planned),
+      exempted: false, exemptionReason: null,
+    };
+    const identity = JSON.stringify(row);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    for (const key of programKeys) attributed.add(key);
+    const reason = exemptionFor(row, options.exemptions);
+    if (reason) { row.exempted = true; row.exemptionReason = reason; }
+    lateAdmissions.push(row);
+  }
+  lateAdmissions.sort((a, b) => a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object) || a.material.localeCompare(b.material));
+  const unattributedProgramKeys = newProgramKeys.filter((key) => !attributed.has(key));
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of [...new Set(unattributedProgramKeys.map(openingProgramFamilyKey))].sort()) {
+    const exemption = exemptionFor({ root: '', object: '', material: '', programFamilyKeys: [family] }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys: [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort(),
+    lateAdmissions, unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => !row.exempted) || unexplainedProgramFamilies.length > 0,
   };
 }
 
@@ -834,6 +985,12 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
   const touchOne = typeof options.touchOne === 'function' ? options.touchOne : null;
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  // Required opening drains opt into a fail-closed result. The ordinary late-repair callers keep
+  // their historical best-effort behavior; only the caller that owns a required opening seal sets
+  // this flag. `isActive` is passed to the shared renderer admission queue so a superseded owner
+  // cannot submit a late compile or touch after its handoff.
+  const strict = options.strict === true;
+  const isActive = typeof options.isActive === 'function' ? options.isActive : null;
   const now = typeof options.now === 'function'
     ? options.now
     : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -899,9 +1056,34 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   // seconds (headless SwiftShader, CI run 36486329212). Pacing after each unit keeps the
   // backlog ~one unit deep — the same work happens, spread over task-queue slots.
   const paceQueue = batch && typeof batch.paceQueue === 'function' ? batch.paceQueue : null;
+  // Pacing after a direct GL call does not exclude another producer that submitted during the
+  // pacer's yield. PR383 exposes the same-renderer reservation on the readiness batch; use it
+  // before invoking compile/touch. The paceQueue.submit fallback keeps this function compatible
+  // with older batches while their owner is still rolling out the batch.submit surface.
+  const batchSubmit = batch && typeof batch.submit === 'function'
+    ? batch.submit.bind(batch)
+    : null;
+  const paceSubmit = !batchSubmit && paceQueue && typeof paceQueue.submit === 'function'
+    ? paceQueue.submit
+    : null;
+  const submitSerial = batchSubmit || paceSubmit;
+  const submitAdmission = {
+    ...(isActive ? { isActive } : {}),
+    ...(options.urgent === true ? { urgent: true } : {}),
+  };
+  // A serial reservation must not wait on this batch's own KHR readiness drain. Callers pass the
+  // second argument through to compilePipelinesContextSafe/_compilePostRoute; closures that do
+  // not consume it remain API-compatible and retain their prior behavior on the KHR path.
+  const compileOptions = submitSerial || isActive
+    ? {
+      ...(submitSerial ? { skipSharedBatch: true } : {}),
+      ...(isActive ? { isActive } : {}),
+    }
+    : undefined;
   const issued = [];
   let compiled = [];
   let drained = null;
+  let issueSettled = [];
   // Where the step's wall time went. A cook that reads "110 s" in the ledger is unreadable
   // without knowing whether it was issuing, waiting on the driver, or touching.
   let issueMs = 0;
@@ -936,10 +1118,11 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         continue;
       }
       if (issueKey) seenIssueKeys.add(issueKey);
-      issued.push(compileOne ? compileOne(subject) : null);
-      // Pace before the scheduled yield: the pacer drains everything queued so far behind a
-      // task-queue slot, so the drain stays bounded to this unit instead of the whole cohort.
-      if (paceQueue) await paceQueue();
+      const submit = () => (compileOne ? compileOne(subject, compileOptions) : null);
+      issued.push(submitSerial ? submitSerial(submit, submitAdmission) : submit());
+      // The shared submit reservation already yields and drains after its callback. Keep the
+      // legacy post-submission pacer only for an older batch that has no reservation surface.
+      if (!submitSerial && paceQueue) await paceQueue();
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
     issueMs = now() - issueStarted;
@@ -949,8 +1132,28 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     );
     // One rejected compile must not discard the cohort's touches — every issued unit that skips
     // its draw still links inside the first presented scene pass. Settle each and keep going.
-    compiled = (await Promise.allSettled(issued))
+    issueSettled = await Promise.allSettled(issued);
+    compiled = issueSettled
       .map((entry) => (entry && entry.status === 'fulfilled' ? entry.value : null));
+    if (strict) {
+      if (issued.length < ordered.length) {
+        throw new Error(`opening GPU admission incomplete: issued ${issued.length}/${ordered.length}`);
+      }
+      if (!drained || drained.contextLost === true || drained.incomplete === true
+        || Number(drained.programs) > 0) {
+        throw new Error('opening GPU admission incomplete: readiness drain did not settle');
+      }
+      const rejected = issueSettled.find((entry) => entry && entry.status === 'rejected');
+      if (rejected) throw rejected.reason || new Error('opening GPU admission compile rejected');
+      const failed = issueSettled.find((entry) => {
+        if (!entry || entry.status !== 'fulfilled' || !entry.value) return false;
+        if (entry.value.contextLost === true) return true;
+        return entry.value.skipped === true && entry.value.reason !== 'program-signature-covered';
+      });
+      if (failed) {
+        throw new Error(`opening GPU admission skipped: ${failed.value.reason || 'unknown reason'}`);
+      }
+    }
     drainMs = now() - drainStarted;
   } finally {
     batch.close();
@@ -971,6 +1174,15 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   // whole-scene hide/restore walk and the render call, which were most of a touch's cost.
   const touchMany = typeof options.touchMany === 'function' ? options.touchMany : null;
   const touchBatchSize = Math.max(1, Math.floor(Number(options.touchBatchSize) || 1));
+  const touchFailures = [];
+  const reportTouchResult = (touched, label) => {
+    if (!strict || !touched || typeof touched !== 'object') return;
+    if (touched.contextLost === true || touched.skipped === true) {
+      touchFailures.push(new Error(
+        `opening GPU admission ${label} skipped: ${touched.reason || 'unknown reason'}`,
+      ));
+    }
+  };
   // The deadline gates ISSUE, not touch: a compiled-but-never-drawn unit still pays its final
   // link/bufferData inside the first presented scene pass, which is the brick this admission
   // exists to remove. Every issued subject is drawn even over budget; subjects that were never
@@ -987,14 +1199,19 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touched = null;
       let touchError = null;
       try {
-        touched = await touchMany(group);
+        const touch = () => touchMany(group);
+        touched = submitSerial
+          ? await submitSerial(touch, submitAdmission)
+          : await touch();
+        reportTouchResult(touched, `touch group ${index}`);
       } catch (error) {
         touchError = error;
+        if (strict) touchFailures.push(error);
       }
       for (let offset = 0; offset < group.length; offset++) {
         results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
       }
-      if (paceQueue) await paceQueue();
+      if (!submitSerial && paceQueue) await paceQueue();
       if (yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
     }
   } else {
@@ -1003,20 +1220,26 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touched = null;
       let touchError = null;
       try {
-        touched = touchOne ? touchOne(ordered[index]) : null;
+        const touch = () => (touchOne ? touchOne(ordered[index]) : null);
+        touched = submitSerial
+          ? await submitSerial(touch, submitAdmission)
+          : await touch();
+        reportTouchResult(touched, `touch ${index}`);
       } catch (error) {
         touchError = error;
+        if (strict) touchFailures.push(error);
       }
       results.push({
         compiled: compiled[index] ?? null,
         touched,
         touchError,
       });
-      if (paceQueue) await paceQueue();
+      if (!submitSerial && paceQueue) await paceQueue();
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
   }
   touchMs = now() - touchStarted;
+  if (strict && touchFailures.length > 0) throw touchFailures[0];
   return {
     batched: true,
     contextLost: drained ? drained.contextLost === true : false,

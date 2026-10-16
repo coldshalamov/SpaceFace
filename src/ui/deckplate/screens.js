@@ -1059,6 +1059,9 @@ ${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-etch); font-variation-
 ${CRRES} .sf-crres__share-code { display:block; width:100%; min-width:0; overflow-x:auto; scrollbar-width:none; white-space:nowrap;
   font-family:var(--dp-face-code); font-size:13px; color:var(--dp-ink); }
 ${CRRES} .sf-crres__share-link { white-space:nowrap; }
+${CRRES} .sf-crres__share-actions { display:flex; flex-wrap:wrap; gap:6px 22px; margin:10px 0 0; }
+${CRRES} .sf-crres__share-status { margin:6px 0 0; }
+${CRRES} .sf-crres__share-status:empty { display:none; }
 ${printedKey(`${CRRES} .k-foot .k-word`)}
 @media (max-width:1100px) { ${CRRES} .sf-crres__stage.k-panel { grid-template-columns:minmax(0, 1fr); } }
 @media (forced-colors:active) {

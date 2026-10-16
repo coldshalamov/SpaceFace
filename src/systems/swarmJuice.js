@@ -19,6 +19,10 @@
 //   swarm:chainTier    { name, at, chain } — IGNITION/FLARE/NOVA/SUPERNOVA/SINGULARITY
 //   swarm:chainShatter { chain, best } — a broken chain is loud, never silent
 //
+// It also gives each big moment its own sound as `audio:cue` (SWARM_MOMENT_CUES): the round slam
+// (boss round heavier), one tick per tally row on the HUD's stagger then a resolve chord, the
+// chain tier chime climbing per mark, and the chain shatter.
+//
 // It also owns the physical punch: hit-stop through the sanctioned time-effects channel
 // (the same mechanism bulletTime uses, never a state.timeScale write) scaled by chain
 // tier, and extra camera:shake on the big beats. All of it obeys the Arcade effects
@@ -35,6 +39,7 @@ import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import { swarmBossFor, swarmNewcomerFor, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { swarmBroodNewcomerFor } from '../data/swarmBrood.js';
 import {
+  SWARM_CHAIN_TIERS,
   SWARM_CLOSE_CALL_HULL,
   SWARM_HITSTOP_SCALE,
   SWARM_HITSTOP_SOURCE,
@@ -70,6 +75,43 @@ function simTimeOf(state) {
 
 /** A single brood receipt joins at most this many bodies into the multi-kill window. */
 const SWARM_BROOD_WINDOW_CAP = 64;
+
+// --- the sound of the big moments -----------------------------------------------------------
+// Every moment below used to play in silence, and the chain tier borrowed the plain alert beep
+// the last-second warning also uses. Each beat now has its own cue id (resolved to a recipe by
+// AUDIO_CUE_TO_RECIPE in audioSystem.js), so a reward and a warning can never sound alike.
+// swarmJuice only ever emits `audio:cue`; the stinger gating (nothing stacks on the shared
+// moment stinger) lives audio-side in MOMENT_CUE_GATES.
+export const SWARM_MOMENT_CUES = Object.freeze({
+  slamThud: 'swarm.slamThud',         // the round slam's low impact
+  slamStinger: 'swarm.slamStinger',   // the swell that follows it (the shared moment stinger)
+  tallyTick: 'swarm.tallyTick',       // one per tally row
+  clearResolve: 'swarm.clearResolve', // the chord that closes the tally
+  chainTier: 'swarm.chainTier',       // IGNITION .. SINGULARITY
+  chainShatter: 'swarm.chainShatter', // a broken chain
+});
+
+/**
+ * Seconds between tally rows. The HUD reveals row i once i x this has passed since the clear
+ * (swarmJuiceHud.js TALLY_ROW_STAGGER_S, pinned equal by test); the ear follows the eye on the
+ * same sim clock, so a hit-stop dip or a pause holds sound and picture together.
+ */
+export const SWARM_TALLY_STAGGER_S = 0.16;
+/** The stinger lands this long after the thud: it follows the impact rather than shouting over it. */
+export const SWARM_SLAM_STINGER_DELAY_S = 0.1;
+/** Two slam cue sets inside this window are one moment (a capital boss lands beside its plan slam). */
+const SWARM_SLAM_CUE_WINDOW_S = 1;
+/**
+ * The pitch ladder every climbing cue shares: unison, 2nd, 3rd, 5th, 6th, octave (a major
+ * pentatonic, so any step sounds consonant with the one before it).
+ */
+const SWARM_CLIMB_RATES = Object.freeze([1, 1.122, 1.26, 1.498, 1.682, 2]);
+
+/** Playback rate for step `i` of a climbing cue (tally row, chain tier). Pure; clamps at the octave. */
+export function swarmClimbRate(i) {
+  const n = Number.isFinite(i) ? Math.max(0, Math.trunc(i)) : 0;
+  return SWARM_CLIMB_RATES[Math.min(n, SWARM_CLIMB_RATES.length - 1)];
+}
 
 function hullFracOf(entity) {
   if (!entity || typeof entity !== 'object') return 1;
@@ -130,7 +172,11 @@ export const swarmJuice = {
       if (this._hitStopLeft <= 0) this._releaseHitStop();
     }
     const run = liveSwarmRun(st);
-    if (!run) return;
+    if (!run) {
+      if (this._cueQueue) this._cueQueue.length = 0; // a tally tick never outlives its run
+      return;
+    }
+    if (this._cueQueue && this._cueQueue.length) this._drainCues(simTimeOf(st));
     // The boss bar polls the champion bodies it knows about; on a boss round it also scans
     // for late-landing champions (they arrive on their own schedule, not with the slam).
     if (this._bossWave === run.wave && !this._bossDownSent) {
@@ -165,6 +211,8 @@ export const swarmJuice = {
     this._bossScanIn = 0;
     this._bossFrac = -1;
     this._bossDownSent = false;
+    this._cueQueue = [];            // { at, payload } sound cues due on the sim clock
+    this._slamCueAt = -Infinity;    // last round-slam cue set, so one arrival is one moment
   },
 
   _onKilled(payload) {
@@ -341,6 +389,12 @@ export const swarmJuice = {
       this._bossDownSent = false;
       this._bossScanIn = 0;
     }
+    // A new round retires the last clear card (the HUD does the same), so its unplayed ticks
+    // and resolve go with it. Then one arrival, one set of cues — the boss round fires
+    // roundSlam and bossIntro together.
+    this._cueQueue = this._cueQueue.filter((c) => c.payload.id !== SWARM_MOMENT_CUES.tallyTick
+      && c.payload.id !== SWARM_MOMENT_CUES.clearResolve);
+    this._slamCues(!!bossCard);
   },
 
   _onWaveStarted() {
@@ -366,6 +420,7 @@ export const swarmJuice = {
       bestChain: this._bestChain,
     });
     this._emit('swarm:roundClear', { wave, tally });
+    this._tallyCues(tally.length);
   },
 
   _onCapitalBoss(payload) {
@@ -383,6 +438,8 @@ export const swarmJuice = {
       this._bossName = card.name;
       this._bossDownSent = false;
       this._emit('swarm:bossIntro', { name: card.name, line: card.line, wave: run.wave });
+      // A capital that arrives without a planned boss card is still a boss arriving.
+      this._slamCues(true);
     }
   },
 
@@ -396,7 +453,13 @@ export const swarmJuice = {
       this._maxTierAt = crossed.at;
       const run = liveSwarmRun(this.state);
       this._emit('swarm:chainTier', { name: crossed.name, at: crossed.at, chain });
-      this._emit('audio:cue', { id: 'ui_alert', gain: 0.6 });
+      // The cue climbs with the mark: the tier index sets both the pitch step and the weight.
+      const tierIndex = Math.max(0, SWARM_CHAIN_TIERS.findIndex((t) => t.at === crossed.at));
+      this._emit('audio:cue', {
+        id: SWARM_MOMENT_CUES.chainTier,
+        gain: Math.min(0.9, 0.5 + 0.08 * tierIndex),
+        rate: swarmClimbRate(tierIndex),
+      });
       if (run) this._requestHitStop(run);
     }
   },
@@ -406,7 +469,71 @@ export const swarmJuice = {
     this._lastChain = 0;
     if (ended < 3) return; // a two-kill flicker was never a chain worth mourning
     this._emit('swarm:chainShatter', { chain: ended, best: (payload && payload.best) ?? this._bestChain });
+    // The longer the chain, the louder the loss — a short chain cracks, a long one breaks.
+    this._emit('audio:cue', {
+      id: SWARM_MOMENT_CUES.chainShatter,
+      gain: Math.min(0.9, 0.4 + 0.01 * ended),
+    });
     this._maxTierAt = 0;
+  },
+
+  // --- the sound of the moments --------------------------------------------------------
+
+  /**
+   * The round slam: a low impact, then the stinger a beat behind it. A boss round is the heavy
+   * version — the thud drops lower and louder, the stinger deeper, and only the boss stinger
+   * ducks the music (plain rounds arrive back to back and must not pump the bed).
+   */
+  _slamCues(heavy) {
+    const now = simTimeOf(this.state);
+    if (now - this._slamCueAt < SWARM_SLAM_CUE_WINDOW_S) return;
+    this._slamCueAt = now;
+    if (heavy) {
+      this._emit('audio:cue', { id: SWARM_MOMENT_CUES.slamThud, gain: 0.85, rate: 0.72 });
+      this._cueLater(SWARM_SLAM_STINGER_DELAY_S, {
+        id: SWARM_MOMENT_CUES.slamStinger, gain: 0.85, rate: 0.8, duck: true, importance: 0.9,
+      });
+    } else {
+      this._emit('audio:cue', { id: SWARM_MOMENT_CUES.slamThud, gain: 0.5, rate: 1 });
+      this._cueLater(SWARM_SLAM_STINGER_DELAY_S, {
+        id: SWARM_MOMENT_CUES.slamStinger, gain: 0.45, rate: 1,
+      });
+    }
+  },
+
+  /**
+   * The clear tally: one tick per row on the HUD's own stagger, each a step higher up the
+   * pentatonic, then the resolve chord one beat after the last row. Row 0 sounds now; the rest
+   * wait on the sim clock (see SWARM_TALLY_STAGGER_S).
+   */
+  _tallyCues(rows) {
+    const count = Math.max(0, Math.trunc(Number(rows) || 0));
+    for (let i = 0; i < count; i++) {
+      const payload = { id: SWARM_MOMENT_CUES.tallyTick, gain: 0.5, rate: swarmClimbRate(i) };
+      if (i === 0) this._emit('audio:cue', payload);
+      else this._cueLater(i * SWARM_TALLY_STAGGER_S, payload);
+    }
+    const resolve = { id: SWARM_MOMENT_CUES.clearResolve, gain: 0.55, rate: 1 };
+    if (count === 0) this._emit('audio:cue', resolve);
+    else this._cueLater(count * SWARM_TALLY_STAGGER_S, resolve);
+  },
+
+  _cueLater(delayS, payload) {
+    this._cueQueue.push({ at: simTimeOf(this.state) + Math.max(0, Number(delayS) || 0), payload });
+  },
+
+  /** Emit every queued cue whose sim time has come, in the order it was queued. */
+  _drainCues(now) {
+    const queue = this._cueQueue;
+    let keep = 0;
+    const due = [];
+    for (let i = 0; i < queue.length; i++) {
+      // A small epsilon: the stagger is a multiple of 0.16 and sim time accumulates float error.
+      if (queue[i].at <= now + 1e-9) due.push(queue[i]);
+      else queue[keep++] = queue[i];
+    }
+    queue.length = keep;
+    for (const cue of due) this._emit('audio:cue', cue.payload);
   },
 
   // --- the boss bar ----------------------------------------------------------------

@@ -3,15 +3,26 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import * as THREE from 'three';
+import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
+import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { createPhaseBlinkPresentation } from '../src/render/phaseBlinkPresentation.js';
+import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
+import { isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
-import { prepareMobileOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
+import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'ArrowFunctionExpression' && node.async
+      && source.slice(node.start, node.end).includes('submitExactSubjectTouch(subject, admissionOptions.isActive)')
+      && source.slice(node.start, node.end).includes('admissionOptions.isActive(subject) !== true')) {
+    ownerActiveAdmissionNode = node;
+  }
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorAfterJump') cookNode = node.right;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'pipelinePrecompile') pipelineNode = node.init;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'compileSectorPipelines') compileNode = node.init;
@@ -19,6 +30,15 @@ function walk(node) {
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorBeforeFlight') preflightNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'cookLiveSceneGpu') gpuNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'captureOpeningSubmissionPlanSteps') openingCaptureNode = node.right;
+  if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'beginOpeningLoadingAdmission') loadingNode = node.right;
+  if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareOpeningFirstPicture') pictureNode = node.right;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'submitExactSubjectTouch') touchSubmitNode = node.init;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'ownerInactiveTouchError') ownerInactiveTouchNode = node.init;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'isOwnerInactiveTouchError') ownerInactiveTouchCheckNode = node.init;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'touchExactTargetSubjects') groupTouchNode = node.init;
+  if (node.type === 'ObjectProperty' && node.key?.name === 'touchMany'
+      && source.slice(node.value.start, node.value.end).includes('settleDrawableSession')) settleTouchManyNode = node.value;
+  if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'touchSubjectExactTarget') touchFacadeNode = node.right;
   if (node.type === 'CallExpression' && node.callee?.name === 'onBus' && node.arguments?.[0]?.value === 'sector:enter') enterNode = node.arguments[1];
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) value.forEach(walk);
@@ -35,6 +55,15 @@ const gpuCode = source.slice(gpuNode.start, gpuNode.end);
 const compileCode = source.slice(compileNode.start, compileNode.end);
 const guardCode = guardNode ? source.slice(guardNode.start, guardNode.end) : null;
 const openingCaptureCode = source.slice(openingCaptureNode.start, openingCaptureNode.end);
+const loadingCode = source.slice(loadingNode.start, loadingNode.end);
+const pictureCode = source.slice(pictureNode.start, pictureNode.end);
+const touchSubmitCode = source.slice(touchSubmitNode.start, touchSubmitNode.end);
+const touchFacadeCode = source.slice(touchFacadeNode.start, touchFacadeNode.end);
+const ownerInactiveTouchCode = source.slice(ownerInactiveTouchNode.start, ownerInactiveTouchNode.end);
+const ownerInactiveTouchCheckCode = source.slice(ownerInactiveTouchCheckNode.start, ownerInactiveTouchCheckNode.end);
+const ownerActiveAdmissionCode = source.slice(ownerActiveAdmissionNode.start, ownerActiveAdmissionNode.end);
+const groupTouchCode = source.slice(groupTouchNode.start, groupTouchNode.end);
+const settleTouchManyCode = source.slice(settleTouchManyNode.start, settleTouchManyNode.end);
 function evaluate(code, owner, values) {
   const env = new Proxy(values, {
     has: (target, key) => key in target || key in globalThis,
@@ -48,6 +77,288 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+function queuedTouchFixture({ detached = false, failTouch = false, serialPacer = true } = {}) {
+  const scene = new THREE.Scene(), root = new THREE.Group(); root.visible = false; scene.add(root);
+  const leaf = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 2);
+  leaf.visible = false; leaf.count = 0; leaf.geometry.setDrawRange(0, 0); root.add(leaf);
+  const jobs = [], draws = [], warnings = [];
+  const owner = { scene };
+  const values = { renderer: {}, revealSubjectWithAncestors, cam: { obj: {} },
+    makeGpuQueuePacer: () => serialPacer ? ({ submit: (work, admission = {}) => new Promise((resolve, reject) => {
+      jobs.push({
+        work: () => typeof admission.isActive === 'function' && admission.isActive() !== true
+          ? { skipped: true, reason: 'owner-inactive' }
+          : work(),
+        resolve,
+        reject,
+      });
+    }) }) : null,
+    postTaskAtBackgroundPriorityBounded() {},
+    touchExactTargetSubject(subject) {
+      assert.equal(root.visible, true); assert.equal(leaf.visible, true);
+      assert.equal(leaf.count, 1); assert.ok(leaf.geometry.drawRange.count > 0);
+      draws.push(subject);
+      if (failTouch) throw new Error('injected-native-touch-failure');
+      return { skipped: false };
+    },
+    detachedSubjectUploadsPendingAsync: async () => detached ? [{}] : [],
+    detachedSubjectGeometriesPendingAsync: async () => [],
+    rehydrateDetachedTextures: async () => {}, rehydrateDetachedGeometries: async () => {},
+    admissionPaceYield: async () => {},
+    refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
+    rememberOpeningPreparedLeaves() {}, laneWarn: (...args) => warnings.push(args), emptyCompressedTextureIdentity: () => null,
+  };
+  values.ownerInactiveTouchError = evaluate(ownerInactiveTouchCode, owner, values);
+  values.isOwnerInactiveTouchError = evaluate(ownerInactiveTouchCheckCode, owner, values);
+  const submit = evaluate(touchSubmitCode, owner, values);
+  values.submitExactSubjectTouch = submit;
+  const facade = evaluate(touchFacadeCode, owner, values);
+  const assertRestored = () => {
+    assert.equal(root.visible, false, 'hidden ancestor stays hidden outside the synchronous draw');
+    assert.equal(leaf.visible, false, 'a hidden LOD/pool layer never leaks into live submission');
+    assert.equal(leaf.count, 0); assert.equal(leaf.geometry.drawRange.count, 0);
+  };
+  const runNext = async () => {
+    const job = jobs.shift(); assert.ok(job, 'one touch is waiting for its GPU reservation');
+    try { job.resolve(await job.work()); } catch (error) { job.reject(error); }
+    assertRestored();
+    await nextTurn();
+  };
+  return { root, leaf, jobs, draws, warnings, facade, submit, assertRestored, runNext };
+}
+
+for (const detached of [false, true]) {
+  test('actual queued publish touches restore overlapping root/descendant visibility; detached=' + detached, async () => {
+    const f = queuedTouchFixture({ detached });
+    const root = f.facade(f.root), leaf = f.facade(f.leaf);
+    await nextTurn();
+    assert.equal(f.jobs.length, 2);
+    f.assertRestored();
+    await f.runNext(); f.assertRestored();
+    await f.runNext(); f.assertRestored();
+    assert.deepEqual(await Promise.all([root, leaf]), [{ skipped: false }, { skipped: false }]);
+    assert.deepEqual(f.draws, [f.root, f.leaf]);
+  });
+}
+
+test('the actual submit callback restores visibility/count/range before a touch rejection escapes', async () => {
+  const f = queuedTouchFixture({ failTouch: true });
+  const touch = f.submit(f.root);
+  const rejected = assert.rejects(touch, /injected-native-touch-failure/);
+  f.assertRestored(); await f.runNext(); await rejected; f.assertRestored();
+});
+
+test('inactive exact-target owners cancel before draw without masquerading as a successful admission', async () => {
+  const f = queuedTouchFixture();
+  assert.deepEqual(await f.facade(f.root, { isActive: () => false }),
+    { skipped: true, reason: 'owner-inactive' });
+  assert.equal(f.jobs.length, 0, 'inactive before admission does no async texture scan or queue work');
+
+  // The owner can retire while waiting for the serial GPU reservation. The pacer skip is a
+  // cancellation, not a successful exact touch; the awaited submit remains rejected as AbortError.
+  let active = true;
+  const retiredWhileQueued = f.submit(f.root, () => active);
+  active = false;
+  const cancelled = assert.rejects(retiredWhileQueued, (error) => (
+    error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE'
+  ));
+  await f.runNext();
+  await cancelled;
+  assert.deepEqual(f.draws, [], 'an inactive owner never runs the native exact-target draw');
+  assert.deepEqual(f.warnings, [], 'owner cancellation does not enter GPU failure diagnostics');
+
+  // The no-pacer route reaches the same typed cancellation from the submission callback itself.
+  const direct = queuedTouchFixture({ serialPacer: false });
+  active = true;
+  const retiredBeforeSubmit = direct.submit(direct.root, () => active);
+  active = false;
+  await assert.rejects(retiredBeforeSubmit, (error) => (
+    error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE'
+  ));
+  assert.deepEqual(direct.draws, []);
+});
+
+test('pipeline continuation rejects a retired owner instead of resolving stale readiness', async () => {
+  const subject = {};
+  const owner = { scene: {} };
+  const errorFactory = evaluate(ownerInactiveTouchCode, owner, {});
+  let exactTouches = 0;
+  const continuation = evaluate(ownerActiveAdmissionCode, owner, {
+    admissionOptions: { isActive: () => false },
+    cam: { obj: {} },
+    ownerInactiveTouchError: errorFactory,
+    state: { mode: 'flight', render: {} },
+    subject,
+    submitExactSubjectTouch: () => { exactTouches += 1; },
+  });
+  await assert.rejects(continuation({}), (error) => (
+    error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE'
+  ));
+  assert.equal(exactTouches, 0, 'retired owner is rejected before any exact-target draw');
+});
+
+test('live exact-target touches still draw; genuine touch failures remain warned failures', async () => {
+  const live = queuedTouchFixture();
+  const ready = live.facade(live.root, { isActive: () => true });
+  await nextTurn();
+  await live.runNext();
+  assert.deepEqual(await ready, { skipped: false });
+  assert.deepEqual(live.draws, [live.root]);
+  assert.deepEqual(live.warnings, []);
+
+  const failed = queuedTouchFixture({ failTouch: true });
+  const rejectedTouch = failed.facade(failed.root, { isActive: () => true });
+  await nextTurn();
+  await failed.runNext();
+  assert.deepEqual(await rejectedTouch, { skipped: true, reason: 'touch-failed' });
+  assert.equal(failed.draws.length, 1, 'the live owner did attempt its exact-target draw');
+  assert.equal(failed.warnings.length, 1, 'a real draw failure remains observable');
+  assert.equal(failed.warnings[0][2], '[render] exact-target admission touch failed');
+  assert.match(String(failed.warnings[0][3]), /injected-native-touch-failure/);
+});
+
+for (const failDraw of [false, true]) {
+  test('actual grouped touches keep real idle Phase Blink and beam roots hidden across async preparation; rejection=' + failDraw, async () => {
+    const scene = new THREE.Scene();
+    let blinkEvent;
+    const blink = createPhaseBlinkPresentation();
+    blink.attach(scene, { on(_event, handler) { blinkEvent = handler; }, off() {} });
+    const rifts = scene.children.filter(root => root.children.length === 3 && root.children[2].children.length === 6);
+    assert.equal(rifts.length, 6, 'the production owner creates six idle rifts');
+    const beams = new PersistentCombatBeamPool(THREE, { maxBeams: 2 });
+    scene.add(beams.group);
+    const roots = [...rifts, beams.group];
+    const initial = [];
+    scene.traverse(node => initial.push({ node, visible: node.visible, frustumCulled: node.frustumCulled,
+      count: node.count, range: node.geometry?.drawRange ? { ...node.geometry.drawRange } : null }));
+    const restored = () => {
+      for (const prior of initial) {
+        assert.equal(prior.node.visible, prior.visible, 'warm does not publish a temporary visibility bit');
+        assert.equal(prior.node.frustumCulled, prior.frustumCulled);
+        assert.equal(prior.node.count, prior.count);
+        if (prior.range) assert.deepEqual(prior.node.geometry.drawRange, prior.range);
+      }
+    };
+    const stamp = deferred(), draws = [];
+    const renderer = { autoClear: true, getRenderTarget: () => null, setRenderTarget() {},
+      render() { draws.push(roots.filter(root => root.visible)); if (failDraw) throw new Error('injected grouped draw failure'); } };
+    const owner = {};
+    const values = { renderer, scene, cam: { obj: new THREE.PerspectiveCamera() }, revealSubjectWithAncestors,
+      stampSubjectEnvAsync: async () => stamp.promise, touchSubjectOnExactTarget, settleDrawableSession: null };
+    values.touchExactTargetSubjects = evaluate(groupTouchCode, owner, values);
+    const touchMany = evaluate(settleTouchManyCode, owner, values);
+    try {
+      const first = touchMany([...rifts.map(root => root.children[0]), beams.core]);
+      const second = touchMany([...rifts.map(root => root.children[2].children[0]), beams.halo]);
+      const waitingVisibility = roots.map(root => root.visible);
+      stamp.resolve();
+      const results = await Promise.allSettled([first, second]);
+      assert.deepEqual(waitingVisibility, roots.map(() => false), 'environment stamping never holds an idle ancestor revealed');
+      assert.equal(draws.length, 2, 'each prepared group submits exactly once');
+      assert.ok(draws.every(drawnRoots => drawnRoots.length === 7), 'each synchronous native draw sees all of its exact subjects');
+      assert.ok(results.every(result => result.status === (failDraw ? 'rejected' : 'fulfilled')));
+      if (failDraw) assert.ok(results.every(result => /injected grouped draw failure/.test(result.reason.message)));
+      restored();
+      // The repair owns warm state only: the real effect owners can still activate after loading.
+      const liveState = { simTime: 0, entities: new Map(), settings: {} };
+      blinkEvent({ from: { x: 0, z: 0 }, to: { x: 50, z: 0 }, rot: 0 });
+      blink.sync(liveState, null, null, 0);
+      assert.equal(rifts.filter(root => root.visible).length, 2, 'departure and arrival remain reachable');
+      beams.upsert({ beamKey: 'ship:beam', ownerId: 'ship', weaponId: 'beam', phase: 'begin',
+        from: { x: 0, z: 0 }, to: { x: 10, z: 0 } }, 1);
+      beams.update(1, (x, z, out) => { out.x = x; out.z = z; return out; });
+      assert.equal(beams.group.visible, true, 'a real beam still activates its pool');
+      assert.equal(beams.activeCount, 1);
+    } finally { blink.dispose(); beams.dispose(); }
+  });
+}
+
+test('the actual first-picture facade forwards the readiness cancellation guard to its renderer owner', async () => {
+  let active = true;
+  const options = { isActive: () => active };
+  const called = [];
+  const owner = { prepareOpeningFirstPicture: async (...args) => { called.push(args); return args[1].isActive(); } };
+  const facade = evaluate(pictureCode, owner, {});
+  assert.equal(await facade(20, options), true);
+  active = false;
+  assert.equal(await facade(20, options), false);
+  assert.deepEqual(called, [[20, options], [20, options]], 'the facade preserves the owning guard identity');
+});
+
+function loadingFixture() {
+  const player = { id: 'player', alive: true, isPlayer: true };
+  const state = { mode: 'loading', playerId: player.id, entities: new Map([[player.id, player]]), entityList: [player],
+    world: { enterSerial: 1, currentSectorId: 'ceres' }, render: { admissionRunGeneration: 1 } };
+  const cook = deferred(), calls = [];
+  const owner = { _meshes: new Map(), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [], _meshBuildQueueHead: 0 };
+  state.render.prepareLiveSectorBeforeFlight = (options) => { calls.push(options); return cook.promise; };
+  const begin = evaluate(loadingCode, owner, {
+    state, THREE, createOpeningLoadingAdmission, observePipelineAdmission, isInitialAuthoredCompositionEntity,
+    rendererGenerationIsActive: () => true, releaseOpeningGraphPublication() {},
+    cam: {}, openingSubmissionCamera: () => null,
+    enqueueMissingMeshBuildsSteps: function* () { yield; },
+    performance: { now: () => 0 }, yieldToBrowser: async () => {},
+  });
+  state.render.beginOpeningLoadingAdmission = begin;
+  state.render.prepareOpeningFirstPicture = async () => true;
+  state.render.captureOpeningSubmissionPlan = () => ({ complete: true, firstPlayablePipelineSet: { complete: true } });
+  state.render.drainOpeningSubmissionPlan = async () => ({ ok: true });
+  state.render.prepareOpeningGpuResources = async () => ({ skipped: false });
+  return { state, owner, cook, calls, begin };
+}
+
+test('actual per-subject staging starts early and the broad cook starts once at the post-visual picture gate', async () => {
+  const f = loadingFixture();
+  const meshes = f.begin();
+  assert.equal(f.begin(), meshes, 'duplicate callers share the finite mesh owner');
+  assert.equal(await meshes, true, 'mesh preparation does not recursively join the sector cook');
+  await nextTurn();
+  assert.equal(f.calls.length, 0, 'library and visual staging cannot start a broad census/freeze');
+  const ready = waitForOpeningFirstPicture(f.state, 1000);
+  assert.equal(waitForOpeningFirstPicture(f.state, 1000), ready);
+  await nextTurn();
+  assert.equal(f.calls.length, 1, 'the post-visual gate starts the current-sector owner during loading');
+  assert.equal(f.calls[0].isActive(), true);
+  assert.equal(f.begin(), meshes);
+  f.cook.resolve({ skipped: false });
+  assert.equal(await ready, true);
+});
+
+test('the picture gate rejects a replaced world, generation, context or loading mode while the sector cook awaits', async () => {
+  for (const replace of [
+    f => { f.state.world = { ...f.state.world }; },
+    f => { f.state.render.admissionRunGeneration++; },
+    f => { f.state.contextRestoreSeq = 1; },
+    f => { f.state.world.currentSectorId = 'helios'; },
+    f => { f.state.render.renderer = {}; },
+    f => { f.state.mode = 'menu'; },
+  ]) {
+    const f = loadingFixture();
+    const ready = waitForOpeningFirstPicture(f.state, 1000);
+    const rejected = assert.rejects(ready, /superseded/);
+    await nextTurn();
+    replace(f);
+    assert.equal(f.calls[0].isActive(), false);
+    f.cook.resolve({ skipped: false });
+    await rejected;
+  }
+});
+
+test('replacing the captured player retires the old loading cohort before starting its replacement', async () => {
+  const f = loadingFixture();
+  await f.begin(); await nextTurn();
+  const old = f.owner._openingLoadingAdmission;
+  const player = { ...f.state.entities.get('player') };
+  f.state.entities.set('player', player); f.state.entityList = [player];
+  const replacement = f.begin();
+  await replacement; await nextTurn();
+  assert.equal(f.calls.length, 0, 'cohort replacement cannot start broad work before its prerequisites');
+  assert.equal(old.owns(f.state.entities.get('player')), false);
+  await assert.rejects(old.drain(), /superseded/);
+  assert.equal(f.owner._openingLoadingAdmission.owns(player), true);
+  assert.equal(f.begin(), replacement, 'the replacement also deduplicates nested callers');
+});
 test('opening plan capture uses the renderer owner when invoked through the render facade', () => {
   const owner = { _meshes: new Map([[1, { name: 'player' }]]) };
   const state = { render: {} };
@@ -406,6 +717,17 @@ function preflightFixture() {
   return { ...f, opening, preflight: evaluate(preflightCode, f.owner, f.values) };
 }
 
+test('the actual preflight owner stops at its next await after loading admission is cancelled', async () => {
+  const f = preflightFixture();
+  let active = true;
+  const run = f.preflight({ isActive: () => active });
+  await nextTurn(); active = false;
+  f.opening.resolve({ settled: true });
+  assert.equal((await run).reason, 'sector-superseded');
+  assert.equal(f.state.render.openingCompositionSettle, undefined);
+  assert.deepEqual(f.marks, [], 'cancelled work cannot hold/freeze a replacement presentation');
+});
+
 function mobilePreflightFixture() {
   const f = preflightFixture();
   f.values.isMobileRenderContext = () => true;
@@ -510,6 +832,18 @@ function gpuFixture() {
   });
   return { ...f, gpu: evaluate(gpuCode, f.owner, f.values) };
 }
+
+test('the nested GPU cook honors cancellation from its loading owner after an awaited upload', async () => {
+  const f = gpuFixture(), upload = deferred();
+  f.state.mode = 'loading';
+  let active = true;
+  f.values.buildAsteroidLeafWarmGroup = () => ({});
+  f.values.prepareStartupGpuResidency = () => upload.promise;
+  const run = f.gpu({ isActive: () => active, holdLeftoverFx: true, warmFirstFlightFx: true, skipBuffers: true });
+  await nextTurn(); active = false; upload.resolve({ ok: true });
+  assert.equal((await run).reason, 'sector-superseded');
+  assert.equal(f.marks.includes('rest-effects'), false, 'cancelled nested work cannot rest a replacement effect owner');
+});
 
 for (const mode of ['loading', 'flight']) {
   test('admitted actual GPU cook completes in ' + mode + ' without minting a generation', async () => {

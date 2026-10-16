@@ -115,7 +115,7 @@ test('real research readiness still checks prerequisites, credits and points', (
   state.player.researchPoints=0;assert.notEqual(describeTechNodeReadiness(node,state,[node]).state,'available');
 });
 test('runtime imports shared production views; fixture is never loaded by the game', () => {
-  for(const [file,symbol] of [['screens/mainMenu.js','createTitleFrame'],['screens/pause.js','createPauseFrame'],['screens/settings.js','paneBuilder'],['station/screens/market.js','marketQuoteHtml'],['station/screens/contracts.js','contractDossierView'],['galaxyMap.js','navigationFrameHtml'],['hud.js','shipConditionMarkup'],['targetPanel.js','targetFrameHtml'],['screens/saveLoad.js','createSaveStage']]) {
+  for(const [file,symbol] of [['screens/mainMenu.js','createTitleFrame'],['screens/pause.js','createPauseFrame'],['screens/settings.js','paneBuilder'],['station/screens/market.js','marketQuoteHtml'],['station/screens/contracts.js','contractDossierView'],['galaxyMap.js','navigationFrameHtml'],['hud.js','mountOrreryCluster'],['targetPanel.js','targetFrameHtml'],['screens/saveLoad.js','createSaveStage']]) {
     const source=read('../src/ui/'+file);assert.ok(source.includes(symbol),file);assert.doesNotMatch(source,/ORBITAL_QA|orbital-interface/);
   }
   const html=read('../index.html');assert.doesNotMatch(html,/styles\/orbital\.css/);assert.doesNotMatch(html,/commandDeckRefit\.js|command-deck-refit\.css|orbital-interface/);

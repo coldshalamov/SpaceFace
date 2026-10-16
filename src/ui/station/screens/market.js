@@ -586,7 +586,9 @@ function demandLevel(entry) {
 }
 function demandWord(level) { return level >= 3 ? 'high' : level === 1 ? 'low' : 'normal'; }
 
-// Economy samples every 15s. Forty points is ten minutes when timestamps are missing.
+// Economy samples every 15s. Use the same cadence for the visible worker-lane refresh so a
+// station-wide history RPC can pick up at most one new sample per request.
+const MARKET_HISTORY_REFRESH_MS = 15_000;
 const TEN_MIN_S = 600;
 const TEN_MIN_SAMPLES = 40;
 
@@ -623,21 +625,199 @@ function windowHistory(points, nowS) {
 
 function priceHistory(points, entry, def, nowS) {
   const values = windowHistory(parseHistoryPoints(points), nowS).map((point) => point.mid);
-  if (values.length > 1) return values;
-  // The economy seeds every listing before this screen opens. This is only a defensive
-  // degradation for malformed legacy data; it never invents a shared trend.
-  const current = Math.max(1, unitBuy(entry, def));
-  return [current, current];
+  // A missing worker-side ring is not a flat market. Keep an actual singleton when one
+  // exists, and let the row presenter label an empty/singleton series as unavailable.
+  return values;
 }
 
 function priceHistorySeries(points, entry, def, nowS) {
   const windowed = windowHistory(parseHistoryPoints(points), nowS);
-  if (windowed.length > 1) return windowed;
-  const current = Math.max(1, unitBuy(entry, def));
-  const now = Number(nowS);
-  return Number.isFinite(now)
-    ? [{ t: now - TEN_MIN_S, mid: current }, { t: now, mid: current }]
-    : [{ mid: current }, { mid: current }];
+  // The graph must contain recorded samples only. In particular, do not turn a pending
+  // backfill into [current,current], which reads as a confirmed flat market.
+  return windowed;
+}
+
+function historyRowsFromAck(ack) {
+  let cursor = ack;
+  for (let depth = 0; depth < 3 && cursor && typeof cursor === 'object'; depth++) {
+    if (Object.prototype.hasOwnProperty.call(cursor, 'histories')) {
+      return { found: true, rows: cursor.histories };
+    }
+    cursor = cursor.result;
+  }
+  return { found: false, rows: null };
+}
+
+function historyAckFailed(ack) {
+  let cursor = ack;
+  for (let depth = 0; depth < 3 && cursor && typeof cursor === 'object'; depth++) {
+    if (cursor.ok === false) return true;
+    cursor = cursor.result;
+  }
+  return false;
+}
+
+/**
+ * A station-scoped history request is UI cache state, not economy state. Keep its generation
+ * separate from the worker's RPC id so reopening the same berth, loading a save, or starting a
+ * new world invalidates both the old ACK and its retry chain before either can paint.
+ */
+export function createMarketHistoryBackfill({
+  request = laneRpc,
+  onChange = null,
+  maxAttempts = 2,
+  refreshMs = MARKET_HISTORY_REFRESH_MS,
+  scheduleRefresh = null,
+  cancelRefresh = null,
+} = {}) {
+  const retryLimit = Math.max(1, Math.floor(Number(maxAttempts) || 2));
+  const refreshInterval = Math.max(0, Number(refreshMs) || 0);
+  const cache = new Map();
+  let station = null;
+  let context = null;
+  let snapshot = null;
+  let generation = 0;
+  let requestSeq = 0;
+  let status = 'idle'; // idle | inflight | done | failed
+  let attempts = 0;
+  let refreshHandle = null;
+
+  const notify = () => { if (typeof onChange === 'function') onChange(); };
+  const tokenIsCurrent = (token) => token.generation === generation && token.seq === requestSeq;
+
+  function cancelScheduledRefresh() {
+    if (refreshHandle == null) return;
+    if (typeof cancelRefresh === 'function') {
+      try { cancelRefresh(refreshHandle); } catch (_) {}
+    }
+    refreshHandle = null;
+  }
+
+  function refresh() {
+    if (status !== 'done' || !station || !snapshot) return false;
+    cancelScheduledRefresh();
+    const nextStation = station;
+    const nextContext = context;
+    status = 'idle';
+    attempts = 0;
+    ensure(snapshot, nextStation, nextContext);
+    return true;
+  }
+
+  function scheduleNextRefresh() {
+    cancelScheduledRefresh();
+    if (typeof scheduleRefresh !== 'function' || !(refreshInterval > 0) || status !== 'done' || !station) return;
+    const scheduledGeneration = generation;
+    let handle = null;
+    handle = scheduleRefresh(() => {
+      // A timer from a retired dock session must not re-open a request after reset/onHide.
+      if (refreshHandle === handle) refreshHandle = null;
+      if (scheduledGeneration !== generation || status !== 'done') return;
+      refresh();
+    }, refreshInterval);
+    refreshHandle = handle == null ? null : handle;
+  }
+
+  function reset(nextStation = null, nextContext = null) {
+    cancelScheduledRefresh();
+    station = nextStation || null;
+    context = nextContext;
+    snapshot = null;
+    generation += 1;
+    requestSeq += 1;
+    attempts = 0;
+    status = 'idle';
+    cache.clear();
+  }
+
+  function ensure(nextSnapshot, stationId, contextKey = null) {
+    if (!stationId) return;
+    if (station !== stationId || (contextKey != null && context !== contextKey)) {
+      reset(stationId, contextKey);
+    }
+    // Keep the latest visible projection for the scheduled station refresh. It is intentionally
+    // a reference, so the existing screen state can carry newly mirrored prices into the next RPC.
+    snapshot = nextSnapshot;
+    if (status !== 'idle') return;
+    const market = nextSnapshot && nextSnapshot.economy && nextSnapshot.economy.markets
+      && nextSnapshot.economy.markets[stationId];
+    if (!market) return;
+
+    status = 'inflight';
+    attempts += 1;
+    const token = { generation, seq: ++requestSeq, stationId };
+    let pending;
+    try {
+      pending = request('marketHistory', { stationId });
+    } catch (error) {
+      pending = Promise.reject(error);
+    }
+    Promise.resolve(pending).then((ack) => {
+      // Stale ACKs are completely inert: do not mark the new generation done and do not
+      // transfer old rows into a reopened/new-world cache.
+      if (!tokenIsCurrent(token)) return;
+      if (historyAckFailed(ack)) {
+        if (attempts < retryLimit) status = 'idle';
+        else status = 'failed';
+        notify();
+        return;
+      }
+      const parsed = historyRowsFromAck(ack);
+      if (!parsed.found) {
+        if (attempts < retryLimit) status = 'idle';
+        else status = 'failed';
+        notify();
+        return;
+      }
+      const rows = parsed.rows;
+      if (rows && typeof rows === 'object' && !Array.isArray(rows)) {
+        cache.clear();
+        for (const [commodityId, points] of Object.entries(rows)) {
+          // An explicit empty array is authoritative too: it prevents a stale inline
+          // projection from resurfacing after a successful empty response.
+          if (Array.isArray(points)) cache.set(commodityId, points);
+        }
+      }
+      status = 'done';
+      scheduleNextRefresh();
+      notify();
+    }, () => {
+      if (!tokenIsCurrent(token)) return;
+      if (attempts < retryLimit) status = 'idle';
+      else status = 'failed';
+      notify();
+    });
+  }
+
+  function pointsFor(stationId, commodityId, entry) {
+    if (stationId === station && cache.has(commodityId)) return cache.get(commodityId);
+    return entry && entry.history;
+  }
+
+  function chartState(stationId, commodityId, entry) {
+    if (parseHistoryPoints(pointsFor(stationId, commodityId, entry)).length) return 'confirmed';
+    if (stationId === station && status === 'inflight') return 'loading';
+    return 'unavailable';
+  }
+
+  return {
+    ensure,
+    refresh,
+    reset,
+    pointsFor,
+    chartState,
+    get status() { return status; },
+    get attempts() { return attempts; },
+    get generation() { return generation; },
+  };
+}
+
+export function marketPriceHistory(points, entry, def, nowS) {
+  return priceHistory(points, entry, def, nowS);
+}
+
+export function marketPriceHistorySeries(points, entry, def, nowS) {
+  return priceHistorySeries(points, entry, def, nowS);
 }
 
 function liveRegimeWord(state, sid, commodityId) {
@@ -685,6 +865,27 @@ export function createMarketScreen(ctx) {
   const routesEl = el.querySelector('.sx-mkt__routes');
   const decisionEl = el.querySelector('.sx-mkt__decision');
   let tradeBusy = false;
+  let visible = true;
+  let disposed = false;
+  let historyRefreshTimer = null;
+
+  function scheduleHistoryRefresh(callback, delay) {
+    if (!visible || disposed || typeof setTimeout !== 'function') return null;
+    const timer = setTimeout(() => {
+      if (historyRefreshTimer === timer) historyRefreshTimer = null;
+      if (visible && !disposed && laneCommandSink()) callback();
+    }, delay);
+    // Node-based screen fixtures should not stay alive for a production cadence timer. Browsers
+    // do not expose unref, so this remains a normal visible-session timer there.
+    if (timer && typeof timer.unref === 'function') timer.unref();
+    historyRefreshTimer = timer;
+    return timer;
+  }
+
+  function cancelHistoryRefresh(timer) {
+    if (timer != null && typeof clearTimeout === 'function') clearTimeout(timer);
+    if (historyRefreshTimer === timer) historyRefreshTimer = null;
+  }
 
   let selectedId = null;
   let mode = 'buy';   // 'buy' | 'sell'
@@ -970,44 +1171,37 @@ export function createMarketScreen(ctx) {
   // One register row: name (◆ before it when tracked), buy + trend, sell, stock, held.
   // Worker lane: the commodity wire mirror projects `history` out of market leaves —
   // the 64-point rings stay sim-side and arrive via the marketHistory rpc (stage-7
-  // item B). The render stays synchronous: a miss draws the entry's own history field
-  // (main lane keeps it inline) or the flat fallback; the resolved ack repaints once.
-  // Station-scoped per dock session — a ring drifts one point per economy sample, far
-  // inside the sparkline's ten-minute window.
-  const historyBackfill = new Map();   // commodityId -> points[]
-  let historyBackfillSid = null;
-  let historyBackfillState = 'idle';   // 'idle' | 'inflight' | 'done' — one fetch per station per screen
-  let historyBackfillSeq = 0;
+  // item B). A miss remains an explicit loading/unavailable state; it never becomes a
+  // fabricated flat trend. Reopening the same berth starts a new cache generation.
+  const historyBackfill = createMarketHistoryBackfill({
+    scheduleRefresh: scheduleHistoryRefresh,
+    cancelRefresh: cancelHistoryRefresh,
+    onChange() {
+      if (!disposed && visible) renderAll(ctx.state || {});
+    },
+  });
+  function historyContextKey(state) {
+    const meta = state && state.meta || {};
+    const world = state && state.world || {};
+    return [meta.seed, meta.version, world.currentSectorId, world.worldRecordId].map((value) => String(value ?? '')).join('|');
+  }
   function laneHistoryPoints(sid, commodityId, entry) {
-    if (sid && sid === historyBackfillSid) {
-      const cached = historyBackfill.get(commodityId);
-      if (cached) return cached;
-    }
-    return entry && entry.history;
+    return historyBackfill.pointsFor(sid, commodityId, entry);
   }
   function ensureMarketHistory(state, sid) {
     if (!sid || !laneCommandSink() || disposed) return;
-    if (historyBackfillSid !== sid) {
-      historyBackfillSid = sid;
-      historyBackfill.clear();
-      historyBackfillState = 'idle';
+    const contextKey = historyContextKey(state);
+    historyBackfill.ensure(state, sid, contextKey);
+  }
+  function marketHistoryNotice(sid, commodityId, entry) {
+    const state = historyBackfill.chartState(sid, commodityId, entry);
+    const empty = quoteEl.querySelector('.k-empty');
+    if (!empty) return;
+    empty.setAttribute('data-market-history', state);
+    if (state === 'loading') {
+      empty.textContent = 'Loading price history…';
+      empty.setAttribute('role', 'status');
     }
-    if (historyBackfillState !== 'idle') return;
-    const market = state && state.economy && state.economy.markets && state.economy.markets[sid];
-    if (!market) return;
-    historyBackfillState = 'inflight';
-    const seq = ++historyBackfillSeq;
-    Promise.resolve(laneRpc('marketHistory', { stationId: sid })).then((ack) => {
-      historyBackfillState = 'done';
-      if (disposed || seq !== historyBackfillSeq) return;
-      const rows = ack && (ack.histories || (ack.result && ack.result.histories));
-      if (rows && typeof rows === 'object') {
-        for (const cid of Object.keys(rows)) {
-          if (Array.isArray(rows[cid]) && rows[cid].length) historyBackfill.set(cid, rows[cid]);
-        }
-        if (visible) renderAll(ctx.state || {});
-      }
-    }, () => { historyBackfillState = 'done'; });
   }
 
   function commodityRowHtml(r, state, tracked_, selected) {
@@ -1304,6 +1498,7 @@ export function createMarketScreen(ctx) {
       cause,
       saleQty: qty,
       saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
+    marketHistoryNotice(sid, r.id, entry);
     if (decisionEl) {
       const decisionHtml = marketDecisionHtml(state, sid);
       if (decisionEl.innerHTML !== decisionHtml) decisionEl.innerHTML = decisionHtml;
@@ -1762,10 +1957,6 @@ export function createMarketScreen(ctx) {
     renderRoutes(state);
   }
 
-  // Presentation timers belong to this visible screen, never a retired dock session.
-  let visible = true;
-  let disposed = false;
-
   // A worker-side price refusal is already an authoritative quote for this exact
   // lot. The domain mirror may not carry the changed market row until its cold
   // cadence, so retain the refusal's total and let the next render show/submit it.
@@ -1792,6 +1983,17 @@ export function createMarketScreen(ctx) {
   if (ctx.bus && typeof ctx.bus.on === 'function') {
     ctx.bus.on('economy:tradeFailed', onTradeFailed);
     ctx.bus.on('economy:tradeCompleted', onTradeCompleted);
+  }
+  const historyResetEvents = ['game:new', 'game:newGame', 'save:loaded'];
+  const historyResetOffs = [];
+  const onHistoryWorldReset = () => {
+    historyBackfill.reset();
+  };
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    for (const event of historyResetEvents) {
+      const off = ctx.bus.on(event, onHistoryWorldReset);
+      if (typeof off === 'function') historyResetOffs.push(off);
+    }
   }
 
   const deferred = new Set();
@@ -2236,6 +2438,9 @@ export function createMarketScreen(ctx) {
       authoritativeTradeQuote = null;
       const open = c || ctx;
       const st = open.state || {};
+      // Screen instances are cached by the station app. Every show is a new dock session,
+      // including a same-station reopen, so the prior generation cannot satisfy this one.
+      historyBackfill.reset(stationId(st), historyContextKey(st));
       // Enable trading: the economy system opens/initializes this station's live market on show
       // (parity with the legacy market panel — without this, ui:buy/ui:sell are no-ops).
       const sid = stationId(st);
@@ -2272,14 +2477,22 @@ export function createMarketScreen(ctx) {
       }
     },
     refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
-    onHide() { visible = false; cancelDeferred(); },
+    onHide() {
+      visible = false;
+      historyBackfill.reset();
+      cancelDeferred();
+    },
     dispose() {
       disposed = true;
       visible = false;
+      historyBackfill.reset();
       cancelDeferred();
       if (ctx.bus && typeof ctx.bus.off === 'function') {
         ctx.bus.off('economy:tradeFailed', onTradeFailed);
         ctx.bus.off('economy:tradeCompleted', onTradeCompleted);
+      }
+      for (const off of historyResetOffs.splice(0)) {
+        try { off(); } catch (_) {}
       }
     },
   };

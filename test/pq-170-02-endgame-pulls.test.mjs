@@ -186,7 +186,8 @@ test('PQ-170.02 catalog keeps the eleven authored pieces and adds two heists plu
   assert.equal(authored.ok, true, authored.errors.join('; '));
   assert.equal(capital.ok, true, capital.errors.join('; '));
   assert.equal(endgame.ok, true, endgame.errors.join('; '));
-  assert.equal(AUTHORED_SET_PIECES.length, 11, 'AUTHORED_SET_PIECES must stay exactly 11');
+  // Six far-out pieces (Io Reach, Expanse, Sker, Ashcache, Drift) made it seventeen.
+  assert.equal(AUTHORED_SET_PIECES.length, 17, 'AUTHORED_SET_PIECES must stay exactly 17');
   assert.equal(MEGA_HEISTS.length, 2);
   assert.ok(MEGA_HEISTS.every((row) => row.methods.length === 2 && MEGA_HEIST_ENCOUNTERS[row.id]));
   assert.ok(CAPITAL_BOSS_TOLLMAN.endgame && CAPITAL_BOSS_ALA.endgame);

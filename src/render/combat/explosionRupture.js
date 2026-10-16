@@ -334,6 +334,8 @@ export class ExplosionRupture {
     material.userData.spacefaceTransientTechnique = 'causal-rupture-sheets';
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.name = 'SF_VFX_explosion_rupture';
+    // The native explosion scheduler publishes immediately, so loading owns the first draw.
+    this.mesh.userData.spacefaceOpeningImmediateFirstUse = true;
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 11;
     this.mesh.visible = false;

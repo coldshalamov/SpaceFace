@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 // Create an immutable, probe-only source overlay from one frozen git commit.
 // The output belongs under .devshots/ and embeds either explicitly named runtime files or,
-// with --all-runtime, the complete index.html + src/**/*.js + sim host/read-model set. Assets,
-// node_modules, and every unlisted working-tree file stay outside the capture.
+// with --all-runtime, index.html + vendor/three.module.js + the complete src/**/*.{js,json},
+// scripts/lib runtime and styles trees.
+// Assets, node_modules, and every other unlisted working-tree file stay outside the capture.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
 import { readGitCatFileBatch } from './lib/gitCatFileBatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,6 +45,10 @@ const DEFAULT_PERFORMANCE_PATHS = Object.freeze([
   'src/ui/station/screens/market.js',
   'src/world/activityRuntime.js',
 ]);
+
+const ALL_RUNTIME_PATH_POLICY = 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+const SOURCE_RUNTIME_EXTENSIONS = Object.freeze(new Set(['.js', '.json']));
+const SCRIPT_RUNTIME_EXTENSIONS = Object.freeze(new Set(['.js', '.mjs', '.cjs']));
 
 function value(name) {
   const prefix = `${name}=`;
@@ -80,14 +84,64 @@ function frozenCommit(ref) {
   return result;
 }
 
-function listSrcJsPathsAtCommit(commit) {
-  const listing = execFileSync('git', ['ls-tree', '-r', '-z', '--name-only', commit, '--', 'src'], {
+function listTrackedPathsAtCommit(commit, prefix, include = () => true) {
+  const listing = execFileSync('git', ['ls-tree', '-r', '-z', '--name-only', commit, '--', prefix], {
     cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true,
   });
   return String(listing || '').split('\0')
     .map((relativePath) => relativePath.replace(/\\/g, '/'))
-    .filter((relativePath) => relativePath.startsWith('src/') && relativePath.endsWith('.js'))
+    .filter((relativePath) => relativePath.startsWith(`${prefix}/`) && include(relativePath))
     .sort();
+}
+
+function listSrcRuntimePathsAtCommit(commit) {
+  return listTrackedPathsAtCommit(commit, 'src', (relativePath) =>
+    SOURCE_RUNTIME_EXTENSIONS.has(path.extname(relativePath).toLowerCase()));
+}
+
+function listScriptRuntimePathsAtCommit(commit) {
+  return listTrackedPathsAtCommit(commit, 'scripts/lib', (relativePath) =>
+    SCRIPT_RUNTIME_EXTENSIONS.has(path.extname(relativePath).toLowerCase()));
+}
+
+function listStylesPathsAtCommit(commit) {
+  return listTrackedPathsAtCommit(commit, 'styles');
+}
+
+async function listWorkingTreePaths(prefix, include = () => true) {
+  const trackedListing = execFileSync('git', ['ls-files', '-z', '--', prefix], {
+    cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true,
+  });
+  const paths = new Set(String(trackedListing || '').split('\0')
+    .map((relativePath) => relativePath.replace(/\\/g, '/'))
+    .filter((relativePath) => relativePath.startsWith(`${prefix}/`) && include(relativePath)));
+  const walk = async (relativeDirectory) => {
+    let entries;
+    try {
+      entries = await readdir(path.join(ROOT, relativeDirectory), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const relativePath = path.posix.join(relativeDirectory.replace(/\\/g, '/'), entry.name);
+      if (entry.isDirectory()) {
+        await walk(relativePath);
+      } else if (entry.isFile() && include(relativePath)) {
+        paths.add(relativePath);
+      }
+    }
+  };
+  await walk(prefix);
+  return [...paths].sort();
+}
+
+async function listScriptRuntimePathsAtWorkingTree() {
+  return listWorkingTreePaths('scripts/lib', (relativePath) =>
+    SCRIPT_RUNTIME_EXTENSIONS.has(path.extname(relativePath).toLowerCase()));
+}
+
+async function listStylesPathsAtWorkingTree() {
+  return listWorkingTreePaths('styles');
 }
 
 function bytesAtWorkingTree(relativePath) {
@@ -123,9 +177,13 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
       if (allRuntime) {
         fileList = [
           'index.html',
-          ...(workingTree ? await listSrcJsSourcePaths(ROOT) : listSrcJsPathsAtCommit(sourceCommit)),
-          'scripts/lib/simWorkerHost.mjs',
-          'scripts/lib/simReadModel.mjs',
+          'vendor/three.module.js',
+          ...(workingTree
+            ? await listWorkingTreePaths('src', (relativePath) =>
+              SOURCE_RUNTIME_EXTENSIONS.has(path.extname(relativePath).toLowerCase()))
+            : listSrcRuntimePathsAtCommit(sourceCommit)),
+          ...(workingTree ? await listScriptRuntimePathsAtWorkingTree() : listScriptRuntimePathsAtCommit(sourceCommit)),
+          ...(workingTree ? await listStylesPathsAtWorkingTree() : listStylesPathsAtCommit(sourceCommit)),
         ];
       } else if (usingDefaultPaths) {
         fileList = [...DEFAULT_PERFORMANCE_PATHS];
@@ -145,6 +203,10 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
           if (workingTree) {
             presentPaths = uniquePaths.filter((relativePath) => {
               if (existsSync(path.join(ROOT, relativePath))) return true;
+              if (allRuntime) {
+                missingPaths.push(relativePath);
+                return false;
+              }
               if (!usingDefaultPaths) throw new Error(`source path is absent in the working tree: ${relativePath}`);
               missingPaths.push(relativePath);
               return false;
@@ -187,7 +249,7 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
             workingTree,
             captureScope: allRuntime ? 'all-runtime' : 'performance-paths',
             runtimePathPolicy: allRuntime
-              ? 'index.html + src/**/*.js + scripts/lib/simWorkerHost.mjs + scripts/lib/simReadModel.mjs'
+              ? ALL_RUNTIME_PATH_POLICY
               : 'explicit performance path set',
             sourceOverlayDigest: sourceOverlayDigest(files),
             requestedPaths: uniquePaths,

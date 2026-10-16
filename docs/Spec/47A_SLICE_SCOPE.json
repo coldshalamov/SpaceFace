@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.sliceScope.v1",
   "scenarioContract": "src/data/scenarios/47a.scenario.json",
-  "sourceSpec": "docs/Spec/MASTER_MAKEOVER_PLAN.md",
+  "sourceSpec": "docs/Spec/47A_SLICE_CONTRACT.md",
   "sliceContract": "docs/Spec/47A_SLICE_CONTRACT.md",
   "requiredProofMetricIds": [
     "first_meaningful_steering",

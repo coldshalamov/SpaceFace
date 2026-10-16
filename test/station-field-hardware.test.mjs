@@ -47,10 +47,12 @@ test('berth frame pins its hardware: nameplate, legend tape, vitals plate, works
 
 test('station controller loads kit last and stamps docked Field Hardware temperature', () => {
   const src = read('src/ui/station/stationApp.js');
-  const tokens = src.indexOf('/assets/ui/kit/tokens/tokens.css');
-  const fh = src.indexOf('/assets/ui/kit/kit/fh.css');
-  const orbital = src.indexOf('/styles/station-orbital.css');
-  const station = src.indexOf('/styles/station.css');
+  const stylesSrc = read('src/ui/station/stationStyles.js');
+  assert.match(src, /import \{ ensureStylesheet \} from '\.\/stationStyles\.js'/);
+  const tokens = stylesSrc.indexOf('/assets/ui/kit/tokens/tokens.css');
+  const fh = stylesSrc.indexOf('/assets/ui/kit/kit/fh.css');
+  const orbital = stylesSrc.indexOf('/styles/station-orbital.css');
+  const station = stylesSrc.indexOf('/styles/station.css');
   assert.ok(tokens >= 0 && fh > tokens && orbital > fh && station > orbital,
     'stylesheet order must be tokens, fh.css, station-orbital, station.css last');
   assert.match(src, /setAttribute\('data-fh-temp', 'docked'\)/);

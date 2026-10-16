@@ -1,4 +1,3 @@
-import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
 // S1 Phase-B stage 3 — main-side read model v1.
 //
 // Reconstructs what the present lane reads from live sim state, fed entirely by
@@ -27,11 +26,13 @@ import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js'
 //     them; dressing rows ride the same aux channel but keep pushAlive's
 //     _noMesh filter and dedupe against journaled ids.
 
-import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
-import { nowNs } from './simRealm.mjs';
+import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
 import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
 import { isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
+import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
+import { nowNs } from './simRealm.mjs';
 import { projectNpcJobsById } from './npcJobsMirror.mjs';
+import { latestPlayerImpactFromTrace } from '../../src/combat/presentationImpact.js';
 import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
 import {
@@ -525,7 +526,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // Bounded live pod facts only: the leaf projector excludes other planet authority.
   'planet.ships', 'planet.orchardForecast',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
-  'survivalDraftPublic',
+  'survivalDraftPublic', 'survivalResultsPublic', 'careers',
   'physicsVenueSession', 'world.wreckCourtRulings',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
@@ -534,7 +535,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'automation.meta', 'automation.traders', 'automation.fleet',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
-  'sites.byId', 'sites.worldById', 'sites.worldOrder', 'automation.drones',
+  'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'automation.drones',
   'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
   'drill.asteroidId',
   'save.slots', 'save.currentSlot',
@@ -560,6 +561,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // machineGate/machine-route standing for the main-side computeRoute facade
   // (routePlanner reads machineAccess + machineProtocol only).
   'world.alienEcology',
+  // Native store status settles Continue and is read synchronously by save event listeners.
+  'save.sharedStoreStatus',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -630,6 +633,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
   sites: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
+  'save.sharedStoreStatus': 1,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
   // field motion misrepresents the public round; score/history retain the run root cadence.
   'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1,
@@ -673,33 +677,55 @@ function domainCadenceFor(rootKey) {
 // worker realm; the facade probe/checker consumes it in the main realm. Both
 // realms must install the SAME profile before the first diff pass or the probe
 // path sets diverge — the runner ships it on the init directive so the two
-// realms can't drift. Empty profile keeps the stage-6 shape and staggers cold work.
+// realms can't drift. The station profile keeps the stage-6 shape and adds
+// only the bounded live-market projection.
 //   expandPaths: [{segs, depth}] — prefix expansion overrides (was the frozen
 //     DOMAIN_EXPAND_PATHS knob; a matching prefix raises expand depth).
-//   leafViews: [{segs, leafSegs, drop, deferFirstSign, firstSignTicks}] — leaf
-//     projections: at a leaf path of length leafSegs matching prefix segs,
-//     sign/ship the leaf minus the named keys; deferFirstSign spreads
+//   leafViews: [{segs, leafSegs, drop, project, deferFirstSign, firstSignTicks,
+//     minCadenceTicks}] — leaf projections: at a leaf path of length leafSegs
+//     matching prefix segs, sign/ship the projected leaf; `drop` removes named
+//     keys from one object and `project` selects a named bounded projection.
+//   combatTraceProjection: when true, replace combat.trace with the bounded
+//     player-impact receipt used by the pause screen; false retains the full
+//     trace for diagnostics.
+//     deferFirstSign spreads
 //     first-signs onto a slot schedule (firstSignTicks ticks — defaults to the
 //     root cadence, DOMAIN_COLD_TICKS flattens a mass-mint hardest).
+//     minCadenceTicks is an explicit lower bound between ordinary re-signs;
+//     it does not delay the first mint or structural deletion.
 //   staggerCold: defaults true; explicit false restores the aligned
 //     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
-const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
+const activeDomainConfig = {
+  expandPaths: [], leafViews: [], staggerCold: true, combatTraceProjection: false,
+};
 const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
+const COMBAT_TRACE_PRESENTATION_RULE = Object.freeze({ project: 'combatPause' });
 const ORCHARD_FORECAST_MIRROR_RULE = Object.freeze({ project: 'orchardForecast' });
 const ORCHARD_EXPOSURE_MIRROR_RULE = Object.freeze({ project: 'orchardExposure' });
 
-// Named diagnostic wire profiles. The ordinary runtime installs the empty
-// profile; callers must opt into a name before the first differ is created so
-// the worker and facade can receive the same shape. Keep the history-bearing
-// commodity profile separate from the no-history ceiling experiment: the
-// market UI still reads entry.history synchronously on reset/open.
+// Named diagnostic wire profiles. The ordinary runtime installs the station
+// profile before the first differ is created and ships the same object to the
+// worker realm. The station profile projects listing history out of the live
+// mirror; the market UI backfills those authoritative rings through the
+// marketHistory RPC. The history-bearing commodity profile remains available
+// for diagnostics that keep inline history.
 export const DOMAIN_MIRROR_PROFILE_NAMES = Object.freeze([
   'station', 'commodity', 'commodity-nohist',
 ]);
 
 export function createDomainMirroringProfile(name = 'station') {
   const profile = String(name || 'station');
-  if (profile === 'station') return {};
+  if (profile === 'station') return {
+    // Keep the production station-level shape (economy.markets.<station> is
+    // still one leaf) while removing only the per-listing chart cache. The
+    // worker's authoritative market/history objects are never changed.
+    leafViews: [{
+      segs: ['economy', 'markets'], leafSegs: 3,
+      project: 'marketLive', minCadenceTicks: DOMAIN_COLD_TICKS,
+    }],
+    staggerCold: true,
+    combatTraceProjection: true,
+  };
   if (profile !== 'commodity' && profile !== 'commodity-nohist') {
     throw new RangeError(`unknown domain mirror profile: ${profile}`);
   }
@@ -720,6 +746,7 @@ export function createDomainMirroringProfile(name = 'station') {
       },
     ],
     staggerCold: true,
+    combatTraceProjection: true,
   };
 }
 
@@ -727,6 +754,7 @@ export function configureDomainMirroring(config = {}) {
   activeDomainConfig.expandPaths = Array.isArray(config.expandPaths) ? config.expandPaths : [];
   activeDomainConfig.leafViews = Array.isArray(config.leafViews) ? config.leafViews : [];
   activeDomainConfig.staggerCold = config.staggerCold !== false;
+  activeDomainConfig.combatTraceProjection = config.combatTraceProjection === true;
 }
 
 // Find the leaf-view rule covering a leaf path, or null. leafSegs must equal
@@ -735,6 +763,9 @@ export function configureDomainMirroring(config = {}) {
 function domainLeafViewFor(segs) {
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
+  if (activeDomainConfig.combatTraceProjection && isCombatTracePath(segs)) {
+    return COMBAT_TRACE_PRESENTATION_RULE;
+  }
   // DOMAIN_MIRROR_KEYS keeps dotted leaf paths as one logical root on the worker wire; the main
   // lane splits that segment while grafting it into state.npcJobs.byId.
   if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
@@ -761,6 +792,42 @@ function isNpcJobsByIdPath(segs) {
 // Shallow key-drop projection for a leaf-view rule. Returns a copy minus the
 // dropped keys — never mutates the live value; callers sign/clone the result
 // so the facade stores exactly the projected (shipped) content.
+function projectMarketLive(v) {
+  if (!isCanonicalObject(v)) return v;
+  const commodityIds = Object.keys(v);
+  let hasHistory = false;
+  for (const commodityId of commodityIds) {
+    const listing = v[commodityId];
+    if (isCanonicalObject(listing) && Object.hasOwn(listing, 'history')) {
+      hasHistory = true;
+      break;
+    }
+  }
+  if (!hasHistory) return v;
+  const out = {};
+  for (const commodityId of commodityIds) {
+    const listing = v[commodityId];
+    if (!isCanonicalObject(listing) || !Object.hasOwn(listing, 'history')) {
+      out[commodityId] = listing;
+      continue;
+    }
+    const projected = {};
+    for (const key of Object.keys(listing)) {
+      if (key !== 'history') projected[key] = listing[key];
+    }
+    out[commodityId] = projected;
+  }
+  return out;
+}
+
+function projectCombatTraceForPause(v, playerId) {
+  if (!isCanonicalObject(v) || !Array.isArray(v.events)) return v;
+  return {
+    playerId: playerId == null ? null : playerId,
+    latestPlayerImpact: latestPlayerImpactFromTrace(v, playerId),
+  };
+}
+
 function projectOrchardExposure(state, records) {
   const out = {};
   if (!state?.planet?.active || state.planet.siteId !== ANVIL_ORCHARD.planetId
@@ -791,6 +858,8 @@ function projectDomainLeaf(rule, v, state) {
   if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
   if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
+  if (rule && rule.project === 'marketLive') return projectMarketLive(v);
+  if (rule && rule.project === 'combatPause') return projectCombatTraceForPause(v, state && state.playerId);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
   let has = false;
   for (const k of rule.drop) {
@@ -803,6 +872,10 @@ function projectDomainLeaf(rule, v, state) {
 }
 
 function expandDepthFor(segs) {
+  // These roots are bounded presentation projections, even when a diagnostic
+  // profile expands every root. Expanding their raw sources would bypass the
+  // projector, and the facade must retain the same atomic projected path.
+  if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast') return 0;
   let depth = DOMAIN_EXPAND[segs[0]] || 0;
   for (const rule of activeDomainConfig.expandPaths) {
     const p = rule.segs;
@@ -836,7 +909,7 @@ const COMBAT_TRACE_KEYS = Object.freeze([
 ]);
 const COMBAT_TRACE_KEY_SET = new Set(COMBAT_TRACE_KEYS);
 
-function combatTraceWatermark(trace, previous = null) {
+function combatTraceWatermark(trace, previous = null, playerId = null) {
   if (!isCanonicalObject(trace) || !Array.isArray(trace.events)) return null;
   const keys = Object.keys(trace);
   if (keys.length !== COMBAT_TRACE_KEYS.length
@@ -865,6 +938,7 @@ function combatTraceWatermark(trace, previous = null) {
   return {
     trace,
     events,
+    playerId: playerId == null ? null : playerId,
     eventLength: events.length,
     firstEvent,
     lastEvent,
@@ -880,6 +954,7 @@ function sameCombatTraceWatermark(a, b) {
   if (!a || !b
       || a.trace !== b.trace
       || a.events !== b.events
+      || a.playerId !== b.playerId
       || a.eventLength !== b.eventLength
       || a.firstEvent !== b.firstEvent
       || a.lastEvent !== b.lastEvent
@@ -1240,10 +1315,15 @@ export function sameDomainContainerKind(a, b) {
 // canonical clone when the signature changes. The probe is the digest set of every
 // leaf path — the runner replays the same walk over its facades and compares.
 //
-// Node records: { leaf, kids:Set<string>|null, digest, bytes, lastSign, segs }.
+// Node records: { leaf, kids:Map<string,node>|null, digest, bytes, lastSign, segs }.
 // paths is keyed by the joined path string; segs is the segment array where
 // segs[0] is the mirrored root key (which itself may contain dots, e.g.
 // 'world.currentSectorId').
+
+function domainWireChildSegs(segs, aliased, child, name) {
+  return aliased || child.segs[0] !== segs[0]
+    ? segs.concat(name) : child.segs;
+}
 
 export function createDomainDiffer(options = {}) {
   // Stage-6 instrumentation gate (item F3): the probe slot table + digest sets
@@ -1252,6 +1332,11 @@ export function createDomainDiffer(options = {}) {
   // either way (probe content never fed the shipped updates).
   const probeEnabled = options.probe === true;
   const paths = new Map();
+  // Roots are created lazily in DOMAIN_MIRROR_KEYS order. That interleaving is
+  // part of the wire cadence contract because each node's creation slot seeds
+  // its staggered signing phase.
+  const rootNodes = new Array(DOMAIN_MIRROR_KEYS.length);
+  const rootAliasSegs = new Array(DOMAIN_MIRROR_KEYS.length);
   const sigScratch = {};
   const cloneScratch = {};
   let nextSlot = 0;
@@ -1283,37 +1368,87 @@ export function createDomainDiffer(options = {}) {
     probeGen++;
   }
 
-  function dropNode(path) {
-    const n = paths.get(path);
-    if (!n) return;
-    if (n.kids) for (const c of n.kids) dropNode(`${path}.${c}`);
-    releaseProbeSlot(n);
-    paths.delete(path);
-  }
-
-  function ensureNode(path, segs) {
-    let n = paths.get(path);
-    if (!n) {
-      n = {
-        leaf: true, kids: null, digest: null, signature: null, bytes: 0,
-        lastSign: -1, lastEnum: null, segs, slot: nextSlot++,
-        probeSlot: null, probeChanged: false,
-      };
-      if (isCombatTracePath(segs)) {
-        n.combatTraceWatermark = null;
-        n.combatTraceEventRefs = null;
-      }
-      paths.set(path, n);
+  function dropNode(node) {
+    if (!node) return;
+    if (node.kids) {
+      for (const child of node.kids.values()) dropNode(child);
+      node.kids = null;
     }
-    return n;
+    node.alive = false;
+    releaseProbeSlot(node);
+    if (paths.get(node.path) === node) paths.delete(node.path);
   }
 
-  function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext, state) {
-    const node = ensureNode(path, segs);
-    // This owner publishes detached immutable snapshots only at settlement.
-    // A new stock/hold receipt must not wait for the large-leaf cold cadence.
-    const freshDraftSnapshot = segs[0] === 'survivalDraftPublic' && node.draftSnapshotSource !== v;
-    if (segs[0] === 'survivalDraftPublic') node.draftSnapshotSource = v;
+  function createNode(path, segs) {
+    const node = {
+      path,
+      segs,
+      alive: true,
+      leaf: true,
+      kids: null,
+      digest: null,
+      signature: null,
+      bytes: 0,
+      lastSign: -1,
+      lastEnum: null,
+      slot: nextSlot++,
+      probeSlot: null,
+      probeChanged: false,
+      // These values depend only on the path. Keep them on the node so the
+      // hot walk does not repeatedly classify the same path.
+      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      isCombatTrace: isCombatTracePath(segs),
+      isNpcJobsById: isNpcJobsByIdPath(segs),
+      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
+      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]),
+    };
+    if (node.isCombatTrace) {
+      node.combatTraceWatermark = null;
+      node.combatTraceEventRefs = null;
+    }
+    paths.set(path, node);
+    return node;
+  }
+
+  // A path can be discovered through an expanded parent before its dotted
+  // mirror key reaches the root loop. Resolve that alias only while creating
+  // a node; hot visits use the parent/root's retained node reference directly.
+  function getOrCreateNode(path, segs) {
+    return paths.get(path) || createNode(path, segs);
+  }
+
+  // Dotted mirror roots can revisit a node with a different segment boundary
+  // after an expanded parent created it. Cache that rare alias view once so
+  // metadata keeps the old walk(segs) semantics without classifying on every
+  // hot visit; canonical visits use the node's creation-time metadata directly.
+  function staticMetadataFor(node, segs) {
+    if (segs === node.segs) return node;
+    const aliasKey = `${segs[0]}\u0000${segs.length}\u0000${segs[1] ?? ''}`;
+    let metadata = node.aliasMetadata && node.aliasMetadata.get(aliasKey);
+    if (metadata) return metadata;
+    metadata = {
+      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      isCombatTrace: isCombatTracePath(segs),
+      isNpcJobsById: isNpcJobsByIdPath(segs),
+      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
+      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? node.path : segs[0]),
+    };
+    if (!node.aliasMetadata) node.aliasMetadata = new Map();
+    node.aliasMetadata.set(aliasKey, metadata);
+    return metadata;
+  }
+
+  function walk(node, v, tick, updates, stats, npcJobsRevision, runContext, state,
+    walkSegs = node.segs) {
+    const playerId = state && state.playerId;
+    const path = node.path;
+    const segs = walkSegs;
+    const aliased = segs !== node.segs;
+    const metadata = staticMetadataFor(node, segs);
+    // These owners publish detached immutable snapshots only at settlement. A fresh result
+    // or stock/hold receipt must arrive before its event opens a screen, even for a cold leaf.
+    const freshOwnerSnapshot = metadata.ownerSnapshot && node.ownerSnapshotSource !== v;
+    if (metadata.ownerSnapshot) node.ownerSnapshotSource = v;
     if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
       if (node.leaf) {
         releaseProbeSlot(node); // leaf -> container
@@ -1325,35 +1460,46 @@ export function createDomainDiffer(options = {}) {
         }
       }
       node.leaf = false;
-      const enumDue = freshDraftSnapshot || node.lastEnum == null
+      const enumDue = freshOwnerSnapshot || node.lastEnum == null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
-        const liveKids = new Set(Object.keys(v));
-        for (const c of liveKids) {
-          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision, runContext, state);
+        const previousKids = node.kids;
+        const nextKids = new Map();
+        for (const c of Object.keys(v)) {
+          let child = previousKids && previousKids.get(c);
+          let childSegs;
+          if (child) {
+            childSegs = domainWireChildSegs(segs, aliased, child, c);
+          } else {
+            childSegs = segs.concat(c);
+            child = getOrCreateNode(`${path}.${c}`, childSegs);
+          }
+          nextKids.set(c, child);
+          walk(child, v[c], tick, updates, stats, npcJobsRevision, runContext, state, childSegs);
         }
-        if (node.kids) {
-          for (const c of node.kids) {
-            if (!liveKids.has(c)) {
-              updates.push({ segs: segs.concat(c), del: true });
-              dropNode(`${path}.${c}`);
+        if (previousKids) {
+          for (const [c, child] of previousKids) {
+            if (!nextKids.has(c)) {
+              updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+              dropNode(child);
             }
           }
         }
-        node.kids = liveKids;
+        node.kids = nextKids;
         node.lastEnum = tick;
       } else {
         // Between enumerations walk the known set only: absent children delete
         // eagerly (a present-undefined child will be re-discovered next enum);
         // new children wait for the enumeration pass.
-        for (const c of node.kids) {
+        for (const [c, child] of node.kids) {
           const cv = v[c];
           if (cv === undefined) {
-            updates.push({ segs: segs.concat(c), del: true });
-            dropNode(`${path}.${c}`);
+            updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+            dropNode(child);
             node.kids.delete(c);
           } else {
-            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision, runContext, state);
+            walk(child, cv, tick, updates, stats, npcJobsRevision, runContext, state,
+              domainWireChildSegs(segs, aliased, child, c));
           }
         }
       }
@@ -1362,9 +1508,9 @@ export function createDomainDiffer(options = {}) {
     if (node.kids) {
       // Was expanded, value no longer a canonical object — collapse: every
       // former child path deletes, then this node diffs as a leaf.
-      for (const c of node.kids) {
-        updates.push({ segs: segs.concat(c), del: true });
-        dropNode(`${path}.${c}`);
+      for (const [c, child] of node.kids) {
+        updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+        dropNode(child);
       }
       node.kids = null;
       if (segs[0] === 'run' && segs.length === 1) {
@@ -1375,7 +1521,7 @@ export function createDomainDiffer(options = {}) {
     }
     node.leaf = true;
     const leafRule = domainLeafViewFor(segs);
-    const isCombatTrace = isCombatTracePath(segs);
+    const isCombatTrace = metadata.isCombatTrace;
     // Do not retain a replaced live trace/event array until its next cold slot.
     // The replacement still follows the normal cadence, but dropping the old
     // references here keeps reset/load graphs collectible immediately.
@@ -1390,13 +1536,23 @@ export function createDomainDiffer(options = {}) {
     // existing lifecycle signal to bypass the large-leaf cadence for structural changes, while
     // leaving ordinary phase/progress changes on their bounded cold cadence.  This avoids a
     // per-tick Object.keys membership scan and keeps the authoritative worker object untouched.
-    const npcJobsRevisionChanged = isNpcJobsByIdPath(segs)
+    const npcJobsRevisionChanged = metadata.isNpcJobsById
       && Number.isSafeInteger(npcJobsRevision)
       && node.npcJobsRevision !== npcJobsRevision;
-    if (isNpcJobsByIdPath(segs) && Number.isSafeInteger(npcJobsRevision)) {
+    if (metadata.isNpcJobsById && Number.isSafeInteger(npcJobsRevision)) {
       node.npcJobsRevision = npcJobsRevision;
     }
-    const cadence = domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]);
+    const normalizedPlayerId = playerId == null ? null : playerId;
+    const combatTracePlayerChanged = isCombatTrace && node.combatTraceWatermark
+      && node.combatTraceWatermark.playerId !== normalizedPlayerId;
+    const cadence = metadata.cadence;
+    const minCadenceTicks = leafRule && Number.isFinite(leafRule.minCadenceTicks)
+      ? Math.max(1, Math.floor(leafRule.minCadenceTicks)) : 0;
+    // A replaced station object is a reset/rebind boundary. Keep its first
+    // mint immediate even when the old path had a recent market-live sign;
+    // ordinary in-place market updates still use the explicit lower bound.
+    const marketLiveSourceChanged = leafRule && leafRule.project === 'marketLive'
+      && node.lastSign >= 0 && node.marketLiveSource !== v;
     // The first admitted threat in an active wave is a bootstrap edge, not a
     // recurring progress sample.  A new game can leave the run root already
     // expanded with spawnedThreat=0; if the worker then reaches active and
@@ -1404,9 +1560,8 @@ export function createDomainDiffer(options = {}) {
     // update can arrive while the public census remains zero for the whole
     // presentation window.  Ship that one positive edge immediately, while
     // keeping later within-wave count changes on the existing root cadence.
-    const isRunSpawnedThreat = segs[0] === 'run' && segs[1] === 'spawnedThreat';
     let runAdmissionBootstrap = false;
-    if (isRunSpawnedThreat) {
+    if (metadata.isRunSpawnedThreat) {
       const activeWave = runContext && runContext.phase === 'active'
         && Number.isSafeInteger(runContext.wave) ? runContext.wave : null;
       if (activeWave === null) {
@@ -1416,11 +1571,15 @@ export function createDomainDiffer(options = {}) {
         runAdmissionBootstrap = true;
       }
     }
-    if (node.lastSign >= 0 && !freshDraftSnapshot && !npcJobsRevisionChanged
-        && !runAdmissionBootstrap) {
+    if (node.lastSign >= 0 && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
+        && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
-      const interval = Math.max(tierTicks, cadence);
+      // minCadenceTicks is a true minimum after a sign, rather than a slot
+      // phase. This keeps a projected market below 4 KiB from falling back to
+      // the economy's 10-pass cadence (six times the intended signing rate).
+      if (minCadenceTicks > 1 && tick - node.lastSign < minCadenceTicks) return;
+      const interval = Math.max(tierTicks, cadence, minCadenceTicks);
       if (interval > 1) {
         // Keep the same maximum freshness interval while spreading recurring
         // large canonical/signature walks across replies. Initial values still
@@ -1432,7 +1591,7 @@ export function createDomainDiffer(options = {}) {
           return;
         }
       }
-    } else if (!freshDraftSnapshot && leafRule && leafRule.deferFirstSign) {
+    } else if (!freshOwnerSnapshot && leafRule && leafRule.deferFirstSign) {
       // Mass-mint smoothing for leaf-view rules: a first sign waits for the
       // leaf's slot instead of firing immediately, spreading mint bursts
       // (e.g. station markets materializing on one economy:tick) over
@@ -1444,13 +1603,13 @@ export function createDomainDiffer(options = {}) {
     const previousCombatTraceWatermark = isCombatTrace
       ? node.combatTraceWatermark : null;
     const currentCombatTraceWatermark = isCombatTrace
-      ? combatTraceWatermark(v, previousCombatTraceWatermark) : null;
-    // combat.trace is a large append-only leaf. When its producer watermark
-    // and event identities are unchanged, the exact canonical signature and
-    // full mirror payload are already retained on this node. Advance the
-    // freshness clock without re-walking the record; any append, trim,
-    // replacement, reset, malformed shape, or unknown field falls through to
-    // the existing exact path below.
+      ? combatTraceWatermark(v, previousCombatTraceWatermark, normalizedPlayerId) : null;
+    // combat.trace is a large append-only leaf. When its producer watermark,
+    // event identities, and player identity are unchanged, the canonical
+    // signature and retained presentation payload are already on this node.
+    // Advance the freshness clock without re-walking the record; any append,
+    // trim, replacement, reset, malformed shape, unknown field, or player
+    // switch falls through to the exact path below.
     if (currentCombatTraceWatermark
         && node.lastSign >= 0
         && sameCombatTraceWatermark(previousCombatTraceWatermark, currentCombatTraceWatermark)) {
@@ -1466,8 +1625,10 @@ export function createDomainDiffer(options = {}) {
     // freshness unchanged, and exact text equality cannot hide a hash collision.
     const changed = node.lastSign < 0 || sig !== node.signature;
     stats.signedBytes += sig.length;
+    node.urgentSign = false;
     node.lastSign = tick;
     node.bytes = sig.length;
+    if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
     if (currentCombatTraceWatermark) {
       const eventRefs = node.combatTraceEventRefs || [];
       eventRefs.length = currentCombatTraceWatermark.events.length;
@@ -1499,15 +1660,35 @@ export function createDomainDiffer(options = {}) {
 
   return {
     paths,
+    // An owner event may require one mutable leaf before its normal cold slot. Keep the
+    // previous signature: an unchanged value still ships nothing, and the next diff resumes
+    // the usual cadence. A lazy leaf needs no flag before its first (already eager) sign.
+    invalidateLeaf(path) {
+      const node = paths.get(path);
+      if (!node || !node.leaf) return false;
+      node.urgentSign = true;
+      return true;
+    },
     diff(state, tick) {
       const start = nowNs();
       const updates = [];
       const stats = { shipBytes: 0, ships: 0, signedBytes: 0, oversize: [] };
       const npcJobsRevision = resolveDomainValue(state, 'npcJobs.revision');
       const runContext = resolveDomainValue(state, 'run');
-      for (const key of DOMAIN_MIRROR_KEYS) {
-        walk(key, [key], resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
-          runContext, state);
+      for (let rootIndex = 0; rootIndex < DOMAIN_MIRROR_KEYS.length; rootIndex++) {
+        const key = DOMAIN_MIRROR_KEYS[rootIndex];
+        let rootNode = rootNodes[rootIndex];
+        if (!rootNode || !rootNode.alive) {
+          rootNode = getOrCreateNode(key, [key]);
+          rootNodes[rootIndex] = rootNode;
+        }
+        let walkSegs = rootNode.segs;
+        if (walkSegs.length !== 1 || walkSegs[0] !== key) {
+          walkSegs = rootAliasSegs[rootIndex];
+          if (!walkSegs) walkSegs = rootAliasSegs[rootIndex] = [key];
+        }
+        walk(rootNode, resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
+          runContext, state, walkSegs);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
       let probe = null;

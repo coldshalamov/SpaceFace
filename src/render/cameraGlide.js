@@ -43,8 +43,10 @@ export const GLIDE_TUNING = Object.freeze({
   smoothDownS: 0.85,         // follower time constant while returning to the set framing
   maxDownScalePerS: 0.55,    // fastest return, scale units per second (~65 WU/s at default zoom)
   holdS: 0.45,               // keep the lifted framing this long after the way clears
-  maxScale: 16,              // absolute dolly ceiling
+  maxScale: 16,              // aesthetic dolly ceiling for the normal framing target
+  maxClearanceScale: 256,    // bounded fallback when a caller has no finite far-plane ceiling
   fixedPointPasses: 5,       // dolly moves the camera column; iterate the requirement to a fixed point
+  clearanceRefinePasses: 6,  // fixed bracket refinement for the hard current-column guarantee
   epsilon: 1e-3,
   maxStepS: 0.35,            // longest frame the glide integrates in one go (a 3 fps machine still keeps world time)
   visibleClampScale: 0.004,  // a last-resort clamp smaller than this (~0.5 WU) is not a visible correction
@@ -107,14 +109,48 @@ export function resetCameraGlide(glide) {
  * `ax/az` is the look-at target's position, `rx/ry/rz` the camera's offset from it at scale 1.
  * `roofAt(x, z, pad)` returns the lowest Y the camera may occupy at that column (-Infinity if none).
  */
-export function requiredGlideScale(roofAt, ax, az, rx, ry, rz, pad, maxScale, passes = GLIDE_TUNING.fixedPointPasses, startScale = 1) {
+function refineClearBracket(roofAt, ax, az, rx, ry, rz, pad, blockedScale, clearScale, passes) {
+  let lo = blockedScale;
+  let hi = clearScale;
+  const budget = Number.isFinite(passes) ? Math.max(0, Math.min(8, Math.floor(passes))) : 0;
+  for (let i = 0; i < budget; i++) {
+    const mid = (lo + hi) * 0.5;
+    const floor = roofAt(ax + mid * rx, az + mid * rz, pad);
+    if (floor > mid * ry) lo = mid;
+    else hi = mid;
+  }
+  // Keep the clear upper endpoint if a final query at the refined boundary is not clear. The
+  // caller must never receive an unverified candidate after the bounded refinement.
+  const finalFloor = roofAt(ax + hi * rx, az + hi * rz, pad);
+  return !(finalFloor > hi * ry) ? hi : clearScale;
+}
+
+export function requiredGlideScale(
+  roofAt, ax, az, rx, ry, rz, pad, maxScale,
+  passes = GLIDE_TUNING.fixedPointPasses, startScale = 1,
+  refine = false, refinePasses = GLIDE_TUNING.clearanceRefinePasses,
+) {
   let s = startScale;
+  let blockedScale = NaN;
   for (let k = 0; k < passes; k++) {
     const floor = roofAt(ax + s * rx, az + s * rz, pad);
-    if (!(floor > s * ry)) return s;
+    if (!(floor > s * ry)) {
+      return refine && Number.isFinite(blockedScale)
+        ? refineClearBracket(roofAt, ax, az, rx, ry, rz, pad, blockedScale, s, refinePasses)
+        : s;
+    }
+    blockedScale = s;
     const next = Math.min(maxScale, floor / ry + GLIDE_TUNING.epsilon);
     if (next <= s) return s;
     s = next;
+  }
+  // A bounded jump can land exactly on the footprint edge. Re-measure after the last pass so a
+  // candidate that escaped at the bound is accepted instead of being reported as a blocked roof.
+  const finalFloor = roofAt(ax + s * rx, az + s * rz, pad);
+  if (!(finalFloor > s * ry)) {
+    return refine && Number.isFinite(blockedScale)
+      ? refineClearBracket(roofAt, ax, az, rx, ry, rz, pad, blockedScale, s, refinePasses)
+      : s;
   }
   return s;
 }
@@ -172,7 +208,24 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
     resetCameraGlide(glide);
     return 1;
   }
-  const maxScale = Math.max(1, Math.min(t.maxScale, Number.isFinite(ceiling) ? ceiling / ry : t.maxScale));
+  const aestheticMaxScale = Math.max(1, Math.min(t.maxScale,
+    Number.isFinite(ceiling) ? ceiling / ry : t.maxScale));
+  // The aesthetic cap is a presentation preference, not a clearance authority. A low stern rig
+  // can start at only a few WU high while the same renderer roof is hundreds of WU up; clamping
+  // the exact requirement to t.maxScale leaves the camera inside that roof forever. Keep the
+  // predictive target on the aesthetic bound, but let the current-column guarantee use every
+  // finite scale that still fits along the full camera-to-target view ray under the far plane.
+  const fallbackClearanceScale = Number.isFinite(t.maxClearanceScale)
+    ? Math.max(aestheticMaxScale, t.maxClearanceScale)
+    : aestheticMaxScale;
+  const viewRayLength = Math.hypot(rx, ry, rz);
+  const farPlaneScale = Number.isFinite(ceiling) && ceiling > 0
+    && Number.isFinite(viewRayLength) && viewRayLength > t.epsilon
+    ? ceiling / viewRayLength
+    : Infinity;
+  const clearanceMaxScale = Number.isFinite(farPlaneScale) && farPlaneScale > 0
+    ? Math.max(1, farPlaneScale)
+    : fallbackClearanceScale;
   glide.roofAt = roofAt;
   glide.ceiling = ceiling;
   const roof = glide.roof;
@@ -193,7 +246,10 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
   diag.speed = speed;
 
   // Exact requirement of the column the camera occupies right now — the guarantee.
-  const req0 = requiredGlideScale(roof, tx, tz, rx, ry, rz, 0, maxScale, t.fixedPointPasses);
+  const req0 = requiredGlideScale(
+    roof, tx, tz, rx, ry, rz, 0, clearanceMaxScale, t.fixedPointPasses, 1,
+    true, t.clearanceRefinePasses,
+  );
   diag.req0 = req0;
 
   if (!glide.primed) {
@@ -228,7 +284,8 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
       glide.cursor = i >= n - 1 ? 1 : i + 1;
       const dist = spacing * i;
       glide.slotReq[i] = requiredGlideScale(
-        roof, tx + dirX * dist, tz + dirZ * dist, rx, ry, rz, pad, maxScale, t.fixedPointPasses,
+        roof, tx + dirX * dist, tz + dirZ * dist, rx, ry, rz, pad,
+        aestheticMaxScale, t.fixedPointPasses,
       );
       glide.slotTime[i] = dist / closing;
       glide.slotAge[i] = 0;
@@ -245,7 +302,7 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
       if (preRiseDistance > horizon + spacing) {
         const preRiseReq = requiredGlideScale(
           roof, tx + dirX * preRiseDistance, tz + dirZ * preRiseDistance,
-          rx, ry, rz, pad, maxScale, t.fixedPointPasses,
+          rx, ry, rz, pad, aestheticMaxScale, t.fixedPointPasses,
         );
         if (preRiseReq > 1 + t.epsilon) {
           const need = preRiseReq - 1;
@@ -301,7 +358,8 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
   diag.frames++;
   const hard = glide.scale <= 1 + t.epsilon
     ? req0
-    : requiredGlideScale(roof, tx, tz, rx, ry, rz, 0, maxScale, t.fixedPointPasses, glide.scale);
+    : requiredGlideScale(roof, tx, tz, rx, ry, rz, 0,
+      clearanceMaxScale, t.fixedPointPasses, glide.scale, true, t.clearanceRefinePasses);
   if (hard > glide.scale) {
     if (hard - glide.scale > t.visibleClampScale) diag.hardFrames++;
     glide.scale = hard;

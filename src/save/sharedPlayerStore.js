@@ -13,7 +13,7 @@ const KEEPALIVE_BODY_BUDGET_BYTES = 60000;
 // Every store call gets its own deadline: a store that accepts the connection but never answers
 // must not pin isSharedStoreSyncPending() (Continue's "Checking saves…") forever. This module's
 // header already promises an absent store never breaks anything — a stalled one must not either.
-const SHARED_STORE_TIMEOUT_MS = 10000;
+export const SHARED_STORE_TIMEOUT_MS = 10000;
 
 // Mirror PUTs carry a wider deadline than the boot probe: the request can sit queued in
 // Chromium's per-origin socket pool behind a scene-build asset storm (six-socket limit), and the
@@ -42,14 +42,33 @@ const RECOVERY_PREFIX = 'sf.recovery.';
 const SAVE_TOMBSTONE_PREFIX = SAVE_PREFIX + 'deleted.';
 const RECOVERY_TOMBSTONE_PREFIX = RECOVERY_PREFIX + 'deleted.';
 
-// A 404 from the store route is definitive: this server mounts no player store, and a
-// server never gains routes mid-session. Remember it so every save/load on a store-less
-// server stops paying a doomed round trip (and logging a console error) per call.
-// Network failures and other statuses stay retryable — only 404 is memoized.
-let storeRouteAbsent = false;
+// A 404/405 identifies a server without a writable player-store route. Scope that fact to
+// its origin and relay it with save:store-synced: worker boot probes and main-thread achievement
+// mirrors have separate module instances. Network failures and other statuses stay retryable.
+let storeCapability = { origin: null, status: 'unknown' };
+
+export function sharedPlayerStoreCapability() {
+  let origin = null;
+  try {
+    const loc = globalThis.location;
+    if (loc && (loc.protocol === 'http:' || loc.protocol === 'https:')) {
+      origin = loc.origin || `${loc.protocol}//${loc.host || ''}`;
+    }
+  } catch { /* no page origin */ }
+  if (origin !== storeCapability.origin) storeCapability = { origin, status: 'unknown' };
+  return { ...storeCapability };
+}
+
+export function applySharedPlayerStoreCapability(capability) {
+  const current = sharedPlayerStoreCapability();
+  if (!current.origin || capability?.origin !== current.origin
+    || (capability.status !== 'absent' && capability.status !== 'available')) return false;
+  storeCapability = { origin: current.origin, status: capability.status };
+  return true;
+}
 
 export function resetSharedPlayerStoreMemoForTests() {
-  storeRouteAbsent = false;
+  storeCapability = { origin: null, status: 'unknown' };
   _lastAcceptedStoreWrite = null;
   _sharedStoreWriteChain = Promise.resolve();
   _sharedStoreWriteInFlight = false;
@@ -381,13 +400,16 @@ export async function applySharedStoreKeysChunked(keys, storage = globalThis.loc
 
 export async function fetchSharedPlayerStore() {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return null;
-  if (storeRouteAbsent) return null;
+  const capability = sharedPlayerStoreCapability();
+  if (capability.status === 'absent') return null;
   try {
     // No timeout here means isSharedStoreSyncPending() can stay true forever, which pins the main
     // menu's Continue button at "Checking saves..." with no way out. This module's own header says
     // an absent store must never break anything — a stalled one must not either.
     const response = await fetch(SHARED_PLAYER_STORE_PATH, { cache: 'no-store', signal: AbortSignal.timeout(SHARED_STORE_TIMEOUT_MS) });
-    if (response.status === 404) storeRouteAbsent = true;
+    if (response.status === 404 || response.status === 405) {
+      applySharedPlayerStoreCapability({ origin: capability.origin, status: 'absent' });
+    }
     if (!response.ok) return null;
     const body = await response.json();
     if (!body || typeof body.keys !== 'object' || body.keys == null) return null;
@@ -395,13 +417,14 @@ export async function fetchSharedPlayerStore() {
     for (const [key, value] of Object.entries(body.keys)) {
       if (isSharedPlayerStoreKey(key) && typeof value === 'string') keys[key] = value;
     }
+    applySharedPlayerStoreCapability({ origin: capability.origin, status: 'available' });
     return keys;
   } catch {
     return null;
   }
 }
 
-export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
+export function pushSharedPlayerStore(keys, { keepalive = false, timeoutMs = SHARED_STORE_PUT_TIMEOUT_MS } = {}) {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return Promise.resolve(false);
   const patch = {};
   const deletions = new Map();
@@ -433,7 +456,8 @@ export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
     }
   }
   if (count === 0) return Promise.resolve(true);
-  if (storeRouteAbsent) return Promise.resolve(false);
+  const capability = sharedPlayerStoreCapability();
+  if (capability.status === 'absent') return Promise.resolve(false);
   const body = JSON.stringify({ keys: patch });
   // The budget is measured in UTF-8 bytes (non-ASCII names encode wider than .length), and the
   // encoder only runs when the guarantee was actually requested.
@@ -442,17 +466,37 @@ export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
     try { byteLength = new TextEncoder().encode(body).byteLength; } catch { byteLength = body.length; }
   }
   const carriesKeepalive = keepalive === true && byteLength <= KEEPALIVE_BODY_BUDGET_BYTES;
+  const putTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0
+    ? timeoutMs : SHARED_STORE_PUT_TIMEOUT_MS;
   const attempt = async () => {
+    // A queued mirror may have been admitted before the worker's boot result reached main.
+    const current = sharedPlayerStoreCapability();
+    if (current.origin !== capability.origin || current.status === 'absent') return false;
     try {
       const response = await fetch(SHARED_PLAYER_STORE_PATH, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body,
-        signal: AbortSignal.timeout(SHARED_STORE_PUT_TIMEOUT_MS),
+        signal: AbortSignal.timeout(putTimeoutMs),
         keepalive: carriesKeepalive,
       });
-      if (response.status === 404) storeRouteAbsent = true;
-      if (response.ok) noteAcceptedStoreWrite(patch);
+      if (response.status === 404 || response.status === 405) {
+        applySharedPlayerStoreCapability({ origin: capability.origin, status: 'absent' });
+      }
+      // fetch resolves at headers, while the store's acknowledgement includes its full key bag.
+      // Drain without retaining/parsing that unused payload before releasing this write's queue
+      // ownership. An unread body otherwise keeps network work and its deadline alive after a
+      // reported success, so a later timeout can abort an apparently completed mirror.
+      if (response.body) {
+        const reader = response.body.getReader();
+        try {
+          while (!(await reader.read()).done) { /* Discard each bounded transport chunk. */ }
+        } finally { reader.releaseLock(); }
+      }
+      if (response.ok) {
+        applySharedPlayerStoreCapability({ origin: capability.origin, status: 'available' });
+        noteAcceptedStoreWrite(patch);
+      }
       return response.ok;
     } catch {
       return false;

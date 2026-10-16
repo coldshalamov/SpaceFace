@@ -15,7 +15,6 @@ import { commitDockedUiState } from './dockStateCommit.js';
 import { createEntityLinks } from './entityLinks.js';
 import { mountWhyReveal } from './whyReveal.js';
 import { createUiInput } from './input.js';
-import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
@@ -45,6 +44,9 @@ import { resolveWorldPresentationEntity } from '../world/presentationSources.js'
 import { laneInputWrite } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
+import { saveErrorText, saveSlotLabel, shouldToastSaveError } from './saveFeedback.js';
+
+export { saveErrorText };
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -122,6 +124,7 @@ export function flightReticlePosition(state, width, height, visualPointer) {
 import { createHud } from './hud.js';
 import { createBandHud } from './bandHud.js';
 import { createWorldObjectInteraction } from './worldObjectInteraction.js';
+import { createAftermathChoicePrompt } from './aftermathChoicePrompt.js';
 import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
 import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
@@ -258,6 +261,179 @@ export function isScreenRegistrationCycleSettled(owner) {
     && owner._screenRegistrationSettledGeneration === owner._screenRegistrationGeneration);
 }
 
+function hasStationId(stationId) {
+  return stationId != null
+    && (typeof stationId !== 'string' || stationId.trim().length > 0);
+}
+
+export function isDockedStationState(state) {
+  const uiState = state && state.ui;
+  return !!(uiState && uiState.docked === true && hasStationId(uiState.dockedStationId));
+}
+
+export function invalidateDockedStationPresentation(owner) {
+  if (!owner) return 0;
+  const pending = owner._pendingDockedStationPresentation;
+  if (pending && pending.timerId != null) clearTimeout(pending.timerId);
+  pending?.finish?.();
+  owner._pendingDockedStationPresentation = null;
+  owner._dockPresentationIntent = null;
+  if (owner._pendingScreenRetry && owner._pendingScreenRetry.id === 'station') {
+    owner._cancelPendingScreenRetry?.();
+  }
+  const token = (Number(owner._dockedStationPresentationToken) || 0) + 1;
+  owner._dockedStationPresentationToken = token;
+  return token;
+}
+
+export function isCurrentDockedStationPresentation(owner, token, stationId) {
+  const uiState = owner && owner.state && owner.state.ui;
+  return !!(owner
+    && owner._dockedStationPresentationToken === token
+    && owner.state
+    && owner.state.mode !== 'menu'
+    && owner.state.mode !== 'loading'
+    && uiState
+    && uiState.docked === true
+    && uiState.dockedStationId === stationId
+    && hasStationId(stationId));
+}
+
+function isWorkerDockPresentationWaitingForMirror(owner, token, stationId) {
+  const uiState = owner && owner.state && owner.state.ui;
+  return !!(owner
+    && owner.ctx
+    && owner.ctx.simLane === 'worker'
+    && hasStationId(stationId)
+    && owner._dockPresentationIntent
+    && owner._dockPresentationIntent.token === token
+    && owner._dockPresentationIntent.stationId === stationId
+    && owner.state
+    && owner.state.mode !== 'menu'
+    && owner.state.mode !== 'loading'
+    && uiState
+    && (uiState.docked !== true || uiState.dockedStationId !== stationId));
+}
+
+export function scheduleDockedStationPresentation(owner, stationId, present, releaseFade) {
+  if (!owner) return 0;
+  const token = invalidateDockedStationPresentation(owner);
+  // Keep this record through the phase-3 hold so a lifecycle transition can release the
+  // phase-1 lease even after the 400ms screen-swap callback has started.
+  const pending = {
+    token,
+    timerId: null,
+    stationId,
+    releaseFade,
+    finished: false,
+    finish: null,
+  };
+  pending.finish = () => {
+    if (pending.finished) return;
+    pending.finished = true;
+    if (typeof pending.releaseFade === 'function') pending.releaseFade();
+    if (owner._pendingDockedStationPresentation === pending) {
+      owner._pendingDockedStationPresentation = null;
+    }
+  };
+  pending.timerId = setTimeout(() => {
+    pending.timerId = null;
+    if (!isCurrentDockedStationPresentation(owner, token, stationId)) {
+      if (isWorkerDockPresentationWaitingForMirror(owner, token, stationId)) {
+        owner._dockPresentationIntent.ready = true;
+        setTimeout(() => pending.finish(), 50);
+        return;
+      }
+      pending.finish();
+      return;
+    }
+    let presented = false;
+    try {
+      if (typeof present === 'function') present(pending.finish);
+      presented = true;
+    } finally {
+      if (!presented || typeof pending.releaseFade !== 'function') pending.finish();
+    }
+  }, 400);
+  owner._pendingDockedStationPresentation = pending;
+  // The worker command that commits ui.docked may reach the main mirror after this presentation
+  // timer. Keep the accepted dock intent live for the deferred screen retry until an explicit
+  // undock/menu/load invalidates it.
+  owner._dockPresentationIntent = { token, stationId, ready: false };
+  return token;
+}
+
+export function reconcileDockedStationPresentation(owner) {
+  const intent = owner && owner._dockPresentationIntent;
+  const state = owner && owner.state;
+  const uiState = state && state.ui;
+  if (!owner || !intent || intent.ready !== true
+    || intent.token !== owner._dockedStationPresentationToken
+    || !state || state.mode === 'menu' || state.mode === 'loading'
+    || !hasStationId(intent.stationId)
+    || !uiState || uiState.docked !== true
+    || uiState.dockedStationId !== intent.stationId) return false;
+  owner._dockPresentationIntent = null;
+  if (owner.screenManager?.top?.() === 'station') {
+    owner.screenManager.syncVisibility?.();
+    return true;
+  }
+  owner._pushScreenWhenRegistered?.('station', 200);
+  return true;
+}
+
+export function reconcileGameStartedScreens(owner) {
+  if (!owner) return false;
+  invalidateDockedStationPresentation(owner);
+  owner._cancelPendingScreenRetry?.();
+  const screenManager = owner.screenManager;
+  screenManager?.closeAll?.();
+  // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
+  // with every WebGL context their mount built. The New Game / Load stage hulls each hold a
+  // THREE.WebGLRenderer, its context and its hangar GLB — release them at this boundary.
+  screenManager?.releaseScreen?.('newGame');
+  screenManager?.releaseScreen?.('saveLoad');
+  screenManager?.syncVisibility?.();
+  if (!isDockedStationState(owner.state)) return false;
+  owner._pushScreenWhenRegistered?.('station', 200);
+  return true;
+}
+
+function screenPushRequestIsLive(owner, id) {
+  switch (id) {
+    case 'station':
+      return !!(owner && owner.state && owner.state.mode !== 'menu'
+        && owner.state.mode !== 'loading'
+        && isDockedStationState(owner.state));
+    case 'drill':
+      return !!(owner && owner.state && owner.state.ui
+        && owner.state.ui.pendingDrillAsteroidId != null);
+    case 'gameOver':
+      return !!(owner && owner._gameOverShown === true
+        && !(typeof owner._survivalRunLive === 'function' && owner._survivalRunLive()));
+    case 'crucibleResults':
+      return !!(owner && owner._crucibleResultsShown === true);
+    default:
+      return true;
+  }
+}
+
+function isCurrentScreenPushRequest(owner, request) {
+  if (!owner || !request || request.cancelled
+    || owner._pendingScreenRetry !== request
+    || owner._screenRetryToken !== request.token
+    || owner._screenRegistrationCycle !== request.registrationCycle
+    || owner.screenManager !== request.screenManager
+    || !isScreenRegistrationCycleCurrent(request.registrationCycle)) {
+    return false;
+  }
+  try {
+    return request.isLive(owner);
+  } catch (_) {
+    return false;
+  }
+}
+
 export function destroyMarketNewsOwner(owner) {
   if (!owner) return;
   const current = owner.marketNews;
@@ -380,110 +556,8 @@ export function createBoardingPhaseFence(state, bus, onChange = () => {}) {
   };
 }
 
-function saveSlotLabel(slot) {
-  const id = slot || 'quick';
-  if (id === 'auto' || id === 'autosave') return 'Autosave';
-  if (id === 'latest') return 'latest save';
-  if (id === 'quick') return 'Quick';
-  return 'Slot ' + id;
-}
-
-function skippedNewerNotice(skippedNewer) {
-  if (!skippedNewer || !skippedNewer.slot) return '';
-  return ` Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — not loaded.`;
-}
-
-export function saveErrorText(payload = {}) {
-  return saveErrorReasonText(payload) + skippedNewerNotice(payload.skippedNewer);
-}
-
-function saveErrorReasonText(payload = {}) {
-  const slot = saveSlotLabel(payload.slot);
-  // Write-path receipts pack the verify sub-reason after a colon
-  // ('write_verify_failed:save_size_limit(…)'); match the outer reason first, then let a
-  // known inner reason carry its own actionable message.
-  const rawReason = String(payload.reason || '');
-  const reason = rawReason.split(':', 1)[0];
-  const innerReason = rawReason.indexOf(':') >= 0
-    ? rawReason.slice(rawReason.indexOf(':') + 1).split('(', 1)[0]
-    : '';
-  // _saveTiming receipts carry `trigger` — it separates "the write failed" from
-  // "the file on disk failed to load" for the shared reason names below.
-  const writeAttempt = payload.trigger != null;
-  switch (reason) {
-    case 'no_player': return 'Start or load a game before saving';
-    case 'no_save': return 'No save found for ' + slot;
-    case 'read_failed': return 'Could not read ' + slot;
-    case 'parse_failed':
-    case 'bad_format':
-    case 'no_data':
-    case 'checksum':
-      return slot + ' is corrupt or not a SpaceFace save';
-    case 'newer_version': return slot + ' requires a newer game version';
-    case 'migration_failed': return 'Could not upgrade ' + slot;
-    case 'invalid_player': return slot + ' has no playable ship';
-    case 'serialize_failed':
-    case 'stringify_failed':
-      return 'Could not prepare ' + slot + ' for saving';
-    case 'no_storage': return 'Browser storage is unavailable';
-    case 'quota':
-    case 'backup_quota':
-    case 'write_failed':
-    case 'backup_write_failed':
-      return 'Save storage is full; export a backup';
-    case 'write_verify_parse':
-    case 'write_verify_failed':
-      if (innerReason === 'save_size_limit' || innerReason === 'import_too_large') {
-        return slot + ' is too large to store — previous save kept';
-      }
-      if (innerReason === 'quota' || innerReason === 'backup_quota') {
-        return 'Save storage is full; export a backup';
-      }
-      return 'Could not verify the ' + slot + ' write — previous save kept';
-    // SF-281 — the write bound refuses rather than truncates, and the refused write leaves
-    // the previous slot generation intact; name both facts so the receipt is actionable.
-    case 'save_size_limit':
-    case 'import_too_large':
-      return writeAttempt
-        ? slot + ' is too large to store — previous save kept'
-        : slot + ' is too large to load';
-    case 'import_depth_limit':
-    case 'import_node_limit':
-    case 'import_collection_limit':
-    case 'import_cycle':
-    case 'import_persistent_entity_limit':
-      return writeAttempt
-        ? 'Save data exceeds storage bounds — previous save kept'
-        : slot + ' is too complex to load';
-    case 'restoring': return 'Could not save ' + slot + ' — a load is in progress';
-    case 'schedule_failed':
-    case 'save_worker_failed':
-    case 'save_worker_timeout':
-    case 'player_capture_churn':
-    case 'save_failed':
-    case 'rollback_failed':
-      return 'Could not finish saving ' + slot + ' — previous save kept';
-    case 'settings_write_failed': return 'Could not save settings';
-    case 'export_failed': return 'Export failed for ' + slot;
-    case 'visual_gate_failed': return 'Loaded ' + slot + ', but visuals did not finish';
-    case 'deferred_transition_failed': return 'Could not finish the sector switch';
-    case 'load_failed': {
-      // SFQ-B228: a failed load fails closed (rollback restored / save untouched) and the
-      // receipt carries the restore cause — say it, plus the way out, instead of a bare
-      // "failed". `region` names the damaged save region when the restore owner annotates it.
-      const detail = (payload && typeof payload.region === 'string' && payload.region)
-        ? 'damaged ' + payload.region + ' data'
-        : (payload && typeof payload.error === 'string' && payload.error ? payload.error : null);
-      if (!detail) return 'Save/load failed for ' + slot;
-      return 'Load failed — ' + detail + '. Your save is untouched; try again, or export a backup from the Save screen.';
-    }
-    default:
-      return 'Save/load failed for ' + slot;
-  }
-}
-
 const saveFeedbackWired = new WeakSet();
-function wireSaveFeedback(bus) {
+function wireSaveFeedback(bus, isTitleMenuActive = null) {
   if (!bus || !bus.on || saveFeedbackWired.has(bus)) return;
   saveFeedbackWired.add(bus);
   // No 'Saving …' receipt: the write lands in milliseconds and 'Saved …' follows, so two toasts
@@ -515,10 +589,8 @@ function wireSaveFeedback(bus) {
     });
   });
   bus.on('save:error', (payload = {}) => {
-    // A superseded autosave is a cancellation receipt, not a lost save: the slot keeps its
-    // previous generation and a newer route owns the next write. Warning the player here
-    // would cry failure over a deliberate replacement (New Game / Continue boundaries).
-    if (payload && payload.reason === 'superseded') return;
+    const titleMenuActive = typeof isTitleMenuActive === 'function' && isTitleMenuActive() === true;
+    if (!shouldToastSaveError(payload, titleMenuActive)) return;
     // SFQ-B228: a load failure receipt that names its cause also states the way out — give
     // that sentence time to be read (it is the recovery surface), unlike short write noise.
     const loadFailureDetail = payload && payload.reason === 'load_failed'
@@ -531,6 +603,8 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    invalidateDockedStationPresentation(this);
+    this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
@@ -540,6 +614,10 @@ export const ui = {
     this.bandHud = null;
     if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
     this.promptDeck = null;
+    if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {
+      this.aftermathChoicePrompt.destroy();
+    }
+    this.aftermathChoicePrompt = null;
     destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
@@ -576,9 +654,6 @@ export const ui = {
     try { this._kitSoundDispose = bindSound(ctx.bus); } catch (e) { console.warn('[ui] kit sound bind failed', e); }
     try { this._kitTemperature = bindTemperature(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] kit temperature bind failed', e); }
 
-    // UX-4: start the price-history recorder (subscribes to economy:tick; standalone, no sim writes).
-    try { initPriceHistory(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] price history init failed', e); }
-
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
     // PQ-183.01 the watch list: pinned readings render inside the receipts lane (#toasts), above
@@ -588,7 +663,9 @@ export const ui = {
     this.discoveryPlate = createDiscoveryPlate(ctx);
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
-    wireSaveFeedback(this.bus);
+    wireSaveFeedback(this.bus, () => !!(this.screenManager
+      && typeof this.screenManager.top === 'function'
+      && this.screenManager.top() === 'mainMenu'));
     // INF-092: the mirror status is truthful — pending stays pending, a failed mirror says
     // which store is durable, and a later landed write clears the warning. Toasts only; no
     // duplicate save and no transition rides on this path. Re-init replaces the handler
@@ -742,6 +819,7 @@ export const ui = {
     // parley/signal/recovery/customs adapters below subscribe to their events and render INTO it.
     this.promptDeck = createPromptDeck(ctx);
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
+    this.aftermathChoicePrompt = createAftermathChoicePrompt(ctx);
     this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
 
     // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
@@ -1281,7 +1359,10 @@ export const ui = {
       if (this.screenManager.top() === id) this.screenManager.popScreen();
     });
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
-    this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
+    this.bus.on('ui:closeAll', () => {
+      this._cancelPendingScreenRetry();
+      this.screenManager.closeAll();
+    });
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
     this.bus.on('ui:clearTarget', () => clearCombatTarget(this.state, this.bus));
     // PQ-015 component sub-selection: cycle a component (subsystem / salvage weak-point) on the
@@ -1389,6 +1470,8 @@ export const ui = {
       const { stationId } = payload;
       this.screenManager.syncVisibility();
 
+      // Release an older transition before acquiring this same named fade lease.
+      invalidateDockedStationPresentation(this);
       // Phase 1: fade to dark
       showDockFade('dock');
 
@@ -1407,7 +1490,7 @@ export const ui = {
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.25, 0.9);
 
-      setTimeout(() => {
+      scheduleDockedStationPresentation(this, stationId, (finish) => {
         // Phase 2: at peak darkness, do the screen swap. The station screen is a deferred-wave
         // import — if it has not registered yet, wait for it instead of dropping the push (a
         // dropped push while docked leaves the player staring at the fade with dead controls).
@@ -1416,9 +1499,9 @@ export const ui = {
 
         // Phase 3: fade back in
         setTimeout(() => {
-          hideDockFade('dock');
+          finish();
         }, 50); // brief hold at full dark before fading back
-      }, 400); // matches the CSS transition duration
+      }, () => hideDockFade('dock')); // matches the CSS transition duration
     });
     // Docked undock transition. Bare dock:undocked while docked is gated by installStationExitGate
     // (stationHub) into station:exitRequest; only committed undocks reach combat/save/this handler.
@@ -1433,6 +1516,8 @@ export const ui = {
         });
         return;
       }
+
+      invalidateDockedStationPresentation(this);
 
       // Phase 1: fade to dark
       showDockFade('dock');
@@ -1490,14 +1575,7 @@ export const ui = {
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
     this.bus.on('game:started', () => {
-      this.screenManager.closeAll();
-      // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
-      // with every WebGL context their mount() built. The New Game / Load stage hulls each hold a
-      // THREE.WebGLRenderer, its context and its hangar GLB — leaving them alive orphaned a second
-      // GL context for whole flights on Intel iGPUs (design/perf/PERF_ROOT_CAUSE_2026-09-10.md §4).
-      this.screenManager.releaseScreen('newGame');
-      this.screenManager.releaseScreen('saveLoad');
-      this.screenManager.syncVisibility();
+      reconcileGameStartedScreens(this);
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
     });
@@ -1529,11 +1607,25 @@ export const ui = {
       this._crucibleResultsShown = true;
       this._pushScreenWhenRegistered('crucibleResults', 60);
     });
-    this.bus.on('run:started', () => { this._crucibleResultsShown = false; });
+    this.bus.on('run:started', () => {
+      this._cancelPendingScreenRetry();
+      this._crucibleResultsShown = false;
+    });
     this.bus.on('game:started', () => { this._crucibleResultsShown = false; });
-    this.bus.on('game:over:dismissed', () => { this._gameOverShown = false; });
+    this.bus.on('game:over:dismissed', () => {
+      this._cancelPendingScreenRetry();
+      this._gameOverShown = false;
+    });
+    this.bus.on('game:exitToMenu', () => {
+      invalidateDockedStationPresentation(this);
+      this._cancelPendingScreenRetry();
+    });
+    this.bus.on('game:new', () => { invalidateDockedStationPresentation(this); });
     this.bus.on('game:started', () => { this._gameOverShown = false; });
+    this.bus.on('save:restoring', () => { invalidateDockedStationPresentation(this); });
     this.bus.on('save:loaded', () => {
+      invalidateDockedStationPresentation(this);
+      this._cancelPendingScreenRetry();
       // clear any stale modal restored from a save; HUD returns
       laneInputWrite(this.state, 'ui.docked', false);
       laneInputWrite(this.state, 'ui.dockedStationId', null);
@@ -1606,7 +1698,9 @@ export const ui = {
           catch (e) { console.error(e); }
         }
         // if docked already but the station hub registered late, open it
-        if (def.id === 'station' && this.state.ui.docked && this.screenManager.top() !== 'station') {
+        if (def.id === 'station' && isDockedStationState(this.state)
+          && this.state.mode !== 'menu' && this.state.mode !== 'loading'
+          && this.screenManager.top() !== 'station') {
           try { this.screenManager.pushScreen('station'); } catch (e) { console.error(e); }
         }
       })
@@ -1692,16 +1786,57 @@ export const ui = {
   // Push a screen that may still be in a deferred registration wave: retry until it registers or
   // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
   // game-over) so an early lifecycle event never becomes a dead press.
+  _cancelPendingScreenRetry() {
+    const pending = this._pendingScreenRetry;
+    this._screenRetryToken = (Number(this._screenRetryToken) || 0) + 1;
+    if (!pending) return false;
+    pending.cancelled = true;
+    if (pending.timerId != null) clearTimeout(pending.timerId);
+    pending.timerId = null;
+    if (this._pendingScreenRetry === pending) this._pendingScreenRetry = null;
+    return true;
+  },
+
   _pushScreenWhenRegistered(id, maxAttempts = 60) {
+    this._cancelPendingScreenRetry();
+    const registrationCycle = this._screenRegistrationCycle;
+    const screenManager = this.screenManager;
+    const request = {
+      id,
+      maxAttempts,
+      registrationCycle,
+      screenManager,
+      token: (Number(this._screenRetryToken) || 0) + 1,
+      isLive: (owner) => screenPushRequestIsLive(owner, id),
+      timerId: null,
+      cancelled: false,
+    };
+    this._screenRetryToken = request.token;
+    this._pendingScreenRetry = request;
+    const finish = () => {
+      request.timerId = null;
+      if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+    };
     const tryOpen = (attempts) => {
-      if (this._registeredScreens && this._registeredScreens.has(id)) {
-        try { this.screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
+      if (!isCurrentScreenPushRequest(this, request)) {
+        request.cancelled = true;
+        if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
         return;
       }
-      if (attempts > maxAttempts) { console.warn(`[ui] ${id} screen never registered`); return; }
-      setTimeout(() => tryOpen(attempts + 1), 50);
+      if (this._registeredScreens && this._registeredScreens.has(id)) {
+        finish();
+        if (screenManager && typeof screenManager.top === 'function' && screenManager.top() === id) return;
+        try { screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
+        return;
+      }
+      if (attempts > maxAttempts) { finish(); console.warn(`[ui] ${id} screen never registered`); return; }
+      request.timerId = setTimeout(() => {
+        request.timerId = null;
+        tryOpen(attempts + 1);
+      }, 50);
     };
     tryOpen(0);
+    return request.token;
   },
 
   // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when
@@ -1714,6 +1849,7 @@ export const ui = {
       if (this.worldObject && this.worldObject.tick) this.worldObject.tick(dt);
 
       const st = state || this.state;
+      reconcileDockedStationPresentation(this);
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
       const externalModalOpen = !!this._fulfillmentBlackoutActive || isConfirmOpen()
         || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
@@ -1774,6 +1910,8 @@ export const ui = {
   },
 
   destroy() {
+    invalidateDockedStationPresentation(this);
+    this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary
     // global capture listeners and timers. Re-init/destroy must remove them without marking the
@@ -1792,6 +1930,10 @@ export const ui = {
     this.bandHud = null;
     if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
     this.promptDeck = null;
+    if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {
+      this.aftermathChoicePrompt.destroy();
+    }
+    this.aftermathChoicePrompt = null;
     destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
     if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();

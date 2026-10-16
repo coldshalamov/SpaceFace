@@ -104,6 +104,19 @@ html.sf-reduce-motion .orr-hi-svg .orr-hi__pulse, html.sf-reduce-motion .orr-hi-
 html.sf-reduce-motion .orr-hloop__orbit-pulse, html.sf-reduce-motion .orr-hloop__orbit-pulse-bloom { display:none; }
 .orr-hloop.is-small .orr-hloop__name { white-space:normal; width:max-content; max-width:132px; }
 .orr-hloop.is-small .orr-hloop__of { display:none; }
+.orr-hloop__choice-name { display:none; }
+/* When the ring cannot fit, the same choices and reading stay in the scroll flow. */
+.orr-hloop.is-compact { display:flex; flex-direction:column; min-height:0; overflow:auto !important; }
+.orr-hloop.is-compact > :is(.orr-hloop__pool, .orr-hi-svg, .orr-hloop__hub, .orr-hloop__names) { display:none; }
+.orr-hloop.is-compact > .orr-hloop__choices { position:static !important; display:flex; flex-wrap:wrap; flex:none; gap:4px 18px; order:0; }
+.orr-hloop.is-compact .orr-hloop__body { position:static; width:auto; height:auto; margin:0; min-height:44px; padding:4px 0; gap:8px; border-radius:0;
+  ${LABEL} font-size:12px; letter-spacing:.08em; line-height:1.3; color:rgb(${BONE} / .86); }
+.orr-hloop.is-compact .orr-hloop__body::before { display:none; }
+.orr-hloop.is-compact .orr-hloop__body:is(:hover, [aria-selected="true"]) { color:rgb(${HOT}); text-decoration:underline; text-underline-offset:5px; }
+.orr-hloop.is-compact .orr-hloop__body:focus-visible { outline:1px solid currentColor; outline-offset:3px; }
+.orr-hloop.is-compact .orr-hloop__glyph { width:20px; height:20px; flex:none; }
+.orr-hloop.is-compact .orr-hloop__choice-name { display:inline; }
+.orr-hloop.is-compact > .orr-hloop__read { position:relative; left:auto !important; top:auto !important; width:auto !important; flex:none; order:1; margin:12px 0; }
 .orr-hloop.is-off > * { display:none; }
 
 /* ---------------------------------------------------------------- HULL DIAL */
@@ -346,6 +359,7 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
   const why = doc.createElement('p'); why.className = 'orr-hloop__why';
   read.append(kicker, title, steps, why);
   const group = doc.createElement('div');
+  group.className = 'orr-hloop__choices';
   group.setAttribute('role', 'listbox');
   group.setAttribute('aria-label', 'Core loops');
   group.style.cssText = 'position:absolute; inset:0; pointer-events:none;';
@@ -359,7 +373,8 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     b.dataset.action = 'help-loop:' + i;
     b.style.pointerEvents = 'auto';
     const glyph = doc.createElement('span'); glyph.className = 'orr-hloop__glyph'; glyph.innerHTML = loopGlyphSvg(loop.glyph, true);
-    b.appendChild(glyph);
+    const choiceName = doc.createElement('span'); choiceName.className = 'orr-hloop__choice-name'; choiceName.textContent = loop.name;
+    b.append(glyph, choiceName);
     b.setAttribute('aria-label', `${i + 1}. ${loop.name}`);
     b.addEventListener('click', () => onPick(i));
     b.addEventListener('pointerenter', () => names[i].classList.add('is-hot'));
@@ -379,6 +394,7 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
     return b;
   });
   const nameLayer = doc.createElement('div');
+  nameLayer.className = 'orr-hloop__names';
   nameLayer.style.cssText = 'position:absolute; inset:0; pointer-events:none; z-index:3;';
   nameLayer.append(...names);
   host.append(pool, under, over, hub, read, group, nameLayer);
@@ -469,8 +485,13 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
   function layout() {
     const W = host.clientWidth || 0;
     const H = host.clientHeight || 0;
-    if (W < 360 || H < 260) { host.classList.add('is-off'); geo = null; return; }
+    if (W <= 0 || H <= 0) {
+      host.classList.add('is-off'); host.classList.remove('is-compact'); geo = null; return;
+    }
     host.classList.remove('is-off');
+    const compact = W < 360 || H < 260;
+    host.classList.toggle('is-compact', compact);
+    if (compact) { geo = null; return; }
     const small = W < 900 || H < 480;
     host.classList.toggle('is-small', small);
     const bandW = small ? 12 : 14;
@@ -573,7 +594,7 @@ export function createLoopOrrery(host, { loops = [], onPick = () => {} } = {}) {
       spring.stop();
       host.removeEventListener('wheel', onWheel);
       host.textContent = '';
-      host.classList.remove('orr-hloop', 'is-off');
+      host.classList.remove('orr-hloop', 'is-off', 'is-compact');
     },
   };
 }

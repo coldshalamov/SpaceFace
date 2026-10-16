@@ -30,6 +30,11 @@ import { spawnJettisonedCargoPod } from './lootShards.js';
 import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSiteRuntime.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
+import { judgePresentDirective, presentMissLine, presentOrderLine } from '../data/presentDirective.js';
+import { ensureBoundaryField } from '../data/boundaryField.js';
+import { ensureCurlField } from '../data/curlField.js';
+import { ensureLaneField } from '../data/laneField.js';
+import { ensureVelocityPlane } from '../data/velocityPlane.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -287,6 +292,10 @@ export function tickMachineLayer(world, dt) {
     _machineSiteLocalPos.x = site.center.x;
     _machineSiteLocalPos.z = site.center.z;
     const g = world._toGlobal(_machineSiteLocalPos, sectorId, _machineSiteGlobalPos);
+    if (site.siteId === 'charon_star_marker') ensureVelocityPlane(world, site, g);
+    if (site.siteId === 'charon_broken_shepherd') ensureCurlField(world, site, g);
+    if (site.siteId === 'ashfall_the_line') ensureLaneField(world, site, g);
+    if (site.siteId === 'veil_containment_ring') ensureBoundaryField(world, site, g);
 
     // First observation: entering the site's radius is the 'seen' beat — protocol becomes
     // 'observed' and story.verge.revealed flips (galaxy map learns the layer exists).
@@ -306,11 +315,14 @@ export function tickMachineLayer(world, dt) {
         // First directive: the site's issued instruction (protocol ask).
         if (site.directive && !rec.directiveIssued) {
           rec.directiveIssued = true;
+          const orderText = site.directive === 'PRESENT'
+            ? presentOrderLine(site, g)
+            : (site.directive === 'HOLD' || site.directive === 'WITNESS')
+              ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
+              : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`;
           world.bus.emit('comms:log', {
             from: site.name,
-            text: (site.directive === 'HOLD' || site.directive === 'WITNESS')
-              ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
-              : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`,
+            text: orderText,
             kind: 'machine',
           });
         }
@@ -367,6 +379,24 @@ export function tickMachineLayer(world, dt) {
             kind: 'machine',
           });
           refreshMachineLabels(world);
+        }
+      } else if (site.directive === 'PRESENT') {
+        const items = state.player && state.player.cargo && state.player.cargo.items;
+        const cargoCount = items ? Number(items[site.presentObject]) : 0;
+        const judged = judgePresentDirective(
+          { objectId: site.presentObject, radius: site.radius },
+          { distance: d, cargoCount },
+        );
+        rec.presentReason = judged.reason;
+        if (judged.accepted) {
+          rec.directiveResolved = true;
+          advanceMachineProtocol(state, 'satisfied');
+          grantProtocolSatisfiedUnique(world);
+          refreshMachineLabels(world);
+        } else if (rec.presentTold !== judged.reason) {
+          rec.presentTold = judged.reason;
+          const miss = presentMissLine(judged.reason, site.presentLabel || site.presentObject);
+          if (miss) world.bus.emit('comms:log', { from: site.name, text: miss, kind: 'machine' });
         }
       } else if (site.directive === 'HOLD' || site.directive === 'WITNESS') {
         const pv = player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;

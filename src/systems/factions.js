@@ -46,6 +46,9 @@ const KILL_STANDING_CAP = 64; // victim ids whose direct hit and rival bonus alr
 // Standing & Relations tab reads back ("distress rescue · +20 · 2 h ago"). The clock never
 // enters it: decay and baseline seeding move the number without being something the player did.
 const REP_HISTORY_CAP = 6;
+// One open standing loss per law cause. Paying that restitution returns this stored delta
+// and no other. Cap keeps a long campaign from growing the record without bound.
+const CAUSE_LOSS_CAP = 32;
 
 // Conflict / war tuning (spec Formulas) — kept simple but present.
 const WAR_THRESHOLD = 75;     // tension >= this → 'war'
@@ -205,8 +208,35 @@ function normalizeRepHistory(raw, cap = REP_HISTORY_CAP) {
     const reason = typeof entry.reason === 'string' ? entry.reason.slice(0, 64) : '';
     if (!Number.isFinite(value) || value === 0 || !reason) continue;
     const t = Math.max(0, Math.round(Number(entry.t) || 0));
-    out.push({ value, reason, t });
+    const row = { value, reason, t };
+    if (typeof entry.causeId === 'string' && entry.causeId.trim()) {
+      row.causeId = entry.causeId.trim().slice(0, 96);
+    }
+    out.push(row);
     if (out.length > cap) out.shift();
+  }
+  return out;
+}
+
+/** Standing a named restitution is allowed to give back. One row per cause, newest 32. */
+function normalizeCauseLosses(raw) {
+  if (!Array.isArray(raw)) return [];
+  const byId = new Map();
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const causeId = typeof entry.causeId === 'string' ? entry.causeId.trim() : '';
+    const applied = Math.round(Number(entry.applied));
+    if (!causeId || !Number.isInteger(applied) || !(applied < 0)) continue;
+    byId.set(causeId.slice(0, 96), {
+      causeId: causeId.slice(0, 96),
+      applied,
+      settled: entry.settled === true,
+    });
+  }
+  const out = [];
+  for (const row of byId.values()) {
+    out.push(row);
+    if (out.length > CAUSE_LOSS_CAP) out.shift();
   }
   return out;
 }
@@ -224,6 +254,7 @@ function defaultFactionRecord(id) {
     bribesPaid: 0,
     lastDelta: { value: 0, reason: 'init', t: 0 },
     history: [],
+    causeLosses: [],
     knownContrabandStrikes: 0,
     discoveredHostileBy: 0,
     // V2 §28b/§24 — faction power drives war momentum independent of the player. Derived
@@ -243,6 +274,7 @@ function backfillFactionRecord(rec, id) {
   if (!Number.isFinite(rec.bribesPaid)) rec.bribesPaid = 0;
   if (!rec.lastDelta || typeof rec.lastDelta !== 'object') rec.lastDelta = defaults.lastDelta;
   rec.history = normalizeRepHistory(rec.history);
+  rec.causeLosses = normalizeCauseLosses(rec.causeLosses);
   if (!Number.isFinite(rec.knownContrabandStrikes)) rec.knownContrabandStrikes = 0;
   if (!Number.isFinite(rec.discoveredHostileBy)) rec.discoveredHostileBy = 0;
   if (!Number.isFinite(rec.power)) rec.power = defaults.power;
@@ -321,6 +353,9 @@ export const factions = {
       map.set(p.victimEntityId, p);
       while (map.size > LAW_TRUTH_CAP) map.delete(map.keys().next().value);
     });
+    // A paid restitution returns only the standing its own cause took. Warrants, tolls,
+    // and a still-open partial do not reach this door.
+    bus.on('law:obligationPaid', (p) => this.settleRestitutionStanding(p));
 
     // Killing a ship: lower rep with the victim's faction only when the law's witness truth
     // is a direct observation with a real eye. A lawful network and a relay do not accuse.
@@ -359,8 +394,10 @@ export const factions = {
         if (charged) {
           const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : 1.0;
           const causeMult = collision ? COLLISION_REP_MULT : 1;
-          this.applyRep(victim, KILL_BASE * mult * causeMult,
-            collision ? 'kill_faction_ship_collision' : 'kill_faction_ship');
+          const reason = collision ? 'kill_faction_ship_collision' : 'kill_faction_ship';
+          const applied = this.applyRep(victim, KILL_BASE * mult * causeMult, reason);
+          const causeId = truth && typeof truth.reportId === 'string' ? truth.reportId : null;
+          this._rememberCauseLoss(victim, causeId, applied);
         }
         // Rivals of the victim approve once, witness or not. A later clear does not pay it again.
         for (const other of FACTION_IDS) {
@@ -418,8 +455,9 @@ export const factions = {
       const cls = p.victimClass || 'fighter';
       const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : 1.0;
       const causeMult = isCollisionKillCause(p.killCause) ? COLLISION_REP_MULT : 1;
-      this.applyRep(factionId, KILL_BASE * mult * causeMult,
-        isCollisionKillCause(p.killCause) ? 'kill_discovered_collision' : 'kill_discovered');
+      const reason = isCollisionKillCause(p.killCause) ? 'kill_discovered_collision' : 'kill_discovered';
+      const applied = this.applyRep(factionId, KILL_BASE * mult * causeMult, reason);
+      this._rememberCauseLoss(factionId, reportId, applied);
     });
 
     // Trade at a faction station: small standing gain scaled by net trade value, capped per docking.
@@ -496,7 +534,7 @@ export const factions = {
 
   /** Single mutation point for rep (§0.6). Clamps, diminishes near caps, recomputes tier+flags,
    *  emits faction:repChanged, then runs one (non-recursive) round of cross-faction spillover. */
-  applyRep(factionId, delta, reason) {
+  applyRep(factionId, delta, reason, causeId) {
     const state = this.state || _state;
     if (!state || !META_BY_ID[factionId] || !delta) return 0;
     // THE RUN SEAL (PQ-135). A Crucible run promises on its own door that nothing you earn there
@@ -515,7 +553,7 @@ export const factions = {
     rec.tier = tierOf(rec.rep);
     rec.aggro = rec.rep <= AGGRO_THRESHOLD;
     rec.lastDelta = { value: soft, reason, t: state.simTime || 0 };
-    this._pushRepHistory(rec, soft, reason);
+    this._pushRepHistory(rec, soft, reason, causeId);
     const tierChanged = rec.tier !== oldTier;
     const nextRank = rankFromRep(rec.rep, factionId);
     const rankChanged = nextRank.name !== previousRank.name;
@@ -920,9 +958,47 @@ export const factions = {
     }
   },
 
+  /** Remember the soft standing a charged kill or a discovered wreck actually took.
+   *  Rival approval and a sealed-run zero are not bills. One row per cause. */
+  _rememberCauseLoss(factionId, causeId, applied) {
+    if (!META_BY_ID[factionId]) return;
+    if (typeof causeId !== 'string' || !causeId.trim()) return;
+    const loss = Math.round(Number(applied));
+    if (!Number.isInteger(loss) || !(loss < 0)) return;
+    const state = this.state || _state;
+    if (!state) return;
+    const rec = ensureFaction(state, factionId);
+    if (!Array.isArray(rec.causeLosses)) rec.causeLosses = [];
+    const id = causeId.trim().slice(0, 96);
+    if (rec.causeLosses.some((row) => row && row.causeId === id)) return;
+    rec.causeLosses.push({ causeId: id, applied: loss, settled: false });
+    while (rec.causeLosses.length > CAUSE_LOSS_CAP) rec.causeLosses.shift();
+  },
+
+  /** Full payment of one restitution returns that cause's stored delta and nothing else. */
+  settleRestitutionStanding(payload) {
+    if (!payload || payload.kind !== 'restitution' || payload.status !== 'paid') return 0;
+    if (!(Number(payload.remainingCr) <= 0)) return 0;
+    const causeId = typeof payload.causeId === 'string' ? payload.causeId.trim() : '';
+    if (!causeId) return 0;
+    const state = this.state || _state;
+    if (!state || !state.factions) return 0;
+    let restored = 0;
+    for (const factionId of FACTION_IDS) {
+      const rec = state.factions[factionId];
+      if (!rec || !Array.isArray(rec.causeLosses)) continue;
+      for (const entry of rec.causeLosses) {
+        if (!entry || entry.causeId !== causeId || entry.settled === true) continue;
+        entry.settled = true;
+        restored += this.applyRep(factionId, -entry.applied, 'restitution_settled', causeId) || 0;
+      }
+    }
+    return restored;
+  },
+
   /** WF-09 — one standing receipt on the register's deed ring. The clock (decay, baseline
    *  seeding) moves standing without being something the player did, so it never files here. */
-  _pushRepHistory(rec, value, reason) {
+  _pushRepHistory(rec, value, reason, causeId) {
     const text = String(reason == null ? '' : reason);
     if (!text || text === 'init' || text === 'decay' || text.startsWith('spillover:')) return;
     if (!Array.isArray(rec.history)) rec.history = [];
@@ -931,6 +1007,7 @@ export const factions = {
       reason: text.slice(0, 64),
       t: Math.max(0, Math.round(Number((this.state || _state) && (this.state || _state).simTime) || 0)),
     };
+    if (typeof causeId === 'string' && causeId.trim()) entry.causeId = causeId.trim().slice(0, 96);
     if (entry.value === 0) return;
     rec.history.push(entry);
     while (rec.history.length > REP_HISTORY_CAP) rec.history.shift();

@@ -38,6 +38,7 @@ import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js'
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
+import { isRunSealed } from '../core/runSeal.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
  * per run (ship|drone|freighter members). */
@@ -1531,7 +1532,56 @@ export const WANTED_SEARCH_EDGE_CUES = Object.freeze({
 export const SERVICE_BERTH_CUES = Object.freeze({
   started: 'sfx_dock_clunk',
   aborted: 'sfx_undock_release',
+  // The work finished: the dock's own confirm chime, once, when the yard hands the hull or tank
+  // back. Berth work only — see serviceCompletedCue for which receipts count.
+  completed: 'sfx_ui_confirm',
 });
+
+// service:completed is also the receipt for loans, notes, rights and policies. Those are
+// bookkeeping with their own success toast (a click); only physical berth work earns the chime.
+// 'emergency_fuel' is deliberately absent: the dockless reserve grant is a debt WARNING that
+// already sounds its own alert (key 'fuel:reserve'), and a confirm chime after it would contradict it.
+const SERVICE_WORK_TYPES = Object.freeze(['repair', 'refuel', 'hull_wash']);
+
+/** Pure. The completed-work chime for one `service:completed` receipt, or null (silence).
+ * Gain follows how much of the hull/tank the job actually returned; a receipt that moved
+ * nothing and cost nothing is silent. `fuelMax` is the tank size when the caller knows it. */
+export function serviceCompletedCue(payload, fuelMax) {
+  if (!payload || !SERVICE_WORK_TYPES.includes(payload.type)) return null;
+  const positive = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0);
+  const cost = positive(payload.cost);
+  const debt = positive(payload.debtCr);
+  const restored = positive(payload.restoredHull) + positive(payload.restoredArmor);
+  const units = positive(payload.units);
+  if (cost <= 0 && debt <= 0 && restored <= 0 && units <= 0) return null;
+  let share = 0.5;
+  if (restored > 0) {
+    const capacity = positive(payload.hullMax) + positive(payload.armorMax);
+    share = capacity > 0 ? clamp(restored / capacity, 0, 1) : 1;
+  } else if (units > 0 && positive(fuelMax) > 0) {
+    share = clamp(units / positive(fuelMax), 0, 1);
+  }
+  return Object.freeze({ id: SERVICE_BERTH_CUES.completed, gain: 0.28 + 0.14 * share });
+}
+
+// A faction naming you a new rank is the standing moment the comms log and the news already
+// carry in words. Up is the career chord; down is the refusal tick. One cue per window so a
+// burst of kills that drags two ranks does not stutter. Going hostile is NOT voiced here: the
+// same event raises heat (heat.js `faction:aggro`) and the wanted-escalation alert owns it.
+export const FACTION_STANDING_CUES = Object.freeze({
+  rankUp: Object.freeze({ id: 'sfx_promotion_chord', gain: 0.55 }),
+  rankDown: Object.freeze({ id: 'sfx_ui_error', gain: 0.5 }),
+});
+export const FACTION_STANDING_WINDOW_S = 2;
+
+/** Pure. The standing cue for one `faction:repChanged` payload, or null. Only `applyRep`
+ * stamps `rankChanged`; spillover and direct writes carry tier-only payloads and stay silent. */
+export function factionStandingCue(payload) {
+  if (!payload || payload.rankChanged !== true) return null;
+  const delta = Number(payload.delta);
+  if (!Number.isFinite(delta) || delta === 0) return null;
+  return delta > 0 ? FACTION_STANDING_CUES.rankUp : FACTION_STANDING_CUES.rankDown;
+}
 
 // INST-31. Three distinct existing recipes. Not the field-deploy accessibility voices.
 export const UNIQUE_LOOT_CUES = Object.freeze({
@@ -1573,6 +1623,15 @@ export const PLANET_PLUNGE_VOICE = Object.freeze({
 export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'mines:capReached': MINE_CAP_REFUSAL_RECIPE,
   'moment.stinger': 'sfx_moment_stinger',
+  // Swarm moments (swarmJuice.js SWARM_MOMENT_CUES, swarmChain.js SWARM_CHAIN_WARN_CUE). Each
+  // beat has its own id so the reward cues and the one warning never resolve to the same recipe.
+  'swarm.slamThud': 'sfx_swarm_slam_thud',
+  'swarm.slamStinger': 'sfx_moment_stinger',
+  'swarm.tallyTick': 'sfx_ui_confirm',
+  'swarm.clearResolve': 'sfx_promotion_chord',
+  'swarm.chainTier': 'sfx_promotion_chord',
+  'swarm.chainShatter': 'sfx_swarm_chain_shatter',
+  'swarm.chainWarn': 'sfx_swarm_alert_tick',
   click: 'sfx_ui_click', ui_click: 'sfx_ui_click', uiClick: 'sfx_ui_click',
   hover: 'sfx_ui_hover', ui_hover: 'sfx_ui_hover', uiHover: 'sfx_ui_hover',
   confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
@@ -1583,6 +1642,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Without these they collapse to the generic sfx_ui_click; each now maps to its own SPEC2/07 recipe.
   ui_open: 'sfx_ui_open', ui_back: 'sfx_ui_back', ui_tab: 'sfx_ui_tab', ui_tick: 'sfx_ui_tab',
   ui_deny: 'sfx_ui_error', ui_alert: 'sfx_ui_alert', ui_dock: 'sfx_dock_clunk',
+  // Authored encounter receipts use the same docking and capital-warning voices as
+  // their physical counterparts; these cue names are not standalone recipe ids.
+  sfx_station_dock: 'sfx_dock_clunk',
+  sfx_capital_predetonation: CAPITAL_PREDET_RECIPE,
   // Station hub / mission-log navigation cues (must not collapse to generic click).
   ui_accept: 'sfx_ui_confirm', ui_undock: 'sfx_undock_release',
   ui_charge_start: 'sfx_jump_charge', ui_charge_abort: 'sfx_ui_back',
@@ -1787,6 +1850,54 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'bombs:cycle': 'sfx_bomb_rack_cycle',
   'bombs:rackChanged': 'sfx_bomb_rack_change',
 });
+
+// Moment gates. The stinger swell rings about half a second, so two stinger-class cues inside
+// that window would smear into one muddy chord: the boss-down stinger, a round-slam stinger, a
+// chain-tier chord and the clear resolve share the 'stinger' family. A cue is dropped while a
+// same-or-higher-ranked family member is still ringing; a higher-ranked cue always plays (the
+// boss-down stinger and anything carrying `duck` rank 3 and win). `recordOnly` rows join the
+// family without ever being dropped, so the shared stinger other systems fire keeps its rule.
+// `cooldownS` is a per-id floor. The tally tick has no row on purpose: it repeats every 0.16 s
+// by design and must never be thinned.
+export const MOMENT_CUE_GATES = Object.freeze({
+  'moment.stinger': Object.freeze({ family: 'stinger', rank: 3, recordOnly: true }),
+  'swarm.slamStinger': Object.freeze({ family: 'stinger', rank: 1, cooldownS: 0.5 }),
+  'swarm.clearResolve': Object.freeze({ family: 'stinger', rank: 2, cooldownS: 0.5 }),
+  'swarm.chainTier': Object.freeze({ family: 'stinger', rank: 1, cooldownS: 0.25 }),
+  'swarm.slamThud': Object.freeze({ cooldownS: 0.5 }),
+  'swarm.chainShatter': Object.freeze({ cooldownS: 0.4 }),
+});
+export const MOMENT_FAMILY_WINDOW_S = 0.6;
+
+export function momentCueMemory() {
+  return { at: Object.create(null), familyAt: Object.create(null), familyRank: Object.create(null) };
+}
+
+/** Pure: may this cue play now? A clock that ran backwards (new run, headless reset) is stale, not "recent". */
+export function momentCueAllowed(mem, id, rank, nowS) {
+  if (!Object.hasOwn(MOMENT_CUE_GATES, id)) return true;
+  const gate = MOMENT_CUE_GATES[id];
+  if (gate.recordOnly) return true;
+  if (gate.cooldownS > 0 && Number.isFinite(mem.at[id])) {
+    const since = nowS - mem.at[id];
+    if (since >= 0 && since < gate.cooldownS) return false;
+  }
+  if (gate.family && Number.isFinite(mem.familyAt[gate.family])) {
+    const since = nowS - mem.familyAt[gate.family];
+    if (since >= 0 && since < MOMENT_FAMILY_WINDOW_S && (mem.familyRank[gate.family] || 0) >= rank) return false;
+  }
+  return true;
+}
+
+export function momentCueRecord(mem, id, rank, nowS) {
+  if (!Object.hasOwn(MOMENT_CUE_GATES, id)) return;
+  const gate = MOMENT_CUE_GATES[id];
+  mem.at[id] = nowS;
+  if (gate.family) {
+    mem.familyAt[gate.family] = nowS;
+    mem.familyRank[gate.family] = rank;
+  }
+}
 
 export function resolveAudioCueRecipeId(cueId) {
   // Own-property lookups only (see AUDIO_RECIPE_BY_ID): a plain `AUDIO_CUE_TO_RECIPE[cueId]` read
@@ -2634,6 +2745,7 @@ export const audio = {
     bus.on('claim:raidWarning', (p) => this._onClaimRaidWarning(p));
     bus.on('service:started', () => this._onServiceBerthCue('started'));
     bus.on('service:aborted', () => this._onServiceBerthCue('aborted'));
+    bus.on('service:completed', (p) => this._onServiceCompleted(p));
     for (const eventName of Object.keys(UNIQUE_LOOT_CUES)) {
       bus.on(eventName, () => this._onUniqueLootCue(eventName));
     }
@@ -2687,6 +2799,8 @@ export const audio = {
     // the fanfare (and ducks the bed, like a mission resolve); a rank-up gets the warm chord.
     bus.on('achievement:unlocked', () => { this._duckMusic(); this.play('sfx_achievement_fanfare', { gain: 0.75 }); });
     bus.on('career:ladder:completed', () => this.play('sfx_promotion_chord', { gain: 0.7 }));
+    // A faction naming you a new rank (or taking one back) — the comms log and news already say it.
+    bus.on('faction:repChanged', (p) => this._onFactionRepChanged(p));
     // Feature 16 — the ka-ching. Settled sales ring the register; buys stay a quiet confirm.
     // A profitable lot rings a shade brighter so the good deal is audible, not just green.
     bus.on('economy:tradeCompleted', (p) => {
@@ -5813,6 +5927,7 @@ export const audio = {
     this._reconcileDockedState(forceUndock);
     rt._wantedSearchInside = null;
     if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
+    rt._standingCueAt = null;
     // THE EAR: the next run's score opens fresh — no inherited fight, aftermath or phrase anchor.
     if (rt.bandBed && typeof rt.bandBed.resetScore === 'function') rt.bandBed.resetScore();
     rt._scoreTransitionsSeen = null;
@@ -5881,6 +5996,36 @@ export const audio = {
     const id = SERVICE_BERTH_CUES[which];
     if (!id) return;
     this.play(id, { gain: which === 'started' ? 0.4 : 0.35 });
+  },
+
+  // The yard hands the hull or tank back. Not gated on pause: docking IS a pause (screenManager
+  // sends sim:pause for any docked state) and every berth job finishes at the dock.
+  _onServiceCompleted(payload) {
+    const cue = serviceCompletedCue(payload, this.state && this.state.fuel && this.state.fuel.max);
+    if (!cue) return;
+    this.play(cue.id, { gain: cue.gain });
+  },
+
+  // Rank change on the standing ladder. Same pause rule as the berth: a rank-up from a mission
+  // turn-in lands while docked, which is a pause, so only the title/loading screens and a sealed
+  // Crucible run (which never moves standing) are quiet. One cue per window, on the audio clock
+  // (sim time freezes at the dock, so it cannot meter a dock visit).
+  _onFactionRepChanged(payload) {
+    const cue = factionStandingCue(payload);
+    if (!cue) return;
+    const state = this.state;
+    const mode = state && state.mode;
+    if (mode === 'menu' || mode === 'loading' || isRunSealed(state)) return;
+    const rt = this.rt;
+    if (!rt) return;
+    const now = rt.ctx && Number.isFinite(rt.ctx.currentTime)
+      ? rt.ctx.currentTime
+      : Math.max(0, Number(state && state.simTime) || 0);
+    const last = rt._standingCueAt;
+    // A clock that went backwards (restore, new run on a fresh context) is a new window.
+    if (Number.isFinite(last) && now >= last && now - last < FACTION_STANDING_WINDOW_S) return;
+    rt._standingCueAt = now;
+    this.play(cue.id, { gain: cue.gain });
   },
 
   _onUniqueLootCue(eventName) {
@@ -6475,6 +6620,16 @@ export const audio = {
     // recipe, so drop it; a cue on any other tick is a real voice and still plays.
     if (id === 'ui_dock' && this.rt && this.rt._dockClunkTick
         === (this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1)) return;
+    // Moment gates (MOMENT_CUE_GATES): cooldowns and one-stinger-at-a-time. A cue dropped here
+    // does not duck the music or the loops either — it never happened.
+    const momentGated = Object.hasOwn(MOMENT_CUE_GATES, id) && !!this.rt;
+    const momentRank = momentGated
+      ? Math.max(MOMENT_CUE_GATES[id].rank || 0, opts.duck ? 3 : 0)
+      : 0;
+    if (momentGated) {
+      const mem = this.rt._momentCues || (this.rt._momentCues = momentCueMemory());
+      if (!momentCueAllowed(mem, id, momentRank, nowS)) return null;
+    }
     // PQ-158.02 owns attach/strain/release/break on the instrument. Juice still emits the
     // semantic cue; do not play the same latch/creak/snap/release a second time. The cue keeps
     // its priority duck — a near_break warning must still cut through the mix — so the early
@@ -6524,6 +6679,7 @@ export const audio = {
     if (voice && signature && signature.cooldownS > 0) {
       this.rt._signatureLastAt[id] = nowS;
     }
+    if (voice && momentGated) momentCueRecord(this.rt._momentCues, id, momentRank, nowS);
     return voice;
   },
 

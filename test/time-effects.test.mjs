@@ -26,7 +26,10 @@ assert.equal(typeof writerAuditModule.auditTimeScaleWriters, 'function',
 assert.equal(typeof writerAuditModule.formatTimeScaleFindings, 'function',
   'writer audit must expose stable diagnostics');
 
-const { createTimeEffects, readTimeEffectsRequests } = timeEffectsModule;
+const {
+  createTimeEffects, readTimeEffectsRequests, readLocalTimeEffectsSnapshot,
+  applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration,
+} = timeEffectsModule;
 const { createRunTransitionGuard } = runTransitionModule;
 const { scanTimeScaleMutations, auditTimeScaleWriters, formatTimeScaleFindings } = writerAuditModule;
 
@@ -38,6 +41,50 @@ const effects = createTimeEffects(state);
 assert.equal(createTimeEffects(state), effects, 'one service instance must own each state');
 assert.deepEqual(Object.keys(effects).sort(), ['clear', 'describeRequests', 'getEffectiveScale', 'reset', 'set'], 'public API must contain exactly the five contract methods');
 assert.equal(effects.getEffectiveScale(), 1);
+
+// Origin ownership survives pause, reset and lifecycle changes without scalar feedback.
+{
+  const presentation = { timeScale: 1, run: { kind: 'lab', phase: 'active' } };
+  const simulation = { timeScale: 1, run: { kind: 'lab', phase: 'active' } };
+  const mainEffects = createTimeEffects(presentation);
+  const simEffects = createTimeEffects(simulation);
+  mainEffects.set('ui:pause', { scale: 0 });
+  simEffects.set('player:bullet-time', { scale: 0.35 });
+  assert.equal(applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation)), true);
+  assert.equal(applyRemoteTimeEffectsSnapshot(presentation, 'simulation', readLocalTimeEffectsSnapshot(simulation)), true);
+  assert.equal(simulation.timeScale, 0);
+  assert.equal(presentation.timeScale, 0);
+  assert.deepEqual(Object.keys(readLocalTimeEffectsSnapshot(presentation).requests), ['ui:pause'], 'mirrors must not echo');
+  const pauseRevision = readLocalTimeEffectsSnapshot(presentation).revision;
+  mainEffects.set('feel:hit-stop', { scale: 0.12 });
+  assert.ok(readLocalTimeEffectsSnapshot(presentation).revision > pauseRevision, 'requests change under an unchanged scale-zero hold');
+  applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation));
+  mainEffects.clear('ui:pause');
+  applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation));
+  assert.equal(simulation.timeScale, 0.12);
+  mainEffects.clear('feel:hit-stop');
+  applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation));
+  assert.equal(simulation.timeScale, 0.35, 'expiry reveals the still-owned other-realm request');
+  mainEffects.set('lab:speed', { labSpeed: 4 });
+  simEffects.set('lab:limit', { labSpeed: 2 });
+  applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation));
+  assert.equal(simulation.timeScale, 0.7, 'compose request channels once, rather than multiplying already-derived scalars');
+  mainEffects.set('runtime:loading', { scale: 0 });
+  applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation));
+  simEffects.reset();
+  assert.equal(simulation.timeScale, 0, 'a sim reset cannot release presentation loading');
+  assert.deepEqual(readLocalTimeEffectsSnapshot(simulation).requests, {});
+  const old = readLocalTimeEffectsSnapshot(presentation);
+  setTimeEffectsGeneration(simulation, 2);
+  assert.equal(applyRemoteTimeEffectsSnapshot(simulation, 'presentation', old), false, 'old lifecycle request snapshots cannot revive a hold');
+  setTimeEffectsGeneration(presentation, 2);
+  mainEffects.clear('runtime:loading');
+  applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation));
+  assert.equal(simulation.timeScale, 4);
+  assert.equal(applyRemoteTimeEffectsSnapshot(simulation, 'presentation', readLocalTimeEffectsSnapshot(presentation)), false, 'duplicate revisions are inert');
+  simulation.run.phase = 'inactive';
+  assert.equal(simEffects.getEffectiveScale(), 1, 'remote lab speed uses the same live-run gate');
+}
 
 const staleScalarState = { timeScale: 0 };
 assert.deepEqual(readTimeEffectsRequests(staleScalarState), {});

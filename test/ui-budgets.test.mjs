@@ -4,7 +4,10 @@
 // takes the WORST owner sample per surface, and stale/headless/empty baselines are red.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -18,10 +21,76 @@ import {
   isUiBudgetSample,
   judgeBudgets,
   uiSourceDigest,
+  uiSourceDigestFromOverlay,
 } from '../scripts/lib/uiBudgets.mjs';
 import { MAX_UI_FRAME_MS, MAX_SURFACE_DOM_NODES } from '../scripts/ui-grammar-thresholds.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+
+function frozenUiFixture(t) {
+  const root = mkdtempSync(path.join(tmpdir(), 'spaceface-ui-digest-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const files = new Map([
+    ['index.html', '<html>frozen</html>'],
+    ['src/main.js', 'export const boot = true;\n'],
+    ['scripts/lib/channel.mjs', 'export const channel = true;\n'],
+    ['src/ui/a/child.js', 'export const child = true;\r\n'],
+    ['src/ui/a.js', 'export const sibling = true;\n'],
+    ['src/ui/AGENTS.md', 'UI ownership\r\n'],
+    ['src/ui/icon.svg', '<svg/>\r\n'],
+    ['styles/ui.css', 'body { color: white }\r\n'],
+    ['src/core/loop.js', 'export const loop = true;\n'],
+    ['src/render/view.js', 'export const view = true;\n'],
+  ]);
+  for (const [file, body] of files) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), body);
+  }
+  const git = (...args) => execFileSync('git', ['-c', 'core.autocrlf=false', ...args], {
+    cwd: root, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  git('init', '-q');
+  git('add', '--', '.');
+  git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+    'commit', '--no-gpg-sign', '-qm', 'frozen UI fixture');
+  const overlay = {
+    identity: { sourceCommit: git('rev-parse', 'HEAD').trim() },
+    entries: new Map([...files].map(([file, body]) => [file, { body: Buffer.from(body) }])),
+  };
+  return { root, overlay };
+}
+
+test('frozen UI overlay digest matches filesystem DFS/LF rules and ignores later foreign bytes', (t) => {
+  const { root, overlay } = frozenUiFixture(t);
+  const frozen = uiSourceDigest(root);
+  assert.equal(uiSourceDigestFromOverlay(root, overlay), frozen,
+    'all file types and a/child before a.js use the existing digest order');
+  const lf = { ...overlay, entries: new Map([...overlay.entries].map(([file, entry]) =>
+    [file, { body: Buffer.from(entry.body.toString().replaceAll('\r\n', '\n')) }])) };
+  assert.equal(uiSourceDigestFromOverlay(root, lf), frozen, 'checkout EOL changes do not alter identity');
+  writeFileSync(path.join(root, 'src/ui/a.js'), 'foreign UI work');
+  assert.notEqual(uiSourceDigest(root), frozen, 'ordinary working-tree changes stay stale');
+  writeFileSync(path.join(root, 'src/ui/a.js'), overlay.entries.get('src/ui/a.js').body);
+  writeFileSync(path.join(root, 'src/ui/ignored-stray.txt'), 'local stray');
+  assert.notEqual(uiSourceDigest(root), frozen, 'ordinary digest still includes stray files');
+  assert.equal(uiSourceDigestFromOverlay(root, overlay), frozen, 'served frozen bytes keep their own identity');
+});
+
+test('frozen UI overlay coverage requires non-JS UI files and the runtime closure', (t) => {
+  const { root, overlay } = frozenUiFixture(t);
+  for (const missing of ['src/ui/AGENTS.md', 'src/ui/icon.svg', 'scripts/lib/channel.mjs', 'src/main.js']) {
+    const entries = new Map(overlay.entries);
+    entries.delete(missing);
+    assert.throws(() => uiSourceDigestFromOverlay(root, { ...overlay, entries }), /incomplete/);
+  }
+  const extra = new Map(overlay.entries);
+  extra.set('src/ui/foreign-stray.svg', { body: Buffer.from('<svg/>') });
+  assert.throws(() => uiSourceDigestFromOverlay(root, { ...overlay, entries: extra }), /absent at/);
+  const changedSvg = new Map(overlay.entries);
+  changedSvg.set('src/ui/icon.svg', { body: Buffer.from('<svg><path/></svg>') });
+  assert.notEqual(uiSourceDigestFromOverlay(root, { ...overlay, entries: changedSvg }), uiSourceDigestFromOverlay(root, overlay),
+    'non-JS served bytes participate in the digest');
+});
 
 function baselineRow(over = 0) {
   return {

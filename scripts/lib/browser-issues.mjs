@@ -69,6 +69,7 @@ export function collectPageIssues(page, options = {}) {
       // client handles by design — while an aborted PUT mirror stays fail-closed.
       method: request.method(),
     };
+    if (isPlayerStoreRequest(request)) issue.storeRequest = failedStoreRequestDetail(request);
     if (expectedNavigation && isNavigationCancelledRequest(failure)) {
       ignoredIssues.push({
         ...issue,
@@ -122,6 +123,29 @@ export function collectPageIssues(page, options = {}) {
       return expectedNavigationTokens.delete(token);
     },
   };
+}
+
+function isPlayerStoreRequest(request) {
+  try { return new URL(request.url()).pathname === '/__spaceface_player_store'; }
+  catch { return false; }
+}
+
+function failedStoreRequestDetail(request) {
+  let startedAt = null;
+  let elapsedMs = null;
+  let bodyBytes = null;
+  let frameUrl = null;
+  try {
+    const start = request.timing().startTime;
+    if (Number.isFinite(start) && start > 0) {
+      startedAt = new Date(start).toISOString();
+      elapsedMs = Math.max(0, Date.now() - start);
+    }
+  } catch { /* Request timing can be unavailable after its context closes. */ }
+  try { bodyBytes = request.postDataBuffer()?.byteLength ?? 0; } catch { /* No payload contents are retained. */ }
+  try { frameUrl = request.frame()?.url()?.split(/[?#]/, 1)[0]?.slice(0, 512) || null; }
+  catch { /* A worker request need not have a frame. Do not infer an initiator. */ }
+  return { startedAt, elapsedMs, bodyBytes, frameUrl };
 }
 
 export function isNavigationCancelledRequest(failure) {

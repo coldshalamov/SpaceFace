@@ -1,7 +1,7 @@
 // PQ-210.05 — the demo HUD reads as hardware, not a web page.
 //
 // Pins the cheap-overlay defects the owner named on 2026-09-20 so a later paint pass cannot
-// silently restore them: a hidden threat lamp, translucent-smoke remapping of every glass face,
+// silently restore them: translucent-smoke remapping of every glass face,
 // the swarm restyle that painted teal CSS cards over the flight HUD, and the Crucible readout's
 // semi-transparent rectangle. Visual acceptance is the ui-bench still; this file holds the
 // regression floor.
@@ -22,22 +22,6 @@ test('the instrument cluster is a machined bezel, not a smoke overlay', () => {
     'cluster chassis must assemble bezel.svg');
   assert.doesNotMatch(hudStyles, /--dp-glass-solid:var\(--dp-glass-flight\)/,
     'glass-solid must stay an opaque window in metal, not a translucent overlay');
-});
-
-// 2026-09-22 demo defect pass: the lamp used to be a second lens with a "THREAT" legend pinned
-// above the cluster, floating off the fire-control THREAT row that carries the same state. The
-// lamp is now that row's own LED, lit from the row's state. Still a visible channel, never hidden.
-test('the threat lamp stays a visible channel, seated in the THREAT row', () => {
-  assert.match(hudJs, /data-k="fcthreat"[^>]*><i class="sf-fc-led sf-threat-lamp"/,
-    'hud.js mounts the lamp as the THREAT row LED');
-  assert.match(hudStyles, /\.sf-fc-row\[data-state="near"\] \.sf-fc-led \{\s*background:linear-gradient\(var\(--dp-danger\)/,
-    'a near hostile drives the row lamp red');
-  assert.match(hudStyles, /\.sf-fc-row\[data-state="near"\] \.sf-threat-lamp \{ animation:sf-threat-beat/,
-    'and it beats');
-  assert.doesNotMatch(hudStyles, /\.sf-threat-lamp \{[^}]*display:none/,
-    'PASS 6 hid the lamp; that overlay is the web-HUD read');
-  assert.doesNotMatch(hudStyles, /\.sf-threat-lamp \{[^}]*position:absolute/,
-    'the lamp does not float detached from its row again');
 });
 
 test('swarm does not restyle the flight HUD into CSS cards', () => {

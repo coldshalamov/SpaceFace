@@ -11,6 +11,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
 import {
+  SWARM_CHAIN_WARN_CUE,
   SWARM_CHAIN_WARN_S,
   SWARM_CHAIN_WINDOW_S,
   swarmChain,
@@ -72,7 +73,7 @@ function named(h, event) {
 }
 
 function warnings(h) {
-  return named(h, 'audio:cue').filter((e) => e.payload && e.payload.id === 'ui_alert');
+  return named(h, 'audio:cue').filter((e) => e.payload && e.payload.id === SWARM_CHAIN_WARN_CUE);
 }
 
 test('INF-032: swarm:chain anchors the window to the sim clock', () => {

@@ -39,6 +39,23 @@ import {
   grantAlienUnique,
 } from '../data/alienEcology.js';
 import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
+import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
+import { noteHeatTrial } from '../data/heatProximityTrial.js';
+import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
+import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.js';
+import { HUMAN_DOCK_CHART, chartPlace } from '../data/routeChart.js';
+import { copyLifeRead, lifeSampleFromSite, readSiteLife } from '../data/siteLifeRead.js';
+import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
+import {
+  COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
+} from '../data/collarService.js';
+import { HEAT_SITE_ID, stepWasteHeat } from '../data/wasteHeat.js';
+import {
+  LURE_FILAMENT, LURE_RESIN, LURE_SHOWN, LURE_SITE_ID, copyHeatDerivative, heatLureRecipe,
+} from '../data/heatLure.js';
+import {
+  COPY_POS, COPY_REACH, COPY_SECTOR_ID, copySurveySale, surveyCopyOffer,
+} from '../data/surveyCopy.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -392,6 +409,157 @@ function emitEcologyOffer(world, site, sector) {
   if (emitted > 0 && world.bus) world.bus.emit('audio:cue', { id: 'scan_resolve' });
 }
 
+function emitCollar(world, site, stage, cause) {
+  if (!world.bus || !world.bus.emit) return;
+  const read = useCollarService(stage, 'berth');
+  const sample = useCollarService(stage, 'sample');
+  const missions = useCollarService(stage, 'missions');
+  world.bus.emit('ecology:collar', {
+    siteId: site.siteId,
+    service: 'berth',
+    open: read.open,
+    ok: read.ok,
+    alternative: read.alternative,
+    sampleOpen: sample.open === true,
+    missionsOpen: missions.open === true,
+    cause: cause || null,
+  });
+}
+
+function applyCollarStep(world, site, rec, event) {
+  const next = stepCollarService(rec.collarStage, event);
+  rec.collarStage = next.stage;
+  if (event === 'arrive') rec.collarGreeted = true;
+  if (!next.text) return;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+  }
+  emitCollar(world, site, next.stage, event === 'inhale' ? collarCause(site) : null);
+}
+
+function noteCollarDivert(world, sectorId) {
+  const site = ALIEN_SITES[COLLAR_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const rec = siteRecord(world.state, site.siteId);
+  applyCollarStep(world, site, rec, 'divert');
+}
+
+function applyWasteHeat(world, site, rec, event) {
+  const next = stepWasteHeat(rec.heatOnline !== false, event);
+  rec.heatOnline = next.online;
+  if (!next.text || !world.bus || !world.bus.emit) return;
+  world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+}
+
+function noteWasteHeatCut(world, sectorId) {
+  const site = ALIEN_SITES[HEAT_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const rec = siteRecord(world.state, site.siteId);
+  applyWasteHeat(world, site, rec, 'cut');
+}
+
+function lureRecord(ae) {
+  if (!ae.heatDerivative || typeof ae.heatDerivative !== 'object') ae.heatDerivative = {};
+  return ae.heatDerivative;
+}
+
+function noteHeatDerivative(world, sectorId) {
+  const site = ALIEN_SITES[LURE_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const ae = ensureAlienEcologyState(world.state);
+  if (ae.heatDerivative && ae.heatDerivative.lure) return;
+  const note = ae.heatTrial && ae.heatTrial.note;
+  if (typeof note !== 'string' || !note) return;
+  const items = world.state.player && world.state.player.cargo && world.state.player.cargo.items;
+  const recipe = heatLureRecipe(note, items && items[LURE_FILAMENT], items && items[LURE_RESIN]);
+  if (!recipe.text) return;
+  if (!recipe.ready) {
+    if (ae.heatDerivative && ae.heatDerivative.asked === true) return;
+    const book = lureRecord(ae);
+    book.asked = true;
+    if (world.bus && world.bus.emit) {
+      world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: recipe.text });
+    }
+    return;
+  }
+  const removed = removeCargo(world.state, recipe.material, 1);
+  if (!removed) return;
+  const book = lureRecord(ae);
+  book.lure = recipe.material;
+  book.edge = true;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: recipe.text });
+  }
+}
+
+function noteSurveyCopy(world, sectorId) {
+  if (sectorId !== COPY_SECTOR_ID || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: COPY_POS.x, z: COPY_POS.z }, sectorId)
+    : COPY_POS;
+  const dCopy = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dCopy < COPY_REACH)) return;
+  const ae = ensureAlienEcologyState(world.state);
+  const note = ae.heatTrial && ae.heatTrial.note;
+  const soldNote = ae.surveyCopy && ae.surveyCopy.note;
+  const offer = surveyCopyOffer(note, soldNote);
+  if (!offer.text) return;
+  if (offer.pay > 0) {
+    if (!world.bus || !world.bus.emit) return;
+    world.bus.emit('economy:grantCredits', { amount: offer.pay, reason: 'survey-copy:heat-note' });
+    world.bus.emit('comms:log', { from: 'Ash Cache', kind: 'ecology', text: offer.text });
+    ae.surveyCopy = { note: offer.key, edge: true };
+    return;
+  }
+  if (!ae.surveyCopy || ae.surveyCopy.edge === true) return;
+  ae.surveyCopy.edge = true;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: 'Ash Cache', kind: 'ecology', text: offer.text });
+  }
+}
+
+function noteWreckCut(world, sectorId) {
+  const site = ALIEN_SITES[WRECK_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const rec = siteRecord(world.state, site.siteId);
+  const next = stepWreckSuccession(rec.wreckStage, 'cut');
+  if (!next.text) return;
+  rec.wreckStage = next.stage;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+  }
+}
+
 // ── Event intake (world.init wires these onto the bus) ──────────────────────────────────────
 export function handleAlienEcologyEvent(world, type, payload) {
   const state = world && world.state;
@@ -447,6 +615,13 @@ export function handleAlienEcologyEvent(world, type, payload) {
       const sectorId = payload.sectorId;
       if (!sectorId) break;
       const ae = ensureAlienEcologyState(state);
+      // A repeated scan records the press. It does not pay research points.
+      ae.heatTrial = noteHeatTrial(ae.heatTrial, { kind: 'scan' });
+      noteWreckCut(world, sectorId);
+      noteCollarDivert(world, sectorId);
+      noteWasteHeatCut(world, sectorId);
+      noteHeatDerivative(world, sectorId);
+      noteSurveyCopy(world, sectorId);
       for (const s of alienSitesForSector(sectorId)) {
         const r = ae.sites[s.siteId];
         if (!r) continue;
@@ -902,22 +1077,26 @@ export function tickAlienEcology(world, dt) {
         if (meterSite) {
           const r = siteRecord(state, meterSite.siteId);
           const coherent = r.relaySevered !== true && r.state !== 'severed';
+          const life = readSiteLife(lifeSampleFromSite(meterSite, r, true));
+          r.lifeRead = life;
           world.bus.emit('ecology:coherence', {
             siteId: meterSite.siteId,
             coherent,
             contamination: sectorC,
             t: now,
+            life,
           });
           // The 1 Hz event is the sample. The flight log speaks only when the
           // reading changes, so a meter inside the field is not a toast every second.
-          const shown = `${meterSite.siteId}:${coherent ? 'coherent' : 'severed'}`;
+          // A quiet relay on a site that still has biomass says suppressed.
+          const shown = `${meterSite.siteId}:${life.reading}`;
           if (ae._cohShown !== shown) {
             ae._cohShown = shown;
             const name = meterSite.name || meterSite.siteId;
             world.bus.emit('comms:log', {
               from: 'Coherence meter',
               kind: 'ecology',
-              text: coherent ? `${name} is still coherent.` : `${name} has been severed.`,
+              text: `${name}: ${life.text}`,
             });
           }
         }
@@ -1159,6 +1338,54 @@ export function tickAlienEcology(world, dt) {
       } else if (dSite > site.arrivalBands.close * 1.5) {
         rec.offerArmed = false;
       }
+      if (site.siteId === WRECK_SITE_ID) {
+        const close = dSite < site.arrivalBands.close;
+        if (close && rec.wreckEdge !== true) {
+          rec.wreckEdge = true;
+          const next = stepWreckSuccession(rec.wreckStage, 'enter');
+          rec.wreckStage = next.stage;
+          if (next.text && world.bus && world.bus.emit) {
+            world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+          }
+        } else if (!close) {
+          rec.wreckEdge = false;
+        }
+      }
+      if (site.siteId === COLLAR_SITE_ID) {
+        const collarClose = dSite < site.arrivalBands.close;
+        if (collarClose && rec.collarEdge !== true) {
+          rec.collarEdge = true;
+          const cause = collarCause(site);
+          const event = rec.collarStage === 'held'
+            ? 'inhale'
+            : (rec.collarGreeted === true && cause ? 'inhale' : 'arrive');
+          applyCollarStep(world, site, rec, event);
+        } else if (!collarClose) {
+          rec.collarEdge = false;
+        }
+      }
+      if (site.siteId === HEAT_SITE_ID) {
+        const heatClose = dSite < site.arrivalBands.close;
+        if (heatClose && rec.heatEdge !== true) {
+          rec.heatEdge = true;
+          applyWasteHeat(world, site, rec, 'arrive');
+        } else if (!heatClose) {
+          rec.heatEdge = false;
+        }
+      }
+      if (site.siteId === LURE_SITE_ID) {
+        const lureClose = dSite < site.arrivalBands.close;
+        const lure = ae.heatDerivative;
+        if (lureClose && lure && lure.lure && lure.edge !== true && lure.shown !== true) {
+          lure.edge = true;
+          lure.shown = true;
+          if (world.bus && world.bus.emit) {
+            world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: LURE_SHOWN });
+          }
+        } else if (!lureClose && lure && lure.edge === true) {
+          lure.edge = false;
+        }
+      }
       // AE-171 (G03): a fitted Host-Memory Cartography module resolves the site’s host
       // structure the first time the long band is crossed.
       if (fittedFlag(state, 'hostMapReveal') && dSite < site.arrivalBands.long && !rec.beats.hostMap) {
@@ -1177,6 +1404,7 @@ export function tickAlienEcology(world, dt) {
     }
 
     const predatorAlive = predatorsOn.some((f) => f.data.ecology.siteId === site.siteId);
+    applySiteFoodWeb(rec, fauna, site.siteId, Math.floor(Number(now) || 0));
     // stealthMult is a pure function of state — fittings and simTime are invariant for the
     // whole tick — so it is hoisted out of the per-fauna call (each call otherwise rebuilds
     // the fitted-module-def array per fauna).
@@ -1189,6 +1417,13 @@ export function tickAlienEcology(world, dt) {
       tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, sectorId,
         predatorAlive, weatherSlow, stealthM, fauna);
     }
+  }
+  if (sectorId === COPY_SECTOR_ID && player && player.pos && ae.surveyCopy && ae.surveyCopy.edge === true) {
+    const copyGlobal = world._toGlobal
+      ? world._toGlobal({ x: COPY_POS.x, z: COPY_POS.z }, sectorId)
+      : COPY_POS;
+    const dCopy = Math.hypot(player.pos.x - copyGlobal.x, player.pos.z - copyGlobal.z);
+    if (!(dCopy < COPY_REACH)) ae.surveyCopy.edge = false;
   }
 }
 
@@ -1218,6 +1453,37 @@ function exposureFilterMult(state) {
     }
     return mult;
   } catch (_) { return 1; }
+}
+
+export function applySiteFoodWeb(rec, fauna, siteId, stepAt) {
+  if (!rec || !siteId) return null;
+  let hasPredator = false;
+  let hasPrey = false;
+  let hasScavenger = false;
+  const members = [];
+  for (const e of fauna || []) {
+    const eco = e && e.data && e.data.ecology;
+    if (!eco || eco.siteId !== siteId || e.alive === false) continue;
+    const species = faunaSpeciesById(eco.speciesId);
+    const role = species && species.role;
+    if (role !== 'hunter' && role !== 'grazer' && role !== 'scavenger') continue;
+    if (role === 'hunter') hasPredator = true;
+    else if (role === 'grazer') hasPrey = true;
+    else hasScavenger = true;
+    members.push({ eco, role });
+  }
+  if (!hasPredator && !hasPrey && !hasScavenger) return rec.foodWeb || null;
+  const prev = normalizeFoodWeb(rec.foodWeb);
+  const at = Number.isFinite(stepAt) ? Math.floor(stepAt) : null;
+  if (at != null && prev.stepAt === at) return rec.foodWeb;
+  const next = stepFoodWeb({ ...prev, hasPredator, hasPrey, hasScavenger });
+  rec.foodWeb = { ...next, stepAt: at };
+  for (const member of members) {
+    if (member.role === 'hunter') member.eco.web = rec.foodWeb.predator;
+    else if (member.role === 'grazer') member.eco.web = rec.foodWeb.prey;
+    else member.eco.web = rec.foodWeb.scavenger;
+  }
+  return rec.foodWeb;
 }
 
 function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, sectorId,
@@ -1310,6 +1576,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       e.pos.x += Math.cos(e.rot) * push * dt;
       e.pos.z += Math.sin(e.rot) * push * dt;
       eco.suppressedT = (eco.suppressedT || 0) + dt;
+      if (eco.echo != null) eco.echo = null;
       return;
     }
   }
@@ -1387,18 +1654,35 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     if (eco.driveState !== species.drives.idle) setDrive(eco, species.drives.idle);
   }
 
-  if (reacted && !species.dormant && !silenced) {
-    if (species.heatHunter && (eco.heatSat || 0) > 3 && playerD < alertR) {
-      setDrive(eco, 'charge');
-    } else if (playerD < species.threatenR) {
-      setDrive(eco, species.drives.panic);
-    } else if (playerD < alertR) {
-      setDrive(eco, awake ? species.drives.tense : species.drives.curious);
-    } else if (eco.driveState !== 'attach' && eco.driveState !== 'idle' && eco.driveState !== 'feed') {
-      setDrive(eco, species.drives.idle);
+  const approach = resolveFaunaApproachDrive(species, {
+    playerD,
+    noticeR: alertR,
+    awake,
+    heatSaturated: (eco.heatSat || 0) > 3,
+    reacted,
+    silenced,
+    currentDrive: eco.driveState,
+  });
+  if (approach) setDrive(eco, approach);
+  else if (eco.driveState === 'idle') setDrive(eco, species.drives.idle);
+
+  if (species.heatHunter && playerD >= (Number(species.threatenR) || 0) && playerD < alertR) {
+    const aeTrial = ensureAlienEcologyState(state);
+    const hadNote = !!(aeTrial.heatTrial && aeTrial.heatTrial.note);
+    aeTrial.heatTrial = noteHeatTrial(aeTrial.heatTrial, {
+      heat: (eco.heatSat || 0) > 3,
+      drive: eco.driveState,
+      // The whole notice band outside the panic ring is one range.
+      geometryKey: 0,
+    });
+    if (!hadNote && aeTrial.heatTrial.note && !aeTrial.heatTrial.spoken && world.bus && world.bus.emit) {
+      aeTrial.heatTrial.spoken = true;
+      world.bus.emit('comms:log', {
+        from: species.name || 'Field notebook',
+        kind: 'ecology',
+        text: aeTrial.heatTrial.note,
+      });
     }
-  } else if (eco.driveState === 'idle') {
-    setDrive(eco, species.drives.idle);
   }
 
   // AE-172 flee wave (D09): a kill at this site scatters the whole cast — the killed
@@ -1419,6 +1703,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   if (species.id === 'hull_leech' && now < (eco.detachUntil || 0)) setDrive(eco, 'flee');
 
   // ── drive behaviors: kinematic steering toward intent ──
+  if (eco.echo != null) eco.echo = null;
   const speedMult = coherent ? 1 : species.coherenceLoss.speedMult;
   const siteGlobalAnchor = eco.anchor;
   let targetX = null;
@@ -1466,13 +1751,40 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       break;
     }
     case 'drift': {
+      // A dumb host on a recorded lane repeats that fragment. It does not learn a route.
+      const echoPoints = echoApplies(species, site)
+        ? site.routeEcho.waypoints.map((wpt) => {
+          const ox = Number(wpt.x);
+          const oz = Number(wpt.z);
+          const local = {
+            x: site.center.x + (Number.isFinite(ox) ? ox : 0),
+            z: site.center.z + (Number.isFinite(oz) ? oz : 0),
+          };
+          return world._toGlobal ? world._toGlobal(local, sectorId) : local;
+        })
+        : null;
+      const heatSeek = (sens.heat || 0) >= 0.9 && px != null && stim.heat > 0.5;
+      if (echoPoints && !heatSeek) {
+        const i = stepEchoIndex(e.pos, echoPoints, eco.echoIndex);
+        eco.echoIndex = i;
+        eco.echo = 'lane';
+        targetX = echoPoints[i].x;
+        targetZ = echoPoints[i].z;
+        speed *= 0.45;
+        const place = chartPlace(site, HUMAN_DOCK_CHART);
+        const last = echoPoints[echoPoints.length - 1];
+        if (place && last && Math.hypot(e.pos.x - last.x, e.pos.z - last.z) <= ECHO_REACH) {
+          fileChartDiscovery(world, site, { text: place.text, x: last.x, z: last.z });
+        }
+        break;
+      }
       // Slow meander around the anchor: deterministic wander from simTime + phase.
       const w = now * 0.05 + eco.phase;
       targetX = siteGlobalAnchor.x + Math.cos(w) * 60;
       targetZ = siteGlobalAnchor.z + Math.sin(w * 0.9) * 60;
       speed *= 0.45;
       // Lantern cysts drift toward heat sources instead.
-      if ((sens.heat || 0) >= 0.9 && px != null && stim.heat > 0.5) { targetX = px; targetZ = pz; }
+      if (heatSeek) { targetX = px; targetZ = pz; }
       break;
     }
     case 'forage': {
@@ -1664,6 +1976,30 @@ function clampStim(v, d) {
   return Math.min(2, Math.max(0, (v || 0) + d));
 }
 
+function fileChartDiscovery(world, site, place) {
+  const ae = ensureAlienEcologyState(world.state);
+  if (!ae.chartFindings || typeof ae.chartFindings !== 'object') ae.chartFindings = {};
+  if (ae.chartFindings[site.siteId]) return;
+  const spawned = world.helpers && typeof world.helpers.spawnEntity === 'function'
+    ? world.helpers.spawnEntity({
+      type: 'beacon',
+      pos: { x: place.x, z: place.z },
+      radius: 8,
+      name: 'Old dock mark',
+      scanLabel: place.text,
+    })
+    : null;
+  ae.chartFindings[site.siteId] = {
+    text: place.text,
+    x: place.x,
+    z: place.z,
+    entityId: spawned && spawned.id != null ? spawned.id : null,
+  };
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: place.text });
+  }
+}
+
 function setDrive(eco, next) {
   if (!next || eco.driveState === next) return;
   eco.driveState = next;
@@ -1705,6 +2041,8 @@ export function recordEvidence(state, id, sectorId = null) {
 // ── Persistence (world.serialize / deserialize fields) ──────────────────────────────────────
 export function serializeAlienEcologyState(state) {
   const ae = ensureAlienEcologyState(state);
+  const heatDerivative = copyHeatDerivative(ae.heatDerivative);
+  const surveyCopy = copySurveySale(ae.surveyCopy);
   return {
     schema: ae.schema,
     revelation: ae.revelation,
@@ -1720,6 +2058,11 @@ export function serializeAlienEcologyState(state) {
     factionConsequences: JSON.parse(JSON.stringify(ae.factionConsequences || {})),
     // AE-170 (G05): the echo recorder's pulse log persists across saves.
     echoLog: Array.isArray(ae.echoLog) ? ae.echoLog.slice(-32) : [],
+    heatTrial: noteHeatTrial(ae.heatTrial, null),
+    ...(heatDerivative ? { heatDerivative } : {}),
+    ...(surveyCopy ? { surveyCopy } : {}),
+    chartFindings: ae.chartFindings && typeof ae.chartFindings === 'object'
+      ? JSON.parse(JSON.stringify(ae.chartFindings)) : {},
     // AE-291 (P-table): machine-site records, the evidence ledger, and fired setpieces
     // all persist — a reload must not reset the mystery.
     machineSites: JSON.parse(JSON.stringify(ae.machineSites || {})),
@@ -1753,10 +2096,23 @@ export function deserializeAlienEcologyState(state, data) {
   if (data.uniqueGrants && typeof data.uniqueGrants === 'object') {
     ae.uniqueGrants = JSON.parse(JSON.stringify(data.uniqueGrants));
   }
+  if (data.heatTrial && typeof data.heatTrial === 'object') {
+    ae.heatTrial = noteHeatTrial(data.heatTrial, null);
+  }
+  const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
+  if (heatDerivative) ae.heatDerivative = heatDerivative;
+  else delete ae.heatDerivative;
+  const surveyCopy = copySurveySale(data && data.surveyCopy);
+  if (surveyCopy) ae.surveyCopy = surveyCopy;
+  else delete ae.surveyCopy;
+  if (data.chartFindings && typeof data.chartFindings === 'object') {
+    ae.chartFindings = JSON.parse(JSON.stringify(data.chartFindings));
+  }
   if (data.taxonomy && typeof data.taxonomy === 'object') Object.assign(ae.taxonomy, data.taxonomy);
   if (data.sites && typeof data.sites === 'object') {
     for (const [siteId, rec] of Object.entries(data.sites)) {
       if (!rec || typeof rec !== 'object') continue;
+      const lifeRead = copyLifeRead(rec.lifeRead);
       ae.sites[siteId] = {
         state: typeof rec.state === 'string' ? rec.state : 'dormant',
         // Legacy saves encoded severance only in state; fold it into the flag.
@@ -1765,6 +2121,8 @@ export function deserializeAlienEcologyState(state, data) {
         bloomAt: Number.isFinite(rec.bloomAt) ? rec.bloomAt : -1,
         beats: rec.beats && typeof rec.beats === 'object' ? { ...rec.beats } : {},
         deadFauna: rec.deadFauna && typeof rec.deadFauna === 'object' ? { ...rec.deadFauna } : {},
+        ...(rec.foodWeb && typeof rec.foodWeb === 'object'
+          ? { foodWeb: normalizeFoodWeb(rec.foodWeb) } : {}),
         ...(siteId === VEIL_NURSERY_ID && rec.nursery && typeof rec.nursery === 'object'
           ? { nursery: JSON.parse(JSON.stringify(rec.nursery)) } : {}),
         siteC: Number.isFinite(rec.siteC) ? rec.siteC : 0,
@@ -1778,6 +2136,15 @@ export function deserializeAlienEcologyState(state, data) {
         // must know the claim settled, lapsed, or was driven off, and never re-arm it.
         claimCrew: rec.claimCrew && typeof rec.claimCrew === 'object'
           ? JSON.parse(JSON.stringify(rec.claimCrew)) : null,
+        ...(lifeRead ? { lifeRead } : {}),
+        ...(rec.wreckStage === 'warned' || rec.wreckStage === 'sealed'
+          ? { wreckStage: rec.wreckStage } : {}),
+        ...(rec.wreckEdge === true ? { wreckEdge: true } : {}),
+        ...(rec.collarStage === 'held' ? { collarStage: 'held' } : {}),
+        ...(rec.collarEdge === true ? { collarEdge: true } : {}),
+        ...(rec.collarGreeted === true ? { collarGreeted: true } : {}),
+        ...(rec.heatOnline === false ? { heatOnline: false } : {}),
+        ...(rec.heatEdge === true ? { heatEdge: true } : {}),
       };
     }
   }

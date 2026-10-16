@@ -63,6 +63,389 @@ async function settleWithin(promise, timeoutMs) {
   }
 }
 
+/** A launch snapshots entity references, never reusable ids or the world's growing work queue. */
+export function createOpeningLoadingAdmission({ entities = [], isRequired = () => false, isActive = () => true } = {}) {
+  const required = new Set([...entities].filter(isRequired));
+  const work = new Set();
+  let failure = null;
+  const assertActive = () => {
+    if (isActive()) return;
+    const error = new Error('opening loading admission was superseded');
+    error.name = 'AbortError';
+    throw error;
+  };
+  return {
+    owns(entity) { return isActive() && required.has(entity); },
+    entities() { return [...required]; },
+    track(promise) {
+      assertActive();
+      const completion = Promise.resolve(promise);
+      work.add(completion);
+      completion.then(() => work.delete(completion), (error) => {
+        work.delete(completion);
+        if (isActive() && !failure) failure = error;
+      });
+      return completion;
+    },
+    async drain() {
+      assertActive();
+      while (work.size > 0) {
+        await Promise.all([...work]);
+        assertActive();
+      }
+      if (failure) throw failure;
+      return { requiredCount: required.size };
+    },
+  };
+}
+
+const openingFirstPictureRuns = new WeakMap();
+const openingPresentationHolds = new WeakMap();
+
+const OPENING_INACTIVE_LIFECYCLE_STATES = new Set([
+  'hidden-or-minimized',
+  'system-suspended',
+]);
+
+function openingClockNow(options = {}) {
+  if (typeof options.now === 'function') {
+    const value = Number(options.now());
+    if (Number.isFinite(value)) return value;
+  }
+  const performanceNow = globalThis.performance?.now;
+  if (typeof performanceNow === 'function') return performanceNow.call(globalThis.performance);
+  return Date.now();
+}
+
+function openingLifecyclePort(options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'lifecyclePort')) return options.lifecyclePort;
+  return globalThis.window?.spacefaceLifecycle || null;
+}
+
+function openingVisibilityTarget(options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'visibilityTarget')) return options.visibilityTarget;
+  return globalThis.document || null;
+}
+
+export function openingFirstPictureIsReady(state) {
+  const render = state?.render;
+  const owner = render?.openingFirstPictureOwner;
+  return render?.openingFirstPictureReady === true && !!owner
+    && owner.world === state.world && owner.generation === render.admissionRunGeneration
+    && owner.serial === state.world?.enterSerial && owner.sector === state.world?.currentSectorId
+    && owner.renderer === render.renderer && owner.context === state.contextRestoreSeq
+    && !gpuContextIsLost(state);
+}
+
+/** The main time-effects owner holds the spawn state until an actual world submit has painted. */
+export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure, options = {}) {
+  const render = state.render;
+  openingPresentationHolds.get(state)?.cancel();
+  const generation = render.admissionRunGeneration;
+  const world = state.world;
+  const baseline = Number(render.worldSubmittedFrames) || 0;
+  const schedule = options.schedule || setTimeout;
+  const cancelTimer = options.cancel || clearTimeout;
+  const timeoutMs = Math.max(0, Number(options.timeoutMs ?? 20000) || 0);
+  const inactivePollMs = Math.max(25, Number(options.inactivePollMs ?? 250) || 0);
+  const visibilityTarget = openingVisibilityTarget(options);
+  const lifecyclePort = openingLifecyclePort(options);
+  let lifecycleForeground = true;
+  let active = true;
+  let timer = null;
+  let timerArmed = false;
+  let timerSequence = 0;
+  let activeElapsedMs = 0;
+  let lastAccountingAt = null;
+  let wasCounting = false;
+  let wasInContextRecovery = false;
+  let initialized = false;
+  let observedContextGeneration = Number.isFinite(Number(render.contextRecovery?.generation))
+    ? Number(render.contextRecovery.generation) : null;
+
+  const contextRecoveryActive = () => render.contextRecovery?.terminal === true || gpuContextIsLost(state);
+  const foreground = () => {
+    if (typeof options.isForeground === 'function') {
+      try { return options.isForeground() !== false; } catch { return false; }
+    }
+    if (visibilityTarget?.visibilityState === 'hidden' || visibilityTarget?.hidden === true) return false;
+    return lifecycleForeground;
+  };
+  const current = () => active && openingPresentationHolds.get(state)?.release === release
+    && state.render === render && state.world === world
+    && render.admissionRunGeneration === generation && render.releaseOpeningPresentationHold === release;
+  const sample = (now) => {
+    const contextGeneration = Number.isFinite(Number(render.contextRecovery?.generation))
+      ? Number(render.contextRecovery.generation) : null;
+    if (contextGeneration !== observedContextGeneration) {
+      observedContextGeneration = contextGeneration;
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    const recoveryActive = contextRecoveryActive();
+    if (recoveryActive !== wasInContextRecovery) {
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    wasInContextRecovery = recoveryActive;
+    const canCount = foreground() && !recoveryActive;
+    if (wasCounting && lastAccountingAt !== null) {
+      activeElapsedMs += Math.max(0, now - lastAccountingAt);
+    }
+    if (canCount) {
+      lastAccountingAt = now;
+      wasCounting = true;
+    } else {
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    return canCount;
+  };
+  const cancel = () => {
+    active = false;
+    timerSequence += 1;
+    if (timerArmed) {
+      cancelTimer(timer);
+      timer = null;
+      timerArmed = false;
+    }
+    visibilityTarget?.removeEventListener?.('visibilitychange', onVisibilityChange);
+    if (typeof lifecycleUnsubscribe === 'function') lifecycleUnsubscribe();
+    lifecycleUnsubscribe = null;
+    if (render.releaseOpeningPresentationHold === release) {
+      render.releaseOpeningPresentationHold = null;
+      render.cancelOpeningPresentationHold = null;
+    }
+    // Explicit retirement owns the request by callback identity, even after its world/gen left.
+    // A replacement on another render-state object still owns the same public source name.
+    if (openingPresentationHolds.get(state)?.release === release) {
+      openingPresentationHolds.delete(state);
+      timeEffects.clear('runtime:first-picture');
+    }
+  };
+  let lifecycleUnsubscribe = null;
+  const reschedule = () => {
+    if (!active || !current()) return;
+    if (timerArmed) {
+      timerSequence += 1;
+      cancelTimer(timer);
+      timer = null;
+      timerArmed = false;
+    }
+    arm();
+  };
+  const onVisibilityChange = () => {
+    if (!active) return;
+    if (!current()) { cancel(); return; }
+    sample(openingClockNow(options));
+    if (initialized) reschedule();
+  };
+  const onLifecycle = (command) => {
+    const lifecycleState = command?.state;
+    if (OPENING_INACTIVE_LIFECYCLE_STATES.has(lifecycleState)) lifecycleForeground = false;
+    else if (lifecycleState === 'foreground-visible' || lifecycleState === 'foreground-occluded') lifecycleForeground = true;
+    if (!active) return;
+    if (!current()) { cancel(); return; }
+    sample(openingClockNow(options));
+    if (initialized) reschedule();
+  };
+  const onTimer = (sequence) => {
+    if (sequence !== timerSequence || !timerArmed) {
+      if (active && !current()) cancel();
+      return;
+    }
+    timer = null;
+    timerArmed = false;
+    if (!current()) { cancel(); return; }
+    const canCount = sample(openingClockNow(options));
+    if (!current()) { cancel(); return; }
+    if (canCount && activeElapsedMs >= timeoutMs) {
+      cancel();
+      onFailure?.(new Error('The first world picture could not be presented. Retry Launch.'));
+      return;
+    }
+    arm();
+  };
+  function arm() {
+    if (!active || !current()) return;
+    const canCount = foreground() && !contextRecoveryActive();
+    const delay = canCount ? Math.max(0, timeoutMs - activeElapsedMs) : inactivePollMs;
+    const sequence = ++timerSequence;
+    timerArmed = true;
+    timer = schedule(() => onTimer(sequence), delay);
+  }
+  const release = () => {
+    if (!current()) { cancel(); return false; }
+    if (state.mode !== 'flight' || !(Number(render.worldSubmittedFrames) > baseline)) return false;
+    cancel();
+    return true;
+  };
+  render.releaseOpeningPresentationHold = release;
+  render.cancelOpeningPresentationHold = cancel;
+  openingPresentationHolds.set(state, { release, cancel });
+  timeEffects.set('runtime:first-picture', { scale: 0 });
+  sample(openingClockNow(options));
+  visibilityTarget?.addEventListener?.('visibilitychange', onVisibilityChange);
+  if (typeof lifecyclePort?.subscribe === 'function') lifecycleUnsubscribe = lifecyclePort.subscribe(onLifecycle);
+  initialized = true;
+  arm();
+  return cancel;
+}
+
+function openingPresentBudgetMs(state, timeoutMs, options = {}) {
+  return Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
+    ? options.presentBudgetMs
+    : state?.run?.kind === 'survival' ? Math.max(timeoutMs, 360000) : Math.max(timeoutMs, 120000);
+}
+
+/** Both launch routes join one exact-picture preparation owned by this renderer/run/context. */
+export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {}) {
+  const render = state?.render;
+  if (!render) return Promise.reject(new Error('opening renderer is unavailable'));
+  const world = state.world;
+  const generation = render.admissionRunGeneration;
+  const serial = world?.enterSerial;
+  const sector = world?.currentSectorId;
+  const nativeRenderer = render.renderer;
+  const context = state.contextRestoreSeq;
+  const prior = openingFirstPictureRuns.get(render);
+  if (prior && prior.world === world && prior.generation === generation && prior.serial === serial && prior.sector === sector
+      && prior.renderer === nativeRenderer && prior.context === context && !gpuContextIsLost(state)) return prior.promise;
+  let active = true;
+  const isActive = () => active && state.mode === 'loading' && state.render === render && state.world === world
+    && render.admissionRunGeneration === generation && world?.enterSerial === serial && world?.currentSectorId === sector
+    && render.renderer === nativeRenderer && state.contextRestoreSeq === context
+    && (typeof options.isActive !== 'function' || options.isActive());
+  const assertActive = () => {
+    if (!isActive()) {
+      const error = new Error('opening first-picture admission was superseded');
+      error.name = 'AbortError';
+      throw error;
+    }
+    if (gpuContextIsLost(state)) throw new Error('WebGL context was lost while preparing the first picture');
+  };
+  let phase = null;
+  let phaseBudgetMs = timeoutMs;
+  const finishPhase = (outcome) => {
+    if (!phase || phase.outcome !== 'pending' || !isActive() || render.openingFirstPicturePhase !== phase) return;
+    phase.outcome = outcome;
+    phase.ms = Math.round(ledgerNow() - phase.startedAt);
+    recordOpeningCookStep(render, `exact.${phase.stage}`, phase.startedAt, outcome, { budgetMs: phase.budgetMs });
+  };
+  const startPhase = (stage) => {
+    assertActive();
+    finishPhase('resolved');
+    phase = { stage, startedAt: ledgerNow(), budgetMs: phaseBudgetMs, outcome: 'pending' };
+    render.openingFirstPicturePhase = phase;
+  };
+  const bounded = async (work, budgetMs) => {
+    const settled = await settleWithin(work, budgetMs);
+    if (settled.ok) return settled.value;
+    if (settled.error) throw settled.error;
+    const error = new Error(`opening first-picture admission timed out at ${phase?.stage || 'unknown'} `
+      + `after ${Math.round(ledgerNow() - (phase?.startedAt ?? ledgerNow()))}ms (budget ${budgetMs}ms)`);
+    error.stage = phase?.stage;
+    error.timeout = true;
+    finishPhase('timeout');
+    active = false;
+    throw error;
+  };
+  const work = (async () => {
+    startPhase('mesh-staging');
+    await bounded(Promise.resolve().then(() => render.beginOpeningLoadingAdmission?.()), timeoutMs);
+    assertActive();
+    // Main calls this gate after its library and visual prerequisites. Per-subject work
+    // starts earlier, but the broad cook must census/freeze their committed composition.
+    // Preserve that owner's existing ceiling; it must not spend the exact picture's 20s.
+    if (render.openingLiveSectorReady || typeof render.prepareLiveSectorBeforeFlight === 'function') {
+      phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
+      startPhase('current-sector');
+      const sectorCook = render.openingLiveSectorReady || observePipelineAdmission(Promise.resolve()
+        .then(() => render.prepareLiveSectorBeforeFlight({ isActive })));
+      render.openingLiveSectorReady = sectorCook;
+      const cooked = await bounded(sectorCook, phaseBudgetMs);
+      assertActive();
+      if (cooked === false || cooked?.partial === true || cooked?.superseded === true
+          || cooked?.cancelled === true || cooked?.reason === 'sector-superseded'
+          || cooked?.cook?.reason === 'sector-superseded'
+          || cooked?.opening?.settled === false) {
+        throw new Error('opening current-sector preparation did not complete');
+      }
+    } else if (state.run?.kind === 'survival') {
+      phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
+      startPhase('current-sector');
+      const cooked = await bounded(waitForOpeningGpuResources(state, timeoutMs, { settleTail: true, throwOnError: true }), phaseBudgetMs);
+      assertActive();
+      if (cooked !== true) throw new Error(render.requiredPackageAdmission?.reason || 'arena GPU admission did not complete');
+    }
+    phaseBudgetMs = timeoutMs;
+    const exactWork = (async () => {
+      startPhase('seal');
+      if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
+        throw new Error('opening first-picture preparation failed');
+      }
+      assertActive();
+      startPhase('capture');
+      let plan;
+      if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
+        const steps = render.captureOpeningSubmissionPlanSteps();
+        try {
+          for (;;) {
+            assertActive();
+            const step = steps.next();
+            if (step.done) { plan = step.value; break; }
+            await yieldToBrowser();
+          }
+        } finally { steps.return?.(); }
+      } else plan = render.captureOpeningSubmissionPlan();
+      assertActive();
+      if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        throw new Error('opening submission plan is incomplete');
+      }
+      startPhase('submission');
+      const submission = Promise.resolve(render.drainOpeningSubmissionPlan(plan, { strict: true, isActive }));
+      render.openingSubmissionReady = submission;
+      render.exactPipelineWarmupReady = submission;
+      const admitted = await submission;
+      assertActive();
+      if (admitted === false || admitted?.ok === false) throw new Error('opening submission admission failed');
+      startPhase('residency');
+      const residency = Promise.resolve(render.prepareOpeningGpuResources({ required: true, isActive }));
+      render.openingGpuResidencyReady = residency;
+      const resources = await residency;
+      assertActive();
+      if (resources?.partial === true || resources?.contextLost === true
+          || resources?.geometryResidency?.partial === true || resources?.geometryResidency?.contextLost === true
+          || (resources?.geometryResidency?.skipped === true
+            && resources.geometryResidency.reason !== 'no drawable geometry')) {
+        throw new Error('Required opening GPU residency did not complete');
+      }
+      const classification = classifyRequiredPackageAdmission({
+        capturedGeneration: generation, currentGeneration: render.admissionRunGeneration,
+        settled: { ok: true, value: resources },
+      });
+      if (!classification.ready) throw new Error(classification.reason || 'opening GPU resources are not ready');
+      rememberRequiredPackageAdmission(render, generation, classification);
+      render.openingFirstPictureOwner = { world, generation, serial, sector, renderer: nativeRenderer, context };
+      render.openingFirstPictureReady = true;
+      finishPhase('resolved');
+      return true;
+    })();
+    return bounded(exactWork, timeoutMs);
+  })();
+  // Cancellation stops future submissions; raw work retains its existing resource owners until it retires.
+  work.catch(() => {});
+  const promise = work.catch((error) => {
+    finishPhase(error?.timeout ? 'timeout' : 'error');
+    active = false;
+    throw error;
+  });
+  openingFirstPictureRuns.set(render, { world, generation, serial, sector, renderer: nativeRenderer, context, promise });
+  return promise;
+}
+
 /**
  * Phone launch admits the exact playable picture once. Offscreen streaming and dormant effects
  * keep their ordinary admission owners instead of becoming a second, whole-sector startup gate.
@@ -72,14 +455,16 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
   const timeoutMs = Math.max(1, Number(options.timeoutMs) || 20000);
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
   let active = true;
+  const isActive = () => active
+    && (typeof options.isActive !== 'function' || options.isActive());
   const assertActive = () => {
-    if (!active || (typeof options.isActive === 'function' && !options.isActive())) {
+    if (!isActive()) {
       throw new Error('mobile opening admission superseded');
     }
   };
   const work = (async () => {
     assertActive();
-    if (await render.prepareOpeningFirstPicture(timeoutMs) === false) {
+    if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
       throw new Error('mobile opening first-picture preparation failed');
     }
     assertActive();
@@ -103,12 +488,19 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     }
     const submission = await render.drainOpeningSubmissionPlan(plan);
     assertActive();
+    assertMobileOpeningGraphicsHealthy(render);
     if (submission === false || submission?.ok === false) {
       throw new Error('mobile opening submission admission failed');
     }
-    const resources = await render.prepareOpeningGpuResources();
+    const resources = await render.prepareOpeningGpuResources({ required: true, isActive });
     assertActive();
-    if (!resources || resources.skipped === true || resources.ok === false) {
+    assertMobileOpeningGraphicsHealthy(render);
+    if (!resources || resources.skipped === true || resources.ok === false
+        || resources.partial === true || resources.contextLost === true
+        || resources.geometryResidency?.partial === true
+        || resources.geometryResidency?.contextLost === true
+        || (resources.geometryResidency?.skipped === true
+          && resources.geometryResidency.reason !== 'no drawable geometry')) {
       throw new Error('mobile opening GPU resources were not admitted');
     }
     return { plan, submission, resources };
@@ -119,6 +511,27 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     throw settled.error || new Error('mobile opening first-picture admission timed out');
   }
   return settled.value;
+}
+
+// The link reporter already records driver failures. Read that result rather than issuing
+// another synchronous shader query or replacing an incompatible shader with a loading timeout.
+export function assertMobileOpeningGraphicsHealthy(render) {
+  const renderer = render?.renderer;
+  let failure = null;
+  if (gpuContextIsLost({ render })) {
+    failure = new Error('The WebGL graphics context was lost while preparing the opening scene.');
+    failure.code = 'GPU_CONTEXT_LOST';
+  } else {
+    const program = renderer?.info?.programs?.find((entry) => entry?.diagnostics?.runnable === false);
+    if (program) {
+      const diagnostic = program.diagnostics;
+      const logs = [diagnostic.programLog, diagnostic.vertexShader?.log, diagnostic.fragmentShader?.log]
+        .filter(Boolean).join('\n');
+      failure = new Error(`Opening shader failed to link (${program.name || program.type || 'unnamed material'}): ${logs || 'driver reported LINK_STATUS=false'}`);
+      failure.code = 'GPU_SHADER_LINK_FAILED';
+    }
+  }
+  if (failure) { failure.stage = 'gpu-resources'; throw failure; }
 }
 
 function ledgerNow() {
@@ -1163,8 +1576,7 @@ export function classifyRequiredPackageAdmission(attempt = {}) {
       ready: false,
       packageId: admissionPackageId(value),
       reason: value && value.reason ? String(value.reason) : 'opening-plan-incomplete',
-      publish: false,
-      continueOpening: true,
+      publish: true,
       releaseOwn: false,
     };
   }
@@ -1382,7 +1794,12 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     }
     if (gpuContextIsLost(state)) {
       finishLedger();
+      if (options.throwOnError === true) assertMobileOpeningGraphicsHealthy(render);
       return false;
+    }
+    if (options.throwOnError === true && result.error) {
+      finishLedger();
+      throw result.error;
     }
     prepareValue = result && result.ok === true ? result.value : null;
     prepareClassification = classifyRequiredPackageAdmission({
@@ -1446,11 +1863,7 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   // host finishes early, a wedged cook still fails open.
   // options.presentBudgetMs overrides the ceiling for a caller (a test) that wants the timeout path in
   // milliseconds instead of two minutes.
-  const presentBudgetMs = Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
-    ? options.presentBudgetMs
-    : state && state.run && state.run.kind === 'survival'
-      ? Math.max(timeoutMs, 360000)
-      : Math.max(timeoutMs, 120000);
+  const presentBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
   const presentResult = await settleWithin(presentCook, presentBudgetMs);
   const presentOutcome = settleOutcome(presentResult);
   recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);
@@ -1465,6 +1878,8 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     return false;
   }
   const lost = gpuContextIsLost(state) === true;
+  if (options.throwOnError === true && presentResult.error) throw presentResult.error;
+  if (options.throwOnError === true && lost) assertMobileOpeningGraphicsHealthy(render);
   if (prepareClassification && prepareClassification.status === 'rejected') return false;
   if (prepareClassification && prepareClassification.status === 'pending'
       && prepareClassification.continueOpening !== true) return false;

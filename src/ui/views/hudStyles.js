@@ -481,7 +481,10 @@ export function injectHudCss() {
   .sf-gravity-mark.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-gravity-mark__ring { position:absolute; inset:3px; border:2px solid var(--hud-paper);
     border-radius:50%;
-    animation:sf-gravity-mark-contract .9s cubic-bezier(.4,0,.2,1) infinite; }
+    animation:sf-gravity-mark-contract .9s cubic-bezier(.4,0,.2,1) infinite;
+    animation-play-state:paused; }
+  /* The six pooled markers stay mounted; hidden rings must not invalidate style every frame. */
+  .sf-gravity-mark.visible .sf-gravity-mark__ring { animation-play-state:running; }
   .sf-gravity-mark__core { position:absolute; left:50%; top:50%; width:6px; height:6px;
     transform:translate(-50%,-50%) rotate(45deg); background:var(--hud-paper); }
   .sf-gravity-mark__label { position:absolute; left:50%; top:48px; transform:translateX(-50%);

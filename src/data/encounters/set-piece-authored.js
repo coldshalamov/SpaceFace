@@ -2,6 +2,7 @@
 // ambient catalog and import graph stay untouched. Missions imports this for actors/place.
 
 import { AUTHORED_SET_PIECES } from '../missions.js';
+import { validateEncounterShape } from './shape.js';
 
 function freezeActors(actors) {
   return Object.freeze(actors.map((actor) => Object.freeze({ ...actor })));
@@ -214,20 +215,169 @@ export const AUTHORED_SET_PIECE_ENCOUNTERS = Object.freeze({
       },
     ],
   }),
+  // ── Far-out pieces: one place of their own in each outer sector ──────────────────────────
+  // Roles that carry a failure rule at the mission owner (slag_core: a destroyed core fails the
+  // tow; life_pod: a lost pod fails the rescue) are reused by name; every other role is the
+  // piece's own and is answered only by that piece's hooks.
+  ore_barge_tow: piece('set_piece_ore_barge_tow', {
+    shape: {
+      situation: 'set_piece',
+      place: 'outlaw_zone',
+      twist: 'named',
+      actor: 'faction_reach',
+    },
+    placeName: 'Sker bazaar shelf',
+    twist: 'The barge drags like a sea anchor. The shelf lamps want a quiet hitch.',
+    actors: [
+      {
+        role: 'slag_core', kind: 'wreck', scanLabel: 'ORE BARGE',
+        count: 1, radius: 18, mass: 56, hull: 240, tetherable: true,
+      },
+      {
+        role: 'barge_claimant', kind: 'ship', scanLabel: 'CLAIM CREW',
+        count: 1, archetype: 'reaver_pirate', hostile: true,
+      },
+    ],
+  }),
+  skiff_tether_rescue: piece('set_piece_skiff_tether_rescue', {
+    shape: {
+      situation: 'set_piece',
+      place: 'colony',
+      twist: 'named',
+      actor: 'faction_free',
+    },
+    placeName: 'Io homestead drift',
+    twist: 'The skiff tumbles slow. Scavengers want the hull more than the crew.',
+    actors: [
+      {
+        role: 'life_pod', kind: 'wreck', scanLabel: 'DRIFTING SKIFF',
+        count: 1, radius: 11, mass: 30, hull: 70, tetherable: true,
+      },
+      {
+        role: 'skiff_scavenger', kind: 'ship', scanLabel: 'SKIFF SCAVENGER',
+        count: 1, archetype: 'wasp_swarmer', hostile: true,
+      },
+    ],
+  }),
+  deserter_throw: piece('set_piece_deserter_throw', {
+    shape: {
+      situation: 'set_piece',
+      place: 'outlaw_zone',
+      twist: 'named',
+      actor: 'reaver_pirate',
+    },
+    placeName: 'Mercenary firing range',
+    twist: 'The range has no cover and the deserter knows it. Mass ends it fast.',
+    actors: [
+      {
+        role: 'range_deserter', kind: 'ship', scanLabel: 'RANGE DESERTER',
+        count: 1, archetype: 'reaver_pirate', hostile: true, hull: 80,
+      },
+    ],
+  }),
+  refinery_hopper: piece('set_piece_refinery_hopper', {
+    shape: {
+      situation: 'set_piece',
+      place: 'radiation_field',
+      twist: 'named',
+      actor: 'faction_dmc',
+    },
+    placeName: 'Expanse hopper deck',
+    twist: 'The jaws run hot and the slurry sets fast. Feed them or cut the line.',
+    actors: [
+      {
+        role: 'hopper_jaws', kind: 'wreck', scanLabel: 'HOPPER JAWS',
+        count: 1, radius: 20, mass: 240, hull: 220, tetherable: true,
+      },
+      {
+        role: 'slurry_feed', kind: 'wreck', scanLabel: 'SLURRY FEED',
+        count: 1, radius: 10, mass: 44, hull: 70, tetherable: true,
+      },
+    ],
+  }),
+  toll_gate_ram: piece('set_piece_toll_gate_ram', {
+    shape: {
+      situation: 'set_piece',
+      place: 'trade_lane',
+      twist: 'named',
+      actor: 'faction_mts',
+    },
+    placeName: 'Drift toll gate',
+    twist: 'The gate rides a rail and the warden hates delay. Mass is the fast way through.',
+    actors: [
+      {
+        role: 'toll_gate', kind: 'wreck', scanLabel: 'TOLL GATE',
+        count: 1, radius: 22, mass: 140, hull: 150, tetherable: true,
+      },
+      {
+        role: 'gate_warden', kind: 'ship', scanLabel: 'GATE WARDEN',
+        count: 1, archetype: 'patrol_lawman', hostile: true,
+      },
+    ],
+  }),
+  liner_locker: piece('set_piece_liner_locker', {
+    shape: {
+      situation: 'set_piece',
+      place: 'derelict_field',
+      twist: 'named',
+      actor: 'faction_vael',
+    },
+    placeName: 'Ashfall liner hold',
+    twist: 'The hold is sealed and its plates still hold heat. Cold guns, steady line.',
+    actors: [
+      {
+        role: 'liner_locker', kind: 'wreck', scanLabel: 'SEALED LOCKER',
+        count: 1, radius: 9, mass: 64, hull: 90, tetherable: true,
+      },
+    ],
+  }),
 });
 
 export function authoredSetPieceEncounter(id) {
   return AUTHORED_SET_PIECE_ENCOUNTERS[id] || null;
 }
 
-for (const row of AUTHORED_SET_PIECES) {
-  const encounter = AUTHORED_SET_PIECE_ENCOUNTERS[row.id];
-  if (!encounter) {
-    throw new Error(`PQ-152.01 missing encounter for ${row.id}`);
+/**
+ * The encounter half of the catalog check: every piece has its encounter, the encounter's shape
+ * is in the grammar's vocabulary, the primary role and every role a method hook (or its clear
+ * role) names is an actor the piece actually spawns.
+ * Returns problem strings; empty means sound.
+ */
+export function validateAuthoredSetPieceEncounters(
+  catalog = AUTHORED_SET_PIECES,
+  encounters = AUTHORED_SET_PIECE_ENCOUNTERS,
+) {
+  const problems = [];
+  for (const row of catalog) {
+    const encounter = encounters[row.id];
+    if (!encounter) {
+      problems.push(`missing encounter for ${row.id}`);
+      continue;
+    }
+    if (encounter.id !== row.encounterId) problems.push(`encounter id mismatch for ${row.id}`);
+    try {
+      validateEncounterShape(encounter.shape, encounter.id);
+    } catch (error) {
+      problems.push(error.message);
+    }
+    const roles = new Set(encounter.actors.map((actor) => actor.role));
+    if (!roles.has(row.primaryRole)) problems.push(`${row.id} primary role ${row.primaryRole} is not spawned`);
+    for (const [method, hook] of Object.entries(row.methodHooks)) {
+      if (!roles.has(hook.role)) problems.push(`${row.id}/${method} hooks role ${hook.role} that is never spawned`);
+      if (hook.clearRole && !roles.has(hook.clearRole)) {
+        problems.push(`${row.id}/${method} clears role ${hook.clearRole} that is never spawned`);
+      }
+    }
+    for (const actor of encounter.actors) {
+      if (actor.kind === 'ship' && !actor.archetype) problems.push(`${row.id}/${actor.role} ship needs an archetype`);
+    }
   }
-  if (encounter.id !== row.encounterId) {
-    throw new Error(`PQ-152.01 encounter id mismatch for ${row.id}`);
-  }
+  return problems;
+}
+
+{
+  const problems = validateAuthoredSetPieceEncounters();
+  if (problems.length) throw new Error(`PQ-152.01 ${problems.join('; ')}`);
 }
 
 export default AUTHORED_SET_PIECE_ENCOUNTERS;

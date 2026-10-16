@@ -85,3 +85,41 @@ test('pause line names the latest hit and drops the one it replaced', () => {
   assert.equal(pauseStatusLines(state).hit, 'A slam hit you.');
   assert.equal(state.meta.seed, SEED);
 });
+
+test('pause accepts an identity-matched projection and safely falls back to a full trace', () => {
+  const state = quietState();
+  state.combat.trace = {
+    playerId: PLAYER,
+    latestPlayerImpact: { tick: 18, cause: 'gun' },
+  };
+  assert.equal(pauseStatusLines(state).hit, 'A gun hit you.');
+
+  // A malformed projected cause cannot become a false UI receipt when a full
+  // authoritative trace is available alongside it.
+  const fullTrace = {};
+  appendCombatTrace(fullTrace, 21, 'damage.routed', {
+    actorId: 2,
+    targetId: PLAYER,
+    origin: { kind: 'weapon', id: 'wpn_pulse_laser_s' },
+  });
+  state.combat.trace = {
+    playerId: PLAYER,
+    latestPlayerImpact: { tick: 99, cause: 'unknown' },
+    events: fullTrace.trace.events,
+  };
+  assert.equal(pauseStatusLines(state).hit, 'A gun hit you.');
+
+  // A receipt for a previous player must never be shown for the current one;
+  // the full trace fallback still filters by the current player identity.
+  state.combat.trace = {
+    playerId: 999,
+    latestPlayerImpact: { tick: 999, cause: 'shove' },
+    events: fullTrace.trace.events,
+  };
+  assert.equal(pauseStatusLines(state).hit, 'A gun hit you.');
+  state.combat.trace = {
+    playerId: 999,
+    latestPlayerImpact: { tick: 999, cause: 'shove' },
+  };
+  assert.equal(pauseStatusLines(state).hit, '');
+});

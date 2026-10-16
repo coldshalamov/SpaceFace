@@ -13,7 +13,14 @@ import {
   connectivityMask, buildComponents, reconcileStores, podLossChance, fleetEstimate, laneCapacity,
 } from '../src/systems/siteLogistics.js';
 import { automation } from '../src/systems/automation.js';
-import { asteroidSites } from '../src/systems/asteroidSites.js';
+import {
+  asteroidSites,
+  makeSiteRecord,
+  getAsteroidSiteFromState,
+  findAsteroidSiteFromState,
+  projectAsteroidSiteFromState,
+  canInstallAsteroidSiteFromState,
+} from '../src/systems/asteroidSites.js';
 import { SITE_MACHINE_BY_ID, SITE_BALANCE, CONTACT_YIELD } from '../src/data/sites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 
@@ -31,6 +38,29 @@ function makeField(fill = 'dirt') {
   }
   return field;
 }
+
+test('asteroid read selectors answer from mirrored site records without mutation', () => {
+  const site = makeSiteRecord({
+    id: 'site_read', asteroidId: 42, sectorId: 'sector_helios_prime', fieldId: null, createdT: 0,
+  });
+  const state = {
+    sites: { order: [site.id], byId: { [site.id]: site }, worldOrder: [], worldById: {} },
+    entities: new Map(),
+    drill: { active: false, asteroidId: 42, field: null },
+    player: { cargo: { items: {} } },
+  };
+  const before = structuredClone(state.sites);
+
+  assert.equal(getAsteroidSiteFromState(state, site.id), site);
+  assert.equal(findAsteroidSiteFromState(state, 42), site);
+  const projection = projectAsteroidSiteFromState(state, site.id);
+  assert.equal(projection.machines.length, 0);
+  assert.equal(canInstallAsteroidSiteFromState(state, {
+    asteroidId: 42, defId: 'sm_extractor', col: 1, row: 1,
+  }).reason, 'no-asteroid');
+  projection.site.laneStores.push({ cells: [1], store: { cmdty_ore_iron: 9 } });
+  assert.deepEqual(state.sites, before);
+});
 
 // ------------------------------------------------------------------ pure math
 

@@ -8,6 +8,7 @@
 import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
+import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
 export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v17';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
@@ -381,6 +382,7 @@ export function installIllustratedSurface(material) {
         vec3 outgoingLight = sfPaint + (sfCoatLight + sfRimLight) * sfHeadroom + totalSpecular + totalEmissiveRadiance;`);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
+  registerGeometryPreservingShaderHook(illustratedSurfaceShader, previousHook);
   illustratedSurfaceShader[TAG] = ILLUSTRATED_SURFACE_KEY;
   material.onBeforeCompile = illustratedSurfaceShader;
   const familyKey = canonicalizeSurfaceProgramFamilyKey(previousKey, ILLUSTRATED_SURFACE_KEY);

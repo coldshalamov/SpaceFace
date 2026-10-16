@@ -843,6 +843,45 @@ export const RECIPES = [
     gainMult: 0.7,
     reverbMix: 0.18, reverbDecay: 0.9,
   },
+  // --- Swarm moments (swarmJuice cue table) -------------------------------------------------
+  // The round slam's impact: one low sine drop with a dull click on the front, no tail worth
+  // naming. The stinger swells in just behind it; played at rate 0.72 it is the boss-round
+  // weight. Pure synth, no sample.
+  {
+    id: 'sfx_swarm_slam_thud',
+    category: 'combat',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 96, freqSweep: [96, 38], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.004, sustain: 0.04, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 380, filterQ: 0.8,
+    transientClick: { gain: 0.3 },
+  },
+  // A broken chain: a short highpassed noise crack with a glassy tail. Bright where the slam is
+  // dark, and nothing like the soft warning tick, so a loss never sounds like a reward.
+  {
+    id: 'sfx_swarm_chain_shatter',
+    category: 'combat',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.05, release: 0.32 },
+    filterType: 'highpass', filterFreq: 2800, filterQ: 0.9,
+    transientClick: { gain: 0.5 },
+    reverbMix: 0.22, reverbDecay: 0.8,
+  },
+  // The chain's last-second warning: a soft falling double tick on a low sine. Falling and dull,
+  // where the tier chord rises and rings. 'alert' stays in the id so the tick still cuts through
+  // a speech squelch the way the beep it replaced did.
+  {
+    id: 'sfx_swarm_alert_tick',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 330, freqSweep: [330, 262], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.09 },
+    filterType: 'lowpass', filterFreq: 1400, filterQ: 0.7,
+    repeatCount: 2, repeatIntervalS: 0.11,
+  },
   // Discovery plate chime (feature 20): one soft glass note — the handler plays it three times at
   // staggered offsets and rising rates for the restrained 3-note motif. Quieter than the reveal.
   {

@@ -16,7 +16,7 @@ function helpers(overrides = {}) {
   const logs = [];
   const context = { setTimeout, clearTimeout, console: { error: (...args) => logs.push(args) },
     window: {}, document: { querySelector: () => null }, ...overrides };
-  return { ...runInNewContext(helperSource + '\n({ reportDockHandoffFailure, collectDockHandoffSnapshot, reportAcceptHandoffFailure, collectAcceptHandoffSnapshot, reportMarketHandoffFailure, collectMarketHandoffSnapshot })', context), logs };
+  return { ...runInNewContext(helperSource + '\n({ reportDockHandoffFailure, collectDockHandoffSnapshot, reportAcceptHandoffFailure, attemptSeededMissionAccept, collectAcceptHandoffSnapshot, reportMarketHandoffFailure, collectMarketHandoffSnapshot })', context), logs };
 }
 const emptyIssues = { errorIssues: () => [], warningIssues: () => [] };
 async function originalSurvives(report, page, issues = emptyIssues) {
@@ -104,13 +104,8 @@ test('probe settlement follows the accepted instance receipt and exact tracked i
   const instance = owner._instanceFromOffer(offer);
   assert.equal(instance.id, 'm_3');
   assert.equal(instance.sourceOfferId, offer.id);
-  const marker = 'const settled = await page.evaluate(';
-  const start = source.indexOf(marker);
-  const end = source.indexOf(');\n    if (settled)', start);
-  assert.ok(start >= 0 && end > start, 'the actual probe settlement predicate must exist');
-  const predicate = source.slice(start + marker.length, end);
   const state = { missions: { active: [instance] }, ui: { trackedMissionId: instance.id } };
-  const settled = () => runInNewContext(`(${predicate})()`, { window: { SF: { state } } });
+  const settled = () => acceptancePredicates(state, 0).final;
   assert.equal(settled(), true, 'a successful acceptance uses the new instance ID');
   state.ui.trackedMissionId = offer.id;
   assert.equal(settled(), false, 'tracking the source offer is not tracking its instance');
@@ -120,6 +115,42 @@ test('probe settlement follows the accepted instance receipt and exact tracked i
   instance.sourceOfferId = offer.id;
   instance.status = 'completed';
   assert.equal(settled(), false, 'only an active instance settles the acceptance probe');
+});
+
+test('the accept actor sends one intent and distinguishes a pending worker request from readiness denial', () => {
+  let clicks = 0;
+  const key = { disabled: false, isConnected: true, textContent: 'Accept',
+    getAttribute: name => { assert.equal(name, 'aria-label'); return 'Accept Probe and bind its route. Ship and account ready.'; },
+    click() { clicks++; this.disabled = true; } };
+  const h = helpers({ document: { querySelector: selector => selector.endsWith('.k-bad') ? null : key } });
+  const first = h.attemptSeededMissionAccept();
+  assert.equal(first.activated, true);
+  assert.equal(first.readinessBlocked, false);
+  assert.equal(clicks, 1);
+  const pending = h.attemptSeededMissionAccept();
+  assert.equal(pending.disabled, true);
+  assert.equal(pending.pending, true, 'the controller retains its ready explanation while awaiting the RPC');
+  assert.equal(pending.readinessBlocked, false);
+  assert.equal(pending.activated, undefined);
+  assert.equal(clicks, 1, 'a pending intent is never clicked again');
+});
+
+test('the accept actor preserves actual readiness reasons and unknown disabled controls fail closed', () => {
+  const reason = 'Need 400 cr collateral';
+  const key = { disabled: true, textContent: 'Resolve Readiness',
+    getAttribute: () => `Cannot accept Probe. ${reason}.`,
+    click() { assert.fail('a blocked control must not be activated'); } };
+  const gate = { textContent: reason + 'x'.repeat(1000) };
+  const h = helpers({ document: { querySelector: selector => selector.endsWith('.k-bad') ? gate : key } });
+  const blocked = h.attemptSeededMissionAccept();
+  assert.equal(blocked.readinessBlocked, true);
+  assert.equal(blocked.pending, false);
+  assert.ok(blocked.reason.startsWith(reason));
+  assert.equal(blocked.reason.length, 600, 'the actual displayed blocker is bounded');
+  const unknown = helpers({ document: { querySelector: selector => selector.endsWith('.k-bad')
+    ? null : { ...key, getAttribute: () => '' } } }).attemptSeededMissionAccept();
+  assert.equal(unknown.disabled, true);
+  assert.equal(unknown.pending, false, 'unknown disabled state cannot masquerade as a pending request');
 });
 
 test('acceptance observer includes actor evidence and bounded issues, preserving the exact timeout', async () => {
@@ -135,6 +166,22 @@ test('acceptance observer includes actor evidence and bounded issues, preserving
   assert.deepEqual(snapshot.attempt, attempt);
   assert.equal(snapshot.pageWarnings.length, 8);
   assert.equal(snapshot.pageWarnings[0].text.length, 1200);
+});
+
+test('unresponsive acceptance page preserves the existing actor evidence and bounded browser issues', async () => {
+  const h = helpers({ setTimeout: (fn) => { queueMicrotask(fn); return 19; }, clearTimeout() {} });
+  const attempt = { before: 2, seeded: { stationId: 'station_ceres' },
+    commit: { found: true, activated: true }, consumed: { grew: false, tracked: false } };
+  const original = new Error('original 10s acceptance timeout');
+  await assert.rejects(h.reportAcceptHandoffFailure({ evaluate: () => new Promise(() => {}) },
+    attempt, { errorIssues: () => Array.from({ length: 10 }, () => ({ text: 'x'.repeat(2000) })),
+      warningIssues: () => [] }, original), candidate => candidate === original);
+  assert.match(h.logs[0][0], /snapshot unavailable/);
+  assert.match(h.logs[0][1], /exceeded 2000ms/);
+  const retained = JSON.parse(h.logs[0][2]);
+  assert.deepEqual(retained.attempt, attempt);
+  assert.equal(retained.pageErrors.length, 8);
+  assert.equal(retained.pageErrors[0].text.length, 1200);
 });
 
 for (const failure of ['async evaluation', 'sync evaluation', 'hung evaluation', 'serialization', 'logger']) {
@@ -166,7 +213,10 @@ test('acceptance snapshot observes current board, selection, receipt and hold pr
       active: [{ id: 'm_2', sourceOfferId: 'previous_offer', status: 'active' }] } };
   const before = JSON.stringify(state);
   const key = { isConnected: true, disabled: false, textContent: 'Accept + Bind Route',
-    getAttribute: name => { assert.equal(name, 'data-accept'); return offer.id; },
+    getAttribute: name => {
+      if (name === 'aria-label') return 'Accept Probe and bind its route. Ship and account ready.';
+      assert.equal(name, 'data-accept'); return offer.id;
+    },
     classList: { contains: name => name === 'is-holding' },
     querySelector: selector => { assert.equal(selector, '.dp-holdring'); return {
       style: { getPropertyValue: name => { assert.equal(name, '--sf-hold-p'); return '0.375'; } },
@@ -181,6 +231,7 @@ test('acceptance snapshot observes current board, selection, receipt and hold pr
   assert.equal(snapshot.offer.reward, 1200);
   assert.equal(snapshot.selectedOfferId, offer.id);
   assert.equal(snapshot.acceptKey.missionId, offer.id);
+  assert.match(snapshot.acceptKey.ariaLabel, /^Accept Probe/);
   assert.equal(snapshot.acceptKey.holding, true);
   assert.equal(snapshot.acceptKey.holdProgress, '0.375');
   assert.equal(JSON.stringify(state), before);

@@ -107,6 +107,15 @@ export class WeaponLightPool {
     return this._live;
   }
 
+  clear() {
+    for (const slot of this.slots) {
+      slot.alive = 0;
+      slot.priority = 0;
+      slot.light.intensity = 0;
+    }
+    this._live = 0;
+  }
+
   dispose() {
     // Light-set mutation — the shadow census memo must not serve the live-set
     // signature after pooled lights leave the scene.

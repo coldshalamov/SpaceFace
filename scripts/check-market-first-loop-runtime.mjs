@@ -72,7 +72,8 @@ try {
   // Open Market so its live market initialises (onShow emits economy:marketOpened), then seed a
   // known higher-priced buyer elsewhere so the Trade Routes panel has a profitable run to show.
   await domClick(page, '[data-screen="station"] .sx-dock [data-nav="market"]');
-  await waitForVisible(page, '[data-screen="station"] .sx-mkt', 8000, 'Market instrument');
+  await waitForVisible(page, '[data-screen="station"] .sx-mkt', 8000, 'Market instrument')
+    .catch((error) => reportStationHandoffFailure(page, { boundary: 'market instrument visibility', dockTarget }, issues, error));
   const seeded = await page.evaluate(() => {
     const state = window.SF.state;
     const stationId = state.ui.dockedStationId;

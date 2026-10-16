@@ -735,6 +735,8 @@ export const sandboxScreen = {
       sandboxScreen._telemetryDispose = null;
     }
     sandboxScreen._telemetryDispose = mountCrucibleLabTelemetry(ctx, labPanel);
+    // uiRoot prewarms hidden screens without onHide; only onShow starts live refresh.
+    sandboxScreen._telemetryDispose();
     stage.appendChild(labPanel);
 
     function readLabValues() {

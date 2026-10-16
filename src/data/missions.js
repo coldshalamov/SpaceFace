@@ -49,6 +49,61 @@ export const MISSION_TUNING = {
   featured: { rewardMult: 1.75, repBonus: 3 },
 };
 
+/**
+ * Head money: what an ordinary board bounty writ pays on top of the wage-derived quote.
+ *
+ * The board prices a writ at its boarding board's local rate (D59), which is the right place to
+ * stop standing and destination danger from re-paying the same loop. What that quote cannot see is
+ * the hunter's own overhead: a mark is a round trip through the gates (the 90-minute cohort hunter
+ * spent half of its gross on gate tolls and another sixth on repairs), return fire is repaired at a
+ * dock, and a countered writ pays nothing. Measured before this premium, a starter hunter netted
+ * 51 / 119 / 130 cr/min at 30 / 60 / 90 minutes while the hauler netted 289 / 550 / 1102.
+ * At the foothold and specialist rates those fixed costs are most of the wage, so the premium is
+ * largest there and tapers to nothing at the top rate, where the wage itself dwarfs the overhead
+ * and D59's runaway lived. Indexed by the writ's pay tier (the same index as
+ * ECONOMY_BALANCE.phases).
+ *
+ * The size is bounded by the declared hunter band, not by taste: 1.4 bought the Wasp inside 90
+ * minutes but pushed the luckiest held-out seed to 437 cr/min, past CAREER_BANDS.hunter.hi (400);
+ * 1.25 keeps that seed at 367. The cohort check pins the resulting income inside the band.
+ *
+ * Applies to rolled board writs (the board roller, first-hour choice, story-branch intros and
+ * chained follow-ups). Authored set pieces, origin writs, ghost-convoy rumors and field-contract
+ * posters price themselves and keep their own pay.
+ */
+export const BOUNTY_HEAD_MONEY = Object.freeze({
+  payMultByTier: Object.freeze([1.25, 1.25, 1.15, 1.05, 1.0]),
+});
+
+/** Head-money multiplier for a bounty writ priced at `payTier`; 1 when the tier carries none. */
+export function bountyHeadMoneyMult(payTier) {
+  const table = BOUNTY_HEAD_MONEY.payMultByTier;
+  const i = Math.max(0, Math.min(table.length - 1, Math.floor(Number(payTier) || 0)));
+  const mult = Number(table[i]);
+  return Number.isFinite(mult) && mult > 0 ? mult : 1;
+}
+
+/**
+ * Re-quote a bounty writ's economy terms with head money. Pure: returns the input object when the
+ * tier carries no premium, otherwise a copy whose rewardCr and expected-net figures agree with the
+ * paid number, plus the multiplier so the dossier can name it.
+ */
+export function withBountyHeadMoney(terms, payTier) {
+  const mult = bountyHeadMoneyMult(payTier);
+  if (!terms || mult === 1) return terms;
+  const rewardCr = Math.ceil(terms.rewardCr * mult);
+  const extraNet = (Number(terms.successProbability) || 0) * (rewardCr - terms.rewardCr);
+  const expectedNetCr = (Number(terms.expectedNetCr) || 0) + extraNet;
+  const durationS = Number(terms.expectedDurationS) || 0;
+  return {
+    ...terms,
+    rewardCr,
+    expectedNetCr,
+    expectedNetCrPerHour: durationS > 0 ? expectedNetCr * 3600 / durationS : terms.expectedNetCrPerHour,
+    headMoneyMult: mult,
+  };
+}
+
 // Mission families whose generated payload must fit in free hold at accept time. The simulation
 // and station preflight import this same set so a contract cannot look ready and then fail after
 // its collateral has been charged.
@@ -1858,6 +1913,155 @@ const AUTHORED_SET_PIECE_ROWS = [
       sling_in: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
     },
   },
+  // ── Far-out jobs ────────────────────────────────────────────────────────────────────────
+  // The first eleven pieces cluster on Belt Outpost, Tethys, Forge and Veil. These six give every
+  // station in Io Reach, Charon Expanse, Sker Haven, Ashfall Reach and Pallas Drift a physical
+  // job of its own, each on a verb the board already runs. Each row's hooks key on a distinct
+  // event + role so the first matching method is never the wrong one.
+  {
+    // Sker's black bazaar: a barge that must come in without drawing the lamps' eye.
+    id: 'ore_barge_tow',
+    title: 'Tow the ore barge off the shelf',
+    brief: 'Keep the barge on the line into the bazaar, or sling it in.',
+    physicalVerb: 'tow',
+    startStationId: 'station_sker',
+    destStationId: 'station_sker',
+    destSectorId: 'sector_sker_haven',
+    factionId: 'faction_reach',
+    riskTier: 2,
+    rewardCr: 2260,
+    collateralCr: 320,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'quiet_approach',
+    encounterId: 'set_piece_ore_barge_tow',
+    methods: ['tow_the_barge', 'sling_the_barge'],
+    primaryRole: 'slag_core',
+    methodHooks: {
+      tow_the_barge: { on: ['latch_dock'], role: 'slag_core' },
+      sling_the_barge: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
+    },
+  },
+  {
+    // Io Reach homestead: a crewed skiff tumbling slow, scavengers circling it.
+    id: 'skiff_tether_rescue',
+    title: 'Pull the drifting skiff home',
+    brief: 'Tow the skiff in on the line, or clear the scavengers and reel it free.',
+    physicalVerb: 'pull',
+    startStationId: 'station_reach',
+    destStationId: 'station_reach',
+    destSectorId: 'sector_io_reach',
+    factionId: 'faction_free',
+    riskTier: 1,
+    rewardCr: 1840,
+    collateralCr: 240,
+    durationS: 1800,
+    distance: 700,
+    twistClauseId: 'no_slack',
+    encounterId: 'set_piece_skiff_tether_rescue',
+    methods: ['tow_it_home', 'reel_it_free'],
+    primaryRole: 'life_pod',
+    methodHooks: {
+      tow_it_home: { on: ['latch_dock'], role: 'life_pod' },
+      reel_it_free: { on: ['reel_clear'], role: 'life_pod', clearRole: 'skiff_scavenger' },
+    },
+  },
+  {
+    // The Mercenary Outpost range: a deserter the contract wants off the lane.
+    id: 'deserter_throw',
+    title: 'Throw the deserter off the range',
+    brief: 'Put mass on the deserter, or outgun the deserter. No immunity.',
+    physicalVerb: 'throw',
+    startStationId: 'station_io_merc',
+    destStationId: 'station_io_merc',
+    destSectorId: 'sector_io_reach',
+    factionId: 'faction_free',
+    riskTier: 2,
+    rewardCr: 2300,
+    collateralCr: 340,
+    durationS: 1600,
+    distance: 800,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_deserter_throw',
+    methods: ['throw_the_deserter', 'outgun_the_deserter'],
+    primaryRole: 'range_deserter',
+    methodHooks: {
+      throw_the_deserter: { on: ['whip', 'throw'], role: 'range_deserter' },
+      outgun_the_deserter: { on: ['kill'], role: 'range_deserter' },
+    },
+  },
+  {
+    // Expanse Refinery: the Forge crusher's cousin, on a hot radiation lane.
+    id: 'refinery_hopper',
+    title: 'Feed the hopper before the slurry sets',
+    brief: 'Throw the charge into the hopper jaws, or cut the slurry feed.',
+    physicalVerb: 'feed',
+    startStationId: 'station_expanse',
+    destStationId: 'station_expanse',
+    destSectorId: 'sector_charon_expanse',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 2100,
+    collateralCr: 260,
+    durationS: 1600,
+    distance: 700,
+    twistClauseId: 'clean_release',
+    encounterId: 'set_piece_refinery_hopper',
+    methods: ['feed_the_hopper', 'cut_the_slurry'],
+    primaryRole: 'hopper_jaws',
+    methodHooks: {
+      feed_the_hopper: { on: ['throw'], role: 'hopper_jaws' },
+      cut_the_slurry: { on: ['whip', 'kill'], role: 'slurry_feed' },
+    },
+  },
+  {
+    // Drift Market: a rail-mounted toll gate with a warden on it.
+    id: 'toll_gate_ram',
+    title: 'Knock the toll gate off its rail',
+    brief: 'Ram the gate with swung mass, or cut it down. The warden is watching.',
+    physicalVerb: 'knock_down',
+    startStationId: 'station_drift',
+    destStationId: 'station_drift',
+    destSectorId: 'sector_pallas_drift',
+    factionId: 'faction_mts',
+    riskTier: 2,
+    rewardCr: 2000,
+    collateralCr: 280,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_toll_gate_ram',
+    methods: ['ram_the_gate', 'cut_the_gate'],
+    primaryRole: 'toll_gate',
+    methodHooks: {
+      ram_the_gate: { on: ['whip', 'throw'], role: 'toll_gate' },
+      cut_the_gate: { on: ['kill'], role: 'toll_gate' },
+    },
+  },
+  {
+    // Ashcache: the dead liner's sealed locker, still hot, nothing near it forgives a spark.
+    id: 'liner_locker',
+    title: 'Slip the sealed locker out of the liner',
+    brief: 'Reel the locker out quiet, or put mass through its seal.',
+    physicalVerb: 'slip',
+    startStationId: 'station_ashcache',
+    destStationId: 'station_ashcache',
+    destSectorId: 'sector_ashfall_reach',
+    factionId: 'faction_vael',
+    riskTier: 2,
+    rewardCr: 2160,
+    collateralCr: 300,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'set_piece_liner_locker',
+    methods: ['slip_the_locker', 'breach_the_seal'],
+    primaryRole: 'liner_locker',
+    methodHooks: {
+      slip_the_locker: { on: ['reel'], role: 'liner_locker' },
+      breach_the_seal: { on: ['whip', 'throw'], role: 'liner_locker' },
+    },
+  },
 ];
 
 export const AUTHORED_SET_PIECES = AUTHORED_SET_PIECE_ROWS.map((row) => Object.freeze({
@@ -1921,11 +2125,16 @@ export function buildAuthoredSetPieceOffer(definition, epoch = 0) {
   };
 }
 
+// The catalog may grow; it may not shrink below the pieces that give the far sectors a job.
+export const AUTHORED_SET_PIECE_MIN_COUNT = 14;
+
 export function validateAuthoredSetPieceCatalog(catalog = AUTHORED_SET_PIECES) {
   const errors = [];
   const rows = Array.isArray(catalog) ? catalog : [];
   const ids = new Set();
-  if (rows.length !== 11) errors.push(`Expected 11 authored set pieces; found ${rows.length}.`);
+  if (rows.length < AUTHORED_SET_PIECE_MIN_COUNT) {
+    errors.push(`Expected at least ${AUTHORED_SET_PIECE_MIN_COUNT} authored set pieces; found ${rows.length}.`);
+  }
   for (const row of rows) {
     const root = row && row.id || '<missing>';
     if (!row || typeof row !== 'object') {
@@ -1942,9 +2151,34 @@ export function validateAuthoredSetPieceCatalog(catalog = AUTHORED_SET_PIECES) {
     }
     if (!row.methodHooks || row.methods.some((method) => !row.methodHooks[method])) {
       errors.push(`${root}: both methods need reachable hooks.`);
+    } else {
+      // A hook is an event + role. Two methods that answer the same pair make the second one
+      // unreachable (the first match wins), so each pair must belong to one method only.
+      const claimed = new Map();
+      for (const method of row.methods) {
+        const hook = row.methodHooks[method];
+        if (!hook || !hook.role || !Array.isArray(hook.on) || !hook.on.length) {
+          errors.push(`${root}: ${method} needs a role and at least one event.`);
+          continue;
+        }
+        for (const on of hook.on) {
+          const key = `${on}/${hook.role}`;
+          if (claimed.has(key) && claimed.get(key) !== method) {
+            errors.push(`${root}: ${method} and ${claimed.get(key)} both answer ${key}.`);
+          }
+          claimed.set(key, method);
+        }
+      }
     }
     if (!row.startStationId || !String(row.startStationId).startsWith('station_')) {
       errors.push(`${root}: canonical startStationId required.`);
+    }
+    if (!row.destStationId || !String(row.destStationId).startsWith('station_')
+      || !row.destSectorId || !String(row.destSectorId).startsWith('sector_')) {
+      errors.push(`${root}: canonical destStationId and destSectorId required.`);
+    }
+    if (!row.factionId || !(Number(row.rewardCr) > 0)) {
+      errors.push(`${root}: faction and a positive reward required.`);
     }
     if (row.startStationId === 'station_helios') {
       errors.push(`${root}: do not post on Helios; 47-A owns that board.`);

@@ -280,13 +280,16 @@ test('unresponsive browser trace end is bounded and detach still runs', async (t
   assert.match(failure[2], /stage=Tracing.end, bytes=0/);
 });
 
-test('market trace surrounds original dock boundary, without tracing the mission actor', () => {
+test('handoff traces surround the observed boundaries with unchanged verdicts and terminal cleanup', () => {
   const market = readFileSync(new URL('../scripts/check-market-first-loop-runtime.mjs', import.meta.url), 'utf8');
   const mission = readFileSync(new URL('../scripts/check-mission-accept-handoff-runtime.mjs', import.meta.url), 'utf8');
   assert.ok(market.indexOf('dockTrace = await startStationHandoffTrace(browser)') < market.indexOf('const dockTarget = await page.evaluate'));
   assert.match(market, /issues, error\)\)\.finally\(\(\) => dockTrace.stop\(\)\)/);
   assert.match(market, /if \(dockTrace\) await dockTrace.stop\(\);\n  if \(browser\) await browser.close/);
-  assert.doesNotMatch(mission, /startStationHandoffTrace/);
+  assert.ok(mission.indexOf('acceptTrace = await startStationHandoffTrace(browser)') < mission.indexOf('const commit = await page.evaluate(attemptSeededMissionAccept)'));
+  assert.match(mission, /\}, before, \{ timeout: 10000 \}\)\.catch/);
+  assert.match(mission, /reportAcceptHandoffFailure\(page, \{ before, seeded, commit, consumed \}, issues, error\)\)\n\s*\.finally\(\(\) => acceptTrace.stop\(\)\)/);
+  assert.match(mission, /if \(acceptTrace\) await acceptTrace.stop\(\);\n  if \(browser\) await browser.close/);
 });
 
 test('trace stream-close error still detaches the browser session', async (t) => {

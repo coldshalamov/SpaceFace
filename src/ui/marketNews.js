@@ -238,6 +238,9 @@ export function createMarketNews(ctx) {
   const surfacedFreightArrivalIds = new Set();
   const freightArrivalHeardAt = new Map();
   const FREIGHT_ARRIVAL_COOLDOWN_S = 240;
+  // ECON-08 — lossIds whose player-caused shipment already made the wire. The ledger dedupes
+  // the price-side emit; this set + the log check below dedupe the presentation side, so one
+  // loss can never print twice even if the intent replays.
   // Stunt wire (U8): each witnessed episode makes the wire at most once per process. Rewinding
   // a save may legitimately re-settle it, so this clears on save:loaded like the set above.
   const surfacedStuntEpisodes = new Set();
@@ -411,6 +414,41 @@ export function createMarketNews(ctx) {
     return committed;
   }
 
+  const surfacedLossPriceIds = new Set();
+  // ECON-08 — a loss you caused moves the price and the news names the cause. lossLedger emits
+  // one structured lossLedger:priceMove per player-caused shipped-commodity loss; this seam
+  // authors the single cited headline naming that cause. Uncited publishing is forbidden: the
+  // commit carries eventId + sourceRef = the lossId, so tickerEventRef always resolves — a line
+  // that cannot trace back to its loss never reaches the ticker.
+  function surfaceLossPriceMove(ev) {
+    if (!ev || ev.cause !== 'player_kill' || !ev.lossId || !ev.commodityId || !ev.destStationId) return null;
+    const lossId = String(ev.lossId);
+    if (surfacedLossPriceIds.has(lossId)) return null;
+    if (model.log.some((rec) => rec && (rec.eventId === lossId || rec.sourceRef === lossId))) return null;
+    const commodity = commodityName(ev.commodityId);
+    const station = stationLabel(ev.destStationId);
+    const text = `Your attack destroyed a ${commodity} shipment bound for ${station} — expect tighter prices there.`;
+    surfacedLossPriceIds.add(lossId);
+    while (surfacedLossPriceIds.size > 64) {
+      surfacedLossPriceIds.delete(surfacedLossPriceIds.values().next().value);
+    }
+    const newsEvent = {
+      type: 'loss_price',
+      kind: 'freight_loss',
+      cause: 'player_kill',
+      eventId: lossId,
+      sourceRef: lossId,
+      source: 'lossLedger:priceMove',
+      stationId: String(ev.destStationId),
+      commodityId: String(ev.commodityId),
+      sectorId: ev.sectorId || null,
+      lossId,
+    };
+    const committed = commitHeadline(text, newsEvent, { metadata: newsEvent });
+    if (!committed) surfacedLossPriceIds.delete(lossId);
+    return committed;
+  }
+
   // Leftover pirateRumor:headline (not news:headline — commitHeadline re-emits that).
   function surfacePirateRumor(ev) {
     if (!ev) return null;
@@ -501,6 +539,7 @@ export function createMarketNews(ctx) {
   });
   on('freight:loss', surfaceFreightLoss);
   on('freight:arrival', surfaceFreightArrival);
+  on('lossLedger:priceMove', surfaceLossPriceMove);
   on('pirateRumor:headline', surfacePirateRumor);
   on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
   function citeTrafficHeadline(p, kind) {
@@ -637,6 +676,7 @@ export function createMarketNews(ctx) {
     // a later timeline's transient suppression across that rewind.
     surfacedFreightLossIds.clear();
     surfacedFreightArrivalIds.clear();
+    surfacedLossPriceIds.clear();
     freightArrivalHeardAt.clear();
     deedNewsIds.clear();
     model.log = [];
@@ -646,6 +686,7 @@ export function createMarketNews(ctx) {
   on('game:newGame', () => {
     surfacedFreightLossIds.clear();
     surfacedFreightArrivalIds.clear();
+    surfacedLossPriceIds.clear();
     freightArrivalHeardAt.clear();
     deedNewsIds.clear();
     model.log = [];

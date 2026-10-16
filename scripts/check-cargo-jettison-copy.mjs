@@ -5,6 +5,9 @@ import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { jettisonImpulse } from '../src/systems/jettisonImpulse.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
+import { COMMODITIES } from '../src/data/commodities.js';
+import { PERSISTENT_CARGO } from '../src/data/narrative.js';
+import { manifestSummary } from '../src/ui/hud.js';
 
 const source = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 
@@ -25,14 +28,18 @@ assert.doesNotMatch(
 );
 assert.match(
   source,
-  /const name = cargoDisplayName\(id\);[\s\S]*lines\.push\(`  \$\{name\}: \$\{qty\}`\)/,
-  'cargo tooltip must use authored commodity names rather than raw cargo ids',
+  /const name = cargoDisplayName\(commodityId\);[\s\S]*querySelector\('\.sf-ins-name'\)\.textContent = name;/,
+  'the active cargo inspector must display the shared authored cargo name',
 );
-assert.doesNotMatch(
+assert.match(
   source,
-  /lines\.push\(`  \$\{id\.replace\('cmdty_'/,
-  'cargo tooltip must not leak raw cmdty_* ids through simple string replacement',
+  /const name = escapeHtml\(cargoDisplayName\(id\)\);[\s\S]*sf-cargo-block-name">\$\{name\}/,
+  'the active manifest must display escaped authored cargo names',
 );
+for (const commodity of [...COMMODITIES, ...PERSISTENT_CARGO]) {
+  assert.equal(manifestSummary({ data: { manifest: [{ id: commodity.id, qty: 3 }] } }), `${commodity.name} ×3`,
+    `the shared cargo-name resolver must preserve authored copy for ${commodity.id}`);
+}
 assert.match(
   source,
   /Personal effects cannot be jettisoned/,

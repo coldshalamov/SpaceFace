@@ -31,10 +31,175 @@ export function installGameCadenceProbe() {
     lastPose: null,
     lastPoseChangedAt: null,
   };
+  const signedMotion = {
+    samples: 0, assessedIntervals: 0, unknownSamples: 0, boundaryResets: 0,
+    backtracks: 0, maxBacktrackWu: 0, authoritativeReversals: 0,
+    cameraMotionIntervals: 0, cameraOnlyMoves: 0, witnesses: [],
+  };
+  // Probe scratch only. Retain event witnesses, not one more object/trace row per draw.
+  const signedLast = { hasPose: false, authority: false, stable: 0, camera: false };
+  const lastCameraMatrices = new Float64Array(32);
+  const epsilon = 1e-4;
+  const resetSignedPose = () => {
+    signedLast.hasPose = false;
+    signedLast.authority = false;
+    signedLast.stable = 0;
+    signedLast.camera = false;
+  };
+  const observeSignedPose = (now, st, pose, playerId, generation, meshGeneration) => {
+    signedMotion.samples++;
+    const origin = st.world?.frameOrigin;
+    const ox = origin?.x, oz = origin?.z;
+    if (!Number.isFinite(ox) || !Number.isFinite(oz)) {
+      signedMotion.unknownSamples++;
+      resetSignedPose();
+      return;
+    }
+    const oy = Number(origin.y) || 0;
+    const x = pose.x + ox, y = pose.y + oy, z = pose.z + oz;
+    const fence = owner?._snapshotFence;
+    const latest = fence?.latestSnapshot?.(), prior = fence?.previousSnapshot?.();
+    const world = owner?._presentationWorld;
+    const slot = world?.getSlotForEntityId?.(playerId);
+    // Match the renderer's O(1) slot hints; probing the lazy identity maps would rebuild them.
+    const row = latest?.slotRows?.[slot], prevRow = prior?.slotRows?.[slot];
+    const columns = latest?.columns, prevColumns = prior?.columns;
+    const p = row * 3, pp = prevRow * 3;
+    // Fence generations are render-slot lives, not the simulation entity's occupant generation.
+    const poseGeneration = columns?.generation?.[row];
+    const currentGeneration = Number.isInteger(slot) && slot >= 0
+      && world.alive?.[slot] === 1 && world.entityIds?.[slot] === playerId
+      ? world.slotGenerations?.[slot] : null;
+    const alpha = owner?._snapshotPresentationAlpha;
+    const epoch = latest?.poseEpoch;
+    const authority = Number.isInteger(row) && Number.isInteger(prevRow)
+      && columns?.entityId?.[row] === playerId && prevColumns?.entityId?.[prevRow] === playerId
+      && meshGeneration === generation && Number.isInteger(currentGeneration)
+      && poseGeneration === currentGeneration && prevColumns?.generation?.[prevRow] === currentGeneration
+      && Number.isFinite(epoch) && prior.poseEpoch === epoch
+      && Number.isFinite(prior.simTime) && Number.isFinite(latest.simTime) && latest.simTime > prior.simTime
+      && Number.isFinite(alpha) && alpha >= 0 && alpha <= 1
+      && owner._snapshotPresentationSequence === latest.sequence
+      && Number.isFinite(columns.position[p]) && Number.isFinite(columns.position[p + 2])
+      && Number.isFinite(prevColumns.position[pp]) && Number.isFinite(prevColumns.position[pp + 2]);
+    if (signedLast.hasPose && (signedLast.id !== playerId || signedLast.generation !== generation
+        || (Number.isInteger(poseGeneration) && Number.isInteger(signedLast.poseGeneration)
+          && poseGeneration !== signedLast.poseGeneration)
+        || (Number.isFinite(epoch) && Number.isFinite(signedLast.epoch) && epoch !== signedLast.epoch)
+        || (authority && signedLast.authority && latest.simTime < signedLast.simTime))) {
+      signedMotion.boundaryResets++;
+      resetSignedPose();
+    }
+    const camera = st.render?.camera;
+    const cm = camera?.matrixWorld?.elements, vm = camera?.matrixWorldInverse?.elements;
+    const projection = camera?.projectionMatrix?.elements;
+    let cameraValid = !!(cm && vm && projection), cameraMoved = false;
+    if (cameraValid) {
+      for (let i = 0; i < 16; i++) {
+        if (!Number.isFinite(cm[i]) || !Number.isFinite(vm[i]) || !Number.isFinite(projection[i])) cameraValid = false;
+        const worldElement = cm[i] + (i === 12 ? ox : i === 13 ? oy : i === 14 ? oz : 0);
+        if (Math.abs(worldElement - lastCameraMatrices[i]) > 1e-9
+            || Math.abs(projection[i] - lastCameraMatrices[i + 16]) > 1e-9) cameraMoved = true;
+      }
+    }
+    let screenX = null, screenY = null;
+    if (cameraValid) {
+      const vx = vm[0] * pose.x + vm[4] * pose.y + vm[8] * pose.z + vm[12];
+      const vy = vm[1] * pose.x + vm[5] * pose.y + vm[9] * pose.z + vm[13];
+      const vz = vm[2] * pose.x + vm[6] * pose.y + vm[10] * pose.z + vm[14];
+      const vw = vm[3] * pose.x + vm[7] * pose.y + vm[11] * pose.z + vm[15];
+      const w = projection[3] * vx + projection[7] * vy + projection[11] * vz + projection[15] * vw;
+      if (Number.isFinite(w) && Math.abs(w) > 1e-12) {
+        screenX = (projection[0] * vx + projection[4] * vy + projection[8] * vz + projection[12] * vw) / w;
+        screenY = (projection[1] * vx + projection[5] * vy + projection[9] * vz + projection[13] * vw) / w;
+      }
+    }
+    const dx = x - signedLast.x, dz = z - signedLast.z;
+    let kind = null, progress = null;
+    if (signedLast.hasPose && cameraValid && signedLast.camera && cameraMoved) {
+      signedMotion.cameraMotionIntervals++;
+      if (Math.hypot(dx, dz) <= epsilon && Number.isFinite(screenX) && Number.isFinite(screenY)
+          && Math.hypot(screenX - signedLast.screenX, screenY - signedLast.screenY) > 1e-7) {
+        signedMotion.cameraOnlyMoves++;
+        if (signedMotion.cameraOnlyMoves === 1) kind = 'camera-only-motion';
+      }
+    }
+    const spanX = authority ? columns.position[p] - prevColumns.position[pp] : 0;
+    const spanZ = authority ? columns.position[p + 2] - prevColumns.position[pp + 2] : 0;
+    const length = Math.hypot(spanX, spanZ);
+    const dirX = length > epsilon ? spanX / length : 0;
+    const dirZ = length > epsilon ? spanZ / length : 0;
+    let stable = 0;
+    if (authority && length > epsilon && signedLast.hasPose && signedLast.authority) {
+      const direction = dirX * signedLast.dirX + dirZ * signedLast.dirZ;
+      const priorAdvance = (prevColumns.position[pp] - signedLast.priorX) * signedLast.dirX
+        + (prevColumns.position[pp + 2] - signedLast.priorZ) * signedLast.dirZ;
+      const latestAdvance = (columns.position[p] - signedLast.latestX) * signedLast.dirX
+        + (columns.position[p + 2] - signedLast.latestZ) * signedLast.dirZ;
+      progress = dx * dirX + dz * dirZ;
+      if (direction >= 0.98 && priorAdvance >= -epsilon && latestAdvance >= -epsilon
+          && prior.simTime >= signedLast.priorTime) stable = signedLast.stable + 1;
+      // A new physical direction is not evidence that presentation replayed an old pose.
+      if (direction <= -0.98 && dx * signedLast.dirX + dz * signedLast.dirZ < -epsilon) {
+        signedMotion.authoritativeReversals++;
+        kind = 'authoritative-reversal';
+      }
+      if (stable >= 2) {
+        signedMotion.assessedIntervals++;
+        if (progress < -epsilon) {
+          signedMotion.backtracks++;
+          signedMotion.maxBacktrackWu = Math.max(signedMotion.maxBacktrackWu, -progress);
+          kind = 'rendered-backtrack';
+        }
+      } else signedMotion.unknownSamples++;
+    } else signedMotion.unknownSamples++;
+    if (kind && signedMotion.witnesses.length < 8) {
+      signedMotion.witnesses.push({ kind, at: now, signedDisplacementWu: progress,
+        before: { x: signedLast.x, y: signedLast.y, z: signedLast.z,
+          screenX: signedLast.screenX, screenY: signedLast.screenY,
+          sequence: signedLast.sequence, alpha: signedLast.alpha,
+          priorSimTime: signedLast.priorTime, simTime: signedLast.simTime },
+        after: { x, y, z, screenX, screenY, sequence: latest?.sequence ?? null, alpha: alpha ?? null,
+          priorSimTime: prior?.simTime ?? null, simTime: latest?.simTime ?? null },
+        authority: authority ? { priorX: prevColumns.position[pp], priorZ: prevColumns.position[pp + 2],
+          latestX: columns.position[p], latestZ: columns.position[p + 2] } : null,
+        cameraBefore: signedLast.camera ? { x: signedLast.cameraX, y: signedLast.cameraY, z: signedLast.cameraZ } : null,
+        cameraAfter: cameraValid ? { x: cm[12] + ox, y: cm[13] + oy, z: cm[14] + oz } : null,
+        playerId, generation, poseGeneration, poseEpoch: epoch ?? null, frameOriginSeq: st.world.frameOriginSeq,
+      });
+    }
+    signedLast.hasPose = true;
+    signedLast.id = playerId;
+    signedLast.generation = generation;
+    signedLast.poseGeneration = poseGeneration;
+    signedLast.epoch = epoch;
+    signedLast.x = x; signedLast.y = y; signedLast.z = z;
+    signedLast.screenX = screenX; signedLast.screenY = screenY;
+    signedLast.authority = authority && length > epsilon;
+    signedLast.stable = stable;
+    signedLast.dirX = dirX; signedLast.dirZ = dirZ;
+    signedLast.priorX = authority ? prevColumns.position[pp] : null;
+    signedLast.priorZ = authority ? prevColumns.position[pp + 2] : null;
+    signedLast.latestX = authority ? columns.position[p] : null;
+    signedLast.latestZ = authority ? columns.position[p + 2] : null;
+    signedLast.priorTime = prior?.simTime;
+    signedLast.simTime = latest?.simTime;
+    signedLast.sequence = latest?.sequence;
+    signedLast.alpha = alpha;
+    signedLast.camera = cameraValid;
+    if (cameraValid) {
+      signedLast.cameraX = cm[12] + ox; signedLast.cameraY = cm[13] + oy; signedLast.cameraZ = cm[14] + oz;
+      for (let i = 0; i < 16; i++) {
+        lastCameraMatrices[i] = cm[i] + (i === 12 ? ox : i === 13 ? oy : i === 14 ? oz : 0);
+        lastCameraMatrices[i + 16] = projection[i];
+      }
+    }
+  };
   const resetActualMeshPose = () => {
     actualMesh.identity = null;
     actualMesh.lastPose = null;
     actualMesh.lastPoseChangedAt = null;
+    resetSignedPose();
   };
   const observeActualMesh = (now, st) => {
     if (st?.mode !== 'flight' || !(st.timeScale > 0)) {
@@ -50,6 +215,7 @@ export function installGameCadenceProbe() {
     if (!(speed >= 20)) {
       actualMesh.lastPose = null;
       actualMesh.lastPoseChangedAt = null;
+      resetSignedPose();
       return;
     }
     const origin = st.world?.frameOriginSeq;
@@ -72,9 +238,11 @@ export function installGameCadenceProbe() {
       actualMesh.missingSamples++;
       actualMesh.lastPose = null;
       actualMesh.lastPoseChangedAt = null;
+      resetSignedPose();
       return;
     }
     const pose = { x: elements[12], y: elements[13], z: elements[14] };
+    observeSignedPose(now, st, pose, playerId, generation, mesh.userData?.presentationOccupantGeneration);
     actualMesh.eligibleSamples++;
     if (!actualMesh.lastPose) {
       actualMesh.lastPose = pose;
@@ -153,6 +321,7 @@ export function installGameCadenceProbe() {
           poseChangeGaps: actualMesh.poseChangeGaps,
           staleMs: actualMesh.staleMs,
           condition: 'successful game draw; flight; timeScale > 0; speed >= 20; finite visible attached player mesh',
+          signedMotion,
         } };
     },
   };
@@ -186,6 +355,7 @@ export function summarizeGameCadence(record) {
   const actualMeshMissingSamples = record.actualMesh
     && (actualMeshObserved || record.actualMesh.missingSamples > 0)
     ? record.actualMesh.missingSamples : null;
+  const signed = record.actualMesh?.signedMotion;
   return {
     schema: 'spaceface.gameCadence.v1', wallMs, activeMs, simDelta,
     simWallRatio: wallMs > 0 ? simDelta * 1000 / wallMs : null,
@@ -215,6 +385,10 @@ export function summarizeGameCadence(record) {
       ? distribution(record.actualMesh.staleMs || []) : null,
     actualMeshCondition: record.actualMesh?.condition ?? null,
     actualMeshEvidenceLayer: 'successful draw CPU mesh pose; display scanout unmeasured',
+    actualMeshSignedMotionStatus: !signed?.samples ? 'unavailable-no-eligible-samples'
+      : !signed.assessedIntervals ? 'unknown-insufficient-stable-authority'
+        : signed.unknownSamples ? 'observed-with-unknown-samples' : 'observed',
+    actualMeshSignedMotion: signed ?? null,
     // Submission is a CPU-side success, not proof that the display scanned out new pixels.
     evidenceLayer: 'successful-game-submit; display scanout unmeasured',
   };

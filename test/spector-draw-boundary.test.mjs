@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { captureSpectorFrame } from '../src/testing/perf/spectorIntegration.js';
+import { analyzeSpectorCapture } from '../scripts/capture-spector-frame.mjs';
+
+test('Spector totals include batched API invocations and their logical subdraws', () => {
+  const program = { __SPECTOR_Object_TAG: { displayText: 'WebGLProgram - ID: 7' } };
+  const result = analyzeSpectorCapture({ commands: [
+    { name: 'useProgram', commandArguments: [program] },
+    { name: 'drawElements', commandArguments: [4, 180, 5123, 0] },
+    { name: 'multiDrawElementsWEBGL', commandArguments: [4, { 0: 180, 1: 180 }, 0, 5123, { 0: 0, 1: 360 }, 0, 2] },
+    { name: 'drawElementsInstanced', commandArguments: [4, 36, 5123, 0, 10] },
+  ] });
+  assert.equal(result.drawCalls, 3, 'one API invocation per ordinary or multi-draw command');
+  assert.equal(result.multiDrawCalls, 1);
+  assert.equal(result.logicalDrawCalls, 4, 'two batched subdraws plus two ordinary draws');
+  assert.equal(result.instancedDrawCalls, 1);
+  assert.equal(result.callsByProgram['WebGLProgram - ID: 7'], 3);
+});
 
 class EventChannel {
   constructor() {

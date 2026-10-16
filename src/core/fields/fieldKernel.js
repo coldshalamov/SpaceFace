@@ -37,7 +37,11 @@ function isKnownKind(kind) {
   return kind === FIELD_KINDS.WELL
     || kind === FIELD_KINDS.REPULSOR
     || kind === FIELD_KINDS.CONE
-    || kind === FIELD_KINDS.SHEET;
+    || kind === FIELD_KINDS.SHEET
+    || kind === FIELD_KINDS.PLANE
+    || kind === FIELD_KINDS.CURL
+    || kind === FIELD_KINDS.LANE
+    || kind === FIELD_KINDS.BOUNDARY;
 }
 
 // Explicit opt-outs affect only these two Well consequences, never force/heat/target filters.
@@ -53,7 +57,7 @@ export function normalizeField(spec = {}) {
   const kind = isKnownKind(spec.kind) ? spec.kind : FIELD_KINDS.WELL;
   const center = spec.center || {};
   const dir = spec.dir || {};
-  const needsDir = kind === FIELD_KINDS.CONE || kind === FIELD_KINDS.SHEET;
+  const needsDir = kind === FIELD_KINDS.CONE || kind === FIELD_KINDS.SHEET || kind === FIELD_KINDS.PLANE || kind === FIELD_KINDS.LANE;
   let dx = finite(dir.x, needsDir ? 1 : 0);
   let dz = finite(dir.z, 0);
   const dlen = Math.hypot(dx, dz);
@@ -189,7 +193,7 @@ export function fieldContainsPoint(field, x, z) {
   if (!field || !(field.radius > 0)) return false;
   const dx = x - field.center.x;
   const dz = z - field.center.z;
-  if (field.kind === FIELD_KINDS.SHEET) {
+  if (field.kind === FIELD_KINDS.SHEET || field.kind === FIELD_KINDS.LANE) {
     const along = dx * field.dir.x + dz * field.dir.z;
     if (along < 0 || along >= field.radius) return false;
     const latX = dx - field.dir.x * along;
@@ -249,9 +253,53 @@ function viscosityAccel(field, vel, fall) {
 export function fieldRawAcceleration(field, x, z, out, vel = null) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
+  if (field && field.kind === FIELD_KINDS.BOUNDARY) return o;
+  if (field && field.kind === FIELD_KINDS.CURL) {
+    // Finite disk. Acceleration is sideways around the center. The inward
+    // component is zero, and nothing is written onto the body's velocity.
+    if (!(field.radius > 0) || !(field.strength > 0)) return o;
+    const dx = x - field.center.x;
+    const dz = z - field.center.z;
+    const r = Math.hypot(dx, dz);
+    if (r >= field.radius || r < 1e-4) return o;
+    const a = field.strength * (1 - r / field.radius);
+    o.ax = (-dz / r) * a;
+    o.az = (dx / r) * a;
+    return o;
+  }
+  if (field && field.kind === FIELD_KINDS.PLANE) {
+    // Finite disk. Acceleration opposes only the speed into the face, measured
+    // against the face's own motion. Sideways speed is not in this vector.
+    if (!(field.radius > 0) || !(field.damping > 0) || !vel) return o;
+    const dx = x - field.center.x;
+    const dz = z - field.center.z;
+    if (Math.hypot(dx, dz) >= field.radius) return o;
+    const nx = field.dir.x;
+    const nz = field.dir.z;
+    const relX = finite(vel.x) - finite(field.frame && field.frame.x);
+    const relZ = finite(vel.z) - finite(field.frame && field.frame.z);
+    const intoFace = relX * nx + relZ * nz;
+    o.ax = -field.damping * intoFace * nx;
+    o.az = -field.damping * intoFace * nz;
+    return o;
+  }
   if (!field || field.strength <= 0 || !(field.radius > 0)) return o;
   const dx = x - field.center.x;
   const dz = z - field.center.z;
+
+  if (field.kind === FIELD_KINDS.LANE) {
+    // Finite lane from the entry (center) to the exit (center + dir * radius).
+    // Acceleration runs along the lane. It does not squeeze sideways and it
+    // does not write the body's velocity.
+    const along = dx * field.dir.x + dz * field.dir.z;
+    if (along < 0 || along >= field.radius) return o;
+    const latX = dx - field.dir.x * along;
+    const latZ = dz - field.dir.z * along;
+    if (Math.hypot(latX, latZ) > positive(field.halfWidth, 36)) return o;
+    o.ax = field.dir.x * field.strength;
+    o.az = field.dir.z * field.strength;
+    return o;
+  }
 
   if (field.kind === FIELD_KINDS.SHEET) {
     // Scoop sheet: a finite slab along dir × halfWidth. Bodies in the slab are collected onto
@@ -342,7 +390,7 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
 export function fieldInfluenceRadius(field) {
   if (!field) return 0;
   let reach = positive(field.radius, 0);
-  if (field.kind === FIELD_KINDS.SHEET) reach += positive(field.halfWidth, 0);
+  if (field.kind === FIELD_KINDS.SHEET || field.kind === FIELD_KINDS.LANE) reach += positive(field.halfWidth, 0);
   return reach;
 }
 
@@ -361,6 +409,14 @@ function segmentPointDistance(ax, az, bx, bz, px, pz) {
  */
 export function fieldCanApplyTo(field, profile) {
   if (!fieldAffectsBody(field, profile)) return false;
+  if (field && field.kind === FIELD_KINDS.BOUNDARY) {
+    if (!(field.radius > 0)) return false;
+    const type = profile && profile.type;
+    if (type === 'fauna') return field.strength > 0;
+    if (profile && profile.coated && (type === 'ship' || type === 'drone')) return field.damping > 0;
+    return false;
+  }
+  if (field && field.kind === FIELD_KINDS.PLANE) return field.damping > 0 && field.radius > 0;
   if (field.strength > 0) return true;
   const hitchId = profile && profile.hitchedTo;
   return field.lockStrength > 0
@@ -458,6 +514,32 @@ function fieldSumOrder(fields) {
  */
 // Optional pooled receipts attribute each field AFTER coupling and the shared total clamp.
 // The ordinary summation order and arithmetic remain unchanged. Receipts do not own force.
+// Class response for one boundary. A crate and a plain hull pass. A coated hull
+// is slowed against its motion. A creature is pushed aside. Velocity is not written.
+export function boundaryAcceleration(field, x, z, vel, profile, out) {
+  const o = out || { ax: 0, az: 0 };
+  o.ax = 0;
+  o.az = 0;
+  if (!field || field.kind !== FIELD_KINDS.BOUNDARY || !(field.radius > 0)) return o;
+  const dx = x - field.center.x;
+  const dz = z - field.center.z;
+  if (Math.hypot(dx, dz) >= field.radius) return o;
+  const type = profile && profile.type;
+  if (type === 'fauna' && field.strength > 0) {
+    const r = Math.hypot(dx, dz);
+    if (r < 1e-4) return o;
+    o.ax = (-dz / r) * field.strength;
+    o.az = (dx / r) * field.strength;
+    return o;
+  }
+  if (profile && profile.coated && (type === 'ship' || type === 'drone') && field.damping > 0 && vel) {
+    o.ax = -field.damping * finite(vel.x);
+    o.az = -field.damping * finite(vel.z);
+    return o;
+  }
+  return o;
+}
+
 export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, out, receipts) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
@@ -480,16 +562,27 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
     for (let n = 0; n < order.length; n++) {
       const field = fields[order[n]];
       if (!fieldAffectsBody(field, profile)) continue;
+      if (field.kind === FIELD_KINDS.BOUNDARY) {
+        boundaryAcceleration(field, pos.x, pos.z, vel, profile, _rawScratch);
+        sx += _rawScratch.ax;
+        sz += _rawScratch.az;
+        if (receipts) {
+          receipts.entries[n].ax = _rawScratch.ax;
+          receipts.entries[n].az = _rawScratch.az;
+        }
+        continue;
+      }
       fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
-      sx += _rawScratch.ax;
-      sz += _rawScratch.az;
+      // A lane hands the same push to cargo and a pilot. Other fields keep the
+      // mass shrug. Multiplying here is the same sum as scaling the total.
+      const scale = field.kind === FIELD_KINDS.LANE ? 1 : couple;
+      sx += _rawScratch.ax * scale;
+      sz += _rawScratch.az * scale;
       if (receipts) {
-        receipts.entries[n].ax = _rawScratch.ax * couple;
-        receipts.entries[n].az = _rawScratch.az * couple;
+        receipts.entries[n].ax = _rawScratch.ax * scale;
+        receipts.entries[n].az = _rawScratch.az * scale;
       }
     }
-    sx *= couple;
-    sz *= couple;
   }
   // PQ-147.02 — hitch lock is a frame lock. It does not shrug with boost or mass.
   if (profile.hitchedTo != null) {

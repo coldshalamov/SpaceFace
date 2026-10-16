@@ -12,7 +12,7 @@ import {
   rankMasslineTargets,
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
-import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
+import { automaticMasslineBreakAllowed, resolveWinchBrace, WINCH_BRACE } from '../combat/attachments.js';
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -2585,6 +2585,13 @@ export const tetherGameplay = {
     // A deployed line snapshots its fitted head policy. Mirror that immutable attachment identity
     // instead of reading the player's current fitting, which may change while this line is active.
     t.headId = t.active && typeof headId === 'string' ? headId : null;
+    // RW-01: the winch brace is a property of the live line (taut to a massive anchor), so it is
+    // mirrored from the attachment authority's own resolver — never a second policy here.
+    const brace = t.active ? resolveWinchBrace(state, state.playerId) : null;
+    t.braced = !!brace;
+    t.braceLoad = brace
+      ? Math.min(1, finite(brace.attachment.braceLoadN, 0) / WINCH_BRACE.snapLoad)
+      : 0;
     t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
     t.slingshot = t.slingshotT > 0;
     const telemetry = t.active && this._active

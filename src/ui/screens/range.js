@@ -3172,13 +3172,11 @@ export const rangeScreen = {
       if (!this._active) return;
       const dt = clamp((now - this._lastTs) / 1000, 0, MAX_FRAME_S);
       this._lastTs = now;
-      this._accumS += dt;
-      while (this._accumS >= STEP_S) {
-        this._stepSimulation(STEP_S);
-        this._accumS -= STEP_S;
-      }
+      const stepped = this._advanceFrameSimulation(dt);
       this._render();
-      this._syncRun();
+      // If this high-refresh frame did not advance fixed simulation time, keep the run status
+      // current without repeating the full chrome/beam/rail synchronization.
+      if (!stepped) this._syncRun();
       if (!this._shouldPark()) this._rafId = requestAnimationFrame(this._renderFrame);
     };
   },
@@ -3259,6 +3257,7 @@ export const rangeScreen = {
 
   _cleanup() {
     this._active = false;
+    this._beamKey = null;
     this._toggleTetherQueued = false;
     this._deployWellQueued = false;
     this._deploySeedQueued = false;
@@ -3817,8 +3816,10 @@ export const rangeScreen = {
     const contrastButton = this._els.actionButtons.find((button) => button.getAttribute('data-range-action') === 'contrast');
     if (contrastButton) {
       const label = this._contrastLabel(sim);
-      if (contrastButton.textContent !== label) contrastButton.textContent = label;
-      if (typeof contrastButton._fhSync === 'function') contrastButton._fhSync();
+      if (contrastButton.textContent !== label) {
+        contrastButton.textContent = label;
+        if (typeof contrastButton._fhSync === 'function') contrastButton._fhSync();
+      }
     }
     this._syncRun();
   },
@@ -3964,8 +3965,10 @@ export const rangeScreen = {
       const litCount = Math.round(fraction * lines.length);
       lines.forEach((line, i) => {
         const lit = i < litCount;
-        line.setAttribute('stroke', lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)');
-        line.setAttribute('stroke-width', lit ? '2.6' : '1.6');
+        const stroke = lit ? 'rgb(252 249 240)' : 'rgb(236 230 216 / .5)';
+        const width = lit ? '2.6' : '1.6';
+        if (line.getAttribute('stroke') !== stroke) line.setAttribute('stroke', stroke);
+        if (line.getAttribute('stroke-width') !== width) line.setAttribute('stroke-width', width);
       });
     }
     const f = clamp(fraction, 0, 1);
@@ -4024,20 +4027,23 @@ export const rangeScreen = {
       const id = button.getAttribute('data-rung-id');
       const state = stateOf(id);
       const active = !!(this._sim && this._sim.id === id);
-      button.setAttribute('data-state', state);
-      if (active) button.setAttribute('aria-current', 'true');
-      else button.removeAttribute('aria-current');
+      const changed = button.getAttribute('data-state') !== state
+        || (button.getAttribute('aria-current') === 'true') !== active;
+      if (button.getAttribute('data-state') !== state) button.setAttribute('data-state', state);
+      if (active && button.getAttribute('aria-current') !== 'true') button.setAttribute('aria-current', 'true');
+      else if (!active && button.getAttribute('aria-current') != null) button.removeAttribute('aria-current');
       const check = button.parentElement ? button.parentElement.querySelector('[data-range-check]') : null;
-      if (check) check.hidden = state !== 'cleared';
-      if (typeof button._fhSync === 'function') button._fhSync();
+      if (check && check.hidden !== (state !== 'cleared')) check.hidden = state !== 'cleared';
+      // A stable frame must not repin every key's inline styles before canvas layout is read.
+      if (changed && typeof button._fhSync === 'function') button._fhSync();
       if (active) this._keepRungInView(button, id);
     }
     for (const row of this._els.railRows) {
       const id = row.dataset.id;
       const state = stateOf(id);
       const selected = !!(this._sim && this._sim.id === id);
-      row.setAttribute('data-state', state);
-      row.setAttribute('aria-selected', String(selected));
+      if (row.getAttribute('data-state') !== state) row.setAttribute('data-state', state);
+      if (row.getAttribute('aria-selected') !== String(selected)) row.setAttribute('aria-selected', String(selected));
       row.classList.toggle('is-selected', selected);
       const sub = row.querySelector('.k-row__sub');
       if (sub) {
@@ -4108,14 +4114,20 @@ export const rangeScreen = {
 
   _syncBeam() {
     if (!this._beamFx || !this._sim || !this._els || !this._els.canvas) return;
-    const rect = this._els.canvas.getBoundingClientRect();
-    this._beamFx.resize(rect.width, rect.height);
     if (this._sim.id !== 'you_can_run_dry' || !this._sim.energy) {
-      this._beamFx.setPath([], { active: false });
-      this._beamFx.setActive(false);
+      if (this._beamKey !== 'off') {
+        this._beamFx.setPath([], { active: false });
+        this._beamFx.setActive(false);
+        this._beamKey = 'off';
+      }
       return;
     }
+    const rect = this._els.canvas.getBoundingClientRect();
     const headroom = finite(this._sim.energy.capRegen, 0) - finite(this._sim.energy.continuousDrain, 0);
+    const key = `${rect.width}|${rect.height}|${headroom}|${this._sim.energy.capMax}|${this._reducedMotion}`;
+    if (this._beamKey === key) return;
+    this._beamKey = key;
+    this._beamFx.resize(rect.width, rect.height);
     const reversed = headroom < 0;
     this._beamFx.setActive(true);
     this._beamFx.setPath([
@@ -4155,6 +4167,24 @@ export const rangeScreen = {
       || (this._sim.id === TRACTOR_THROW_DRILL_ID && this._sim.scrap && speedOf(this._sim.scrap) > 0.45)
       || (this._sim.id === ELASTIC_WHIP_DRILL_ID && this._sim.hostile && speedOf(this._sim.hostile) > 0.45);
     return !(playerStill || droneStill || inputHeld || strokeLive || wellLive || payloadStill);
+  },
+
+  _advanceFrameSimulation(dt) {
+    this._accumS += dt;
+    let stepped = false;
+    while (this._accumS >= STEP_S) {
+      this._stepSimulation(STEP_S);
+      this._accumS -= STEP_S;
+      stepped = true;
+    }
+    if (!stepped) return false;
+
+    // DOM and beam state only needs the final fixed-step result for this browser frame. Keeping
+    // these syncs at the frame boundary avoids exposing intermediate catch-up states.
+    this._syncChrome();
+    this._syncBeam();
+    this._syncRail();
+    return true;
   },
 
   _currentInput() {
@@ -4318,9 +4348,6 @@ export const rangeScreen = {
       }
     }
 
-    this._syncChrome();
-    this._syncBeam();
-    this._syncRail();
   },
 
   _stepHeavyRung(sim) {

@@ -119,16 +119,21 @@ test('the actor pursues the actual public radar bearing, then reacquires a canva
   const player = { id: 1, alive: true, team: 1, pos: { x: 0, z: 0 }, rot: 0, hull: 260, hullMax: 260 };
   const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: 2 }, run: { kind: 'survival', phase: 'active' },
     entityList: [player], render: { camera: {}, meshes: new Map(), renderer: { domElement: canvas } } };
-  const held = new Set(); const keys = []; let fireDown = 0; const points = []; const history = [];
-  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => {
+  const held = new Set(); const keys = []; const taps = []; let fireDown = 0; const points = []; const history = [];
+  const step = seconds => {
     history.push({ sim: state.simTime, held: [...held] });
-    state.simTime += 0.2;
-    if (held.has('KeyD')) player.rot += 0.5;
-    if (held.has('KeyA')) player.rot -= 0.5;
+    state.simTime += seconds;
+    if (held.has('KeyD')) player.rot += 4.5 * seconds;
+    if (held.has('KeyA')) player.rot -= 4.5 * seconds;
     publishRadarHostileCourse(radar, { baseLabel: 'Local tactical radar.',
       courseText: radarHostileCourseText([{ x: 50, y: 10 }], 50), mode: 'flight', simTime: state.simTime });
-  },
-    keyboard: { down: async (key) => { held.add(key); keys.push(key); }, up: async (key) => held.delete(key), press: async () => {} },
+  };
+  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => step(0.2),
+    keyboard: { down: async (key) => { held.add(key); keys.push(key); }, up: async (key) => held.delete(key),
+      press: async (key, { delay = 0 } = {}) => {
+        keys.push(key); taps.push({ key, delay }); held.add(key);
+        try { step(delay / 1000); } finally { held.delete(key); }
+      } },
     mouse: { move: async (x, y) => points.push([x, y]), down: async () => { fireDown++; }, up: async () => {} } };
   try {
     globalThis.window = { SF: { THREE: { Vector3 }, state } };
@@ -138,7 +143,10 @@ test('the actor pursues the actual public radar bearing, then reacquires a canva
       courseText: radarHostileCourseText([{ x: 50, y: 10 }], 50), mode: 'flight', simTime: 10 });
     assert.equal((await readTarget()).radarRel, Math.PI / 2, 'the visible 12 oclock bearing maps to +Z');
     await fightBeat(page, 0);
-    assert.deepEqual(keys, ['KeyW', 'KeyD', 'ShiftLeft']); assert.equal(fireDown, 0);
+    assert.equal(keys[0], 'KeyW');
+    assert.ok(keys.includes('KeyD') && keys.includes('ShiftLeft'));
+    assert.ok(taps.every(tap => tap.key === 'KeyD' && tap.delay <= 80));
+    assert.equal(fireDown, 0);
     assert.ok(state.simTime >= 12.4 && state.simTime <= 12.8, 'the fresh public course gets a sustained bounded chase');
     assert.ok(history.some(sample => sample.held.includes('KeyD') && sample.held.includes('KeyW')),
       'the actor keeps public forward thrust while turning onto a large radar error');
@@ -157,6 +165,75 @@ test('the actor pursues the actual public radar bearing, then reacquires a canva
     assert.equal((await readTarget()).radarRel, null, 'a stale public radar frame cannot steer');
     radar.offsetParent = null;
     assert.equal((await readTarget()).radarRel, null, 'a hidden radar cannot provide a cue');
+  } finally {
+    if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+    if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
+  }
+});
+
+test('slow radar observations cannot prolong yaw and the public course closes to a canvas attack', async () => {
+  const oldWindow = globalThis.window, oldDocument = globalThis.document;
+  const canvas = { tagName: 'CANVAS', classList: [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
+  const radar = radarCanvas();
+  const player = { id: 1, alive: true, team: 1, type: 'ship', pos: { x: 0, z: 0 }, rot: 0, hull: 260, hullMax: 260 };
+  const contact = { id: 2, alive: true, team: 3, type: 'ship', pos: { x: 0, z: 900 }, data: { runRole: 'enemy' } };
+  const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: null },
+    run: { kind: 'survival', phase: 'active' }, entityList: [player],
+    render: { camera: {}, meshes: new Map(), renderer: { domElement: canvas } } };
+  const held = new Set(), taps = [];
+  let fired = 0, selected = 0, observations = 0;
+  const distance = () => Math.hypot(contact.pos.x - player.pos.x, contact.pos.z - player.pos.z);
+  // Only this producer knows the off-screen contact. The actor receives its painted radar
+  // course, and receives the entity only once the ordinary canvas can present it.
+  const refreshPublicPicture = () => {
+    const dx = contact.pos.x - player.pos.x, dz = contact.pos.z - player.pos.z;
+    publishRadarHostileCourse(radar, { baseLabel: 'Local tactical radar.', mode: 'flight', simTime: state.simTime,
+      courseText: radarHostileCourseText([{ x: 50 - dx * 0.04, y: 50 - dz * 0.04 }], 50) });
+    if (distance() <= 240 && state.entityList.length === 1) state.entityList.push(contact);
+  };
+  const step = seconds => {
+    state.simTime += seconds;
+    player.rot += (held.has('KeyD') ? 1 : held.has('KeyA') ? -1 : 0) * 4.5 * seconds;
+    const travel = ((held.has('KeyW') ? 1 : 0) - (held.has('KeyS') ? 1 : 0)) * 120 * seconds;
+    player.pos.x += Math.cos(player.rot) * travel;
+    player.pos.z += Math.sin(player.rot) * travel;
+    refreshPublicPicture();
+  };
+  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => step(0.15),
+    __ptObserve: async () => {
+      observations++;
+      assert.ok(!held.has('KeyA') && !held.has('KeyD'), 'observer latency must not prolong radar yaw');
+      step(1.2); return null;
+    },
+    keyboard: { down: async key => held.add(key), up: async key => held.delete(key),
+      press: async (key, { delay = 0 } = {}) => {
+        if (key === 'KeyA' || key === 'KeyD') taps.push({ key, delay });
+        held.add(key);
+        try { step(delay / 1000); } finally { held.delete(key); }
+      } },
+    mouse: { move: async () => {}, click: async (_x, _y, { button }) => {
+      assert.equal(button, 'right'); assert.ok(state.entityList.includes(contact));
+      state.player.targetId = contact.id; selected++;
+    }, down: async () => { assert.equal(state.player.targetId, contact.id); fired++; }, up: async () => {} },
+  };
+  try {
+    globalThis.window = { SF: { state, THREE: { Vector3: class {} }, ctx: { helpers: {
+      worldToScreen: pos => ({ x: 500 + pos.x - player.pos.x, y: 300 - (pos.z - player.pos.z) * 0.4,
+        onScreen: state.entityList.includes(contact), behind: false }),
+    } } } };
+    globalThis.document = { elementFromPoint: () => canvas,
+      querySelector: selector => selector === '.sf-radar-semantic-canvas' ? radar : null };
+    refreshPublicPicture();
+    const beforeDistance = distance(), beforeBearing = Math.abs((await readTarget()).radarRel);
+    for (let beat = 0; beat < 3; beat++) await fightBeat(page, beat);
+    assert.ok(distance() < beforeDistance, 'public forward pursuit closes physical distance despite delayed observation');
+    assert.ok(Math.abs((await readTarget()).radarRel) < beforeBearing, 'bounded yaw improves the painted bearing');
+    for (let beat = 3; beat < 12 && !fired; beat++) await fightBeat(page, beat);
+    assert.ok(observations > 3 && taps.length > 0);
+    assert.ok(taps.every(tap => tap.delay > 0 && tap.delay <= 80), 'every public yaw pulse is bounded');
+    assert.ok(selected > 0 && fired > 0, 'pursuit eventually reacquires and fires at a real canvas contact');
+    assert.equal(held.size, 0);
   } finally {
     if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
     if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;

@@ -84,6 +84,11 @@ ${R} .sf-crres__share-link { white-space:nowrap; font-size:12px !important; lett
   background:linear-gradient(0deg, rgb(${BONE} / .26) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; padding:4px 0 !important; }
 ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important;
   background:linear-gradient(0deg, var(--dp-hand, #f2b950) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
+/* Copy result / Copy ghost ride the same fine words; the status line is its own element
+   (the band's note is hidden on the death-dial plate, so it cannot carry "Copied"). */
+${R} .sf-crres__share-actions { display:flex; flex-wrap:wrap; gap:6px 22px; margin:10px 0 0; max-width:560px; }
+${R} .sf-crres__share-status { margin:6px 0 0 !important; max-width:560px; color:rgb(${BONE} / .72) !important; }
+${R} .sf-crres__share-status:empty { display:none; }
 
 /* 1080p band: the left column at the dial's weight */
 @media (min-width:1800px) and (min-height:1000px) {
@@ -120,7 +125,7 @@ ${RESULTS_PLATE(R)}
   ${R} > .k-foot .k-word.k-word--primary::after { content:none !important; display:none !important; }
   ${R} .sf-crres__stage { position:relative; z-index:2; gap:12px !important; padding:0 12px 16px 0 !important; }
   ${R} .orr-crres-figure__n { font-size:30px !important; }
-  ${R} .orr-crres-figure__w { font-size:11px !important; letter-spacing:.18em !important; margin-top:4px !important; }
+  ${R} .orr-crres-figure__w { font-size:12px !important; letter-spacing:.18em !important; margin-top:4px !important; }
   ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { margin:0 0 6px !important; }
   ${R} > .k-title .k-t-title { font-size:clamp(34px, 7.2vh, 48px) !important; }
   ${R} > .sf-crres-celebrate { margin:0 !important; }

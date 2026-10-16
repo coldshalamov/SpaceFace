@@ -7,6 +7,7 @@ import {
   countBatchableOpaqueSurfaces,
   isRigidOpaqueBatchableSurface,
   planRigidOpaqueBatchGroups,
+  rigidOpaqueMaterialProgramKey,
 } from '../src/render/rigidOpaqueBatchPolicy.js';
 import { installIllustratedSurface, ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
 import { installRoughnessBreakup } from '../src/render/authoredMaterialProfiles.js';
@@ -44,6 +45,19 @@ test('rigid opaque hulls batch; canopies plumes and damage stay out', () => {
 
   const damaged = mesh({}, { damageRole: 'scorch' });
   assert.equal(isRigidOpaqueBatchableSurface(damaged, { damageRole: 'scorch' }), false);
+});
+
+test('custom shader materials stay direct without a proven batching transform ABI', () => {
+  for (const Material of [THREE.ShaderMaterial, THREE.RawShaderMaterial]) {
+    // The live station depth prepass uses this position-only transform. BatchedMesh
+    // does not inject instance transforms into arbitrary ShaderMaterial source.
+    const material = new Material({ vertexShader: 'void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'void main() { gl_FragColor = vec4(0.0); }', colorWrite: false });
+    const source = mesh({ material });
+    assert.equal(isRigidOpaqueBatchableSurface(source), false);
+    assert.equal(rigidOpaqueMaterialProgramKey(material), null);
+    source.geometry.dispose(); material.dispose();
+  }
 });
 
 test('a mixed ship group reports only the opaque rigid subset', () => {
@@ -96,6 +110,46 @@ test('nested fan and turret descendants stay direct while static siblings remain
   assert.equal(plan.groups.length, 1);
   assert.deepEqual(plan.groups[0].surfaces, [staticEngineSibling, staticHullA, staticHullB]);
   assert.deepEqual(plan.directFallbackMeshes, [fanMergedChild, turretMergedChild]);
+});
+
+test('exact transform-only qualification admits rigid pivot leaves without flattening their ownership', () => {
+  const root = new THREE.Group(), pivot = new THREE.Group();
+  pivot.userData.spacefaceTags = { motionGroup: true };
+  const a = mesh({}, { motionGroup: true }), b = mesh({}, { motionGroup: true });
+  const unrelated = mesh({}, { motionGroup: true });
+  pivot.add(a, b, unrelated); root.add(pivot); root.updateMatrixWorld(true);
+  assert.equal(planRigidOpaqueBatchGroups(root).groups.length, 0);
+  const selected = new Set([a, b]);
+  const plan = planRigidOpaqueBatchGroups(root, { isTransformOnlySource: source => selected.has(source) });
+  assert.equal(plan.groups.length, 1);
+  assert.deepEqual(plan.groups[0].surfaces, [a, b]);
+  assert.deepEqual(plan.directFallbackMeshes, [unrelated]);
+  assert.equal(a.parent, pivot); assert.equal(b.parent, pivot);
+  for (const source of [a, b, unrelated]) { source.geometry.dispose(); source.material.dispose(); }
+});
+
+test('transform-only qualification never overrides independent animation or protected surfaces', () => {
+  const options = { isTransformOnlySource: () => true };
+  for (const tags of [{ damageRole: 'sensor' }, { canopy: true }, { navLight: true },
+    { plume: true }, { decal: true }, { fan: true }, { turret: true }, { drive: 'core' },
+    { drive: 'fan' }, { drive: 'plume' }, { animated: true }]) {
+    const source = mesh({}, { motionGroup: true, ...tags });
+    assert.equal(isRigidOpaqueBatchableSurface(source, source.userData.spacefaceTags, options), false);
+    source.geometry.dispose(); source.material.dispose();
+  }
+  for (const marker of ['animated', 'fan', 'turret']) {
+    const pivot = new THREE.Group(), source = mesh({}, { motionGroup: true });
+    pivot.userData.spacefaceTags = { motionGroup: true, [marker]: true }; pivot.add(source);
+    pivot.updateMatrixWorld(true);
+    assert.equal(isRigidOpaqueBatchableSurface(source, source.userData.spacefaceTags, options), false);
+    source.geometry.dispose(); source.material.dispose();
+  }
+  const engine = new THREE.Group(), fan = new THREE.Group(), source = mesh({}, { motionGroup: true });
+  engine.userData.fan = fan; engine.add(fan); fan.add(source); engine.updateMatrixWorld(true);
+  assert.equal(isRigidOpaqueBatchableSurface(source, source.userData.spacefaceTags, options), false);
+  assert.equal(isRigidOpaqueBatchableSurface(source, source.userData.spacefaceTags,
+    { isTransformOnlySource: () => { throw new Error('retired owner'); } }), false);
+  source.geometry.dispose(); source.material.dispose();
 });
 
 test('mirrored and singular world transforms stay direct for front-face correctness', () => {

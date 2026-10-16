@@ -6,6 +6,7 @@
 // language/chips/button state.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +15,8 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 import { BINDINGS } from '../src/ui/bindings.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const PROFILE_LAUNCH = process.argv.includes('--profile-launch');
+const LAUNCH_PROFILE_PATH = fileURLToPath(new URL('../.devshots/bar-mission-launch.cpuprofile', import.meta.url));
 const START_TIMEOUT_MS = 90000;
 // Same starvation allowance as check-mission-cargo-loading: the loaded headless host
 // brick-walls frames for hundreds of ms, so waits that would pass in under a second on
@@ -28,6 +31,8 @@ const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
+let launchProfileSession = null;
+let launchProfileStarted = false;
 
 try {
   server = await startFreshServer();
@@ -58,11 +63,78 @@ try {
   await waitForVisible(page, '[data-screen="mainMenu"]', HEAVY_TIMEOUT_MS, 'main menu');
   await clickButton(page, 'New Game');
   await waitForVisible(page, '[data-screen="newGame"]', UI_TIMEOUT_MS, 'new game');
-  await clickButton(page, 'Launch');
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.state.mode === 'flight', null, {
-    timeout: START_TIMEOUT_MS,
-    polling: 250,
+  await page.evaluate(() => {
+    window.__sfBarLaunch = { started: false, failure: null };
+    window.SF.bus.on('game:started', () => { window.__sfBarLaunch.started = true; });
+    window.SF.bus.on('game:startFailed', (payload) => {
+      window.__sfBarLaunch.failure = {
+        reason: String(payload?.reason || '').slice(0, 400),
+        message: String(payload?.message || '').slice(0, 400),
+      };
+    });
   });
+  if (PROFILE_LAUNCH) {
+    launchProfileSession = await page.context().newCDPSession(page);
+    await launchProfileSession.send('Profiler.enable');
+    await launchProfileSession.send('Profiler.setSamplingInterval', { interval: 4000 });
+    await launchProfileSession.send('Profiler.start');
+    launchProfileStarted = true;
+  }
+  let launchError = null;
+  try {
+    await clickButton(page, 'Launch');
+    await page.waitForFunction(() => {
+      if (window.__sfBarLaunch?.failure) {
+        throw new Error(`game:startFailed ${JSON.stringify(window.__sfBarLaunch.failure)}`);
+      }
+      const state = window.SF?.state;
+      return state?.mode === 'flight' && window.__sfBarLaunch?.started === true
+        && state.render?.flightVeilHoldsSim !== true
+        && Number.isFinite(state.render?.firstPlayableFrameAt);
+    }, null, {
+      timeout: START_TIMEOUT_MS,
+      polling: 250,
+    }).catch(async (error) => {
+      const detail = await page.evaluate(() => {
+        const state = window.SF?.state;
+        const render = state?.render;
+        const owner = window.SF?.ctx?.registry?.get?.('render');
+        const rosterPending = [...(owner?._rosterPrewarmPending || [])];
+        return {
+          launch: window.__sfBarLaunch,
+          mode: state?.mode, tick: state?.tick, simTime: state?.simTime,
+          flightVeilHoldsSim: render?.flightVeilHoldsSim,
+          firstPlayableFrameAt: render?.firstPlayableFrameAt ?? null,
+          firstPicturePhase: render?.openingFirstPicturePhase ?? null,
+          cookLane: render?.sampleOpeningCookLane?.() ?? null,
+          postOpening: {
+            inFlight: !!owner?._postOpeningPipelinesInFlight,
+            released: owner?._postOpeningPipelineAdmissionReleased === true,
+            rescanRequested: owner?._postOpeningRescanRequested === true,
+          },
+          roster: {
+            pending: rosterPending.length,
+            labels: rosterPending.slice(0, 8).map((promise) =>
+              owner?._rosterPrewarmPendingLabels?.get(promise) || 'other'),
+          },
+          liveSectorGpuAdmission: render?.liveSectorGpuAdmission,
+          contextLost: render?.contextLost,
+          enterSerial: state?.world?.enterSerial,
+          admissionRunGeneration: render?.admissionRunGeneration,
+          cook: Array.isArray(render?.openingCookLedger)
+            ? render.openingCookLedger.slice(-12)
+            : null,
+          visibleText: document.body.innerText.slice(0, 1000),
+        };
+      }).catch(() => null);
+      throw new Error(`${error.message} :: Bar launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
+    });
+  } catch (error) {
+    launchError = error;
+    throw error;
+  } finally {
+    await stopLaunchProfile(launchError);
+  }
 
   await page.evaluate(() => {
     const sf = window.SF;
@@ -194,12 +266,14 @@ try {
     return true;
   }), true, 'Bar contact rail should expose its bounty hunter');
 
-  // The contact's dialog mounts on the row click; poll for the bounty choice rather than
-  // count once — the talk stage repaints a tick behind the click on a loaded host.
-  await page.waitForFunction(() => {
-    const choices = [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')];
-    return choices.some((el) => /bounties worth chasing/i.test(el.textContent || ''));
-  }, null, { timeout: UI_TIMEOUT_MS, polling: 250 }).catch(async (err) => {
+  // Choice glyphs decrypt after mount. Their action id and pinned accessible name stay
+  // stable while textContent is blank/noise, so the actor follows those same public hooks.
+  const bountyChoiceSelector = '[data-screen="station"] .sx-talk [data-choice="bounties"]';
+  const bountyChoiceLabel = 'Any bounties worth chasing?';
+  await page.waitForFunction(({ selector, label }) => {
+    const button = document.querySelector(selector);
+    return !!button && (button.getAttribute('aria-label') || button.textContent || '').trim() === label;
+  }, { selector: bountyChoiceSelector, label: bountyChoiceLabel }, { timeout: UI_TIMEOUT_MS, polling: 250 }).catch(async (err) => {
     const dump = await page.evaluate(() => ({
       activeContact: document.querySelector('[data-screen="station"] .sx-bar-row.is-active[data-contact]')?.dataset.contact,
       talkChoices: [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')].map((el) => (el.textContent || '').trim()),
@@ -207,17 +281,20 @@ try {
     }));
     throw new Error('Rook bounty choice should be reachable in the Bar: ' + err.message + ' :: ' + JSON.stringify(dump));
   });
-  const bountyButton = page.getByRole('button', { name: 'Any bounties worth chasing?' });
+  const bountyButton = page.locator(bountyChoiceSelector);
   assert.equal(await bountyButton.count(), 1, 'Rook bounty choice should be reachable in the Bar');
+  assert.equal(await page.locator('[data-screen="station"] .sx-talk')
+    .getByRole('button', { name: bountyChoiceLabel, exact: true }).count(), 1,
+  'Rook bounty choice should retain its accessible name during its text reveal');
   // In-page click like every other interaction in this probe: Playwright's actionability +
   // input pipeline stalls for tens of seconds on this starved host even after the element is
   // reported visible/stable — the click dispatch never lands.
-  await page.evaluate(() => {
-    const button = [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')]
-      .find((el) => /bounties worth chasing/i.test(el.textContent || ''));
-    if (!button) throw new Error('bounty choice button vanished before click');
+  const clickBountyChoice = () => bountyButton.evaluate((button, label) => {
+    const name = (button.getAttribute('aria-label') || button.textContent || '').trim();
+    if (name !== label) throw new Error(`bounty choice accessible name changed before click: ${name}`);
     button.click();
-  });
+  }, bountyChoiceLabel);
+  await clickBountyChoice();
   await page.waitForFunction(() => !!document.querySelector('.sx-bar-offer .sx-bar-offer__chip'), null, {
     timeout: UI_TIMEOUT_MS,
     polling: 250,
@@ -307,12 +384,7 @@ try {
     };
     sf.bus.emit('mission:updated', { missionId: null });
   });
-  await page.evaluate(() => {
-    const button = [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')]
-      .find((el) => /bounties worth chasing/i.test(el.textContent || ''));
-    if (!button) throw new Error('bounty choice button vanished before re-click');
-    button.click();
-  });
+  await clickBountyChoice();
   await page.waitForFunction(() => {
     const button = document.querySelector('.sx-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
     return !!(button && !button.disabled);
@@ -454,8 +526,33 @@ try {
 
   console.log('Bar mission readiness live OK: Bar offer chips, blocker, Accept + Track, and Mission Log handoff render on the default route.');
 } finally {
-  if (browser) await browser.close();
-  if (server && server.kill) server.kill();
+  try {
+    await stopLaunchProfile();
+  } finally {
+    try { if (browser) await browser.close(); }
+    finally { if (server && server.kill) server.kill(); }
+  }
+}
+
+async function stopLaunchProfile(primaryError = null) {
+  const session = launchProfileSession;
+  if (!session) return;
+  launchProfileSession = null;
+  try {
+    if (launchProfileStarted) {
+      launchProfileStarted = false;
+      const { profile } = await session.send('Profiler.stop');
+      await mkdir(new URL('../.devshots/', import.meta.url), { recursive: true });
+      await writeFile(LAUNCH_PROFILE_PATH, JSON.stringify(profile));
+      console.log('Bar launch CPU profile: ' + LAUNCH_PROFILE_PATH);
+    }
+  } catch (error) {
+    if (!primaryError) throw error;
+    console.error('Bar launch CPU profile failed:', error);
+  } finally {
+    try { await session.send('Profiler.disable'); } catch (_) {}
+    try { await session.detach(); } catch (_) {}
+  }
 }
 
 async function waitForVisible(page, selector, timeoutMs, label) {

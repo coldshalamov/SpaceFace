@@ -101,6 +101,92 @@ export function listGamepadFocusables(root) {
   )).filter((el) => isPadFocusable(el, root));
 }
 
+// ---- pad-driven native value controls --------------------------------------------------------
+// A native slider or dropdown owns its own Left/Right. The keyboard steps it; the D-pad has to as
+// well, otherwise every volume, deadzone, text size, quality and language row is reachable but
+// unchangeable on a controller (Left/Right just hopped the highlight to another row). The value is
+// written and then `input` + `change` are dispatched in the order a browser dispatches them for an
+// arrow key, so the screen's own handlers preview and persist exactly as for a mouse drag.
+
+/** 'range' | 'select' for a native control the pad steps with Left/Right, else null. */
+export function padValueControlKind(el) {
+  if (!el || el.disabled || !el.tagName) return null;
+  const tag = String(el.tagName).toUpperCase();
+  if (tag === 'SELECT') return 'select';
+  if (tag === 'INPUT' && String(el.type || '').toLowerCase() === 'range') return 'range';
+  return null;
+}
+
+function decimalPlaces(n) {
+  if (!Number.isFinite(n)) return 0;
+  const [mantissa, exp] = String(n).split('e-');
+  const fraction = mantissa.indexOf('.') < 0 ? 0 : mantissa.length - mantissa.indexOf('.') - 1;
+  return fraction + (exp ? Number(exp) : 0);
+}
+
+function fireControlEvent(el, type) {
+  if (typeof el.dispatchEvent !== 'function') return;
+  el.dispatchEvent(typeof Event === 'function' ? new Event(type, { bubbles: true }) : { type, bubbles: true, target: el });
+}
+
+function stepRangeControl(el, dir) {
+  const min = Number.isFinite(parseFloat(el.min)) ? parseFloat(el.min) : 0;
+  const max = Number.isFinite(parseFloat(el.max)) ? parseFloat(el.max) : 100;
+  let step = parseFloat(el.step);
+  if (!(step > 0)) step = String(el.step).toLowerCase() === 'any' ? (max - min) / 100 : 1;
+  if (!(step > 0)) return false;
+  const parsed = parseFloat(el.value);
+  const from = Number.isFinite(parsed) ? parsed : min;
+  // Snap to the step grid anchored at min, then trim float drift (0.7 + 5 x 0.01 must read 0.75).
+  const slot = Math.round((from - min) / step) + (dir === 'right' ? 1 : -1);
+  const places = Math.max(decimalPlaces(step), decimalPlaces(min));
+  const next = Math.min(max, Math.max(min, Number((min + slot * step).toFixed(places))));
+  if (next === from) return false;
+  el.value = String(next);
+  // The browser may snap the write back to its own grid; only a value that really moved is a change.
+  const landed = parseFloat(el.value);
+  if (!Number.isFinite(landed) || landed === from) return false;
+  fireControlEvent(el, 'input');
+  fireControlEvent(el, 'change');
+  return true;
+}
+
+function stepSelectControl(el, dir) {
+  const options = Array.from(el.options || []);
+  if (options.length < 2) return false;
+  const delta = dir === 'right' ? 1 : -1;
+  let at = el.selectedIndex;
+  if (!Number.isInteger(at) || at < 0) at = delta > 0 ? -1 : options.length;
+  let to = at + delta;
+  while (to >= 0 && to < options.length && (options[to].disabled || options[to].hidden)) to += delta;
+  // Clamp, never wrap: holding the stick on a short list must not spin it past its ends.
+  if (to < 0 || to >= options.length) return false;
+  el.selectedIndex = to;
+  fireControlEvent(el, 'input');
+  fireControlEvent(el, 'change');
+  return true;
+}
+
+/**
+ * Step a focused native slider (by its `step`, clamped to min/max) or dropdown (previous/next
+ * enabled option, clamped) one notch left or right. True when the value moved; false for any other
+ * control, a vertical direction, or a control already at its limit.
+ */
+export function stepPadValueControl(el, dir) {
+  if (dir !== 'left' && dir !== 'right') return false;
+  const kind = padValueControlKind(el);
+  if (kind === 'range') return stepRangeControl(el, dir);
+  if (kind === 'select') return stepSelectControl(el, dir);
+  return false;
+}
+
+function sharesRow(a, b) {
+  if (typeof a.getBoundingClientRect !== 'function' || typeof b.getBoundingClientRect !== 'function') return false;
+  const ra = a.getBoundingClientRect();
+  const rb = b.getBoundingClientRect();
+  return Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top) > 0;
+}
+
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
   const gp = ctx.gamepad;
@@ -885,6 +971,25 @@ export function createUiInput(ctx, screenManager) {
     }
     if (!items.includes(active)) {
       try { items[0].focus(); } catch (e) {}
+      return;
+    }
+    // A focused native slider or dropdown owns Left/Right; Up/Down still walk away from it.
+    if ((dir === 'left' || dir === 'right') && padValueControlKind(active)) {
+      const slot = items.indexOf(active);
+      if (stepPadValueControl(active, dir)) {
+        // The change handler may rebuild the pane (Language, hardware preset). Keep the pad's place
+        // instead of letting the next press fall back to the first control on the screen.
+        if (root && typeof root.contains === 'function' && !root.contains(active)) {
+          const fresh = focusableInside(root);
+          const keep = fresh[Math.min(slot, fresh.length - 1)];
+          if (keep) { try { keep.focus(); } catch (e) {} }
+        }
+        return;
+      }
+      // At its limit the press is spent, so a slider scrubbed to its end never flings the highlight
+      // across the screen; only a control sharing this row (a compound row) may take it.
+      const mate = spatialFocusTarget(items.filter((el) => el === active || sharesRow(active, el)), active, dir);
+      if (mate) { try { mate.focus(); } catch (e) {} }
       return;
     }
     const next = spatialFocusTarget(items, active, dir);

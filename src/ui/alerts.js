@@ -52,15 +52,25 @@ const BLOCKED_OUTPUT_STATES = new Set(['starved', 'no-power', 'backlogged']);
 
 // STORY-02 — short grant names for `research:pointsChanged`. The writer carries `scope`
 // (first-grant kind) or a `source` slug; an unknown slug still reads as fieldwork.
+function researchGrantIsFirst(p) {
+  // A first carries its kind in `scope`; a repeatable faucet row also carries one (for its
+  // dedupe ledger) but names itself through `source`, so its scope is never player text.
+  return typeof p.scope === 'string' && p.scope.length > 0
+    && !(typeof p.source === 'string' && p.source.startsWith('research:'));
+}
+
 function researchGrantKey(p) {
-  if (typeof p.scope === 'string' && p.scope) return `first-${p.scope}`;
+  if (researchGrantIsFirst(p)) return `first-${p.scope}`;
   const s = typeof p.source === 'string' && p.source ? p.source : 'unknown';
   return s.replace(/[^a-z0-9_-]/gi, '_');
 }
 
 function researchGrantLabel(p) {
-  if (typeof p.scope === 'string' && p.scope) return `first ${p.scope}`;
+  if (researchGrantIsFirst(p)) return `first ${p.scope}`;
   const s = typeof p.source === 'string' ? p.source : '';
+  if (s === 'research:bounty') return 'bounty fieldwork';
+  if (s === 'research:mining') return 'mining fieldwork';
+  if (s === 'research:contract') return 'contract fieldwork';
   if (s === 'scan_rp_bonus') return 'scan bonus';
   if (s === 'clause_honor') return 'honored clause';
   if (s.startsWith('mission:')) {

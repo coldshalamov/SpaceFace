@@ -9,6 +9,7 @@ import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
@@ -27,13 +28,19 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  installCspSafePlaywrightPolling(page);
   // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
   // harnesses never touch the machine save drawer, and store calls take the localStorage path.
   const issues = collectPageIssues(page, { playerStoreMounted: false });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  assert.equal(new URL(page.url()).search, '', 'cargo-loading probe must use the canonical root URL with no query flags');
+  // This probe is an intentionally controlled in-process fixture: it seeds missions.boards and
+  // the fallback onboarding state directly, then arms nav.autopilot directly for its ETA proof.
+  // Those writes are not worker commands, so the canonical worker route would overwrite them;
+  // keep this fixture explicit and leave worker acceptance to egress/player-truth.
+  await page.goto(server.baseUrl + '?simLane=main', { waitUntil: 'domcontentloaded' });
+  assert.equal(new URL(page.url()).search, '?simLane=main',
+    'cargo-loading probe must pin the main lane for fixture state writes');
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
   // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
@@ -45,13 +52,53 @@ try {
   await waitVisible(page, '[data-screen="mainMenu"]', 'main menu', MENU_TIMEOUT_MS);
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitVisible(page, '[data-screen="newGame"] .sf-ng-route', 'new-game first-session rail');
+  await page.evaluate(() => {
+    window.__sfMissionCargoLaunch = { started: false, failure: null };
+    const bus = window.SF && window.SF.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    bus.on('game:started', () => { window.__sfMissionCargoLaunch.started = true; });
+    bus.on('game:startFailed', (payload) => {
+      window.__sfMissionCargoLaunch.failure = {
+        code: String(payload?.code || '').slice(0, 200),
+        stage: String(payload?.stage || '').slice(0, 200),
+        error: String(payload?.error || payload?.message || payload || '').slice(0, 400),
+      };
+    });
+  });
   assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
   await page.waitForFunction(() => {
+    if (window.__sfMissionCargoLaunch?.failure) {
+      throw new Error(`game:startFailed ${JSON.stringify(window.__sfMissionCargoLaunch.failure)}`);
+    }
     const sf = window.SF;
     const state = sf && sf.state;
     const player = state && state.entities && state.entities.get(state.playerId);
-    return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
-  }, null, { timeout: START_TIMEOUT_MS });
+    const render = state && state.render;
+    return !!(state && state.mode === 'flight'
+      && window.__sfMissionCargoLaunch?.started === true
+      && player && player.alive && player.hull > 0
+      && render && render.flightVeilHoldsSim !== true
+      && Number.isFinite(render.firstPlayableFrameAt));
+  }, null, { timeout: START_TIMEOUT_MS, polling: 250 }).catch(async (error) => {
+    const detail = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const render = state && state.render;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      return {
+        launch: window.__sfMissionCargoLaunch,
+        mode: state && state.mode,
+        tick: state && state.tick,
+        simTime: state && state.simTime,
+        player: player ? { id: player.id, alive: player.alive !== false, hull: player.hull } : null,
+        flightVeilHoldsSim: render && render.flightVeilHoldsSim,
+        firstPlayableFrameAt: render && render.firstPlayableFrameAt != null
+          ? render.firstPlayableFrameAt : null,
+        firstPicturePhase: render && render.openingFirstPicturePhase != null
+          ? render.openingFirstPicturePhase : null,
+      };
+    }).catch(() => null);
+    throw new Error(`${error.message} :: Mission cargo launch state ${JSON.stringify(detail)} :: page issues ${JSON.stringify(issues.errorIssues().slice(-5))}`);
+  });
 
   await finishOnboardingForProbe(page);
 

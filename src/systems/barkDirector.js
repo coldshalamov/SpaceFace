@@ -213,6 +213,44 @@ export function witnessTheftBarkFor(factionId, rng) {
   return typeof line === 'string' && line.length ? line : '...';
 }
 
+// WORLD-43 — the miner worked-out-seam register. A miner that works a seam out names it in its
+// own work register and walks to the next rock: four short lines, deterministic pick, spoken by
+// the relocating hull when npcJobsRuntime retargets it. Lives beside the law listeners like the
+// witness-theft sibling above (barks.js is not owned by this unit), in the miner register.
+export const MINER_SEAM_WORKED_OUT_REGISTER = Object.freeze([
+  "Seam's worked out. Walking the claim to the next rock.",
+  'This face is done. Taking the cut to fresh ground.',
+  "Belt's thin here — moving to the next rock.",
+  'Worked this seam out. Next rock, same shift.',
+]);
+
+/**
+ * One deterministic worked-out-seam line (numeric rng wraps into range, same contract as the
+ * barks.js selectors and witnessTheftBarkFor above).
+ */
+export function minerSeamWorkedOutBarkFor(rng) {
+  const lines = MINER_SEAM_WORKED_OUT_REGISTER;
+  let index = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    index = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
+  } else if (typeof rng === 'function') {
+    const v = rng();
+    const f = (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+    index = Math.floor((f < 0 ? 0 : f >= 1 ? 0.9999999 : f) * lines.length);
+  }
+  const line = lines[index] || lines[0];
+  return typeof line === 'string' && line.length ? line : '...';
+}
+
+/** Once per depletion: one relocating miner speaks once per field it worked out. */
+export function minerSeamWorkedOutKey(payload) {
+  if (!payload || payload.jobId == null || payload.fromFieldId == null) return null;
+  const job = String(payload.jobId);
+  const field = String(payload.fromFieldId);
+  if (!job || !field) return null;
+  return `${job}|${field}`;
+}
+
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
 export const BODY_NEAR_MISS_RADIUS_WU = 70;
@@ -681,6 +719,9 @@ export const barkDirector = {
       this.bus.on('traffic:spillNoticed', this._onSpillNoticed);
       this.bus.on('npcjobs:loadEmpty', this._onLoadEmpty);
       this.bus.on('traffic:richSeamHelpReserved', this._onRichSeamHelp);
+      // WORLD-43 — the retargeting miner names the seam it worked out, in the miner register.
+      this._onMinerRelocated = (payload) => this._speakMinerSeamWorkedOut(payload || {});
+      this.bus.on('npcjobs:minerRelocated', this._onMinerRelocated);
       this._onHaulerRegroup = (payload) => this._speakHaulerRegroup(payload || {});
       this.bus.on('traffic:haulerRegroup', this._onHaulerRegroup);
       this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
@@ -728,6 +769,7 @@ export const barkDirector = {
     this._spillNoticeKeys = null;
     this._emptyLoadKeys = null;
     this._richSeamHelpKeys = null;
+    this._minerSeamWorkedOutKeys = null;
     this._haulerRegroupKeys = null;
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
@@ -2018,6 +2060,54 @@ export const barkDirector = {
     return receipt;
   },
 
+  // WORLD-43 — a miner that works a seam out says so and moves to the next rock. The move is
+  // npcJobsRuntime's `npcjobs:minerRelocated` receipt; this observer gives it the miner-register
+  // line. Same ambient-gap contract as the empty-load and spill notices: the relocation must be
+  // fresh inside the current gap, one line per miner per worked-out field, and the gap clock
+  // advances so the next depletion speaks in turn instead of on top.
+  _speakMinerSeamWorkedOut(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const key = minerSeamWorkedOutKey(payload);
+    if (!key) return null;
+    if (this._minerSeamWorkedOutKeys && this._minerSeamWorkedOutKeys.has(key)) return null;
+    const miner = minerForSeamWorkedOut(state, payload);
+    if (!miner || miner.alive === false || miner.id === state.playerId) return null;
+    const now = Number(state.simTime) || 0;
+    const own = ensureState(state);
+    const ambient = ambientRecord(own, payload.sectorId || currentSectorId(state));
+    const window = ambientWindow(ambient, now, payload.simTime);
+    if (!window.ok) return null;
+    const seed = state.meta && state.meta.seed;
+    const text = minerSeamWorkedOutBarkFor(hash32(seed == null ? 0 : seed, 'minerSeamWorkedOut', key));
+    if (!text) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const factionId = factionFor(miner);
+    const fromField = payload.fromFieldId != null ? String(payload.fromFieldId) : 'seam';
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'minerSeamWorkedOut',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${miner.id}:seam-worked-out:${fromField}`,
+      factionId,
+      register: 'miner',
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_minerSeamWorkedOutKeys', key)) return null;
+    noteAmbientBark(ambient, now, window.gap, miner.id);
+    const spoken = {
+      entityId: miner.id, text, relocationKey: key, t: now, gap: window.gap,
+      register: 'miner', factionId,
+      fromFieldId: payload.fromFieldId != null ? String(payload.fromFieldId) : null,
+      toFieldId: payload.toFieldId != null ? String(payload.toFieldId) : null,
+    };
+    this._emit('barkDirector:voice', spoken);
+    return spoken;
+  },
+
   _isSuppressed(entity, situation, rec) {
     const state = this.state;
     const own = ensureState(state);
@@ -2260,6 +2350,7 @@ export const barkDirector = {
       if (this._onSpillNoticed) this.bus.off('traffic:spillNoticed', this._onSpillNoticed);
       if (this._onLoadEmpty) this.bus.off('npcjobs:loadEmpty', this._onLoadEmpty);
       if (this._onRichSeamHelp) this.bus.off('traffic:richSeamHelpReserved', this._onRichSeamHelp);
+      if (this._onMinerRelocated) this.bus.off('npcjobs:minerRelocated', this._onMinerRelocated);
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
       if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
       if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
@@ -2299,6 +2390,7 @@ export const barkDirector = {
     this._onSpillNoticed = null;
     this._onLoadEmpty = null;
     this._onRichSeamHelp = null;
+    this._onMinerRelocated = null;
     this._onHaulerRegroup = null;
     this._onOreFlood = null;
     this._onTumbleRake = null;
@@ -2309,6 +2401,7 @@ export const barkDirector = {
     this._spillNoticeKeys = null;
     this._emptyLoadKeys = null;
     this._richSeamHelpKeys = null;
+    this._minerSeamWorkedOutKeys = null;
     if (this._bodyNearMisses) this._bodyNearMisses.clear();
     this._bodyNearMisses = null;
     this._barkQuiet = null;
@@ -2904,6 +2997,24 @@ function hullOnGlass(state, entity) {
   const drawWu = tableVfxDrawWuFromState(state);
   const delta = tableLookAtDelta(state, player && player.pos, entity.pos, _barkGlassScratch);
   return shouldDrawTableVfx(delta.x, delta.z, drawWu);
+}
+
+// WORLD-43 — the hull that owns a miner-relocation voice: the relocated miner itself when it is
+// still a live ship, else the live hull behind the relocated job id. Anything else (a virtual
+// job with no body, the player) has no miner voice to spend.
+function minerForSeamWorkedOut(state, payload) {
+  if (!state || !payload) return null;
+  const get = state.entities && typeof state.entities.get === 'function'
+    ? (id) => state.entities.get(id)
+    : () => null;
+  let miner = payload.minerId != null ? get(payload.minerId) : null;
+  if ((!miner || miner.alive === false) && payload.jobId != null
+    && state.npcJobs && state.npcJobs.byId) {
+    const entry = state.npcJobs.byId[payload.jobId];
+    if (entry && entry.entityId != null) miner = get(entry.entityId);
+  }
+  if (!miner || miner.alive === false || miner.type !== 'ship') return null;
+  return miner;
 }
 
 function haulerForEmptyLoad(state, payload) {

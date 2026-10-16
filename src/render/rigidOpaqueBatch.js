@@ -1,8 +1,8 @@
-// Opt-in retained BatchedMesh admission for repeated rigid opaque authored leaves.
+// Retained BatchedMesh admission for repeated rigid opaque authored leaves.
 //
-// This module is intentionally separate from the default authored-instance bridge. It is a
-// diagnostic candidate: callers must opt in, provide an exact pipeline/residency preparation
-// callback, and accept the batch only after that callback resolves. Until then the authored
+// The bounded default player cohort and explicit diagnostic cohorts share this admission path.
+// Callers select the exact sources, provide a pipeline/residency preparation callback,
+// and accept the batch only after that callback resolves. Until then the authored
 // leaves remain visible and continue to use their ordinary material path. Once active, direct
 // submission is suppressed with the source layer mask while the source Object3Ds remain visible
 // and mesh-backed for clearance, picking, ownership masks, and other semantic readers.
@@ -14,9 +14,11 @@ import {
   OPAQUE_BATCH_MAX_VERTS,
 } from './opaqueMaterialBatch.js';
 import {
+  isRigidOpaqueBatchMotionSafe,
   planRigidOpaqueBatchGroups,
   rigidOpaqueMaterialProgramKey,
 } from './rigidOpaqueBatchPolicy.js';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_ARRAY = Object.freeze([]);
 // A streamed world can add one authored root per frame while the player crosses a sector. Keep
@@ -27,6 +29,102 @@ export const RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES = 8;
 const _sceneInverse = new THREE.Matrix4();
 const _localMatrix = new THREE.Matrix4();
 const _sourceColor = new THREE.Color(1, 1, 1);
+
+// Material.version changes for shader recompilation, not ordinary live uniforms. A retained
+// clone otherwise keeps cold emission/finish values after its real owner has changed them.
+// Snapshot at admission; compare primitive values without allocation on the live sync path.
+const MATERIAL_SCALARS = Object.freeze([
+  'opacity', 'alphaTest', 'roughness', 'metalness', 'emissiveIntensity', 'envMapIntensity',
+  'aoMapIntensity', 'lightMapIntensity', 'bumpScale', 'normalMapType', 'displacementScale',
+  'displacementBias', 'reflectivity', 'refractionRatio', 'shininess', 'clearcoat',
+  'clearcoatRoughness', 'ior', 'iridescence', 'iridescenceIOR', 'sheen', 'sheenRoughness',
+  'transmission', 'thickness', 'attenuationDistance', 'anisotropy', 'anisotropyRotation',
+  'dispersion', 'specularIntensity', 'vertexColors', 'flatShading', 'fog', 'toneMapped',
+  'dithering', 'alphaHash', 'alphaToCoverage', 'premultipliedAlpha', 'forceSinglePass',
+  'wireframe', 'transparent', 'side', 'depthTest', 'depthWrite', 'colorWrite',
+]);
+const MATERIAL_VECTORS = Object.freeze([
+  'emissive', 'specular', 'specularColor', 'normalScale', 'clearcoatNormalScale',
+  'sheenColor', 'attenuationColor',
+]);
+const MATERIAL_TEXTURES = Object.freeze([
+  'map', 'lightMap', 'aoMap', 'bumpMap', 'normalMap', 'displacementMap', 'emissiveMap',
+  'metalnessMap', 'roughnessMap', 'alphaMap', 'envMap', 'anisotropyMap', 'clearcoatMap',
+  'clearcoatNormalMap', 'clearcoatRoughnessMap', 'iridescenceMap', 'iridescenceThicknessMap',
+  'sheenColorMap', 'sheenRoughnessMap', 'specularMap', 'specularColorMap',
+  'specularIntensityMap', 'transmissionMap', 'thicknessMap', 'gradientMap', 'matcap',
+]);
+const COMPONENTS = Object.freeze(['r', 'g', 'b', 'x', 'y', 'z', 'w']);
+const SOURCE_PACKAGE_KEYS = Object.freeze([
+  'flightRenderPackage', 'renderPackage', 'spacefaceRenderPackage', 'openingSubmissionPackage',
+]);
+const RIGID_OPAQUE_BATCH_PRODUCER = 'rigid-opaque-batch';
+
+function captureUniformComponents(object) {
+  return COMPONENTS.map(key => object?.[key]);
+}
+
+function uniformComponentsStable(values, object) {
+  for (let i = 0; i < COMPONENTS.length; i++) {
+    if (!Object.is(values[i], object?.[COMPONENTS[i]])) return false;
+  }
+  return true;
+}
+
+function captureMaterialUniforms(material) {
+  const data = material.userData || {};
+  return {
+    scalars: MATERIAL_SCALARS.map(key => material[key]),
+    vectors: MATERIAL_VECTORS.map(key => captureUniformComponents(material[key])),
+    iridescenceRange: material.iridescenceThicknessRange?.slice() || null,
+    textures: MATERIAL_TEXTURES.map(key => {
+      const texture = material[key];
+      return { texture, repeat: captureUniformComponents(texture?.repeat),
+        offset: captureUniformComponents(texture?.offset), center: captureUniformComponents(texture?.center),
+        rotation: texture?.rotation };
+    }),
+    pigmentColor: data.spacefaceIllustratedPigment?.color,
+    pigmentStrength: data.spacefaceIllustratedPigment?.strength,
+    layoutKind: data.spacefaceHullLayout?.kind,
+    layoutStrength: data.spacefaceHullLayout?.strength,
+    layoutAccent: data.spacefaceHullLayout?.accent,
+    layoutCenter: data.spacefaceHullLayout?.center?.slice() || null,
+    layoutSize: data.spacefaceHullLayout?.size?.slice() || null,
+  };
+}
+
+function uniformArrayStable(previous, current) {
+  if (!previous) return current == null;
+  if (!current || previous.length !== current.length) return false;
+  for (let i = 0; i < previous.length; i++) if (!Object.is(previous[i], current[i])) return false;
+  return true;
+}
+
+function materialUniformsStable(previous, material) {
+  for (let i = 0; i < MATERIAL_SCALARS.length; i++) {
+    if (!Object.is(previous.scalars[i], material[MATERIAL_SCALARS[i]])) return false;
+  }
+  for (let i = 0; i < MATERIAL_VECTORS.length; i++) {
+    if (!uniformComponentsStable(previous.vectors[i], material[MATERIAL_VECTORS[i]])) return false;
+  }
+  if (!uniformArrayStable(previous.iridescenceRange, material.iridescenceThicknessRange)) return false;
+  for (let i = 0; i < MATERIAL_TEXTURES.length; i++) {
+    const record = previous.textures[i], texture = material[MATERIAL_TEXTURES[i]];
+    if (record.texture !== texture || !Object.is(record.rotation, texture?.rotation)
+      || !uniformComponentsStable(record.repeat, texture?.repeat)
+      || !uniformComponentsStable(record.offset, texture?.offset)
+      || !uniformComponentsStable(record.center, texture?.center)) return false;
+  }
+  const data = material.userData || EMPTY_ARRAY;
+  const pigment = data.spacefaceIllustratedPigment, layout = data.spacefaceHullLayout;
+  return Object.is(previous.pigmentColor, pigment?.color)
+    && Object.is(previous.pigmentStrength, pigment?.strength)
+    && Object.is(previous.layoutKind, layout?.kind)
+    && Object.is(previous.layoutStrength, layout?.strength)
+    && Object.is(previous.layoutAccent, layout?.accent)
+    && uniformArrayStable(previous.layoutCenter, layout?.center)
+    && uniformArrayStable(previous.layoutSize, layout?.size);
+}
 
 function defaultHookSafe(source) {
   return !!source
@@ -205,6 +303,130 @@ function rootForSource(source, roots) {
   return null;
 }
 
+function sourcePackageBoundary(source) {
+  let boundary = null;
+  for (let node = source; node; node = node.parent) {
+    const data = node.userData || {};
+    for (const key of SOURCE_PACKAGE_KEYS) {
+      const packageInfo = data[key];
+      if (!packageInfo || typeof packageInfo !== 'object') continue;
+      const contentHash = packageInfo.contentHash || packageInfo.hash;
+      if (!contentHash) continue;
+      const verified = packageInfo.contentHashVerified === true
+        || packageInfo.verified === true
+        || data.contentHashVerified === true
+        || /^[0-9a-f]{64}$/i.test(String(contentHash));
+      boundary = { node, key, packageInfo, contentHash: String(contentHash), verified };
+      break;
+    }
+    if (boundary) break;
+  }
+  if (!boundary || !boundary.verified) return null;
+
+  const path = [];
+  for (let node = source; node && node !== boundary.node; node = node.parent) {
+    const parent = node.parent;
+    const index = parent && parent.children ? parent.children.indexOf(node) : -1;
+    if (index < 0) return null;
+    path.push({ index, name: String(node.name || ''), type: String(node.type || '') });
+  }
+  if (source !== boundary.node && path.length === 0) return null;
+  path.reverse();
+  return {
+    contentHash: boundary.contentHash,
+    packageKey: boundary.key,
+    packageSchema: String(boundary.packageInfo.schema || ''),
+    assetId: String(boundary.packageInfo.assetId || boundary.packageInfo.id || ''),
+    path,
+    leaf: { name: String(source.name || ''), type: String(source.type || '') },
+  };
+}
+
+function bufferAttributeRecipe(attribute) {
+  if (!attribute) return null;
+  const buffer = attribute.isInterleavedBufferAttribute ? attribute.data : attribute;
+  return {
+    itemSize: attribute.itemSize,
+    normalized: attribute.normalized === true,
+    count: attribute.count,
+    version: attribute.version ?? buffer.version ?? 0,
+    arrayType: buffer.array && buffer.array.constructor ? buffer.array.constructor.name : '',
+    stride: attribute.isInterleavedBufferAttribute ? buffer.stride : null,
+    offset: attribute.isInterleavedBufferAttribute ? attribute.offset : null,
+  };
+}
+
+function geometryRecipe(geometry) {
+  const attributes = {};
+  for (const name of Object.keys(geometry && geometry.attributes || {}).sort()) {
+    attributes[name] = bufferAttributeRecipe(geometry.attributes[name]);
+  }
+  const index = geometry && geometry.index;
+  return {
+    type: String(geometry && geometry.type || ''),
+    attributes,
+    index: bufferAttributeRecipe(index),
+    groups: (geometry && geometry.groups || EMPTY_ARRAY).map(({ start, count, materialIndex }) => ({
+      start, count, materialIndex,
+    })),
+    drawRange: geometry && geometry.drawRange
+      ? { start: geometry.drawRange.start, count: geometry.drawRange.count }
+      : null,
+  };
+}
+
+function batchOpeningManifest(batch) {
+  const instances = [];
+  const sourcePackages = new Map();
+  for (const entry of batch.entries) {
+    const boundary = sourcePackageBoundary(entry.source);
+    if (!boundary) return null;
+    sourcePackages.set(boundary.contentHash, {
+      contentHash: boundary.contentHash,
+      packageKey: boundary.packageKey,
+      packageSchema: boundary.packageSchema,
+      assetId: boundary.assetId,
+    });
+    instances.push({
+      sourcePackageHash: boundary.contentHash,
+      sourcePath: boundary.path,
+      sourceLeaf: boundary.leaf,
+      geometry: geometryRecipe(entry.geometry),
+      materialColor: entry.color.slice(),
+      renderOrder: entry.renderOrder,
+    });
+  }
+  instances.sort((a, b) => `${a.sourcePackageHash}:${JSON.stringify(a.sourcePath)}`
+    .localeCompare(`${b.sourcePackageHash}:${JSON.stringify(b.sourcePath)}`));
+  return {
+    producer: RIGID_OPAQUE_BATCH_PRODUCER,
+    sourcePackages: [...sourcePackages.values()].sort((a, b) => a.contentHash.localeCompare(b.contentHash)),
+    instances,
+    group: {
+      lane: batch.lane,
+      materialKey: batch.recipe.materialKey,
+      geometryKey: batch.recipe.geometryKey,
+      drawSemantics: {
+        castShadow: batch.mesh.castShadow === true,
+        receiveShadow: batch.mesh.receiveShadow === true,
+      },
+    },
+  };
+}
+
+function publishBatchOpeningPackage(batch) {
+  const manifest = batchOpeningManifest(batch);
+  if (manifest) {
+    stampOpeningSubmissionPackage(batch.mesh, manifest, {
+      assetId: batch.mesh.name,
+      producer: RIGID_OPAQUE_BATCH_PRODUCER,
+      replace: true,
+    });
+  } else if (batch.mesh.userData.openingSubmissionPackage?.producer === RIGID_OPAQUE_BATCH_PRODUCER) {
+    delete batch.mesh.userData.openingSubmissionPackage;
+  }
+}
+
 function matrixChanged(previous, elements) {
   if (!previous || !elements) return true;
   for (let i = 0; i < 16; i++) if (previous[i] !== elements[i]) return true;
@@ -290,6 +512,7 @@ function buildCandidate(scene, plan, options) {
   };
   const batches = [];
   const entries = [];
+  const materialUniforms = new Map();
   _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
   const destroy = () => {
     for (const batch of batches) disposeBatch(batch, scene);
@@ -311,6 +534,7 @@ function buildCandidate(scene, plan, options) {
         };
         const batch = createBatch(scene, pendingSources[0], group.lane, batchCapacity);
         if (!batch) throw new Error('rigid-opaque-batch-create-failed');
+        batch.recipe = { materialKey: group.materialKey, geometryKey: group.geometryKey };
         batches.push(batch);
         for (const source of pendingSources) {
           let geometryId = batch.geometryIds.get(source.geometry);
@@ -323,6 +547,9 @@ function buildCandidate(scene, plan, options) {
           batch.mesh.setMatrixAt(instanceId, _localMatrix);
           const color = colorFromMaterial(source.material);
           if (typeof batch.mesh.setColorAt === 'function') batch.mesh.setColorAt(instanceId, color);
+          if (!materialUniforms.has(source.material)) {
+            materialUniforms.set(source.material, captureMaterialUniforms(source.material));
+          }
           const entry = {
             source,
             root: rootForSource(source, options.roots),
@@ -334,6 +561,7 @@ function buildCandidate(scene, plan, options) {
             material: source.material,
             materialVisible: source.material ? source.material.visible !== false : false,
             materialVersion: source.material && source.material.version,
+            materialUniforms: materialUniforms.get(source.material),
             vertexColors: source.material?.vertexColors === true,
             onBeforeCompile: source.material && source.material.onBeforeCompile,
             customProgramCacheKey: source.material && source.material.customProgramCacheKey,
@@ -354,6 +582,7 @@ function buildCandidate(scene, plan, options) {
           batch.entries.push(entry);
           entries.push(entry);
         }
+        publishBatchOpeningPackage(batch);
         pendingSources = [];
         pendingVerts = 0;
         pendingIndices = 0;
@@ -381,11 +610,22 @@ function buildCandidate(scene, plan, options) {
   return { batches, entries, destroy };
 }
 
-function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe) {
+function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null,
+  materialUniformStability = null) {
   const source = entry.source;
   const material = source && source.material;
   const directSuppressed = hidden === true;
   const currentColor = material ? colorFromMaterial(material, _sourceColor) : null;
+  let uniformsStable = false;
+  if (material === entry.material) {
+    if (materialUniformStability && materialUniformStability.has(entry.materialUniforms)) {
+      uniformsStable = materialUniformStability.get(entry.materialUniforms);
+    } else {
+      uniformsStable = materialUniformsStable(entry.materialUniforms, material);
+      materialUniformStability?.set(entry.materialUniforms, uniformsStable);
+    }
+  }
+  if (material === entry.material && !uniformsStable && noteMutableMaterial) noteMutableMaterial(material);
   return !!source
     && source.isMesh === true
     && source.parent === entry.parent
@@ -398,6 +638,7 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     && material === entry.material
     && (material && material.visible !== false) === entry.materialVisible
     && (material && material.version) === entry.materialVersion
+    && uniformsStable
     // Non-vertex-colored materials read their cloned material.color directly in the batch
     // shader. A live color mutation cannot be repaired with setColorAt, so invalidate the
     // retained copy and let the normal admission path rebuild the keyed group.
@@ -447,11 +688,31 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const scene = options.scene || null;
   const prepareDefault = typeof options.prepare === 'function' ? options.prepare : null;
   const getTags = typeof options.getTags === 'function' ? options.getTags : undefined;
+  const isTransformOnlySource = typeof options.isTransformOnlySource === 'function'
+    ? options.isTransformOnlySource : undefined;
+  const isAttestedRigidMotionOwner = typeof options.isAttestedRigidMotionOwner === 'function'
+    ? options.isAttestedRigidMotionOwner : undefined;
+  const motionOptions = { getTags, isTransformOnlySource, isAttestedRigidMotionOwner };
+  // Selection only narrows the admitted cohort. It cannot override the policy's shader,
+  // material, motion or geometry guards, and remains binding until the candidate retires.
+  const selectSource = typeof options.selectSource === 'function' ? options.selectSource : null;
+  // A live heat/pulse owner stays on its direct material after the first observed mutation.
+  // Re-admitting its new value every frame would replace one stale picture with a compile storm.
+  const mutableMaterials = new WeakSet();
+  const noteMutableMaterial = material => { if (material) mutableMaterials.add(material); };
   const renderHookSafe = typeof options.isRenderHookSafe === 'function'
     ? options.isRenderHookSafe
     : defaultHookSafe;
-  const isRenderHookSafe = (source) => renderHookSafe(source) === true
-    && geometryWithinBatchLimits(source && source.geometry);
+  const isRenderHookSafe = (source) => {
+    try {
+      return !mutableMaterials.has(source?.material)
+        && (!selectSource || selectSource(source) === true)
+        && (!isTransformOnlySource || isRigidOpaqueBatchMotionSafe(source,
+          (getTags ? getTags(source) : source?.userData?.spacefaceTags) || EMPTY_ARRAY, motionOptions))
+        && renderHookSafe(source) === true
+        && geometryWithinBatchLimits(source && source.geometry);
+    } catch (_) { return false; }
+  };
   const maxInstances = options.maxInstances;
   const maxVerts = options.maxVerts;
   const maxIndices = options.maxIndices;
@@ -462,6 +723,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   let lastSignature = null;
   let lastRoots = [];
   let lastTopology = null;
+  let preparationRetry = null;
   let deferredMembershipRoots = [];
   let deferredMembershipTopology = null;
   let deferredMembershipFrames = 0;
@@ -676,6 +938,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         if (batch.entries.length === 0) {
           disposeBatch(batch, scene);
         } else {
+          publishBatchOpeningPackage(batch);
           batch.mesh.visible = batch.visibleCount > 0;
           retainedBatches.push(batch);
         }
@@ -705,9 +968,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     if (!active) return false;
     if (!entryTopologyMatches(active.entryTopology)) return false;
     let visibleCount = 0;
+    const materialUniformStability = new Map();
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
-      if (!sourceStaticStateStable(entry, true, isRenderHookSafe)) return false;
+      if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial,
+        materialUniformStability)) return false;
       const source = entry.source;
       _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
       if (matrixChanged(entry.matrix, _localMatrix.elements)) {
@@ -747,6 +1012,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
 
   const makePlan = (roots) => planRigidOpaqueBatchGroups(roots, {
     getTags,
+    isTransformOnlySource,
+    isAttestedRigidMotionOwner,
     isRenderHookSafe,
     materialProgramKey: rigidOpaqueMaterialProgramKey,
     shadowLane: (source) => `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
@@ -801,7 +1068,15 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     }
     if (lastSignature === signature && rootsEqual(lastRoots, normalized)
         && topologyMatches(lastTopology, normalized)) {
-      return refreshDiagnostics();
+      // One real preparation rejection may be transient. Reuse the membership quiet window
+      // before retrying, then park a second rejection until the cohort actually changes.
+      if (!preparationRetry || preparationRetry.used
+          || ++preparationRetry.frames < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES) {
+        return refreshDiagnostics();
+      }
+      preparationRetry.used = true;
+    } else {
+      preparationRetry = null;
     }
     lastSignature = signature;
     lastRoots = normalized.slice();
@@ -860,6 +1135,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             || result?.superseded === true) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
+          if (!wasActive) return refreshDiagnostics();
           if (wasActive && (!ready || result?.skipped === true
               || result?.ready === false || result?.timedOut === true
               || result?.superseded === true)) {
@@ -872,8 +1148,10 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           return refreshDiagnostics();
         }
         const topologyStable = entryTopologyMatches(record.entryTopology);
+        const materialUniformStability = new Map();
         if (!topologyStable
-            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe))) {
+            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,
+              noteMutableMaterial, materialUniformStability))) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
           lastSignature = null;
@@ -885,7 +1163,16 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             : 'source-topology-changed-before-commit';
           return refreshDiagnostics();
         }
+        // Preparation is asynchronous while authored rigid pivots may keep moving. Publish the
+        // current pose at the same atomic handover that suppresses the direct source draws.
+        _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
         for (const entry of candidate.entries) {
+          _localMatrix.multiplyMatrices(_sceneInverse, entry.source.matrixWorld);
+          if (matrixChanged(entry.matrix, _localMatrix.elements)) {
+            copyMatrix(entry.matrix, _localMatrix.elements);
+            entry.batch.mesh.setMatrixAt(entry.instanceId, _localMatrix);
+            stats.matrixUpdates += 1;
+          }
           // Keep the canonical source visible to clearance/picking/player-truth traversals. The
           // ordinary camera uses layer 0, so mask 0 suppresses its direct draw without removing
           // the mesh from those semantic readers. dispose/rollback restores the authored mask.
@@ -905,14 +1192,18 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         active.topology = lastTopology;
         active.entryTopology = record.entryTopology;
         pending = null;
+        preparationRetry = null;
         stats.status = 'active';
         stats.activations += 1;
         stats.lastReason = 'activated-after-residency';
         return refreshDiagnostics();
       })
       .catch((error) => {
+        const wasActive = activeNow();
         releaseCandidate(candidate, scene, true);
+        if (!wasActive) return refreshDiagnostics();
         if (pending === record) pending = null;
+        preparationRetry ||= { frames: 0, used: false };
         stats.status = 'failed';
         stats.lastReason = 'preparation-failed';
         stats.lastError = String(error && error.message || error);
@@ -938,6 +1229,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       lastSignature = null;
       lastRoots = [];
       lastTopology = null;
+      preparationRetry = null;
       return refreshDiagnostics();
     },
     dispose() {
@@ -949,6 +1241,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         pending = null;
       }
       disposeActive('disposed');
+      preparationRetry = null;
       stats.enabled = false;
       stats.status = 'disposed';
       return true;

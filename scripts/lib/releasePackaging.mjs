@@ -13,6 +13,28 @@ import { buildRuntimeTableForRenderGlb, sealMotionBankRef } from './renderPackag
 export const RELEASE_BUILD_RECEIPT = 'spaceface.releaseBuild.v2';
 export const RELEASE_RECEIPT_FILE = 'spaceface-release-build.json';
 export const RENDER_PACKAGE_SOURCE_PROJECTION = 'render-package-sources-v1';
+
+// Windows watchers/antivirus can briefly deny a directory rename after validation. Retry only
+// sharing-style failures; the caller still owns path validation, locking and atomic rollback.
+export async function renameReleasePathWithRetry(from, to, {
+  timeoutMs = 3000,
+  retryDelayMs = 100,
+  renamePath = rename,
+  now = () => performance.now(),
+  wait = (ms) => new Promise((resolveWait) => setTimeout(resolveWait, ms)),
+} = {}) {
+  const deadline = now() + Math.max(0, timeoutMs);
+  for (;;) {
+    try {
+      return await renamePath(from, to);
+    } catch (error) {
+      const remaining = deadline - now();
+      if ((error?.code !== 'EPERM' && error?.code !== 'EBUSY') || remaining <= 0) throw error;
+      await wait(Math.min(Math.max(1, retryDelayMs), remaining));
+    }
+  }
+}
+
 const RELEASE_GAMEPLAY_BACKENDS = Object.freeze({
   physics: 'rapier-dynamic',
   ai: 'sg06-tactical',

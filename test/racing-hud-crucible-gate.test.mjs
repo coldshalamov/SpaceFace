@@ -225,6 +225,110 @@ function actionRow(panel) {
   return panel.children.find((c) => c.className === 'race-tape-actions');
 }
 
+function observeDomWrites(root) {
+  const writes = [];
+  const visit = (node) => {
+    for (const name of ['hidden', 'disabled', 'title', 'textContent']) {
+      let value = node[name];
+      Object.defineProperty(node, name, {
+        configurable: true,
+        get: () => value,
+        set(next) { writes.push({ node, name, next }); value = next; },
+      });
+    }
+    node.dataset = new Proxy(node.dataset, {
+      set(target, name, next) { writes.push({ node, name: `data-${name}`, next }); target[name] = next; return true; },
+    });
+    const setAttribute = node.setAttribute.bind(node);
+    node.setAttribute = (name, next) => { writes.push({ node, name, next }); setAttribute(name, next); };
+    for (const child of node.children) visit(child);
+  };
+  visit(root);
+  return writes;
+}
+
+test('settled Adventure racing chrome performs no DOM writes across 20 seconds of frames', () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const root = document.createElement('div');
+    const state = flightState();
+    hud = mountRacingHud({ root, state, bus: busStub(), screens: { isOpen: () => false } });
+    hud.frame(state);
+    const writes = observeDomWrites(root);
+    for (let frame = 1; frame <= 1200; frame++) {
+      state.simTime = 10 + frame / 60;
+      hud.frame(state);
+    }
+    assert.equal(writes.length, 0, 'same visible labels, attributes and visibility must stay untouched');
+  } finally {
+    hud?.dispose();
+    dom.restore();
+  }
+});
+
+test('racing chrome retains its reading cadence and publishes view, lock and visibility changes', () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const root = document.createElement('div');
+    const state = flightState();
+    const bus = busStub();
+    let screenOpen = false;
+    hud = mountRacingHud({ root, state, bus, screens: { isOpen: () => screenOpen } });
+    const panel = root.children.find((node) => node.id === 'race-tape');
+    const view = actionRow(panel).children[0];
+    hud.frame(state);
+    assert.match(view.textContent, /^Overhead /);
+    assert.equal(view.getAttribute('aria-pressed'), 'false');
+
+    state.settings.gameplay.steeringView = 'racing';
+    state.simTime = 10.05;
+    hud.frame(state);
+    assert.match(view.textContent, /^Overhead /, 'readings still wait for their 10 Hz refresh');
+    state.simTime = 10.11;
+    hud.frame(state);
+    assert.match(view.textContent, /^Chase /);
+    assert.equal(view.getAttribute('aria-pressed'), 'true');
+
+    state.missions.active = [{ id: 'locked', type: 'delivery', status: 'active', params: { steerLock: 'racing' } }];
+    state.simTime = 10.12;
+    bus.emit('mission:updated');
+    hud.frame(state);
+    assert.equal(view.textContent, 'Mission view');
+    assert.equal(view.disabled, true);
+    assert.equal(view.title, 'This section temporarily requires the chase camera.');
+    state.missions.active = [];
+    state.settings.gameplay.steeringView = 'overhead';
+    bus.emit('settings:changed');
+    hud.frame(state);
+    assert.match(view.textContent, /^Overhead /);
+    assert.equal(view.disabled, false);
+    assert.equal(view.getAttribute('aria-pressed'), 'false');
+    assert.equal(view.title, 'Toggle chase / overhead camera');
+
+    const writes = observeDomWrites(root);
+    screenOpen = true;
+    hud.frame(state);
+    assert.equal(panel.hidden, true, 'visibility reacts without waiting for a reading tick');
+    const hiddenWrites = writes.length;
+    hud.frame(state);
+    assert.equal(writes.length, hiddenWrites, 'an unchanged hidden frame also stays untouched');
+    screenOpen = false;
+    hud.frame(state);
+    assert.equal(panel.hidden, false);
+    state.ui.docked = true;
+    hud.frame(state);
+    assert.equal(panel.hidden, true);
+    state.ui.docked = false;
+    hud.frame(state);
+    assert.equal(panel.hidden, false);
+  } finally {
+    hud?.dispose();
+    dom.restore();
+  }
+});
+
 test('adventure combat: weapons hot takes the HUD row out of the click path', () => {
   const dom = installDom();
   try {

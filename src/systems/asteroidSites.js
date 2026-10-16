@@ -85,6 +85,92 @@ function makeDefaultSites() {
   };
 }
 
+// Read-model selectors -------------------------------------------------------
+//
+// The worker lane owns the mutable asteroidSites instance.  Main-side screens
+// still need the same lookup and projection vocabulary, but must answer from a
+// mirrored state object without acquiring the worker's runtime cache or
+// normalizing persisted records in place.  Keep these selectors at the state
+// boundary so the bridge can expose a real read view instead of a no-op facade.
+export function getAsteroidSiteFromState(state, siteId) {
+  const byId = state && state.sites && state.sites.byId;
+  if (!byId || siteId == null) return null;
+  return byId[siteId] || null;
+}
+
+export function findAsteroidSiteFromState(state, asteroidId) {
+  if (asteroidId == null) return null;
+  const sites = state && state.sites;
+  const byId = sites && sites.byId;
+  if (!byId || typeof byId !== 'object') return null;
+  const order = Array.isArray(sites.order) ? sites.order : Object.keys(byId);
+  for (const siteId of order) {
+    const site = byId[siteId];
+    if (site && site.asteroidId === asteroidId) return site;
+  }
+  return null;
+}
+
+function cloneAsteroidSiteForRead(site) {
+  // Site records are save-safe plain data.  JSON cloning deliberately keeps
+  // this boundary independent of structured-clone availability in probes and
+  // browser builds while ensuring the projection's lane-store reconciliation
+  // cannot mutate the mirrored record.
+  return JSON.parse(JSON.stringify(site));
+}
+
+function isolatedAsteroidSitesView(state, siteId) {
+  const site = getAsteroidSiteFromState(state, siteId);
+  if (!site) return null;
+  const sites = state && state.sites && typeof state.sites === 'object'
+    ? state.sites : { byId: {} };
+  const isolatedState = {
+    ...(state || {}),
+    sites: {
+      ...sites,
+      byId: { ...(sites.byId || {}), [siteId]: cloneAsteroidSiteForRead(site) },
+    },
+  };
+  const view = Object.create(asteroidSites);
+  view.state = isolatedState;
+  view._rt = new Map();
+  view._surveyByAsteroid = new Map();
+  view._accessCache = null;
+  return view;
+}
+
+/** Pure projection for a mirrored site record.  The source state is untouched. */
+export function projectAsteroidSiteFromState(state, siteId) {
+  const view = isolatedAsteroidSitesView(state, siteId);
+  return view ? asteroidSites.projection.call(view, siteId) : null;
+}
+
+/** Pure placement preflight for a mirrored state.  It never commits materials or a machine. */
+export function canInstallAsteroidSiteFromState(state, request) {
+  const siteId = request && request.siteId;
+  const asteroidId = request && request.asteroidId;
+  const view = siteId != null
+    ? isolatedAsteroidSitesView(state, siteId)
+    : (() => {
+      const site = findAsteroidSiteFromState(state, asteroidId);
+      return site ? isolatedAsteroidSitesView(state, site.id) : null;
+    })();
+  if (!view) {
+    // Preserve the authority's reason vocabulary for a cold first-install
+    // preview, where no durable site exists yet.
+    const coldView = Object.create(asteroidSites);
+    coldView.state = state || {};
+    coldView._rt = new Map();
+    coldView._surveyByAsteroid = new Map();
+    coldView._accessCache = null;
+    return asteroidSites.canInstall.call(coldView, request || {});
+  }
+  // The mirror may intentionally omit full entity.data rows; a durable site
+  // record is sufficient for this read-only preflight's identity check.
+  view.siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(view.state, asteroidId);
+  return asteroidSites.canInstall.call(view, request || {});
+}
+
 const EMPTY_MACHINE_STATUS = Object.freeze({});
 
 function makeLedgerEntry(t, kind, text) {
@@ -1122,7 +1208,7 @@ export const asteroidSites = {
   },
 
   getSite(siteId) {
-    return (this.state.sites && this.state.sites.byId[siteId]) || null;
+    return getAsteroidSiteFromState(this.state, siteId);
   },
 
   machineAt(site, col, row) {

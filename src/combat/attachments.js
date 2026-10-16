@@ -6,6 +6,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 
 // Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
 // contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
@@ -94,6 +95,82 @@ function standardTetherSpoolMultiplier(owner) {
 // Trophy-head break ceiling (ships.js derives it from a fitted module's loadCapacityMult). Only the
 // two lines a Massline head throws read it; a malformed or absent value is exactly 1, and the
 // multiplier is clamped to the same fail-closed band as every other tether rating lane.
+// RW-01 winch brace (build_map §30.1): latched to a massive anchor with the reel run taut, the
+// Massline is a stance, not a reach. The along-line component of a weapon's recoil impulse is
+// routed into line load instead of hull velocity — the momentum transfers to the anchor, the
+// load rides the same ordered warning/lease/snap channel as any other overload, and the brace
+// can always snap. Authored against the emergent mass driver (slug momentum 9 × 340 = 3060 per
+// shot): loadPerImpulse 12 puts one shot at ~36.7k load, so a sustained volley crosses the 75%
+// near-break warning around the sixth shot and the snap ceiling shortly after, while the decay
+// returns a released line to cold in a few seconds. The envelope is brace-specific on purpose:
+// the ordinary tether_standard break rating stays near-unbreakable, and brace load only exists
+// while a pilot deliberately fires through a taut line, so the fail-closed automatic-break
+// policy for ordinary piloting mistakes is untouched.
+const WINCH_BRACE = Object.freeze({
+  // A line within 2 WU of its rest length is taut enough to brace.
+  slackWu: 2,
+  loadPerImpulse: 12,
+  decayPerTick: 0.99423,
+  nearBreakRatio: 0.75,
+  snapLoad: 260_000,
+});
+export { WINCH_BRACE };
+
+function isWinchBraceAnchor(entity) {
+  if (!entity || entity.alive === false || !entity.pos) return false;
+  const anchorType = entity.type === 'asteroid' || entity.type === 'station'
+    || entity.data?.masslineAnchor === true;
+  if (!anchorType) return false;
+  const mass = Number(entity.physicsBody && entity.physicsBody.mass) || Number(entity.mass) || 0;
+  return mass >= 1800;
+}
+
+/** Resolve the winch brace for a hull about to take a recoil impulse: its live tether_standard
+ *  running taut to a massive anchor (rock, station frame, or Mass Seed). Returns the
+ *  attachment, the anchor, and the unit line axis (hull -> anchor); null when not braced. */
+export function resolveWinchBrace(state, hullId) {
+  const map = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!map) return null;
+  const hull = state.entities && state.entities.get ? state.entities.get(hullId) : null;
+  if (!hull || !hull.pos || hull.alive === false) return null;
+  for (const attachment of Object.values(map)) {
+    if (attachment.state !== 'active' || attachment.defId !== 'tether_standard') continue;
+    const anchorId = attachment.ownerId === hullId
+      ? attachment.targetId
+      : attachment.targetId === hullId ? attachment.ownerId : null;
+    if (anchorId == null) continue;
+    const anchor = state.entities.get(anchorId);
+    if (!isWinchBraceAnchor(anchor)) continue;
+    const dx = anchor.pos.x - hull.pos.x;
+    const dz = anchor.pos.z - hull.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!(distance > 1e-6) || distance < attachment.restLength - WINCH_BRACE.slackWu) continue;
+    return { attachment, anchor, axisX: dx / distance, axisZ: dz / distance };
+  }
+  return null;
+}
+
+/** Split a recoil impulse against a resolved brace: the along-line component becomes line load
+ *  plus a real impulse on the anchor; the perpendicular remainder still shoves the hull. */
+export function routeRecoilThroughWinchBrace(state, hullId, impulse) {
+  const brace = resolveWinchBrace(state, hullId);
+  if (!brace) return null;
+  const jx = Number.isFinite(impulse && impulse.x) ? impulse.x : 0;
+  const jz = Number.isFinite(impulse && impulse.z) ? impulse.z : 0;
+  const along = jx * brace.axisX + jz * brace.axisZ;
+  const routedX = along * brace.axisX;
+  const routedZ = along * brace.axisZ;
+  if (along !== 0) {
+    brace.attachment.braceLoadN = Math.min(
+      WINCH_BRACE.snapLoad * 2,
+      finiteOrZero(brace.attachment.braceLoadN) + Math.abs(along) * WINCH_BRACE.loadPerImpulse,
+    );
+    queuePhysicsImpulse(brace.anchor, { x: routedX, z: routedZ },
+      { tag: 'winch_brace_transfer', tick: state.tick, externalEffect: true });
+  }
+  return { brace, appliedX: jx - routedX, appliedZ: jz - routedZ, routedX, routedZ };
+}
+
 const HEAD_LOAD_CAPACITY_DEF_IDS = Object.freeze(['tether_standard', 'attachment_twin_bridle']);
 export function headLoadCapacityMultiplier(def, owner) {
   if (!def || !HEAD_LOAD_CAPACITY_DEF_IDS.includes(def.id)) return 1;
@@ -435,6 +512,7 @@ export function createAttachmentService(context) {
       restLength,
       lastTension: 0,
       lastImpulse: 0,
+      braceLoadN: 0,
       nearBreakWarned: false,
       actionInstanceId: spec.actionInstanceId || null,
       tetherPolicy: effectiveTetherPolicy(def, controller || owner, state.runtime && state.runtime.features),
@@ -849,6 +927,7 @@ export function createAttachmentService(context) {
     attachment.lastTension = 0;
     attachment.lastImpulse = 0;
     attachment.lastYank = 0;
+    attachment.braceLoadN = 0;
     attachment.nearBreakWarned = false;
     attachment.breakWarningUntilTick = null;
     attachment.physicsSpringState = null;
@@ -967,6 +1046,45 @@ export function createAttachmentService(context) {
             warningUntilTick: attachment.breakWarningUntilTick,
           });
         }
+      }
+
+      // RW-01 brace leg: stored winch-brace load follows the same ordered warning -> lease ->
+      // snap contract as every other overload, on its own authored envelope. Brace load only
+      // exists while a pilot deliberately routes recoil through a taut line, so this leg never
+      // touches the fail-closed automatic-break policy that protects ordinary piloting.
+      if (attachment.braceLoadN > 0) {
+        const braceRatio = attachment.braceLoadN / WINCH_BRACE.snapLoad;
+        if (braceRatio >= WINCH_BRACE.nearBreakRatio && !attachment.nearBreakWarned) {
+          attachment.nearBreakWarned = true;
+          attachment.breakWarningUntilTick = state.tick + 15;
+          if (bus) bus.emit('tether:nearBreak', {
+            actorId: attachment.ownerId,
+            targetId: attachment.targetId,
+            attachmentId: attachment.id,
+            attachmentDefId: attachment.defId,
+            tension: attachment.lastTension,
+            impulse: attachment.lastImpulse,
+            yank: attachment.lastYank,
+            ratio: braceRatio,
+            warningUntilTick: attachment.breakWarningUntilTick,
+            brace: true,
+            braceLoad: attachment.braceLoadN,
+          });
+        } else if (braceRatio < WINCH_BRACE.nearBreakRatio * 0.5 && attachment.nearBreakWarned) {
+          // A released line cools: re-arm the warning once the load has decayed well clear.
+          attachment.nearBreakWarned = false;
+        }
+        if (braceRatio >= 1
+            && Number.isFinite(attachment.breakWarningUntilTick)
+            && state.tick >= attachment.breakWarningUntilTick) {
+          breakAttachment(attachment, 'brace_overload', attachment.ownerId, {
+            tension: attachment.lastTension,
+            braceLoad: attachment.braceLoadN,
+          });
+          continue;
+        }
+        attachment.braceLoadN *= WINCH_BRACE.decayPerTick;
+        if (attachment.braceLoadN < 1) attachment.braceLoadN = 0;
       }
 
       // Massline controller: run the winch/heat/overload policy (spec §8) one step per fixed tick

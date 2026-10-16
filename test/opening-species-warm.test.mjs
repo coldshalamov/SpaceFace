@@ -38,6 +38,7 @@ const {
 } = await import('../src/render/visualFactory.js');
 const { installVisualOverrides } = await import('../src/render/visualOverrides.js');
 const { makeRescueCastSpecs } = await import('../src/onboarding/rescueOpening.js');
+const { warmHullFilesForSpecs } = await import('../src/render/renderer.js');
 
 const RENDERER_SOURCE = readFileSync(
   new URL('../src/render/renderer.js', import.meta.url), 'utf8',
@@ -223,6 +224,59 @@ test('the ordinary opening cook runs the bounded warm with the intro species pro
   // The warm root still joins the buffer census and the compile batch.
   assert.match(block, /addFirstFlightBufferRoot\(crucibleWarmRoot\)/);
   assert.match(block, /if \(crucibleWarmRoot\) cookCompileRoots\.push\(crucibleWarmRoot\)/);
+});
+
+test('ordinary opening keeps its live/embark hull set and releases the warm after first paint', () => {
+  const helperStart = RENDERER_SOURCE.indexOf('function openingWarmHullFilesForState(state)');
+  const beginDef = RENDERER_SOURCE.indexOf('_beginCrucibleBoundedRosterWarm(options = {})');
+  const finishDef = RENDERER_SOURCE.indexOf('_finishCrucibleBoundedRosterWarm(warm, options = {})');
+  const releaseDef = RENDERER_SOURCE.indexOf('_releaseOrdinaryOpeningWarm(reason =');
+  assert.ok(helperStart > 0 && beginDef > helperStart && releaseDef > beginDef && finishDef > releaseDef);
+  const helper = RENDERER_SOURCE.slice(helperStart, beginDef);
+  assert.match(helper, /collectFirstFlightCookEntities\(state\)/,
+    'the ordinary warm follows the same live first-flight source as the opening cook');
+  assert.match(helper, /cruciblePlayerShipExemplarSpec\(state\)/,
+    'the starter/player hull remains in the opening keep set');
+  assert.match(helper, /defId: 'ship_wasp'/);
+  assert.match(helper, /defId: 'ship_mule'/);
+  assert.match(helper, /scriptedOnboardingRosterRows\(\)/,
+    'the _prefetchEmbarkVisuals onboarding roster remains covered');
+
+  const begin = RENDERER_SOURCE.slice(beginDef, finishDef);
+  assert.match(begin, /const openingHullFiles = profile === 'opening'/);
+  assert.match(begin, /profile === 'opening'\s*\n\s*\? openingHullFiles/,
+    'ordinary opening uses its explicit set instead of the generic catalog fallback');
+  const finish = RENDERER_SOURCE.slice(
+    finishDef,
+    RENDERER_SOURCE.indexOf('_releaseSurvivalRosterPrewarm(reason)', finishDef),
+  );
+  assert.match(finish, /warm\.profile === 'opening'/,
+    'settled ordinary records use the same opening keep filter');
+  const paintRelease = RENDERER_SOURCE.indexOf('export function applyFirstPlayablePaintRelease(owner)');
+  const park = RENDERER_SOURCE.indexOf('owner\._parkBoundedWarmRoots', paintRelease);
+  const teardown = RENDERER_SOURCE.indexOf('owner?\._releaseOrdinaryOpeningWarm', paintRelease);
+  assert.ok(park > paintRelease && teardown > park,
+    'first paint parks the root before releasing its residency owner');
+});
+
+test('opening warm hull selection keeps faction primaries and the LOD2 stand-in, without cold LOD1', () => {
+  const files = [...warmHullFilesForSpecs([
+    {
+      id: 'opening:hauler', type: 'ship', alive: true,
+      data: { defId: 'ship_mule' },
+    },
+    {
+      id: 'opening:patrol', type: 'ship', alive: true, factionId: 'faction_free',
+      data: { defId: 'ship_wasp', trafficRole: 'patrol' },
+    },
+  ])].sort();
+  assert.deepEqual(files, [
+    'wholeships/mule_production_v1.glb',
+    'wholeships/mule_production_v1_lod2.glb',
+    'wholeships/wasp_free_militia.glb',
+  ], 'opening warms the selected faction body plus the policy-required stand-in set');
+  assert.equal(files.some((file) => file.includes('_lod1.')), false,
+    'runtime demotion is disabled, so LOD1 never enters the opening warm');
 });
 
 test('the bounded warm decodes the rescue intro packaged bodies explicitly', () => {

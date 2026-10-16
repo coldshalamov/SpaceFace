@@ -93,6 +93,77 @@ test('source overlay fails closed on a tampered entry', () => {
   }), /allowlist/i);
 });
 
+test('only the exact Three vendor module can be pinned and served with verified frozen bytes', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-three-overlay-'));
+  await mkdir(path.join(root, 'vendor'), { recursive: true });
+  await writeFile(path.join(root, 'vendor', 'three.module.js'), 'export const version = "current";\n');
+  await writeFile(path.join(root, 'vendor', 'three.core.js'), 'canonical-core');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const frozen = Buffer.from('export const version = "frozen";\n');
+  const pinned = manifest([['vendor/three.module.js', frozen]]);
+  const baseUrl = await listen(t, root, pinned);
+  const response = await fetch(`${baseUrl}/vendor/three.module.js?version=old`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), frozen);
+  assert.match(response.headers.get('content-type'), /javascript/);
+  assert.equal(response.headers.get('x-spaceface-source-file-sha256'), pinned.files[0].sha256);
+  assert.equal(response.headers.get('x-spaceface-source-overlay-digest'), pinned.sourceOverlayDigest);
+  assert.equal(await (await fetch(`${baseUrl}/vendor/three.core.js`)).text(), 'canonical-core');
+
+  for (const filePath of [
+    'vendor/three.core.js', 'vendor/three.module.js.map', 'vendor/addons/Other.js',
+    '.env', 'vendor/.env', 'vendor/../secrets.json', '../vendor/three.module.js',
+    'vendor/three.module.js/../../outside.js',
+  ]) {
+    assert.throws(() => loadSourceOverlayManifest(manifest([[filePath, 'forbidden']])), /allowlist/i, filePath);
+  }
+  const tampered = manifest([['vendor/three.module.js', frozen]]);
+  tampered.files[0].contentBase64 = Buffer.from('export const version = "broken";\n').toString('base64');
+  assert.throws(() => loadSourceOverlayManifest(tampered), /hash mismatch/i);
+});
+
+test('source overlay accepts the complete runtime budget and rejects totals above 128 MiB', () => {
+  const payload = Buffer.alloc(8 * 1024 * 1024, 0x5a);
+  const makeLargeManifest = (fileCount, byteLength) => {
+    const bytes = payload.subarray(0, byteLength);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const contentBase64 = bytes.toString('base64');
+    const files = Array.from({ length: fileCount }, (_, index) => ({
+      path: `src/overlay-budget-${index}.js`,
+      bytes: byteLength,
+      sha256,
+      contentBase64,
+    }));
+    return {
+      schema: 'spaceface.sourceBaseline.v1',
+      sourceCommit: 'a'.repeat(40),
+      sourceOverlayDigest: sourceOverlayDigest(files),
+      files,
+    };
+  };
+
+  const accepted = loadSourceOverlayManifest(makeLargeManifest(9, payload.length));
+  assert.equal(accepted.identity.totalBytes, 9 * payload.length);
+  assert.ok(accepted.identity.totalBytes > 64 * 1024 * 1024);
+  assert.throws(
+    () => loadSourceOverlayManifest(makeLargeManifest(17, 7_900_000)),
+    /exceeds the total byte limit/i,
+  );
+});
+
+test('frozen stylesheet bytes are served with the same immutable overlay identity', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-style-overlay-'));
+  await mkdir(path.join(root, 'styles'), { recursive: true });
+  await writeFile(path.join(root, 'styles', 'kit.css'), 'body { color: red }');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const pinned = manifest([['styles/kit.css', 'body { color: blue }']]);
+  const baseUrl = await listen(t, root, pinned);
+  const response = await fetch(`${baseUrl}/styles/kit.css`);
+  assert.equal(await response.text(), 'body { color: blue }');
+  assert.equal(response.headers.get('x-spaceface-source-overlay-digest'), pinned.sourceOverlayDigest);
+  assert.throws(() => loadSourceOverlayManifest(manifest([['styles/../../outside.css', 'bad']])), /allowlist/i);
+});
+
 test('ordinary server launches remain canonical and expose no overlay identity', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-source-overlay-default-'));
   await writeFile(path.join(root, 'index.html'), 'current-index');
@@ -113,10 +184,11 @@ test('creator captures exact frozen git bytes into an ignored manifest', async (
     '--name=' + name,
     '--path=index.html',
     '--path=src/main.js',
+    '--path=vendor/three.module.js',
   ], { cwd: ROOT, encoding: 'utf8', windowsHide: true });
   const created = JSON.parse(await readFile(output, 'utf8'));
   assert.match(created.sourceCommit, /^[a-f0-9]{40}$/);
-  assert.equal(created.files.length, 2);
+  assert.equal(created.files.length, 3);
   for (const entry of created.files) {
     const expected = execFileSync('git', ['show', `${created.sourceCommit}:${entry.path}`], {
       cwd: ROOT, encoding: 'buffer', windowsHide: true,

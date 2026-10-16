@@ -6,6 +6,7 @@
 // Chromium on the host GPU; headless SwiftShader is explicitly not performance evidence) and
 // carries a UI source digest so a stale baseline is itself a red, not a quiet pass.
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -29,6 +30,13 @@ export const UI_DOM_LAYOUT_SCOPE = 'ui-owner-synchronous-javascript-window';
  * synchronous UI owner, authored UI rAF callbacks, the whole game rAF callback, and unknown rAF work. */
 const UI_SOURCE_ROOTS = ['src/ui', 'styles', 'src/core', 'src/render'];
 
+function hashUiFile(hash, file, bytes) {
+  hash.update(file);
+  hash.update('\0');
+  hash.update(bytes.includes('\r\n') ? Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n')) : bytes);
+  hash.update('\0');
+}
+
 /** Content digest of the UI source the budget covers — the baseline's staleness contract.
  * Line endings are canonicalised to LF before hashing: checkout eol policy (autocrlf, .gitattributes)
  * legitimately smudges text blobs to CRLF on Windows while `git status` stays clean, so hashing raw
@@ -46,15 +54,50 @@ export function uiSourceDigest(repoRoot) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       else {
-        hash.update(relative(repoRoot, full).replaceAll('\\', '/'));
-        hash.update('\0');
-        const bytes = readFileSync(full);
-        hash.update(bytes.includes('\r\n') ? Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n')) : bytes);
-        hash.update('\0');
+        hashUiFile(hash, relative(repoRoot, full).replaceAll('\\', '/'), readFileSync(full));
       }
     }
   };
   for (const root of UI_SOURCE_ROOTS) walk(join(repoRoot, root));
+  return hash.digest('hex');
+}
+
+/** Hash the validated bytes an immutable overlay serves, after checking its frozen closure.
+ * --all-runtime alone omits non-JS UI files, so require every UI-root file as well. */
+export function uiSourceDigestFromOverlay(repoRoot, overlay) {
+  const commit = overlay?.identity?.sourceCommit;
+  if (!/^[a-f0-9]{40}$/i.test(commit || '') || !(overlay?.entries instanceof Map)) {
+    throw new Error('UI budget source overlay requires a validated frozen manifest');
+  }
+  const listing = execFileSync('git', ['ls-tree', '-r', '-z', '--name-only', commit, '--',
+    'index.html', 'src', 'scripts/lib', 'styles'], {
+    cwd: repoRoot, encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024,
+  }).split('\0').filter(Boolean);
+  const isUi = (file) => UI_SOURCE_ROOTS.some((root) => file.startsWith(`${root}/`));
+  const uiFiles = listing.filter(isUi);
+  const required = listing.filter((file) => isUi(file) || file === 'index.html'
+    || (file.startsWith('src/') && file.endsWith('.js'))
+    || (file.startsWith('scripts/lib/') && /\.(?:js|mjs|cjs)$/i.test(file)));
+  const missing = required.filter((file) => !overlay.entries.has(file));
+  if (missing.length) throw new Error(`UI budget source overlay is incomplete at ${commit}: ${missing.slice(0, 8).join(', ')}`);
+  const expectedUi = new Set(uiFiles);
+  const extra = [...overlay.entries.keys()].filter((file) => isUi(file) && !expectedUi.has(file));
+  if (extra.length) throw new Error(`UI budget source overlay includes UI files absent at ${commit}: ${extra.slice(0, 8).join(', ')}`);
+  if (!uiFiles.length) throw new Error('UI budget source overlay has no frozen UI files');
+  // Sort components, not whole path strings: DFS visits a/child before a.js, just like walk().
+  const compare = (a, b) => {
+    const left = a.split('/'), right = b.split('/');
+    for (let i = 0; i < Math.min(left.length, right.length); i++) {
+      if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
+    }
+    return left.length - right.length;
+  };
+  const hash = createHash('sha256');
+  for (const root of UI_SOURCE_ROOTS) {
+    for (const file of uiFiles.filter((name) => name.startsWith(`${root}/`)).sort(compare)) {
+      hashUiFile(hash, file, overlay.entries.get(file).body);
+    }
+  }
   return hash.digest('hex');
 }
 

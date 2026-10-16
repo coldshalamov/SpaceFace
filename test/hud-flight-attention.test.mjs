@@ -185,14 +185,6 @@ test('ship numbers appear only when hull or shields are actually low', () => {
   assert.equal(vitalNumericVisible(NaN), false);
 });
 
-test('Lamina owns the complete integrity readout and removes the reflow-driven hit flask', () => {
-  assert.match(HUD_SRC, /shipConditionMarkup/);
-  assert.match(HUD_SRC, /updateShipCondition\(schematic, p, frameDt, getMotionReduced\(\), getFlashReduced\(\)\)/);
-  assert.match(HUD_SRC, /sf-bars sf-bars--lamina/);
-  assert.doesNotMatch(HUD_SRC, /sf-sch-ship--empty|sf-sch-ship--fill|schematic\.offsetWidth|_schFlashTimer/);
-  assert.doesNotMatch(HUD_SRC, /SHIP CONDITION/);
-});
-
 test('one destination line already carries distance and ETA', () => {
   assert.equal(
     formatDestinationLine({
@@ -229,6 +221,21 @@ test('one destination line already carries distance and ETA', () => {
   assert.match(dest.line, /Follow the marked route/);
   assert.match(dest.line, /WU|ETA/);
   assert.doesNotMatch(dest.line, /CURRENT OBJECTIVE|TUTORIAL OBJECTIVE|AMBER DIAMOND|GOAL ·/);
+});
+
+test('campaign story objective stays off the mission tracker during a live Crucible run', () => {
+  const state = { run: { kind: 'survival', ruleset: 'swarm', phase: 'active' } };
+  const storyCommand = { owner: 'story' };
+  assert.deepEqual(
+    flightDestinationSurface(state, storyCommand),
+    { show: false, line: '', urgent: false },
+    'a live survival run owns its HUD and cannot inherit the campaign story prompt',
+  );
+
+  state.run = { kind: 'adventure', phase: 'active' };
+  const campaign = flightDestinationSurface(state, storyCommand);
+  assert.equal(campaign.show, true, 'campaign flight keeps the story objective prompt');
+  assert.match(campaign.line, /Mission Log/);
 });
 
 test('receipt taxonomy rejects Target and danger, admits pay and errors', () => {

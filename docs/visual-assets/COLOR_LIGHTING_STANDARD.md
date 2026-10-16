@@ -106,7 +106,7 @@ Rules:
   are what make a lamp read as neon. Sector post scales strength/threshold
   mildly (±0.16 strength scale, threshold bias ≤ 0).
 - Grade, contrast, saturation, ink, bloom colour and vignette are Look values
-  per mood (`post`): grade amount 0.7–0.9, vignette 0.20–0.34, contrast
+  per mood (`post`): grade amount 0.7–0.9, vignette 0.20–0.26, contrast
   1.12–1.22, saturation 1.10–1.22, ink ≤ 0.26 (the retired pass ran 1.0). Toe
   default 0.012 (cinematic 0.02), grain 0 except cinematic.
 - Colored bloom is bounded: hot cores may bloom white/colored; shadowed paint

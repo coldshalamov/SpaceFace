@@ -340,6 +340,16 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
   }
 #else
   float spaceContrastShapedSquared(float value) {
+    // Factor the two powers by the larger base. The ratio stays in [0,1], including exact
+    // black/white, so one power gives the same sigmoid without an overflowing endpoint.
+    // All authored moods/transitions are inside this range; their denominator is >=0.5,
+    // safely above the original floor. Unusual live tuning keeps that floor below.
+    if (uLookContrast >= 0.5 && uLookContrast <= 2.0) {
+      float complement = 1.0 - value;
+      float ratio = pow(min(value, complement) / max(value, complement), uLookContrast);
+      float shaped = (value < 0.5 ? ratio : 1.0) / (1.0 + ratio);
+      return shaped * shaped;
+    }
     float rise = pow(value, uLookContrast);
     float fall = pow(1.0 - value, uLookContrast);
     float shaped = rise / max(rise + fall, 0.00001);
@@ -384,7 +394,9 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     if (vignetteAmount > 0.001) {
       vec2 d = uv - vec2(0.5);
       float dist = dot(d, d) * 2.2;
-      float vig = 1.0 - smoothstep(0.25, 0.85, dist);
+      // Falloff stays out of the mid-frame (playable space reads clean) and spends the mood
+      // only in the outer corners: darkening begins ~85% of the way to the edge.
+      float vig = 1.0 - smoothstep(0.40, 0.95, dist);
       c *= mix(vec3(1.0), mix(uLookVignetteTint, vec3(1.0), vig), vignetteAmount);
     }
     return c;
@@ -404,8 +416,12 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float grainFrame
   ) {
     vec3 hdr = max(scene, vec3(0.0)) * exposure;
-    vec3 filmic = mix(spaceAcesFilmic(hdr), spaceRadianceShoulder(hdr),
-      0.55 * smoothstep(0.65, 2.5, max(hdr.r, max(hdr.g, hdr.b))));
+    vec3 filmic = spaceAcesFilmic(hdr);
+    float peak = max(hdr.r, max(hdr.g, hdr.b));
+    if (peak > 0.65) {
+      filmic = mix(filmic, spaceRadianceShoulder(hdr),
+        0.55 * smoothstep(0.65, 2.5, peak));
+    }
     vec3 color = mix(clamp(hdr, 0.0, 1.0), filmic, acesAmount);
     // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
     // shoulders so movement does not turn into flickering hard posterization. Do this
@@ -635,21 +651,37 @@ function contextLossGeneration(gl) {
 // handle without touching the wrappers, and destroy() clears program.program — in both cases
 // isReady() reads a handle the live context does not own: it answers null and warns
 // GL_INVALID_VALUE forever. The wrapper can never become ready either; the material re-acquires
-// a fresh wrapper on its next use. Track the context generation each wrapper was first seen
-// under so a stale wrapper is recognised without a native call, and treat it as ready.
+// a fresh wrapper on its next use. Track the originating context and generation so normal polls
+// never need a synchronous native check. If an already-seen wrapper crosses GL contexts, cancel
+// it before calling isReady() on the wrong context.
 const programSeenGenerations = new WeakMap();
+const retiredProgramWrappers = new WeakSet();
+
+// A wrapper can reach its first readiness poll only after restoration. Retire the
+// exact old cache while it still exists, before Three replaces info.programs.
+export function retireScenePipelineReadinessPrograms(renderer) {
+  const programs = renderer?.info?.programs;
+  if (!Array.isArray(programs)) return;
+  for (const program of programs) {
+    if (program && typeof program === 'object') retiredProgramWrappers.add(program);
+  }
+}
 
 export function programWrapperDead(gl, program) {
-  if (!program || !program.program) return true;
+  if (!program || !program.program || retiredProgramWrappers.has(program)) return true;
   if (!gl || typeof gl !== 'object') return false;
   const generation = contextLossGeneration(gl);
   const seen = programSeenGenerations.get(program);
   if (seen === undefined) {
     const lost = typeof gl.isContextLost === 'function' && gl.isContextLost();
-    programSeenGenerations.set(program, lost ? generation - 1 : generation);
+    programSeenGenerations.set(program, {
+      gl,
+      generation: lost ? generation - 1 : generation,
+      handle: program.program,
+    });
     return lost;
   }
-  return seen !== generation;
+  return seen.gl !== gl || seen.generation !== generation || seen.handle !== program.program;
 }
 
 /**
@@ -659,9 +691,24 @@ export function programWrapperDead(gl, program) {
  * (programReadiness below).
  */
 function programHandleInvalid(gl, program, generation) {
-  if (!program.program) return true;
+  if (!program || !program.program || retiredProgramWrappers.has(program)) return true;
   if (!gl || typeof gl !== 'object') return false;
-  return programHandleContext(gl).generation !== generation;
+  if (programHandleContext(gl).generation !== generation) return true;
+
+  const handle = program.program;
+  const seen = programSeenGenerations.get(program);
+  if (seen && (seen.gl !== gl || seen.handle !== handle)) {
+    // WebGLProgram handles are context-affine. A wrapper observed under another GL cannot be
+    // queried here; isReady() remains bound to its original context.
+    return true;
+  }
+  if (!seen) {
+    const lost = typeof gl.isContextLost === 'function' && gl.isContextLost();
+    if (lost) return true;
+    programSeenGenerations.set(program, { gl, generation, handle });
+    return false;
+  }
+  return seen.generation !== generation;
 }
 
 // 'ready' | 'pending' | 'invalid'. three's WebGLProgram.isReady() returns getProgramParameter(
@@ -707,6 +754,9 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
     paceQueue,
     join(gl, programs, settle) {
       if (!batch.accepting) return false;
+      // A shared drain can poll only one WebGL context. Another renderer keeps its own guarded
+      // standalone wait rather than mixing foreign handles into this cohort.
+      if (gl && batch.gl && gl !== batch.gl) return false;
       if (gl && !batch.gl) {
         batch.gl = gl;
         batch.generation = contextLossGeneration(gl);
@@ -1262,6 +1312,20 @@ function installUnreadyDrawGuard(renderer) {
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
   renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
+    // Three already ran object/material before-hooks. Its instance renderer skips
+    // zero counts only after program/uniform/binding work; avoid that work here.
+    // Match Three's dispatch precedence: BatchedMesh owns its draw list, and an
+    // InstancedMesh uses object.count even with an InstancedBufferGeometry.
+    if (object && geometry && object.isBatchedMesh !== true) {
+      if (object.isInstancedMesh === true) {
+        if (object.count === 0) return undefined;
+      } else if (geometry.isInstancedBufferGeometry === true && geometry.instanceCount === 0) {
+        const maxInstances = geometry._maxInstanceCount;
+        if (maxInstances === undefined || (typeof maxInstances === 'number' && maxInstances >= 0)) {
+          return undefined;
+        }
+      }
+    }
     // Recover available mip donors and check live upload safety in one allocation-free
     // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
     // fresh upload or orientation hold waits for real bytes before three binds them.
@@ -1281,13 +1345,13 @@ function installUnreadyDrawGuard(renderer) {
           const current = rec && rec.currentProgram;
           if (current) {
             const variant = linkedInstancingVariant(rec, material, object);
-            if (variant !== current) {
-              // A cached sibling can outlive its GL handle. Three's isReady closes
-              // over that deleted handle even after destroy clears .program.
-              compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
-              if (compiled && typeof variant.isReady === 'function') {
-                try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
-              }
+            // The current wrapper can still be linking when the scoped scene scan
+            // misses a live bind, just as a cached sibling can. Validate either
+            // selected wrapper before first-use discovery can block this draw.
+            // Three caches ready=true; warm draws issue no new GL readiness query.
+            compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
+            if (compiled && typeof variant.isReady === 'function') {
+              try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
             }
           } else if (stamped) {
             compiled = false;
@@ -1533,7 +1597,6 @@ export function createUnreadyDrawableGuard(renderer) {
   }
 
   function hideOneUnreadySceneDrawable(object) {
-    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
     if (!object || object.visible !== true) return;
     if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
         || object.isLine || object.isSprite || object.isInstancedMesh)) {
@@ -1546,6 +1609,10 @@ export function createUnreadyDrawableGuard(renderer) {
       object.visible = false;
       return;
     }
+    // Keep the ordinary readiness walk bounded. Orientation holds must journal every released
+    // drawable first, though, so a large detached package cannot leave the tail visible long
+    // enough for Three to upload its empty attributes before the draw guard runs.
+    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
     const props = renderer.properties;
     const list = object.material;
     if (Array.isArray(list)) {
@@ -1621,17 +1688,22 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function restoreUnreadySceneDrawables() {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
-    // Dev instrumentation: remember what was hidden during the pass so the ?drawhist
-    // sampler (which runs after visibility is restored) can still skip it. Bounded —
-    // the sampler clears the set each frame; when it is unarmed the set saturates.
-    const hiddenLog = renderer
-      ? (renderer.__sfLastHiddenDrawables || (renderer.__sfLastHiddenDrawables = new Set()))
-      : null;
+    // Keep the temporary visibility record only while the opt-in draw histogram will consume it.
+    // Unarmed readiness passes must not retain drawable roots across frames.
+    const recordHiddenDrawables = renderer?.__sfDrawHistogramArmed === true;
+    let hiddenLog = recordHiddenDrawables ? renderer.__sfLastHiddenDrawables : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
       if (object) object.visible = true;
-      if (object && hiddenLog && hiddenLog.size < 4096) hiddenLog.add(object);
+      if (object && recordHiddenDrawables) {
+        hiddenLog ||= (renderer.__sfLastHiddenDrawables = new Set());
+        if (hiddenLog.size < 4096) hiddenLog.add(object);
+      }
       unreadySceneScratch[i] = null;
+    }
+    if (!recordHiddenDrawables && renderer) {
+      renderer.__sfLastHiddenDrawables?.clear?.();
+      renderer.__sfLastHiddenDrawables = null;
     }
     unreadySceneCount = 0;
   }
@@ -2632,6 +2704,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);
       if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+      if (rtPost) {
+        // CAS presents the composite through this target. Its output-color-space key differs
+        // from the canvas variant, so link it here before the first sharpened frame.
+        renderer.setRenderTarget(rtPost);
+        if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+        renderer.setRenderTarget(null);
+      }
       // Every openingProgramMaterials() entry must be linked here: the opening submission gate
       // refuses the first picture until each one holds a program. casMat was listed but never
       // compiled, so every New Game sat on the gate's 15 s failsafe

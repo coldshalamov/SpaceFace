@@ -136,6 +136,7 @@ import {
 } from '../onboarding/verbSpeech.js';
 import { isHostileToPlayer } from './scanner.js';
 import { fittedCloakModule } from './cloak.js';
+import { lawfulPatrolOnGlass } from './lawSecurity.js';
 
 const FIT_FEEL_DEFS = new Map();
 for (const def of [...MODULES, ...WEAPONS]) {
@@ -597,6 +598,9 @@ export const onboarding = {
     bus.on('player:death', () => this._onRaidPlayerDeath());
     bus.on('pickup:collected', (p) => this._onClaimedPickup(p || {}));
     bus.on('heat:changed', (p) => this._onClaimedHeat(p || {}));
+    // TEACH-10 — the first wanted escalation teaches the stand-down path (own listener;
+    // the claimed-beat heat listener above is untouched).
+    bus.on('heat:changed', (p) => this._onWantedStandDownLesson(p || {}));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -3134,6 +3138,20 @@ export const onboarding = {
     // Level 0: the search ring cleared. Hold a short grace so a flicker cannot fake the escape.
     if (!claimed.wantedFired) return;
     if (claimed.clearSince == null) claimed.clearSince = this.state.simTime || 0;
+  },
+
+  // TEACH-10 — the first wanted escalation teaches the stand-down path. A UI/onboarding
+  // read of the law transition: heat:changed crossing INTO wanted (wantedCrossed with
+  // wanted true) while a lawful patrol is on glass (lawSecurity.lawfulPatrolOnGlass)
+  // earns one hint naming the surrender verb. Every later heat gain, every patrol-absent
+  // escalation, and every repeat stays silent; player.hints keeps it once per profile.
+  // No heat, rep, credit, cargo, or ship write — the law still owns the escalation.
+  _onWantedStandDownLesson(payload) {
+    if (!payload || payload.wanted !== true || payload.wantedCrossed !== true) return;
+    if (!lawfulPatrolOnGlass(this.state)) return;
+    this._showHint('firstWantedStandDown',
+      'WANTED — cut engines inside a patrol cone to surrender.',
+      payload);
   },
 
   _tickClaimed() {

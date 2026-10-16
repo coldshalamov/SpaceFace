@@ -388,6 +388,7 @@ export function fieldBodyProfile(entity, state, out = null) {
   profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
+  profile.coated = gooStatus(state, entity) != null;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
     : 1;

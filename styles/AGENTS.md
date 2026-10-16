@@ -2,29 +2,27 @@
 
 Frontend iteration (see the screen, then fix it): [`../docs/UI_VISUAL_ITERATION.md`](../docs/UI_VISUAL_ITERATION.md).
 `node scripts/ui-bench.mjs --shot=<id>` photographs the real screen over a still. Open that PNG.
-The standard you are judging it against: [`../design/frontend/THE_BAR.md`](../design/frontend/THE_BAR.md).
+The active standard and visual direction: [`../design/frontend/ORRERY.md`](../design/frontend/ORRERY.md)
+(handoff: [`../design/frontend/ORRERY_HANDOFF.md`](../design/frontend/ORRERY_HANDOFF.md)).
+`THE_BAR.md` and `ONE_PHOTOGRAPH.md` were superseded 2026-09-26 (their no-fake-CSS-material law and
+the `12px` type floor in `scripts/check-type-floor.mjs` remain binding).
 
-## There is one design system, and this directory is not it
+## One design system — ORRERY over Deckplate
 
-**Deckplate (`src/ui/deckplate/`) is the design system.** Tokens, materials, components, hardware,
-layout. Every colour, size, radius, duration, face and panel recipe on a player surface comes from
-`--dp-*` and the `.dp-*` classes. A screen assembles them; it does not restyle them.
+**ORRERY (`src/ui/orrery/`) over Deckplate (`src/ui/deckplate/`) owns tokens, instruments, and screen layouts.**
+Every colour, size, duration, face, and instrument recipe on a player surface comes from `--dp-*`
+tokens (`src/ui/deckplate/tokens.js` + `src/ui/orrery/tokens.js`) and the `.dp-*` / `.k-*` / `.orr-*`
+classes.
 
-Superseded 2026-09-22 by owner direction: the rule that each screen chose its own palette, radius,
-typography and panel recipe is what produced four stacked token roots. Consistency is the
-requirement now, not the hazard. The count and the evidence are in
-[`../design/frontend/THE_BAR.md`](../design/frontend/THE_BAR.md) §1.
-
-- **Never add a token root.** No new `--xx-` prefix. If Deckplate lacks something, add it to
-  Deckplate once, in `src/ui/deckplate/`, and every screen gets it.
-- **Never hand-mix a value.** No literal hex, no one-off `cubic-bezier`, no `border-radius: 8px`,
-  no `font-family` that is not a `--dp-face-*`.
-- **A new stylesheet in this directory is a defect.** Screen-specific CSS is *placement* — grid
-  positions, spans, sizes — and it belongs in `src/ui/deckplate/screens.js` next to the rest of the
-  placement layer. Material never goes in a screen sheet.
-- The sheets still here are being retired as their screens migrate. Progress and order:
-  [`../design/frontend/UNIFICATION_LEDGER.md`](../design/frontend/UNIFICATION_LEDGER.md). Do not
-  extend one; migrate the screen instead.
+- **Never add a token root.** No new `--xx-` prefix. Shared tokens belong in `src/ui/orrery/tokens.js`
+  or `src/ui/deckplate/tokens.js`.
+- **Honor the `12px` type floor (`node scripts/check-type-floor.mjs`).** Never drop `font-size` below
+  `12px` (or relative `em` below `max(12px, ...)`). When a narrow viewport or dial squeezes a label
+  or numeral, condense `Archivo`'s variable width (`"wdth" 78–100`) and tighten `letter-spacing`
+  rather than shrinking below `12px`.
+- **Do not add new standalone screen stylesheets in `styles/`.** Screen compositions belong in
+  `src/ui/orrery/*Layouts.js` (or `src/ui/deckplate/screens.js`). Existing sheets in `styles/` are
+  maintained in place until retired.
 
 ## What still binds
 

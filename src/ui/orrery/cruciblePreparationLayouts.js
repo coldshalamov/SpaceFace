@@ -95,7 +95,7 @@ ${D} .k-foot .orr-door-hint { text-align:right; font:400 12px/1.45 var(--dp-face
 /* foot rail: ‹ BACK + ESC keycap (matches new-game / save / tech-tree) */
 ${D} .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important; padding:10px 0 12px !important; min-height:44px !important; font:600 13.5px var(--dp-face-label) !important; font-stretch:112% !important; letter-spacing:.22em !important; text-transform:uppercase !important; color:rgb(255 253 248) !important; background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${D} .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
-${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important; font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important; line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important; font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important; line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${D} .k-foot .sf-back.k-word :is(.k-kbd, .dp-kbd, kbd) { display:none !important; }
 ${D} .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
 ${D} .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
@@ -299,19 +299,19 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .sf-crd-modes .orr-tile { min-height:72px !important; padding:6px 6px 6px !important; }
  ${D} .sf-crd-modes .fh-tile-art, ${D} .sf-crd-modes .fh-tile-art svg { height:34px !important; }
  ${D} .sf-crd-modes .fh-tile-art svg { width:34px !important; }
- ${D} .sf-crd-modes .fh-tile-legend { font-size:11px !important; letter-spacing:.1em !important; }
+ ${D} .sf-crd-modes .fh-tile-legend { font-size:12px !important; letter-spacing:.1em !important; }
  ${D} .sf-crd-stakes .orr-tile { min-height:64px !important; padding:6px 4px !important; }
  ${D} .orr-prep-stake-number { font-size:20px !important; }
  /* UI polish: at 720p the stake mark gives its 30px back so purse, pressure and yield all fit the tile unclipped */
  ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
- ${D} .orr-prep-stake-yield { font-size:11px !important; letter-spacing:0 !important; }
- ${D} .orr-prep-stake-pressure { letter-spacing:.04em !important; font-size:11px !important; }
+ ${D} .orr-prep-stake-yield { font-size:12px !important; letter-spacing:0 !important; }
+ ${D} .orr-prep-stake-pressure { letter-spacing:.04em !important; font-size:12px !important; }
  ${D} :is(.orr-prep-stake-pressure,.orr-prep-stake-yield) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
  /* Arena above the fold: hero carries the rooms — drop strip thumbs so both rows fit */
  ${D} .sf-crd-arenas .fh-tile-art { display:none !important; }
  ${D} .sf-crd-arenas .orr-tile { min-height:34px !important; padding:6px 2px !important; }
- ${D} .sf-crd-arenas .fh-tile-legend { font-size:11px !important; }
- ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:2px !important; font-size:11.5px !important; line-height:1.3 !important; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+ ${D} .sf-crd-arenas .fh-tile-legend { font-size:12px !important; }
+ ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:2px !important; font-size:12px !important; line-height:1.3 !important; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
  ${D} .orr-prep-disclosure { padding:2px 0; font-size:12px; }
  ${D} .orr-door-hero__words { bottom:110px !important; }
  ${D} > .k-foot { padding:8px 0 0 !important; }
@@ -476,7 +476,7 @@ ${A} .sf-cru-fine .orr-armory-keycap {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
-  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
@@ -584,7 +584,7 @@ ${R} .k-foot .sf-cru-kbd {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
-  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
@@ -595,7 +595,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled):
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:10px !important; padding:3px 7px 4px !important; min-width:0 !important;
   width:auto !important; height:auto !important;
-  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;

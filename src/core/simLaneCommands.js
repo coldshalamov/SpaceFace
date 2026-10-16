@@ -21,6 +21,11 @@ export function installSimCommandSink(sink) {
 }
 export function uninstallSimCommandSink() { _sink = null; }
 export function laneCommandSink() { return _sink; }
+export function laneTimeEffectsSnapshot(snapshot) {
+  if (!_sink) return false;
+  _sink({ kind: 'timeEffects', snapshot });
+  return true;
+}
 export function nextLaneToken(prefix) {
   return `${prefix || 'lane'}:${(++_tokenSeq).toString(36)}:${Date.now().toString(36)}`;
 }

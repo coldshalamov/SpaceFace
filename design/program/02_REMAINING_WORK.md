@@ -14,8 +14,8 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 ## Current execution board — 2026-08-09
 
 **Snapshot base:** `8b7b1d3b26181fdc38325a63f5e9d85574bf321b` on `master`, equal to
-`origin/master` when reconciled. The durable development handoff is
-[`DEVELOPMENT_HANDOFF_2026-08-09.md`](./DEVELOPMENT_HANDOFF_2026-08-09.md).
+`origin/master` when reconciled. The durable development handoff lives in git history
+(`DEVELOPMENT_HANDOFF_2026-08-09.md`, retired 2026-10-15).
 
 This section supersedes older dated status, ownership, ordering, “next,” “immediate,” and blocker
 claims below. The broader Alpha/Depth outcome tables remain retained scope until each outcome is done
@@ -107,7 +107,7 @@ unfinished dispatch leaf currently represented there.
 
 | Status | Finding | Exact next action |
 |---|---|---|
-| `CLOSED` | **Mining-prop stragglers (verify-open 2026-08-18; closed 2026-09-19).** The finding measured the pre-V3 bevel pass. Both live release GLBs are already the V3 material-truth re-author (manifest note "Opening-route industrial prop V3 2026-08-18"): the drone release is 17,924 triangles / 7 materials / 22 KTX2 with LOD0/1/2 8716/6704/2504, and the barge release is 37,332 triangles / 9 materials / 29 KTX2 with LOD 19500/12608/5224. Source, release, release-manifest, and render-package provenance agree by sha256. | No action. `PQ-210` was admitted on this stale finding and is withdrawn; see [`RESIDUALS_LEDGER.md`](./RESIDUALS_LEDGER.md) §A3 and receipt [`roadmap/receipts/MINING-PROP-V3-VERIFY-2026-09-19.md`](./roadmap/receipts/MINING-PROP-V3-VERIFY-2026-09-19.md). |
+| `CLOSED` | **Mining-prop stragglers (verify-open 2026-08-18; closed 2026-09-19).** The finding measured the pre-V3 bevel pass. Both live release GLBs are already the V3 material-truth re-author (manifest note "Opening-route industrial prop V3 2026-08-18"): the drone release is 17,924 triangles / 7 materials / 22 KTX2 with LOD0/1/2 8716/6704/2504, and the barge release is 37,332 triangles / 9 materials / 29 KTX2 with LOD 19500/12608/5224. Source, release, release-manifest, and render-package provenance agree by sha256. | No action. `PQ-210` was admitted on this stale finding and is withdrawn; see the RESIDUALS_LEDGER §A3 disposition (ledger retired to git history 2026-10-15) and receipt [`roadmap/receipts/MINING-PROP-V3-VERIFY-2026-09-19.md`](./roadmap/receipts/MINING-PROP-V3-VERIFY-2026-09-19.md). |
  Broader Alpha/Depth outcomes below remain
 planned scope where they have not yet been decomposed into leaves.
 
@@ -388,5 +388,20 @@ repository-state reconciliation, the roll-up remains **0 DONE, 16 IP-CP, 15 TODO
 5. Keep residual concurrent WIP separate, re-run status counts, and update
    [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) after every checkpoint or
    integration batch.
-6. Use [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) before recovering any archived donor
+6. Consult the donor-value closeout in git history (09_DONOR_VALUE_LEDGER.md, retired 2026-10-15) before recovering any archived donor
    slice. Only `master` remains registered; never reconstruct a whole donor merge.
+
+## Receipt follow-ups still owed (from RESIDUALS_LEDGER, folded in 2026-10-15)
+
+Each row names the owning lane; the receipt section is the evidence.
+
+| `roadmap/receipts/PQ-047-composition-REPORT.md` §Follow-ups | Multi-hauler predation convoys drop only the selected target's cargo | economy/encounter design leaf |
+| `roadmap/receipts/PQ-133.02.md` §7 | No p95 frame budget measured; fight not proven fun | measurement follow-up |
+| `roadmap/receipts/PQ-136-01-space-kit-props-REPORT.md` §Residual | 30 source-only identities need release-pipeline promotion | asset pipeline job (shared with wreck pack) |
+| `roadmap/receipts/PQ-137-07-REPORT.md` §What this does not do | Straight radial pull (tug of war) regime not integrable at 60 Hz | physics/feel follow-up |
+| `roadmap/receipts/PQ-137-10-smoke-REPORT.md` §What this does not claim | B2/B3/B4/B5/B6-damage/B8/B11 still OPEN in the contract | massline contract lane |
+| `roadmap/receipts/PQ-150.01-REPORT.md` §gaps 2–4 | Double speaker, unmeasured berth cost, no headed/playtest | `PQ-207.00`–`.03` |
+| `roadmap/receipts/PQ-180-00-REPORT.md` §What this does not claim | Nine UI surfaces never open under the probe | UI reachability lane (`PQ-180 .00`) |
+| `roadmap/receipts/PQ-195.01-REPORT.md` §Residuals | Arrestor overlap at the field boundary (visual leaf) | PICTURE lane; the `maskOf(fx)=0` broadphase-invisibility half landed 2026-10-04 (c98bbb9d4, `test/physics-legacy-custom-mask.test.mjs` 4/4, default-route invariance pinned) |
+| `roadmap/receipts/CHECK-ALL-REPAIR-ROUND2-2026-09-18.md` §Residuals | `check:all:smoke` 22/27; 5 reds are foreign defects/host load | filed here; owners fix in their lanes |
+| `roadmap/receipts/PQ-135-0*-REPORT.md` (umbrella) | `test/motion-lab-scenarios.test.mjs` red at fresh-root and HEAD (M1 stop ordering, M6 scissors, M8 morph abort, two mutation levers); never green in-tree; `squadRecipe` still stamped only by the lab (`cohortRecipe` live opt-in landed `ac870970d` — three Reach fodder squads + both swarm-screen reinforcement packages now stamp it on the ordinary spawn path) | kinematics/AI leaf — the scissors rail aims at a stale point while the target moves; PQ-135 stays open on the lab reds + striker fire-window admission + GPU chase-cam review, not a player-visible defect yet |

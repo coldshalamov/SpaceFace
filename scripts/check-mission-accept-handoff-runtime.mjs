@@ -12,7 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { reportStationHandoffFailure, installStationHandoffTimingObserver } from './lib/stationHandoffDiagnostics.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
@@ -21,11 +22,13 @@ const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
+let acceptTrace = null;
 
 try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
+  installCspSafePlaywrightPolling(page);
   await page.addInitScript(installStationHandoffTimingObserver);
   // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
   // harnesses never touch the machine save drawer, and store calls take the localStorage path.
@@ -45,12 +48,52 @@ try {
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game first-session rail');
+  await page.evaluate(() => {
+    window.__sfMissionHandoffLaunch = { started: false, failure: null };
+    const bus = window.SF && window.SF.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    bus.on('game:started', () => { window.__sfMissionHandoffLaunch.started = true; });
+    bus.on('game:startFailed', (payload) => {
+      window.__sfMissionHandoffLaunch.failure = {
+        code: String(payload?.code || '').slice(0, 200),
+        stage: String(payload?.stage || '').slice(0, 200),
+        error: String(payload?.error || payload?.message || payload || '').slice(0, 400),
+      };
+    });
+  });
   assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
   await page.waitForFunction(() => {
+    if (window.__sfMissionHandoffLaunch?.failure) {
+      throw new Error(`game:startFailed ${JSON.stringify(window.__sfMissionHandoffLaunch.failure)}`);
+    }
     const state = window.SF && window.SF.state;
     const player = state && state.entities && state.entities.get(state.playerId);
-    return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
-  }, null, { timeout: START_TIMEOUT_MS });
+    const render = state && state.render;
+    return !!(state && state.mode === 'flight'
+      && window.__sfMissionHandoffLaunch?.started === true
+      && player && player.alive && player.hull > 0
+      && render && render.flightVeilHoldsSim !== true
+      && Number.isFinite(render.firstPlayableFrameAt));
+  }, null, { timeout: START_TIMEOUT_MS, polling: 250 }).catch(async (error) => {
+    const detail = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const render = state && state.render;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      return {
+        launch: window.__sfMissionHandoffLaunch,
+        mode: state && state.mode,
+        tick: state && state.tick,
+        simTime: state && state.simTime,
+        player: player ? { id: player.id, alive: player.alive !== false, hull: player.hull } : null,
+        flightVeilHoldsSim: render && render.flightVeilHoldsSim,
+        firstPlayableFrameAt: render && render.firstPlayableFrameAt != null
+          ? render.firstPlayableFrameAt : null,
+        firstPicturePhase: render && render.openingFirstPicturePhase != null
+          ? render.openingFirstPicturePhase : null,
+      };
+    }).catch(() => null);
+    throw new Error(`${error.message} :: Mission handoff launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
+  });
 
   const dockTarget = await page.evaluate(() => {
     const sf = window.SF;
@@ -95,40 +138,66 @@ try {
       destStationId: dest ? dest.stationId : null,
       params: { cmdtyId, qty: 6 },
     };
-    // On the worker lane the facade's missions.boards is a read-only mirror — a direct
-    // mutation renders transiently but the sim never sees the offer, so accept denies.
-    // Post through the lane rpc so the seeded offer is authoritative in the sim; on the
-    // main lane laneRpc reports no handler and the in-process mutation is the authority.
-    let posted = false;
-    if (typeof sf.laneRpc === 'function') {
-      try {
-        const resp = await sf.laneRpc('missionsCall', { method: 'postBoardOffer', offer });
-        posted = !!(resp && resp.ok === true && resp.result && resp.result.ok === true);
-      } catch (_) { posted = false; }
-    }
-    if (!posted) {
-      const board = state.missions.boards[stationId] || { slots: [] };
-      board.slots = board.slots || [];
-      board.slots.unshift(offer);
-      state.missions.boards[stationId] = board;
-      sf.bus.emit('mission:updated', { missionId: null });
-    }
-    return { ok: true, stationId, cmdtyId, posted };
+    // The canonical worker owns the board. A transport acknowledgement and a successful
+    // method dispatch wrap the posting owner's verdict; neither alone proves it took the row.
+    // A facade mutation after refusal would only fabricate the UI half of this handoff.
+    const rpc = { op: 'missionsCall', args: { method: 'postBoardOffer', offer } };
+    let response = null;
+    let error = null;
+    try {
+      if (typeof sf.laneRpc !== 'function') throw new Error('laneRpc unavailable');
+      response = await sf.laneRpc(rpc.op, rpc.args);
+    } catch (cause) { error = String(cause?.message || cause).slice(0, 600); }
+    const result = response?.result?.result;
+    const posted = response?.ok === true && response.result?.ok === true
+      && result?.ok === true && result.offerId === offer.id;
+    let diag = null;
+    try { diag = typeof sf.simLaneDiag === 'function' ? sf.simLaneDiag() : null; }
+    catch (_) { /* Optional observation cannot replace the posting owner's verdict. */ }
+    return { ok: posted, stationId, cmdtyId, posted, rpc: {
+      ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null, error,
+    }, lane: diag ? { lane: diag.lane, replyCount: diag.replyCount,
+      missionDomainApplied: Object.fromEntries(Object.entries(diag.domainAppliedKeys || {})
+        .filter(([key]) => /^missions(?:\.|$)/.test(key)).slice(0, 32)) } : null };
   });
-  assert.equal(seeded.ok, true, 'probe should seed a commodity contract on the docked board');
+  assert.equal(seeded.ok, true,
+    'missions owner should post a commodity contract on the docked board: ' + JSON.stringify(seeded));
 
   // Go to Contracts, select the seeded offer, and Accept & Track it.
   await domClick(page, '[data-screen="station"] .sx-dock [data-nav="contracts"]');
   await waitForVisible(page, '[data-screen="station"] .sx-ct', 8000, 'Contracts board');
-  // On the worker lane the seeded offer crosses back on the missions domain mirror —
-  // a cold-tier leaf that re-signs on a multi-second cadence. Wait for the mirrored
-  // board to carry the offer before expecting the row; the main lane resolves on
-  // the first poll since the mutation is in-process.
+  // The board owner's posting event publishes the changed missions mirror in its reply.
+  // Wait for that authoritative row before expecting its rendered control.
   await page.waitForFunction((sid) => {
     const b = window.SF && window.SF.state && window.SF.state.missions && window.SF.state.missions.boards;
     return !!(b && b[sid]
       && (b[sid].slots || []).some((o) => o && o.id === 'handoff_probe_bulk_trade'));
-  }, seeded.stationId, { timeout: 20000 });
+  }, seeded.stationId, { timeout: 20000 }).catch(async (error) => {
+    // Failure-only read: distinguish an absent authoritative offer from a late facade mirror.
+    // The failed deadline remains the verdict even if this RPC's reply publishes the board.
+    let observationTimer;
+    const authoritativeBoard = await Promise.race([page.evaluate(async (stationId) => {
+      let timer;
+      const rpc = { op: 'missionsCall', args: { method: 'boardSlots', stationId } };
+      try {
+        const response = await Promise.race([
+          window.SF.laneRpc(rpc.op, rpc.args),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error('boardSlots observation exceeded 1500ms')), 1500);
+          }),
+        ]);
+        const slots = response?.result?.result;
+        return { ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null,
+          hasSeededOffer: Array.isArray(slots) ? slots.includes('handoff_probe_bulk_trade') : null };
+      } catch (cause) { return { ...rpc, error: String(cause?.message || cause).slice(0, 600) }; }
+      finally { clearTimeout(timer); }
+    }, seeded.stationId), new Promise((resolve) => {
+      observationTimer = setTimeout(() => resolve({ error: 'boardSlots page observation exceeded 2000ms' }), 2000);
+    })]).catch((cause) => ({ error: String(cause?.message || cause).slice(0, 600) }))
+      .finally(() => clearTimeout(observationTimer));
+    return reportStationHandoffFailure(page,
+      { boundary: 'posted mission mirror', seeded, authoritativeBoard }, issues, error);
+  });
   await page.waitForFunction(() => !!document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]'), null, { timeout: 6000 }).catch((error) =>
     reportStationHandoffFailure(page, { boundary: 'posted mission row', seeded }, issues, error));
   const before = await page.evaluate(() => window.SF.state.missions.active.filter((m) => m && m.status === 'active').length);
@@ -144,33 +213,17 @@ try {
   // tracked mission — was working the whole time. The selector is corrected; every downstream
   // assertion below is unchanged, and the disabled-state check is new so a readiness-gated dossier
   // reports "blocked" rather than silently clicking nothing.
-  // The dossier re-renders on board events (the entry-tier writ's epoch refresh among them), so a
-  // single pre-queried click can land on a detached node under runner load. Re-query and click on
-  // a short cadence until the board reports the commit or the window closes.
-  let commit = null;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    commit = await page.evaluate(() => {
-      const btn = document.querySelector('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]')
-        || document.querySelector('[data-screen="station"] [data-accept="handoff_probe_bulk_trade"]');
-      if (!btn) return { found: false };
-      if (btn.disabled) return { found: true, disabled: true, label: (btn.textContent || '').trim() };
-      btn.click();
-      return { found: true, disabled: false, connected: btn.isConnected };
-    });
-    if (!commit.found || commit.disabled) break;
-    await page.waitForTimeout(250);
-    const settled = await page.evaluate(() => {
-      const state = window.SF.state;
-      const trackedId = state.ui && state.ui.trackedMissionId;
-      // The board offer becomes a newly numbered m_N instance; its sourceOfferId is the receipt.
-      return !!(state.missions.active || []).some((m) => m && m.status === 'active'
-        && m.sourceOfferId === 'handoff_probe_bulk_trade' && trackedId === m.id);
-    });
-    if (settled) break;
-  }
+  // Query and activate in one page callback so a repaint cannot detach a pre-queried node.
+  // A valid activation starts the hold and worker request exactly once. The controller disables
+  // its still-labelled "Accept" key while that RPC is pending; this is distinct from an authored
+  // readiness blocker, which says "Cannot accept…" and renders the actual reason.
+  // Browser-process tracing can still finish when a main-thread task prevents
+  // the failure-only page snapshot from running. Keep it to this one handoff.
+  acceptTrace = await startStationHandoffTrace(browser);
+  const commit = await page.evaluate(attemptSeededMissionAccept);
   // HOLD-COMMIT RACE (probe-robustness, 2026-10-03). A synthetic click on [data-accept] arms the
   // dossier's assistive-tech auto-hold (450ms + ~260ms retract). On a frame-starved host the hold
-  // fires after this poll window; on a live-frame host it fires inside it — acceptMission then
+  // fires after this callback; on a live-frame host it may already have fired — acceptMission then
   // filters the consumed offer off the board and [data-accept] legitimately disappears. Either
   // outcome proves the control worked, so a missing button must fall back to the accept's own
   // evidence (the mission is active + tracked) before asserting.
@@ -185,7 +238,8 @@ try {
     (commit && commit.found) || (consumed.grew && consumed.tracked), true,
     'Contracts dossier should expose an accept-and-bind control for the offer: ' + JSON.stringify({ commit, consumed }),
   );
-  assert.equal(!!(commit && commit.found && commit.disabled), false,
+  assert.equal(!!(commit && commit.found
+    && (commit.readinessBlocked || (commit.disabled && !commit.pending))), false,
     'the seeded offer should be route-clear, not readiness-blocked: ' + JSON.stringify(commit));
 
   // Accept + Track continuity: the seeded mission becomes active AND tracked (nav waypoint plotting
@@ -200,18 +254,26 @@ try {
       && m.sourceOfferId === 'handoff_probe_bulk_trade');
     return !!(active.length > prev && tracked);
   }, before, { timeout: 10000 }).catch((error) =>
-    reportAcceptHandoffFailure(page, { before, seeded, commit, consumed }, issues, error));
+    reportAcceptHandoffFailure(page, { before, seeded, commit, consumed }, issues, error))
+    .finally(() => acceptTrace.stop());
 
   // Plot a trade course for the tracked commodity (what tracking a cargo job does in flight); the
-  // Market must then flag it. Uses the canonical market nav helper via the bus contract.
-  await page.evaluate(() => {
-    const state = window.SF.state;
+  // Market must then flag it. Run the shipped helper in the page realm so its laneSetNavWaypoint
+  // call reaches the worker when the canonical route is running there, then wait for the mirror.
+  const navSeed = await page.evaluate(async () => {
+    const sf = window.SF;
+    const state = sf.state;
     const sid = state.ui.dockedStationId;
     const cid = Object.keys((state.economy.markets && state.economy.markets[sid]) || { cmdty_ore_iron: 1 })[0];
-    state.nav = state.nav || {};
-    state.nav.waypoint = { kind: 'trade', commodityId: cid, stationId: sid, label: 'Tracked cargo' };
-    window.SF.bus.emit('nav:waypoint', state.nav.waypoint);
+    const { applyTradeNavigation } = await import('/src/ui/market/tradeLogic.js');
+    applyTradeNavigation({ state, bus: sf.bus }, sid, cid);
+    return { stationId: sid, commodityId: cid };
   });
+  await page.waitForFunction(({ stationId, commodityId }) => {
+    const wp = window.SF && window.SF.state && window.SF.state.nav && window.SF.state.nav.waypoint;
+    return !!(wp && wp.kind === 'trade' && wp.stationId === stationId && wp.commodityId === commodityId);
+  }, navSeed, { timeout: DOCK_TIMEOUT_MS }).catch((error) =>
+    reportStationHandoffFailure(page, { boundary: 'trade waypoint mirror', navSeed }, issues, error));
 
   const active = await page.evaluate(() => {
     const state = window.SF.state;
@@ -252,6 +314,7 @@ try {
 } catch (err) {
   throw err;
 } finally {
+  if (acceptTrace) await acceptTrace.stop();
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
 }
@@ -274,6 +337,9 @@ async function reportMarketHandoffFailure(page, attempt, issues, originalError) 
 
 async function reportHandoffFailure(page, collector, label, context, issues, originalError) {
   let timer;
+  const recent = (rows) => rows.slice(-8).map((row) => ({
+    ...row, text: String(row.text || '').slice(0, 1200),
+  }));
   try {
     const snapshot = await Promise.race([
       page.evaluate(collector),
@@ -281,15 +347,14 @@ async function reportHandoffFailure(page, collector, label, context, issues, ori
         timer = setTimeout(() => reject(new Error(label + ' snapshot exceeded 2000ms')), 2000);
       }),
     ]);
-    const recent = (rows) => rows.slice(-8).map((row) => ({
-      ...row, text: String(row.text || '').slice(0, 1200),
-    }));
     console.error('[mission-handoff] ' + label + ' snapshot:', JSON.stringify({
       ...context, ...snapshot,
       pageErrors: recent(issues.errorIssues()), pageWarnings: recent(issues.warningIssues()),
     }));
   } catch (diagnosticError) {
-    try { console.error('[mission-handoff] ' + label + ' snapshot unavailable:', diagnosticError?.message); }
+    try { console.error('[mission-handoff] ' + label + ' snapshot unavailable:', diagnosticError?.message,
+      JSON.stringify({ ...context,
+        pageErrors: recent(issues.errorIssues()), pageWarnings: recent(issues.warningIssues()) })); }
     catch (_) { /* Even a diagnostic logging failure cannot replace the original assertion. */ }
   } finally {
     clearTimeout(timer);
@@ -322,6 +387,24 @@ function collectDockHandoffSnapshot() {
   };
 }
 
+// Self-contained actor callback: readiness comes from the live dossier's authored explanation.
+function attemptSeededMissionAccept() {
+  const key = document.querySelector('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]')
+    || document.querySelector('[data-screen="station"] [data-accept="handoff_probe_bulk_trade"]');
+  if (!key) return { found: false };
+  const ariaLabel = String(key.getAttribute('aria-label') || '').slice(0, 600);
+  const gate = document.querySelector('[data-screen="station"] .sx-dossier__gate.k-bad');
+  const reason = String(gate?.textContent || '').trim().slice(0, 600);
+  const readinessBlocked = !!gate || /^Cannot accept\b/.test(ariaLabel);
+  const pending = key.disabled && !readinessBlocked && /^Accept\b/.test(ariaLabel);
+  const attempt = { found: true, disabled: !!key.disabled, pending, readinessBlocked,
+    label: String(key.textContent || '').trim().slice(0, 300), ariaLabel,
+    reason: reason || (readinessBlocked ? ariaLabel : null) };
+  if (key.disabled || readinessBlocked) return attempt;
+  key.click();
+  return { ...attempt, activated: true, connected: key.isConnected };
+}
+
 function collectAcceptHandoffSnapshot() {
   const state = window.SF?.state;
   const stationId = state?.ui?.dockedStationId;
@@ -348,6 +431,7 @@ function collectAcceptHandoffSnapshot() {
     acceptKey: key ? { missionId: key.getAttribute('data-accept'), connected: key.isConnected,
       disabled: key.disabled, holding: key.classList.contains('is-holding'),
       label: String(key.textContent || '').trim().slice(0, 300),
+      ariaLabel: String(key.getAttribute('aria-label') || '').slice(0, 600),
       holdProgress: ring?.style?.getPropertyValue('--sf-hold-p') ?? null } : null,
   };
 }

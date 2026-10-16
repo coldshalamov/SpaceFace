@@ -12,6 +12,27 @@ export const STATUS_ATTACHED_UNMOORED_ID = UNMOORED_STATUS_ID;
 export const STATUS_ATTACHED_CAP = 8;
 export const STATUS_ATTACHED_TICK_HZ = 60;
 
+// PIC-31 — damaged-hull vent id and band-entry edge. The bands are owned by the integrity
+// instrument (src/ui/views/hullIntegrity.js) and mirrored by src/combat/damage.js; this
+// module never changes them. The vent is not a status-bag entry, so it has its own
+// collector below rather than a STATUS_ROWS row.
+export const STATUS_ATTACHED_VENT_ID = 'status_hull_vent';
+export const HULL_VENT_ENTRY_FRACTION = 0.55;
+export const HULL_VENT_CADENCE_S = 0.14;
+
+// PIC-31 — the one status-id → matter-kind map, shared with
+// src/render/vfx/statusMatterVfx.js so the loop's touch gate and this
+// collector can never disagree on what draws. Unknown ids draw nothing.
+export function matterKindForStatusId(statusId) {
+  if (statusId === STATUS_ATTACHED_BURN_ID) return STATUS_ATTACHED_KIND.BURN;
+  if (statusId === STATUS_ATTACHED_GOO_ID) return STATUS_ATTACHED_KIND.GOO;
+  if (statusId === STATUS_ATTACHED_GRAVITY_ID) return STATUS_ATTACHED_KIND.GRAVITY;
+  if (statusId === STATUS_ATTACHED_PINNED_ID) return STATUS_ATTACHED_KIND.PINNED;
+  if (statusId === STATUS_ATTACHED_UNMOORED_ID) return STATUS_ATTACHED_KIND.UNMOORED;
+  if (statusId === STATUS_ATTACHED_VENT_ID) return 'vent';
+  return null;
+}
+
 export const STATUS_ATTACHED_KIND = Object.freeze({
   BURN: 'burn',
   GOO: 'goo',
@@ -114,7 +135,7 @@ function _nextRankedRecord() {
     rec = {
       entityId: 0, statusId: '', kind: '', stacks: 1, remainingS: 0,
       expiresTick: 0, tick: 0, radius: 0, x: 0, z: 0, vx: 0, vz: 0, dist2: 0,
-      key: 0, entityNum: 0,
+      key: 0, entityNum: 0, side: 0, dx: 0, dz: 0, hullFraction: 0,
     };
     _rankedPool[_rankedUsed] = rec;
   }
@@ -178,6 +199,44 @@ export function collectStatusAttachedVictims(state, out = []) {
       rec.dist2 = dx * dx + dz * dz;
     }
   }
+  // PIC-31 — venting hulls join the same ranked victim flow so the vfx.js loop
+  // admits, cadences and draws them with no loop change. The latch lives on the
+  // combat runtime (owned by src/combat/damage.js); this pass only admits it
+  // while the hull actually sits below the entry edge and alive — the same rule
+  // collectHullVentRecords pins. Pooled records, no per-frame allocation.
+  for (const key in table) {
+    const runtime = table[key];
+    const vent = runtime && runtime.hullVent;
+    if (!vent || typeof vent !== 'object') continue;
+    const entity = entities.get(key) || entities.get(Number(key));
+    if (!entity || entity.alive === false || !entity.pos) continue;
+    const max = Number(entity.hullMax) || 0;
+    if (!(max > 0)) continue;
+    const fraction = Math.max(0, Number(entity.hull) || 0) / max;
+    if (!(fraction < HULL_VENT_ENTRY_FRACTION)) continue;
+    const dx = (Number(entity.pos.x) || 0) - px;
+    const dz = (Number(entity.pos.z) || 0) - pz;
+    const rec = _nextRankedRecord();
+    rec.entityId = entity.id;
+    rec.statusId = STATUS_ATTACHED_VENT_ID;
+    rec.key = _victimKey(entity.id, STATUS_ATTACHED_VENT_ID);
+    rec.entityNum = typeof entity.id === 'number' ? entity.id : 0;
+    rec.kind = 'vent';
+    rec.stacks = 1;
+    rec.remainingS = Infinity;
+    rec.expiresTick = Infinity;
+    rec.tick = tick;
+    rec.radius = Math.max(2, Number(entity.radius) || 6);
+    rec.x = Number(entity.pos.x) || 0;
+    rec.z = Number(entity.pos.z) || 0;
+    rec.vx = Number.isFinite(entity.vel?.x) ? entity.vel.x : 0;
+    rec.vz = Number.isFinite(entity.vel?.z) ? entity.vel.z : 0;
+    rec.dist2 = dx * dx + dz * dz;
+    rec.side = vent.side === -1 ? -1 : 1;
+    rec.dx = (Number(vent.x) || 0) - rec.x;
+    rec.dz = (Number(vent.z) || 0) - rec.z;
+    rec.hullFraction = fraction;
+  }
   _rankedView.length = _rankedUsed;
   for (let i = 0; i < _rankedUsed; i++) _rankedView[i] = _rankedPool[i];
   // Numeric tie-break first so the localeCompare strings only allocate on exotic id shapes.
@@ -195,6 +254,22 @@ export function collectStatusAttachedVictims(state, out = []) {
  * flash keeps the hull mark and dims it.
  */
 export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, dt = 0) {
+  // PIC-31 — vent victims carry the hit seat on the pooled record; the vent
+  // planner below owns their cadence. planHullVentEmit is hoisted, so the
+  // forward reference is safe.
+  if (victim && victim.statusId === STATUS_ATTACHED_VENT_ID) {
+    return planHullVentEmit({
+      kind: 'vent',
+      entityId: victim.entityId,
+      radius: victim.radius,
+      side: victim.side,
+      dx: victim.dx,
+      dz: victim.dz,
+      vx: victim.vx,
+      vz: victim.vz,
+      hullFraction: victim.hullFraction,
+    }, cadenceAgeS, accessibility, dt);
+  }
   const row = victim && STATUS_ROWS[victim.statusId];
   if (!row || !victim || !(victim.remainingS > 0)) {
     return NO_EMIT_INVALID;
@@ -285,6 +360,105 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
     }
   }
   return { emit: true, nextCadenceAgeS: age, sprites, remainingS: victim.remainingS, stacks };
+}
+
+// PIC-31 — damaged-hull vent records. Presentation only: the damage router owns the
+// runtime.hullVent latch; this collector only admits it while the hull actually sits
+// below the damaged-band entry edge and alive. Repair above the band and death stop
+// here (death also clears the latch in damage.js), so a vent never outlives trouble.
+// At most one record per hull: the latch is a single slot, overwritten on re-entry.
+export function collectHullVentRecords(state, out = []) {
+  out.length = 0;
+  const table = state && state.combat && state.combat.entities;
+  const entities = state && state.entities;
+  if (!table || typeof table !== 'object' || !entities || typeof entities.get !== 'function') {
+    return out;
+  }
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  for (const key in table) {
+    const runtime = table[key];
+    const vent = runtime && runtime.hullVent;
+    if (!vent || typeof vent !== 'object') continue;
+    const entity = entities.get(key) || entities.get(Number(key));
+    if (!entity || entity.alive === false || !entity.pos) continue;
+    const max = Number(entity.hullMax) || 0;
+    if (!(max > 0)) continue;
+    const fraction = Math.max(0, Number(entity.hull) || 0) / max;
+    if (!(fraction < HULL_VENT_ENTRY_FRACTION)) continue;
+    if (out.length >= STATUS_ATTACHED_CAP) break;
+    out.push({
+      entityId: entity.id,
+      statusId: STATUS_ATTACHED_VENT_ID,
+      kind: 'vent',
+      side: vent.side === -1 ? -1 : 1,
+      x: Number(entity.pos.x) || 0,
+      z: Number(entity.pos.z) || 0,
+      dx: (Number(vent.x) || 0) - (Number(entity.pos.x) || 0),
+      dz: (Number(vent.z) || 0) - (Number(entity.pos.z) || 0),
+      radius: Math.max(2, Number(entity.radius) || 6),
+      hullFraction: fraction,
+      startedTick: Number.isInteger(vent.startedTick) ? vent.startedTick : 0,
+      tick,
+      vx: Number.isFinite(entity.vel?.x) ? entity.vel.x : 0,
+      vz: Number.isFinite(entity.vel?.z) ? entity.vel.z : 0,
+    });
+  }
+  return out;
+}
+
+/**
+ * PIC-31 — one cadence decision for a venting hull. Gas parcels peel off the recorded
+ * hit point and drift outward along it, with inherited velocity keeping them with the
+ * ship. Reduced motion holds a stable body mark; reduced flash keeps it dimmer.
+ * Deterministic: the parcel variation hashes from (entityId, side), never Math.random.
+ */
+export function planHullVentEmit(vent, cadenceAgeS, accessibility = {}, dt = 0) {
+  if (!vent || vent.kind !== 'vent') {
+    return NO_EMIT_INVALID;
+  }
+  const motionReduce = !!accessibility.motionReduce;
+  const flashReduce = !!accessibility.flashReduce;
+  const period = HULL_VENT_CADENCE_S;
+  let age = Math.max(0, Number(cadenceAgeS) || 0) + Math.max(0, Number(dt) || 0);
+  let emit = false;
+  if (age >= period) {
+    emit = true;
+    age %= period;
+  }
+  if (!emit) {
+    return noEmitAt(age);
+  }
+  const radius = Math.max(2, Number(vent.radius) || 6);
+  const side = vent.side === -1 ? -1 : 1;
+  const travelling = !motionReduce;
+  const seed = statusSeed(vent.entityId, STATUS_ATTACHED_VENT_ID, side < 0 ? 1 : 2);
+  const hx = Number(vent.dx) || 0;
+  const hz = Number(vent.dz) || 0;
+  const hLen = Math.hypot(hx, hz) || 1;
+  const carryX = travelling ? (Number(vent.vx) || 0) * 0.72 : 0;
+  const carryZ = travelling ? (Number(vent.vz) || 0) * 0.72 : 0;
+  const flashScale = flashReduce ? 0.32 : 1;
+  const sizeScale = flashReduce ? 0.72 : 1;
+  const peel = Math.min(5, radius * 0.32);
+  const count = motionReduce ? 1 : (flashReduce ? 1 : 2);
+  const sprites = [];
+  for (let i = 0; i < count; i++) {
+    const push = travelling ? peel * (0.6 + 0.4 * seed + i * 0.35) : 0;
+    sprites.push({
+      kind: 'puff',
+      life: 0.7,
+      size0: 0.9 * sizeScale * radius * 0.14,
+      size1: 2.4 * sizeScale * radius * 0.22,
+      opacity0: 0.48 * flashScale,
+      opacity1: 0.08 * flashScale,
+      color: i % 2 ? '#e8f1f8' : '#9fb3c8',
+      vx: travelling ? carryX + (hx / hLen) * push : 0,
+      vz: travelling ? carryZ + (hz / hLen) * push : 0,
+      y: 0.08,
+      offset: side * 0.5 * radius,
+    });
+  }
+  return { emit: true, nextCadenceAgeS: age, sprites, hullFraction: vent.hullFraction, side };
 }
 
 const _ACC_NONE = Object.freeze({ motionReduce: false, flashReduce: false });

@@ -15,9 +15,10 @@
 // Lab session is present (state.run.kind === 'lab' && phase !== 'inactive'); the gate is re-read
 // on every applyMinimum recompute, not only at request time.
 
-import { laneWriteSetting } from './simLaneCommands.js';
+import { laneTimeEffectsSnapshot } from './simLaneCommands.js';
 
 const SERVICE_BY_STATE = new WeakMap();
+const BRIDGE_BY_STATE = new WeakMap();
 
 // Ceiling matches MAX_CATCHUP_STEPS in src/core/simulationRunner.js: the runner never takes more
 // than four fixed 60 Hz steps in one presentation frame, so a Lab speed above 4 cannot produce
@@ -26,6 +27,21 @@ export const LAB_SPEED_MAX = 4;
 
 export function readTimeEffectsRequests(state) {
   return SERVICE_BY_STATE.get(state)?.describeRequests() || {};
+}
+
+// Only requests authored in this realm cross the boundary. Mirrored requests participate in
+// composition but are never exported again, so a released effect cannot feed back into itself.
+export function readLocalTimeEffectsSnapshot(state) {
+  return BRIDGE_BY_STATE.get(state)?.snapshot() || null;
+}
+
+export function applyRemoteTimeEffectsSnapshot(state, origin, snapshot) {
+  createTimeEffects(state);
+  return BRIDGE_BY_STATE.get(state).receive(origin, snapshot);
+}
+
+export function setTimeEffectsGeneration(state, generation) {
+  return BRIDGE_BY_STATE.get(state)?.setGeneration(generation) || false;
 }
 
 function assertState(state) {
@@ -67,6 +83,10 @@ export function createTimeEffects(state) {
   if (existing) return existing;
 
   const requests = new Map();
+  const remoteRequests = new Map();
+  let generation = 0;
+  let revision = 0;
+  let snapshot = Object.freeze({ generation, revision, requests: Object.freeze({}) });
   let effectiveScale = 1;
   if (state.timeScale !== effectiveScale) state.timeScale = effectiveScale;
 
@@ -75,7 +95,7 @@ export function createTimeEffects(state) {
     let minLabSpeed = 1;
     let sawLabSpeed = false;
     const labLive = isLiveLabRun(state);
-    requests.forEach((request) => {
+    const visit = (request) => {
       if (typeof request.scale === 'number' && request.scale < minScale) minScale = request.scale;
       // labSpeed lives in [1, 4], so the empty-set default of 1 cannot be a running min —
       // the first live request must seed it, then later requests may only lower it.
@@ -83,17 +103,60 @@ export function createTimeEffects(state) {
         if (!sawLabSpeed || request.labSpeed < minLabSpeed) minLabSpeed = request.labSpeed;
         sawLabSpeed = true;
       }
-    });
+    };
+    requests.forEach(visit);
+    remoteRequests.forEach((remote) => remote.requests.forEach(visit));
     const next = minScale * minLabSpeed;
     effectiveScale = next;
-    // The worker lane's sim reads this scalar sim-side; ship the write, then
-    // apply the local one (off-lane laneWriteSetting falls through to state).
-    if (state.timeScale !== next) {
-      laneWriteSetting(state, 'timeScale', next);
-      state.timeScale = next;
-    }
+    if (state.timeScale !== next) state.timeScale = next;
     return next;
   }
+
+  function publishLocal() {
+    const local = {};
+    requests.forEach((request, source) => { local[source] = Object.freeze({ ...request }); });
+    snapshot = Object.freeze({ generation, revision: ++revision, requests: Object.freeze(local) });
+    laneTimeEffectsSnapshot(snapshot);
+  }
+
+  BRIDGE_BY_STATE.set(state, {
+    snapshot: () => snapshot,
+    setGeneration(next) {
+      if (!Number.isSafeInteger(next) || next <= generation) return false;
+      generation = next;
+      // A fresh snapshot from the other realm re-establishes its still-live requests. Old
+      // lifecycle replies cannot resurrect an effect after a resume or a new route boundary.
+      remoteRequests.clear();
+      publishLocal();
+      applyMinimum();
+      return true;
+    },
+    receive(origin, incoming) {
+      assertSource(origin);
+      if (!incoming || !Number.isSafeInteger(incoming.generation)
+        || !Number.isSafeInteger(incoming.revision) || incoming.revision < 0 || incoming.generation < generation
+        || !incoming.requests || typeof incoming.requests !== 'object'
+        || Array.isArray(incoming.requests)) return false;
+      const previous = remoteRequests.get(origin);
+      if (previous && (incoming.generation < previous.generation
+        || (incoming.generation === previous.generation && incoming.revision <= previous.revision))) {
+        // Run membership may have changed independently of the request revision (Lab speed).
+        applyMinimum();
+        return false;
+      }
+      const received = new Map();
+      for (const [source, request] of Object.entries(incoming.requests)) {
+        assertSource(source);
+        if (!request || (!hasOwn(request, 'scale') && !hasOwn(request, 'labSpeed'))) return false;
+        if (hasOwn(request, 'scale')) assertScale(request.scale);
+        if (hasOwn(request, 'labSpeed')) assertLabSpeed(request.labSpeed);
+        received.set(source, { ...request });
+      }
+      remoteRequests.set(origin, { generation: incoming.generation, revision: incoming.revision, requests: received });
+      applyMinimum();
+      return true;
+    },
+  });
 
   const service = {
     set(source, request) {
@@ -108,24 +171,26 @@ export function createTimeEffects(state) {
       const stored = {};
       if (hasScale) stored.scale = request.scale;
       if (hasLabSpeed) stored.labSpeed = request.labSpeed;
+      const previous = requests.get(source);
       requests.set(source, stored);
+      if (!previous || previous.scale !== stored.scale || previous.labSpeed !== stored.labSpeed) publishLocal();
       return applyMinimum();
     },
 
     clear(source) {
       assertSource(source);
-      requests.delete(source);
+      if (requests.delete(source)) publishLocal();
       return applyMinimum();
     },
 
     reset() {
-      requests.clear();
-      effectiveScale = 1;
-      if (state.timeScale !== 1) {
-        laneWriteSetting(state, 'timeScale', 1);
-        state.timeScale = 1;
+      if (requests.size > 0) {
+        requests.clear();
+        publishLocal();
       }
-      return effectiveScale;
+      // The other realm still owns its holds. A sim run reset must not release the loading
+      // veil or a modal which presentation has not closed yet.
+      return applyMinimum();
     },
 
     getEffectiveScale() {
@@ -137,6 +202,9 @@ export function createTimeEffects(state) {
     describeRequests() {
       const out = {};
       requests.forEach((request, source) => { out[source] = { ...request }; });
+      remoteRequests.forEach((remote, origin) => remote.requests.forEach((request, source) => {
+        out[Object.prototype.hasOwnProperty.call(out, source) ? `${origin}:${source}` : source] = { ...request };
+      }));
       return out;
     },
   };

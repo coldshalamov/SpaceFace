@@ -29,6 +29,7 @@ import { isPlayerWanted } from '../systems/heat.js';
 
 const DECK_ID = 'impound-pay';
 const FINE_DECK_ID = 'law-fine';
+const RESTITUTION_DECK_ID = 'restitution-bill';
 
 export const impoundPayPrompt = {
   name: 'impoundPayPrompt',
@@ -43,6 +44,10 @@ export const impoundPayPrompt = {
     this._onFine = (p) => this._handleFineAssessed(p);
     this._onFineUndock = () => this._surfaceFine();
     this._onFineRefused = (p) => this._handleFineRefused(p);
+    this._onRestitutionNoted = (p) => this._handleRestitutionNoted(p);
+    this._onRestitutionPaid = (p) => this._handleRestitutionPaid(p);
+    this._onRestitutionUndock = () => this._surfaceRestitution();
+    this._onRestitutionExit = () => this._dismissRestitution();
     if (this._bus && this._bus.on) {
       this._bus.on('law:impoundPayOffer', this._onOffer);
       this._bus.on('law:impoundPayRefused', this._onRefused);
@@ -55,6 +60,10 @@ export const impoundPayPrompt = {
       this._bus.on('dock:undocked', this._onFineUndock);
       this._bus.on('sector:exit', () => this._dismissFine(true));
       this._bus.on('dock:docked', () => this._dismissFine(false));
+      this._bus.on('law:obligationNoted', this._onRestitutionNoted);
+      this._bus.on('law:obligationPaid', this._onRestitutionPaid);
+      this._bus.on('dock:undocked', this._onRestitutionUndock);
+      this._bus.on('sector:exit', this._onRestitutionExit);
     }
   },
 
@@ -218,10 +227,101 @@ export const impoundPayPrompt = {
   _handleFineRefused(p) {
     const bus = this._bus;
     if (!bus || !bus.emit || !p) return;
+    if (p.kind === 'restitution' && p.reason === 'short') {
+      bus.emit('toast', {
+        text: 'SHORT — that restitution stays open. Nothing was charged.',
+        kind: 'warn', ttl: 4,
+      });
+      this._surfaceRestitution();
+      return;
+    }
     if (p.reason === 'no_open_fine') {
       bus.emit('toast', { text: 'No open fine at that berth — nothing was charged.', kind: 'info', ttl: 3 });
     }
     this._dismissFine(false);
+  },
+
+  // A named restitution is its own card. Paying one cause does not clear heat, a warrant,
+  // or a second bill. Leaving the card keeps the debt. Leaving the sector hides the card.
+  _openRestitutionBills() {
+    const own = this._state && this._state.lawSecurity;
+    const rows = own && own.composed && typeof own.composed === 'object' && !Array.isArray(own.composed)
+      ? Object.values(own.composed) : [];
+    return rows.filter((row) => row
+      && row.kind === 'restitution'
+      && row.status !== 'paid'
+      && row.remainingCr > 0
+      && row.advertisePay !== false
+      && typeof row.causeId === 'string'
+      && row.causeId);
+  },
+
+  _handleRestitutionNoted(p) {
+    if (!p || p.kind !== 'restitution') return;
+    if (p.status === 'paid' || p.advertisePay === false) return;
+    this._surfaceRestitution();
+  },
+
+  _handleRestitutionPaid(p) {
+    if (!p || p.kind !== 'restitution') return;
+    const left = this._openRestitutionBills();
+    if (p.status === 'paid' && left.length === 0) {
+      this._dismissRestitution();
+      return;
+    }
+    if (left.length > 0) this._surfaceRestitution();
+  },
+
+  _surfaceRestitution() {
+    const bills = this._openRestitutionBills();
+    if (bills.length === 0) return;
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (!deck) return;
+    const choices = bills.map((row) => {
+      const amount = Math.max(0, Math.round(Number(row.remainingCr) || 0));
+      const who = row.forPerson ? ` for ${row.forPerson}` : '';
+      return {
+        id: `pay:${row.causeId}`,
+        label: `PAY ${amount} CR`,
+        title: `Settle this restitution${who}. Only this cause's standing comes back. Heat stays.`,
+      };
+    });
+    choices.push({
+      id: 'leave',
+      label: 'LEAVE THE BILL',
+      title: 'Close the card. The bill stays, and nothing is charged.',
+    });
+    const first = bills[0];
+    const amount = Math.max(0, Math.round(Number(first.remainingCr) || 0));
+    deck.offerDecision({
+      id: RESTITUTION_DECK_ID,
+      kind: 'warn',
+      sender: 'RESTITUTION',
+      statusFlag: 'OWED',
+      headline: bills.length === 1 ? `RESTITUTION ${amount} CR` : `${bills.length} RESTITUTION BILLS`,
+      detail: 'Paying one bill returns only the standing that cause took. Other grudges and the heat sheet stay.',
+      choices,
+      deadlineAt: null,
+      onChoose: (choiceId) => this.chooseRestitution(choiceId),
+    });
+  },
+
+  chooseRestitution(actionId) {
+    const id = String(actionId || '');
+    if (id === 'leave') {
+      this._dismissRestitution();
+      return;
+    }
+    if (!id.startsWith('pay:')) return;
+    const bus = this._bus;
+    if (bus && bus.emit) {
+      bus.emit('law:fineChoice', { choice: 'pay', kind: 'restitution', causeId: id.slice(4) });
+    }
+  },
+
+  _dismissRestitution() {
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (deck && deck.resolveDecision) deck.resolveDecision(RESTITUTION_DECK_ID);
   },
 
   _dismissFine(clearMarker) {
@@ -244,6 +344,10 @@ export const impoundPayPrompt = {
       if (this._onFine) this._bus.off('law:fineAssessed', this._onFine);
       if (this._onFineRefused) this._bus.off('law:fineRefused', this._onFineRefused);
       if (this._onFineUndock) this._bus.off('dock:undocked', this._onFineUndock);
+      if (this._onRestitutionNoted) this._bus.off('law:obligationNoted', this._onRestitutionNoted);
+      if (this._onRestitutionPaid) this._bus.off('law:obligationPaid', this._onRestitutionPaid);
+      if (this._onRestitutionUndock) this._bus.off('dock:undocked', this._onRestitutionUndock);
+      if (this._onRestitutionExit) this._bus.off('sector:exit', this._onRestitutionExit);
     }
     this._onOffer = null;
     this._onRefused = null;
@@ -251,8 +355,13 @@ export const impoundPayPrompt = {
     this._onFine = null;
     this._onFineUndock = null;
     this._onFineRefused = null;
+    this._onRestitutionNoted = null;
+    this._onRestitutionPaid = null;
+    this._onRestitutionUndock = null;
+    this._onRestitutionExit = null;
     this._dismiss();
     this._dismissFine(true);
+    this._dismissRestitution();
   },
 };
 

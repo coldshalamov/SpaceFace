@@ -20,6 +20,7 @@ import {
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 import { runSession } from '../src/systems/runSession.js';
 import { createBus } from '../src/core/eventBus.js';
+import { resetCombatInputMode } from '../src/core/newGameBoot.js';
 
 const EXPECTED_PHASES = Object.freeze([
   'inactive', 'loadout', 'arena_intro', 'wave_intro', 'active',
@@ -413,6 +414,37 @@ test('resetFreshRunSystems clears a live survival run through runSession.newGame
   resetFreshRunSystems(registry);
   assert.equal(state.run.kind, 'adventure');
   assert.equal(state.run.phase, 'inactive');
+});
+
+test('new-game input reset calls the auto-target owner public reset seam', () => {
+  const state = {
+    tick: 12,
+    input: { autoFire: true, pursuitSlot: { active: true } },
+  };
+  let resetCalls = 0;
+  const registry = {
+    get(name) {
+      return name === 'autoTargetAssist' ? { reset() { resetCalls += 1; } } : null;
+    },
+  };
+  resetCombatInputMode(state, registry);
+  assert.equal(resetCalls, 1);
+  assert.equal(state.input.autoFire, false);
+  assert.equal(state.input.pursuitSlot.active, false);
+  assert.equal(state.input.pursuitSlot.reason, 'runtime-reset');
+
+  const workerState = {
+    tick: 13,
+    input: { autoFire: true, pursuitSlot: { active: true } },
+  };
+  let workerGetCalls = 0;
+  resetCombatInputMode(workerState, {
+    ctx: { simLane: 'worker' },
+    get() { workerGetCalls += 1; return null; },
+  });
+  assert.equal(workerGetCalls, 0, 'main-side worker resets do not probe for a missing assist facade');
+  assert.equal(workerState.input.autoFire, false);
+  assert.equal(workerState.input.pursuitSlot.active, false);
 });
 
 test('resetRunState assigns state.run = fresh.run', () => {

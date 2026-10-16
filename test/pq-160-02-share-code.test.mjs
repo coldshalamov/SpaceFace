@@ -18,11 +18,13 @@ import { fileURLToPath } from 'node:url';
 
 import {
   applyRunShareCode,
+  copyShareText,
   decodeGhostShareText,
   ghostShareForRun,
   ghostShareTextForTape,
   importGhostShareText,
   runShareCodeForRun,
+  runShareSummary,
 } from '../src/ui/screens/shareCode.js';
 import {
   decodeRunShareCode,
@@ -39,10 +41,18 @@ import {
   loadCrucibleMeta,
   resetCrucibleMetaForTests,
   sampleGhostPose,
+  saveCrucibleMeta,
   takeGhostTape,
   useCrucibleMetaStorage,
 } from '../src/systems/survivalRecords.js';
-import { crucibleSetupFor } from '../src/ui/crucibleLaunch.js';
+import {
+  clearCrucibleSetup,
+  crucibleSetupFor,
+  lastCrucibleSetup,
+  requestCrucibleRun,
+} from '../src/ui/crucibleLaunch.js';
+import { crucibleResultsScreen } from '../src/ui/screens/crucible.js';
+import { fakeDom, findAll, findButtons, textLines } from './helpers/fake-dom.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHILD = join(ROOT, 'test', 'helpers', 'pq16002-second-machine.mjs');
@@ -307,4 +317,211 @@ test('PQ-160.02 a shared ghost renders as a translucent hull', async () => {
   assert.equal(ghost.userData.crucibleGhost, true);
   presentation.dispose();
   resetCrucibleMetaForTests();
+});
+
+/* ------------------------------------------------------------------------- *
+ * Results: one-click Copy result / Copy ghost. The plate used to offer a text box to select by
+ * hand, and on a pad nothing to copy with at all.
+ * ------------------------------------------------------------------------- */
+
+const RESULT_4242 = Object.freeze({
+  outcome: 'defeat', ruleset: 'swarm', seed: 4242, arenaId: 'helios_core',
+  wave: 14, deepestWave: 14, kills: 212, bestChain: 41, score: 1_240_000, credits: 880,
+  picks: [
+    { verb: 'Ram', defId: 'wpn_concussion_cannon_m', wave: 2 },
+    { verb: 'Reel', defId: 'wpn_snarl_webcaster', wave: 4 },
+    { verb: 'Ram', defId: 'wpn_concussion_cannon_m', wave: 6 },
+  ],
+});
+
+function runCodeFor4242() {
+  const setup = crucibleSetupFor({ seed: 4242 });
+  assert.ok(setup.ok, 'the default starter produces a setup');
+  return runShareCodeForRun(setup.value, RESULT_4242);
+}
+
+test('Copy result: the summary of a finished seed-4242 swarm run is one stable line', () => {
+  const code = runCodeFor4242();
+  assert.match(code, /^SFC1-/);
+  const line = runShareSummary(RESULT_4242, { code });
+  assert.equal(
+    line,
+    `SpaceFace Crucible - Helios Core - Round 14, chain x41, score 1.2M - seed 4242 - build: Ram, Reel - code ${code}`,
+  );
+  assert.ok(!/[\r\n]/.test(line), 'one line: it never wraps');
+  assert.ok(!line.includes('helios_core'), 'an arena id never reaches a pasted line');
+  assert.equal(runShareSummary(RESULT_4242, { code }), line, 'the same result reads the same line');
+});
+
+test('Copy result: partial results degrade to fewer words, never to nonsense', () => {
+  const code = runCodeFor4242();
+  // No round to report: the line is the code alone (null when there is neither).
+  assert.equal(runShareSummary({ seed: 4242 }, { code }), code);
+  assert.equal(runShareSummary(null, { code }), code);
+  assert.equal(runShareSummary(null, {}), null);
+  // A Gauntlet result has no kill chain; its figure is the score, and its unit is a wave.
+  const gauntlet = runShareSummary(
+    { ruleset: 'scored', seed: 77, arenaId: 'helios_core', wave: 5, bestChain: 9, score: 12_345 },
+    { code },
+  );
+  assert.equal(gauntlet, `SpaceFace Crucible - Helios Core - Wave 5, score 12.3K - seed 77 - code ${code}`);
+  // An unknown arena is left out rather than named "This run" or by its id.
+  const unknown = runShareSummary({ ruleset: 'swarm', seed: 9, arenaId: 'not_a_real_arena', wave: 3 }, { code: null });
+  assert.equal(unknown, 'SpaceFace Crucible - Round 3 - seed 9');
+  // The big numbers read as words.
+  const big = (score) => runShareSummary({ ruleset: 'swarm', wave: 2, score }, {});
+  assert.match(big(999), /score 999$/);
+  assert.match(big(1000), /score 1K$/);
+  assert.match(big(999_950), /score 1M$/);
+  assert.match(big(2_500_000_000), /score 2.5B$/);
+});
+
+test('copyShareText resolves true only when the host accepted the text', async () => {
+  const calls = [];
+  assert.equal(await copyShareText('abc', { writeText: (t) => { calls.push(t); return Promise.resolve(); } }), true);
+  assert.deepEqual(calls, ['abc']);
+  assert.equal(await copyShareText('abc', { writeText: () => Promise.reject(new Error('denied')) }), false);
+  assert.equal(await copyShareText('abc', { writeText: () => { throw new Error('sync'); } }), false);
+  assert.equal(await copyShareText('abc', {}), false);
+  assert.equal(await copyShareText('abc', null), false);
+  assert.equal(await copyShareText('', { writeText: () => Promise.resolve() }), false);
+});
+
+/** Mount the real results plate over the stub DOM, with a navigator the test controls. */
+function mountPlateWithNavigator(result, clipboard) {
+  const savedDocument = globalThis.document;
+  const doc = fakeDom();
+  globalThis.document = doc;
+  const root = doc._make('div');
+  const bus = { emit() {}, on() { return () => {}; }, off() {}, once() {} };
+  const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => result } : null) };
+  // The document stays global until restore(): a click that falls back builds a field after mount.
+  crucibleResultsScreen.mount(root, { bus, registry, state: {} });
+  const savedNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', {
+    value: clipboard ? { clipboard } : {}, configurable: true, writable: true,
+  });
+  const restore = () => {
+    if (savedDocument === undefined) delete globalThis.document;
+    else globalThis.document = savedDocument;
+    if (savedNavigator) Object.defineProperty(globalThis, 'navigator', savedNavigator);
+    else delete globalThis.navigator;
+  };
+  return { root, restore };
+}
+
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+const byClass = (root, cls) => findAll(root, (n) => String(n.className || '').split(/\s+/).includes(cls));
+const click = (button) => button.listeners.click.forEach((fn) => fn({ target: button, preventDefault() {}, stopPropagation() {} }));
+const buttonNamed = (root, label) => findButtons(root).find((b) => b.textContent === label);
+
+function withRememberedRun(fn) {
+  const bus = { emit() {}, on() { return () => {}; }, off() {}, once() {} };
+  return async () => {
+    try {
+      assert.ok(requestCrucibleRun(bus, crucibleSetupFor({ seed: 4242 }).value, 'swarm'));
+      await fn();
+    } finally {
+      clearCrucibleSetup();
+      resetCrucibleMetaForTests();
+    }
+  };
+}
+
+test('Copy result: one click puts the one-line summary on the clipboard exactly once',
+  withRememberedRun(async () => {
+    const written = [];
+    const plate = mountPlateWithNavigator(RESULT_4242, { writeText: (t) => { written.push(t); return Promise.resolve(); } });
+    try {
+      const copy = buttonNamed(plate.root, 'Copy result');
+      assert.ok(copy, 'the share band carries a Copy result word');
+      assert.equal(copy.tagName, 'button', 'an ordinary focusable button, so a pad can reach it');
+      click(copy);
+      await tick();
+      const code = runShareCodeForRun(lastCrucibleSetup(), RESULT_4242);
+      assert.equal(written.length, 1, 'one click, one clipboard write');
+      assert.equal(written[0], runShareSummary(RESULT_4242, { code }));
+      assert.match(written[0], /seed 4242/);
+      assert.match(written[0], /Round 14/);
+      assert.match(written[0], /Helios Core/);
+      assert.ok(written[0].endsWith(code), 'the run code rides the line');
+      const status = byClass(plate.root, 'sf-crres__share-status')[0];
+      assert.ok(status, 'the feedback has its own line');
+      assert.equal(status.attributes.role, 'status');
+      assert.match(status.textContent, /Result copied/);
+      assert.equal(byClass(plate.root, 'sf-crres__share-item').length, 1, 'no fallback field when the copy worked');
+    } finally { plate.restore(); }
+  }));
+
+test('Copy result with no clipboard: the line lands selected in a field and the note says so',
+  withRememberedRun(async () => {
+    const plate = mountPlateWithNavigator(RESULT_4242, null);
+    try {
+      click(buttonNamed(plate.root, 'Copy result'));
+      await tick();
+      const status = byClass(plate.root, 'sf-crres__share-status')[0];
+      assert.match(status.textContent, /selected in the field/);
+      assert.doesNotMatch(status.textContent, /copied/i, 'the note never claims a copy that did not happen');
+      const field = findAll(plate.root, (n) => n.tagName === 'input' && n.attributes['aria-label'] === 'Result line')[0];
+      assert.ok(field, 'the summary is offered in a selectable field');
+      assert.equal(field.readOnly, true);
+      assert.equal(field.value, runShareSummary(RESULT_4242, { code: runShareCodeForRun(lastCrucibleSetup(), RESULT_4242) }));
+      assert.ok(!field.value.includes('\n'));
+    } finally { plate.restore(); }
+  }));
+
+test('a clipboard that refuses falls back the same way - never a false Copied',
+  withRememberedRun(async () => {
+    const plate = mountPlateWithNavigator(RESULT_4242, { writeText: () => Promise.reject(new Error('NotAllowedError')) });
+    try {
+      click(buttonNamed(plate.root, 'Copy result'));
+      await tick();
+      const text = textLines(plate.root).join('\n');
+      assert.match(text, /selected in the field/);
+      assert.doesNotMatch(text, /Result copied/);
+    } finally { plate.restore(); }
+  }));
+
+test('Copy ghost puts the recorded ghost block on the clipboard; its own field is the fallback',
+  withRememberedRun(async () => {
+    const tape = {
+      seed: 4242, hullId: 'ship_kestrel',
+      frames: [{ t: 0, x: 0, z: 0, r: 0 }, { t: 60, x: 10, z: 5, r: 0.8 }],
+    };
+    const hash = ghostHash(tape);
+    saveCrucibleMeta({
+      ...loadCrucibleMeta(),
+      ghosts: {
+        byHash: { [String(hash)]: { hash, seed: 4242, hullId: 'ship_kestrel', frameCount: 2, frames: tape.frames, recordedAt: '2026-09-24T00:00:00.000Z' } },
+        lastHash: hash,
+      },
+    });
+    const written = [];
+    const plate = mountPlateWithNavigator(RESULT_4242, { writeText: (t) => { written.push(t); return Promise.resolve(); } });
+    try {
+      const copy = buttonNamed(plate.root, 'Copy ghost');
+      assert.ok(copy, 'the ghost word appears with a recorded ghost');
+      click(copy);
+      await tick();
+      assert.equal(written.length, 1);
+      assert.match(written[0], /^SFG1-/);
+      assert.equal(written[0], ghostShareForRun(loadCrucibleMeta(), { seed: 4242 }).text);
+      assert.match(byClass(plate.root, 'sf-crres__share-status')[0].textContent, /Ghost copied/);
+    } finally { plate.restore(); }
+
+    const bare = mountPlateWithNavigator(RESULT_4242, null);
+    try {
+      click(buttonNamed(bare.root, 'Copy ghost'));
+      await tick();
+      assert.match(byClass(bare.root, 'sf-crres__share-status')[0].textContent, /Ghost is selected in its field/);
+    } finally { bare.restore(); }
+  }));
+
+test('no remembered launch and no ghost: the plate grows no share band and no copy buttons', () => {
+  clearCrucibleSetup();
+  resetCrucibleMetaForTests();
+  const plate = mountPlateWithNavigator(RESULT_4242, null);
+  try {
+    assert.equal(findButtons(plate.root).some((b) => /^Copy /.test(b.textContent)), false);
+  } finally { plate.restore(); }
 });

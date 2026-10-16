@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { beginScenePipelineReadinessBatch } from '../src/render/bloom.js';
+import {
+  beginScenePipelineReadinessBatch,
+  compilePipelinesContextSafe,
+  programWrapperDead,
+  retireScenePipelineReadinessPrograms,
+} from '../src/render/bloom.js';
 
 // A stand-in for three's WebGLProgram readiness handle. `isReady()` reports the driver's
 // COMPLETION_STATUS_KHR; it becomes true after `ticks` polls.
@@ -216,4 +221,85 @@ test('a program released while it links settles the cohort instead of polling a 
   }
   assert.equal(result.contextLost, true);
   assert.equal(settled[0].reason, 'WebGL program invalidated during shader compilation');
+  assert.equal(released.polls(), 0, 'a cleared native handle is never queried for readiness');
+});
+
+test('loss-time retirement rejects a never-polled cache wrapper on post-restore reenrollment', async () => {
+  const canvas = fakeCanvas();
+  let nativeValidityQueries = 0;
+  const gl = { canvas, isContextLost: () => false,
+    isProgram() { nativeValidityQueries += 1; throw new Error('no synchronous validity query'); } };
+  let staleQueries = 0;
+  const stale = { program: { name: 'pre-loss-native-handle' },
+    isReady() { staleQueries += 1; return null; } };
+  const renderer = { info: { programs: [stale] } };
+  // No readiness helper has seen this GL or wrapper yet. Three still owns the old
+  // cache during loss, then replaces that cache before a late admission resumes.
+  retireScenePipelineReadinessPrograms(renderer);
+  canvas.fire('webglcontextlost');
+  const settled = [];
+  const oldBatch = beginScenePipelineReadinessBatch(null);
+  let oldResult;
+  try {
+    oldBatch.join(gl, [stale], result => settled.push(result));
+    oldResult = await oldBatch.drain();
+  } finally { oldBatch.close(); }
+
+  const fresh = fakeProgram('post-restore-native-handle', 0);
+  renderer.info.programs = [fresh];
+  const freshBatch = beginScenePipelineReadinessBatch(null);
+  let freshResult;
+  try {
+    freshBatch.join(gl, renderer.info.programs, () => {});
+    freshResult = await freshBatch.drain();
+  } finally { freshBatch.close(); }
+
+  assert.equal(oldResult.contextLost, true);
+  assert.deepEqual(settled.map(result => result.contextLost), [true]);
+  assert.equal(staleQueries, 0, 'retired native handles must be rejected before isReady can warn');
+  assert.equal(programWrapperDead(gl, stale), true, 'the draw guard also rejects the intact retired wrapper');
+  assert.equal(freshResult.contextLost, false);
+  assert.equal(fresh.polls(), 1, 'new cache wrappers keep the normal readiness contract');
+  assert.equal(nativeValidityQueries, 0, 'retirement never polls native isProgram');
+});
+
+test('a batch refuses a foreign GL and its standalone fallback cancels the wrong-context wrapper', async () => {
+  const glA = { isContextLost: () => false };
+  let glBProgramQueries = 0;
+  const glB = {
+    isContextLost: () => false,
+    isProgram: () => { glBProgramQueries += 1; return false; },
+  };
+  let foreignReadinessQueries = 0;
+  const foreign = {
+    program: { name: 'owned-by-gl-a' },
+    isReady() { foreignReadinessQueries += 1; return false; },
+  };
+  assert.equal(programWrapperDead(glA, foreign), false, 'remember the wrapper owner without a GL query');
+
+  const batch = beginScenePipelineReadinessBatch(null);
+  const batchSettled = [];
+  try {
+    assert.equal(batch.join(glA, [fakeProgram('gl-a-program', 0)], (r) => batchSettled.push(r)), true);
+    assert.equal(batch.join(glB, [foreign], () => {}), false, 'a cohort cannot mix WebGL contexts');
+
+    const renderer = {
+      domElement: fakeCanvas(),
+      compile: () => new Set([{}]),
+      extensions: { get: () => ({}) },
+      getContext: () => glB,
+      properties: { get: () => ({ currentProgram: foreign }) },
+    };
+    const fallback = await compilePipelinesContextSafe(renderer, {}, {}, {}, { readinessTimeoutMs: 50 });
+    assert.equal(fallback.contextLost, true);
+    assert.equal(fallback.reason, 'WebGL program invalidated during shader compilation');
+    assert.equal(foreignReadinessQueries, 0, 'a mismatched wrapper is cancelled before isReady()');
+    assert.equal(glBProgramQueries, 0, 'context ownership is decided from provenance, without isProgram()');
+
+    const drained = await batch.drain();
+    assert.equal(drained.contextLost, false, 'the rejected foreign join does not poison the original cohort');
+    assert.deepEqual(batchSettled.map((r) => r.contextLost), [false]);
+  } finally {
+    batch.close();
+  }
 });

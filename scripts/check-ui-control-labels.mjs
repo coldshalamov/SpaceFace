@@ -17,6 +17,7 @@ import {
   TAUGHT_FLIGHT_ACTIONS,
 } from '../src/systems/input.js';
 import { controlPrompt, setPromptScheme } from '../src/ui/controlPrompts.js';
+import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
@@ -30,6 +31,7 @@ const PILOT_STATE = Object.freeze({
 
 const OWNED_UI = [
   'src/ui/hud.js',
+  'src/ui/orrery/hudAdapter.js',
   'src/ui/screens/help.js',
   'src/ui/screens/settings.js',
   'src/ui/screens/drill.js',
@@ -75,8 +77,10 @@ for (const rel of OWNED_UI) {
   );
 }
 
-assert.match(read('src/ui/hud.js'), /resolveActionCodes\(|resolveActionLabel\(/,
-  'the flight HUD must print live line-control keys, not a typed arrow string');
+assert.match(read('src/ui/hud.js'), /mountOrreryCluster\(/,
+  'the flight HUD must mount the current instrument owner');
+assert.match(read('src/ui/orrery/hudAdapter.js'), /resolveActionCodes\(|resolveActionLabel\(/,
+  'the flight instrument adapter must resolve live line-control keys, not a typed arrow string');
 assert.match(read('src/ui/screens/help.js'), /resolveActionLabel\(/,
   'Help → Controls must resolve rebindable rows from input.js');
 assert.match(read('src/ui/screens/settings.js'), /formatBindingCode\(/,
@@ -91,6 +95,11 @@ assert.match(read('src/ui/screens/range.js'), /resolveActionLabel\(/,
 const tether = resolveActionLabel(PILOT_STATE, 'tether');
 const brake = resolveActionLabel(PILOT_STATE, 'brake');
 const forward = resolveActionLabel(PILOT_STATE, 'forward');
+const line = readOrdnanceModel({ ...PILOT_STATE, player: { cargo: { items: {} }, tether: { active: true } }, entities: new Map() }, null)['3'];
+assert.ok(line.tip.includes(`Hold ${tether} for line control`),
+  'the active Line reveal must name the resolved Massline modifier');
+assert.ok(line.tip.includes(`${forward.split('/')[0]} REEL`),
+  'the active Line reveal must name the resolved forward key');
 assert.equal(tether, 'Space/F/3', 'PILOT Massline is Space with F as the permanent alias; 3 is the ORDNANCE hotbar seat');
 assert.equal(brake, '0', 'PILOT dedicated brake is Digit0');
 assert.match(forward, /^W\//, 'PILOT forward still teaches W');

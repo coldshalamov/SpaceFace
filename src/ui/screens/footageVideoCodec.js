@@ -1,5 +1,5 @@
-// Optional WebCodecs backend for flight footage.  The normal recorder remains the JPEG worker path;
-// this module is deliberately capability gated and keeps encoded chunks opaque until a viewer/export
+// Preferred WebCodecs backend for flight footage, with JPEG recovery in the recorder when unavailable.
+// This module is capability gated and keeps encoded chunks opaque until a viewer/export
 // actually needs pixels again.
 
 export const FOOTAGE_VIDEO_CODEC_CANDIDATES = Object.freeze([

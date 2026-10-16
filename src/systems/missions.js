@@ -76,6 +76,7 @@ import {
   offerMixWeight,
   offerHistoryTierFor,
   offerHistoryMultiplier,
+  withBountyHeadMoney,
 } from '../data/missions.js';
 import {
   SET_PIECE_FOLLOW_ON_SOURCE,
@@ -3265,9 +3266,13 @@ export const missions = {
     }
 
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
-    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
+    const quotedTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
         ? (cfg.faction.loyaltyBonus || 1.15) : 1});
+    // Head money: an ordinary board writ pays the hunter's overhead (gate tolls, return-fire repair,
+    // countered writs) on top of the wage quote. Bounty-only; the quote's own tier/risk are untouched.
+    const economyTerms = bountyPay && !(params && params.ghostConvoy)
+      ? withBountyHeadMoney(quotedTerms, quotedTerms.tier) : quotedTerms;
     const reward_cr = economyTerms.rewardCr;
     const time_limit_s = economyTerms.deadlineS;
     const collateral_cr = def.collateral ? economyTerms.collateralCr : 0;
@@ -5710,6 +5715,55 @@ export const missions = {
       dailyCap: cap,
     });
     return rp;
+  },
+
+  /**
+   * The fighter's and miner's RP faucet. A completed contract whose type matches a repeatable
+   * RESEARCH_GRANTS row that names a `requiresNode` (research:bounty, research:mining) pays
+   * `rp + perRiskTier * riskTier`, at most `dailyCap` times per sim-day, counted per row in
+   * state.player.researchGrantDays. Nothing is paid until the player already owns the row's
+   * first-node (the stranding guard: RP must never pull a pilot into the entry purchase, and
+   * the entry node costs no RP). Returns the RP granted across rows (0 when guarded or capped).
+   */
+  _grantCareerContractResearch(mission) {
+    const state = this.state;
+    if (!state || !state.player || !mission) return 0;
+    const owned = Array.isArray(state.player.researchedNodes) ? state.player.researchedNodes : [];
+    let total = 0;
+    for (const rowKey of Object.keys(RESEARCH_GRANTS)) {
+      const spec = RESEARCH_GRANTS[rowKey];
+      if (!spec || spec.repeatable !== true || !spec.requiresNode) continue;
+      if (!Array.isArray(spec.types) || spec.types.includes(mission.type) !== true) continue;
+      if (owned.includes(spec.requiresNode) !== true) continue;
+      const cap = Math.max(0, Math.round(Number(spec.dailyCap)) || 0);
+      if (!(cap > 0)) continue;
+      const tier = Math.max(0, Math.min(4, Math.round(Number(mission.riskTier)) || 0));
+      const rp = Math.max(0, Math.round(Number(spec.rp) + (Number(spec.perRiskTier) || 0) * tier) || 0);
+      if (!(rp > 0)) continue;
+      const dayKey = this._dayKey();
+      let ledgers = state.player.researchGrantDays;
+      if (!ledgers || typeof ledgers !== 'object' || Array.isArray(ledgers)) {
+        ledgers = {};
+        state.player.researchGrantDays = ledgers;
+      }
+      const ledger = ledgers[rowKey];
+      const count = ledger && typeof ledger === 'object' && ledger.dayKey === dayKey
+        ? Math.max(0, Math.floor(Number(ledger.count)) || 0) : 0;
+      if (count >= cap) continue;
+      ledgers[rowKey] = { dayKey, count: count + 1 };
+      state.player.researchPoints = (state.player.researchPoints || 0) + rp;
+      this.bus.emit('research:pointsChanged', {
+        researchPoints: state.player.researchPoints,
+        source: rowKey,
+        scope: spec.scope,
+        granted: rp,
+        dayKey,
+        dailyCount: count + 1,
+        dailyCap: cap,
+      });
+      total += rp;
+    }
+    return total;
   },
 
   _onLandmarkProbeScan(payload) {
@@ -8788,11 +8842,13 @@ export const missions = {
       this._racingSetPieces?.stop('complete');
     }
 
-    // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
-    // Combat fieldwork RP for bounty_hunt is intentionally NOT granted here: early auto-RP + a
-    // 6,000cr Combat Basics unlock strands a death-recovered pilot under gate tolls. The hunter
-    // RP path is earned combat data instead — claim:trophyHeadGranted pays through
-    // RESEARCH_GRANTS; bounty BASE pay stays the cash authority for the career ladder.
+    // ── research points at settlement — missions is the sole positive RP writer.
+    // Recon and salvage pay here unconditionally (cerebral fieldwork). Bounty and mining-quota
+    // contracts pay through the capped RESEARCH_GRANTS rows (research:bounty / research:mining)
+    // inside _grantCareerContractResearch, and ONLY once the pilot owns the first node of that
+    // path (Combat Basics / Industrial Mining): early auto-RP must never pull a death-recovered
+    // pilot into the entry purchase and strand them under gate tolls. Named-ace combat data
+    // still pays through claim:trophyHeadGranted; bounty BASE pay stays the cash authority.
     let researchPoints = 0;
     if (m.type === 'recon_scan' || m.type === 'salvage_retrieval') {
       const rp = m.type === 'recon_scan' ? (4 + (m.riskTier || 0) * 2) : (2 + (m.riskTier || 0));
@@ -8806,6 +8862,8 @@ export const missions = {
     }
     const contractRp = this._grantCappedResearchContract(m);
     if (contractRp > 0) researchPoints += contractRp;
+    const careerRp = this._grantCareerContractResearch(m);
+    if (careerRp > 0) researchPoints += careerRp;
     // Honored contract terms pay fieldwork RP — a settlement-time grant, not a researchFirsts
     // entry, because a mission's clauses can honor exactly once when it completes.
     if (clauseSettlement.honored.length) {
@@ -8838,7 +8896,7 @@ export const missions = {
     this._emitMissionDebrief(m, 'completed', null, { rewardCr: displayRewardCr });
     const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
       ? `Mission complete: ${m.title} — field record filed; no credits issued.`
-      : `Mission complete: ${m.title} +${displayRewardCr} cr`;
+      : `Mission complete: ${m.title} +${displayRewardCr} cr${researchPoints > 0 ? ` +${researchPoints} RP` : ''}`;
     this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
     this._cleanupTargets(m);
     // Keep the settled chain visible while ensureBoard refreshes the destination board. Otherwise

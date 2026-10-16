@@ -5,7 +5,7 @@ on:
     branches: [fix/mobile-readiness-20261006]
     paths: ['src/**', 'scripts/**', 'test/**', 'vercel.json', '.github/workflows/mobile-readiness.yml']
   pull_request:
-    paths: ['src/render/**', 'src/systems/mobile/**', 'scripts/build-bundle.mjs', 'scripts/lib/retailRuntimeWorkers.mjs', 'scripts/probe-deployed-mobile.mjs', 'test/mobile-runtime-workers.test.mjs', 'vercel.json', '.github/workflows/mobile-readiness.yml']
+    paths: ['src/main.js', 'src/core/**', 'src/save/**', 'src/ui/**', 'src/render/**', 'src/systems/mobile/**', 'scripts/build-bundle.mjs', 'scripts/lib/retailRuntimeWorkers.mjs', 'scripts/lib/mobile*.mjs', 'scripts/probe-deployed-mobile.mjs', 'test/mobile*.test.mjs', 'test/save-slot-discovery.test.mjs', 'vercel.json', '.github/workflows/mobile-readiness.yml']
 permissions:
   contents: read
 concurrency:
@@ -25,6 +25,7 @@ jobs:
       PUPPETEER_SKIP_DOWNLOAD: 'true'
       MOBILE_PROBE_URL: http://127.0.0.1:8765/
       MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
+      MOBILE_PROBE_CONTINUE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +55,7 @@ jobs:
         run: |
           mkdir -p .devshots/mobile-build
           set -o pipefail
-          node --test test/mobile-runtime-workers.test.mjs test/mobile-runtime-assets.test.mjs test/render-package-digest.test.mjs test/glb-prepass.test.mjs test/mobile-flight.test.mjs test/mobile-deck-instrument.test.mjs | tee .devshots/mobile-build/unit-tests.txt
+          node --test test/mobile-runtime-workers.test.mjs test/mobile-runtime-assets.test.mjs test/render-package-digest.test.mjs test/glb-prepass.test.mjs test/mobile-flight.test.mjs test/mobile-deck-instrument.test.mjs test/mobile-probe-startup.test.mjs test/mobile-draw-error-observer.test.mjs test/save-slot-discovery.test.mjs test/title-continue-failure.test.mjs test/worker-paused-save-completion.test.mjs test/shared-player-store-capability.test.mjs | tee .devshots/mobile-build/unit-tests.txt
       - name: Build real retail assets and verify receipt parity
         run: |
           set -o pipefail
@@ -62,7 +63,7 @@ jobs:
           node scripts/check-retail-motion-banks.mjs | tee .devshots/mobile-build/runtime-assets.txt
       - name: Install acceptance browser
         run: npx playwright install --with-deps "$MOBILE_PROBE_ENGINE"
-      - name: Static retail route, real worker round trips, New Game and touch UI
+      - name: Static retail route, worker round trips, New Game, touch UI and Continue
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 --directory build/web > .devshots/mobile-build/http.log 2>&1 &
           SERVER_PID=$!
