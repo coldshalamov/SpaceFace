@@ -705,6 +705,19 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${A} .k-foot .sf-cru-kbd { margin-left:8px !important; }
   ${A} .sf-cru-fine { margin:0 0 0 auto !important; flex:0 1 auto; }
   ${A} .sf-cru-fine .sf-cru-hint { margin-left:0; }
+  /* review: the next-round line ran to one ellipsized line and lost its tail ("… Choir Ze…", "new: Choir
+     Zealot"); it takes two lines before it clips. */
+  ${A} > .k-title .sf-cru-preview { white-space:normal; display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; }
+  /* review: the keycaps (ESC, 1 2 3, TAB) were 11px; 12px in this band. */
+  ${A} .k-foot .sf-cru-kbd, ${A} .sf-cru-fine .orr-armory-keycap { font-size:12px !important; letter-spacing:.12em !important; }
+}
+/* review: under ~800 wide the one-row foot is wider than the frame, and its right-packed verbs
+   pushed LAUNCH ROUND off the left edge (761×500). There the key hints take a second row. */
+@media (min-width:761px) and (max-width:820px) and (max-height:500px) {
+  ${A} > .k-foot { flex-wrap:wrap !important; row-gap:0 !important; }
+  ${A} .k-foot .k-words { justify-content:flex-start !important; }
+  /* the second foot row costs the height the two-line preview needs, so here it stays one line (PURCHASE stays on-frame) */
+  ${A} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
