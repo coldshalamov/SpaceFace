@@ -1,3 +1,4 @@
+import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
 import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
@@ -3813,6 +3814,7 @@ function hulkPackagedFileForEntity(e) {
 }
 
 export function wreckPackagedFile(e) {
+  if (isOrchardFrame(e)) return ORCHARD_FRAME_FILE;
   if (isCeresWorkfleetPlace(e)) return ceresWorkfleetPlaceFile(e);
   if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
   const fragmentFile = fractureFragmentFileForEntity(e);

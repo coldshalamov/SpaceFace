@@ -1,4 +1,5 @@
-// Real-route acceptance: fresh profile, real menu taps, no debug/state/storage injection.
+import { collectMobileCameraWitness } from './lib/mobileCameraWitness.mjs';
+// Real-route startup/control acceptance (world visibility requires separate evidence): fresh profile, real menu taps, no debug/state/storage injection.
 // MOBILE_PROBE_URL=https://... MOBILE_PROBE_ENGINE=webkit node scripts/probe-deployed-mobile.mjs
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -11,6 +12,7 @@ if (!['webkit', 'chromium'].includes(engine)) throw new Error('Engine must be we
 const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment/${engine}`);
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
+  acceptance: { startupAndControls: 'pending', worldVisibility: 'unverified' },
   responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [] };
 let browser;
 async function boundedBrowserRead(read, timeoutMs = 20000) {
@@ -22,7 +24,7 @@ async function boundedBrowserRead(read, timeoutMs = 20000) {
     })]);
   } finally { clearTimeout(timer); }
 }
-const snapshot = page => boundedBrowserRead(() => page.evaluate(() => {
+const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
   const shown = e => !e.hidden && e.getBoundingClientRect().width > 0
     && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
   // Observer only; the actor below still uses the public menu and touch controls.
@@ -50,6 +52,17 @@ const snapshot = page => boundedBrowserRead(() => page.evaluate(() => {
     } : null,
   };
 }));
+const snapshot = async (page, includeCamera = false) => {
+  const result = await snapshotBase(page);
+  if (includeCamera) {
+    const observerStartedAt = performance.now();
+    result.cameraWitness = await boundedBrowserRead(() => page.evaluate(collectMobileCameraWitness))
+      .catch(error => ({ available: false, reason: 'camera-witness-read-failed', error: String(error?.message || error) }));
+    // Observer round-trip cost, not gameplay/frame performance and never a pass criterion.
+    result.cameraWitness.observerElapsedMs = Math.max(0, performance.now() - observerStartedAt);
+  }
+  return result;
+};
 const visible = async (page, selector) => boundedBrowserRead(() => page.locator(selector).first().isVisible()).catch(() => false);
 const critical = response => response.status >= 400 && (
   /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
@@ -137,8 +150,9 @@ try {
       throw new Error('New Game returned to the main menu without entering flight');
   }
   report.launchMs = Date.now() - launchAt;
+  report.stages.push({ stage: 'flight', ...await snapshot(page, true) });
   await page.screenshot({ path: join(out, '03-flight.png') });
-  if (!reachedFlight) throw new Error('New Game did not reach unobstructed mobile flight within five minutes');
+  if (!reachedFlight) throw new Error('New Game did not reach mobile flight UI with the loading shell cleared within five minutes');
   // Only the player-facing DOM is read. Keyboard labels alone are not mobile acceptance.
   for (const selector of ['.mf-gun', '.mf-tether', '.mf-edge', '.mf-pause']) {
     if (!(await visible(page, selector))) throw new Error(`Missing visible touch control: ${selector}`);
@@ -156,7 +170,7 @@ try {
   await page.locator('[data-screen="pause"]').waitFor({ state: 'hidden' });
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(1500);
-  const landscape = await snapshot(page); report.stages.push({ stage: 'landscape', ...landscape });
+  const landscape = await snapshot(page, true); report.stages.push({ stage: 'landscape', ...landscape });
   if (landscape.flight !== '1') throw new Error('Touch flight did not survive rotation');
   await page.screenshot({ path: join(out, '06-landscape.png') });
   for (const selector of ['.mf-gun', '.mf-tether', '.mf-pause']) {
@@ -176,12 +190,14 @@ try {
     if (!worker || !/(javascript|ecmascript)/i.test(worker.mime || ''))
       throw new Error(`Worker not loaded with JavaScript MIME: ${name}`);
   }
-  report.passed = true;
+  report.passed = true; // Startup/control contract only; no world-visibility assertion.
+  report.acceptance = { startupAndControls: 'passed', worldVisibility: 'unverified' };
 } catch (error) {
+  report.acceptance.startupAndControls = 'failed';
   report.failure = String(error?.stack || error);
   const page = browser?.contexts()[0]?.pages()[0];
   if (page && !page.isClosed()) {
-    report.final = await snapshot(page).catch(() => null);
+    report.final = await snapshot(page, true).catch(() => null);
     await page.screenshot({ path: join(out, 'failure.png'), timeout: 15000 }).catch(() => {});
   }
   process.exitCode = 1;

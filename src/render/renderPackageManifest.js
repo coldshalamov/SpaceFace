@@ -3511,6 +3511,26 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "2112e4ca4d0c4157aad015fc0d8773b8638a8a5b17df413a51da0b2a85e2a390",
     "sourceUrl": "assets/ships/release/parts/wholeships/last_argument.glb"
+  },
+  {
+    "assetId": "sf.render.anvil-storm-orchard",
+    "expectedContentHash": "64051e30c963df5d39c8130c0b5777854c43630d15817d428bcbeb2810506326",
+    "key": "anvil-storm-orchard",
+    "metadataUrl": "assets/ships/release/render-packages/anvil-storm-orchard/render-package.json",
+    "runtimeAssetId": "SF_PLACE_ANVIL_STORM_ORCHARD",
+    "slot": "place",
+    "sourceSha256": "3fb008e52abfdfd4b3108b0ebd732dd09ff242939954a96b98bd6ee3e4823ff6",
+    "sourceUrl": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb"
+  },
+  {
+    "assetId": "sf.render.anvil-condensate-pod",
+    "expectedContentHash": "8858c46cd7af84e6da478c05a12181c457a90b6b79279f5e901e38f6757f9906",
+    "key": "anvil-condensate-pod",
+    "metadataUrl": "assets/ships/release/render-packages/anvil-condensate-pod/render-package.json",
+    "runtimeAssetId": "SF_PLACE_ANVIL_CONDENSATE_POD",
+    "slot": "place",
+    "sourceSha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
+    "sourceUrl": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb"
   }
 ];
 

@@ -1,3 +1,4 @@
+import { orchardAttachmentRefusal } from '../world/anvilOrchardTowAssist.js';
 import { entityLocalPointToWorld, socketLocalPosition, socketWorldPosition, worldPointToEntityLocal } from './geometry.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
@@ -383,6 +384,8 @@ export function createAttachmentService(context) {
     if (controllerId != null && (!controller || controller.alive === false)) return fail('controller_missing');
     if (!physics || typeof physics.createAttachment !== 'function') return fail('physics_port_unavailable');
 
+    const orchardRefusal = orchardAttachmentRefusal(state, owner, target, spec);
+    if (orchardRefusal) return fail(orchardRefusal);
     const ownerRuntime = ensureCombatant(state, owner, catalog);
     const targetRuntime = ensureCombatant(state, target, catalog);
     const sourceSocket = selectSocket(ownerRuntime, def.sourceSocketTags, spec.sourceSocketId, owner.id);
@@ -693,6 +696,9 @@ export function createAttachmentService(context) {
     if (!def || !def.ownership || !def.ownership.transferable) return fail('ownership_not_transferable');
     const nextOwner = entity(toOwnerId);
     if (!nextOwner || nextOwner.alive === false) return fail('new_owner_missing');
+    const orchardRefusal = orchardAttachmentRefusal(state,entity(attachment.ownerId),entity(attachment.targetId),{})
+      || orchardAttachmentRefusal(state,nextOwner,entity(attachment.targetId),{});
+    if (orchardRefusal) return fail(orchardRefusal);
     const nextRuntime = ensureCombatant(state, nextOwner, catalog);
     const nextSocket = selectSocket(nextRuntime, def.sourceSocketTags, null, nextOwner.id, attachment.id);
     if (!nextSocket) return fail('source_socket_unavailable');
@@ -774,6 +780,9 @@ export function createAttachmentService(context) {
       return fail('physics_port_unavailable');
     }
 
+    const orchardRefusal = orchardAttachmentRefusal(state,entity(attachment.ownerId),entity(attachment.targetId),{})
+      || orchardAttachmentRefusal(state,nextOwner,nextTarget,spec);
+    if (orchardRefusal) return fail(orchardRefusal);
     const ownerRuntime = ensureCombatant(state, nextOwner, catalog);
     const targetRuntime = ensureCombatant(state, nextTarget, catalog);
     const sourceSocket = selectSocket(
@@ -1186,15 +1195,18 @@ export function createAttachmentService(context) {
   }
 
   function springForAttachment(def, owner, target, attachment = null) {
-    if (uses47aLegacyMassline(def, owner, target, state)) {
+    const legacyMassline = uses47aLegacyMassline(def, owner, target, state);
+    const canonicalizeReplay = legacyMassline
+      && Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0)) > 0;
+    if (legacyMassline) {
       const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
       if (reelRevision <= 0) return { mode: 'legacy_rope' };
     }
     const policy = policyForAttachment(def, owner, attachment);
     if (policy && policy.headId && policy.spring && typeof policy.spring === 'object') {
-      return { ...policy.spring };
+      return { ...policy.spring, canonicalizeReplay };
     }
-    return { ...((def && def.spring) || {}) };
+    return { ...((def && def.spring) || {}), canonicalizeReplay };
   }
 
   function breakForAttachment(def, owner, target, attachment = null) {

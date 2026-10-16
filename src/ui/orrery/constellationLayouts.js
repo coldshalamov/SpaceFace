@@ -182,6 +182,19 @@ ${T} .con-cost dt { align-self:end; }
   ${T} .con-rows:has(.con-row__img) .con-row__art { width:48px; height:32px; }
   ${T} .con-row__art .con-row__img { width:30px; height:44px; }
   ${T} .con-row { padding:2px 0; }
+  /* the scrolling column's own gutter takes the width a cost word had: let "Research points" lift too */
+  ${T} .con-cost dt { white-space:normal; }
+}
+/* a short frame (a laptop strip, a phone on its side): the foot steps under the reading, so the dial
+   takes the whole height of its column instead of standing over an empty band beside Back */
+@media (min-width:761px) and (max-height:500px) {
+  ${T}.k-screen { grid-template-areas:"title corner" "stage side" ". foot" !important; }
+  ${T} > .k-stage.con-stage { grid-row:1 / 4; }
+  ${T} > .k-foot.con-foot { grid-column:2; grid-row:3; flex-wrap:wrap; column-gap:18px; row-gap:0; }
+  ${T} .con-legend { display:none; }
+  /* ...and the pan/zoom hint sleeps as it does at ≤1400 wide, so the foot keeps one line in the reading's
+     column at any width (at 1440×500 "DRAG TO PAN · WHEEL TO ZOOM" wrapped it and took a row from the reading) */
+  ${T} .con-view__word { display:none; }
 }
 /* a narrow window or a phone: one column that scrolls — title, the three readings, the dial,
    the reading — with Back (and on a phone the node list) held at the foot */
@@ -341,6 +354,40 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
 }
 @media (max-width:1400px) {
   ${A} { grid-template-columns:minmax(0, 1fr) clamp(260px, 26vw, 340px) !important; }
+}
+/* a short desktop frame: the medal orrery stands down below ~280px of stage height
+   (constellationMedals.js). Reclaim padding + foot so the stage clears that floor and the
+   dial keeps room for its title without wrapping the kicker. */
+@media (min-width:761px) and (max-height:460px) {
+  ${A} { padding:clamp(10px, 2.2vh, 18px) clamp(20px, 2.6vw, 48px) clamp(6px, 1.4vh, 12px) !important;
+    row-gap:4px !important; }
+  ${A} > .k-title .con-title { font-size:clamp(26px, min(3vw, 5.2vh), 48px) !important; }
+  ${A} > .k-title .con-sub { margin:4px 0 0 !important; font-size:clamp(12px, 1.5vh, 15px) !important; }
+  ${A} .k-hang.con-filters { margin-left:clamp(16px, 2.2vw, 40px); }
+  ${A} .con-filters .k-words { gap:clamp(10px, 1.6vw, 28px) !important; padding:0 4px; }
+  ${A} .con-filters .k-word { min-height:26px; font-size:clamp(10px, .58vw, 12px); letter-spacing:.16em; }
+  ${A} .con-wordscale { --con-scale-h:26px; }
+  ${A} > .k-foot .con-back.sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${A} > .k-foot .con-back.sf-back.k-word::before { margin-right:8px !important; font-size:13px !important; }
+  ${A} > .k-foot .con-back.sf-back.k-word::after { margin-left:10px !important; padding:2px 6px 3px !important; font-size:10px !important; }
+  ${A} > .con-medal-read { gap:clamp(4px, .8vh, 8px); padding-bottom:clamp(6px, 1.6vh, 20px); }
+  ${A} .con-medal-read__dial { width:clamp(112px, 11vw, 168px); height:clamp(112px, 11vw, 168px);
+    margin:0 0 clamp(4px, 1vh, 10px) !important; --ms:clamp(112px, 11vw, 168px); }
+  ${A} .con-medal-read__rim { left:-22px; top:-22px; width:calc(100% + 44px); height:calc(100% + 44px); }
+  ${A} .con-medal-read__rim text { font-size:10px; letter-spacing:.22em; }
+  ${A} .con-medal-read__kicker { font-size:clamp(9.5px, .55vw, 11px); letter-spacing:.18em; white-space:nowrap; }
+  ${A} .con-medal-read__name { font-size:clamp(18px, min(1.6vw, 3vh), 28px); }
+  ${A} .con-medal-read__line { font-size:clamp(13px, .8vw, 16px); }
+}
+@media (min-width:761px) and (max-height:400px) {
+  ${A} { padding:8px clamp(16px, 2.2vw, 36px) 4px !important; row-gap:2px !important; }
+  ${A} > .k-title .con-title { font-size:clamp(22px, 4.8vh, 36px) !important; }
+  ${A} > .k-title .con-sub { margin:2px 0 0 !important; }
+  ${A} .con-filters .k-word { min-height:22px; }
+  ${A} .con-wordscale { --con-scale-h:22px; }
+  ${A} > .k-foot .con-back.sf-back.k-word { padding:2px 0 4px !important; min-height:28px !important; }
+  ${A} .con-medal-read__dial { width:clamp(96px, 10vw, 140px); height:clamp(96px, 10vw, 140px);
+    margin:0 0 4px !important; --ms:clamp(96px, 10vw, 140px); }
 }
 @media (forced-colors:active) {
   ${A} > .con-medal-read::before, ${A} > .k-stage.con-medal-stage::before { display:none; }

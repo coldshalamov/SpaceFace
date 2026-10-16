@@ -9,6 +9,7 @@ const allow = new Set([
   'main',
   'codex/iphone14-mobile',
   'codex/oct15-maturity-checkpoint',
+  'codex/mobile-release-pinning',
   'devin/1791331347-gyre-snare',
   'devin/1791416174-gyre-snare-polish',
 ]);

@@ -1277,3 +1277,73 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** Research dial crowded under ~500px of stage; at 844×390 the lower Shipworks callouts (Mining / Drive / Cargo) still start below the fold (berth scrolls by design).
 
+## Research dial on short viewports (ui-polish-48)
+
+**Before (master c5f81484da):** at ≤500px tall the Research grid kept its full-width foot row (`‹ Back` · ESC · zoom, ≥44px plus a row gap), and the dial's stage stopped above it. The dial is height-bound there (its radius is half the stage height less the rim-word margin), so the stage lost ~50px and the dial shrank to ~245px across at 1024×440 and ~180px at 844×390. The stars piled into each other and the label solver dropped most of the names, while the band under the dial held only Back on the left. At 1101–1400 wide and ≤640 tall the reading scrolls, and its gutter cut "RESEARCH POINTS" to "RESEARCH POI" (1280×480).
+
+**After (`src/ui/orrery/constellationLayouts.js` only, CSS):**
+- New `min-width:761px and max-height:500px` block. The foot moves under the reading (`". foot"` in the grid areas, column 2, row 3) and the stage spans all three rows of column 1, so the dial gets the full height. The foot wraps if `› Recentre` doesn't fit. The legend sleeps here, as it already does at ≤1100 wide. The reading column keeps its height, because the foot row is unchanged.
+- In the existing `761+ × ≤640` block, cost words (`.con-cost dt`) can wrap, so "Research / points" lifts like it does at ≤1100 wide.
+- Approximate dial size: 1024×440 ~245→~300px across, 960×480 ~285→~315px, 1280×480 ~310→~360px, 844×390 ~180→~210px. More stars stand apart and more names print (Attack Topology, Strike Craft, Heat Lure, Long-Range Survey, Kinetic Drivers…). Selectors, IDs and `constellation.js` are unchanged.
+
+**Checked:** bench `tech-tree` and `tech-tree-progress` at 1024×440, 960×480, 1280×480, 844×390 (plus walk clicks at 844×390 and 1024×440, where Back · 1.0× · › RECENTRE fits on one line under the reading), and 390×844, 960×540, 1280×720, 1920×1080. No new rule matches the regression sizes. At 960×540 the dt rule matches but the ≤1100 rule already wraps, so the only pixel churn is the name type-on and star twinkle animations (<0.3% of pixels). Bench findings for tech-tree-progress: 1024×440 4→0 (the hour-verb line no longer sits over the COMBAT 4/17 rim word), 960×480 0→0, 1280×480 4→4 (the pre-existing hour-verb box vs the faint Deflector Theory label; the text doesn't touch), 844×390 6→6 (adjacent star hit boxes, 17px). Shots: `/workspace/spaceface-scratch/ui-shots/polish48/{before,after,after-walk}/`, `compare-1024x440.png`, `compare-960x480.png`, `compare-1280x480.png`, `compare-844x390.png`, `compare-1280x480-reading-crop.png`, plus the regression compares (not committed).
+
+**Leftovers (not this pass):** ~~Research dial crowded under ~500px of stage~~ (short frames fixed in ui-polish-48). It is still dense where the dial's column is narrow, because the dial is width-bound there (side labels need ~150px each side): 800×600, and 844×390 in the Combat sector. Fixing that needs instrument geometry. Also, at 844×390 the lower Shipworks callouts start below the fold.
+
+**Review fix (Code Work):** at 1401+ wide × ≤500 tall the foot (now in the reading's column) wrapped on "DRAG TO PAN · WHEEL TO ZOOM" and took a row from the reading (1440×500 lost Pulse Laser S under UNLOCKS). The short-frame block now sleeps `.con-view__word` as ≤1400 already does, so the foot keeps one line and the reading matches master height at 1440×500, 1600×480 and 1920×500. Note: in this band (≥1101 wide × ≤500 tall) the legend and the pan/zoom hint no longer show — the same trade the ≤1100/≤1400 rules already make.
+
+## Codex on a very short desktop window: the reading gets the height (ui-polish-49)
+
+- **Before (master c5f81484da, 844×390, 801×390, 900×420):** the section list already cleared CLOSE (ui-polish-32), but the plate sat at mid-height and the reading is sized to end at the plate's foot, so the stage kept a ~68px dead band above CLOSE. The reader got ~150px: on `codex-record` the entry's first record line was hidden entirely, on `codex` at 801 only one line of the opening sentence showed, and the bench flagged the clipped body under PREVIOUS (4–6 ON TOP OF on `codex` 844/801 and `codex-record` 900×420). The scroll-extent thumb also drew through the entry number's "0".
+- **After (`src/ui/orrery/archiveLayouts.js`, CSS only, inside the existing `@media (max-width:1100px) and (min-width:801px) and (max-height:460px)` block):** the plate stands on the hang's foot (`top:calc(100% - 48px - var(--cx-plate))`), so the reading ends level with the section rail and gains ~60px. B0's whole opening paragraph now shows above PREVIOUS / NEXT, and `codex-record` shows its first record. The rail's last rung keeps 36px under it when scrolled to the end, so the selected The Record isn't left in the 34px fold. The scroll thumb rides the reading's left gutter (`left:-10px`, as on phones).
+- **Checked:** bench `codex`, `codex-record` at 844×390, 801×390, 900×420, 1024×440 are 0 findings. `--walk` at 844×390 exercised all nine sections, NEXT and CLOSE. 960×540, 1280×720 and 1920×1080 are outside the band and match master up to plate needle/wedge animation noise. 390×844 phone is pixel-identical. Focused tests `fb-codex-world-tab`, `packet-codex-b-contracts`, `world-remembers-codex` and `infer-ending-archive-entry` pass.
+- **Shots:** `/workspace/spaceface-scratch/ui-shots/polish49/{before,after}/`, `compare-codex-{844x390,801x390,900x420}.png`, `compare-codex-record-{844x390,801x390,900x420}.png` (before left, after right).
+- **Leftovers:** at 801×390 the meta line STORY · THE EIGHT BEATS wraps to two lines. The ARCHIVE section's still sits under the reader fade at 844×390, so you have to scroll to reach it.
+
+
+## Credits short desktop: section ladder clears ‹ BACK (ui-polish-50)
+
+**Before (master c5f81484da):** on a short desktop window (651–1100 × ≤460, e.g. 1024×440) the five-rung Credits section ladder kept 48px rungs and spilled through ‹ BACK; at ≤900 (844×390 / 801×390) the stacked MADE BY reel head (SPACEFACE) printed over the foot. Real phones in landscape (`data-sf-mobile="1"`) already used the mobile layout and were clean.
+
+**After (`src/ui/orrery/settingsLayouts.js` only, CSS, `html:root:not([data-sf-mobile="1"])`):** in `651–1100 × ≤460` the frame pads and row gap close up, title/subtitle shrink, hang stays in its row (`overflow: auto` instead of painting through the foot), ladder rungs drop to ~26px, reel head / SPACEFACE / foot compress, and the orrery parks further right with its body name hidden (ladder + reel already name the section). A tighter `≤900 × ≤460` block further trims the horizontal rail and reel padding so SPACEFACE clears ‹ BACK. Selectors and IDs are unchanged.
+
+**Checked:** DOM at 1024×440 — last rung bottom 232, foot top 402 (gap ~170); at 844×390 — SPACEFACE bottom 176, foot top 352 (gap ~176). Bench `credits` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080; phone 390×844 and phone-land 844×390 stay ~pixel-identical (0.1–0.4% churn). Walk at 1024×440: 14 controls. Shots: `/workspace/spaceface-scratch/ui-shots/polish50/{before,after}/`, `compare-1024x440{,-crop}.png`, `compare-844x390.png`, `compare-801x390.png`, `compare-900x420.png` (not committed).
+
+**Leftovers (not this pass):** Settings Automation conduct-strip labels vs short beams at 960; Achievements / Quit / pause / statistics short-desktop or phone clipping; STORY · THE EIGHT BEATS wrap @801×390 and ARCHIVE image under reader fade @844×390 (Codex — owned by open #412). Shipworks / Research dial / Codex short-desktop owned by open #410–#412 — do not push those branches.
+## Statistics on a very short desktop: TRADE clears ‹ BACK; LAW on first paint (ui-polish-51)
+
+**Before (master 72df18627f):** at ≤460 tall the existing ≤820 short rule still left TRADE's lower rows hard-clipped mid-glyph against ‹ BACK. At 1024×440 "Biggest profit" was sliced under the foot; at 844×390 only "Trades" showed and LAW never reached first paint.
+
+**After (`src/ui/orrery/statisticsLayouts.js` only, CSS):**
+- New `@media (max-height:460px)`: tighter title / rows / caps, compact Back, stage foot fade (`mask-image`) so a partial row dissolves instead of slicing letters.
+- New `@media (max-height:400px)` (e.g. 844×390): subtitle sleeps, rows ~18px, so Flight → Law (Status / Heat) fit above ‹ BACK on first paint.
+- Selectors and IDs unchanged. 960×540 / 1280×720 / 1920×1080 are pixel-identical to master (rules need ≤460 / ≤400 tall).
+
+**Checked:** bench `statistics` 0 findings at 844×390, 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 844 8.1%, 1024 6.4%, 960/1280/1920 0%. Shots: `/workspace/spaceface-scratch/ui-shots/polish51/{before,after}/`, `compare-{844x390,1024x440,960x540,1280x720,1920x1080}.png` (not committed).
+
+**Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440; Automation conduct-strip labels vs short beams @960; Achievements / Quit short-desktop; Shipworks lower callouts below the fold @844×390. Open #411–#413 own constellation / archive / settings — do not push those branches.
+
+## Pause on a short desktop: EXIT / MAIN MENU clears the foot keycaps (ui-polish-52)
+
+**Before (master 72df18627f):** the dial places its banks from the full-frame host, so its last bank (EXIT / MAIN MENU) lands at about 0.72 of the height. The foot sat a full 48px frame margin plus a 2vw row gap above the bottom edge, so at 844×390 and 1024×440 the keycap strip (ESC Resume · P Photo · F5 Quick save …) printed on top of EXIT / MAIN MENU (bench: 10 tangled/buried findings at each size). At 844×390 the brief's Next line also started at x 461, against the GAME bank's LOAD.
+
+**After (`src/ui/orrery/pauseLayouts.js` only, CSS):**
+- **≥701 wide × ≤520 tall:** the pause frame's bottom margin is 14px, the foot's row gap is 6px and the build mark loses its paragraph margins. The foot sits on the bottom edge, so at 844×390 the keycaps start at y≈326, about 30px under EXIT (y≈293), and at 1024×440 at y≈376, about 50px under it. The dial, rows and selectors are unchanged.
+- **701–900 wide × ≤460 tall:** the brief sits level with PAUSED (`top 26px`) and is `min(330px, 40vw)` wide, so it starts right of LOAD (x≈485). Next still fits on one line, above the SHIP bank.
+
+**Checked:** bench findings went from 10 to 0 at 844×390 and at 1024×440. 800×500, 1024×500 and 1280×480 also have 0 findings. `--walk` reaches all 18 controls at each of these sizes. 1280×720, 1920×1080 and 390×844 (`--phone`) are pixel-identical to master. At 960×540 the only change is sub-threshold dial drift (no pixel off by more than 24), since 540 is outside the band. Focused tests pass: `pause-save-line`, `pause-ship-fit`, `pq-194-06-pause-shell`, `sf-275-pause-ownership` and `wave-c3-pause-kit`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish52/{before,after}/` and `compare-pause-*.png`.
+
+**Leftovers (not this pass):** the Settings Automation conduct strip at 960 (settingsLayouts.js, open #413); Achievements / Quit on a short desktop; the lower Shipworks callouts below the fold at 844×390.
+
+## Achievements on a very short desktop: medal orrery stays on (ui-polish-53)
+
+**Before (master f496c9a448):** the medal orrery stands down when its stage is under 280px tall (`constellationMedals.js`). On a short desktop (≤~405px tall, e.g. 844×390) the title + 85px filter foot left the stage at ~265px, so `is-off` hid every ring and medal — empty void beside the reading. The reading dial stayed large, and the kicker wrapped ("ADVENTURE · NOT YET" / "EARNED").
+
+**After (`src/ui/orrery/constellationLayouts.js` only, CSS, ACHIEVEMENTS block):**
+- New `@media (min-width:761px) and (max-height:460px)`: tighter frame padding / row gap, compact title, filter words, word-scale (`--con-scale-h:26px`), Back keycap, and a smaller reading dial; kicker stays `nowrap`.
+- New `@media (min-width:761px) and (max-height:400px)` (e.g. 844×390): a further trim so the stage clears ~315px and the orrery lights.
+- Selectors and IDs unchanged. `constellationMedals.js` untouched.
+
+**Checked:** DOM at 844×390 — stage 265→315, `is-off` → medals on-frame; kicker one line. Bench `achievements` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 844 20.4%, 1024 20.5%, 960/1280/1920 0%. Phone 390×844 pixel-identical. Quit stays web-hidden (`quitGame.js`). Automation conduct strip re-benched at 960×540 — labels sit under the beams (polish28w layout); no new tangle this pass. Shots: `/workspace/spaceface-scratch/ui-shots/polish53/{before,after}/`, `compare-achievements-{844x390,1024x440,960x540,1280x720,1920x1080}.png` (not committed).
+
+**Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440 (owned by open #415 — do not push `ui-polish-52`); Automation conduct-strip @960 (looks intentional under-beam layout; re-check if a live conducted state still tangles); Shipworks lower callouts below the fold @844×390 (berth scrolls by design); Codex STORY wrap @801×390 / ARCHIVE fade @844×390 if still open after #412 merge.

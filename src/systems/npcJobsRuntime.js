@@ -1,3 +1,4 @@
+import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
 // npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
@@ -861,6 +862,42 @@ function stampNpcMasslineHead(entity, headId) {
   data.derived = derived;
   derived.masslineHeadId = headId;
   data.npcMasslineHeadId = headId;
+}
+
+// Orchard borrows the ordinary NPC coupler only while create snapshots its policy.
+// Restore exact descriptors immediately, including absent properties; no fitted equipment
+// survives dispatch, failed admission, callback cancellation, or any later terminal path.
+function withOrchardCouplerSnapshot(entity, create) {
+  const data = entity.data;
+  if (!data || typeof data !== 'object') return create();
+  const generation = entity.occupantGeneration;
+  const priorDerived = Object.getOwnPropertyDescriptor(data, 'derived');
+  const priorNpc = Object.getOwnPropertyDescriptor(data, 'npcMasslineHeadId');
+  const derived = data.derived && typeof data.derived === 'object' ? data.derived : {};
+  const priorHead = Object.getOwnPropertyDescriptor(derived, 'masslineHeadId');
+  const same = (a,b) => !!a && !!b && ['value','writable','enumerable','configurable','get','set'].every(k=>a[k]===b[k]);
+  let writtenHead, writtenNpc;
+  const restore = (object, key, descriptor) => {
+    if (descriptor) Object.defineProperty(object, key, descriptor);
+    else delete object[key];
+  };
+  try {
+    data.derived = derived;
+    derived.masslineHeadId='frame_coupler';
+    writtenHead=Object.getOwnPropertyDescriptor(derived,'masslineHeadId');
+    data.npcMasslineHeadId='frame_coupler';
+    writtenNpc=Object.getOwnPropertyDescriptor(data,'npcMasslineHeadId');
+    return create();
+  } finally {
+    if (entity.occupantGeneration === generation && entity.data === data) {
+      if (same(Object.getOwnPropertyDescriptor(data,'npcMasslineHeadId'),writtenNpc)) restore(data, 'npcMasslineHeadId', priorNpc);
+      if(data.derived === derived){
+        if (same(Object.getOwnPropertyDescriptor(derived,'masslineHeadId'),writtenHead)) restore(derived, 'masslineHeadId', priorHead);
+        if (!priorDerived && Reflect.ownKeys(derived).length === 0) delete data.derived;
+        else if (priorDerived && priorDerived.value !== derived && Reflect.ownKeys(derived).length === 0) restore(data, 'derived', priorDerived);
+      }
+    }
+  }
 }
 
 // `ownerRecordId` is the stable world-record id of the tug asking. A body reserved by the cleanup
@@ -3052,7 +3089,11 @@ export const npcJobsRuntime = {
       // never to an unrelated replacement that happens to occupy `entry.entityId` now.
       ent = null;
     }
+    if(entry.orchardAssist && (ent!==entry.orchardWorkerRef
+      || ent?.occupantGeneration!==entry.orchardWorkerLife)) ent=null;
+    clearOrchardTowLease(this.state,entry.orchardLease);
     clearRouteBrake(ent);
+    if(entry.orchardAssist && ent && ent.alive!==false)this._writeIntent(ent,0,0,false,ent.rot||0,true);
     if (ent && ent.data && ent.data.jobId === jobId) {
       delete ent.data.jobId;
       delete ent.data.jobPhase;
@@ -3237,7 +3278,8 @@ export const npcJobsRuntime = {
     const entity = entry.entityId != null && this.state.entities
       ? this.state.entities.get(entry.entityId)
       : null;
-    if (!entity || !entity.alive) {
+    if (!entity || !entity.alive || (entry.orchardAssist
+      && (entity !== entry.orchardWorkerRef || entity.occupantGeneration !== entry.orchardWorkerLife))) {
       // Fail safe: the lease is gone either way. The hull died or was demoted under the controller.
       return { released: true, reason: 'hull_absent', restored: false };
     }
@@ -3334,6 +3376,7 @@ export const npcJobsRuntime = {
     rangeW = null,
     deliverW = null,
     timeoutS = TOW_ASSIST_TIMEOUT_S,
+    orchardQuote = null,
   } = {}) {
     const state = this.state;
     const entities = state && state.entities;
@@ -3349,7 +3392,14 @@ export const npcJobsRuntime = {
     if (entry.job.phase === NPC_JOB_PHASE.FLEE) return { granted: false, reason: 'under_threat' };
     const target = targetEntityId != null && entities ? entities.get(targetEntityId) : null;
     // Same towability gate the tug's own job uses: a real loose cargo body, never scenery.
-    if (!isTowableCargoTarget(target) && !isTowlineCleanupTarget(state, target)) return { granted: false, reason: 'not_towable' };
+    const orchardClaim = target?.data?.orchardId === 'anvil_storm_orchard';
+    const orchardPhysics = orchardClaim ? this.registry?.get?.('physics') : null;
+    const orchardTarget = orchardClaim && entry.orchardAssist === true && holder === ORCHARD_TOW_HOLDER
+      ? validateOrchardTowQuote(state, worker, orchardQuote, orchardPhysics) : null;
+    if (orchardClaim && (orchardTarget !== target || feeCr !== orchardQuote?.feeCr
+      || destPos !== orchardQuote?.destination || deliverW !== orchardQuote?.deliverW
+      || !(state.player?.credits >= feeCr))) return { granted:false, reason:'orchard_quote_expired' };
+    if (!orchardTarget && !isTowableCargoTarget(target) && !isTowlineCleanupTarget(state, target)) return { granted: false, reason: 'not_towable' };
     // Reserve the original at lease admission, before a later tick creates its physical line.
     // Two available workers cannot both promise the same load while still approaching it.
     if (Object.values(this._byId()).some(other => other !== entry && other?.towAssist?.targetId === targetEntityId)) {
@@ -3387,6 +3437,8 @@ export const npcJobsRuntime = {
       startedAtSimT: finite(state.simTime, 0),
       timeoutS: Math.max(5, finite(timeoutS, TOW_ASSIST_TIMEOUT_S)),
     };
+    const admittedAssist = entry.towAssist;
+    if (orchardTarget) entry.orchardLease = bindOrchardTowLease(state,worker,target,entry,orchardPhysics);
     if (feeCr > 0 && this.bus && typeof this.bus.emit === 'function') {
       // Take-what-they-have — the same settlement rule economy's own service:stuck_tow uses:
       // the charge writer clamps at zero, so bill only up to the live balance, then reconcile
@@ -3405,8 +3457,15 @@ export const npcJobsRuntime = {
         } catch { /* the hire stands; a failed charge event retries nowhere by design */ }
         const settledCr = creditsBefore
           - Math.max(0, Math.round(finite(state.player && state.player.credits, 0)));
-        entry.towAssist.feeCr = Math.min(billedCr, Math.max(0, settledCr));
+        admittedAssist.feeCr = Math.min(billedCr, Math.max(0, settledCr));
       }
+    }
+    if (orchardTarget && (!entry.towAssist || entry.towAssist.feeCr !== feeCr
+      || orchardTowLease(state,target) !== entry.orchardLease)) {
+      const refund=admittedAssist.feeCr || 0;
+      this._finishTowAssist(entry,jobId,'admission_cancelled');
+      if(refund>0)this.bus.emit('economy:grantCredits',{amount:refund,reason:'refund:tow_assist'});
+      return {granted:false,reason:'charge_refused'};
     }
     return { granted: true, jobId, claimId: cleanClaim, targetId: targetEntityId, feeCr: entry.towAssist.feeCr };
   },
@@ -3431,7 +3490,9 @@ export const npcJobsRuntime = {
     const hull = entry.entityId != null && state.entities ? state.entities.get(entry.entityId) : null;
     const target = assist.targetId != null && state.entities ? state.entities.get(assist.targetId) : null;
     const simT = finite(state.simTime, 0);
-    const leaseGone = !entry.control || entry.control.claimId !== assist.claimId;
+    const orchardCurrent = !entry.orchardAssist || (orchardTowLease(state,target) === entry.orchardLease
+      && entry.orchardLease?.physics?.readOrchardPodReady?.(target));
+    const leaseGone = !entry.control || entry.control.claimId !== assist.claimId || !orchardCurrent;
     const timedOut = simT - assist.startedAtSimT > assist.timeoutS;
     if (!hull || hull.alive === false || !hull.pos || !target || target.alive === false || !target.pos
       || leaseGone || timedOut) {
@@ -3450,6 +3511,28 @@ export const npcJobsRuntime = {
         this._clearTugAttachment(entry, 'npc_tow_assist_snapped');
         assist.phase = 'approach';
       }
+    }
+    if (assist.phase === 'approach' && entry.orchardAssist) {
+      // Acquire a quiet line from the outward side, rather than latching while
+      // crossing the pod at approach speed and turning that velocity into an orbit.
+      const ox=assist.destPos.x-target.pos.x,oz=assist.destPos.z-target.pos.z;
+      const length=Math.hypot(ox,oz)||1,outward=Math.atan2(oz,ox);
+      const dx=target.pos.x+ox/length*300-hull.pos.x;
+      const dz=target.pos.z+oz/length*300-hull.pos.z,dist=Math.hypot(dx,dz);
+      const speed=Math.hypot(hull.vel?.x||0,hull.vel?.z||0);
+      if(dist>20){
+        const closing=Math.min(180,Math.sqrt(40*Math.max(0,dist-15)));
+        const vx=(target.vel?.x||0)+dx/dist*closing-(hull.vel?.x||0);
+        const vz=(target.vel?.z||0)+dz/dist*closing-(hull.vel?.z||0);
+        const aim=Math.atan2(vz,vx),error=Math.hypot(vx,vz);
+        const brake=Math.abs(shortestAngleDelta(aim,hull.rot||0))>CERES_ESCORT_TURN_ONLY_RAD;
+        this._writeIntent(hull,0,brake?0:clamp(error/120,.05,1),!brake&&dist>1200,aim,brake);
+        return;
+      }
+      this._writeIntent(hull,0,0,false,outward,true);
+      if(speed>Math.max(5,Math.hypot(target.vel?.x||0,target.vel?.z||0)+5) || Math.hypot((hull.vel?.x||0)-(target.vel?.x||0),(hull.vel?.z||0)-(target.vel?.z||0))>8)return;
+      if(this._attachTowAssist(entry,hull,target))assist.phase='tow';
+      return;
     }
     if (assist.phase === 'approach') {
       const dx = target.pos.x - hull.pos.x;
@@ -3477,9 +3560,29 @@ export const npcJobsRuntime = {
     const dz = assist.destPos.z - hull.pos.z;
     const dist = Math.hypot(dx, dz);
     const targetDist = Math.hypot(assist.destPos.x - target.pos.x, assist.destPos.z - target.pos.z);
-    if (targetDist <= (assist.deliverW || TOW_ASSIST_DELIVER_WU)) {
+    const deliveryRadius = assist.deliverW || TOW_ASSIST_DELIVER_WU;
+    const targetSpeed = Math.hypot(target.vel?.x || 0,target.vel?.z || 0);
+    if(entry.orchardAssist){
+      const lines=this._combatAttachments(),line=lines?.get?.(entry.towAttachmentId);
+      if(line?.restLength>140){
+        lines.reel(line.id,-Math.min(line.restLength-140,(line.tetherPolicy?.reelRate||30)/60),140);
+        if(this._byId()[jobId]!==entry || entry.towAssist!==assist
+          || orchardTowLease(this.state,target)!==entry.orchardLease
+          || !entry.orchardLease?.physics?.readOrchardPodReady?.(target))return;
+      }
+    }
+    // Orchard cargo is collected by proximity after dispatch. Keep the real line until
+    // braking has settled both endpoints; dropping a fast pod merely exports the chase.
+    if (entry.orchardAssist && dist <= 50) {
+      assist.settling = true;
       this._writeIntent(hull, 0, 0, false, hull.rot || 0, true);
-      const done = { jobId, workerId: hull.id, targetId: target.id, missionId: assist.missionId };
+      if (targetSpeed > 20 || Math.hypot(hull.vel?.x || 0,hull.vel?.z || 0) > 5) return;
+      if (targetDist > deliveryRadius) return;
+    }
+    if (targetDist <= deliveryRadius && (!entry.orchardAssist || (dist <= 50 && targetSpeed <= 20))) {
+      this._writeIntent(hull, 0, 0, false, hull.rot || 0, true);
+      const done = { jobId, workerId: hull.id, targetId: target.id, missionId: assist.missionId,
+        ...(entry.orchardAssist ? {targetGeneration:target.occupantGeneration,lotId:target.data.worldRecordId} : {}) };
       this._finishTowAssist(entry, jobId, 'delivered');
       if (this.bus && typeof this.bus.emit === 'function') {
         try {
@@ -3493,28 +3596,47 @@ export const npcJobsRuntime = {
       this._writeIntent(hull, 0, 0, false, aim, true);
       return;
     }
-    this._writeIntent(hull, 0, clamp(dist / 260, 0.15, CERES_ESCORT_MAX_THROTTLE), false, aim, false);
+    if (entry.orchardAssist && targetDist < 600
+      && Math.hypot(hull.vel?.x || 0,hull.vel?.z || 0) > 35) {
+      this._writeIntent(hull,0,0,false,aim,true);
+    } else this._writeIntent(hull, 0, clamp(dist / 260, 0.15, CERES_ESCORT_MAX_THROTTLE), false, aim, false);
   },
 
   _attachTowAssist(entry, hull, target) {
     const attachments = this._combatAttachments();
     if (!attachments) return false;
-    pinOccupationalLatch(target);
-    stampNpcMasslineHead(hull, 'frame_coupler');
-    const created = attachments.create({
+    const orchard=entry.orchardAssist === true;
+    if (orchard && (orchardTowLease(this.state,target)!==entry.orchardLease
+      || !entry.orchardLease?.physics?.readOrchardPodReady?.(target))) return false;
+    if (!orchard) pinOccupationalLatch(target);
+    if (!orchard) stampNpcMasslineHead(hull, 'frame_coupler');
+    const hullData=hull.data;
+    const create = () => withOrchardTowAttachment(this.state,target,() => attachments.create({
       defId: NPC_TOW_ATTACHMENT_DEF_ID,
       ownerId: hull.id,
       targetId: target.id,
       controlMode: NPC_LINE_CONTROL_MODE,
       sourceWorld: { x: hull.pos.x, y: 0, z: hull.pos.z },
       targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
-    });
+    }));
+    let created;
+    try { created = orchard ? withOrchardCouplerSnapshot(hull, create) : create(); }
+    catch (error) { if (!orchard) throw error; return false; }
     if (!created || created.ok !== true || !created.attachment) {
-      unpinOccupationalLatch(target);
+      if (!orchard) unpinOccupationalLatch(target);
       return false;
     }
     const attachment = created.attachment;
     const jobId = entry.worldRecordId ? `job:${entry.worldRecordId}` : null;
+    if (orchard && (this._byId()[jobId] !== entry
+      || orchardTowLease(this.state,target) !== entry.orchardLease
+      || hull.data!==hullData || !entry.towAssist || !entry.orchardLease?.physics?.readOrchardPodReady?.(target)
+      || attachment.state !== 'active'
+      || attachments.get(attachment.id) !== attachment)) {
+      if (attachments.get(attachment.id) === attachment && attachment.state === 'active')
+        attachments.breakAttachment(attachment,'orchard_dispatch_cancelled',null);
+      return false;
+    }
     entry.towAttachmentId = attachment.id;
     entry.towTargetId = target.id;
     this._goneIndexDirty = true;
@@ -3524,15 +3646,18 @@ export const npcJobsRuntime = {
       hull.data.npcTowAttachmentId = attachment.id;
       hull.data.npcTowJobId = jobId;
     }
-    target.data = target.data || {};
-    target.data.npcTowAttachmentId = attachment.id;
-    target.data.npcTowedByJobId = jobId;
+    if (!orchard) {
+      target.data = target.data || {};
+      target.data.npcTowAttachmentId = attachment.id;
+      target.data.npcTowedByJobId = jobId;
+    }
     return true;
   },
 
   _finishTowAssist(entry, jobId, reason) {
     const assist = entry.towAssist;
     if (!assist) return;
+    clearOrchardTowLease(this.state,entry.orchardLease);
     entry.towAssist = null;
     this._clearTugAttachment(entry, `npc_tow_assist_${reason}`);
     // A mission-owned hire that ends because the destination already settled (contract swept
@@ -3554,6 +3679,7 @@ export const npcJobsRuntime = {
     if (entry.control && entry.control.claimId === assist.claimId) {
       this.releaseControl(jobId, assist.claimId);
     }
+    if (entry.orchardAssist && this._byId()[jobId] === entry) this.release(jobId);
   },
 
   // A hire that was live at save time does not resume after load (its lease names live hulls,
@@ -3565,6 +3691,7 @@ export const npcJobsRuntime = {
     this._pendingTowAssistReports = null;
     if (!Array.isArray(pending) || !pending.length || this.state == null) return;
     for (const dropped of pending) {
+      if (dropped.orchard === true) this.release(dropped.jobId);
       const refundedCr = dropped.feeCr > 0 ? Math.round(dropped.feeCr) : 0;
       // The numeric targetId saved with the hire is dead after a load; re-resolve the stable
       // record id so a mission owner still hears about the load it actually lost.
@@ -6208,6 +6335,7 @@ export const npcJobsRuntime = {
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
       if (!entry || entry.sectorId !== sectorId) continue;
+      if (entry.orchardAssist) { this._finishTowAssist(entry,jobId,'sector_exit'); continue; }
       // Keep the record; drop the live link. lastAdvanceSimT already holds the last live-advance time,
       // which is (to within a tick) the exit time — the anchor the re-entry catch-up measures from.
       let ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
@@ -6438,6 +6566,7 @@ export const npcJobsRuntime = {
       // account on restore: `_reportDroppedTowAssists` refunds and reports it on save:loaded.
       if (entry.towAssist) {
         out.byId[jobId].towAssist = {
+          ...(entry.orchardAssist ? { orchard: true } : {}),
           missionId: entry.towAssist.missionId || null,
           feeCr: finite(entry.towAssist.feeCr, 0),
           targetWorldRecordId: entry.towAssist.targetWorldRecordId || null,
@@ -6535,6 +6664,7 @@ export const npcJobsRuntime = {
       if (dropped && typeof dropped === 'object') {
         this._pendingTowAssistReports.push({
           jobId,
+          orchard: dropped.orchard === true,
           missionId: typeof dropped.missionId === 'string' ? dropped.missionId : null,
           feeCr: finite(Number(dropped.feeCr), 0),
           targetWorldRecordId: dropped.targetWorldRecordId != null
