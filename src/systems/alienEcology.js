@@ -46,6 +46,9 @@ import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.j
 import { HUMAN_DOCK_CHART, chartPlace } from '../data/routeChart.js';
 import { copyLifeRead, lifeSampleFromSite, readSiteLife } from '../data/siteLifeRead.js';
 import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
+import {
+  COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
+} from '../data/collarService.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -399,6 +402,48 @@ function emitEcologyOffer(world, site, sector) {
   if (emitted > 0 && world.bus) world.bus.emit('audio:cue', { id: 'scan_resolve' });
 }
 
+function emitCollar(world, site, stage, cause) {
+  if (!world.bus || !world.bus.emit) return;
+  const read = useCollarService(stage, 'berth');
+  const sample = useCollarService(stage, 'sample');
+  const missions = useCollarService(stage, 'missions');
+  world.bus.emit('ecology:collar', {
+    siteId: site.siteId,
+    service: 'berth',
+    open: read.open,
+    ok: read.ok,
+    alternative: read.alternative,
+    sampleOpen: sample.open === true,
+    missionsOpen: missions.open === true,
+    cause: cause || null,
+  });
+}
+
+function applyCollarStep(world, site, rec, event) {
+  const next = stepCollarService(rec.collarStage, event);
+  rec.collarStage = next.stage;
+  if (event === 'arrive') rec.collarGreeted = true;
+  if (!next.text) return;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
+  }
+  emitCollar(world, site, next.stage, event === 'inhale' ? collarCause(site) : null);
+}
+
+function noteCollarDivert(world, sectorId) {
+  const site = ALIEN_SITES[COLLAR_SITE_ID];
+  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
+    : site.center;
+  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dSite < site.arrivalBands.close)) return;
+  const rec = siteRecord(world.state, site.siteId);
+  applyCollarStep(world, site, rec, 'divert');
+}
+
 function noteWreckCut(world, sectorId) {
   const site = ALIEN_SITES[WRECK_SITE_ID];
   if (!site || site.sectorId !== sectorId || !world || !world.state) return;
@@ -476,6 +521,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       // A repeated scan records the press. It does not pay research points.
       ae.heatTrial = noteHeatTrial(ae.heatTrial, { kind: 'scan' });
       noteWreckCut(world, sectorId);
+      noteCollarDivert(world, sectorId);
       for (const s of alienSitesForSector(sectorId)) {
         const r = ae.sites[s.siteId];
         if (!r) continue;
@@ -1203,6 +1249,19 @@ export function tickAlienEcology(world, dt) {
           }
         } else if (!close) {
           rec.wreckEdge = false;
+        }
+      }
+      if (site.siteId === COLLAR_SITE_ID) {
+        const collarClose = dSite < site.arrivalBands.close;
+        if (collarClose && rec.collarEdge !== true) {
+          rec.collarEdge = true;
+          const cause = collarCause(site);
+          const event = rec.collarStage === 'held'
+            ? 'inhale'
+            : (rec.collarGreeted === true && cause ? 'inhale' : 'arrive');
+          applyCollarStep(world, site, rec, event);
+        } else if (!collarClose) {
+          rec.collarEdge = false;
         }
       }
       // AE-171 (G03): a fitted Host-Memory Cartography module resolves the site’s host
@@ -1942,6 +2001,9 @@ export function deserializeAlienEcologyState(state, data) {
         ...(rec.wreckStage === 'warned' || rec.wreckStage === 'sealed'
           ? { wreckStage: rec.wreckStage } : {}),
         ...(rec.wreckEdge === true ? { wreckEdge: true } : {}),
+        ...(rec.collarStage === 'held' ? { collarStage: 'held' } : {}),
+        ...(rec.collarEdge === true ? { collarEdge: true } : {}),
+        ...(rec.collarGreeted === true ? { collarGreeted: true } : {}),
       };
     }
   }
