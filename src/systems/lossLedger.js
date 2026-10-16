@@ -20,8 +20,10 @@
 //     NEVER overwrites a communicator's mission-bearing scanLabel (communicators carry wreckMissions;
 //     their label is the mission hook, not the class). Only enriches debris-class wrecks.
 //   • SINGLE-WRITER honored — every entry emits `lossLedger:recorded`; automation losses alone may
-//     also emit a voice headline.
-//     NEVER writes credits, cargo, rep, or the entity store (entity:spawned is read-only; the wreck's
+//     also emit a voice headline. A player-caused kill of a laden hull additionally emits the
+//     EXISTING scarcity path (`economy:applyTradePressure`, negative vol = buy-side drain —
+//     economy stays the sole stock writer) plus one structured `lossLedger:priceMove` the news
+//     seam cites. NEVER writes credits, cargo, rep, or the entity store (entity:spawned is read-only; the wreck's
 //     `data` is enriched in place as additive metadata the producers already permit — they set
 //     `data.scanLabel` themselves, so this is a read-then-enrich on the same field, not a second writer).
 //   • ONE-VOICE — each automation-loss headline goes through
@@ -47,6 +49,7 @@
 // No recorded loss ⇒ generic wreck (unchanged).
 
 import { hash32 } from '../core/rng.js';
+import { lostShipmentPressure } from './economyCycles.js';
 import { SECTORS } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { SHIPS } from '../data/ships.js';
@@ -422,6 +425,10 @@ export const lossLedger = {
     this._onPlayerDeath = (p) => this._handlePlayerDeath(p);
     this._onMissionCompleted = (p) => this._handleMissionCompleted(p);
     this._onNewGame = () => this._reset();
+    // ECON-08 — lossIds whose player-caused shipment already moved the destination price and
+    // published its one cited headline. Transient (replay/re-entry guard); the ledger entries
+    // themselves stay the durable dedupe across save/load.
+    if (!this._pricedLossIds || !(this._pricedLossIds instanceof Set)) this._pricedLossIds = new Set();
 
     if (this._bus && this._bus.on) {
       this._bus.on('automation:assetLost', this._onAssetLost);
@@ -438,6 +445,7 @@ export const lossLedger = {
 
   _reset() {
     const state = this._state;
+    if (this._pricedLossIds instanceof Set) this._pricedLossIds.clear();
     if (!state) return;
     const seed = (state.meta && state.meta.seed) || 1;
     state.lossLedger = { bySector: {}, entries: [], seed, ghostConvoy: { fired: {} } };
@@ -500,8 +508,15 @@ export const lossLedger = {
     const data = entity && entity.data || {};
     const victimName = durableIdentityText(data.name) || durableIdentityText(data.ai && data.ai.name);
     const victimCallsign = durableIdentityText(data.callsign);
+    const killedByPlayer = p.killerId === state.playerId;
+    // ECON-08 — a shipped commodity rides on the victim's cargo manifest. Resolve the primary
+    // line + destination through the existing price path's input contract (economyCycles —
+    // no new price model); the entry carries it so the price move cites this exact loss.
+    const shipment = lostShipmentPressure(data.cargoManifest);
+    const lossId = makeLossId(L.seed, sectorId, kind, state.simTime || 0, p.id);
+    const alreadyRecorded = L.entries.some((x) => x && x.lossId === lossId);
     record(state, this._bus, this._helpers, {
-      lossId: makeLossId(L.seed, sectorId, kind, state.simTime || 0, p.id),
+      lossId,
       sectorId,
       assetId: p.id,
       factionId: p.factionId || entity.factionId || ownerOf(state, sectorId),
@@ -512,11 +527,52 @@ export const lossLedger = {
       value: Number(p.bountyCr) || 0,
       shipDefId,
       killerId: p.killerId == null ? null : p.killerId,
-      killedByPlayer: p.killerId === state.playerId,
+      killedByPlayer,
       victimName,
       victimCallsign,
+      ...(shipment
+        ? { commodityId: shipment.commodityId, destStationId: shipment.stationId, shipmentQty: shipment.vol }
+        : {}),
       source: 'entity:killed',
     });
+    if (!alreadyRecorded) this._maybeApplyLossPrice(lossId, killedByPlayer, shipment);
+  },
+
+  // ECON-08 — a loss YOU caused on a shipped commodity moves the destination price and names
+  // the cause in the news. Exactly once per lossId: the in-memory set guards re-entry within
+  // this timeline, and alreadyRecorded (above) guards replays of a loss the ledger restored.
+  // Single-writer honored: the price moves via the existing `economy:applyTradePressure` intent
+  // (economy drains the book); the headline moves via one structured `lossLedger:priceMove`
+  // the news seam cites. Uncited publishing is forbidden — no voice/toast path here.
+  _maybeApplyLossPrice(lossId, killedByPlayer, shipment) {
+    if (!killedByPlayer || !shipment || !shipment.stationId || !shipment.commodityId) return null;
+    if (!(this._pricedLossIds instanceof Set)) this._pricedLossIds = new Set();
+    if (this._pricedLossIds.has(lossId)) return null;
+    this._pricedLossIds.add(lossId);
+    while (this._pricedLossIds.size > 64) {
+      this._pricedLossIds.delete(this._pricedLossIds.values().next().value);
+    }
+    const bus = this._bus;
+    if (bus && bus.emit) {
+      bus.emit('economy:applyTradePressure', {
+        stationId: shipment.stationId,
+        commodityId: shipment.commodityId,
+        good: shipment.commodityId,
+        vol: -shipment.vol,
+        cause: 'player_kill',
+        source: 'lossLedger',
+        lossId,
+      });
+      bus.emit('lossLedger:priceMove', {
+        lossId,
+        commodityId: shipment.commodityId,
+        destStationId: shipment.stationId,
+        qty: shipment.vol,
+        cause: 'player_kill',
+        source: 'lossLedger',
+      });
+    }
+    return lossId;
   },
 
   // The player's own hull dying is ledger history too — the defeat receipt names the killer and
@@ -668,6 +724,7 @@ export const lossLedger = {
     this._onPlayerDeath = null;
     this._onMissionCompleted = null;
     this._onNewGame = null;
+    if (this._pricedLossIds instanceof Set) this._pricedLossIds.clear();
   },
 
   // Serialization — durable subset only (the recorded entries + seed). Round-trips through save.

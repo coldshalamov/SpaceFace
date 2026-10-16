@@ -564,6 +564,33 @@ function listingStockMid(def, entry, stock) {
   return def.basePrice * Math.pow(Math.max(stock, 1) / baseEq, -elasticity) * demand;
 }
 
+// ECON-08 — a loss you caused moves the price through the SAME stock-pressure funnel every
+// other scarcity path uses (economy.applyStockPressure, fed via economy:applyTradePressure with
+// a negative vol = buy-side drain). Pure: resolves the primary shipped line + destination from a
+// cargo manifest and clamps the pressure volume to the bounds applyStockPressure enforces
+// (finite, 1..1_000_000). No new price model — just the existing path's input contract.
+export function lostShipmentPressure(manifest) {
+  if (!manifest || typeof manifest !== 'object') return null;
+  const destStationId = typeof manifest.destStationId === 'string' && manifest.destStationId
+    ? manifest.destStationId
+    : (typeof manifest.destinationId === 'string' && manifest.destinationId ? manifest.destinationId : null);
+  const lines = Array.isArray(manifest.lines) ? manifest.lines : [];
+  let primary = null;
+  for (const line of lines) {
+    const commodityId = line && typeof line.commodityId === 'string' ? line.commodityId : null;
+    const qty = Math.max(0, Math.floor(Number(line && line.qty) || 0));
+    if (!commodityId || qty <= 0) continue;
+    if (!primary || qty > primary.qty
+      || (qty === primary.qty && commodityId < primary.commodityId)) {
+      primary = { commodityId, qty };
+    }
+  }
+  if (!primary || !destStationId) return null;
+  const vol = Math.max(1, Math.min(1000000, primary.qty));
+  if (!Number.isFinite(vol)) return null;
+  return { stationId: destStationId, commodityId: primary.commodityId, vol };
+}
+
 // Primary-wave half-width in credits. SPEC3-F1 draws the cone as ±(amplitude · basePrice):
 // the regime's own wiggle, not an oracle line. At least one credit so a flat wave is still a band.
 function waveHalfWidth(cycle, basePrice) {
