@@ -817,6 +817,8 @@ class LoadedRenderPackage {
   }
 
   markEvicted() {
+    // The decoded source graph is retiring; instances own distinct Object3Ds.
+    for (const entry of this.#plan?.entries || []) entry.source.castShadow = false;
     this.released = true;
     this.evicted = true;
     this.#notifyStale();
@@ -980,6 +982,7 @@ class LoadedRenderPackage {
         dispose: (reason = 'render-package-instance-disposed') => {
           if (disposed) return false;
           disposed = true;
+          for (const object of objects) object.castShadow = false;
           if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
           return true;
         },
@@ -1100,6 +1103,7 @@ class LoadedRenderPackage {
         dispose: (reason = 'flight-render-package-instance-disposed') => {
           if (disposed) return false;
           disposed = true;
+          for (const object of planNodes) object.castShadow = false;
           if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
           return true;
         },
@@ -1325,9 +1329,10 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function collectImmutableResources(root, stats = null) {
+export function collectImmutableResources(root, stats = null, retireShadowCasters = false) {
   const resources = new Set();
   root.traverse((object) => {
+    if (retireShadowCasters) object.castShadow = false;
     if (stats) stats.nodes++;
     if (object.geometry) markImmutableResource(object.geometry, resources);
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
@@ -1367,7 +1372,7 @@ function disposeUnregisteredResources(resources) {
 export function disposeDecodedResources(decoded, extraResources = null) {
   const template = decoded?.scene || decoded;
   if (!template || typeof template.traverse !== 'function') return;
-  const resources = collectImmutableResources(template);
+  const resources = collectImmutableResources(template, null, true);
   if (extraResources) for (const resource of extraResources) resources.add(resource);
   disposeUnregisteredResources(resources);
 }

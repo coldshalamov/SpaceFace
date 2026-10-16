@@ -1,17 +1,74 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
+import { Object3D as VendoredObject3D, spacefaceShadowCastersIn } from '../vendor/three.module.js';
 import {
   buildPlacePropRootSteps,
+  disposeDetachedObject,
   disposeDetachedObjectSteps,
   upgradeAuthoredCargoCapsuleBoundaryForProbe,
   upgradeAuthoredPlaceBoundaryForProbe,
 } from '../src/render/partsLibrary.js';
 
+// Browser imports map `three` to this vendor. Exercise its real registry accessor
+// on the npm Three classes used by these Node-owned production seams.
+Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
+  Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
+
 function drain(steps) {
   let step = steps.next();
   while (!step.done) step = steps.next();
   return step.value;
+}
+
+for (const stepped of [false, true]) {
+  test(`${stepped ? 'stepped' : 'synchronous'} detached cleanup releases shadow membership despite a throwing resource`, () => {
+    const scene = new THREE.Scene();
+    const root = new THREE.Group();
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshStandardMaterial();
+    geometry.userData.spacefaceSharedAsset = true;
+    material.userData.spacefaceSharedAsset = true;
+    let sharedDisposals = 0;
+    geometry.dispose = material.dispose = () => { sharedDisposals++; };
+    const live = new THREE.Mesh(geometry, material);
+    live.castShadow = true;
+    const badGeometry = new THREE.BoxGeometry();
+    badGeometry.dispose = () => { throw new Error('retiring geometry failure'); };
+    const bad = new THREE.Mesh(badGeometry, material);
+    bad.castShadow = true;
+    root.add(bad);
+    const retired = [bad];
+    for (let i = 0; i < 130; i++) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      retired.push(mesh);
+      root.add(mesh);
+    }
+    scene.add(root, live);
+    assert.equal(spacefaceShadowCastersIn(scene).length, retired.length + 1);
+    root.removeFromParent();
+    if (stepped) {
+      const steps = disposeDetachedObjectSteps(root);
+      assert.equal(steps.next().done, false, 'a real stride interrupts the disposal walk');
+      assert.ok(retired.some((mesh) => mesh.castShadow === false));
+      assert.ok(retired.some((mesh) => mesh.castShadow === true));
+      drain(steps);
+    } else {
+      disposeDetachedObject(root);
+    }
+    scene.add(root);
+    assert.deepEqual(spacefaceShadowCastersIn(scene), [live],
+      'retired meshes cannot re-enter the global registry when their old graph is inspected');
+    assert.ok(retired.every((mesh) => mesh.castShadow === false));
+    assert.equal(live.castShadow, true, 'a live sibling sharing resources keeps its own flag');
+    assert.equal(sharedDisposals, 0, 'retiring Object3Ds do not dispose the shared live resources');
+    if (stepped) drain(disposeDetachedObjectSteps(root));
+    else disposeDetachedObject(root);
+    assert.deepEqual(spacefaceShadowCastersIn(scene), [live], 'duplicate cleanup is membership-idempotent');
+    assert.equal(sharedDisposals, 0);
+    live.castShadow = false;
+  });
 }
 
 function recordFor(width, count = 1) {
