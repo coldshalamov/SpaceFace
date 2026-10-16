@@ -26,6 +26,7 @@ import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   clearPendingSlam,
   closingSpeedFromImpact,
+  hotDebrisContactScale,
   isSlamFractureCandidate,
   noteLethalBlow,
   notePendingSlam,
@@ -438,7 +439,13 @@ export const collisionConsequences = {
       _slamArg.tick = tick;
       notePendingSlam(target, _slamArg);
     }
-    const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
+    // FIGHT-13 — hot capital debris gate: a fresh capital fragment deals the kernel's
+    // debris damage decaying over its authored window; a settled/expired fragment is
+    // salvage and deals none. Ordinary bodies read scale 1 (no behavior change).
+    const scaledImpact = scaledImpactForHotDebris(receipt, other, state);
+    const damageResult = scaledImpact > 0
+      ? this._routeImpactDamage(target, other, receipt, scaledImpact)
+      : null;
     if (target.alive !== false) clearPendingSlam(target.id);
 
     // fields spread into the trace's own raw record — the arg object is never retained.
@@ -536,16 +543,19 @@ export const collisionConsequences = {
     for (const shard of shards) this._tearOffLive.add(shard.id);
   },
 
-  _routeImpactDamage(target, other, receipt) {
+  _routeImpactDamage(target, other, receipt, damageOverride) {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
     const sourceKind = `collision_${receipt.surface}`;
+    // FIGHT-13: a hot-debris scale arrives here; otherwise the kernel receipt stands as is.
+    const impactDamage = Number.isFinite(damageOverride) ? Math.max(0, damageOverride)
+      : Math.max(0, Number(receipt.impactDamage) || 0);
     // routeDamage may synchronously cross the lethal threshold and invoke combat.kill. Snapshot the
     // live body/contact truth before that call so the sole death owner can publish an immutable
     // presentation receipt without querying a retired entity or inventing collision provenance.
     const collisionPresentation = buildCollisionPresentationProvenance(target, other, receipt);
     const packet = scalarHitToDamagePacket({
-      damage: receipt.impactDamage,
+      damage: impactDamage,
       damageType: 'kinetic',
       pos: receipt.pos,
       source: {
@@ -607,6 +617,14 @@ function combatKernel(host) {
 
 function entityById(state, id) {
   return state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) || null : null;
+}
+
+// FIGHT-13 — scale the kernel's contact damage for hot capital debris. Ordinary bodies
+// read scale 1, so the receipt stands as authored; only a stamped capital fragment decays.
+function scaledImpactForHotDebris(receipt, other, state) {
+  const base = Math.max(0, Number(receipt && receipt.impactDamage) || 0);
+  if (!(base > 0)) return 0;
+  return base * hotDebrisContactScale(other, state && state.simTime);
 }
 
 function pairKey(aId, bId) {

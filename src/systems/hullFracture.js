@@ -34,6 +34,55 @@ export const PENDING_SLAM_KEY_CAP = 512;
 const FRACTURE_SPLIT_SPEED = 12;
 const BREAKUP_CLEARANCE = 0.25;
 
+// FIGHT-13 — fresh capital debris is dangerous for its first seconds, then it is salvage.
+//
+// A capital kill's fracture pieces carry a hot window (authored seconds on the sim clock).
+// Contact damage against a hot fragment runs full at birth and decays linearly to none at
+// expiry; a settled (slow-drift) or expired fragment is salvage and deals no contact damage.
+// Fragment counts and wreck permanence are untouched — this only stamps spawn-time truth and
+// reads it back deterministically. Legacy fragments without the stamp read scale 1.
+export const CAPITAL_HOT_DEBRIS_LAW = Object.freeze({
+  // Capital band floor: aiPorts operationalMassBand 'capital' starts at mass 700.
+  victimMass: 700,
+  // Authored hot window in sim seconds.
+  windowS: 5,
+  // Below this drift speed a fragment reads settled even inside its window.
+  settleSpeedWU: 6,
+});
+
+export function isCapitalHotDebris(entity) {
+  const data = entity && entity.data;
+  return !!data && data.capitalDebris === true && Number.isFinite(data.debrisHotT0)
+    && (entity.type === 'wreck' || entity.type === 'debris');
+}
+
+// Contact-damage scale for a body that may be hot capital debris: 1 for every ordinary
+// body (including legacy fragments without the stamp), 1 → 0 linearly over the authored
+// window for a hot fragment, 0 when settled or expired. Never invents cold: an unknown
+// clock reads full.
+export function hotDebrisContactScale(entity, nowSimTime) {
+  if (!isCapitalHotDebris(entity)) return 1;
+  const data = entity.data;
+  const windowS = Number(data.debrisHotWindowS);
+  const span = Number.isFinite(windowS) && windowS > 0 ? windowS : CAPITAL_HOT_DEBRIS_LAW.windowS;
+  const t0 = Number(data.debrisHotT0) || 0;
+  const now = Number(nowSimTime);
+  if (!Number.isFinite(now)) return 1;
+  const age = now - t0;
+  if (age >= span) return 0;
+  if (age <= 0) {
+    // Born this instant (or a clock that has not reached birth): full heat unless settled.
+    const bx = Number(entity.vel && entity.vel.x) || 0;
+    const bz = Number(entity.vel && entity.vel.z) || 0;
+    if (Math.hypot(bx, bz) < CAPITAL_HOT_DEBRIS_LAW.settleSpeedWU) return 0;
+    return 1;
+  }
+  const vx = Number(entity.vel && entity.vel.x) || 0;
+  const vz = Number(entity.vel && entity.vel.z) || 0;
+  if (Math.hypot(vx, vz) < CAPITAL_HOT_DEBRIS_LAW.settleSpeedWU) return 0;
+  return Math.max(0, Math.min(1, 1 - age / span));
+}
+
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
@@ -242,7 +291,7 @@ function wreckPhysicsBody(mass, radius) {
   };
 }
 
-function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label, markerId, victimVisual, victimRadius, killedAt }) {
+function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label, markerId, victimVisual, victimRadius, killedAt, capitalHot }) {
   return {
     type: 'wreck',
     pos: { x: note.pos.x + offset.x, z: note.pos.z + offset.z },
@@ -279,6 +328,13 @@ function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label,
       // Kill-time stamp for the ember pass — without it the seam piece's torn edge stays cold
       // while the remainder flashes hot off its marker's killedAt.
       killedAt: Number.isFinite(killedAt) ? killedAt : 0,
+      // FIGHT-13: capital fragments are hot debris for their first authored seconds, then
+      // salvage. The stamp is spawn-time truth only; the contact gate reads it back.
+      ...(capitalHot === true ? {
+        capitalDebris: true,
+        debrisHotT0: Number.isFinite(killedAt) ? killedAt : 0,
+        debrisHotWindowS: CAPITAL_HOT_DEBRIS_LAW.windowS,
+      } : null),
       proportions: WRECK_COLLIDER_PROPORTIONS,
       loot: [],
       salvagePool: salvagePool || { cmdty_scrap_metal: 1 },
@@ -315,6 +371,8 @@ export function spawnFracturePieces(ctx, note, options = {}) {
   const salvagePool = options.salvagePool && typeof options.salvagePool === 'object'
     ? options.salvagePool
     : { cmdty_scrap_metal: 2 };
+  // FIGHT-13: only a capital victim's fragments run hot. Piece count is untouched.
+  const capitalHot = Number(note.mass) >= CAPITAL_HOT_DEBRIS_LAW.victimMass;
 
   const seamEntity = helpers.spawnEntity(pieceSpec({
     note,
@@ -329,6 +387,7 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     victimVisual: options.victimVisual,
     victimRadius: options.victimRadius,
     killedAt: Number(state.simTime) || 0,
+    capitalHot,
   }));
   const remEntity = helpers.spawnEntity(pieceSpec({
     note,
@@ -343,6 +402,7 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     victimVisual: options.victimVisual,
     victimRadius: options.victimRadius,
     killedAt: Number(state.simTime) || 0,
+    capitalHot,
   }));
 
   const pieces = [seamEntity, remEntity].filter(Boolean);
