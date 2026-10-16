@@ -608,7 +608,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 304 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -850,6 +850,7 @@ SFQ-B152 landed 2026-10-15: the star marker disk slows hulls and lets cargo pass
 SFQ-B153 landed 2026-10-15: one disk winds loose mass sideways around its center and does not pull it in. Outside the disk the same motion is untouched (`test/sfq-b153-curl-disk.test.mjs`). Row 301 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B154 landed 2026-10-15: an authored lane transfers momentum in a fixed direction with a visible entry and exit (`test/sfq-b154-lane-conveyor.test.mjs`). Row 302 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B157 landed 2026-10-15: a physical human object, a goo-coated hull and a passive organism encounter one boundary (`test/sfq-b157-boundary-materials.test.mjs`). Row 303 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+| 304 | SFQ-B161 | A player can test whether an organism responds to heat rather than proximity. | BUILD | OPEN |
 
 SFQ-B111 landed 2026-10-15: a collision is classed direct, indirect, accidental, or stale, and the law card says which (`test/sfq-b111-impact-class.test.mjs`). Row 292 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 
