@@ -1323,3 +1323,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440; Automation conduct-strip labels vs short beams @960; Achievements / Quit short-desktop; Shipworks lower callouts below the fold @844×390. Open #411–#413 own constellation / archive / settings — do not push those branches.
 
+
+## Achievements on a very short desktop: medal orrery stays on (ui-polish-53)
+
+**Before (master f496c9a448):** the medal orrery stands down when its stage is under 280px tall (`constellationMedals.js`). On a short desktop (≤~405px tall, e.g. 844×390) the title + 85px filter foot left the stage at ~265px, so `is-off` hid every ring and medal — empty void beside the reading. The reading dial stayed large, and the kicker wrapped ("ADVENTURE · NOT YET" / "EARNED").
+
+**After (`src/ui/orrery/constellationLayouts.js` only, CSS, ACHIEVEMENTS block):**
+- New `@media (min-width:761px) and (max-height:460px)`: tighter frame padding / row gap, compact title, filter words, word-scale (`--con-scale-h:26px`), Back keycap, and a smaller reading dial; kicker stays `nowrap`.
+- New `@media (min-width:761px) and (max-height:400px)` (e.g. 844×390): a further trim so the stage clears ~315px and the orrery lights.
+- Selectors and IDs unchanged. `constellationMedals.js` untouched.
+
+**Checked:** DOM at 844×390 — stage 265→315, `is-off` → medals on-frame; kicker one line. Bench `achievements` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 844 20.4%, 1024 20.5%, 960/1280/1920 0%. Phone 390×844 pixel-identical. Quit stays web-hidden (`quitGame.js`). Automation conduct strip re-benched at 960×540 — labels sit under the beams (polish28w layout); no new tangle this pass. Shots: `/workspace/spaceface-scratch/ui-shots/polish53/{before,after}/`, `compare-achievements-{844x390,1024x440,960x540,1280x720,1920x1080}.png` (not committed).
+
+**Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440 (owned by open #415 — do not push `ui-polish-52`); Automation conduct-strip @960 (looks intentional under-beam layout; re-check if a live conducted state still tangles); Shipworks lower callouts below the fold @844×390 (berth scrolls by design); Codex STORY wrap @801×390 / ARCHIVE fade @844×390 if still open after #412 merge.
