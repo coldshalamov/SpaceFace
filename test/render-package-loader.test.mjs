@@ -440,6 +440,92 @@ test('loader exposes one prepared blueprint and lets a render boundary own insta
   assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1);
 });
 
+test('released external owners cannot create an instance or leave a live package untracked', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => preparedFlightFixture(decoded),
+  });
+  const loaded = await loader.load(flightPackageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  assert.equal(residency.isOwnerReleased(owner), true);
+
+  assert.throws(
+    () => loaded.createInstance({ residencyOwner: owner }),
+    /residency owner has been released/i,
+  );
+  assert.throws(
+    () => loaded.createFlightInstance({ residencyOwner: owner }),
+    /residency owner has been released/i,
+  );
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1,
+    'the rejected external owner does not mint a hidden instance hold');
+  assert.deepEqual(disposals, { geometry: 0, material: 0, texture: 0 });
+
+  assert.equal(loaded.release('fixture-package-released'), true);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 },
+    'the package retires cleanly after the rejected instance attempts');
+  loader.dispose();
+});
+
+test('stepped instance creation rejects an external owner released during a yield', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  for (let i = 0; i < 510; i++) decoded.scene.add(new THREE.Object3D());
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const loaded = await loader.load(packageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+
+  const steps = loaded.createInstanceSteps({ residencyOwner: owner });
+  const yielded = steps.next();
+  assert.equal(yielded.done, false, 'the expanded fixture reaches the paced clone boundary');
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  assert.throws(
+    () => steps.next(),
+    /residency owner has been released/i,
+    'a released owner cannot publish the partially cloned instance after yielding',
+  );
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1,
+    'the failed stepped creation leaves only the package owner');
+  assert.equal(loaded.release('fixture-package-released'), true);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  loader.dispose();
+});
+
+test('live external owners still share generic and flight-static instances', async () => {
+  const decoded = decodedFixture();
+  const prepared = preparedFlightFixture(decoded);
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => prepared,
+  });
+  const loaded = await loader.load(flightPackageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+  const generic = loaded.createInstance({ residencyOwner: owner });
+  const flight = loaded.createFlightInstance({ residencyOwner: owner });
+  assert.equal(generic.disposed, false);
+  assert.equal(flight.disposed, false);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2,
+    'duplicate retains share the existing live external owner');
+  assert.equal(generic.dispose(), true);
+  assert.equal(flight.dispose(), true);
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  loader.dispose();
+});
+
 test('loader validates metadata and declared content identity before decoding', async () => {
   let decodeCount = 0;
   const decoded = decodedFixture();
