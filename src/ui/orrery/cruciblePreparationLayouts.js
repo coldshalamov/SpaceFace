@@ -664,6 +664,48 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { font-size:13px !important; bottom:172px; }
   ${R} > .k-foot { padding:18px 0 12px !important; }
 }
+
+/* Short desktop armory (≥761 wide, ≤500 tall: 844×390, 900×420, 1024×440, 1280×480). The tall
+   title and the two-row foot left the catalog and the reading a ~24px row, so the filters, the
+   offers and the purchase key printed off the frame. The title closes to three lines (cradle and
+   preview share one), the foot to one row, the search joins the filters' second row where it
+   fits, and the reading's words lead so the purchase key sits above the fold. Selectors, IDs and
+   the catalog are unchanged. */
+@media (min-width:761px) and (max-height:500px) {
+  ${A} { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; gap:10px 24px !important; padding:14px 24px 8px !important; }
+  ${A} > .k-title h1 { font-size:30px !important; }
+  ${A} > .k-title .sf-cru-sub { font-size:13px !important; margin-top:4px !important; }
+  ${A} > .k-title { display:grid !important; grid-template-columns:auto minmax(0,1fr); column-gap:20px; align-items:baseline; }
+  ${A} > .k-title > :is(h1,.sf-cru-sub) { grid-column:1 / -1; }
+  ${A} > .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin:4px 0 0 !important; font-size:12px !important; line-height:1.4 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${A} > .k-title .sf-cru-cradle { grid-column:1; grid-row:3; }
+  ${A} > .k-title .sf-cru-preview { grid-column:2; grid-row:3; }
+  ${A} .orr-armory-wallet strong { font-size:30px; }
+  ${A} .orr-armory-wallet span { margin-top:4px; }
+  ${A} .sf-cru-filters { gap:2px 10px !important; padding:0 0 6px !important; align-items:center !important; }
+  ${A} .sf-cru-filters > button { min-height:32px !important; padding:6px 0 !important; }
+  ${A} .sf-cru-search { order:0 !important; flex:1 1 150px !important; width:auto !important; min-width:150px !important; min-height:32px !important; margin:0 !important; padding:6px 10px !important; font-size:13px !important; }
+  ${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:8px !important; }
+  ${A} .sf-cru-card.sf-cru-card { min-height:60px !important; padding:8px 4px 8px 10px !important; grid-template-columns:40px minmax(0,1fr) auto !important; }
+  ${A} .sf-cru-card > .orr-equipment-glyph { width:38px; height:38px; }
+  ${A} .sf-cru-card .sf-cru-name { font-size:14px !important; }
+  ${A} .orr-rail-divider { margin:8px 0 2px 10px !important; }
+  ${A} .orr-armory-reading.orr-armory-reading { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:none !important; grid-auto-rows:max-content !important; align-content:start !important; padding:4px 2px 8px 16px !important; }
+  ${A} .orr-armory-reading__words { order:-1; }
+  ${A} .orr-armory-reading__name { font-size:22px !important; margin:4px 0 6px !important; }
+  ${A} .orr-armory-reading__blurb { font-size:13px !important; line-height:1.4 !important; }
+  ${A} .orr-armory-fitline { margin:0 0 6px; }
+  ${A} .orr-armory-reading__compare { margin:6px 0 !important; }
+  ${A} .orr-armory-reading__budget { margin:6px 0 !important; }
+  ${A} .orr-armory-reading__buy { margin:6px 0 8px !important; }
+  ${A} .orr-armory-purchase { min-height:40px; padding:9px 14px; font-size:14px; }
+  ${A} > .k-foot { padding:6px 0 0 !important; flex-wrap:nowrap !important; align-items:center !important; gap:16px !important; }
+  ${A} .k-foot .k-words { flex-wrap:nowrap !important; gap:20px !important; flex:0 1 auto !important; min-width:0; }
+  ${A} .k-foot .k-word { font-size:14px !important; min-height:36px !important; white-space:nowrap; }
+  ${A} .k-foot .sf-cru-kbd { margin-left:8px !important; }
+  ${A} .sf-cru-fine { margin:0 0 0 auto !important; flex:0 1 auto; }
+  ${A} .sf-cru-fine .sf-cru-hint { margin-left:0; }
+}
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;

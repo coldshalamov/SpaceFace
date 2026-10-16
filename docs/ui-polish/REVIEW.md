@@ -1501,3 +1501,19 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 - The new ESC overrides (10px) are gone, and the base ESC chip and the MORE chip go from 11 to 12px. The 901–1100 ladder numerals keep the base 12px instead of the new 10.5px override. With these, the chrome text is all 12px at every size checked.
 - The ≤900×≤460 block loses its 651px width floor. At 641–650 wide (and at 600×400 and 520×380) a short desktop window still had the 34px pane with MORE over BACK. Those sizes are now clean (bench 6 → 0). Phones are still excluded by `data-sf-mobile`.
 - Pre-existing, not this PR (same on master): 901–1100 pane labels and choice words at 11.5px; the preview's micro labels (10.8px "Helios control") at every desktop size; at 901 wide (901×440) the slider scale collapses so a click on the track does not move most sliders (keyboard and wider windows are fine).
+
+## Crucible Armory on short desktops (2026-10-16, ui-polish-65)
+
+**Before (master e929771221 = #432):** at ≥761 wide and ≤500 tall (844×390, 801×390, 900×420, 1024×440, 1280×480, and phone landscape 844×390) the four-line title (~140 px) and a two-row foot (Launch and Rearrange wrapped) left the catalog and the reading a 24 px grid row. At 844×390 the filter chips, the offer cards and the whole reading below "RACK" were off the frame (bench 12 findings: filter chips CUT OFF / OFF FRAME); at 1024×440 only a sliver of the first card and no purchase key showed (bench 6); at 1280×480 one card was half visible and the purchase key was under the foot (bench 0, visual only).
+
+**After (`src/ui/orrery/cruciblePreparationLayouts.js` only, one additive `@media (min-width:761px) and (max-height:500px)` block under `${A}`):**
+- Title: h1 30 px, sub 13 px; the cradle line and the next-round preview share one row (cradle first, preview ellipsized; 12 px). Wallet numeral 30 px.
+- Columns go 1fr / 1fr so the filter chips wrap to two rows; the search joins the second row where 150 px fits (≥900 wide) and takes its own row at 801–844. Chips 32 px tall, search 32 px.
+- Offer cards 60 px (38 px glyph, 14 px name); dividers tighter.
+- Reading: one column, words first (name 22 px, blurb 13 px, tighter budget/buy margins, purchase key 40 px) so **Purchase** sits on first paint; the pip-spanner/jig follow below in the reading's own scroll.
+- Foot: one row — LAUNCH ROUND · ESC, REARRANGE LOADOUT and the 1 2 3 INSPECT · TAB BROWSE hints (words 14 px, 36 px tall).
+- Type floor 12 px kept. Selectors, IDs and the loadout catalog/data unchanged; heights >500 untouched.
+
+**Checked:** bench `crucible-draft` findings 12→0 at 844×390 (desktop and `--phone`), 12→0 at 900×420, 6→0 at 1024×440, 0→0 at 801×390 and 1280×480 (visual: filters, ≥1 full card and Purchase on-frame). 960×540, 1280×720, 1920×1080, 390×844 (desktop and `--phone`) are pixel-identical to master. `--walk` at 844×390: 0 findings across 24 controls (filters, cards); the only errors are pre-existing 404s for `assets/weapons/clips/*.mp4` missing from the local asset set. Focused tests pass: `crucible-visual-preparation`, `crucible-draft`, `inf-036-spare-contrast`; `arsenal-identity` fails 1 on master too (`wpn_saucer_death_ray has a custom glyph`, glyph data, not CSS). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish65/{before,after,after-walk}/`, `compare-crucible-draft-*.png`.
+
+**Leftovers (not this pass):** at 801–844×390 only one offer card shows above the fold (the list scrolls); Footprint dial rim text over the dial @844×390 (bench 7); tech-tree adjacent star hit boxes @844×390 (bench 5, nodes 17 px apart); station tabs @844×390; Shipworks lower callouts @844×390 (scroll by design).
