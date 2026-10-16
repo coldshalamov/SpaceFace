@@ -83,8 +83,16 @@ async function nativeLightAb() {
     const functionAt = originalChunk.indexOf('void RE_Direct_Physical(');
     const braceAt = originalChunk.indexOf('{', functionAt);
     if (functionAt < 0 || braceAt < 0) throw new Error('Shipped direct physical shader contract unavailable');
-    const guardedChunk = originalChunk.slice(0, braceAt + 1)
-      + '\n if (all(equal(directLight.color, vec3(0.0)))) return;\n' + originalChunk.slice(braceAt + 1);
+    const guard = 'if (all(equal(directLight.color, vec3(0.0)))) return;';
+    const body = originalChunk.slice(braceAt + 1);
+    const firstStatement = body.search(/\S/);
+    // Current production may already install the managed guard. Compare against
+    // its original body rather than benchmarking one guard against two.
+    const baselineChunk = firstStatement >= 0 && body.slice(firstStatement).startsWith(guard)
+      ? originalChunk.slice(0, braceAt + 1) + body.slice(0, firstStatement) + body.slice(firstStatement + guard.length)
+      : originalChunk;
+    const guardedChunk = baselineChunk.slice(0, braceAt + 1)
+      + '\n ' + guard + '\n' + baselineChunk.slice(braceAt + 1);
     const makeMaterial = (source, guarded) => {
       const material = source.clone(); resources.push(material);
       if (source.defines) material.defines = { ...source.defines };
@@ -94,7 +102,7 @@ async function nativeLightAb() {
         hook?.call(this, shader, renderer);
         const needle = '#include <lights_physical_pars_fragment>';
         if (!shader.fragmentShader.includes(needle)) throw new Error('PBR direct-light chunk was replaced by an unsupported hook');
-        shader.fragmentShader = shader.fragmentShader.replace(needle, guarded ? guardedChunk : originalChunk);
+        shader.fragmentShader = shader.fragmentShader.replace(needle, guarded ? guardedChunk : baselineChunk);
         // The fixture never follows live mood transitions while the two variants link/render.
         for (const name of Object.keys(LOOK_SURFACE_UNIFORMS)) {
           if (shader.uniforms[name]) shader.uniforms[name] = { value: frozenValue(frozenLook[name]) };
