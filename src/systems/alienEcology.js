@@ -41,6 +41,7 @@ import {
 import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
 import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
+import { echoApplies, stepEchoIndex } from '../data/faunaRouteEcho.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -1344,6 +1345,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       e.pos.x += Math.cos(e.rot) * push * dt;
       e.pos.z += Math.sin(e.rot) * push * dt;
       eco.suppressedT = (eco.suppressedT || 0) + dt;
+      if (eco.echo != null) eco.echo = null;
       return;
     }
   }
@@ -1451,6 +1453,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   if (species.id === 'hull_leech' && now < (eco.detachUntil || 0)) setDrive(eco, 'flee');
 
   // ── drive behaviors: kinematic steering toward intent ──
+  if (eco.echo != null) eco.echo = null;
   const speedMult = coherent ? 1 : species.coherenceLoss.speedMult;
   const siteGlobalAnchor = eco.anchor;
   let targetX = null;
@@ -1498,13 +1501,35 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       break;
     }
     case 'drift': {
+      // A dumb host on a recorded lane repeats that fragment. It does not learn a route.
+      const echoPoints = echoApplies(species, site)
+        ? site.routeEcho.waypoints.map((wpt) => {
+          const ox = Number(wpt.x);
+          const oz = Number(wpt.z);
+          const local = {
+            x: site.center.x + (Number.isFinite(ox) ? ox : 0),
+            z: site.center.z + (Number.isFinite(oz) ? oz : 0),
+          };
+          return world._toGlobal ? world._toGlobal(local, sectorId) : local;
+        })
+        : null;
+      const heatSeek = (sens.heat || 0) >= 0.9 && px != null && stim.heat > 0.5;
+      if (echoPoints && !heatSeek) {
+        const i = stepEchoIndex(e.pos, echoPoints, eco.echoIndex);
+        eco.echoIndex = i;
+        eco.echo = 'lane';
+        targetX = echoPoints[i].x;
+        targetZ = echoPoints[i].z;
+        speed *= 0.45;
+        break;
+      }
       // Slow meander around the anchor: deterministic wander from simTime + phase.
       const w = now * 0.05 + eco.phase;
       targetX = siteGlobalAnchor.x + Math.cos(w) * 60;
       targetZ = siteGlobalAnchor.z + Math.sin(w * 0.9) * 60;
       speed *= 0.45;
       // Lantern cysts drift toward heat sources instead.
-      if ((sens.heat || 0) >= 0.9 && px != null && stim.heat > 0.5) { targetX = px; targetZ = pz; }
+      if (heatSeek) { targetX = px; targetZ = pz; }
       break;
     }
     case 'forage': {
