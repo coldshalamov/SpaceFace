@@ -516,8 +516,9 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-reader__num-n { font-size:32px; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:17px !important; }
   ${CX} .sf-codex-entry > h2 { margin-top:4px !important; }
-  /* filed + meta stay one line: STORY · THE EIGHT BEATS / ARCHIVE · RECOVERED SIGNALS no longer wrap */
-  ${CX} .cx-reader__filed { font-size:10.5px !important; letter-spacing:.05em !important; white-space:nowrap; margin-top:0 !important; }
+  /* filed + meta set smaller and tighter, so STORY · THE EIGHT BEATS / ARCHIVE · RECOVERED SIGNALS fit one line;
+     a longer filing (GRAFFITI · BULKHEAD — THE PREVIOUS CREW) still wraps rather than clipping mid-word */
+  ${CX} .cx-reader__filed { font-size:10.5px !important; letter-spacing:.05em !important; margin-top:0 !important; }
   ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:10.5px !important; letter-spacing:.05em !important; }
   ${CX} .sf-codex-entry .k-measure { margin-top:6px !important; padding-top:6px !important; }
   ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.4 !important; }
