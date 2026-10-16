@@ -37,16 +37,18 @@ export function resolveFaunaApproachDrive(species, ctx = {}) {
   if (!species || !species.drives) return null;
   if (!ctx.reacted || species.dormant || ctx.silenced) return null;
   const playerD = Number.isFinite(ctx.playerD) ? ctx.playerD : Infinity;
-  const alertR = Number(species.alertR) || 0;
+  // The tick passes the scaled notice ring (stealth, awake site, severed relay).
+  // A direct call uses the species ring.
+  const noticeR = Number.isFinite(ctx.noticeR) ? ctx.noticeR : (Number(species.alertR) || 0);
   const threatenR = Number(species.threatenR) || 0;
   // A heat hunter at one range holds shadow until the plume is hot.
   // Inside the close ring it still panics. Other animals keep the proximity rule.
-  if (species.heatHunter && playerD < alertR) {
+  if (species.heatHunter && playerD < noticeR) {
     if (playerD < threatenR) return species.drives.panic;
     return ctx.heatSaturated ? 'charge' : species.drives.curious;
   }
   if (playerD < threatenR) return species.drives.panic;
-  if (playerD < alertR) return ctx.awake ? species.drives.tense : species.drives.curious;
+  if (playerD < noticeR) return ctx.awake ? species.drives.tense : species.drives.curious;
   const current = ctx.currentDrive;
   if (current === 'attach' || current === 'idle' || current === 'feed') return current;
   return species.drives.idle;
