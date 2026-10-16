@@ -13,9 +13,10 @@ import {
   renderPackageContentIdentity,
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
-import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
+import { createAssetResidencyRegistry, getAssetResidency } from '../src/render/assetResidency.js';
 import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
+import { installVisualOverrides } from '../src/render/visualOverrides.js';
 
 Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
   Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
@@ -1117,6 +1118,108 @@ function pilotRuntimeFixture(loader) {
     renderPackages: loader,
   };
 }
+
+test('packaged scenario props retain their production package through pressure until boundary release', async () => {
+  const renderer = {};
+  const residency = getAssetResidency(renderer);
+  const decoded = decodedFixture();
+  const spindleSourceUrl = 'assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb';
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => Object.freeze({
+      url: spindleSourceUrl,
+      assetId: 'fixture.ship',
+      slot: 'pod',
+      primitives: Object.freeze([Object.freeze({
+        key: 'render.glb#EvidenceSpindleBody',
+        name: 'EvidenceSpindleBody',
+        geometry: decoded.geometry,
+        material: decoded.material,
+        matrix: new THREE.Matrix4(),
+        tags: Object.freeze({ lod: 'lod0' }),
+      })]),
+      markers: Object.freeze([]),
+      report: Object.freeze({}),
+    }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = {
+    metadataUrl: metadata,
+    expectedContentHash: metadata.contentHash,
+    assetId: metadata.assetId,
+  };
+  const factory = installVisualOverrides({
+    build() {
+      const root = new THREE.Group();
+      root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial()));
+      return root;
+    },
+  }, { releaseMode: true });
+  const entity = {
+    id: 373,
+    type: 'payload',
+    alive: true,
+    radius: 5,
+    data: {
+      scenarioActorId: 'evidence_spindle_47a',
+      assetRef: 'asset.slice.47a_spindle',
+      packagedPropFile: 'pods/pod_47a_evidence_spindle.glb',
+      packagedPropSlot: 'pod',
+    },
+  };
+  const root = factory.build(entity);
+  const scene = new THREE.Scene();
+  scene.add(root);
+  let admittedRecord = null;
+  let createInstanceCalls = 0;
+  try {
+    const receipt = await root.userData.requestAuthoredUpgrade(renderer, scene, {
+      loadAuthoredPart: async (url, options) => {
+        admittedRecord = await loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
+        if (admittedRecord?.renderPackage) {
+          admittedRecord.renderPackage.createInstance = () => {
+            createInstanceCalls++;
+            throw new Error('packaged scenario props mount flat primitives, not package instances');
+          };
+        }
+        return admittedRecord;
+      },
+    });
+    assert.equal(receipt, true);
+    assert.ok(admittedRecord?.renderPackage, 'the visual override used the production package pilot');
+    const body = root.userData.hull;
+    const bodyMesh = body && body.children.find((child) => child.isMesh);
+    assert.ok(bodyMesh, 'the packaged body publishes a mesh');
+    assert.strictEqual(bodyMesh.geometry, decoded.geometry,
+      'the mounted scenario prop uses record.primitives geometry directly');
+    assert.equal(createInstanceCalls, 0, 'scenario prop mounting must not create a package instance');
+
+    const resident = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.ok(resident, 'the production package is registered with the renderer residency ledger');
+    assert.ok(resident.roles.includes('current-sector'),
+      'the mounted boundary owns the package with its live admission role');
+    const pressure = residency.releaseUnreferencedCacheOwners('test-mounted-prop-pressure', {
+      minAgeMs: 0,
+      maxCacheOnlyBytes: 0,
+    });
+    assert.equal(pressure.evicted.includes(resident.key), false,
+      'byte pressure cannot evict a package still owned by the mounted boundary');
+    assert.equal(admittedRecord.renderPackage.evicted, false);
+
+    root.userData.releaseAuthoredAssetResidency('test-mounted-prop-boundary-release');
+    residency.releaseUnreferencedCacheOwners('test-mounted-prop-after-release', {
+      minAgeMs: 0,
+      maxCacheOnlyBytes: 0,
+    });
+    assert.equal(admittedRecord.renderPackage.evicted, true,
+      'releasing the boundary returns the package to cache-only cleanup');
+    assert.equal(runtime.assets.size, 0, 'the pilot source task drops with its evicted package');
+  } finally {
+    loader.dispose();
+  }
+});
 
 test('D24: sector-exit eviction drops the stale source-url task instead of pinning the dead generation', async () => {
   // Regression for the renderer heap slope: runtime.assets is keyed by source URL while the
