@@ -1435,3 +1435,18 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Leftovers (not this pass):** My Ship callouts @1101–1160 (open #423 `station.css`); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted state @960 (optional).
 
 **Review fix (Code Work):** the 15px label cap put Hull/Shield/Armor at ~9px on screen at scale .6 (live HUD ≤1300 wide) and 10.5px at .7 (1301–1700), under the 12 px type floor, and the live HUD's engraving (`HITCH · STARTER · TIER 0`) still met Armor at .7 and .85. The cap is gone (labels are 12 px on screen at every step again) and the engraving now starts at 135deg instead of 160, so it runs up the lower right clear of the legend. Live HUD probe (real game, ring glyph boxes vs legend boxes, full / hit / critical damage): 0 overlaps at 844×390, 960×540, 1280×720, 1440×900, 1920×1080, against 4–13 legend/engraving glyph overlaps on master (13 at 844 and 960, 11 at 1280, 8 at 1440, 4 at 1920).
+
+## Range on a very short / narrow desktop: RULES · BESTIARY · CLOSE stay on glass (ui-polish-60)
+
+**Before (master 9026a5dcf8):** the existing ≤1100 × ≤640 short block kept 960×540 clean, but under ~460px tall (844×390 / 801×390 / 900×420) the title + five-row ladder + dossier still outgrew the frame, so RULES / BESTIARY / CLOSE and the run gauge fell below the fold (bench: 3 OFF FRAME at each size). A narrow desktop window (390×844, not phone) wrapped the 16 rules into many rows and did the same.
+
+**After (`src/ui/screens/range.js` only, CSS, desktop via `html:root:not([data-sf-mobile="1"])`):**
+- New `@media (max-width:1100px) and (max-height:460px)`: tighter frame pad / row gap, smaller hero and one-line-clamped blurbs, denser ladder ticks, compact dossier and 28px run gauge so the tabs row stays on glass and the course keeps a slim band.
+- New `@media (max-width:520px)`: sideways-scrolling one-row ladder (phone-style fade) so a 390-wide desktop window no longer stacks sixteen rungs.
+- Selectors and IDs unchanged. Phones (`data-sf-mobile`) keep the mobile sheet.
+
+**Checked:** bench `range` findings 3→0 at 844×390, 801×390, 900×420 and 390×844; stay 0 at 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 960/1920 0%; 1280 ~0.1% noise; short/narrow frames change as intended. `--phone` 390×844 / 844×390 clean. `--walk` at 844×390 reaches all 22 controls including RULES / BESTIARY / CLOSE. Focused test `range-door-funnel` passes (6). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish60/{before,after,compare}/`, `compare-range-*.png`.
+
+**Leftovers (not this pass):** My Ship hull callouts @1101–1160 (#423); flightCluster class ring vs legend (#426, awaiting live HUD re-review); Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional).
+
+**Review fix (Code Work):** the ≤460-tall block set four sizes under the 12 px type floor (second title line, ladder words, dossier, run gauge, all 11px). They are 12px now, with letter-spacing trimmed by .01–.02em. RULES / BESTIARY / CLOSE and the run gauge still sit on glass at 844×390, 801×390, 900×420 and 1100×460, where the ladder takes one more row at 801. Bench `range` is 0 at every size the PR touches, and the smallest computed text on the screen is 12px.
