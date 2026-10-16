@@ -5,7 +5,7 @@
 // round-trip: the probe must not infer worker health from a capped response
 // journal or from a mocked worker.
 
-import { RUNTIME_WORKERS, runtimeWorkerUrl } from '../../src/render/runtimeWorkers.js';
+import { RUNTIME_WORKERS, runtimeWorkerUrl } from '../../../../../../src/render/runtimeWorkers.js';
 
 const CONTRACT_IDS = Object.freeze(['digest', 'prepass']);
 const MAX_CRITICAL_RECORDS = 64;
@@ -124,7 +124,13 @@ export function recordMobileResponse(ledger, response) {
 }
 
 export function recordMobileRequestFailure(ledger, failure) {
-  const entry = { url: String(failure?.url || ''), error: failure?.error };
+  const entry = {
+    url: String(failure?.url || ''),
+    error: failure?.error,
+    resourceType: typeof failure?.resourceType === 'string' ? failure.resourceType : null,
+    actorStage: typeof failure?.actorStage === 'string' ? failure.actorStage : null,
+    timestamp: typeof failure?.timestamp === 'string' ? failure.timestamp : null,
+  };
   ledger.requestFailureCount += 1;
   const critical = isCriticalRuntimeAssetUrl(entry.url);
   if (critical) {
@@ -211,16 +217,27 @@ function mobileWorkerContractInPage({ workerUrls, timeoutMs, fetchTimeoutMs }) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
     let response;
+    let validationError = null;
     try {
       response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+      const mime = response.headers.get('content-type') || '';
+      if (response.status !== 200) {
+        validationError = new Error(`${id} worker asset returned HTTP ${response.status}: ${url}`);
+        throw validationError;
+      }
+      if (!isJsMime(mime)) {
+        validationError = new Error(`${id} worker asset has non-JavaScript MIME ${mime || '(missing)'}: ${url}`);
+        throw validationError;
+      }
+      await response.arrayBuffer();
+      return { status: response.status, mime };
     } catch (error) {
+      if (error === validationError) throw error;
       const reason = controller.signal.aborted ? `timed out after ${fetchTimeoutMs}ms` : String(error?.message || error);
       throw new Error(`${id} worker fetch failed for ${url}: ${reason}`);
-    } finally { clearTimeout(timer); }
-    const mime = response.headers.get('content-type') || '';
-    if (response.status !== 200) throw new Error(`${id} worker asset returned HTTP ${response.status}: ${url}`);
-    if (!isJsMime(mime)) throw new Error(`${id} worker asset has non-JavaScript MIME ${mime || '(missing)'}: ${url}`);
-    return { status: response.status, mime };
+    } finally {
+      clearTimeout(timer);
+    }
   };
   const roundTrip = (id, url, type, message, transfer) => new Promise((resolve, reject) => {
     let worker;

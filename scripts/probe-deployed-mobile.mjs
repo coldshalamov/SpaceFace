@@ -255,7 +255,13 @@ try {
     }
   });
   page.on('requestfailed', request => {
-    recordMobileRequestFailure(report, { url: request.url(), error: request.failure()?.errorText });
+    recordMobileRequestFailure(report, {
+      url: request.url(),
+      error: request.failure()?.errorText,
+      resourceType: request.resourceType?.() || null,
+      actorStage,
+      timestamp: new Date().toISOString(),
+    });
   });
   page.on('response', response => {
     recordMobileResponse(report, { url: response.url(), status: response.status(),
