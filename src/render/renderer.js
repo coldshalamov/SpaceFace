@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
+import { installPbrZeroRadianceGuard } from './pbrZeroRadianceGuard.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
@@ -11296,6 +11297,7 @@ export const render = {
     this._simHelpers = ctx.helpers || null;
     this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
     const state = ctx.state, bus = ctx.bus;
+    installPbrZeroRadianceGuard(THREE);
 
     const canvas = document.getElementById('gl-canvas');
     // preserveDrawingBuffer is needed only by the explicit /__shot ship capture route. Keeping it off

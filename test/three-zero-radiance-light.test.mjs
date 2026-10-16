@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ShaderChunk, ShaderLib } from '../vendor/three.module.js';
+import * as npmThree from 'three';
+import * as vendorThree from '../vendor/three.module.js';
+import {
+  installPbrZeroRadianceGuard,
+  PBR_ZERO_RADIANCE_GUARD,
+} from '../src/render/pbrZeroRadianceGuard.js';
 
 const DIRECT_PHYSICAL = 'void RE_Direct_Physical(';
-const ZERO_RADIANCE_GUARD = 'if (all(equal(directLight.color, vec3(0.0)))) return;';
+const DIRECT_PHYSICAL_FIRST_STATEMENT = '\n\tfloat dotNL = saturate( dot( geometryNormal, directLight.direction ) );';
+const SHADER_CHUNK_INPUTS = [
+  ['vendor', vendorThree],
+  ['npm', npmThree],
+];
 
 function extractFunction(source, signature) {
   const start = source.indexOf(signature);
@@ -23,21 +32,30 @@ function extractFunction(source, signature) {
   assert.fail(`${signature} has a balanced body`);
 }
 
-test('zero-radiance direct physical guard preserves the shipped PBR path', () => {
-  const chunk = ShaderChunk.lights_physical_pars_fragment;
-  assert.equal(typeof chunk, 'string', 'the physical shader chunk is exported');
+function shaderChunkInput(three) {
+  // Keep each installer run isolated: the test uses the real vendor/npm ShaderChunk text without
+  // mutating the module globals other test files may import in the same process.
+  return {
+    ShaderChunk: {
+      lights_physical_pars_fragment: three.ShaderChunk.lights_physical_pars_fragment,
+    },
+  };
+}
 
-  const directPhysical = extractFunction(chunk, DIRECT_PHYSICAL);
-  const body = directPhysical.slice(directPhysical.indexOf('{') + 1, -1);
-  const firstStatement = body.trimStart().split('\n', 1)[0];
-  assert.equal(firstStatement, ZERO_RADIANCE_GUARD,
-    'the exact-zero guard is the first direct-light statement');
-  assert.equal(body.split(ZERO_RADIANCE_GUARD).length - 1, 1,
-    'the guard is scoped to the direct physical function');
-
-  const nonzeroBody = body.slice(body.indexOf(ZERO_RADIANCE_GUARD) + ZERO_RADIANCE_GUARD.length);
-  assert.match(nonzeroBody, /^\n\tfloat dotNL = saturate\( dot\( geometryNormal, directLight\.direction \) \);/,
-    'nonzero lights still enter the original BRDF path');
+function assertDirectFunctionPreserved(before, after, label) {
+  const directBefore = extractFunction(before, DIRECT_PHYSICAL);
+  const directAfter = extractFunction(after, DIRECT_PHYSICAL);
+  const guard = `\n\t${PBR_ZERO_RADIANCE_GUARD}`;
+  assert.equal(directAfter.split(PBR_ZERO_RADIANCE_GUARD).length - 1, 1,
+    `${label} has one exact-zero direct-light guard`);
+  const body = directAfter.slice(directAfter.indexOf('{') + 1, -1);
+  assert.equal(body.trimStart().split('\n', 1)[0], PBR_ZERO_RADIANCE_GUARD,
+    `${label} guard is the first direct-light statement`);
+  assert.equal(directAfter.replace(guard, ''), directBefore,
+    `${label} nonzero direct-light function body is unchanged`);
+  assert.match(body.slice(body.indexOf(PBR_ZERO_RADIANCE_GUARD) + PBR_ZERO_RADIANCE_GUARD.length),
+    /^\n\tfloat dotNL = saturate\( dot\( geometryNormal, directLight\.direction \) \);/,
+    `${label} nonzero lights still enter the original BRDF path`);
   for (const sideEffect of [
     'clearcoatSpecularDirect += ccIrradiance * BRDF_GGX_Clearcoat',
     'sheenSpecularDirect += irradiance * BRDF_Sheen',
@@ -45,16 +63,51 @@ test('zero-radiance direct physical guard preserves the shipped PBR path', () =>
     'reflectedLight.directSpecular += irradiance * BRDF_GGX_Multiscatter',
     'reflectedLight.directDiffuse += irradiance * BRDF_Lambert',
   ]) {
-    assert.match(nonzeroBody, new RegExp(sideEffect.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      `nonzero direct-light side effect remains: ${sideEffect}`);
+    assert.match(directAfter, new RegExp(sideEffect.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `${label} preserves nonzero side effect: ${sideEffect}`);
   }
+}
 
-  for (const shaderName of ['standard', 'physical']) {
-    const fragment = ShaderLib[shaderName]?.fragmentShader;
-    assert.equal(typeof fragment, 'string', `${shaderName} fragment shader is exported`);
-    assert.match(fragment, /#include <lights_physical_pars_fragment>/,
-      `${shaderName} continues to include the guarded physical chunk`);
-    assert.match(fragment, /#include <lights_fragment_begin>/,
-      `${shaderName} continues to run the direct-light loop`);
+test('vendor and npm Three inputs share an idempotent zero-radiance installer', () => {
+  const results = SHADER_CHUNK_INPUTS.map(([label, three]) => {
+    const before = three.ShaderChunk.lights_physical_pars_fragment;
+    const input = shaderChunkInput(three);
+    const first = installPbrZeroRadianceGuard(input);
+    const afterFirst = input.ShaderChunk.lights_physical_pars_fragment;
+    const second = installPbrZeroRadianceGuard(input);
+    const afterSecond = input.ShaderChunk.lights_physical_pars_fragment;
+
+    assert.equal(first.changed, true, `${label} installer changes the unguarded chunk`);
+    assert.equal(second.changed, false, `${label} installer is idempotent`);
+    assert.equal(afterSecond, afterFirst, `${label} idempotent install does not duplicate the guard`);
+    assertDirectFunctionPreserved(before, afterFirst, label);
+    return { label, three, before, after: afterFirst };
+  });
+
+  assert.equal(extractFunction(results[0].before, DIRECT_PHYSICAL),
+    extractFunction(results[1].before, DIRECT_PHYSICAL),
+    'vendor and npm resolve the same upstream direct physical function body');
+  assert.equal(extractFunction(results[0].after, DIRECT_PHYSICAL),
+    extractFunction(results[1].after, DIRECT_PHYSICAL),
+    'vendor and npm receive the same guarded direct physical function body');
+
+  for (const [label, three] of SHADER_CHUNK_INPUTS) {
+    for (const shaderName of ['standard', 'physical']) {
+      const fragment = three.ShaderLib[shaderName]?.fragmentShader;
+      assert.equal(typeof fragment, 'string', `${label} ${shaderName} fragment shader is exported`);
+      assert.match(fragment, /#include <lights_physical_pars_fragment>/,
+        `${label} ${shaderName} continues to include the guarded physical chunk`);
+      assert.match(fragment, /#include <lights_fragment_begin>/,
+        `${label} ${shaderName} continues to run the direct-light loop`);
+    }
   }
+});
+
+test('installer rejects an unrecognized direct physical body', () => {
+  const source = vendorThree.ShaderChunk.lights_physical_pars_fragment
+    .replace(DIRECT_PHYSICAL_FIRST_STATEMENT, '\n\tvec3 unsupportedDirectPhysicalBody = vec3( 0.0 );');
+  assert.throws(
+    () => installPbrZeroRadianceGuard({ ShaderChunk: { lights_physical_pars_fragment: source } }),
+    /Unrecognized RE_Direct_Physical shader body/,
+  );
 });
