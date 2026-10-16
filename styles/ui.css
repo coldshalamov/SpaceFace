@@ -2200,10 +2200,14 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
 }
 /* Short frame (desktop window or phone landscape): empty-reel ghosts clear the readout.
    Rail lift and readout drop are scoped to the empty reel (ghost plates present): on a populated
-   reel the readout at 64px sat under the EXPORT lamp and the verbs, hiding the trim instructions. */
-@media (min-width:641px) and (max-height:460px) {
+   reel the readout at 64px sat under the EXPORT lamp and the verbs, hiding the trim instructions.
+   They follow layoutGhosts' own gate (host ≤460 tall, any width): at ≤640 wide (e.g. 640×400) the
+   lifted ghosts otherwise sat with their names on the un-dropped readout. */
+@media (max-height:460px) {
   .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__rail { top:12%; }
   .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__readline { bottom:64px; }
+}
+@media (min-width:641px) and (max-height:460px) {
   .orr-clips__count { font-size:clamp(36px, 5.2vw, 56px); }
   .orr-clips__runtime { font-size:16px; margin-top:4px; }
   .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; }

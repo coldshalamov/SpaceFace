@@ -1382,7 +1382,7 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **After (`src/ui/screens/clips.js` + `styles/ui.css`):**
 - `layoutGhosts` on hosts ≤460 tall shrinks ghost art (`artRatio` 0.36) and lifts plates farther above the rail (mid 108 / side 72) so the subs clear the readout.
-- Short CSS (`min-width:641px` × `max-height:460px`): rail `top:12%`, readout `bottom:64px`, tighter count/runtime and ghost type.
+- Short CSS (`min-width:641px` × `max-height:460px`): rail `top:12%`, readout `bottom:64px`, tighter count/runtime and ghost type. (Review fixes: the rail lift and readout drop are scoped to the empty reel, `.orr-clips:has(.orr-clip__plate.is-ghost)` — un-scoped, they put a populated reel's trim instructions under EXPORT at 844×390 — and follow `layoutGhosts`' own gate, `max-height:460px` at any width, so 640×400 / 600×400 ghosts no longer sit on the readout.)
 - Phone portrait and every size above 460 tall are untouched.
 
 **Checked:** bench `clips` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080, phone 390×844, and `--phone` 844×390. Pixel Δ (>8): short frames ~8–9%; 960/1280/1920/phone-portrait 0%. Focused tests pass: `pq-160-01-auto-clip`, `verb-22-amended-clip-rating`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish56/{before,after}/`, `compare-clips-*.png`, `phone-land*`.
