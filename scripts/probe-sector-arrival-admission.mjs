@@ -193,6 +193,118 @@ const censusScript = (range) => {
   };
 };
 
+// Test-only observation changes data descriptors to accessors temporarily. It never
+// instruments existing accessors or non-writable/non-configurable properties.
+function installArrivalTransitionTrace() {
+  const limit = 96;
+  const rows = [];
+  const restores = [];
+  const identities = new WeakMap();
+  let sequence = 0;
+  let omitted = 0;
+  let nextIdentity = 1;
+  const id = (value) => {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) return value ?? null;
+    if (!identities.has(value)) identities.set(value, nextIdentity++);
+    return identities.get(value);
+  };
+  const sf = window.SF;
+  let owner = null;
+  try { owner = sf.registry.get('render'); } catch (_) { /* Explicit unavailable owner. */ }
+  const state = sf.state;
+  const render = state.render;
+  const context = () => ({
+    tick: state.tick, simTime: state.simTime, mode: state.mode,
+    sector: state.world?.currentSectorId ?? null,
+    enterSerial: state.world?.enterSerial ?? null,
+    world: id(state.world), render: id(state.render), owner: id(owner),
+    cookGeneration: owner?._liveSectorCookGeneration ?? null,
+    deferredHold: owner?._firstFlightDeferredHold ?? null,
+  });
+  const record = (event, details = {}) => {
+    try {
+      const row = { sequence: ++sequence, event, ...context(), ...details };
+      if (rows.length === limit) { rows.shift(); omitted += 1; }
+      rows.push(row);
+    } catch (_) { /* Observation must never replace application behavior. */ }
+  };
+  const stack = () => {
+    try { return String(new Error().stack || '').split('\n').slice(2, 6).map((s) => s.slice(0, 220)); }
+    catch (_) { return []; }
+  };
+  const watch = (object, key, label) => {
+    const descriptor = object && Object.getOwnPropertyDescriptor(object, key);
+    if (!descriptor || !Object.hasOwn(descriptor, 'value') || !descriptor.writable || !descriptor.configurable) {
+      record('unsupported-descriptor', { field: label });
+      return;
+    }
+    let value = descriptor.value;
+    const getter = () => value;
+    const setter = (next) => {
+      const previous = value;
+      value = next;
+      record('write', { field: label, previous: id(previous), next: id(next), callers: stack() });
+    };
+    Object.defineProperty(object, key, { configurable: true, enumerable: descriptor.enumerable, get: getter, set: setter });
+    restores.push(() => {
+      const current = Object.getOwnPropertyDescriptor(object, key);
+      if (current?.get !== getter || current?.set !== setter) { record('cleanup-replaced', { field: label }); return; }
+      Object.defineProperty(object, key, { ...descriptor, value });
+    });
+  };
+  for (const key of ['openingGraphPublicationFrozen', 'sectorShellAdmission', 'firstFlightDeferredHoldUntil']) {
+    watch(render, key, `render.${key}`);
+  }
+  for (const key of ['_firstFlightDeferredHold', '_liveSectorCookGeneration']) watch(owner, key, `owner.${key}`);
+  const key = 'resumeDeferredPipelineAdmissions';
+  const descriptor = render && Object.getOwnPropertyDescriptor(render, key);
+  if (descriptor && Object.hasOwn(descriptor, 'value') && typeof descriptor.value === 'function'
+      && descriptor.writable && descriptor.configurable) {
+    const original = descriptor.value;
+    const wrapped = function (...args) {
+      record('resume-enter', { callers: stack() });
+      try {
+        const result = Reflect.apply(original, this, args);
+        record('resume-return', { result: id(result) });
+        return result;
+      } catch (error) {
+        record('resume-throw', { errorIdentity: id(error) });
+        throw error;
+      }
+    };
+    Object.defineProperty(render, key, { ...descriptor, value: wrapped });
+    restores.push(() => {
+      if (render[key] === wrapped) Object.defineProperty(render, key, descriptor);
+      else record('cleanup-replaced', { field: key });
+    });
+  } else record('unsupported-descriptor', { field: key });
+  const trace = {
+    snapshot(label) {
+      record('marker', { label });
+      try {
+        const result = { limit, omitted, outputOmitted: 0, rows: rows.slice(), current: context() };
+        while (result.rows.length && JSON.stringify(result).length > 24000) { result.rows.shift(); result.outputOmitted += 1; }
+        return result;
+      } catch (_) { return { traceError: 'snapshot unavailable' }; }
+    },
+    cleanup() { for (const restore of restores.reverse()) { try { restore(); } catch (_) { record('cleanup-error'); } } restores.length = 0; },
+  };
+  window.__sfArrivalTransitionTrace = trace;
+  record('installed');
+  return { installed: true, limit };
+}
+
+async function boundedTraceOperation(page, action) {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => page.evaluate(action)),
+      new Promise((resolve) => { timer = setTimeout(() => resolve({ traceError: 'operation timed out' }), 1000); }),
+    ]);
+  } catch (_) { return { traceError: 'operation failed' }; }
+  finally { clearTimeout(timer); }
+}
+
 const diagnoseScript = () => {
   const render = window.SF.state.render || {};
   const scene = render.scene;
@@ -210,6 +322,7 @@ const diagnoseScript = () => {
     }
     : null);
   return {
+    transitionTrace: window.__sfArrivalTransitionTrace?.snapshot('diagnostic') ?? null,
     authoredSectorPrewarmPendingId: system ? (system._authoredSectorPrewarmPendingId ?? null) : 'no-system',
     incomingSectorPrewarm: system ? prewarm(system._incomingSectorPrewarm) : null,
     currentSectorPrewarm: system ? prewarm(system._currentSectorPrewarm) : null,
@@ -322,6 +435,8 @@ try {
   // host can starve for tens of seconds while the menu finishes its registration transitions.
   await page.getByRole('button', { name: /^New Game$/i }).click({ timeout: MENU_READY_TIMEOUT_MS });
   await waitForScreenVisible(page, 'newGame', MENU_READY_TIMEOUT_MS);
+  const traceInstallation = await boundedTraceOperation(page, installArrivalTransitionTrace);
+  console.log('arrival trace installation:', JSON.stringify(traceInstallation));
   await page.fill('#sf-ng-seed', String(SEED), { timeout: MENU_READY_TIMEOUT_MS });
   await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: MENU_READY_TIMEOUT_MS });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 180_000 });
@@ -361,10 +476,10 @@ try {
     await page.evaluate((sectorId) => window.SF.registry.get('world').enterSector(sectorId), TARGET_SECTOR);
     stamp('teleport enterSector requested');
   } else {
-    await page.evaluate((sectorId) => window.SF.bus.emit('world:requestJump', {
-      targetSectorId: sectorId,
-      via: 'gate',
-    }), TARGET_SECTOR);
+    await page.evaluate((sectorId) => {
+      window.__sfArrivalTransitionTrace?.snapshot('before-jump');
+      return window.SF.bus.emit('world:requestJump', { targetSectorId: sectorId, via: 'gate' });
+    }, TARGET_SECTOR);
     stamp('world:requestJump emitted');
   }
   await page.waitForFunction((sectorId) => window.SF.state.world.currentSectorId === sectorId
@@ -401,7 +516,10 @@ try {
     stamp('continued into the destination sector');
   }
 
-  const simArrive = await page.evaluate(() => window.SF.state.simTime);
+  const simArrive = await page.evaluate(() => {
+    window.__sfArrivalTransitionTrace?.snapshot('arrival');
+    return window.SF.state.simTime;
+  });
   const samples = [];
   for (const wait of SAMPLE_SECONDS) {
     if (wait > arriveBudgetS) break;
@@ -458,6 +576,7 @@ try {
   for (const line of logs.slice(-30)) console.log('  ', line);
   process.exitCode = 1;
 } finally {
+  await boundedTraceOperation(page, () => window.__sfArrivalTransitionTrace?.cleanup());
   if (!failure && DIAGNOSE) {
     console.log('--- console tail ---');
     for (const line of logs.slice(-30)) console.log('  ', line);
