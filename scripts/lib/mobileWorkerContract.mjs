@@ -11,6 +11,9 @@ const CONTRACT_IDS = Object.freeze(['digest', 'prepass']);
 const MAX_CRITICAL_RECORDS = 64;
 const DEFAULT_RESPONSE_LIMIT = 3000;
 const DEFAULT_FAILURE_LIMIT = 500;
+const DEFAULT_HOST_MARGIN_MS = 1000;
+
+export const MOBILE_WORKER_CONTRACT_HOST_MARGIN_MS = DEFAULT_HOST_MARGIN_MS;
 
 export const MOBILE_WORKER_CONTRACT_IDS = CONTRACT_IDS;
 
@@ -287,11 +290,46 @@ function mobileWorkerContractInPage({ workerUrls, timeoutMs, fetchTimeoutMs }) {
   })();
 }
 
-export async function runMobileWorkerContract(page, { workerUrls, timeoutMs = 15000, fetchTimeoutMs = 10000 } = {}) {
+export function mobileWorkerContractHostDeadlineMs({
+  timeoutMs = 15000,
+  fetchTimeoutMs = 10000,
+  marginMs = DEFAULT_HOST_MARGIN_MS,
+} = {}) {
+  const roundTripMs = Number(timeoutMs);
+  const fetchMs = Number(fetchTimeoutMs);
+  const margin = Number(marginMs);
+  if (![roundTripMs, fetchMs, margin].every(Number.isFinite)
+      || roundTripMs < 0 || fetchMs < 0 || margin < 0) {
+    throw new TypeError('Worker contract timeouts and host margin must be finite non-negative numbers');
+  }
+  return (2 * fetchMs) + (2 * roundTripMs) + margin;
+}
+
+function withMobileWorkerContractHostDeadline(operation, deadlineMs) {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(
+      `Mobile worker contract host deadline exceeded after ${deadlineMs}ms`)), deadlineMs);
+  });
+  return Promise.race([operation, deadline]).finally(() => clearTimeout(timer));
+}
+
+export async function runMobileWorkerContract(page, {
+  workerUrls,
+  timeoutMs = 15000,
+  fetchTimeoutMs = 10000,
+  hostMarginMs = DEFAULT_HOST_MARGIN_MS,
+} = {}) {
   if (!page || typeof page.evaluate !== 'function') throw new TypeError('A Playwright page is required');
   if (!workerUrls?.digest || !workerUrls?.prepass) throw new TypeError('digest and prepass worker URLs are required');
+  const hostDeadlineMs = mobileWorkerContractHostDeadlineMs({
+    timeoutMs, fetchTimeoutMs, marginMs: hostMarginMs,
+  });
   try {
-    return await page.evaluate(mobileWorkerContractInPage, { workerUrls, timeoutMs, fetchTimeoutMs });
+    return await withMobileWorkerContractHostDeadline(
+      page.evaluate(mobileWorkerContractInPage, { workerUrls, timeoutMs, fetchTimeoutMs }),
+      hostDeadlineMs,
+    );
   } catch (error) {
     throw new Error(`Mobile worker contract failed: ${String(error?.message || error)}`, { cause: error });
   }
