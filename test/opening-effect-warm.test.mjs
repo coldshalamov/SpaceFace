@@ -255,6 +255,36 @@ test('a timed-out exemplar releases the sweep but remains attached until its tou
   }
 });
 
+test('touches the exact-target port declines are not counted as touched', async () => {
+  const timers = installFakeTimers();
+  const touches = [];
+  const state = warmState();
+  const owner = makeWarmOwner(state, (subject) => {
+    touches.push(subject.name);
+    // The port's own decline shape: it resolves, but touched nothing.
+    if (subject.name === 'SF_OpeningStandInWarm') return Promise.resolve({ skipped: true, reason: 'touch unavailable' });
+    return Promise.resolve({ touched: 1 });
+  });
+  state.render.restLiveFlightEffectsAfterCook = () => {};
+  state.render.releaseOpeningEffectSubset = () => {};
+  try {
+    owner._touchOpeningEffectFamilyUnderShell();
+    assert.equal(timers.runNext(0), true);
+    await flushMicrotasks();
+    await flushMicrotasks();
+    assert.deepEqual(touches.slice(0, 2), ['SF_OpeningStandInWarm', 'SF_PhaseBlinkOpeningWarm']);
+    const receipt = state.render.openingEffectWarm;
+    assert.ok(!receipt.touched.includes('exemplar:standIn'), 'a declined touch is not a touch');
+    assert.ok(receipt.touched.includes('exemplar:phaseBlink'));
+    assert.deepEqual(receipt.skipped, ['exemplar:standIn (touch unavailable)']);
+    const { openingEffectWarmLine } = await import('../scripts/player-truth/verdict.mjs');
+    const line = openingEffectWarmLine({ present: true, khr: false, software: true, ...receipt, reason: 'shell-released' });
+    assert.match(line, new RegExp(`· ${receipt.touched.length} touched, 0 timed out, 1 skipped, 0 failed, `));
+  } finally {
+    timers.restore();
+  }
+});
+
 test('a superseded warm cannot publish, rest effects, or clear a newer invocation', async () => {
   const timers = installFakeTimers();
   const unfinishedTouch = deferred();
