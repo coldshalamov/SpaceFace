@@ -223,6 +223,21 @@ test('one destination line already carries distance and ETA', () => {
   assert.doesNotMatch(dest.line, /CURRENT OBJECTIVE|TUTORIAL OBJECTIVE|AMBER DIAMOND|GOAL ·/);
 });
 
+test('campaign story objective stays off the mission tracker during a live Crucible run', () => {
+  const state = { run: { kind: 'survival', ruleset: 'swarm', phase: 'active' } };
+  const storyCommand = { owner: 'story' };
+  assert.deepEqual(
+    flightDestinationSurface(state, storyCommand),
+    { show: false, line: '', urgent: false },
+    'a live survival run owns its HUD and cannot inherit the campaign story prompt',
+  );
+
+  state.run = { kind: 'adventure', phase: 'active' };
+  const campaign = flightDestinationSurface(state, storyCommand);
+  assert.equal(campaign.show, true, 'campaign flight keeps the story objective prompt');
+  assert.match(campaign.line, /Mission Log/);
+});
+
 test('receipt taxonomy rejects Target and danger, admits pay and errors', () => {
   assert.equal(admitReceipt({ text: 'Target: Raider', kind: 'info' }).admit, false);
   assert.equal(admitReceipt({ text: 'SHIELDS DOWN', kind: 'danger' }).admit, false);

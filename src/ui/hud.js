@@ -37,6 +37,7 @@ import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../
 import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
+import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
@@ -646,6 +647,11 @@ function mtReadingsLine(bearing, distanceText, etaText, extra = '') {
  * (the tracker sets white-space:pre-line). Titles and GOAL restatements stay off.
  */
 export function flightDestinationSurface(state, command) {
+  // Crucible runs are sealed from campaign navigation. Keep the mission tracker quiet at its
+  // owner, rather than relying only on the run-focus stylesheet to catch inherited story state.
+  if (state && state.run && state.run.kind === 'survival' && isRunSealed(state)) {
+    return { show: false, line: '', urgent: false };
+  }
   if (!command) return { show: false, line: '', urgent: false };
   if (command.owner === 'tracked-mission') {
     const tracked = command.mission;
