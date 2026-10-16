@@ -184,6 +184,24 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-brief.orr-brief > .dp-copy--fine { display:none !important; }
 }
 
+/* short desktop (≤520 tall, e.g. 844×390, 1024×440): the dial's last bank (EXIT / MAIN MENU) lands at
+   ~0.72 of the height, but the foot sat a full 48px frame margin + a 2vw row gap above the bottom, so the
+   keycap strip rose into EXIT. The foot seats on the bottom edge instead (14px margin, keys and build mark
+   close up), which leaves a clear band of ~30px+ under EXIT. The dial is untouched: it places from the
+   full-frame host, not the grid rows. */
+@media (min-width:701px) and (max-height:520px) {
+  ${P} { padding-bottom:14px !important; }
+  ${P} > .sf-pause-foot { row-gap:6px !important; min-height:0 !important; padding-top:0 !important; }
+  ${P} > .sf-pause-foot .sf-pause-foot__keys { padding:6px 0 7px !important; }
+  ${P} > .sf-pause-foot [data-role="version"] { margin-block:0 !important; }
+}
+/* narrow + very short (≤900 × ≤460, e.g. 844×390): the GAME bank's LOAD reaches x≈465 at y≈160, where
+   the brief's Next line began (x 461). The brief climbs level with PAUSED and narrows so it starts right
+   of LOAD (x≈485); Next still fits one line and ends above the SHIP bank. */
+@media (min-width:701px) and (max-width:900px) and (max-height:460px) {
+  ${P} > .sf-pause-brief.orr-brief { top:26px !important; width:min(330px, 40vw) !important; }
+}
+
 /* 1080p band: lift head + brief + foot only — never the dial stage (arcRail getBoundingClientRect) */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${P} { --sv:1.12; }
