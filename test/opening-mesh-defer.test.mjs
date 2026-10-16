@@ -166,7 +166,6 @@ test('a later flight releases its fresh defer despite a retained completed paint
     _meshBuildQueueHead: 0, _renderResidencyPollS: 0, _sectorHandoffStreamHoldS: 0,
     _drainProtectedFirstFlightBuilds() {
       drains++;
-      assert.ok(this._meshBuildQueuedIds.has(hostile.id), 'the missing hostile reaches the normal bounded build lane');
       return 0;
     },
   };
@@ -182,7 +181,15 @@ test('a later flight releases its fresh defer despite a retained completed paint
   assert.equal(state.render.deferNoncriticalMeshStreaming, false);
   assert.equal(shouldScheduleFirstPlayablePaintRelease(owner), false, 'an already completed release does not duplicate');
   assert.equal(serviceRenderMeshResidency(owner, 0.5), 'held-first-flight', 'the separate first-flight hold remains active');
-  assert.equal(drains, 1);
+  // The residency census is sliced. A busy first beat may yield before enqueue;
+  // it must resume under the hold rather than require one atomic census frame.
+  for (let beat = 0; beat < 32 && !owner._meshBuildQueuedIds.has(hostile.id); beat++) {
+    state.tick++;
+    state.simTime += 1 / 60;
+    assert.equal(serviceRenderMeshResidency(owner, 0.5), 'held-first-flight');
+  }
+  assert.ok(owner._meshBuildQueuedIds.has(hostile.id), 'the missing hostile reaches the normal bounded build lane while held');
+  assert.ok(drains >= 1 && drains <= 33, 'protected builds keep their bounded per-beat drain');
   assert.equal(hostile.presentationAdmission, 'pending', 'queue recovery does not bypass authored admission');
 });
 
