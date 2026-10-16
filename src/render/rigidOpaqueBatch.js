@@ -610,12 +610,21 @@ function buildCandidate(scene, plan, options) {
   return { batches, entries, destroy };
 }
 
-function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null) {
+function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null,
+  materialUniformStability = null) {
   const source = entry.source;
   const material = source && source.material;
   const directSuppressed = hidden === true;
   const currentColor = material ? colorFromMaterial(material, _sourceColor) : null;
-  const uniformsStable = material === entry.material && materialUniformsStable(entry.materialUniforms, material);
+  let uniformsStable = false;
+  if (material === entry.material) {
+    if (materialUniformStability && materialUniformStability.has(entry.materialUniforms)) {
+      uniformsStable = materialUniformStability.get(entry.materialUniforms);
+    } else {
+      uniformsStable = materialUniformsStable(entry.materialUniforms, material);
+      materialUniformStability?.set(entry.materialUniforms, uniformsStable);
+    }
+  }
   if (material === entry.material && !uniformsStable && noteMutableMaterial) noteMutableMaterial(material);
   return !!source
     && source.isMesh === true
@@ -959,9 +968,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     if (!active) return false;
     if (!entryTopologyMatches(active.entryTopology)) return false;
     let visibleCount = 0;
+    const materialUniformStability = new Map();
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
-      if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial)) return false;
+      if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial,
+        materialUniformStability)) return false;
       const source = entry.source;
       _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
       if (matrixChanged(entry.matrix, _localMatrix.elements)) {
@@ -1137,8 +1148,10 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           return refreshDiagnostics();
         }
         const topologyStable = entryTopologyMatches(record.entryTopology);
+        const materialUniformStability = new Map();
         if (!topologyStable
-            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe, noteMutableMaterial))) {
+            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,
+              noteMutableMaterial, materialUniformStability))) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
           lastSignature = null;

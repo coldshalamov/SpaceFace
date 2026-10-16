@@ -368,6 +368,42 @@ test('live uniform component and texture-transform changes retire the retained c
   }
 });
 
+test('shared material uniform stability is scanned once per validation and still catches mutation', async () => {
+  const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
+  const material = new THREE.MeshStandardMaterial({ color: 0x345678, roughness: 0.4 });
+  const a = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  root.add(a, b); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  const descriptor = Object.getOwnPropertyDescriptor(material, 'roughness');
+  let reads = 0;
+  Object.defineProperty(material, 'roughness', {
+    configurable: true,
+    enumerable: descriptor.enumerable,
+    get() { reads += 1; return descriptor.value; },
+    set(value) { descriptor.value = value; },
+  });
+  try {
+    assert.equal((await controller.sync(root)).status, 'active');
+    reads = 0;
+    assert.equal((await controller.sync(root)).status, 'active');
+    assert.equal(reads, 1, 'one shared material snapshot is scanned per active validation');
+    material.roughness = 0.7;
+    reads = 0;
+    const afterMutation = await controller.sync(root);
+    assert.equal(afterMutation.status, 'idle');
+    assert.equal(reads, 1, 'the next validation rescans the shared snapshot and catches mutation');
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+  } finally {
+    controller.dispose();
+    Object.defineProperty(material, 'roughness', descriptor);
+    a.geometry.dispose();
+    b.geometry.dispose();
+    material.dispose();
+  }
+});
+
 test('uniform mutation while residency awaits cannot commit a stale retained material', async () => {
   const scene = new THREE.Scene(), { root, a, b } = makeRoot(); scene.add(root); scene.updateMatrixWorld(true);
   let finish;
