@@ -416,9 +416,8 @@ function wireSaveFeedback(bus, isTitleMenuActive = null) {
     });
   });
   bus.on('save:error', (payload = {}) => {
-    const titleIsShowingLoadFailure = payload && payload.reason === 'load_failed'
-      && typeof isTitleMenuActive === 'function' && isTitleMenuActive() === true;
-    if (!shouldToastSaveError(payload, titleIsShowingLoadFailure)) return;
+    const titleMenuActive = typeof isTitleMenuActive === 'function' && isTitleMenuActive() === true;
+    if (!shouldToastSaveError(payload, titleMenuActive)) return;
     // SFQ-B228: a load failure receipt that names its cause also states the way out — give
     // that sentence time to be read (it is the recovery surface), unlike short write noise.
     const loadFailureDetail = payload && payload.reason === 'load_failed'
