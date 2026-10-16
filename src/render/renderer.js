@@ -8599,6 +8599,8 @@ const swarmWarmOutcomeClaims = (status) => {
 // releases and a late-settling attach drops silently via
 // boundaryBelongsToScene — the documented trade, confined to the hang.
 const WARM_BUILDING_SETTLE_DEADLINE_MS = 30000;
+// Park-only route: no cook compile pass consumes late warm attaches, so only a short settle.
+const UNCLAIMED_WARM_SETTLE_DEADLINE_MS = 1500;
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -14288,7 +14290,7 @@ export const render = {
       if (state.mode !== 'loading' || (legOptions && legOptions.parkOnly === true)) {
         // A late invocation must still leave no bounded warm root mounted into flight —
         // the early return below is what used to strand SF_OpeningSpeciesWarm on scene.
-        try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+        this._settleAndParkUnclaimedOpeningWarm();
         return { skipped: true, reason: state.mode !== 'loading' ? 'not-loading' : 'park-only' };
       }
       const recookSectorId = state.world && state.world.currentSectorId;
@@ -22845,7 +22847,7 @@ export const render = {
   // WARM_BUILDING_SETTLE_DEADLINE_MS; the arm also drains `warm.building`, the
   // residency-owner pin, so finish() being skipped over-budget or a single
   // never-settling job can't leave either flag up for the run.
-  _armCrucibleWarmBuildingSettle(warm) {
+  _armCrucibleWarmBuildingSettle(warm, onSettled = null) {
     if (!warm || !warm.root) return;
     if (!Number.isFinite(warm.settleDeadlineAt)) {
       warm.settleDeadlineAt = Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
@@ -22865,6 +22867,9 @@ export const render = {
         }
         warm.building = false;
         if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
+        if (typeof onSettled === 'function') {
+          try { onSettled(); } catch (_) { /* best-effort */ }
+        }
       });
     };
     settle(warm.pendingAttachments.length);
@@ -24038,7 +24043,20 @@ export const render = {
     const BARGE_FAMILY = /^(Forge_ore_barge|Forge_massline_express_liner_ceramic)/;
     const seen = new Set();
     const receipt = { touched: 0, reason: 'pending', at: null };
-    const loading = () => state.mode === 'loading';
+    const generation = state.render ? state.render.admissionRunGeneration : undefined;
+    // Root/generation guard: a torn-down warm (disposed root) or a fresh loading window must
+    // never be touched — that could resurrect disposed programs or buffers.
+    let listed = false;
+    const owned = () => {
+      if (state !== this.state) return false;
+      if ((state.render ? state.render.admissionRunGeneration : undefined) !== generation) return false;
+      const inList = Array.isArray(this._rosterPrewarmRoots) && this._rosterPrewarmRoots.includes(root);
+      // begin() returns before its caller registers the root; once registered, leaving the
+      // list means teardown — stop for good.
+      if (inList) listed = true;
+      return inList || !listed;
+    };
+    const loading = () => state.mode === 'loading' && owned();
     const publish = (reason) => {
       receipt.reason = reason;
       receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
@@ -24054,6 +24072,7 @@ export const render = {
       return hit;
     };
     const step = async () => {
+      if (!owned()) return publish('superseded');
       if (state.mode !== 'loading') return publish('shell-released');
       const touch = state.render && state.render.touchSubjectExactTarget;
       if (typeof touch === 'function') {
@@ -24076,6 +24095,35 @@ export const render = {
       return null;
     };
     setTimeout(() => { void step(); }, 0);
+  },
+
+  /**
+   * Park-only / late present leg: nothing will ever claim or finish the early opening warm
+   * (only the live cook does), so its root would stay mounted with warmBuilding === true for
+   * the whole run and _parkBoundedWarmRoots() would skip it. Mirror the cook's over-budget
+   * path — claim it, drop `building`, arm the bounded settle (short deadline: no compile pass
+   * will consume late attaches on this route) — then park once the settle lands and the
+   * loading shell no longer owns the picture (the barge-family touch reads the root under it).
+   */
+  _settleAndParkUnclaimedOpeningWarm() {
+    const state = this.state;
+    const warm = this._earlyCrucibleWarm || null;
+    const parkWhenReleased = (attempt = 0) => {
+      if (this.state !== state) return;
+      if (state && state.mode === 'loading' && attempt < 240) {
+        setTimeout(() => parkWhenReleased(attempt + 1), 250);
+        return;
+      }
+      try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+    };
+    if (warm && warm.root) {
+      this._earlyCrucibleWarm = null;
+      this._earlyCrucibleWarmMenu = false;
+      warm.building = false;
+      if (!Number.isFinite(warm.settleDeadlineAt)) warm.settleDeadlineAt = Date.now() + UNCLAIMED_WARM_SETTLE_DEADLINE_MS;
+      this._armCrucibleWarmBuildingSettle(warm, () => parkWhenReleased());
+    }
+    parkWhenReleased();
   },
 
   _parkBoundedWarmRoots() {

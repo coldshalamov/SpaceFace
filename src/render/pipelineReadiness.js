@@ -1318,7 +1318,7 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   // loading shell owned the picture at entry: on software GL the cook is fire-and-forget, so by
   // the time prepare settles (~0.7 s) the mode is already 'flight' and a live read of state.mode
   // skipped the present leg outright — liveScenePresentReady was never assigned.
-  const shellOwnedAtEntry = !!(state && state.mode === 'loading') || options.presentLeg === true;
+  const shellOwnedAtEntry = !!(state && state.mode === 'loading');
   const resident = !!(render
     && render.requiredPackageAdmission
     && render.requiredPackageAdmission.status === 'accepted'
@@ -1474,6 +1474,14 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     return false;
   }
   const lost = gpuContextIsLost(state) === true;
+  if (parkOnly) {
+    // The park-only leg cooked nothing, so it must not mint acceptance after flight: keep the
+    // pre-fix software-route verdict (refusals still refuse; otherwise only a lost context fails).
+    if (prepareClassification && prepareClassification.status === 'rejected') return false;
+    if (prepareClassification && prepareClassification.status === 'pending'
+        && prepareClassification.continueOpening !== true) return false;
+    return !lost;
+  }
   if (prepareClassification && prepareClassification.status === 'rejected') return false;
   if (prepareClassification && prepareClassification.status === 'pending'
       && prepareClassification.continueOpening !== true) return false;

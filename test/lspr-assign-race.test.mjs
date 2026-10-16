@@ -75,4 +75,28 @@ test('the opening warm touches only the barge family under the shell', async () 
   assert.match(renderer, /if \(profile === 'opening'\) this\._touchOpeningBargeFamilyUnderShell\(root\);/);
   assert.match(renderer, /\^\(Forge_ore_barge\|Forge_massline_express_liner_ceramic\)/);
   assert.match(renderer, /legOptions\.parkOnly === true/);
+  // Park-only claims and settles the unclaimed opening warm so it can actually park.
+  assert.match(renderer, /this\._settleAndParkUnclaimedOpeningWarm\(\);/);
+  assert.match(renderer, /this\._rosterPrewarmRoots\.includes\(root\)/);
+});
+
+test('park-only without a renderer leg still assigns LSPR and never mints acceptance after flight', async () => {
+  const state = { mode: 'loading', render: {} };
+  state.render.prepareOpeningGpuResources = async () => {
+    state.mode = 'flight';
+    return { skipped: false };
+  };
+  const info = console.info;
+  console.info = () => {};
+  let verdict;
+  try {
+    verdict = await waitForOpeningGpuResources(state, 50, { settleTail: false });
+  } finally {
+    console.info = info;
+  }
+  assert.ok(state.render.liveScenePresentReady, 'LSPR assigned');
+  assert.deepEqual(await state.render.liveScenePresentReady, { skipped: true, reason: 'park-only' });
+  const admission = state.render.requiredPackageAdmission;
+  assert.ok(!admission || admission.status !== 'accepted', 'park-only does not publish acceptance');
+  assert.equal(verdict, true);
 });
