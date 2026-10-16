@@ -1433,10 +1433,14 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
     return false;
   }
   const presentStarted = ledgerNow();
+  // settleTail === false is the software-GL route that does not await this cook (main.js):
+  // the shell will not hold for it, so the present leg only parks — it never starts the
+  // whole-sector cook that would otherwise race on into presented flight.
+  const parkOnly = options.settleTail === false;
   const presentCook = Promise.resolve().then(() => (
     typeof render.prepareLiveSectorBeforeFlight === 'function'
-      ? render.prepareLiveSectorBeforeFlight()
-      : cookLiveSceneGpu(state, { present: true, skipBuffers: true })
+      ? (parkOnly ? render.prepareLiveSectorBeforeFlight({ parkOnly: true }) : render.prepareLiveSectorBeforeFlight())
+      : (parkOnly ? { skipped: true, reason: 'park-only' } : cookLiveSceneGpu(state, { present: true, skipBuffers: true }))
   ));
   if (sameGeneration()) render.liveScenePresentReady = presentCook;
   // PQ-210.00 — a survival arena cooks its whole bounded field (hulls, promoted rock

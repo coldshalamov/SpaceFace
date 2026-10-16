@@ -14279,14 +14279,17 @@ export const render = {
         || cookWorld.currentSectorId !== cookSectorId
         || this._liveSectorCookGeneration !== expectedGeneration;
     };
-    state.render.prepareLiveSectorBeforeFlight = async () => {
+    state.render.prepareLiveSectorBeforeFlight = async (legOptions = {}) => {
       const recookStale = captureLiveSectorCookStale();
       if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
-      if (state.mode !== 'loading') {
+      // parkOnly: the caller does not hold the loading shell for this cook (software GL's
+      // fire-and-forget opening), so starting the whole-sector cook here would run it on into
+      // presented flight. Do only what must not leak into flight: park the bounded warm roots.
+      if (state.mode !== 'loading' || (legOptions && legOptions.parkOnly === true)) {
         // A late invocation must still leave no bounded warm root mounted into flight —
         // the early return below is what used to strand SF_OpeningSpeciesWarm on scene.
         try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
-        return { skipped: true, reason: 'not-loading' };
+        return { skipped: true, reason: state.mode !== 'loading' ? 'not-loading' : 'park-only' };
       }
       const recookSectorId = state.world && state.world.currentSectorId;
       // Same-sector evidence must stay valid across the whole keep-GPU path: a
@@ -22603,6 +22606,7 @@ export const render = {
       teardownWarm();
       return null;
     }
+    if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root);
     return warm;
   },
 
@@ -24020,6 +24024,60 @@ export const render = {
    * package instances hold. The roots stay in _rosterPrewarmRoots, so the late rock re-skin sweep
    * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
    */
+  /**
+   * Barge-family program warm (PQ perf-lane tw6/tw7). The ore-carrier traffic hull links its
+   * Forge_ore_barge_* surfaces (paint/glows/glass) and the express-liner ceramic it shares a key
+   * with on first draw in flight (557-1062 ms on software GL). The opening species warm root
+   * already carries authored aftermath sections that use exactly those materials, so touch only
+   * those children through the exact-target pass while the loading shell owns the picture.
+   * Nothing is composed or added; the sweep stops the moment loading releases.
+   */
+  _touchOpeningBargeFamilyUnderShell(root) {
+    const state = this.state;
+    if (!root || !state) return;
+    const BARGE_FAMILY = /^(Forge_ore_barge|Forge_massline_express_liner_ceramic)/;
+    const seen = new Set();
+    const receipt = { touched: 0, reason: 'pending', at: null };
+    const loading = () => state.mode === 'loading';
+    const publish = (reason) => {
+      receipt.reason = reason;
+      receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
+      if (state.render) state.render.openingBargeWarm = { ...receipt };
+    };
+    const carriesBargeFamily = (subject) => {
+      let hit = false;
+      subject.traverse((object) => {
+        if (hit || !object.material) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        if (materials.some((material) => material && BARGE_FAMILY.test(material.name || ''))) hit = true;
+      });
+      return hit;
+    };
+    const step = async () => {
+      if (state.mode !== 'loading') return publish('shell-released');
+      const touch = state.render && state.render.touchSubjectExactTarget;
+      if (typeof touch === 'function') {
+        for (const child of [...root.children]) {
+          if (!loading()) break;
+          if (seen.has(child) || !child.userData || child.userData.authoredAssetState !== 'authored') continue;
+          seen.add(child);
+          if (!carriesBargeFamily(child)) continue;
+          try {
+            await touch(child);
+            receipt.touched += 1;
+          } catch (error) {
+            laneWarn(this, 'openingBargeWarm', '[render] opening barge family touch failed', error);
+          }
+        }
+      }
+      publish('pending');
+      if (state.mode !== 'loading') return publish('shell-released');
+      setTimeout(() => { void step(); }, 250);
+      return null;
+    };
+    setTimeout(() => { void step(); }, 0);
+  },
+
   _parkBoundedWarmRoots() {
     let roots = 0;
     let nodes = 0;

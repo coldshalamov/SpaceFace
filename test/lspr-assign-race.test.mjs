@@ -16,8 +16,8 @@ test('the present leg still runs when the mode flips to flight while prepare set
     await wait(5);
     return { skipped: false };
   };
-  state.render.prepareLiveSectorBeforeFlight = async () => {
-    calls.push(state.mode);
+  state.render.prepareLiveSectorBeforeFlight = async (legOptions) => {
+    calls.push([state.mode, legOptions && legOptions.parkOnly === true]);
     return { skipped: false };
   };
   const info = console.info;
@@ -29,8 +29,8 @@ test('the present leg still runs when the mode flips to flight while prepare set
   }
   assert.ok(state.render.liveScenePresentReady, 'liveScenePresentReady is assigned');
   assert.equal(calls.length, 1);
-  // The renderer's own guard decides what a post-shell invocation does (park only).
-  assert.equal(calls[0], 'flight');
+  // The un-awaited software route only parks: it never starts the whole-sector cook.
+  assert.deepEqual(calls[0], ['flight', true]);
 });
 
 test('a call that starts outside the loading shell still skips the present leg', async () => {
@@ -51,4 +51,28 @@ test('a call that starts outside the loading shell still skips the present leg',
   }
   assert.equal(called, 0);
   assert.equal(state.render.liveScenePresentReady, undefined);
+});
+
+test('an awaited cook (hardware route) still runs the full present leg', async () => {
+  const calls = [];
+  const state = { mode: 'loading', render: {} };
+  state.render.prepareOpeningGpuResources = async () => ({ skipped: false });
+  state.render.prepareLiveSectorBeforeFlight = async (legOptions) => { calls.push(legOptions); return {}; };
+  const info = console.info;
+  console.info = () => {};
+  try {
+    await waitForOpeningGpuResources(state, 50, { settleTail: true, presentBudgetMs: 50 });
+  } finally {
+    console.info = info;
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0], undefined);
+});
+
+test('the opening warm touches only the barge family under the shell', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /if \(profile === 'opening'\) this\._touchOpeningBargeFamilyUnderShell\(root\);/);
+  assert.match(renderer, /\^\(Forge_ore_barge\|Forge_massline_express_liner_ceramic\)/);
+  assert.match(renderer, /legOptions\.parkOnly === true/);
 });
