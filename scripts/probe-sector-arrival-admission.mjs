@@ -211,13 +211,17 @@ function installArrivalTransitionTrace() {
   const sf = window.SF;
   let owner = null;
   try { owner = sf.registry.get('render'); } catch (_) { /* Explicit unavailable owner. */ }
-  const state = sf.state;
-  const render = state.render;
+  let state = owner?.state || sf.state;
+  let render = state.render;
+  const watched = new WeakMap();
   const context = () => ({
     tick: state.tick, simTime: state.simTime, mode: state.mode,
     sector: state.world?.currentSectorId ?? null,
     enterSerial: state.world?.enterSerial ?? null,
     world: id(state.world), render: id(state.render), owner: id(owner),
+    ownerStateMatchesSf: owner?.state === window.SF.state,
+    ownerStatePresent: !!owner?.state,
+    enterSerialPresent: !!state.world && Object.hasOwn(state.world, 'enterSerial'),
     cookGeneration: owner?._liveSectorCookGeneration ?? null,
     deferredHold: owner?._firstFlightDeferredHold ?? null,
   });
@@ -233,53 +237,73 @@ function installArrivalTransitionTrace() {
     catch (_) { return []; }
   };
   const watch = (object, key, label) => {
+    if (object && watched.get(object)?.has(key)) return;
     const descriptor = object && Object.getOwnPropertyDescriptor(object, key);
     if (!descriptor || !Object.hasOwn(descriptor, 'value') || !descriptor.writable || !descriptor.configurable) {
-      record('unsupported-descriptor', { field: label });
+      record('unsupported-descriptor', { field: label, boundObject: id(object), present: !!descriptor });
       return;
     }
+    if (!watched.has(object)) watched.set(object, new Set());
+    watched.get(object).add(key);
     let value = descriptor.value;
     const getter = () => value;
     const setter = (next) => {
       const previous = value;
       value = next;
-      record('write', { field: label, previous: id(previous), next: id(next), callers: stack() });
+      record('write', { field: label, boundObject: id(object), previous: id(previous), next: id(next), callers: stack() });
     };
     Object.defineProperty(object, key, { configurable: true, enumerable: descriptor.enumerable, get: getter, set: setter });
+    record('bound-descriptor', { field: label, boundObject: id(object), initial: id(value) });
     restores.push(() => {
       const current = Object.getOwnPropertyDescriptor(object, key);
-      if (current?.get !== getter || current?.set !== setter) { record('cleanup-replaced', { field: label }); return; }
+      if (current?.get !== getter || current?.set !== setter) { record('cleanup-replaced', { field: label, boundObject: id(object) }); return; }
       Object.defineProperty(object, key, { ...descriptor, value });
     });
   };
-  for (const key of ['openingGraphPublicationFrozen', 'sectorShellAdmission', 'firstFlightDeferredHoldUntil']) {
-    watch(render, key, `render.${key}`);
+  const bindPresentFields = () => {
+    try { owner = window.SF.registry.get('render'); } catch (_) { owner = null; }
+    state = owner?.state || window.SF.state;
+    render = state.render;
+    for (const key of ['openingGraphPublicationFrozen', 'sectorShellAdmission', 'firstFlightDeferredHoldUntil']) {
+      watch(render, key, `render.${key}`);
+    }
+    for (const key of ['_firstFlightDeferredHold', '_liveSectorCookGeneration']) watch(owner, key, `owner.${key}`);
+  };
+  bindPresentFields();
+  for (const [key, prefix] of [
+    ['resumeDeferredPipelineAdmissions', 'resume'],
+    ['prepareOpeningFirstPicture', 'first-picture'],
+  ]) {
+    const descriptor = render && Object.getOwnPropertyDescriptor(render, key);
+    if (descriptor && Object.hasOwn(descriptor, 'value') && typeof descriptor.value === 'function'
+        && descriptor.writable && descriptor.configurable) {
+      const resumeOwner = render;
+      const original = descriptor.value;
+      const wrapped = function (...args) {
+        record(`${prefix}-enter`, { boundObject: id(resumeOwner), callers: stack() });
+        try {
+          const result = Reflect.apply(original, this, args);
+          record(`${prefix}-return`, { boundObject: id(resumeOwner), result: id(result) });
+          return result;
+        } catch (error) {
+          record(`${prefix}-throw`, { boundObject: id(resumeOwner), errorIdentity: id(error) });
+          throw error;
+        }
+      };
+      Object.defineProperty(render, key, { ...descriptor, value: wrapped });
+      restores.push(() => {
+        if (resumeOwner[key] === wrapped) Object.defineProperty(resumeOwner, key, descriptor);
+        else record('cleanup-replaced', { field: key, boundObject: id(resumeOwner) });
+      });
+    } else record('unsupported-descriptor', { field: key });
   }
-  for (const key of ['_firstFlightDeferredHold', '_liveSectorCookGeneration']) watch(owner, key, `owner.${key}`);
-  const key = 'resumeDeferredPipelineAdmissions';
-  const descriptor = render && Object.getOwnPropertyDescriptor(render, key);
-  if (descriptor && Object.hasOwn(descriptor, 'value') && typeof descriptor.value === 'function'
-      && descriptor.writable && descriptor.configurable) {
-    const original = descriptor.value;
-    const wrapped = function (...args) {
-      record('resume-enter', { callers: stack() });
-      try {
-        const result = Reflect.apply(original, this, args);
-        record('resume-return', { result: id(result) });
-        return result;
-      } catch (error) {
-        record('resume-throw', { errorIdentity: id(error) });
-        throw error;
-      }
-    };
-    Object.defineProperty(render, key, { ...descriptor, value: wrapped });
-    restores.push(() => {
-      if (render[key] === wrapped) Object.defineProperty(render, key, descriptor);
-      else record('cleanup-replaced', { field: key });
-    });
-  } else record('unsupported-descriptor', { field: key });
+  let originRebound = false;
   const trace = {
     snapshot(label) {
+      if (label === 'origin' && !originRebound) {
+        originRebound = true;
+        try { bindPresentFields(); } catch (_) { record('bind-error', { label }); }
+      }
       record('marker', { label });
       try {
         const result = { limit, omitted, outputOmitted: 0, rows: rows.slice(), current: context() };
@@ -305,7 +329,7 @@ async function boundedTraceOperation(page, action) {
   finally { clearTimeout(timer); }
 }
 
-const diagnoseScript = () => {
+const diagnoseScript = (traceMarker = 'diagnostic') => {
   const render = window.SF.state.render || {};
   const scene = render.scene;
   const queue = scene && scene.userData && scene.userData.authoredUpgradeDiagnostics;
@@ -322,7 +346,7 @@ const diagnoseScript = () => {
     }
     : null);
   return {
-    transitionTrace: window.__sfArrivalTransitionTrace?.snapshot('diagnostic') ?? null,
+    transitionTrace: window.__sfArrivalTransitionTrace?.snapshot(traceMarker) ?? null,
     authoredSectorPrewarmPendingId: system ? (system._authoredSectorPrewarmPendingId ?? null) : 'no-system',
     incomingSectorPrewarm: system ? prewarm(system._incomingSectorPrewarm) : null,
     currentSectorPrewarm: system ? prewarm(system._currentSectorPrewarm) : null,
@@ -358,11 +382,11 @@ const diagnoseScript = () => {
 
 // Failure evidence is best-effort: a stalled page or broken inspector must never
 // replace the original admission assertion. Each snapshot has a one-second ceiling.
-async function captureArrivalDiagnostics(page) {
+async function captureArrivalDiagnostics(page, traceMarker = 'diagnostic') {
   let timer;
   try {
     return await Promise.race([
-      Promise.resolve().then(() => page.evaluate(diagnoseScript)),
+      Promise.resolve().then(() => page.evaluate(diagnoseScript, traceMarker)),
       new Promise((resolve) => {
         timer = setTimeout(() => resolve({ diagnosticError: 'snapshot timed out after 1000ms' }), 1000);
       }),
@@ -463,7 +487,7 @@ try {
   const origin = await page.evaluate(censusScript, RANGE_WU);
   console.log('ORIGIN census within', RANGE_WU, 'WU:', JSON.stringify(origin.tally),
     '| sector-wide:', JSON.stringify(origin.sectorTally));
-  const originDiagnostics = await captureArrivalDiagnostics(page);
+  const originDiagnostics = await captureArrivalDiagnostics(page, 'origin');
   if (DIAGNOSE) logArrivalDiagnostics('  diagnose origin:', originDiagnostics);
 
   if (JUMP_AT_SIM_S > 0) {
