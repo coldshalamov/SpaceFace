@@ -258,7 +258,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     back.className = 'sf-state__verb';
     back.textContent = 'Back to menu';
     back.setAttribute('data-sf-verb', 'back-to-menu');
-    back.addEventListener('click', () => bus.emit('game:exitToMenu', { source: 'startup-failure-overlay' }));
+    back.addEventListener('click', () => {
+      bus.emit('game:exitToMenu', { source: 'startup-failure-overlay' });
+      bus.emit('ui:closeAll', {});
+      bus.emit('ui:pushScreen', { id: 'mainMenu', source: 'startup-failure-overlay' });
+    });
     body?.appendChild(back);
     failurePane = pane;
     overlay.appendChild(pane);
@@ -300,7 +304,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     }),
     bus.on('save:error', (payload = {}) => {
       if (startupFailure) return;
-      if (payload.reason === 'load_failed' && state?.mode === 'loading' && visible()) {
+      const loadingRoute = state?.mode === 'loading'
+        || (activeStage && !activeStage.id?.startsWith('boot-'));
+      if (payload.reason === 'load_failed' && loadingRoute && visible()) {
         const failure = {
           ...payload,
           code: payload.code || 'SAVE_LOAD_FAILED',
