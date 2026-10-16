@@ -608,7 +608,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 298 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -844,6 +844,7 @@ SFQ-B120 landed 2026-10-15: a named restitution returns only the standing its ow
 SFQ-B122 landed 2026-10-15: the same approach reads as feeding, alarm, defense, or retreat, and a quiet watch does not turn the animal aggressive (`test/sfq-b122-fauna-motion.test.mjs`). Row 295 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B124 landed 2026-10-15: a predator, a grazer, and a scavenger share one finite pasture. Removing the predator lets the grazer eat and leaves the scavenger with nothing, and neither pile grows without a bound (`test/sfq-b124-food-web.test.mjs`). Row 296 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B126 landed 2026-10-15: a dumb animal repeats one recorded docking lane and does not learn a new route. A precursor tone still drives it off that lane, and the lane never grows (`test/sfq-b126-route-echo.test.mjs`). Row 297 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+| 298 | SFQ-B146 | Presenting the named specimen inside the ossuary volume satisfies the order. The same specimen outside that volume, or a different lot inside it, is refused, and the refusal says which miss it was. | BUILD | OPEN |
 
 SFQ-B111 landed 2026-10-15: a collision is classed direct, indirect, accidental, or stale, and the law card says which (`test/sfq-b111-impact-class.test.mjs`). Row 292 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 
