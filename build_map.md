@@ -8,6 +8,8 @@ the complete built-kit lifecycle matrix and implementation plan for physical wor
 distinct attack/target presentation, custom SVG identities and usable controls.
 
 The asset experience plan is [Asset experience program](design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md).
+Its 16 October [complete asset stocktake](design/program/asset-experience/ASSET_STOCKTAKE.md) and
+Luna workflows in §8 connect current release assets to authored player moments, motion and missions.
 Cloud integration intentions and resulting behavior are recorded in the PR-maturation closure
 row of `build_map_done.md` (2026-10-12; the dated record file was retired 2026-10-15).
 

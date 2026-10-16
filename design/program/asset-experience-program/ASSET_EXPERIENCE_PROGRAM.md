@@ -1,5 +1,7 @@
 # Asset Experience Program — agentic pipeline spec
 
+**Current execution, 16 October 2026:** use the [complete file stocktake](../asset-experience/ASSET_STOCKTAKE.md), its [machine-readable inventory](../asset-experience/ASSET_STOCKTAKE.json), and the [player moment analysis](../asset-experience/EXPERIENCE_OPPORTUNITIES.md). Refresh with `node scripts/asset-stocktake.mjs`. The current Luna workflow is in §8 below. The dated counts and commission lists in §1–§5 are historical planning inputs: recheck their live consumer before treating any item as missing or starting it again. The build map and existing finish lanes continue to own dispatch.
+
 *How SpaceFace turns the assets it already owns, the assets it is missing, and the placements that carry them into a deeper, less repetitive player experience — and the agentic pipeline that produces, admits, wires and gates that work.*
 
 Baseline: `coldshalamov/SpaceFace` @ `master` (`9d86b046bc42`, 2026-10-11). This spec supersedes no prior document; it consolidates `design/world-identity/WORLD_PLACEMENT_AUDIT.md` (the placement audit carried into this program), `needed-assets.md`, `assets/QUEUE.md`, `design/ASSET_REPURPOSE_POOL.md`, `design/program/world-depth-2026-10-02/ASSET_FAMILIES.md`, and `docs/visual-assets/*` into one executable program.
@@ -288,3 +290,105 @@ Named commands, concrete targets:
 - **Queue drain (corrected counts)** — before→after per queue: 36 QUEUE rows (27 Q2 + 5 landmark commissions + 1 cathedral retire + 3 stale wholeship rows resolved), ~29 part finishes (PT-A 17 + PT-B 12), ~19 place finishes (PL), 23 BP-08 ids, 12 integration_candidate admissions, 2 blocked-row dispositions, 22 audit §8 items, plus PP/PR placement coverage per sector.
 - **Landing gate** — full `npm run check:art` umbrella green + `check:asset-status`, `check:asset-reachability`, `check:content-census`, `check:contracts`, `node --test` suites touched, generated-freshness checks (`build-encounter-index`, `sync-modulepreload --check`, `build:render-package-pilots*`) clean.
 - **Evidence discipline** — every claim cites a command or file; no unverified "looks better" language.
+
+## 8. Luna workflows for the complete player moment
+
+The immediate production priority is to compose the existing pieces into believable situations. Realism here means that cargo has a destination, machines have a task, a rescue pod contains someone, and people react to interference. Preserve SpaceFace's colorful physical playground and current visual direction. More polygons, more simultaneous props, and more encounters do not establish a better minute.
+
+### 8.1 Current stock and the minimum build list
+
+The 16 October file census includes 12,273 files under `assets/`, 2,360 GLBs and about 5.17 GiB, plus the external runtime support roots recorded in the inventory. All GLB JSON chunks parsed, and the inspected external resource references exist. The canonical release has 354 rows: 353 package routes and one ship reference. These numbers describe different layers; source twins, render packages, posters and evidence must not be added together as distinct game objects.
+
+The existing everyday-space map supplies 46 model IDs. The aftermath map supplies 45 rows, including source twins; use its live and spawn-eligible flags when choosing a body. Existing ship, station, procedural fauna, machine, motion, sound and interface owners supply the rest of the experience. See the stocktake for the current per-family counts and exact files.
+
+**The immediate required new mesh list is empty.** The first rescue improvement uses `places/place_47a_rescue_capsule.glb`, existing escorts, and the existing physical rescue flow. No canonical missing-file contract requires a replacement asset. This is a decision for this delivery, not a claim that the historical wishlist or every future scene is complete.
+
+The source exports `wholeship_pelican` and `wholeship_wasp` remain blocked accessory-only assemblies. Their complete production replacements already exist. Retain the old exports as sources or donors; do not commission duplicate flyable bodies to repair an obsolete source row. A source labeled `integration_candidate` needs its current release and consumer checked before another admission task is invented.
+
+Commission an asset only when a named playable situation cannot communicate an essential object, interaction or state using an existing asset, a state variant, material treatment, authored image or composition. State the missing function, the two closest existing choices and why they fail, the exact consumer, and the smallest new component. Build it through Forge or the existing image/audio pipeline, publish it, and use it in that same delivery. A new source file without its live consumer is unfinished.
+
+### 8.2 Give every asset family a useful destination
+
+| Family | First reuse | Upgrade when the actual use requires it |
+|---|---|---|
+| Player and occupational hulls | Cast ships by mass, job and handling; show the same worker approaching, working, interrupting and leaving | Fix the hull's actual silhouette, pivots, propulsion or damaged state; refresh its derived UI silhouette/poster if its body changes |
+| Stations and civic props | Assemble an approach, active berth, service queue and departure path from the station's existing archetype and faction dressing | Build only an absent functional attachment or interaction anchor; do not remaster a whole station for one missing clamp |
+| Everyday-space kit | Show a task in progress: intake, sorted cargo, maintenance, inspection, recovery; leave room for the player to interfere | Repair collision, scale or an unreadable state at the selected camera; reuse the other intact pieces |
+| Wrecks and fragments | Match damage family to the lost ship, retain useful cover and recoverable material, let salvage change the scene | Add a missing intact-to-damaged join only when the current family cannot explain what happened; bound secondary breakup |
+| Fauna and precursor machines | Use existing anatomy and behavior in a suitable habitat with a feeding, avoidance or operating relationship | Improve the existing procedural body or motion owner; choose a new anatomy only for a distinct physical behavior |
+| Backgrounds, planets and surface images | Carry sector identity, depth, route landmarks and recovery orientation with existing sky and surface sets | Correct scale, repetition or depth in the actual view before generating a new image |
+| Audio, music and VFX | Reuse a causal recipe: working, loaded, strained, struck, failed, recovered; give speech and danger priority over ambience | Add the one missing readable transition or sound, with reduced-motion/flash and sound settings preserved |
+| Portraits, crests, Codex and station art | Connect the same person, faction, wreck or place across briefing, encounter, receipt and return | Fill an actual uncovered entry or mismatch; preserve the manifest, license and provenance of the chosen image |
+| Weapon clips, hull renders and UI kit | Explain the equipment being offered and the hull actually flown; use existing ORRERY surfaces | Repair missing media or stale derivatives at the selected screen; keep ordinary controls functional without optional media |
+| Fonts, icons, textures and shared materials | Reuse established type, glyph and material systems so an additional scene belongs to the same game | Fix the shared owner for a shared defect; avoid per-scene copies and new token roots |
+| Source, reference, legacy and evidence pools | Retain authoring sources, visual references, reusable components and comparative history with their purpose labeled | Promote only the needed donor through the normal release path; lack of a literal runtime reference is not proof of waste |
+
+The inventory's unresolved dynamic routes are a targeted investigation pool. They are not a deletion list, nor permission to load everything. Every family should have a useful disposition, but an old screenshot and a ship source do not both need a spawn point.
+
+### 8.3 Author the approach, work, consequence and return together
+
+Use these windows as a pacing brief, not a timer that forces the player through a script:
+
+| Moment | What the player should perceive and do | Composition and response |
+|---|---|---|
+| First few seconds | Recognize the place, motion and immediate opportunity | One readable silhouette or work action in the arrival view, clear approach and exit, restrained sound; retain room to steer |
+| Roughly 5–25 seconds | Understand whose job this is, what could go wrong and two plausible actions | Distinct actor positions, a useful anchor or cover relationship, a concise existing prompt or bark naming the live actor |
+| Roughly 25–90 seconds | Act on mass, cargo, a machine or another ship | Motion answers the physical cause: a loaded tow settles differently, a clamp closes on contact, a patrol breaks its queue when threatened |
+| Following minute | See the result and decide whether to stay, recover, flee or finish another part | Survivors, spent machinery, salvage, law or altered traffic follow actual outcomes; success and failure both produce understandable feedback |
+| Departure and later return | Recognize the change and a sensible next opportunity | Preserve identity, losses and completed work through residency and saves; use the remaining props and actors rather than resetting the scene |
+
+Different situations need different geometry and logic. A rescue makes a safe corridor and exposed pod meaningful. Salvage uses damaged cover and custody. Customs uses a visible queue, inspection lane and escape route. Mining uses the cut face, output, receiver and loaded return. Ecology uses habitat, approach distance and an interference response. Do not turn these into the same ring of three props with different labels.
+
+Choose variation along meaningful axes: player approach, job phase, load state, faction relationship, recent damage, previous choices and sector constraints. Keep selection seeded and persistent where it changes gameplay. Neighboring scenes should differ in the player's verb, spatial problem and aftermath, not only color or names. Quiet transit remains useful; filling every empty second with an alert destroys contrast.
+
+### 8.4 Extend the animation owners that already exist
+
+Use `src/render/authoredMotion.js` and `src/contracts/motionBank.js` for named pivots, event-driven actions and LOD-aware motion. `infrastructureMotion.js` already owns station rings, gate response, dock pulses and derelict mechanical life. `shipMicroMotion.js` and `livingHullPresentation.js` carry ship presentation; the specific authored drivers beside `authoredMotion.js` already cover working characters and Ceres machinery. Read those before adding a second animation loop.
+
+Animate a cause and its phases: anticipation, effort, contact, release, settle. Drive work from the real job or simulation phase, with the existing owner as the writer. Cosmetic motion must not apply forces, move collision bodies, change rewards or write to simulation-owned entity data. Share the motion clock, pause behavior and accessibility settings. Rebind correctly when a body changes LOD, leaves residency, returns or is restored from a save; release subscriptions and borrowed resources when it retires.
+
+Baked GLB animation counts do not measure how alive the game is. A static GLB can have an excellent authored pivot driver; a file full of clips can still be motionless in gameplay. The done condition is that the chosen visible action follows the actual actor's state and stops or recovers correctly.
+
+### 8.5 How to dispatch the Luna team
+
+The manager selects one finite experience in an existing finish lane and prepares this brief before spawning a worker:
+
+```text
+Player outcome and done condition:
+Public entry, sector or mission, seed and expected equipment:
+Existing asset IDs, release URLs and canonical selection owners:
+Current behavior and the specific missing player-visible detail:
+Approach, work, complication, payoff, failure/recovery and return:
+Actual actor/job/physics events that drive motion, audio and feedback:
+Two meaningful layout or method variants and why each plays differently:
+Durable identities and save/residency behavior to preserve:
+Exact files this worker owns; other live writers and protected paths:
+Smallest behavior check and the real picture/route needed by this claim:
+No new asset unless the stated existing choices cannot serve the function.
+Report implemented behavior, verification and material remaining limit separately.
+Stop when this complete outcome works; do not start an unrelated audit.
+```
+
+With four available slots, the manager can run two production Luna workers on disjoint files and one Luna investigator or reviewer. One worker owns the scene's data, spatial relationships and mission behavior. The other owns a separately assigned motion, audio or presentation seam for those same actors. A worker must know the physical story and the neighboring slice, not just receive a request to add detail. The manager integrates the pair and performs one connected product and engineering review. Additional review is for a material failure or unresolved question, not a fixed number of rounds. Use a single browser/GPU route at a time.
+
+The 16 October census, player-moment and PR workers were dispatched under this structure. Continue their results rather than restarting the same audit. Reuse existing scripts and targeted fixtures, and add a regression only for a real uncovered behavior. Run required player-truth checks at the coherent gameplay boundary. Keep visual readiness, functional readiness and quiet-host performance as distinct claims.
+
+### 8.6 Concrete assignments through the existing lanes
+
+These are packet recipes for the current program, not another queue. Check the live owner before dispatch; if the complete outcome is already true, select a different unresolved moment in that area.
+
+| Existing lane | Luna assignment and asset reuse | Complete outcome and direct check |
+|---|---|---|
+| THE WORLD and THE LONG GAME | Campaign 47-A B2 rescue: existing rescue capsules, two escorts, authored set-piece actor offsets, existing tow/corridor methods and mission outcomes | Methods produce different physical rescue layouts; losing a pod does not recreate it on re-entry; resolution and continuation remain finite. Focused rescue fixture plus the Adventure gate |
+| THE WORLD | One civic or industrial arrival: everyday-space props with a real traffic/job owner, work lane and interruption response | From approach, the player understands the job and can interfere; a blocked receiver or departing operator recovers through the existing job system. Seeded job fixture and an actual appearance check if changed |
+| THE PICTURE and THE WORLD | One wreck's fresh, worked and revisited states using the matched aftermath family | The correct hull family, usable physical remnants and salvage state remain recognizable; reload and sector return preserve custody/loss. Existing wreck/residency fixture and selected runtime view |
+| THE HAND and THE WORLD | One existing machine or moving-cover interaction; use its actual collider and authored motion pivots | The mechanism demonstrates its use, answers a player action and settles safely on interruption; physics and visible motion agree. Focused mechanism/motion fixture |
+| THE EAR | The same selected scene's approach, effort, danger and recovery with existing audio recipes and actor-aware barks | Sounds name the actual action, speech remains legible and the scene can become quiet again. Relevant audio/bark fixture and a short listening pass |
+| THE LONG GAME and THE INSTRUMENT | Reuse that scene's existing portrait, crest, equipment image or Codex plate at briefing and return | The player recognizes the person/object and sees the actual outcome on the existing ORRERY surface; no dead buttons or optional-media dependency. Focused screen walk and relevant transaction test |
+| THE PICTURE | One technically unready asset with a named live destination; first inspect its existing production replacement or donor components | Repair only the missing body, pivot, material or packaged state, publish through Forge and use it in the named scene. The canonical asset check and real gameplay-camera view |
+
+### 8.7 Open PRs and asset implications
+
+The 16 October review batch includes PRs [438](https://github.com/coldshalamov/SpaceFace/pull/438), [437](https://github.com/coldshalamov/SpaceFace/pull/437), [435](https://github.com/coldshalamov/SpaceFace/pull/435), [434](https://github.com/coldshalamov/SpaceFace/pull/434), [431](https://github.com/coldshalamov/SpaceFace/pull/431), [430](https://github.com/coldshalamov/SpaceFace/pull/430), [419](https://github.com/coldshalamov/SpaceFace/pull/419), [417](https://github.com/coldshalamov/SpaceFace/pull/417) and [387](https://github.com/coldshalamov/SpaceFace/pull/387). None adds a 3D model binary or a new canonical model family. Their contribution is making existing content available, stable and usable: first painted flight, model/effect residency, named-actor continuity, physical-payload avoidance, phone startup and readable compact controls. The Research PR and the final Footprint correction arrived during integration and receive their own short-window control checks.
+
+Preserve their actual behaviors when extending content. Loading must not consume the player's first playable seconds. A named ship must not respawn as a generic replacement when it leaves residency. Solid payloads must matter to both the player and NPC avoidance. Background warming must be bounded, retire with its owner and retain no per-opening material leak. An existing asset that appears late or with the wrong identity is an experience defect even when its file is valid.
