@@ -1,3 +1,4 @@
+import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
 // envelope from a fixed deps-first registry of systems, writes autosave + manual slots to
@@ -879,7 +880,7 @@ export const save = {
       ['combat', () => serializeCombatState(state)],
       // SG-02 world snapshot (solver warm-start, islands, contacts) — entity scalars alone
       // cannot rebuild a bit-identical world, and reload determinism hinges on it.
-      ['physics', () => this._callSerialize('physics')],
+      ['physics', () => this._serializeNativePhysics()],
       // PQ-205.03: the bomb rack (fitted cells, socket count, hangar stock, cooldowns,
       // selection) is owned and serialized by the bombs system. Absent owner → {} →
       // deserialize applies the starter kit (additive default for pre-rack saves).
@@ -966,6 +967,16 @@ export const save = {
   },
 
   /** Build the `data` payload (plain JSON, deps-first key order). No mesh/THREE/Map/fn/Infinity. */
+  _serializeNativePhysics() {
+    const nativePhysics = this._callSerialize('physics');
+    if (nativePhysics == null) return nativePhysics;
+    // Physics can retain entity-side anchored recoil when no native snapshot is admissible.
+    if (Object.keys(nativePhysics).length === 1 && Object.hasOwn(nativePhysics, 'anchoredRecoil')) return nativePhysics;
+    const compact = compactNativeAttestationTables(nativePhysics);
+    if (!compact) throw new Error('native_attestation_encode_failed');
+    return compact;
+  },
+
   serializeData() {
     const it = this._serializeDataSteps();
     let r;
@@ -1017,7 +1028,7 @@ export const save = {
     yield 'serialize:combat';
     // SG-02 world snapshot: the Rapier solver's private state (contact warm starts, island
     // sleep) is what entity scalars cannot rebuild — restore adopts it when the backend resets.
-    data.physics = this._callSerialize('physics');
+    data.physics = this._serializeNativePhysics();
     yield 'serialize:physics';
     data.bombs = this._callSerialize('bombs') || {};
     yield 'serialize:bombs';
@@ -7986,6 +7997,14 @@ function importLimitFailure(reason, limit, actual) {
  * ancestry is tracked to reject a cycle rather than letting the clone recurse forever.
  */
 export function preflightSaveImport(value, options = SAVE_IMPORT_LIMITS) {
+  const dataDescriptor = value && typeof value === 'object' ? Object.getOwnPropertyDescriptor(value, 'data') : null;
+  if (dataDescriptor && !('value' in dataDescriptor)) return { ok: false, reason: 'native_attestation_accessor' };
+  const dataValue = dataDescriptor && dataDescriptor.value;
+  const physicsDescriptor = dataValue && typeof dataValue === 'object' ? Object.getOwnPropertyDescriptor(dataValue, 'physics') : null;
+  if (physicsDescriptor && !('value' in physicsDescriptor)) return { ok: false, reason: 'native_attestation_accessor' };
+  const nativeVerdict = validateNativeAttestationTables(physicsDescriptor && physicsDescriptor.value);
+  if (!nativeVerdict.ok) return nativeVerdict;
+
   const source = options && typeof options === 'object' ? options : SAVE_IMPORT_LIMITS;
   const maxDepth = Number.isSafeInteger(source.maxDepth) && source.maxDepth >= 0
     ? source.maxDepth : SAVE_IMPORT_MAX_DEPTH;

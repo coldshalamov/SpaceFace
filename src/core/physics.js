@@ -499,7 +499,7 @@ export const physics = {
     const orchardRestoreInputs=needsOrchardInputs?captureOrchardRestoreInputs(context,state,entities,this,ORCHARD_RESTORE_CAPABILITIES.get(this)):null;
     if(needsOrchardInputs && (!orchardRestoreInputs || !orchardRestoreInputsCurrent(orchardRestoreInputs))){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     let adopted = false;
-    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
+    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION && payload.schema !== 4 ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
     else if (payload && (payload.frameOrigin?.x !== worldFrameOrigin(state).x
       || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
@@ -556,7 +556,7 @@ export const physics = {
     const orchardRestoreInputs=needsOrchardInputs?captureOrchardRestoreInputs(context,state,entities,this,ORCHARD_RESTORE_CAPABILITIES.get(this)):null;
     if(needsOrchardInputs && (!orchardRestoreInputs || !orchardRestoreInputsCurrent(orchardRestoreInputs))){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     let adopted = false;
-    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
+    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION && payload.schema !== 4 ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
     else if (payload && (payload.frameOrigin?.x !== worldFrameOrigin(state).x
       || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';

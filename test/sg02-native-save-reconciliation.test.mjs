@@ -448,3 +448,8 @@ test('scalar rebuild publication failure rolls back staged coincident positions 
     assert.equal(target.records.get(99).body.isValid(), true);
   } finally { target.dispose(); }
 });
+
+// Keep compact save proofs on CI's existing native-restore entrypoint.
+import './native-attestation-tables.test.mjs';
+import './native-attestation-save-parity.test.mjs';
+import './native-attestation-save-roundtrip.test.mjs';

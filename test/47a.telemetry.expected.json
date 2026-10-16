@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "c83d8e63d627770d122798ae47d14d941b68a4fdb591d8166d8f62bb48c4471d",
+    "authoritativeHash": "2999c97f035bd2191e78b5198e5558834403fb6d78ebf206ad2e62cc230fbf09",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -228,6 +228,10 @@
     "Clean committed source5214f5f38 reproduces the migrated hash independently of foreign dirty work. Reload600 matches the save-canonicalized uninterrupted run.",
     "The exact authoritative hash remains enforced; acceptance bounds, required event families, repeat minimum and input tape are unchanged.",
     "2026-10-11 deliberate re-record over 0830a8aff..9d86b046b (78 commits). The prior authoritativeHash was 772b633513cac081e75f037a2079662bec42e8643fed6a301e300d3135fac1cd.",
-    "scripts/sim-golden-diff.mjs against 0830a8aff: 15,244 snapshot leaves differ, every one under $.economy — c1226a5fc authored cmdty_regocrete/cmdty_control_unit starter produce lines and MAX_LINES_PER_SIDE 4->6. ZERO entity motion fields changed."
+    "scripts/sim-golden-diff.mjs against 0830a8aff: 15,244 snapshot leaves differ, every one under $.economy — c1226a5fc authored cmdty_regocrete/cmdty_control_unit starter produce lines and MAX_LINES_PER_SIDE 4->6. ZERO entity motion fields changed.",
+    "2026-10-16 native-save version-only migration: exact public base b602ddeb reproduces the prior authoritative hash; PR424 merge00a627b8 reproduces the CI-observed hash.",
+    "Full paired base/head snapshots differ only at $.meta.version (15 to16). Every entity, native-physics and economy/gameplay field is unchanged; metrics and trace counts match.",
+    "Changing only meta.version in either direction reproduces the exact old/new canonical hash. Seed47/tick720 runs retain the stock canonical-baseline/reload equivalence assertions.",
+    "Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact canonical hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged."
   ]
 }
