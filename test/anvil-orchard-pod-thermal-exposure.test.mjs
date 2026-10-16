@@ -260,3 +260,65 @@ test('untouched cold pods skip native thermal reads outside the existing hot ban
     assert.equal(reads, 34, 'persisted exposure alone still requires authoritative admission');
   } finally { h.close(); }
 });
+
+for (const sourceBoundary of ['new-lot', 'source-return', 'dormant-source']) {
+  for (const scalar of [false, true]) {
+    test(`ordinary pod loss after ${sourceBoundary} preserves ${scalar ? 'scalar' : 'native'} Continue`, async () => {
+      const h = await thermalWorld();
+      try {
+        const state = h.sim.state, pod = h.pod, lotId = pod.data.worldRecordId;
+        const cargo = structuredClone(state.player.cargo), credits = state.player.credits;
+        if (sourceBoundary === 'new-lot') {
+          assert.equal(h.accept(1, 0), 1, 'another socket renews the exact source lease');
+        } else {
+          const record = h.owner.records.get(h.frame.id);
+          assert.equal(h.owner._removeRecord(h.frame.id, record, { orchardResidency: true }), true);
+          assert.equal(h.owner.records.has(h.frame.id), false);
+          if (sourceBoundary === 'source-return') {
+            h.owner.syncFromEntities([...state.entities.values()]);
+            assert.ok(h.facade.readOrchardFramePose(h.frame));
+          }
+        }
+        assert.ok(h.facade.readOrchardPodReady(pod), 'the released pod retains native custody');
+        let destroyed = 0;
+        h.sim.bus.on('entity:destroyed', event => { if (event.entity === pod) destroyed++; });
+        // Route a lethal ordinary re-entry plasma packet through the installed combat
+        // owner. Neither the pod lifetime nor the finite lot is changed by this fixture.
+        h.planet._routeBurn(state, h.rt, pod, 1000);
+        assert.equal(pod.alive, false);
+        const core = h.sim.registry.systems[0];
+        core.lifetimeSweep(0, state);
+        core.lifetimeSweep(0, state);
+        assert.equal(destroyed, 1);
+        const row = state.sites.anvilOrchard;
+        assert.equal(row.sockets[1].status, 'lost');
+        assert.equal(row.lots.find(lot => lot.id === lotId).outcome, 'lost');
+        assert.equal(row.sourceRemaining, sourceBoundary === 'new-lot' ? 43 : 44);
+        assert.equal(row.sourceRemaining + row.lots.reduce((sum, lot) => sum + lot.units, 0), 48);
+        assert.deepEqual(state.player.cargo, cargo);
+        assert.equal(state.player.credits, credits);
+        assert.equal(h.machine._onOrchardPodDestroyed({ id: pod.id, entity: pod }), false,
+          'replayed destruction cannot settle the finite lot twice');
+        assert.deepEqual(state.sites.anvilOrchard, row);
+        // Retire the swept corpse through the ordinary native sync before saving.
+        h.owner.syncFromEntities([...state.entities.values()]);
+        const save = h.sim.registry.get('save');
+        const envelope = JSON.parse(JSON.stringify(save.serialize('orchard-renewed-source-loss')));
+        assert.ok(envelope.data.physics, 'the settled world supports a native snapshot');
+        assert.equal(envelope.data.entities.persistent.some(e => e.data?.worldRecordId === lotId), false);
+        delete envelope.checksum;
+        if (scalar) envelope.data.physics = null;
+        assert.equal(save.loadEnvelope(envelope), true);
+        assert.equal(await h.facade.prepareBackend(state), true);
+        assert.equal(h.facade._nativeRestorePending, false);
+        assert.deepEqual(state.sites.anvilOrchard, row);
+        assert.deepEqual(state.player.cargo.items, cargo.items);
+        assert.equal(state.player.cargo.usedVolume, cargo.usedVolume);
+        assert.equal(state.player.cargo.usedMass, cargo.usedMass);
+        assert.equal(state.entityList.some(e => e.alive !== false && e.data?.worldRecordId === lotId), false,
+          'Continue cannot resurrect the lost finite pod');
+        assert.equal(destroyed, 1);
+      } finally { h.close(); }
+    });
+  }
+}

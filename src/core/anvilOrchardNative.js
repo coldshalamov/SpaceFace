@@ -792,13 +792,24 @@ export function prepareOrchardPodCollection(owner,capability,entity,state){
 /** Settle loss only from the ordinary destruction event for this exact resident ready pod. */
 export function commitOrchardPodLoss(owner,capability,frame,entity,state,receipt){
  try{
-  const ctx=ownerContexts.get(owner),q=podHandoffs.get(entity),rec=Map.prototype.get.call(owner.records,frame?.id),p=leases.get(rec),f=p?.finite;
+  const ctx=ownerContexts.get(owner),q=podHandoffs.get(entity);
   if(!ctx || ctx.capability!==capability || !ctx.lane?.observationEnabled || !orchardOwnerAvailable(owner)
-   || !q || q.owner!==owner || q.ctx!==ctx || !q.resident || q.entity!==entity || q.state!==state || q.p!==p || !p || !f
-   || !ownData(frame,['id','alive']) || frame!==p.entity || rec.entity!==frame || frame.alive===false
+   || !q || q.owner!==owner || q.ctx!==ctx || !q.resident || q.entity!==entity || q.state!==state)return false;
+  const predecessor=q.p,rec=Map.prototype.get.call(owner.records,predecessor.id);
+  const p=rec ? leases.get(rec) : ctx.dormantFrames.get(predecessor.entity),f=q.f;
+  // As with collection, another socket's intake or residency return can renew the
+  // exact same-life source. A dormant source still owns the finite history while
+  // the independently resident pod's ordinary destruction receipt settles its lot.
+  if(!p || p.entity!==predecessor.entity || p.id!==predecessor.id || p.life!==predecessor.life
+   || !f || p.finite!==f)return false;
+  const sourceCurrent=()=>rec
+   ? Map.prototype.get.call(owner.records,p.id)===rec && leases.get(rec)===p
+     && sourceRecordCurrent(ctx,rec,p) && motorStorageCurrent(p)
+   : dormantFrameCurrent(ctx,p);
+  if(!ownData(frame,['id','alive']) || frame!==p.entity || frame.alive===false
    || !ownData(state,['world','entities']) || !ownData(state.world,['currentSectorId'])
    || state.world.currentSectorId!==ANVIL_ORCHARD.sectorId || Map.prototype.get.call(state.entities,frame.id)!==frame
-   || f.state!==state || !finiteCurrent(f,p,state.tick) || !sourceRecordCurrent(ctx,rec,p) || !motorStorageCurrent(p)
+   || f.state!==state || !finiteCurrent(f,p,state.tick) || !sourceCurrent()
    || !ownData(entity,['id','alive','data']) || entity.alive!==false || Map.prototype.get.call(state.entities,entity.id)===entity
    || !ownData(receipt,['id','entity']) || receipt.id!==entity.id || receipt.entity!==entity
    || entity.data!==q.data || !Set.prototype.has.call(ctx.readyPods,q) || Map.prototype.get.call(owner.records,q.id)!==q.record || q.record?.entity!==entity)return false;
@@ -808,8 +819,9 @@ export function commitOrchardPodLoss(owner,capability,frame,entity,state,receipt
    || q.receipt?.lotId!==slot.lotId || q.receipt?.cycle!==slot.cycle)return false;
   const next=normalizeOrchardRecord(f.row);if(!next)return false;
   next.lots.find(l=>l.id===slot.lotId).outcome='lost';next.sockets[q.socket].status='lost';
-  const publication=finitePublication(f,next);if(!publication || !finiteCurrent(f,p,state.tick)
-   || podHandoffs.get(entity)!==q || Map.prototype.get.call(owner.records,q.id)!==q.record)return false;
+  const publication=finitePublication(f,next);if(!publication || !finiteCurrent(f,p,state.tick) || !sourceCurrent()
+   || podHandoffs.get(entity)!==q || q.p!==predecessor || q.f!==f || p.finite!==f
+   || Map.prototype.get.call(owner.records,q.id)!==q.record)return false;
   publication.publish(p);Set.prototype.delete.call(ctx.readyPods,q);WeakMap.prototype.delete.call(podHandoffs,entity);
   if(q.record)WeakMap.prototype.delete.call(readyRecordLeases,q.record);return true;
  }catch(_){return false;}
