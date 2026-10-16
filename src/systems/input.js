@@ -1576,7 +1576,7 @@ export const input = {
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
       siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
-      gyreSnare: false,
+      jettisonLotAll: false, gyreSnare: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     const flightInputNeutralized = shouldNeutralizeFlightInput(state, modalInputActive());
@@ -1599,7 +1599,7 @@ export const input = {
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
-      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false;
+      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false; acts.jettisonLotAll = false;
       // The gyre verb rides the same modal-preservation contract as massline: a screen
       // opening must NOT synthesize a falling edge — zeroing it here would bowl the clump
       // out from under a held key (and re-fire the beam on close). The lash stays held
@@ -1847,6 +1847,10 @@ export const input = {
     const toggleLive = (verb) => toggleFor(verb) && !holdToggleDead;
     const boostHeld = applyHoldToggle(holdLatches, holdEdges, 'boost',
       kbdBoost || gpBoost || tpBoost, toggleLive('boost'));
+    // VERB-33: the jettison modifier reads the raw physical boost hold, never the
+    // hold-to-toggle latch — a player cruising on a toggled boost must not turn an
+    // ordinary jettison tap into a full-hold dump.
+    const boostHeldRaw = !!(kbdBoost || gpBoost || tpBoost);
     const brakeHeld = applyHoldToggle(holdLatches, holdEdges, 'brake',
       keyboardBrake || gpBrake, toggleLive('brake'));
     inp.boost = boostHeld;
@@ -2072,7 +2076,12 @@ export const input = {
       && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
-    acts.jettisonLot = edge('jettisonLot') || this._padEdge(gp, 'jettisonLot');
+    // VERB-33: the same key stays a one-unit tap; the boost grip held through the edge
+    // (Shift on the keyboard, the pad's boost button) dumps the whole selected lot.
+    // Chording through the bound codes means a rebinding of either verb moves the chord too.
+    const jettisonEdge = edge('jettisonLot') || this._padEdge(gp, 'jettisonLot');
+    acts.jettisonLot = jettisonEdge && !boostHeldRaw;
+    acts.jettisonLotAll = jettisonEdge && boostHeldRaw;
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must

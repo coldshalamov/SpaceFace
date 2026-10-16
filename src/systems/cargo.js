@@ -821,10 +821,16 @@ export const cargo = {
   },
 
   update(dt, state) {
-    if (state && state.input && state.input.actions && state.input.actions.jettisonLot) {
-      state.input.actions.jettisonLot = false;
+    const actions = state && state.input && state.input.actions;
+    if (actions && (actions.jettisonLot || actions.jettisonLotAll)) {
+      // VERB-33: the modified edge dumps the whole selected lot — `qty == null` means every
+      // free unit, spawning the remainder as ONE payload body beside the rich-source pods.
+      // The unmodified tap stays the one-unit release VERB-13 authored.
+      const whole = !!actions.jettisonLotAll;
+      actions.jettisonLot = false;
+      actions.jettisonLotAll = false;
       const commodityId = selectedJettisonLot(state);
-      const dumped = commodityId ? this.jettison(commodityId, 1) : 0;
+      const dumped = commodityId ? this.jettison(commodityId, whole ? null : 1) : 0;
       if (!(dumped > 0) && this.bus) {
         this.bus.emit('toast', {
           text: commodityId ? 'Cargo could not be released — it stays aboard' : jettisonRefusalText(state),
