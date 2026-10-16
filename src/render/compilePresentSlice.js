@@ -105,11 +105,14 @@ export function shouldSliceCompileAcrossPresents(options = {}) {
   return options.firstPlayable === true && options.mode === 'flight';
 }
 
-export function shouldSliceFlightAdmission({ mode, firstPlayable, urgent, rootCount } = {}) {
+export function shouldSliceFlightAdmission({ mode, firstPlayable, urgent, rootCount, serialDriver = false } = {}) {
   return shouldSliceCompileAcrossPresents({
     mode,
     firstPlayable,
-    forceWholeBatch: urgent === true && rootCount === 1,
+    // Urgency controls queue order, not permission to flood a serial GPU command buffer.
+    // Keep the KHR overlap fast path, but let the existing per-subject pacer bound a
+    // software/serial driver's root before a compositor readback drains all its variants.
+    forceWholeBatch: urgent === true && rootCount === 1 && serialDriver !== true,
   });
 }
 

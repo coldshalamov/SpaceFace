@@ -1348,6 +1348,34 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440 (owned by open #415 — do not push `ui-polish-52`); Automation conduct-strip @960 (looks intentional under-beam layout; re-check if a live conducted state still tangles); Shipworks lower callouts below the fold @844×390 (berth scrolls by design); Codex STORY wrap @801×390 / ARCHIVE fade @844×390 if still open after #412 merge.
 
+## Codex short desktop: STORY filed one line; ARCHIVE Play above the fade (ui-polish-54)
+
+**Before (master b4fa1e24fb / post-#412):** at 801×390 the reader filed line `STORY · THE EIGHT BEATS` (`.cx-reader__filed`, 12px / `.2em`) wrapped to two lines in the ~217px reading column. On ARCHIVE at 844×390 the entry overflowed (`data-overflow=1`): the Play lamp sat under the reader fade mask, so you had to scroll to reach the still's Play control.
+
+**After (`src/ui/orrery/archiveLayouts.js` only, CSS, inside the existing `@media (max-width:1100px) and (min-width:801px) and (max-height:460px)` block):**
+- Plate slightly smaller (`min(138px, 38vh, 17vw)`) so the reading gains a few px of width.
+- `.cx-reader__filed` at 10.5px / `.05em` — STORY · THE EIGHT BEATS and ARCHIVE · RECOVERED SIGNALS stay one line. (Review fix `d703bf0a76` dropped the original `nowrap`: GRAFFITI · BULKHEAD — THE PREVIOUS CREW was hard-clipped by it and now wraps to two lines, as on master.)
+- Meta / legend use the same smaller tracking (wrap allowed so long ARCHIVE meta is not clipped).
+- Tighter measure padding and `.cx-play { margin-top:6px }` so ARCHIVE Play fits in the first view; overflow clears and the fade mask sleeps.
+- Selectors and IDs unchanged.
+
+**Checked:** bench `codex` / `codex-record` 0 findings at 801×390 and 844×390. ARCHIVE probe: overflow 0, mask none, Play on first paint; STORY filed 1 line at 801. Smoke 960×540 / 1920×1080 / phone 390×844 clean (band is ≤460 tall). 1280×720 outside the band. Shots: `/workspace/spaceface-scratch/ui-shots/polish54/{before,after}/`, `compare-codex-801x390.png`, `compare-archive-844x390.png` (not committed).
+
+**Leftovers (not this pass):** Automation conduct-strip live conducted state @960 (optional; under-beam layout looked intentional on last recheck); Shipworks lower callouts below the fold @844×390 (berth scrolls by design — only reopen if labels are truly clipped/unreadable).
+
+## New Game at 960×540 and on a short desktop: the yard stands clear of the hull's copy (ui-polish-55)
+
+**Before (master b4fa1e24fb):** the bench measured 960×540 clean, but the picture wasn't. The stage there is ~480px wide, so the five fittings stood as a column under the hero render (the S / S / M size letters sat under the ship) and the ring's LINE reading ran off the frame ("5.5k wu/"). At ≤460 tall (801/844×390, 900×420, 1024×440) the stage had ~305px for the name, the fittings, the stats ring and the run's scale. The yard clamps itself above the run, so it rose over HITCH and its sentence, THRUST / MASS / LINE printed on the fittings, and the form column showed only CASUAL (STANDARD, the default, was under the fold).
+
+**After (`src/ui/orrery/newGameLayouts.js` only, CSS, desktop only via `html:not([data-sf-mobile="1"])`):**
+- **801–1100 wide × ≤600 tall:** the hull's sentence stands beside its name, and the fittings wrap as rows across the stage under it. The hero box (which both the yard and the stats ring measure) narrows to 52% and centres, so MASS and LINE stand inside the stage. The run keeps its step titles only: the hover beats are `display:none` here, which is what the `max-height:800px` rule meant before a later `display:block !important` undid it. That gives back ~90px the yard was reserving.
+- **Same width × ≤460 tall:** the frame margin closes to 20px and the row gap to 10px. The run's scale, the screen tagline and the insurance footnote become visually hidden (still in the accessibility tree), so the yard centres on the hull alone and all four difficulty stops show above LAUNCH. The fittings are 10.5px with a three-row cap (they scroll past that; Pelican's seven fit in three), and the name is 28px with its line beside it.
+- Selectors, IDs, loadout data, `yardCarousel.js` and `hullRing.js` are unchanged.
+
+**Checked:** bench `new-game` findings went from 6 to 0 at 844×390, and stay 0 at 801×390, 900×420, 1024×440, 960×540, 1024×600 and 1100×540. `--walk` at 844×390 and 960×540 reaches all 12 controls, and the turned Pelican and Wasp hold the layout. 1024×768, 1100×620, 1280×720, 1366×768, 1920×1080 and the phone (`--phone` at 390×844 and 844×390) are pixel-identical to master. Focused tests pass: `new-game-seed-input` and `new-game-start-transition`. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish55/{before,after,walk6}/` and `compare-new-game-*.png`.
+
+**Leftovers (not this pass):** Clips' empty state at 844×390 (A KILL / SCORE A KILL over the LAND A NAMED STUNT line); the legacy `ship` screen at 844×390 (Cargo / OPEN callouts over the hull's sentence); the `orrery-flight` direction proof is cramped at 844×390 (a preview, not the live HUD); Shipworks lower callouts @844×390 (berth scrolls by design).
+
 ## Clips empty reel on a short frame — session notes (2026-10-15, ui-polish-56)
 
 **Before (master 72d47e7bf8):** at ≤460 tall (844×390 / 801×390 desktop and phone landscape) the empty-reel ghosts sat on the rail with the readout still at `bottom:92`, so "SCORE A KILL" / "LAND A NAMED TRICK" / "PULL OFF A SAVE" printed through "LAND A NAMED STUNT OR A KILL — THE REEL CATCHES IT HERE" (bench: 4 ON TOP OF findings).

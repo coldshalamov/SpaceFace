@@ -1007,6 +1007,7 @@ export const scanner = {
     this._cooldownUntil = 0;
     ensureSignalState(this.state);
     this._contactHail = null;
+    this._orchardTowGuidance = null;
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
     this._contactHailNextPollTick = 0;
@@ -1018,6 +1019,10 @@ export const scanner = {
     this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
     this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
     this._onContactHailReset = () => this._resetContactHail('lifecycle');
+    this._onOrchardTowComplete = payload => this._guideOrchardPickup(payload);
+    this._onOrchardTowLost = payload => {
+      if(payload?.jobId === this._orchardTowGuidance?.jobId)this._orchardTowGuidance=null;
+    };
     this._onSensorGhostSwarm = (payload) => this._spawnSensorGhostSwarm(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('signal:track', this._onSignalTrack);
@@ -1025,6 +1030,8 @@ export const scanner = {
       this.bus.on('signal:surveyFiled', this._onSignalSurveyFiled);
       this.bus.on('contactHail:request', this._onContactHailRequest);
       this.bus.on('contactHail:choice', this._onContactHailChoice);
+      this.bus.on('npcJobs:towAssistComplete', this._onOrchardTowComplete);
+      this.bus.on('npcJobs:towAssistLost', this._onOrchardTowLost);
       this.bus.on('game:new', this._onContactHailReset);
       this.bus.on('game:load', this._onContactHailReset);
       this.bus.on('dock:docked', this._onContactHailReset);
@@ -1678,7 +1685,7 @@ export const scanner = {
       ? this._requestContactHeaveTo(target, availability, { wanted, ai })
       : null;
     const towAssist = choice === CONTACT_HAIL_ACTION_TOW_ASSIST
-      ? this._requestContactTowAssist(target)
+      ? this._requestContactTowAssist(target, active)
       : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
@@ -1691,6 +1698,26 @@ export const scanner = {
     this._contactHail = null;
     this.bus.emit('contactHail:response', cloneContactHailPayload(response));
     return true;
+  },
+
+  _guideOrchardPickup(payload) {
+    const g=this._orchardTowGuidance,state=this.state;
+    if(!g || payload?.jobId!==g.jobId)return;
+    const pod=g.pod;
+    if(g.state!==state || g.entities!==state.entities || g.world!==state.world || state.mode!=='flight'
+      || !pod || pod.alive===false || state.entities.get(pod.id)!==pod || payload.targetId!==pod.id
+      || pod.occupantGeneration!==g.life || payload.targetGeneration!==g.life
+      || pod.data?.worldRecordId!==g.lotId || payload.lotId!==g.lotId
+      || !this.registry?.get?.('physics')?.readOrchardPodReady?.(pod))return;
+    this._orchardTowGuidance=null;
+    if(state.nav?.waypoint!==g.waypoint){
+      this.bus.emit('ui:toast',{text:'Orchard tow complete. The released pod is ready for pickup.',duration:5});
+      return;
+    }
+    this.bus.emit('ui:setCourse',{pos:{x:pod.pos.x,z:pod.pos.z},targetEntityId:pod.id,
+      label:'ORCHARD POD PICKUP',reason:'Tow complete. Fly close to collect this pod.',
+      waypointKind:'local',arrivalRadius:24,autopilot:false});
+    this.bus.emit('ui:toast',{text:'Orchard tow complete. Follow the pickup marker and fly close to collect.',duration:5});
   },
 
   _requestContactHeaveTo(target, availability, { wanted = false, ai = null } = {}) {
@@ -1740,7 +1767,17 @@ export const scanner = {
   // answers which body; a live mission may claim a specific destination for it (yard berth,
   // dock ring), otherwise the nearest station is the honest default. The hire fee is billed
   // by the runtime; whatever the load is worth is settled by whoever owns the destination.
-  _requestContactTowAssist(worker) {
+  _requestContactTowAssist(worker, offer = null) {
+    if (offer?.orchardQuote) {
+      const result=this.registry?.get?.('traffic')?.requestOrchardTowAssist?.(worker,offer.orchardQuote);
+      if(result?.granted){
+        const quote=offer.orchardQuote,pod=this.state.entities.get(quote.targetId);
+        this._orchardTowGuidance={state:this.state,entities:this.state.entities,world:this.state.world,
+          jobId:result.jobId,pod,life:quote.targetGeneration,lotId:quote.lotId,waypoint:this.state.nav?.waypoint};
+      }
+      return result || {granted:false,reason:'no_owner'};
+    }
+
     const state = this.state;
     const body = worker ? towAssistBodyFor(state, worker) : null;
     if (!body) return { granted: false, reason: 'no_load' };
@@ -1834,6 +1871,8 @@ export const scanner = {
   },
 
   _resetContactHail(reason) {
+    if(reason==='load' || reason==='new_game' || !['flight','paused','pause'].includes(this.state?.mode))
+      this._orchardTowGuidance = null;
     this._clearContactHail(reason);
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
@@ -1937,6 +1976,9 @@ export const scanner = {
       if (this._onSignalSurveyFiled) this.bus.off('signal:surveyFiled', this._onSignalSurveyFiled);
       if (this._onContactHailRequest) this.bus.off('contactHail:request', this._onContactHailRequest);
       if (this._onContactHailChoice) this.bus.off('contactHail:choice', this._onContactHailChoice);
+      this.bus.off('npcJobs:towAssistComplete', this._onOrchardTowComplete);
+      this.bus.off('npcJobs:towAssistLost', this._onOrchardTowLost);
+      this._orchardTowGuidance = null;
       if (this._onContactHailReset) {
         this.bus.off('game:new', this._onContactHailReset);
         this.bus.off('game:load', this._onContactHailReset);
@@ -1954,6 +1996,9 @@ export const scanner = {
     this._onContactHailRequest = null;
     this._onContactHailChoice = null;
     this._onContactHailReset = null;
+    this._onOrchardTowComplete = null;
+    this._onOrchardTowLost = null;
+    this._orchardTowGuidance = null;
     this._onSensorGhostSwarm = null;
   },
 };

@@ -1,3 +1,4 @@
+import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
 // S1 Phase-B stage 3 — main-side read model v1.
 //
 // Reconstructs what the present lane reads from live sim state, fed entirely by
@@ -28,6 +29,8 @@
 
 import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { nowNs } from './simRealm.mjs';
+import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
+import { isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
 import { projectNpcJobsById } from './npcJobsMirror.mjs';
 import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
@@ -519,6 +522,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'player', 'missions', 'nav', 'economy', 'story', 'factions', 'combat',
   'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
   'cursor',
+  // Bounded live pod facts only: the leaf projector excludes other planet authority.
+  'planet.ships', 'planet.orchardForecast',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic',
   'physicsVenueSession', 'world.wreckCourtRulings',
@@ -680,6 +685,8 @@ function domainCadenceFor(rootKey) {
 //     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
 const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
 const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
+const ORCHARD_FORECAST_MIRROR_RULE = Object.freeze({ project: 'orchardForecast' });
+const ORCHARD_EXPOSURE_MIRROR_RULE = Object.freeze({ project: 'orchardExposure' });
 
 // Named diagnostic wire profiles. The ordinary runtime installs the empty
 // profile; callers must opt into a name before the first differ is created so
@@ -726,6 +733,8 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
+  if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
   // DOMAIN_MIRROR_KEYS keeps dotted leaf paths as one logical root on the worker wire; the main
   // lane splits that segment while grafting it into state.npcJobs.byId.
   if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
@@ -752,10 +761,35 @@ function isNpcJobsByIdPath(segs) {
 // Shallow key-drop projection for a leaf-view rule. Returns a copy minus the
 // dropped keys — never mutates the live value; callers sign/clone the result
 // so the facade stores exactly the projected (shipped) content.
-function projectDomainLeaf(rule, v) {
+function projectOrchardExposure(state, records) {
+  const out = {};
+  if (!state?.planet?.active || state.planet.siteId !== ANVIL_ORCHARD.planetId
+    || state.world?.currentSectorId !== ANVIL_ORCHARD.sectorId || !isCanonicalObject(records)) return out;
+  let count = 0;
+  for (const id of Object.keys(records)) {
+    if (count >= ANVIL_ORCHARD.socketCount) break;
+    const entity = state.entities?.get?.(Number(id));
+    const rec = records[id];
+    if (!entity || !isOrchardPod(entity) || entity.physicsBody.dynamic !== true
+      || entity.data.masslineTetherable !== true || !Number.isSafeInteger(entity.occupantGeneration)
+      || entity.occupantGeneration < 1 || rec?.occupantGeneration !== entity.occupantGeneration
+      || !Number.isFinite(rec.lastThermalAt) || rec.lastThermalAt < 0 || rec.lastThermalAt > state.simTime
+      || !Number.isFinite(rec.heat) || rec.heat < 0 || rec.heat > 1
+      || !['outside', 'influence', 'sling', 'skim', 'danger', 'reentry'].includes(rec.region)
+      || ![null, 'skim', 'commit', 'breakup', 'descent'].includes(rec.stage)) continue;
+    out[id] = { occupantGeneration: rec.occupantGeneration, lotId: entity.data.worldRecordId,
+      heat: rec.heat, stage: rec.stage, region: rec.region, lastThermalAt: rec.lastThermalAt };
+    count++;
+  }
+  return out;
+}
+
+function projectDomainLeaf(rule, v, state) {
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
+  if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
   let has = false;
@@ -1274,7 +1308,7 @@ export function createDomainDiffer(options = {}) {
     return n;
   }
 
-  function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext) {
+  function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext, state) {
     const node = ensureNode(path, segs);
     // This owner publishes detached immutable snapshots only at settlement.
     // A new stock/hold receipt must not wait for the large-leaf cold cadence.
@@ -1296,7 +1330,7 @@ export function createDomainDiffer(options = {}) {
       if (enumDue) {
         const liveKids = new Set(Object.keys(v));
         for (const c of liveKids) {
-          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision, runContext);
+          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision, runContext, state);
         }
         if (node.kids) {
           for (const c of node.kids) {
@@ -1319,7 +1353,7 @@ export function createDomainDiffer(options = {}) {
             dropNode(`${path}.${c}`);
             node.kids.delete(c);
           } else {
-            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision, runContext);
+            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision, runContext, state);
           }
         }
       }
@@ -1423,7 +1457,7 @@ export function createDomainDiffer(options = {}) {
       node.lastSign = tick;
       return;
     }
-    const pv = projectDomainLeaf(leafRule, v);
+    const pv = projectDomainLeaf(leafRule, v, state);
     const sig = canonicalSignature(pv, sigScratch);
     // Production sends the canonical value, never its hash. Compare the retained
     // text directly instead of UTF-8 encoding and SHA-256 hashing every leaf on
@@ -1473,7 +1507,7 @@ export function createDomainDiffer(options = {}) {
       const runContext = resolveDomainValue(state, 'run');
       for (const key of DOMAIN_MIRROR_KEYS) {
         walk(key, [key], resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
-          runContext);
+          runContext, state);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
       let probe = null;

@@ -1,0 +1,2072 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.anvil-condensate-pod.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.anchor.socket-orchard-coupler",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.119999885559082,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Orchard_Coupler",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.119999885559082,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.anvil-condensate-pod",
+  "collisions": [
+    {
+      "id": "sf.render.anvil-condensate-pod.node.collision-pod-pressure-vessel.collision",
+      "nodeId": "sf.render.anvil-condensate-pod.node.collision-pod-pressure-vessel",
+      "reference": "COLLISION_pod-pressure-vessel"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "8858c46cd7af84e6da478c05a12181c457a90b6b79279f5e901e38f6757f9906",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2,
+          1.3100460767745972,
+          1.3100460767745972
+        ],
+        "min": [
+          -2.119999885559082,
+          -1.3100460767745972,
+          -1.3100460767745972
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "571f56c17640542204692d7dc1e89f0376dc33a92abfea9eba87e92319079edd",
+      "id": "sf.render.anvil-condensate-pod.node.collision-pod-pressure-vessel.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_pod-pressure-vessel",
+      "nodeId": "sf.render.anvil-condensate-pod.node.collision-pod-pressure-vessel",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.7599965333938599,
+          0.3700000047683716,
+          0.3700000047683716
+        ],
+        "min": [
+          -2.1200032234191895,
+          -0.3700000047683716,
+          -0.3700000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7346a9945b6a4994532f1d92c1ff6dc609ac6d3bdbae1f39e08083e36b17d209",
+      "id": "sf.render.anvil-condensate-pod.node.lod0-armor.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "8977417ae67b02c50998f06609837cb40539fe814cadeb5fe41a0a3c5fe9a16e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6750267148017883,
+          1.0199358463287354,
+          0.9800000190734863
+        ],
+        "min": [
+          -0.6750267148017883,
+          0.9000640511512756,
+          -0.9800000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8a3cd54d19df14f3616ec98238a835a40d84a5ebb407c66c85f071fc34d20dd6",
+      "id": "sf.render.anvil-condensate-pod.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "e0f66e09e14d4e965dddfcdbe54284c2734d75a44f7f759a4e353a285cdb253e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1700725555419922,
+          1.309999942779541,
+          1.309999942779541
+        ],
+        "min": [
+          -1.1700725555419922,
+          -1.309999942779541,
+          -1.309999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f39c971298bff1ca870b4f1901a4304b82851359370715e52f407721fc6baa43",
+      "id": "sf.render.anvil-condensate-pod.node.lod0-mechanical.primitive.0",
+      "indexCount": 1896,
+      "indexed": true,
+      "materialHash": "a00cff757b2c60d5a3e51c85ece82e216dc041c20f8d7315210358a74fcab5e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 608
+    },
+    {
+      "bounds": {
+        "max": [
+          2,
+          1.2499160766601562,
+          1.2499160766601562
+        ],
+        "min": [
+          -2,
+          -1.2499160766601562,
+          -1.2499160766601562
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0999f14d782d0ccbad55a872a97eaa9c0e49625105c26b8dc7869c0975ef0790",
+      "id": "sf.render.anvil-condensate-pod.node.lod0-warning.primitive.0",
+      "indexCount": 1428,
+      "indexed": true,
+      "materialHash": "df69e3efc44a4310b16e0ce38b37fe0058b0030ab16c468de29c563ddde9e2d2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 404
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.760589599609375,
+          0.3691159188747406,
+          0.3691159188747406
+        ],
+        "min": [
+          -2.119375705718994,
+          -0.3691159188747406,
+          -0.3691159188747406
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f5eace3dc4772316b0e80b8cb7794a99a9875c2a4d434724f1370cedf19b6fc",
+      "id": "sf.render.anvil-condensate-pod.node.lod1-armor.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "8977417ae67b02c50998f06609837cb40539fe814cadeb5fe41a0a3c5fe9a16e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 68
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6738654375076294,
+          1.0187008380889893,
+          0.9788345694541931
+        ],
+        "min": [
+          -0.6738654375076294,
+          0.902556300163269,
+          -0.9788345694541931
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6028a9dce7631959d1efbb40e3eb8b79e933df7d38ab9c493db315bdd3753ef",
+      "id": "sf.render.anvil-condensate-pod.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "e0f66e09e14d4e965dddfcdbe54284c2734d75a44f7f759a4e353a285cdb253e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 124
+    },
+    {
+      "bounds": {
+        "max": [
+          1.16960608959198,
+          1.3091353178024292,
+          1.3091353178024292
+        ],
+        "min": [
+          -1.1696336269378662,
+          -1.3091353178024292,
+          -1.3091353178024292
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a76cf7c83f0820a360bcb60bc1567e021459c1df874fcece709b77950cdc9980",
+      "id": "sf.render.anvil-condensate-pod.node.lod1-mechanical.primitive.0",
+      "indexCount": 678,
+      "indexed": true,
+      "materialHash": "a00cff757b2c60d5a3e51c85ece82e216dc041c20f8d7315210358a74fcab5e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 213
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0002877712249756,
+          1.2491117715835571,
+          1.2491117715835571
+        ],
+        "min": [
+          -2.0002639293670654,
+          -1.2491117715835571,
+          -1.2491117715835571
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "983195c85b6e9753dbdd011b1a2ffce2be108b4cc41b56338b4d9c667ac15efc",
+      "id": "sf.render.anvil-condensate-pod.node.lod1-warning.primitive.0",
+      "indexCount": 762,
+      "indexed": true,
+      "materialHash": "df69e3efc44a4310b16e0ce38b37fe0058b0030ab16c468de29c563ddde9e2d2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 205
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.7619086503982544,
+          0.36715900897979736,
+          0.3655316233634949
+        ],
+        "min": [
+          -2.118091106414795,
+          -0.3655315637588501,
+          -0.3671589493751526
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8005dae3b4b64c04e5565533d78d0d61e0bef748d5054ee7f59337b4b26f1c02",
+      "id": "sf.render.anvil-condensate-pod.node.lod2-armor.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "8977417ae67b02c50998f06609837cb40539fe814cadeb5fe41a0a3c5fe9a16e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6670770049095154,
+          1.0118474960327148,
+          0.9719036817550659
+        ],
+        "min": [
+          -0.6670770049095154,
+          0.9081524610519409,
+          -0.9719036817550659
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba6bea69c2b369a650f08d2902d0da1827283514c7f8fb407c2571fcd3bba8f1",
+      "id": "sf.render.anvil-condensate-pod.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "e0f66e09e14d4e965dddfcdbe54284c2734d75a44f7f759a4e353a285cdb253e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1679537296295166,
+          1.3069621324539185,
+          1.307221531867981
+        ],
+        "min": [
+          -1.1679537296295166,
+          -1.307221531867981,
+          -1.3069621324539185
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55f5f9294ba30928a93b5fd60fe95fec770485f0013760830a82100ae257c2fd",
+      "id": "sf.render.anvil-condensate-pod.node.lod2-mechanical.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "a00cff757b2c60d5a3e51c85ece82e216dc041c20f8d7315210358a74fcab5e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          2.008850336074829,
+          1.2461285591125488,
+          1.2461285591125488
+        ],
+        "min": [
+          -2.008850336074829,
+          -1.2461285591125488,
+          -1.2461285591125488
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a342fc450984b9c951fe3ef501c0c097454e81be43ae6abfca8b90a8fbfc02a2",
+      "id": "sf.render.anvil-condensate-pod.node.lod2-warning.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "df69e3efc44a4310b16e0ce38b37fe0058b0030ab16c468de29c563ddde9e2d2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.anvil-condensate-pod.node.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 114
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "8977417ae67b02c50998f06609837cb40539fe814cadeb5fe41a0a3c5fe9a16e",
+      "id": "material:8977417ae67b02c50998f066",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a00cff757b2c60d5a3e51c85ece82e216dc041c20f8d7315210358a74fcab5e9",
+      "id": "material:a00cff757b2c60d5a3e51c85",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "df69e3efc44a4310b16e0ce38b37fe0058b0030ab16c468de29c563ddde9e2d2",
+      "id": "material:df69e3efc44a4310b16e0ce3",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e0f66e09e14d4e965dddfcdbe54284c2734d75a44f7f759a4e353a285cdb253e",
+      "id": "material:e0f66e09e14d4e965dddfcdb",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.anvil-condensate-pod.node.collision-pod-pressure-vessel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_pod-pressure-vessel",
+      "nodeName": "COLLISION_pod-pressure-vessel",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod2-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_ANVIL_CONDENSATE_POD_ROOT",
+      "nodeName": "SF_PLACE_ANVIL_CONDENSATE_POD_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.socket-orchard-coupler",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.119999885559082,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Orchard_Coupler",
+      "nodeName": "SOCKET_Orchard_Coupler",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.119999885559082,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.anvil-condensate-pod.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.anvil-condensate-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "10decf9b9196fa16b8a63543a00b147413efef02c8c1fdea74bf366b64d8475a"
+    },
+    "sourceGlb": {
+      "bytes": 192204,
+      "sha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
+      "uri": "place_anvil_condensate_pod.glb"
+    },
+    "sourceManifest": {
+      "bytes": 272571,
+      "sha256": "df41d51fb9dd9b8030fadf18c757a4fceedd9be0dd636cd8271e725ed85441f7",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 244312,
+    "sha256": "a2ff0029747a9aca425e1e2a1606db2860c7240738a1894cbf92414f201d7885",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.055576443672180176,
+        0,
+        0
+      ],
+      "max": [
+        2.008850336074829,
+        1.3100460767745972,
+        1.3100460767745972
+      ],
+      "min": [
+        -2.1200032234191895,
+        -1.3100460767745972,
+        -1.3100460767745972
+      ],
+      "size": [
+        4.1288535594940186,
+        2.6200921535491943,
+        2.6200921535491943
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.anvil-condensate-pod.anchor.socket-camera-focus",
+              "sf.render.anvil-condensate-pod.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.119999885559082,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Orchard_Coupler",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Orchard_Coupler",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Orchard_Coupler",
+            "recordIds": [
+              "sf.render.anvil-condensate-pod.anchor.socket-orchard-coupler",
+              "sf.render.anvil-condensate-pod.node.socket-orchard-coupler"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.anvil-condensate-pod.anchor.socket-tether-massline",
+              "sf.render.anvil-condensate-pod.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 4,
+      "mechanical": 3,
+      "signal": 3,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb"
+  },
+  "runtimeHash": "9aacdd11cca15448ff5a11997791d12a6cd432848f917ad512e39795effe54fb",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.008850336074829,
+          1.3100460767745972,
+          1.3100460767745972
+        ],
+        "min": [
+          -2.1200032234191895,
+          -1.3100460767745972,
+          -1.3100460767745972
+        ]
+      },
+      "id": "sf.render.anvil-condensate-pod.body",
+      "nodeIds": [
+        "sf.render.anvil-condensate-pod.node.collision-pod-pressure-vessel",
+        "sf.render.anvil-condensate-pod.node.lod0-armor",
+        "sf.render.anvil-condensate-pod.node.lod0-beacon-amber",
+        "sf.render.anvil-condensate-pod.node.lod0-mechanical",
+        "sf.render.anvil-condensate-pod.node.lod0-warning",
+        "sf.render.anvil-condensate-pod.node.lod1-armor",
+        "sf.render.anvil-condensate-pod.node.lod1-beacon-amber",
+        "sf.render.anvil-condensate-pod.node.lod1-mechanical",
+        "sf.render.anvil-condensate-pod.node.lod1-warning",
+        "sf.render.anvil-condensate-pod.node.lod2-armor",
+        "sf.render.anvil-condensate-pod.node.lod2-beacon-amber",
+        "sf.render.anvil-condensate-pod.node.lod2-mechanical",
+        "sf.render.anvil-condensate-pod.node.lod2-warning",
+        "sf.render.anvil-condensate-pod.node.sf-place-anvil-condensate-pod-root",
+        "sf.render.anvil-condensate-pod.node.socket-camera-focus",
+        "sf.render.anvil-condensate-pod.node.socket-orchard-coupler",
+        "sf.render.anvil-condensate-pod.node.socket-tether-massline"
+      ]
+    }
+  ]
+}

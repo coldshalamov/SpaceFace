@@ -3,6 +3,55 @@ import test from 'node:test';
 import * as THREE from 'three';
 import { installPlayerTruthReader } from '../src/testing/playerTruth/reader.js';
 
+test('covered flight keeps live observations without spending visual probe budgets before reveal', () => {
+  let callback;
+  let wall = 0;
+  const measures = [];
+  const camera = new THREE.OrthographicCamera(-100, 100, 100, -100, 0.1, 500);
+  camera.position.set(0, 100, 0); camera.up.set(0, 0, -1); camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  const player = { id: 1, type: 'ship', alive: true, radius: 4,
+    pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 } };
+  const state = {
+    mode: 'flight', simTime: 0, tick: 0, playerId: 1,
+    entityList: [player], entities: new Map([[1, player]]),
+    render: { camera, scene: new THREE.Scene(), meshes: new Map(), flightVeilHoldsSim: true },
+  };
+  const win = {
+    innerWidth: 1280, innerHeight: 720,
+    performance: { now: () => wall, measure: name => measures.push(name), clearMeasures() {} },
+    addEventListener() {}, removeEventListener() {},
+    requestAnimationFrame(fn) { callback = fn; return 1; }, cancelAnimationFrame() {},
+    SF: { THREE, state },
+  };
+  const reader = installPlayerTruthReader(win, { vfxEvery: 1, pxEvery: 1,
+    visualEveryMs: 1000, pixelEveryMs: 1000 });
+  const frame = () => {
+    reader.start(); callback(); reader.stop();
+    return reader.drain().samples[0];
+  };
+  try {
+    const covered = frame();
+    assert.ok(covered.p, 'live player observation remains available under the veil');
+    assert.equal(covered.vfx, null);
+    assert.equal(covered.px, undefined);
+    assert.ok(!measures.includes('player-truth:reader:px'));
+    wall = 16; state.tick++; player.pos.x = 12;
+    state.render.flightVeilHoldsSim = false;
+    const revealed = frame();
+    assert.ok(revealed.vfx, 'reveal gets the first visual slot immediately');
+    assert.ok(revealed.px, 'covered flight did not consume the pixel wall budget');
+    assert.ok(measures.includes('player-truth:reader:px'));
+    assert.notDeepEqual(revealed.p, covered.p, 'player state is observed freshly after reveal');
+    wall = 32;
+    const next = frame();
+    assert.equal(next.vfx, null);
+    assert.equal(next.px, undefined, 'ordinary independent wall budgets remain in force');
+  } finally {
+    reader.dispose();
+  }
+});
+
 test('entity observations stay fresh while VFX and pixel probes keep independent wall budgets', () => {
   let callback = null;
   let wall = 0;
