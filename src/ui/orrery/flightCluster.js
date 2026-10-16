@@ -426,13 +426,27 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     // group is the one unfolded along the crescent.
     const slotStates = d.ordnance || {};
     const sid = (sl) => String(sl.id != null ? sl.id : sl.key);
+    let keysChanged = false;
+    for (const group of groups) {
+      let groupChanged = false;
+      for (const slot of group.slots) {
+        const key = slotStates[sid(slot)]?.key;
+        if (typeof key === 'string' && slot.key !== (key || '—')) {
+          slot.key = key || '—'; groupChanged = true;
+        }
+      }
+      if (groupChanged) {
+        keysChanged = true;
+        group.tip = `${group.name} — ${group.slots.map(slot => `${slot.name} ${slot.key}`).join(' · ')}`;
+      }
+    }
     let armedGroup = -1;
     groups.forEach((g, gi) => g.slots.forEach((sl) => {
       if ((slotStates[sid(sl)] || {}).state === 'armed') { armedGroup = gi; handSlot = sid(sl); }
     }));
     let openTo = armedGroup;
     if (openTo < 0) openTo = Math.max(0, groups.findIndex((g) => g.slots.some((sl) => sid(sl) === handSlot)));
-    if (openTo !== openGroup) { openGroup = openTo; layoutCrescent(openTo); }
+    if (openTo !== openGroup || keysChanged) { openGroup = openTo; layoutCrescent(openTo); }
     let handAngle = null;
     let handArmed = false;
     for (const sk of sockets) {
