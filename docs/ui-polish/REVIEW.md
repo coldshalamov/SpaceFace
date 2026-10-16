@@ -1389,6 +1389,22 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** the legacy `ship` screen at 844×390 (Cargo / OPEN callouts over the hull's sentence); the `orrery-flight` direction proof cramped at 844×390 (preview, not the live HUD); Shipworks lower callouts @844×390 (berth scrolls by design).
 
+## ORRERY flight proof (`orrery-flight`) on small frames (2026-10-16, ui-polish-58)
+
+**Before (master b602ddebaf):** the direction proof was composed on 1920×1080, with fixed pixel positions for the lock and threat rings and a 640px tape. At 844×390 the speed dial printed over "Helios Prime", the tape over the sector line, the toasts sat inside the radar, and the lock ring and raider marker were off the frame (bench: 14 findings). At 960×540 the tape ran into the place block and the lock was off-frame. At 1280×720 the raider marker was off-frame. In a 390×844 window the tape covered the place block and the radar sat on the ordnance (18 findings).
+
+**After (`src/ui/orrery/flightPreview.js` only; the bench preview, not the live HUD):**
+- The tape's width comes from the window (≤1100 wide or ≤460 tall: 42% of the width, capped at 460px; ≤640 wide: full width). Its title stays on one line.
+- The rings follow the window: the threat channel rings the frame's middle (where the ship is), the raider marker stands at the right edge, and on a full frame the lock keeps its 1920 spot, scaled. On small or short frames the lock stands beside the ship, and its ring is smaller with the label moved in to match.
+- **≤1100 wide:** place block .9, toasts under the tape on the right, radar .6.
+- **≤460 tall:** cluster scale .42, place .84, toasts .84 (300px) at top right, radar .5 (its RANGE foot is counter-scaled so it stays readable).
+- **≤640 wide window:** tape row, then the place block with the radar beside it, then the toasts, the lock and threat, and the cluster at the foot.
+- 1920×1080 is unchanged (0.09% pixel delta, from the animated sweep only).
+
+**Checked:** bench `orrery-flight` findings went from 14 to 4 at 844×390, from 18 to 6 at 390×844, from 12 to 6 at 960×540, and from 8 to 6 at 1280×720. It is 4 at 801×390, 1024×440 and 1366×768, and 0 at 1920×1080. All the remaining findings are the Cluster's curved class line (HITCH · KESTREL CLASS · STARTER) touching its own Shield/Armor legend at cluster scale ≤.6. That also happens on master at 960 and 1280, and it lives in the shared `flightCluster.js`. The focused test `orrery-speed-dial` passes. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish58/{before,after}/flight/` and `compare-orrery-flight-*.png`.
+
+**Leftovers (not this pass):** the Cluster class line vs legend at scale ≤.6 (shared with the live HUD through `hudAdapter`, so fix it there and check it live). The live HUD cluster has no short-frame step (it stays at .6 at 844×390). My Ship hull callouts at 1101–1160 wide (in #423's `#sf-ship` CSS). Shipworks lower callouts at 844×390 (the berth scrolls by design).
+
 ## My Ship (flight host) on small frames — session notes (2026-10-16, ui-polish-57)
 
 **Before (master 72d47e7bf8):** Pause → My Ship (`ship`) kept fixed 230 / 1fr / 285 columns at every size. At 844×390 the hull had a 185px column, so the hull's sentence, the slot callouts (Cargo / OPEN) and the ship ran into each other (bench: 6 ON TOP OF). At 960×540 the sentence and callouts crowded a 300px stage. In a 390×844 desktop window the hull column was 0px wide and the screen showed only the fleet card and a clipped systems rail.

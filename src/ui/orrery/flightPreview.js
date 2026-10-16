@@ -28,6 +28,48 @@ const CSS = `
     radial-gradient(34% 40% at 100% 100%, rgb(3 4 7 / .55), transparent 70%),
     radial-gradient(40% 18% at 50% 0%, rgb(3 4 7 / .45), transparent 80%),
     linear-gradient(0deg, rgb(3 4 7 / .45), transparent 22%); }
+/* Small frames. The proof was composed on 1920×1080: below ~1100 wide or 460 tall the tape ran into
+   the place block, the cluster climbed over it, the radar sat under the toasts and the lock ring fell
+   off the frame. Each instrument steps down here (the tape's width and the rings' positions are set
+   from the window in mount()). */
+.orr-flightpreview .orr-tape svg { width:100%; }
+@media (max-width:1100px), (max-height:460px) {
+  .orr-flightpreview .orr-tape__title { display:flex; justify-content:center; white-space:nowrap; font-size:14px; }
+}
+@media (max-width:1100px) {
+  .orr-flightpreview__place { left:24px; top:22px; zoom:.9; }
+  .orr-flightpreview__toasts { right:20px; top:96px; }
+  .orr-flightpreview .orr-radar { zoom:.6; }
+  .orr-flightpreview .orr-lock svg, .orr-flightpreview .orr-threat svg { zoom:.8; }
+  .orr-flightpreview .orr-lock__label { left:52px; top:-66px; }
+}
+@media (min-width:641px) and (max-height:460px) {
+  .orr-flightpreview { --orr-cluster-scale:.42; }
+  .orr-flightpreview__place { left:16px; top:12px; zoom:.84; }
+  .orr-flightpreview__tape { top:8px; }
+  .orr-flightpreview .orr-tape__title { font-size:12px; margin-bottom:4px; }
+  .orr-flightpreview__toasts { right:14px; top:48px; zoom:.84; }
+  .orr-flightpreview .orr-toasts { width:300px; }
+  .orr-flightpreview__cluster { left:6px; bottom:8px; }
+  .orr-flightpreview__radar { right:12px; bottom:6px; }
+  .orr-flightpreview .orr-radar { zoom:.5; }
+  .orr-flightpreview .orr-radar__foot { zoom:1.6; }
+  .orr-flightpreview .orr-lock svg, .orr-flightpreview .orr-threat svg { zoom:.6; }
+  .orr-flightpreview .orr-lock__label { left:40px; top:-52px; }
+}
+@media (max-width:640px) {
+  .orr-flightpreview { --orr-cluster-scale:.46; }
+  .orr-flightpreview__tape { top:8px; }
+  .orr-flightpreview .orr-tape__title { font-size:12px; margin-bottom:4px; }
+  .orr-flightpreview__place { left:16px; top:140px; zoom:.84; }
+  .orr-flightpreview__radar { right:8px; bottom:auto; top:136px; }
+  .orr-flightpreview .orr-radar { zoom:.42; }
+  .orr-flightpreview .orr-radar__foot { zoom:1.8; }
+  .orr-flightpreview__toasts { left:16px; right:auto; top:270px; max-width:calc(100vw - 32px); }
+  .orr-flightpreview__cluster { left:4px; bottom:12px; }
+  .orr-flightpreview .orr-lock svg, .orr-flightpreview .orr-threat svg { zoom:.62; }
+  .orr-flightpreview .orr-lock__label { left:42px; top:-54px; }
+}
 `;
 
 function injectStyle(doc = globalThis.document) {
@@ -93,7 +135,9 @@ export const orreryFlightScreen = {
     root.appendChild(stage);
 
     const place = createPlaceBlock();
-    const tape = createObjectiveTape({ width: 640 });
+    const W = window.innerWidth || 1920, H = window.innerHeight || 1080;
+    const tapeWidth = W <= 640 ? W - 24 : W <= 1100 || H <= 460 ? Math.round(Math.min(460, W * 0.42)) : 640;
+    const tape = createObjectiveTape({ width: tapeWidth });
     const toasts = createSignalToasts();
     const cluster = createFlightCluster({ shipId: 'ship_kestrel', name: 'Hitch', classLine: 'Kestrel class · starter', groups: ORDNANCE_LAYOUT });
     const radar = createRadarOrrery({ shipId: 'ship_kestrel', rangeLabel: '4.0k wu' });
@@ -137,9 +181,18 @@ export const orreryFlightScreen = {
       { x: -0.5, y: 0.52, kind: 'station' }, { x: -0.3, y: -0.62, kind: 'neutral' },
     ]);
     radar.setObjectiveBearing(41);
-    lock.set({ x: 991, y: 407, name: 'Hauler 12', detail: 'civil · towing', distance: 1240, hull: 0.82, lead: { x: 26, y: -9 } });
-    threat.set({ x: 957, y: 541, bearings: [112, 128] });
-    threat.edge(stage, { x: 1884, y: 640, bearing: 90, label: 'Raider · 2.1k', labelSide: 'left' });
+    // The rings were placed on the 1920×1080 frame: the threat channel rings the ship at the frame's
+    // middle, the lock stands on a hauler up and to its right. Both follow the window (the backdrop
+    // covers it the same way). A small or short frame has no room for the lock above the ship (the
+    // tape and the toasts take it), so the lock stands beside the ship at its rings' own size.
+    const X = (x) => Math.round(x * W / 1920), Y = (y) => Math.round(y * H / 1080);
+    const small = W <= 1100 || H <= 460;
+    const ring = W <= 640 ? 0.62 : H <= 460 ? 0.6 : 0.8; // the ring zoom set in CSS above
+    const lockAt = W < H ? { x: Math.round(W * 0.36), y: Math.round(H * 0.535) }
+      : small ? { x: Math.round(W / 2 + 90 * ring), y: Math.round(H / 2) } : { x: X(991), y: Y(407) };
+    lock.set({ ...lockAt, name: 'Hauler 12', detail: 'civil · towing', distance: 1240, hull: 0.82, lead: { x: 26, y: -9 } });
+    threat.set({ x: X(957), y: Y(541), bearings: [112, 128] });
+    threat.edge(stage, { x: W - 36, y: small && W >= H ? Math.round(H * 0.54) : Y(640), bearing: 90, label: 'Raider · 2.1k', labelSide: 'left' });
     toasts.push({ kind: 'Contract', html: 'Sample located · marked on your chart', delay: 700 });
     toasts.push({ kind: 'Salvage', html: '<b>+240 cr</b> · Hull plating recovered', gain: true, delay: 900 });
 
