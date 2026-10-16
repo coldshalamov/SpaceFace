@@ -15,6 +15,13 @@ function rock(id, x, radius) {
   };
 }
 
+function movingSolid(id, pos, vel, radius) {
+  return {
+    id, kind: ContactKind.HAZARD, pos, vel, radius, planarRadius: radius,
+    tags: ['solid'], confidence: 1, alive: true,
+  };
+}
+
 function hull(id, x, z, radius) {
   return {
     id, kind: ContactKind.SHIP, alive: true, team: 1,
@@ -103,4 +110,37 @@ test('unequal hulls queue behind a narrow gap by clearance and do not share the 
   const wideReq = hold(1, left, [right, ...wide], { x: anchor.x, z: anchor.z });
   assert.ok(Math.abs(wideReq.forceLocal.forward) < 0.05 && Math.abs(wideReq.forceLocal.right) < 0.05,
     'a gap wide enough for both hulls abreast keeps the shared anchor');
+});
+
+test('moving payloads and wrecks do not define a persistent gap queue', () => {
+  const anchor = { x: -13337.860573935313, z: 8899.464331115016 };
+  const members = [
+    hull(491, -13449.798950195312, 8853.833251953125, 24),
+    hull(499, -13309.698852539062, 8784.073669433594, 18),
+  ];
+  const movingPair = [
+    movingSolid(
+      538,
+      { x: -13350.654052734375, z: 8880.054382324219 },
+      { x: -3.236201763153076, z: 4.418885231018066 },
+      9,
+    ),
+    movingSolid(
+      539,
+      { x: -13336.054321289062, z: 8873.522277832031 },
+      { x: -35.0095329284668, z: -16.589313507080078 },
+      3.4,
+    ),
+  ];
+  assert.equal(
+    gapWaitingPositions(anchor, members, movingPair),
+    null,
+    'the captured moving 538/539 pair remains an avoidance hazard, not persistent cover',
+  );
+
+  const stationaryPair = [rock(90, 0, 20), rock(91, 50, 20)];
+  assert.ok(
+    gapWaitingPositions({ x: 25, z: -30 }, [hull(1, 25, -8, 8), hull(2, 25, -48, 28)], stationaryPair),
+    'stationary solids still produce the canonical narrow-gap queue',
+  );
 });
