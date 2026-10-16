@@ -276,10 +276,10 @@ test('touches the exact-target port declines are not counted as touched', async 
     const receipt = state.render.openingEffectWarm;
     assert.ok(!receipt.touched.includes('exemplar:standIn'), 'a declined touch is not a touch');
     assert.ok(receipt.touched.includes('exemplar:phaseBlink'));
-    assert.deepEqual(receipt.portSkipped, ['exemplar:standIn (touch unavailable)']);
+    assert.deepEqual(receipt.skipped, ['exemplar:standIn (touch unavailable)']);
     const { openingEffectWarmLine } = await import('../scripts/player-truth/verdict.mjs');
     const line = openingEffectWarmLine({ present: true, khr: false, software: true, ...receipt, reason: 'shell-released' });
-    assert.match(line, new RegExp(`· ${receipt.touched.length} touched, 1 declined by the exact-target port, `));
+    assert.match(line, new RegExp(`· ${receipt.touched.length} touched, 0 timed out, 1 skipped, 0 failed, `));
   } finally {
     timers.restore();
   }

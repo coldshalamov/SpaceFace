@@ -14,7 +14,7 @@ export function openingEffectWarmLine(warm) {
   if (!warm.present) return `not run (no receipt) · ${gpu}`;
   const n = (list) => Array.isArray(list) ? list.length : 0;
   const ran = warm.reason !== 'parallel-compile-cook';
-  return `${ran ? 'ran' : 'skipped'} · reason ${warm.reason ?? '?'} · ${gpu}${ran ? ` · ${n(warm.touched)} touched, ${n(warm.portSkipped) ? `${n(warm.portSkipped)} declined by the exact-target port, ` : ''}${n(warm.timedOut)} timed out, ${n(warm.skipped)} skipped, ${warm.failed ?? 0} failed, ${warm.sweeps ?? '?'} sweeps` : ''}`;
+  return `${ran ? 'ran' : 'skipped'} · reason ${warm.reason ?? '?'} · ${gpu}${ran ? ` · ${n(warm.touched)} touched, ${n(warm.timedOut)} timed out, ${n(warm.skipped)} skipped, ${warm.failed ?? 0} failed, ${warm.sweeps ?? '?'} sweeps` : ''}`;
 }
 
 export function renderVerdict({ meta, results, overall, paths }) {
