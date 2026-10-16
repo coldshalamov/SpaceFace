@@ -428,6 +428,72 @@ function authoredEncounterOf(definition) {
   return AUTHORED_SET_PIECE_ENCOUNTERS[definition.id] || MEGA_HEIST_ENCOUNTERS[definition.id] || null;
 }
 
+function isCampaign47aB2Rescue(mission) {
+  return !!(mission && mission.type === 'rescue_under_fire'
+    && String(mission.storyTag || '') === CONTRACT_47A_B2_TAG
+    && authoredDefinitionOf(mission)?.id === 'pod_rescue');
+}
+
+function b2RescueActorForRole(mission, role) {
+  const definition = isCampaign47aB2Rescue(mission) ? authoredDefinitionOf(mission) : null;
+  const encounter = authoredEncounterOf(definition);
+  return encounter && Array.isArray(encounter.actors)
+    ? encounter.actors.find((actor) => actor && actor.role === role) || null
+    : null;
+}
+
+function b2RescueActorCount(mission, actor, paramName) {
+  if (!actor) return 0;
+  const configured = Number(mission && mission.params && mission.params[paramName]);
+  const count = Number.isFinite(configured) ? configured : Number(actor.count);
+  return Math.max(0, Math.floor(Number.isFinite(count) ? count : 0));
+}
+
+function b2RescueActorIdentity(mission, actor, index) {
+  if (!mission || !actor || !actor.actorId || !Number.isInteger(index) || index < 0) return null;
+  return `${String(mission.id)}:${actor.actorId}:${index + 1}`;
+}
+
+function b2RescueActorIndexFromEntity(mission, entity, actor, role) {
+  const count = b2RescueActorCount(mission, actor, role === PHYSICAL_ROLE.POD ? 'podCount' : 'escortCount');
+  const savedId = entity && entity.data && entity.data.missionActorId;
+  if (savedId != null) {
+    for (let index = 0; index < count; index++) {
+      if (String(savedId) === b2RescueActorIdentity(mission, actor, index)) return index;
+    }
+  }
+  const slot = missionTargetSlotOf(entity, mission && mission.id);
+  const offset = role === PHYSICAL_ROLE.POD
+    ? 0
+    : b2RescueActorCount(mission, b2RescueActorForRole(mission, PHYSICAL_ROLE.POD), 'podCount');
+  const index = slot == null ? -1 : slot - offset;
+  return index >= 0 && index < count ? index : -1;
+}
+
+function ensureB2RescueActorOutcomes(mission) {
+  if (!isCampaign47aB2Rescue(mission)) return null;
+  mission.params = mission.params || {};
+  const current = mission.params.rescueActorOutcomes;
+  const hadLedger = !!(current && typeof current === 'object' && !Array.isArray(current));
+  const outcomes = hadLedger ? current : {};
+  const pods = b2RescueActorForRole(mission, PHYSICAL_ROLE.POD);
+  const escorts = b2RescueActorForRole(mission, PHYSICAL_ROLE.ESCORT);
+  if (!hadLedger) {
+    const lost = Math.min(b2RescueActorCount(mission, pods, 'podCount'),
+      Math.max(0, Math.floor(Number(mission.params.podsLost) || 0)));
+    const cleared = Math.min(b2RescueActorCount(mission, escorts, 'escortCount'),
+      Math.max(0, Math.floor(Number(mission.params.escortsDown) || 0)));
+    for (let index = 0; index < lost; index++) {
+      outcomes[b2RescueActorIdentity(mission, pods, index)] = 'lost';
+    }
+    for (let index = 0; index < cleared; index++) {
+      outcomes[b2RescueActorIdentity(mission, escorts, index)] = 'cleared';
+    }
+  }
+  mission.params.rescueActorOutcomes = outcomes;
+  return outcomes;
+}
+
 function authoredMethodFor(definition, on, role) {
   if (!definition || !definition.methodHooks || !role) return null;
   for (const [method, hook] of Object.entries(definition.methodHooks)) {
@@ -6621,16 +6687,38 @@ export const missions = {
   _spawnPhysicalTargetsFor(m, nextRng, px, pz) {
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity || !m) return;
+    const b2RescueDefinition = isCampaign47aB2Rescue(m) ? authoredDefinitionOf(m) : null;
+    const b2Rescue = !!b2RescueDefinition;
+    const rescueEncounter = b2Rescue ? authoredEncounterOf(b2RescueDefinition) : null;
+    const rescuePodActor = rescueEncounter && rescueEncounter.actors
+      ? rescueEncounter.actors.find((actor) => actor.role === PHYSICAL_ROLE.POD) : null;
+    const rescueEscortActor = rescueEncounter && rescueEncounter.actors
+      ? rescueEncounter.actors.find((actor) => actor.role === PHYSICAL_ROLE.ESCORT) : null;
+    const rescueActorOutcomes = b2Rescue ? ensureB2RescueActorOutcomes(m) : null;
     const have = this._countPhysicalRoles(m);
     const wantCore = m.type === 'tow_recovery' ? 1 : 0;
     const wantTower = m.type === 'demolition' ? 1 : 0;
-    const wantPods = m.type === 'rescue_under_fire' ? Math.max(1, m.params && m.params.podCount || 2) : 0;
+    const configuredPodCount = Math.max(1, Number(m.params && m.params.podCount) || 2);
+    // B2 actor outcomes are a per-cast durable ledger; the counters remain as compact HUD/save
+    // compatibility fields. Other rescue contracts retain their existing replenishment rule.
+    const b2PodsLost = b2Rescue ? Math.max(
+      Math.max(0, Math.floor(Number(m.params && m.params.podsLost) || 0)),
+      Object.values(rescueActorOutcomes).filter((outcome) => outcome === 'lost').length,
+    ) : 0;
+    const wantPods = m.type === 'rescue_under_fire'
+      ? (b2Rescue ? Math.max(0, configuredPodCount - b2PodsLost) : configuredPodCount) : 0;
     // FB-067: escortCount is a VARIANT field now, not a rescue constant — a guarded tower rows
     // its own picket screen (demolition) and a pocket pull packs heavier cover (rescue). The
     // rescue default stays 2; every other type defaults to zero pickets unless the variant says so.
-    const wantEscorts = m.type === 'rescue_under_fire'
+    const configuredEscortCount = m.type === 'rescue_under_fire'
       ? Math.max(0, (m.params && m.params.escortCount != null ? m.params.escortCount : 2))
       : Math.max(0, (m.params && m.params.escortCount) || 0);
+    const b2EscortsDown = b2Rescue ? Math.max(
+      Math.max(0, Math.floor(Number(m.params && m.params.escortsDown) || 0)),
+      Object.values(rescueActorOutcomes).filter((outcome) => outcome === 'cleared').length,
+    ) : 0;
+    const wantEscorts = b2Rescue
+      ? Math.max(0, configuredEscortCount - b2EscortsDown) : configuredEscortCount;
     const need = Math.max(0, wantCore - have.core)
       + Math.max(0, wantTower - have.tower)
       + Math.max(0, wantPods - have.pods)
@@ -6651,6 +6739,24 @@ export const missions = {
       this._stampMissionTargetIdentity(ent, m, durableSlot);
       m.targetEntityIds.push(ent.id);
       return ent;
+    };
+    const authoredRescuePos = (actor, actorIndex, fallback) => {
+      if (!b2Rescue || !actor) return fallback;
+      const layout = Array.isArray(actor.stagingByIndex) ? actor.stagingByIndex[actorIndex] : null;
+      const forwardWu = Number(layout && layout.forwardWu);
+      const sideWu = Number(layout && layout.sideWu);
+      if (!Number.isFinite(forwardWu) || !Number.isFinite(sideWu)) return fallback;
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const heading = player && Number.isFinite(Number(player.rot)) ? Number(player.rot) : 0;
+      const c = Math.cos(heading), s = Math.sin(heading);
+      const pos = {
+        x: px + c * forwardWu - s * sideWu,
+        z: pz + s * forwardWu + c * sideWu,
+      };
+      // Keep hostiles out of station/gate protection; if an authored flank is protected, retain
+      // the established hostile spawn rule for that escort.
+      if (actor.hostile && !outsideMissionPortSafety(this.state, pos)) return fallback;
+      return pos;
     };
     if (m.type === 'tow_recovery' && have.core < wantCore) {
       const durableSlot = nextSlot();
@@ -6714,31 +6820,52 @@ export const missions = {
       // cluster of pods reads as one problem under heavy cover, not a scattered field.
       const podSpread = Number.isFinite(m.params && m.params.podSpreadWu)
         ? Math.max(40, m.params.podSpreadWu) : null;
-      for (let i = have.pods; i < wantPods; i++) {
-        const durableSlot = nextSlot();
+      const activeActorIds = b2Rescue ? new Set((m.targetEntityIds || []).map((id) => {
+        const entity = this.state.entities && this.state.entities.get(id);
+        return entity && entity.data && entity.data.missionActorId;
+      }).filter(Boolean)) : null;
+      const podIndices = b2Rescue
+        ? Array.from({ length: configuredPodCount }, (_, index) => index).filter((index) => {
+          const actorId = b2RescueActorIdentity(m, rescuePodActor, index);
+          return !rescueActorOutcomes[actorId] && !activeActorIds.has(actorId);
+        })
+        : Array.from({ length: Math.max(0, wantPods - have.pods) }, (_, offset) => have.pods + offset);
+      for (const i of podIndices) {
+        const durableSlot = b2Rescue ? i : nextSlot();
         const rng = nextRng(durableSlot);
         const ang = rng() * Math.PI * 2;
         const r = podSpread != null
           ? podSpread * (0.6 + rng() * 0.5)
           : 180 + rng() * 70;
+        const podActor = rescuePodActor || {};
+        const defaultPos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        const pos = authoredRescuePos(podActor, i, defaultPos);
         spawnAt(durableSlot, {
-          type: 'wreck',
+          // rescuePriority selects the existing released place_47a_rescue_capsule.glb body.
+          type: b2Rescue ? 'payload' : 'wreck',
           team: 2,
-          pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+          pos,
           vel: { x: 0, z: 0 },
           rot: rng() * Math.PI * 2,
-          radius: 7,
-          mass: 10,
-          hull: 36,
-          hullMax: 36,
+          radius: Number(podActor.radius) || 7,
+          mass: Number(podActor.mass) || 10,
+          hull: Number(podActor.hull) || 36,
+          hullMax: Number(podActor.hull) || 36,
           collides: true,
-          collisionMask: MISSION_WRECK_COLLISION_MASK,
-          physicsBody: { shape: 'capsule', mass: 10 },
+          ...(b2Rescue ? {} : { collisionMask: MISSION_WRECK_COLLISION_MASK }),
+          physicsBody: { shape: 'capsule', mass: Number(podActor.mass) || 10 },
+          ...(b2Rescue ? { flags: { persistent: true, durable: true, missionPinned: true } } : {}),
           data: {
             missionTag: m.id,
             physicalRole: PHYSICAL_ROLE.POD,
-            proportions: WRECK_COLLIDER_PROPORTIONS,
-            scanLabel: 'LIFE POD',
+            ...(b2Rescue ? {
+              rescuePriority: true,
+              distressBeacon: true,
+              packagedPropFile: 'places/place_47a_rescue_capsule.glb',
+              packagedPropSlot: 'place',
+              missionActorId: b2RescueActorIdentity(m, podActor, i),
+            } : { proportions: WRECK_COLLIDER_PROPORTIONS }),
+            scanLabel: podActor.scanLabel || 'LIFE POD',
             tetherable: true,
           },
         });
@@ -6752,20 +6879,33 @@ export const missions = {
       const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
       const tower = m.type === 'demolition' ? this._physicalTargetOf(m, PHYSICAL_ROLE.TOWER) : null;
       const anchor = tower && tower.pos ? { x: tower.pos.x, z: tower.pos.z } : { x: px, z: pz };
-      for (let i = have.escorts; i < wantEscorts; i++) {
-        const durableSlot = nextSlot();
+      const activeActorIds = b2Rescue ? new Set((m.targetEntityIds || []).map((id) => {
+        const entity = this.state.entities && this.state.entities.get(id);
+        return entity && entity.data && entity.data.missionActorId;
+      }).filter(Boolean)) : null;
+      const escortIndices = b2Rescue
+        ? Array.from({ length: configuredEscortCount }, (_, index) => index).filter((index) => {
+          const actorId = b2RescueActorIdentity(m, rescueEscortActor, index);
+          return !rescueActorOutcomes[actorId] && !activeActorIds.has(actorId);
+        })
+        : Array.from({ length: Math.max(0, wantEscorts - have.escorts) }, (_, offset) => have.escorts + offset);
+      for (const i of escortIndices) {
+        const durableSlot = b2Rescue ? configuredPodCount + i : nextSlot();
         const rng = nextRng(durableSlot);
         const ang = rng() * Math.PI * 2;
-        const pos = tower
+        const defaultPos = tower
           ? { x: anchor.x + Math.cos(ang) * (120 + rng() * 60), z: anchor.z + Math.sin(ang) * (120 + rng() * 60) }
           : (missionHostileSpawnPos(this.state, anchor, rng) || { x: px + 400, z: pz + 200 });
-        const spec = makeEnemySpawnSpec('wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
+        const escortActor = rescueEscortActor || {};
+        const pos = authoredRescuePos(escortActor, i, defaultPos);
+        const spec = makeEnemySpawnSpec(escortActor.archetype || 'wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
           startedTick: deferredEnterTick(this.state),
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id;
         spec.data.physicalRole = PHYSICAL_ROLE.ESCORT;
-        spec.data.scanLabel = m.type === 'demolition' ? 'TOWER PICKET' : 'RESCUE ESCORT';
+        spec.data.scanLabel = m.type === 'demolition' ? 'TOWER PICKET' : (escortActor.scanLabel || 'RESCUE ESCORT');
+        if (b2Rescue) spec.data.missionActorId = b2RescueActorIdentity(m, escortActor, i);
         spawnAt(durableSlot, spec);
       }
     }
@@ -7563,6 +7703,20 @@ export const missions = {
     return true;
   },
 
+  _recordB2RescueActorOutcome(m, entity, outcome) {
+    if (!isCampaign47aB2Rescue(m) || !entity || !entity.data) return false;
+    const role = physicalRoleOf(entity);
+    if (role !== PHYSICAL_ROLE.POD && role !== PHYSICAL_ROLE.ESCORT) return false;
+    const actor = b2RescueActorForRole(m, role);
+    const index = b2RescueActorIndexFromEntity(m, entity, actor, role);
+    if (index < 0) return false;
+    const actorId = b2RescueActorIdentity(m, actor, index);
+    const outcomes = ensureB2RescueActorOutcomes(m);
+    if (!actorId || outcomes[actorId]) return false;
+    outcomes[actorId] = outcome;
+    return true;
+  },
+
   _onPhysicalKill(p) {
     if (!p || p.id == null) return;
     const byPlayer = p.killerId === this.state.playerId;
@@ -7609,11 +7763,18 @@ export const missions = {
             killerId: p.killerId != null ? p.killerId : null,
           };
         }
+        if (isCampaign47aB2Rescue(m) && this._recordB2RescueActorOutcome(m, victim, 'lost')) {
+          m.params.podsLost = Math.max(0, Math.floor(Number(m.params.podsLost) || 0)) + 1;
+        }
         continue;
       }
       if (m.type === 'rescue_under_fire' && role === PHYSICAL_ROLE.ESCORT) {
         m.params = m.params || {};
-        m.params.escortsDown = (m.params.escortsDown || 0) + 1;
+        const firstB2Clear = isCampaign47aB2Rescue(m)
+          ? this._recordB2RescueActorOutcome(m, victim, 'cleared') : true;
+        if (firstB2Clear) {
+          m.params.escortsDown = Math.max(0, Math.floor(Number(m.params.escortsDown) || 0)) + 1;
+        }
         m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
         this._refreshTrackedMissionNav(m);
         this.bus.emit('mission:updated', { missionId: m.id, escortsDown: m.params.escortsDown });
@@ -7664,7 +7825,11 @@ export const missions = {
       }
       if ((m.type === 'rescue_under_fire' || m.type === AUTHORED_SET_PIECE_TYPE) && role === PHYSICAL_ROLE.POD) {
         m.params = m.params || {};
-        m.params.podsLost = (m.params.podsLost || 0) + 1;
+        const firstB2Loss = isCampaign47aB2Rescue(m)
+          ? this._recordB2RescueActorOutcome(m, victim, 'lost') : true;
+        if (firstB2Loss) {
+          m.params.podsLost = Math.max(0, Math.floor(Number(m.params.podsLost) || 0)) + 1;
+        }
         m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
         this._stampPhysicalLossSite(m, p);
         const remaining = m.type === AUTHORED_SET_PIECE_TYPE
@@ -7687,6 +7852,16 @@ export const missions = {
             this._failMission(m, i, 'pods_lost');
           }
         }
+        continue;
+      }
+      if (isCampaign47aB2Rescue(m) && role === PHYSICAL_ROLE.ESCORT) {
+        m.params = m.params || {};
+        if (this._recordB2RescueActorOutcome(m, victim, 'cleared')) {
+          m.params.escortsDown = Math.max(0, Math.floor(Number(m.params.escortsDown) || 0)) + 1;
+        }
+        m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', { missionId: m.id, escortsDown: m.params.escortsDown });
       }
     }
   },
@@ -9516,7 +9691,11 @@ export const missions = {
     // 15-gate course will look empty on every retry and spawn another 15 physical bodies.
     if (m.type === 'race' && !follow) return this._adoptRaceGateTargets(m, existing);
     const list = [];
-    forEachLivingWorldActor(this.state, (e) => { list.push(e); });
+    // Campaign 47-A B2 uses the existing authored rescue-capsule payload. Adopt it through the
+    // cargo-interactable view on Continue instead of respawning the capsule.
+    const visitMissionTargets = isCampaign47aB2Rescue(m)
+      ? forEachJobInteractable : forEachLivingWorldActor;
+    visitMissionTargets(this.state, (e) => { list.push(e); });
     if (follow) {
       const exact = list.filter((e) => e && e.alive && !e.isPlayer && e.data
         && e.data.worldRecordId === follow.targetRecordId);
@@ -9558,6 +9737,8 @@ export const missions = {
     });
     let adopted = 0;
     const usedSlots = new Set();
+    const b2Outcomes = isCampaign47aB2Rescue(m) ? ensureB2RescueActorOutcomes(m) : null;
+    const usedB2ActorIndices = new Map();
     const ordered = [];
     for (const e of candidates) {
       let slot = missionTargetSlotOf(e, m.id);
@@ -9566,6 +9747,48 @@ export const missions = {
       // Re-stamp durable mission identity if rematerialize omitted a field. Never compact a
       // survivor merely because a lower slot is absent; its mission+slot identity is the save seam.
       this._stampMissionTargetIdentity(e, m, slot);
+      if (b2Outcomes) {
+        const role = physicalRoleOf(e);
+        const actor = role === PHYSICAL_ROLE.POD
+          ? b2RescueActorForRole(m, PHYSICAL_ROLE.POD)
+          : role === PHYSICAL_ROLE.ESCORT
+            ? b2RescueActorForRole(m, PHYSICAL_ROLE.ESCORT) : null;
+        if (actor) {
+          const count = b2RescueActorCount(m, actor,
+            role === PHYSICAL_ROLE.POD ? 'podCount' : 'escortCount');
+          const used = usedB2ActorIndices.get(role) || new Set();
+          let actorIndex = b2RescueActorIndexFromEntity(m, e, actor, role);
+          const savedActorId = e.data && e.data.missionActorId;
+          if (savedActorId && actorIndex >= 0
+            && b2Outcomes[b2RescueActorIdentity(m, actor, actorIndex)]) {
+            e.alive = false;
+            continue;
+          }
+          if (savedActorId && actorIndex >= 0 && used.has(actorIndex)) {
+            // Duplicate persistent copies of one authored actor must never become a second cast
+            // member merely because Continue materialized both records.
+            e.alive = false;
+            continue;
+          }
+          const available = (index) => index >= 0 && index < count
+            && !used.has(index)
+            && !b2Outcomes[b2RescueActorIdentity(m, actor, index)];
+          if (!available(actorIndex)) {
+            actorIndex = -1;
+            for (let index = 0; index < count; index++) {
+              if (available(index)) { actorIndex = index; break; }
+            }
+          }
+          if (actorIndex < 0) {
+            // A terminal actor from an older save has no live work left to own.
+            e.alive = false;
+            continue;
+          }
+          used.add(actorIndex);
+          usedB2ActorIndices.set(role, used);
+          e.data.missionActorId = b2RescueActorIdentity(m, actor, actorIndex);
+        }
+      }
       ordered.push({ id: e.id, slot });
       if (!existing.has(e.id)) adopted++;
       if (e.data && e.data.escortee === 'lead') {
