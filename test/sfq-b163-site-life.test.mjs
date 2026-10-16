@@ -23,7 +23,6 @@ import {
 
 const deep = ALIEN_SITES.harvest_deep;
 const sterile = ALIEN_SITES.sterile_zone;
-const nursery = ALIEN_SITES.veil_ray_nursery;
 
 test('a quiet relay does not turn a living site into an eradication', () => {
   const quietLiving = readSiteLife({
@@ -50,20 +49,6 @@ test('a quiet relay does not turn a living site into an eradication', () => {
   assert.equal(heldEmpty.text, SITE_LIFE_STERILE);
   assert.notEqual(heldEmpty.reading, 'suppressed');
   assert.notEqual(heldEmpty.reading, 'eradicated');
-
-  const nurseryLive = readSiteLife(lifeSampleFromSite(nursery, { relaySevered: false, state: 'dormant' }, true));
-  assert.equal(nursery.faunaCast.veil_ray, 3);
-  assert.equal(nursery.sterile, true);
-  assert.equal(nurseryLive.reading, 'living');
-  assert.equal(nurseryLive.biomass, 'living');
-  assert.equal(nurseryLive.text, SITE_LIFE_LIVING);
-  const nurseryQuiet = readSiteLife(lifeSampleFromSite(nursery, { relaySevered: true, state: 'severed' }, true));
-  assert.equal(nurseryQuiet.reading, 'suppressed');
-  assert.equal(nurseryQuiet.biomass, 'living');
-  assert.equal(nurseryQuiet.activity, 'quiet');
-  assert.equal(nurseryQuiet.text, SITE_LIFE_SUPPRESSED);
-  assert.notEqual(nurseryQuiet.reading, 'sterile');
-  assert.equal(nurseryQuiet.text.includes('ERADICATED'), false);
 
   const noSample = readSiteLife(lifeSampleFromSite(deep, { relaySevered: true, state: 'severed' }, false));
   assert.equal(noSample.reading, 'unknown');

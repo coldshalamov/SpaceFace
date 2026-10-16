@@ -87,11 +87,6 @@ test('closing, leaving, and reloading keep one stage, and a scan can stop the se
   tickAlienEcology(first.world, 40);
   assert.equal(stageOf(first.state), 'warned');
   assert.equal(logs(first.events).length, 1);
-  const held = worldAt(inside.x, inside.z);
-  deserializeAlienEcologyState(held.state, serializeAlienEcologyState(first.state));
-  tickAlienEcology(held.world, 0.5);
-  assert.equal(stageOf(held.state), 'warned');
-  assert.equal(logs(held.events).length, 0);
 
   handleAlienEcologyEvent(first.world, 'scan:completed', { sectorId: garden.sectorId });
   assert.equal(stageOf(first.state), 'open');

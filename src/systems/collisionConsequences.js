@@ -353,13 +353,6 @@ export const collisionConsequences = {
       // A rope root (the player's line, or a Twin Bridle pair) is Massline work, never a gun hit.
       _provenanceScratch.tag = observed.root.kind === 'constraint' || observed.root.kind === 'bridle' ? 'massline' : 'weapon_hit';
       _provenanceScratch.tick = observed.root.tick;
-      // normalizeProvenance reads appliedTick, not tick. A missing applied tick becomes 0, so a
-      // cause the journal still holds looks older than the impulse window on the law card.
-      _provenanceScratch.appliedTick = Number.isFinite(observed.root.tick) ? observed.root.tick : tick;
-      const heldUntil = causalProvenance && Number.isFinite(causalProvenance.holdUntilTick)
-        ? causalProvenance.holdUntilTick : null;
-      // The scratch is reused. A dead or absent hold must not leak onto the next contact.
-      _provenanceScratch.holdUntilTick = heldUntil != null && tick <= heldUntil ? heldUntil : null;
       _provenanceScratch.rootId = observed.root.id;
       provenance = _provenanceScratch;
     }

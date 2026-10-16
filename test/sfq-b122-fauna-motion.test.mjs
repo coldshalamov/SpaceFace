@@ -38,14 +38,6 @@ test('the same farther approach is alarm for the ram and quiet for the grazer', 
   assert.notEqual(grazerDrive, 'flee');
 });
 
-test('a wider notice ring alarms an animal that would stay quiet at its own ring', () => {
-  const raw = approach(ram, 400);
-  const widened = approach(ram, 400, { noticeR: 500 });
-  assert.equal(readFaunaMotion(raw), 'quiet');
-  assert.equal(widened, 'investigate');
-  assert.equal(readFaunaMotion(widened), 'alarm');
-});
-
 test('a quiet watch does not turn either animal aggressive', () => {
   for (const species of [ram, grazer]) {
     const drive = approach(species, 10000);

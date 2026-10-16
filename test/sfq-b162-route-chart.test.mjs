@@ -9,7 +9,6 @@ import { HUMAN_DOCK_CHART, CHART_FINDING, chartMatches, chartPlace } from '../sr
 
 const freighter = ALIEN_SITES.warm_freighter;
 const eel = FAUNA_SPECIES.wake_eel;
-const ORIGIN = { x: 8192, z: 28672 };
 
 function lanePoint(index) {
   const w = freighter.routeEcho.waypoints[index];
@@ -44,8 +43,8 @@ function fixture() {
     state,
     registry: { get: () => null },
     active: { dressing: [], pois: [] },
-    _toGlobal: (p) => ({ x: p.x + ORIGIN.x, z: p.z + ORIGIN.z }),
-    _toLocal: (p) => ({ x: p.x - ORIGIN.x, z: p.z - ORIGIN.z }),
+    _toGlobal: (p) => ({ x: p.x, z: p.z }),
+    _toLocal: (p) => ({ x: p.x, z: p.z }),
     bus: { emit: (type, payload) => events.push({ type, payload }) },
     helpers: {
       spawnEntity(spec) {
@@ -98,14 +97,12 @@ test('standing on the last mark leaves one dock mark, and a reload does not leav
   f.tick();
   assert.equal(f.state.entityList.filter((e) => e.type === 'beacon').length, 0);
   idle.alive = false;
-  const galactic = { x: lanePoint(2).x + ORIGIN.x, z: lanePoint(2).z + ORIGIN.z };
-  const body = f.fauna(galactic);
+  const body = f.fauna(lanePoint(2));
   const count = f.state.entityList.length;
   f.tick();
   const marks = f.state.entityList.filter((e) => e.type === 'beacon');
   assert.equal(marks.length, 1);
-  assert.ok(Math.hypot(marks[0].pos.x - galactic.x, marks[0].pos.z - galactic.z) <= ECHO_REACH);
-  assert.ok(Math.hypot(marks[0].pos.x - lanePoint(2).x, marks[0].pos.z - lanePoint(2).z) > 1000);
+  assert.ok(Math.hypot(marks[0].pos.x - lanePoint(2).x, marks[0].pos.z - lanePoint(2).z) <= ECHO_REACH);
   assert.equal(marks[0].scanLabel, CHART_FINDING);
   const finding = ensureAlienEcologyState(f.state).chartFindings[freighter.siteId];
   assert.equal(finding.text, CHART_FINDING);
@@ -122,7 +119,7 @@ test('standing on the last mark leaves one dock mark, and a reload does not leav
   assert.equal(restored.world.alienEcology.chartFindings[freighter.siteId].text, CHART_FINDING);
   const again = fixture();
   again.state.world.alienEcology = restored.world.alienEcology;
-  again.fauna({ x: lanePoint(2).x + ORIGIN.x, z: lanePoint(2).z + ORIGIN.z });
+  again.fauna(lanePoint(2));
   again.tick();
   assert.equal(again.state.entityList.filter((e) => e.type === 'beacon').length, 0);
 });

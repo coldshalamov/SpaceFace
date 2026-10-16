@@ -608,7 +608,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 292, 293, 295, 303, 304, 305, 306, 307, 308, 310 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -838,6 +838,16 @@ real missing capability, never by another lane's sitting.
 | 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
 | 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
 | 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves; decompose disjoint M-rows and Depth tables in parallel | ADMIT | OPEN — parallel |
+| 292 | SFQ-B111 | A collision names whether it is the pilot's own hull (direct), a body still carrying their fresh cause (indirect), a contact that was never their cause (accidental), or a cause whose window has lapsed (stale). The law card says which, and the same facts always say the same class. | BUILD | OPEN |
+| 293 | SFQ-B119 | After a fight the player chooses among rescue, salvage, pursuit and escape. At least two choices are viable when the field supports them, and neither waits on a modal dialogue to unlock physics. No fabricated forced moral binary. | BUILD | OPEN |
+| 295 | SFQ-B122 | The same approach reads as feeding, alarm, defense, or retreat, and a quiet watch does not turn the animal aggressive. | BUILD | OPEN |
+| 303 | SFQ-B157 | A physical human object, a goo-coated hull and a passive organism encounter one boundary. | BUILD | OPEN |
+| 304 | SFQ-B161 | A player can test whether an organism responds to heat rather than proximity. | BUILD | OPEN |
+| 305 | SFQ-B162 | A repeated route can be compared to an old human record and followed to a place. | BUILD | OPEN |
+| 306 | SFQ-B163 | A suppressed living site never reads eradicated merely because its relay quieted. | BUILD | OPEN |
+| 307 | SFQ-B164 | A wreck progresses through a small authored sequence after meaningful events. Leave, return and reload yield the same stage, and the player can intervene before a clearly telegraphed threshold. | BUILD | OPEN |
+| 308 | SFQ-B165 | A site changes one service or route because of a visible local biological event. | BUILD | OPEN |
+| 310 | SFQ-B167 | One validated observation leads to a recipe and a practical field trial. | BUILD | OPEN |
 
 SFQ-B119 landed 2026-10-15: after a fight the field offers rescue, salvage, pursuit, and escape from what is actually there, and choosing does not pause physics (`test/sfq-b119-aftermath-choices.test.mjs`). Row 293 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B120 landed 2026-10-15: a named restitution returns only the standing its own cause took. A second payment does not charge, and heat and other hostility stay (`test/sfq-b120-restitution-standing.test.mjs`). Row 294 carried that outcome and was deleted on landing. Row 285 stays OPEN.
