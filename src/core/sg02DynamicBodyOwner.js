@@ -1477,7 +1477,7 @@ export class Sg02DynamicBodyOwner {
         Math.max(0, Math.trunc(finite(attachment.reelRevision))) + 1,
         Math.max(0, Math.trunc(finite(input.reelRevision))),
       );
-      attachment.spring = normalizeSpring(null, attachment.defId, attachment.break);
+      attachment.spring = normalizeSpring({ canonicalizeReplay: true }, attachment.defId, attachment.break);
       attachment.springState = normalizeSpringState(input.springState);
       this._removeAttachmentJoints(attachment);
       this._createAttachmentJoints(attachment);
@@ -1485,6 +1485,10 @@ export class Sg02DynamicBodyOwner {
     }
     if (requested < attachment.restLength && attachment.springState) attachment.springState.reelSlip = true;
     attachment.restLength = safeReelRestLength(attachment, requested, this.fixedDt);
+    attachment.reelRevision = Math.max(
+      Math.max(0, Math.trunc(finite(attachment.reelRevision))) + 1,
+      Math.max(0, Math.trunc(finite(input.reelRevision))),
+    );
     return { restLength: attachment.restLength };
   }
 
@@ -1827,10 +1831,11 @@ export class Sg02DynamicBodyOwner {
     return moved;
   }
 
+  // Historical name: this identifies the explicit legacy replay-canonicalization policy.
   _hasManualSpringAttachment(rec) {
     for (const attachment of this.attachments.values()) {
       const reeled = Math.max(0, Math.trunc(finite(attachment.reelRevision))) > 0;
-      if (reeled && !usesLegacyRopeSpring(attachment.spring)
+      if (reeled && attachment.spring?.canonicalizeReplay === true && !usesLegacyRopeSpring(attachment.spring)
         && (attachment.owner === rec || attachment.target === rec)) return true;
     }
     return false;
@@ -1847,6 +1852,7 @@ export class Sg02DynamicBodyOwner {
 
   _refreshSleepPolicy() {
     const held = this._sleepHeld;
+    // This set owns legacy replay canonicalization; a modern reel revision alone cannot enable it.
     const reeled = this._sleepReeled;
     held.clear();
     reeled.clear();
@@ -1854,7 +1860,7 @@ export class Sg02DynamicBodyOwner {
       if (attachment.owner) held.add(attachment.owner);
       if (attachment.target) held.add(attachment.target);
       const isReeled = Math.max(0, Math.trunc(finite(attachment.reelRevision))) > 0;
-      if (isReeled && !usesLegacyRopeSpring(attachment.spring)) {
+      if (isReeled && attachment.spring?.canonicalizeReplay === true && !usesLegacyRopeSpring(attachment.spring)) {
         if (attachment.owner) reeled.add(attachment.owner);
         if (attachment.target) reeled.add(attachment.target);
       }
@@ -4066,6 +4072,8 @@ function normalizeSpring(value = {}, defId = '', breakValue = {}) {
     ? Math.min(requestedMaxForce, tensionRating * TWIN_BRIDLE_TENSION_OVERSHOOT)
     : requestedMaxForce;
   return {
+    // Replay canonicalization is an explicit legacy-transition policy, not reel bookkeeping.
+    canonicalizeReplay: value?.canonicalizeReplay === true,
     mode: requestedMode === 'legacy_rope' ? 'legacy_rope'
       : requestedMode === 'frame_coupler' ? 'frame_coupler'
         : 'spring',
@@ -4676,7 +4684,9 @@ function nativeAttachmentPolicy(input, defId) {
     .every(key => Object.prototype.hasOwnProperty.call(input, key))
     || !Number.isFinite(input.restLength) || !(input.restLength > 0)
     || !input.break || typeof input.break !== 'object' || Array.isArray(input.break)
-    || !input.spring || typeof input.spring !== 'object' || Array.isArray(input.spring)) return null;
+    || !input.spring || typeof input.spring !== 'object' || Array.isArray(input.spring)
+    || (Object.prototype.hasOwnProperty.call(input.spring, 'canonicalizeReplay')
+      && typeof input.spring.canonicalizeReplay !== 'boolean')) return null;
   const brk = normalizeBreak(input.break);
   return {
     restLength: input.restLength,
