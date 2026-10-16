@@ -282,6 +282,37 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
      line (GRUDGE) takes the whole row instead of wrapping in half of it, and the top padding gives back 6px (16 -> 10). */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
 }
+/* UI polish (ui-polish-68): a narrow desktop window (≤760 wide, not a phone). The reading's 356px floor
+   left the hull and its filmstrip a 0–300px column, so at 390–700 the strip vanished or its five slot
+   names printed on top of each other. The page stacks instead: title, reading, then the filmstrip across
+   the full width, the way back along the foot. The hull's own berth steps aside (each slot's frame on
+   the strip still shows its hull); a filed slot shows its name and credits (the reading carries its line). */
+@media (max-width:760px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding:28px 24px clamp(18px, 3.4vh, 35px) !important; row-gap:10px !important;
+    grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content minmax(max-content, 1fr) max-content !important;
+    grid-template-areas:"title" "page" "hang" "foot" !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .sf-save-stage { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-stage__foot.sf-save-ledger { max-width:520px !important; }
+  /* the stacked page tightens so the strip has its own band above the foot on a ~844-tall window */
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:calc(58px * var(--sv)) !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-n { font-size:calc(46px * var(--sv)); }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-u { padding-bottom:calc(5px * var(--sv)); }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-columns:max(92px, calc(96px * var(--sv))) minmax(0, 1fr); }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-k { letter-spacing:.12em; white-space:nowrap; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.06em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-hang { align-self:end; height:auto; min-height:168px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.04em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { white-space:normal; }
+}
+/* ≤520 wide and short: the hull record's two-up grid (the ≤640-tall rule) split "No yard repairs" in a
+   ~90px cell; one line per record reads cleanly, and the page scrolls to the strip and the foot */
+@media (max-width:520px) and (max-height:640px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-portrait { display:flex; flex-direction:column; row-gap:0; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line { display:grid; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(even) > .sf-ledger-k { padding-left:0; }
+}
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }
 @media (forced-colors: active) {
