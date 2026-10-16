@@ -5,6 +5,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { ENCOUNTERS } from '../src/data/encounters/index.generated.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { encounterDirector, planEncounters } from '../src/systems/encounterDirector.js';
+import { AUDIO_RECIPE_BY_ID, CAPITAL_PREDET_RECIPE, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
 
 const SECTOR = 'sector_vesta_forge';
 const SHAPE = 'the_runaway_kiln';
@@ -109,7 +110,7 @@ test('the bleed is physical: below save speed the yard takes her, pays, and reme
   const t = boot();
   const events = collect(t, [
     'economy:grantCredits', 'faction:repDelta', 'news:publish',
-    'encounter:resolved', 'sectorsim:impulse',
+    'encounter:resolved', 'sectorsim:impulse', 'audio:cue',
   ]);
   const id = force(t, 'bleed');
   const crucible = crucibleOf(t, id);
@@ -120,6 +121,10 @@ test('the bleed is physical: below save speed the yard takes her, pays, and reme
   t.sim.runTicks(70);
   assert.equal(completion(t)?.outcome, 'saved');
   assert.equal(t.state.story.flags.runawayKiln, 'saved');
+  const savedCue = events.find((row) => row.name === 'audio:cue');
+  assert.equal(resolveAudioCueRecipeId(savedCue?.payload.id), 'sfx_dock_clunk',
+    'the yard taking the kiln must play the existing docking voice');
+  assert.ok(AUDIO_RECIPE_BY_ID[resolveAudioCueRecipeId(savedCue?.payload.id)]);
   assert.ok(events.some((row) => row.name === 'economy:grantCredits' && row.payload.amount === 320));
   assert.ok(events.some((row) => row.name === 'faction:repDelta'
     && row.payload.factionId === 'faction_choir' && row.payload.delta === 8));
@@ -140,7 +145,7 @@ test('the bleed is physical: below save speed the yard takes her, pays, and reme
 
 test('an unbled crucible meets the ring and the load answers — no scripted stop short of it', () => {
   const t = boot();
-  const events = collect(t, ['sectorsim:impulse', 'news:publish', 'encounter:resolved', 'economy:grantCredits']);
+  const events = collect(t, ['sectorsim:impulse', 'news:publish', 'encounter:resolved', 'economy:grantCredits', 'audio:cue']);
   const id = force(t, 'impact');
   const crucible = crucibleOf(t, id);
   assert.ok(Math.hypot(crucible.vel.x, crucible.vel.z) >= 12, 'she is still hot when she arrives');
@@ -150,6 +155,10 @@ test('an unbled crucible meets the ring and the load answers — no scripted sto
   t.sim.runTicks(70);
   assert.equal(completion(t)?.outcome, 'impact');
   assert.equal(t.state.story.flags.runawayKiln, 'impact');
+  const detonationCue = events.find((row) => row.name === 'audio:cue');
+  assert.equal(resolveAudioCueRecipeId(detonationCue?.payload.id), CAPITAL_PREDET_RECIPE,
+    'the detonation cue must reach the authored capital warning voice');
+  assert.ok(AUDIO_RECIPE_BY_ID[resolveAudioCueRecipeId(detonationCue?.payload.id)]);
   assert.ok(events.some((row) => row.name === 'sectorsim:impulse'
     && row.payload.kind === 'runaway_kiln_detonation' && row.payload.danger > 0),
     'the scorch is real noise on the lane');

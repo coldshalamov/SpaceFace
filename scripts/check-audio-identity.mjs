@@ -381,6 +381,8 @@ const EMITTED_CUES = {
   gyre_snare_strain: { distinct: true }, gyre_snare_ball_death: { distinct: true },
   gyre_snare_drop: { distinct: true }, gyre_snare_off: { distinct: true },
   gyre_snare_full: { distinct: true },
+  gyre_snare_catch: { distinct: true }, gyre_snare_riser: { distinct: true },
+  gyre_snare_whoosh: { distinct: true },
   // Gyre capacitor dying gasp — a low falling thrum latched once per hold, ~3 s before
   // the dry auto-bowl (gyreSnare.js fuseCueLatched → sfx_gyre_fuse_low).
   gyre_snare_fuse_low: { distinct: true },
@@ -410,6 +412,13 @@ const EMITTED_CUES = {
   sfx_massline_release: { distinct: true },
   sfx_hull_scrape: { distinct: true },
   sfx_eighth_bell_toll: { distinct: true },
+  // Existing encounter, phase-rift, Ruud and vent emitters must remain audible.
+  // The kiln's two receipt aliases resolve through the semantic cue table.
+  sfx_phase_rift: { distinct: true },
+  sfx_station_dock: { distinct: true },
+  sfx_capital_predetonation: { distinct: true },
+  sfx_ruud_tick: { distinct: true }, sfx_ruud_hiss: { distinct: true },
+  sfx_vent_chime: { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

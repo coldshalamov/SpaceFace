@@ -1642,6 +1642,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Without these they collapse to the generic sfx_ui_click; each now maps to its own SPEC2/07 recipe.
   ui_open: 'sfx_ui_open', ui_back: 'sfx_ui_back', ui_tab: 'sfx_ui_tab', ui_tick: 'sfx_ui_tab',
   ui_deny: 'sfx_ui_error', ui_alert: 'sfx_ui_alert', ui_dock: 'sfx_dock_clunk',
+  // Authored encounter receipts use the same docking and capital-warning voices as
+  // their physical counterparts; these cue names are not standalone recipe ids.
+  sfx_station_dock: 'sfx_dock_clunk',
+  sfx_capital_predetonation: CAPITAL_PREDET_RECIPE,
   // Station hub / mission-log navigation cues (must not collapse to generic click).
   ui_accept: 'sfx_ui_confirm', ui_undock: 'sfx_undock_release',
   ui_charge_start: 'sfx_jump_charge', ui_charge_abort: 'sfx_ui_back',
