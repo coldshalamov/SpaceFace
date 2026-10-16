@@ -322,6 +322,14 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 15,
+    to: 16,
+    fn(data) {
+      // Native schema3 remains accepted verbatim; new writers emit exact schema4 tables.
+      // No saved geometry or dynamic state is rewritten during migration.
+    },
+  },
 ];
 
 /**

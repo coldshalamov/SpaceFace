@@ -32,6 +32,9 @@ function bodyRadius(body) {
 }
 
 const GAP_QUEUE_PAD = 4;
+// A persistent formation queue is only valid for stationary cover. Keep the tolerance below
+// any meaningful movement so payloads and wrecks remain ordinary avoidance hazards instead.
+const GAP_STATIONARY_SPEED = 0.001;
 
 // SFQ-B043: a shove opens a real gap in a formation. A member displaced faster than its own
 // thrust could have moved it (an external kick) or released from a tumble shakes it off first,
@@ -117,6 +120,11 @@ function narrowWaitingGap(obstacles, members) {
     const tags = contact.tags;
     const solid = contact.kind === ContactKind.HAZARD || (Array.isArray(tags) && tags.includes('solid'));
     if (!solid) continue;
+    const speed = Math.hypot(
+      finite(contact.vel && contact.vel.x),
+      finite(contact.vel && contact.vel.z),
+    );
+    if (speed > GAP_STATIONARY_SPEED) continue;
     solids.push(contact);
   }
   if (solids.length < 2) return null;

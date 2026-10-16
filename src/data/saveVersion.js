@@ -13,4 +13,5 @@
 //      data.uiScreenMemory, so the map, ship and station open where the player left them.
 // v14: append-only crime/standing provenance chains persist under data.provenance (Footprint).
 // v15: pending material fractures/blasts and partial environmental heat survive Continue.
-export const CURRENT_VERSION = 15;
+// v16: exact compact native attestation tables; legacy schema3 remains accepted.
+export const CURRENT_VERSION = 16;

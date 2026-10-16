@@ -135,6 +135,26 @@ test('boost speed into a tall station: never inside', () => {
   assertNeverInside(frames, 'boost');
 });
 
+test('a finite camera ceiling permits a low stern escape beyond the aesthetic cap', () => {
+  const station = box(0, 0, 650, 650, 364);
+  const roofAt = roofFieldOf([station]);
+  const glide = createCameraGlide();
+  const s = stepCameraGlide(glide, 0, 0, 0, -24, 6, 0, roofAt, 14000);
+  const roof = roofAt(s * -24, 0, 0);
+  assert.ok(s > GLIDE_TUNING.maxScale, `escape exceeds the aesthetic cap (scale ${s.toFixed(3)})`);
+  assert.ok(s * 6 >= roof - 1e-6, `low stern eye clears the roof (eyeY ${(s * 6).toFixed(3)}, roof ${roof})`);
+});
+
+test('a low stern escape remains bounded when no camera ceiling is supplied', () => {
+  const station = box(0, 0, 650, 650, 364);
+  const roofAt = roofFieldOf([station]);
+  const glide = createCameraGlide();
+  const s = stepCameraGlide(glide, 0, 0, 0, -24, 6, 0, roofAt);
+  const roof = roofAt(s * -24, 0, 0);
+  assert.ok(s <= GLIDE_TUNING.maxClearanceScale, `fallback escape stays bounded (scale ${s.toFixed(3)})`);
+  assert.ok(s * 6 >= roof - 1e-6, `fallback eye clears the roof (eyeY ${(s * 6).toFixed(3)}, roof ${roof})`);
+});
+
 test('slingshot approach pre-rises under the capped rate and settles after a mega-station', () => {
   // The renderer documents authored mega-stations as roughly 1300 WU across with a ~380 WU roof.
   // At the 1680 WU/s inbound bound, the ordinary ring found this roof too late for its capped rise.

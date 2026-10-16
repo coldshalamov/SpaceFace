@@ -389,6 +389,27 @@ export function createSimLaneRuntime({
   // Journal records also feed the facade's pose/removal fields so main-side
   // entity reads (state.entities.get(id).pos etc.) answer like live rows.
   const recordScratch = {};
+  // A full rebuild is a replacement history: its SPAWN records are the
+  // authoritative entity set even when the range contains no DESTROY for rows
+  // omitted from that replacement.
+  function retireMissingFullRebuildEntities(start, end, applied) {
+    if (!applied || !Number.isSafeInteger(start) || !Number.isSafeInteger(end)
+      || end <= start || !journal.hasRange(start, end)) return false;
+    const ids = new Set();
+    const visited = journal.visitRange(start, end, recordScratch, (record) => {
+      if (record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN
+        && Number.isSafeInteger(record.entityId)) ids.add(record.entityId);
+    });
+    // A malformed or partially installed range cannot establish replacement
+    // authority. Keep the existing facade rather than pruning from a bad pack.
+    if (visited !== end - start) return false;
+    const retiredIds = [];
+    for (const id of readModel.entities.keys()) {
+      if (!ids.has(id)) retiredIds.push(id);
+    }
+    if (retiredIds.length) applyDestroyIds(readModel, retiredIds);
+    return true;
+  }
   function foldPackIntoReadModel(start, end) {
     journal.visitRange(start, end, recordScratch, (rec) => {
       if (rec.kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) {
@@ -712,7 +733,8 @@ export function createSimLaneRuntime({
   // ---- reply application ------------------------------------------------------------------
   function applyInitReply(msg) {
     if (msg.initRebuild && msg.initRebuild.pack) {
-      journal.applyRebuildPack(msg.initRebuild);
+      const applied = journal.applyRebuildPack(msg.initRebuild);
+      retireMissingFullRebuildEntities(msg.initRebuild.start, msg.initRebuild.end, applied);
       foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end);
       if (Array.isArray(msg.initRebuild.spawnInfos)) {
         applySpawnInfos(readModel, msg.initRebuild.spawnInfos);
@@ -773,7 +795,8 @@ export function createSimLaneRuntime({
     let journalLo = -1;
     let journalHi = -1;
     if (msg.journalFullRebuild === true && msg.pack) {
-      journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
+      const applied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
+      retireMissingFullRebuildEntities(msg.journalStart, msg.journalEnd, applied);
       journalLo = msg.journalStart; journalHi = msg.journalEnd;
     } else if (msg.pack && msg.pack.count > 0) {
       journal.applyPack(msg.pack);

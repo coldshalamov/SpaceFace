@@ -6,6 +6,9 @@ import { Worker } from 'node:worker_threads';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
+import { createPresentationPublisher } from '../src/render/presentationPublisher.js';
+import { createPresentationWorld } from '../src/render/presentationWorld.js';
+import { createSnapshotFence, packPresentationWorldToFence, snapshotIndexOf } from '../src/render/snapshotFence.js';
 import {
   laneDomEvent,
   laneRpc,
@@ -196,6 +199,89 @@ function sendClockTick(fixture, clockSequence, commandSequence = 0, tick = clock
     pack: emptyPack(),
   });
 }
+
+test('worker full rebuild retires facade rows omitted by the replacement SPAWN pack', async (t) => {
+  const f = makeFixture(t);
+  const initial = journalPack(0, [
+    { kind: 1, entityId: 1, generation: 1, type: 'player_ship', tick: 1 },
+    { kind: 1, entityId: 42, generation: 1, type: 'ship', tick: 1 },
+  ]);
+  f.receive({
+    kind: 'clockTick',
+    seq: 'full-rebuild-initial',
+    clockSequence: 1,
+    stateTick: 1,
+    simTime: 1 / 60,
+    journalStart: 0,
+    journalEnd: initial.end,
+    pack: initial,
+    spawnInfos: [
+      { entityId: 1, type: 'player_ship', occupantGeneration: 1 },
+      { entityId: 42, type: 'ship', occupantGeneration: 1 },
+    ],
+  });
+
+  const survivor = f.state.entities.get(1);
+  const stale = f.state.entities.get(42);
+  assert.ok(survivor);
+  assert.ok(stale);
+  const world = createPresentationWorld();
+  world.rebuildFromEntities([survivor, stale]);
+  const admission = { status: 'ready', stamp: 7 };
+  const mesh = { id: 'player-mesh' };
+  const view = { id: 'player-view' };
+  survivor.presentationAdmission = admission;
+  survivor.mesh = mesh;
+  survivor.view = view;
+
+  // The replacement deliberately omits both a DESTROY record for 42 and the
+  // spawnInfos side-channel. The pack's SPAWN records alone define membership.
+  const replacement = journalPack(2, [
+    { kind: 1, entityId: 1, generation: 1, type: 'player_ship', tick: 2 },
+    { kind: 3, entityId: 1, generation: 1, type: 'player_ship', tick: 2, x: 12, z: -4 },
+  ]);
+  f.receive({
+    kind: 'clockTick',
+    seq: 'full-rebuild-replacement',
+    clockSequence: 2,
+    stateTick: 2,
+    simTime: 2 / 60,
+    journalStart: replacement.start,
+    journalEnd: replacement.end,
+    journalFullRebuild: true,
+    journalRebuildGeneration: 1,
+    pack: replacement,
+  });
+
+  assert.strictEqual(f.state.entities.get(1), survivor, 'surviving entity facade identity is stable');
+  assert.strictEqual(survivor.presentationAdmission, admission, 'admission identity survives the rebuild');
+  assert.strictEqual(survivor.mesh, mesh, 'presentation mesh reference survives the rebuild');
+  assert.strictEqual(survivor.view, view, 'presentation view reference survives the rebuild');
+  assert.equal(survivor.pos.x, 12);
+  assert.equal(survivor.pos.z, -4);
+  assert.equal(stale.alive, false, 'retired facade row is marked dead before presentation fallback');
+  assert.equal(f.state.entities.has(42), false, 'omitted facade row is retired without a DESTROY record');
+  assert.deepEqual(f.state.entityList.map((row) => row.id), [1], 'reconcile publishes only replacement entities');
+
+  // A later invalid-journal recovery must repack from the repaired facade, not
+  // resurrect the dead row that the first publisher build had retained.
+  const publisher = createPresentationPublisher(world, f.state, { journal: f.lane.journal });
+  f.lane.journal.requestRebuild();
+  const publication = publisher.consume({
+    journal: f.lane.journal,
+    journalStart: replacement.start,
+    journalEnd: replacement.end,
+    journalValid: false,
+    completedTickCount: 1,
+    lifecycleGeneration: 0,
+  }, { atomic: true });
+  assert.equal(publication.fallback, true);
+  const fence = createSnapshotFence();
+  packPresentationWorldToFence(world, fence, f.state.simTime, 0);
+  const snapshot = fence.latestSnapshot();
+  assert.ok(snapshotIndexOf(snapshot, 1) >= 0, 'fallback publisher keeps the surviving entity');
+  assert.equal(snapshotIndexOf(snapshot, 42), -1, 'fallback publisher pack omits the retired entity');
+});
 
 test('worker-local coalesced replies retain contiguous journal records and ACK range', async () => {
   const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
