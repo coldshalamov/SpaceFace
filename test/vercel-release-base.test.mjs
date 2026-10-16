@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { transform } from 'esbuild';
 import { pinVercelReleaseHtml, vercelReleaseBase, VERCEL_RELEASE_HOST_PATTERN } from '../scripts/lib/vercelReleaseBase.mjs';
 import { runtimeWorkerUrl, RUNTIME_WORKERS } from '../src/render/runtimeWorkers.js';
@@ -102,5 +104,16 @@ test('the real worker helper consumes the compiled release identity and keeps lo
         documentBase: 'file:///app/index.html',
       }), 'file:///app/workers/wholeSimBrowserWorker.js');
     }
+  }
+});
+
+
+test('the owned preview branch is enabled by both existing deployment filters', () => {
+  const expected = ["codex/iphone14-mobile","codex/mobile-release-pinning","codex/oct15-maturity-checkpoint","devin/1791331347-gyre-snare","devin/1791416174-gyre-snare-polish","main","master"];
+  assert.equal(config.git.deploymentEnabled['**'], false);
+  assert.deepEqual(Object.entries(config.git.deploymentEnabled).filter(([,v]) => v === true).map(([k]) => k).sort(), expected);
+  for (const ref of [...expected, 'codex/unrelated-agent', '', 'feature/foreign']) {
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/vercel-ignore-build.mjs', import.meta.url))], { env: { ...process.env, VERCEL_GIT_COMMIT_REF: ref }, encoding: 'utf8' });
+    assert.equal(result.status, expected.includes(ref) ? 1 : 0, ref + ': ' + result.stderr);
   }
 });
