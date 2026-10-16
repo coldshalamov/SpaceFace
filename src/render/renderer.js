@@ -24065,24 +24065,33 @@ export const render = {
     const BARGE_FAMILY = /^(Forge_ore_barge|Forge_massline_express_liner_ceramic)/;
     const seen = new Set();
     const receipt = { touched: 0, reason: 'pending', at: null };
-    const generation = state.render ? state.render.admissionRunGeneration : undefined;
+    const world = state.world;
+    const render = state.render;
+    const nativeRenderer = this.renderer;
+    const renderer = render && render.renderer;
+    const context = state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
     // Root/generation guard: a torn-down warm (disposed root) or a fresh loading window must
     // never be touched — that could resurrect disposed programs or buffers.
-    let listed = false;
     const owned = () => {
       if (state !== this.state) return false;
-      if ((state.render ? state.render.admissionRunGeneration : undefined) !== generation) return false;
+      if (state.world !== world || state.render !== render) return false;
+      if (this.renderer !== nativeRenderer) return false;
+      if ((render && render.renderer) !== renderer) return false;
+      if (state.contextRestoreSeq !== context) return false;
+      if ((render ? render.admissionRunGeneration : undefined) !== generation) return false;
       const inList = Array.isArray(this._rosterPrewarmRoots) && this._rosterPrewarmRoots.includes(root);
-      // begin() returns before its caller registers the root; once registered, leaving the
-      // list means teardown — stop for good.
-      if (inList) listed = true;
-      return inList || !listed;
+      // begin() schedules the first step before its caller registers the root. The callback
+      // must require live membership: a root removed during that macrotask is already stale.
+      return inList;
     };
     const loading = () => state.mode === 'loading' && owned();
     const publish = (reason) => {
+      if (!owned()) return false;
       receipt.reason = reason;
       receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
-      if (state.render) state.render.openingBargeWarm = { ...receipt };
+      if (render) render.openingBargeWarm = { ...receipt };
+      return true;
     };
     const carriesBargeFamily = (subject) => {
       let hit = false;
@@ -24094,9 +24103,9 @@ export const render = {
       return hit;
     };
     const step = async () => {
-      if (!owned()) return publish('superseded');
+      if (!owned()) return;
       if (state.mode !== 'loading') return publish('shell-released');
-      const touch = state.render && state.render.touchSubjectExactTarget;
+      const touch = render && render.touchSubjectExactTarget;
       if (typeof touch === 'function') {
         for (const child of [...root.children]) {
           if (!loading()) break;
@@ -24105,14 +24114,20 @@ export const render = {
           if (!carriesBargeFamily(child)) continue;
           try {
             await touch(child);
+            // The touch may yield across teardown, a context restore, or a new admission run.
+            // Do not count the old child or publish a receipt into that newer owner.
+            if (!loading()) return;
             receipt.touched += 1;
           } catch (error) {
+            if (!owned()) return;
             laneWarn(this, 'openingBargeWarm', '[render] opening barge family touch failed', error);
           }
         }
       }
-      publish('pending');
+      if (!owned()) return;
       if (state.mode !== 'loading') return publish('shell-released');
+      publish('pending');
+      if (!owned() || state.mode !== 'loading') return;
       setTimeout(() => { void step(); }, 250);
       return null;
     };
@@ -24128,14 +24143,39 @@ export const render = {
    * loading shell no longer owns the picture (the barge-family touch reads the root under it).
    */
   _settleAndParkUnclaimedOpeningWarm() {
+    const invocationToken = Symbol('opening-warm-park');
+    this._openingWarmParkInvocationToken = invocationToken;
     const state = this.state;
+    const world = state && state.world;
+    const render = state && state.render;
+    const nativeRenderer = this.renderer;
+    const renderer = render && render.renderer;
+    const context = state && state.contextRestoreSeq;
+    const generation = render ? render.admissionRunGeneration : undefined;
+    const warmRoots = this._rosterPrewarmRoots;
     const warm = this._earlyCrucibleWarm || null;
+    const warmRoot = warm && warm.root;
+    const warmOwner = warm;
+    const current = () => this.state === state
+      && this._openingWarmParkInvocationToken === invocationToken
+      && (!state || state.world === world)
+      && (!state || state.render === render)
+      && this.renderer === nativeRenderer
+      && (!render || render.renderer === renderer)
+      && (!state || state.contextRestoreSeq === context)
+      && (!render || render.admissionRunGeneration === generation)
+      && this._rosterPrewarmRoots === warmRoots
+      && (!warmRoot || (Array.isArray(warmRoots) && warmRoots.includes(warmRoot)))
+      // The early slot is cleared below. A later warm claiming it means this callback is stale.
+      && (!warmOwner || !this._earlyCrucibleWarm || this._earlyCrucibleWarm === warmOwner);
     const parkWhenReleased = (attempt = 0) => {
-      if (this.state !== state) return;
-      if (state && state.mode === 'loading' && attempt < 240) {
+      if (!current()) return;
+      if (state && state.mode === 'loading') {
+        if (attempt >= 240) return;
         setTimeout(() => parkWhenReleased(attempt + 1), 250);
         return;
       }
+      if (!current()) return;
       try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
     };
     if (warm && warm.root) {
