@@ -719,8 +719,9 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
      register's ▲/▼ still says it) so the whole trace stays above the decision */
   ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-cause { display:none !important; }
   ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:18px !important; }
-  /* ROUTE INTELLIGENCE closes up so it reads on one line down to 651 wide (at .08em it wrapped under ~760) */
-  ${MD} .so-route-disclosure > summary { letter-spacing:.02em !important; white-space:nowrap; }
+  /* ROUTE INTELLIGENCE closes up so it reads on one line from ~760 wide (at .08em it wrapped under
+     ~800); narrower, its column (~113px at 651) cannot hold the ~158px line, so it still wraps whole */
+  ${MD} .so-route-disclosure > summary { letter-spacing:.02em !important; }
 }
 /* …and after a trade the TRADE CLEARED line, which ends 24px left of COMMS (~402px from the right
    edge here), was one ~480px line: under ~880 wide its start ("TRADE CLEARED BOUGHT…") ran off the

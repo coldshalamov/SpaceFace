@@ -1661,7 +1661,7 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **After (`marketLayouts.js` only, desktop only):**
 - The number rides 4px higher and QUANTITY sets at the plain width (~60px) under it, inside the ring. QUOTE BREAKDOWN sets the same way on one line, so the console is 190px and BUY 1 / SELL sit whole at 960×540.
-- ROUTE INTELLIGENCE closes to .02em and stays on one line down to 651 wide.
+- ROUTE INTELLIGENCE closes to .02em and reads on one line from ~760 wide (760×420 now one line). Under ~720 its column (~113–138px) cannot hold the ~158px line, so it still wraps whole to two lines there (review fix: a nowrap here clipped it to "ROUTE INTELLIGE" at 651×700 and 700×600).
 - Selectors and IDs unchanged. 1280×720, 1920×1080 and phones are untouched.
 
 **Checked:** console content vs. box at 960×540 205/191 → 190/190; BUY 1 top 425 → 411 (960×540, 1024×768). Bench `station-market` at 700×600, 844×390, 960×540, 1024×768, 1280×720, 1920×1080: no new findings (700×600 keeps the rail's INDUSTRY/COMMS overlap, fixed in #451, and register rows scrolled in their panel). Pixel Δ against master: 0% at 1280×720 and 390×844; the 1920×1080 Δ is the moving price tape. Focused tests: `market-driver-presenter` 4/4, `station-field-hardware` 7/7. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish77/{before,after}/`, `compare-market-*.png`.
