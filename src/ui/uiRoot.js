@@ -45,6 +45,7 @@ import { laneInputWrite } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
 import { saveErrorText, saveSlotLabel, shouldToastSaveError } from './saveFeedback.js';
+import { installWindowTitle, readWindowTitleView } from './windowTitle.js';
 
 export { saveErrorText };
 
@@ -606,6 +607,8 @@ export const ui = {
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
+    this.windowTitle?.stop();
+    this.windowTitle = null;
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
@@ -859,6 +862,7 @@ export const ui = {
     // determinism-scoped and orchestrator-owned; this is a UI-layout toggle.)
     const COMMAND_BAR_IN_FLIGHT = false;
     this.commandBar = COMMAND_BAR_IN_FLIGHT ? createCommandBar(ctx) : null;
+    this.windowTitle = installWindowTitle(document, { bus: this.bus, read: () => readWindowTitleView(this.state) });
 
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
@@ -1927,6 +1931,8 @@ export const ui = {
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
+    this.windowTitle?.stop();
+    this.windowTitle = null;
     // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary
     // global capture listeners and timers. Re-init/destroy must remove them without marking the
     // cinematic seen or opening a menu behind the caller.
