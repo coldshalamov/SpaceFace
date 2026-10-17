@@ -22,6 +22,7 @@ const PRECEDENCE = ['slingshot_golf','one_two','return_to_sender','clothesline',
 export function createStuntDetector(options={}) { return new StuntDetector(options); }
 const within = (end,start,limit) => Number.isFinite(end)&&Number.isFinite(start)&&end>=start&&end-start<=limit;
 const material = r => r.damageApplied===true && (r.targetKilled===true || (r.hullDamage>=r.targetHullMax*0.25 && r.targetHullMax>0 && r.helmLossSeconds>=1));
+const findFieldExit = (nodes, tick, u) => nodes?.find(n => n.kind === 'field_exit' && n.entryCausal === true && n.bend >= 35 && n.deltaV >= 0.2 * u && within(tick, n.tick, 180));
 
 export function classifyStuntEvidence(receipt) {
   const e=receipt?.stuntEvidence;
@@ -36,14 +37,19 @@ export function classifyStuntEvidence(receipt) {
     return launch&&r.sourceId===r.actorId?['kickstart']:receipt.escape.closeShave?['near_miss']:[];
   }
   if (receipt.targetHostile!==true || !material(receipt)) return [];
-  const u=r.reference.cruise, constraint=r.constraint, release=r.release;
+  const u=r.reference.cruise;
+  const second = e.previousRoot;
+  const chainedSecond = second && second.sourceLife === r.sourceLife && within(r.tick, second.tick, 120) && within(tick, second.tick, 480) ? second : null;
+  const constraint = r.constraint || chainedSecond?.constraint;
+  const release = r.release || chainedSecond?.release;
+  const swingRoot = r.constraint ? r : chainedSecond;
   if (!(u>0)) return [];
   if (r.kind==='bridle') return classifyBridle(receipt,e);
   const targetRef=c.aId===receipt.targetId?c.aRef:c.bRef;
   const out=[];
   const add=(id,yes)=>{if(yes) out.push(id);};
-  const swing=constraint && constraint.loadedTicks>=15 && constraint.sweep>=60&&r.sourceHostile===true
-    &&r.sourceType==='ship'&&r.sourceDeathTick==null&&Math.hypot(r.before.x,r.before.z)>1e-6;
+  const swing=constraint && constraint.loadedTicks>=15 && constraint.sweep>=60&&swingRoot?.sourceHostile===true
+    &&swingRoot?.sourceType==='ship'&&swingRoot?.sourceDeathTick==null&&Math.hypot(swingRoot.before.x,swingRoot.before.z)>1e-6;
   const attached=constraint?.attached===true || (release?.reason==='break' && release.tick===tick);
   const victimIsPayload=receipt.targetId===r.sourceId;
   const terrain=receipt.surface==='terrain'||receipt.surface==='structure';
@@ -61,11 +67,10 @@ export function classifyStuntEvidence(receipt) {
     &&constraint.displacement>=2*r.reference.length&&(terrain||(receipt.otherMass>=150)));
   add('dead_mans_mass',!victimIsPayload&&r.sourceDeathTick!=null&&r.tick>r.sourceDeathTick&&within(tick,r.tick,180)
     &&r.reference.mass>=0.2*(r.sceneReferenceMass??16)&&(angleBetween(r.before,r.after)>=25||Math.hypot(r.dv.x,r.dv.z)>=0.3*u));
-  const second=e.previousRoot;
   add('one_two',second&&within(r.tick,second.tick,120)&&r.tick-second.tick>=12&&within(tick,r.tick,120)
     &&within(tick,second.tick,480)&&angleBetween(r.before,r.after)>=45&&Math.hypot(r.dv.x,r.dv.z)>=0.2*u
     &&r.tick-(second.nodes.at(-1)?.endTick??second.tick)>=12);
-  const field=r.nodes.find(n=>n.kind==='field_exit'&&n.entryCausal===true&&n.bend>=35&&n.deltaV>=0.2*u&&within(tick,n.tick,180));
+  const field = findFieldExit(r.nodes, tick, u) || (chainedSecond ? findFieldExit(chainedSecond.nodes, tick, u) : null);
   add('well_golf',field);
   add('slingshot_golf',field&&swing&&release&&within(field.entryTick,release.tick,120)&&within(tick,field.tick,120));
   const intercept=r.nodes.find(n=>n.kind==='line_intercept'&&n.loadedTicks>=9&&n.endpointDisplacement>0&&n.deltaV>=0.3*u&&within(tick,n.tick,120));
@@ -124,7 +129,8 @@ export class StuntDetector {
     if (!r || this.playerId==null || r.actorId!==this.playerId) return [];
     const candidates=classifyStuntEvidence(receipt);
     if (!candidates.length) return [];
-    const episodeId=candidates.includes('one_two')?r.previousRoot:r.id;
+    const chained=candidates.includes('one_two') || (candidates.includes('slingshot_golf') && (!r.constraint || !r.nodes.some((n) => n.kind === 'field_exit')));
+    const episodeId=chained ? (r.previousRoot || r.id) : r.id;
     const old=this.incidents.get(episodeId);
     if (old && (receipt.tick>old.amendmentDeadline || old.finalized)) return [];
     const terminal=receipt.victimLife;
@@ -146,7 +152,8 @@ export class StuntDetector {
     const collateralCount=e.path.edges>1 ? lives.length : old?.modifiers.collateralCount??1;
     const razor=r.release&&within(receipt.tick,r.release.tick,180)?r.release.grade:null;
     const modifiers={razorRelease:razor,collateralCount,closeShave:receipt.escape?.closeShave===true&&primary!=='needle_thread'};
-    const chain=r.nodes.map((n,i)=>({step:i+1,type:n.kind,entityId:n.entityId??n.sourceId,targetId:n.targetId,
+    const rawNodes=chained ? [...(e.previousRoot?.nodes || []), ...r.nodes] : r.nodes;
+    const chain=rawNodes.map((n,i)=>({step:i+1,type:n.kind,entityId:n.entityId??n.sourceId,targetId:n.targetId,
       tick:n.tick,detail:n.kind, ...n}));
     const trick={schemaVersion:2,trickId:primary,name:def.name,rarity:def.rarity,baseScore:def.baseScore,family:def.family,role:def.role,
       actorId:r.actorId,targetId:receipt.targetId,secondaryIds:[r.sourceId],episodeId,rootId:episodeId,rootTick:e.previousRoot?.tick??r.tick,
