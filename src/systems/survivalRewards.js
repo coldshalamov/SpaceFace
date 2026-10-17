@@ -3,6 +3,7 @@ import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { admitStuntThreat, threatReward } from '../combat/stuntScoring.js';
 import { WEAPONS } from '../data/weapons.js';
+import { MODULES } from '../data/modules.js';
 import { bodyLife } from '../combat/stuntEvidence.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
@@ -26,11 +27,27 @@ export function estimateBoardScore({ gunKills = 0, physicsKills = 0, stuntPoints
 const PHYSICAL_CAUSE_WORDS = Object.freeze({
   direct_contact: 'Ram',
   environment: 'The environment',
+  massline_throw: 'Thrown mass',
+  rope_throw: 'Thrown mass',
+  massline_whip: 'Massline whip',
+  ram_plate: 'Ram Plate',
+  tow_flail: 'Tow Flail',
+  terrain_collision: 'The arena',
+  ship_collision: 'Collision',
+  body_collision: 'Thrown mass',
+  chain_detonation: 'Chain blast',
 });
-const WEAPON_NAME_BY_ID = new Map(WEAPONS.filter((def) => def && def.id && def.name).map((def) => [def.id, def.name]));
+const WEAPON_NAME_BY_ID = new Map([
+  ...WEAPONS.filter((def) => def && def.id && def.name).map((def) => [def.id, def.name]),
+  ...MODULES.filter((def) => def && def.id && def.name).map((def) => [def.id, def.name]),
+  ['mod_mass_flail_rig', 'Tow Flail'],
+]);
 
 function provenanceTag(receipt) {
-  return receipt && typeof receipt.tag === 'string' && receipt.tag ? receipt.tag : '';
+  if (!receipt) return '';
+  if (typeof receipt.tag === 'string' && receipt.tag) return receipt.tag;
+  if (typeof receipt.cause === 'string' && receipt.cause) return receipt.cause;
+  return '';
 }
 
 function physicalCauseWord(receipt) {
@@ -42,14 +59,26 @@ function rewardCausePhrase(payload, victim, tick) {
   const onEvent = payload && payload.provenance && typeof payload.provenance === 'object'
     ? payload.provenance : null;
   const receipt = physicalCauseWord(onBody) ? onBody
-    : (physicalCauseWord(onEvent) ? onEvent : (onBody || onEvent));
+    : (physicalCauseWord(onEvent) ? onEvent : (onBody || onEvent || payload));
   if (!receipt) return null;
   const physical = physicalCauseWord(receipt);
   if (physical) return physical;
-  const weaponId = typeof receipt.weaponId === 'string' ? receipt.weaponId : '';
+  const weaponId = typeof receipt.weaponId === 'string' ? receipt.weaponId
+    : (typeof payload?.weaponId === 'string' ? payload.weaponId : '');
   const name = WEAPON_NAME_BY_ID.get(weaponId);
   if (name) return name;
-  return provenanceTag(receipt) ? 'A weapon' : null;
+  const directTag = typeof payload?.tag === 'string' ? payload.tag : '';
+  const directCause = typeof payload?.cause === 'string' ? payload.cause : '';
+  const impactTag = typeof payload?.presentation?.impactLink?.tag === 'string'
+    ? payload.presentation.impactLink.tag : '';
+  const presentationCause = typeof payload?.presentation?.cause === 'string'
+    ? payload.presentation.cause : '';
+  const fallbackPhysical = PHYSICAL_CAUSE_WORDS[directTag]
+    || PHYSICAL_CAUSE_WORDS[directCause]
+    || PHYSICAL_CAUSE_WORDS[impactTag]
+    || PHYSICAL_CAUSE_WORDS[presentationCause];
+  if (fallbackPhysical) return fallbackPhysical;
+  return (provenanceTag(receipt) || directTag || directCause) ? 'A weapon' : null;
 }
 
 function liveRun(state) {
