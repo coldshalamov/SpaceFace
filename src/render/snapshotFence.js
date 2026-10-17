@@ -15,6 +15,10 @@ export const SNAPSHOT_FENCE_BUFFERS = 3;
 export const FOLLOW_LAG_TICKS = 1;
 export const FOLLOW_GAIN_PER_S = 1.5;
 export const FOLLOW_MAX_SLEW = 0.2;
+// How far (sim seconds) the drawn moment may run PAST the newest pack, extrapolating the hull along
+// its last span. A Worker saturated by its own tick posts bursts of several steps, so the next pack
+// is routinely later than the bracket allows; without headroom every late pack is a held frame.
+export const FOLLOW_MAX_EXTRAPOLATION_S = 0.1;
 
 /** Bytes written into the packed columns for one entity. All column kinds are 4-byte. */
 export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
@@ -190,6 +194,12 @@ export function createSnapshotFence(options = {}) {
   const followLagTicks = Number.isFinite(options.followLagTicks) ? options.followLagTicks : FOLLOW_LAG_TICKS;
   const followGainPerS = Number.isFinite(options.followGainPerS) ? options.followGainPerS : FOLLOW_GAIN_PER_S;
   const followMaxSlew = Number.isFinite(options.followMaxSlew) ? options.followMaxSlew : FOLLOW_MAX_SLEW;
+  // Lag in units of the newest pack's own span (true) or of one fixed tick (false). A busy Worker
+  // posts one reply per burst of several steps, so a pack routinely spans 2-4 ticks; lagging one
+  // TICK behind such a pack plays its motion out in 1/3 of the interval and then holds the hull.
+  const followLagBySpan = options.followLagBySpan === true;
+  const followExtrapolationS = Number.isFinite(options.followMaxExtrapolationS)
+    ? Math.max(0, options.followMaxExtrapolationS) : FOLLOW_MAX_EXTRAPOLATION_S;
   // Wall seconds (time-effects scaled) since the newest pack was first sampled.
   let followArrivalS = 0;
 
@@ -281,13 +291,15 @@ export function createSnapshotFence(options = {}) {
         const elapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
         // A new pack landed somewhere inside this frame interval; assume the middle of it.
         followArrivalS = presentedSequence === current.sequence ? followArrivalS + elapsed : elapsed * 0.5;
-        const desired = current.simTime - dt * followLagTicks + followArrivalS;
+        const desired = current.simTime - (followLagBySpan ? span : dt) * followLagTicks + followArrivalS;
         const steer = Math.max(-followMaxSlew,
           Math.min(followMaxSlew, (desired - presentedTime) * followGainPerS));
         presentedTime += elapsed * (1 + steer);
-        // The bracket is the only data there is: never draw outside the two packs.
+        // Never draw before the older pack, nor further past the newer one than the headroom.
         if (presentedTime < prior.simTime) presentedTime = prior.simTime;
-        else if (presentedTime > current.simTime) presentedTime = current.simTime;
+        else if (presentedTime > current.simTime + followExtrapolationS) {
+          presentedTime = current.simTime + followExtrapolationS;
+        }
         presentedSequence = current.sequence;
         presentedEpoch = current.poseEpoch;
         presentedSnapshotTime = current.simTime;
@@ -419,6 +431,14 @@ export function poseSpanAlpha(latest, previous, accumulatorS, fixedDt, fallbackA
   return t < 0 ? 0 : (t > 1 ? 1 : t);
 }
 
+// Extrapolation guard (follow clock only reaches t > 1). A body is carried past its newest pack only
+// when it was plainly flying: a teleport, respawn or warp inside one pose epoch moves it thousands of
+// units in one span and must never be projected further. The distance cap bounds the worst case of
+// a body that turned inside the span to a few hull lengths for a few frames.
+export const EXTRAPOLATION_MAX_SPEED_WU_S = 3000;
+export const EXTRAPOLATION_MAX_DISTANCE_WU = 60;
+const EXTRAPOLATION_MAX_ROTATION_STEP = 0.6;
+
 export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1, slotHint = -1) {
   if (!mesh || !mesh.position || !snapshot) return false;
   const index = slotHint >= 0
@@ -431,16 +451,38 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   let z = snapshot.columns.position[p + 2];
   let qy = snapshot.columns.quaternion[q + 1];
   let qw = snapshot.columns.quaternion[q + 3];
-  const t = Number.isFinite(alpha) ? alpha : 1;
-  const prev = previous && t < 1
-    ? snapshotSameGenerationRow(previous, snapshot, entityId, index, slotHint) : -1;
+  let t = Number.isFinite(alpha) ? alpha : 1;
+  let tRot = t;
+  let prev = -1;
+  if (previous && t < 1) {
+    prev = snapshotSameGenerationRow(previous, snapshot, entityId, index, slotHint);
+  } else if (previous && t > 1) {
+    prev = snapshotSameGenerationRow(previous, snapshot, entityId, index, slotHint);
+    if (prev >= 0) {
+      const span = snapshot.simTime - previous.simTime;
+      const ddx = x - previous.columns.position[prev * 3];
+      const ddz = z - previous.columns.position[prev * 3 + 2];
+      const dist = Math.hypot(ddx, ddz);
+      if (!(span > 0) || dist / span > EXTRAPOLATION_MAX_SPEED_WU_S) {
+        prev = -1; // a jump, not flight: hold the newest pose
+      } else {
+        if (dist > 1e-9 && (t - 1) * dist > EXTRAPOLATION_MAX_DISTANCE_WU) {
+          t = 1 + EXTRAPOLATION_MAX_DISTANCE_WU / dist;
+        }
+        const turn = Math.abs(qy - previous.columns.quaternion[prev * 4 + 1])
+          + Math.abs(qw - previous.columns.quaternion[prev * 4 + 3]);
+        if (turn > EXTRAPOLATION_MAX_ROTATION_STEP) tRot = 1; // a flip or a snap turn: never project it
+        else tRot = t;
+      }
+    }
+  }
   if (prev >= 0) {
     const pp = prev * 3;
     const pq = prev * 4;
     x = previous.columns.position[pp] + (x - previous.columns.position[pp]) * t;
     z = previous.columns.position[pp + 2] + (z - previous.columns.position[pp + 2]) * t;
-    qy = previous.columns.quaternion[pq + 1] + (qy - previous.columns.quaternion[pq + 1]) * t;
-    qw = previous.columns.quaternion[pq + 3] + (qw - previous.columns.quaternion[pq + 3]) * t;
+    qy = previous.columns.quaternion[pq + 1] + (qy - previous.columns.quaternion[pq + 1]) * tRot;
+    qw = previous.columns.quaternion[pq + 3] + (qw - previous.columns.quaternion[pq + 3]) * tRot;
   }
   const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;
   const oy = origin && Number.isFinite(origin.y) ? origin.y : 0;
@@ -457,8 +499,8 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
     let bank = snapshot.columns.bank[index] || 0;
     let pitch = snapshot.columns.pitch[index] || 0;
     if (prev >= 0 && previous.columns.bank && previous.columns.pitch) {
-      bank = previous.columns.bank[prev] + (bank - previous.columns.bank[prev]) * t;
-      pitch = previous.columns.pitch[prev] + (pitch - previous.columns.pitch[prev]) * t;
+      bank = previous.columns.bank[prev] + (bank - previous.columns.bank[prev]) * tRot;
+      pitch = previous.columns.pitch[prev] + (pitch - previous.columns.pitch[prev]) * tRot;
     }
     hull.rotation.x = bank;
     hull.rotation.z = pitch;

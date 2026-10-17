@@ -9,7 +9,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createSnapshotFence } from '../src/render/snapshotFence.js';
+import {
+  applySnapshotPoseToMesh,
+  createSnapshotFence,
+  EXTRAPOLATION_MAX_DISTANCE_WU,
+  FOLLOW_MAX_EXTRAPOLATION_S,
+} from '../src/render/snapshotFence.js';
 
 const DT = 1 / 60;
 const PLAYER_ID = 1;
@@ -26,17 +31,19 @@ function lcg(seed) {
 }
 
 /**
- * Worker clock (deadline timer with jitter) + one-reply-in-flight ack handshake + a display at
- * `hz`. Returns the per-frame ratio of drawn sim-time advance to wall-time advance
- * (1.0 == perfectly even motion).
+ * Worker (deadline timer + per-step CPU cost that blocks its own message handling) + one-reply-in-flight
+ * ack handshake + a display at `hz`. `burst` models a saturated Worker that runs several steps per
+ * timer fire and posts one reply per burst. Returns the per-frame ratio of drawn sim-time advance to
+ * wall-time advance (1.0 == perfectly even motion).
  */
-function simulate({ mode, hz, secs = 20, seed = 7, workerJitterMs = 0.8, latencyMs = 1, latencyJitterMs = 0.6 }) {
+function simulate({ mode, hz, secs = 20, seed = 7, workerJitterMs = 0.8, latencyMs = 1, latencyJitterMs = 0.6,
+  burst = null, options = {} }) {
   const rnd = lcg(seed);
   const gauss = () => { let s = 0; for (let i = 0; i < 6; i++) s += rnd(); return (s - 3) / 0.7071; };
-  const fence = createSnapshotFence({ capacity: 4, presentationClock: mode });
+  const fence = createSnapshotFence({ capacity: 4, presentationClock: mode, ...options });
   const lat = () => Math.max(0.1, latencyMs + gauss() * latencyJitterMs);
   const frameMs = 1000 / hz;
-  let acc = 0; let anchor = 0; let deadline = DT * 1000; let simTicks = 0;
+  let acc = 0; let anchor = 0; let deadline = DT * 1000; let simTicks = 0; let workerFree = 0;
   let awaitingAck = false; let retained = null;
   const toMain = []; const toWorker = [];
   let nextRaf = frameMs; let lastRaf = 0; let t = 0;
@@ -44,20 +51,22 @@ function simulate({ mode, hz, secs = 20, seed = 7, workerJitterMs = 0.8, latency
   let prevP = null; let prevWall = null;
   const ratios = [];
   while (t < secs * 1000) {
-    const tAck = toWorker.length ? toWorker[0] : Infinity;
-    t = Math.min(deadline, tAck, nextRaf);
-    if (t === deadline) {
+    const tTick = Math.max(deadline, workerFree);
+    const tAck = toWorker.length ? Math.max(toWorker[0], workerFree) : Infinity;
+    t = Math.min(tTick, tAck, nextRaf);
+    if (t === tTick) {
       acc += (t - anchor) / 1000; anchor = t;
       let steps = 0;
       while (acc >= DT && steps < 4) { acc -= DT; steps++; }
       if (acc >= DT) acc -= Math.floor(acc / DT) * DT;
       simTicks += steps;
+      workerFree = t + (steps > 0 ? (burst ? burst.perStepMs : 0.5) * steps : 0.2);
       if (steps > 0) {
         const reply = { simTime: simTicks * DT, acc };
         if (awaitingAck) retained = reply;
-        else { awaitingAck = true; toMain.push({ arrive: t + lat(), ...reply }); }
+        else { awaitingAck = true; toMain.push({ arrive: workerFree + lat(), ...reply }); }
       }
-      deadline += DT * 1000 + gauss() * workerJitterMs;
+      deadline += (burst ? burst.periodMs : DT * 1000) + gauss() * (burst ? burst.jitterMs : workerJitterMs);
       if (deadline <= t) deadline = t + 0.1;
     } else if (t === tAck) {
       toWorker.shift();
@@ -130,16 +139,71 @@ test('the follow clock holds on pause, snaps on a new pose epoch, and re-seeds a
     'a rewound sim clock re-seeds from the accumulator phase');
 });
 
-test('the follow clock never draws outside the bracket of the two newest packs', () => {
+test('a saturated Worker that posts bursts of steps still plays out evenly (the stop-motion bug)', () => {
+  // Measured on the real Worker lane at ~13 ms/step: ~21 replies/s, ~3 steps each. The legacy clock
+  // runs the hull for one tick and then holds it for two, over and over.
+  const scenarios = [
+    { periodMs: 50, jitterMs: 12, perStepMs: 13 },
+    { periodMs: 33, jitterMs: 8, perStepMs: 9 },
+  ];
+  for (const burst of scenarios) {
+    for (const hz of [60, 144]) {
+      const legacy = simulate({ mode: 'accumulator', hz, burst, secs: 25 });
+      const follow = simulate({ mode: 'follow', hz, burst, secs: 25 });
+      const label = `${burst.periodMs} ms bursts @ ${hz} Hz`;
+      assert.ok(legacy.held > 0.15, `${label}: expected the legacy clock to hold the hull, held=${legacy.held}`);
+      assert.ok(follow.held < 0.03, `${label}: follow clock held ${(follow.held * 100).toFixed(1)}% of frames`);
+      assert.ok(follow.wrong < 0.06, `${label}: follow clock drew ${(follow.wrong * 100).toFixed(1)}% at the wrong speed`);
+      assert.equal(follow.backwards, 0, `${label}: never backwards`);
+      assert.ok(Math.abs(follow.mean - 1) < 0.03, `${label}: long-run speed stays real time, got ${follow.mean}`);
+    }
+  }
+});
+
+test('the follow clock stays in [older pack, newer pack + headroom], never runs backwards, then settles', () => {
   const fence = createSnapshotFence({ capacity: 4, presentationClock: 'follow' });
   packOne(fence, { x: 0, simTime: 0 });
   packOne(fence, { x: 100, simTime: DT });
+  const ceiling = 1 + FOLLOW_MAX_EXTRAPOLATION_S / DT;
   let last = -Infinity;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     const a = fence.samplePresentationAlpha(0.01, 0, DT, 0);
-    assert.ok(a >= 0 && a <= 1, `alpha ${a} outside [0,1]`);
+    assert.ok(a >= 0 && a <= ceiling + 1e-9, `alpha ${a} outside [0, ${ceiling}]`);
     assert.ok(a >= last - 1e-12, 'alpha must not run backwards inside one bracket');
     last = a;
   }
-  assert.equal(last, 1, 'with no newer pack the hull settles on the newest completed pose');
+  assert.ok(Math.abs(last - ceiling) < 1e-9,
+    `with no newer pack the hull glides to the headroom and stops (alpha ${last}, ceiling ${ceiling})`);
+});
+
+test('pose application extrapolates a flying body past its newest pack and refuses to project a jump', () => {
+  const fence = createSnapshotFence({ capacity: 4 });
+  const mesh = () => ({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, userData: {} });
+  const origin = { x: 0, z: 0 };
+
+  // Flying: 10 WU per tick. t = 1.5 carries it 5 WU past the newest pack.
+  packOne(fence, { x: 0, simTime: 0 });
+  packOne(fence, { x: 10, simTime: DT });
+  let m = mesh();
+  applySnapshotPoseToMesh(m, fence.latestSnapshot(), PLAYER_ID, origin, fence.previousSnapshot(), 1.5);
+  assert.ok(Math.abs(m.position.x - 15) < 1e-9, `extrapolated to 15, got ${m.position.x}`);
+
+  // The distance cap bounds how far past the newest pack a fast body is projected.
+  m = mesh();
+  applySnapshotPoseToMesh(m, fence.latestSnapshot(), PLAYER_ID, origin, fence.previousSnapshot(), 50);
+  assert.ok(Math.abs(m.position.x - (10 + EXTRAPOLATION_MAX_DISTANCE_WU)) < 1e-6,
+    `projection is capped at ${EXTRAPOLATION_MAX_DISTANCE_WU} WU past the pack, got ${m.position.x}`);
+
+  // A teleport inside one pose epoch (5000 WU in one tick) is a jump, not flight: hold the newest pose.
+  const jump = createSnapshotFence({ capacity: 4 });
+  packOne(jump, { x: 0, simTime: 0 });
+  packOne(jump, { x: 5000, simTime: DT });
+  m = mesh();
+  applySnapshotPoseToMesh(m, jump.latestSnapshot(), PLAYER_ID, origin, jump.previousSnapshot(), 3);
+  assert.equal(m.position.x, 5000, 'a jump is never projected past where it landed');
+
+  // Interpolation inside the span is unchanged by the extrapolation branch.
+  m = mesh();
+  applySnapshotPoseToMesh(m, fence.latestSnapshot(), PLAYER_ID, origin, fence.previousSnapshot(), 0.25);
+  assert.ok(Math.abs(m.position.x - 2.5) < 1e-9);
 });
