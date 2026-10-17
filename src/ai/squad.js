@@ -22,6 +22,8 @@ const DEFAULTS = Object.freeze({
   // keeps normal tactic changes within that budget while urgent retreat remains immediate.
   minTacticTicks: 150,
   switchMargin: 0.12,
+  minFocusTicks: 90,
+  targetSwitchMargin: 0.08,
   breakTicks: 90,
   formationTurnPerTick: 0.025,
 });
@@ -60,6 +62,8 @@ export class SquadCommander {
       currentTactic: null,
       tacticSinceTick: -Infinity,
       focusTargetId: null,
+      focusSinceTick: -Infinity,
+      lastAssignedTargets: new Map(),
       formationHeading: null,
       breakUntil: new Map(),
       breakReason: new Map(),
@@ -114,8 +118,18 @@ export class SquadCommander {
       if (perception && perception.self) perceptions.push(perception);
     }
     const contacts = mergeContacts(perceptions, this.freeze, squad.contactMergeScratch, squad.contactsScratch);
-    const focus = selectFocusTarget(perceptions, contacts);
-    squad.focusTargetId = focus ? focus.id : null;
+    const focus = selectFocusTarget(
+      perceptions,
+      contacts,
+      squad.focusTargetId,
+      tick - squad.focusSinceTick,
+      this.config,
+    );
+    const nextFocusId = focus ? focus.id : null;
+    if (nextFocusId !== squad.focusTargetId) {
+      squad.focusTargetId = nextFocusId;
+      squad.focusSinceTick = tick;
+    }
 
     const candidates = this._tacticCandidates(squad, tick, perceptions, contacts, director);
     applyTwistWeights(squad, candidates);
@@ -131,7 +145,7 @@ export class SquadCommander {
       squad.currentTactic = selected.id;
       squad.tacticSinceTick = tick;
     }
-    const targetAssignments = allocateCombatTargets(squad, selected.id, contacts, focus);
+    const targetAssignments = allocateCombatTargets(squad, selected.id, contacts, focus, this.config.targetSwitchMargin);
 
     const leader = chooseLeaderPerception(squad, perceptions);
     this._rememberLeaderGeneration(squad.id, squad.members[0].id, squad.leaderOccupantGeneration);
@@ -474,17 +488,34 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
   return out;
 }
 
-function selectFocusTarget(perceptions, contacts) {
+function scoreFocusContact(perceptions, contact) {
+  let distanceScore = 0;
+  for (const perception of perceptions) distanceScore += 1 / (1 + distance2(perception.self.pos, contact.pos) / 500);
+  return contact.confidence * 0.25 + contact.threat * 0.4 + distanceScore / Math.max(1, perceptions.length) * 0.25 + (contact.tethered ? 0.1 : 0);
+}
+
+function selectFocusTarget(perceptions, contacts, currentFocusId = null, focusDwell = Infinity, config = DEFAULTS) {
   let best = null;
   let bestScore = -Infinity;
+  let currentContact = null;
+  let currentScore = -Infinity;
   for (const contact of contacts) {
-    if (contact.kind !== ContactKind.SHIP || contact.hostileVotes <= contact.friendlyVotes) continue;
-    let distanceScore = 0;
-    for (const perception of perceptions) distanceScore += 1 / (1 + distance2(perception.self.pos, contact.pos) / 500);
-    const score = contact.confidence * 0.25 + contact.threat * 0.4 + distanceScore / Math.max(1, perceptions.length) * 0.25 + (contact.tethered ? 0.1 : 0);
+    if (contact.kind !== ContactKind.SHIP || contact.alive === false || contact.hostileVotes <= contact.friendlyVotes) continue;
+    const score = scoreFocusContact(perceptions, contact);
+    if (currentFocusId != null && contact.id === currentFocusId) {
+      currentContact = contact;
+      currentScore = score;
+    }
     if (score > bestScore || (score === bestScore && stableId(contact.id) < stableId(best && best.id))) {
       bestScore = score;
       best = contact;
+    }
+  }
+  if (currentContact && best) {
+    const minFocusTicks = config?.minFocusTicks ?? 90;
+    const targetSwitchMargin = config?.targetSwitchMargin ?? 0.08;
+    if (focusDwell < minFocusTicks || (best.id !== currentContact.id && bestScore < currentScore + targetSwitchMargin)) {
+      return currentContact;
     }
   }
   return best;
@@ -591,14 +622,15 @@ function objectiveFor(tactic, role, focus, objective, tether, perception, assign
   return freezeObjective(ObjectiveKind.FOCUS, focus && focus.id, tactic, freeze, targetObservedBySquad(focus));
 }
 
-function allocateCombatTargets(squad, tactic, contacts, focus) {
+function allocateCombatTargets(squad, tactic, contacts, focus, targetSwitchMargin = 0.08) {
   if (!['swarm_pincer', 'standoff_focus', 'contain_and_disable'].includes(tactic)) return null;
   const targets = squad.hostileTargetsScratch;
   targets.length = 0;
   for (const contact of contacts) {
-    if (contact.kind !== ContactKind.SHIP || contact.hostileVotes <= contact.friendlyVotes) continue;
+    if (contact.kind !== ContactKind.SHIP || contact.alive === false || contact.hostileVotes <= contact.friendlyVotes) continue;
     targets.push(contact);
   }
+  const focusTheSoft = Boolean(squad.composition && squad.composition.twist === 'focus_the_soft');
   targets.sort((a, b) => {
     if (focus) {
       if (a.id === focus.id && b.id !== focus.id) return -1;
@@ -606,7 +638,7 @@ function allocateCombatTargets(squad, tactic, contacts, focus) {
     }
     // Twist `focus_the_soft`: the wing guns the lightest hull in reach instead of the loudest
     // threat — mass class ascending, so attrition concentrates on what dies.
-    if (squad.composition && squad.composition.twist === 'focus_the_soft') {
+    if (focusTheSoft) {
       const softDelta = softnessRank(a) - softnessRank(b);
       if (softDelta !== 0) return softDelta;
     }
@@ -640,16 +672,36 @@ function allocateCombatTargets(squad, tactic, contacts, focus) {
       || stableId(a.id).localeCompare(stableId(b.id));
   });
 
+  const lastAssigned = squad.lastAssignedTargets;
+  const priorityMargin = (targetSwitchMargin ?? 0.08) * 4;
   for (const member of members) {
-    let assigned = null;
+    let topAvailable = null;
     for (const target of targets) {
       const load = loads.get(target.id) || 0;
       if (load >= attackerCapacity(target)) continue;
-      assigned = target;
-      loads.set(target.id, load + 1);
+      topAvailable = target;
       break;
     }
+    let assigned = topAvailable;
+    const prevId = lastAssigned ? lastAssigned.get(member.id) : null;
+    if (prevId != null && topAvailable && topAvailable.id !== prevId) {
+      const prev = targets.find((target) => target.id === prevId) || null;
+      if (
+        prev
+        && (loads.get(prev.id) || 0) < attackerCapacity(prev)
+        && (!focusTheSoft || softnessRank(prev) === softnessRank(topAvailable))
+        && finiteTargetPriority(topAvailable) <= finiteTargetPriority(prev) + priorityMargin
+      ) {
+        assigned = prev;
+      }
+    }
+    if (assigned) {
+      loads.set(assigned.id, (loads.get(assigned.id) || 0) + 1);
+    }
     assignments.set(member.id, assigned);
+    if (lastAssigned) {
+      lastAssigned.set(member.id, assigned ? assigned.id : null);
+    }
   }
   return assignments;
 }
