@@ -1895,11 +1895,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 /* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,
    so on every tab but the Market (which #446 handles in marketLayouts.js) it ran off the right edge, and at
    651–1100 wide it pushed the whole berth sideways: the page scrolled and "HELIOS STATION" lost its first
-   letters. It now ends just left of COMMS, above the destination words (or, at 651–800 where the rail takes
-   its own row, starts at the left edge above it), on a solid strip so it reads over a scrolled list.
+   letters. It now ends just left of COMMS, above the destination words, on a solid strip so it reads over a scrolled list.
    The destination words also fit: at 801–900 × 461–800 the rail takes the row's free width (it was capped
-   and cut MISSIONS … LEDGER); at 651–800 × 461–800 it takes its own row on every tab but the Market (whose
-   register needs that height); at 901–999 the words close up so LEDGER is not cut. Desktop only. */
+   and cut MISSIONS … LEDGER); at 651–800 × 461–800 the receipt
+   instead wraps to two lines above COMMS, in the room right of it; at 901–999 the words close up so LEDGER is not cut. Desktop only. */
 @media (min-width:801px) and (max-height:800px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important; bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
 }
@@ -1924,14 +1923,9 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 16px) !important; }
 }
 @media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops { flex-wrap:wrap !important; row-gap:2px !important; column-gap:12px !important; align-items:center !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .of-facility-rail { flex:1 1 100% !important; width:100% !important; min-width:0 !important; max-width:100% !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) :is(.sxb-ops__dock, .sxb-ops .sx-dock__group--nav) { width:100% !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-dock__group--nav { gap:0 9px !important; padding-left:2px !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-tile__label { letter-spacing:.07em !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-comms { order:2 !important; margin:0 !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 66px) !important; max-width:none !important; padding:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 6px) !important; padding:0 !important;
+    max-width:calc(100vw - 400px) !important; flex-wrap:wrap !important; white-space:normal !important; row-gap:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt > * { white-space:nowrap !important; }
 }
 @media (min-width:651px) and (max-width:800px) and (max-height:460px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 60px) !important; max-width:none !important; padding:0 !important; }
