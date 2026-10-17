@@ -1441,10 +1441,11 @@ export const impulseCharges = {
         }
         return;
       }
-      // Rung 15: the blast is an impulse REQUEST to the physics authority, applied at the center
-      // of mass. Magnitude impulse × falloff is the old per-entity Δv × mass — same physics,
-      // different owner of the mutation. A rejected request (no rigid body / no port) is skipped,
-      // never forced with a direct vel write.
+      // Rung 15: the blast is an impulse REQUEST to the physics authority, applied at the
+      // blast-facing surface point (center minus the radial, times the hull radius). Magnitude
+      // impulse × falloff is the old per-entity Δv × mass — same physics, different owner of
+      // the mutation. A rejected request (no rigid body / no port) is skipped, never forced
+      // with a direct vel write.
       // Preserve earned anchor/swing amplification on scenery too. A fixed
       // reference impulse erased the combo before the body ever felt it.
       const environmentImpulse = impulse > 0 ? 1280 * magnitude / impulse : 0;
@@ -1452,13 +1453,17 @@ export const impulseCharges = {
       // charge that shoves its owner is the same deliberate launch as an aft-drop
       // (Kickstart / Leave With It); it stays outside that budget.
       const selfLaunch = ent.id === ownerId && ent.id === state.playerId;
-      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner || selfLaunch, environmentImpulse);
+      // The plate's contact is the skin facing the blast, not a fabricated +z lever. On the
+      // radial the point's own cross is zero, so signedHitSide reads the hull heading.
+      const surfaceR = Math.max(0, Number(ent.radius) || 0);
+      const hitPos = Object.freeze({ x: ent.pos.x - dirX * surfaceR, z: ent.pos.z - dirZ * surfaceR });
+      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner || selfLaunch, environmentImpulse, hitPos);
       if (accepted) {
         hits.push(ent.id);
         considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
         this._publishBlastHitstun(state, ent, {
           dirX, dirZ, magnitude, ownerId, attackerMass, chargeId: opts.chargeId,
-          sourceId: opts.sourceId, trigger: opts.trigger, link,
+          sourceId: opts.sourceId, trigger: opts.trigger, link, hitPos,
         });
       }
 
@@ -1500,10 +1505,7 @@ export const impulseCharges = {
     if (!(deltaV > 0)) return false;
     const attackerMass = Math.max(0.1, Number(input.attackerMass) || 1);
     const hitSide = signedHitSide(victim, { x: input.dirX, z: input.dirZ }, {
-      pos: {
-        x: Number(victim.pos && victim.pos.x) || 0,
-        z: (Number(victim.pos && victim.pos.z) || 0) + Math.max(4, (victim.radius || 8) * 0.75),
-      },
+      pos: input.hitPos || { x: Number(victim.pos && victim.pos.x) || 0, z: Number(victim.pos && victim.pos.z) || 0 },
     }, victim.id);
     const provenance = Object.freeze({
       schemaVersion: 1,
@@ -1559,8 +1561,9 @@ export const impulseCharges = {
   // Physics-authority impulse (rung 15). Same port + call shape as combat/actions.js:185 and
   // combat/damage.js:201: helpers.combatPhysics.applyImpulse({entityId, impulse, point, reason,
   // tick}). Returns true only if the backend accepted the impulse.
-  _applyBlastImpulse(ent, impulseX, impulseZ, state, ownerId, chargeId, deliberate = false, referenceImpulse = undefined) {
+  _applyBlastImpulse(ent, impulseX, impulseZ, state, ownerId, chargeId, deliberate = false, referenceImpulse = undefined, hitPos = null) {
     const evidence = { tick: state.tick, reason: 'impulse_charge', motionIntent: deliberate ? 'player_maneuver' : undefined,
+      point: hitPos || null,
       provenance: { actorId: ownerId, weaponId: chargeId ?? 'impulse_charge', tag: 'impulse_charge_blast' } };
     return deliverPhysicalImpulse(state, ent, { x: impulseX, z: impulseZ }, evidence,
       { port: this.helpers?.combatPhysics, referenceImpulse });
