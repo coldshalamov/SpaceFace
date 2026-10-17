@@ -530,14 +530,16 @@ test('the cook warms first-picture subjects before beyond-runway subjects', () =
   assert.ok(cookStart >= 0, 'the live cook must exist');
   const unitsIndex = RENDERER_SOURCE.indexOf('const units = {', cookStart);
   assert.ok(unitsIndex >= 0, 'the cook admission units must exist');
-  const compileLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', unitsIndex);
+  // Both loops walk the ordered list by index (the serial-route pace debt needs the last index).
+  const loopHead = 'const subject = units.programSubjects[index];';
+  const compileLoopIndex = RENDERER_SOURCE.indexOf(loopHead, unitsIndex);
   assert.ok(compileLoopIndex > unitsIndex, 'the compile cohort loop must exist');
   const between = RENDERER_SOURCE.slice(unitsIndex, compileLoopIndex);
   assert.match(between, /openingSubjects\.map\(\(subject, index\) => \[subject, index\]\)/,
     'the ordering key must come from the first-picture census order');
   assert.match(between, /units\.programSubjects\.sort\(/,
     'programSubjects must be sorted before the compile and touch loops consume it');
-  const touchLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', compileLoopIndex + 1);
+  const touchLoopIndex = RENDERER_SOURCE.indexOf(loopHead, compileLoopIndex + 1);
   assert.ok(touchLoopIndex > compileLoopIndex, 'the touch loop must consume the same ordered list');
 });
 

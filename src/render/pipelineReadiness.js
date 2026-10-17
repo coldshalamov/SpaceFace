@@ -633,6 +633,9 @@ export function createSlicedYield(yieldFn, options = {}) {
     return true;
   };
   sliced.yields = 0;
+  // A caller that just yielded through another path (a serial-route queue pace) restarts the
+  // slice so the next call does not spend a second frame on a slice that already ended.
+  sliced.restart = () => { sliceStarted = now(); };
   return sliced;
 }
 

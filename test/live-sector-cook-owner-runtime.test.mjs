@@ -824,6 +824,7 @@ function gpuFixture() {
     armAdmissionShadows: () => () => f.marks.push('restore-shadows'),
     revealSubjectForCompile: () => () => f.marks.push('restore-reveal'),
     survivalRunHoldsArena: () => false, createSlicedYield: fn => fn,
+    createCookQueuePaceDebt: () => ({ note() {}, due: () => true, clear() {} }),
     prepareStartupGpuResidency: async () => ({ ok: true }),
     collectFirstFlightLayerDrawables: () => [], collectInstancePoolCompileRoots: () => [],
     buildOpeningSubmissionPlan: () => ({ compileSubjects: [] }),

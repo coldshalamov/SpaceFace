@@ -470,7 +470,7 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
-import { makeGpuQueuePacer } from './gpuQueuePace.js';
+import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
@@ -17735,11 +17735,33 @@ export const render = {
         const cohort = units.programSubjects.length > 0 ? beginScenePipelineReadinessBatch(renderer) : null;
         const issued = [];
         let cohortDrain = null;
+        // Serial route behind the loading shell: most cohort subjects share a program cache key
+        // with one compiled earlier (perf lane, SwiftShader: 310-320 issued per cook, no link over
+        // 60 ms inside cook.touchCompile in 8/8 runs, ~75% of its wall idle). renderer.compile()
+        // then mints nothing and queues no GL work, yet each unit still paid a presented-frame
+        // wait + gl.finish, and the sliced yield right after it waited a second frame. Pace a
+        // unit that minted a program (its link stays alone in one bounded drain, as before) and
+        // otherwise only once a few units or a frame's worth of issue time has queued, the same
+        // bound openingGpuAdmission uses. The jump shell (flight) keeps per-unit pacing.
+        const cohortProgramCount = () => {
+          try {
+            const programs = renderer.info && renderer.info.programs;
+            return Array.isArray(programs) ? programs.length : -1;
+          } catch {
+            return -1;
+          }
+        };
+        const cohortPace = createCookQueuePaceDebt();
+        let cohortPaces = 0;
+        let cohortMinted = 0;
         try {
           if (cohort) {
             try {
-              for (const subject of units.programSubjects) {
+              for (let index = 0; index < units.programSubjects.length; index += 1) {
+                const subject = units.programSubjects[index];
                 if (cookOverBudget()) break;
+                const programsBefore = cohortProgramCount();
+                const issueStarted = cookNow();
                 const restoreSubject = revealSubjectForCompile(subject);
                 try {
                   issued.push(Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)).catch(() => null));
@@ -17748,11 +17770,28 @@ export const render = {
                 } finally {
                   restoreSubject();
                 }
+                const minted = programsBefore < 0 || cohortProgramCount() !== programsBefore;
+                if (minted) cohortMinted += 1;
                 // Serial-route queues (no KHR_parallel_shader_compile) would otherwise
                 // accumulate the whole cook in the command buffer and drain it inside one
-                // compositor readback — pacing keeps each forced drain bounded to one unit.
-                if (typeof cohort.paceQueue === 'function') await cohort.paceQueue();
-                if (compileYield) await compileYield();
+                // compositor readback — pacing keeps each forced drain bounded to one link.
+                let paced = false;
+                if (typeof cohort.paceQueue === 'function') {
+                  const coalesce = state.mode === 'loading';
+                  cohortPace.note(cookNow() - issueStarted);
+                  if (!coalesce || minted || cohortPace.due() || index === units.programSubjects.length - 1) {
+                    await cohort.paceQueue();
+                    cohortPace.clear();
+                    cohortPaces += 1;
+                    paced = coalesce;
+                  }
+                }
+                // The pacer already yielded a real task-queue slot; a second sliced yield here
+                // only waited another frame.
+                if (compileYield) {
+                  if (paced) { if (typeof compileYield.restart === 'function') compileYield.restart(); }
+                  else await compileYield();
+                }
               }
               cohortDrain = await cohort.drain({
                 timeoutMs: Math.max(0, cookDeadlineMs - (cookNow() - cookStarted)),
@@ -17777,6 +17816,8 @@ export const render = {
               unlinked: cohortDrain ? cohortDrain.programs : undefined,
               contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
               yields: compileYield ? compileYield.yields : undefined,
+              minted: cohort ? cohortMinted : undefined,
+              paces: cohort && typeof cohort.paceQueue === 'function' ? cohortPaces : undefined,
             });
           // This hand-rolled cohort bypasses the admit driver, so it runs the same detach
           // census itself: a cpu-detached package texture a touch below would force-upload
@@ -17806,7 +17847,13 @@ export const render = {
               || (subject.material && subject.material.name))
             || (subject && subject.type) || 'subject'
           );
-          for (const subject of units.programSubjects) {
+          // Behind the loading shell the touches draw already-linked programs (notReady 0 in the
+          // perf lane's 16 SwiftShader runs, ~1 ms of draw each) — pace them on the same debt
+          // bound as the cohort above instead of a frame wait + gl.finish per touch.
+          const touchPace = createCookQueuePaceDebt();
+          let touchPaces = 0;
+          for (let index = 0; index < units.programSubjects.length; index += 1) {
+            const subject = units.programSubjects[index];
             if (cookOverBudget()) break;
             const before = subjectProgramAtTouch(subject);
             if (before.status !== 'ready') notReady += 1;
@@ -17822,10 +17869,25 @@ export const render = {
             if (drawMs > maxTouchMs) maxTouchMs = drawMs;
             if (subjectProgramAtTouch(subject).program !== before.program) switched += 1;
             touched += 1;
-            // Same queue pacing as the cohort compile above: on the serial route each touch's
-            // draws must drain before the next queues, or the cook rebuilds the backlog.
-            if (cohort && typeof cohort.paceQueue === 'function') await cohort.paceQueue();
-            if (touchYield) await touchYield();
+            // Same queue pacing as the cohort compile above: on the serial route the touches'
+            // draws must drain in bounded groups, or the cook rebuilds the backlog. A touch that
+            // linked (its program switched or was not ready) drains alone.
+            let paced = false;
+            if (cohort && typeof cohort.paceQueue === 'function') {
+              const coalesce = state.mode === 'loading';
+              touchPace.note(drawMs);
+              if (!coalesce || before.status !== 'ready' || touchPace.due()
+                || index === units.programSubjects.length - 1) {
+                await cohort.paceQueue();
+                touchPace.clear();
+                touchPaces += 1;
+                paced = coalesce;
+              }
+            }
+            if (touchYield) {
+              if (paced && typeof touchYield.restart === 'function') touchYield.restart();
+              else if (!paced) await touchYield();
+            }
           }
           if (cookStale()) return cookSuperseded;
           recordOpeningCookStep(state.render, 'cook.touch', touchStarted,
@@ -17844,6 +17906,7 @@ export const render = {
             touchMs: Math.round(touchMs),
             maxTouchMs: Math.round(maxTouchMs),
             yields: touchYield && typeof touchYield.yields === 'number' ? touchYield.yields : undefined,
+            paces: cohort && typeof cohort.paceQueue === 'function' ? touchPaces : undefined,
           });
         } finally {
           restoreTouchShadows();
