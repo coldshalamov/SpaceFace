@@ -317,6 +317,8 @@ export function createSnapshotFence(options = {}) {
       presentedSnapshotTime = current.simTime;
       return span > 0 ? Math.max(0, Math.min(1, (presentedTime - prior.simTime) / span)) : 1;
     },
+    /** True when samplePresentationAlpha integrates wall time (the worker-lane follow clock). */
+    get followsWallClock() { return followClock; },
     get sequence() { return sequence; },
     get packCount() { return packCount; },
     /** Bytes packed by the most recent commit. 0 before the first pack. */
@@ -438,6 +440,15 @@ export function poseSpanAlpha(latest, previous, accumulatorS, fixedDt, fallbackA
 export const EXTRAPOLATION_MAX_SPEED_WU_S = 3000;
 export const EXTRAPOLATION_MAX_DISTANCE_WU = 60;
 const EXTRAPOLATION_MAX_ROTATION_STEP = 0.6;
+// After a frame that projected a body past its newest pack, a new pack can show it stopped (a hit)
+// or slowed. The correction runs BACKWARDS along its travel; closing it in one frame is a visible
+// twitch and, for the player, a camera jerk. Close this fraction of the gap per frame instead, and
+// only while the gap stays hull-sized and the packs are contiguous (a pooled mesh must never
+// inherit another body's last position).
+const EXTRAPOLATION_EASE_FRACTION = 0.3;
+const EXTRAPOLATION_EASE_MAX_GAP_WU = 90;
+const EXTRAPOLATION_EASE_DONE_WU = 0.3;
+const EXTRAPOLATION_EASE_MAX_PACK_GAP = 3;
 
 export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1, slotHint = -1) {
   if (!mesh || !mesh.position || !snapshot) return false;
@@ -454,6 +465,8 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   let t = Number.isFinite(alpha) ? alpha : 1;
   let tRot = t;
   let prev = -1;
+  let spanDx = 0;
+  let spanDz = 0;
   if (previous && t < 1) {
     prev = snapshotSameGenerationRow(previous, snapshot, entityId, index, slotHint);
   } else if (previous && t > 1) {
@@ -479,10 +492,52 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   if (prev >= 0) {
     const pp = prev * 3;
     const pq = prev * 4;
-    x = previous.columns.position[pp] + (x - previous.columns.position[pp]) * t;
-    z = previous.columns.position[pp + 2] + (z - previous.columns.position[pp + 2]) * t;
+    spanDx = x - previous.columns.position[pp];
+    spanDz = z - previous.columns.position[pp + 2];
+    x = previous.columns.position[pp] + spanDx * t;
+    z = previous.columns.position[pp + 2] + spanDz * t;
     qy = previous.columns.quaternion[pq + 1] + (qy - previous.columns.quaternion[pq + 1]) * tRot;
     qw = previous.columns.quaternion[pq + 3] + (qw - previous.columns.quaternion[pq + 3]) * tRot;
+  }
+  // Ease the snap-back that follows an extrapolated frame (see EXTRAPOLATION_EASE_*). Normal frames
+  // pay one property read; the stamp is written only while projecting or easing.
+  const ud = mesh.userData;
+  if (ud) {
+    const easing = ud.sfEaseOn === true;
+    let easedThisFrame = false;
+    if (easing && ud.sfEaseId === entityId && snapshot.sequence - ud.sfEaseSeq <= EXTRAPOLATION_EASE_MAX_PACK_GAP) {
+      const gx = x - ud.sfEaseX;
+      const gz = z - ud.sfEaseZ;
+      const gap = Math.hypot(gx, gz);
+      // Direction of travel is the one the body was PROJECTED along: the new span of a body that
+      // just stopped is empty, which is exactly when the projection has to be walked back.
+      if (gap > EXTRAPOLATION_EASE_DONE_WU && gap <= EXTRAPOLATION_EASE_MAX_GAP_WU
+        && gx * ud.sfEaseDx + gz * ud.sfEaseDz < 0) {
+        x = ud.sfEaseX + gx * EXTRAPOLATION_EASE_FRACTION;
+        z = ud.sfEaseZ + gz * EXTRAPOLATION_EASE_FRACTION;
+        ud.sfEaseSeq = snapshot.sequence;
+        ud.sfEaseX = x;
+        ud.sfEaseZ = z;
+        easedThisFrame = true;
+      } else {
+        ud.sfEaseOn = false;
+      }
+    } else if (easing) {
+      ud.sfEaseOn = false;
+    }
+    if (t > 1 && prev >= 0) {
+      ud.sfEaseOn = true;
+      ud.sfEaseId = entityId;
+      ud.sfEaseSeq = snapshot.sequence;
+      ud.sfEaseX = x;
+      ud.sfEaseZ = z;
+      // While an ease is running the direction it walks back along is the one the body was
+      // projected along; the newest span of a stopped body is empty and must not overwrite it.
+      if (!easedThisFrame) {
+        ud.sfEaseDx = spanDx;
+        ud.sfEaseDz = spanDz;
+      }
+    }
   }
   const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;
   const oy = origin && Number.isFinite(origin.y) ? origin.y : 0;

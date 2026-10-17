@@ -30897,8 +30897,22 @@ export const render = {
         updateShipPitchPresentation(this.state, this._presentationFrameDt);
       });
       if (this._snapshotFence) {
+        let fenceElapsedS = this._presentationFrameDt;
+        if (this._snapshotFence.followsWallClock === true) {
+          // The follow clock integrates wall time. A frame-capped present skips rAF callbacks, so the
+          // delta this present was handed undercounts the time since the previous present; use the
+          // real interval, scaled by the same time-effects factor (a pause or freeze is still zero)
+          // and clamped like any other hitch.
+          const sampleAt = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+          const lastAt = this._fenceSampleAtMs;
+          this._fenceSampleAtMs = sampleAt;
+          if (Number.isFinite(lastAt) && this._lastFrameDt > 0) {
+            const wallS = Math.min(0.25, Math.max(0, (sampleAt - lastAt) / 1000));
+            fenceElapsedS = Math.max(fenceElapsedS, wallS * (this._presentationFrameDt / this._lastFrameDt));
+          }
+        }
         this._snapshotPresentationAlpha = this._snapshotFence.samplePresentationAlpha(
-          this._presentationFrameDt,
+          fenceElapsedS,
           this.state ? this.state.accumulator : 0,
           LOOP_FIXED_DT,
           alpha,
