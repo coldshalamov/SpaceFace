@@ -244,6 +244,7 @@ export function createMarketNews(ctx) {
   // Stunt wire (U8): each witnessed episode makes the wire at most once per process. Rewinding
   // a save may legitimately re-settle it, so this clears on save:loaded like the set above.
   const surfacedStuntEpisodes = new Set();
+  const surfacedPirateKills = new Set();
 
   function seedOf() {
     return (state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
@@ -506,6 +507,25 @@ export function createMarketNews(ctx) {
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
 
   on('news:publish', surfacePublished);
+  on('law:killedAdjudicated', (p) => {
+    if (!p || p.outcome !== 'lawful' || p.witnessed !== true || p.evidenceClass !== 'direct'
+      || !(p.witnessCount > 0) || p.pirate !== true || !p.savedHull || !p.savedHull.name
+      || !Array.isArray(p.witnessStableIds) || p.witnessStableIds.length === 0
+      || !p.victimStableId || !p.sectorId) return null;
+    const eventId = `pirate-kill:${p.sectorId}:${p.victimStableId}:${p.tick}`;
+    if (surfacedPirateKills.has(eventId) || model.log.some((rec) => rec && rec.eventId === eventId)) return null;
+    const metadata = {
+      eventId, sourceRef: eventId, source: 'law:killedAdjudicated', kind: 'pirate_rescue',
+      sectorId: p.sectorId, savedHull: p.savedHull, witnessStableIds: p.witnessStableIds.slice(),
+    };
+    const text = `Raider destroyed at ${sectorDisplayName(p.sectorId)}; ${p.savedHull.name} saved. Source: ${p.witnessCount} eyewitness report${p.witnessCount === 1 ? '' : 's'}.`;
+    const committed = commitHeadline(text, metadata, { metadata });
+    if (committed) {
+      surfacedPirateKills.add(eventId);
+      if (surfacedPirateKills.size > 64) surfacedPirateKills.delete(surfacedPirateKills.values().next().value);
+    }
+    return committed;
+  });
   registerWorldBeats((evt, fn) => {
     on(evt, (payload) => {
       const headline = fn(payload);
@@ -675,6 +695,7 @@ export function createMarketNews(ctx) {
     // durable ledger decides whether the consequence may settle again; presentation must not carry
     // a later timeline's transient suppression across that rewind.
     surfacedFreightLossIds.clear();
+    surfacedPirateKills.clear();
     surfacedFreightArrivalIds.clear();
     surfacedLossPriceIds.clear();
     freightArrivalHeardAt.clear();
@@ -685,6 +706,7 @@ export function createMarketNews(ctx) {
   });
   on('game:newGame', () => {
     surfacedFreightLossIds.clear();
+    surfacedPirateKills.clear();
     surfacedFreightArrivalIds.clear();
     surfacedLossPriceIds.clear();
     freightArrivalHeardAt.clear();

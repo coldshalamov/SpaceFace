@@ -2573,8 +2573,18 @@ export const lawSecurity = {
       // Stamping it 'unwitnessed' would print a lie on the footprint.
       const evidenceClass = eyes ? 'direct' : 'unwitnessed';
       const witnessed = evidenceClass === 'direct';
+      // Only a live, named hull the pirate was actually targeting can be called saved.
+      const pirate = isPirateLike(victim);
+      const targetId = victim?.data?.combat?.targetId ?? victim?.data?.ai?.activity?.targetId;
+      const saved = outcome === 'lawful' && witnessed && pirate ? entityById(state, targetId) : null;
+      const savedName = saved && incidentVictimLabel(state, saved);
+      const savedHull = saved && saved.alive !== false && saved.type === 'ship'
+        && saved.id !== state.playerId && savedName
+        && !isHostileToPlayer(saved, player && player.team, state)
+        ? { entityId: saved.id, stableId: victimStableIdOf(saved, {}), name: savedName } : null;
       this._emit('law:killedAdjudicated', {
         outcome,
+        ...(savedHull ? { savedHull, pirate: true, sectorId: currentSectorId(state) } : {}),
         victimEntityId: payload.id,
         victimStableId,
         victimClass: payload.victimClass || null,

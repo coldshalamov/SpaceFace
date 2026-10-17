@@ -14,6 +14,8 @@ import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
 import { stuntAccountFor } from '../combat/stuntWitnesses.js';
+import { peekDeedRecord } from './deedRecord.js';
+import { deedLine } from '../data/deedPhrases.js';
 import {
   SHIP_LEDGER_TEMPLATES,
   VOLS_LEDGER_ANNOTATIONS,
@@ -945,6 +947,20 @@ export function renderStorySoFar(state, options = {}) {
   return projectStorySoFar({ phase, entries, escalations });
 }
 
+/** Read the most repeated deed from the existing bounded record, without adding a new tally. */
+export function mostCitedShipDeed(state) {
+  const record = peekDeedRecord(state);
+  let best = null;
+  for (const deed of record && record.deeds || []) {
+    if (!deed || !(deed.told > 0)) continue;
+    if (!best || deed.told > best.told
+      || (deed.told === best.told && (deed.t > best.t
+        || (deed.t === best.t && String(deed.id).localeCompare(String(best.id)) < 0)))) best = deed;
+  }
+  const line = best && deedLine(best, { voice: 'neutral' });
+  return line ? { sourceId: best.id, sourceKind: 'story.record.deeds', citations: best.told, text: line } : null;
+}
+
 /**
  * Build one bounded ledger page without writing to `state` or any source slice.
  * Page 0 is newest; older entries live in archive pages. The UI never receives more than 24 rows.
@@ -976,6 +992,7 @@ export function buildShipLedger(state, options = {}) {
     evidenceConflicts,
     endgameQuotes: quoteCandidates(bounded, endgameOpen),
     storySoFar,
+    mostCitedDeed: mostCitedShipDeed(state),
   });
 }
 

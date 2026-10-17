@@ -3,6 +3,22 @@
 import { hash32 } from '../core/rng.js';
 
 export const MORAL_MEMORY_VERSION = 1;
+export const MORAL_MEMORY_MAX_DEBTS = 128;
+
+export function moralTrapPartyId(offer) {
+  if (!offer || !offer.stationId) return null;
+  return `trap-party:${offer.stationId}:${offer.factionId || 'independent'}`;
+}
+
+export function lastTrapRefusal(state, partyId) {
+  const memory = state && state.story && state.story.moralMemory;
+  if (!partyId || !memory || !Array.isArray(memory.order)) return null;
+  for (let i = memory.order.length - 1; i >= 0; i--) {
+    const debt = memory.debts && memory.debts[memory.order[i]];
+    if (debt && debt.refusal && debt.refusal.partyId === partyId) return debt;
+  }
+  return null;
+}
 
 export function ensureMoralMemory(state) {
   const story = state.story || (state.story = { flags: {} });
@@ -50,9 +66,13 @@ export function rememberMoralDebt(state, payload = {}) {
   if (typeof payload.captorFactionId === 'string' && payload.captorFactionId) debt.captorFactionId = payload.captorFactionId;
   if (payload.captorId != null && payload.captorId !== '') debt.captorId = payload.captorId;
   if (payload.playerAnswered === true) debt.playerAnswered = true;
+  if (payload.refusal) debt.refusal = { ...payload.refusal };
   memory.mercyCount += 1;
   memory.debts[id] = debt;
   memory.order.push(id);
+  while (memory.order.length > MORAL_MEMORY_MAX_DEBTS) {
+    delete memory.debts[memory.order.shift()];
+  }
   return debt;
 }
 

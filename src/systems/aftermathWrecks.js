@@ -837,7 +837,7 @@ function rememberCause(state, bus, payload) {
   return merged;
 }
 
-function rememberMarker(state, bus, marker, onEvicted = null) {
+function rememberMarker(state, bus, marker, onEvicted = null, { publishNews = true } = {}) {
   const own = ensureAftermathState(state);
   if (!own || !marker || !marker.sectorId || !marker.markerId) return null;
   const arr = own.bySector[marker.sectorId] || (own.bySector[marker.sectorId] = []);
@@ -865,6 +865,7 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
     const headline = marker.headline || newsLine(marker);
     marker.headline = headline;
     bus.emit('aftermathWreck:recorded', clonePlain(marker));
+    if (!publishNews) return marker;
     bus.emit('news:headline', {
       headline,
       text: headline,
@@ -1475,6 +1476,11 @@ export const aftermathWrecks = {
 
   _recordKill(payload) {
     const entity = entityFor(this.state, payload.id);
+    // Player pirate kills use lawSecurity's witness-gated rescue headline. The wreck still
+    // exists even when nobody can report it; generic residue news must not invent a witness.
+    const pirate = /pirate|raider|corsair|scavenger/.test(`${payload.victimClass || ''} ${entity?.data?.shipClass || ''} ${entity?.data?.ai?.archetype || ''}`.toLowerCase())
+      || (entity?.factionId || payload.factionId) === 'faction_reach';
+    const publishNews = !(payload.killerId === this.state.playerId && pirate);
     const marker = makeMarker(this.state, payload, entity);
     if (marker) marker.headline = newsLine(marker);
     // Arena cap enforcement runs BEFORE the marker is remembered: the law is "the ninth body
@@ -1492,7 +1498,7 @@ export const aftermathWrecks = {
           this._retireMarkerShard(item.markerId);
         }
       }
-    });
+    }, { publishNews });
     if (remembered) {
       this._stampNearbyStructurePatch(remembered, payload);
       // A manifested kill re-arms the field's contested stamp (memoized in _populateField) so a

@@ -109,6 +109,7 @@ export const aceMemory = {
     this._listen('namedAce:appeared', (p) => this._appeared(p));
     this._listen('namedAce:fled', (p) => this._transition('fled', p));
     this._listen('namedAce:defeated', (p) => this._transition('defeated', p));
+    this._listen('ace:defeated', (p) => this._transition('defeated', p));
     this._listen('encounter:receipt', (p) => this._receipt(p));
     // Living-world memory: helped and crossed ledger lines. Factions/missions/economy stay sole
     // writers of their own state — these are event receipts, read-only over their payloads.
@@ -302,6 +303,7 @@ export const aceMemory = {
     if (!ace) return;
     const memory = ensureMemory(this.state);
     const rec = recordFor(memory, ace);
+    if (transition === 'defeated' && rec.defeated === true) return;
     const now = nowOf(this.state, payload);
     const sectorId = sectorOf(this.state, payload);
     rec.encountered = true;
@@ -1666,11 +1668,27 @@ export const aceMemory = {
   },
 
   _emitNews(transition, ace, rec) {
-    const headline = newsForAceTransition(ace, transition);
+    const headline = transition === 'defeated'
+      ? `${ace.name} defeated at ${sectorDisplayName(rec.lastSectorId)}; ${ace.crew} loses its captain. Source: ship's combat log.`
+      : newsForAceTransition(ace, transition);
     if (!headline) return;
     const key = `${ace.id}:${transition}`;
     const memory = ensureMemory(this.state);
     memory.news[key] = true;
+    if (transition === 'defeated') {
+      const sourceRef = `ace:defeated:${ace.id}:${rec.defeatedAt}`;
+      emit(this.bus, 'news:publish', {
+        text: headline,
+        kind: 'ace-defeated',
+        source: 'aceMemory',
+        sourceRef,
+        eventId: sourceRef,
+        aceId: ace.id,
+        aceName: ace.name,
+        sectorId: rec.lastSectorId || null,
+      });
+      return;
+    }
     emit(this.bus, 'news:headline', {
       headline,
       text: headline,

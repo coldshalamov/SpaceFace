@@ -51,8 +51,8 @@
 //     becomes a pending debt record the existing debt-reveal readers can surface. Pay/rep
 //     intents are untouched (single writers stay single).
 
-import { MORAL_TRAPS, TRAP_IDS, trapFitsOfferType, trapFitsCargoFamily } from '../data/moralTraps.js';
-import { rememberMoralDebt } from './moralMemory.js';
+import { MORAL_TRAPS, TRAP_IDS, trapFitsOfferType, trapFitsCargoFamily, trapRefusalMemoryLine, trapRefusalOfferLine } from '../data/moralTraps.js';
+import { rememberMoralDebt, moralTrapPartyId, lastTrapRefusal } from './moralMemory.js';
 import { FRONTIER_FIRST_NAMES, FRONTIER_LAST_NAMES } from '../data/barks.js';
 import { SECTORS } from '../data/sectors.js';
 import { hash32, mulberry32 } from '../core/rng.js';
@@ -75,6 +75,15 @@ function trapCounterpartyName(seed, missionId) {
   const first = FRONTIER_FIRST_NAMES[h % FRONTIER_FIRST_NAMES.length];
   const last = FRONTIER_LAST_NAMES[(h >>> 8) % FRONTIER_LAST_NAMES.length];
   return `${first} ${last}`;
+}
+
+/** The next board offer from the same station broker carries their remembered refusal. */
+export function referenceTrapRefusal(offer, state) {
+  const debt = lastTrapRefusal(state, moralTrapPartyId(offer));
+  if (!debt || !offer || offer.source || offer.storyTag) return offer;
+  const line = trapRefusalOfferLine(debt.refusal.partyName);
+  if (String(offer.brief || '').includes(line)) return offer;
+  return { ...offer, brief: [offer.brief, line].filter(Boolean).join(' ') };
 }
 
 /**
@@ -331,9 +340,11 @@ export const moralTrapSystem = {
     const state = this._state;
     if (!state || !m || !m.trap) return;
     const trapId = m.trap.id;
+    const partyId = moralTrapPartyId(m);
+    const partyName = trapCounterpartyName((state.meta && state.meta.seed) || 0, partyId || m.id);
     const name = trapId === 'passenger_is_fugitive'
       ? (m.params && m.params.passenger && m.params.passenger.name) || 'The passenger'
-      : trapCounterpartyName((state.meta && state.meta.seed) || 0, m.id);
+      : partyName;
     rememberMoralDebt(state, {
       id: `moralTrap:${m.id}`,
       name,
@@ -342,6 +353,9 @@ export const moralTrapSystem = {
       disposition: option.settle === 'continue' ? 'ally' : 'vengeful',
       t: state.simTime,
       source: 'moralTrap:resolve',
+      ...(option.settle === 'end' && partyId ? {
+        refusal: { partyId, partyName, trapId, line: trapRefusalMemoryLine(partyName, option.label) },
+      } : {}),
     });
   },
 
