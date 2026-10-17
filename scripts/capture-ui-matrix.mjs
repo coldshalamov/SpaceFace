@@ -17,6 +17,7 @@ import {
   UI_FRAME_TOTAL_SCOPE,
   UI_KNOWN_RAF_SCOPE,
   aggregateBudgetRows,
+  explainBudgetRejection,
   uiSourceDigest,
   uiSourceDigestFromOverlay,
 } from './lib/uiBudgets.mjs';
@@ -51,6 +52,8 @@ async function readCaptureSourceOverlayIdentity(baseUrl, expected) {
 // bucketed at the same rAF timestamp, with game/unknown-rAF diagnostics alongside) and counts the
 // surface's DOM subtree.
 const BUDGET_SAMPLE_MS = 600;
+// Sampling windows tried per surface before it is left to the aggregator to name as a gap.
+const BUDGET_SAMPLE_ATTEMPTS = 4;
 let BUDGET_PROBE_ACTIVE = false;
 // Frontend Task A (design/frontend/direction/KIT_SPEC.md §11.7, §13): a `--world` run photographs
 // the live 3D picture instead of the neutral ground. Chromium gets real GL flags, the neutral
@@ -93,6 +96,13 @@ export const UI_FRAME_PROVENANCE_FILE = path.join(UI_FRAME_REFERENCE_DIR, 'prove
  * means the visual matrix and the simulation goldens describe the same universe.
  */
 export const UI_MATRIX_SEED = 47;
+
+/**
+ * The seed the Crucible Practice room fixes for itself (src/ui/sandbox/sandboxSetup.js, preset
+ * 'sling_practice'). The practice boot asserts this one instead of the typed matrix seed: the room
+ * is deliberately the identical room every launch, so the typed-seed route does not apply to it.
+ */
+export const PRACTICE_ROOM_SEED = 39039;
 
 /**
  * THE GROUND, pinned — and the reason a full baseline fits in git at all.
@@ -234,6 +244,14 @@ export const MATRIX_SURFACES = Object.freeze(CAPTURE_SURFACES.map((surface) => O
   // A surface whose preparation leaves the session somewhere else — a different sector, a hull
   // parked against a rock. Photographed in a boot of its own so nothing after it inherits that world.
   isolatedBoot: surface.isolatedBoot === true,
+  // 'main' pins that own boot to `?simLane=main`. The default runtime is the worker lane, where
+  // `window.SF.state` is only a mirror: a preparation that stages the hull or the bankroll writes
+  // into the mirror and the authoritative sim never hears it (D201: the claims board saw 5,000 cr,
+  // Asteroid Works saw a rock it had not moved to). Only surfaces whose preparation must write sim
+  // state ask for it; every other frame is shot on the default lane.
+  simLane: surface.simLane === 'main' ? 'main' : null,
+  // 'practice' boots through the Crucible door's Practice room instead of New Game (see openBoot).
+  bootRoute: surface.bootRoute === 'practice' ? 'practice' : null,
   // 'element' crops to the surface's own box — the right frame for an overlay that lives inside the
   // flight picture (the Power Rail, the radials). Anything else is the whole viewport.
   captureMode: surface.captureMode === 'element' ? 'element' : 'viewport',
@@ -598,7 +616,7 @@ export async function captureUiMatrix(options = {}) {
           const locale = needed[0].locale || null;
           let isolated = null;
           try {
-            isolated = await openBootWithRetry({ browser, baseUrl: server.baseUrl, viewport, locale, hideSelectors });
+            isolated = await openBootWithRetry({ browser, baseUrl: server.baseUrl, viewport, locale, hideSelectors, simLane: surface.simLane, bootRoute: surface.bootRoute });
           } catch (error) {
             for (const mode of needed) {
               failures.push({ surface: surface.id, mode: mode.id, viewport, reason: `isolated boot failed: ${error.message}` });
@@ -759,11 +777,17 @@ export async function captureUiMatrix(options = {}) {
     const plannedIds = [...new Set(MATRIX_SURFACES
       .filter((surface) => planIncludes(filter, { surfaceId: surface.id }))
       .map((surface) => surface.id))];
+    // The rule that rejected this surface's last sample, so the gap names its own cause.
+    const rejectionFor = (id) => {
+      const rows = enriched.filter((row) => row.surface === id);
+      if (!rows.length) return 'the surface produced no frame in this run';
+      return explainBudgetRejection(rows[rows.length - 1]) || 'the probe returned no usable samples in the sampling window';
+    };
     const reasonFor = (id) => {
       const hit = (failures || []).find((f) => f && f.surface === id);
       return hit
         ? `${hit.mode}@${hit.viewport?.width}x${hit.viewport?.height}: ${hit.reason}`
-        : 'no budget row: the probe returned no usable samples in the sampling window';
+        : `no budget row: ${rejectionFor(id)}`;
     };
     const missing = plannedIds
       .filter((id) => !budgetedIds.has(id))
@@ -1143,11 +1167,25 @@ async function prepareCommsFan(page) {
     if (ready) break;
     await page.waitForTimeout(500);
   }
-  await page.keyboard.down('Alt');
-  // The wedges arrive on the offer reply, one bus round-trip after the fan itself.
-  await page.waitForFunction(() => document.querySelectorAll('.sf-commsfan__wedge').length > 0, null, { timeout: 6000 })
-    .catch(() => {});
-  return { ok: true, handled: true };
+  // The fan decides once, on the Alt keydown edge, and the held key does not ask again
+  // (commsRadial.js `openFan`). With no target set, `nearestHailAvailability` picks the nearest
+  // hailable ship, files it through `laneInputWrite('player.targetId')`, and re-reads the hail
+  // availability from the page's own state. On the default worker lane that write only reaches the
+  // sim worker, so the page still sees no target and the FIRST hold stays shut; the target arrives
+  // with the next mirror, and the second hold opens the fan. On `?simLane=main` the first hold
+  // opens it (D201 probe, 2026-10-17). That is a player-visible defect in the quick fan, reported
+  // rather than fixed here; a player releases Alt and holds again, and so does this preparation:
+  // one hold per attempt, each released before the next, until the wedges are on screen.
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.down('Alt');
+    // The wedges arrive on the offer reply, one bus round-trip after the fan itself.
+    const opened = await page.waitForFunction(() => document.querySelectorAll('.sf-commsfan__wedge').length > 0, null, { timeout: 2500 })
+      .then(() => true).catch(() => false);
+    if (opened) return { ok: true, handled: true };
+    await page.keyboard.up('Alt').catch(() => {});
+    await page.waitForTimeout(500);
+  }
+  return { ok: false, reason: 'comms fan: six Alt holds with a hailable contact in range never opened the fan' };
 }
 
 /**
@@ -1718,13 +1756,22 @@ async function captureSurfaceScreenshot({
     const rootHandle = await firstVisibleHandle(page, surface.selectors);
     // Bounded (D117): a renderer that wedged between the open and this probe would hang the
     // reset/snapshot round trips forever. Bounded, they surface as this surface's own failure.
-    await withTimeout(page.evaluate(() => window.__sfBudgetProbe && window.__sfBudgetProbe.reset()),
-      15_000, 'the budget probe reset');
-    await page.waitForTimeout(BUDGET_SAMPLE_MS);
-    budget = await withTimeout(page.evaluate(() => {
-      const probe = window.__sfBudgetProbe;
-      return probe && typeof probe.snapshot === 'function' ? probe.snapshot() : null;
-    }), 15_000, 'the budget probe snapshot').catch(() => null);
+    // A window with no present frame in it (the page was throttled for a beat, or the surface's own
+    // open stalled the main thread across the whole 600 ms) is not a measurement and must not be
+    // banked as a missing surface: D201 left chart-galaxy without a row that way. Sample again,
+    // a bounded number of times; a surface that stays empty is still named a gap by the aggregator.
+    for (let attempt = 0; attempt < BUDGET_SAMPLE_ATTEMPTS; attempt += 1) {
+      await withTimeout(page.evaluate(() => window.__sfBudgetProbe && window.__sfBudgetProbe.reset()),
+        15_000, 'the budget probe reset');
+      await page.waitForTimeout(BUDGET_SAMPLE_MS);
+      budget = await withTimeout(page.evaluate(() => {
+        const probe = window.__sfBudgetProbe;
+        return probe && typeof probe.snapshot === 'function' ? probe.snapshot() : null;
+      }), 15_000, 'the budget probe snapshot').catch(() => null);
+      // Accept on the aggregator's own rule (scope, presented frames, no unbucketed UI callbacks),
+      // not on a bare sample count: a window that would be rejected later is sampled again now.
+      if (budget && explainBudgetRejection({ surface: surface.id, budget: { ...budget, domNodes: 0 } }) === null) break;
+    }
     if (budget && rootHandle) {
       // Count on the RESOLVED handle, not a re-run selector: multi-selector roots (the station
       // panels) re-resolve differently in-document and committed a domNodes: 0 lie once already.
@@ -1792,7 +1839,7 @@ async function firstVisibleHandle(page, selectors) {
  * and the new-game screens are on screen — that is the only moment those two surfaces exist, so
  * pre-launch capture and measurement hook in there rather than trying to reach them from flight.
  */
-export async function openBoot({ browser, baseUrl, viewport, locale = null, menuPhase = null, hideSelectors = null }) {
+export async function openBoot({ browser, baseUrl, viewport, locale = null, menuPhase = null, hideSelectors = null, simLane = null, bootRoute = null }) {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     screen: { width: viewport.width, height: viewport.height },
@@ -2058,9 +2105,10 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
       });
     }
 
-    const rootUrl = locale
-      ? `${baseUrl}?locale=${encodeURIComponent(locale)}`
-      : baseUrl;
+    const rootParams = [];
+    if (locale) rootParams.push(`locale=${encodeURIComponent(locale)}`);
+    if (simLane) rootParams.push(`simLane=${encodeURIComponent(simLane)}`);
+    const rootUrl = rootParams.length ? `${baseUrl}?${rootParams.join('&')}` : baseUrl;
 
     await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
     // Before anything is photographed, and before the title screen exists. A frame shot over the
@@ -2102,13 +2150,24 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
     await waitForAnyVisible(page, ['[data-screen="mainMenu"]'], MAIN_MENU_TIMEOUT_MS, 'main menu');
     if (menuPhase) await menuPhase(page, 'title');
 
-    if (!(await clickMainMenuNewGame(page))) throw new Error('main menu New Game button missing or disabled');
-    await waitForAnyVisible(page, ['[data-screen="newGame"]'], NEW_GAME_TIMEOUT_MS, 'new game screen');
-    // Before the new-game screen is photographed, so that frame is deterministic too.
-    const seeded = await setUniverseSeed(page, UI_MATRIX_SEED);
-    if (!seeded) throw new Error('could not set the universe seed; every boot would build a different galaxy');
-    if (menuPhase) await menuPhase(page, 'new-game');
-    if (!(await clickNewGameLaunch(page))) throw new Error('new game Launch button missing or disabled');
+    if (bootRoute === 'practice') {
+      // The Crucible lab exists only in the room the Crucible door launches. That launch is the
+      // route a player takes, so the boot takes it: title → Crucible → Practice room. The room
+      // fixes its own seed (sandboxSetup.js 'sling_practice'); typing 47 would not take.
+      const door = await clickControl(page, { selector: '[data-screen="mainMenu"] [data-action="crucible"]', text: 'Crucible' });
+      if (!door.ok) throw new Error(`practice boot: ${door.reason}`);
+      await waitForAnyVisible(page, ['[data-screen="crucible"]'], 30_000, 'crucible door');
+      const practice = await clickControl(page, { selector: '[data-screen="crucible"] button', text: 'Practice room' });
+      if (!practice.ok) throw new Error(`practice boot: ${practice.reason}`);
+    } else {
+      if (!(await clickMainMenuNewGame(page))) throw new Error('main menu New Game button missing or disabled');
+      await waitForAnyVisible(page, ['[data-screen="newGame"]'], NEW_GAME_TIMEOUT_MS, 'new game screen');
+      // Before the new-game screen is photographed, so that frame is deterministic too.
+      const seeded = await setUniverseSeed(page, UI_MATRIX_SEED);
+      if (!seeded) throw new Error('could not set the universe seed; every boot would build a different galaxy');
+      if (menuPhase) await menuPhase(page, 'new-game');
+      if (!(await clickNewGameLaunch(page))) throw new Error('new game Launch button missing or disabled');
+    }
 
     await page.waitForFunction(() => {
       const state = window.SF && window.SF.state;
@@ -2124,7 +2183,13 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
       const state = window.SF && window.SF.state;
       return state && state.meta ? state.meta.seed : null;
     });
-    if (actualSeed !== UI_MATRIX_SEED) {
+    if (bootRoute === 'practice') {
+      // The Practice room fixes its own seed; the typed matrix seed does not apply to it.
+      if (actualSeed !== PRACTICE_ROOM_SEED) {
+        throw new Error(`practice room seed is ${actualSeed}, expected ${PRACTICE_ROOM_SEED} — the Practice room `
+          + 'did not launch the room this frame is meant to show');
+      }
+    } else if (actualSeed !== UI_MATRIX_SEED) {
       throw new Error(`universe seed is ${actualSeed}, expected ${UI_MATRIX_SEED} — this boot built a `
         + 'different galaxy and its frames would not be comparable with any other run');
     }

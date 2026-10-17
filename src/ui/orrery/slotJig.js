@@ -132,7 +132,7 @@ export function createSlotJig({ host } = {}) {
           class: `orr-slotjig__seg${on ? ' is-fitted' : ''}${i === spec.target ? ' is-target' : ''}`, 'stroke-width': 4 }));
       });
       if (spec.engraving) {
-        const eng = circularText(cxd, cyd, R + 30, String(spec.engraving).toUpperCase(), { startDeg: 270, size: 10, anchor: 'middle', upright: true, className: 'orr-micro' });
+        const eng = circularText(cxd, cyd, R + 30, String(spec.engraving).toUpperCase(), { startDeg: 270, size: 12, anchor: 'middle', upright: true, className: 'orr-micro' });
         layer.appendChild(eng);
       }
     }

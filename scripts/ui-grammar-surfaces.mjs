@@ -366,9 +366,11 @@ const RAW_SURFACES = Object.freeze([
     id: 'statistics',
     title: 'Statistics',
     archetype: 'META-SHELL',
-    ownerFile: null,
-    status: 'missing',
-    entry: none('career/ladder models exist in src/ui/careerLadderView.js but no statistics surface is registered'),
+    ownerFile: 'src/ui/screens/statistics.js',
+    screenId: 'statistics',
+    root: ['[data-screen="statistics"]'],
+    // A REAL public route: the pause sheet's "Statistics" word (pause.js, Reference group).
+    entry: nested('pause', '[data-screen="pause"] [data-action]', 'Statistics', 'pause → Statistics'),
     owner: 'PQ-181',
     ownerLeaf: 'meta-shell',
   }),
@@ -376,9 +378,11 @@ const RAW_SURFACES = Object.freeze([
     id: 'photo-mode',
     title: 'Photo mode',
     archetype: 'META-SHELL',
-    ownerFile: null,
-    status: 'missing',
-    entry: none('no photo mode exists (audited 2026-09-04)'),
+    ownerFile: 'src/ui/screens/pause.js',
+    // Not a stack screen: the pause sheet's "Photo" word (pause.js `enterPhoto`) hides the sheet
+    // and the HUD (body.k-photo) and mounts the exposure/look/FOV bar over the live picture.
+    root: ['.sf-photo-bar'],
+    entry: nested('pause', '[data-screen="pause"] [data-action]', 'Photo', 'pause → Photo'),
     owner: 'PQ-181',
     ownerLeaf: 'meta-shell',
   }),
@@ -480,8 +484,24 @@ const RAW_SURFACES = Object.freeze([
     title: 'The Crucible lab',
     archetype: 'CRUCIBLE',
     ownerFile: 'src/ui/screens/crucibleLabControls.js',
-    status: 'unregistered',
-    entry: none('the lab controls module registers no screen id; there is no route that opens it as a surface'),
+    // Not a screen id: the lab is the "Physics lab" rack (`.sf-lab-flight`) that mounts over live
+    // flight when a run is launched from the Crucible door's Practice room.
+    root: ['.sf-lab-flight'],
+    entry: {
+      kind: 'default',
+      evidence: 'public-route',
+      detail: 'title → Crucible → Practice room; the rack is on screen once flight starts (own boot, bootRoute practice)',
+    },
+    captureMode: 'element',
+    // The Practice room launches a sandbox game of its own (fixed seed, fixed hull, inert targets),
+    // so it cannot share the New Game boot every other flight surface is photographed in.
+    isolatedBoot: true,
+    bootRoute: 'practice',
+    // On the default worker lane the Practice room launches with the menu boot's seed and the
+    // Kestrel instead of its fixed seed 39039 and Hornet (D201 probe, 2026-10-17); on the main lane it
+    // builds the room the preset describes. The rack is the same either way, so the frame is shot
+    // where the room is right and the lane difference is reported as a defect.
+    simLane: 'main',
     owner: 'PQ-182',
     ownerLeaf: 'crucible-screens',
   }),
@@ -503,6 +523,9 @@ const RAW_SURFACES = Object.freeze([
     // Every surface photographed after it in the same boot would be a picture of that, so it is
     // photographed in a boot of its own.
     isolatedBoot: true,
+    // The preparation moves the hull and reads the massline receipt from the authoritative sim;
+    // on the default worker lane the page only holds a mirror of both (D201).
+    simLane: 'main',
   }),
   surface({
     id: 'base',
@@ -520,6 +543,9 @@ const RAW_SURFACES = Object.freeze([
     // different part of the galaxy — including the station fixture, which looks for a station in
     // whichever sector it finds itself in. So it gets a boot of its own.
     isolatedBoot: true,
+    // The preparation grants the 15,000 cr bankroll and flies the jump; the worker lane's mirror
+    // ignores both, so the claim reported "Need 10,000 more cr" and the board never opened (D201).
+    simLane: 'main',
   }),
   surface({
     id: 'automation',
@@ -546,7 +572,8 @@ const RAW_SURFACES = Object.freeze([
     screenId: 'localmap',
     status: 'legacy',
     root: ['[data-screen="localmap"]'],
-    entry: none('superseded by the chart; registered for tools/checks only, no player route'),
+    entry: none('superseded by the chart; no route can show it — the map authority (uiRoot.js) rewrites every '
+      + 'localmap push, key and touch into galaxyMap at LOCAL focus, so the legacy DOM never mounts; a permanent, named gap'),
     owner: 'PQ-168',
     ownerLeaf: 'chart',
   }),
@@ -558,7 +585,9 @@ const RAW_SURFACES = Object.freeze([
     screenId: 'starmap',
     status: 'legacy',
     root: ['[data-screen="starmap"]'],
-    entry: none('superseded by the chart; registered for tools/checks only, no player route'),
+    entry: none('superseded by the chart; no route can show it — the map authority (uiRoot.js) rewrites every '
+      + 'starmap push (including the base screen "Open chart") into galaxyMap at GALAXY focus, so the legacy DOM '
+      + 'never mounts; a permanent, named gap'),
     owner: 'PQ-168',
     ownerLeaf: 'chart',
   }),

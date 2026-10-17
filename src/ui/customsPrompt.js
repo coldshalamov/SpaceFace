@@ -148,10 +148,14 @@ export const customsPrompt = {
     // LAW-10: a mid-scan dump aborts the scan the panel offered. The panel that offered
     // the decision reports the downgrade — a suspicion note, never a second penalty.
     this._onScanAborted = (p) => this._reportScanAborted(p);
+    this._onTrustMarked = (p) => this._reportTrust(p, false);
+    this._onScanWaived = (p) => this._reportTrust(p, true);
     if (this._bus && this._bus.on) {
       this._bus.on('player:scannedByPatrol', this._onScanned);
       this._bus.on('contraband:scanned', this._onResolved);
       this._bus.on('customs:scanAborted', this._onScanAborted);
+      this._bus.on('customs:trustMarked', this._onTrustMarked);
+      this._bus.on('customs:scanWaived', this._onScanWaived);
       this._bus.on('sector:exit', this._onResolved);
     }
   },
@@ -159,6 +163,17 @@ export const customsPrompt = {
   _economySys() {
     const r = this._ctx && this._ctx.registry;
     return (r && typeof r.get === 'function') ? r.get('economy') : null;
+  },
+
+  _reportTrust(p, waived) {
+    if (!p || !this._bus?.emit) return;
+    const station = p.stationName || p.stationId;
+    this._bus.emit('toast', {
+      text: waived
+        ? `CUSTOMS WAIVED — ${station} remembers today's clean pass.`
+        : `CUSTOMS CLEAR — trust mark recorded at ${station} for today.`,
+      kind: 'info', ttl: 4,
+    });
   },
 
   _handleScan(p) {
@@ -350,6 +365,8 @@ export const customsPrompt = {
     if (this._bus && this._bus.off) {
       if (this._onScanned) this._bus.off('player:scannedByPatrol', this._onScanned);
       if (this._onScanAborted) this._bus.off('customs:scanAborted', this._onScanAborted);
+      if (this._onTrustMarked) this._bus.off('customs:trustMarked', this._onTrustMarked);
+      if (this._onScanWaived) this._bus.off('customs:scanWaived', this._onScanWaived);
       if (this._onResolved) {
         this._bus.off('contraband:scanned', this._onResolved);
         this._bus.off('sector:exit', this._onResolved);
@@ -357,6 +374,8 @@ export const customsPrompt = {
     }
     this._onScanned = null;
     this._onScanAborted = null;
+    this._onTrustMarked = null;
+    this._onScanWaived = null;
     this._onResolved = null;
     this._dismiss();
   },

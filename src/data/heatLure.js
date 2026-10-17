@@ -27,6 +27,7 @@ export function copyHeatDerivative(raw) {
   const next = {};
   if (lure) next.lure = lure;
   if (raw.shown === true) next.shown = true;
+  if (raw.trialStarted === true) next.trialStarted = true;
   if (raw.edge === true) next.edge = true;
   if (raw.asked === true) next.asked = true;
   return Object.keys(next).length ? next : null;

@@ -98,6 +98,7 @@ test('offset native solids and allowed held-pose margins never disappear from th
   assert.equal(ceresWorkfleetRecoveryClear(h.physics._sg02,h.state,h.b,stage,stage).reason,'nearby-native-unresolved');h.physics._sg02.syncFromEntities(h.state.entityList);
   const hit=ceresWorkfleetRecoveryClear(h.physics._sg02,h.state,h.b,stage,stage);assert.equal(hit.ok,false);assert.equal(hit.blocker,'proof:offset-solid');assert.equal(blocker.alive,true);
  }finally{h.close();}
+ if(!earned){const h=await restore(initialWire()),snaps=new Map();try{for(let i=0;i<54000&&snaps.size<phaseNames.length;i++){h.sim.step();const job=h.job();if(phaseNames.includes(job.phase)&&!snaps.has(job.phase))snaps.set(job.phase,capture(h));}}finally{h.close();}earned=snaps;}
  const wire=clone(earned.get('recover_return_turn')),carrier=wire.records.byId[C.identities.worker],load=compose({...carrier.pos,rot:carrier.rot},C.assets.breaker.loadPose);
  wire.sites.worldById[C.siteId].payloads.long_plate.motion={pos:{x:load.x+Math.cos(carrier.rot)*.9,z:load.z+Math.sin(carrier.rot)*.9},vel:{x:0,z:0},rot:load.rot,angVel:0};
  const r=await restore(wire);try{

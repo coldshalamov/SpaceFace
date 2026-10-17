@@ -14,9 +14,10 @@ import { SIM_TIER } from './activityClassification.js';
 import { normalizeIntent } from './worldCatchup.js';
 import { SECTORS } from '../data/sectors.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { SHIPS } from '../data/ships.js';
 
 export const WORLD_RECORDS_SCHEMA_ID = 'spaceface.worldRecords.v1';
-export const WORLD_RECORDS_SCHEMA_VERSION = 2;
+export const WORLD_RECORDS_SCHEMA_VERSION = 3;
 
 /** Durable retention is independent from simulation residency/tier. */
 export const RETENTION_CLASS = Object.freeze({
@@ -206,7 +207,52 @@ export function createEmptyRecordsBag() {
     schemaId: WORLD_RECORDS_SCHEMA_ID,
     schemaVersion: WORLD_RECORDS_SCHEMA_VERSION,
     byId: {},
+    hullLosses: [],
   };
+}
+
+/** Player hulls are permanent history, independent of the ambient-record retention caps. */
+function normalizeHullLosses(input) {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set();
+  const rows = [];
+  for (const row of input) {
+    if (!row || typeof row.lossId !== 'string' || typeof row.name !== 'string'
+        || typeof row.shipDefId !== 'string' || typeof row.shipClass !== 'string'
+        || typeof row.sectorId !== 'string' || !Number.isFinite(row.lostAt)
+        || seen.has(row.lossId)) continue;
+    seen.add(row.lossId);
+    rows.push(clonePlain(row));
+  }
+  return rows;
+}
+
+/** Called only by world's player:death listener, while the defeated hull still exists. */
+export function recordPlayerHullLoss(state) {
+  const entity = state.entities?.get(state.playerId);
+  const data = entity?.data || {};
+  const owned = state.player?.ownedShips?.[state.player.activeShipIndex || 0];
+  const shipDefId = data.defId || owned?.defId;
+  const def = SHIPS.find(ship => ship.id === shipDefId);
+  const sectorId = state.world?.currentSectorId;
+  if (!entity || !def || !sectorId) return null;
+  const bag = ensureWorldRecords(state.world);
+  const lostAt = state.simTime || 0;
+  const lossId = stableRecordId(state.meta?.seed, sectorId, 'hull_loss',
+    `${state.playerId}:${shipDefId}:${lostAt}`);
+  const existing = bag.hullLosses.find(row => row.lossId === lossId);
+  if (existing) return existing;
+  const name = [data.shipName, owned?.name, data.name, data.callsign, def.name]
+    .find(value => typeof value === 'string' && value.trim());
+  const row = {
+    lossId, name: name.trim(), shipDefId, shipClass: def.name,
+    sectorId, sectorName: state.world.sectors?.[sectorId]?.name
+      || SECTORS.find(sector => sector.id === sectorId)?.name || sectorId,
+    lostAt, rot: Number.isFinite(entity.rot) ? entity.rot : 0,
+    radius: def.collisionRadius,
+  };
+  bag.hullLosses.push(row);
+  return row;
 }
 
 function finiteXZ(value) {
@@ -241,6 +287,7 @@ export function normalizeRecordsBag(input) {
 export function* normalizeRecordsBagChunked(input) {
   const bag = createEmptyRecordsBag();
   if (!input || typeof input !== 'object' || Array.isArray(input)) return bag;
+  bag.hullLosses = normalizeHullLosses(input.hullLosses);
   // Retention overflow is runtime telemetry, not save authority. Preserve it across the
   // normalize calls used by world.ensureWorldRecords so an operator can see protected pressure,
   // while serializeRecordsBag deliberately omits it.
@@ -611,6 +658,7 @@ export function serializeRecordsBag(bag) {
     schemaId: WORLD_RECORDS_SCHEMA_ID,
     schemaVersion: WORLD_RECORDS_SCHEMA_VERSION,
     byId,
+    hullLosses: normalized.hullLosses,
   };
   if (normalized.retentionReceipts && normalized.retentionReceipts.length > 0) {
     serialized.retentionReceipts = normalized.retentionReceipts.slice(-MAX_RETENTION_RECEIPTS);
@@ -1277,6 +1325,7 @@ export function ensureWorldRecords(world) {
     && existing.schemaId === WORLD_RECORDS_SCHEMA_ID
     && existing.schemaVersion === WORLD_RECORDS_SCHEMA_VERSION
     && existing.byId && typeof existing.byId === 'object' && !Array.isArray(existing.byId)
+    && Array.isArray(existing.hullLosses)
     && recordsBagIsNormalized(existing)) {
     return existing;
   }

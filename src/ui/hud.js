@@ -17,6 +17,7 @@
 
 import { createRadar } from './radar.js';
 import { createTargetPanel } from './targetPanel.js';
+import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
@@ -226,6 +227,12 @@ export function manifestSummary(e) {
     }
   }
   return 'stripped';
+}
+
+export function targetLockChipText(target, lockProgress) {
+  if (isSurrenderedContact(target)) return 'SURRENDERED';
+  if (lockProgress >= 1) return 'LOCKED';
+  return (lockProgress < 0.45 ? 'ACQUIRING ' : 'TRACKING ') + Math.round(lockProgress * 100) + '%';
 }
 
 function stationRoleLabel(id) {
@@ -1877,6 +1884,7 @@ export function createHud(ctx, alerts) {
   const rightDock = document.createElement('div');
   rightDock.className = 'sf-rightdock';
   const targetPanel = createTargetPanel(ctx);
+  let lastTargetSurrendered = false;
   
   // Overview Strip (§2)
   const elOverview = document.createElement('div');
@@ -3946,17 +3954,17 @@ export function createHud(ctx, alerts) {
       setAttr(lockRing, 'data-stage', stage);
       if (lockDiamond) setAttr(lockDiamond, 'data-stage', stage);
       _lockStageApplied = true;
+      const lockTarget = combat.lockTarget != null
+        ? resolveWorldPresentationEntity(state, combat.lockTarget) : null;
+      setText(lockLabel, targetLockChipText(lockTarget, lockProgress));
       if (isLocked) {
-        setText(lockLabel, 'LOCKED');
         if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1)');
       } else if (stage === 'tracking') {
-        setText(lockLabel, 'TRACKING ' + Math.round(lockProgress * 100) + '%');
         if (lockBrackets) {
           const bScale = 1.4 - (lockProgress - 0.45) * 0.72;
           setStyle(lockBrackets, 'transform', `scale(${bScale.toFixed(3)})`);
         }
       } else {
-        setText(lockLabel, 'ACQUIRING ' + Math.round(lockProgress * 100) + '%');
         if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
       }
       const innerRing = lockRing._sfInner || (lockRing._sfInner = lockRing.firstElementChild);
@@ -5116,13 +5124,17 @@ export function createHud(ctx, alerts) {
     if (objDirty) refreshObjectives();
 
     // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
-    if (targetTick) {
-      const tgtId = (state.player || {}).targetId;
-      const target = tgtId != null ? resolveWorldPresentationEntity(state, tgtId) : null;
+    const tgtId = (state.player || {}).targetId;
+    const target = tgtId != null ? resolveWorldPresentationEntity(state, tgtId) : null;
+    const targetSurrendered = isSurrenderedContact(target);
+    const surrenderChanged = targetSurrendered !== lastTargetSurrendered;
+    lastTargetSurrendered = targetSurrendered;
+    if (targetTick || surrenderChanged) {
       const player = state.entities.get(state.playerId);
       const combatRelevant = target && (target.type === 'ship' || target.type === 'drone')
         && isHostileToPlayer(target, player ? player.team : 0, state);
       const miningRelevant = target && target.type === 'asteroid';
+      const stationRelevant = target && target.type === 'station';
       const objectSelected = !!(state.ui && state.ui.objectSelection
         && state.ui.objectSelection.targetId === tgtId);
       const routeOwnsAttention = !!(state.nav && state.nav.waypoint);
@@ -5132,10 +5144,11 @@ export function createHud(ctx, alerts) {
         if (wp && (!wp.until || (state.simTime || 0) < wp.until)) weakPoint = wp;
         else if (wp) revealedWeakPoints.delete(tgtId);
       }
-      if (routeOwnsAttention && target && !combatRelevant && !miningRelevant && !objectSelected) {
+      if (routeOwnsAttention && target && !combatRelevant && !miningRelevant && !stationRelevant
+        && !targetSurrendered && !objectSelected) {
         setDisplay(targetPanel.el, false);
       } else {
-        targetPanelUpdateOptions.slow = slow;
+        targetPanelUpdateOptions.slow = slow || surrenderChanged;
         targetPanelUpdateOptions.weakPoint = weakPoint;
         targetPanel.update(targetPanelUpdateOptions);
       }

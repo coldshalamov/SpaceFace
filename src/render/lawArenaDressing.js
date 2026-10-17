@@ -31,6 +31,7 @@ import * as THREE from 'three';
 import { recordMountedRootForUnreadyScan } from './bloom.js';
 import { CRUSHER_CYCLE, crusherPhase, SHUTTER_CYCLE, shutterPhase } from '../data/arenaModuleLibrary.js';
 import { CINDER_ARENA_ID, stepCinderMachinery } from '../systems/cinderSluiceArena.js';
+import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 import { LAGRANGE_ARENA_ID } from '../systems/lagrangeCrucible.js';
 import { CRYO_ARENA_ID } from '../systems/cryoDriftArena.js';
 import {
@@ -860,7 +861,8 @@ export function createLawArenaDressing() {
     releaseRoom();
     if (!payload || !scene) return;
     const arenaId = payload.arenaId;
-    if (!LAW_ARENA_IDS.has(arenaId)) return;
+    const conveyor = payload.lawId === POWERED_CONVEYOR_RULESET;
+    if (!LAW_ARENA_IDS.has(arenaId) && !conveyor) return;
     const root = new THREE.Group();
     root.name = 'law_arena_room';
     const parts = [];
@@ -876,7 +878,7 @@ export function createLawArenaDressing() {
     for (const field of fields) {
       if (!field || !field.center) continue;
       if (!(Number.isFinite(field.strength) && field.strength !== 0)) continue;
-      if (field.kind === 'cone' && arenaId === CINDER_ARENA_ID) {
+      if (field.kind === 'cone' && (arenaId === CINDER_ARENA_ID || conveyor)) {
         const backed = toys.find((t) => t && t.kind === 'current' && t.center
           && Math.hypot(t.center.x - field.center.x, t.center.z - field.center.z) <= 12);
         if (backed) continue; // the mouth owns this anchor
@@ -886,11 +888,13 @@ export function createLawArenaDressing() {
       root.add(part.root);
     }
     for (const toy of toys) {
+      // Foundry solids already render from their live bodies; the trial adds only the mouth.
+      if (conveyor && toy.kind !== 'current') continue;
       let part = null;
       if (toy.kind === 'shutter' && toy.a && toy.b) part = buildShutterBar(toy, clones);
       else if (toy.kind === 'crusher' && toy.pos) part = buildCrusherPress(toy, clones);
       else if (toy.kind === 'current' && toy.center) {
-        part = buildCurrentMouth(toy, arenaId === CINDER_ARENA_ID, clones);
+        part = buildCurrentMouth(toy, arenaId === CINDER_ARENA_ID || toy.poweredCycle === true, clones);
       } else if (toy.kind === 'plate' && toy.pos) {
         part = buildBankPlate(toy, clones);
       }

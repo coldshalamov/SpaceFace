@@ -837,7 +837,7 @@ function rememberCause(state, bus, payload) {
   return merged;
 }
 
-function rememberMarker(state, bus, marker, onEvicted = null) {
+function rememberMarker(state, bus, marker, onEvicted = null, { publishNews = true } = {}) {
   const own = ensureAftermathState(state);
   if (!own || !marker || !marker.sectorId || !marker.markerId) return null;
   const arr = own.bySector[marker.sectorId] || (own.bySector[marker.sectorId] = []);
@@ -865,6 +865,7 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
     const headline = marker.headline || newsLine(marker);
     marker.headline = headline;
     bus.emit('aftermathWreck:recorded', clonePlain(marker));
+    if (!publishNews) return marker;
     bus.emit('news:headline', {
       headline,
       text: headline,
@@ -1025,8 +1026,16 @@ export const aftermathWrecks = {
       // The wreck materializes on the kill, which is before the raid resolves. Stamp the
       // cause onto that live body so a scan can read it without leaving and coming back.
       if (cause) this._stampLiveCause(cause);
+      if (cause && this.state.player?.custodyLedger?.raidAftermath?.[`raid:${cause.fingerprint}`]?.status === 'settled') {
+        this._settleMission({ source: 'encounterAftermath', causeFingerprint: cause.fingerprint }, true);
+      }
     };
     this._onDocked = (payload) => this._offerAtStation(payload && payload.stationId);
+    this._onFreightCustody = (payload) => this._relayRaidFreight(payload || {});
+    this._onSurvivorEjected = (payload) => this._relayRaidSurvivor(payload || {});
+    this._onCustodySettled = (payload) => this._settleMission({
+      source: 'encounterAftermath', causeFingerprint: payload?.fingerprint,
+    }, true);
     this._onOfferBoarded = (payload) => this._markOfferBoarded(payload || {});
     this._onMissionAccepted = (payload) => this._markMissionActive(payload || {});
     this._onMissionCompleted = (payload) => this._settleMission(payload || {}, true);
@@ -1068,6 +1077,9 @@ export const aftermathWrecks = {
       this.bus.on('salvage:completed', this._onSalvageCompleted);
       this.bus.on('encounter:resolved', this._onEncounterResolved);
       this.bus.on('dock:docked', this._onDocked);
+      this.bus.on('freight:custodyChanged', this._onFreightCustody);
+      this.bus.on('survivorPod:ejected', this._onSurvivorEjected);
+      this.bus.on('custody:aftermathSettled', this._onCustodySettled);
       this.bus.on('mission:offerBoarded', this._onOfferBoarded);
       this.bus.on('mission:accepted', this._onMissionAccepted);
       this.bus.on('mission:completed', this._onMissionCompleted);
@@ -1464,6 +1476,11 @@ export const aftermathWrecks = {
 
   _recordKill(payload) {
     const entity = entityFor(this.state, payload.id);
+    // Player pirate kills use lawSecurity's witness-gated rescue headline. The wreck still
+    // exists even when nobody can report it; generic residue news must not invent a witness.
+    const pirate = /pirate|raider|corsair|scavenger/.test(`${payload.victimClass || ''} ${entity?.data?.shipClass || ''} ${entity?.data?.ai?.archetype || ''}`.toLowerCase())
+      || (entity?.factionId || payload.factionId) === 'faction_reach';
+    const publishNews = !(payload.killerId === this.state.playerId && pirate);
     const marker = makeMarker(this.state, payload, entity);
     if (marker) marker.headline = newsLine(marker);
     // Arena cap enforcement runs BEFORE the marker is remembered: the law is "the ninth body
@@ -1481,7 +1498,7 @@ export const aftermathWrecks = {
           this._retireMarkerShard(item.markerId);
         }
       }
-    });
+    }, { publishNews });
     if (remembered) {
       this._stampNearbyStructurePatch(remembered, payload);
       // A manifested kill re-arms the field's contested stamp (memoized in _populateField) so a
@@ -1980,6 +1997,51 @@ export const aftermathWrecks = {
     return null;
   },
 
+  _raidCausality(encounterId) {
+    const live = this.state.encounterDirector?.live?.[encounterId];
+    const cause = live?.causality || Object.values(ensureAftermathState(this.state).causes)
+      .find((entry) => entry.encounterId === encounterId);
+    return cause && ['opening_hauler_raid', 'salvage_tail'].includes(cause.shapeId) ? cause : null;
+  },
+
+  _relayRaidFreight(payload) {
+    const cause = this._raidCausality(payload.encounterId);
+    if (!cause || !payload.manifestId) return null;
+    // Use the existing custody accounting, including pod respills. An offered choice or a
+    // closed encounter is not proof that freight reached its owner.
+    const scatteredQty = (Number(payload.livePodQty) || 0) + (Number(payload.playerCollectedQty) || 0)
+      + (Number(payload.raiderSecuredQty) || 0) + (Number(payload.stationRecoveredQty) || 0)
+      + (Number(payload.lostQty) || 0);
+    if (!(scatteredQty > 0)) return null;
+    const carrier = entityFor(this.state, payload.carrierId);
+    const detail = {
+      fingerprint: cause.fingerprint, sectorId: cause.sectorId,
+      forPerson: carrier?.data?.ownerName || carrier?.data?.name || 'the raided hauler',
+      pos: carrier?.pos ? { x: carrier.pos.x, z: carrier.pos.z } : null,
+      manifestId: payload.manifestId, commodityId: payload.commodityId,
+      scatteredQty, stationRecoveredQty: payload.stationRecoveredQty,
+    };
+    this.bus.emit('aftermath:custodyFreight', detail);
+    return detail;
+  },
+
+  _relayRaidSurvivor(payload) {
+    const victim = entityFor(this.state, payload.victimId);
+    const cause = this._raidCausality(victim?.data?.ai?.encounterId)
+      || (['opening_hauler_raid', 'salvage_tail'].includes(victim?.data?.encounterCausality?.shapeId)
+        ? victim.data.encounterCausality : null);
+    const pod = entityFor(this.state, payload.entityId);
+    const survivorId = pod?.data?.survivorPodCausal?.memoryId;
+    if (!cause || !survivorId) return null;
+    this.bus.emit('aftermath:custodySurvivor', {
+      fingerprint: cause.fingerprint, sectorId: cause.sectorId,
+      forPerson: victim?.data?.name || 'the raided hauler',
+      pos: pod?.pos ? { x: pod.pos.x, z: pod.pos.z } : null,
+      survivorId, entityId: payload.entityId,
+    });
+    return survivorId;
+  },
+
   _offerAtStation(stationId) {
     const station = STATION_INFO.get(stationId);
     if (!station || !this.state || !this.bus) return null;
@@ -1988,6 +2050,9 @@ export const aftermathWrecks = {
       .filter((cause) => cause.status === 'open' && (cause.attempts | 0) < 3)
       .sort((a, b) => (a.createdTick - b.createdTick) || String(a.fingerprint).localeCompare(String(b.fingerprint)));
     for (const cause of candidates) {
+      // This raid already has exact physical custody work. A generated replacement load or
+      // synthetic salvage pocket beside it would post a second, unrelated way to settle it.
+      if (this.state.player?.custodyLedger?.raidAftermath?.[`raid:${cause.fingerprint}`]) continue;
       if (this._pendingOffers.has(cause.fingerprint)) continue;
       const offer = causeContractOffer(cause, station, seedOf(this.state));
       if (!offer) continue;
@@ -2885,6 +2950,9 @@ export const aftermathWrecks = {
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
       if (this._onEncounterResolved) this.bus.off('encounter:resolved', this._onEncounterResolved);
       if (this._onDocked) this.bus.off('dock:docked', this._onDocked);
+      if (this._onFreightCustody) this.bus.off('freight:custodyChanged', this._onFreightCustody);
+      if (this._onSurvivorEjected) this.bus.off('survivorPod:ejected', this._onSurvivorEjected);
+      if (this._onCustodySettled) this.bus.off('custody:aftermathSettled', this._onCustodySettled);
       if (this._onOfferBoarded) this.bus.off('mission:offerBoarded', this._onOfferBoarded);
       if (this._onMissionAccepted) this.bus.off('mission:accepted', this._onMissionAccepted);
       if (this._onMissionCompleted) this.bus.off('mission:completed', this._onMissionCompleted);
@@ -2898,6 +2966,8 @@ export const aftermathWrecks = {
     }
     this._onKilled = this._onPlayerDeath = this._onDestroyed = this._onFieldSource = this._onSectorEnter = this._onSectorExit = null;
     this._onSalvageCompleted = this._onEncounterResolved = this._onDocked = null;
+    this._onFreightCustody = this._onSurvivorEjected = null;
+    this._onCustodySettled = null;
     this._onOfferBoarded = this._onMissionAccepted = this._onMissionCompleted = this._onMissionFailed = null;
     this._onNewGame = this._onSaveRestoring = this._onSaveLoaded = this._onSaveError = null;
     this._saveRestoring = false;

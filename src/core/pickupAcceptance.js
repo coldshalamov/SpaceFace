@@ -5,6 +5,12 @@
 
 export const PICKUP_ACCEPTANCE_RETRY_S = 0.75;
 
+// Cargo's hard limit is volume; mass affects handling, not pickup admission.
+export function pickupHoldIsFull(cargo) {
+  return !!cargo && Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
+    && Number.isFinite(cargo.usedVolume) && cargo.usedVolume >= cargo.capVolume;
+}
+
 export function finiteWholePickupAmount(value) {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
     ? Math.floor(value)

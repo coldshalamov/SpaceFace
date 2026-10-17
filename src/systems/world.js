@@ -156,6 +156,7 @@ import {
   createEmptyRecordsBag,
   normalizeRecordsBagChunked,
   ensureWorldRecords,
+  recordPlayerHullLoss,
   entityHasDurableMarkers,
   entityIsDurableCandidate,
   findLiveEntityForRecord,
@@ -219,6 +220,8 @@ import {
 } from './foldAberrant.js'; // The Unclosed (doc 16): damaged containment instrument, not a machine kind
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { handlePlayerHullEchoEvent } from '../world/playerHullEcho.js';
+import { ALIEN_SITES } from '../data/alienEcology.js';
 // Route planning core — shared with the worker-lane main-side facade
 // (src/core/registry.js). Pure functions; the handshake burn stays here.
 import {
@@ -642,6 +645,7 @@ export const world = {
     this._ensureResidencyState();
 
     // --- event wiring (§4.4) ---
+    bus.on('player:death', () => recordPlayerHullLoss(state));
     bus.on('world:requestJump', (p) => this._onRequestJump(p || {}));
     bus.on('world:requestUnfiledJump', () => this._onRequestUnfiledJump());
     bus.on('world:confirmUnfiledJump', () => this._confirmUnfiledJump());
@@ -718,6 +722,7 @@ export const world = {
     bus.on('alienEcology:nurseryPowered', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryPowered', p));
     bus.on('alienEcology:relaySevered', (p) => handleAlienEcologyEvent(this, 'alienEcology:relaySevered', p));
     bus.on('alienEcology:nurseryBloom', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryBloom', p));
+    bus.on('alienEcology:relocateSite', (p) => handleAlienEcologyEvent(this, 'alienEcology:relocateSite', p));
     bus.on('alienEcology:blackBoxRecovered', (p) => handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', p));
     // AE-051/079 stimulus + revelation intake: mining noise wakes dormant fauna; sector scans
     // against live sites teach the taxonomy ladder.
@@ -736,6 +741,7 @@ export const world = {
     // before charging or moving anything, so a stale offer can never tow a free ship.
     bus.on('world:stuckTowAccept', () => this._executeStuckTow());
     bus.on('pickup:collected', (p) => {
+      handlePlayerHullEchoEvent(this, ALIEN_SITES.preserved_cockpit, 'pickup:collected', p || {});
       // cargo's listener (registered earlier) has already written the acceptance receipt, so
       // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
       if (p && p.commodityId === 'cmdty_dmc_black_box'

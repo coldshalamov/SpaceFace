@@ -438,7 +438,7 @@ function buildCmLabel() {
   s.top = '50%';
   s.display = 'none';
   s.whiteSpace = 'nowrap';
-  s.fontSize = '8px';
+  s.fontSize = '12px';
   s.letterSpacing = '0.08em';
   s.color = 'var(--k-signal, #e6b478)';
   s.textShadow = '0 0 6px color-mix(in srgb, var(--k-signal, #e6b478) 80%, transparent)';

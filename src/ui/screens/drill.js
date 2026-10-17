@@ -2556,7 +2556,7 @@ export const drillScreen = {
         const tile = d.field?.[tc]?.[tr];
         const head = drillTierBlockLabel(tile?.ore, tr);
         if (head) {
-          ctx2d.font = 'bold 11px ' + monoFamily;
+          ctx2d.font = 'bold 12px ' + monoFamily;
           ctx2d.textAlign = 'center';
           const plateW = Math.max(TILE + 8, Math.ceil(ctx2d.measureText(head).width) + 12);
           const plateX = tx + (TILE - plateW) / 2;

@@ -27,7 +27,7 @@ const CSS = `
 .orr-chain__label { position:absolute; display:flex; flex-direction:column; gap:2px; pointer-events:none; white-space:nowrap; }
 /* a verb under a short input (source it in the market) is the one thing on the drawing that takes the pointer */
 .orr-chain__verb { pointer-events:auto; margin-top:3px; }
-.orr-chain__verb > * { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(9.5px * var(--orr-chain-s)); letter-spacing:.16em; text-transform:uppercase;
+.orr-chain__verb > * { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, calc(9.5px * var(--orr-chain-s))); letter-spacing:.16em; text-transform:uppercase;
   color:rgb(${BONE} / .78); background:none; border:0; padding:0; margin:0; cursor:pointer; min-height:0; height:auto; box-shadow:none; }
 .orr-chain__verb > *::before { content:"›  "; color:rgb(${BONE} / .5); }
 .orr-chain__verb > *:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950); outline:none; }
@@ -58,11 +58,11 @@ const CSS = `
 .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .45); }
 .orr-chain__label.is-ghost { opacity:.5; }
-.orr-svg text.orr-chain__procarc { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9.5px * var(--orr-chain-s)); font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .72); text-transform:uppercase; }
+.orr-svg text.orr-chain__procarc { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:max(12px, calc(9.5px * var(--orr-chain-s))); font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .72); text-transform:uppercase; }
 .orr-svg text.orr-chain__procarc.is-blocked { fill:rgb(${BONE} / .42); }
 .orr-chain__tnum { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:calc(46px * var(--orr-chain-t, 1)); line-height:1; letter-spacing:-.01em; color:rgb(248 244 234); }
 .orr-chain__tnum.is-blocked { color:rgb(${BONE} / .45); }
-.orr-chain__tunit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9px * var(--orr-chain-s)); font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .6); margin-top:4px; }
+.orr-chain__tunit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:max(12px, calc(9px * var(--orr-chain-s))); font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .6); margin-top:4px; }
 .orr-chain__reason.is-compact { font-size:calc(22px * var(--orr-chain-s)); text-align:left; }
 .orr-chain__label.is-left .orr-chain__verb { align-items:flex-start; text-align:left; }
 .orr-chain__verb > .orr-chain__blocknote::before { content:none; }
@@ -72,14 +72,14 @@ const CSS = `
 .orr-chain__label.is-centre { align-items:center; text-align:center; }
 .orr-chain__name { font-family:var(--dp-face-body, "Instrument Sans"); font-size:calc(13px * var(--orr-chain-s)); font-weight:600; color:rgb(248 244 234); }
 .orr-chain__label.is-short .orr-chain__name { color:rgb(${BONE} / .8); }
-.orr-chain__count { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(10px * var(--orr-chain-s)); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62);
+.orr-chain__count { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, calc(10px * var(--orr-chain-s))); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62);
   font-variant-numeric:tabular-nums; }
 .orr-chain__count b { font-weight:650; color:rgb(248 244 234); }
 .orr-chain__label.is-short .orr-chain__count b { color:rgb(${BONE} / .85); }
-.orr-chain__process { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--orr-chain-p, 9px); letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .7); }
-.orr-chain__time { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9.5px * var(--orr-chain-s)); font-weight:650; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .6); }
+.orr-chain__process { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--orr-chain-p, 9px)); letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .7); }
+.orr-chain__time { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:max(12px, calc(9.5px * var(--orr-chain-s))); font-weight:650; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .6); }
 .orr-chain__qty { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:calc(40px * var(--orr-chain-g, 1)); line-height:1; letter-spacing:-.01em; color:rgb(248 244 234); font-variant-numeric:tabular-nums; }
-.orr-chain__unit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(9.5px * var(--orr-chain-s)); white-space:nowrap; line-height:1.3; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .6); }
+.orr-chain__unit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, calc(9.5px * var(--orr-chain-s))); white-space:nowrap; line-height:1.3; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .6); }
 .orr-svg .orr-chain__node { fill:none; stroke:rgb(${BONE} / .85); stroke-width:2; }
 .orr-svg .orr-chain__reason-leader { stroke:rgb(${BONE} / .6); }
 .orr-chain__label.is-below .orr-chain__qty { display:block; text-align:center; }

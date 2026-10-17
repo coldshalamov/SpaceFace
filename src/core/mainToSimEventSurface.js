@@ -20,6 +20,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'career:origin:decline',
   'career:origin:reoffer',
   'claim:defenseIgnore',
+  'combat:aftermathChoose',
   'contactHail:choice',
   'contactHail:request',
   'contraband:bribe',
@@ -102,11 +103,13 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'save:restoring',
   'scenario:branchChoice',
   'scenario:scavengerResponse',
+  'service:decantRequest',
   'settings:changed',
   'ship:appearanceChanged',
   'signal:investigate',
   'signal:track',
   'sim:pause',
+  'siteEvidence:action',
   'spectrum:focus',
   'survivorPod:choose',
   'touch:guide',
@@ -189,6 +192,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'alert',
   'ambient',
   'audio:cue',
+  'audio:outputDeviceChanged',
   'borrowedSun:lost',
   'borrowedSun:notice',
   'borrowedSun:offer',
@@ -207,6 +211,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'game:embarkSpeculation',
   'game:loadingProgress',
   'game:over:dismissed',
+  'game:retryStart',
   'game:startFailed',
   'hud:recallObjective',
   'hud:slotClaim',
@@ -264,4 +269,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=135 dynamic=22 legacy=7 excluded=6 total=155 knownUnforwarded=76
+// provenance: census=138 dynamic=22 legacy=7 excluded=6 total=158 knownUnforwarded=78

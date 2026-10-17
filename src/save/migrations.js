@@ -330,6 +330,19 @@ export const MIGRATIONS = [
       // No saved geometry or dynamic state is rewritten during migration.
     },
   },
+  {
+    from: 16,
+    to: 17,
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      if (!data.world || typeof data.world !== 'object' || Array.isArray(data.world)) data.world = {};
+      if (!data.world.records || typeof data.world.records !== 'object' || Array.isArray(data.world.records)) {
+        data.world.records = createEmptyRecordsBag();
+      } else if (!Array.isArray(data.world.records.hullLosses)) {
+        data.world.records.hullLosses = [];
+      }
+    },
+  },
 ];
 
 /**

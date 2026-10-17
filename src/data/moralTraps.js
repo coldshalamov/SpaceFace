@@ -185,6 +185,14 @@ export const MORAL_TRAPS = Object.freeze({
 /** All trap ids. */
 export const TRAP_IDS = Object.freeze(Object.keys(MORAL_TRAPS));
 
+export function trapRefusalMemoryLine(party, choice) {
+  return `Declined ${party}'s offer: ${choice}.`;
+}
+
+export function trapRefusalOfferLine(party) {
+  return `${party}: "You refused my last offer. I remember."`;
+}
+
 /** Lookup a trap by id (frozen record or undefined). */
 export function trapById(id) {
   return MORAL_TRAPS[id];

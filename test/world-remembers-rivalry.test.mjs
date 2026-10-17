@@ -31,6 +31,7 @@ import { aceMemory } from '../src/systems/aceMemory.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { createMarketNews } from '../src/ui/marketNews.js';
 
 const ACE_ID = 'ace_yara_no_cut';
 const ACE_NAME = 'Yara No-Cut';
@@ -54,6 +55,8 @@ function boot(seed) {
   const system = sim.registry.get('aceMemory');
   system.helpers = { ...system.helpers, voice: { say(payload) { voices.push(payload); return true; } } };
   const events = { returnSpawned: [], transitions: [], news: [], heirs: [] };
+  // Defeat copy reaches news:headline through the production cited-news reader.
+  createMarketNews({ state, bus });
   bus.on('aceMemory:returnSpawned', (p) => events.returnSpawned.push(structuredClone(p)));
   bus.on('aceMemory:transition', (p) => events.transitions.push(structuredClone(p)));
   bus.on('news:headline', (p) => events.news.push(structuredClone(p)));

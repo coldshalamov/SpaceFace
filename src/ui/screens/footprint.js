@@ -197,6 +197,31 @@ export function actEvidenceLabel(node) {
   return null;
 }
 
+// LAW-11: paid tolls are history, projected from the law owner's durable bill rather than
+// appended during refresh. Reopening Footprint can never mint a second row or reopen the bill.
+export function footprintChains(state) {
+  const chains = (state.provenance?.chains || [])
+    .filter((entry) => entry && Array.isArray(entry.nodes) && asString(entry.id));
+  const ids = new Set(chains.map((chain) => chain.id));
+  for (const row of Object.values(state.lawSecurity?.composed || {})) {
+    if (!row || row.kind !== 'toll' || row.status !== 'paid' || row.remainingCr !== 0) continue;
+    const id = `obligation:${row.key}`;
+    if (ids.has(id)) continue;
+    ids.add(id);
+    const tick = asInteger(row.settledTick, 0);
+    const t = asNumber(row.settledAt, 0);
+    chains.push({
+      id, rootKind: 'toll', outcome: 'settled', open: false, tick, t,
+      nodes: [{
+        k: 'consequence', cause: 'toll', outcome: 'settled', tick, t,
+        text: `Toll settled — ${row.label || 'toll'} · ${creditsText(row.amountCr)}.`,
+      }],
+      edges: [],
+    });
+  }
+  return chains.sort((left, right) => chainStamp(right) - chainStamp(left));
+}
+
 // Exported for the tier-2 check: nodeWhy is the enumerated phrase composer for board nodes
 // (REP_REASON_LABELS / OUTCOME_WORDS banks). Unknown kinds render '' — never invented text.
 export function nodeWhy(node) {
@@ -706,10 +731,7 @@ export const footprintScreen = {
       return;
     }
 
-    const chains = provenance.chains
-      .filter((entry) => entry && Array.isArray(entry.nodes) && asString(entry.id))
-      .slice()
-      .sort((left, right) => chainStamp(right) - chainStamp(left));
+    const chains = footprintChains(state);
     this._chains = chains;
     const bounty = Math.max(0, asNumber(state.player.bounty, 0));
     this._paintHeader(state, chains, null);

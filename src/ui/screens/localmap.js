@@ -951,7 +951,7 @@ export const localmapScreen = {
         labelJobs.push({
           x, y: y + 13, dx: 8,
           text: poiReadout.mapLabel,
-          font: canvasFont(500, 11, 'data'),
+          font: canvasFont(500, 12, 'data'),
           color: roles.calm,
           priority: target.priority + 0.5,
           target,

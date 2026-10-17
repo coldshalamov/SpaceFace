@@ -20,7 +20,7 @@ import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
-import { compareDockedFreight, formatFreightComparison } from '../../../systems/economy.js';
+import { compareDockedFreight, formatFreightComparison, marketStockStatus } from '../../../systems/economy.js';
 import { partialDeliverySettlement } from '../../../systems/missions.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
@@ -1215,6 +1215,7 @@ export function createMarketScreen(ctx) {
     const held = heldQty(state, r.id);
     return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
       buy, sell, stock, held, hist, demandWord: demandWord(demand),
+      ...marketStockStatus(state, sid, r.id),
       profitPct: heldProfitPct(state, r.id, sell, r.def),
       driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_,
       presentation: commodityPresentationFor(r.def) });
@@ -1362,7 +1363,7 @@ export function createMarketScreen(ctx) {
     }
     // Unknown stock prints no column of dashes: when no visible row carries a stock figure or
     // held cargo, the STOCK column yields.
-    const stockKnown = visible.some((r) => (Number(r.entry && r.entry.stock) || 0) > 0 || heldQty(state, r.id) > 0);
+    const stockKnown = visible.some((r) => Number.isFinite(r.entry && r.entry.stock) || heldQty(state, r.id) > 0);
     if (listEl && listEl.classList && typeof listEl.classList.toggle === 'function') {
       listEl.classList.toggle('is-stockless', !stockKnown);
     }
@@ -1844,6 +1845,7 @@ export function createMarketScreen(ctx) {
     const receiptHtml = rowKV('Quantity', fmt(qty) + ' u') +
       rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr/u' : 'Unavailable') +
       rowKV(mode === 'buy' ? 'Total cost' : 'Sale proceeds', quoteReady ? fmt(total) + ' cr' : 'Unavailable', mode === 'buy' ? 'loss' : 'gain') +
+      (quoteReady && quote.shortagePremium ? rowKV('Shortage premium', 'Included in sale price', 'gain') : '') +
       rowKV('You hold', fmt(held) + ' u') + rowKV('Credits', fmt(cr) + ' cr') +
       (quoteReady ? rowKV('Credits after', fmt(mode === 'buy' ? cr - total : cr + total) + ' cr') : '') +
       (free !== Infinity ? rowKV('Hold free', fmt(free) + ' u') : '') +

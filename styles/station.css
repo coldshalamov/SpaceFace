@@ -105,7 +105,7 @@
   display: inline-block;
   margin-left: 8px;
   padding: 1px 6px 0;
-  font-size: 0.68em;
+  font-size: max(12px, 0.68em);
   font-weight: 700;
   letter-spacing: 0.08em;
   vertical-align: 2px;

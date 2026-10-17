@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "2cdf07a5c27c82577581c94b11cf04e7d69d8f3a6062a595ed0593022370fa90",
+    "authoritativeHash": "ae12dca3425e570494a17fde9d1a7a4347d1ff8c1824b7c3c4ca1bd0eac11261",
     "authoritativeHashByReloadAt": {
-      "60": "2cdf07a5c27c82577581c94b11cf04e7d69d8f3a6062a595ed0593022370fa90",
-      "600": "2cdf07a5c27c82577581c94b11cf04e7d69d8f3a6062a595ed0593022370fa90"
+      "60": "ae12dca3425e570494a17fde9d1a7a4347d1ff8c1824b7c3c4ca1bd0eac11261",
+      "600": "ae12dca3425e570494a17fde9d1a7a4347d1ff8c1824b7c3c4ca1bd0eac11261"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,

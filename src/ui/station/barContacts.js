@@ -46,6 +46,7 @@ import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { fenceBarContact, fenceBarReply } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
 import { deedLine } from '../../data/deedPhrases.js';
+import { mostCitedShipDeed } from '../../systems/shipLedger.js';
 import { deedToneFor, markTold, peekDeedRecord, pickDeedToTell } from '../../systems/deedRecord.js'; // U-E: the bar gossips
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
@@ -1100,6 +1101,10 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   }
   if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
+  if (role === 'barkeep' && choiceId === 'word') {
+    const deed = mostCitedShipDeed(state);
+    if (deed) return { text: `Your ship's ledger keeps coming back to this: ${deed.text}`, ledgerDeed: deed };
+  }
   // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
   // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed
   // and the contact's normal canonical dialogue resumes.

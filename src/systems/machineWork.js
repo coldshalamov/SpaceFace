@@ -14,6 +14,114 @@ function siteRecord(state, siteId) {
 function log(world, from, text) { world.bus.emit('comms:log', { from, text, kind: 'machine' }); }
 function distance(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 const workpieceBodies = new WeakMap();
+const protocolOffers = new WeakMap();
+
+// The two machines have different, equally valid filing procedures. These are runtime
+// records, not global protocol standing or mutable catalog definitions.
+function foundryProtocol(rec) {
+  return rec.protocol ||= {
+    sequences: {
+      preservation: ['observe', 'position', 'present', 'choose'],
+      construction: ['observe', 'present', 'position', 'choose'],
+    },
+    approach: null, step: 0, evidence: null, presented: false,
+  };
+}
+
+function foundryChoice(body, center, site) {
+  if (!body?.pos || body.alive === false || body.hull <= 0
+      || Math.hypot(body.vel?.x || 0, body.vel?.z || 0) >= 5) return null;
+  for (const [choice, dx] of [['preservation', site.workCycle.preserveDx], ['construction', site.workCycle.cradleDx]]) {
+    if (distance(body.pos, { x: center.x + dx, z: center.z }) < site.workCycle.intakeRadius) return choice;
+  }
+  return null;
+}
+
+export function offerFoundryProtocol(world, force = false) {
+  const site = MACHINE_SITES.pallas_empty_foundry, state = world?.state;
+  if (!state || state.world?.currentSectorId !== site.sectorId) return false;
+  const rec = siteRecord(state, site.siteId), protocol = foundryProtocol(rec);
+  const player = state.entities.get(state.playerId), center = world._toGlobal(site.center, site.sectorId);
+  const body = state.entityList.find(e => e.alive !== false && e.hull > 0 && e.data?.machineWorkpiece === site.siteId);
+  if (!player?.pos || player.alive === false || distance(player.pos, center) > site.radius + 400
+      || !body || rec.jurisdiction?.status === 'resolved') {
+    if (protocolOffers.has(rec)) { world.bus.emit('siteEvidence:closed', { siteId: site.siteId }); protocolOffers.delete(rec); }
+    return false;
+  }
+  const expected = protocol.sequences[protocol.approach]?.[protocol.step] || 'observe';
+  const stamp = `${protocol.approach}:${expected}:${protocol.declined === true}`;
+  if (!force && (protocol.declined || protocolOffers.get(rec) === stamp)) return false;
+  protocol.declined = false;
+  protocolOffers.set(rec, `${protocol.approach}:${expected}:false`);
+  const approach = protocol.approach;
+  world.bus.emit('siteEvidence:offer', {
+    siteId: site.siteId, headline: 'Two correct orders',
+    detail: approach
+      ? `${approach.toUpperCase()}: ${protocol.sequences[approach].join(' → ')}. Next: ${expected}. Move this ballast into the ${approach === 'preservation' ? 'west' : 'east'} cradle, radius ${site.workCycle.intakeRadius}; hold below 5 WU/s for ${site.workCycle.settleS}s. Three spent gantry charges stay spent. No cargo or payment is required; ordinary Massline can move the ballast.`
+      : 'Read either machine. Preservation files position before presentation; construction files presentation before position. Both accept the same ballast. Leaving keeps a safe stalemate.',
+    choices: approach ? [
+      { id: 'present', label: 'Present the current finding' },
+      { id: 'choose', label: `Confirm ${approach}` },
+      { id: 'observe', label: 'Read the procedure again', approach },
+      { id: 'abort', label: 'Leave the machines waiting' },
+    ] : [
+      { id: 'observe', label: 'Read preservation procedure', approach: 'preservation' },
+      { id: 'observe', label: 'Read construction procedure', approach: 'construction' },
+      { id: 'abort', label: 'Leave the machines waiting' },
+    ],
+  });
+  return true;
+}
+
+export function handleFoundryProtocolAction(world, request = {}) {
+  const site = MACHINE_SITES.pallas_empty_foundry;
+  if (request.siteId !== site.siteId) return null;
+  const state = world.state, rec = siteRecord(state, site.siteId), protocol = foundryProtocol(rec);
+  const refuse = reason => {
+    log(world, site.name, `PRESENTATION REFUSED. ${reason}`);
+    offerFoundryProtocol(world, true);
+    return { ok: false, reason };
+  };
+  if (state.world?.currentSectorId !== site.sectorId) return refuse('Return to the Empty Foundry.');
+  const player = state.entities.get(state.playerId), center = world._toGlobal(site.center, site.sectorId);
+  if (!player?.pos || player.alive === false || distance(player.pos, center) > site.radius + 400) return refuse('Outside the machine work volume.');
+  if (rec.jurisdiction?.status === 'resolved') return { ok: true, settled: true, choice: rec.jurisdiction.choice };
+  if (protocol.confirmed) return { ok: true, pending: true, choice: protocol.approach };
+  if (request.verb === 'abort') {
+    protocol.declined = true;
+    world.bus.emit('siteEvidence:closed', { siteId: site.siteId });
+    return { ok: true, waiting: true };
+  }
+  const body = state.entityList.find(e => e.alive !== false && e.data?.machineWorkpiece === site.siteId);
+  if (!body || body.hull <= 0 || rec.masonry?.status === 'lost') return refuse('The named workpiece is unavailable or destroyed.');
+  if (request.verb === 'observe') {
+    const approach = request.approach || protocol.approach;
+    if (!Object.hasOwn(protocol.sequences, approach)) return refuse('Read preservation or construction first.');
+    if (!state.entityList.some(e => e.alive !== false && e.data?.machine?.siteId === site.siteId && e.data.machine.kind === 'conservator')
+        || !state.entityList.some(e => e.alive !== false && e.data?.machine?.siteId === site.siteId && e.data.machine.kind === 'mason')) return refuse('Both procedures must be available to observe.');
+    if (protocol.approach !== approach || !protocol.evidence) {
+      protocol.approach = approach; protocol.step = 1; protocol.presented = false;
+      protocol.evidence = { workpiece: site.siteId, hull: body.hull, observedAt: Number(state.simTime) || 0 };
+      (rec.jurisdiction ||= { status: 'waiting', choice: null }).settled = 0;
+    }
+  } else {
+    const expected = protocol.sequences[protocol.approach]?.[protocol.step] || 'observe';
+    if (request.verb !== expected) return refuse(`Wrong order: ${expected.toUpperCase()} must precede ${String(request.verb).toUpperCase()}.`);
+    if (protocol.evidence?.workpiece !== body.data.machineWorkpiece) return refuse('The evidence names another workpiece.');
+    if (request.verb === 'present') {
+      if (protocol.approach === 'preservation' && foundryChoice(body, center, site) !== 'preservation') return refuse('Return the workpiece to the preservation volume below speed 5.');
+      protocol.presented = true; protocol.presentedAt = Number(state.simTime) || 0; protocol.step++;
+    } else if (request.verb === 'choose') {
+      if (!protocol.presented || foundryChoice(body, center, site) !== protocol.approach
+          || rec.jurisdiction.settled < site.workCycle.settleS) return refuse('The same workpiece must still be settled in the chosen volume.');
+      protocol.confirmed = true; protocol.step++;
+      world.bus.emit('siteEvidence:closed', { siteId: site.siteId });
+      return { ok: true, next: null };
+    } else return refuse('Unrecognized procedure action.');
+  }
+  offerFoundryProtocol(world, true);
+  return { ok: true, next: protocol.sequences[protocol.approach]?.[protocol.step] || null };
+}
 
 function cycleRecord(rec) {
   return rec.workCycle ||= { status: 'awaiting_mail', commissioned: false };
@@ -84,19 +192,20 @@ function tickFoundryJurisdiction(world, body, dt, center, site, rec) {
   const cycle = cycleRecord(rec);
   const jurisdiction = rec.jurisdiction ||= { status: 'waiting', settled: 0, choice: null };
   if (jurisdiction.status === 'resolved') return jurisdiction.choice === 'construction';
+  const protocol = foundryProtocol(rec);
   if (!jurisdiction.announced) {
     jurisdiction.announced = true;
     log(world, 'Conservator', `PRESERVE THIS BALLAST. WEST CRADLE ${Math.round(center.x + site.workCycle.preserveDx)}, ${Math.round(center.z)}; RADIUS ${site.workCycle.intakeRadius}. THE THREE REPAIR CHARGES CANNOT BE REFUNDED; THE FOUNDRY WILL STAY UNCOMMISSIONED.`);
     log(world, 'Mason', `RETURN THIS SAME BALLAST TO EAST CRADLE ${Math.round(center.x + site.workCycle.cradleDx)}, ${Math.round(center.z)}; RADIUS ${site.workCycle.intakeRadius}. HOLD BELOW SPEED 5 FOR ${site.workCycle.settleS} SECONDS TO COMMIT CONSTRUCTION. BOTH FIELDS WAIT FOR YOUR CHOICE.`);
   }
   body.data.scanLabel = 'FOUNDRY BALLAST — WEST PRESERVATION / EAST CONSTRUCTION';
-  const calm = Math.hypot(body.vel?.x || 0, body.vel?.z || 0) < 5;
-  const west = distance(body.pos, { x: center.x + site.workCycle.preserveDx, z: center.z }) < site.workCycle.intakeRadius;
-  const east = distance(body.pos, { x: center.x + site.workCycle.cradleDx, z: center.z }) < site.workCycle.intakeRadius;
-  const choice = calm && west ? 'preservation' : calm && east ? 'construction' : null;
+  const choice = foundryChoice(body, center, site);
   jurisdiction.settled = choice && choice === jurisdiction.choice ? jurisdiction.settled + dt : 0;
   jurisdiction.choice = choice;
-  if (jurisdiction.settled < site.workCycle.settleS) return false;
+  if (choice === protocol.approach && jurisdiction.settled >= site.workCycle.settleS
+      && protocol.sequences[protocol.approach]?.[protocol.step] === 'position') protocol.step++;
+  offerFoundryProtocol(world);
+  if (!protocol.confirmed || choice !== protocol.approach || jurisdiction.settled < site.workCycle.settleS) return false;
   jurisdiction.status = 'resolved';
   jurisdiction.resolvedAt = Number(world.state.simTime) || 0;
   jurisdiction.workpiece = site.siteId;
@@ -111,6 +220,7 @@ function tickFoundryJurisdiction(world, body, dt, center, site, rec) {
     log(world, 'Mason', 'CONSTRUCTION CUSTODY ACCEPTED. PRESERVATION CLAIM RELEASED. EAST CRADLE TRANSFER RESUMES.');
   }
   world.bus.emit('machine:jurisdictionResolved', { siteId: site.siteId, choice, entityId: body.id, chargesSpent: site.workCycle.charges });
+  world.bus.emit('siteEvidence:closed', { siteId: site.siteId });
   world.bus.emit('audio:cue', { id: 'presentation.dock.capture', position: body.pos });
   return choice === 'construction';
 }
@@ -183,6 +293,8 @@ export function tickMasonWork(world, entity, dt) {
   const state = world.state, rec = siteRecord(state, m.siteId);
   const site = MACHINE_SITES[m.siteId];
   const center = world._toGlobal(site.center, site.sectorId);
+  // Retirement must also run when a lost workpiece makes the procedure return early.
+  offerFoundryProtocol(world);
   if (site.workCycle && (!foundryReceipt(rec) || rec.maintenance?.completed !== true)) {
     cycleRecord(rec);
     return true;
