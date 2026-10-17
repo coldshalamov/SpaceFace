@@ -98,3 +98,27 @@ Goal: a mature game we can demo without it feeling unfinished (total-fix mode, �
   fail-first regressions (FIX1, FIX2). Pushed through `b8d9b35a3a2`.
 - Remaining: BM5/BM6 perf legs (running), TASTE2 final taste pass (claude resets 5:20am ET),
   player-truth adventure+swarm on the quiet machine, ui-budgets re-shot, campaign close.
+- **CAMPAIGN CLOSED 2026-10-17 (early ET morning).**
+  - **Score: 30 work units landed and pushed** — 14 build-map ledger/board units (D203, D202
+    closed, D201 closed, D198 two legs, D130 one leg + D191 attribution scoped, nine mission rows
+    348–356) + 12 INFERENCE production units (ECON-09/10, LAW-11/12/13, STORY-09/10/11, WORLD-44,
+    INST-36/37/38; ECON-11 verified already-true) + 2 ADMIT family-lane rows (357/358) + 2
+    review-driven repair jobs (FIX1/FIX2: six MAJOR findings found by codex reviewing codex, all
+    fixed fail-first) + BM16/17 disposition of 20 family candidates (16 already-true with
+    evidence) + the deliberate golden re-record (zero metric/trace delta) + the final taste pass
+    (Munitions landscape fix; nine surfaces judged RIGHT).
+  - **Gates at close:** `check:baseline` **17/17 green at clean HEAD** (both re-recorded goldens
+    included). Player-truth adventure + swarm (headed, seed 4242, this box): **INCOMPLETE** —
+    every behavioral check PASS on both modes (rounds resolve, transitions clean, LOD/popping/
+    VFX/backdrop/HUD within budget); the two UNKNOWNs are instrument-host classes the ledger
+    already owns (readability sampler coherence; contended-host frame timing → quiet-host
+    program). Verdicts + contact sheets: `scratch/player-truth/{adventure,swarm-idle,swarm-active}/`.
+    `check:ui:budgets`: tracked bytes/content match the index (zero drift); FAIL is the three
+    documented PQ-184 grammar debts owned by the ORRERY lane.
+  - **Left open on purpose** (all scoped on their rows): D202b phone-HUD fit-scale (needs a
+    layout decision), D207 worker-lane mirror parity, D211 Asteroid Works shader-link stalls,
+    D188/D199/D24 (external/quiet-host/frozen), D130 whole-game 3x target, D191 native solve
+    step, D198 quiet-host attribution leg.
+  - Workers: codex `gpt-6.1-sol` xhigh (implementation + two review passes), claude
+    `claude-sonnet-5-5` high (D201, D202, two taste passes). Orchestrator: board/ledger/row
+    surgery, gates, pathspec commits, pushes.
