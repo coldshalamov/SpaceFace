@@ -21,7 +21,7 @@ test('a blast on a body at the field center does not invent a shove', () => {
   try {
     const victim = t.spawn({ pos: { x: 10, z: -4 }, radius: 6, mass: 32 });
     const before = { x: victim.pos.x, z: victim.pos.z };
-    t.system._targets = [victim];
+    // Blast recipients come from the physical world, independently of the field target cache.
     const result = t.system._blastVictims(t.state, {
       pos: { x: victim.pos.x, z: victim.pos.z },
       def: BOMB_DEFS.bomb_scrambler,
@@ -29,8 +29,12 @@ test('a blast on a body at the field center does not invent a shove', () => {
       originId: -1,
       trigger: 'fuze',
     });
-    assert.equal(t.impulses.length, 0, 'overlap does not apply an impulse');
-    assert.equal(result.shoves.length, 0);
+    assert.equal(t.impulses.filter((row) => row.entityId === victim.id).length, 0,
+      'overlap does not apply an impulse');
+    assert.equal(result.shoves.filter((row) => row.id === victim.id).length, 0);
+    assert.deepEqual(t.impulses.map((row) => row.entityId), [t.player.id],
+      'the nearby offset hull still receives the blast');
+    assert.deepEqual(result.shoves.map((row) => row.id), [t.player.id]);
     assert.equal(victim.pos.x, before.x);
     assert.equal(victim.pos.z, before.z);
     assert.ok(t.damage.some((row) => row.targetId === victim.id), 'center overlap still deals the payload');
