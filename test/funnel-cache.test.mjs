@@ -116,7 +116,9 @@ test('passive proximity cannot reveal the cache; one ordinary active pulse and c
   assert.equal(result.primary.sourceKind, 'archive');
   const cacheSignal = result.signals.find((signal) => signal.sourceId === CACHE_ID);
   assert.ok(cacheSignal);
-  assert.equal(cacheSignal.sourceKind, 'salvage');
+  // 5757a5495a2 split caches out of the salvage mapping: a cache POI reads as its own
+  // 'cache' signal kind (priority 78), not salvage.
+  assert.equal(cacheSignal.sourceKind, 'cache');
 
   harness.bus.emit('signal:track', { signalId: cacheSignal.id });
   scanner._updateTrackedSignal(state);
