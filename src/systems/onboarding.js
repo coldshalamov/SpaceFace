@@ -36,6 +36,7 @@ import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
+import { decoyAnswersLock } from './countermeasures.js';
 import { fitFeelRowFor, pickFitFelt } from '../onboarding/fitFeel.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, exclusivityRepMet, findMasslineHeadConflict, fits, getDerivedStats, outfitBudgetBlocker, stationShopOffer } from './ships.js';
@@ -629,6 +630,10 @@ export const onboarding = {
       });
     });
 
+    // TEACH-13 — the first inbound lock with a decoy aboard names the bound key
+    // once. An empty magazine stays silent. The MISSILE LOCK warning is not this line.
+    bus.on('combat:lockChanged', (p) => this._onInboundMissileLock(p || {}));
+
     // First station approach: enriches the existing dock prompt with what stations offer.
     bus.on('dock:range', (payload) => {
       this._dockControlInRange = !!(payload && payload.inRange);
@@ -964,6 +969,27 @@ export const onboarding = {
       : `Hold is full — jettison — ${label}.`;
     this._showHint('firstFullHoldJettison', text, payload);
     return !!(st.player.hints && st.player.hints.firstFullHoldJettison);
+  },
+
+  // TEACH-13 — one hint, once per profile, on the first lock warning while a decoy
+  // can still be dropped. Zero stock is the NXI-045 refusal, so it stays quiet and
+  // does not spend the lesson. No key to name (touch, unbound) leaves it too.
+  _onInboundMissileLock(payload) {
+    if (!payload || payload.locked !== true) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    const playerId = st.playerId;
+    if (payload.targetId != null && playerId != null && payload.targetId !== playerId) return;
+    if (st.player.hints && st.player.hints.firstDecoyLock) return;
+    const player = st.entities && st.entities.get && st.entities.get(playerId);
+    if (!player || player.alive === false) return;
+    if (!decoyAnswersLock(player)) return;
+    const label = verbBindingLabel(st, 'countermeasure');
+    if (!label) return;
+    const text = /[.!?]$/.test(label)
+      ? `Missile locked — drop a decoy — ${label}`
+      : `Missile locked — drop a decoy — ${label}.`;
+    this._showHint('firstDecoyLock', text, payload);
   },
 
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),

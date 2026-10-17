@@ -872,6 +872,23 @@ export function countermeasureReadiness(entity) {
   };
 }
 
+/**
+ * True when a lock warning should name the countermeasure key for this hull.
+ * Only a decoy buoy qualifies. A finite magazine must still hold a buoy —
+ * empty is the NXI-045 refusal, and naming a key the press would reject is a lie.
+ * Unset stock is the cooldown dispenser (the catalog buoy): aboard, not empty.
+ * Read-only: does not copy a fitting count onto the runtime.
+ */
+export function decoyAnswersLock(entity) {
+  const data = entity && entity.data;
+  const eq = equippedCountermeasure(data && data.fittings);
+  if (!eq || !eq.cm || eq.cm.kind !== 'decoy') return false;
+  const cm = data.cm;
+  if (cm && Number.isFinite(cm.stock)) return cm.stock >= 1;
+  if (Number.isFinite(eq.cm.stock)) return eq.cm.stock >= 1;
+  return true;
+}
+
 function ensureCountermeasureRuntime(host) {
   if (!host._projectileScratch) host._projectileScratch = [];
   if (!host._diag) {
