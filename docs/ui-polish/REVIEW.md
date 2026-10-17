@@ -1623,7 +1623,7 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **After (`src/ui/orrery/marketLayouts.js`, one additive desktop block in the ≤1100 × ≤800 band):**
 - The family ladder's gutter goes 24 → 10px (RESTRICTED still clears the register spine by ~17px). The number columns go to 60/36/44px with 4px leads, which still hold "136 ▲1%", "308" and "789u". Together the name column gains ~26px (143px at 960, 175px at 1024).
 - A name that still doesn't fit wraps onto a second line under its own first letter: hanging indent, with the icon on the first line only. It never runs under the price and is never cut. At 960 only "Machine Control Unit", "Consumer Goods" and "Impulse Charge" take two lines; at 1024 every name fits on one line.
-- The heads sit 6px apart over their numbers (BUY · SELL · STOCK). STOCK may use the list's 20px right gutter, so it's no longer clipped.
+- The heads sit apart over their numbers (BUY · SELL · STOCK). Code Work review fix: STOCK (tracking 0, 3px lead, SELL 3px right pad) now ends at the rail's scroll box; before it still ran 3px past and lost the K's arm (960×540: 464 vs 461).
 - Selectors and IDs unchanged; type stays ≥12px.
 
 **TRADE CLEARED follow-up:** see the ui-polish-70 section above. The cherry-picked block in this PR moves the receipt left of COMMS, off BUY/SELL.
@@ -1632,3 +1632,15 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** the ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Ledger 390×844 title under COMMS. Tech-tree star hit boxes @844×390.
 
+## Station berth on an upright phone — crown, next step, tab foot (ui-polish-72)
+
+**Before (master f079f9e12c):** on a phone held upright (bench `--phone`, 390×844) the berth crown split its width evenly, so MUNITIONS broke as "MUNITION / S" and CREDIT LINE OPEN took three lines. The next step's hint was cut to "Hold is empty. Chec…" beside DISMISS (bench 4 ON TOP OF on every station tab). In the tab foot SHIPWORKS ran into INDUSTRY with no gap and the MISSIONS badge hung off the right edge; at 360×780 it was worse.
+
+**After (`mobileScreenLayouts.js`, phones only, ≥561 tall):**
+- The crown shares its width by what each column holds (the word reading gets 1.5 shares). Labels stay on one line, so MUNITIONS is one word and CREDIT LINE OPEN is two lines.
+- The next step's hint drops under its title at full width (two lines at most), so the whole sentence reads and DISMISS keeps its own column.
+- The tab words close up (.05em, 12px gaps; .02em and 6px gaps at ≤375 wide), so every tab has a gap and the badge stays on glass.
+
+**Checked:** bench `--phone` station-ledger 4 → 0 at 390×844; station-ledger, station-market and station-contracts 0 at 390×844 and 360×780. Landscape phones (≤560 tall) and every desktop size are outside these rules (`data-sf-mobile` plus `min-height:561px`), so 960×540 / 1280×720 / 1920×1080 are untouched. Shots in `ui-shots/polish72/`.
+
+**Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) gives the berth head ~700px, so the tab body starts under COMMS (bench 4, same on master). The ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Tech-tree star hit boxes @844×390.
