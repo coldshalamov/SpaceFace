@@ -711,6 +711,21 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   /* ROUTE INTELLIGENCE closes up so it reads on one line from ~760 wide */
   ${MD} .so-route-disclosure > summary { letter-spacing:.08em !important; }
 }
+/* …and after a trade the TRADE CLEARED line, which ends 24px left of COMMS (~402px from the right
+   edge here), was one ~480px line: under ~880 wide its start ("TRADE CLEARED BOUGHT…") ran off the
+   left edge. It wraps into the room left of COMMS instead, growing upward, whole and on glass. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt {
+    flex-wrap:wrap !important; white-space:normal !important; width:max-content !important; max-width:calc(100vw - 414px) !important; row-gap:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt > * { white-space:nowrap; }
+  /* wrapped, it stands over the register's rows for its 3.6s, so its dark falloff covers the whole
+     block (the 26px radial fade under a one-line receipt left the rows reading through its words) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt::before {
+    left:-16px !important; right:-16px !important; top:-16px !important; bottom:-3px !important;
+    background:linear-gradient(to bottom, rgb(7 8 10 / 0), rgb(7 8 10 / .86) 14px, rgb(7 8 10 / .86) calc(100% - 3px), rgb(7 8 10 / 0)) !important;
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+    mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
+}
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {
