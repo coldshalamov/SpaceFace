@@ -108,6 +108,7 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
   CERES_ACTIVITY_SERVICE_SLOTS,
+  activityActorSlotById,
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
 import { stepPallasWorkLoop } from './pallasWorkLoop.js';
@@ -949,12 +950,65 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
 ]);
 const CERES_CAUSAL_CHAIN_BY_ID = new Map(CERES_CAUSAL_CHAIN.map((entry) => [entry.id, entry]));
 
+// ── Per-sector chain registry ────────────────────────────────────────────────────────────────────
+// The choreography timer below is not Ceres-specific; the Ceres chain is just the first entry in a
+// table keyed by sector id. A sector with an entry runs its chain on the same hard cap (two live
+// links) and the same cycle gap, bound to that sector's authored cast through the same
+// `activityActorSlotId` stamps. The ledger remembers which sector it belongs to (`sectorId`), so a
+// ledger can never be stepped against another sector's table. Ceres-only effects (probes, capsule,
+// tender and disabled-hauler incidents, the rich-seam window) are gated on `spec.isCeres`.
+const SECTOR_CAUSAL_CHAIN_SCHEMA = 'spaceface.sectorCausalChain.v1';
+
+function ceresCycleNews(chain) {
+  // The pocket's story rides the flight news channel: which cycle resolved decides the line
+  // (aftermath branch opened = loss story; clean service = clean shift). aftermath_open is the
+  // honest discriminator — the cutter is in `completed` on both paths (skipped on success).
+  // The loss line leads with the casualty, not the strip: the cutter can be killed mid-strip
+  // and the cycle still resolve, so "strips" would sometimes claim work that never happened.
+  const aftermathRan = chain.seeds.aftermath_open === true;
+  return {
+    text: aftermathRan
+      ? 'Ceres refinery writes off another seam casualty at the cathedral wreck.'
+      : 'Ceres refinery logs another clean seam shift.',
+    kind: 'ceres_seam_story',
+    sourceRef: 'traffic:ceres-causal-chain',
+    stationId: 'station_ceres',
+  };
+}
+
+function causalChainSpec({ sectorId, schema, chain, cycleNews }) {
+  return Object.freeze({
+    sectorId,
+    schema,
+    chain,
+    byId: new Map(chain.map((entry) => [entry.id, entry])),
+    // One cap and one gap for every sector: a second chain is more of the same machinery, not a
+    // second tuning surface.
+    maxConcurrent: CERES_CAUSAL_CHAIN_MAX_CONCURRENT,
+    cycleGapS: CERES_CAUSAL_CHAIN_CYCLE_GAP_S,
+    isCeres: sectorId === CERES_ACTIVITY_SECTOR_ID,
+    cycleNews,
+  });
+}
+
+const SECTOR_CAUSAL_CHAINS = new Map([
+  [CERES_ACTIVITY_SECTOR_ID, causalChainSpec({
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    schema: CERES_CAUSAL_CHAIN_SCHEMA,
+    chain: CERES_CAUSAL_CHAIN,
+    cycleNews: ceresCycleNews,
+  })],
+]);
+
 // Exported for focused characterization tests (seconds-scale, seed-pinned). Not a new runtime seam.
 export {
   CERES_CAUSAL_CHAIN,
   CERES_CAUSAL_CHAIN_EVENT,
   CERES_CAUSAL_CHAIN_SCHEMA,
   CERES_CAUSAL_CHAIN_MAX_CONCURRENT,
+  CERES_CAUSAL_CHAIN_CYCLE_GAP_S,
+  SECTOR_CAUSAL_CHAINS,
+  SECTOR_CAUSAL_CHAIN_SCHEMA,
   MAX_GENERAL_SALVORS_PER_SECTOR,
   MAX_YARD_TUGS_PER_SECTOR,
   TOWABLE_BODY_MIN_RADIUS_WU,
@@ -1861,7 +1915,7 @@ export const traffic = {
     this.bus.on('save:loaded', () => {
       const sectorId = this.state.world && this.state.world.currentSectorId;
       this._applyClaimTravelHooks(sectorId);
-      if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._ensureCeresCausalChain('save_loaded');
+      if (SECTOR_CAUSAL_CHAINS.has(sectorId)) this._ensureCeresCausalChain('save_loaded');
     });
     const refreshClaimTravel = () => this._applyClaimTravelHooks(
       this.state.world && this.state.world.currentSectorId,
@@ -2041,6 +2095,12 @@ export const traffic = {
     const authoredPockets = activityPocketsForSector(sectorId);
     if (authoredPockets.length) {
       this._materializeAuthoredActivityCast(sector, authoredPockets);
+    }
+    // A sector with a registered causal chain arms it once its cast is in the world. A continuous
+    // re-entry keeps the live ledger, so its remaining phase windows are rebased from now.
+    if (SECTOR_CAUSAL_CHAINS.has(sectorId)) {
+      this._ensureCeresCausalChain('sector_enter');
+      this._rebaseCeresCausalPhaseEnds();
     }
     // During a save restore the envelope respawn (persistent-spawn chunks + save:loaded's
     // re-adopt) is authoritative for every hull the live-entry production below would mint —
@@ -5390,6 +5450,12 @@ export const traffic = {
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
+    // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
+    // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
+    // stale ledger here instead of letting its stamps and jobs outlive the sector.
+    if (this._ceresCausal && this._ceresCausal.sectorId !== (state.world && state.world.currentSectorId)) {
+      this._resetCeresCausalChain('wrong_sector');
+    }
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
     // Even with zero freighters, a wreck can still call a cutter into the sector.
@@ -5405,13 +5471,16 @@ export const traffic = {
     }
 
     // Timer-cadence only: one chain step per traffic update, not a freighter scan.
-    if (state.world && state.world.currentSectorId === CERES_ACTIVITY_SECTOR_ID) {
+    const causalSectorId = state.world && state.world.currentSectorId;
+    if (SECTOR_CAUSAL_CHAINS.has(causalSectorId)) {
       this._stepCeresCausalChain(dt);
-      // A save may restore the compact service incident before its transient choreography link.
-      // Let that exact orphan rebind once; an active link drives its own incident in the chain step.
-      if (!this._hasActiveCeresTenderServiceLink()) this._stepCeresTenderServiceIncident(dt);
-      this._stepCeresDisabledHaulerIncident(dt);
-      this._stepCeresMinerHaulerHandoffs(dt);
+      if (causalSectorId === CERES_ACTIVITY_SECTOR_ID) {
+        // A save may restore the compact service incident before its transient choreography link.
+        // Let that exact orphan rebind once; an active link drives its own incident in the chain step.
+        if (!this._hasActiveCeresTenderServiceLink()) this._stepCeresTenderServiceIncident(dt);
+        this._stepCeresDisabledHaulerIncident(dt);
+        this._stepCeresMinerHaulerHandoffs(dt);
+      }
     }
 
     let lostWorldSiteRoute = false;
@@ -10540,17 +10609,42 @@ export const traffic = {
     this._ceresCausal = null;
   },
 
+  /** The chain table row for the sector the live ledger belongs to (null with no ledger). */
+  _causalSpec() {
+    const chain = this._ceresCausal;
+    return chain && SECTOR_CAUSAL_CHAINS.get(chain.sectorId) || null;
+  },
+
+  /** Definition lookup through the live ledger's own sector table, never another sector's. */
+  _causalDef(eventId) {
+    const spec = this._causalSpec();
+    return spec ? spec.byId.get(eventId) : undefined;
+  },
+
+  /** True when the live ledger is the Ceres chain — the gate for every Ceres-only effect. */
+  _causalIsCeres() {
+    const chain = this._ceresCausal;
+    return !!chain && chain.sectorId === CERES_ACTIVITY_SECTOR_ID;
+  },
+
   _ensureCeresCausalChain(reason = 'ensure') {
-    if (!this.state || !this.state.world || this.state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) {
+    const sectorId = this.state && this.state.world && this.state.world.currentSectorId;
+    const spec = sectorId ? SECTOR_CAUSAL_CHAINS.get(sectorId) : null;
+    if (!spec) {
       this._resetCeresCausalChain('wrong_sector');
       return null;
     }
-    if (this._ceresCausal && this._ceresCausal.schema === CERES_CAUSAL_CHAIN_SCHEMA) {
+    if (this._ceresCausal && this._ceresCausal.sectorId === sectorId
+      && this._ceresCausal.schema === spec.schema) {
       return this._ceresCausal;
     }
+    // A ledger left over from another sector's chain (continuous exits never reset it) is torn
+    // down before this sector's own chain arms.
+    if (this._ceresCausal) this._resetCeresCausalChain('wrong_sector');
     const simTime = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     this._ceresCausal = {
-      schema: CERES_CAUSAL_CHAIN_SCHEMA,
+      schema: spec.schema,
+      sectorId,
       cycle: 0,
       nextIndex: 0,
       active: [],
@@ -10580,7 +10674,7 @@ export const traffic = {
     for (let i = 0; i < chain.active.length; i++) {
       const live = chain.active[i];
       if (!live) continue;
-      const def = CERES_CAUSAL_CHAIN_BY_ID.get(live.eventId);
+      const def = this._causalDef(live.eventId);
       const phase = def && Array.isArray(def.phases) ? def.phases[live.phaseIndex] : null;
       const durationS = phase && Number.isFinite(phase.durationS) ? phase.durationS : 1;
       if (!(Number.isFinite(live.phaseEndsAt) && live.phaseEndsAt > simTime)) {
@@ -10647,7 +10741,30 @@ export const traffic = {
   },
 
   _ceresCausalWorldRecordIdForSlot(slotId) {
+    if (!this._causalIsCeres() && this._ceresCausal) {
+      // Another sector's authored cast: the durable id is minted from that sector's own slot
+      // namespace, never the Ceres one.
+      const slot = typeof slotId === 'string' && slotId ? activityActorSlotById(slotId) : null;
+      if (!slot || !slot.worldRecordSlotId) return null;
+      const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
+      return stableRecordId(seed, this._ceresCausal.sectorId, RECORD_KIND.CONVOY, slot.worldRecordSlotId);
+    }
     return ceresActivityActorWorldRecordId(this.state, slotId);
+  },
+
+  /**
+   * The authored cast entry ({ pocket, slot, service }) for a slot id in the live ledger's sector.
+   * Ceres keeps its own indexed cast; every other chain sector resolves through the activity
+   * pocket registry that materialized the hull in the first place.
+   */
+  _causalCastEntry(slotId) {
+    if (typeof slotId !== 'string' || !slotId) return undefined;
+    if (!this._ceresCausal || this._causalIsCeres()) return CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
+    for (const pocket of activityPocketsForSector(this._ceresCausal.sectorId)) {
+      const slot = pocket.actorSlots.find((candidate) => candidate.id === slotId);
+      if (slot) return { pocket, slot, service: false };
+    }
+    return undefined;
   },
 
   /** True when the durable cast record is terminal (destroyed/defeated) — not merely absent this tick. */
@@ -10723,7 +10840,7 @@ export const traffic = {
   },
 
   _openCeresRichSeamOpportunity(live) {
-    if (!live) return null;
+    if (!live || !this._causalIsCeres()) return null;
     // The strike opens the seam's primary window; a calving that actually reached its calve phase
     // re-arms the window as the catalog's fresh-face aftermath ("fresh faces are visibly brighter
     // ore") once the prior window has resolved. Keyed on phaseSeeded — the natural seed-at-phase
@@ -10757,9 +10874,9 @@ export const traffic = {
     if (!this.bus || typeof this.bus.emit !== 'function') return;
     const chain = this._ceresCausal;
     const payload = {
-      schema: CERES_CAUSAL_CHAIN_SCHEMA,
+      schema: chain && chain.schema || CERES_CAUSAL_CHAIN_SCHEMA,
       kind: String(kind || 'tick'),
-      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      sectorId: chain && chain.sectorId || CERES_ACTIVITY_SECTOR_ID,
       simTime: Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0,
       cycle: chain ? chain.cycle | 0 : 0,
       activeCount: chain && Array.isArray(chain.active) ? chain.active.length : 0,
@@ -10793,11 +10910,13 @@ export const traffic = {
     this._ceresCausal.active.push(live);
     // Stamp a transient presentation cue on the primary actor (not a movement intent).
     this._stampCeresCausalCue(live, true);
-    if (def.id === 'ev_disabled_hauler_recovery') {
+    // The two persisted service incidents are Ceres-owned machinery (the tender yard, the dock
+    // hauler); another sector's chain never starts them even if it borrows an event id.
+    if (this._causalIsCeres() && def.id === 'ev_disabled_hauler_recovery') {
       const incident = this._beginCeresDisabledHaulerIncident();
       live.serviceIncidentId = incident && incident.incidentId || null;
     }
-    if (def.id === 'ev_tender_services_miner') {
+    if (this._causalIsCeres() && def.id === 'ev_tender_services_miner') {
       const incident = this._beginCeresTenderServiceIncident();
       live.serviceIncidentId = incident && incident.incidentId || null;
     }
@@ -10851,20 +10970,22 @@ export const traffic = {
   },
 
   _reaffirmCeresCausalActorJob(actorSlotId) {
-    const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(actorSlotId);
+    const entry = this._causalCastEntry(actorSlotId);
     if (!entry || entry.service) return false;
     const bound = this._ceresCausalActorBySlot(actorSlotId);
     if (!bound || !bound.entity) return false;
     const entity = bound.entity;
     if (!entity.data || !entity.data.jobId) {
-      return !!this._assignCeresActivityJob(entity, entry);
+      return !!(this._causalIsCeres()
+        ? this._assignCeresActivityJob(entity, entry)
+        : this._assignActivityJob(entity, entry));
     }
     // Already job-owned — leave the existing cycle alone.
     return true;
   },
 
   _redirectCeresCausalActorJob(actorSlotId, subjectSlotId, live) {
-    const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(actorSlotId);
+    const entry = this._causalCastEntry(actorSlotId);
     if (!entry || entry.service || !entry.slot || !CERES_ACTIVITY_JOB_KINDS.has(entry.slot.jobKind)) {
       return false; // no traffic job seam (e.g. tender) — stamp-only
     }
@@ -10904,7 +11025,7 @@ export const traffic = {
       : 40;
     const spec = {
       kind: entry.slot.jobKind,
-      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      sectorId: this._ceresCausal.sectorId,
       speed,
       route: [
         {
@@ -11320,7 +11441,7 @@ export const traffic = {
     for (let i = 0; i < live.redirectedSlots.length; i++) {
       const redirected = live.redirectedSlots[i];
       const slotId = typeof redirected === 'string' ? redirected : redirected && redirected.slotId;
-      const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
+      const entry = this._causalCastEntry(slotId);
       if (!entry || entry.service) continue;
       const bound = this._ceresCausalActorBySlot(slotId);
       if (!bound || !bound.entity) continue;
@@ -11350,19 +11471,20 @@ export const traffic = {
     // cargo pod off the refinery face (see _shearCeresClampPod). All ride the standard pickup
     // pipeline — the collecting player owns the cargo write, exactly like the disabled-hauler
     // spill — so traffic mints no cargo onto any hull.
-    if (def.id === 'ev_surveyor_probe_line') {
+    const isCeres = this._causalIsCeres();
+    if (isCeres && def.id === 'ev_surveyor_probe_line') {
       const phaseDef = (def.phases || []).find((phase) => phase && phase.name === phaseName);
       if (phaseDef && Number.isSafeInteger(phaseDef.probe)) {
         this._dropCeresSurveyProbe(live, phaseDef.probe);
       }
     }
-    if (def.id === 'ev_cutter_strips_wreck' && phaseName === 'stack') {
+    if (isCeres && def.id === 'ev_cutter_strips_wreck' && phaseName === 'stack') {
       this._spillCeresCutterCount(live);
     }
-    if (def.id === 'ev_cargo_capsule_launch' && phaseName === 'launch') {
+    if (isCeres && def.id === 'ev_cargo_capsule_launch' && phaseName === 'launch') {
       this._launchCeresCargoCapsule(live);
     }
-    if (def.id === 'ev_pod_breaks_clamp' && phaseName === 'drift') {
+    if (isCeres && def.id === 'ev_pod_breaks_clamp' && phaseName === 'drift') {
       this._shearCeresClampPod(live);
     }
     this._applyCeresCausalJobHints(def, live, phaseName);
@@ -11387,7 +11509,7 @@ export const traffic = {
 
   _completeCeresCausalEvent(live, outcome = 'complete') {
     if (!live || !this._ceresCausal) return;
-    const def = CERES_CAUSAL_CHAIN_BY_ID.get(live.eventId);
+    const def = this._causalDef(live.eventId);
     // Plant seeds and count toward re-arm on EVERY terminal outcome so an interrupted link degrades
     // the chain rather than killing it (fallback/abort must not soft-lock later requires).
     // Interrupt outcomes prefer interruptSeeds (alternate aftermath story) when authored.
@@ -11422,7 +11544,14 @@ export const traffic = {
               delete rec.ceresCausalDisabled;
             }
             const entity = this.state.entities && this.state.entities.get(rec.id);
-            if (entity && entity.data) this._wipeCeresCausalDataKeys(entity.data);
+            if (!entity || !entity.data) continue;
+            // Two live links can share a hull (the cap allows two). The hull's stamp belongs to
+            // the link that stamped it last: finishing the other one must not blank a cue that a
+            // still-running link is showing until its next phase edge.
+            const stampedBy = entity.data.ceresCausalEventId;
+            if (stampedBy && stampedBy !== live.eventId
+              && this._ceresCausal.active.some((other) => other !== live && other.eventId === stampedBy)) continue;
+            this._wipeCeresCausalDataKeys(entity.data);
           }
         }
       }
@@ -11440,12 +11569,12 @@ export const traffic = {
 
   _advanceCeresCausalLive(live, simTime) {
     if (!live || !this._ceresCausal) return;
-    const def = CERES_CAUSAL_CHAIN_BY_ID.get(live.eventId);
+    const def = this._causalDef(live.eventId);
     if (!def) {
       this._completeCeresCausalEvent(live, 'abort');
       return;
     }
-    if (def.id === 'ev_tender_services_miner') {
+    if (this._causalIsCeres() && def.id === 'ev_tender_services_miner') {
       const incident = this._activeCeresTenderServiceIncident();
       if (!incident || (live.serviceIncidentId && incident.incidentId !== live.serviceIncidentId)) {
         this._completeCeresCausalEvent(live, 'fallback');
@@ -11476,7 +11605,7 @@ export const traffic = {
       }
       return;
     }
-    if (def.id === 'ev_disabled_hauler_recovery') {
+    if (this._causalIsCeres() && def.id === 'ev_disabled_hauler_recovery') {
       const incident = this._activeCeresDisabledHaulerIncident()
         || this.state.traffic && this.state.traffic.ceresDisabledHaulerIncident;
       if (!incident || (live.serviceIncidentId && incident.incidentId !== live.serviceIncidentId)) {
@@ -11530,11 +11659,12 @@ export const traffic = {
 
   _tryStartNextCeresCausalEvents(simTime) {
     const chain = this._ceresCausal;
-    if (!chain) return;
+    const spec = this._causalSpec();
+    if (!chain || !spec) return;
     if (simTime < chain.nextEligibleAt) return;
-    while (chain.active.length < CERES_CAUSAL_CHAIN_MAX_CONCURRENT
-      && chain.nextIndex < CERES_CAUSAL_CHAIN.length) {
-      const def = CERES_CAUSAL_CHAIN[chain.nextIndex];
+    while (chain.active.length < spec.maxConcurrent
+      && chain.nextIndex < spec.chain.length) {
+      const def = spec.chain[chain.nextIndex];
       if (!this._ceresCausalSeedsReady(def.requires)) {
         // Anti-softlock with divergent interrupt seeds: an earlier interrupt may have withheld
         // this link's seed while killing the cast that would have produced it. Terminal cast
@@ -11590,27 +11720,25 @@ export const traffic = {
       this._startCeresCausalEvent(def, simTime);
       chain.nextIndex += 1;
     }
-    if (chain.nextIndex >= CERES_CAUSAL_CHAIN.length
+    if (chain.nextIndex >= spec.chain.length
       && chain.active.length === 0
-      && chain.completed.length >= CERES_CAUSAL_CHAIN.length) {
-      // Full cycle resolved with no player input. Gap, then re-arm from the seam strike again.
-      // The pocket's story rides the flight news channel: which cycle resolved decides the line
-      // (aftermath branch opened = loss story; clean service = clean shift). aftermath_open is the
-      // honest discriminator — the cutter is in `completed` on both paths (skipped on success).
-      // The loss line leads with the casualty, not the strip: the cutter can be killed mid-strip
-      // and the cycle still resolve, so "strips" would sometimes claim work that never happened.
-      const aftermathRan = chain.seeds.aftermath_open === true;
-      this.bus.emit('news:publish', {
-        text: aftermathRan
-          ? 'Ceres refinery writes off another seam casualty at the cathedral wreck.'
-          : 'Ceres refinery logs another clean seam shift.',
-        kind: 'ceres_seam_story',
-        sourceRef: 'traffic:ceres-causal-chain',
-        channelId: 'news',
-        stationId: 'station_ceres',
-        sectorId: CERES_ACTIVITY_SECTOR_ID,
-        cycle: (chain.cycle | 0) + 1,
-      });
+      && chain.completed.length >= spec.chain.length) {
+      // Full cycle resolved with no player input. Gap, then re-arm from the head of the chain.
+      // The sector's story rides the flight news channel; each table row authors which cycle
+      // outcome decides the line (Ceres: aftermath branch opened = loss story, clean service =
+      // clean shift).
+      const story = spec.cycleNews(chain);
+      if (story && story.text) {
+        this.bus.emit('news:publish', {
+          text: story.text,
+          kind: story.kind,
+          sourceRef: story.sourceRef,
+          channelId: 'news',
+          stationId: story.stationId,
+          sectorId: chain.sectorId,
+          cycle: (chain.cycle | 0) + 1,
+        });
+      }
       chain.cycle = (chain.cycle | 0) + 1;
       chain.nextIndex = 0;
       chain.completed = [];
@@ -11626,7 +11754,8 @@ export const traffic = {
   _stepCeresCausalChain(dt) {
     const chain = this._ensureCeresCausalChain('step');
     if (!chain) return;
-    this._rehydrateCeresCausalHandoffSeeds();
+    // The miner-to-hauler handoff ledger is Ceres machinery; another sector's chain has none.
+    if (this._causalIsCeres()) this._rehydrateCeresCausalHandoffSeeds();
     const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     // Advance active links first so a finishing seed can admit the next link in the same step.
     if (Array.isArray(chain.active) && chain.active.length) {
@@ -11646,6 +11775,7 @@ export const traffic = {
     if (!chain) return null;
     return Object.freeze({
       schema: chain.schema,
+      sectorId: chain.sectorId,
       cycle: chain.cycle | 0,
       nextIndex: chain.nextIndex | 0,
       activeCount: Array.isArray(chain.active) ? chain.active.length : 0,
