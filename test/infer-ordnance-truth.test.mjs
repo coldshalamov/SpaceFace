@@ -37,7 +37,7 @@ test('NXI-038: exact center overlap is a finite zero shove, and an offset hull s
     const overlapped = t.spawn({ pos: { x: 5, z: 5 }, vel: { x: 1, z: 0 }, radius: 6, mass: 32 });
     const offset = t.spawn({ pos: { x: 35, z: 5 }, vel: { x: 0, z: 0 }, radius: 6, mass: 32 });
     const before = { x: overlapped.pos.x, z: overlapped.pos.z };
-    t.system._targets = [overlapped];
+    // Blast recipients come from the physical world, independently of the field target cache.
     const havoc = t.system._blastVictims(t.state, {
       pos: { x: overlapped.pos.x, z: overlapped.pos.z },
       def: BOMB_DEFS.bomb_scrambler,
@@ -45,8 +45,14 @@ test('NXI-038: exact center overlap is a finite zero shove, and an offset hull s
       originId: -1,
       trigger: 'fuze',
     });
-    assert.equal(t.impulses.length, 0, 'a tangent blast at the center does not invent a direction');
-    assert.equal(havoc.shoves.length, 0);
+    assert.equal(t.impulses.filter((row) => row.entityId === overlapped.id).length, 0,
+      'a tangent blast at the center does not invent a direction');
+    assert.equal(havoc.shoves.filter((row) => row.id === overlapped.id).length, 0);
+    const offsetIds = [t.player.id, offset.id].sort((a, b) => a - b);
+    assert.deepEqual(t.impulses.map((row) => row.entityId).sort((a, b) => a - b), offsetIds,
+      'nearby hulls still receive the blast');
+    assert.deepEqual(havoc.shoves.map((row) => row.id).sort((a, b) => a - b), offsetIds);
+    assert.ok(havoc.hits.includes(overlapped.id), 'center overlap still receives the payload');
     assert.equal(overlapped.pos.x, before.x);
     assert.equal(overlapped.pos.z, before.z);
     assert.ok(Number.isFinite(overlapped.vel.x) && Number.isFinite(overlapped.vel.z));
