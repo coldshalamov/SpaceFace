@@ -159,6 +159,62 @@ export function markMoralDebtReturned(state, id) {
   return debt;
 }
 
+// WORLD-46 — one memory for a lane hauler whose raiders the player killed.
+// Status stays off the pending/return picker, and mercyCount is not bumped:
+// the next crossing says thank you. It does not open a comeback or pay anyone.
+export const HAULER_RESCUE_CAUSE = 'lane_hauler_rescued';
+
+export function haulerRescueIdFor(haulerKey) {
+  const key = String(haulerKey || '').trim();
+  if (!key) return null;
+  return `hauler-rescue:${key}`;
+}
+
+export function rememberHaulerRescue(state, payload = {}) {
+  const id = haulerRescueIdFor(payload.haulerKey);
+  if (!id || !state) return null;
+  const memory = ensureMoralMemory(state);
+  if (memory.debts[id]) return memory.debts[id];
+  const now = Number.isFinite(payload.t) ? Number(payload.t) : finite(state.simTime, 0);
+  const name = String(payload.name || 'Hauler').trim() || 'Hauler';
+  const debt = {
+    id,
+    name,
+    cause: HAULER_RESCUE_CAUSE,
+    factionId: payload.factionId || 'faction_free',
+    archetype: 'hauler',
+    recordedAt: now,
+    recordedTick: Math.max(0, Math.round(now * 60)),
+    seed: hash32(finite(state.meta && state.meta.seed, 0), id, 'hauler-rescue'),
+    disposition: 'ally',
+    status: 'remembered',
+    thankedAt: null,
+    source: 'haulerRescue:cleared',
+    haulerKey: String(payload.haulerKey).trim(),
+  };
+  // Kept off memory.order on purpose: that list is the mercy-return queue and its
+  // cap drops the oldest debt. A thank-you must not evict a spared pilot.
+  memory.debts[id] = debt;
+  return debt;
+}
+
+export function unreadHaulerRescue(state, haulerKey) {
+  const id = haulerRescueIdFor(haulerKey);
+  if (!id || !state || !state.story || !state.story.moralMemory) return null;
+  const debts = state.story.moralMemory.debts;
+  const debt = debts && debts[id];
+  if (!debt || debt.cause !== HAULER_RESCUE_CAUSE) return null;
+  if (debt.thankedAt != null) return null;
+  return debt;
+}
+
+export function markHaulerRescueThanked(state, haulerKey, t) {
+  const debt = unreadHaulerRescue(state, haulerKey);
+  if (!debt) return null;
+  debt.thankedAt = Number.isFinite(t) ? Number(t) : finite(state && state.simTime, 0);
+  return debt;
+}
+
 function freshMemory() {
   return { schemaVersion: MORAL_MEMORY_VERSION, mercyCount: 0, debts: {}, order: [] };
 }

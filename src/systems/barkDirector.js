@@ -35,6 +35,7 @@ import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { FACTION_META, LAWFUL_STATION_FACTIONS } from '../data/factions.js';
 import { deedLine } from '../data/deedPhrases.js';
 import { DEED_KINDS, markTold, peekDeedRecord, pickDeedToTell, standingWith } from './deedRecord.js';
+import { markHaulerRescueThanked, rememberHaulerRescue, unreadHaulerRescue } from './moralMemory.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { ORES } from '../data/mining.js';
 import { playerBearingName } from '../core/playerCompass.js';
@@ -240,6 +241,83 @@ export function minerSeamWorkedOutBarkFor(rng) {
   }
   const line = lines[index] || lines[0];
   return typeof line === 'string' && line.length ? line : '...';
+}
+
+// WORLD-46 — the lane hauler you pulled out of a live raid. One thank-you, in the
+// hauler's own voice, the next time your paths cross. No pay, no follow-up job.
+export const HAULER_RESCUE_THANKS = Object.freeze([
+  'Thank you. You killed those raiders. This hull remembers.',
+  'Thank you. The lane is clear — we saw who ended that raid.',
+  'Thank you. Those raiders are gone, and this hull will not forget it.',
+]);
+
+/** One deterministic thank-you. A safe hull name leads the line; a raw id never does. */
+export function haulerRescueThanksText(rng, name) {
+  const lines = HAULER_RESCUE_THANKS;
+  let index = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    index = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
+  }
+  const line = lines[index] || lines[0];
+  const who = typeof name === 'string' ? name.trim() : '';
+  return who ? `${who}: ${line}` : line;
+}
+
+function isLaneHauler(entity) {
+  if (!entity || entity.type !== 'ship' || entity.alive === false) return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  const role = String(data.trafficRole || data.role || ai.role || '').toLowerCase();
+  return role === 'hauler';
+}
+
+/** Stable across the raid clear: the manifest stays, the predation stamps do not. */
+function haulerRescueKey(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const manifest = data.cargoManifest;
+  const manifestId = manifest && manifest.manifestId != null ? String(manifest.manifestId).trim() : '';
+  if (manifestId) return `manifest:${manifestId}`;
+  if (data.worldRecordId != null && String(data.worldRecordId).trim()) {
+    return `record:${String(data.worldRecordId).trim()}`;
+  }
+  if (data.namedLaneContactId != null && String(data.namedLaneContactId).trim()) {
+    return `contact:${String(data.namedLaneContactId).trim()}`;
+  }
+  if (entity.id == null) return null;
+  return `hull:${entity.id}`;
+}
+
+/** A spoken name. Raw ids, snake_case, and digit runs stay off the radio. */
+function haulerDisplayName(entity) {
+  const data = entity && entity.data || {};
+  const raw = typeof data.name === 'string' ? data.name.trim() : '';
+  if (!raw || raw.length > 48) return null;
+  if (/[_:]/.test(raw) || /\d{3,}/.test(raw)) return null;
+  if (!/[A-Za-z]/.test(raw)) return null;
+  return raw;
+}
+
+/**
+ * The prey of a raid that is still bound to this raider. Null once the clear has
+ * already stripped the stamps — the telegraph note covers that order.
+ */
+function liveLaneHauler(state, raiderId) {
+  const raider = entityAt(state, raiderId);
+  if (!raider || !raider.data) return null;
+  const ai = raider.data.ai || {};
+  const objective = ai.predationObjective;
+  if (!objective || objective.targetId == null) return null;
+  const status = ai.predationStatus;
+  if (!status || status === 'cleared') return null;
+  const raidId = objective.raidId || raider.data.predationEncounterId;
+  const ambient = typeof raidId === 'string' && raidId.startsWith('ambient:raid:');
+  if (!ambient && raider.data.predationRole !== 'raider') return null;
+  const hauler = entityAt(state, objective.targetId);
+  if (!isLaneHauler(hauler)) return null;
+  if (hauler.data && hauler.data.predationEncounterId && raidId
+    && hauler.data.predationEncounterId !== raidId) return null;
+  return hauler;
 }
 
 /** Once per depletion: one relocating miner speaks once per field it worked out. */
@@ -722,6 +800,15 @@ export const barkDirector = {
       // WORLD-43 — the retargeting miner names the seam it worked out, in the miner register.
       this._onMinerRelocated = (payload) => this._speakMinerSeamWorkedOut(payload || {});
       this.bus.on('npcjobs:minerRelocated', this._onMinerRelocated);
+      // WORLD-46 — remember a lane hauler while the raid is live, stamp one memory
+      // when the player kills that raider, and thank them on the next crossing.
+      this._liveHaulerRaids = new Map();
+      this._onHaulerRaidTelegraph = (payload) => this._noteLiveHaulerRaid(payload || {});
+      this._onHaulerRaidCleared = (payload) => this._forgetLiveHaulerRaid(payload || {});
+      this._onHaulerRaidKill = (payload) => this._stampHaulerRescueFromKill(payload || {});
+      this.bus.on('encounter:ambientPredationTelegraph', this._onHaulerRaidTelegraph);
+      this.bus.on('encounter:ambientPredationCleared', this._onHaulerRaidCleared);
+      this.bus.on('entity:killed', this._onHaulerRaidKill);
       this._onHaulerRegroup = (payload) => this._speakHaulerRegroup(payload || {});
       this.bus.on('traffic:haulerRegroup', this._onHaulerRegroup);
       this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
@@ -771,6 +858,7 @@ export const barkDirector = {
     this._richSeamHelpKeys = null;
     this._minerSeamWorkedOutKeys = null;
     this._haulerRegroupKeys = null;
+    if (this._liveHaulerRaids) this._liveHaulerRaids.clear();
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
     this.noteBarkWake();
@@ -1655,6 +1743,8 @@ export const barkDirector = {
     const dx = entity.pos.x - player.pos.x;
     const dz = entity.pos.z - player.pos.z;
     if (dx * dx + dz * dz > PASS_HAIL_RANGE_SQ) return false;
+    // The owed thank-you replaces the stock chirp for this one crossing.
+    if (this._speakHaulerRescueThanks(entity)) return true;
     if (grandee) return this._speakGrandeeHail(entity);
     if (tourist) return this._speakTouristHail(entity);
     const workRole = occupationalRoleOf(entity);
@@ -2108,6 +2198,104 @@ export const barkDirector = {
     return spoken;
   },
 
+  // WORLD-46 — the telegraph is the only moment the prey is still a live raid target
+  // we can name. A later clear strips the stamps before this observer may see the kill.
+  _noteLiveHaulerRaid(payload) {
+    if (!this.state || !payload || payload.raiderId == null || payload.targetId == null) return;
+    const hauler = entityAt(this.state, payload.targetId);
+    if (!isLaneHauler(hauler)) return;
+    if (!this._liveHaulerRaids) this._liveHaulerRaids = new Map();
+    this._liveHaulerRaids.set(String(payload.raiderId), {
+      raidId: payload.raidId || null,
+      haulerId: hauler.id,
+    });
+    if (this._liveHaulerRaids.size > 16) {
+      const oldest = this._liveHaulerRaids.keys().next().value;
+      this._liveHaulerRaids.delete(oldest);
+    }
+  },
+
+  // Any ending other than the raiders dying drops the owed thanks. A destroyed
+  // raider keeps the note until the kill receipt says whether the player did it.
+  _forgetLiveHaulerRaid(payload) {
+    if (!payload || payload.raiderId == null || !this._liveHaulerRaids) return;
+    if (payload.reason === 'raider_destroyed') return;
+    this._liveHaulerRaids.delete(String(payload.raiderId));
+  },
+
+  _stampHaulerRescueFromKill(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.id == null) return null;
+    const raiderId = String(payload.id);
+    const byPlayer = payload.killerId != null && payload.killerId === state.playerId;
+    const noted = this._liveHaulerRaids && this._liveHaulerRaids.get(raiderId);
+    if (this._liveHaulerRaids) this._liveHaulerRaids.delete(raiderId);
+    if (!byPlayer) return null;
+    const hauler = liveLaneHauler(state, payload.id)
+      || (noted ? entityAt(state, noted.haulerId) : null);
+    if (!isLaneHauler(hauler)) return null;
+    const key = haulerRescueKey(hauler);
+    if (!key) return null;
+    const debt = rememberHaulerRescue(state, {
+      haulerKey: key,
+      name: haulerDisplayName(hauler) || 'Hauler',
+      factionId: factionFor(hauler),
+      t: Number(state.simTime) || 0,
+    });
+    if (debt) this.noteBarkWake();
+    return debt;
+  },
+
+  /** The next crossing, once. The stock pass-by chirp does not also fire. */
+  _speakHaulerRescueThanks(entity) {
+    const state = this.state;
+    if (!state || !entity || entity.alive === false || entity.id === state.playerId) return false;
+    if (!isLaneHauler(entity)) return false;
+    const key = haulerRescueKey(entity);
+    if (!key || !unreadHaulerRescue(state, key)) return false;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const seed = state.meta && state.meta.seed;
+    const text = haulerRescueThanksText(
+      hash32(seed == null ? 0 : seed, 'haulerRescue', key),
+      haulerDisplayName(entity),
+    );
+    if (!text) return false;
+    const factionId = factionFor(entity);
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'haulerRescue',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${entity.id}:hauler-rescue`,
+      factionId,
+      register: 'hauler',
+    });
+    if (!accepted) return false;
+    const now = Number(state.simTime) || 0;
+    markHaulerRescueThanked(state, key, now);
+    const own = ensureState(state);
+    const entityId = String(entity.id);
+    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    rec.said['patrol-greeting'] = true;
+    rec.lastSituation = 'hauler-rescue';
+    rec.lastSpokenAt = now;
+    rec.history.push({
+      situation: 'hauler-rescue', reason: 'raid-cleared', t: now, text, register: 'hauler',
+    });
+    if (rec.history.length > 8) rec.history.shift();
+    this._emit('barkDirector:voice', {
+      entityId: entity.id,
+      situation: 'hauler-rescue',
+      reason: 'raid-cleared',
+      text,
+      factionId,
+      register: 'hauler',
+      t: now,
+    });
+    return true;
+  },
+
   _isSuppressed(entity, situation, rec) {
     const state = this.state;
     const own = ensureState(state);
@@ -2351,6 +2539,9 @@ export const barkDirector = {
       if (this._onLoadEmpty) this.bus.off('npcjobs:loadEmpty', this._onLoadEmpty);
       if (this._onRichSeamHelp) this.bus.off('traffic:richSeamHelpReserved', this._onRichSeamHelp);
       if (this._onMinerRelocated) this.bus.off('npcjobs:minerRelocated', this._onMinerRelocated);
+      if (this._onHaulerRaidTelegraph) this.bus.off('encounter:ambientPredationTelegraph', this._onHaulerRaidTelegraph);
+      if (this._onHaulerRaidCleared) this.bus.off('encounter:ambientPredationCleared', this._onHaulerRaidCleared);
+      if (this._onHaulerRaidKill) this.bus.off('entity:killed', this._onHaulerRaidKill);
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
       if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
       if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
@@ -2391,6 +2582,9 @@ export const barkDirector = {
     this._onLoadEmpty = null;
     this._onRichSeamHelp = null;
     this._onMinerRelocated = null;
+    this._onHaulerRaidTelegraph = null;
+    this._onHaulerRaidCleared = null;
+    this._onHaulerRaidKill = null;
     this._onHaulerRegroup = null;
     this._onOreFlood = null;
     this._onTumbleRake = null;
@@ -2402,6 +2596,8 @@ export const barkDirector = {
     this._emptyLoadKeys = null;
     this._richSeamHelpKeys = null;
     this._minerSeamWorkedOutKeys = null;
+    if (this._liveHaulerRaids) this._liveHaulerRaids.clear();
+    this._liveHaulerRaids = null;
     if (this._bodyNearMisses) this._bodyNearMisses.clear();
     this._bodyNearMisses = null;
     this._barkQuiet = null;
