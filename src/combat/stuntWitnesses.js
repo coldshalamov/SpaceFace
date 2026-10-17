@@ -94,7 +94,12 @@ export function observeStuntWitnesses(state) {
   for(const [id,row] of Object.entries(own.episodes))if(tick>row.rootTick+480)delete own.episodes[id];
   const player=state.entities?.get?.(state.playerId);if(!player)return;
   const observers=[];
-  for(const entity of witnessCandidatesFor(state)) { const profile=observerProfile(state,entity);if(profile&&distance(entity.pos,player.pos)<=450)observers.push({entity,profile}); }
+  for(const entity of witnessCandidatesFor(state)) {
+    // Range first: the profile reads subsystems, runs hostility and allocates, and every observer past
+    // 450 WU was discarded right after it was built (a ship or station count in the dozens, per tick).
+    if(!point(entity.pos)||!(distance(entity.pos,player.pos)<=450))continue;
+    const profile=observerProfile(state,entity);if(profile)observers.push({entity,profile});
+  }
   observers.sort((a,b)=>distance(a.entity.pos,player.pos)-distance(b.entity.pos,player.pos)||String(a.entity.id).localeCompare(String(b.entity.id)));
   observers.length=Math.min(observers.length,LIMITS.witnesses);
   // Per-tick target candidates for the root×observer nest — alive/point are rechecked
