@@ -37,8 +37,9 @@ import {
   COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ,
   COLD_START, ENDING_AIRLOCK_GRAFFITI, ENDING_RETURN_ACK, ENDING_STATION_ACK,
   HELIOS_BAY7, STORY_ENTRY_CONTACT, THREAD_B_FRAGMENT_ID,
-  CHARACTER_INTERRUPTS,
+  CHARACTER_INTERRUPTS, SHIP,
 } from '../data/narrative.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   ORRIN_WITNESS_CONTACT_ID,
   ORRIN_WITNESS_SECTOR_ID,
@@ -527,8 +528,10 @@ export const story = {
     if (!def) return;
     if (def.once && s.seenComms && s.seenComms[commsId]) return; // fire-once guard
     s.seenComms[commsId] = true;
+    const shipId = `${(SHIP.name || 'Kestrel').toUpperCase()} / ${SHIP.registration || 'SCN-47A'}`;
+    const text = String(def.text || '').replace('[PLAYER SHIP ID]', shipId);
     this._fireComms({
-      id: commsId, sender: def.sender, text: def.text,
+      id: commsId, sender: def.sender, text,
       category: def.id.startsWith('late_') ? 'late' : (def.id.startsWith('story_') ? 'story' : 'personal'),
       ttl: def.persist ? 0 : 9, persist: !!def.persist, note: def.note,
     });
@@ -1882,7 +1885,7 @@ export const story = {
   // =========================================================================================
   // SECTOR ENTRY — surface graffiti on arrival; Ashfall POI override.
   // =========================================================================================
-  _onSectorEnter({ sectorId, firstVisit }) {
+  _onSectorEnter({ sectorId }) {
     const s = this.state.story;
     if (!s) return;
     s.flags = s.flags || {};
@@ -1908,9 +1911,13 @@ export const story = {
           persist: false,
         });
       }
-      if (firstVisit && s.beatIndex >= 6) {
+      s.seenComms = s.seenComms || {};
+      if (s.beatIndex >= 6 && !s.seenComms.ashfall_arrival) {
+        s.seenComms.ashfall_arrival = true;
+        const ashfallSector = SECTORS.find((sec) => sec && sec.id === ASHFALL);
+        const sender = ((ashfallSector && ashfallSector.name) || 'Ashfall Reach').toUpperCase();
         this._fireComms({
-          id: 'ashfall_arrival', sender: ASHFALL.toUpperCase().replace(/_/g, ' '),
+          id: 'ashfall_arrival', sender,
           text: 'SIGNAL DETECTED: LONG-FORM TRANSMISSION. SOURCE: DERELICT STATION. CONTENTS: ADMINISTRATIVE LOG \u2014 11 YEARS. RECEIVING?',
           category: 'late', ttl: 0, persist: true,
         });
@@ -2609,11 +2616,17 @@ export const story = {
   _recordVergeFact(payload) {
     const key = payload && payload.key;
     if (!key) return null;
+    const VERGE_FACT_LABELS = {
+      kellPaperTrail: 'Kell paper trail filed',
+      archiveFile: 'Tessera archive file recovered',
+      kurtzLedger: 'Kurtz ledger cross-checked',
+    };
+    const text = VERGE_FACT_LABELS[key] || 'Verge evidence recorded';
     return recordStoryFact(this.state.story, {
       id: `verge:${key}`,
       kind: 'verge_evidence',
       beat: this.state.story.beatIndex || 0,
-      text: `Verge evidence ${key}`,
+      text,
       citation: `verge:${key}`,
     }, this.state.simTime || 0);
   },
