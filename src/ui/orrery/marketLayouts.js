@@ -579,6 +579,42 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.06em !important; white-space:nowrap !important; }
   ${M} .sx-qty .sx-qty__b[data-q]::before, ${M} .sx-qty .sx-qty__b[data-q]::after { content:none !important; }
 }
+/* …and after a trade at ≤800 tall, the TRADE CLEARED line stood over the comms words, which on the
+   Market is straight across BUY / SELL and the quantity readout, and ran off the right edge (it is
+   ~480px wide; the comms sit ~340px from the edge). On the Market only, it now ends just left of
+   COMMS, above the destination words, in the band under the register, whole and clear of BUY.
+   Desktop only; the phone layout keeps its own receipt. */
+@media (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important;
+    bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
+}
+/* ≤460 tall the destination words ride 5px above the comms box, so the line sits 2px over it */
+@media (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { bottom:calc(100% + 2px) !important; }
+}
+/* …and the register: in the 117–149px name column a long commodity ran under its price ("Refined
+   Metals" into "100" at 960×540, "Machine Control Unit" into "176" at 1024×768) and was cut with an
+   ellipsis everywhere else; the SELL and STOCK heads ran together ("SELLSTOC"). The name column takes
+   ~24px back (the family ladder's gutter 24 → 10px, slimmer number columns that still hold "136 ▲1%",
+   "308" and "789u"), and a name that still does not fit wraps to a second line under its own first
+   letter, never under the price. The heads sit apart over their numbers, and STOCK (tracking 0, 3px
+   lead) ends inside the rail's scroll box instead of losing its K. */
+@media (max-width:1100px) and (max-height:800px) {
+  ${MD} .sx-mkt-browser { column-gap:10px !important; }
+  ${MD} .sx-mkt-browser__filters { padding-right:0 !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(2) { width:60px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(3) { width:36px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(4) { width:44px !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(n+2) { padding-left:4px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(n+2) { letter-spacing:.02em !important; padding-left:0 !important; text-align:right !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(2) { padding-right:6px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(3) { padding-right:3px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(4) { padding-left:3px !important; letter-spacing:0 !important; text-align:left !important; }
+  ${MD} .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    padding-left:52px !important; padding-right:4px !important; text-indent:-22px; line-height:14px !important; }
+  ${MD} .sx-mkt-row .sx-mkt-row__name * { text-indent:0 !important; }
+  ${MD} .sx-mkt-row :is(.sx-mkt-row__commodity, .sx-mkt-row__name > .of-commodity-icon) { margin-right:6px !important; }
+}
 /* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
 @media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
   ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
