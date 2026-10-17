@@ -1725,7 +1725,8 @@ export const fields = {
   },
 
   _collectFieldCandidates(field, state, out) {
-    const envelope = field.kind === FIELD_KINDS.SHEET ? Math.hypot(field.radius, field.halfWidth) : field.radius;
+    const envelope = (field.kind === FIELD_KINDS.SHEET || field.kind === FIELD_KINDS.LANE)
+      ? Math.hypot(finite(field.radius, 0), finite(field.halfWidth, 0)) : finite(field.radius, 0);
     return queryPhysicalBodies(state, field.center, envelope, this.helpers, out, {
       contains: e => fieldContainsPoint(field, e.pos.x, e.pos.z),
     });

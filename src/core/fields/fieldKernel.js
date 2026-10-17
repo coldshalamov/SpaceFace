@@ -533,8 +533,10 @@ export function boundaryAcceleration(field, x, z, vel, profile, out) {
     return o;
   }
   if (profile && profile.coated && (type === 'ship' || type === 'drone') && field.damping > 0 && vel) {
-    o.ax = -field.damping * finite(vel.x);
-    o.az = -field.damping * finite(vel.z);
+    const rvx = finite(vel.x) - finite(field.frame && field.frame.x);
+    const rvz = finite(vel.z) - finite(field.frame && field.frame.z);
+    o.ax = -field.damping * rvx;
+    o.az = -field.damping * rvz;
     return o;
   }
   return o;
