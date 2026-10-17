@@ -356,7 +356,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 }
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the
-   row's left side, closed up and a size smaller, and the right side stacks UNDOCK over COMMS · HELP,
+   row's left side, closed up at the 12px floor, and the right side stacks UNDOCK over COMMS · HELP,
    so every word stands on the rail inside the foot's old height. */
 @media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
   ${D} .sxb-ops { display:grid !important; grid-template-columns:minmax(0, 1fr) max-content !important;
@@ -365,9 +365,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-ops > .sxb-launch-seat { grid-area:launch !important; margin:-8px 0 0 !important; justify-self:end !important; }
   ${D} .sxb-ops > .sx-comms { grid-area:comms !important; margin:0 !important; justify-self:end !important; display:flex !important; gap:14px !important; }
   ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:.1em !important; min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
-  ${D} .sxb-ops .sx-dock__group--nav { gap:0 clamp(4px, calc((100vw - 640px) / 12), 12px) !important; padding-left:2px !important; }
-  ${D} .sxb-ops .sx-tile { padding:4px 1px !important; }
-  ${D} .sxb-ops .sx-tile__label { letter-spacing:0 !important; font-size:11px !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { gap:0 clamp(4px, calc((100vw - 640px) / 12), 12px) !important; padding-left:0 !important; }
+  ${D} .sxb-ops .sx-tile { padding:4px 0 !important; }
+  ${D} .sxb-ops .sx-tile__label { letter-spacing:0 !important; font-size:12px !important; }
+  /* the unread pip rides COMMS's top corner instead of widening it: inline, its 16px squeezed the rail
+     the moment a receipt landed and the dock's scroller cut LEDGER's last letter at 651 */
+  ${D} .sxb-ops .sx-comms__toggle { position:relative !important; }
+  ${D} .sxb-ops .sx-comms__count:not([hidden]) { position:absolute !important; top:-3px; right:-3px; margin:0 !important; }
   ${D} .sxb-launch > .so-icon { display:none !important; }
   ${D} .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
 }
@@ -376,11 +380,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 8px !important; }
 }
 @media (min-width:651px) and (max-width:699px) and (min-height:461px) and (max-height:800px) {
-  ${D} .sxb-ops { column-gap:10px !important; }
-  ${D} .sxb-ops .sx-dock__group--nav { gap:0 3px !important; }
-  ${D} .sxb-ops > .sx-comms { gap:8px !important; }
-  ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:.06em !important; }
-  ${D} .sxb-launch__label { font-size:15px !important; }
+  ${D} .sxb-ops { column-gap:6px !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
+  ${D} .sxb-ops > .sx-comms { gap:4px !important; }
+  ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:0 !important; padding-inline:0 !important; }
+  ${D} .sxb-ops > .sxb-launch-seat { padding-left:0 !important; }
+  ${D} .sxb-launch { padding-inline:0 !important; }
+  ${D} .sxb-launch__label { font-size:15px !important; letter-spacing:.06em !important; }
 }
 /* a very short desktop window (844×390-class): the head alone ran ~196px of a 390px window in the
    live game (~260px with the bench's longer fixture) and left every tab a sliver — Shipworks showed

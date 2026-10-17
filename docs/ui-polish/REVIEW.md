@@ -1649,7 +1649,7 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Before (master 6391422a55):** at 651–800 wide and 461–800 tall, the seven destination words (~715px at full tracking) were capped at 64vw, so only MARKET and SHIPWORKS showed, INDUSTRY ran under COMMS, and MISSIONS, FACTIONS, BAR and LEDGER were off the rail.
 
-**After (`stationLayouts.js`, desktop only):** the foot becomes a two-column grid. The words own the left side, closed up and a size smaller (11px; 12px at 780–800), and the right side stacks UNDOCK over COMMS · HELP, so every word stands on the rail and the needle still sits under the open tab, inside the foot's old height. Selectors and IDs are unchanged.
+**After (`stationLayouts.js`, desktop only):** the foot becomes a two-column grid. The words own the left side, closed up at the 12px type floor (tracking 0, word gaps 4–12px), and the right side stacks UNDOCK over COMMS · HELP. COMMS's unread pip sits on its top corner instead of widening it, so a landing receipt can't squeeze LEDGER off the rail, so every word stands on the rail and the needle still sits under the open tab, inside the foot's old height. Selectors and IDs are unchanged.
 
 **Checked:** 651, 680, 700, 760 and 790 × 600 and 800×800 (Market), plus 700×600 Missions: every word on glass, no word under COMMS or UNDOCK. 390×844, 960×540, 1280×720, 1920×1080, phones (`data-sf-mobile`) and ≤460-tall windows don't match the query. Shots in `ui-shots/polish75/`.
 
