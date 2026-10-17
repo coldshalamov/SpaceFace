@@ -578,6 +578,19 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.06em !important; white-space:nowrap !important; }
   ${M} .sx-qty .sx-qty__b[data-q]::before, ${M} .sx-qty .sx-qty__b[data-q]::after { content:none !important; }
 }
+/* …and after a trade at ≤800 tall, the TRADE CLEARED line stood over the comms words, which on the
+   Market is straight across BUY / SELL and the quantity readout, and ran off the right edge (it is
+   ~480px wide; the comms sit ~340px from the edge). On the Market only, it now ends just left of
+   COMMS, above the destination words, in the band under the register, whole and clear of BUY.
+   Desktop only; the phone layout keeps its own receipt. */
+@media (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important;
+    bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
+}
+/* ≤460 tall the destination words ride 5px above the comms box, so the line sits 2px over it */
+@media (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { bottom:calc(100% + 2px) !important; }
+}
 /* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
 @media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
   ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
