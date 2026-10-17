@@ -33,11 +33,15 @@ export const SIDE_EVENTS = Object.freeze({
   // A black market's business is hulls nobody logs: an unmanifested runner slips in lights-out.
   // No declared freight (hauler_dock reads wrong here), no patrol — just the den doing den work.
   quiet_dock:    Object.freeze({ budget: 0, path: 'inbound-to-docking',    durationS: 35, affinity: Object.freeze(['blackmarket']) }),
+  // A foundry expels spent slag from its crucible vents along an outbound chute: molten matter
+  // spilling past the apron where traffic on the lane can see the incandescent run. Cosmetic seam
+  // (budget 0), never a launched combat ship.
+  slag_pour:     Object.freeze({ budget: 0, path: 'outbound-past-traffic', durationS: 50, affinity: Object.freeze(['fab', 'foundry']) }),
 });
 
 // Stable id order for the seeded pick (static literal → insertion-order-safe; never Object.keys of
 // a runtime-populated map).
-export const SIDE_EVENT_IDS = Object.freeze(['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep', 'quiet_dock']);
+export const SIDE_EVENT_IDS = Object.freeze(['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep', 'quiet_dock', 'slag_pour']);
 
 const TWO_PI = Math.PI * 2;
 

@@ -79,6 +79,17 @@ const QUIET_DOCK = Object.freeze({
   arm: Object.freeze({ id: 'arm-reach', duty: 'reach-and-return', amplitude: 0.30 }),
 });
 
+const SLAG_POUR = Object.freeze({
+  id: 'slag_pour',
+  silhouette: 'crucible-slag-stream',
+  trajectory: 'slag-run',
+  accent: 'incandescent-slag-ember',
+  cadenceHz: 5,
+  reducedCadenceHz: 2,
+  defaultDurationS: 50,
+  arm: Object.freeze({ id: 'ladle-tilt', duty: 'stroke-and-return', amplitude: 0.45 }),
+});
+
 export const STATION_SIDE_EVENT_VFX_PROFILES = Object.freeze({
   hauler_dock: HAULER_DOCK,
   patrol_launch: PATROL_LAUNCH,
@@ -86,6 +97,7 @@ export const STATION_SIDE_EVENT_VFX_PROFILES = Object.freeze({
   cargo_tractor: CARGO_TRACTOR,
   sensor_sweep: SENSOR_SWEEP,
   quiet_dock: QUIET_DOCK,
+  slag_pour: SLAG_POUR,
 });
 
 export function resolveStationSideEventVfxProfile(kind) {
@@ -224,6 +236,21 @@ export function writeStationSideEventVfxFrame(
     const pz = (tx - fx) / pl;
     frame.x = lx + px * sag * sideSign;
     frame.z = lz + pz * sag * sideSign;
+    writeDirection(frame, tx - fx, tz - fz);
+    frame.progress = t;
+  } else if (profile.trajectory === 'slag-run') {
+    // A molten slag pour flows outward along the cooling chute: viscous deceleration
+    // into the lane with a deterministic thermal billow keyed to bearing.
+    const t = reducedMotion ? 0.55 : 1 - Math.pow(1 - progress, 1.8);
+    const billow = reducedMotion ? 0 : Math.sin(progress * Math.PI) * 4;
+    const sideSign = Math.sin(baseBearing * 2.3) >= 0 ? 1 : -1;
+    const lx = fx + (tx - fx) * t;
+    const lz = fz + (tz - fz) * t;
+    const pl = Math.hypot(tx - fx, tz - fz) || 1;
+    const px = -(tz - fz) / pl;
+    const pz = (tx - fx) / pl;
+    frame.x = lx + px * billow * sideSign;
+    frame.z = lz + pz * billow * sideSign;
     writeDirection(frame, tx - fx, tz - fz);
     frame.progress = t;
   } else {

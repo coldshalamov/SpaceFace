@@ -15,7 +15,7 @@ const JOB_PROFILES=[CERES_JOB_ACTION_VFX_PROFILES.oreCut,CERES_JOB_ACTION_VFX_PR
   CERES_JOB_ACTION_VFX_PROFILES.survey,CERES_JOB_ACTION_VFX_PROFILES.salvage,
   CERES_JOB_ACTION_VFX_PROFILES.escort,CERES_JOB_ACTION_VFX_PROFILES.patrol];
 const COLORS={hauler_dock:0xffbb72,patrol_launch:0x83caff,repair_drone:0x83e9ce,
-  cargo_tractor:0x9ddfd0,sensor_sweep:0x8cbcf0,quiet_dock:0x799bae};
+  cargo_tractor:0x9ddfd0,sensor_sweep:0x8cbcf0,quiet_dock:0x799bae,slag_pour:0xff6a20};
 const clamp=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
 const smooth=v=>{const t=clamp(v);return t*t*(3-2*t);};
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
@@ -161,6 +161,13 @@ export class StationOperationVfx {
       for(let i=0;i<3;i++)p.piece(5,s.x,s.z,axis+scan+(i-1)*.30,0,w*(3.2+i*.8),w*(.43-i*.05),w*.35,
         w*(i-1)*.4,0,0,i*2.2,alpha*.77,clamp(feed-i*.12),cut+i*.09,.9);
       p.piece(3,s.x,s.z,axis+Math.PI/2,-w,w,w*.65,w*.28,0,0,0,3,alpha*.70,feed,cut,.5);
+    }else if(n.kind==='slag_pour'){
+      this._surface(s.station,s.x,s.z,this.a,true);
+      const dx=this.a.x,dz=this.a.z,normal=this.a.angle;s.y=this.a.y;
+      this._connection(s,dx,dz,s.x,s.z,w*.72,alpha,feed,cut,1.1);
+      for(let i=0;i<2;i++)p.piece(1,s.x,s.z,a+Math.PI+(i-.5)*.25,0,w*(2.8+i*.6),w*(.70-i*.12),
+        w*(.55-i*.10),w*(i-.5)*.40,(i-.5)*w*.6,0,i*2.5,alpha,clamp(feed-i*.12),cut+i*.08,1.15);
+      p.piece(6,dx,dz,normal,-w,w,w*.45,w*.38,0,0,0,2,alpha,feed,cut,.85);
     }
     if(n.kind!=='quiet_dock')p._matter(s,age,reduced,n.kind==='repair_drone'?'repair':'transfer',a,s.radius*2);
   }
