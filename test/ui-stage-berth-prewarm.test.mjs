@@ -102,6 +102,44 @@ function reset() {
   setUiStagePartLoaderForTest(null);
 }
 
+test('a title that finishes preparing under New Game defers its warm draw until Back', async (t) => {
+  reset(); t.after(reset);
+  const log = [];
+  setUiStagePartLoaderForTest(stubPartLoader(log));
+  const renderer = stubRenderer(log);
+  let finishCompile;
+  const compiling = new Promise(resolve => { finishCompile = resolve; });
+  renderer.compileAsync = async scene => {
+    log.push({ op: 'compile', scene: scene.name || 'scene' });
+    await compiling;
+  };
+  const state = flightState(log);
+  state.mode = 'menu';
+  state.ui.stageRequest = { scene: 'title-field', hullDefId: 'ship_kestrel' };
+  const render = { renderer };
+  presentUiStage({ render, state });
+  await settle(() => ops(log, 'compile').length === 1, 'title compile to start');
+
+  // The player opens New Game while the title's async preparation is still linking.
+  state.ui.stageRequest = null;
+  state.ui.screenStack = ['mainMenu', 'newGame'];
+  const drawsBefore = ops(log, 'render').length;
+  finishCompile();
+  await settle(() => uiStageReport().phase === 'live', 'covered title preparation');
+  assert.equal(ops(log, 'render').length, drawsBefore,
+    'a covered title must not submit its potentially blocking first-use draw');
+  assert.equal(uiStageReport().marks.warmup, 0);
+
+  state.ui.screenStack = ['mainMenu'];
+  state.ui.stageRequest = { scene: 'title-field', hullDefId: 'ship_kestrel' };
+  presentUiStage({ render, state });
+  assert.equal(ops(log, 'compile').length, 1, 'Back reuses the prepared authored stage');
+  assert.equal(ops(log, 'render').length, drawsBefore + 2, 'Back warms once then presents the title');
+  assert.equal(uiStageReport().prepared.warm, true);
+  presentUiStage({ render, state });
+  assert.equal(ops(log, 'render').length, drawsBefore + 3, 'later frames need only the presented draw');
+});
+
 test('the berth is compiled, uploaded and warmed during the approach; the dock adopts it live on frame one', async (t) => {
   t.after(reset);
   const log = [];

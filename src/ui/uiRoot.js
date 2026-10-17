@@ -1737,8 +1737,9 @@ export const ui = {
     }
   },
 
-  // One queued screen mount+paint-warm per yielded frame; exits early if the registration
-  // cycle that populated the queue is superseded (the next cycle re-fills it).
+  // One queued screen mount+paint-warm per yielded frame. New Game owns its form dwell:
+  // unrelated hidden layouts must not contend with its opening or embark preparation.
+  // Keep the queue intact until Back/Launch; a new registration cycle re-fills it.
   _drainScreenPrewarmQueue(registrationCycle) {
     if (this._screenPrewarmDraining) return;
     const queue = this._screenPrewarmQueue;
@@ -1747,6 +1748,11 @@ export const ui = {
     (async () => {
       try {
         while (queue.length) {
+          if (this.state?.mode !== 'loading' && this.screenManager?.top?.() === 'newGame') {
+            await yieldPresentationFrame();
+            if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            continue;
+          }
           const id = queue.shift();
           try {
             const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
@@ -1759,6 +1765,12 @@ export const ui = {
             if (mountedMs > 6) {
               await yieldPresentationFrame();
               if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+              // The form may have opened while a costly mount yielded. Its cached mount
+              // stays ready, but defer the still-unpaid layout along with the other warms.
+              if (this.state?.mode !== 'loading' && this.screenManager?.top?.() === 'newGame') {
+                queue.unshift(id);
+                continue;
+              }
             }
             const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
             try { this.screenManager.paintWarm(id); }
@@ -1778,7 +1790,9 @@ export const ui = {
         }
       } finally {
         this._screenPrewarmDraining = false;
-        if (queue.length) this._drainScreenPrewarmQueue(registrationCycle);
+        if (queue.length && (!registrationCycle || isScreenRegistrationCycleCurrent(registrationCycle))) {
+          this._drainScreenPrewarmQueue(registrationCycle);
+        }
       }
     })();
   },
