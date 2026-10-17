@@ -530,14 +530,16 @@ test('the cook warms first-picture subjects before beyond-runway subjects', () =
   assert.ok(cookStart >= 0, 'the live cook must exist');
   const unitsIndex = RENDERER_SOURCE.indexOf('const units = {', cookStart);
   assert.ok(unitsIndex >= 0, 'the cook admission units must exist');
-  const compileLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', unitsIndex);
+  // Both loops walk the ordered list by index (the serial-route pace debt needs the last index).
+  const loopHead = 'const subject = units.programSubjects[index];';
+  const compileLoopIndex = RENDERER_SOURCE.indexOf(loopHead, unitsIndex);
   assert.ok(compileLoopIndex > unitsIndex, 'the compile cohort loop must exist');
   const between = RENDERER_SOURCE.slice(unitsIndex, compileLoopIndex);
   assert.match(between, /openingSubjects\.map\(\(subject, index\) => \[subject, index\]\)/,
     'the ordering key must come from the first-picture census order');
   assert.match(between, /units\.programSubjects\.sort\(/,
     'programSubjects must be sorted before the compile and touch loops consume it');
-  const touchLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', compileLoopIndex + 1);
+  const touchLoopIndex = RENDERER_SOURCE.indexOf(loopHead, compileLoopIndex + 1);
   assert.ok(touchLoopIndex > compileLoopIndex, 'the touch loop must consume the same ordered list');
 });
 
@@ -728,4 +730,55 @@ test('the first-flight hold collects the exempt build set on a cadence, not ever
   const afterHold = RENDERER_SOURCE.slice(holdEnd, holdEnd + 300);
   assert.match(afterHold, /_holdExemptCollectS\s*=\s*0/,
     'the cadence must reset when the hold releases so the next hold starts fresh');
+});
+
+test('residency batches skip the program compile unit once the shared raw proxy program is linked', async () => {
+  // The residency proxy is a RawShaderMaterial: three's program cache key for a raw material is only
+  // its shader source + defines, so mesh/instanced/points proxies all share one program. After the
+  // first batch links it, a per-batch compile unit is a serial round trip with nothing to compile.
+  const subjects = [
+    ...Array.from({ length: 4 }, () => new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial())),
+    new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 2),
+    new THREE.Points(new THREE.SphereGeometry(1, 4, 3), new THREE.PointsMaterial()),
+  ];
+  const materialProperties = new Map();
+  const units = [];
+  const harness = createRendererHarness({
+    render({ scene, renderer }) {
+      units.push('draw');
+      for (const proxy of scene.children) {
+        assert.equal(proxy.material.isRawShaderMaterial, true);
+        materialProperties.set(proxy.material, { programs: new Map([['raw', {}]]), currentProgram: {} });
+      }
+      renderer.info.memory.geometries += scene.children.length;
+    },
+  });
+  harness.renderer.properties = { get: (material) => materialProperties.get(material) || {} };
+  harness.renderer.compileAsync = async () => { units.push('compile'); };
+
+  const result = await prepareStartupGeometryResidency(harness.renderer, subjects, {
+    geometryBatchDrawables: 2,
+    geometryBatchBytes: Number.MAX_SAFE_INTEGER,
+    yieldToMain: async () => {},
+  });
+
+  assert.equal(result.batches.length, 3);
+  assert.deepEqual(units, ['compile', 'draw', 'draw', 'draw'],
+    'only the first batch pays the compile unit; later batches draw on the linked program');
+});
+
+test('serial-link loading routes widen residency batches and keep the 12 s composition settle', () => {
+  const start = RENDERER_SOURCE.indexOf('state.render.prepareLiveSectorBeforeFlight = async');
+  const end = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async', start);
+  const preflight = RENDERER_SOURCE.slice(start, end);
+  assert.match(preflight,
+    /const serialLinkRoute = !shouldAwaitOpeningGpuCook\(\{ gpu: state\.render && state\.render\.gpu, renderer \}\);/);
+  assert.match(preflight,
+    /waitForOpeningCompositionSettled\(state, \{\s*stale: cookStale,\s*timeoutMs: Math\.min\(12000, remainingMs\(\)\),/);
+  assert.match(preflight,
+    /const residencyBatchDrawables = \(\) => \(serialLinkRoute && state\.mode === 'loading' \? 32 : undefined\);/);
+  assert.match(preflight,
+    /firstFrameResidency = await prepareStartupGpuResidency\(renderer, scene, \{\s*geometryBatchDrawables: residencyBatchDrawables\(\),/);
+  assert.match(preflight,
+    /warmResidency = await prepareStartupGeometryResidency\(renderer, warmRoots, \{\s*geometryBatchDrawables: residencyBatchDrawables\(\),/);
 });

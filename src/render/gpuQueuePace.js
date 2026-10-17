@@ -167,3 +167,27 @@ function createSerialSubmission(renderer, paceQueue) {
     return promise;
   };
 }
+
+// Serial-route cook pacing debt (live cook cohort compile + touch). Same bound as the opening
+// admission's issue loop (openingGpuAdmission PACE_BUDGET_MS / PACE_MAX_UNITS): drain once a few
+// units or a frame's worth of main-thread issue time has queued, so the GL backlog stays a handful
+// of units deep without a presented-frame wait per unit.
+export const COOK_PACE_BUDGET_MS = 24;
+export const COOK_PACE_MAX_UNITS = 8;
+export function createCookQueuePaceDebt() {
+  let units = 0;
+  let ms = 0;
+  return {
+    note(spentMs) {
+      units += 1;
+      if (Number.isFinite(spentMs) && spentMs > 0) ms += spentMs;
+    },
+    due() {
+      return units >= COOK_PACE_MAX_UNITS || ms >= COOK_PACE_BUDGET_MS;
+    },
+    clear() {
+      units = 0;
+      ms = 0;
+    },
+  };
+}

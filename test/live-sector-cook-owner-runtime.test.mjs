@@ -707,6 +707,7 @@ function preflightFixture() {
   f.owner._simHelpers = null;
   Object.assign(f.values, {
     releaseOpeningGraphPublication() {}, survivalRunHoldsArena: () => false,
+    shouldAwaitOpeningGpuCook: () => true,
     resumeAuthoredUpgradeQueueAfterOpening() {},
     pipelineAdmissions: { resumeAutoFlush() {}, pendingCount: 0 },
     indexedShipLikeScan: () => [], indexedTypeScan: () => [],
@@ -823,6 +824,8 @@ function gpuFixture() {
     armAdmissionShadows: () => () => f.marks.push('restore-shadows'),
     revealSubjectForCompile: () => () => f.marks.push('restore-reveal'),
     survivalRunHoldsArena: () => false, createSlicedYield: fn => fn,
+    createCookQueuePaceDebt: () => ({ note() {}, due: () => true, clear() {} }),
+    shouldAwaitOpeningGpuCook: () => true,
     prepareStartupGpuResidency: async () => ({ ok: true }),
     collectFirstFlightLayerDrawables: () => [], collectInstancePoolCompileRoots: () => [],
     buildOpeningSubmissionPlan: () => ({ compileSubjects: [] }),
