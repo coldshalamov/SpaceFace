@@ -1454,6 +1454,7 @@ export function tickAlienEcology(world, dt) {
         // ladder rung (Vethari-scale architecture) once, on top of the generic reveal.
         if (site.deepTraceEvidence && !rec.deepTraceDone) {
           rec.deepTraceDone = true;
+          recordEvidence(state, 'P01', site.sectorId);
           setRevelation(state, 3);
           recordContaminationKnowledge(state, sectorId, `${site.name}: deep-trace architecture`);
           world.bus.emit('comms:log', {
@@ -2223,12 +2224,16 @@ export function recordEvidence(state, id, sectorId = null) {
   if (!def) return false;
   if (!ae.evidence || typeof ae.evidence !== 'object') ae.evidence = {};
   if (ae.evidence[id]) return false; // evidence never refires
-  ae.evidence[id] = { tier: def.tier, sectorId, t: Number(state.simTime) || 0 };
+  ae.evidence[id] = { tier: def.tier, source: def.source, sectorId, t: Number(state.simTime) || 0 };
   // Revelation pacing (AE-256): tier-2 disclosure needs 3 filed rows; tier-3 needs a deep row.
   const count = Object.keys(ae.evidence).length;
   if (count >= 3) setRevelation(state, 2);
   if (def.tier >= 3) setRevelation(state, 3);
-  if (sectorId) recordContaminationKnowledge(state, sectorId, `evidence ${id}: ${def.text.slice(0, 60)}`);
+  if (sectorId) {
+    const siteName = ALIEN_SITES[def.source]?.name;
+    const label = siteName ? `${siteName} evidence` : 'Evidence';
+    recordContaminationKnowledge(state, sectorId, `${label}: ${def.text.slice(0, 60)}`);
+  }
   return true;
 }
 
