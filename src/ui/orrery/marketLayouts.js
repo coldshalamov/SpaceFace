@@ -579,6 +579,16 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.06em !important; white-space:nowrap !important; }
   ${M} .sx-qty .sx-qty__b[data-q]::before, ${M} .sx-qty .sx-qty__b[data-q]::after { content:none !important; }
 }
+/* …in that 96px dial QUANTITY (~95px at the label's width and tracking) sat across the ring's lower
+   arc, and "› QUOTE BREAKDOWN" took two lines, so at 960×540 the console ran 14px past the stage and
+   BUY 1 / SELL were cut off under it. The number rides 4px higher and QUANTITY sets at the plain
+   width (~60px) under it, inside the ring; QUOTE BREAKDOWN sets the same way on one line. Desktop only. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:800px) {
+  ${MD} .sx-qty .sx-qty__in { top:24px; }
+  ${MD} :is(.sx-qty .sx-qty__k, .so-trade-breakdown > summary) { font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 650 !important;
+    letter-spacing:.03em !important; white-space:nowrap !important; }
+  ${MD} .sx-qty .sx-qty__k { top:53px; line-height:13px !important; }
+}
 /* …and after a trade at ≤800 tall, the TRADE CLEARED line stood over the comms words, which on the
    Market is straight across BUY / SELL and the quantity readout, and ran off the right edge (it is
    ~480px wide; the comms sit ~340px from the edge). On the Market only, it now ends just left of
@@ -709,8 +719,8 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
      register's ▲/▼ still says it) so the whole trace stays above the decision */
   ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-cause { display:none !important; }
   ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:18px !important; }
-  /* ROUTE INTELLIGENCE closes up so it reads on one line from ~760 wide */
-  ${MD} .so-route-disclosure > summary { letter-spacing:.08em !important; }
+  /* ROUTE INTELLIGENCE closes up so it reads on one line down to 651 wide (at .08em it wrapped under ~760) */
+  ${MD} .so-route-disclosure > summary { letter-spacing:.02em !important; white-space:nowrap; }
 }
 /* …and after a trade the TRADE CLEARED line, which ends 24px left of COMMS (~402px from the right
    edge here), was one ~480px line: under ~880 wide its start ("TRADE CLEARED BOUGHT…") ran off the
