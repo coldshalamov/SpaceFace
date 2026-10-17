@@ -111,6 +111,9 @@ export function observeStuntWitnesses(state) {
     if(!episode) { if(Object.keys(own.episodes).length>=LIMITS.episodes)continue;episode=own.episodes[root.id]={rootId:root.id,rootTick:root.tick,observers:{}}; }
     const source=state.entities.get(root.sourceId);
     if(!source?.alive||bodyLife(source,state)?.id!==root.sourceLife)continue;
+    // Every observer walks the same gated target list and stops at the first 8, so it is built once
+    // per root, lazily (no observer, no walk), in the same order and with the same bodyLife calls.
+    let rootTargets=null;
     for(const {entity:observer,profile} of observers) {
       const row=episode.observers[profile.identity] ||= {...profile,sourceTicks:0,transferTicks:0,payoffTicks:0,targets:{},firstSeen:tick};
       if(row.lifeId!==profile.lifeId)continue;
@@ -126,19 +129,23 @@ export function observeStuntWitnesses(state) {
       // retroactively treated as visible for six later samples. The candidate walk is
       // hoisted out of the root×observer nest (spawn-stable eligibility only: every
       // per-target gate below re-runs per observer, preserving order and results).
-      let tracked=0;
-      for(const target of witnessTargets) {
-        if(tracked>=8)break;
-        const relevantFlight=root.threatIds?.includes(target.id)||root.needle?.boundaryIds?.includes(target.id);
-        if(!target.alive||(!target.collides&&!relevantFlight)||target.id===source.id||target.id===player.id||!point(target.pos))continue;
-        if(!relevantFlight&&distance(source.pos,target.pos)>Math.max(120,Math.hypot(source.vel?.x||0,source.vel?.z||0)*.12+(target.radius||0)))continue;
-        const life=bodyLife(target,state);if(!life)continue;
+      if(!rootTargets) {
+        rootTargets=[];
+        for(const target of witnessTargets) {
+          if(rootTargets.length>=8)break;
+          const relevantFlight=root.threatIds?.includes(target.id)||root.needle?.boundaryIds?.includes(target.id);
+          if(!target.alive||(!target.collides&&!relevantFlight)||target.id===source.id||target.id===player.id||!point(target.pos))continue;
+          if(!relevantFlight&&distance(source.pos,target.pos)>Math.max(120,Math.hypot(source.vel?.x||0,source.vel?.z||0)*.12+(target.radius||0)))continue;
+          const life=bodyLife(target,state);if(!life)continue;
+          rootTargets.push({target,life,relevantFlight});
+        }
+      }
+      for(const {target,life,relevantFlight} of rootTargets) {
         const v=row.targets[life.id] ||= {id:target.id,count:0,last:-2};
         const visible=canSee(state,observer,profile,target,[source.id]);
         v.count=visible?(v.last===tick-1?Math.min(6,v.count+1):1):0;v.last=tick;
         v.max=Math.max(v.max||0,v.count);
         if(relevantFlight)v.flight=true;
-        tracked++;
       }
       for(const [id,v] of Object.entries(row.targets))if(!v.flight&&tick-v.last>6)delete row.targets[id];
       if(root.escape?.completed&&tick-root.escape.completedTick<=1) {
