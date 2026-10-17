@@ -42,6 +42,9 @@ import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetConditionReadout } from './targetCondition.js';
 import { BINDINGS } from './bindings.js';
+import { stationContactServices } from '../data/sectors.js';
+import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
+import { stationServiceLabel } from './station/stationHubModel.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -437,7 +440,8 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
   const playerTeam = player ? player.team : 0;
   const hostile = isHostileToPlayer(target, playerTeam, state);
   const allied = !hostile && playerTeam !== 0 && target.team === playerTeam;
-  const intent = allied ? 'ALLY' : contactStateWord(target, playerTeam, state);
+  const intent = isSurrenderedContact(target) ? 'SURRENDERED'
+    : allied ? 'ALLY' : contactStateWord(target, playerTeam, state);
   const authoredMotive = engagement.motive || ai.motive || data.motive || intentData.motive;
   let motive = readableMotive(authoredMotive);
   if (!motive && ai.retaliationTargetId === state?.playerId) motive = 'RETALIATION';
@@ -499,6 +503,10 @@ function orchardThermalFacts(target, state) {
 
 export function objectInfoLine(t, state, p, dist) {
   if (t.type === 'ship' || t.type === 'drone') return presentationStatusWord(t) || '';
+  if (t.type === 'station') {
+    const services = stationContactServices(t.data && t.data.stationId);
+    return services.length ? `Services: ${services.map(stationServiceLabel).join(' · ')}` : '';
+  }
   const d = t.data || {};
   const facts = orchardThermalFacts(t, state);
   if (t.type === 'asteroid') {
@@ -665,6 +673,7 @@ export function createTargetPanel(ctx) {
   let lastCloseColor = '';
   let lastCloseGlyph = '';
   let tickN = 0;
+  let lastSurrendered = false;
 
   function setText(node, text) {
     if (node.textContent !== text) node.textContent = text;
@@ -692,6 +701,9 @@ export function createTargetPanel(ctx) {
       return;
     }
     setPanelDisplay('block');
+    const surrendered = isSurrenderedContact(t);
+    const surrenderChanged = surrendered !== lastSurrendered;
+    lastSurrendered = surrendered;
 
     // The divergence row: the one thing the panel could not previously say.
     if (gunRead.text !== lastEngagedKey) {
@@ -845,7 +857,7 @@ export function createTargetPanel(ctx) {
     const p = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
-    if (p && p.pos && t.pos && (targetChanged || options.slow || (tickN % 6) === 0)) {
+    if (p && p.pos && t.pos && (targetChanged || surrenderChanged || options.slow || (tickN % 6) === 0)) {
       const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
       const dist = Math.hypot(dx, dz);
       const tacticalTarget = t.type === 'ship' || t.type === 'drone';

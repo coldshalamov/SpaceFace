@@ -93,7 +93,7 @@ import {
 } from './hitVoice.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isOpticEnergyBolt, isOpticOrdnance, opticMaterialOf } from '../combat/opticField.js';
-import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { pickupHoldIsFull, successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
@@ -2408,6 +2408,7 @@ export const audio = {
     rt._lastWallTime = undefined;
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
+    rt._pickupHoldFull = pickupHoldIsFull(this.state.player && this.state.player.cargo);
     rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
     rt._docked = false;           // station-interior latch (set by dock:docked; reconciled at boundaries)
     rt._dockStationId = null;
@@ -2687,6 +2688,7 @@ export const audio = {
     bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
     bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
+    bus.on('cargo:changed', () => this._onPickupHoldChanged());
     bus.on('loot:overflowConverted', (p) => this._onOverflowConverted(p));
     bus.on('loot:magnetCaptured', (p) => this._onMagnetCaptured(p));
     // Stunt chain voices (CV-EAR slice 3): player links pluck up a pentatonic ladder, the
@@ -4928,6 +4930,16 @@ export const audio = {
     });
   },
 
+  // Hear the hold crossing, never the repeated cargo:full refusal receipts. Exact fills also
+  // publish cargo:changed, and selling/jettisoning rearms this presentation-only latch.
+  _onPickupHoldChanged() {
+    if (!this.rt) return;
+    const full = pickupHoldIsFull(this.state && this.state.player && this.state.player.cargo);
+    const crossed = full && !this.rt._pickupHoldFull;
+    this.rt._pickupHoldFull = full;
+    if (crossed && !this._mineOwnsEar()) this.play('sfx_mining_cargo_full', { gain: 0.3 });
+  },
+
   // Cargo scoop magnet-latch: every collected pickup seats with a thunk-whir, and pickups caught
   // in a row climb a stepped chime ladder (bloop… bleep… ting). The ladder lives on rt so tab
   // switches cannot wedge a stale high note; it resets after a short quiet, not on a wall clock.
@@ -5928,6 +5940,7 @@ export const audio = {
     rt._wantedSearchInside = null;
     if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
     rt._standingCueAt = null;
+    rt._pickupHoldFull = pickupHoldIsFull(this.state && this.state.player && this.state.player.cargo);
     // THE EAR: the next run's score opens fresh — no inherited fight, aftermath or phrase anchor.
     if (rt.bandBed && typeof rt.bandBed.resetScore === 'function') rt.bandBed.resetScore();
     rt._scoreTransitionsSeen = null;
@@ -6604,6 +6617,9 @@ export const audio = {
     // these receipts. The semantic cue still travels the bus (captions, `.07` board expressions);
     // only the second, wrong-room playback is dropped.
     if (opts.cueId && MINE_OWNED_PRESENTATION_CUES.has(opts.cueId) && this._mineOwnsEar()) return null;
+    // Mining's refusal cue keeps its visual/caption receipt, but the hold edge above owns its
+    // physical voice. Repeated rejected rocks cannot re-voice that crossing through this alias.
+    if (rid === 'sfx_mining_cargo_full') return this._onPickupHoldChanged();
     const signature = resolveFirstHourAudioSignature(id);
     const nowS = this.rt && this.rt.ctx
       ? this.rt.ctx.currentTime
