@@ -474,7 +474,9 @@ export const physics = {
     if (!live()) return false;
     const state = this.state;
     const payload = this._pendingSg02Snapshot;
+    const contactEpisodeTick = state.tick;
     const restoreContext=this._nativeRestoreContext,context=restoreContext || {},owner=this._sg02,epoch=this._sg02Token;
+    const contactEpisodeIdRemap = context.entityIdRemap || state.sessionEntityIdRemap;
     const retainedCells=[['state',state],['_sg02',owner],['_sg02Token',epoch],['_nativeRestoreContext',restoreContext],['_pendingSg02Snapshot',payload],['_nativeRestorePending',true],['_nativeRestoreDeferred',false]];
     const current=()=>retainedCells.every(([key,value])=>{const d=Object.getOwnPropertyDescriptor(this,key);return d && 'value' in d && d.value===value;});
     if(restoreContext!==null && !orchardRestoreContextCurrent(restoreContext)){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
@@ -519,6 +521,10 @@ export const physics = {
     if (!adopted) {
       yield* this._sg02.rebuildWorldFromEntitiesSteps(entities, {
         frameOrigin: worldFrameOrigin(state), frameOriginSeq: worldFrameOriginSeq(state),
+        contactEpisodeSnapshot: payload, contactEpisodeTick,
+        contactEpisodeCurrent: () => current() && state.tick === contactEpisodeTick
+          && (context.entityIdRemap || state.sessionEntityIdRemap) === contactEpisodeIdRemap,
+        entityIdRemap: contactEpisodeIdRemap,
         orchardRestoreInputs,
         orchardColdRestore:this._nativeRestoreContext!==null,
         orchardFiniteState:this._nativeRestoreContext!==null?state:undefined,
@@ -537,7 +543,9 @@ export const physics = {
     if (!this._sg02 || !this._nativeRestorePending || this._nativeRestoreDeferred) return false;
     const state = this.state;
     const payload = this._pendingSg02Snapshot;
+    const contactEpisodeTick = state.tick;
     const restoreContext=this._nativeRestoreContext,context=restoreContext || {},owner=this._sg02,epoch=this._sg02Token;
+    const contactEpisodeIdRemap = context.entityIdRemap || state.sessionEntityIdRemap;
     const retainedCells=[['state',state],['_sg02',owner],['_sg02Token',epoch],['_nativeRestoreContext',restoreContext],['_pendingSg02Snapshot',payload],['_nativeRestorePending',true],['_nativeRestoreDeferred',false]];
     const current=()=>retainedCells.every(([key,value])=>{const d=Object.getOwnPropertyDescriptor(this,key);return d && 'value' in d && d.value===value;});
     if(restoreContext!==null && !orchardRestoreContextCurrent(restoreContext)){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
@@ -575,6 +583,10 @@ export const physics = {
     if (!adopted) {
       this._sg02.rebuildWorldFromEntities(entities, {
         frameOrigin: worldFrameOrigin(state), frameOriginSeq: worldFrameOriginSeq(state),
+        contactEpisodeSnapshot: payload, contactEpisodeTick,
+        contactEpisodeCurrent: () => current() && state.tick === contactEpisodeTick
+          && (context.entityIdRemap || state.sessionEntityIdRemap) === contactEpisodeIdRemap,
+        entityIdRemap: contactEpisodeIdRemap,
         orchardRestoreInputs,
         orchardColdRestore:this._nativeRestoreContext!==null,
         orchardFiniteState:this._nativeRestoreContext!==null?state:undefined,

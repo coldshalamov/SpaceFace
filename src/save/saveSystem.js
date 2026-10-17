@@ -6445,19 +6445,20 @@ export const save = {
       this._callDeserialize('v2Flavor', data.v2Flavor);
       yield 'deserialized-v2-flavor';
 
-      // 6. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
-      const shipsSys = this.registry.get('ships');
-      if (shipsSys && typeof shipsSys.recomputeActiveShip === 'function') {
-        shipsSys.recomputeActiveShip();
-      }
-      // 7. re-apply saved ABSOLUTE hull/shield/cap (recompute preserves fractions → would drift).
-      this._applySavedVitals(savedPlayer);
-
-      // 8. recompute cargo caches from restored items.
+      // 6. Rebuild cargo caches before deriving ship stats. usedMass is not persisted and
+      // may still describe the outgoing hold; deriving first would temporarily change the
+      // saved body mass/inertia, then invalidate it again when save:loaded settles cargo.
       const cargoSys = this.registry.get('cargo');
       if (cargoSys && typeof cargoSys.recompute === 'function') {
         cargoSys.recompute();
       }
+      // 7. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
+      const shipsSys = this.registry.get('ships');
+      if (shipsSys && typeof shipsSys.recomputeActiveShip === 'function') {
+        shipsSys.recomputeActiveShip();
+      }
+      // 8. re-apply saved ABSOLUTE hull/shield/cap (recompute preserves fractions → would drift).
+      this._applySavedVitals(savedPlayer);
       yield 'pre-sector-enter';
 
       // 9. regenerate the saved sector's contents around the player.
@@ -6840,6 +6841,7 @@ export const save = {
       this._resumeCeresEntityReferences();
       if (deferredStunts) restoreStunts();
       this._resumeCeresAttachmentRestore();
+      this._restorePlayerTetherReference(data.combat, entityIdRemap);
       // The native world adopt is the epilogue's one unbounded span — yield first so
       // the async lane can paint between the resume chain and the whole-census WASM
       // rebuild instead of stacking them inside one generator step before veil lift.
@@ -7125,6 +7127,44 @@ export const save = {
       return;
     }
     this.state.crafting = clonePlain(payload);
+  },
+
+  _restorePlayerTetherReference(d, entityIdRemap) {
+    // Input and flight run before tetherGameplay re-adopts its private cache. Bind
+    // the saved mirror only through its exact restored player attachment and save ref.
+    const state = this.state;
+    const tether = state.player?.tether;
+    if (tether?.active === true) {
+      const id = tether.attachmentId;
+      const saved = typeof id === 'string' ? d?.attachments?.byId?.[id] : null;
+      const attachment = typeof id === 'string' ? state.combat?.attachments?.byId?.[id] : null;
+      const savedTarget = saved?.targetRef?.kind === 'persistent' ? saved.targetRef.saveId : null;
+      const semanticKey = ceresWorkfleetRefKey(saved?.targetRef);
+      const semanticTarget = semanticKey ? resolveCeresWorkfleetEntityRef(state, saved.targetRef) : null;
+      const mappedTarget = semanticTarget ? semanticTarget.id
+        : savedTarget != null && entityIdRemap instanceof Map ? entityIdRemap.get(String(savedTarget)) : null;
+      const player = state.entities?.get?.(state.playerId);
+      const target = mappedTarget != null ? state.entities?.get?.(mappedTarget) : null;
+      const mirrorMatches = tether.targetId === mappedTarget || (semanticTarget
+        ? !(entityIdRemap instanceof Map) || !entityIdRemap.has(String(tether.targetId))
+          || entityIdRemap.get(String(tether.targetId)) === mappedTarget
+        : savedTarget != null && String(tether.targetId) === String(savedTarget));
+      if (saved?.id === id && saved.ownerRef?.kind === 'player' && mirrorMatches
+          && attachment?.id === id && attachment.state === 'active' && attachment.ownerId === state.playerId
+          && attachment.targetId === mappedTarget && player && target && player !== target
+          && player.alive !== false && target.alive !== false
+          && Number.isSafeInteger(player.occupantGeneration) && player.occupantGeneration > 0
+          && Number.isSafeInteger(target.occupantGeneration) && target.occupantGeneration > 0
+          && attachment.ownerGeneration === player.occupantGeneration
+          && attachment.targetGeneration === target.occupantGeneration) {
+        tether.targetId = mappedTarget;
+      } else {
+        // A stale or unproven mirror must not steer toward a reused raw entity id.
+        tether.active = false;
+        tether.targetId = null;
+        tether.attachmentId = null;
+      }
+    }
   },
 
   _restoreCombat(d, entityIdRemap) {

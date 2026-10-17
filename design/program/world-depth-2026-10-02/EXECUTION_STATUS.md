@@ -1,7 +1,39 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Current implementation — 10 October 2026, 11:00 UTC
+## Current implementation — 17 October 2026, UTC
+
+Public master was verified at `f079f9e12c4502fc5da0005975b1132c3f071e1e`. PRs #391 and #430 are merged; #430's last source head is `09cbe5d503ca4bcf4efc8283f8c1978ad05d8813`. The broader merged startup work already supersedes the earlier unlanded first-picture lease proposal. Preserve that work rather than transplanting the old renderer.
+
+A distinct current shared-launch race is reproduced and corrected here. `waitForOpeningFirstPicture` captures its loading owner, then queues mesh admission. The old callback could clear a replacement run's mesh-defer flags, prepared latch and publication gate before its later activity check rejected it. The correction invokes the existing `assertActive()` inside that queued callback before entering the mutating renderer owner. No renderer, timing budget, warmup policy or arrival-release behavior changes.
+
+Owned increment: `src/render/pipelineReadiness.js`, `test/opening-loading-entry-lifetime.test.mjs`, the existing `check:runtime-maturity` test list in `package.json`, and these current handoff/goal updates. Current open renderer-performance PRs #444/#445 have no changed path in this source increment at the ownership check.
+
+Evidence:
+- Same portable test: current baseline 3 pass / 10 fail; candidate 13 pass.
+- Independent rerun: 13 pass in 0.116 seconds, sampled peak RSS 49,909,760 bytes.
+- Nine current-method ownership controls and four existing lifetime test bodies pass on both sides in a controlled exact-method harness; this is not the full original import suite.
+- Two complete extracted preflight-entry controls pass. The other queued sector-cook owner already rejects an inactive caller before mutation and is unchanged.
+- CI graph verification shows the new test runs once through the existing runtime-maturity command. Actual new-head CI and rendered-route verification remain pending.
+
+Draft [PR #447](https://github.com/coldshalamov/SpaceFace/pull/447) now preserves this increment and the reviewed cargo-order correction. Verified source head `0a77cbabce241f469152a52beed7bbc1e5452aab` follows startup commit `6380428a081002b28931d7405c2e210547fa305a`, with sole public ancestry from the master above. Follow exact-head CI and retain its failures. Do not merge or deploy. Routine branch/source decisions are already authorized.
+
+The larger Orchard/Ceres/Mile route remains open. A genuine original crate was latched and towed on its explicitly pinned source set; its six saved checkpoints preserve all prior costs and finite custody. Continuation backend preparation now succeeds, but pre-step body parity exposed a redundant cargo-mass reconstruction revision. The independently reviewed cache-before-ship-stats correction is now published in PR #447 and passes the pinned native pre-step body/revision checks. Its ordinary-route continuation remains unfinished. No completed ordinary delivery, current-master native-route acceptance or gameplay acceptance is claimed.
+
+All seven markers in OPEN_GOALS.md remain open. Source/model recovery is durable, but the separate model repository write has an unresolved connector approval; backup is not GitHub delivery. Actual exported-package studio views remain distinct from live game-camera acceptance. This is an increment within the original twenty-concept/P00–P21 scope, not a new queue or a completed game.
+
+
+### Published save correction and CI evidence, 17 October 2026, 02:02 UTC
+
+The restore path now rebuilds cargo caches before deriving ship stats, preserving unchanged native body revisions without adding revision setters, schema changes or comparator exclusions. Saved absolute vitals retain their existing final restoration order. Local author evidence was 9/9, including a genuine stopped-route save; independent portable evidence was 8/8, against 4/8 on the unchanged baseline.
+
+Exact-head [check run 5416](https://github.com/coldshalamov/SpaceFace/actions/runs/38992464819) verifies the current source: simulation passed all 30 commands, including save schema, 30/30 save-import-safety cases (all eight new cargo cases), and 5,000 seeded save-fuzz cases at seed 4242. Runtime-maturity explicitly passed all 13 new opening tests. The existing player-save-store script was not reachable from the aggregate; this increment registers it sequentially after save-import-safety. Its next-head result remains pending.
+
+[Mobile run 367](https://github.com/coldshalamov/SpaceFace/actions/runs/38992464813) passed Chromium startup, controls and Continue. WebKit crashed before menu readiness; exact-base mobile reproduction is unavailable, so attribution remains unresolved. Other CI failures remain visible: unchanged master reproduces the knock budget, stale UI baseline, Ceres-workfleet and four runtime-maturity failures. Candidate Market pointer/instrument waits failed after opening; neither exact base nor startup-only predecessor produced a comparable completed result. These are not green or accepted gameplay gates.
+
+The separate historical pinned towing continuation passed cargo/body parity but stopped before any new simulation calls because its diagnostic comparator expected an ambient NPC-to-NPC native attachment that the actual gameplay serializer intentionally excludes. Independent lifecycle review confirms the scalar-restoration contract; a precise semantic-set comparator correction is being tested. Original checkpoint, finite cargo, player towline and spent route budgets remain unchanged. No delivery or current-game route acceptance is claimed.
+
+## Historical implementation — 10 October 2026, 11:00 UTC
 
 Verified public draft PR #262 head: `9c959be34de1abc566763a1492b20251c2d36ac8`.
 The schema/save15 and dock-observer increment is published. Its simulation CI
@@ -598,3 +630,27 @@ Master advanced to `34da071c923677b8c8e2a8a6b94ab277411dc587` (53 commits after 
 - Shared source: root reconciled flight/mining/residency guards without dropping upstream behavior. Sixty relevant upstream/far-actor cases pass. Fourteen Ceres reservation cases are explicitly pending the still-unreconciled NPC/native hooks, not cleared. Gameplay and presentation owners are integrating their distinct paths; no duplicate writers.
 
 Next: finish the unchanged ambient run, reconcile Ceres native/NPC/attachment joins, finish the compatible authored-presentation and normal Latch packets, then run ordinary-input and asset checks on the final shared source. The sole publisher must resolve its uncertain prior operation and preserve current remote ancestry before publishing coherent increments. No merge, deployment, GPU/performance certification or full expansion completion is claimed.
+
+## Scalar collision-budget restoration — 17 October 2026, 02:53 UTC
+
+The current native owner loses a compatible player's recent contact-response budget when Continue falls back to scalar world reconstruction. A focused synthetic reproduction starts with four of five allowed delta-V units already spent, admits the last unit, rebuilds through the actual owner, and incorrectly admits two more units. This is distinct from the actual towing checkpoint, whose accumulated contact delta-V is zero.
+
+This increment retains bounded, validated player-only claims before either scalar rebuild can yield, then transfers only compatible episode fields into staged records before atomic publication. It requires exact identity/body revision/geometry/material/group/pose/motion, a canonical simulation age within 90 ticks, and explicit save remapping or exact existing lifetime. Mutated maps, nonfinite state, changed bodies, staged pose corrections, abandoned transactions and incompatible records cannot inherit an episode. Native adoption, save schema and the contact-budget algorithm are unchanged.
+
+Owned paths: src/core/physics.js, src/core/sg02DynamicBodyOwner.js, test/sg02-scalar-contact-episode.test.mjs and the existing check:sg02 test list. Same public 56-case test: baseline 42 pass / 14 fail, candidate 56/56; independent 12 adversarial cases pass. Native construction is doubled; actual JavaScript reconstruction and budget arithmetic execute. The 239-module proof includes 216 pinned historical transitives. Full current CI, actual native solver, sim comparison, launch/performance and player-truth remain pending; this is a draft increment, not landing acceptance.
+
+Owner: continuation implementation and independent review, integrated on PR #447. Next action: verify this exact published head and its CI, then map only the reviewed change into the historical route before a separately reviewed native attempt. No native grant is implied. All seven goals remain open. Source delivery uses GitHub; the older separate model-publication approval remains unresolved.
+
+Latest completed source-head evidence: ec562718 passes all 31 simulation commands, including schema, 30 import-safety cases, 17 player-store cases and 5,000 fuzz cases, plus Chromium startup/Continue. New failure diagnostics establish that both observed cold-open/assets timeouts resolved mesh/current-sector/seal/capture/units and reached pending submission; the queued-entry guard did not reject those runs. Loading time is still unacceptable. Measured current-sector cook/census/composition overlaps active PR #444 ownership; do not duplicate renderer edits. Remaining CI failures and broader visual/gameplay acceptance remain open.
+
+## Restored tether reference before first flight — 17 October 2026, 03:11 UTC
+
+A genuine saved towing state reproduces another Continue defect: the crate receives a new entity ID and its canonical combat attachment is remapped, but the player's tether mirror still names the old ID. Input and flight consume that reference before tetherGameplay's later update can refresh it. The save epilogue now binds the mirror through its exact restored active player attachment, canonical persistent/Ceres semantic reference and current endpoint lifetimes. Unproven mirrors fail closed instead of steering toward an unrelated reused ID. Valid non-reference tether fields remain unchanged.
+
+Same focused suite: baseline 3/32 versus candidate 32/32, including the real saved state. The public portable test has 23 cases; historical checkpoint integration stays separate. Independent genuine worldRecord/worldSite and overlapping-ID tests passed, and injected failures before repair and at later physics completion rolled back to coherent tether/cargo/credits. These are pure-load proofs with qualified historical transitives, no solver or completed route acceptance.
+
+The contact-budget regression was correctly registered but fell into static1, whose unrelated Ceres preflight failed before its test command. No 56-case CI pass is claimed. This increment moves its single registration into the executing save-import-safety simulation command, alongside the new tether regression; no duplicate registration or workflow permission changes.
+
+Latest source head96b9124 has green simulation/save-reload and Chromium mobile checks, but overall CI remains red. New timeout snapshots reached accepted first picture and residency and mode flight/tick0 after the outer playable deadline; these observations differ from the earlier pending-submission snapshots. No blanket timeout expansion or acceptable-load-time claim is made. Active renderer performance owners retain census/composition scope.
+
+Owner: continuation save/route implementation and independent reviewer. Next action: verify this exact published increment and CI, then validate both reviewed restore repairs on the pinned route before a separately bounded hazard-aware approach. Original exterior exhaustion and 19,218 prior actual calls remain recorded, with no replayed acquisition or payment. All seven larger goals stay open; the separate model-publication approval is still pending.
