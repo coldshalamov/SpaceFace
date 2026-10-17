@@ -71,11 +71,74 @@ function titleWords(value, fallback = 'Unknown') {
 }
 
 export function weaponIdFromDamage(payload = {}) {
+  const packet = payload.packet && typeof payload.packet === 'object' ? payload.packet : null;
   return payload.weaponId
     || payload.origin && payload.origin.weaponId
     || payload.origin && payload.origin.kind === 'weapon' && payload.origin.id
-    || payload.packet && payload.packet.source && payload.packet.source.weaponId
+    || packet && packet.source && packet.source.weaponId
+    || physicalWeaponLabelFromDamage(packet
+      ? { ...packet, origin: payload.origin || packet.origin || null, tag: payload.tag || packet.tag || null }
+      : payload)
     || null;
+}
+
+// SFQ-B058 — a physical kill has no weapon id: a thrown mass, a Massline whip, a
+// ram or a collision slam. The defeat summary must name the physical fact in
+// plain words, never a raw tag and never "unidentified weapon". Pure: same
+// packet in, same label out. Unknown packets return null so callers keep their
+// existing fallbacks.
+export function physicalWeaponLabelFromDamage(packet = {}) {
+  const record = packet && typeof packet === 'object' ? packet : {};
+  const origin = record.origin && typeof record.origin === 'object' ? record.origin : null;
+  const source = record.source && typeof record.source === 'object' ? record.source : null;
+  const link = record.collisionPresentation
+    && typeof record.collisionPresentation === 'object'
+    && record.collisionPresentation.impactLink
+    && typeof record.collisionPresentation.impactLink === 'object'
+    ? record.collisionPresentation.impactLink
+    : (source && source.collisionPresentation
+      && typeof source.collisionPresentation === 'object'
+      && source.collisionPresentation.impactLink
+      && typeof source.collisionPresentation.impactLink === 'object'
+      ? source.collisionPresentation.impactLink
+      : null);
+  const tags = [
+    origin && origin.kind,
+    source && source.kind,
+    record.tag,
+    origin && origin.tag,
+    source && source.tag,
+    source && source.impulseProvenance,
+    link && link.tag,
+  ];
+  for (const tag of tags) {
+    if (tag === 'massline_whip' || tag === 'massline_whip_recoil' || tag === 'massline_tumble_impact'
+      || tag === 'massline_throw' || tag === 'rope_throw') return 'thrown mass';
+  }
+  for (const tag of tags) {
+    if (tag === 'terrain_collision' || tag === 'collision_terrain') return 'arena impact';
+  }
+  for (const tag of tags) {
+    if (tag === 'ship_collision' || tag === 'collision_craft' || tag === 'direct_contact') return 'hull ram';
+    if (tag === 'ram_plate' || tag === 'tow_flail') {
+      const moduleId = tag === 'ram_plate' ? 'mod_ram_plate' : 'mod_mass_flail_rig';
+      const moduleDef = MODULE_BY_ID.get(moduleId);
+      return moduleDef ? moduleDef.name : 'hull ram';
+    }
+  }
+  const moduleIds = [
+    origin && origin.weaponId,
+    source && source.weaponId,
+    record.weaponId,
+  ];
+  for (const moduleId of moduleIds) {
+    if (typeof moduleId !== 'string' || !moduleId) continue;
+    // Exact module ids first, then the legacy short id without its size suffix.
+    const moduleDef = MODULE_BY_ID.get(moduleId)
+      || (moduleId === 'mod_mass_flail_rig' ? MODULE_BY_ID.get('mod_mass_flail_rig_m') : null);
+    if (moduleDef) return moduleDef.name;
+  }
+  return null;
 }
 
 export function attackerLabel(state, attackerId) {
@@ -130,7 +193,12 @@ export function defeatSource(state, attackerId, context = null) {
 
 export function weaponLabel(weaponId) {
   const weapon = WEAPON_BY_ID.get(weaponId);
-  return weapon ? weapon.name : (weaponId ? titleWords(weaponId) : 'Unknown weapon');
+  if (weapon) return weapon.name;
+  // SFQ-B058 — a physical kill label ('thrown mass', 'arena impact', 'hull ram')
+  // is already player words: pass it through verbatim. Anything else is still an
+  // id, humanised as before.
+  if (typeof weaponId === 'string' && weaponId && !weaponId.includes('_')) return weaponId;
+  return weaponId ? titleWords(weaponId) : 'Unknown weapon';
 }
 
 export function impactDirection(state, attackerId, hitPos = null) {
@@ -394,10 +462,23 @@ export function defeatRangeOffer(state, lethal) {
 }
 
 export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
-  const weaponId = lethal.weaponId || weaponIdFromDamage({
+  const rawWeaponId = lethal.weaponId || weaponIdFromDamage({
     origin: lethal.origin,
     packet: lethal.packet,
   });
+  // A known gun keeps its id; a physical kill (or a raw tag riding weaponId)
+  // reads as the plain-word impact label instead of "unidentified weapon".
+  const physicalLabel = physicalWeaponLabelFromDamage({
+    origin: lethal.origin,
+    source: lethal.packet && lethal.packet.source || null,
+    tag: lethal.tag || lethal.context || null,
+    collisionPresentation: lethal.packet && lethal.packet.source
+      && lethal.packet.source.collisionPresentation || null,
+    weaponId: typeof rawWeaponId === 'string' ? rawWeaponId : null,
+  });
+  const weaponId = rawWeaponId && WEAPON_BY_ID.has(rawWeaponId)
+    ? rawWeaponId
+    : (physicalLabel || rawWeaponId);
   const dominantLayer = lethal.dominantLayer || lethal.result && lethal.result.dominantLayer || 'hull';
   const context = lethal.context || lethal.origin && lethal.origin.kind || 'combat';
   const source = defeatSource(state, killerId, context);

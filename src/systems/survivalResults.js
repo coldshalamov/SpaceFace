@@ -8,7 +8,7 @@
 
 import { COLLISION_CONSEQUENCE_LIMITS } from '../combat/impulseKernel.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
-import { attackerLabel, weaponLabel } from '../combat/playerDefeat.js';
+import { attackerLabel, physicalWeaponLabelFromDamage, weaponLabel } from '../combat/playerDefeat.js';
 import { validateRunState } from '../core/runState.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
 import { swarmZoneIndexFor } from '../data/swarmLadder.js';
@@ -183,8 +183,14 @@ export function closingSpeedPhrase(receipt) {
 export function deathCauseText(receipt, trail = []) {
   if (receipt && typeof receipt === 'object') {
     const attacker = receipt.attacker || (receipt.source && receipt.source.label) || 'Unidentified attacker';
+    // SFQ-B058 — a known gun reads as its name; a physical kill (whip, thrown
+    // mass, collision slam) reads as the plain-word impact label the defeat
+    // receipt resolved, never 'unidentified weapon'.
+    const physicalFallback = physicalWeaponLabelFromDamage(receipt)
+      || (typeof receipt.weapon === 'string' && receipt.weapon && !receipt.weapon.includes('_')
+        ? receipt.weapon : null);
     const weapon = receipt.source && receipt.source.kind === 'environment'
-      ? 'Environmental impact' : receipt.weapon || 'unidentified weapon';
+      ? 'Environmental impact' : receipt.weapon || physicalFallback || 'unidentified weapon';
     const direction = receipt.direction || 'bearing unknown';
     const layer = receipt.dominantLayer || 'hull';
     return `${attacker} · ${weapon} · ${direction}${closingSpeedPhrase(receipt)} · ${layer} breach`;
