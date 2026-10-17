@@ -12,6 +12,7 @@
 
 import {
   ALIEN_SITES,
+  ALIEN_STRAINS,
   alienSitesForSector,
   alienStrainById,
   ecologyMissionsForSite,
@@ -1762,6 +1763,11 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   }
   eco.suppressedT = 0;
 
+  // A severed relay does not stop the animal. Strains that leaned on the broadcast
+  // take longer to answer and cannot hold a shared heading.
+  const priors = (ALIEN_STRAINS[site.strainId] && ALIEN_STRAINS[site.strainId].memoryPriors) || null;
+  const dep = priors && Number.isFinite(priors.relayDependency) ? priors.relayDependency : 0.5;
+
   const awake = rec.state === 'awake' || rec.state === 'bloom';
   // AE-123 (G11) — Quiet Mask: a damped hull presents a smaller signature; fauna notice
   // you later and accrue stimulus slower. (stealthM arrives hoisted — one eval per tick.)
@@ -1804,7 +1810,8 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   const stimulated = playerD < alertR || (stim.heat || 0) > 0.8 || !!eco.lureTarget;
   if (stimulated) eco.stimulusT = (eco.stimulusT || 0) + dt;
   else eco.stimulusT = 0;
-  const reacted = coherent || (eco.stimulusT || 0) >= species.coherenceLoss.latency;
+  const latency = species.coherenceLoss.latency * (0.7 + 0.6 * dep);
+  const reacted = coherent || (eco.stimulusT || 0) >= latency;
 
   // Feed signal wins over curiosity: a fresh rupture pulls feeders toward it.
   const feedSignal = rec.signals && rec.signals.find((s) => s.kind === 'spore_density');
@@ -2149,6 +2156,9 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   let headingTarget = desired;
   if (shepherd && coherent && species.relayAffinity > 0) {
     headingTarget = angleLerp(desired, shepherd.rot, species.relayAffinity * 0.25);
+  }
+  if (!coherent && species.relayAffinity > 0) {
+    headingTarget += Math.sin(now * 1.7 + (eco.phase || 0) * 3.1) * species.relayAffinity * dep * 0.35;
   }
   e.rot = angleLerp(e.rot, headingTarget, Math.min(1, species.turnRate * dt));
   const d = Math.sqrt(dist2(e.pos.x, e.pos.z, targetX, targetZ));

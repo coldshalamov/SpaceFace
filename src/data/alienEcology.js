@@ -109,6 +109,7 @@ export const ALIEN_STRAINS = Object.freeze({
       precursor_signal_fear: 0.95, // strong prism-tone avoidance (doc 01)
       massline_contact_aversion: 0.4,
       scan_sensitivity: 0.9,       // inquisitive until illuminated by active scan
+      relayDependency: 0.85,       // severed relay: this strain loses swarm timing and heading lock hardest
     }),
   }),
   ashfall_choir: Object.freeze({
@@ -124,6 +125,7 @@ export const ALIEN_STRAINS = Object.freeze({
       precursor_signal_fear: 0.7,
       massline_contact_aversion: 0.3,
       route_memory_strength: 0.95, // repeated approach vectors toward a deep-domain bearing
+      relayDependency: 0.45,       // severed relay: ashfall keeps more of its own timing
     }),
   }),
 });
