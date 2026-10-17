@@ -1898,7 +1898,7 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
    letters. It now ends just left of COMMS, above the destination words, on a solid strip so it reads over a scrolled list.
    The destination words also fit: at 801–900 × 461–800 the rail takes the row's free width (it was capped
    and cut MISSIONS … LEDGER); at 651–800 × 461–800 the receipt
-   instead wraps to two lines above COMMS, in the room right of it; at 901–999 the words close up so LEDGER is not cut. Desktop only. */
+   instead wraps to three short lines above COMMS, clear of UNDOCK and the dossier's ACCEPT; at 901–999 the words close up so LEDGER is not cut. Desktop only. */
 @media (min-width:801px) and (max-height:800px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important; bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
 }
@@ -1923,9 +1923,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 16px) !important; }
 }
 @media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 6px) !important; padding:0 !important;
-    max-width:calc(100vw - 400px) !important; flex-wrap:wrap !important; white-space:normal !important; row-gap:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 24px) !important; padding:0 !important;
+    max-width:210px !important; flex-wrap:wrap !important; white-space:normal !important; row-gap:2px !important; }
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt > * { white-space:nowrap !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt::before { left:-12px !important; right:-12px !important; }
 }
 @media (min-width:651px) and (max-width:800px) and (max-height:460px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 60px) !important; max-width:none !important; padding:0 !important; }
