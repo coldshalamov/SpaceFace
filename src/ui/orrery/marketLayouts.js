@@ -645,10 +645,10 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
      open, and scroll the head away.) */
   ${MD} .sx-mkt__decision .sx-decision__opt { scroll-margin-bottom:88px; }
 }
-/* ---- 651–900 × ≤460 desktop: beside the family ladder the register's name column was 0–25px (rows
-   read as an icon and numbers). The families wrap into a strip over the register instead, every one
-   still on the board, and the names get ~100px. */
-@media (min-width:651px) and (max-width:900px) and (max-height:460px) {
+/* ---- 651–900 × ≤800 desktop: beside the family ladder the register's name column was 0–25px (rows
+   read as an icon and numbers; at 700×600 "Iron Ore" sat under its own price). The families wrap
+   into a strip over the register instead, every one still on the board, and the names get ~100px. */
+@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
   ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) !important; row-gap:4px !important; }
   ${MD} .sx-mkt-browser__filters { grid-column:1; grid-row:2; flex-direction:row !important; flex-wrap:wrap !important; width:auto !important; min-width:0 !important;
     gap:0 14px !important; padding:0 0 0 9px !important; background:none !important; }
@@ -657,12 +657,12 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   /* the two verbs share ~190px: their names close up so REPAIR NOW and FLY DAMAGED keep a gap */
   ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:12px !important; letter-spacing:.06em !important; white-space:nowrap; }
 }
-/* ---- 651–720 × ≤460: two verb columns were ~59–72px, so REPAIR NOW / FLY DAMAGED terms ran
+/* ---- 651–720 × ≤800: two verb columns were ~59–72px, so REPAIR NOW / FLY DAMAGED terms ran
    four–six lines and ate the stage. One column at the analysis width; each verb keeps its name
    on one line and its terms wrap under it at the full width (two–three lines). The terms are the
    price and hull/armor numbers being chosen between, and the buttons carry no title, so they are
    never ellipsized. */
-@media (min-width:651px) and (max-width:720px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:720px) and (max-height:800px) {
   ${MD} .sx-mkt__decision .sx-decision {
     display:flex !important; flex-direction:column !important; gap:2px !important;
     grid-template-columns:none !important;
@@ -688,11 +688,12 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
      foot (88px) as well, so Tab to REPAIR NOW doesn't park FLY DAMAGED under the foot */
   ${MD} .sx-mkt__decision .sx-decision__opt:not(:last-child) { scroll-margin-bottom:144px; }
 }
-/* ---- 651–900 × ≤460 desktop (e.g. 760×420, 844×390): the analysis is ~160–240px wide, so the
-   reading is one column: the kind line, the name and the last move, then the price with its words
+/* ---- 651–900 × ≤800 desktop (e.g. 760×420, 844×390, 700×600, 900×600): the analysis is ~160–260px
+   wide, so the reading is one column: the kind line, the name and the last move, then the price with its words
    beside it, then the trace at the full width (beside the name the price left ~65px for both and
-   squeezed the trace to ~20px). From ~1000 wide the two-column reading fits as it is. */
-@media (min-width:651px) and (max-width:900px) and (max-height:460px) {
+   squeezed the trace to ~20px; at 700×600 the title stood one letter wide). From ~1000 wide the
+   two-column reading fits as it is. */
+@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
   ${MD} .sx-mkt__quote { grid-template-columns:minmax(0, 1fr) max-content !important; column-gap:8px !important; align-items:start !important; }
   ${MD} .sx-mkt__quote > :is(.sx-mkt-cat-inline, .sx-mkt-title, .sx-mkt-cause) { grid-column:1 / -1 !important; }
   ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { grid-row:1 !important; margin:0 !important; font-size:12px !important; letter-spacing:.16em !important; white-space:nowrap; }
@@ -708,6 +709,23 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
      register's ▲/▼ still says it) so the whole trace stays above the decision */
   ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-cause { display:none !important; }
   ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:18px !important; }
+  /* ROUTE INTELLIGENCE closes up so it reads on one line from ~760 wide */
+  ${MD} .so-route-disclosure > summary { letter-spacing:.08em !important; }
+}
+/* …and after a trade the TRADE CLEARED line, which ends 24px left of COMMS (~402px from the right
+   edge here), was one ~480px line: under ~880 wide its start ("TRADE CLEARED BOUGHT…") ran off the
+   left edge. It wraps into the room left of COMMS instead, growing upward, whole and on glass. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt {
+    flex-wrap:wrap !important; white-space:normal !important; width:max-content !important; max-width:calc(100vw - 414px) !important; row-gap:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt > * { white-space:nowrap; }
+  /* wrapped, it stands over the register's rows for its 3.6s, so its dark falloff covers the whole
+     block (the 26px radial fade under a one-line receipt left the rows reading through its words) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt::before {
+    left:-16px !important; right:-16px !important; top:-16px !important; bottom:-3px !important;
+    background:linear-gradient(to bottom, rgb(7 8 10 / 0), rgb(7 8 10 / .86) 14px, rgb(7 8 10 / .86) calc(100% - 3px), rgb(7 8 10 / 0)) !important;
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+    mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 }
 `;
 
