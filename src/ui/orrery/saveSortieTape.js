@@ -24,18 +24,18 @@ const CSS = `
 .orr-tape__stop { all:unset; position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; pointer-events:auto; cursor:pointer; border-radius:50%; }
 .orr-tape__stop:focus-visible { outline:none; box-shadow:0 0 0 1.5px rgb(255 217 140 / .75); }
 .orr-tape__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
-.orr-tape__legend { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.24em; fill:rgb(${BONE} / .72); }
-.orr-tape__legend--sub { font-size:calc(10px * var(--tape-k, 1)); letter-spacing:.2em; fill:rgb(${BONE} / .56); }
+.orr-tape__legend { font-family:var(--dp-face-label, "Archivo"); font-size:max(12px, calc(10.5px * var(--tape-k, 1))); font-weight:650; letter-spacing:.24em; fill:rgb(${BONE} / .72); }
+.orr-tape__legend--sub { font-size:max(12px, calc(10px * var(--tape-k, 1))); letter-spacing:.2em; fill:rgb(${BONE} / .56); }
 .orr-tape__base { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1.6; }
 .orr-tape__played-bloom { fill:none; stroke:rgb(${BONE} / .13); stroke-linecap:round; }
 .orr-tape__played-band { fill:none; stroke:rgb(${BONE} / .3); stroke-linecap:round; }
 .orr-tape__played-core { fill:none; stroke:rgb(${BONE} / .78); stroke-width:2.2; stroke-linecap:round; }
 .orr-tape__minor { fill:none; stroke:rgb(${BONE} / .38); stroke-width:1.3; }
 .orr-tape__major { fill:none; stroke:rgb(${BONE} / .72); stroke-width:2; }
-.orr-tape__time { font-family:var(--dp-face-numeral, "Archivo"); font-size:calc(11px * var(--tape-k, 1)); font-weight:560; letter-spacing:.06em; fill:rgb(${BONE} / .7); }
+.orr-tape__time { font-family:var(--dp-face-numeral, "Archivo"); font-size:max(12px, calc(11px * var(--tape-k, 1))); font-weight:560; letter-spacing:.06em; fill:rgb(${BONE} / .7); }
 .orr-tape__mark { fill:none; stroke:rgb(${BONE} / .7); stroke-width:2; stroke-linecap:round; }
 .orr-tape__dot { fill:rgb(${BONE} / .9); }
-.orr-tape__label { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.14em; fill:rgb(${BONE} / .82);
+.orr-tape__label { font-family:var(--dp-face-label, "Archivo"); font-size:max(12px, calc(10.5px * var(--tape-k, 1))); font-weight:650; letter-spacing:.14em; fill:rgb(${BONE} / .82);
   paint-order:stroke; stroke:rgb(4 5 8 / .9); stroke-width:4px; stroke-linejoin:round; }
 .orr-tape__label.is-at { fill:rgb(250 247 240); }
 .orr-tape__label--threat.is-at { fill:#ff9a82; }
@@ -44,7 +44,7 @@ const CSS = `
 .orr-tape__label--threat { fill:var(--dp-danger-hot, #ff7a5c); }
 .orr-tape__kill { fill:none; stroke:var(--dp-danger, #ff5038); stroke-width:3.4; stroke-linecap:round; }
 .orr-tape__kill-bloom { fill:none; stroke:rgb(255 80 56 / .3); stroke-width:14; stroke-linecap:round; }
-.orr-tape__kill-word { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:700; letter-spacing:.24em; fill:var(--dp-danger-hot, #ff7a5c); }
+.orr-tape__kill-word { font-family:var(--dp-face-label, "Archivo"); font-size:max(12px, calc(10.5px * var(--tape-k, 1))); font-weight:700; letter-spacing:.24em; fill:var(--dp-danger-hot, #ff7a5c); }
 .orr-tape__hand-needle { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2.4; stroke-linecap:round; }
 .orr-tape__hand-bloom { fill:none; stroke:rgb(242 185 80 / .26); stroke-width:10; stroke-linecap:round; }
 .orr-tape__hand-bead { fill:var(--dp-hand-hot, #ffd98c); }
@@ -54,9 +54,9 @@ const CSS = `
   display:flex; align-items:baseline; gap:12px; }
 .orr-tape__read-t { font-family:var(--dp-face-numeral, "Archivo"); font-weight:300; font-size:calc(22px * var(--tape-k, 1)); line-height:1; letter-spacing:-.01em; color:var(--dp-phos, rgb(223 238 255));
   font-variant-numeric:tabular-nums; }
-.orr-tape__read-w { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(11px * var(--tape-k, 1)); letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .82); }
+.orr-tape__read-w { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, calc(11px * var(--tape-k, 1))); letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .82); }
 .orr-tape__read-w.is-threat { color:var(--dp-danger-hot, #ff7a5c); }
-.orr-tape__empty { font-family:var(--dp-face-label, "Archivo"); font-size:calc(10.5px * var(--tape-k, 1)); font-weight:650; letter-spacing:.24em; fill:rgb(${BONE} / .62); }
+.orr-tape__empty { font-family:var(--dp-face-label, "Archivo"); font-size:max(12px, calc(10.5px * var(--tape-k, 1))); font-weight:650; letter-spacing:.24em; fill:rgb(${BONE} / .62); }
 @media (forced-colors: active) { .orr-tape__svg { forced-color-adjust:auto; } }
 `;
 

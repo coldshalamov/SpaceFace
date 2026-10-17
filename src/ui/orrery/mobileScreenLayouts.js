@@ -353,6 +353,7 @@ export const MOBILE_SCREEN_CSS = `
     align-items:center !important; align-content:center !important; justify-items:start !important; width:100% !important; }
   ${M} .sx-trade > .sx-qty { grid-area:dial; width:128px !important; height:146px !important; position:relative !important; }
   ${M} .sx-qty .orr-qdial { left:8px !important; top:0 !important; width:112px !important; height:112px !important; }
+  ${M} .orr-qdial__end { font-size:16.1px; }
   ${M} .sx-qty .sx-qty__k { left:8px !important; width:112px !important; top:32px !important; font-size:12px !important; letter-spacing:.18em !important; }
   ${M} .sx-qty .sx-qty__in { left:24px !important; width:80px !important; top:44px !important; height:32px !important; min-height:32px !important;
     font-size:28px !important; line-height:32px !important; }

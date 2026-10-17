@@ -66,7 +66,7 @@ const CSS = `
 .con-label.is-captioned { opacity:0 !important; }
 .con-lens__read::before { content:""; position:absolute; z-index:-1; inset:-12px -26px; pointer-events:none; background:radial-gradient(closest-side, rgb(4 6 9 / .94), rgb(4 6 9 / .8) 55%, rgb(4 6 9 / 0)); }
 .con-lens__read-name { font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-weight:600; font-size:calc(var(--con-px, 13px) + 2px); line-height:1.2; color:rgb(255 252 245); }
-.con-lens__read-sub { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--con-cost-px, 10.5px); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .72); }
+.con-lens__read-sub { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--con-cost-px, 10.5px)); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .72); }
 html.sf-reduce-motion .con-lens__read { transition:none; }
 .orr-svg .con-lens__cross { fill:none; stroke:rgb(${WARM} / .7); stroke-width:1.4; }
 .con-lens__view .con-label::before { display:none; }
@@ -90,10 +90,10 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .orr-svg .con-sector__track { fill:none; stroke:rgb(${BONE} / .16); stroke-width:4; stroke-linecap:butt; }
 .orr-svg .con-sector__fill { fill:none; stroke:rgb(${WARM}); stroke-width:4; stroke-linecap:butt; transition:stroke-dasharray .6s var(--dp-ease-out, ease-out); }
 .orr-svg .con-sector__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:13; opacity:.18; stroke-linecap:butt; }
-.orr-svg text.con-sector__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--con-rim-px, 10px); letter-spacing:.26em;
+.orr-svg text.con-sector__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--con-rim-px, 10px)); letter-spacing:.08em;
   text-transform:uppercase; fill:rgb(${BONE} / .74); }
 .orr-svg text.con-sector__name tspan.con-sector__count { fill:rgb(${WARM}); letter-spacing:.1em; }
-.orr-svg text.con-tier { font-family:var(--dp-face-label, "Archivo"); font-stretch:100%; font-weight:600; font-size:var(--con-tier-px, 9.5px); letter-spacing:.06em;
+.orr-svg text.con-tier { font-family:var(--dp-face-label, "Archivo"); font-stretch:100%; font-weight:600; font-size:max(12px, var(--con-tier-px, 9.5px)); letter-spacing:.06em;
   fill:rgb(${BONE} / .6); text-anchor:middle; dominant-baseline:central; }
 .orr-svg .con-spoke { stroke:rgb(${BONE} / .16); stroke-width:1; stroke-dasharray:1 4; }
 .orr-svg .con-core__track { fill:none; stroke:rgb(${BONE} / .16); stroke-width:5; }
@@ -231,7 +231,7 @@ html.sf-reduce-motion .con-lens { transition:none; }
 .con-star-btn:is(:hover, :focus-visible) > .con-label.is-under-hand { opacity:1; }
 .con-label__name { display:block; font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-weight:500; font-size:var(--con-px, 13px);
   line-height:var(--con-lh, 16px); letter-spacing:.005em; color:rgb(${BONE} / .7); text-transform:none; }
-.con-label__cost { display:block; margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--con-cost-px, 10.5px); line-height:1.2;
+.con-label__cost { display:block; margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--con-cost-px, 10.5px)); line-height:1.2;
   letter-spacing:.1em; text-transform:uppercase; color:rgb(${BONE} / .6); font-variant-numeric:tabular-nums; }
 .con-star-btn[data-state="available"] .con-label__name { color:rgb(${WARM} / .96); }
 .con-star-btn[data-state="available"].is-ready .con-label__cost { color:var(--dp-phos, #dfeeff); }

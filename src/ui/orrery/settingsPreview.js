@@ -165,9 +165,9 @@ const CSS = `
    screen pixels and over-fills any drawing smaller than its viewBox, so here strokes scale with their drawing */
 .orr-set-preview .orr-svg :is(.orr-core, .orr-bloom), .orr-set-preview .orr-svg path, .orr-set-preview .orr-svg circle { vector-effect:none !important; }
 /* the mixer */
-.orr-set-mixer .orr-set-mixer__lab { font-size:calc(10.5px * var(--orr-set-k, 1)); letter-spacing:.18em; fill:rgb(${BONE} / .7); text-anchor:end; font-weight:650; }
+.orr-set-mixer .orr-set-mixer__lab { font-size:calc(12px * var(--orr-set-k, 1)); letter-spacing:.18em; fill:rgb(${BONE} / .7); text-anchor:end; font-weight:650; }
 .orr-set-mixer .orr-set-mixer__lab.is-focus { fill:rgb(248 244 234); }
-.orr-set-mixer .orr-set-mixer__grad { font-size:calc(9.5px * var(--orr-set-k, 1)); letter-spacing:.12em; fill:rgb(${BONE} / .66); text-anchor:middle; font-weight:600; }
+.orr-set-mixer .orr-set-mixer__grad { font-size:calc(12px * var(--orr-set-k, 1)); letter-spacing:.12em; fill:rgb(${BONE} / .66); text-anchor:middle; font-weight:600; }
 .orr-set-mixer .orr-set-mixer__groove { stroke:rgb(${BONE} / .08); }
 .orr-set-mixer .orr-set-mixer__held { stroke:rgb(${BONE} / .3); transition:stroke .2s linear; }
 .orr-set-mixer .orr-set-mixer__fill { transition:opacity .2s linear; }
@@ -185,7 +185,7 @@ const CSS = `
   text-shadow:0 0 24px rgb(143 203 255 / .22); }
 .orr-set-mixer__out .orr-counter { height:1em; }
 .orr-set-mixer__out .orr-counter__digit { width:.56em; }
-.orr-set-mixer__out small { font-size:.42em; margin-left:3px; color:rgb(${BONE} / .7); }
+.orr-set-mixer__out small { font-size:max(12px, .42em); margin-left:3px; color:rgb(${BONE} / .7); }
 .orr-set-mixer.is-muted .orr-set-mixer__out { font-size:22px; font-variation-settings:"wdth" 112, "wght" 650; letter-spacing:.24em; text-transform:uppercase; color:rgb(248 244 234); }
 .orr-set-mixer__outlab { ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .7); white-space:nowrap; }
 /* the miniature HUD */
@@ -264,7 +264,7 @@ const CSS = `
 .orr-set-dial.is-dz .orr-set-dial__dz { opacity:1; }
 .orr-set-dial.is-dz .orr-set-dial__key { transform:translate(-50%, -50%); }
 .orr-set-dial.is-dz .orr-set-dial__verb { margin-top:calc(var(--orr-set-side, 420px) * .24); }
-.orr-set-dial .orr-set-dial__rim text { font-size:calc(9.5px * var(--orr-set-kd, 1)); letter-spacing:.3em; fill:rgb(${BONE} / .7); font-weight:650; }
+.orr-set-dial .orr-set-dial__rim text { font-size:calc(12px * var(--orr-set-kd, 1)); letter-spacing:.3em; fill:rgb(${BONE} / .7); font-weight:650; }
 /* the foot line: what the preview is */
 .orr-set-foot { ${LABEL} font-size: 12px; letter-spacing:.22em; color:rgb(${BONE} / .78); display:flex; gap:12px; align-items:center; position:relative; padding-top:6px; }
 .orr-set-foot::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--dp-phos, #dfeeff); box-shadow:0 0 9px rgb(223 238 255 / .75); animation:orr-set-live 2.4s ease-in-out infinite; }

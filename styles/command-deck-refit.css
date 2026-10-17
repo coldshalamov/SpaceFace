@@ -911,7 +911,7 @@ input[data-sf-control][data-sf-intent='primary'] { background: var(--sf-accent) 
   letter-spacing: -.025em;
   font-variant-numeric: tabular-nums;
 }
-[data-sf-surface='flight'] :where(.hud-label,.instrument-label) { color: #bbc7b9; font-size: 11px; letter-spacing: .04em; }
+[data-sf-surface='flight'] :where(.hud-label,.instrument-label) { color: #bbc7b9; font-size: 12px; letter-spacing: .04em; }
 [data-sf-surface='flight'] [data-sf-part='radar'] {
   border-color: #74816b;
   box-shadow: 0 0 0 1px rgb(3 9 13 / 88%), 0 3px 12px rgb(0 0 0 / 20%);
@@ -1061,7 +1061,7 @@ input[data-sf-control][data-sf-intent='primary'] { background: var(--sf-accent) 
   [data-sf-part='heading'] { font-size: 29px; }
   [data-sf-part='table'] { font-size: 12px; }
   [data-sf-part='table'] :where(th,td) { padding: 8px 6px; }
-  [data-sf-part='table'] th { font-size: 11px; }
+  [data-sf-part='table'] th { font-size: 12px; }
   [data-sf-part='table'] [data-sf-control] { min-height: 32px; padding: 5px 7px; font-size: 12px; }
   [data-sf-surface='confirmation'] :where(.actions,.dialog-actions,footer) { justify-content: stretch; }
   [data-sf-surface='confirmation'] :where(.actions,.dialog-actions,footer) [data-sf-control] { flex: 1 1 110px; }

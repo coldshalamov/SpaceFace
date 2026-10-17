@@ -72,7 +72,7 @@ const CSS = `
 .orr-svg .con-morr__ring.is-dim .con-morr__ticks { stroke:rgb(${BONE} / .2); }
 .orr-svg .con-morr__ring.is-dim text.con-morr__ringname { fill:rgb(${BONE} / .62); }
 .orr-svg .con-morr__ring.is-dim text.con-morr__ringname tspan { fill:rgb(${BONE} / .72); }
-.orr-svg text.con-morr__ringname { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--mo-rn, 10px); letter-spacing:.26em;
+.orr-svg text.con-morr__ringname { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--mo-rn, 10px)); letter-spacing:.08em;
   text-transform:uppercase; fill:rgb(${BONE} / .72); }
 .orr-svg text.con-morr__ringname tspan { fill:rgb(${WARM}); letter-spacing:.1em; }
 .orr-svg text.con-morr__ringname { opacity:0; transition:opacity .2s linear; }
@@ -92,7 +92,7 @@ const CSS = `
   gap:var(--mo-gap, 6px); pointer-events:none; text-align:center; }
 .con-morr__n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-variation-settings:"wght" 250, "wdth" 100; font-size:var(--mo-num, 96px);
   line-height:.86; letter-spacing:-.02em; font-variant-numeric:tabular-nums lining-nums; color:var(--dp-phos, #dfeeff); }
-.con-morr__of { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--mo-of, 12px); letter-spacing:.24em; text-transform:uppercase;
+.con-morr__of { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--mo-of, 12px)); letter-spacing:.24em; text-transform:uppercase;
   color:rgb(${BONE} / .72); white-space:nowrap; }
 /* the Hand: out from the gauge to the chosen medal */
 .orr-svg .con-morr__arm { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2.4; stroke-linecap:round; }
@@ -161,10 +161,10 @@ const CSS = `
 .con-morr__label.is-peek.is-shown { opacity:1; transition:opacity .15s linear; }
 .con-morr__label.is-w, .con-morr__label.is-nw, .con-morr__label.is-sw { align-items:flex-end; text-align:right; transform:translateX(-100%); }
 .con-morr__label.is-n, .con-morr__label.is-s { align-items:center; text-align:center; transform:translateX(-50%); }
-.con-morr__lname { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--mo-lpx, 11.5px); line-height:1.25;
+.con-morr__lname { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--mo-lpx, 11.5px)); line-height:1.25;
   letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .86); }
 .con-morr__label[data-state="earned"] .con-morr__lname { color:rgb(${WARM}); }
-.con-morr__lsub { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:100%; font-weight:600; font-size:calc(var(--mo-lpx, 11.5px) - 1.5px); line-height:1.2;
+.con-morr__lsub { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:100%; font-weight:600; font-size:max(12px, calc(var(--mo-lpx, 11.5px) - 1.5px)); line-height:1.2;
   letter-spacing:.1em; text-transform:uppercase; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 .con-morr__label[data-state="going"] .con-morr__lsub { color:var(--dp-phos, #dfeeff); }
 /* arrival: the orbits draw, the medals rise along them */

@@ -543,6 +543,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
     grid-template-areas:"dial" "total" "breakdown" "verb" !important; justify-items:center; row-gap:3px !important; }
   ${M} .sx-trade > .sx-qty { width:138px; height:106px; }
   ${M} .sx-qty .orr-qdial { left:21px; top:0; width:96px; height:96px; }
+  ${M} .orr-qdial__end { font-size:18.75px; }
   ${M} .sx-qty .sx-qty__in { left:34px; width:70px !important; top:28px; height:28px !important; font-size:24px !important; line-height:28px !important; }
   ${M} .sx-qty .sx-qty__k { left:21px; width:96px; top:58px; font-size:12px !important; letter-spacing:.16em !important; }
   ${M} .sx-qty .sx-qty__words { top:91px; left:0; right:0; }

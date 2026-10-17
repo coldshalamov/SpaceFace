@@ -211,9 +211,9 @@ function paintVein(g, x, y, c, r, ore, tierLocked) {
     g.lineWidth = 1.5;
     g.strokeRect(x + 3.5, y + 3.5, TILE - 7, TILE - 7);
     g.fillStyle = '#ff8a4a';
-    g.font = `bold 9px ${g._monoFamily || 'monospace'}`;
+    g.font = `bold 12px ${g._monoFamily || 'monospace'}`;
     g.textAlign = 'center';
-    g.fillText(`MK${tierLocked}`, x + TILE / 2, y + TILE / 2 + 3);
+    g.fillText(`MK${tierLocked}`, x + TILE / 2, y + TILE / 2 + 4);
   }
 }
 

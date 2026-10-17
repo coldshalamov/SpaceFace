@@ -13,17 +13,17 @@ const HALO = 'text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9), 0 0 18px 
 
 export const GAME_OVER_LAYOUT_CSS = `
 /* report copy: secondary lines up toward bone; the red kicker one step larger */
-${GO} > .k-title .k-caps { font-size:max(10.5px, calc(12.5px * var(--sv))) !important; }
+${GO} > .k-title .k-caps { font-size:max(12px, calc(12.5px * var(--sv))) !important; }
 ${GO} > .k-title .k-sentence { color:rgb(${BONE} / .92) !important; }
 ${GO} > .k-title .sf-go-sub { color:rgb(${BONE} / .84) !important; }
-${GO} .sf-go-grid .k-hero__w { color:rgb(${BONE} / .84) !important; font-size:max(10.5px, calc(11px * var(--sv))) !important; }
+${GO} .sf-go-grid .k-hero__w { color:rgb(${BONE} / .84) !important; font-size:max(12px, calc(11px * var(--sv))) !important; }
 ${GO} > .k-stage > .k-sentence { color:rgb(${BONE} / .86) !important; }
 
 /* secondary verbs: one rail, brighter words, an underline that lights with the Hand */
 ${GO} .sf-go-foot > .k-words { flex-wrap:nowrap !important; column-gap:calc(30px * var(--sv)) !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb {
   position:relative !important; padding:10px 0 11px !important; min-height:44px !important; white-space:nowrap !important;
-  font-size:max(11.5px, calc(12.5px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(250 247 240) !important;
+  font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(250 247 240) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .26) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb::before { color:rgb(${BONE} / .7) !important; margin-right:.6em !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb:is(:hover, :focus-visible) {
@@ -39,11 +39,11 @@ ${GO} .sf-go-foot .k-word.sf-go-verb[aria-disabled="true"]::before { color:rgb($
 
 /* career ring: a titled instrument, legible stations, and a shaded hub over the hull plan view */
 ${GO} .sf-go-recap__title { display:flex !important; align-items:center; justify-content:center; gap:14px;
-  font-size:max(10.5px, calc(11.5px * var(--sv))) !important; color:rgb(${BONE} / .9) !important; ${HALO} }
+  font-size:max(12px, calc(11.5px * var(--sv))) !important; color:rgb(${BONE} / .9) !important; ${HALO} }
 ${GO} .sf-go-recap__title::before, ${GO} .sf-go-recap__title::after { content:""; width:calc(40px * var(--sv)); height:1px; }
 ${GO} .sf-go-recap__title::before { background:linear-gradient(90deg, rgb(${BONE} / 0), rgb(${BONE} / .45)); }
 ${GO} .sf-go-recap__title::after { background:linear-gradient(90deg, rgb(${BONE} / .45), rgb(${BONE} / 0)); }
-${GO} .sf-go-st .sf-go-recap__k { color:rgb(${BONE} / .86) !important; font-size:max(10.5px, calc(10.5px * var(--sv))) !important; }
+${GO} .sf-go-st .sf-go-recap__k { color:rgb(${BONE} / .86) !important; font-size:max(12px, calc(10.5px * var(--sv))) !important; }
 ${GO} .sf-go-st--lost .sf-go-recap__k { color:var(--dp-danger-hot, #ff7a5c) !important; }
 ${GO} .sf-go-st .sf-go-u { color:rgb(${BONE} / .8) !important; }
 ${GO} .sf-go-st .sf-go-recap__v { ${HALO} }

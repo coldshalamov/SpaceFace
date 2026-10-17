@@ -464,7 +464,7 @@ html.sf-reduce-motion .sf-confirm { animation: none; }
 
 .sf-confirm__head { display: flex; align-items: center; gap: 14px; min-height: 14px; }
 .sf-confirm__flag { flex: none; font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif);
-  font-variation-settings: "wght" 700, "wdth" 72; font-size: max(10px, calc(11px * var(--k-s)));
+  font-variation-settings: "wght" 700, "wdth" 72; font-size: max(12px, calc(11px * var(--k-s)));
   letter-spacing: .22em; text-transform: uppercase; color: var(--dp-ink-mute, #b0aea6); }
 .sf-confirm__flag--danger { color: var(--dp-danger-hot, #ff8a70); }
 .sf-confirm__head::after { content: ""; flex: 1; height: 1px; background: var(--dp-rule, rgb(232 226 212 / .14)); }
@@ -513,7 +513,7 @@ html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
   box-shadow: 0 0 18px var(--dp-danger-bloom, rgb(255 80 56 / .4)); }
 .sf-confirm__kbd { display: inline-block; margin-left: 9px; padding: 3px 5px 2px;
   border: 1px solid var(--dp-rule-hi, rgb(232 226 212 / .38)); border-radius: 0;
-  font-size: max(9px, calc(10px * var(--k-s))); letter-spacing: .08em; color: var(--dp-ink-mute, #b0aea6); }
+  font-size: max(12px, calc(10px * var(--k-s))); letter-spacing: .08em; color: var(--dp-ink-mute, #b0aea6); }
 .sf-confirm__key:hover .sf-confirm__kbd, .sf-confirm__key:focus-visible .sf-confirm__kbd { color: inherit; border-color: currentColor; }
 @media (forced-colors: active) {
   .sf-confirm { background: Canvas; }
@@ -544,10 +544,10 @@ html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
 .sf-find__row:first-child { border-top: 0; }
 .sf-find__row--sel, .sf-find__row:hover, .sf-find__row:focus-visible { color: var(--k-text-live);
   background: color-mix(in srgb, var(--k-bone) 8%, transparent); }
-.sf-find__kind { flex: none; width: 62px; font-family: var(--hud-data, monospace); font-size: var(--k-fs-fine, 11px);
+.sf-find__kind { flex: none; width: 62px; font-family: var(--hud-data, monospace); font-size: var(--k-fs-fine, 12px);
   letter-spacing: .06em; color: var(--k-signal); opacity: .8; }
 .sf-find__name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sf-find__detail { flex: none; color: var(--k-bone-62); font-size: var(--k-fs-fine, 11px); }
+.sf-find__detail { flex: none; color: var(--k-bone-62); font-size: var(--k-fs-fine, 12px); }
 .sf-find__empty { padding: 10px 14px; color: var(--k-bone-62); }
 .sf-find__hint { width: min(calc(560px * var(--k-s)), 92vw); padding: 6px 2px 0; color: var(--k-bone-62); }
 /* §3: legacy ui.css `.sf-tab:hover` paints an accent tint under any kit tab word that keeps the `.sf-tab` hook (help, codex, settings). */
