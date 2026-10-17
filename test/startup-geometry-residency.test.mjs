@@ -767,12 +767,14 @@ test('residency batches skip the program compile unit once the shared raw proxy 
     'only the first batch pays the compile unit; later batches draw on the linked program');
 });
 
-test('serial-link loading routes widen residency batches and shorten the composition settle', () => {
+test('serial-link loading routes widen residency batches and keep the 12 s composition settle', () => {
   const start = RENDERER_SOURCE.indexOf('state.render.prepareLiveSectorBeforeFlight = async');
   const end = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async', start);
   const preflight = RENDERER_SOURCE.slice(start, end);
   assert.match(preflight,
     /const serialLinkRoute = !shouldAwaitOpeningGpuCook\(\{ gpu: state\.render && state\.render\.gpu, renderer \}\);/);
+  assert.match(preflight,
+    /waitForOpeningCompositionSettled\(state, \{\s*stale: cookStale,\s*timeoutMs: Math\.min\(12000, remainingMs\(\)\),/);
   assert.match(preflight,
     /const residencyBatchDrawables = \(\) => \(serialLinkRoute && state\.mode === 'loading' \? 32 : undefined\);/);
   assert.match(preflight,
