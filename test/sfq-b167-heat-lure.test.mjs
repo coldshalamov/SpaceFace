@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ALIEN_SITES } from '../src/data/alienEcology.js';
+import { FAUNA_SPECIES } from '../src/data/alienFauna.js';
 import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { HEAT_TRIAL_NOTE, noteHeatTrial } from '../src/data/heatProximityTrial.js';
 import {
@@ -27,7 +28,7 @@ const CLOSE = site.arrivalBands.close;
 
 function worldAt(x, z, items) {
   const state = {
-    meta: { seed: 7 },
+    meta: { seed: 4242 },
     simTime: 10,
     tick: 1,
     playerId: 1,
@@ -62,6 +63,17 @@ function worldAt(x, z, items) {
   };
   state.entities.set(1, player);
   state.entityList.push(player);
+  // A successful field trial needs the live cast, not only a return-band toast.
+  const species = FAUNA_SPECIES.furnace_maw;
+  const maw = {
+    id: 2, type: 'fauna', alive: true, hull: 100, radius: species.radius,
+    homeSectorId: site.sectorId, rot: Math.PI,
+    pos: { x: site.center.x + 700, z: site.center.z }, vel: { x: 0, z: 0 },
+    data: { ecology: { speciesId: species.id, siteId: site.siteId, faunaKey: 'fixture:maw',
+      anchor: { ...site.center }, driveState: species.drives.idle, phase: 0, stim: {}, driveT: 0 } },
+  };
+  state.entities.set(maw.id, maw);
+  state.entityList.push(maw);
   const world = {
     state,
     _toGlobal: (local) => ({ x: local.x, z: local.z }),
@@ -113,6 +125,14 @@ function reloadAt(pack, x, z) {
   next.state.player.cargo = JSON.parse(JSON.stringify(pack.state.player.cargo));
   deserializeAlienEcologyState(next.state, saved);
   return next;
+}
+
+function runTrial(pack) {
+  for (let i = 0; i < 120 && lureOf(pack.state)?.shown !== true; i++) {
+    pack.state.simTime += 0.1;
+    tickAlienEcology(pack.world, 0.1);
+  }
+  assert.equal(lureOf(pack.state)?.shown, true, 'a live maw must answer the deployed decoy');
 }
 
 test('the notebook and one sample are the lure recipe', () => {
@@ -222,12 +242,12 @@ test('one sample becomes a lure, and coming back is the trial', () => {
   assert.equal(lureOf(waiting.state).edge, false);
   assert.equal(lureLogs(waiting.events).filter((e) => e.payload.text === LURE_SHOWN).length, 0);
   const armed = reloadAt(waiting, inside.x, inside.z);
-  tickAlienEcology(armed.world, 0.5);
+  runTrial(armed);
   assert.deepEqual(lureLogs(armed.events).map((e) => e.payload.text), [LURE_SHOWN]);
   assert.equal(lureOf(armed.state).shown, true);
 
   move(waiting, inside.x, inside.z);
-  tickAlienEcology(waiting.world, 0.5);
+  runTrial(waiting);
   assert.deepEqual(
     lureLogs(waiting.events).filter((e) => e.payload.text === LURE_SHOWN).map((e) => e.payload.text),
     [LURE_SHOWN],
@@ -260,7 +280,7 @@ test('one sample becomes a lure, and coming back is the trial', () => {
   move(resinOnly, onRadius.x, onRadius.z);
   tickAlienEcology(resinOnly.world, 0.5);
   move(resinOnly, inside.x, inside.z);
-  tickAlienEcology(resinOnly.world, 0.5);
+  runTrial(resinOnly);
   assert.deepEqual(
     lureLogs(resinOnly.events).map((e) => e.payload.text),
     [LURE_MADE_RESIN, LURE_SHOWN],

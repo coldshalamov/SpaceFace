@@ -167,7 +167,7 @@ ${CX} .cx-ladder .k-row.k-row--static:has(> .k-38) { padding-top:4px !important;
 ${CX} .cx-ladder > .k-empty { ${BODY} margin:6px 0 0 !important; padding-left:38px; font-size:13px !important; color:rgb(${BONE} / .8) !important; }
 /* a locked entry's name is cipher: the real words stay for assistive tech, the eye sees noise */
 ${CX} .cx-sr { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; margin:-1px !important; padding:0 !important; }
-${CX} .cx-cipher { color:rgb(${BONE} / .72); letter-spacing:.06em; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:.92em; }
+${CX} .cx-cipher { color:rgb(${BONE} / .72); letter-spacing:.06em; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:max(12px, .92em); }
 ${CX} .cx-ladder .k-row[aria-selected="true"] .cx-cipher { color:rgb(${BONE} / .8); }
 ${CX} .cx-ladder .k-row .cx-code { color:rgb(${BONE} / .86); }
 ${CX} .cx-filed { color:rgb(252 250 244); }

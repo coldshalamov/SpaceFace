@@ -51,6 +51,25 @@ export function createPhysicalJobsPrompt(ctx) {
     ]);
   };
   const on = (type, fn) => { const off = bus.on(type, fn); if (typeof off === 'function') offs.push(off); };
+  const evidenceIds = new Set();
+  on('siteEvidence:offer', row => {
+    if (!row?.siteId || !Array.isArray(row.choices)) return;
+    const evidenceId = `site-evidence:${row.siteId}`;
+    evidenceIds.add(evidenceId);
+    getPromptDeck()?.offerDecision({ id: evidenceId, kind: 'info', sender: 'FIELD EVIDENCE',
+      headline: row.headline, detail: row.detail,
+      choices: row.choices.map((choice, index) => ({ id: String(index), label: choice.label, cancel: choice.id === 'abort' })),
+      onChoose: index => {
+        const choice = row.choices[Number(index)];
+        if (!choice) return false;
+        getPromptDeck()?.resolveDecision(evidenceId);
+        bus.emit('siteEvidence:action', { siteId: row.siteId, verb: choice.id, approach: choice.approach });
+        return true;
+      },
+    });
+  });
+  on('siteEvidence:closed', row => getPromptDeck()?.resolveDecision(`site-evidence:${row?.siteId}`));
+  const clearEvidence = () => { for (const evidenceId of evidenceIds) getPromptDeck()?.resolveDecision(evidenceId); evidenceIds.clear(); };
   // The mirror follows the event receipt. Show on a later UI task, after transport domains apply.
   let pending = null;
   on('mercyService:started', () => { pending = 'mercy'; });
@@ -58,9 +77,9 @@ export function createPhysicalJobsPrompt(ctx) {
   on('mercyService:toolResult', result => notify(result?.ok ? 'Rescue tool seated.' : `Tool not seated: ${String(result?.reason || 'move closer').replace(/_/g, ' ')}.`));
   on('wreckCourt:result', result => notify(result?.ok ? 'Evidence recorded in the notebook.' : `Evidence not accepted: ${String(result?.reason || 'read the bodies first').replace(/_/g, ' ')}.`));
   for (const type of ['game:new', 'game:load', 'sector:exit', 'game:exitToMenu', 'mercyService:completed', 'wreckCourt:ruled'])
-    on(type, () => { pending = null; getPromptDeck()?.resolveDecision(id); });
+    on(type, () => { pending = null; clearEvidence(); getPromptDeck()?.resolveDecision(id); });
   return { mercy, court, frame() {
     if (pending === 'mercy' && state.mercyServicePublic?.bodies?.length) { pending = null; mercy(); }
     if (pending === 'court' && state.wreckCourtPublic?.bodies?.length) { pending = null; court(); }
-  }, dispose() { for (const off of offs) off(); getPromptDeck()?.resolveDecision(id); } };
+  }, dispose() { for (const off of offs) off(); clearEvidence(); getPromptDeck()?.resolveDecision(id); } };
 }

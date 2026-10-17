@@ -392,7 +392,12 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   }
   if (!stage) {
     try {
-      stage = buildStage(sceneId, renderer, request, hullFile);
+      stage = buildStage(sceneId, renderer, request, hullFile, {
+        isRequested: () => {
+          const current = uiStageRequestFor(state);
+          return current?.scene === sceneId && hullFileForRequest(current) === hullFile;
+        },
+      });
       resident = true;
       lastScene = sceneId;
     } catch (error) {
@@ -704,6 +709,7 @@ function buildStage(id, renderer, request, hullFile, options = {}) {
     // uploads on the renderer's present-sliced residency lane and defers its one warm-up draw to
     // a flight frame (`warmUiStagePrewarm`) so nothing it does lands on a presented picture.
     prewarm: options.prewarm === true,
+    isRequested: options.isRequested,
     // The def the prewarm was asked for, so the per-frame keep/rebuild decision is one compare.
     hullDefId: typeof request.hullDefId === 'string' ? request.hullDefId : null,
     residencyLane: typeof options.residencyLane === 'function' ? options.residencyLane : null,
@@ -1191,7 +1197,10 @@ async function prepareForFirstDraw(roots, renderer, built) {
   // plate takes it now, inside the window the plate is covering. A prewarm is flying: its draw
   // waits for `warmUiStagePrewarm`, a flight frame that draws the world over it.
   if (built.rig.shadows || built.prewarm) {
-    if (built.prewarm) {
+    // A title can finish linking after New Game has covered it. Keep its prepared roots
+    // cached for Back, but do not pay a hidden first-use draw (and residual shader links)
+    // during the form's opening. presentUiStage drains this warm when it is requested again.
+    if (built.prewarm || (built.isRequested && !built.isRequested())) {
       built.warmupPending = true;
       return;
     }

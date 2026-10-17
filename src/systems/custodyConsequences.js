@@ -8,6 +8,13 @@
 // restitution). Law posts the yard; this file is the only writer of the bill. Heat and economy
 // stay behind their events.
 import { hash32 } from '../core/rng.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { SECTORS } from '../data/sectors.js';
+
+const RECOVERY_SOURCE = 'custodyRecovery';
+const RECOVERY_STATIONS = new Map(SECTORS.flatMap((sector) => (sector.stations || [])
+  .map((station) => [station.id, { ...station, sectorId: sector.id }])));
+const RECOVERY_GOODS = new Map(COMMODITIES.map((good) => [good.id, good]));
 
 export const IMPOUND_RESTITUTION_CR = 700;
 export const IMPOUND_WORK_S = 4;
@@ -29,6 +36,7 @@ export const custodyConsequences = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
     const ledger = ensureLedger(this.state);
     // Existing saves may already contain repeat capture profiles from the capture-ledger packet.
     // Schedule their first unapplied milestone instead of requiring one more arrest to wake it up.
@@ -44,11 +52,173 @@ export const custodyConsequences = {
       this.bus.on('law:impoundPosted', this._onImpoundPosted);
       this.bus.on('law:impoundWorked', this._onImpoundWorked);
       this.bus.on('law:impoundRecovered', this._onImpoundRecovered);
+      this._recoveryListeners = [
+        ['dock:docked', (p) => this._offerRecovery(p?.stationId)],
+        ['aftermath:custodyFreight', (p) => this._recordRaidFreight(p)],
+        ['aftermath:custodySurvivor', (p) => this._recordRaidSurvivor(p)],
+        ['survivorPod:resolved', (p) => this._resolveRaidSurvivor(p)],
+        ['combat:aftermathChosen', (p) => this._chooseField(p)],
+        ['cargo:delivered', (p) => this._deliverRecovery(p)],
+      ];
+      for (const [name, fn] of this._recoveryListeners) this.bus.on(name, fn);
     }
   },
 
   newGame() {
     if (this.state && this.state.player) this.state.player.custodyLedger = freshLedger();
+  },
+
+  _raidCase(payload) {
+    if (!payload?.fingerprint || !payload.sectorId) return null;
+    const cases = ensureLedger(this.state).raidAftermath;
+    const key = `raid:${payload.fingerprint}`;
+    return cases[key] || (cases[key] = {
+      key, fingerprint: payload.fingerprint, sectorId: payload.sectorId,
+      forPerson: payload.forPerson || 'the raided hauler', pos: payload.pos || null,
+      lines: [], survivors: {}, deliveries: [], status: 'open',
+    });
+  },
+
+  _recordRaidFreight(payload) {
+    const row = this._raidCase(payload);
+    if (!row || !RECOVERY_GOODS.has(payload.commodityId)) return null;
+    let line = row.lines.find((entry) => entry.commodityId === payload.commodityId && entry.manifestId === payload.manifestId);
+    if (!line) {
+      line = { commodityId: payload.commodityId, manifestId: payload.manifestId, qty: 0, returnedQty: 0 };
+      row.lines.push(line);
+    }
+    line.qty = Math.max(line.qty, Math.floor(Number(payload.scatteredQty) || 0));
+    const stationRecoveredQty = Math.max(Number(line.stationRecoveredQty) || 0, Number(payload.stationRecoveredQty) || 0);
+    line.returnedQty = Math.min(line.qty, line.returnedQty + stationRecoveredQty - (Number(line.stationRecoveredQty) || 0));
+    line.stationRecoveredQty = stationRecoveredQty;
+    this._refreshRaidCase(row);
+    return row;
+  },
+
+  _recordRaidSurvivor(payload) {
+    const row = this._raidCase(payload);
+    if (!row || !payload.survivorId) return null;
+    row.survivors[payload.survivorId] ||= { survivorId: payload.survivorId, entityId: payload.entityId, outcome: 'pending' };
+    this._refreshRaidCase(row);
+    return row;
+  },
+
+  _resolveRaidSurvivor(payload) {
+    if (!payload?.id) return;
+    for (const row of Object.values(ensureLedger(this.state).raidAftermath)) {
+      const survivor = row.survivors[payload.id];
+      if (!survivor || survivor.outcome !== 'pending') continue;
+      survivor.outcome = payload.outcome;
+      survivor.resolvedAt = payload.t;
+      this._refreshRaidCase(row);
+    }
+  },
+
+  _refreshRaidCase(row) {
+    const wasSettled = row.status === 'settled';
+    const freightOpen = row.lines.some((line) => line.returnedQty < line.qty);
+    const people = Object.values(row.survivors);
+    row.status = freightOpen || people.some((person) => person.outcome !== 'rescued') ? 'open' : 'settled';
+    if (row.status === 'settled' && !wasSettled) {
+      row.settledAt = Number(this.state.simTime) || 0;
+      this._emit('custody:aftermathSettled', { key: row.key, fingerprint: row.fingerprint });
+    }
+    this._emit('custody:aftermathChanged', { key: row.key, sectorId: row.sectorId });
+    return row;
+  },
+
+  _chooseField(payload) {
+    for (const row of Object.values(ensureLedger(this.state).raidAftermath)) {
+      if (row.sectorId !== payload?.sectorId || row.status !== 'open') continue;
+      row.lastChoice = payload.id;
+      this._emit('comms:log', {
+        from: 'FREIGHT CUSTODY', kind: 'encounter',
+        text: `${row.forPerson}: ${row.lines.reduce((sum, line) => sum + line.qty - line.returnedQty, 0)}u freight still unreturned. ${payload.id === 'escape' ? 'You can return later; the custody record stays open.' : 'Rescue and freight settle only on an actual handoff.'}`,
+      });
+    }
+  },
+
+  _recoveryProjects() {
+    const bills = Object.values(this.state.lawSecurity?.composed || {})
+      .filter((bill) => bill.kind === 'restitution' && bill.status === 'open' && bill.recovery);
+    return [
+      ...bills.map((bill) => ({ key: bill.key, causeId: bill.causeId, forPerson: bill.forPerson,
+        remainingCr: bill.remainingCr, ...bill.recovery })),
+      ...Object.values(ensureLedger(this.state).raidAftermath).filter((row) => row.status === 'open'),
+    ];
+  },
+
+  _offerRecovery(stationId) {
+    const station = RECOVERY_STATIONS.get(stationId);
+    if (!station) return null;
+    let firstOffer = null;
+    for (const project of this._recoveryProjects()) {
+      if (project.sectorId !== station.sectorId) continue;
+      if ((this.state.missions?.active || []).some((m) => m.source === RECOVERY_SOURCE && m.cause?.fingerprint === project.key)) continue;
+      const line = project.lines.find((entry) => entry.qty > entry.returnedQty);
+      if (!line) continue;
+      const good = RECOVERY_GOODS.get(line.commodityId);
+      if (!good) continue;
+      const qty = Math.min(line.qty - line.returnedQty,
+        project.causeId ? Math.ceil(project.remainingCr / good.basePrice) : Infinity);
+      const offer = {
+        id: `custody:${hash32(this.state.meta?.seed || 1, project.key, line.commodityId, line.returnedQty, project.remainingCr || 0).toString(36)}`,
+        source: RECOVERY_SOURCE, type: 'cargo_delivery', stationId, factionId: null,
+        reward_cr: 0, collateral_cr: 0, riskTier: 1, time_limit_s: 1800, preloadedCargo: false,
+        destStationId: stationId, destSectorId: project.sectorId, distance: 0,
+        title: `${project.causeId ? 'Pay back the wake' : 'Return the raid freight'}: ${qty}u ${good.name} for ${project.forPerson}`,
+        summary: `Recover the original lots at ${Math.round(project.pos?.x || 0)}, ${Math.round(project.pos?.z || 0)}, or buy legitimate replacements at the market. Return up to ${qty}u to ${station.name || stationId}. Cargo space: ${qty * good.volPerU}u for the full load; partial deliveries accepted. Recovered goods settle this incident only. No deposit or supplied cargo. Decline or abort ${project.causeId ? 'keeps the remaining bill payable.' : 'leaves freight and survivor custody open.'}`,
+        params: { cmdtyId: line.commodityId, qty, cargoValue: qty * good.basePrice, fValue: 1, taskTime: 30 },
+        cause: { tag: project.causeId ? 'restitution' : 'raid_custody', fingerprint: project.key,
+          manifestId: line.manifestId || project.manifestId || null },
+      };
+      this._emit('mission:offered', offer);
+      firstOffer ||= offer;
+    }
+    return firstOffer;
+  },
+
+  prepareRecoveryDelivery(mission) {
+    const project = this._recoveryProjects().find((row) => row.key === mission.cause?.fingerprint);
+    const line = project?.lines.find((entry) => entry.commodityId === mission.params.cmdtyId
+      && (!mission.cause.manifestId || (entry.manifestId || project.manifestId) === mission.cause.manifestId));
+    if (!line) return false;
+    const unit = RECOVERY_GOODS.get(line.commodityId)?.basePrice || 1;
+    mission.params.qty = Math.min(line.qty - line.returnedQty,
+      project.causeId ? Math.ceil(project.remainingCr / unit) : Infinity);
+    return mission.params.qty > 0;
+  },
+
+  authorizesRecovery(manifestId) {
+    if (typeof manifestId !== 'string' || !manifestId) return false;
+    const projects = this._recoveryProjects();
+    return (this.state.missions?.active || []).some((mission) => {
+      if (mission.source !== RECOVERY_SOURCE || mission.status !== 'active'
+        || mission.cause?.manifestId !== manifestId) return false;
+      const project = projects.find((row) => row.key === mission.cause.fingerprint);
+      return !!project?.lines.some((line) => (line.manifestId || project.manifestId) === manifestId
+        && line.commodityId === mission.params.cmdtyId && line.qty > line.returnedQty);
+    });
+  },
+
+  _deliverRecovery(payload) {
+    const mission = this.state.missions?.active?.find((m) => m.id === payload?.missionId && m.source === RECOVERY_SOURCE);
+    if (!mission || mission.destStationId !== payload.stationId || mission.params.cmdtyId !== payload.commodityId) return 0;
+    const project = this._recoveryProjects().find((row) => row.key === mission.cause?.fingerprint);
+    const line = project?.lines.find((entry) => entry.commodityId === payload.commodityId
+      && (!mission.cause.manifestId || (entry.manifestId || project.manifestId) === mission.cause.manifestId));
+    if (!line || project.deliveries.includes(mission.id)) return 0;
+    const units = Math.min(Math.max(0, Math.floor(Number(payload.qty) || 0)), line.qty - line.returnedQty);
+    if (!(units > 0)) return 0;
+    if (project.causeId) {
+      return this.registry?.get('lawSecurity')?.creditRestitutionDelivery({
+        causeId: project.causeId, commodityId: payload.commodityId, qty: units, deliveryId: mission.id,
+      }) || 0;
+    }
+    project.deliveries.push(mission.id);
+    line.returnedQty += units;
+    this._refreshRaidCase(project);
+    return units;
   },
 
   _record(payload) {
@@ -220,14 +390,16 @@ export const custodyConsequences = {
       if (this._onImpoundPosted) this.bus.off('law:impoundPosted', this._onImpoundPosted);
       if (this._onImpoundWorked) this.bus.off('law:impoundWorked', this._onImpoundWorked);
       if (this._onImpoundRecovered) this.bus.off('law:impoundRecovered', this._onImpoundRecovered);
+      for (const [name, fn] of this._recoveryListeners || []) this.bus.off(name, fn);
     }
     this._onCustody = this._onDayTick = null;
     this._onImpoundPosted = this._onImpoundWorked = this._onImpoundRecovered = null;
+    this._recoveryListeners = [];
   },
 };
 
 function freshLedger() {
-  return { totalCaptured: 0, captures: [], profiles: {}, settledIds: [], impound: null };
+  return { totalCaptured: 0, captures: [], profiles: {}, settledIds: [], impound: null, raidAftermath: {} };
 }
 
 function ensureLedger(state) {
@@ -240,6 +412,7 @@ function ensureLedger(state) {
   for (const profile of Object.values(ledger.profiles)) normalizeProfile(profile);
   if (!Array.isArray(ledger.settledIds)) ledger.settledIds = [];
   ledger.impound = normalizeImpoundBill(ledger.impound);
+  if (!ledger.raidAftermath || typeof ledger.raidAftermath !== 'object' || Array.isArray(ledger.raidAftermath)) ledger.raidAftermath = {};
   return ledger;
 }
 

@@ -1,2 +1,1 @@
-http 200; title="SpaceFace"; canvas=true; 300x150; renderer=ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
-no Adventure-tape position samples, so this page is not playback of a logged moment
+live-flight-page-required

@@ -180,6 +180,7 @@ class HudDocument {
   }
   createElement(tagName) { return new HudElement(this, tagName); }
   createElementNS(_ns, tagName) { return this.createElement(tagName); }
+  createTextNode(text) { return new HudText(String(text)); }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }
   querySelectorAll(selector) { return [...this.head.querySelectorAll(selector), ...this.body.querySelectorAll(selector)]; }
@@ -298,6 +299,19 @@ function mountTestFixture(options = {}) {
   });
 
   const bus = createBus();
+  // Track both normal and presentation-tier subscriptions so a recreated HUD cannot leave
+  // callbacks retaining its detached DOM/state behind on the shared event bus.
+  const activeBusSubscriptions = new Set();
+  const busOn = bus.on.bind(bus);
+  bus.on = (event, listener, options) => {
+    const rawOff = busOn(event, listener, options);
+    const trackedOff = () => {
+      activeBusSubscriptions.delete(trackedOff);
+      return typeof rawOff === 'function' ? rawOff() : undefined;
+    };
+    activeBusSubscriptions.add(trackedOff);
+    return trackedOff;
+  };
   const player = {
     id: 'player',
     type: 'ship',
@@ -383,6 +397,7 @@ function mountTestFixture(options = {}) {
     player,
     state,
     bus,
+    activeBusSubscriptions,
     hud: hudInstance,
     step(dt = 1 / 60) {
       state.simTime += dt;
@@ -489,6 +504,18 @@ test('isSustainedMaxRateTurn reads the hull own ceiling, not an absolute yaw num
 // ---------------------------------------------------------------------------
 // Integration Tests: Optical G-Lag on Live HUD Elements
 // ---------------------------------------------------------------------------
+
+test('HUD destroy releases every event-bus subscription owned by the instance', () => {
+  const fx = mountTestFixture();
+  try {
+    assert.ok(fx.activeBusSubscriptions.size > 0, 'the fixture must mount HUD event subscriptions');
+    fx.hud.destroy();
+    assert.equal(fx.activeBusSubscriptions.size, 0,
+      'destroyed HUD must not retain callbacks on the shared event bus');
+  } finally {
+    fx.restore();
+  }
+});
 
 test('HUD elements experience optical G-lag during violent bank turns and recover at rest', () => {
   const fx = mountTestFixture();

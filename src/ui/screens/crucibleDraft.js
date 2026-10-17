@@ -911,6 +911,12 @@ export const crucibleDraftScreen = {
   onShow() {
     this._visualArmory?.setActive(true);
     if (this._ctx) this.refresh(this._ctx);
+    this._offCancel?.();
+    this._offCancel = this._ctx?.bus.on('ui:cancel', () => {
+      const ctx = this._ctx;
+      if (ctx?.screenManager?.top() !== this.id) return;
+      if (!this._guardLaunch(ctx)) this._skip?.click();
+    });
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
@@ -921,11 +927,15 @@ export const crucibleDraftScreen = {
   },
 
   onHide() {
+    this._offCancel?.();
+    this._offCancel = null;
     this._visualArmory?.setActive(false);
     if (canAnimate()) cue('close');
   },
 
   dispose() {
+    this._offCancel?.();
+    this._offCancel = null;
     this._visualArmory?.dispose();
     this._purchaseArmed = true;
     this._purchasePending = false;

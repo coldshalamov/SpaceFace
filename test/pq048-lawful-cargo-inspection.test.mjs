@@ -205,7 +205,7 @@ test('escape is actual range separation, not a synthetic flee action', () => {
 });
 
 test('settled durable patrol history filters every prior patrol before nearest selection', () => {
-  const fixture = boot({ customsHotUntil: { [SCN]: 80 } });
+  const fixture = boot({ customsHotUntil: { [SCN]: 2000 } });
   const patrolA = fixture.patrol;
   const patrolB = spawnHeliosPatrol(fixture.sim, 'world:convoy:helios:patrol:02', { x: 260, z: 0 });
   const log = eventLog(fixture.bus, ['lawfulInspection:offered']);
@@ -215,6 +215,8 @@ test('settled durable patrol history filters every prior patrol before nearest s
   choose(fixture.bus, first, 'settle-a');
 
   // A remains physically nearest, but its durable record is settled, so the next valid patrol wins.
+  // LAW-12 waives a second clean inspection today; exercise history on the following day.
+  fixture.state.simTime += 600;
   fixture.sim.runTicks(30);
   const second = fixture.state.player.lawfulInspection.active;
   assert.ok(second);
@@ -233,6 +235,7 @@ test('settled durable patrol history filters every prior patrol before nearest s
   ]);
 
   const patrolC = spawnHeliosPatrol(fixture.sim, 'world:convoy:helios:patrol:03', { x: 340, z: 0 });
+  fixture.state.simTime += 600;
   fixture.sim.runTicks(30);
   assert.equal(fixture.state.player.lawfulInspection.active.patrolWorldRecordId, patrolC.data.worldRecordId,
     'a new durable patrol remains eligible after A and B settle');

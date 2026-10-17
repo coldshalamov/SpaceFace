@@ -170,7 +170,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 /* Credits delta arrow — surfaces gain/loss direction. Bright mint = gaining, dim red = losing. */
 #sf-command-bar .sf-cb-delta {
   font-family: var(--mono, monospace);
-  font-size: calc(9px * var(--ui-scale, 1));
+  font-size: max(12px, calc(9px * var(--ui-scale, 1)));
   margin-left: 4px;
 }
 #sf-command-bar .sf-cb-delta--up { color: var(--console-mint, #4fbf8f); }
@@ -190,7 +190,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 #sf-command-bar.sf-cb--impact .sf-cb-cell--impact { display:flex; }
 #sf-command-bar .sf-cb-impact {
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  color:var(--console-amber, #ffb347); font-size:calc(11px * var(--ui-scale, 1));
+  color:var(--console-amber, #ffb347); font-size:max(12px, calc(11px * var(--ui-scale, 1)));
 }
 `;
 

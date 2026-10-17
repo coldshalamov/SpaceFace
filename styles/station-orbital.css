@@ -48,9 +48,9 @@
   font: inherit;
 }
 :is(#screens .sx-observatory, .sx-observatory) :is(button,input,select,textarea,a,[tabindex]):focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 3px; }
-:is(#screens .sx-observatory, .sx-observatory) :is(.k-caps,.so-overline) { font: 600 11px/1.5 var(--so-face); letter-spacing: .075em; text-transform: uppercase; color: var(--so-muted); }
+:is(#screens .sx-observatory, .sx-observatory) :is(.k-caps,.so-overline) { font: 600 12px/1.5 var(--so-face); letter-spacing: .075em; text-transform: uppercase; color: var(--so-muted); }
 :is(#screens .sx-observatory, .sx-observatory) .k-words--row,:is(#screens .sx-observatory, .sx-observatory) .fh-keyrack { gap: 6px; align-items: center; flex-wrap: wrap; }
-:is(#screens .sx-observatory, .sx-observatory) kbd { font: 500 10px/1 var(--so-face); color: var(--so-muted); border: 1px solid #404852; border-radius: 3px; padding: 4px; background: #101215; }
+:is(#screens .sx-observatory, .sx-observatory) kbd { font: 500 12px/1 var(--so-face); color: var(--so-muted); border: 1px solid #404852; border-radius: 3px; padding: 4px; background: #101215; }
 /* Destination keys sit in the foot rail (station.css). Do not promote this nav to a sidebar. */
 :is(#screens .sx-observatory, .sx-observatory) .of-facility-rail { grid-area: auto; display: flex; align-items: stretch; position: relative; min-width: 0; padding: 0; width: auto; border: 0; background: none; gap: 14px; flex: 1 1 auto; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-ops__dock { flex: 1; min-width: 0; }
@@ -60,7 +60,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-tile__seat { position: relative; display: inline-flex; width: 23px; height: 23px; align-items: center; justify-content: center; transform: translateY(var(--dock-lift,0px)) scale(var(--dock-scale,1)); transition: transform 160ms var(--so-ease); }
 :is(#screens .sx-observatory, .sx-observatory) .sx-tile__seat svg { display: block; width: 21px; height: 21px; }
 :is(#screens .sx-observatory, .sx-observatory) .so-dock-indicator { position: absolute; top: 0; left: 0; z-index: -1; pointer-events: none; }
-:is(#screens .sx-observatory, .sx-observatory) .so-berth-status { color: var(--so-accent); display: flex; align-items: center; gap: 9px; padding: 0 10px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+:is(#screens .sx-observatory, .sx-observatory) .so-berth-status { color: var(--so-accent); display: flex; align-items: center; gap: 9px; padding: 0 10px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
 :is(#screens .sx-observatory, .sx-observatory) .so-berth-status svg { width: 15px; }
 /* Vitals ride the crown plate (station.css). Do not stretch them into a dashboard strip. */
 /* 2026-09-22: the vitals rail is a REGION of the frame's body, beside the workspace, not a panel
@@ -80,8 +80,8 @@
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital[data-tone=warn] .sxb-vital__fill { background: var(--so-warn); }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital[data-tone=bad] .sxb-vital__fill { background: var(--so-bad); }
 :is(#screens .sx-observatory, .sx-observatory) .k-good { color: var(--so-good); }:is(#screens .sx-observatory, .sx-observatory) .k-signal { color: var(--so-warn); }:is(#screens .sx-observatory, .sx-observatory) .k-bad { color: var(--so-bad); }
-:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff { display: flex; flex: 1; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; padding: 5px 0; font-size: 11px; margin: 0; }
-:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff>span { color: var(--so-muted); font-size: 11px; margin-right: 8px; }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff { display: flex; flex: 1; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; padding: 5px 0; font-size: 12px; margin: 0; }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff>span { color: var(--so-muted); font-size: 12px; margin-right: 8px; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-tape { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-berth__news { margin: 0; max-width: none; }
 /* Shared workbench. The only structural border encloses the operation, not every paragraph. */
@@ -109,21 +109,21 @@
 :is(#screens .sx-observatory, .sx-observatory) .sf-state { position: relative; padding: 28px 0; max-width: 540px; color: var(--so-muted); }
 :is(#screens .sx-observatory, .sx-observatory) .so-empty-illustrated::before { content: ''; display: block; width: 180px; height: 135px; background: url('../src/ui/station/art/empty-hold.svg') center / contain no-repeat; margin: 0 0 18px; }
 :is(#screens .sx-observatory, .sx-observatory) .sf-state__spinner { display: none; }
-:is(#screens .sx-observatory, .sx-observatory) .sf-state__head,:is(#screens .sx-observatory, .sx-observatory) .sf-state__word { font: 600 11px/1.4 var(--so-face); text-transform: uppercase; color: var(--so-accent); letter-spacing: .1em; }
+:is(#screens .sx-observatory, .sx-observatory) .sf-state__head,:is(#screens .sx-observatory, .sx-observatory) .sf-state__word { font: 600 12px/1.4 var(--so-face); text-transform: uppercase; color: var(--so-accent); letter-spacing: .1em; }
 :is(#screens .sx-observatory, .sx-observatory) .sf-state__line { font: 500 25px/1.2 var(--so-display); color: var(--so-ink); }
 /* MARKET / exchange register beside an analytical instrument and a real execution ticket. */
 :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.sx-mkt { grid-template-columns: minmax(400px,43%) minmax(0,1fr); }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__list { padding: 22px 20px 0; overflow: hidden; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-browser { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 13px; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-browser__mode { display: flex; justify-content: space-between; margin: 0; color: var(--so-accent); font-size: 11px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-browser__mode { display: flex; justify-content: space-between; margin: 0; color: var(--so-accent); font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-browser__filters { margin: 0; padding: 0; gap: 5px; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-filter { padding: 5px 8px; font-size: 11px; min-height: 27px; border-color: transparent; background: transparent; color: var(--so-muted); box-shadow: none; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-filter { padding: 5px 8px; font-size: 12px; min-height: 27px; border-color: transparent; background: transparent; color: var(--so-muted); box-shadow: none; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-filter[aria-pressed=true] { border-color: #4c5460; background: #272c32; color: var(--so-accent); }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-search { width: 100%; flex: 0 0 auto; font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-browser__rail { flex: 1; min-height: 0; max-height: none; overflow: auto; margin: 0 -8px; padding: 0 8px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table { table-layout: auto; width: 100%; border-collapse: collapse; font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table thead { position: sticky; top: 0; z-index: 1; background: rgb(12 14 16 / .42); }
-:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table thead th { font: 550 10px/1.4 var(--so-face); color: var(--so-muted); letter-spacing: .065em; padding: 10px 8px 12px; text-transform: uppercase; white-space: nowrap; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table thead th { font: 550 12px/1.4 var(--so-face); color: var(--so-muted); letter-spacing: .065em; padding: 10px 8px 12px; text-transform: uppercase; white-space: nowrap; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table tbody td { padding: 12px 8px; height: 46px; border-top: 1px solid #2c3139; color: var(--so-muted); font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table tbody td:first-child { color: var(--so-ink); font-weight: 500; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table .is-active { background: linear-gradient(90deg,#31373f70,#24282d40); box-shadow: none; }
@@ -139,23 +139,23 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-title { grid-column: 1; grid-row: 2; margin: 0; font-size: clamp(26px,2.7vw,38px); max-width: none; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero { grid-column: 2; grid-row: 1/4; display: block; text-align: right; margin: 0; padding: 0; min-width: 100px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero .k-hero__n { font: 500 56px/1 var(--so-display); color: var(--so-accent); letter-spacing: -.055em; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero .k-hero__w { font: 400 11px/1.4 var(--so-face); color: var(--so-muted); max-width: none; margin-top: 7px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero .k-hero__w { font: 400 12px/1.4 var(--so-face); color: var(--so-muted); max-width: none; margin-top: 7px; }
 :is(#screens .sx-observatory, .sx-observatory) #sx-market-driver-summary { grid-column: 1/-1; margin: 0; font-size: 12px; line-height: 1.6; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chain { grid-column: 1/-1; display: flex; gap: 6px 14px; flex-wrap: wrap; margin: 0; padding: 10px 0; border-block: 1px solid var(--so-line-soft); font-size: 11px; line-height: 1.4; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chain { grid-column: 1/-1; display: flex; gap: 6px 14px; flex-wrap: wrap; margin: 0; padding: 10px 0; border-block: 1px solid var(--so-line-soft); font-size: 12px; line-height: 1.4; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chain__flow { color: #c9c4b6; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chain__dock { color: var(--so-muted); }
-:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-cone-read { grid-column: 1/-1; color: var(--so-muted); margin: 0; font-size: 11px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-cone-read { grid-column: 1/-1; color: var(--so-muted); margin: 0; font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chart { grid-column: 1/-1; display: block; width: 100%; height: 135px; margin: 2px 0; overflow: visible; border-bottom: 1px solid var(--so-line); }
 /* The chart had a repeating 32px scanline grid behind it. A grid is a fence the direction
    forbids on a phosphor reading, and it competed with the one line that carries the data. */
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-line { stroke: var(--so-accent); stroke-width: 2; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chart>circle { fill: var(--so-accent); }
 :is(#screens .sx-observatory, .sx-observatory) .of-chart-area { fill: rgb(var(--so-accent-rgb) / .07); }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-avg { stroke: #57616f; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-forecast { stroke: #b7b4a6; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-cone { fill: #e8e2d40f; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-now { stroke: #57616f; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chart-key { grid-column: 1/-1; display: flex; justify-content: space-between; margin: -2px 0 0; font-size: 10px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chart-key { grid-column: 1/-1; display: flex; justify-content: space-between; margin: -2px 0 0; font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-sale { grid-column: 1/-1; margin: 0; font-size: 12px; color: var(--so-accent); }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-stats { grid-column: 1/-1; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; margin: 4px 0 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-stats .sx-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 9px 12px; border: 0; border-left: 1px solid var(--so-line); min-height: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-stats .sx-stat:first-child { padding-left: 0; border: 0; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-stat__k { font-size: 10px; color: var(--so-muted); }:is(#screens .sx-observatory, .sx-observatory) .sx-stat__k .k-row__sub { display: none; }:is(#screens .sx-observatory, .sx-observatory) .sx-stat__v { font-size: 15px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-stat__k { font-size: 12px; color: var(--so-muted); }:is(#screens .sx-observatory, .sx-observatory) .sx-stat__k .k-row__sub { display: none; }:is(#screens .sx-observatory, .sx-observatory) .sx-stat__v { font-size: 15px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-tracked { grid-column: 1/-1; margin: 0; border-left: 2px solid var(--so-warn); padding: 8px 12px; background: #60482122; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__console { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; margin-top: 24px; padding: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px 16px; border: 1px solid #414852; border-radius: 6px; padding: 16px; background: linear-gradient(125deg,#21252ab3,#1a1d2180); }
@@ -163,21 +163,21 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-qty__k { flex-basis: 100%; margin: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-qty__in { width: 68px; min-width: 0; height: 35px; text-align: center; font-size: 17px; padding: 4px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-qty__words { gap: 4px; flex-wrap: nowrap; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-qty__words button { min-height: 33px; padding: 6px 8px; font-size: 11px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-qty__words button { min-height: 33px; padding: 6px 8px; font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__rows { grid-column: 1/-1; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 16px; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-trade__rows .k-row { min-height: 26px; padding: 5px 0; gap: 8px; font-size: 11px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-trade__rows .k-row { min-height: 26px; padding: 5px 0; gap: 8px; font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__rows .k-row__num { font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__words { grid-row: 1; grid-column: 2; align-self: end; gap: 5px; flex-wrap: nowrap; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__words button { min-height: 36px; padding: 8px 15px; font-size: 13px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__note { grid-column: 1/-1; font-size: 12px; color: var(--so-warn); margin: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__routes:empty { display: none; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__routes { font-size: 12px; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-adboard { font-size: 11px; color: var(--so-dim); margin: 0; padding: 12px 0 0; border-top: 1px solid var(--so-line-soft); }
+:is(#screens .sx-observatory, .sx-observatory) .sx-adboard { font-size: 12px; color: var(--so-dim); margin: 0; padding: 12px 0 0; border-top: 1px solid var(--so-line-soft); }
 :is(#screens .sx-observatory, .sx-observatory) .so-chart-probe { opacity: 0; pointer-events: none; }:is(#screens .sx-observatory, .sx-observatory) .is-probed .so-chart-probe { opacity: 1; }
 :is(#screens .sx-observatory, .sx-observatory) .so-chart-probe line { stroke: #e8e2d4aa; stroke-width: .8; stroke-dasharray: 2 3; }
 :is(#screens .sx-observatory, .sx-observatory) .so-chart-probe circle { stroke: #f3eee3; fill: #21252b; stroke-width: 1.5; }
 :is(#screens .sx-observatory, .sx-observatory) .so-chart-probe rect { fill: #25292e; stroke: #848f9e; stroke-width: .6; }
-:is(#screens .sx-observatory, .sx-observatory) .so-chart-probe text { fill: #f3eee3; font: 10px var(--so-face); text-anchor: middle; }
+:is(#screens .sx-observatory, .sx-observatory) .so-chart-probe text { fill: #f3eee3; font: 12px var(--so-face); text-anchor: middle; }
 /* Other stations retain their real controllers. Lists scroll separately from dossiers. */
 :is(#screens .sx-observatory, .sx-observatory) :is(.sx-ct__dossier,.sx-talk,.sx-fab,.sx-fac__stage) { padding-right: 24px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-ct-row { width: 100%; text-align: left; justify-content: flex-start; padding: 14px 12px; min-height: 62px; border-radius: 4px; border: 1px solid transparent; border-bottom-color: var(--so-line-soft); background: transparent; }
@@ -201,7 +201,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-sw-row { border: 1px solid transparent; border-bottom-color: var(--so-line); border-radius: 4px; padding: 12px 8px; width: 100%; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-sw__nameplate { left: 20px; bottom: 45px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-sw__nameplate .k-t-title { font-size: 32px; }:is(#screens .sx-observatory, .sx-observatory) .sx-sw__camera { bottom: 14px; left: 20px; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-sw__dragcue { bottom: 17px; font-size: 10px; right: 20px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-sw__dragcue { bottom: 17px; font-size: 12px; right: 20px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-sw__slotfield { max-width: 100%; }:is(#screens .sx-observatory, .sx-observatory) .sx-sw__canvas { max-width: 100%; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body .st-ledger { height: 100%; overflow: auto; padding: 24px; color: var(--so-ink); }
 :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body .st-ledger button { font-size: 12px; }
@@ -209,12 +209,12 @@
 :is(#screens .sx-observatory, .sx-observatory) .sxb-ops { grid-area: foot; display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; position: relative; inset: auto; padding: 10px 0 0; margin: 0; border: 0; min-width: 0; background: none; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-comms { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 1; min-width: 0; position: relative; }
 :is(#screens .sx-observatory, .sx-observatory) :is(.sx-comms__toggle,.sxb-help) svg { width: 16px; height: 16px; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-comms__count { font-size: 10px; color: var(--so-accent); padding: 0 4px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-comms__count { font-size: 12px; color: var(--so-accent); padding: 0 4px; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-launch-seat { flex: 0 0 auto; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-launch>.so-icon { width: 18px; height: 18px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-receipt { position: absolute; bottom: calc(100% + 12px); left: 20px; right: 20px; display: flex; align-items: center; gap: 8px; padding: 12px 18px; border: 1px solid #535c69; border-radius: 6px; background: #1e2227; box-shadow: 0 10px 35px #0008; z-index: 4; width: auto; max-width: none; font-size: 12px; flex-wrap: wrap; }
 :is(#screens .sx-observatory, .sx-observatory) .so-transfer { width: 46px; height: 24px; color: var(--so-accent); }:is(#screens .sx-observatory, .sx-observatory) .so-transfer path { stroke-width: 1.6; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-receipt__kind { color: var(--so-accent); text-transform: uppercase; font-size: 10px; letter-spacing: .06em; }:is(#screens .sx-observatory, .sx-observatory) .sx-receipt__delta { color: #c9c4b6; margin-left: auto; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-receipt__kind { color: var(--so-accent); text-transform: uppercase; font-size: 12px; letter-spacing: .06em; }:is(#screens .sx-observatory, .sx-observatory) .sx-receipt__delta { color: #c9c4b6; margin-left: auto; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-comms__history { position: absolute; right: 210px; bottom: 100%; width: min(520px,calc(100vw - 40px)); max-height: 50vh; overflow: auto; padding: 20px; border: 1px solid #4f5864; border-radius: 6px; background: #1a1d21; box-shadow: 0 15px 60px #0008; z-index: 8; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-comms__history :is(ol,ul) { list-style: none; padding: 0; }:is(#screens .sx-observatory, .sx-observatory) .sx-comms__history li { padding: 10px 0; border-bottom: 1px solid var(--so-line-soft); }
 /* Floating UI still owns popover coordinates. A bounded dialog, not a permanently open card. */
@@ -226,7 +226,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-depchip .k-row__num { white-space: normal; font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-pop .sx-btn-primary { margin-top: 18px; width: 100%; min-height: 42px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-holdrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; width: 100%; border: 0; background: transparent; border-bottom: 1px solid var(--so-line); text-align: left; padding: 12px 0; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__quote { font-size: 14px; }:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__quote .k-t-data { display: block; font-size: 11px; }:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__go { justify-self: end; color: var(--so-accent); }
+:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__quote { font-size: 14px; }:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__quote .k-t-data { display: block; font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sx-holdrow__go { justify-self: end; color: var(--so-accent); }
 /* Command access: native modal focus, semantic options, type-to-filter; zero React runtime. */
 :is(#screens .sx-observatory, .sx-observatory) .so-command-palette { position: fixed; inset: 13vh 0 auto; width: min(600px,calc(100vw - 28px)); max-height: min(660px,80dvh); padding: 24px; margin: 0 auto; border: 1px solid #616c7b; border-radius: 10px; background: linear-gradient(130deg,#23272d,#17191d); color: var(--so-ink); box-shadow: 0 28px 100px #000b; overflow: auto; }
 :is(#screens .sx-observatory, .sx-observatory) .so-command-palette::backdrop { background: rgb(7 8 9 / .78); }
@@ -236,8 +236,8 @@
 :is(#screens .sx-observatory, .sx-observatory) #so-command-results>li { display: flex; align-items: center; gap: 14px; padding: 12px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
 :is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-selected=true] { border-color: #555f6d; background: #31363e77; }:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li[aria-disabled=true] { opacity: .5; cursor: not-allowed; }
 :is(#screens .sx-observatory, .sx-observatory) #so-command-results>li>svg:first-child { color: var(--so-accent); }:is(#screens .sx-observatory, .sx-observatory) #so-command-results>li>svg:last-child { margin-left: auto; width: 15px; color: var(--so-muted); }
-:is(#screens .sx-observatory, .sx-observatory) .so-command-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }:is(#screens .sx-observatory, .sx-observatory) .so-command-copy strong { font-size: 14px; font-weight: 550; }:is(#screens .sx-observatory, .sx-observatory) .so-command-copy small { font-size: 11px; line-height: 1.45; color: var(--so-muted); }
-:is(#screens .sx-observatory, .sx-observatory) .so-command-palette footer { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--so-line); color: var(--so-muted); font-size: 11px; }:is(#screens .sx-observatory, .sx-observatory) .so-command-palette kbd { display: inline-block; margin-right: 4px; }
+:is(#screens .sx-observatory, .sx-observatory) .so-command-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }:is(#screens .sx-observatory, .sx-observatory) .so-command-copy strong { font-size: 14px; font-weight: 550; }:is(#screens .sx-observatory, .sx-observatory) .so-command-copy small { font-size: 12px; line-height: 1.45; color: var(--so-muted); }
+:is(#screens .sx-observatory, .sx-observatory) .so-command-palette footer { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--so-line); color: var(--so-muted); font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .so-command-palette kbd { display: inline-block; margin-right: 4px; }
 /* Laptop and touch geometry: never shrink labels to manufacture a passing screenshot. */
 @media (min-width:1800px) {
   :is(#screens .sx-observatory, .sx-observatory) .sx-app { padding-inline: 48px; }:is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.sx-mkt { grid-template-columns: minmax(500px,39%) minmax(0,1fr); }
@@ -264,13 +264,13 @@
 }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade { position: relative; grid-template-columns: minmax(0,1fr) auto; gap: 10px 18px; padding: 0; border: 0; background: transparent; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-qty { grid-row: 1; grid-column: 1; gap: 6px; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-qty__k { font-size: 10px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-qty__k { font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__words { grid-row: 1; grid-column: 2; }
 :is(#screens .sx-observatory, .sx-observatory) .so-trade-total { grid-row: 2; grid-column: 1/-1; display: flex; justify-content: space-between; align-items: baseline; color: var(--so-muted); font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .so-trade-total strong { font: 500 23px/1.2 var(--so-display); color: var(--so-ink); }
 :is(#screens .sx-observatory, .sx-observatory) .so-trade-breakdown { grid-column: 1/-1; position: relative; border-top: 1px solid var(--so-line-soft); }
-:is(#screens .sx-observatory, .sx-observatory) .so-trade-breakdown summary, .so-route-disclosure summary { padding: 8px 0; cursor: pointer; color: var(--so-accent); font-size: 11px; }
-:is(#screens .sx-observatory, .sx-observatory) .so-trade-breakdown summary span { float: right; color: var(--so-muted); font-size: 10px; }
+:is(#screens .sx-observatory, .sx-observatory) .so-trade-breakdown summary, .so-route-disclosure summary { padding: 8px 0; cursor: pointer; color: var(--so-accent); font-size: 12px; }
+:is(#screens .sx-observatory, .sx-observatory) .so-trade-breakdown summary span { float: right; color: var(--so-muted); font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) .so-trade-breakdown[open] .sx-trade__rows { position: absolute; z-index: 7; bottom: 100%; width: 100%; max-height: min(370px,45vh); overflow: auto; padding: 12px 18px; background: #1e2126; border: 1px solid #545e6c; border-radius: 6px; box-shadow: 0 -12px 50px #0006; }
 :is(#screens .sx-observatory, .sx-observatory) .so-trade-breakdown .sx-trade__rows .k-row { display: flex; justify-content: space-between; }
 :is(#screens .sx-observatory, .sx-observatory) .so-route-disclosure { margin-top: 14px; border-top: 1px solid var(--so-line-soft); }
@@ -305,18 +305,18 @@
   :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.sx-mkt { grid-template-columns: minmax(0,1fr); grid-template-areas: 'hang' 'stage'; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__list { max-height: 345px; height: 345px; border-right: 0; border-bottom: 1px solid var(--so-line); padding-top: 18px; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__stage { overflow: visible; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__console { grid-template-columns: 1fr; }:is(#screens .sx-observatory, .sx-observatory) .sx-trade { grid-template-columns: 1fr auto; }:is(#screens .sx-observatory, .sx-observatory) .sx-trade__words { grid-column: 2; grid-row: 1; }:is(#screens .sx-observatory, .sx-observatory) .sx-trade__rows { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  :is(#screens .sx-observatory, .sx-observatory) .sxb-handoff>span { display: none; }:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff button { font-size: 10px; padding: 3px; }:is(#screens .sx-observatory, .sx-observatory) .so-bulletin summary { font-size: 10px; }
+  :is(#screens .sx-observatory, .sx-observatory) .sxb-handoff>span { display: none; }:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff button { font-size: 12px; padding: 3px; }:is(#screens .sx-observatory, .sx-observatory) .so-bulletin summary { font-size: 12px; }
   :is(#screens .sx-observatory, .sx-observatory) .so-session-mark { display: none; }:is(#screens .sx-observatory, .sx-observatory) .sxb-ops { gap: 10px; }:is(#screens .sx-observatory, .sx-observatory) .sx-comms { justify-content: flex-start; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-comms__history { right: 0; }:is(#screens .sx-observatory, .sx-observatory) .sxb-launch-seat { padding-left: 10px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-launch { min-width: 150px; }:is(#screens .sx-observatory, .sx-observatory) .sx-receipt { left: 0; right: 0; }
 }
 @media (max-width:580px) {
   :is(#screens .sx-observatory, .sx-observatory) .sx-app { padding-inline: 12px; grid-template-rows: auto 52px auto auto minmax(0,1fr) 62px; }
-  :is(#screens .sx-observatory, .sx-observatory) .sxb-berth { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 8px 12px; padding: 12px 0; min-height: 96px; }:is(#screens .sx-observatory, .sx-observatory) .so-station-mark { grid-column: 1; grid-row: 1/3; }:is(#screens .sx-observatory, .sx-observatory) .so-orbit { width: 42px; height: 42px; }:is(#screens .sx-observatory, .sx-observatory) .so-station-title { grid-column: 2; grid-row: 1/3; }:is(#screens .sx-observatory, .sx-observatory) .sxb-berth__name { font-size: 26px; margin-top: 4px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-berth__ident { font-size: 9px; letter-spacing: .045em; }:is(#screens .sx-observatory, .sx-observatory) .so-command-trigger { grid-column: 3; grid-row: 1; height: 30px; min-height: 30px; justify-self: end; margin: 0; }:is(#screens .sx-observatory, .sx-observatory) .sxb-purse { grid-column: 3; grid-row: 2; border: 0; padding: 0; }:is(#screens .sx-observatory, .sx-observatory) .sxb-purse__label { font-size: 8px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-purse__value { font-size: 21px; }
+  :is(#screens .sx-observatory, .sx-observatory) .sxb-berth { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 8px 12px; padding: 12px 0; min-height: 96px; }:is(#screens .sx-observatory, .sx-observatory) .so-station-mark { grid-column: 1; grid-row: 1/3; }:is(#screens .sx-observatory, .sx-observatory) .so-orbit { width: 42px; height: 42px; }:is(#screens .sx-observatory, .sx-observatory) .so-station-title { grid-column: 2; grid-row: 1/3; }:is(#screens .sx-observatory, .sx-observatory) .sxb-berth__name { font-size: 26px; margin-top: 4px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-berth__ident { font-size: 12px; letter-spacing: .045em; }:is(#screens .sx-observatory, .sx-observatory) .so-command-trigger { grid-column: 3; grid-row: 1; height: 30px; min-height: 30px; justify-self: end; margin: 0; }:is(#screens .sx-observatory, .sx-observatory) .sxb-purse { grid-column: 3; grid-row: 2; border: 0; padding: 0; }:is(#screens .sx-observatory, .sx-observatory) .sxb-purse__label { font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-purse__value { font-size: 21px; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-tile { min-width: 97px; padding-inline: 10px; font-size: 12px; gap: 8px; }:is(#screens .sx-observatory, .sx-observatory) .sx-tile__seat,:is(#screens .sx-observatory, .sx-observatory) .sx-tile__seat svg { width: 18px; height: 18px; }
-  :is(#screens .sx-observatory, .sx-observatory) .sxb-vital { padding-inline: 8px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__value { font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__head { min-width: 0; grid-template-columns: 16px 1fr; gap: 4px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__label { font-size: 11px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__acts { flex-wrap: wrap; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__acts button { font-size: 10px; padding: 4px; min-height: 29px; }
+  :is(#screens .sx-observatory, .sx-observatory) .sxb-vital { padding-inline: 8px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__value { font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__head { min-width: 0; grid-template-columns: 16px 1fr; gap: 4px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__label { font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__acts { flex-wrap: wrap; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__acts button { font-size: 12px; padding: 4px; min-height: 29px; }
   :is(#screens .sx-observatory, .sx-observatory) .so-context { align-items: flex-start; flex-direction: column; gap: 0; padding: 3px 0; }:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff { padding: 0; }:is(#screens .sx-observatory, .sx-observatory) .so-bulletin { margin-left: 0; }:is(#screens .sx-observatory, .sx-observatory) .so-bulletin summary { padding: 5px 0; }:is(#screens .sx-observatory, .sx-observatory) .sxb-tape { left: 0; right: auto; }
-  :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body :is(.k-hang,.k-stage) { padding: 18px 14px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__list { max-height: 315px; height: 315px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-browser { gap: 9px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-filter { font-size: 10px; padding: 4px 6px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table tbody td { font-size: 11px; padding-inline: 5px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table thead th { padding-inline: 5px; font-size: 9px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-row__name { min-width: 112px; }:is(#screens .sx-observatory, .sx-observatory) .of-commodity-icon { width: 14px; margin-right: 5px; }
-  :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-title { font-size: 27px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero .k-hero__n { font-size: 44px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero { min-width: 70px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero .k-hero__w { max-width: 90px; font-size: 10px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__quote { column-gap: 10px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-stats { grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: 8px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-stats .sx-stat:nth-child(3) { padding-left: 0; border-left: 0; }
+  :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body :is(.k-hang,.k-stage) { padding: 18px 14px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__list { max-height: 315px; height: 315px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-browser { gap: 9px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-filter { font-size: 12px; padding: 4px 6px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table tbody td { font-size: 12px; padding-inline: 5px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table thead th { padding-inline: 5px; font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-row__name { min-width: 112px; }:is(#screens .sx-observatory, .sx-observatory) .of-commodity-icon { width: 14px; margin-right: 5px; }
+  :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-title { font-size: 27px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero .k-hero__n { font-size: 44px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero { min-width: 70px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero .k-hero__w { max-width: 90px; font-size: 12px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__quote { column-gap: 10px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-stats { grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: 8px; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-stats .sx-stat:nth-child(3) { padding-left: 0; border-left: 0; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-trade { grid-template-columns: 1fr; padding: 13px; }:is(#screens .sx-observatory, .sx-observatory) .sx-trade__words { grid-column: 1; grid-row: auto; }:is(#screens .sx-observatory, .sx-observatory) .sx-trade__rows { grid-template-columns: 1fr; }:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chart { height: 130px; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.k-panel:not(.sx-mkt) { grid-template-columns: minmax(0,1fr); grid-template-areas: 'hang' 'stage'; }:is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.k-panel>.k-hang { max-height: 300px; border-right: 0; border-bottom: 1px solid var(--so-line); }
   :is(#screens .sx-observatory, .sx-observatory) .sx-fac__detail { grid-template-columns: 1fr; }:is(#screens .sx-observatory, .sx-observatory) .sx-talk__avatar { width: 90px; height: 90px; }
@@ -406,7 +406,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-ledger .st-sub-h { font: 500 32px/1.2 var(--so-display); margin: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-ledger .st-ledger-intro { font-size: 13px; text-transform: none; margin: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-ledger .st-ledger-list { display: flex; flex-direction: column; gap: 0; margin: 4px 0; padding: 0; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-ledger .st-ledger-status { font-size: 11px; margin: 12px 0 0; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-ledger .st-ledger-status { font-size: 12px; margin: 12px 0 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-ledger .st-ledger-empty { font-size: 15px; line-height: 1.6; padding-top: 22px; text-transform: none; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-ledger .st-ledger-empty::before { content: ''; display: block; height: 180px; max-width: 420px; background: url('../src/ui/station/art/berth-circuit.svg') center/contain no-repeat; opacity: .55; margin-bottom: 26px; }
 :is(#screens .sx-observatory, .sx-observatory) :is(.sx-ledger__read,.sx-ledger .st-ledger-detail) { padding: 26px; grid-row: auto; }

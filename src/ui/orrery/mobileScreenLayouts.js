@@ -299,6 +299,8 @@ export const MOBILE_SCREEN_CSS = `
   @media (max-height:560px) {
     ${B} { overflow-x:hidden !important; overflow-y:auto !important; padding-bottom:0 !important; scroll-padding-bottom:0 !important; }
     ${B} .dp-frame__body--station, ${B} .dp-frame__body--station > .sx-screen__body { flex:none !important; overflow:visible !important; }
+    /* each dial column is ~125-160px here, so a crown label stands whole: MUNITIONS broke its last letter at the 60px dial cap */
+    ${B} .sxb-vital__label { max-width:none !important; white-space:nowrap !important; overflow-wrap:normal !important; }
     /* one row, not two: the tabs take what Comms and Undock leave and slide sideways if a narrow phone runs out */
     ${B} footer.sxb-ops { position:sticky !important; bottom:0 !important; background:rgb(5 7 10) !important; flex-wrap:nowrap !important;
       gap:0 12px !important; padding:3px 0 calc(3px + env(safe-area-inset-bottom, 0px)) !important; }
@@ -307,7 +309,8 @@ export const MOBILE_SCREEN_CSS = `
     ${B} .sxb-ops .of-facility-rail::-webkit-scrollbar { display:none; }
     ${B} .sxb-ops .of-facility-rail .sxb-ops__dock, ${B} .sxb-ops .of-facility-rail .sx-dock { width:max-content !important; min-width:100% !important; max-width:none !important; }
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { grid-template-columns:repeat(7, auto) !important;
-      width:max-content !important; min-width:100% !important; max-width:none !important; gap:0 12px !important; }
+      /* Close the six gaps so Ledger clears Comms at 844px with the readable 12px labels. */
+      width:max-content !important; min-width:100% !important; max-width:none !important; gap:0 4px !important; }
     ${B} .sxb-ops .sx-tile__label { letter-spacing:.07em !important; }
     ${B} .sxb-ops .sx-tile { min-height:44px !important; }
     ${B} .sxb-ops :is(.sx-comms, .sxb-launch-seat) { flex:none !important; }
@@ -353,6 +356,7 @@ export const MOBILE_SCREEN_CSS = `
     align-items:center !important; align-content:center !important; justify-items:start !important; width:100% !important; }
   ${M} .sx-trade > .sx-qty { grid-area:dial; width:128px !important; height:146px !important; position:relative !important; }
   ${M} .sx-qty .orr-qdial { left:8px !important; top:0 !important; width:112px !important; height:112px !important; }
+  ${M} .orr-qdial__end { font-size:16.1px; }
   ${M} .sx-qty .sx-qty__k { left:8px !important; width:112px !important; top:32px !important; font-size:12px !important; letter-spacing:.18em !important; }
   ${M} .sx-qty .sx-qty__in { left:24px !important; width:80px !important; top:44px !important; height:32px !important; min-height:32px !important;
     font-size:28px !important; line-height:32px !important; }

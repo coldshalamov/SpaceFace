@@ -74,8 +74,8 @@ export const NEW_GAME_STARTERS = Object.freeze([
     shipId: 'ship_kestrel',
     name: 'Hitch',
     tag: 'Skater',
-    blurb: 'Light on the line. Quick to bank. Lives on the swing.',
-    line: 'Light, quick, and the best swinger in the yard. One of everything, so the first ten minutes can go any way.',
+    blurb: 'Light on the line. Quick to bank. Responsive tether agility.',
+    line: 'Light and nimble chassis with versatile starter outfitting. Balanced for salvage, mining, or dogfighting.',
     fittedModules: Object.freeze(NEW_GAME.fittedModules.slice()),
   }),
   Object.freeze({
@@ -83,8 +83,8 @@ export const NEW_GAME_STARTERS = Object.freeze([
     shipId: 'ship_pelican',
     name: 'Pelican',
     tag: 'Tug',
-    blurb: 'Slow to answer. Carries twice what it should. Hard to tip over.',
-    line: 'A heavy-duty winch, a cargo pod, and twin mining lasers. The first ten minutes end in a tow or a full hold.',
+    blurb: 'Industrial hauler. Heavy-duty winch and dual mining lasers.',
+    line: 'Reinforced frame with dual mining lasers, heavy winch, and expanded cargo holds. Built for deep salvage and bulk hauling.',
     fittedModules: Object.freeze([
       'wpn_pulse_laser_s',    // weapon slot S
       'mod_shield_booster_s', // shield slot S
@@ -100,8 +100,8 @@ export const NEW_GAME_STARTERS = Object.freeze([
     shipId: 'ship_wasp',
     name: 'Wasp',
     tag: 'Brawler',
-    blurb: 'Fast off the mark. Thin skin. Bites early.',
-    line: 'A second gun and a ram plate, no cargo space to speak of. The first ten minutes want a bounty and a little nerve.',
+    blurb: 'Fast strike interceptor. High acceleration and dual offensive mounts.',
+    line: 'Dual ballistic weapons and a reinforced ram plate with rapid acceleration. Built for aggressive bounties and fast skirmishes.',
     fittedModules: Object.freeze([
       'wpn_pulse_laser_s',    // weapon slot S (front)
       'wpn_autocannon_s',     // weapon slot S (front) — the shove gun

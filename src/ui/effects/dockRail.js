@@ -134,7 +134,7 @@ const CSS = `
 }
 .sf-fx-dock__badge {
   position: relative;
-  font-size: 0.7em;
+  font-size: max(12px, 0.7em);
   color: var(--ink-mute);
 }
 .sf-fx-dock__badge--good { color: var(--good); }

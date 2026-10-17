@@ -447,7 +447,7 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} > .k-title .con-sub { margin:4px 0 0 !important; font-size:clamp(12px, 1.5vh, 15px) !important; }
   ${A} .k-hang.con-filters { margin-left:clamp(16px, 2.2vw, 40px); }
   ${A} .con-filters .k-words { gap:clamp(10px, 1.6vw, 28px) !important; padding:0 4px; }
-  ${A} .con-filters .k-word { min-height:26px; font-size:clamp(10px, .58vw, 12px); letter-spacing:.16em; }
+  ${A} .con-filters .k-word { min-height:26px; font-size:12px; letter-spacing:.16em; }
   ${A} .con-wordscale { --con-scale-h:26px; }
   ${A} > .k-foot .con-back.sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
   ${A} > .k-foot .con-back.sf-back.k-word::before { margin-right:8px !important; font-size:13px !important; }
@@ -457,7 +457,7 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
     margin:0 0 clamp(4px, 1vh, 10px) !important; --ms:clamp(112px, 11vw, 168px); }
   ${A} .con-medal-read__rim { left:-22px; top:-22px; width:calc(100% + 44px); height:calc(100% + 44px); }
   ${A} .con-medal-read__rim text { font-size:12px; letter-spacing:.22em; }
-  ${A} .con-medal-read__kicker { font-size:clamp(9.5px, .55vw, 11px); letter-spacing:.18em; white-space:nowrap; }
+  ${A} .con-medal-read__kicker { font-size:12px; letter-spacing:.18em; white-space:nowrap; }
   ${A} .con-medal-read__name { font-size:clamp(18px, min(1.6vw, 3vh), 28px); }
   ${A} .con-medal-read__line { font-size:clamp(13px, .8vw, 16px); }
 }

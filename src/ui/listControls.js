@@ -51,7 +51,7 @@ function injectStyle() {
   .sf-sort:hover { color:var(--dp-ink, var(--ink)); }
   .sf-sort:focus-visible { outline:2px solid var(--dp-lamp-hot, var(--accent)); outline-offset:2px; }
   .sf-sort.active { color:var(--dp-lamp, var(--accent)); }
-  .sf-sort__arrow { font-size:.7em; opacity:.55; }
+  .sf-sort__arrow { font-size:max(12px, .7em); opacity:.55; }
   .sf-sort.active .sf-sort__arrow { opacity:1; }
   `;
   document.head.appendChild(s);

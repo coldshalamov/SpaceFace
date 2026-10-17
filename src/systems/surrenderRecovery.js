@@ -33,6 +33,13 @@ const RECOVERY_ENTITY_INSTANCE = Symbol('surrenderRecoveryEntityInstance');
 /** Re-adopt saved surrender/custody annotations; record timers still run every tick. */
 export const SURRENDER_READOPT_CADENCE_TICKS = 8;
 
+// The live AI order is authoritative. Recovery annotations may remain after escape or clearing.
+// HUD readers must not infer a current surrender from that historical custody record.
+export function isSurrenderedContact(entity) {
+  return !!entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone')
+    && entity.data?.ai?.fsm === 'surrender';
+}
+
 /** Membership lanes for the adoption walk — results read ship/drone members only. */
 const READOPT_LANES = ['shipLike'];
 

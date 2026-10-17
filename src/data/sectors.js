@@ -767,6 +767,15 @@ export const SECTORS = [
   .map(applyClaimableBodySites)
   .map(applyPlanetStateAssignments);
 
+const CONTACT_STATION_BY_ID = new Map(SECTORS.flatMap((sector) =>
+  (sector.stations || []).map((station) => [station.id, station])));
+
+// Locking a berth discloses public services only; the black-market desk stays hidden.
+export function stationContactServices(stationId) {
+  const station = CONTACT_STATION_BY_ID.get(stationId);
+  return (station?.services || []).filter((service) => service !== 'black_market');
+}
+
 // Security helper functions per ARCHITECTURE §0.8.
 const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
 

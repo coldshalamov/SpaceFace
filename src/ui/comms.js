@@ -815,7 +815,7 @@ function injectCommsCss() {
   .sf-bulkhead { position:absolute; left:clamp(300px, 24vw, 460px); top:24%; transform:none; z-index:9;
     pointer-events:none; opacity:0; transition:opacity 1.2s ease; max-width:min(420px, 32vw); text-align:left; }
   .sf-bulkhead--visible { opacity:.22; }
-  .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(11px, 1.2vw, 13px); letter-spacing:.06em;
+  .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(12px, 1.2vw, 13px); letter-spacing:.06em;
     color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 12px rgba(0,0,0,.85), 0 1px 2px #000;
     transform:rotate(-1.5deg); }
   @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; top:auto; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:12px; letter-spacing:.06em; }

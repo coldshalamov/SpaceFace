@@ -34,7 +34,7 @@ import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
-import { starvedIndustryNeedFor } from './economy.js';
+import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
 import { isPlayerWanted, heatLevelFor, wantedTierFor } from './heat.js'; // READ-ONLY heat reads (C11)
 import {
   DENIABLE_PAY_SCALE, DENIABLE_CAUSE_TAG, DENIABLE_AMBUSH_CLAUSE, OUTLAW_FRIENDLY_PERSONALITIES,
@@ -42,6 +42,7 @@ import {
   FIRST_TRADE_CONTRACT_STATION_ID,
   buildFirstTradeOffer,
   starvedOfferProse,
+  SHORTAGE_GATE_REPAIR, isShortageGateRepair, shortageGateRepairProse,
 } from '../data/economyContractTemplates.js';
 import { isFenceBurned, emboldenedBonus } from '../data/deniableAftermath.js'; // READ-ONLY (C11 follow-ups)
 import {
@@ -61,6 +62,7 @@ for (const sec of SECTORS) {
   for (const st of (sec.stations || [])) {
     STATION_INFO.set(st.id, {
       id: st.id, name: st.name, type: st.type, tier: sec.tier || 0, size: st.size || 'M',
+      services: st.services || [],
       factionId: st.factionId || sec.factionId, sectorId: sec.id,
     });
   }
@@ -189,6 +191,9 @@ export const economyContracts = {
     this.bus.on('mission:offerBoarded', this._onOfferBoarded);
     this._onDocked = (p) => this._handleDock(p && p.stationId);
     this.bus.on('dock:docked', this._onDocked);
+    // Only the market writer's acknowledgement can restore a parts counter. An intent,
+    // a wrong lot, or a rejected freight transaction must never announce a repair.
+    this.bus.on('economy:freightAccepted', (p) => this._onShortageRepairFreight(p));
     // Fresh runs reset dedupe. Loads restore it through deserialize before save:loaded fires.
     this._onStarted = () => this.newGame();
     this.bus.on('game:started', this._onStarted);
@@ -215,6 +220,7 @@ export const economyContracts = {
     return {
       evaluatedEpochByStation: { ...own.evaluatedEpochByStation },
       firstTradeOffered: !!own.firstTradeOffered,
+      ...(own.shortageRepairs ? { shortageRepairs: JSON.parse(JSON.stringify(own.shortageRepairs)) } : {}),
     };
   },
 
@@ -230,6 +236,8 @@ export const economyContracts = {
     this.state.economyContracts = {
       evaluatedEpochByStation,
       firstTradeOffered: !!(data && data.firstTradeOffered),
+      ...(data && data.shortageRepairs && typeof data.shortageRepairs === 'object'
+        ? { shortageRepairs: JSON.parse(JSON.stringify(data.shortageRepairs)) } : {}),
     };
   },
 
@@ -333,6 +341,11 @@ export const economyContracts = {
       // U-B: a fence's route waits at the berth its last leg delivered to (retry if the board was full).
       this._postRouteLegsAt(stationId);
 
+      // A newly posted shortage (or an aborted repair) can arrive after this epoch's field
+      // evaluation. Retry this real need before the ambient cadence latch, without charging.
+      const repair = this.planShortageRepairOffer(info, epoch);
+      if (repair && (this._offerOnBoard(stationId, repair.id) || this._emitOfferForBoard(stationId, repair))) return;
+
       // C11: a WANTED pilot at an outlaw-friendly berth is offered the deniable job. It rides its
       // own per-station-epoch latch (separate from the field evaluation below) so a crime
       // committed AFTER an earlier calm dock in the same epoch still reaches the fence.
@@ -380,6 +393,83 @@ export const economyContracts = {
     } catch (err) {
       dedupError('economyContracts/dock-docked', '[economyContracts] dock:docked', err);
     }
+  },
+
+  /** A sold-out industrial parts listing at an existing gate approach, never a new travel lock. */
+  planShortageRepairOffer(info, epoch) {
+    const state = this.state;
+    const sectors = new Set([info.sectorId, ...(SECTOR_BY_ID.get(info.sectorId)?.neighbors || [])]);
+    const events = (state.economy?.econEvents || []).filter((event) => event.type === 'shortage'
+      && event.id && state.simTime < event.startT + event.duration).slice().sort((a, b) => a.id.localeCompare(b.id));
+    for (const event of events) {
+      const dest = STATION_INFO.get(event.stationId);
+      const sector = dest && SECTOR_BY_ID.get(dest.sectorId);
+      if (!dest || !sectors.has(dest.sectorId) || !sector?.neighbors?.length
+        || !SHORTAGE_GATE_REPAIR.stationTypes.includes(dest.type)) continue;
+      if (!this._dockableStations(sector).some((st) => st.id === dest.id)) continue;
+      if (state.economyContracts?.shortageRepairs?.[event.id]
+        || state.missions?.active?.some((m) => m.status === 'active' && isShortageGateRepair(m)
+          && m.cause.shortageEventId === event.id)) continue;
+      const cmdtyId = SHORTAGE_GATE_REPAIR.components.find((id) => (event.commodityId === id || event.commodityId === '*')
+        && marketStockStatus(state, dest.id, id).soldOut);
+      if (!cmdtyId) continue;
+      const def = CMDTY_BY_ID.get(cmdtyId);
+      // Name a legitimate nearby producer, not a debug grant or an inaccessible shopping trip.
+      const supplierSectors = new Set([dest.sectorId, ...sector.neighbors]);
+      for (const id of sector.neighbors) {
+        for (const next of (SECTOR_BY_ID.get(id)?.neighbors || [])) supplierSectors.add(next);
+      }
+      const supplier = [...STATION_INFO.values()].find((st) => st.id !== dest.id
+        && supplierSectors.has(st.sectorId)
+        && st.services.includes('trade')
+        && st.tier >= (def.marketTier || 0) && def.producedBy.includes(st.type)
+        && this._dockableStations(SECTOR_BY_ID.get(st.sectorId)).some((row) => row.id === st.id));
+      if (!supplier) continue;
+      const qty = SHORTAGE_GATE_REPAIR.qty;
+      const cargoValue = def.basePrice * qty;
+      const params = { cmdtyId, qty, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 30 };
+      const distance = sectorDistanceWu(info.sectorId, dest.sectorId);
+      const riskTier = clamp(effectiveDangerTierFor(state, dest.sectorId), 0, 4);
+      // Price the purchase route as well: the player fronts the principal, never sealed freight.
+      const terms = quoteMissionEconomics({ type: 'cargo_delivery', tier: dest.tier, riskTier,
+        distance, params, preloadedCargo: false, fieldPressure: event.pressure || 0 });
+      const prose = shortageGateRepairProse({ station: dest.name, commodity: def.name,
+        supplier: supplier.name, volume: Number((qty * def.volPerU).toFixed(2)) });
+      return {
+        id: `eco_repair_${event.id}_${info.id}_${epoch}`, source: 'economyContract',
+        type: 'salvage_retrieval', stationId: info.id, factionId: info.factionId,
+        destStationId: dest.id, destSectorId: dest.sectorId, distance, riskTier, params,
+        preloadedCargo: false, collateral_cr: 0, reward_cr: terms.rewardCr,
+        time_limit_s: terms.deadlineS, duration_s: terms.deadlineS, economyTerms: terms,
+        title: prose.title, summary: `${prose.line} ${prose.brief}`, brief: prose.brief,
+        cause: { tag: SHORTAGE_GATE_REPAIR.tag, shortageEventId: event.id,
+          supplierStationId: supplier.id, axis: 'stock', line: prose.line },
+        expiresAtEpoch: epoch + 1, storyTag: null,
+      };
+    }
+    return null;
+  },
+
+  _onShortageRepairFreight(fact) {
+    if (!fact) return;
+    const mission = this.state.missions?.active?.find((m) => m.status === 'active'
+      && isShortageGateRepair(m) && fact.receiptId === `mission-delivery:${m.id}`);
+    if (!mission || fact.stationId !== mission.destStationId
+      || fact.commodityId !== mission.params.cmdtyId || fact.qty !== mission.params.qty) return;
+    const own = this._ensureState();
+    const eventId = mission.cause.shortageEventId;
+    if (own.shortageRepairs?.[eventId]) return;
+    const station = STATION_INFO.get(fact.stationId);
+    const text = `${station.name}: ${cmdtyName(fact.commodityId)} stock restored — ${fact.qty}u received. `
+      + `Parts-counter price correction: ${SHORTAGE_GATE_REPAIR.correctionDurationS}s.`;
+    const receipt = { ...fact, shortageEventId: eventId,
+      completionMethod: mission.params.contractWreckGone === 'drained' ? 'salvaged_workpiece' : 'replacement_delivery',
+      correctionDurationS: SHORTAGE_GATE_REPAIR.correctionDurationS, text };
+    // Persist before publication: a matching freight replay can never repeat the aftermath.
+    (own.shortageRepairs || (own.shortageRepairs = {}))[eventId] = receipt;
+    this.bus.emit('mission:forceEvent', { type: 'boom', stationId: fact.stationId,
+      commodityId: fact.commodityId, duration: SHORTAGE_GATE_REPAIR.correctionDurationS });
+    this.bus.emit('economy:shortageRepairRestored', { ...receipt });
   },
 
   /**

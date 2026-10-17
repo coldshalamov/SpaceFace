@@ -758,6 +758,25 @@ function effectiveEq(entry, state, stationId, cmdtyId) {
   return stockDriftTarget(entry.equilibrium, cf, m);
 }
 
+/** Read-only depletion/ETA model using the existing recovery curve and five-second tick.
+ * The market reserves one unit, so stock must reach two before a whole unit is buyable. */
+export function marketStockStatus(state, stationId, commodityId) {
+  const entry = state?.economy?.markets?.[stationId]?.[commodityId];
+  if (!entry || !Number.isFinite(entry.stock)) return { soldOut: false, restockSeconds: null };
+  if (entry.stock >= 2) return { soldOut: false, restockSeconds: null };
+  const cycle = state.economy.cycles?.[stationId]?.[commodityId];
+  const target = stockDriftTarget(entry.equilibrium, cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1,
+    clamp(eventModMult(entry, 'equilibrium'), EQ_MULT_CLAMP[0], EQ_MULT_CLAMP[1]));
+  const rate = eventModMult(entry, 'drift');
+  const halfLife = BALANCE.commodities[commodityId]?.recoveryHalfLifeS || BALANCE.market.halfLifeS;
+  if (!(target > 2 && rate > 0 && halfLife > 0)) return { soldOut: true, restockSeconds: null };
+  const elapsed = halfLife * Math.log((target - entry.stock) / (target - 2)) / (Math.LN2 * rate);
+  const accumulator = Math.max(0, Number(state.economy.econClock?.accumulator) || 0);
+  const nextTick = ECON_TICK_S - accumulator % ECON_TICK_S;
+  const ticksAfterNext = Math.max(0, Math.ceil(elapsed / ECON_TICK_S) - 1);
+  return { soldOut: true, restockSeconds: Math.ceil(nextTick + ticksAfterNext * ECON_TICK_S) };
+}
+
 function cycleRngFor(state, stationId, cmdtyId) {
   if (economy._instance && typeof economy._instance._rng === 'function') {
     return () => economy._instance._rng();
@@ -2650,6 +2669,15 @@ export const economy = {
     const unitAvg = marketUnitAvg * standingPriceMultiplier;
     const total = settleCredits(unitAvg * qty, side);
     if (total === null) return { ok: false, reason: 'invalid_total' };
+    // ECON-10: attribution of the scarcity already in this quote, never an extra payout.
+    // Capture it before settlement feeds the hopper and refreshes the shortage board.
+    const postedNeed = side === 'sell' && info
+      ? starvedIndustryNeedFor(info.type, info.tier || 0, market) : null;
+    const shortagePremium = side === 'sell' && entry.stock < entry.baseEq
+      && (postedNeed?.inputId === commodityId || (state.economy.econEvents || []).some((event) =>
+        event.type === 'shortage' && event.stationId === stationId
+        && (event.commodityId === commodityId || event.commodityId === '*')
+        && tNow - event.startT < event.duration));
     const beforeMid = applyCycleToMid(
       def.basePrice,
       applyPersistentDemand(economyMidPrice(def, entry.stock, entry.baseEq), entry.demandMult),
@@ -2695,6 +2723,7 @@ export const economy = {
     return {
       ok: true, stationId, commodityId, side, qty, requestedQty, partial: qty !== requestedQty,
       unitAvg, total,
+      ...(shortagePremium ? { shortagePremium: true } : {}),
       acceptQty, acceptUnitAvg, acceptTotal, holdLimited: acceptQty < qty,
       priceImpactPct, stockAfter,
       standingPriceMultiplier,
@@ -2912,6 +2941,7 @@ export const economy = {
         fq.priceImpactPct,
         def,
         intentId,
+        fq.shortagePremium === true,
       );
       const profit = receipt ? receipt.profit : 0;
       return this._sealTradeIntent(intentId, {
@@ -2960,9 +2990,10 @@ export const economy = {
   },
 
   /** Common post-trade bookkeeping: stats, intel refresh, emit economy:tradeCompleted. */
-  afterTrade(state, stationId, commodityId, side, qty, unitAvg, total, priceImpactPct, def, intentId = null) {
+  afterTrade(state, stationId, commodityId, side, qty, unitAvg, total, priceImpactPct, def, intentId = null, shortagePremium = false) {
     const info = stationInfo(state, stationId);
     const receipt = this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
+    if (receipt && side === 'sell' && shortagePremium) receipt.shortagePremium = true;
     const profit = side === 'sell' && receipt ? receipt.profit : null;
     const stats = state.player.stats;
     if (stats) {
@@ -2982,6 +3013,7 @@ export const economy = {
       tradeSequence: receipt && receipt.tradeSequence,
       seenAt: receipt && receipt.seenAt,
       intentId,
+      ...(receipt?.shortagePremium ? { shortagePremium: true } : {}),
     });
     // AE-138/139 — a biohazard lot that settles is a faction-consequence datum the ecology
     // layer records (sealed custody reads differently than an open-mesh sale).

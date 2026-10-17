@@ -122,8 +122,8 @@ export function archivePlateSvg({ entries = [], current = -1, starts = [], top =
     }
   }
   // the engraving
-  if (top) parts.push(arcText(C, C, 150, top, { size: 9.5 }));
-  if (bottom) parts.push(arcText(C, C, 157, bottom, { lower: true, size: 9.5 }));
+  if (top) parts.push(arcText(C, C, 150, top, { size: 11.5 }));
+  if (bottom) parts.push(arcText(C, C, 157, bottom, { lower: true, size: 11.5 }));
   // the aperture's rim, lit, and its four index marks
   parts.push(`<path class="orr-arc-band" stroke-width="14" d="${arcD(C, C, RIM_R, 0, 360)}"/>`);
   parts.push(`<path class="orr-arc-ring orr-arc-ring--rim" d="${arcD(C, C, RIM_R, 0, 360)}"/>`);

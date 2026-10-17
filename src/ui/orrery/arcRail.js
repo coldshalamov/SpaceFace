@@ -159,7 +159,7 @@ html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-da
   color:rgb(232 226 212 / .64) !important; }
 .orr-arcrail-host .dp-lit--fine .dp-lit__item[data-awake] { color:var(--dp-ink, #e8e2d4) !important; transform:none; }
 .orr-arcrail-host .dp-kbd { background:none !important; border:0 !important; box-shadow:none !important; color:rgb(232 226 212 / .5) !important;
-  font-size:.62em !important; letter-spacing:.2em !important; padding:0 0 0 .4em !important; }
+  font-size:max(12px, .62em) !important; letter-spacing:.2em !important; padding:0 0 0 .4em !important; }
 .orr-arcrail__trail { fill:none; stroke:var(--dp-hand, #f2b950); stroke-linecap:round; animation:orr-trail-fade 520ms ease-out forwards; }
 @keyframes orr-trail-fade { from { opacity:.5; } to { opacity:0; } }
 @media (forced-colors: active) {

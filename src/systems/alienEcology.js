@@ -27,6 +27,7 @@ import {
   DOMAIN_THRESHOLD,
   WREN_RECOGNITION,
   LIVE_SPECIMEN_CMDTY,
+  LURE_BURN_S,
   FIELD_LANGUAGE,
   FAUNA_DROPS,
   SUPPRESSION_DROPS,
@@ -49,7 +50,7 @@ import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
 import {
   COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
 } from '../data/collarService.js';
-import { HEAT_SITE_ID, stepWasteHeat } from '../data/wasteHeat.js';
+import { HEAT_SITE_ID, stepWasteHeat, wasteHeatMotionMult } from '../data/wasteHeat.js';
 import {
   LURE_FILAMENT, LURE_RESIN, LURE_SHOWN, LURE_SITE_ID, copyHeatDerivative, heatLureRecipe,
 } from '../data/heatLure.js';
@@ -59,6 +60,8 @@ import {
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
+import { materializePlayerHullEcho, handlePlayerHullEchoEvent, tickPlayerHullEcho,
+  playerHullEchoReadout } from '../world/playerHullEcho.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan, bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
@@ -68,7 +71,8 @@ import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcol
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
 import { VEIL_NURSERY_ID, materializeNurseryDressing, tickVeilNursery,
-  handleVeilNurseryEvent, applyNurseryDrive } from '../world/veilRayNursery.js';
+  handleVeilNurseryEvent, applyNurseryDrive, nurserySiteCenter, veilNurseryMemory,
+  nurseryDisturbance } from '../world/veilRayNursery.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -141,15 +145,172 @@ export function setRevelation(state, tier) {
   return ae.revelation;
 }
 
+// M24: relocation is an ecology operation, not a teleport of the animals. Coordinates
+// are sector-local and duration is simulation seconds of actual substrate travel.
+export function relocateAlienEcologySite(world, { siteId, center, duration } = {}) {
+  const state = world?.state, site = ALIEN_SITES[siteId];
+  if (!state || !site?.nursery || state.world.currentSectorId !== site.sectorId
+      || effectiveRevelation(state) < site.requiresRevelation) return { ok: false, reason: 'site-unavailable' };
+  if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)
+      || !Number.isFinite(duration) || duration <= 0) return { ok: false, reason: 'invalid-move' };
+  const ribs = state.entityList.filter(e => e.alive !== false && e.data?.siteId === siteId
+    && Number.isInteger(e.data.veilNurseryRib));
+  if (ribs.length !== 7) return { ok: false, reason: 'substrate-unavailable' };
+  const n = veilNurseryMemory(state);
+  if (!n) return { ok: false, reason: 'site-unavailable' };
+  const previous = n.relocation;
+  if (previous?.move || previous?.tow) {
+    return previous.move?.to.x === center.x && previous.move?.to.z === center.z
+      ? { ok: true, status: previous.status } : { ok: false, reason: 'move-in-progress' };
+  }
+  const from = nurserySiteCenter(state, site);
+  const distance = Math.hypot(center.x - from.x, center.z - from.z);
+  if (distance === 0) return { ok: true, status: previous?.status || 'unchanged' };
+  const species = faunaSpeciesById('veil_ray');
+  // A stage stays within one mineral-crescent radius and the existing return speed.
+  // Starting another before the previous settling period ends also breaks the shelter.
+  const scattered = previous?.scattered === true || distance > site.arrivalBands.close / 3
+    || distance / duration > species.speed * 0.3 || n.mode !== 'QUIET'
+    || !!(previous && previous.status !== 'rehomed');
+  const relocation = n.relocation = {
+    center: { ...from }, status: scattered ? 'scattered' : 'moving', scattered,
+    stages: (previous?.stages || 0) + 1, settleSeconds: 0,
+    move: { from: { ...from }, to: { x: center.x, z: center.z }, elapsed: 0, duration },
+    scatterAnchors: previous?.scatterAnchors || {},
+  };
+  if (scattered && !previous?.scattered) {
+    scatterNurseryRelocation(world, site, relocation, from);
+  }
+  return { ok: true, status: relocation.status };
+}
+
+function scatterNurseryRelocation(world, site, relocation, from) {
+  relocation.scattered = true; relocation.status = 'scattered';
+  for (const e of world.state.entityList) {
+    const eco = e.data?.ecology;
+    if (e.alive === false || eco?.siteId !== site.siteId || eco.aggregate) continue;
+    relocation.scatterAnchors[eco.faunaKey] = {
+      x: from.x + Math.cos(eco.phase) * site.arrivalBands.mid * 2,
+      z: from.z + Math.sin(eco.phase) * site.arrivalBands.mid * 2,
+    };
+  }
+  nurseryDisturbance(world, site, 'relocation', world._toGlobal(from, site.sectorId));
+  world.bus?.emit('toast', { text: 'The nursery scatters — the rays abandon the moving shelter.', kind: 'warn', ttl: 5 });
+}
+
+function tickNurseryTow(world, site, rec, fauna, dt) {
+  const n = rec.nursery, state = world.state;
+  if (!n || n.relocation?.move) return;
+  const rib = state.entityList.find(e => e.alive !== false && e.data?.siteId === site.siteId
+    && e.data.veilNurseryRib === 0 && e.data.nurseryTowOffset);
+  if (!rib) return;
+  const origin = world._toGlobal({ x: 0, z: 0 }, site.sectorId), offset = rib.data.nurseryTowOffset;
+  const center = { x: rib.pos.x - origin.x - offset.x, z: rib.pos.z - origin.z - offset.z };
+  const from = nurserySiteCenter(state, site);
+  const dx = center.x - from.x, dz = center.z - from.z, travel = Math.hypot(dx, dz);
+  const tethered = state.player?.tether?.active && state.player.tether.targetId === rib.id;
+  const speed = Math.hypot(rib.vel?.x || 0, rib.vel?.z || 0);
+  let relocation = n.relocation;
+  // Native f32 coordinate rounding at rest is not the start of a physical tow.
+  if (travel > 1e-6 && (relocation?.tow || speed > 0.05)) {
+    if (!relocation?.tow) {
+      const previous = relocation;
+      relocation = n.relocation = {
+        center: { ...from }, status: previous?.scattered ? 'scattered' : 'moving',
+        scattered: previous?.scattered === true, stages: (previous?.stages || 0) + 1,
+        settleSeconds: 0, scatterAnchors: previous?.scatterAnchors || {},
+        tow: { from: { ...from }, distance: 0 },
+      };
+      if (!relocation.scattered && previous && previous.status !== 'rehomed') {
+        scatterNurseryRelocation(world, site, relocation, from);
+      }
+    }
+    relocation.tow.distance += travel;
+    if (!relocation.scattered && (travel / dt > faunaSpeciesById('veil_ray').speed * 0.3
+        || relocation.tow.distance > site.arrivalBands.close / 3 || n.mode !== 'QUIET')) {
+      scatterNurseryRelocation(world, site, relocation, relocation.tow.from);
+    }
+    relocation.center = center;
+    relocation.settleSeconds = 0;
+    // Native physics owns the tow rib. Move only the remaining substrate solids;
+    // animals retain their normal drive toward the translated shelter anchors.
+    for (const e of state.entityList) {
+      if (e !== rib && e.alive !== false && e.data?.siteId === site.siteId
+          && Number.isInteger(e.data.veilNurseryRib)) {
+        e.pos.x += dx; e.pos.z += dz; e.physicsSleeping = false;
+      }
+    }
+    bumpCollidesFlipEpoch();
+    if (!relocation.scattered) for (const e of fauna) {
+      if (e.data.ecology.siteId === site.siteId && !e.data.ecology.aggregate) {
+        e.data.ecology.anchor.x += dx; e.data.ecology.anchor.z += dz;
+      }
+    }
+  }
+  if (relocation?.tow && !tethered && travel <= 1e-6
+      && speed < 0.5) {
+    delete relocation.tow;
+    relocation.status = relocation.scattered ? 'scattered' : 'settling';
+  }
+}
+
+function tickNurseryRelocation(world, site, rec, fauna, dt) {
+  tickNurseryTow(world, site, rec, fauna, dt);
+  const relocation = rec.nursery?.relocation;
+  if (!relocation) return;
+  const adults = fauna.filter(e => e.data.ecology.siteId === site.siteId && !e.data.ecology.aggregate);
+  const move = relocation.move;
+  if (move) {
+    move.elapsed = Math.min(move.duration, move.elapsed + dt);
+    const t = move.elapsed / move.duration;
+    const next = { x: move.from.x + (move.to.x - move.from.x) * t,
+      z: move.from.z + (move.to.z - move.from.z) * t };
+    const dx = next.x - relocation.center.x, dz = next.z - relocation.center.z;
+    relocation.center = next;
+    // The seven existing solids move; animal positions remain under their drive engine.
+    for (const e of world.state.entityList) {
+      if (e.alive !== false && e.data?.siteId === site.siteId && Number.isInteger(e.data.veilNurseryRib)) {
+        e.pos.x += dx; e.pos.z += dz; e.physicsSleeping = false;
+      }
+    }
+    if (dx || dz) bumpCollidesFlipEpoch();
+    if (!relocation.scattered) for (const e of adults) {
+      e.data.ecology.anchor.x += dx; e.data.ecology.anchor.z += dz;
+    }
+    if (move.elapsed >= move.duration) {
+      delete relocation.move;
+      relocation.status = relocation.scattered ? 'scattered' : 'settling';
+    }
+  }
+  if (relocation.scattered) {
+    for (const e of adults) {
+      const anchor = relocation.scatterAnchors[e.data.ecology.faunaKey];
+      if (anchor) e.data.ecology.anchor = world._toGlobal(anchor, site.sectorId);
+    }
+  } else if (!move && !relocation.tow && relocation.status === 'settling') {
+    const settled = rec.nursery.mode === 'QUIET' && adults.length > 0 && adults.every(e => {
+      const anchor = e.data.ecology.anchor;
+      return Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= faunaSpeciesById(e.data.ecology.speciesId).preferredR;
+    });
+    relocation.settleSeconds = settled ? relocation.settleSeconds + dt : 0;
+    if (relocation.settleSeconds >= 12) {
+      relocation.status = 'rehomed';
+      world.bus?.emit('toast', { text: 'The rays have re-homed around the relocated nursery.', kind: 'good', ttl: 5 });
+    }
+  }
+}
+
 // ── Materialization (called from world._spawnDressing tail) ─────────────────────────────────
 export function materializeAlienEcology(world, sector, active, onlySites = null) {
   const state = world && world.state;
   const sites = onlySites || alienSitesForSector(sector && sector.id);
   if (!sites.length || !world.helpers) return;
   const epoch = 0;
-  for (const site of sites) {
+  for (const definition of sites) {
+    const site = definition.nursery ? { ...definition, center: nurserySiteCenter(state, definition) } : definition;
     if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
     const rec = siteRecord(state, site.siteId);
+    if (site.playerHullEcho) materializePlayerHullEcho(world, site, active);
     if (site.nursery) materializeNurseryDressing(world, site, active);
     const rng = world.helpers.mulberry32(
       world.helpers.hash32(state.meta && state.meta.seed || 1, sector.id, epoch, 'alien-ecology', site.siteId));
@@ -215,7 +376,8 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
         && e.data?.ecology?.faunaKey === member.faunaKey)) continue;
       const species = faunaSpeciesById(member.speciesId);
       if (!species) continue;
-      const pos = world._toGlobal({ x: site.center.x + member.dx, z: site.center.z + member.dz }, sector.id);
+      const scatterAnchor = rec.nursery?.relocation?.scatterAnchors?.[member.faunaKey];
+      const pos = world._toGlobal(scatterAnchor || { x: site.center.x + member.dx, z: site.center.z + member.dz }, sector.id);
       // Migration route: members of migrates species walk the waypoint loop. AE-165:
       // a site's authored routeEcho waypoints count as the route when no full
       // migrationRoute block is authored.
@@ -564,6 +726,7 @@ function noteWreckCut(world, sectorId) {
 export function handleAlienEcologyEvent(world, type, payload) {
   const state = world && world.state;
   if (!state || !payload) return;
+  handlePlayerHullEchoEvent(world, ALIEN_SITES.preserved_cockpit, type, payload);
   handleVeilNurseryEvent(world, ALIEN_SITES[VEIL_NURSERY_ID], type, payload);
   const siteId = payload.siteId || 'cinder_nursery';
   const site = ALIEN_SITES[siteId];
@@ -571,6 +734,8 @@ export function handleAlienEcologyEvent(world, type, payload) {
   const toast = (text, kind = 'info', ttl = 4.5) => world.bus && world.bus.emit('toast', { text, kind, ttl });
 
   switch (type) {
+    case 'alienEcology:relocateSite':
+      return relocateAlienEcologySite(world, payload);
     case 'alienEcology:nurseryPowered': {
       if (rec) rec.state = 'awake';
       setRevelation(state, 1);
@@ -746,6 +911,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
         z: Number(payload.z) || 0,
         sectorId: payload.sectorId || (state.world && state.world.currentSectorId),
         until: (Number(state.simTime) || 0) + (payload.burnS || 60),
+        ...(payload.trialSiteId === LURE_SITE_ID ? { trialSiteId: LURE_SITE_ID } : {}),
       });
       if (ae.lures.length > 8) ae.lures.shift();
       toast('Lure beacon burning hot — the predators hear it.', 'info', 3);
@@ -1229,16 +1395,25 @@ export function tickAlienEcology(world, dt) {
     return sp && sp.heatHunter && f.alive !== false;
   });
 
-  for (const site of sites) {
-    if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
-    const rec = siteRecord(state, site.siteId);
+  for (const definition of sites) {
+    if (effectiveRevelation(state) < (definition.requiresRevelation || 0)) continue;
+    const rec = siteRecord(state, definition.siteId);
+    if (definition.nursery) tickNurseryRelocation(world, definition, rec, fauna, dt);
+    const site = definition.nursery ? { ...definition, center: nurserySiteCenter(state, definition) } : definition;
     const siteGlobal = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
+    if (site.playerHullEcho) tickPlayerHullEcho(world, site);
+    const hullLoss = site.playerHullEcho && state.world.records?.hullLosses
+      ?.find(loss => loss.echo?.siteId === site.siteId);
     const coherent = rec.relaySevered !== true && rec.state !== 'severed';
 
     // Staged arrival beats (doc 09): bands around the site trigger the reveal choreography.
     if (player && player.pos) {
       const dSite = Math.sqrt(dist2(player.pos.x, player.pos.z, siteGlobal.x, siteGlobal.z));
-      const lines = site.arrivalLines || null;
+      const lines = hullLoss ? {
+        long: `An old flight signature repeats ahead — ${hullLoss.name}. Scan to compare it with your loss record.`,
+        mid: playerHullEchoReadout(hullLoss),
+        close: playerHullEchoReadout(hullLoss),
+      } : site.arrivalLines || null;
       if (!rec.beats.long && dSite < site.arrivalBands.long) {
         rec.beats.long = true;
         world.bus.emit('toast', {
@@ -1295,7 +1470,8 @@ export function tickAlienEcology(world, dt) {
           setRevelation(state, 2);
           world.bus.emit('comms:log', {
             from: 'Archive fragment', kind: 'ecology',
-            text: 'A knot of dense tissue replays the site’s construction — thermal signatures of a crew that stopped answering decades ago.',
+            text: hullLoss ? playerHullEchoReadout(hullLoss)
+              : 'A knot of dense tissue replays the site’s construction — thermal signatures of a crew that stopped answering decades ago.',
           });
         }
         if (mix.includes('mirror_membrane') && !rec.beats.membrane) {
@@ -1378,10 +1554,13 @@ export function tickAlienEcology(world, dt) {
         const lure = ae.heatDerivative;
         if (lureClose && lure && lure.lure && lure.edge !== true && lure.shown !== true) {
           lure.edge = true;
-          lure.shown = true;
-          if (world.bus && world.bus.emit) {
-            world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: LURE_SHOWN });
-          }
+          lure.trialStarted = true;
+          // Deploy the fitted derivative through the same stimulus owner as a thrown
+          // beacon. The notebook waits for an actual moving predator below.
+          handleAlienEcologyEvent(world, 'alienEcology:lureDropped', {
+            x: siteGlobal.x + site.arrivalBands.close * 0.5, z: siteGlobal.z,
+            sectorId, burnS: LURE_BURN_S, trialSiteId: site.siteId,
+          });
         } else if (!lureClose && lure && lure.edge === true) {
           lure.edge = false;
         }
@@ -1616,9 +1795,6 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     && dist2(e.pos.x, e.pos.z, l.x, l.z) < Math.pow(alertR * 4, 2));
   if (lure && ((sens.heat || 0) >= 0.6 || species.heatHunter)) {
     eco.lureTarget = { x: lure.x, z: lure.z };
-    if (eco.driveState !== 'flee' && eco.driveState !== 'feed' && eco.driveState !== 'captured') {
-      setDrive(eco, 'investigate');
-    }
   } else {
     eco.lureTarget = null;
   }
@@ -1665,6 +1841,13 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   });
   if (approach) setDrive(eco, approach);
   else if (eco.driveState === 'idle') setDrive(eco, species.drives.idle);
+
+  // Resolve the decoy after ordinary proximity so that it cannot be overwritten
+  // by the cold player's idle/shadow response. Panic, feeding and capture win.
+  if (eco.lureTarget && eco.driveState !== 'flee'
+      && eco.driveState !== 'feed' && eco.driveState !== 'captured') {
+    setDrive(eco, species.heatHunter ? 'charge' : 'investigate');
+  }
 
   if (species.heatHunter && playerD >= (Number(species.threatenR) || 0) && playerD < alertR) {
     const aeTrial = ensureAlienEcologyState(state);
@@ -1958,6 +2141,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     speed = species.speed * speedMult;
   }
 
+  if (site.siteId === HEAT_SITE_ID) speed *= wasteHeatMotionMult(rec.heatOnline, species.id);
   if (targetX == null) return;
   const desired = Math.atan2(targetZ - e.pos.z, targetX - e.pos.x);
   // Coherent fauna conform their heading toward the relay's broadcast direction.
@@ -1968,8 +2152,18 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   e.rot = angleLerp(e.rot, headingTarget, Math.min(1, species.turnRate * dt));
   const d = Math.sqrt(dist2(e.pos.x, e.pos.z, targetX, targetZ));
   const step = Math.min(d, speed * dt);
+  const trial = aeL.heatDerivative;
+  const trialD2 = lure?.trialSiteId === site.siteId && species.heatHunter && trial?.shown !== true
+    ? dist2(e.pos.x, e.pos.z, lure.x, lure.z) : 0;
   e.pos.x += Math.cos(e.rot) * step;
   e.pos.z += Math.sin(e.rot) * step;
+  if (step > 0 && lure?.trialSiteId === site.siteId && species.heatHunter
+      && eco.driveState === 'charge' && eco.lureTarget && trial && trial.shown !== true
+      && dist2(e.pos.x, e.pos.z, lure.x, lure.z) < trialD2
+      && playerD < site.arrivalBands.close + species.alertR) {
+    trial.shown = true;
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: LURE_SHOWN });
+  }
 }
 
 function clampStim(v, d) {
@@ -2100,8 +2294,12 @@ export function deserializeAlienEcologyState(state, data) {
     ae.heatTrial = noteHeatTrial(data.heatTrial, null);
   }
   const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
-  if (heatDerivative) ae.heatDerivative = heatDerivative;
-  else delete ae.heatDerivative;
+  if (heatDerivative) {
+    // Burning stimuli are transient. Continue restarts an interrupted field trial
+    // in place, while a freshly fabricated lure still asks for leave-and-return.
+    if (heatDerivative.trialStarted && !heatDerivative.shown) heatDerivative.edge = false;
+    ae.heatDerivative = heatDerivative;
+  } else delete ae.heatDerivative;
   const surveyCopy = copySurveySale(data && data.surveyCopy);
   if (surveyCopy) ae.surveyCopy = surveyCopy;
   else delete ae.surveyCopy;

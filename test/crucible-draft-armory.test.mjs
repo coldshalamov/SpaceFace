@@ -24,6 +24,7 @@ function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')] } = 
   globalThis.document = doc;
   const root = doc._make('div');
   const emitted = [];
+  const listeners = new Map();
   const owner = {
     currentOffers: () => offers,
     currentWave: () => 3,
@@ -34,7 +35,19 @@ function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')] } = 
   const ctx = {
     state: { run: { phase: 'draft', ruleset, credits }, player: { ownedShips: [] } },
     registry: { get: (name) => (name === 'survivalDraft' ? owner : null) },
-    bus: { emit: (name, payload) => emitted.push([name, payload]), on() { return () => {}; }, off() {} },
+    screenManager: { top: () => 'crucibleDraft' },
+    bus: {
+      emit(name, payload) {
+        emitted.push([name, payload]);
+        for (const fn of listeners.get(name) || []) fn(payload);
+      },
+      on(name, fn) {
+        if (!listeners.has(name)) listeners.set(name, new Set());
+        listeners.get(name).add(fn);
+        return () => listeners.get(name).delete(fn);
+      },
+      off() {},
+    },
   };
   const screen = Object.create(crucibleDraftScreen);
   screen.mount(root, ctx);
@@ -102,6 +115,36 @@ test('nothing affordable: the first Escape launches at once, exactly as before',
     assert.equal(m.focused(), 0, 'no detour through the warning');
     assert.doesNotMatch(m.screen._note.textContent, /afford/);
   } finally { m.restore(); }
+});
+
+test('pad cancel uses the Escape guard and only the visible armory answers', () => {
+  const m = mountShop();
+  try {
+    m.screen.onShow();
+    const focusedBefore = m.focused();
+    m.ctx.bus.emit('ui:cancel', {});
+    assert.equal(m.picks().length, 0, 'first B warns without launching');
+    assert.equal(m.focused(), focusedBefore + 1);
+    assert.equal(m.screen._note.textContent, launchGuardLine(1));
+    m.ctx.bus.emit('ui:cancel', {});
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]], 'second B launches once');
+    m.ctx.screenManager.top = () => 'crucibleRefit';
+    m.ctx.bus.emit('ui:cancel', {});
+    assert.equal(m.screen._launchWarned, false, 'a covering screen owns its cancel');
+    m.screen.onHide();
+    m.ctx.screenManager.top = () => 'crucibleDraft';
+    m.ctx.bus.emit('ui:cancel', {});
+    assert.equal(m.screen._launchWarned, false, 'hidden armory unsubscribes');
+  } finally { m.screen.dispose(); m.restore(); }
+});
+
+test('pad cancel with no affordable card launches immediately', () => {
+  const m = mountShop({ credits: 0, offers: [offer('a', { available: false })] });
+  try {
+    m.screen.onShow();
+    m.ctx.bus.emit('ui:cancel', {});
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]]);
+  } finally { m.screen.dispose(); m.restore(); }
 });
 
 test('an empty shelf launches at once too', () => {

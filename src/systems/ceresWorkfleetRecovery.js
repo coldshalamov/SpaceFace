@@ -151,7 +151,18 @@ export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false
   // query-only conservative support, not a replacement physical collider.
   const frame=at(b.breaker),c=Math.cos(frame.rot),s=Math.sin(frame.rot),local=p=>({x:(p.x-frame.x)*c+(p.z-frame.z)*s,z:-(p.x-frame.x)*s+(p.z-frame.z)*c});
   const a=local(b.cutterHead.pos),z=local(headTarget),r=C.assets.cutterHead.radius;
-  const minX=Math.min(a.x,z.x)-r,maxX=Math.max(a.x,z.x)+r,minZ=Math.min(a.z,z.z)-r,maxZ=Math.max(a.z,z.z)+r;
+  // A radius box invents contact with the plate at the cut mouth. Enclose the
+  // actual compound outline at the midpoint yaw, plus every corner's maximum
+  // angular chord displacement, just as the rotating native sweeps below do.
+  const yaw=wrap(headTarget.rot-b.cutterHead.rot),pad=2*r*Math.sin(Math.abs(yaw)/4);
+  const middle={x:0,z:0,rot:b.cutterHead.rot-frame.rot+yaw/2};
+  let loX=Infinity,hiX=-Infinity,loZ=Infinity,hiZ=-Infinity;
+  for(const box of C.assets.cutterHead.boxes)for(const x of [-1,1])for(const z of [-1,1]){
+   const p=point(middle,{x:box.center.x+x*box.size.x/2,z:box.center.z+z*box.size.z/2});
+   loX=Math.min(loX,p.x);hiX=Math.max(hiX,p.x);loZ=Math.min(loZ,p.z);hiZ=Math.max(hiZ,p.z);
+  }
+  const minX=Math.min(a.x,z.x)+loX-pad,maxX=Math.max(a.x,z.x)+hiX+pad,
+   minZ=Math.min(a.z,z.z)+loZ-pad,maxZ=Math.max(a.z,z.z)+hiZ+pad;
   parts=[...parts.filter(p=>!p.head),{box:{id:'actual-head-route',center:{x:(minX+maxX)/2,z:(minZ+maxZ)/2},size:{x:maxX-minX,z:maxZ-minZ}},local:{x:0,z:0,rot:0}}];
  }
  if(!native||!finite(from)||!finite(to)||!insideWork(from,parts)||!insideWork(to,parts))return {ok:false,reason:'work-envelope'};

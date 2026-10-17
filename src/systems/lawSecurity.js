@@ -291,6 +291,7 @@ export const lawSecurity = {
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
       this._lastCustomsSubmitTick = -1;
+      this._customsWaivedPatrols.clear();
       this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
@@ -324,7 +325,11 @@ export const lawSecurity = {
     this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
     this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
     this._scanDumpWatch = null;
-    this._onScannedByPatrol = (payload) => this._openScanDumpWatch(payload);
+    this._customsWaivedPatrols = new Map();
+    this._onScannedByPatrol = (payload) => {
+      this._rememberCustomsPass(payload);
+      this._openScanDumpWatch(payload);
+    };
     this._onScanDumpJettison = (payload) => this._noteScanDumpJettison(payload);
     this._onScanDumpResolved = (payload) => this._observeScanDumpResolution(payload);
     this._lastCustomsSubmitTick = -1;
@@ -368,6 +373,7 @@ export const lawSecurity = {
   },
 
   newGame() {
+    this._customsWaivedPatrols.clear();
     this._releaseAllJobResponses('new_game');
     if (this.state) this.state.lawSecurity = freshState();
     if (this._warrantWaves) this._warrantWaves.deserialize(null);
@@ -422,6 +428,9 @@ export const lawSecurity = {
     if (own.fineSettled && Object.keys(own.fineSettled).length > 0) {
       out.fineSettled = cloneLawPlain(own.fineSettled) || {};
     }
+    if (own.customsTrust && Object.keys(own.customsTrust).length > 0) {
+      out.customsTrust = cloneLawPlain(own.customsTrust);
+    }
     if (own.fineOffer && own.fineOffer.status && own.fineOffer.status !== 'paid') {
       out.fineOffer = cloneLawPlain(own.fineOffer);
     }
@@ -460,6 +469,9 @@ export const lawSecurity = {
     else delete own.composed;
     if (src.fineSettled != null) own.fineSettled = normalizeFineSettled(src.fineSettled);
     else delete own.fineSettled;
+    if (src.customsTrust != null) own.customsTrust = normalizeCustomsTrust(src.customsTrust);
+    else delete own.customsTrust;
+    this._customsWaivedPatrols.clear();
     if (src.fineOffer && typeof src.fineOffer === 'object' && !Array.isArray(src.fineOffer)) {
       own.fineOffer = cloneLawPlain(src.fineOffer);
     } else {
@@ -530,6 +542,7 @@ export const lawSecurity = {
     if (!normalized.valid) return;
     const patrol = selectHeliosInspectionPatrol(state, player, settledPatrolIds(normalized.ledger));
     if (!patrol) return;
+    if (this._waiveCustomsScan({ stationId: LAWFUL_INSPECTION_STATION_ID, patrolId: patrol.id })) return;
 
     const ledger = normalized.ledger || ensureLawfulInspectionLedger(state);
     if (!ledger) return;
@@ -2261,6 +2274,11 @@ export const lawSecurity = {
       return existing;
     }
 
+    if (kind === 'payload_theft' && offenderStableId === 'player'
+      && this.registry?.get('custodyConsequences')?.authorizesRecovery(payloadStableId)) {
+      return this._denyIncidentReport('recovery_authorized', { reportId, kind, causalTick });
+    }
+
     // Jurisdiction: the live authority owner decides, from the incident position.
     // Ceres/Ambush theft sits outside the station protection ring; reuse the same
     // ceresDistressJurisdiction helper npc_piracy already uses for pirate→loaded hauler.
@@ -2555,8 +2573,18 @@ export const lawSecurity = {
       // Stamping it 'unwitnessed' would print a lie on the footprint.
       const evidenceClass = eyes ? 'direct' : 'unwitnessed';
       const witnessed = evidenceClass === 'direct';
+      // Only a live, named hull the pirate was actually targeting can be called saved.
+      const pirate = isPirateLike(victim);
+      const targetId = victim?.data?.combat?.targetId ?? victim?.data?.ai?.activity?.targetId;
+      const saved = outcome === 'lawful' && witnessed && pirate ? entityById(state, targetId) : null;
+      const savedName = saved && incidentVictimLabel(state, saved);
+      const savedHull = saved && saved.alive !== false && saved.type === 'ship'
+        && saved.id !== state.playerId && savedName
+        && !isHostileToPlayer(saved, player && player.team, state)
+        ? { entityId: saved.id, stableId: victimStableIdOf(saved, {}), name: savedName } : null;
       this._emit('law:killedAdjudicated', {
         outcome,
+        ...(savedHull ? { savedHull, pirate: true, sectorId: currentSectorId(state) } : {}),
         victimEntityId: payload.id,
         victimStableId,
         victimClass: payload.victimClass || null,
@@ -2620,7 +2648,10 @@ export const lawSecurity = {
         pos: { x: pos.x, z: pos.z },
         causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
         reportId: victimStableId != null ? cleanLawId(`kill:${victimStableId}`) : null,
-        ...(pendingPerson && pendingCr > 0 ? { forPerson: pendingPerson, restitutionCr: pendingCr } : {}),
+        ...(pendingPerson && pendingCr > 0 ? {
+          forPerson: pendingPerson, restitutionCr: pendingCr,
+          recovery: restitutionRecovery(victim, state),
+        } : {}),
       });
       this._lawResponse('kill_unwitnessed', {
         outcome: 'no_charge',
@@ -3122,6 +3153,39 @@ export const lawSecurity = {
       stationId: (payload && payload.stationId) || null,
       text: 'Compliance recorded — the scan proceeds on your submission.',
     });
+  },
+
+  // LAW-12: remember an actual clean read, never just a submit click or a missed contraband roll.
+  _rememberCustomsPass(payload) {
+    if (!payload || payload.hasContraband !== false
+      || !SECTORS.some((sector) => sector.stations?.some((row) => row.id === payload.stationId))) return;
+    const illicit = this._economy()?.illicitCargo?.(this.state);
+    if (!Array.isArray(illicit) || illicit.length > 0) return;
+    if (this._waiveCustomsScan(payload)) return;
+    const own = ensureState(this.state);
+    const marks = own.customsTrust || (own.customsTrust = {});
+    const day = Math.max(0, this.state.days | 0);
+    marks[payload.stationId] = { day };
+    this._emit('customs:trustMarked', {
+      stationId: payload.stationId, stationName: stationDisplayName(payload.stationId), day,
+    });
+  },
+
+  _waiveCustomsScan(payload) {
+    const day = Math.max(0, this.state.days | 0);
+    const mark = this.state.lawSecurity?.customsTrust?.[payload.stationId];
+    if (!mark || mark.day !== day || payload.hasContraband === true) return false;
+    // The engine's complete illicit read includes the salvage bay. Trust never shields new cargo.
+    const illicit = this._economy()?.illicitCargo?.(this.state);
+    if (!Array.isArray(illicit) || illicit.length > 0) return false;
+    const key = `${payload.stationId}:${payload.patrolId ?? 'station'}`;
+    if (this._customsWaivedPatrols.get(key) !== day) {
+      this._customsWaivedPatrols.set(key, day);
+      this._emit('customs:scanWaived', {
+        stationId: payload.stationId, stationName: stationDisplayName(payload.stationId), day,
+      });
+    }
+    return true;
   },
 
   // LAW-10 — a mid-scan dump downgrades the finding to suspicion. The engine owns the
@@ -4796,7 +4860,10 @@ export const lawSecurity = {
     const forPerson = restitutionPerson(entity && entity.data);
     const amountCr = pricedCargoCr(entity && entity.data);
     if (!forPerson || !(amountCr > 0) || !causeId) return null;
-    return this.noteComposedObligation({ kind: 'restitution', causeId, forPerson, amountCr });
+    return this.noteComposedObligation({
+      kind: 'restitution', causeId, forPerson, amountCr,
+      recovery: restitutionRecovery(entity, this.state),
+    });
   },
 
   _noteStoredRestitution(pending, causeId) {
@@ -4808,6 +4875,7 @@ export const lawSecurity = {
       causeId,
       forPerson: forPerson.length > 80 ? forPerson.slice(0, 80) : forPerson,
       amountCr,
+      recovery: pending.recovery,
     });
   },
 
@@ -4839,6 +4907,8 @@ export const lawSecurity = {
       remainingCr: amount,
       status: 'open',
       advertisePay: true,
+      ...(kind === 'restitution' && request.recovery
+        ? { recovery: normalizeRestitutionRecovery(request.recovery) } : {}),
     };
     own.composed[key] = row;
     const obligation = publicObligation(row);
@@ -4883,6 +4953,7 @@ export const lawSecurity = {
       row.remainingCr = 0;
       row.status = 'paid';
       row.advertisePay = false;
+      this._stampTollSettlement(row);
     } else {
       row.status = 'open';
       row.advertisePay = true;
@@ -4899,9 +4970,34 @@ export const lawSecurity = {
     row.remainingCr = 0;
     row.status = 'paid';
     row.advertisePay = false;
+    this._stampTollSettlement(row);
     const obligation = publicObligation(row);
     this._emit('law:obligationPaid', obligation);
     return obligation;
+  },
+
+  _stampTollSettlement(row) {
+    if (row.kind !== 'toll' || Number.isFinite(row.settledAt)) return;
+    row.settledAt = inspectionNow(this.state);
+    row.settledTick = this.state.tick | 0;
+  },
+
+  // Goods are credited by the bill's writer, at the same prices that opened the bill.
+  // A mission delivery is consumed once; a partial return never pardons another cause.
+  creditRestitutionDelivery({ causeId, commodityId, qty, deliveryId } = {}) {
+    const row = this.state?.lawSecurity?.composed?.[`restitution:${causeId}`];
+    const recovery = row && row.recovery;
+    const line = recovery?.lines.find((entry) => entry.commodityId === commodityId);
+    if (!line || row.status === 'paid' || !deliveryId || recovery.deliveries.includes(deliveryId)) return 0;
+    const units = Math.min(Math.max(0, Math.floor(Number(qty) || 0)), line.qty - line.returnedQty);
+    if (!(units > 0)) return 0;
+    recovery.deliveries.push(deliveryId);
+    line.returnedQty += units;
+    const applied = Math.min(row.remainingCr, pricedLineCr(commodityId, units));
+    row.remainingCr -= applied;
+    if (row.remainingCr === 0) { row.status = 'paid'; row.advertisePay = false; }
+    this._emit('law:obligationPaid', publicObligation(row));
+    return applied;
   },
 
   composedDisposition() {
@@ -5367,6 +5463,37 @@ function restitutionPerson(data) {
   const name = String(raw).trim();
   if (!name) return '';
   return name.length > 80 ? name.slice(0, 80) : name;
+}
+
+function restitutionRecovery(entity, state) {
+  const data = entity?.data || {};
+  const lines = data.commodityId
+    ? [{ commodityId: data.commodityId, qty: data.amount ?? data.qty }]
+    : data.cargoManifest?.lines || Object.entries(data.cargo || {}).map(([commodityId, qty]) => ({ commodityId, qty }));
+  return normalizeRestitutionRecovery({
+    lines, sectorId: state.world?.currentSectorId, pos: entity?.pos,
+    manifestId: data.cargoManifest?.manifestId || data.freightCargo?.manifestId || null,
+  });
+}
+
+function normalizeRestitutionRecovery(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const lines = [];
+  for (const item of Array.isArray(raw.lines) ? raw.lines : []) {
+    const commodityId = item?.commodityId || item?.id;
+    const qty = Math.floor(Number(item?.amount ?? item?.qty));
+    if (!(pricedLineCr(commodityId, qty) > 0)) continue;
+    const prior = lines.find((entry) => entry.commodityId === commodityId);
+    const returnedQty = Math.max(0, Math.min(qty, Math.floor(Number(item.returnedQty) || 0)));
+    if (prior) { prior.qty += qty; prior.returnedQty += returnedQty; }
+    else lines.push({ commodityId, qty, returnedQty });
+  }
+  return lines.length ? {
+    lines, sectorId: raw.sectorId || null,
+    pos: { x: Number(raw.pos?.x) || 0, z: Number(raw.pos?.z) || 0 },
+    manifestId: raw.manifestId || null,
+    deliveries: Array.isArray(raw.deliveries) ? raw.deliveries.filter((id) => typeof id === 'string') : [],
+  } : null;
 }
 
 function pricedLineCr(id, qty) {
@@ -6773,6 +6900,7 @@ function normalizeUnreportedKillLedger(raw) {
     if (forPerson && restitutionCr > 0) {
       row.forPerson = forPerson;
       row.restitutionCr = restitutionCr;
+      if (e.recovery) row.recovery = normalizeRestitutionRecovery(e.recovery);
     }
     out[victimStableId] = row;
     if (Object.keys(out).length >= UNREPORTED_KILL_CAP) break;
@@ -6853,6 +6981,9 @@ function publicObligation(row) {
     remainingCr: row.remainingCr,
     status: row.status,
     advertisePay: open,
+    ...(row.kind === 'toll' && Number.isFinite(row.settledAt)
+      ? { settledAt: row.settledAt, settledTick: row.settledTick } : {}),
+    ...(row.recovery ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
     whatFor: row.forPerson
       ? `${row.kind} for ${row.forPerson}`
       : `${row.label || row.kind} (${row.causeId})`,
@@ -7032,6 +7163,10 @@ function normalizeComposedObligations(raw) {
       remainingCr: paid ? 0 : remainingCr,
       status: paid ? 'paid' : 'open',
       advertisePay: !paid && remainingCr > 0,
+      ...(kind === 'toll' && paid && Number.isFinite(row.settledAt)
+        ? { settledAt: Math.max(0, row.settledAt), settledTick: Math.max(0, row.settledTick | 0) } : {}),
+      ...(kind === 'restitution' && row.recovery
+        ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
     };
   }
   return out;
@@ -7043,6 +7178,16 @@ function normalizeFineSettled(raw) {
   for (const key of Object.keys(raw)) {
     const choice = raw[key];
     if (choice === 'pay' || choice === 'work') out[key] = choice;
+  }
+  return out;
+}
+
+function normalizeCustomsTrust(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const sector of SECTORS) for (const station of (sector.stations || [])) {
+    const day = raw[station.id]?.day;
+    if (Number.isInteger(day) && day >= 0) out[station.id] = { day };
   }
   return out;
 }

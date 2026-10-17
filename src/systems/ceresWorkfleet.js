@@ -847,21 +847,25 @@ export function stepCeresWorkfleet(owner,dt) {
       z:-(head.pos.x-breaker.pos.x)*Math.sin(breaker.rot)+(head.pos.z-breaker.pos.z)*Math.cos(breaker.rot)};
     const inRig=job.index>0||headInFrame.x<=C.assets.breaker.bounds.max.x&&headInFrame.x>=C.assets.breaker.bounds.min.x&&Math.abs(headInFrame.z)<=C.assets.breaker.bounds.max.z;
     const carrierReturning=job.phase==='head_retract'&&!ceresWorkfleetAtPose(breaker,work);
-    // The cut pose is outside the bow and belongs to the stationary source. Do not
-    // drag the detached head across the released plate while its carrier recovers
-    // from an external impact. Existing thrusters return the carrier physically.
+    const returnTarget=job.phase==='head_retract'?ceresWorkfleetHeadReturnTarget(breaker,head,job.index):null;
+    const native=job.phase==='head_retract'?registryOf(owner)?.get('physics')?._sg02:null;
+    // An aligned exterior head can enter the live well while the carrier returns.
+    // Require the complete native corridor before admitting it to the same guarded
+    // relative-frame return as an interior head; off-axis heads still wait outside.
+    const enteringRig=carrierReturning&&!inRig&&returnTarget?.advance===true
+      &&ceresWorkfleetRecoveryClear(native,state,b,{...head.pos,rot:head.rot},returnTarget.pose,{headOnly:true}).ok;
     // The hold point sits eighty world units abeam of the approach lane: the bow
     // waypoint lies inside the returning carrier's swept collision envelope and
     // inside the plate's lane, so parking there feeds the head a solver impulse.
-    const returning=job.phase==='head_retract'?(carrierReturning&&!inRig
+    const returning=job.phase==='head_retract'?(carrierReturning&&!inRig&&!enteringRig
       ?{pose:ceresWorkfleetPose(work,{x:C.route.headPosesInBreaker.at(-1).x,z:-80,rot:0}),advance:false}
-      :ceresWorkfleetHeadReturnTarget(breaker,head,job.index)):null;
+      :returnTarget):null;
     let point=returning?.pose||ceresWorkfleetPose(work,C.route.headPosesInBreaker[index]);
     const waypoint={...point};let headBlocked=false,headDriveOptions=headOptions;
     if(carrierReturning)job.blockedReason='head-return-carrier-realigning';
     else if(job.blockedReason==='head-return-carrier-realigning')job.blockedReason=null;
-    if(job.phase==='head_retract'&&inRig){
-      const native=registryOf(owner)?.get('physics')?._sg02;RECOVERY_NATIVE.set(job,native);
+    if(job.phase==='head_retract'&&(inRig||enteringRig)){
+      RECOVERY_NATIVE.set(job,native);
       const route=ceresWorkfleetHeadClearPrefix(native,state,b,{...head.pos,rot:head.rot},point);
       if(route.ok)point=route.pose;
       if(!route.ok){headBlocked=true;point={...head.pos,rot:head.rot};job.blockedReason=`head-return-${route.reason}`;}
@@ -880,7 +884,10 @@ export function stepCeresWorkfleet(owner,dt) {
     if(!carrierReturning&&state.tick-progress.tick>1200)job.blockedReason='head-approach-obstructed';
     const safeInterior=inRig&&!headBlocked&&headInsideCarrierBounds(breaker,head);
     const reached=returning&&safeInterior?ceresWorkfleetHeadReturnReady(breaker,head,waypoint,true):!carrierReturning&&ceresWorkfleetAtPose(head,waypoint);
-    if(!headBlocked&&returning?.advance!==false&&reached) {
+    // Stage inside the well during return; approach the flush dock only once the
+    // carrier settles, so its hull cannot press the detached head into the seat.
+    const readyToAdvance=job.phase!=='head_retract'||job.index<1||!carrierReturning;
+    if(!headBlocked&&returning?.advance!==false&&reached&&readyToAdvance) {
       job.index++;
       if(job.phase==='head_out'&&job.index>=C.route.headPosesInBreaker.length){job.index=0;change(job,'head_cut',state);}
       else if(job.phase==='head_retract'&&job.index>=3){change(job,'tow_attach',state);}
