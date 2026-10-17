@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-16",
+  "updated": "2026-10-17",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,48 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "NXI-192",
-      "date": "2026-10-01",
-      "wf": "WF-05",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "carried knowledge ids are authored/semantic strings only; no entity handle exists in the record schema",
-      "fingerprint": "verb=carry,subject=discovery-knowledge,domain=nxi,layer=identity",
-      "references": [],
-      "integration": "live",
-      "commit": "c6bd43336",
-      "verification": "route_accepted",
-      "evidence": "test/new-game-plus.test.mjs"
-    },
-    {
-      "id": "NXI-069",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "resolvePick always reaches run:draftResolved; declined offerId null skips once",
-      "fingerprint": "verb=offer,subject=draft,domain=econ,layer=honesty",
-      "references": [],
-      "integration": "live",
-      "commit": "3e8f6f898",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-018-draft-offers.test.mjs"
-    },
-    {
-      "id": "NXI-070",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "offerDraft drops owned non-weapon dupes; fitted support module never resells; swarm gun battery is deliberate",
-      "fingerprint": "verb=offer,subject=draft,domain=econ,layer=honesty",
-      "references": [],
-      "integration": "live",
-      "commit": "3e8f6f898",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-018-draft-offers.test.mjs"
-    },
     {
       "id": "NXI-071",
       "date": "2026-10-01",
@@ -1689,6 +1647,45 @@
       "references": [],
       "integration": "live",
       "commit": "3beb61352b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "set-piece-aftermath-all-eleven",
+      "date": "2026-10-16",
+      "wf": "WF-08",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "all eleven authored set pieces now end in a distinct follow-on contract with a board line, body and news line (was 3 of 11)",
+      "fingerprint": "verb=follow,subject=authored-set-piece-aftermath,sector=multi,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "d67c4cc10c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "standing-berth-cargo-loss-ear",
+      "date": "2026-10-16",
+      "wf": "WF-13",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "faction rank changes, finished berth services and four cargo-loss moments get an authored sound and caption instead of text only",
+      "fingerprint": "verb=hear,subject=standing-berth-cargo-loss,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "eb990124b7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "helios-claim-day-ambient-chain",
+      "date": "2026-10-17",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "the starter sector runs a staged claim-day afternoon (stake, customs pullover, argument, claim jump) with a news line, via a per-sector causal chain table instead of Ceres-only",
+      "fingerprint": "verb=witness,subject=ambient-causal-chain,sector=helios_prime,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "0f61a207aa3",
       "verification": "focused_green"
     }
   ],

@@ -272,6 +272,29 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-ops .sxb-launch-seat { order:3; margin:0 0 0 auto !important; }
   ${B} .sxb-launch { gap:8px !important; padding:4px 2px 4px !important; min-height:44px !important; }
   ${B} .sxb-launch__label { font-size:15px !important; letter-spacing:.08em !important; }
+  /* A phone held upright: the crown shares its width by what each column holds, so MUNITIONS stays one word
+     and CREDIT LINE OPEN takes two lines, not three; the next step's hint drops under its title at full width
+     instead of an ellipsis; the tab words close up so SHIPWORKS and INDUSTRY keep a gap and the MISSIONS badge stays on glass. */
+  @media (min-height:561px) {
+    ${B} .sxb-vitals { display:flex !important; justify-content:space-between !important; gap:0 6px !important; }
+    ${B} .sxb-vital { flex:1 1 0 !important; }
+    ${B} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) { flex-grow:1.5 !important; }
+    ${B} .sxb-vital__value .orr-vnum.is-word { max-width:none !important; overflow-wrap:normal !important; }
+    ${B} .sxb-vital__label { max-width:none !important; white-space:nowrap !important; overflow-wrap:normal !important; letter-spacing:.04em !important; }
+    ${B} .sxb-next { flex-wrap:wrap !important; row-gap:2px !important; }
+    ${B} .sxb-next__w { flex:1 1 100% !important; padding-left:14px !important; white-space:normal !important;
+      display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; text-overflow:clip !important; }
+    ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 12px !important; }
+    ${B} .sxb-ops .sx-tile__label { letter-spacing:.05em !important; }
+  }
+  /* …and a phone under 390 wide (360–389: 360, 375, 384 Android) closes the tab words and the crown labels once
+     more for the same four columns; at 376–389 the wider spacing left SHIPWORKS and INDUSTRY ~3px apart and the
+     MISSIONS badge cut by the foot's edge. */
+  @media (min-height:561px) and (max-width:389px) {
+    ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 6px !important; }
+    ${B} .sxb-ops .sx-tile__label { letter-spacing:.02em !important; }
+    ${B} .sxb-vital__label { letter-spacing:.02em !important; }
+  }
   /* A phone on its side has ~390px: the berth scrolls as one page there, with the destination foot pinned. */
   @media (max-height:560px) {
     ${B} { overflow-x:hidden !important; overflow-y:auto !important; padding-bottom:0 !important; scroll-padding-bottom:0 !important; }

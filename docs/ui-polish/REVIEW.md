@@ -1612,6 +1612,19 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** Market register rows: the long commodity name prints over its price at 960×540 and 1024×768 ("Refined Metals"/100, "Machine Control Unit"/176). Ledger 390×844 title under COMMS. Tech-tree star hit boxes @844×390.
 
+## Station berth on an upright phone — crown, next step, tab foot (ui-polish-72)
+
+**Before (master f079f9e12c):** on a phone held upright (bench `--phone`, 390×844) the berth crown split its width evenly, so MUNITIONS broke as "MUNITION / S" and CREDIT LINE OPEN took three lines. The next step's hint was cut to "Hold is empty. Chec…" beside DISMISS (bench 4 ON TOP OF on every station tab). In the tab foot SHIPWORKS ran into INDUSTRY with no gap and the MISSIONS badge hung off the right edge; at 360×780 it was worse.
+
+**After (`mobileScreenLayouts.js`, phones only, ≥561 tall):**
+- The crown shares its width by what each column holds (the word reading gets 1.5 shares). Labels stay on one line, so MUNITIONS is one word and CREDIT LINE OPEN is two lines.
+- The next step's hint drops under its title at full width (two lines at most), so the whole sentence reads and DISMISS keeps its own column.
+- The tab words close up (.05em, 12px gaps; .02em and 6px gaps at ≤375 wide), so every tab has a gap and the badge stays on glass.
+
+**Checked:** bench `--phone` station-ledger 4 → 0 at 390×844; station-ledger, station-market and station-contracts 0 at 390×844 and 360×780. Landscape phones (≤560 tall) and every desktop size are outside these rules (`data-sf-mobile` plus `min-height:561px`), so 960×540 / 1280×720 / 1920×1080 are untouched. Shots in `ui-shots/polish72/`.
+
+**Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) gives the berth head ~700px, so the tab body starts under COMMS (bench 4, same on master). The ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Tech-tree star hit boxes @844×390.
+
 ## TRADE CLEARED receipt on the other station tabs, and the destination words at 801–999 (2026-10-17, ui-polish-73)
 
 **Before (master f079f9e12c):** after a trade the receipt (~480px, one line) stood over the comms words, ~340px from the right edge, so on every tab it ran off the right edge (844×390 by 241px, 960×540 and 1024×768 by 149px, 1280×720 by 37px). At 700–900 wide it was worse: the overflow scrolled the whole berth sideways, so "HELIOS STATION", the Hull dial and the tab list lost their left edge (900×600 Missions, 700×600 Missions/Factions/Bar/Ledger). The destination words were also cut: at 801–900 × 461–800 the rail is capped, so MISSIONS … LEDGER fell out of the dock, and at 960×540 LEDGER was clipped.

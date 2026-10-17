@@ -4,10 +4,30 @@
 Additive design data for the low-interference world-depth brief: **58 ambient events**
 (10 s – 2 min) that make the existing role/job/world systems produce visible situations.
 
-The catalog is still data-only (no runtime module imports this tree), but **nine catalog ids are
-already registered in `traffic.CERES_CAUSAL_CHAIN`** and run as one Ceres-local causal story. That
-is runtime wiring, not ordinary-route acceptance. The other 49 catalog entries remain unwired and
+The catalog is still data-only (no runtime module imports this tree), but **fifteen catalog ids are
+wired** into live causal stories, each a choreography timer bound to a cast that already flies. That
+is runtime wiring, not ordinary-route acceptance. The other 43 catalog entries remain unwired and
 need a named live owner plus route proof before they leave integration debt.
+
+The causal-chain timer is a per-sector table (`traffic.SECTOR_CAUSAL_CHAINS`): every sector row runs
+on the same cap (two live links at once) and the same cycle gap (45 s), and a row declares its own
+links. The wired list:
+
+- **Ceres reference sector** (`traffic.CERES_CAUSAL_CHAIN`, ten catalog ids plus the authored
+  `ev_patrol_escorts_hauler`): `ev_surveyor_probe_line`, `ev_rich_seam_strike`,
+  `ev_miner_calls_hauler`, `ev_patrol_scans_suspect`, `ev_cargo_capsule_launch`,
+  `ev_pod_breaks_clamp`, `ev_disabled_hauler_recovery`, `ev_tender_services_miner`,
+  `ev_cutter_strips_wreck`, `ev_rock_calving`.
+- **Helios Prime, "claim day"** (`src/data/sectorCausalChains.js`, four catalog ids across the four
+  authored hulls, none shared with Ceres): `ev_prospector_stakes_claim` (work),
+  `ev_customs_pullover` (law), `ev_prospectors_posture` (civilian), `ev_claim_jump` (crime). The
+  cycle closes with one `news:publish` line (`helios_claim_story`). Proof:
+  `test/traffic-sector-causal-chain.test.mjs`.
+- **Standalone**: `ev_meteor_passage` (`traffic._stepPocketMeteorPass`).
+
+To give another sector a story, add a row to `SECTOR_CAUSAL_CHAIN_DEFS` with links whose
+`actorSlots` are that sector's authored activity-pocket slots; pick catalog ids no other sector
+already runs, so an id never means two stories.
 
 ## The tree
 
