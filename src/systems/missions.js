@@ -3248,9 +3248,23 @@ export const missions = {
     const cfg = this.state.missions.config || MISSION_TUNING;
 
     // Destination: pick a reachable station (or self for mining/recon-at-home).
-    const dest = this._pickDestination(typeId, info, rng);
-    const destStationId = dest ? dest.id : info.id;
-    const destSectorId = dest ? dest.sectorId : info.sectorId;
+    let dest = this._pickDestination(typeId, info, rng);
+    let destStationId = dest ? dest.id : info.id;
+    let destSectorId = dest ? dest.sectorId : info.sectorId;
+    // Same-sector chain (D-hunter): a chained bounty may be locked to the sector the finished
+    // mark lived in, so a hunter already working a field draws the next writ for the same
+    // field instead of a fresh roll across the map. The lock re-points the destination only
+    // when a berth-admitting station exists there; the rng draw count is unchanged either way.
+    if (options.sectorLockSectorId && destSectorId !== options.sectorLockSectorId) {
+      const locked = ALL_STATIONS.find((s) => s.sectorId === options.sectorLockSectorId
+        && s.id !== info.id
+        && stationBerthAdmits(s.record || s, this._repOf(s.factionId), this.state));
+      if (locked) {
+        dest = locked;
+        destStationId = locked.id;
+        destSectorId = locked.sectorId;
+      }
+    }
     const distance = sectorDistanceWu(info.sectorId, destSectorId);
 
     // Risk tier from the destination sector's danger, clamped to the type's allowed band.
@@ -3274,6 +3288,11 @@ export const missions = {
     // Non-anchored slots always keep scaling with destination danger.
     if (options.anchor === true && this._repOf(info.factionId) < 30) {
       riskTier = Math.min(riskTier, missionStandingGateForMinRep(0).maxRisk);
+    }
+    // A chain is the same client asking for the next mark: it may not demand more standing
+    // than the job just completed (the parent was accepted, so its tier is within reach).
+    if (options.maxRiskTier != null) {
+      riskTier = Math.min(riskTier, options.maxRiskTier);
     }
     // D59: a bounty pays the boarding board's local rate — the board sector's own tier and danger —
     // while standing and the destination's danger escalate the MARK (riskTier above: harder, longer
@@ -12213,7 +12232,17 @@ export const missions = {
     const board = this.ensureBoard(originInfo.id);
     if (!board) return;
     const rng = this.helpers.mulberry32 ? this.helpers.mulberry32(m.chainNextSeed >>> 0) : mulberryLocal(m.chainNextSeed >>> 0);
-    const next = this._rollOffer(m.type, originInfo, rng, board.refreshEpoch, board.slots.length);
+    // Bounty chains lock to the finished mark's sector and ask at most its risk: the follow-up
+    // targets the same field the hunter is already working, at a standing reach the parent's
+    // acceptance already proved (the other chainable types keep their free re-roll — freight
+    // and mining chains are not sector-bound work).
+    const next = this._rollOffer(m.type, originInfo, rng, board.refreshEpoch, board.slots.length,
+      m.type === 'bounty_hunt'
+        ? {
+          ...(m.destSectorId ? { sectorLockSectorId: m.destSectorId } : {}),
+          ...(Number.isFinite(m.riskTier) ? { maxRiskTier: m.riskTier } : {}),
+        }
+        : undefined);
     if (next) {
       next.id = `${next.id}_chain`;
       board.slots.push(next);

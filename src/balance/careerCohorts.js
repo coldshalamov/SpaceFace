@@ -1738,24 +1738,32 @@ function runHunter(horizonS, options = {}) {
     // Accept a live bounty_hunt from the production board (not MISSION_TUNING formula grant).
     // Prefer local boards and only select offers the wallet can reach (toll + collateral).
     const wallet = ctx.state.player.credits | 0;
-    let bountyHit = findBoardOffer(ctx, 'bounty_hunt', HUNTER_BOARD_STATIONS, {
+    // The Ceres hunter works one field and reads the board that pays for it first: writs for
+    // the hunt sector (the Ceres yard's own board and its chains post the richest marks) come
+    // before any home-board writ. Preference is scan ORDER, not a filter — a quiet hunt-sector
+    // board falls through to the home docks rather than idling the epoch away.
+    const inHuntSector = (o) => (o && o.destSectorId) === huntSectorId;
+    const homeBoards = HUNTER_BOARD_STATIONS.filter(
+      (id) => STATION_TO_SECTOR.get(id)?.id === currentSectorId);
+    const scan = (stationIds, huntOnly, credits) => findBoardOffer(ctx, 'bounty_hunt', stationIds, {
       preferSectorId: currentSectorId,
       fromSectorId: currentSectorId,
-      maxCredits: wallet,
+      maxCredits: credits,
       seed,
       excludeOfferIds: refusedOfferIds,
+      ...(huntOnly ? { accept: inHuntSector } : {}),
     });
+    let bountyHit = scan(HUNTER_BOARD_STATIONS, true, wallet);
+    if (!bountyHit) bountyHit = scan(homeBoards.length ? homeBoards : HUNTER_BOARD_STATIONS, false, wallet);
+    if (!bountyHit) bountyHit = scan(HUNTER_BOARD_STATIONS, false, wallet);
     if (!bountyHit) {
       // Advance board epoch via time so ensureBoard regenerates slots.
       advanceTime(ctx, (MISSION_TUNING.refreshSec || 600) + 1, budget, 'idleS');
       t = ctx.state.simTime;
-      bountyHit = findBoardOffer(ctx, 'bounty_hunt', HUNTER_BOARD_STATIONS, {
-        preferSectorId: currentSectorId,
-        fromSectorId: currentSectorId,
-        maxCredits: ctx.state.player.credits | 0,
-        seed,
-        excludeOfferIds: refusedOfferIds,
-      });
+      bountyHit = scan(HUNTER_BOARD_STATIONS, true, ctx.state.player.credits | 0);
+    }
+    if (!bountyHit) {
+      bountyHit = scan(HUNTER_BOARD_STATIONS, false, ctx.state.player.credits | 0);
     }
     if (!bountyHit) {
       markBottleneck(receipt, 'no_bounty_board', 'No affordable bounty_hunt offer on hunter boards');
@@ -1972,6 +1980,47 @@ function runHunter(horizonS, options = {}) {
       if (ctx.missions.abandonMission) ctx.missions.abandonMission(mission.id);
       failedMissions += 1;
       receipt.failedContracts += 1;
+    }
+
+    // Same-sector basing: with a follow-up writ already posted in the field the hunter works,
+    // the sensible pilot stays — dock and weld at the hunt sector's own yard and take the
+    // chain next loop. Home is for when the field is dry or the wallet needs it. The weld is
+    // the same live ui:service path the home dock serves (D69); no gate is crossed, so no toll.
+    if (currentSectorId === huntSectorId) {
+      const fieldBoards = HUNTER_BOARD_STATIONS.filter(
+        (id) => STATION_TO_SECTOR.get(id)?.id === huntSectorId);
+      const fieldNext = fieldBoards.length
+        ? findBoardOffer(ctx, 'bounty_hunt', fieldBoards, {
+          preferSectorId: currentSectorId,
+          fromSectorId: currentSectorId,
+          maxCredits: ctx.state.player.credits | 0,
+          seed,
+          excludeOfferIds: refusedOfferIds,
+          accept: inHuntSector,
+        })
+        : null;
+      if (fieldNext) {
+        ctx.bus.emit('dock:docked', { stationId: fieldNext.stationId });
+        applyCombatDamageAndRepair(ctx, 0, costs, budget, {
+          minCreditsAfter: 600,
+          readinessGate: 0.65,
+        });
+        ctx.bus.emit('dock:undocked', { stationId: fieldNext.stationId });
+        t = ctx.state.simTime;
+        loops += 1;
+        receipt.completedLoops = completedMissions;
+        receipt.loops.push({
+          loop: loops, t: round1(t),
+          outcome: success ? 'completed_field' : 'countered_field',
+          reward: success ? reward : 0,
+          fightS: round1(fightS), weaponId: weapon.id, enemyId: enemy.id,
+          readiness: repairInfo.readiness, remainingDamage: round1(repairInfo.remainingHp),
+          repairSpent: repairInfo.spent,
+          creditsAfter: ctx.state.player.credits | 0,
+          missionId: mission.id,
+        });
+        continue;
+      }
     }
 
     const legHome = travelTimeS(currentSectorId, homeSectorId) + DOCK_OVERHEAD_S;

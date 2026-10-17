@@ -31,7 +31,7 @@ import { quoteMissionEconomics, affordableContractQuantity, economicRiskTier } f
 import { COMMODITIES } from '../data/commodities.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { FACTION_META } from '../data/factions.js';
-import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
+import { MISSION_TYPES, MISSION_TUNING, withBountyHeadMoney } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
 import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
@@ -593,9 +593,15 @@ export const economyContracts = {
 
     // Canonical expected-net inversion. Sealed client cargo is not the player's principal.
     const preloadedCargo = typeId === 'cargo_delivery';
-    const economyTerms = quoteMissionEconomics({type:typeId,
+    const quotedTerms = quoteMissionEconomics({type:typeId,
       tier:Math.max(info.tier || 0,STATION_INFO.get(destStationId)?.tier || 0,riskTier),
       riskTier,distance,params,preloadedCargo,fieldPressure:Math.max(0,local.pricePressure || 0)});
+    // Head money on field-posted bounty writs: a reach_bounty poster and a board writ on the
+    // same dock are the same work and must read the same pay — the board roller already adds
+    // the hunter's overhead premium, so the field poster matches it (same tier index).
+    const economyTerms = typeId === 'bounty_hunt'
+      ? withBountyHeadMoney(quotedTerms, quotedTerms.tier)
+      : quotedTerms;
     const reward_cr = economyTerms.rewardCr;
     const time_limit_s = economyTerms.deadlineS;
     const collateral_cr = def.collateral ? economyTerms.collateralCr : 0;
