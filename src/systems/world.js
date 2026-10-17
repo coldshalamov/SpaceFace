@@ -5904,14 +5904,15 @@ export const world = {
               type: p.type,
             });
           }
-          // Never show a raw internal id ('poi_kettle_stern') — humanize the slug when the entity
-          // carries no authored name.
+          // Never show a raw internal id ('poi_kettle_stern') — name the landmark as rec.name
+          // records it (carrier name, then the projected chart name), and humanize the slug only
+          // when neither source names it.
           const fallbackName = String(p.poiId || '')
             .replace(/^poi_/, '')
             .replace(/_/g, ' ')
             .replace(/\b\w/g, (c) => c.toUpperCase())
             .trim();
-          this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
+          this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || p.name || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
         }
       }
     }
