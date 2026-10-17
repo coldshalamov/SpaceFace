@@ -69,6 +69,48 @@ export function circuitProgress(params, pos, gates, out = {}) {
   return out;
 }
 
+/** The active upcoming gate index in 0..gates.length-1, or null if course is not active / finished. */
+export function circuitUpcomingGate(params) {
+  if (!params || !Array.isArray(params.gates) || params.gates.length < 2) return null;
+  if (params.finished || params.phase === 'finished' || params.phase === 'handoff') return null;
+  const laps = circuitLaps(params);
+  const lap = Math.max(0, params.lap | 0);
+  if (lap >= laps) return null;
+  const next = Math.max(0, params.nextGate | 0);
+  if (next >= params.gates.length) return null;
+  return next;
+}
+
+/**
+ * Lit state for a gate aperture: 'cleared', 'upcoming', 'boost', or 'base'.
+ * Never returns 'upcoming' or 'boost' for a passed gate.
+ */
+export function circuitGateLitState(params, index) {
+  if (!params || !Array.isArray(params.gates) || !Number.isInteger(index) || index < 0 || index >= params.gates.length) return 'base';
+  const upcoming = circuitUpcomingGate(params);
+  const next = Math.max(0, params.nextGate | 0);
+  const laps = circuitLaps(params);
+  const lap = Math.max(0, params.lap | 0);
+  const finished = params.finished || params.phase === 'finished' || params.phase === 'handoff' || lap >= laps || upcoming === null;
+
+  if (finished) return 'cleared';
+  // A closed circuit's last gate repeats gate 0's position (the finish line), so both rings must
+  // light together or the cleared start ring hides the lit one.
+  if (params.closedCircuit && upcoming === params.gates.length - 1 && index === 0) {
+    return 'upcoming';
+  }
+  if (index === upcoming) {
+    return 'upcoming';
+  }
+  if (index < next) {
+    return 'cleared';
+  }
+  if (index === params.boostGateIndex) {
+    return 'boost';
+  }
+  return 'base';
+}
+
 /** Sample a looping pace marker, including the closing segment. Caller may reuse `out`. */
 export function circuitPacePoint(gates, distance, out = {}) {
   if (!Array.isArray(gates) || gates.length < 2 || !Number.isFinite(distance)) return null;

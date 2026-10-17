@@ -2,7 +2,7 @@
 // Presentation consumes the mission owner's truth; all course markers are non-colliding.
 import * as THREE from 'three';
 import { activeAuthoredRace, racingPaceSpeed } from '../systems/racingSteer.js';
-import { circuitPacePoint, gateApproach } from '../systems/racingGeometry.js';
+import { circuitGateLitState, circuitPacePoint, circuitUpcomingGate, gateApproach } from '../systems/racingGeometry.js';
 import { raceGateGlobals } from '../data/raceLevels.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { createRacingGhostView } from './racingGhostView.js';
@@ -26,10 +26,10 @@ export function createRacingCourseView(scene, state) {
   root.add(target, pace, markers);
   const dummy = new THREE.Object3D(), origin = {}, from = {}, pacePoint = {};
   const up = new THREE.Vector3(0,1,0), forward = new THREE.Vector3();
-  const base = new THREE.Color(0x90b2c8), cleared = new THREE.Color(0x3c515c), burn = new THREE.Color(0xffe956);
+  const base = new THREE.Color(0x90b2c8), cleared = new THREE.Color(0x3c515c), burn = new THREE.Color(0xffe956), litColor = new THREE.Color(0xffe4a8);
   const anchorColor=new THREE.Color(0x8adccf),refugeColor=new THREE.Color(0xffc577);
   const markerState=new Float64Array(8*4);markerState.fill(NaN);
-  let owner = null, rings = null, line = null, globals = null, sectorX = 0, sectorZ = 0, lastGate = -1, lastLap = -1, disposed=false;
+  let owner = null, rings = null, line = null, globals = null, sectorX = 0, sectorZ = 0, lastGate = -1, lastLap = -1, lastFinished = false, disposed=false;
   let markerCount=0,markersChanged=false;
   function putMarker(point,radius,anchor){
     const offset=markerCount*4,x=point.x-sectorX,z=point.z-sectorZ,y=anchor?4:-2;
@@ -61,14 +61,15 @@ export function createRacingCourseView(scene, state) {
       dummy.position.set(gates[i].x,0,gates[i].z);
       dummy.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
       dummy.scale.setScalar(radius);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);
-      rings.setColorAt(i,i===params.boostGateIndex?burn:base);
+      const lit=circuitGateLitState(params,i);
+      rings.setColorAt(i,lit==='upcoming'?litColor:lit==='boost'?burn:lit==='cleared'?cleared:base);
     }
     rings.instanceMatrix.needsUpdate=true;rings.computeBoundingSphere();root.add(rings);
     const vertices=new Float32Array(Math.min(128,gates.length)*3);
     for(let i=0;i<vertices.length/3;i++){vertices[i*3]=gates[i].x;vertices[i*3+1]=-3;vertices[i*3+2]=gates[i].z;}
     const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(vertices,3));
     line=new THREE.Line(geometry,lineMaterial);line.name='Circuit racing line';root.add(line);
-    lastGate=lastLap=-1;
+    lastGate=lastLap=-1;lastFinished=false;
   }
   return {
     root,
@@ -96,15 +97,24 @@ export function createRacingCourseView(scene, state) {
       }
       markers.count=markerCount;
       if(markersChanged){markers.instanceMatrix.needsUpdate=true;if(markers.instanceColor)markers.instanceColor.needsUpdate=true;}
-      const next=Math.max(0,Math.min(p.gates.length-1,p.nextGate|0));
-      if(next!==lastGate||(p.lap|0)!==lastLap){
-        lastGate=next;lastLap=p.lap|0;
-        for(let i=0;i<rings.count;i++)rings.setColorAt(i,i===p.boostGateIndex?burn:i<next?cleared:base);
+      const upcoming=circuitUpcomingGate(p);
+      const nextKey=upcoming!==null?upcoming:-1,isFinished=upcoming===null;
+      if(nextKey!==lastGate||(p.lap|0)!==lastLap||(isFinished&&!lastFinished)){
+        lastGate=nextKey;lastLap=p.lap|0;lastFinished=isFinished;
+        for(let i=0;i<rings.count;i++){
+          const lit=circuitGateLitState(p,i);
+          rings.setColorAt(i,lit==='upcoming'?litColor:lit==='boost'?burn:lit==='cleared'?cleared:base);
+        }
         rings.instanceColor.needsUpdate=true;
-        const approach=gateApproach(p.gates,next,from),g=p.gates[next];
-        target.position.set(g.x,0,g.z);
-        if(approach)target.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
-        target.scale.setScalar((Number(p.gateRadiusWU)||90)*1.005);
+        if(upcoming!==null){
+          target.visible=true;
+          const approach=gateApproach(p.gates,upcoming,from),g=p.gates[upcoming];
+          target.position.set(g.x,0,g.z);
+          if(approach)target.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
+          target.scale.setScalar((Number(p.gateRadiusWU)||90)*1.005);
+        } else {
+          target.visible=false;
+        }
       }
       // The scripted pace light coaches the line; physical opponents alone provide drafting.
       const paceStart=p.adventureSpeedId?p.adventureSpeedStartSimS:p.raceStartSimS;
