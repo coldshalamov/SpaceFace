@@ -99,3 +99,30 @@ test('the visual factory gives each category its own shared geometry and keeps t
   assert.equal(ore1.userData.gem.material.emissive.getHexString(), 'c89a6a');
   assert.equal(gas.userData.gem.material.emissive.getHexString(), '59d6c7');
 });
+
+test('every commodity drop carries the collectible beacon ring; solid cargo does not', () => {
+  invalidateVisualFactoryCaches();
+  const factory = createVisualFactory();
+  const make = (id, data) => factory.build({
+    id, type: 'pickup', radius: 2.2, pos: { x: 0, z: 0 }, data,
+  });
+  const ore = make(111, { kind: 'commodity', commodityId: 'cmdty_ore_iron' });
+  const mystery = make(112, { kind: 'module' });
+  const crate = make(113, { freightCustodyPod: true });
+
+  for (const v of [ore, mystery]) {
+    const halo = v.userData.pickupHalo;
+    assert.ok(halo && halo.isMesh, 'the drop carries a beacon ring mesh');
+    assert.equal(halo.userData.baseScale, 2.2, 'ring base scale = drop radius');
+    assert.equal(halo.geometry, ore.userData.pickupHalo.geometry, 'ring geometry is shared');
+    assert.ok(halo.material.transparent && halo.material.depthWrite === false, 'ring reads as light, not solid');
+  }
+  // The flash writes per-drop opacity, so materials are cloned per drop even within one colour.
+  assert.notEqual(ore.userData.pickupHalo.material, mystery.userData.pickupHalo.material,
+    'ring material is per-drop');
+  // A canister that looks like solid cargo but is takeable carries the ring too...
+  assert.ok(crate.userData.pickupHalo, 'custody canister keeps the collectible signal');
+  // ...while ordinary tow cargo (a real payload body) never does.
+  const payload = factory.build({ id: 114, type: 'payload', radius: 2.2, pos: { x: 0, z: 0 }, data: {} });
+  assert.ok(!payload.userData.pickupHalo, 'payloads stay unmarked');
+});

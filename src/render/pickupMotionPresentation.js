@@ -172,10 +172,44 @@ export function resolveFunnelMoteStream(seed, simTime, out = null) {
   return rec;
 }
 
+// --- Collectible beacon ring ---------------------------------------------------------------------------------
+// The "this one is takeable" signal. Every commodity drop carries a thin luminous band that
+// precesses slowly and kicks on the transponder's double-flash beat — a rock, a wreck and a tow
+// crate answer no light that way, so the ring is the visible difference between cargo and
+// scenery at flight-camera range, where the 3.5% body ping and the tumble read as nothing.
+// Presentation-only: the ring owns no sim state and poses no body.
+
+/** Pose of a drop's beacon ring. Pure function of (simTime, phase, reducedMotion) — test-seam. */
+export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null) {
+  const rec = out || { spinX: 0, spinY: 0, kick: 0, glow: 0.55 };
+  const t = Number.isFinite(simTime) ? simTime : 0;
+  const p = Number.isFinite(phase) ? phase : 0;
+  // Slow two-axis precession, phased per drop so a spill reads as a constellation, not a row.
+  // Reduced motion holds the plane still; the ring stays present, only calmer.
+  if (!reducedMotion) {
+    rec.spinX = t * 0.6 + p;
+    rec.spinY = t * 0.35 + p * 1.7;
+  } else {
+    rec.spinX = p;
+    rec.spinY = p * 1.7;
+  }
+  // The transponder's double-flash clock (same beat as the body ping) drives the ring's flash,
+  // so body and ring speak one rhythm instead of two competing ones.
+  const cyc = (t * 0.62 + p / (Math.PI * 2)) % 1;
+  let kick = 0;
+  if (cyc < 0.10) kick = Math.exp(-cyc * 60);
+  else if (cyc > 0.14 && cyc < 0.24) kick = Math.exp(-(cyc - 0.14) * 60) * 0.7;
+  if (reducedMotion) kick *= 0.5;
+  rec.kick = kick;
+  rec.glow = 0.55 + 0.18 * Math.sin(t * 2.2 + p) + kick * 0.45;
+  return rec;
+}
+
 export function createPickupMotionTracker() {
   const pickupStates = new Map();
   const vortexScratch = { radius: 0, x: 0, z: 0 };
   const stretchScratch = { transverse: 1, along: 1 };
+  const haloPoseScratch = { spinX: 0, spinY: 0, kick: 0, glow: 0.55 };
   let busSubscribers = [];
   let lastSimTime = 0;
 
@@ -333,6 +367,21 @@ export function createPickupMotionTracker() {
     } else if (scale && typeof scale.setScalar === 'function') {
       // Scalar-only mock/lite rigs lose the intake stretch but keep the compression + ping.
       scale.setScalar(s);
+    }
+
+    // Beacon ring: precesses with the drop's phase, flashes on the transponder beat, and rides
+    // the same scaleRatio so it shrinks into the scoop with the body. Deterministic per drop.
+    const halo = mesh.userData && mesh.userData.pickupHalo;
+    if (halo) {
+      const pose = resolvePickupHaloPose(simTime, rec.phase, reducedMotion, haloPoseScratch);
+      halo.rotation.x = pose.spinX;
+      halo.rotation.y = pose.spinY;
+      const base = halo.userData && halo.userData.baseScale ? halo.userData.baseScale : 1;
+      if (typeof halo.scale.setScalar === 'function') {
+        halo.scale.setScalar(base * rec.scaleRatio * (1 + pose.kick * 0.08));
+      }
+      const mat = halo.material;
+      if (mat && 'opacity' in mat) mat.opacity = Math.min(1, pose.glow);
     }
   }
 

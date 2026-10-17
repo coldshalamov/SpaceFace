@@ -3586,6 +3586,23 @@ function buildPickup(e) {
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
     canister.userData.pickupRole = PICKUP_ROLE.POD;
+    // The custody canister is a takeable drop that reads as solid cargo — exactly the
+    // look-alike the beacon ring exists to resolve. Pod green, same loot-magnet family color.
+    const podColor = '#4fbf8f';
+    const halo = new THREE.Mesh(
+      getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
+      getMaterial(`pickuphalo:${podColor}`, () => new THREE.MeshBasicMaterial({
+        color: new THREE.Color(podColor), transparent: true, opacity: 0.55,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })),
+    );
+    halo.material = halo.material.clone();
+    const podR = e.radius || 2.2;
+    halo.scale.setScalar(podR);
+    halo.userData.baseScale = podR;
+    halo.frustumCulled = false;
+    canister.add(halo);
+    canister.userData.pickupHalo = halo;
     return canister;
   }
   if (isCreditChipEntity(e)) {
@@ -3610,6 +3627,22 @@ function buildPickup(e) {
   gem.scale.setScalar(R);
   gem.material = gem.material.clone();
   g.add(gem);
+  // Collectible beacon ring: the takeable drop answers light no rock, wreck or tow crate does —
+  // a thin commodity-colored band that precesses and kicks on the transponder's double-flash
+  // (posed by pickupMotionPresentation). Authored geometry, not a camera-facing sprite.
+  const halo = new THREE.Mesh(
+    getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
+    getMaterial(`pickuphalo:${color}`, () => new THREE.MeshBasicMaterial({
+      color: new THREE.Color(color), transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })),
+  );
+  halo.material = halo.material.clone();
+  halo.scale.setScalar(R);
+  halo.userData.baseScale = R;
+  halo.frustumCulled = false;
+  g.add(halo);
+  g.userData.pickupHalo = halo;
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
   // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
@@ -3620,9 +3653,11 @@ function buildPickup(e) {
   gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
   // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
+  // The breathe carries farther than it used to: at flight-camera range the old ±28% never
+  // separated a live drop from dark scenery.
   gem.onBeforeRender = () => {
     const t = nowSec();
-    gem.material.emissiveIntensity = 1.5 * (1 + 0.28 * Math.sin(t * 3 + ph));
+    gem.material.emissiveIntensity = 1.6 * (1 + 0.45 * Math.sin(t * 3 + ph));
   };
   return g;
 }

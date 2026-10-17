@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createPickupMotionTracker } from '../src/render/pickupMotionPresentation.js';
+import {
+  createPickupMotionTracker,
+  resolvePickupHaloPose,
+} from '../src/render/pickupMotionPresentation.js';
 
 function createMockPickupMesh() {
   const gem = {
@@ -82,4 +85,76 @@ test('pickup motion: reduced motion keeps stable non-spinning presentation', () 
 
   assert.equal(rot1, rot2, 'rotations frozen under motionReduce');
   assert.equal(mesh.userData.gem.position.y, 0, 'vertical bobbing suppressed under motionReduce');
+});
+
+// The collectible beacon ring: the take/collide disambiguator. A rock, wreck or tow crate
+// answers no light this way — the halo must precess, flash on the transponder beat, compose
+// with the drop's own scale, and calm down under reduced motion.
+function createMockHalo(baseScale) {
+  return {
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { setScalar(s) { this.val = s; }, val: 0 },
+    material: { opacity: 0 },
+    userData: { baseScale },
+  };
+}
+
+test('pickup halo: precesses with sim time and kicks on the double-flash beat', () => {
+  const a = resolvePickupHaloPose(10, 0.3, false);
+  const b = resolvePickupHaloPose(10.5, 0.3, false);
+  assert.notEqual(a.spinX, b.spinX, 'ring precesses around X');
+  assert.notEqual(a.spinY, b.spinY, 'ring precesses around Y');
+  // Deterministic: the same inputs produce the same pose (no wall clock, no Math.random).
+  assert.deepEqual(resolvePickupHaloPose(10, 0.3, false), a, 'pose is pure');
+  // Somewhere on the 1.613 s beat cycle the flash fires, and the glow always carries the kick
+  // (the sine breath modulates around it, it never cancels it).
+  let sawKick = false;
+  for (let t = 0; t < 4; t += 1 / 120) {
+    const pose = resolvePickupHaloPose(t, 0.3, false);
+    if (pose.kick > 0.5) sawKick = true;
+    assert.ok(pose.glow >= 0.55 - 0.18 + pose.kick * 0.45 - 1e-9, 'flash drives the glow');
+    assert.ok(pose.glow > 0 && pose.glow <= 1.2, `glow stays bounded: ${pose.glow}`);
+  }
+  assert.ok(sawKick, 'the double-flash beat fires inside one cycle window');
+});
+
+test('pickup halo: reduced motion holds the plane and softens the flash', () => {
+  const still1 = resolvePickupHaloPose(10, 0.3, true);
+  const still2 = resolvePickupHaloPose(14, 0.3, true);
+  assert.equal(still1.spinX, still2.spinX, 'ring plane frozen under motionReduce');
+  assert.equal(still1.spinY, still2.spinY, 'ring plane frozen under motionReduce');
+  const moving = resolvePickupHaloPose(10, 0.3, false);
+  const calm = resolvePickupHaloPose(10, 0.3, true);
+  assert.ok(calm.kick <= moving.kick, 'flash softened under motionReduce');
+});
+
+test('pickup halo: tracker poses the ring and composes its base scale', () => {
+  const tracker = createPickupMotionTracker();
+  const halo = createMockHalo(2.2);
+  const mesh = createMockPickupMesh();
+  mesh.userData.pickupHalo = halo;
+  const pickup = { id: 506, pos: { x: 500, z: 500 } };
+
+  tracker.updatePickupMotion(pickup, mesh, 1.0, 0.016, null);
+  assert.ok(Number.isFinite(halo.rotation.x) && Number.isFinite(halo.rotation.y), 'precession pose applied');
+  assert.ok(halo.scale.val > 2.19 && halo.scale.val < 2.21, `idle scale composes baseScale: ${halo.scale.val}`);
+  assert.ok(halo.material.opacity > 0 && halo.material.opacity <= 1, `glow applied: ${halo.material.opacity}`);
+
+  // Inside the scoop the ring rides the body's compression instead of staying behind.
+  const player = { pos: { x: 0, z: 0 } };
+  const close = { id: 507, pos: { x: 5, z: 5 } };
+  const meshClose = createMockPickupMesh();
+  const haloClose = createMockHalo(2.2);
+  meshClose.userData.pickupHalo = haloClose;
+  for (let i = 0; i < 20; i++) {
+    tracker.updatePickupMotion(close, meshClose, 2.0 + i * 0.016, 0.016, player);
+  }
+  assert.ok(haloClose.scale.val < 2.2, `ring compresses into the scoop: ${haloClose.scale.val}`);
+});
+
+test('pickup halo: meshes without a ring keep the old pose path', () => {
+  const tracker = createPickupMotionTracker();
+  const mesh = createMockPickupMesh();
+  const pickup = { id: 508, pos: { x: 300, z: 300 } };
+  assert.doesNotThrow(() => tracker.updatePickupMotion(pickup, mesh, 1.0, 0.016, null));
 });
