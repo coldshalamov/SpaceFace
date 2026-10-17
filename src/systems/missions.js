@@ -137,7 +137,7 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
 import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
-import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
+import { attachTrap, seedHeliosOfferTrap, referenceTrapRefusal } from './moralTrap.js';
 // A1 "passengers are people": the passenger corpora (names, why-lines, riding beats) are data;
 // this system mints the per-offer identity and speaks the beats on the existing comms seams.
 import {
@@ -258,10 +258,10 @@ import { getDressingRow } from '../world/dressingTable.js';
 import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
 // NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
 // the posting used (pure exported read; economy stays the sole stock/market writer).
-import { starvedIndustryNeedFor } from './economy.js';
+import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
 // NXI-171 — the shared starvation-row prose builder, so a board refresh re-quotes a live
 // deficit in the exact voice the emit-only producer posted it (no second wording authority).
-import { starvedOfferProse } from '../data/economyContractTemplates.js';
+import { starvedOfferProse, isShortageGateRepair } from '../data/economyContractTemplates.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -1361,6 +1361,7 @@ function missionNavReason(m, station, sector) {
   if (m.type === 'recon_scan' && p.poiSignalFollowup) {
     return `Scan the ${plainFollowupPlace(p.poiSignalFollowup)} in ${sectorName}`;
   }
+  if (isShortageGateRepair(m)) return `Buy or salvage ${p.qty}u ${cargo}, then deliver to ${stationName}`;
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -2956,6 +2957,10 @@ export const missions = {
     if (!isFingerprintBoardSource(rawOffer.source)
       && board.slots.some((offer) => {
         if (!offer || offer.source !== rawOffer.source) return false;
+        if (isShortageGateRepair(rawOffer) || isShortageGateRepair(offer)) {
+          return isShortageGateRepair(rawOffer) && isShortageGateRepair(offer)
+            && rawOffer.cause.shortageEventId === offer.cause.shortageEventId;
+        }
         if (rawOffer.source === 'custodyRecovery') {
           return offer.cause?.fingerprint === rawOffer.cause?.fingerprint;
         }
@@ -3125,7 +3130,7 @@ export const missions = {
       this._injectStarterJob(info, offers, S);
     }
     this._markFeaturedOffer(offers, info, epoch);
-    return offers;
+    return offers.map((offer) => referenceTrapRefusal(offer, this.state));
   },
 
   /** The starter hull's next opening job, pinned at the head of the Helios board. */
@@ -4001,6 +4006,15 @@ export const missions = {
    * read — no market row, unknown station/sector — keeps the offer rather than retiring it.
    */
   _shortageOfferStale(offer) {
+    if (isShortageGateRepair(offer)) {
+      const eventId = offer.cause.shortageEventId;
+      return !!this.state.economyContracts?.shortageRepairs?.[eventId]
+        || (this.state.missions.active || []).some((m) => m.status === 'active'
+          && isShortageGateRepair(m) && m.cause.shortageEventId === eventId)
+        || !(this.state.economy?.econEvents || []).some((event) => event.id === eventId
+          && event.type === 'shortage' && this.state.simTime < event.startT + event.duration)
+        || !marketStockStatus(this.state, offer.destStationId, offer.params.cmdtyId).soldOut;
+    }
     if (!offer || offer.source !== 'economyContract' || offer.type !== 'cargo_delivery') return false;
     if (!offer.cause || offer.cause.tag !== 'industry_starved') return false;
     const cmdtyId = offer.params && offer.params.cmdtyId;
@@ -4939,7 +4953,8 @@ export const missions = {
     // follows the contract goods physically — the contested hull first, then the claim
     // hauler if the crew already loaded it out, then the drop pod a dead hauler spilled.
     // Once the goods are unrecoverable the marker falls through to ordinary delivery.
-    if (contractClaimSiteMission(m)) {
+    if (contractClaimSiteMission(m) && !(isShortageGateRepair(m)
+      && sellableCargoQuantity(this.state, m.params.cmdtyId) >= m.params.qty)) {
       const sectorNow = this.state.world && this.state.world.currentSectorId;
       if (sectorNow === m.destSectorId) {
         const wreck = this._contractClaimWreck(m);
@@ -8706,6 +8721,10 @@ export const missions = {
   },
 
   _missionSuccessDebriefText(m) {
+    if (isShortageGateRepair(m)) {
+      const restored = this.state.economyContracts?.shortageRepairs?.[m.cause.shortageEventId];
+      if (restored) return restored.text;
+    }
     const p = (m && m.params) || {};
     if (p.cleanCylinder) {
       return p.cleanCylinder.outcome === 'retreated'
@@ -9645,7 +9664,10 @@ export const missions = {
       const ledger = this.state.missions.yardContracts || (this.state.missions.yardContracts = {});
       ledger[yardContractId] = outcome;
     }
+    const restoration = outcome === 'completed' && isShortageGateRepair(m)
+      ? this.state.economyContracts?.shortageRepairs?.[m.cause.shortageEventId] : null;
     const receipt = missionReceiptFor(m, outcome, reason, { ...settlement, at_s: this.state.simTime || 0 });
+    if (restoration) receipt.restoration = { ...restoration };
     if (receipt.chainId && receipt.archetypeId) {
       this.state.missions.setPieceSettlements = normalizeSetPieceSettlements({
         ...(this.state.missions.setPieceSettlements || {}),

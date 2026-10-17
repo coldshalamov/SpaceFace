@@ -21,6 +21,33 @@
 
 import { ECONOMY_BALANCE as BALANCE } from './economyDerived.js';
 
+// M15 uses the ordinary salvage/delivery lifecycle. The receiver needs a real parts lot;
+// a bought replacement and the matching workpiece cut from the marked wreck are equivalent.
+export const SHORTAGE_GATE_REPAIR = Object.freeze({
+  tag: 'shortage_gate_repair',
+  qty: 4,
+  correctionDurationS: 180,
+  stationTypes: Object.freeze(['refinery', 'fab', 'mining']),
+  components: Object.freeze(['cmdty_comp_hullplate', 'cmdty_electronics', 'cmdty_control_unit', 'cmdty_comp_circuitry']),
+});
+
+export function isShortageGateRepair(offer) {
+  return !!(offer && offer.source === 'economyContract'
+    && offer.cause && offer.cause.tag === SHORTAGE_GATE_REPAIR.tag);
+}
+
+export function shortageGateRepairProse({ station, commodity, supplier, volume }) {
+  return {
+    title: `Shortage at the gate: restore ${station}'s ${commodity} stock`,
+    line: `${station}'s gate-side parts counter has run dry: deliver ${SHORTAGE_GATE_REPAIR.qty}u ${commodity}.`,
+    brief: `Buy replacements at ${supplier}'s market, or cut equivalent parts from the marked approach wreck with a salvage-capable beam (fit a mining beam at Helios Station's outfitter if needed). `
+      + `The wreck is claimed: cutting or towing it can provoke the crew. Need ${volume}u cargo room and permission to dock at ${station}; no deposit or supplied cargo. `
+      + 'The public gate route stays open. Decline by leaving this offer; abort from the Mission Log. '
+      + 'Wrong or short loads stay yours and the job stays open: replace lost parts, or finish sourcing the lot, then return. '
+      + `Delivery restocks the listed parts counter and applies a ${SHORTAGE_GATE_REPAIR.correctionDurationS}s price correction.`,
+  };
+}
+
 /** Field thresholds that gate an offer at all (a calm field offers NOTHING — golden-sim safe). */
 export const ECON_CONTRACT_THRESHOLDS = Object.freeze({
   scarcityPressure: 0.25,   // pricePressure above → scarcity fuel run (the packet's acceptance bar)
