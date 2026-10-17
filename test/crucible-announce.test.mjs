@@ -248,8 +248,8 @@ test('a raw snake_case token is never printed at the player', () => {
     assert.ok(!/_/.test(text), `${id} leaked a token: ${text}`);
     assert.match(text, /\.$/, `${id} must be a sentence`);
   }
-  // An archetype with no authored hint says nothing at all.
-  assert.equal(hintTextFor('wasp_swarmer'), null);
+  // Every roster hull now has an authored counter hint (SFQ-B050); an id that is not a hull still says nothing at all.
+  assert.ok(hintTextFor('wasp_swarmer'), 'a roster hull speaks its authored counter hint');
   assert.equal(hintTextFor('nope_not_a_ship'), null);
 });
 

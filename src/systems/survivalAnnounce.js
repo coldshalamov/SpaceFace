@@ -90,6 +90,7 @@ const HINT_PROSE = Object.freeze({
   move_line_or_throw_cutter: 'Opens a fixed crossing. Move off the line, or throw the cutter off it.',
   finite_coolant_directional_heat: 'Charges a narrow heat lane. Cross its nose, break a cask, or tow it into its own heat.',
   physical_decoys_true_iris: 'Its lamps are decoys. Watch the six-petal iris — that is the real gun.',
+  break_flank_banks_cross_locked_spine_use_cover: 'Break the flank battery banks, cross the locked spine cannon, and use cover between sweeps.',
 });
 
 const NUMBER_WORD = Object.freeze([

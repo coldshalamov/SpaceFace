@@ -37,6 +37,7 @@ export const ENEMY_TYPES = [
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 180, leashRadius: 2200 },
     physicalClass: 'ammunition',
     telegraph: { bark: 'warn', line: 'The pack turns as one — the whole swarm burns in together.', cue: 'engine_flare' },
+    counterHint: 'Light enough to throw — catch one on the line and whip it into its packmates.',
     behavior: 'strafe/orbit, packs of 3-6',
     bountyCr: 120, shipClass: 'fighter',
     loot: {
@@ -55,6 +56,7 @@ export const ENEMY_TYPES = [
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 280, leashRadius: 3000 },
     physicalClass: 'ammunition',
     telegraph: { bark: 'warn', line: 'A rail lance charging at standoff. Break its line or close under cover.', cue: 'weapon_charge' },
+    counterHint: 'Watch the charge line, slip the rail shot, and close inside its standoff band.',
     behavior: 'kite at max range, retreat when closed',
     bountyCr: 260, shipClass: 'fighter',
     loot: {
@@ -129,6 +131,7 @@ export const ENEMY_TYPES = [
     aiDoctrine: { defaultActivity: 'transit', roe: 'defensive', preferredRange: 280, leashRadius: 2600 },
     physicalClass: 'terrain',
     telegraph: { bark: 'scan', line: 'A hold full of something worth hauling. Pressed, it burns for the lane.', cue: 'engine_flare' },
+    counterHint: 'Runs for the nearest berth — snare or cut its drive before it clears the lane.',
     behavior: 'flee to nearest station/lane, boost when threatened, shoots only if cornered',
     bountyCr: 0, illegalToKill: true, shipClass: 'frigate',
     loot: {
@@ -155,6 +158,7 @@ export const ENEMY_TYPES = [
     },
     physicalClass: 'terrain',
     telegraph: { bark: 'warn', line: 'A pirate hull stalking the lane — it presses, calls the swarm, runs when broken.', cue: 'pirate_stalk' },
+    counterHint: 'Presses hard and calls swarmers — use its wingmen as ammunition against it.',
     behavior: 'aggressive pursue+attack, calls 1-2 swarmers, flees at <20% hull',
     bountyCr: 340, shipClass: 'gunship',
     loot: {
@@ -180,6 +184,7 @@ export const ENEMY_TYPES = [
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2800 },
     physicalClass: 'ammunition',
     telegraph: { bark: 'warn', line: 'The ace is lining a pass. Throw mass at it — do not chase its guns.', cue: 'weapon_charge' },
+    counterHint: 'Fast ambush fighter — catch it on the line or slam it into belt rock.',
     behavior: 'mid-tier pirate elite, frontier ambush packs',
     bountyCr: 620, shipClass: 'gunship',
     loot: {
@@ -371,6 +376,7 @@ export const ENEMY_TYPES = [
     // pitching it aside or burning through it to the ward — the role shows in doctrine, not class.
     physicalClass: 'ammunition',
     telegraph: { bark: 'warn', line: 'The Choir shields its marked own — the zealot bodies the lane to the ward.', cue: 'engine_flare' },
+    counterHint: 'Screens its ward until you breach the ring — pull the zealot off its charge first.',
     behavior: 'ideological pack guardian; screens the marked ally, darts at whatever breaches it',
     bountyCr: 200, shipClass: 'fighter',
     loot: {

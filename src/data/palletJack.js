@@ -16,6 +16,7 @@ export const PALLET_JACK_ENEMY = Object.freeze({ id: PALLET_JACK.enemyId, name: 
   physicalClass: 'specialist', shipClass: 'freighter', bountyCr: 180,
   aiDoctrine: { defaultActivity: 'reposition', roe: 'defensive', preferredRange: 100, leashRadius: 14000 },
   telegraph: { bark: 'warn', line: 'Pallet Jack is reaching for loose freight. Move the load or break its front clamp.', cue: 'attach_spool' },
+  counterHint: 'After your hold, not your hull — break its fork lock or outrun the clamp.',
   behavior: 'one finite cargo-first theft; physical fork capture, contested load, parley and same-body escape',
   loot: { creditsRange: [35, 70], drops: [] },
 });

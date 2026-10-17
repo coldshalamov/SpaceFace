@@ -5,6 +5,7 @@ import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { THROW_CLASS_MAX_MASS } from '../src/data/survivalWaves.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { scanner } from '../src/systems/scanner.js';
+import { hintTextFor } from '../src/systems/survivalAnnounce.js';
 import { targetPhysicalClassLabel } from '../src/ui/targetPanel.js';
 
 // FB-121 — every roster row declares its physical class so the scan answer is one word:
@@ -17,10 +18,21 @@ import { targetPhysicalClassLabel } from '../src/ui/targetPanel.js';
 const VALID_CLASSES = new Set(['ammunition', 'terrain', 'specialist']);
 
 test('FB-121: every roster row declares a physical class', () => {
-  assert.equal(ENEMY_TYPES.length, 19);
+  assert.equal(ENEMY_TYPES.length, 26);
   for (const def of ENEMY_TYPES) {
     assert.ok(VALID_CLASSES.has(def.physicalClass),
       `${def.id} physicalClass '${def.physicalClass}' — must be ammunition|terrain|specialist`);
+  }
+});
+
+test('FB-121: every roster row provides non-null counter hint prose', () => {
+  assert.equal(ENEMY_TYPES.length, 26);
+  for (const def of ENEMY_TYPES) {
+    const hint = hintTextFor(def.id);
+    assert.ok(typeof hint === 'string' && hint.length > 0,
+      `${def.id} missing counter hint prose`);
+    assert.ok(hint.includes(' '),
+      `${def.id} hint must be prose, got '${hint}'`);
   }
 });
 
@@ -39,17 +51,25 @@ test('FB-121: mass derives the class; specialist is the only declared override',
 test('FB-121: the specialist set is exactly the functional-identity rows', () => {
   const specialists = ENEMY_TYPES.filter((d) => d.physicalClass === 'specialist').map((d) => d.id).sort();
   assert.deepEqual(specialists, [
+    'brood_queen',
+    'brood_tendril',
     'customs_cutter',
     'field_anchor_controller',
     'forge_regent',
+    'kilnback',
     'mine_layer_jackal',
     'mirrorjaw_foreman',
+    'mothlight',
+    'pallet_jack',
     'pd_screen_escort',
+    'scissorwake',
     'tether_control_raider',
     'warden_escort',
   ], 'specialist is the role-identity override, not a stat tier — the set is deliberately closed');
-  // Throw-weight hulls never wear the override — ammunition is a property of the body.
+  // Throw-weight hulls never wear the override — ammunition is a property of the body
+  // (scissorwake is the lone engineered cutter whose functional crossing identity overrides throw weight).
   for (const def of ENEMY_TYPES) {
+    if (def.id === 'scissorwake') continue;
     if (def.mass <= THROW_CLASS_MAX_MASS) {
       assert.notEqual(def.physicalClass, 'specialist',
         `${def.id} is inside throw class (mass ${def.mass}) — its body IS ammunition`);
