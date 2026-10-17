@@ -717,6 +717,7 @@ export const salvage = {
 
     const core = spawnEntity({
       type: 'payload',
+      homeSectorId: sectorId,
       pos: { x: wx + Math.cos(coreAng) * coreDist, z: wz + Math.sin(coreAng) * coreDist },
       vel: { x: 0, z: 0 },
       radius: SORT_CORE_RADIUS,
@@ -743,6 +744,10 @@ export const salvage = {
         scanLabel: 'Wreck Drive Core',
         sortPocketId: pocketId,
         transientSector: false,
+        // The pocket is the point's sector content: unstamped bodies survived the sector exit
+        // live and unbound (D207), and another sector's salvor adopter re-tagged them.
+        homeSectorId: sectorId,
+        sectorId,
       },
     });
     if (!core || core.alive === false) return null;
@@ -759,6 +764,7 @@ export const salvage = {
         const r = SORT_RING_INNER + rng() * (SORT_RING_OUTER - SORT_RING_INNER);
         const debris = spawnEntity({
           type: 'wreck',
+          homeSectorId: sectorId,
           pos: { x: wx + Math.cos(ang) * r, z: wz + Math.sin(ang) * r },
           vel: { x: 0, z: 0 },
           radius: 3 + rng() * 2,
@@ -773,6 +779,8 @@ export const salvage = {
             authoredScanLabel: 'Light Debris',
             salvagePointId: pointId,
             sortPocketId: pocketId,
+            homeSectorId: sectorId,
+            sectorId,
           },
         });
         if (debris && debris.alive !== false) debrisIds.push(debris.id);
@@ -783,6 +791,7 @@ export const salvage = {
     const cradlePos = { x: wx + Math.cos(cradleAng) * SORT_CRADLE_DISTANCE, z: wz + Math.sin(cradleAng) * SORT_CRADLE_DISTANCE };
     const cradle = spawnEntity({
       type: 'wreck',
+      homeSectorId: sectorId,
       pos: cradlePos,
       vel: { x: 0, z: 0 },
       radius: SORT_CRADLE_RADIUS,
@@ -803,6 +812,8 @@ export const salvage = {
         authoredScanLabel: 'Salvage Cradle',
         salvagePointId: pointId,
         sortPocketId: pocketId,
+        homeSectorId: sectorId,
+        sectorId,
       },
     });
     if (!cradle || cradle.alive === false) return null;

@@ -904,7 +904,8 @@ test('the Wreck Cathedral uses one depth-only opaque prepass per authored LOD', 
       `${lod} closed depth includes the closed exposed-alloy box without adding a color draw`);
     assert.equal(closedPrepass.material.isShaderMaterial, true);
     assert.equal(closedPrepass.material.userData.spacefaceMinimalPositionDepthShader, true);
-    assert.match(closedPrepass.material.vertexShader, /projectionMatrix \* modelViewMatrix/);
+    assert.match(closedPrepass.material.vertexShader, /#include <project_vertex>/,
+      'depth and color use the same ordered projection, avoiding self-occlusion from GPU rounding');
     assert.equal(closedPrepass.material.colorWrite, false);
     assert.equal(closedPrepass.material.depthTest, true);
     assert.equal(closedPrepass.material.depthWrite, true);
