@@ -339,6 +339,26 @@ export function countOwnerMines(state, ownerId) {
   return n;
 }
 
+/**
+ * FIGHT-11 — the screen the layer laid, as the halo counts it: live hulls only,
+ * armed only. An unarmed mine is cargo in transit (still arming), not a threat the
+ * halo can count; a spent hull (triggered / dead / hull-depleted) has left the screen.
+ */
+export function countArmedOwnerMines(state, ownerId) {
+  if (!state || ownerId == null) return 0;
+  let n = 0;
+  for (const e of liveMineList(state)) {
+    if (!e || e.alive !== true || e.type !== MINE_TYPE) continue;
+    if (!(e.hull > 0)) continue;
+    const data = e.data || {};
+    if (e.ownerId !== ownerId && data.ownerId !== ownerId) continue;
+    if (data.triggered === true) continue;
+    if (data.armed !== true) continue;
+    n++;
+  }
+  return n;
+}
+
 export function listMines(state) {
   const out = [];
   for (const e of liveMineList(state)) {

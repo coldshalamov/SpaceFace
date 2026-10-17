@@ -2,6 +2,7 @@ import { publishedWardTarget, refreshWardScreenPublication } from '../ai/special
 import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
+import { countArmedOwnerMines } from '../systems/mines.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import {
   OCCUPATIONAL_ROLE_IDS,
@@ -101,13 +102,30 @@ const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitT
   ? tetherPlan.commitTicks
   : 45;
 
-export function hostileLabelFor(role, bucket, telegraphed) {
+export function hostileLabelFor(role, bucket, telegraphed, armedMines = 0) {
   const raw = String(role || 'unknown').trim() || 'unknown';
   const name = raw.toUpperCase().replace(/[_-]+/g, ' ');
-  if (telegraphed) return `${name} — ATTACKING`;
-  if (bucket >= 2) return `${name} — CLOSING`;
-  if (bucket === 1) return `${name} — DRIFTING`;
-  return `${name} — HOLDING`;
+  let label;
+  if (telegraphed) label = `${name} — ATTACKING`;
+  else if (bucket >= 2) label = `${name} — CLOSING`;
+  else if (bucket === 1) label = `${name} — DRIFTING`;
+  else label = `${name} — HOLDING`;
+  // FIGHT-11 — the mine-layer's halo counts the screen it laid: armed mines only
+  // (an unarmed hull is cargo, never a counted threat). Plain words, no ids.
+  const mines = Math.max(0, Math.floor(Number(armedMines) || 0));
+  if (mines > 0) label += ` · ${mines} ${mines === 1 ? 'MINE' : 'MINES'}`;
+  return label;
+}
+
+/**
+ * FIGHT-11 — which hulls may carry an armed-mine count on the halo: the mine-layer
+ * doctrine only. Read from the hull's live doctrine, never from a plan id.
+ */
+export function isMineLayerHaloEntity(entity) {
+  const data = (entity && entity.data) || {};
+  const ai = data.ai || {};
+  return (ai.combatDoctrineId || data.combatDoctrineId || (entity && entity.combatDoctrineId))
+    === 'mine_layer_wake';
 }
 
 /**
@@ -550,6 +568,7 @@ export function createThreatHalo(root, busOrOpts) {
   const hostileId = new Array(HOSTILE_LIMIT);
   const hostileLife = new Array(HOSTILE_LIMIT);
   const hostileBehind = new Uint8Array(HOSTILE_LIMIT);
+  const hostileMines = new Int16Array(HOSTILE_LIMIT);
   let hostileCount = 0;
   const telegraphCues = [];
   let busUnsub = null;
@@ -1009,6 +1028,7 @@ export function createThreatHalo(root, busOrOpts) {
     if (!slot) return;
     setAttr(slot, 'data-telegraph-kind', null);
     setAttr(slot, 'data-entity-id', null);
+    setAttr(slot, 'data-armed-mines', null);
     setAttr(slot, 'data-placement-read', null);
     slot._sfPlacementRead = null;
     if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
@@ -1068,7 +1088,7 @@ export function createThreatHalo(root, busOrOpts) {
     return String(id) < String(hostileId[i]);
   }
 
-  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null, life = null, behind = false) {
+  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null, life = null, behind = false, armedMines = 0) {
     if (hostileCount < HOSTILE_LIMIT) {
       const i = hostileCount++;
       hostileX[i] = x;
@@ -1084,6 +1104,7 @@ export function createThreatHalo(root, busOrOpts) {
       hostileId[i] = id;
       hostileLife[i] = life;
       hostileBehind[i] = behind ? 1 : 0;
+      hostileMines[i] = armedMines;
       return;
     }
 
@@ -1106,6 +1127,7 @@ export function createThreatHalo(root, busOrOpts) {
     hostileId[worst] = id;
     hostileLife[worst] = life;
     hostileBehind[worst] = behind ? 1 : 0;
+    hostileMines[worst] = armedMines;
   }
 
   function pushMissileCandidate(x, y, dist) {
@@ -1148,6 +1170,7 @@ export function createThreatHalo(root, busOrOpts) {
       const tid = hostileId[i];
       const tLife = hostileLife[i];
       const tBehind = hostileBehind[i];
+      const tMines = hostileMines[i];
       hostileX[i] = hostileX[best];
       hostileY[i] = hostileY[best];
       hostileTier[i] = hostileTier[best];
@@ -1161,6 +1184,7 @@ export function createThreatHalo(root, busOrOpts) {
       hostileId[i] = hostileId[best];
       hostileLife[i] = hostileLife[best];
       hostileBehind[i] = hostileBehind[best];
+      hostileMines[i] = hostileMines[best];
       hostileX[best] = tx;
       hostileY[best] = ty;
       hostileTier[best] = tt;
@@ -1174,6 +1198,7 @@ export function createThreatHalo(root, busOrOpts) {
       hostileId[best] = tid;
       hostileLife[best] = tLife;
       hostileBehind[best] = tBehind;
+      hostileMines[best] = tMines;
     }
   }
 
@@ -1284,10 +1309,15 @@ export function createThreatHalo(root, busOrOpts) {
       const role = occRule ? occRule.role : (entity.role || (entity.data && (entity.data.role || entity.data.trafficRole)) || 'unknown');
       const token = occRule ? occRule.silhouetteToken : 'token_silhouette_standard';
       const faction = entity.factionId || (entity.data && entity.data.factionId) || null;
+      // FIGHT-11 — the layer's live screen, counted where the label is read: armed
+      // hulls only, and only for the mine-layer doctrine. Every other hull passes 0,
+      // so its label never carries a count.
+      const armedMines = isMineLayerHaloEntity(entity) ? countArmedOwnerMines(state, entity.id) : 0;
       pushHostileCandidate(
         sx, sy, tier,
         telegraphed ? 1 : 0, closingBucketOf(closing), Math.floor(dist / DIST_BAND_WU),
         opacity, role, token, faction, entity.id, entity.occupantGeneration ?? null, projected.behind === true,
+        armedMines,
       );
     }
 
@@ -1443,8 +1473,11 @@ export function createThreatHalo(root, busOrOpts) {
       setAttr(slot, 'data-closing', !cue && hostileBucket[i] >= 2 ? 'boost' : null);
       const latch = tetherCutLatches.get(hostileId[i]);
       const cutLabel = latch && latch._tetherCutLatch ? latch._tetherCutLabel : null;
-      const identityLabel = hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue);
+      const identityLabel = hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue, hostileMines[i]);
       setAttr(slot, 'aria-label', cutLabel || identityLabel);
+      // The counted screen also rides a machine-readable attribute (same number as the
+      // label suffix; absent when zero) so the count is countable, not just words.
+      setAttr(slot, 'data-armed-mines', hostileMines[i] > 0 ? hostileMines[i] : null);
       shown++;
     }
 
