@@ -299,6 +299,8 @@ export const MOBILE_SCREEN_CSS = `
   @media (max-height:560px) {
     ${B} { overflow-x:hidden !important; overflow-y:auto !important; padding-bottom:0 !important; scroll-padding-bottom:0 !important; }
     ${B} .dp-frame__body--station, ${B} .dp-frame__body--station > .sx-screen__body { flex:none !important; overflow:visible !important; }
+    /* each dial column is ~125-160px here, so a crown label stands whole: MUNITIONS broke its last letter at the 60px dial cap */
+    ${B} .sxb-vital__label { max-width:none !important; white-space:nowrap !important; overflow-wrap:normal !important; }
     /* one row, not two: the tabs take what Comms and Undock leave and slide sideways if a narrow phone runs out */
     ${B} footer.sxb-ops { position:sticky !important; bottom:0 !important; background:rgb(5 7 10) !important; flex-wrap:nowrap !important;
       gap:0 12px !important; padding:3px 0 calc(3px + env(safe-area-inset-bottom, 0px)) !important; }
