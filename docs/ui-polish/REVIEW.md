@@ -1644,3 +1644,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `--phone` station-ledger 4 → 0 at 390×844; station-ledger, station-market and station-contracts 0 at 390×844 and 360×780. Landscape phones (≤560 tall) and every desktop size are outside these rules (`data-sf-mobile` plus `min-height:561px`), so 960×540 / 1280×720 / 1920×1080 are untouched. Shots in `ui-shots/polish72/`.
 
 **Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) gives the berth head ~700px, so the tab body starts under COMMS (bench 4, same on master). The ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Tech-tree star hit boxes @844×390.
+
+## Missions dossier in a narrow, mid-height window (ui-polish-76)
+
+**Before (master bc914e20b5):** at 651–800 wide × 461–800 tall the Missions dossier kept its desktop two-column reading in a ~160–220px slot. The title broke letter by letter ("Transpor / t a / passeng / er to"), the client and the reward words stood in a 73px column beside it ("CR / ON / DELI / VERY"), the legend read "PASSE…", and at 651×600 ACCEPT was off the panel.
+
+**After (`src/ui/orrery/stationTabsLayouts.js`, one additive desktop-only block, `min-width:651px and max-width:800px and min-height:461px and max-height:800px`):**
+- The dossier slot is `clamp(200px, 100vw − 470px, 320px)` (230px at 700, 320px at 800), so the job list keeps its prices and the TRACKED tag keeps its gap at 700.
+- The dossier is one column that scrolls inside the panel, with a 16px fade at the foot: legend (wraps, no ellipsis), title at 15px on word breaks, client, reward (22px) with CR ON DELIVERY, ACCEPT, then the risk line and the terms.
+- Selectors and IDs unchanged; phones (`data-sf-mobile`) and every size outside the band are untouched.
+
+**Checked:** shots at 651×600, 700×600, 720×461, 800×600, 800×800 (in band) and 960×540, 1280×720 (out of band, as before). Focused tests: `station-field-hardware` 7/7, `next-wave-nxi-098` 5/5. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish76/{before,b0,after}/`.
+
+**Leftovers:** at 651×600 the head's DISMISS takes its own line, so ACCEPT sits under the fade until you scroll; at 720×461 only the title shows before scrolling. At 960×540 the legend still reads "PASSENGER TRANSPO…". The YOURS row at 651 still runs "Mass Variance Sample" into TRACKED (same on master).
