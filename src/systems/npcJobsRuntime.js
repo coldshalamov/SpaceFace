@@ -2683,9 +2683,14 @@ export const npcJobsRuntime = {
       if (data.ceresActivityCast === true || data.activityActorSlotId) return;
       if ((data.trafficRole || data.role) !== 'scavenger') return;
       if (data.jobId) return;
+      // A straggler owned by another sector is not this sector's labor (D207): adopting it
+      // stamped its sectorId — and its tow target's — with the wrong sector, corrupting both
+      // the census and the residency teardown. Homeless hulls (legacy saves) still adopt.
+      if (data.homeSectorId && data.homeSectorId !== sectorId) return;
       const probe = { job: { payload: {} }, sectorId };
       const target = this._findNearestOccupationalTarget(probe, entity, isTowableCargoTarget);
       if (!target || !target.pos) return;
+      if (target.data && target.data.sectorId != null && target.data.sectorId !== sectorId) return;
       if (!data.worldRecordId) {
         data.worldRecordId = stableRecordId(
           seed,
