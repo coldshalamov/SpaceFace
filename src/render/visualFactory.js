@@ -4095,6 +4095,19 @@ export function buildAsteroidLeafWarmGroup() {
       root.add(exemplar);
     }
   }
+  // Prism cells are alpha glass, which the instance pool never batches, so their ordinary-mesh
+  // programs (and inclusion children) are a family nothing above mounts. Without an exemplar the
+  // first prism promoted mid-round links its glass program live and stays hidden until it does.
+  for (const opticMaterial of ['diamond', 'spent']) {
+    const prism = buildAsteroid({
+      id: `leafwarm:optic:${opticMaterial}`, type: 'asteroid', pos: { x: 0, y: 0, z: 0 },
+      radius: 12, alive: true, data: { typeId: 'ast_crystalline', opticMaterial },
+    });
+    if (prism) {
+      prism.userData.rosterPrewarmLeaf = `asteroid:optic:${opticMaterial}`;
+      root.add(prism);
+    }
+  }
   return root;
 }
 

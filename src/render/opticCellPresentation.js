@@ -12,7 +12,8 @@
 //             the PMREM rig say "this reflects". No ore veins — veins are the
 //             valuable-mineral language, not the mirror language.
 //   diamond — a clear prism: a stretched octahedral shard in MeshPhysicalMaterial
-//             transmission glass with pale internal facet inclusions and a faint
+//             environment-reflective alpha glass (no screen-space transmission pass —
+//             see realtimeGlass) with pale internal facet inclusions and a faint
 //             iridescent film — the splitter reads as optics, not neon.
 //   spent   — the same prism burned dark: smoky low-transmission glass, no
 //             iridescence, no internal glints. A discharged cell must read dead
@@ -32,6 +33,7 @@ import { OPTIC_MATERIALS } from '../combat/opticField.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec } from './rockSurfaceLibrary.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import { installIllustratedSurface } from './illustratedSurface.js';
+import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
 
 export const OPTIC_SKIN_USERDATA_KEY = 'sfOpticSkin';
 export const OPTIC_DETAILS_USERDATA_KEY = 'sfOpticDetails';
@@ -172,11 +174,23 @@ function buildOpticMetalMaterial() {
   }), SHARED_MATERIAL_ROLE.ROCK);
 }
 
+// PERF: three's physical `transmission` re-renders the WHOLE opaque scene into a second render
+// target (plus a mip chain) every frame in which a single transmissive object is in view, and
+// links a heavier program the first time one appears. A belt with prism cells therefore cost a
+// second scene render exactly when the player was looking at it, and a link stall the moment one
+// scrolled in. Ship canopies already left that path (canopyMaterialPolicy.js); the prisms take the
+// same one: the authored optics stay on the material as metadata, the draw is environment-reflective
+// alpha glass with the tint, clearcoat, iridescence and inclusions intact, and no extra scene pass.
+function realtimeGlass(material) {
+  applyRealtimeCanopyPolicy(material);
+  return material;
+}
+
 function buildOpticDiamondMaterial() {
-  // The live prism: transmissive glass with pale internal absorption and a whisper
+  // The live prism: glass with pale internal absorption and a whisper
   // of iridescent film — the "splits light" tell without glow-spam. A faint cool
   // emissive marks it charged; spent turns both off.
-  return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
+  return realtimeGlass(stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(0xecfaff),
     roughness: 0.05,
     metalness: 0.0,
@@ -194,13 +208,13 @@ function buildOpticDiamondMaterial() {
     emissiveIntensity: 0.16,
     envMapIntensity: 1.2,
     flatShading: true,
-  }), SHARED_MATERIAL_ROLE.GLASS);
+  }), SHARED_MATERIAL_ROLE.GLASS));
 }
 
 function buildOpticSpentMaterial() {
-  // Burned-out glass: same prism family, but smoky and lightless — transmission drops,
+  // Burned-out glass: same prism family, but smoky and lightless — clarity drops,
   // absorption shortens, the cool emissive and the film are gone. Reads dead, not hidden.
-  return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
+  return realtimeGlass(stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(0x222c37),
     roughness: 0.46,
     metalness: 0.0,
@@ -216,7 +230,7 @@ function buildOpticSpentMaterial() {
     emissiveIntensity: 0.05,
     envMapIntensity: 0.55,
     flatShading: true,
-  }), SHARED_MATERIAL_ROLE.GLASS);
+  }), SHARED_MATERIAL_ROLE.GLASS));
 }
 
 /**
@@ -384,13 +398,18 @@ export function opticCellPoolResources(stoneGeometryFor) {
       }
       continue;
     }
-    resources.push({
-      key: `o:${kind}`,
-      geometry: opticCellGeometry(kind),
-      material: opticCellBodyMaterial(kind, 0),
-      castShadow: true,
-      receiveShadow: true,
-    });
+    const bodyMaterial = opticCellBodyMaterial(kind, 0);
+    // Alpha glass is never pooled (the instance pool refuses transparent leaves), so warming a
+    // keyed chunk for it would only link a program nothing can draw through.
+    if (bodyMaterial && bodyMaterial.transparent !== true) {
+      resources.push({
+        key: `o:${kind}`,
+        geometry: opticCellGeometry(kind),
+        material: bodyMaterial,
+        castShadow: true,
+        receiveShadow: true,
+      });
+    }
     const detailMaterial = opticCellDetailMaterial(kind);
     if (detailMaterial) {
       resources.push({

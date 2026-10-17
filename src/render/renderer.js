@@ -12309,7 +12309,11 @@ export const render = {
       { journal: ctx.presentationJournal || null },
     );
     this._presentationQueries = createPresentationQueries(this._presentationWorld);
-    this._snapshotFence = createSnapshotFence();
+    // Worker lane: the sim clock is not this thread's, so the accumulator riding each reply cannot
+    // place the drawn moment — the fence follows wall time instead. Main lane keeps the exact one.
+    this._snapshotFence = createSnapshotFence({
+      presentationClock: ctx && ctx.simLaneActive === true ? 'follow' : 'accumulator',
+    });
     this._snapshotSourceTick = null;
     this._posePackEpoch = 0;
     this._posePackSectorId = null;

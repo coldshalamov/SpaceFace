@@ -5,6 +5,17 @@ import { createPresentationSnapshot, SNAPSHOT_COLUMNS } from './presentationSnap
 
 export const SNAPSHOT_FENCE_BUFFERS = 3;
 
+// "follow" presentation clock (worker lane). When the sim runs on its own timer in a Worker, the
+// accumulator that rides each reply is the worker's remainder at the instant it posted — it says
+// nothing about WHEN the pack reached this thread, so deriving the drawn moment from it makes the
+// hull speed up, hold and snap with every late or doubled reply. The follow clock instead lets the
+// drawn moment advance at wall rate and only steers it, by a bounded speed change, toward a moment
+// FOLLOW_LAG_TICKS behind the newest pack that grows with the time since that pack landed. It can
+// slow or hasten a frame's step by at most FOLLOW_MAX_SLEW; it never stops, reverses or jumps.
+export const FOLLOW_LAG_TICKS = 1;
+export const FOLLOW_GAIN_PER_S = 1.5;
+export const FOLLOW_MAX_SLEW = 0.2;
+
 /** Bytes written into the packed columns for one entity. All column kinds are 4-byte. */
 export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
   .reduce((total, spec) => total + spec.stride, 0) * 4;
@@ -175,6 +186,12 @@ export function createSnapshotFence(options = {}) {
   let presentedSequence = -1;
   let presentedEpoch = -1;
   let presentedSnapshotTime = NaN;
+  const followClock = options.presentationClock === 'follow';
+  const followLagTicks = Number.isFinite(options.followLagTicks) ? options.followLagTicks : FOLLOW_LAG_TICKS;
+  const followGainPerS = Number.isFinite(options.followGainPerS) ? options.followGainPerS : FOLLOW_GAIN_PER_S;
+  const followMaxSlew = Number.isFinite(options.followMaxSlew) ? options.followMaxSlew : FOLLOW_MAX_SLEW;
+  // Wall seconds (time-effects scaled) since the newest pack was first sampled.
+  let followArrivalS = 0;
 
   return {
     beginPack(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
@@ -259,8 +276,27 @@ export function createSnapshotFence(options = {}) {
       const target = span > 0 ? prior.simTime + span * raw : current.simTime;
       const reset = presentedEpoch !== current.poseEpoch
         || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
-      if (reset) presentedTime = target;
-      else if (presentedSequence === current.sequence) {
+      if (followClock && span > 0 && !reset) {
+        const dt = Number.isFinite(fixedDt) && fixedDt > 0 ? fixedDt : span;
+        const elapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
+        // A new pack landed somewhere inside this frame interval; assume the middle of it.
+        followArrivalS = presentedSequence === current.sequence ? followArrivalS + elapsed : elapsed * 0.5;
+        const desired = current.simTime - dt * followLagTicks + followArrivalS;
+        const steer = Math.max(-followMaxSlew,
+          Math.min(followMaxSlew, (desired - presentedTime) * followGainPerS));
+        presentedTime += elapsed * (1 + steer);
+        // The bracket is the only data there is: never draw outside the two packs.
+        if (presentedTime < prior.simTime) presentedTime = prior.simTime;
+        else if (presentedTime > current.simTime) presentedTime = current.simTime;
+        presentedSequence = current.sequence;
+        presentedEpoch = current.poseEpoch;
+        presentedSnapshotTime = current.simTime;
+        return (presentedTime - prior.simTime) / span;
+      }
+      if (reset) {
+        presentedTime = target;
+        followArrivalS = 0;
+      } else if (presentedSequence === current.sequence) {
         const elapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
         presentedTime = Math.min(current.simTime, Math.max(target, presentedTime + elapsed));
       } else presentedTime = Math.max(presentedTime, target);

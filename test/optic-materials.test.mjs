@@ -18,6 +18,7 @@ import {
   opticCellBodyMaterial,
   opticCellDetailMaterial,
   opticCellKindOf,
+  opticCellPoolResources,
   syncOpticCellSkin,
 } from '../src/render/opticCellPresentation.js';
 
@@ -94,13 +95,19 @@ test('the three live kinds produce measurably different body materials', () => {
   assert.ok(metal.envMapIntensity >= 1.5, 'a mirror must ride the reflection environment');
   assert.equal(metal.transmission || 0, 0);
 
-  // diamond — the prism: transmissive glass, the only kind that lets light through.
-  assert.ok(diamond.transmission >= 0.6, `diamond transmission ${diamond.transmission} must read as glass`);
+  // diamond — the prism: clear glass, the only kind that lets light through. It is drawn as
+  // environment-reflective alpha glass; the authored transmission rides along as metadata so the
+  // look stays traceable without three's full-scene transmission pass (see realtimeGlass).
+  const diamondSource = diamond.userData.spacefaceCanopyOptics;
+  assert.ok(diamondSource && diamondSource.sourceTransmission >= 0.6,
+    `diamond authored clarity ${diamondSource && diamondSource.sourceTransmission} must read as glass`);
+  assert.equal(diamond.transparent, true, 'the prism is see-through alpha glass');
+  assert.ok(diamond.opacity <= 0.75, `diamond opacity ${diamond.opacity} must stay clearly translucent`);
   assert.ok(diamond.isMeshPhysicalMaterial, 'the prism uses the physical material path');
 
   // Pairwise gaps a stranger can see without numbers: matte-vs-polished and clear-vs-solid.
   assert.ok(stone.roughness - metal.roughness >= 0.5, 'matte vs mirror must be unmissable');
-  assert.ok((diamond.transmission || 0) - (stone.transmission || 0) >= 0.6, 'clear vs opaque must be unmissable');
+  assert.ok((stone.opacity ?? 1) - diamond.opacity >= 0.25, 'clear vs opaque must be unmissable');
   assert.ok((diamond.emissiveIntensity || 0) > (stone.emissiveIntensity || 0),
     'the charged prism carries a whisper of light the absorber does not');
 });
@@ -109,8 +116,11 @@ test('spent prism is measurably dead beside the live diamond', () => {
   const live = opticCellBodyMaterial('diamond');
   const spent = opticCellBodyMaterial('spent');
   assert.notEqual(live, spent);
-  assert.ok(live.transmission - spent.transmission >= 0.4,
-    `spent must darken: live ${live.transmission} vs spent ${spent.transmission}`);
+  assert.ok(live.userData.spacefaceCanopyOptics.sourceTransmission
+    - spent.userData.spacefaceCanopyOptics.sourceTransmission >= 0.4,
+  'spent keeps its authored low clarity');
+  assert.ok(spent.opacity - live.opacity >= 0.1,
+    `spent must be the more solid glass: live ${live.opacity} vs spent ${spent.opacity}`);
   assert.ok(luminance(spent) < luminance(live) * 0.6,
     `spent color must be visibly darker (${luminance(spent).toFixed(3)} vs ${luminance(live).toFixed(3)})`);
   assert.ok(spent.emissiveIntensity < live.emissiveIntensity * 0.5,
@@ -200,4 +210,18 @@ test('syncOpticCellSkin is idempotent and never touches non-optic asteroids', ()
   assert.equal(syncOpticCellSkin(entity, root), false, 'an unchanged kind does not re-dress');
   assert.equal(syncOpticCellSkin(entity, null), false);
   assert.equal(syncOpticCellSkin(null, root), false);
+});
+
+test('no optic body material asks three for the screen-space transmission pass', () => {
+  // A single transmissive object in view makes three re-render the whole opaque scene into a second
+  // target every frame. The prisms are alpha glass precisely so a belt full of them costs one pass.
+  for (const kind of ['stone', 'metal', 'diamond', 'spent']) {
+    const material = opticCellBodyMaterial(kind, 0);
+    assert.equal(material.transmission || 0, 0, `${kind} must not request transmission`);
+  }
+  for (const resource of opticCellPoolResources(() => new THREE.BufferGeometry())) {
+    assert.equal(resource.material.transmission || 0, 0, `${resource.key} pool chunk must not transmit`);
+    assert.notEqual(resource.material.transparent, true,
+      `${resource.key}: alpha glass is never pooled, so no chunk may be warmed for it`);
+  }
 });

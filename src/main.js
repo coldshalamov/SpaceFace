@@ -191,6 +191,10 @@ async function boot() {
     // under the lane it must read the transport journal, not the in-process
     // one (which the worker's journal replaces wholesale).
     if (simLaneRuntime) ctx.presentationJournal = simLaneRuntime.journal;
+    // The flag above is the REQUEST; a failed Worker construction returns null and the in-process
+    // sim serves. Anything that must follow the lane actually running (the presentation clock)
+    // reads this, never ctx.simLane.
+    ctx.simLaneActive = simLaneRuntime != null;
     const bootInitMetrics = await registry.initAsync({
       // Each yield costs a rAF+task hop (~a frame); the loading shell owns the picture, so
       // larger slices convert that scheduling overhead back into time-to-title.
