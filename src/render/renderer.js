@@ -15267,13 +15267,10 @@ export const render = {
       // Kick them here so the live-scene cook sees their authored materials,
       // not the procedural stand-in that first flight would otherwise compile.
       let liveStepStarted = prepareNow();
-      // Serial-link routes (software GL, no KHR_parallel_shader_compile): the 12 s composition
-      // settle never settled on SwiftShader (13/13 perf-lane runs timed out with 12-27 opening
-      // actors still 'compiling-pipelines', while live.openingCompositionFinal later found 0
-      // pending every time). Their compiles finish inside the cook steps below, and the final
-      // composition seal still blocks the picture on them, so wait a short window here instead.
+      // Serial-link routes: software GL with no KHR_parallel_shader_compile. The composition settle
+      // keeps its 12 s cap on every route (cutting it to 3 s moved the wait into the cook and cost
+      // bar 2.4a on SwiftShader; perf lane co1/cp1 on #444).
       const serialLinkRoute = !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer });
-      const compositionWaitMs = serialLinkRoute && !survivalRunHoldsArena(state) ? 3000 : 12000;
       // Same route, behind the loading shell: drawables per 1x1 residency batch. Each batch is a
       // serial GPU unit (presented-frame wait + gl.finish), and the default 4 made the first-frame
       // census ~28.7 s of mostly idle main thread on SwiftShader. The 8 MB batch byte cap still holds.
@@ -15287,7 +15284,7 @@ export const render = {
         ? Promise.resolve({ skipped: true, settled: true, reason: 'session-recook-visuals-already-ready' })
         : waitForOpeningCompositionSettled(state, {
           stale: cookStale,
-          timeoutMs: Math.min(compositionWaitMs, remainingMs()),
+          timeoutMs: Math.min(12000, remainingMs()),
           yieldToMain: yieldAndFlushLiveSectorGpu,
           renderer,
           scene,
@@ -15297,7 +15294,7 @@ export const render = {
         ? Promise.resolve({ skipped: true, reason: 'session-recook-hold-leftover-fx' })
         : waitForAuthoredUpgradeQueueIdle(scene, {
           stale: cookStale,
-          timeoutMs: Math.min(compositionWaitMs, remainingMs()),
+          timeoutMs: Math.min(12000, remainingMs()),
           yieldToMain: yieldAndFlushLiveSectorGpu,
         });
       if (cookStale()) return cookSuperseded;

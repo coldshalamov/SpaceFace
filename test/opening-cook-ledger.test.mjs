@@ -146,10 +146,7 @@ test('the live-sector cook flushes the admission lane while it waits', async () 
   const cook = renderer.slice(start, end);
   assert.match(cook, /const flushPipelinesBehindShell = \(\) =>/);
   assert.match(cook, /if \(cookStale\(\) \|\| recook \|\| liveSectorPipelineFlush/);
-  // Serial-link routes (no KHR_parallel_shader_compile) cap the composition settle at 3 s; the
-  // parallel-compile route and survival keep 12 s. The final composition seal still enforces it.
-  assert.match(cook, /const compositionWaitMs = serialLinkRoute && !survivalRunHoldsArena\(state\) \? 3000 : 12000;/);
-  for (const timeout of ['compositionWaitMs', '8000']) {
+  for (const timeout of ['12000', '8000']) {
     assert.match(cook, new RegExp(`timeoutMs: Math\\.min\\(${timeout}, remainingMs\\(\\)\\),\\s*yieldToMain: yieldAndFlushLiveSectorGpu`));
   }
   // PR #218 moved the stale-material settle onto the sliced lane: its cap is a
