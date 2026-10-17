@@ -248,7 +248,7 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
   </div>
 </figure>`;
 }
-export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null, presentation = null }) {
+export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null, presentation = null, soldOut = false, restockSeconds = null }) {
   const family = marketFamily(category);
   const presentationId = presentation && typeof presentation.id === 'string' ? presentation.id.trim() : '';
   const presentationColor = presentation && typeof presentation.color === 'string'
@@ -259,10 +259,15 @@ export function marketRowHtml({ id, name, category = '', buy, sell, stock, held 
   const profitBadge = Number.isFinite(profitPct) && profitPct >= 15 && held > 0
     ? `<span class="sx-mkt-row__profit" title="Local sell price beats your cost basis by ${Math.round(profitPct)}%">+${Math.round(profitPct)}% PROFIT</span>`
     : '';
+  // Seconds up to two minutes, whole minutes after: a long wait reads as a span, not a countdown.
+  const restockAfter = Number.isFinite(restockSeconds) ? Math.max(1, Math.ceil(restockSeconds)) : null;
+  const restockAbout = restockAfter === null ? null : (restockAfter > 120 ? Math.ceil(restockAfter / 60) + 'm' : restockAfter + 's');
+  const restock = soldOut ? (restockAbout ? `Restock ~${restockAbout}` : 'Restock pending') : '';
+  const restockSpoken = soldOut ? (restockAbout ? `restock in about ${restockAbout}` : 'restock pending') : '';
   return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument" data-family="${family}"
-    aria-label="${escapeHtml(name)}, ${quoteFmt(buy)} credits, ${escapeHtml(demandWord)} demand${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
-    <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}</td>
-    <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
+    aria-label="${escapeHtml(name)}, ${quoteFmt(buy)} credits, ${escapeHtml(demandWord)} demand${soldOut ? `, sold out, ${restockSpoken}` : ''}${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
+    <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}${soldOut ? `<br><span class="sx-mkt-row__none" style="white-space:normal">SOLD OUT · ${escapeHtml(restock)}</span>` : ''}</td>
+    <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${soldOut ? '0u' : held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
 }
 export function statRow(k, v, sub) {
   return `<li class="k-row k-row--static sx-stat"><span class="sx-stat__k">${escapeHtml(k)}${sub ? ` <span class="k-row__sub">${escapeHtml(sub)}</span>` : ''}</span><span class="k-row__num sx-stat__v">${escapeHtml(v)}</span></li>`;

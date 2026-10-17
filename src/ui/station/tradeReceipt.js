@@ -71,6 +71,8 @@ export function tradeClearedReceipt(state, p = {}) {
   const name = CMDTY_NAME.get(p.commodityId) || titleCaseWords(p.commodityId || 'cargo');
   const verb = p.side === 'sell' ? 'SOLD' : 'BOUGHT';
   const sign = p.side === 'sell' ? '+' : '−';
+  const premium = p.side === 'sell' && p.shortagePremium === true
+    ? ' · shortage premium included' : '';
   const expectation = takeTradeExpectation(state, p);
   if (expectation) {
     const outcome = projectTradeOutcome(state, {
@@ -90,26 +92,26 @@ export function tradeClearedReceipt(state, p = {}) {
         return {
           title: 'TRADE CLEARED',
           line: `${verb} ${fmtCr(outcome.executedQty)} OF THE ${fmtCr(outcome.requestedQty)} CONFIRMED`,
-          detail: `${name} · ${sign}${fmtCr(p.total)} cr` + sealedResidueClause(outcome, name),
+          detail: `${name} · ${sign}${fmtCr(p.total)} cr` + premium + sealedResidueClause(outcome, name),
         };
       }
       if (outcome.totalAgrees === false) {
         return {
           title: 'TRADE CLEARED',
           line: `${verb} ${fmtCr(outcome.executedQty)}u ${name}`,
-          detail: `${sign}${fmtCr(p.total)} cr — the ledger reads ${fmtCr(outcome.receipt.total)} cr, not the stated ${fmtCr(expectation.total)}` + sealedResidueClause(outcome, name),
+          detail: `${sign}${fmtCr(p.total)} cr — the ledger reads ${fmtCr(outcome.receipt.total)} cr, not the stated ${fmtCr(expectation.total)}` + premium + sealedResidueClause(outcome, name),
         };
       }
       return {
         title: 'TRADE CLEARED',
         line: `${verb} ${fmtCr(outcome.executedQty)}u ${name}`,
-        detail: `${sign}${fmtCr(p.total)} cr · settled as confirmed` + sealedResidueClause(outcome, name),
+        detail: `${sign}${fmtCr(p.total)} cr · settled as confirmed` + premium + sealedResidueClause(outcome, name),
       };
     }
   }
   return {
     title: 'TRADE CLEARED',
     line: `${verb} ${fmtCr(p.qty)}u ${name}`,
-    detail: `${sign}${fmtCr(p.total)} cr`,
+    detail: `${sign}${fmtCr(p.total)} cr` + premium,
   };
 }
