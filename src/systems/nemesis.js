@@ -7,12 +7,54 @@ import { LIMITS, clone, finite, integer, freshNemesis, freshEpisode, normalizeNe
   boundedPush, keyForId } from '../nemesis/model.js';
 import { admitEvidence, classifyPlayerKill, prepareNemesisPlan,
   predictionWasWrong } from '../nemesis/learning.js';
+import { scarBandForProtectionShare, scarFacingFromDirection, shouldAdmitScar } from '../combat/hullScars.js';
+import {
+  LIVING_HULL_SCAR_MAX, livingHullScars, livingHullWithScar, normalizeHullScar,
+} from '../core/livingHull.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 // Homing and deployed hardpoint loads are ordnance; every other fire profile is gunnery.
 const ORDNANCE_TRACKING = new Set(['homing', 'deploy']);
 
 const TERMINAL = new Set(['spared', 'destroyed', 'lost']);
+// A destroyed or lost captain does not return — that rule stays. rival_escaped is the defeat
+// the same captain comes back from, and the scar set has to survive on a record, not on the
+// hull that is about to leave the sector.
+const DEFEAT_OUTCOMES = new Set(['rival_escaped', 'destroyed', 'lost']);
+
+function hitDirection(payload, boss) {
+  const pos = payload && payload.pos;
+  const origin = boss && boss.pos;
+  if (pos && origin) {
+    const dx = finite(pos.x) - finite(origin.x);
+    const dz = finite(pos.z) - finite(origin.z);
+    if (Math.hypot(dx, dz) > 1e-9) return [dx, dz];
+  }
+  const normal = payload && payload.normal;
+  if (normal) return [finite(normal.x), finite(normal.z)];
+  return [0, 0];
+}
+
+function defeatRecordFromSave(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const scars = [];
+  if (Array.isArray(raw.scars)) {
+    for (const row of raw.scars) {
+      const scar = normalizeHullScar(row);
+      if (!scar) continue;
+      scars.push(scar);
+      if (scars.length >= LIVING_HULL_SCAR_MAX) break;
+    }
+  }
+  const encounterId = typeof raw.encounterId === 'string' ? raw.encounterId.slice(0, 120) : '';
+  if (!encounterId && !scars.length) return null;
+  return {
+    encounterId,
+    at: Math.max(0, finite(raw.at)),
+    outcome: typeof raw.outcome === 'string' ? raw.outcome.slice(0, 40) : '',
+    scars,
+  };
+}
 const entity = (state, id) => state && state.entities && state.entities.get(id);
 const alive = (ship) => !!ship && Number.isFinite(ship.hull) && ship.hull > 0 && ship.alive !== false && ship.dead !== true;
 const sector = (state) => state.world && state.world.currentSectorId || '';
@@ -31,6 +73,7 @@ export function createNemesisSystem() {
       this.state.nemesis = normalizeNemesis(this.state.nemesis, nowOf(this.state));
       const on = (event, fn) => this._offs.push(this.bus.on(event, fn));
       on('entity:killed', (p) => this._killed(p));
+      on('combat:damage', (p) => this._noteBossScar(p));
       on('combat:kill', (p) => this._killed(p));
       on('massline:tumbled', (p) => this._tumbled(p));
       on('nemesis:observation', (p) => this._observation(p));
@@ -62,17 +105,24 @@ export function createNemesisSystem() {
       if (Object.hasOwn(this, '_offs')) for (const off of this._offs || []) if (typeof off === 'function') off();
       this._offs = [];
       this._techWindows = { encounterId: null, keys: new Set() };
+      this._bossScarAdmit = { encounterId: null, last: null };
     },
     newGame() {
       this.state.nemesis = freshNemesis(nowOf(this.state));
       this._techWindows = { encounterId: null, keys: new Set() };
+      this._bossScarAdmit = { encounterId: null, last: null };
     },
     serialize() { return clone(this.state.nemesis); },
     deserialize(data) {
       this.state.nemesis = normalizeNemesis(data, nowOf(this.state));
+      // The scar set is not part of the arc schema. Put it back after normalize drops unknown
+      // fields, or a saved defeat comes back on a clean hull.
+      const kept = defeatRecordFromSave(data && data.defeatRecord);
+      if (kept) this.state.nemesis.defeatRecord = kept;
       // Private tool windows belong to the loaded episode, not the future session being
       // replaced. Durable seen keys still prevent replay of observations the save contains.
       this._techWindows = { encounterId: null, keys: new Set() };
+      this._bossScarAdmit = { encounterId: null, last: null };
     },
     inspect() { return this.serialize(); },
     _emit(event, payload) { this.bus.emit(event, clone(payload)); },
@@ -150,6 +200,60 @@ export function createNemesisSystem() {
         this._finish(caused ? 'destroyed' : 'lost');
       } else if (id === this.state.playerId) this._finish('player_defeated');
     },
+    // Hull wounds on the rival only. The player hull stays with ships.js. A shield hit files
+    // nothing; the same admission gap the player uses keeps a burst from becoming a log.
+    _noteBossScar(p) {
+      const m = this.state && this.state.nemesis;
+      const a = m && m.active;
+      if (!a || m.ending || !p || p.targetId !== a.bossId || a.bossId === this.state.playerId) return;
+      const hullDamage = Math.max(0, finite(p.hullDamage));
+      if (!(hullDamage > 0)) return;
+      const boss = entity(this.state, a.bossId);
+      if (!boss || !boss.data || !localTag(boss, a.id)) return;
+      const now = nowOf(this.state);
+      const before = p.before && typeof p.before === 'object' ? p.before : null;
+      const protection = Math.max(1, finite(before && before.hullMax, boss.hullMax) + finite(before && before.armorMax, 0));
+      const armorDamage = Math.max(0, finite(p.armorDamage));
+      const [dx, dz] = hitDirection(p, boss);
+      const facing = scarFacingFromDirection(boss.rot, dx, dz);
+      const tick = integer(this.state.tick);
+      const scar = {
+        id: `weapon:${tick}:${facing}`,
+        cause: 'weapon',
+        surface: 'weapon',
+        band: scarBandForProtectionShare((hullDamage + armorDamage) / protection),
+        facing,
+        tick,
+        atT: now,
+      };
+      if (!this._bossScarAdmit || this._bossScarAdmit.encounterId !== a.id) {
+        this._bossScarAdmit = { encounterId: a.id, last: null };
+      }
+      if (!shouldAdmitScar(this._bossScarAdmit.last, scar)) return;
+      boss.data.livingHull = livingHullWithScar(boss.data.livingHull, scar, now);
+      this._bossScarAdmit.last = scar;
+    },
+    _retainDefeat(outcome, bossId, encounterId, now) {
+      if (!DEFEAT_OUTCOMES.has(outcome)) return;
+      const boss = entity(this.state, bossId);
+      const scars = livingHullScars(boss && boss.data && boss.data.livingHull);
+      this.state.nemesis.defeatRecord = {
+        encounterId: typeof encounterId === 'string' ? encounterId : '',
+        at: now,
+        outcome,
+        scars: clone(scars),
+      };
+    },
+    // The catalogue hull is already spawned. This only copies the retained set onto it.
+    _wearDefeatScars(boss, now) {
+      const record = this.state.nemesis && this.state.nemesis.defeatRecord;
+      if (!record || !boss || !boss.data || boss.id === this.state.playerId) return;
+      const scars = Array.isArray(record.scars) ? record.scars : [];
+      if (!scars.length) return;
+      let hull = null;
+      for (const scar of scars) hull = livingHullWithScar(hull, scar, now);
+      boss.data.livingHull = hull;
+    },
     // An escaped captain is still a real hull while the encounter host flies it out. Run it down
     // before it clears the area and the arc ends here — the next return would resurrect Orra.
     _killedLeaving(p) {
@@ -164,6 +268,7 @@ export function createNemesisSystem() {
       const outcome = caused ? 'destroyed' : 'lost', now = nowOf(this.state);
       if (m.pending) this._cancelPending('rival destroyed after escape');
       m.ending = outcome; m.phase = 'resolved';
+      this._retainDefeat(outcome, id, row.requestId, now);
       this._log('outcome', `${outcome} while leaving after an escape`, row.requestId);
       this._voice(outcome, NEMESIS_LINES[outcome], null, row.requestId);
       const receipt = { encounterId: row.requestId, bossId: id, crewIds: [id], aceId: RIVAL.id,
@@ -292,6 +397,7 @@ export function createNemesisSystem() {
         episode: freshEpisode(pending.id, now), retreatAt: null, surrenderedAt: null,
         act: 0, actChangedAt: now, geometryAt: now, geometrySamples: 0, farSamples: 0, witnesses: [] };
       m.lastPrimary = pending.plan.primary; m.pending = null; m.phase = 'encounter';
+      this._wearDefeatScars(boss, now);
       const a = m.active, kit = NEMESIS_KITS[a.plan.primary];
       this._emit('namedAce:appeared', { aceId: RIVAL.id, entityId: a.bossId,
         signatureSpoken: true, sectorId: a.sectorId, t: now });
@@ -449,6 +555,7 @@ export function createNemesisSystem() {
       const lineKey = { rival_escaped: 'escaped', player_escaped: 'playerEscaped',
         player_defeated: 'victory', spared: 'spared', destroyed: 'destroyed', lost: 'lost' }[outcome];
       if (lineKey) this._voice(outcome, NEMESIS_LINES[lineKey], null, a.id);
+      this._retainDefeat(outcome, a.bossId, a.id, now);
       this._emit('nemesis:encounterEnded', receipt);
       if (outcome === 'rival_escaped') this._emit('namedAce:fled', { aceId: RIVAL.id, entityId: a.bossId, t: now });
       if (outcome === 'destroyed' || outcome === 'lost') this._emit('namedAce:defeated', { aceId: RIVAL.id, entityId: a.bossId, t: now });

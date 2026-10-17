@@ -9,6 +9,7 @@ import {
   LIVING_HULL_HEAT_SCORCH_MAX,
   LIVING_HULL_KILL_TALLY_MAX,
   LIVING_HULL_REPAIR_PATCH_MAX,
+  LIVING_HULL_SCAR_MAX,
 } from '../core/livingHull.js';
 import { shouldUseTransparentSinglePass } from './transparentSinglePassPolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
@@ -244,6 +245,69 @@ const SCORCH_TRANSFORMS = Object.freeze([
   { position: [-0.28, 0.360, -0.30], rotation: [-Math.PI / 2, 0, 0.32], scale: [0.10, 0.06, 1] },
 ]);
 
+// Local +Z is bow, +X is starboard, matching LIVING_HULL_SCAR_FACINGS (index 0 dead ahead,
+// then clockwise toward starboard). Marks sit on the deck the heat scorch already uses.
+const SCAR_FACING_MARK = Object.freeze({
+  bow: Object.freeze([0, 0.372, 0.46]),
+  'starboard bow': Object.freeze([0.34, 0.36, 0.30]),
+  'starboard beam': Object.freeze([0.50, 0.348, 0]),
+  'starboard quarter': Object.freeze([0.34, 0.348, -0.30]),
+  stern: Object.freeze([0, 0.36, -0.46]),
+  'port quarter': Object.freeze([-0.34, 0.348, -0.30]),
+  'port beam': Object.freeze([-0.50, 0.348, 0]),
+  'port bow': Object.freeze([-0.34, 0.36, 0.30]),
+});
+const SCAR_BAND_SCALE = Object.freeze({ graze: 0.07, hard: 0.10, heavy: 0.13, crushing: 0.17 });
+
+function scarLayoutKey(scars) {
+  if (!Array.isArray(scars) || scars.length === 0) return '';
+  const limit = Math.min(scars.length, LIVING_HULL_SCAR_MAX);
+  let key = '';
+  for (let i = 0; i < limit; i += 1) {
+    const scar = scars[i];
+    if (!scar || typeof scar !== 'object') continue;
+    key += `${scar.id || ''}|${scar.facing || ''}|${scar.band || ''}|${scar.patchedAtT == null ? 0 : 1};`;
+  }
+  return key;
+}
+
+function scarMarkTransform(scar, index) {
+  const spot = SCAR_FACING_MARK[scar && scar.facing] || SCAR_FACING_MARK.bow;
+  const band = SCAR_BAND_SCALE[scar && scar.band] || SCAR_BAND_SCALE.graze;
+  const scale = scar && scar.patchedAtT != null ? band * 0.62 : band;
+  const slide = (index % 4) * 0.035;
+  return {
+    position: [spot[0] + slide, spot[1], spot[2]],
+    rotation: [-Math.PI / 2, 0, index * 0.17],
+    scale: [scale, scale * 0.72, 1],
+  };
+}
+
+// Scar history reuses the heat-scorch instances past the three authored heat slots. A new child
+// would allocate another buffer on a path that is contracted to five surfaces, and a hull with
+// no scars must keep the static heat matrices (steady flight never reuploads them).
+function placeScarMarks(mesh, scars, heatCount, scratch) {
+  const limit = Math.min(Array.isArray(scars) ? scars.length : 0, LIVING_HULL_SCAR_MAX);
+  for (let i = 0; i < limit; i += 1) {
+    const mark = scarMarkTransform(scars[i], i);
+    composeInstance(mesh, i, mark.position, mark.rotation, mark.scale, scratch);
+  }
+  const heat = Math.min(heatCount, SCORCH_TRANSFORMS.length);
+  for (let h = 0; h < heat; h += 1) {
+    const row = SCORCH_TRANSFORMS[h];
+    composeInstance(mesh, limit + h, row.position, row.rotation, row.scale, scratch);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
+function restoreScorchMarks(mesh, scratch) {
+  for (let i = 0; i < SCORCH_TRANSFORMS.length; i += 1) {
+    const row = SCORCH_TRANSFORMS[i];
+    composeInstance(mesh, i, row.position, row.rotation, row.scale, scratch);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
 const GRIME_TRANSFORMS = Object.freeze([
   { position: [-0.08, 0.366, 0], rotation: [-Math.PI / 2, 0, 0], scale: [1.18, 0.64, 1] },
   { position: [-0.08, 0.03, 0.515], rotation: [0, 0, 0], scale: [1.18, 0.38, 1] },
@@ -356,7 +420,11 @@ export function createLivingHullPresentation(options = {}) {
   patches.renderOrder = 2;
   root.add(patches);
 
-  const scorch = new THREE.InstancedMesh(scorchGeometry, scorchMaterial, LIVING_HULL_HEAT_SCORCH_MAX);
+  const scorch = new THREE.InstancedMesh(
+    scorchGeometry,
+    scorchMaterial,
+    LIVING_HULL_HEAT_SCORCH_MAX + LIVING_HULL_SCAR_MAX,
+  );
   scorch.name = 'LivingHull_HeatScorch';
   prepareStaticInstances(scorch, SCORCH_TRANSFORMS, scratch);
   scorch.renderOrder = 4;
@@ -393,6 +461,13 @@ export function createLivingHullPresentation(options = {}) {
     ready: false,
     any: false,
     mutations: 0,
+    // Scar lists are replaced, not mutated. The reference skips a string build on the
+    // per-frame player sync; a new list is the only time the marks are allowed to move.
+    scarRef: null,
+    scarKeyNext: '',
+    scarCountNext: 0,
+    scarKey: '',
+    scarCount: 0,
   };
 
   function applyVisibility() {
@@ -425,6 +500,14 @@ export function createLivingHullPresentation(options = {}) {
     const tallyCount = clampInteger(record && record.killTally, LIVING_HULL_KILL_TALLY_MAX);
     const patchCount = clampInteger(record && record.repairPatches, LIVING_HULL_REPAIR_PATCH_MAX);
     const scorchCount = clampInteger(record && record.heatScorch, LIVING_HULL_HEAT_SCORCH_MAX);
+    const scars = record && Array.isArray(record.scars) ? record.scars : null;
+    if (scars !== last.scarRef) {
+      last.scarRef = scars;
+      last.scarKeyNext = scarLayoutKey(scars);
+      last.scarCountNext = last.scarKeyNext ? Math.min(scars.length, LIVING_HULL_SCAR_MAX) : 0;
+    }
+    const scarKey = last.scarKeyNext;
+    const scarCount = last.scarCountNext;
     const now = Math.max(0, finite(simTime, 0));
     const lastWashAtT = record && Number.isFinite(Number(record.lastWashAtT))
       ? Math.max(0, Number(record.lastWashAtT))
@@ -444,9 +527,16 @@ export function createLivingHullPresentation(options = {}) {
       last.patches = patchCount;
       changed = true;
     }
-    if (scorchCount !== last.scorch) {
-      scorch.count = scorchCount;
+    if (scarKey !== last.scarKey || (scarKey && scorchCount !== last.scorch)) {
+      if (scarCount) placeScarMarks(scorch, record.scars, scorchCount, scratch);
+      else if (last.scarCount) restoreScorchMarks(scorch, scratch);
+      last.scarKey = scarKey;
+      changed = true;
+    }
+    if (scorchCount !== last.scorch || scarCount !== last.scarCount) {
+      scorch.count = scorchCount + scarCount;
       last.scorch = scorchCount;
+      last.scarCount = scarCount;
       changed = true;
     }
     if (grimeCycles !== last.grimeCycles) {
@@ -473,7 +563,7 @@ export function createLivingHullPresentation(options = {}) {
       root.rotation.z = finite(entity.pitch, 0);
     }
     const ready = authoredSurfaceReady(attachedRoot);
-    const any = tallyCount > 0 || patchCount > 0 || scorchCount > 0 || grimeAmount > 0 || !!line;
+    const any = tallyCount > 0 || patchCount > 0 || scorchCount > 0 || grimeAmount > 0 || !!line || scarCount > 0;
     if (ready !== last.ready || any !== last.any) {
       last.ready = ready;
       last.any = any;
@@ -526,6 +616,7 @@ export function createLivingHullPresentation(options = {}) {
       tallies: tallies.count,
       patches: patches.count,
       scorch: scorch.count,
+      scarMarks: last.scarCount,
       grimeInstances: grime.count,
       grime: last.grime,
       graffitiVisible: graffiti.visible,
