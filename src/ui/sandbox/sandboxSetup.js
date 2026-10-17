@@ -391,6 +391,10 @@ function gameNewOptionsForSandboxConfig(config) {
       openingLesson: config.openingLesson,
     });
   }
+  // The practice room needs native ships/fittings, not the page's read-only facades.
+  if (config.scenarioId === 'sling_practice' && laneCommandSink()) {
+    out.sandboxSetup = buildSandboxLaunchConfig(config);
+  }
   return out;
 }
 
@@ -448,7 +452,13 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     if (!cfg) return; // a normal new game, not a sandbox launch
     // Native newGameBoot settles this setup before its acknowledgement. Replaying
     // facade calls here would silently skip ships and race the native run wallet.
-    if (cfg.survivalSetup && laneCommandSink()) return;
+    if (laneCommandSink()) {
+      if (cfg.survivalSetup) return;
+      if (cfg.scenarioId === 'sling_practice') {
+        applyCameraCandidate(resolveCtx(), cfg.cameraCandidate);
+        return;
+      }
+    }
     const apply = () => {
       try {
         applySandboxSetup(resolveCtx(), cfg);

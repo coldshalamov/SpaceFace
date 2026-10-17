@@ -38,7 +38,7 @@ import {
   spawn47aScenarioCast,
 } from '../../src/data/scenarios/47aLiveScene.js';
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
-import { applyBudgetedLabPackage, applyPreparedCrucibleSetup } from '../../src/ui/sandbox/sandboxSetup.js';
+import { applyBudgetedLabPackage, applyPreparedCrucibleSetup, applySandboxSetup } from '../../src/ui/sandbox/sandboxSetup.js';
 import { getCombatKernel } from '../../src/combat/kernel.js';
 import { registerStuntImpulseObserver } from '../../src/combat/stuntEvidence.js';
 import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
@@ -1105,6 +1105,15 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           awaitPhysicsPrep: true,
         });
         if (result && result.ok === true) {
+          if (args?.opts?.sandboxSetup?.scenarioId === 'sling_practice') {
+            applySandboxSetup(
+              { state, helpers: sim.helpers, registry, bus: host.bus },
+              args.opts.sandboxSetup,
+            );
+          }
+          // A completed boot must publish its seed before the loading acknowledgement,
+          // even when meta's ordinary cold cadence has not reached its next slot.
+          host.domainDiffer.invalidateLeaf('meta.seed');
           if (args?.opts?.crucibleLaunch === true) {
             const prepared = applyPreparedCrucibleSetup(
               { state, helpers: sim.helpers, registry, bus: host.bus },

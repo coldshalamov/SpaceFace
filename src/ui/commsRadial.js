@@ -310,7 +310,7 @@ function nearestHailAvailability(state) {
   }
   if (bestId == null || !bestAvailability) return null;
   laneInputWrite(state, 'player.targetId', bestId);
-  return contactHailAvailability(state);
+  return bestAvailability;
 }
 
 function isFlightBlocked(state) {
@@ -561,7 +561,7 @@ export function createCommsRadial(ctx) {
 
   function refreshAvailabilityForTarget() {
     if (!currentTargetId) return null;
-    const availability = contactHailAvailability(state);
+    const availability = contactHailAvailability({ ...state, player: { ...state.player, targetId: currentTargetId } });
     if (!availability.enabled || availability.targetId !== currentTargetId) {
       currentAvailability = availability;
       return availability;
