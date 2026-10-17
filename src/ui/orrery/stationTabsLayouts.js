@@ -1902,10 +1902,14 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 @media (min-width:801px) and (max-height:800px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important; bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
 }
+/* ≤460 tall the destination words ride level with the comms box, so the line (and its strip, 5px below the text) sits 12px over it,
+   clear of the words; at +2px the strip blanked the top half of MARKET … LEDGER while it showed (Code Work review) */
 @media (min-width:801px) and (max-height:460px) {
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 2px) !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 12px) !important; }
 }
 @media (max-height:800px) {
+  /* it now stands over list rows for its 3.6s, so clicks go through it to the row beneath (Code Work review) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { pointer-events:none !important; }
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt::before { left:-36px !important; right:-36px !important; top:-5px !important; bottom:-5px !important;
     background:linear-gradient(90deg, rgb(7 8 10 / 0), rgb(7 8 10 / .92) 32px, rgb(7 8 10 / .92) calc(100% - 32px), rgb(7 8 10 / 0)) !important; }
 }
