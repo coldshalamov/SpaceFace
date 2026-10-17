@@ -6445,19 +6445,20 @@ export const save = {
       this._callDeserialize('v2Flavor', data.v2Flavor);
       yield 'deserialized-v2-flavor';
 
-      // 6. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
-      const shipsSys = this.registry.get('ships');
-      if (shipsSys && typeof shipsSys.recomputeActiveShip === 'function') {
-        shipsSys.recomputeActiveShip();
-      }
-      // 7. re-apply saved ABSOLUTE hull/shield/cap (recompute preserves fractions → would drift).
-      this._applySavedVitals(savedPlayer);
-
-      // 8. recompute cargo caches from restored items.
+      // 6. Rebuild cargo caches before deriving ship stats. usedMass is not persisted and
+      // may still describe the outgoing hold; deriving first would temporarily change the
+      // saved body mass/inertia, then invalidate it again when save:loaded settles cargo.
       const cargoSys = this.registry.get('cargo');
       if (cargoSys && typeof cargoSys.recompute === 'function') {
         cargoSys.recompute();
       }
+      // 7. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
+      const shipsSys = this.registry.get('ships');
+      if (shipsSys && typeof shipsSys.recomputeActiveShip === 'function') {
+        shipsSys.recomputeActiveShip();
+      }
+      // 8. re-apply saved ABSOLUTE hull/shield/cap (recompute preserves fractions → would drift).
+      this._applySavedVitals(savedPlayer);
       yield 'pre-sector-enter';
 
       // 9. regenerate the saved sector's contents around the player.
