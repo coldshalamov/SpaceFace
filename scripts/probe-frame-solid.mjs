@@ -6,6 +6,9 @@
 // a station's dock envelope with no physics static for it.
 //   node scripts/probe-frame-solid.mjs              (headed, ~3-5 min)
 //   node scripts/probe-frame-solid.mjs --headless
+//   --route=ceres-refinery --seed=14920 --sim-lane=main
+//     stages the real refinery pocket, then flies a 30 s local weave. The main lane makes
+//     authoritative physics/AI visible to the page CPU profiler; ordinary flight uses worker.
 //
 // The instrument only observes; flight uses public controls (W thrust, A/D yaw).
 // The dock/interact key is never pressed.
@@ -29,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { summarizeCpuProfile } from './lib/cpuProfileSummary.mjs';
+import { PROOF_SECTOR_ID, pocketEntryGlobal } from '../src/testing/lab/proofSixtySeconds.js';
 import {
   compareFrameSolidMetrics,
   frameSolidMetrics,
@@ -71,6 +75,11 @@ const NO_CANON = process.argv.includes('--no-program-canon');
 // Main-thread CPU profile over the flight route (sampling adds a little overhead; compare
 // profiled runs only with profiled runs).
 const CPU_PROFILE = process.argv.includes('--cpu-profile');
+const ROUTE = (process.argv.find((arg) => arg.startsWith('--route=')) || '--route=adventure').slice(8);
+const SEED = Number((process.argv.find((arg) => arg.startsWith('--seed=')) || '--seed=4242').slice(7));
+const SIM_LANE = (process.argv.find((arg) => arg.startsWith('--sim-lane=')) || '--sim-lane=worker').slice(11);
+if (!['adventure', 'ceres-refinery'].includes(ROUTE) || !['main', 'worker'].includes(SIM_LANE)
+  || !Number.isSafeInteger(SEED) || SEED <= 0) throw new Error('invalid route, seed, or sim-lane');
 const STRICT_TIMING = process.argv.includes('--strict-timing');
 const COMPARE_PATH = (process.argv.find((arg) => arg.startsWith('--compare=')) || '').slice('--compare='.length) || null;
 const BASELINE_SOURCE_ARG = (process.argv.find((arg) => arg.startsWith('--baseline-source=')) || '')
@@ -210,7 +219,7 @@ try {
     window.__SF_CONTEXT_LOSSES__ = 0;
     document.addEventListener('webglcontextlost', () => { window.__SF_CONTEXT_LOSSES__++; }, true);
   }, { noProgramCanon: NO_CANON });
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+  await page.goto(`${baseUrl}?simLane=${SIM_LANE}`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 300_000 });
   await page.bringToFront();
 
@@ -229,7 +238,7 @@ try {
   }
   restoreDelayedReadiness = async () => page.evaluate(restoreFrameSolidDelayedReadiness).catch(() => null);
 
-  await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Frame Solid' }));
+  await page.evaluate((seed) => window.SF.bus.emit('game:new', { name: 'Frame Solid', seed }), SEED);
   // Same gate as probe-solid-world: the opening cook alone can run minutes on a
   // slow host; the audit measures live flight, not boot pacing.
   await page.waitForFunction(() => {
@@ -237,6 +246,29 @@ try {
     return state && state.mode === 'flight'
       && Number.isFinite(state.render && state.render.firstPlayableFrameAt);
   }, null, { timeout: 600_000 });
+  let pocket = null;
+  if (ROUTE === 'ceres-refinery') {
+    pocket = await page.evaluate(async ({ sectorId, at }) => {
+      const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
+      if (laneCommandSink()) {
+        await laneRpc('worldCall', { method: 'enterSector', sectorId });
+        await laneRpc('worldCall', { method: 'relocatePlayerInSector', pose: { ...at, heading: 0 }, opts: { reason: 'frame-solid-ceres' } });
+      } else {
+        const world = window.SF.registry.get('world');
+        world.enterSector(sectorId);
+        world.relocatePlayerInSector({ ...at, heading: 0 }, { reason: 'frame-solid-ceres' });
+      }
+      return at;
+    }, { sectorId: PROOF_SECTOR_ID, at: pocketEntryGlobal() });
+    await page.waitForTimeout(10000);
+  }
+  const routeIdentity = await page.evaluate(() => ({
+    seed: window.SF.state.meta.seed,
+    sector: window.SF.state.world.currentSectorId,
+    entities: window.SF.state.entityList.filter((e) => e && e.alive !== false).length,
+    settings: window.SF.state.settings,
+  }));
+  console.log(`route=${ROUTE} simLane=${SIM_LANE} ${JSON.stringify(routeIdentity)}`);
   // { links, frame, totals } from the armed perf seam; null when the seam is absent or unarmed.
   const readShaderLinks = () => page.evaluate(() => {
     const perf = window.__SPACEFACE_PERF__;
@@ -287,7 +319,7 @@ try {
     await cdp.send('Profiler.start');
   }
 
-  const station = await page.evaluate(() => {
+  const station = pocket ? { id: null, x: pocket.x, z: pocket.z, radius: 100, dockRadius: 100, dist0: 0 } : await page.evaluate(() => {
     const s = window.SF.state;
     const p = s.entities.get(s.playerId);
     let best = null;
@@ -309,7 +341,7 @@ try {
     };
   });
   if (!station) throw new Error('no non-gate station found in the spawn sector');
-  console.log(`target station id=${station.id} at (${station.x.toFixed(0)}, ${station.z.toFixed(0)})`
+  console.log(`target ${pocket ? 'pocket' : 'station'} id=${station.id} at (${station.x.toFixed(0)}, ${station.z.toFixed(0)})`
     + ` dockRadius=${station.dockRadius} startDist=${station.dist0.toFixed(0)}`);
 
   // One evaluate per poll returns the steering snapshot and, on the ~500 ms
@@ -336,7 +368,7 @@ try {
   let lastFrameAt = 0;
 
   const poll = async (sampleDue) => {
-    const snapshot = await page.evaluate(({ stationId, wantSample }) => {
+    const snapshot = await page.evaluate(({ stationId, wantSample, fixedTarget }) => {
     const s = window.SF && window.SF.state;
     if (!s) return { mode: 'gone' };
     const p = s.entities && s.entities.get(s.playerId);
@@ -346,9 +378,9 @@ try {
       px: p && p.pos ? p.pos.x : NaN,
       pz: p && p.pos ? p.pos.z : NaN,
       rot: p ? p.rot : NaN,
-      ex: e && e.pos ? e.pos.x : NaN,
-      ez: e && e.pos ? e.pos.z : NaN,
-      stationAlive: !!(e && e.alive !== false),
+      ex: stationId === null ? fixedTarget.x : e && e.pos ? e.pos.x : NaN,
+      ez: stationId === null ? fixedTarget.z : e && e.pos ? e.pos.z : NaN,
+      stationAlive: stationId === null || !!(e && e.alive !== false),
     };
     if (wantSample) {
       const ar = s.activityRuntime || {};
@@ -366,7 +398,7 @@ try {
       ? window.__SF_CAPTURE_D201_DELAYED_READINESS__()
       : null;
     return out;
-    }, { stationId: station.id, wantSample: sampleDue });
+    }, { stationId: station.id, wantSample: sampleDue, fixedTarget: pocket });
     if (snapshot && snapshot.delayedReadiness) {
       recordDelayedReadinessSample(delayedReadinessReceipt, snapshot.delayedReadiness,
         Date.now() - delayedReadinessReceipt.startedAtMs);
@@ -474,23 +506,25 @@ try {
     return rec;
   };
 
-  await flyPhase({
-    name: 'away',
-    bearingOf: (s) => Math.atan2(s.pz - s.ez, s.px - s.ex),
-    done: (dist) => dist > AWAY_WU,
-    limitMs: AWAY_MS,
-  });
-  await flyPhase({
-    name: 'back',
-    bearingOf: (s) => Math.atan2(s.ez - s.pz, s.ex - s.px),
-    done: (dist) => dist <= station.dockRadius * 0.5,
-    limitMs: BACK_MS,
-  });
+  if (!pocket) {
+    await flyPhase({
+      name: 'away',
+      bearingOf: (s) => Math.atan2(s.pz - s.ez, s.px - s.ex),
+      done: (dist) => dist > AWAY_WU,
+      limitMs: AWAY_MS,
+    });
+    await flyPhase({
+      name: 'back',
+      bearingOf: (s) => Math.atan2(s.ez - s.pz, s.ex - s.px),
+      done: (dist) => dist <= station.dockRadius * 0.5,
+      limitMs: BACK_MS,
+    });
+  }
   await flyPhase({
     name: 'loiter',
     bearingOf: (s) => Math.atan2(s.ez - s.pz, s.ex - s.px),
     done: null,
-    limitMs: LOITER_MS,
+    limitMs: pocket ? 30000 : LOITER_MS,
     weave: true,
   });
 
@@ -811,6 +845,7 @@ try {
     at: new Date().toISOString(),
     head,
     headless: HEADLESS,
+    route: ROUTE, seed: SEED, simLane: SIM_LANE, routeIdentity,
     programCanon: !NO_CANON,
     sourceOverlay: BASELINE_SOURCE_IDENTITY ? {
       manifest: path.relative(ROOT, BASELINE_SOURCE_PATH).replace(/\\/g, '/'),
