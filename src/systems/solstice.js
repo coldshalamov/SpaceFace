@@ -493,7 +493,9 @@ export function createSolstice() {
           this._say('bloom', true);
           this._sound('sfx_solstice_bloom');
 
-          // Reward: spawn rare crystal pickups in the bloom perimeter
+          // Reward: spawn rare crystal pickups in the bloom perimeter. No TTL — the bloom is
+          // once per memory, so the crystals live as sector-owned content like the parts above
+          // (unstamped, they survived the sector exit live and unbound: D207).
           if (this.helpers.spawnEntity) {
             for (let k = 0; k < 3; k++) {
               const ang = (k * Math.PI * 2 / 3) + 0.3;
@@ -504,6 +506,7 @@ export function createSolstice() {
               this.helpers.spawnEntity({
                 type: 'pickup',
                 name: 'Resonant Light Crystal',
+                homeSectorId: C.sectorId,
                 pos: rPos,
                 radius: 4,
                 mass: 1,
@@ -511,6 +514,8 @@ export function createSolstice() {
                   commodity: 'cmdty_ore_rare',
                   amount: 2,
                   pickupRole: 'crystal',
+                  homeSectorId: C.sectorId,
+                  sectorId: C.sectorId,
                 },
               });
             }
