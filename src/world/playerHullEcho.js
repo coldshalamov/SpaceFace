@@ -53,7 +53,8 @@ function publishReadout(world, site, loss, active) {
   const leg = Math.min(2, loss.echo.leg || 0);
   const row = {
     poiId, type: 'anomaly', name: `${loss.name}: ${leg < 2 ? `bearing ${leg + 1}/2` : 'final heading'}`,
-    pos: position(world, site, loss, leg < 2 ? bearingDistance(site, leg) : 0),
+    pos: leg < 2 ? position(world, site, loss, bearingDistance(site, leg))
+      : { ...(wreck?.pos || loss.echo.wreckPos || position(world, site, loss)) },
     hidden: !loss.echo.observed || loss.echo.recovered, claimable: false,
     scannerSignalKind: 'anomaly', runtimeOwned: true, scanDescription: readout,
   };
@@ -72,7 +73,8 @@ export function materializePlayerHullEcho(world, site, active) {
     rot: loss.rot || 0, radius: loss.radius || 14, mass: 100, ttl: Infinity,
     hull: 100, hullMax: 100, collides: true, homeSectorId: site.sectorId,
     data: { name: loss.name, defId: loss.shipDefId, parentType: 'ship',
-      parentDefId: loss.shipDefId, hullEchoLossId: loss.lossId, siteId: site.siteId,
+      parentDefId: loss.shipDefId, hulkOfDefId: loss.shipDefId,
+      hullEchoLossId: loss.lossId, siteId: site.siteId,
       persistenceOwner: 'alienEcology', scanLabel: `${loss.name} — ${loss.shipClass}`,
       scanDescription: playerHullEchoReadout(loss), salvagePool: {} },
   });
@@ -138,6 +140,10 @@ export function tickPlayerHullEcho(world, site) {
     echo.wreckPos = { x: wreck.pos.x, z: wreck.pos.z };
   }
   const wreckPos = echo.wreckPos || position(world, site, loss);
+  if (echo.leg === 2) {
+    const bearing = (world.active || state.world.activeSector)?.pois?.find(row => row.poiId === `hull_echo_${loss.lossId}`);
+    if (bearing) { bearing.pos.x = wreckPos.x; bearing.pos.z = wreckPos.z; }
+  }
   const headingError = Math.abs(Math.atan2(Math.sin(player.rot - loss.rot), Math.cos(player.rot - loss.rot)));
   if (!echo.aligned && echo.leg === 2
       && range(player.pos, wreckPos) < Math.max(120, (loss.radius || 14) * 2)

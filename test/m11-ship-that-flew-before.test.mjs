@@ -10,6 +10,7 @@ import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import { ALIEN_SITES } from '../src/data/alienEcology.js';
 import { materializeAlienEcology, tickAlienEcology } from '../src/systems/alienEcology.js';
 import { normalizeRecordsBag, serializeRecordsBag } from '../src/world/worldRecords.js';
+import { wreckPackagedFile } from '../src/render/visualFactory.js';
 
 const SEED = 4242;
 const SITE = ALIEN_SITES.preserved_cockpit;
@@ -91,6 +92,61 @@ test('seed 4242: different loss histories give different readouts; a bound site 
     visit(a);
     assert.equal(bearing(a).poiId, `hull_echo_${first.lossId}`);
   } finally { a.sim.dispose(); b.sim.dispose(); }
+});
+
+test('seed 4242: a named Wasp keeps its packaged hull across reload with a different entity id', () => {
+  const a = boot(), b = boot();
+  try {
+    const loss = lose(a, 'Last Lantern', 'ship_wasp');
+    const wreck = visit(a);
+    const file = wreckPackagedFile(wreck);
+    assert.equal(file, 'wholeships/wasp_production_v1.glb', 'use the renderer\'s named-hull selector');
+    assert.equal(wreck.data.hulkOfDefId, loss.shipDefId);
+    const disk = JSON.parse(JSON.stringify(serializeRecordsBag(a.state.world.records)));
+    b.state.world.records = normalizeRecordsBag(disk);
+    b.sim.spawn({ type: 'wreck', pos: { x: 0, z: 0 } }); // change the materialized entity ids
+    const reloaded = visit(b);
+    assert.notEqual(reloaded.id, wreck.id);
+    assert.equal(reloaded.data.name, 'Last Lantern');
+    assert.equal(reloaded.data.hullEchoLossId, loss.lossId);
+    assert.equal(reloaded.data.hulkOfDefId, loss.shipDefId);
+    assert.equal(wreckPackagedFile(reloaded), file, 'the saved loss, not the entity id, selects its hull');
+  } finally { a.sim.dispose(); b.sim.dispose(); }
+});
+
+test('seed 4242: the final marker follows a displaced wreck and releases the recorder there', () => {
+  const h = boot();
+  try {
+    const loss = lose(h);
+    const wreck = visit(h);
+    const siteCenter = h.owner._toGlobal(SITE.center, SITE.sectorId);
+    h.player.pos.copy(siteCenter);
+    h.bus.emit('scan:pulse', { pos: { ...h.player.pos }, radius: 1200 });
+    h.player.pos.copy(bearing(h).pos);
+    tick(h);
+    wreck.pos.x += 500;
+    h.player.pos.copy(bearing(h).pos);
+    tick(h);
+    assert.equal(loss.echo.leg, 2);
+    assert.equal(bearing(h).pos.x, wreck.pos.x, 'the final bearing starts at the displaced hull');
+    assert.equal(bearing(h).pos.z, wreck.pos.z);
+    wreck.pos.z += 500;
+    h.player.pos.copy(siteCenter);
+    h.player.rot = loss.rot;
+    tick(h);
+    assert.equal(bearing(h).pos.x, wreck.pos.x, 'the final marker keeps following the live hull');
+    assert.equal(bearing(h).pos.z, wreck.pos.z);
+    assert.equal(loss.echo.aligned, false, 'alignment at the authored center cannot release the recorder');
+    assert.equal(h.state.entityList.some(e => e.type === 'pickup'
+      && e.data?.worldSiteId === `hull_echo_${loss.lossId}`), false);
+    h.player.pos.copy(bearing(h).pos);
+    tick(h);
+    assert.equal(loss.echo.aligned, true, 'alignment at the displayed wreck marker releases the recorder');
+    const pod = h.state.entityList.find(e => e.type === 'pickup'
+      && e.data?.worldSiteId === `hull_echo_${loss.lossId}`);
+    assert.ok(pod, 'the aligned wreck releases a physical recorder');
+    assert.ok(Math.hypot(pod.pos.x - wreck.pos.x, pod.pos.z - wreck.pos.z) < 120);
+  } finally { h.sim.dispose(); }
 });
 
 test('seed 4242: save payload and reload preserve history, binding and partial route progress', () => {
