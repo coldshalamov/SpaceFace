@@ -42,6 +42,8 @@
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import { dedupWarn } from '../core/warnDedup.js';
+import { CLEAN_CYLINDER, buildCleanCylinderOffer } from '../data/cleanCylinder.js';
+import { pointContaminationAt } from '../data/alienEcology.js';
 import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
 import { validIlexOutcome } from '../data/ilexArk.js';
 import {
@@ -1807,6 +1809,7 @@ export const missions = {
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) {
         this._steerEscortee(m, state, dt);
+        if (m.params?.cleanCylinder) { this._driveCleanCylinder(m, i, state, dt); continue; }
         this._maybeTurnEscort(m, state);
       }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
@@ -2057,6 +2060,7 @@ export const missions = {
       const breakawayChanged = this._syncBreakawayOffer(info, board, epoch);
       const counterweightChanged = this._syncCounterweightOffer(info, board, epoch);
       const yardChanged = this._syncYardContractOffers(info, board, epoch);
+      const cylinderChanged = this._syncCleanCylinderOffer(info, board);
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
@@ -2064,7 +2068,7 @@ export const missions = {
       const shortageChanged = this._syncShortageOffers(board);
       const starterChanged = this._syncStarterJobOffer(info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
+        || counterweightChanged || yardChanged || cylinderChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2208,12 +2212,22 @@ export const missions = {
     this._syncBreakawayOffer(info, board, epoch);
     this._syncCounterweightOffer(info, board, epoch);
     this._syncYardContractOffers(info, board, epoch);
+    this._syncCleanCylinderOffer(info, board);
     this._syncAuthoredSetPieceOffers(info, board, epoch);
     this._syncMegaHeistOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
     this._syncAdventureSpeedOffers(info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  _syncCleanCylinderOffer(info, board) {
+    if (info.id !== CLEAN_CYLINDER.stationId) return false;
+    const exists = [...board.slots, ...this.state.missions.active].some(m => m.params?.cleanCylinder);
+    const settled = (this.state.missions.receipts || []).some(r => r.source === 'cleanCylinder' && r.outcome === 'completed');
+    if (exists || settled || this.state.story?.flags?.m30_clean_cylinder) return false;
+    board.slots.push(buildCleanCylinderOffer());
+    return true;
   },
 
   /**
@@ -4887,6 +4901,11 @@ export const missions = {
     }
 
     if (m.type === 'escort') {
+      if (m.params?.cleanCylinder) {
+        const charge = this.state.entities.get(m._escorteeId);
+        if (charge?.alive) return { ...base, targetEntityId: charge.id,
+          pos: { x: charge.pos.x, z: charge.pos.z }, reason: m.params.cleanCylinder.objective || m.brief };
+      }
       const targetStation = this._liveStation(m.destStationId);
       if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z }, reason: 'Escort the convoy to dock' };
       return base;
@@ -8522,6 +8541,18 @@ export const missions = {
     if (!m || m.type !== 'escort' || (m.params && m.params.convoySettled)) return;
     m.params = m.params || {};
     m.params.convoySettled = true;
+    if (m.params.cleanCylinder) {
+      const c = m.params.cleanCylinder;
+      c.outcome = c.phase === 'retreat' ? 'retreated'
+        : c.exposure >= CLEAN_CYLINDER.foulAt ? 'contaminated_delivery' : 'clean_delivery';
+      const fraction = c.outcome === 'retreated' ? 0.25 : c.outcome === 'contaminated_delivery' ? 0.5 : 1;
+      m.reward_cr = Math.round(m.reward_cr * fraction);
+      m.params.completionMethod = c.outcome;
+      m.params.investigationOutcome = c.outcome;
+      const flags = this.state.story.flags || (this.state.story.flags = {});
+      flags.m30_clean_cylinder = c.outcome;
+      return;
+    }
     const total = Math.max(0, Number(m.params.convoyTotal) || 0);
     if (total <= 1) return; // single-hull rows (legacy accepts) have no convoy to short
     let alive = 0;
@@ -8676,6 +8707,13 @@ export const missions = {
 
   _missionSuccessDebriefText(m) {
     const p = (m && m.params) || {};
+    if (p.cleanCylinder) {
+      return p.cleanCylinder.outcome === 'retreated'
+        ? 'Charge returned with you to the entry refuge. Passage incomplete; the convoy paid the 25% recovery fee.'
+        : p.cleanCylinder.outcome === 'contaminated_delivery'
+          ? 'Contaminated delivery: the charge arrived fouled. Quarantine accepted it at 50% of the clean fee.'
+          : 'Clean delivery: the Shepherd charge reached the berth with its cylinder clean. Full convoy fee paid.';
+    }
     const cargo = this._cmdtyName(p.cmdtyId);
     const dest = this._destName(m);
     if (m && m.source === LANDMARK_QUEST_SOURCE && p.landmarkProbe) {
@@ -10252,10 +10290,11 @@ export const missions = {
       for (let i = 0; i < convoyGrant; i++) {
         const isLead = i === 0;
         const off = isLead ? { a: 0, dr: 0 } : wingOffset[(i - 1) % wingOffset.length];
-        const pos = {
+        let pos = {
           x: px + Math.cos(ang + off.a) * (r + off.dr),
           z: pz + Math.sin(ang + off.a) * (r + off.dr),
         };
+        if (m.params?.cleanCylinder) pos = this._cleanCylinderGlobal(m.params.cleanCylinder.pose || CLEAN_CYLINDER.entry);
         // Real haulers: friendly (team 0) ships that TRAVEL toward the destination. The lead must
         // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
         const spec = makeEnemySpawnSpec('mule_trader', level, pos, { startedTick: deferredEnterTick(this.state) });
@@ -10265,6 +10304,16 @@ export const missions = {
         spec.data.escortee = isLead ? 'lead' : true;
         spec.data.name = isLead ? pilot.name : null;
         spec.data.scanLabel = isLead ? `${pilot.crew} — convoy lead` : `${pilot.crew} — hauler`;
+        if (m.params?.cleanCylinder) {
+          spec.homeSectorId = m.destSectorId;
+          spec.data.cleanCylinderOf = String(m.id);
+          spec.data.machine = { kind: 'shepherd' };
+          spec.data.suppressionOffline = true;
+          spec.data.name = 'Shepherd-class charge';
+          spec.data.scanLabel = 'SHEPHERD CHARGE — MATCH VELOCITY';
+          const pose = m.params.cleanCylinder.pose;
+          if (pose) { spec.vel = { x: pose.vx || 0, z: pose.vz || 0 }; spec.rot = pose.rot || 0; }
+        }
         // No data.ai → the AI system skips it (it requires data.ai); WE steer it via data.intent in
         // update() so it runs the lane instead of dogfighting. Seed a neutral intent.
         delete spec.data.ai;
@@ -10440,6 +10489,105 @@ export const missions = {
     });
   },
 
+  _cleanCylinderGlobal(pos) {
+    const world = this.registry?.get('world');
+    return world?._toGlobal ? world._toGlobal(pos) : { x: pos.x, z: pos.z };
+  },
+
+  _snapshotCleanCylinder(m) {
+    const c = m.params?.cleanCylinder;
+    const lead = c && this.state.entities.get(m._escorteeId);
+    if (!lead?.alive) return;
+    const world = this.registry?.get('world');
+    const local = world?._toLocal ? world._toLocal(lead.pos) : lead.pos;
+    c.pose = { x: local.x, z: local.z, vx: lead.vel?.x || 0, vz: lead.vel?.z || 0, rot: lead.rot || 0 };
+  },
+
+  // M30 is a leg of the ordinary physical escort, with durable condition and route state.
+  // Repair is a selected, close, velocity-matched hold using the charge's onboard purge supply.
+  _driveCleanCylinder(m, index, state, dt) {
+    const c = m.params.cleanCylinder;
+    const lead = state.entities.get(m._escorteeId);
+    const player = state.entities.get(state.playerId);
+    if (!lead?.alive || !player?.alive || state.world.currentSectorId !== m.destSectorId) return;
+    const t = CLEAN_CYLINDER;
+    const entry = this._cleanCylinderGlobal(t.entry), exit = this._cleanCylinderGlobal(t.exit);
+    const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+    const gap = distance(player.pos, lead.pos);
+    const relativeSpeed = Math.hypot((player.vel?.x || 0) - (lead.vel?.x || 0), (player.vel?.z || 0) - (lead.vel?.z || 0));
+    c.matched = gap <= t.pocketRadius && relativeSpeed <= t.matchSpeed;
+    if (!c.joined && c.matched) c.joined = true;
+    if (c.joined && c.phase === 'crossing') c.crossingS += dt;
+    const faultAge = c.crossingS - t.faultAtS;
+    const warning = faultAge >= 0 && faultAge < t.warningS && !c.faultRepaired;
+    const fault = faultAge >= t.warningS && faultAge < t.warningS + t.faultS && !c.faultRepaired;
+    if (warning && !c.faultWarned) {
+      c.faultWarned = true;
+      this.bus.emit('comms:popup', { sender: 'Shepherd charge', category: 'mission', ttl: 8,
+        text: 'Suppression spike in six seconds. Target and match close to repair, or turn back toward the entry refuge; I will follow your retreat.' });
+    }
+    // A player visibly moving back along the lane chooses retreat; no hidden UI intent or
+    // abandon-to-success conversion. Both live hulls must reach the actual entry refuge.
+    const backX = entry.x - lead.pos.x, backZ = entry.z - lead.pos.z;
+    const backD = Math.hypot(backX, backZ) || 1;
+    const backOffset = ((player.pos.x - lead.pos.x) * backX + (player.pos.z - lead.pos.z) * backZ) / backD;
+    const backSpeed = ((player.vel?.x || 0) * backX + (player.vel?.z || 0) * backZ) / backD;
+    if (c.joined && c.phase !== 'retreat' && (warning || fault || c.exposure >= t.foulAt)
+      && gap <= t.pocketRadius && backD > 160 && backOffset > 100 && backSpeed > 4) c.retreatS += dt;
+    else c.retreatS = 0;
+    if (c.retreatS >= 2) {
+      c.phase = 'retreat';
+      this.bus.emit('comms:popup', { sender: 'Shepherd charge', category: 'mission', ttl: 6,
+        text: 'Following you back to the entry refuge. Return together for the 25% recovery fee; this is not a clean delivery.' });
+    }
+    const repairing = c.joined && state.player.targetId === lead.id;
+    const holdRepair = repairing && gap <= t.repairRadius && relativeSpeed <= t.repairSpeed
+      && (c.exposure > 0 || warning || fault);
+    if (holdRepair) c.repairS += dt;
+    else c.repairS = 0;
+    if (c.repairS >= t.repairS) {
+      c.exposure = 0; c.repairS = 0; c.repairs = (c.repairs || 0) + 1;
+      if (warning || fault) c.faultRepaired = true;
+      this.bus.emit('comms:popup', { sender: 'Shepherd charge', category: 'mission', ttl: 5,
+        text: 'Purge cycle complete. Cylinder clean; suppression restored. Continue passage or return to refuge.' });
+    }
+    lead.data.suppressionOffline = !c.joined || !c.matched || (fault && !c.faultRepaired);
+    if (c.joined && c.phase === 'crossing' && lead.data.suppressionOffline) {
+      const world = this.registry?.get('world');
+      const local = world?._toLocal ? world._toLocal(lead.pos) : lead.pos;
+      c.exposure = Math.min(1, c.exposure + pointContaminationAt(state, m.destSectorId, local.x, local.z) * 0.06 * dt);
+    }
+    c.fouled = c.exposure >= t.foulAt;
+    const status = c.phase === 'retreat' ? 'RETREAT TO ENTRY REFUGE'
+      : holdRepair ? `REPAIR ${Math.floor(c.repairS)}/${t.repairS}s`
+        : c.fouled ? 'FOULED — TARGET AND MATCH CLOSE TO REPAIR'
+          : lead.data.suppressionOffline ? 'SUPPRESSION DOWN — MATCH OR REPAIR'
+            : c.phase === 'delivery' ? 'CLEAN — ESCORT TO BERTH' : 'CLEAN — MATCH THE POCKET';
+    const objective = `${status} · exposure ${Math.round(c.exposure * 100)}%`;
+    lead.data.scanLabel = `SHEPHERD CHARGE — ${objective}`;
+    if (c.objective !== objective) {
+      c.objective = objective;
+      this.bus.emit('mission:updated', { missionId: m.id, exposure: c.exposure, phase: c.phase });
+    }
+    const station = this._liveStation(m.destStationId);
+    if (c.phase === 'crossing' && distance(lead.pos, exit) <= 100 && c.joined) c.phase = 'delivery';
+    const target = c.phase === 'retreat' ? entry : c.phase === 'delivery' ? station?.pos : exit;
+    const intent = lead.data.intent || (lead.data.intent = {});
+    intent.moveX = 0; intent.boost = false; intent.fire = false; intent.fireGroup = null;
+    if (target) intent.aimAngle = Math.atan2(target.z - lead.pos.z, target.x - lead.pos.x);
+    const speed = Math.hypot(lead.vel?.x || 0, lead.vel?.z || 0);
+    intent.moveZ = !c.joined || holdRepair || !target || distance(lead.pos, target) <= 80
+      ? 0 : Math.max(0, Math.min(1, (t.speed - speed) / t.speed));
+    intent.brake = !c.joined || holdRepair || !target || distance(lead.pos, target) <= 80;
+    m._escorteeArrived = c.phase === 'delivery' && !!station
+      && distance(lead.pos, station.pos) <= ((station.data?.dockRadius || 80) + 40);
+    this._snapshotCleanCylinder(m);
+    if (c.phase === 'retreat' && distance(lead.pos, entry) <= 120 && distance(player.pos, entry) <= 160) {
+      this._settleEscortConvoyPay(m);
+      this._completeMission(m, index);
+    }
+  },
+
   /** Drive the convoy toward the destination station (or sector centre). Writes data.intent
    *  which flight consumes; marks m._escorteeArrived when the LEAD reaches the dock ring —
    *  wings run the lane in trail formation and do not gate completion. Deterministic
@@ -10476,6 +10624,7 @@ export const missions = {
         });
       }
     }
+    if (m.params?.cleanCylinder) return; // M30 steers the same hull through its corridor/refuge legs.
     // Destination point shared by the whole convoy: the dest station entity if it's loaded in
     // the current sector, else the player (so the convoy tags along until the player jumps it
     // into the destination sector).
@@ -12665,6 +12814,7 @@ export const missions = {
       : (m.active || []);
     // Strip transient runtime fields (entity ids) from active missions.
     const active = source.map((a) => {
+      if (a.params?.cleanCylinder) this._snapshotCleanCylinder(a);
       const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, _swarmClockParkedAt, _swarmClockDeadline, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active

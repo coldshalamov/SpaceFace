@@ -458,6 +458,7 @@ export function tickMachineLayer(world, dt) {
 
   // ── Machine kinematics ──
   for (const e of machines) {
+    if (e.data.cleanCylinderOf) continue; // escort/physics owns this moving Shepherd charge
     const m = e.data.machine;
     const kind = machineKindById(m.kind);
     if (!kind) continue;
@@ -1161,7 +1162,7 @@ export function shepherdFieldAt(state, sectorId, x, z) {
   const r2 = r * r;
   for (const e of machineScanForSector(state, sectorId)) {
     const m = e && e.data && e.data.machine;
-    if (!m || m.kind !== 'shepherd' || e.alive === false) continue;
+    if (!m || m.kind !== 'shepherd' || e.alive === false || e.data.suppressionOffline) continue;
     if (dist2(e.pos.x, e.pos.z, x, z) <= r2) return e;
   }
   return null;
