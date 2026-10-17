@@ -8,7 +8,8 @@
 //           harmlessly toward the cloud origin until their TTL expires). The classic missile-defense.
 //   DECOY — breaks locks partially AND, for the buoy's whole duration, re-baits ANY seeker that
 //           crosses the buoy's water: the missile re-attacks the buoy point, not the ship. A bait
-//           verb — you place it ahead of the fight, not behind you.
+//           verb — you place it ahead of the fight, not behind you. Dropped while boosting, the
+//           buoy's body copies the hull's velocity and keeps flying on that line.
 //   ECM   — jams homing guidance: any missile within the effect radius has its turnRate zeroed for
 //           the effect duration (it flies straight, easy to dodge). Also partially breaks locks.
 //
@@ -295,6 +296,9 @@ export const countermeasures = {
       }
       if (cm.cooldownT > 0) cm.cooldownT = Math.max(0, cm.cooldownT - dt);
       if (cm.effectT > 0) {
+        // A boost-thrown buoy rides its drop vector for every live tick, including the
+        // tick it expires. A buoy placed while not boosting carries a zero vector.
+        if (cm.effect && cm.effect.body) stepDecoyBody(cm.effect, dt);
         cm.effectT = Math.max(0, cm.effectT - dt);
         if (cm.effectT <= 0) {
           // ECM effect ending: un-jam any missile this ship jammed (restore its real turnRate).
@@ -335,8 +339,9 @@ export const countermeasures = {
       if (!cm || !cm.effect || cm.effectT <= 0) continue;
       const cfg = cm.effect.cfg;
       const r2 = cfg.radius * cfg.radius;
-      // A placed buoy keeps working after its pilot leaves. Query the same stationary
-      // point that its radius test and visible mechanism use, rather than the moving hull.
+      // A placed buoy keeps working after its pilot leaves. The bait point is the buoy,
+      // not the hull. A boost drop's body carries the hull velocity, so the point rides
+      // that line; a buoy placed while not boosting stays where it was dropped.
       const center = cfg.kind === 'decoy'
         ? { x: cm.effect.originX, z: cm.effect.originZ } : e.pos;
       const projectiles = projectilesNear(state, center, cfg.radius, this._projectileScratch);
@@ -352,6 +357,11 @@ export const countermeasures = {
         if (cfg.kind === 'chaff' || cfg.kind === 'decoy') {
           // Chaff answers the defeated lineage: a second shooter's missile keeps its own solution.
           // A decoy buoy is placed bait — it re-baits ANY seeker that crosses its water, lock or no.
+          // A seeker already on a moving buoy has to chase the body, not the drop point.
+          // This refresh does not roll again, so a later missile still sees the same draw.
+          if (cfg.kind === 'decoy' && d.diverted === true && d.targetId === cm.effect.decoyId) {
+            d.divertPos = { x: cm.effect.originX, z: cm.effect.originZ };
+          }
           const rng = state.rng;
           const bites = cfg.kind === 'decoy' ? true : missileMatchesLineage(d, cm.effect.lineage, p);
           // The roll stays live for the whole cloud: a later tick can still pull a seeker that
@@ -517,17 +527,21 @@ export const countermeasures = {
 
     // Spawn the timed effect. Chaff and the decoy buoy create a point seekers divert to (not a
     // live entity — weapons._steerHoming homes on divertPos); the decoy's point is the buoy and
-    // it keeps re-baiting for its whole duration. ECM just marks the effect active (the per-tick
-    // loop jams missiles in radius).
+    // it keeps re-baiting for its whole duration. Dropped while boosting, the buoy body copies
+    // the hull velocity and the point rides that line. ECM just marks the effect active (the
+    // per-tick loop jams missiles in radius).
     const hasDecoyPoint = cfg.kind === 'chaff' || cfg.kind === 'decoy';
     const decoyId = hasDecoyPoint ? ('cm_decoy_' + e.id + '_' + Math.floor(this.state.simTime * 1000)) : null;
     const decoy = hasDecoyPoint ? chaffDecoyPoint(e) : null;
+    const originX = decoy ? decoy.x : e.pos.x;
+    const originZ = decoy ? decoy.z : e.pos.z;
     cm.effect = {
       cfg,
       decoyId,
-      originX: decoy ? decoy.x : e.pos.x,
-      originZ: decoy ? decoy.z : e.pos.z,
+      originX,
+      originZ,
       lineage: answered ? answered.lineage : null,
+      body: cfg.kind === 'decoy' ? decoyDropBody(e, { x: originX, z: originZ }) : null,
     };
     cm.effectT = cfg.durationS;
     cm.cooldownT = cfg.cooldownS;
@@ -811,6 +825,31 @@ export function chaffDecoyPoint(e) {
     x: px + Math.cos(back) * CHAFF_DECOY_BACK + Math.cos(side) * CHAFF_DECOY_SIDE,
     z: pz + Math.sin(back) * CHAFF_DECOY_BACK + Math.sin(side) * CHAFF_DECOY_SIDE,
   };
+}
+
+// The numbers are copied. The ship's later braking must not drag the buoy back.
+function decoyDropBody(ship, point) {
+  const boosting = !!(ship && ship.flags && ship.flags.boosting);
+  const vel = boosting && ship.vel;
+  return {
+    x: point.x,
+    z: point.z,
+    vel: {
+      x: vel && Number.isFinite(vel.x) ? vel.x : 0,
+      z: vel && Number.isFinite(vel.z) ? vel.z : 0,
+    },
+  };
+}
+
+function stepDecoyBody(effect, dt) {
+  const body = effect && effect.body;
+  if (!body || !body.vel) return;
+  const vx = Number.isFinite(body.vel.x) ? body.vel.x : 0;
+  const vz = Number.isFinite(body.vel.z) ? body.vel.z : 0;
+  body.x += vx * dt;
+  body.z += vz * dt;
+  effect.originX = body.x;
+  effect.originZ = body.z;
 }
 
 /**
