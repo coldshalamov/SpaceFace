@@ -291,6 +291,7 @@ export const lawSecurity = {
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
       this._lastCustomsSubmitTick = -1;
+      this._customsWaivedPatrols.clear();
       this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
@@ -324,7 +325,11 @@ export const lawSecurity = {
     this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
     this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
     this._scanDumpWatch = null;
-    this._onScannedByPatrol = (payload) => this._openScanDumpWatch(payload);
+    this._customsWaivedPatrols = new Map();
+    this._onScannedByPatrol = (payload) => {
+      this._rememberCustomsPass(payload);
+      this._openScanDumpWatch(payload);
+    };
     this._onScanDumpJettison = (payload) => this._noteScanDumpJettison(payload);
     this._onScanDumpResolved = (payload) => this._observeScanDumpResolution(payload);
     this._lastCustomsSubmitTick = -1;
@@ -368,6 +373,7 @@ export const lawSecurity = {
   },
 
   newGame() {
+    this._customsWaivedPatrols.clear();
     this._releaseAllJobResponses('new_game');
     if (this.state) this.state.lawSecurity = freshState();
     if (this._warrantWaves) this._warrantWaves.deserialize(null);
@@ -422,6 +428,9 @@ export const lawSecurity = {
     if (own.fineSettled && Object.keys(own.fineSettled).length > 0) {
       out.fineSettled = cloneLawPlain(own.fineSettled) || {};
     }
+    if (own.customsTrust && Object.keys(own.customsTrust).length > 0) {
+      out.customsTrust = cloneLawPlain(own.customsTrust);
+    }
     if (own.fineOffer && own.fineOffer.status && own.fineOffer.status !== 'paid') {
       out.fineOffer = cloneLawPlain(own.fineOffer);
     }
@@ -460,6 +469,9 @@ export const lawSecurity = {
     else delete own.composed;
     if (src.fineSettled != null) own.fineSettled = normalizeFineSettled(src.fineSettled);
     else delete own.fineSettled;
+    if (src.customsTrust != null) own.customsTrust = normalizeCustomsTrust(src.customsTrust);
+    else delete own.customsTrust;
+    this._customsWaivedPatrols.clear();
     if (src.fineOffer && typeof src.fineOffer === 'object' && !Array.isArray(src.fineOffer)) {
       own.fineOffer = cloneLawPlain(src.fineOffer);
     } else {
@@ -530,6 +542,7 @@ export const lawSecurity = {
     if (!normalized.valid) return;
     const patrol = selectHeliosInspectionPatrol(state, player, settledPatrolIds(normalized.ledger));
     if (!patrol) return;
+    if (this._waiveCustomsScan({ stationId: LAWFUL_INSPECTION_STATION_ID, patrolId: patrol.id })) return;
 
     const ledger = normalized.ledger || ensureLawfulInspectionLedger(state);
     if (!ledger) return;
@@ -3132,6 +3145,39 @@ export const lawSecurity = {
     });
   },
 
+  // LAW-12: remember an actual clean read, never just a submit click or a missed contraband roll.
+  _rememberCustomsPass(payload) {
+    if (!payload || payload.hasContraband !== false
+      || !SECTORS.some((sector) => sector.stations?.some((row) => row.id === payload.stationId))) return;
+    const illicit = this._economy()?.illicitCargo?.(this.state);
+    if (!Array.isArray(illicit) || illicit.length > 0) return;
+    if (this._waiveCustomsScan(payload)) return;
+    const own = ensureState(this.state);
+    const marks = own.customsTrust || (own.customsTrust = {});
+    const day = Math.max(0, this.state.days | 0);
+    marks[payload.stationId] = { day };
+    this._emit('customs:trustMarked', {
+      stationId: payload.stationId, stationName: stationDisplayName(payload.stationId), day,
+    });
+  },
+
+  _waiveCustomsScan(payload) {
+    const day = Math.max(0, this.state.days | 0);
+    const mark = this.state.lawSecurity?.customsTrust?.[payload.stationId];
+    if (!mark || mark.day !== day || payload.hasContraband === true) return false;
+    // The engine's complete illicit read includes the salvage bay. Trust never shields new cargo.
+    const illicit = this._economy()?.illicitCargo?.(this.state);
+    if (!Array.isArray(illicit) || illicit.length > 0) return false;
+    const key = `${payload.stationId}:${payload.patrolId ?? 'station'}`;
+    if (this._customsWaivedPatrols.get(key) !== day) {
+      this._customsWaivedPatrols.set(key, day);
+      this._emit('customs:scanWaived', {
+        stationId: payload.stationId, stationName: stationDisplayName(payload.stationId), day,
+      });
+    }
+    return true;
+  },
+
   // LAW-10 — a mid-scan dump downgrades the finding to suspicion. The engine owns the
   // scan odds and every fine/confiscation/rep/heat effect; this watch only OBSERVES and
   // NAMES. It opens on `player:scannedByPatrol` with contraband aboard (snapshotting the
@@ -4897,6 +4943,7 @@ export const lawSecurity = {
       row.remainingCr = 0;
       row.status = 'paid';
       row.advertisePay = false;
+      this._stampTollSettlement(row);
     } else {
       row.status = 'open';
       row.advertisePay = true;
@@ -4913,9 +4960,16 @@ export const lawSecurity = {
     row.remainingCr = 0;
     row.status = 'paid';
     row.advertisePay = false;
+    this._stampTollSettlement(row);
     const obligation = publicObligation(row);
     this._emit('law:obligationPaid', obligation);
     return obligation;
+  },
+
+  _stampTollSettlement(row) {
+    if (row.kind !== 'toll' || Number.isFinite(row.settledAt)) return;
+    row.settledAt = inspectionNow(this.state);
+    row.settledTick = this.state.tick | 0;
   },
 
   // Goods are credited by the bill's writer, at the same prices that opened the bill.
@@ -6917,6 +6971,8 @@ function publicObligation(row) {
     remainingCr: row.remainingCr,
     status: row.status,
     advertisePay: open,
+    ...(row.kind === 'toll' && Number.isFinite(row.settledAt)
+      ? { settledAt: row.settledAt, settledTick: row.settledTick } : {}),
     ...(row.recovery ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
     whatFor: row.forPerson
       ? `${row.kind} for ${row.forPerson}`
@@ -7097,6 +7153,8 @@ function normalizeComposedObligations(raw) {
       remainingCr: paid ? 0 : remainingCr,
       status: paid ? 'paid' : 'open',
       advertisePay: !paid && remainingCr > 0,
+      ...(kind === 'toll' && paid && Number.isFinite(row.settledAt)
+        ? { settledAt: Math.max(0, row.settledAt), settledTick: Math.max(0, row.settledTick | 0) } : {}),
       ...(kind === 'restitution' && row.recovery
         ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
     };
@@ -7110,6 +7168,16 @@ function normalizeFineSettled(raw) {
   for (const key of Object.keys(raw)) {
     const choice = raw[key];
     if (choice === 'pay' || choice === 'work') out[key] = choice;
+  }
+  return out;
+}
+
+function normalizeCustomsTrust(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const sector of SECTORS) for (const station of (sector.stations || [])) {
+    const day = raw[station.id]?.day;
+    if (Number.isInteger(day) && day >= 0) out[station.id] = { day };
   }
   return out;
 }

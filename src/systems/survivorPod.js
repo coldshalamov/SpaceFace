@@ -538,6 +538,14 @@ export const survivorPod = {
     };
     this._onMissionOffered = (offer) => this._stampOffer(offer);
     this._onChoice = (p) => this._handleChoice(p);
+    // LAW-13: the heat owner alone prices and deduplicates testimony. Speak only after its
+    // measured cooling receipt, so an ambient pickup or a duplicate rescue promises nothing.
+    this._onHeatCooled = (p) => {
+      if (!(p?.cooled > 0)) return;
+      this._bus.emit('toast', {
+        text: 'RESCUED PILOT — testimony filed; heat reduced.', kind: 'info', ttl: 4,
+      });
+    };
     this._onNewGame = () => this.newGame();
     this._onKilled = (p) => this._onEntityKilled(p || {});
     this._onPlayerDeath = (p) => this._onPlayerWreckDeath(p || {});
@@ -576,6 +584,7 @@ export const survivorPod = {
       }
       this._bus.on('mission:offered', this._onMissionOffered);
       this._bus.on('survivorPod:choose', this._onChoice);
+      this._bus.on('survivorPod:heatCooled', this._onHeatCooled);
       this._bus.on('game:newGame', this._onNewGame);
       this._bus.on('game:new', this._onNewGame);
       this._bus.on('save:loaded', this._onSaveLoaded);
@@ -1587,6 +1596,7 @@ export const survivorPod = {
       if (this._onSectorEnter) this._bus.off('sector:enter', this._onSectorEnter);
       if (this._onMissionOffered) this._bus.off('mission:offered', this._onMissionOffered);
       if (this._onChoice) this._bus.off('survivorPod:choose', this._onChoice);
+      if (this._onHeatCooled) this._bus.off('survivorPod:heatCooled', this._onHeatCooled);
       if (this._onNewGame) {
         this._bus.off('game:newGame', this._onNewGame);
         this._bus.off('game:new', this._onNewGame);
