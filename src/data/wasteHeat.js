@@ -30,3 +30,10 @@ export function stepWasteHeat(online, event) {
   if (event === 'cut') return { online: !on, text: on ? HEAT_OFF : HEAT_ON };
   return { online: on, text: null };
 }
+
+// The local tradeoff is mobility: cold cysts drift sluggishly; hot eels are held
+// back. No death, population growth, or offscreen upkeep clock is introduced.
+export function wasteHeatMotionMult(online, speciesId) {
+  const on = online !== false;
+  return (speciesId === 'lantern_cyst' && !on) || (speciesId === 'wake_eel' && on) ? 0.35 : 1;
+}

@@ -27,6 +27,7 @@ import {
   DOMAIN_THRESHOLD,
   WREN_RECOGNITION,
   LIVE_SPECIMEN_CMDTY,
+  LURE_BURN_S,
   FIELD_LANGUAGE,
   FAUNA_DROPS,
   SUPPRESSION_DROPS,
@@ -49,7 +50,7 @@ import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
 import {
   COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
 } from '../data/collarService.js';
-import { HEAT_SITE_ID, stepWasteHeat } from '../data/wasteHeat.js';
+import { HEAT_SITE_ID, stepWasteHeat, wasteHeatMotionMult } from '../data/wasteHeat.js';
 import {
   LURE_FILAMENT, LURE_RESIN, LURE_SHOWN, LURE_SITE_ID, copyHeatDerivative, heatLureRecipe,
 } from '../data/heatLure.js';
@@ -848,6 +849,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
         z: Number(payload.z) || 0,
         sectorId: payload.sectorId || (state.world && state.world.currentSectorId),
         until: (Number(state.simTime) || 0) + (payload.burnS || 60),
+        ...(payload.trialSiteId === LURE_SITE_ID ? { trialSiteId: LURE_SITE_ID } : {}),
       });
       if (ae.lures.length > 8) ae.lures.shift();
       toast('Lure beacon burning hot — the predators hear it.', 'info', 3);
@@ -1490,10 +1492,13 @@ export function tickAlienEcology(world, dt) {
         const lure = ae.heatDerivative;
         if (lureClose && lure && lure.lure && lure.edge !== true && lure.shown !== true) {
           lure.edge = true;
-          lure.shown = true;
-          if (world.bus && world.bus.emit) {
-            world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: LURE_SHOWN });
-          }
+          lure.trialStarted = true;
+          // Deploy the fitted derivative through the same stimulus owner as a thrown
+          // beacon. The notebook waits for an actual moving predator below.
+          handleAlienEcologyEvent(world, 'alienEcology:lureDropped', {
+            x: siteGlobal.x + site.arrivalBands.close * 0.5, z: siteGlobal.z,
+            sectorId, burnS: LURE_BURN_S, trialSiteId: site.siteId,
+          });
         } else if (!lureClose && lure && lure.edge === true) {
           lure.edge = false;
         }
@@ -1728,9 +1733,6 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     && dist2(e.pos.x, e.pos.z, l.x, l.z) < Math.pow(alertR * 4, 2));
   if (lure && ((sens.heat || 0) >= 0.6 || species.heatHunter)) {
     eco.lureTarget = { x: lure.x, z: lure.z };
-    if (eco.driveState !== 'flee' && eco.driveState !== 'feed' && eco.driveState !== 'captured') {
-      setDrive(eco, 'investigate');
-    }
   } else {
     eco.lureTarget = null;
   }
@@ -1777,6 +1779,13 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   });
   if (approach) setDrive(eco, approach);
   else if (eco.driveState === 'idle') setDrive(eco, species.drives.idle);
+
+  // Resolve the decoy after ordinary proximity so that it cannot be overwritten
+  // by the cold player's idle/shadow response. Panic, feeding and capture win.
+  if (eco.lureTarget && eco.driveState !== 'flee'
+      && eco.driveState !== 'feed' && eco.driveState !== 'captured') {
+    setDrive(eco, species.heatHunter ? 'charge' : 'investigate');
+  }
 
   if (species.heatHunter && playerD >= (Number(species.threatenR) || 0) && playerD < alertR) {
     const aeTrial = ensureAlienEcologyState(state);
@@ -2070,6 +2079,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     speed = species.speed * speedMult;
   }
 
+  if (site.siteId === HEAT_SITE_ID) speed *= wasteHeatMotionMult(rec.heatOnline, species.id);
   if (targetX == null) return;
   const desired = Math.atan2(targetZ - e.pos.z, targetX - e.pos.x);
   // Coherent fauna conform their heading toward the relay's broadcast direction.
@@ -2080,8 +2090,18 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   e.rot = angleLerp(e.rot, headingTarget, Math.min(1, species.turnRate * dt));
   const d = Math.sqrt(dist2(e.pos.x, e.pos.z, targetX, targetZ));
   const step = Math.min(d, speed * dt);
+  const trial = aeL.heatDerivative;
+  const trialD2 = lure?.trialSiteId === site.siteId && species.heatHunter && trial?.shown !== true
+    ? dist2(e.pos.x, e.pos.z, lure.x, lure.z) : 0;
   e.pos.x += Math.cos(e.rot) * step;
   e.pos.z += Math.sin(e.rot) * step;
+  if (step > 0 && lure?.trialSiteId === site.siteId && species.heatHunter
+      && eco.driveState === 'charge' && eco.lureTarget && trial && trial.shown !== true
+      && dist2(e.pos.x, e.pos.z, lure.x, lure.z) < trialD2
+      && playerD < site.arrivalBands.close + species.alertR) {
+    trial.shown = true;
+    world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: LURE_SHOWN });
+  }
 }
 
 function clampStim(v, d) {
@@ -2212,8 +2232,12 @@ export function deserializeAlienEcologyState(state, data) {
     ae.heatTrial = noteHeatTrial(data.heatTrial, null);
   }
   const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
-  if (heatDerivative) ae.heatDerivative = heatDerivative;
-  else delete ae.heatDerivative;
+  if (heatDerivative) {
+    // Burning stimuli are transient. Continue restarts an interrupted field trial
+    // in place, while a freshly fabricated lure still asks for leave-and-return.
+    if (heatDerivative.trialStarted && !heatDerivative.shown) heatDerivative.edge = false;
+    ae.heatDerivative = heatDerivative;
+  } else delete ae.heatDerivative;
   const surveyCopy = copySurveySale(data && data.surveyCopy);
   if (surveyCopy) ae.surveyCopy = surveyCopy;
   else delete ae.surveyCopy;

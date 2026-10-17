@@ -685,8 +685,6 @@ C9 lives at `PQ-137.08`; WORLD-ANSWERS/WORLD-REMEMBERS are landed (receipts
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
-| 357 | SFQ-B166 | Warm Freighter standby heat changes real cyst and eel motion, leaves leeches unchanged, and restores on the same persisted switch | BUILD | OPEN codex-bm16-17; focused seed-4242 test `test/sfq-p17-field-effects-4242.test.mjs`; orchestrator closes on landing verification |
-| 358 | SFQ-B167 | Fabricated research lure deploys the existing heat stimulus, draws a live maw away from the hull, and records its field trial only on a real response | BUILD | OPEN codex-bm16-17; focused seed-4242 test `test/sfq-p17-field-effects-4242.test.mjs`; orchestrator closes on landing verification |
 
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
