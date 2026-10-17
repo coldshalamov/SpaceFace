@@ -215,6 +215,28 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-14px; }
   ${T} .sx-ct__dossier { padding-bottom:6px !important; }
 }
+/* the dossier in a narrow, mid-height window (651–800 × 461–800): one column that scrolls, so the title, the reward and ACCEPT read as words, not letters */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+  ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) clamp(180px, calc(100vw - 470px), 320px) !important; }
+  ${D} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; align-content:start !important;
+    height:100% !important; overflow-y:auto !important; overscroll-behavior:contain; row-gap:0 !important; padding-top:6px !important; padding-right:4px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-dossier::after { content:none !important; }
+  ${D} .sx-dossier > * { width:auto !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:2 !important; margin:0 0 8px !important; }
+  ${D} .sx-dossier > .sx-dossier__risk { width:auto !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; margin:0 0 4px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__w { letter-spacing:.08em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:96px minmax(0, 1fr) !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+}
+/* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
+@media (min-width:651px) and (max-width:699px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sx-dossier__terms > li { grid-template-columns:minmax(0, 1fr) !important; row-gap:1px !important; }
+}
 @media (max-width:1400px) {
   ${T} .sx-dossier { column-gap:24px; }
 }
