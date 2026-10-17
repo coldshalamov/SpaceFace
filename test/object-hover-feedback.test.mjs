@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 
-import { createObjectHoverFeedback, createWorldObjectHoverPresentation } from '../src/render/objectHoverFeedback.js';
+import { createObjectHoverFeedback, createWorldObjectHoverPresentation, hoverLiftForSize } from '../src/render/objectHoverFeedback.js';
 
 function subjectRoot(x = 0, z = 0, size = 10) {
   const root = new THREE.Group();
@@ -14,6 +14,23 @@ function subjectRoot(x = 0, z = 0, size = 10) {
   root.updateMatrixWorld(true);
   return { root, mesh, geometry, material };
 }
+
+test('hover stays a faint surface tint and cannot pull hidden hull layers through the depth buffer', () => {
+  const scene = new THREE.Scene();
+  const overlay = createObjectHoverFeedback({ scene });
+  const { root } = subjectRoot();
+  scene.add(root);
+  overlay.setSubject(root);
+  const painted = scene.getObjectByName('worldObjectHover').children.find(m => m.visible);
+  assert.equal(painted.material.blending, THREE.NormalBlending, 'hover mixes with the lit hull instead of adding radiance');
+  assert.equal(painted.material.depthTest, true);
+  assert.equal(painted.material.depthWrite, false);
+  assert.equal(painted.material.polygonOffset, false, 'interior and rear faces keep their actual depth');
+  for (const radius of [0, 6, 50, 120, 260, 1000]) {
+    assert.ok(hoverLiftForSize(radius) > 0 && hoverLiftForSize(radius) <= 0.08, 'even the strongest rim remains subtle');
+  }
+  overlay.dispose();
+});
 
 test('hover paints the subject body leaves with a shared overlay, borrowing geometry', () => {
   const scene = new THREE.Scene();
