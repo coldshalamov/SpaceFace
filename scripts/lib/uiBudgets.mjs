@@ -135,6 +135,33 @@ export function isUiBudgetSample(row) {
 }
 
 /**
+ * Why a capture row did NOT become a budget row — the first rule it fails, in the words of the rule,
+ * or null when it is accepted. `isUiBudgetSample` and the empty-window skip in
+ * `aggregateBudgetRows` both answer only yes/no; a gap named "no usable samples" gave D201 nothing
+ * to repair, so the capture's gap row quotes this instead.
+ */
+export function explainBudgetRejection(row) {
+  const budget = row && row.budget;
+  if (!budget) return 'the surface was opened but the probe returned no snapshot at all';
+  if (!isUiBudgetSample(row)) {
+    if (budget.measurementScope !== UI_BUDGET_MEASUREMENT_SCOPE
+      || budget.frameTotalScope !== UI_FRAME_TOTAL_SCOPE
+      || budget.knownUiRafScope !== UI_KNOWN_RAF_SCOPE
+      || budget.auxiliaryRafScope !== UI_AUXILIARY_RAF_SCOPE
+      || budget.domLayoutScope !== UI_DOM_LAYOUT_SCOPE) return 'the snapshot carries a stale or foreign measurement scope';
+    if (budget.unbucketedUiRafMs && budget.unbucketedUiRafMs.n > 0) {
+      return `${budget.unbucketedUiRafMs.n} authored src/ui animation callback(s) ran in frames the game did not present, so they cannot be charged to a present-frame budget`;
+    }
+    if (!Number.isFinite(budget.domNodes)) return 'the surface root could not be resolved to count its DOM nodes';
+    return 'the snapshot is missing a statistics block';
+  }
+  if (!budget.uiFrameMs.n || !budget.frameTotalMs.n) {
+    return `no presented game frame landed in the sampling window (ui samples ${budget.uiFrameMs.n}, game-frame samples ${budget.frameTotalMs.n})`;
+  }
+  return null;
+}
+
+/**
  * Aggregate per-frame capture rows ({ surface, budget: { uiFrameMs, frameTotalMs, domNodes } })
  * into the per-surface baseline. The UI budget is per surface, so its number is the WORST combined
  * UI sample the run saw, not the average. Owner, authored-UI-rAF, whole-game, and unknown-rAF
