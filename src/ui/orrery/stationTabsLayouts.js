@@ -1892,6 +1892,53 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
 }
 
+/* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,
+   so on every tab but the Market (which #446 handles in marketLayouts.js) it ran off the right edge, and at
+   651–1100 wide it pushed the whole berth sideways: the page scrolled and "HELIOS STATION" lost its first
+   letters. It now ends just left of COMMS, above the destination words (or, at 651–800 where the rail takes
+   its own row, starts at the left edge above it), on a solid strip so it reads over a scrolled list.
+   The destination words also fit: at 801–900 × 461–800 the rail takes the row's free width (it was capped
+   and cut MISSIONS … LEDGER); at 651–800 × 461–800 it takes its own row on every tab but the Market (whose
+   register needs that height); at 901–999 the words close up so LEDGER is not cut. Desktop only. */
+@media (min-width:801px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important; bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
+}
+@media (min-width:801px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 2px) !important; }
+}
+@media (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt::before { left:-36px !important; right:-36px !important; top:-5px !important; bottom:-5px !important;
+    background:linear-gradient(90deg, rgb(7 8 10 / 0), rgb(7 8 10 / .92) 32px, rgb(7 8 10 / .92) calc(100% - 32px), rgb(7 8 10 / 0)) !important; }
+}
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops { column-gap:12px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .of-facility-rail { max-width:none !important; flex:1 1 auto !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 5px !important; padding-left:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-tile { padding:4px 1px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-comms { margin-left:0 !important; display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:.06em !important; min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch > .so-icon { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch { gap:10px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 16px) !important; }
+}
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops { flex-wrap:wrap !important; row-gap:2px !important; column-gap:12px !important; align-items:center !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .of-facility-rail { flex:1 1 100% !important; width:100% !important; min-width:0 !important; max-width:100% !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) :is(.sxb-ops__dock, .sxb-ops .sx-dock__group--nav) { width:100% !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-dock__group--nav { gap:0 9px !important; padding-left:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-tile__label { letter-spacing:.07em !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-comms { order:2 !important; margin:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 66px) !important; max-width:none !important; padding:0 !important; }
+}
+@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 60px) !important; max-width:none !important; padding:0 !important; }
+}
+@media (min-width:901px) and (max-width:999px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
+}
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
