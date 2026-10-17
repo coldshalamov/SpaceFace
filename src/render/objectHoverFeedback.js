@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 import { collectPresentedBodyLeaves } from './worldObjectPicking.js';
 
-// Hover must read at a glance on a busy field: a 0.05 lift was below what a dark hull against a
-// starfield shows. The tint carries relation (hostile red, ally cyan, anything else warm white) so
-// the glow answers "what is this" before the name tag does.
-const LIFT = 0.34;
-// A wash that reads on a 12 WU wasp would flood the screen on a station: big subjects get less.
+// A faint surface tint, weighted toward grazing edges, preserves the authored lighting and detail.
+// Normal alpha blending keeps overlapping parts from accumulating a flat, luminous white wash.
+const LIFT = 0.08;
+// Large subjects need less tint because they cover much more of the picture.
 const LIFT_BIG_FROM_WU = 50;
 const LIFT_BIG_TO_WU = 260;
-const LIFT_BIG_FLOOR = 0.14;
+const LIFT_BIG_FLOOR = 0.055;
 const _liftBox = new THREE.Box3();
 const _liftSize = new THREE.Vector3();
 export function hoverLiftForSize(sizeWu) {
@@ -32,15 +31,28 @@ export function createObjectHoverFeedback(env) {
   const scene = env && env.scene;
   const material = new THREE.ShaderMaterial({
     uniforms: { uLift: { value: LIFT }, uColor: { value: new THREE.Color(...HOVER_TINTS.neutral) } },
-    vertexShader: 'void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: 'uniform float uLift; uniform vec3 uColor; void main(){ gl_FragColor = vec4(uColor * uLift, 1.0); }',
+    vertexShader: `
+      varying vec3 vHoverNormal;
+      varying vec3 vHoverView;
+      void main() {
+        #include <begin_vertex>
+        #include <project_vertex>
+        vHoverNormal = normalMatrix * normal;
+        vHoverView = -mvPosition.xyz;
+      }`,
+    fragmentShader: `
+      uniform float uLift;
+      uniform vec3 uColor;
+      varying vec3 vHoverNormal;
+      varying vec3 vHoverView;
+      void main() {
+        float rim = 1.0 - abs(dot(normalize(vHoverNormal), normalize(vHoverView)));
+        gl_FragColor = vec4(uColor, uLift * (0.28 + 0.72 * rim * rim));
+      }`,
     transparent: true,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     depthTest: true,
     depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4,
   });
   const placeholderGeometry = new THREE.BufferGeometry();
   const group = new THREE.Group();

@@ -5317,6 +5317,16 @@ function centerAuthoredPlaceRoot(root, record, scale, physical = null) {
   };
 }
 
+// Use the same vector-first projection as the visible physical material. Multiplying
+// projectionMatrix * modelViewMatrix first changes GPU rounding: the color pass then
+// fails its own depth coverage in flickering strips as the camera or body moves.
+const OPAQUE_DEPTH_VERTEX_SHADER = [
+  'void main() {',
+  '  #include <begin_vertex>',
+  '  #include <project_vertex>',
+  '}',
+].join('\n');
+
 function* installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
   if (!root || placeId !== WRECK_CATHEDRAL_PLACE_ID) return;
   const sources = [];
@@ -5344,11 +5354,7 @@ function* installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
     depthWrite: true,
     side: THREE.FrontSide,
     toneMapped: false,
-    vertexShader: [
-      'void main() {',
-      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
-      '}',
-    ].join('\n'),
+    vertexShader: OPAQUE_DEPTH_VERTEX_SHADER,
     fragmentShader: [
       'void main() {',
       '  gl_FragColor = vec4(0.0);',
@@ -5439,11 +5445,7 @@ function stationDepthPrepassMaterial() {
       depthWrite: true,
       side: THREE.FrontSide,
       toneMapped: false,
-      vertexShader: [
-        'void main() {',
-        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
-        '}',
-      ].join('\n'),
+      vertexShader: OPAQUE_DEPTH_VERTEX_SHADER,
       fragmentShader: [
         'void main() {',
         '  gl_FragColor = vec4(0.0);',

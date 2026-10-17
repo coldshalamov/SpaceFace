@@ -1655,12 +1655,22 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** the station rail at 651–720 × 600 still prints INDUSTRY under COMMS (shows as "II"). ROUTE INTELLIGENCE wraps to two lines at 700. The 390-wide desktop berth header.
 
+## Station foot on a short narrow desktop window: every destination word on the rail (ui-polish-75)
+
+**Before (master 6391422a55):** at 651–800 wide and 461–800 tall, the seven destination words (~715px at full tracking) were capped at 64vw, so only MARKET and SHIPWORKS showed, INDUSTRY ran under COMMS, and MISSIONS, FACTIONS, BAR and LEDGER were off the rail.
+
+**After (`stationLayouts.js`, desktop only):** the foot becomes a two-column grid. The words own the left side, closed up at the 12px type floor (tracking 0, word gaps 4–12px), and the right side stacks UNDOCK over COMMS · HELP. COMMS's unread pip sits on its top corner instead of widening it, so a landing receipt can't squeeze LEDGER off the rail; the receipt and the session log hang off the foot instead of COMMS, so they stand above it (the Market's TRADE CLEARED at its left, the rest at its right) rather than over UNDOCK or the words, so every word stands on the rail and the needle still sits under the open tab, inside the foot's old height. Selectors and IDs are unchanged.
+
+**Checked:** 651, 680, 700, 760 and 790 × 600 and 800×800 (Market), plus 700×600 Missions: every word on glass, no word under COMMS or UNDOCK. 390×844, 960×540, 1280×720, 1920×1080, phones (`data-sf-mobile`) and ≤460-tall windows don't match the query. Shots in `ui-shots/polish75/`.
+
+**Leftovers:** at 700×600 the Missions dossier column is squeezed (the title breaks mid-word); the 390-wide desktop berth head.
+
 ## Missions dossier in a narrow, mid-height window (ui-polish-76)
 
 **Before (master bc914e20b5):** at 651–800 wide × 461–800 tall the Missions dossier kept its desktop two-column reading in a ~160–220px slot. The title broke letter by letter ("Transpor / t a / passeng / er to"), the client and the reward words stood in a 73px column beside it ("CR / ON / DELI / VERY"), the legend read "PASSE…", and at 651×600 ACCEPT was off the panel.
 
 **After (`src/ui/orrery/stationTabsLayouts.js`, one additive desktop-only block, `min-width:651px and max-width:800px and min-height:461px and max-height:800px`):**
-- The dossier slot is `clamp(200px, 100vw − 470px, 320px)` (230px at 700, 320px at 800), so the job list keeps its prices and the TRACKED tag keeps its gap at 700.
+- The dossier slot is `clamp(180px, 100vw − 470px, 320px)` (181px at 651, 230px at 700, 320px at 800), so the job list keeps its prices and the TRACKED tag keeps its gap at 700.
 - The dossier is one column that scrolls inside the panel, with a 16px fade at the foot: legend (wraps, no ellipsis), title at 15px on word breaks, client, reward (22px) with CR ON DELIVERY, ACCEPT, then the risk line and the terms.
 - Selectors and IDs unchanged; phones (`data-sf-mobile`) and every size outside the band are untouched.
 

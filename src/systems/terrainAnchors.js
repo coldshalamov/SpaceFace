@@ -15,6 +15,7 @@
 // A long TTL remains only as orphan/fizzle insurance. Deterministic: own seeded stream.
 // Flag-gated; not in the sim harness; encounterDirector itself is untouched.
 import { massline2Flag } from '../data/featureFlags.js';
+import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { Masks } from '../core/entity.js';
@@ -38,6 +39,18 @@ const ANCHOR_TYPE_ID = 'ast_common_rock';
 
 const SOLID_TYPES = new Set(['asteroid', 'station', 'wreck']);
 const SOLID_INDEX_BUCKETS = Object.freeze(['asteroids', 'stations', 'wrecks']);
+
+// D207 — every anchor this system drops is sector-owned content: the residency teardown reads
+// homeSectorId, so an unstamped rock survived the sector exit live and unbound (the VERB-07
+// "sector teardown owns them on departure" contract could not see it). Anchors are staged from
+// authored or telegraph positions inside one sector, so position truth names the owner; outside
+// the corridor (arena modes) the stamp is simply absent and behavior is unchanged.
+function sectorOwnershipFor(pos) {
+  const sectorId = pos ? sectorMembershipAtGlobal(pos) : null;
+  return sectorId
+    ? { homeSectorId: sectorId, dataExtras: { homeSectorId: sectorId, sectorId } }
+    : { homeSectorId: undefined, dataExtras: {} };
+}
 
 // INF-017 — opening layout. Wave 1 of a swarm run gets one substantial anchor on a clear
 // sling corridor: close enough that inbound enemies stream past it (inside the 213 wu spawn
@@ -158,6 +171,7 @@ export const terrainAnchors = {
     const layout = [[-116, -160], [116, -115], [-142, 80], [148, 140], [-35, 292], [48, -302]];
     const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
     const survivalCover = payload.kind === 'survival_arena';
+    const ownership = sectorOwnershipFor(pos);
     const spawnAnchor = (dx, dz, size) => {
       const oreHP = Math.round(360 + size * 14);
       const data = {
@@ -170,9 +184,11 @@ export const terrainAnchors = {
         terrainAnchorEncounterIds: payload.encounterId ? [payload.encounterId] : [],
         neighbourhoodAnchor: openingFight === true ? true : undefined,
         despawnAt: now + ANCHOR_TTL_S,
+        ...ownership.dataExtras,
       };
       this.helpers.spawnEntity({
         type: 'asteroid',
+        homeSectorId: ownership.homeSectorId,
         pos: { x: pos.x + dx, z: pos.z + dz },
         vel: { x: 0, z: 0 },
         radius: size,
@@ -279,8 +295,10 @@ export const terrainAnchors = {
     const radius = Number.isFinite(spec.radius) && spec.radius > 0 ? spec.radius : 22;
     const mass = Number.isFinite(spec.mass) && spec.mass > 0 ? spec.mass : Math.round(radius * radius * 40);
     const oreHP = Math.round(360 + radius * 14);
+    const ownership = sectorOwnershipFor(pos);
     return this.helpers.spawnEntity({
       type: 'asteroid',
+      homeSectorId: ownership.homeSectorId,
       pos: { x: pos.x, z: pos.z },
       vel: { x: 0, z: 0 },
       radius,
@@ -310,6 +328,7 @@ export const terrainAnchors = {
         terrainAnchor: true,
         killMachineAnvilId: id,
         killMachineId: spec.machineId || null,
+        ...ownership.dataExtras,
       },
     });
   },
@@ -330,8 +349,10 @@ export const terrainAnchors = {
     for (let i = 0; i < PALLAS_REEF_MINES.length; i++) {
       if (existing.has(i)) continue;
       const pos = pallasReefMinePos(PALLAS_REEF_MINES[i]);
+      const ownership = sectorOwnershipFor(pos);
       this.helpers.spawnEntity({
         type: 'wreck',
+        homeSectorId: ownership.homeSectorId,
         pos: { x: pos.x, z: pos.z },
         vel: { x: 0, z: 0 },
         radius,
@@ -356,6 +377,7 @@ export const terrainAnchors = {
           reefMine: true,
           reefMineSlot: i,
           reefMineId: pallasReefMineId(i),
+          ...ownership.dataExtras,
         },
       });
       spawned += 1;
@@ -376,8 +398,10 @@ export const terrainAnchors = {
     const radius = Number.isFinite(spec.radius) && spec.radius > 0 ? spec.radius : 30;
     const mass = Number.isFinite(spec.mass) && spec.mass > 0 ? spec.mass : Math.round(radius * radius * 40);
     const oreHP = Math.round(360 + radius * 14);
+    const ownership = sectorOwnershipFor(pos);
     return this.helpers.spawnEntity({
       type: 'asteroid',
+      homeSectorId: ownership.homeSectorId,
       pos: { x: pos.x, z: pos.z },
       vel: { x: 0, z: 0 },
       radius,
@@ -406,6 +430,7 @@ export const terrainAnchors = {
         size: radius,
         terrainAnchor: true,
         aperturePlugId: id,
+        ...ownership.dataExtras,
       },
     });
   },
