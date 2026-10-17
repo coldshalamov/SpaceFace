@@ -8529,7 +8529,9 @@ export const missions = {
                 missionId: m.id, stationId: m.destStationId,
               });
               this.bus.emit('toast', {
-                text: `Short delivery: ${removed}/${partial.needQty}u signed for — ${paid.shortfallUnits}u written off. Paid ${paid.payCr.toLocaleString('en-US')} cr on delivered units.`,
+                text: m.source === 'custodyRecovery'
+                  ? `Restitution: ${removed}/${partial.needQty}u returned — ${paid.shortfallUnits}u still owed. The remaining obligation stays open.`
+                  : `Short delivery: ${removed}/${partial.needQty}u signed for — ${paid.shortfallUnits}u written off. Paid ${paid.payCr.toLocaleString('en-US')} cr on delivered units.`,
                 kind: 'warn',
                 ttl: 4,
               });

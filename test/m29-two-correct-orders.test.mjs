@@ -102,3 +102,18 @@ test('M29 boundary crossings, declining and destroyed workpieces never fabricate
   assert.match(f.action(site.siteId, 'present').reason, /destroyed/);
   assert.equal(f.events.filter(e => e.name === 'machine:jurisdictionResolved').length, 0);
 });
+
+test('FIX2 M29: destroying the ballast retires its prompt before the player leaves', () => {
+  const { f, body, rec } = ready();
+  assert.ok(f.events.some(e => e.name === 'siteEvidence:offer' && e.payload.siteId === site.siteId));
+  const start = f.events.length;
+  body.hull = 0; body.alive = false; f.step();
+  assert.equal(rec().masonry.status, 'lost');
+  assert.equal(f.events.slice(start).filter(e => e.name === 'siteEvidence:closed'
+    && e.payload.siteId === site.siteId).length, 1, 'the untimed decision closes on loss');
+  f.playerAt({ x: site.center.x + site.radius + 1000, z: site.center.z });
+  f.seconds(2);
+  assert.equal(f.events.slice(start).filter(e => e.name === 'siteEvidence:offer').length, 0);
+  assert.equal(f.events.slice(start).filter(e => e.name === 'siteEvidence:closed').length, 1);
+  assert.equal(f.events.filter(e => e.name === 'machine:jurisdictionResolved').length, 0);
+});

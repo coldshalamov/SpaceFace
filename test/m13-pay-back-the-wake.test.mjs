@@ -156,3 +156,23 @@ test('M13 seed 4242: a saved unwitnessed incident still offers recovery when its
     acceptRecovery(h);
   } finally { h.sim.dispose(); }
 });
+
+test('FIX2 M13 seed 4242: a partial restitution receipt names the outstanding debt', () => {
+  const h = boot(), receipts = [];
+  h.bus.on('toast', receipt => receipts.push(receipt.text));
+  try {
+    const bill = incident(h);
+    dock(h); acceptRecovery(h); recover(h, 4);
+    receipts.length = 0;
+    dock(h);
+    assert.equal(h.law.restitutionFor(bill.causeId).remainingCr, UNIT * 6);
+    const receipt = receipts.find(text => /4\/10u/.test(text));
+    assert.ok(receipt, 'partial delivery publishes its receipt');
+    assert.doesNotMatch(receipt, /written off|paid .*cr on delivered/i);
+    assert.match(receipt, /restitution.*4\/10u.*6u.*(?:still owed|outstanding)/i);
+    dock(h);
+    const remainder = h.state.missions.boards[STATION].slots.find(m => m.source === 'custodyRecovery'
+      && m.title.includes('Ivo Pell'));
+    assert.equal(remainder.params.qty, 6, 'the board and receipt agree about the remainder');
+  } finally { h.sim.dispose(); }
+});

@@ -159,8 +159,8 @@ export function relocateAlienEcologySite(world, { siteId, center, duration } = {
   const n = veilNurseryMemory(state);
   if (!n) return { ok: false, reason: 'site-unavailable' };
   const previous = n.relocation;
-  if (previous?.move) {
-    return previous.move.to.x === center.x && previous.move.to.z === center.z
+  if (previous?.move || previous?.tow) {
+    return previous.move?.to.x === center.x && previous.move?.to.z === center.z
       ? { ok: true, status: previous.status } : { ok: false, reason: 'move-in-progress' };
   }
   const from = nurserySiteCenter(state, site);
@@ -179,21 +179,83 @@ export function relocateAlienEcologySite(world, { siteId, center, duration } = {
     scatterAnchors: previous?.scatterAnchors || {},
   };
   if (scattered && !previous?.scattered) {
-    for (const e of state.entityList) {
-      const eco = e.data?.ecology;
-      if (e.alive === false || eco?.siteId !== siteId || eco.aggregate) continue;
-      relocation.scatterAnchors[eco.faunaKey] = {
-        x: from.x + Math.cos(eco.phase) * site.arrivalBands.mid * 2,
-        z: from.z + Math.sin(eco.phase) * site.arrivalBands.mid * 2,
-      };
-    }
-    nurseryDisturbance(world, site, 'relocation', world._toGlobal(from, site.sectorId));
-    world.bus?.emit('toast', { text: 'The nursery scatters — the rays abandon the moving shelter.', kind: 'warn', ttl: 5 });
+    scatterNurseryRelocation(world, site, relocation, from);
   }
   return { ok: true, status: relocation.status };
 }
 
+function scatterNurseryRelocation(world, site, relocation, from) {
+  relocation.scattered = true; relocation.status = 'scattered';
+  for (const e of world.state.entityList) {
+    const eco = e.data?.ecology;
+    if (e.alive === false || eco?.siteId !== site.siteId || eco.aggregate) continue;
+    relocation.scatterAnchors[eco.faunaKey] = {
+      x: from.x + Math.cos(eco.phase) * site.arrivalBands.mid * 2,
+      z: from.z + Math.sin(eco.phase) * site.arrivalBands.mid * 2,
+    };
+  }
+  nurseryDisturbance(world, site, 'relocation', world._toGlobal(from, site.sectorId));
+  world.bus?.emit('toast', { text: 'The nursery scatters — the rays abandon the moving shelter.', kind: 'warn', ttl: 5 });
+}
+
+function tickNurseryTow(world, site, rec, fauna, dt) {
+  const n = rec.nursery, state = world.state;
+  if (!n || n.relocation?.move) return;
+  const rib = state.entityList.find(e => e.alive !== false && e.data?.siteId === site.siteId
+    && e.data.veilNurseryRib === 0 && e.data.nurseryTowOffset);
+  if (!rib) return;
+  const origin = world._toGlobal({ x: 0, z: 0 }, site.sectorId), offset = rib.data.nurseryTowOffset;
+  const center = { x: rib.pos.x - origin.x - offset.x, z: rib.pos.z - origin.z - offset.z };
+  const from = nurserySiteCenter(state, site);
+  const dx = center.x - from.x, dz = center.z - from.z, travel = Math.hypot(dx, dz);
+  const tethered = state.player?.tether?.active && state.player.tether.targetId === rib.id;
+  const speed = Math.hypot(rib.vel?.x || 0, rib.vel?.z || 0);
+  let relocation = n.relocation;
+  // Native f32 coordinate rounding at rest is not the start of a physical tow.
+  if (travel > 1e-6 && (relocation?.tow || speed > 0.05)) {
+    if (!relocation?.tow) {
+      const previous = relocation;
+      relocation = n.relocation = {
+        center: { ...from }, status: previous?.scattered ? 'scattered' : 'moving',
+        scattered: previous?.scattered === true, stages: (previous?.stages || 0) + 1,
+        settleSeconds: 0, scatterAnchors: previous?.scatterAnchors || {},
+        tow: { from: { ...from }, distance: 0 },
+      };
+      if (!relocation.scattered && previous && previous.status !== 'rehomed') {
+        scatterNurseryRelocation(world, site, relocation, from);
+      }
+    }
+    relocation.tow.distance += travel;
+    if (!relocation.scattered && (travel / dt > faunaSpeciesById('veil_ray').speed * 0.3
+        || relocation.tow.distance > site.arrivalBands.close / 3 || n.mode !== 'QUIET')) {
+      scatterNurseryRelocation(world, site, relocation, relocation.tow.from);
+    }
+    relocation.center = center;
+    relocation.settleSeconds = 0;
+    // Native physics owns the tow rib. Move only the remaining substrate solids;
+    // animals retain their normal drive toward the translated shelter anchors.
+    for (const e of state.entityList) {
+      if (e !== rib && e.alive !== false && e.data?.siteId === site.siteId
+          && Number.isInteger(e.data.veilNurseryRib)) {
+        e.pos.x += dx; e.pos.z += dz; e.physicsSleeping = false;
+      }
+    }
+    bumpCollidesFlipEpoch();
+    if (!relocation.scattered) for (const e of fauna) {
+      if (e.data.ecology.siteId === site.siteId && !e.data.ecology.aggregate) {
+        e.data.ecology.anchor.x += dx; e.data.ecology.anchor.z += dz;
+      }
+    }
+  }
+  if (relocation?.tow && !tethered && travel <= 1e-6
+      && speed < 0.5) {
+    delete relocation.tow;
+    relocation.status = relocation.scattered ? 'scattered' : 'settling';
+  }
+}
+
 function tickNurseryRelocation(world, site, rec, fauna, dt) {
+  tickNurseryTow(world, site, rec, fauna, dt);
   const relocation = rec.nursery?.relocation;
   if (!relocation) return;
   const adults = fauna.filter(e => e.data.ecology.siteId === site.siteId && !e.data.ecology.aggregate);
@@ -225,7 +287,7 @@ function tickNurseryRelocation(world, site, rec, fauna, dt) {
       const anchor = relocation.scatterAnchors[e.data.ecology.faunaKey];
       if (anchor) e.data.ecology.anchor = world._toGlobal(anchor, site.sectorId);
     }
-  } else if (!move && relocation.status === 'settling') {
+  } else if (!move && !relocation.tow && relocation.status === 'settling') {
     const settled = rec.nursery.mode === 'QUIET' && adults.length > 0 && adults.every(e => {
       const anchor = e.data.ecology.anchor;
       return Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= faunaSpeciesById(e.data.ecology.speciesId).preferredR;

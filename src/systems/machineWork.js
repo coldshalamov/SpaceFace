@@ -293,6 +293,8 @@ export function tickMasonWork(world, entity, dt) {
   const state = world.state, rec = siteRecord(state, m.siteId);
   const site = MACHINE_SITES[m.siteId];
   const center = world._toGlobal(site.center, site.sectorId);
+  // Retirement must also run when a lost workpiece makes the procedure return early.
+  offerFoundryProtocol(world);
   if (site.workCycle && (!foundryReceipt(rec) || rec.maintenance?.completed !== true)) {
     cycleRecord(rec);
     return true;

@@ -10,6 +10,9 @@ import { ALIEN_SITES, pointContaminationAt } from '../src/data/alienEcology.js';
 import { materializeAlienEcology, tickAlienEcology, relocateAlienEcologySite,
   setRevelation } from '../src/systems/alienEcology.js';
 import { veilNurseryMemory } from '../src/world/veilRayNursery.js';
+import { tetherGameplay } from '../src/systems/tetherGameplay.js';
+import { createAttachmentService } from '../src/combat/attachments.js';
+import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 
 const site = ALIEN_SITES.veil_ray_nursery;
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -163,4 +166,69 @@ test('seed 4242: fast short moves and rushed stages scatter; invalid or duplicat
   assert.equal(relocateAlienEcologySite(f.owner, { siteId: site.siteId,
     center: { x: site.center.x + 60, z: site.center.z }, duration: 10 }).reason, 'move-in-progress');
   assert.deepEqual(f.memory(), progress);
+});
+
+test('FIX2 M24 seed 4242: ordinary Massline input tows the substrate gently or scatters it when rushed', async t => {
+  for (const speed of [5, 90]) {
+    const f = fixture(); t.after(() => f.sim.dispose());
+    const native = await createSg02DynamicBodyOwner({ mode: 'rapier-dynamic' });
+    t.after(() => native.dispose());
+    const rib = f.ribs().find(e => e.data.veilNurseryRib === 0);
+    f.player.pos = { x: rib.pos.x + 150, z: rib.pos.z };
+    native.syncFromEntities(f.state.entityList);
+    assert.equal(native.records.get(rib.id).body.isDynamic(), true, 'the advertised tow point must move in production physics');
+    for (let i = 0; i < 3; i++) {
+      native.syncFromEntities(f.state.entityList);
+      native.step(1 / 60, f.state.tick); f.tick(1 / 60);
+    }
+    assert.equal(f.memory(), undefined, 'native coordinate rounding alone is not a nursery move');
+    const ids = f.adults().map(e => e.id), before = f.ribs().map(e => ({ ...e.pos }));
+    const catalog = createCombatCatalog(), helpers = { ...f.sim.helpers, combatPhysics: native };
+    ensureCombatState(f.state);
+    const attachments = createAttachmentService({ state: f.state, catalog, helpers, bus: f.sim.bus });
+    const kernel = { attachments, catalog: { attachments: catalog.attachments } };
+    const tow = Object.create(tetherGameplay);
+    const denied = [];
+    f.sim.bus.on('tether:latchDenied', p => denied.push(p));
+    tow.init({ state: f.state, bus: f.sim.bus, helpers, registry: { get: () => ({ kernel }) } });
+    t.after(() => tow.destroy?.());
+    f.state.player.targetId = rib.id;
+    f.state.input.aimWorld = { ...rib.pos };
+    f.state.input.aimIntentActive = true;
+    f.state.spatialHash = { diagnostics: { activeBuckets: 1 }, queryRadius(x, z, radius, out) {
+      for (const e of f.state.entityList) if (e.alive !== false && distance(e.pos, { x, z }) <= radius + e.radius) out.push(e);
+    } };
+    f.state.input.actions = { tetherFire: true, tetherCut: false, reelDelta: 0 };
+    tow.update(1 / 60, f.state);
+    f.state.input.actions = {};
+    tow.update(1 / 60, f.state);
+    assert.equal(f.state.player.tether.targetId, rib.id, `the ordinary latch control acquires the real substrate: ${JSON.stringify(denied)}`);
+    assert.equal(f.state.player.tether.active, true);
+    f.state.input.actions = {};
+    let peakSpeed = 0;
+    for (let i = 0; i < 420; i++) {
+      native.records.get(f.player.id).body.setLinvel({ x: speed, y: 0, z: 0 }, true);
+      native.syncFromEntities(f.state.entityList);
+      native.step(1 / 60, f.state.tick);
+      peakSpeed = Math.max(peakSpeed, Math.hypot(rib.vel.x, rib.vel.z));
+      f.tick(1 / 60);
+    }
+    assert.ok(f.memory(), 'physical towing reaches the ecology relocation owner without a debug relocation event');
+    assert.ok(distance(f.memory().center, site.center) > 20);
+    assert.equal(f.memory().scattered, speed > 5, JSON.stringify({ peakSpeed, relocation: f.memory(), nursery: veilNurseryMemory(f.state).lastCause }));
+    for (let i = 0; i < f.ribs().length; i++) {
+      assert.ok(Math.abs((f.ribs()[i].pos.x - before[i].x)
+        - (rib.pos.x - before[0].x)) < 0.1, 'all seven ribs follow the same real tow');
+    }
+    f.state.input.actions = { tetherCut: true };
+    tow.update(1 / 60, f.state);
+    f.tick(1 / 60);
+    f.state.input.actions = {};
+    tow.update(1 / 60, f.state);
+    assert.equal(f.state.player.tether.active, false);
+    native.records.get(rib.id).body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    native.step(1 / 60, f.state.tick); f.tick(35);
+    assert.equal(f.memory().status, speed === 5 ? 'rehomed' : 'scattered');
+    assert.deepEqual(f.adults().map(e => e.id), ids, 'the same living animals follow or flee');
+  }
 });

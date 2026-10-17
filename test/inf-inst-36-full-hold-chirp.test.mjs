@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { audio } from '../src/audio/audioSystem.js';
 import { pickupHoldIsFull } from '../src/core/pickupAcceptance.js';
-import { cargo, removeCargo } from '../src/systems/cargo.js';
+import { cargo, addCargo, removeCargo } from '../src/systems/cargo.js';
 import { instrumentScenario } from './helpers/infInstrumentScenario.mjs';
 
 const ORE = 'cmdty_scrap_metal';
@@ -80,5 +80,27 @@ test('INST-36 seed 4242: an already full loaded hold is silent until it frees an
     for (const hold of [null, { capVolume: NaN, usedVolume: 3 }, { capVolume: 3, usedVolume: NaN }]) {
       assert.equal(pickupHoldIsFull(hold), false);
     }
+  } finally { h.close(); }
+});
+
+test('FIX2 INST-36 seed 4242: a fractional gap chirps on the first whole-unit refusal only', () => {
+  const h = boot();
+  try {
+    assert.equal(addCargo(h.state, 'cmdty_ice_water', 2), 2);
+    assert.equal(h.state.player.cargo.usedVolume, 2.8);
+    assert.equal(h.fullCues().length, 0);
+    assert.equal(h.scoop(1).acceptedAmount, 0);
+    assert.equal(h.fullCues().length, 1, '0.2 free cannot admit one scrap unit');
+    for (let i = 0; i < 4; i++) {
+      h.bus.emit('cargo:changed', {});
+      h.bus.emit('audio:cue', { id: 'presentation.mining.cargo_full', cueId: 'mining.cargo.full' });
+      h.scoop(1);
+    }
+    assert.equal(h.fullCues().length, 1, 'unchanged cargo and aliases cannot rearm refusal');
+    assert.equal(removeCargo(h.state, 'cmdty_ice_water', 1), 1);
+    assert.equal(h.scoop(1).acceptedAmount, 1);
+    assert.equal(h.fullCues().length, 1, 'the accepted unit still leaves a fractional gap');
+    assert.equal(h.scoop(1).acceptedAmount, 0);
+    assert.equal(h.fullCues().length, 2, 'freeing real capacity rearms one crossing');
   } finally { h.close(); }
 });

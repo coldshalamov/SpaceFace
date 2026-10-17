@@ -141,14 +141,21 @@ export function materializeNurseryDressing(world, site, active) {
       const a = Math.PI * .48 + i * Math.PI * 1.04 / 6;
       const pos = world._toGlobal({ x: center.x + Math.cos(a) * 60,
         z: center.z + Math.sin(a) * 60 }, site.sectorId);
+      // One existing rib is the tow point; the ecology owner carries the rest of
+      // the connected substrate with its measured travel. No animal is tethered.
       e = world.helpers.spawnEntity({ type: 'prop', pos, rot: a + Math.PI / 2,
-        radius: 13, mass: 0, hull: 1, collides: true, flags: { invuln: true },
-        physicsBody: { dynamic: false, material: 'asteroid', shape: 'compound',
+        radius: 13, ...(i === 0 ? {} : { mass: 0 }), hull: 1, collides: true, flags: { invuln: true },
+        physicsBody: { dynamic: i === 0, material: 'asteroid', shape: 'compound',
           collisionProxyManifest: { schemaVersion: 1, id: 'veil-nursery:mineral-rib:v1', referenceRadius: 'radius',
             primitives: [{ id: 'mineral-rib', kind: 'obb', x: 0, z: 0, hx: 11 / 13, hz: 3 / 13, angle: 0 }] } },
         homeSectorId: site.sectorId, data: { nurseryDressingKey: key, veilNurseryRib: i,
+          masslineTetherable: i === 0,
+          ...(i === 0 ? { combatProfileId: 'combat_profile_tether_anchor',
+            nurseryTowOffset: { x: Math.cos(a) * 60, z: Math.sin(a) * 60 } } : {}),
           siteId: site.siteId, homeSectorId: site.sectorId, scannerSignalKind: 'anomaly',
-          scanLabel: 'Fractured mineral rib · open eastern passage' } });
+          scanLabel: i === 0
+            ? 'Nursery substrate tow rib · Massline: move slowly in short stages; stop and cut to let the rays settle'
+            : 'Fractured mineral rib · open eastern passage' } });
     }
     push(e);
   }
