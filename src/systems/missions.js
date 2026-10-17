@@ -504,6 +504,44 @@ function authoredMethodFor(definition, on, role) {
   return null;
 }
 
+function authoredMethodDebriefPhrase(method) {
+  const phrases = {
+    wrecking_ball: 'bringing down the tower with thrown mass',
+    cut_down: 'cutting down the tower',
+    stage_tow: 'towing the pod to safety',
+    corridor_pull: 'reeling the pods through the cleared corridor',
+    tow_in: 'towing the load into berth',
+    sling_in: 'slinging the load into berth',
+    tow_the_barge: 'towing the barge into berth',
+    sling_the_barge: 'slinging the barge into berth',
+    tow_it_home: 'towing the skiff home',
+    reel_it_free: 'reeling the skiff free after clearing the scavengers',
+    recatch_pods: 'catching the cargo pods on the tow line',
+    drive_off: 'driving off the raiders',
+    park_the_hulk: 'parking the hulk in the berth',
+    swing_the_wedge: 'swinging the wedge clear',
+    slip_the_gap: 'slipping through the gap',
+    breach_the_lock: 'breaking the lock with thrown mass',
+    throw_the_ace: 'throwing the ace off the lane',
+    outgun_the_ace: 'outgunning the ace',
+    throw_the_deserter: 'throwing the deserter off the range',
+    outgun_the_deserter: 'outgunning the deserter',
+    bowl_the_chain: 'bowling thrown mass through the mine chain',
+    reel_the_line: 'reeling the mine line clear',
+    yank_the_hatch: 'yanking the vault hatch open',
+    smash_the_door: 'smashing the vault door with swung mass',
+    feed_the_jaws: 'feeding thrown mass into the crusher jaws',
+    cut_the_belt: 'cutting the crusher belt',
+    feed_the_hopper: 'feeding thrown mass into the hopper',
+    cut_the_slurry: 'cutting the slurry feed',
+    ram_the_gate: 'ramming the gate with swung mass',
+    cut_the_gate: 'cutting down the toll gate',
+    slip_the_locker: 'reeling the locker out quietly',
+    breach_the_seal: 'breaking the locker seal with thrown mass',
+  };
+  return phrases[method] || String(method).replace(/_/g, ' ');
+}
+
 function stampAuthoredTwist(offer) {
   if (!offer || (offer.source !== AUTHORED_SET_PIECE_SOURCE && offer.source !== MEGA_HEIST_SOURCE)) {
     return offer;
@@ -1651,6 +1689,8 @@ export const missions = {
       this._onPhysicalTetherReel(p);
     });
     bus.on('tether:latched', (p) => this._onPhysicalTetherLatched(p));
+    bus.on('tether:detached', (p) => this._onPhysicalTetherDetached(p));
+    bus.on('tether:broken', (p) => this._onPhysicalTetherDetached(p));
     bus.on('tether:releaseRated', (p) => this._onPhysicalReleaseRated(p));
     bus.on('tether:whipImpact', (p) => this._onPhysicalWhipImpact(p));
     bus.on('massline:throw', (p) => this._onPhysicalThrow(p));
@@ -7489,7 +7529,12 @@ export const missions = {
 
     const method = authoredMethodFor(definition, on, role);
     if (!method) return false;
-    if (on === 'latch_dock' && !this._playerLatchedTo(m, role)) return false;
+    if (on === 'latch_dock') {
+      const latched = entity || this._playerLatchedTo(m, role);
+      if (!latched || !(this._usesStoryDestDock(m)
+        ? this._entityAtStoryDestDock(latched, m)
+        : this._entityNearDestBerth(latched, m))) return false;
+    }
     return this._completePhysical(m, index, method);
   },
 
@@ -7637,6 +7682,17 @@ export const missions = {
         const index = this.state.missions.active.indexOf(m);
         if (index >= 0) this._tryCompleteAuthored(m, index, 'latch', role, target);
       }
+    }
+  },
+
+  _onPhysicalTetherDetached(p) {
+    if (!p || p.targetId == null) return;
+    const ownerId = p.ownerId != null ? p.ownerId : p.actorId;
+    if (ownerId != null && ownerId !== this.state.playerId && p.controllerId !== this.state.playerId) return;
+    for (const m of this.state.missions.active || []) {
+      if (!m || m.status !== 'active' || !m.params || m.params.latchedTargetId !== p.targetId) continue;
+      m.params.latchedTargetId = null;
+      m.params.latchedRole = null;
     }
   },
 
@@ -8817,7 +8873,7 @@ export const missions = {
           ? 'Corridor opened. Pods reeled out of the field near ' + dest + '.'
           : 'Pod towed out of the field and signed in at ' + dest + '.';
       case AUTHORED_SET_PIECE_TYPE:
-        return (m.title || 'Set piece') + ' closed by ' + (p.completionMethod || 'physics') + ' near ' + dest + '.';
+        return (m.title || 'Set piece') + ' closed by ' + authoredMethodDebriefPhrase(p.completionMethod || 'physics') + ' near ' + dest + '.';
       case CAPITAL_BOSS_TYPE:
         return p.completionMethod === 'throw_the_capital'
           ? 'Capital came down to thrown mass near ' + dest + '. Guns never had to speak.'
