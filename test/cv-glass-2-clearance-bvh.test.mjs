@@ -141,6 +141,31 @@ test('tilted authored panels retain the raster roof without querying the whole m
   }
 });
 
+test('maximum-height traversal skips equal and lower roofs without changing raster clearance', () => {
+  const geometry = new THREE.BoxGeometry(1200, 90, 1200, 80, 10, 80);
+  const { root, mesh } = stationRoot(geometry);
+  const triangleCount = geometry.index.count / 3;
+  for (const transform of [
+    { roll: 0, scaleY: 1 },
+    { roll: 0.31, scaleY: -1.7 },
+  ]) {
+    mesh.rotation.z = transform.roll;
+    mesh.scale.y = transform.scaleY;
+    root.updateMatrixWorld(true);
+    const box = worldBox(root);
+    const raster = rasterClearanceGrid(root, box);
+    for (const offset of [-360, -120, 0, 240, 480]) {
+      const x = root.position.x + offset;
+      const z = root.position.z;
+      const hit = clearanceNeighborhoodRaw(root, box, x, z);
+      assert.equal(hit.raw, clearanceGridRawAt(raster, x, z));
+      assert.equal(hit.failed, false);
+      assert.ok(hit.visited < triangleCount / 100,
+        `visited ${hit.visited}/${triangleCount} triangles for a maximum-only query`);
+    }
+  }
+});
+
 test('the window roof is the deck max vertex Y, and the far soup is not visited', () => {
   const geo = deckSoupGeometry(3, true);
   const indexBefore = Array.from(geo.index.array);

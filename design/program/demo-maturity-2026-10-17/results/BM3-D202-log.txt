@@ -1,0 +1,57 @@
+**D202 is not closed.** I fixed every below-floor text size I could reach inside `src/ui/**` and `styles/**`. The biggest remaining problem is the flight HUD shrinking on phones, and that needs a design call, not a font bump.
+
+`★ Insight ─────────────────────────────────────`
+- The repo's checker only reads literal `font-size: Npx` in a few stylesheets, so it misses sizes hidden in `var(--x, 11.5px)` fallbacks, `calc()`, `em`, and SVG text inside scaled drawings.
+- A `max(12px, …)` wrapper fixes the first group in CSS alone. SVG text needs the size divided by the drawing's scale, so I pinned that to each dial's fixed width.
+- At 12px, ring labels got longer than their arcs. Tightening letter-spacing fixed the overprint, which a font-size bump alone would not have.
+`─────────────────────────────────────────────────`
+
+## Counts
+- **Official checker:** `node scripts/check-type-floor.mjs` (`npm run check:type-floor`) was **0 below floor of 2,075 inspected before my edits, and 0 of 2,077 after**. The 154 does not reproduce on this tree, because commit `b7fc5fce7a7` already landed that work. The checker only sees literal `px` sizes, so I wrote a rendered-size audit and ran it through `ui-bench` (probe at `.devshots/fontaudit-probe.js`).
+- **Rendered-size audit, 844×390 phone, ~100 screens:** the first run (before edits) showed 172 text nodes across 23 screens. The final run (after edits, stricter because it also counts on-screen scaling) shows 377, of which **347 sit under the HUD's own shrink**. The two numbers aren't directly comparable.
+- **Rendered-size audit on the changed screens, other viewports:**
+
+| Viewport | Rows left |
+|---|---|
+| 1280×720 | 1 |
+| 960×540 | 5 |
+| 390×844 | 5 |
+
+## Files changed (typography only)
+- **Settings:** `src/ui/orrery/settingsPreview.js` (mixer and dial rim text, muted `%` unit).
+- **Station and market:** `src/ui/orrery/marketLayouts.js` and `src/ui/orrery/mobileScreenLayouts.js` (quantity-dial end labels, corrected for SVG scale), `styles/station.css` (profit badge).
+- **Codex:** `src/ui/orrery/archiveLayouts.js` (cipher text), `src/ui/orrery/archiveInstruments.js` (arc engraving 9.5 → 11.5).
+- **Achievements and tech tree:** `src/ui/orrery/constellationMedals.js` and `src/ui/orrery/constellation.js` (ring names, sector labels, tier numerals, medal labels). I tightened letter-spacing on the rim labels so they don't overprint.
+- **Crucible refit:** `src/ui/orrery/slotJig.js` (engraving 10 → 12).
+- **HUD and lists:** `src/ui/threatHalo.js` (countermeasure label 8 → 12), `src/ui/effects/dockRail.js`, `src/ui/listControls.js`, `src/ui/orrery/arcRail.js` (keycap hint).
+- **Asteroid works:** `src/ui/asteroid/asteroidRenderer2d.js` (`MK` stamp 9 → 12), `src/ui/screens/drill.js` (hover plate 11 → 12).
+
+`constellation.js` also contains two other people's edits that I left alone.
+
+## Left below floor, with reasons
+- **Flight HUD fit-scale (the big one).** Below 1280×719 the game shrinks the HUD blocks by `--sf-hud-edge-fit` (`src/ui/views/hudStyles.js:751-759`), so declared 12px text renders at about 7px, and about 2px for the ring legends. This is the game's own phone-fit policy, not a bench artifact. Font bumps inside scaled stages would only break the layout.
+- **Mobile wheel tabs and labels (11px) and the stick `BOOST` label (11.1px)** live in `src/systems/mobile/**`, outside my allowed paths.
+- **Achievements word-scale numbers (7.8px on phone):** the drawing is squeezed, and the sizing logic is in JavaScript.
+- **Medal scramble glyph (2.4–4.3px):** decorative cipher by design.
+- **Codex arc engraving** shrinks with its dial: 7.5px at 960×540 and 4px at 390×844. It is fixed on desktop and landscape phone.
+- **`drill.js:1747` (8px):** the two-line head name has to fit a 40px tile. The full name already shows at 12px in the hover plate and the warning text.
+- **`hud.js:4312` (10px):** the container only holds an SVG icon, so it has no text.
+- **Not touched:** `graphics-lab.css` (dev tool), and three SVG attribute sizes inside the scaled HUD (`radar.js:1422`, `flightInstruments.js:101`, `arcRail.js:952`).
+- **`orr-armory-budget__word`** reads 11.8px at 390×844 because its drawing scales to 0.98. Its rule is in `screenLayouts.js`, which another agent has open.
+
+## What the pictures showed
+- **Tech tree:** the sector counts "0/7" overprinted each other at 12px. I tightened the tracking from 0.26em to 0.08em, and zoomed 4× it is now clean.
+- **Settings controls page and crucible refit** both read well. Refit shows the jig engraving ("HORNET · 9.8 M · 5 OF 8 FITTED") fitting its arc.
+- **Codex, armory, and the settings audio mixer** read fine. The mixer rows are tighter.
+- **Achievements:** a medal sits on the "CRUCIBLE" ring name at the bottom, so it reads "CRUCI E 0/5". The ring name sits centred on that medal at any font size, so this was already there.
+- **Not seen:** the `MK` stamp and the hover plate. The drill still had no tier-locked tile on screen.
+- **Walks:** I ran `--walk` on settings, crucible-rearm, crucible-refit and drill. The settings walk stopped at 16 of 20 controls on the harness's 5-minute limit.
+- **Overlaps already there (I didn't baseline them):** station-market "Ledger" over "Comms", and tech-tree node-button overlaps of about 17×28px.
+
+## Tests
+Of 40 related test files, 7 tests failed. None involve typography: a missing symbol in `main.js`, alien-ecology data from other people's uncommitted files, asteroid contact rates, and a GLB traversal.
+
+## Proposed ledger row
+> **D202b | Phone flight HUD renders at 2–7px** | `hudStyles.js` scales the HUD blocks by `--sf-hud-edge-fit` below 1280×719, so declared 12px text lands at 0.25–0.68 of size (~347 text nodes at 844×390). | Phone flight HUD unreadable | OPEN. Needs a phone-HUD layout decision; don't paper over it with font bumps.
+
+I did not touch the ledger, as instructed.

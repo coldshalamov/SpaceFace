@@ -72,3 +72,53 @@ Goal: a mature game we can demo without it feeling unfinished (total-fix mode, �
 
 - 2026-10-17: campaign opened. NOW row `orch-demo-m30`; checkpoint dropped. Wave 1 launched
   (codex→BM1 D203, claude→BM3 D202).
+- Codex CLI repaired on this box: stale `service_tier="default"` line commented out of
+  `~/.codex/config.toml` (per that file's own standing instruction), and the npm codex updated
+  0.130.0-alpha.5 → 0.163.0 (the alpha could not decode the server's current model catalog, so
+  `gpt-6.1-sol` was rejected; 0.163.0 runs it at xhigh). Claude uses
+  `claude -p --model claude-sonnet-5-5 --effort high`.
+- BM1 **D203 LANDED** `5652818df09`: seed 47 reaches `extract` at tick 11,247 inside the
+  unchanged 12,000-tick cutoff; late-sweep regression added; recovery suite order-dependence
+  fixed in the same commit. Ledger row D203 deleted.
+- MJ3 **row 351 M11 LANDED**: lost hulls persist in world records (save v17 additive); site can
+  BE the lost hull. Tests 6/6 + 20/20 + 16/16. Board row deleted.
+- Mission lane admitted: rows 348–356 minted in build_map §D from the official
+  `admit-sfq-m/DISPOSITIONS.md` residuals (9 units, worker jobs MJ1–MJ7). BM16/17 = ADMIT-SFQ-B
+  families SFQ-P12 + SFQ-P17 (band 357–361).
+- **ALL NINE mission rows landed** (M15, M13, M01, M11, M29, M25, M30, M24, M20). **All 12
+  INFERENCE units landed** (ECON-09/10 [11 already-true], LAW-11/12/13, STORY-09/10/11,
+  WORLD-44, INST-36/37/38). **BM16/17 landed**: 20 family candidates dispositioned (16
+  already-true with evidence, B166/B167 landed as rows 357/358, B115 LANDS-WITH 349, B165
+  parked). **BM2 (D198)**: attribution done, two legs fixed, quiet-host leg stays open. **BM4
+  (D201)**: 7/9 matrix gaps closed, 2 proven permanent, 3 new defects filed (D210–D212), D210/
+  D212 + market overlap fixed same sitting. **D202 closed**: official checker 0/2077, rendered-
+  size audit packet, phone-HUD fit-scale filed as D202b. **Golden re-record**: deliberate, zero
+  metric/trace delta (M11 additive record fields), both checks green at clean probe. **Codex
+  review passes 1+2**: 6 MAJOR findings across the campaign's own landings — all six fixed with
+  fail-first regressions (FIX1, FIX2). Pushed through `b8d9b35a3a2`.
+- Remaining: BM5/BM6 perf legs (running), TASTE2 final taste pass (claude resets 5:20am ET),
+  player-truth adventure+swarm on the quiet machine, ui-budgets re-shot, campaign close.
+- **CAMPAIGN CLOSED 2026-10-17 (early ET morning).**
+  - **Score: 30 work units landed and pushed** — 14 build-map ledger/board units (D203, D202
+    closed, D201 closed, D198 two legs, D130 one leg + D191 attribution scoped, nine mission rows
+    348–356) + 12 INFERENCE production units (ECON-09/10, LAW-11/12/13, STORY-09/10/11, WORLD-44,
+    INST-36/37/38; ECON-11 verified already-true) + 2 ADMIT family-lane rows (357/358) + 2
+    review-driven repair jobs (FIX1/FIX2: six MAJOR findings found by codex reviewing codex, all
+    fixed fail-first) + BM16/17 disposition of 20 family candidates (16 already-true with
+    evidence) + the deliberate golden re-record (zero metric/trace delta) + the final taste pass
+    (Munitions landscape fix; nine surfaces judged RIGHT).
+  - **Gates at close:** `check:baseline` **17/17 green at clean HEAD** (both re-recorded goldens
+    included). Player-truth adventure + swarm (headed, seed 4242, this box): **INCOMPLETE** —
+    every behavioral check PASS on both modes (rounds resolve, transitions clean, LOD/popping/
+    VFX/backdrop/HUD within budget); the two UNKNOWNs are instrument-host classes the ledger
+    already owns (readability sampler coherence; contended-host frame timing → quiet-host
+    program). Verdicts + contact sheets: `scratch/player-truth/{adventure,swarm-idle,swarm-active}/`.
+    `check:ui:budgets`: tracked bytes/content match the index (zero drift); FAIL is the three
+    documented PQ-184 grammar debts owned by the ORRERY lane.
+  - **Left open on purpose** (all scoped on their rows): D202b phone-HUD fit-scale (needs a
+    layout decision), D207 worker-lane mirror parity, D211 Asteroid Works shader-link stalls,
+    D188/D199/D24 (external/quiet-host/frozen), D130 whole-game 3x target, D191 native solve
+    step, D198 quiet-host attribution leg.
+  - Workers: codex `gpt-6.1-sol` xhigh (implementation + two review passes), claude
+    `claude-sonnet-5-5` high (D201, D202, two taste passes). Orchestrator: board/ledger/row
+    surgery, gates, pathspec commits, pushes.

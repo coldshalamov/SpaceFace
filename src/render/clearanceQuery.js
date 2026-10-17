@@ -7,7 +7,7 @@
 // three-mesh-bvh's accelerated raycast or frustum helpers cannot start using it.
 // indirect + setBoundingBox:false leaves the rendered index and bounding box alone.
 import * as THREE from 'three';
-import { CONTAINED, INTERSECTED, MeshBVH, NOT_INTERSECTED } from 'three-mesh-bvh';
+import { INTERSECTED, MeshBVH, NOT_INTERSECTED } from 'three-mesh-bvh';
 
 export const CLEARANCE_GRID_CELL_WU = 24;
 export const CLEARANCE_GRID_MAX_CELLS = 128;
@@ -109,7 +109,7 @@ function paint(heights, layout, vA, vB, vC, window) {
     gz0 = Math.max(gz0, window.gz0);
     gz1 = Math.min(gz1, window.gz1);
   }
-  if (gx0 > gx1 || gz0 > gz1) return;
+  if (!(gx0 <= gx1 && gz0 <= gz1)) return -Infinity;
   for (let gz = gz0; gz <= gz1; gz++) {
     for (let gx = gx0; gx <= gx1; gx++) {
       const i = window
@@ -118,6 +118,7 @@ function paint(heights, layout, vA, vB, vC, window) {
       if (top > heights[i]) heights[i] = top;
     }
   }
+  return Math.fround(top);
 }
 
 function rasterObject(object, heights, layout, window) {
@@ -310,6 +311,7 @@ export function clearanceNeighborhoodRaw(root, box, camX, camZ, options) {
   let visited = 0;
   let accepted = 0;
   let failed = false;
+  let raw = -Infinity;
   root.updateMatrixWorld(true);
   root.traverse((object) => {
     if (failed || !acceptClearanceMesh(object)) return;
@@ -330,19 +332,31 @@ export function clearanceNeighborhoodRaw(root, box, camX, camZ, options) {
       return;
     }
     const world = object.matrixWorld;
+    const e = world.elements;
+    const affine = e[3] === 0 && e[7] === 0 && e[11] === 0 && e[15] === 1;
+    // A node's world-space upper Y bounds every vertex the raster could stamp. Visit high
+    // nodes first, then discard branches that cannot raise the Float32 roof already found.
+    // Keep descending contained nodes: their lower branches can be discarded too. Projective
+    // matrices keep the ordinary overlap walk rather than using this affine height bound.
+    const upperY = (bounds) => e[1] * (e[1] < 0 ? bounds.min.x : bounds.max.x)
+      + e[5] * (e[5] < 0 ? bounds.min.y : bounds.max.y)
+      + e[9] * (e[9] < 0 ? bounds.min.z : bounds.max.z) + e[13];
     object.geometry.userData = object.geometry.userData || {};
     try {
       tree.shapecast({
+        boundsTraverseOrder: affine ? (bounds) => -upperY(bounds) : undefined,
         intersectsBounds: (bounds) => {
           if (!bounds.intersectsBox(_localBox)) return NOT_INTERSECTED;
-          return _localBox.containsBox(bounds) ? CONTAINED : INTERSECTED;
+          if (affine && Math.fround(upperY(bounds)) <= raw) return NOT_INTERSECTED;
+          return INTERSECTED;
         },
         intersectsTriangle: (tri) => {
           visited += 1;
           _vA.copy(tri.a).applyMatrix4(world);
           _vB.copy(tri.b).applyMatrix4(world);
           _vC.copy(tri.c).applyMatrix4(world);
-          paint(_windowHeights, layout, _vA, _vB, _vC, window);
+          const top = paint(_windowHeights, layout, _vA, _vB, _vC, window);
+          if (top > raw) raw = top;
           return false;
         },
       });
@@ -354,7 +368,5 @@ export function clearanceNeighborhoodRaw(root, box, camX, camZ, options) {
   });
   if (failed) return { raw: -Infinity, visited, failed: true, empty: false };
   if (accepted === 0) return { raw: -Infinity, visited: 0, failed: false, empty: true };
-  let raw = -Infinity;
-  for (let i = 0; i < 9; i++) if (_windowHeights[i] > raw) raw = _windowHeights[i];
   return { raw, visited, failed: false, empty: false };
 }
