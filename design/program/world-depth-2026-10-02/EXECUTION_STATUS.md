@@ -1,7 +1,28 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Current implementation — 10 October 2026, 11:00 UTC
+## Current implementation — 17 October 2026, UTC
+
+Public master was verified at `f079f9e12c4502fc5da0005975b1132c3f071e1e`. PRs #391 and #430 are merged; #430's last source head is `09cbe5d503ca4bcf4efc8283f8c1978ad05d8813`. The broader merged startup work already supersedes the earlier unlanded first-picture lease proposal. Preserve that work rather than transplanting the old renderer.
+
+A distinct current shared-launch race is reproduced and corrected here. `waitForOpeningFirstPicture` captures its loading owner, then queues mesh admission. The old callback could clear a replacement run's mesh-defer flags, prepared latch and publication gate before its later activity check rejected it. The correction invokes the existing `assertActive()` inside that queued callback before entering the mutating renderer owner. No renderer, timing budget, warmup policy or arrival-release behavior changes.
+
+Owned increment: `src/render/pipelineReadiness.js`, `test/opening-loading-entry-lifetime.test.mjs`, the existing `check:runtime-maturity` test list in `package.json`, and these current handoff/goal updates. Current open renderer-performance PRs #444/#445 have no changed path in this source increment at the ownership check.
+
+Evidence:
+- Same portable test: current baseline 3 pass / 10 fail; candidate 13 pass.
+- Independent rerun: 13 pass in 0.116 seconds, sampled peak RSS 49,909,760 bytes.
+- Nine current-method ownership controls and four existing lifetime test bodies pass on both sides in a controlled exact-method harness; this is not the full original import suite.
+- Two complete extracted preflight-entry controls pass. The other queued sector-cook owner already rejects an inactive caller before mutation and is unchanged.
+- CI graph verification shows the new test runs once through the existing runtime-maturity command. Actual new-head CI and rendered-route verification remain pending.
+
+Continue with a fresh draft increment on `fix/opening-entry-lifetime-20261017-0132`, preserving newer upstream work. Verify its remote commit and follow exact-head CI. Do not merge or deploy. Routine branch/source decisions are already authorized.
+
+The larger Orchard/Ceres/Mile route remains open. A genuine original crate was latched and towed on its explicitly pinned source set; its six saved checkpoints preserve all prior costs and finite custody. Continuation backend preparation now succeeds, but pre-step body parity exposed a redundant cargo-mass reconstruction revision. A separate current-source cache-before-ship-stats correction is under review. No completed ordinary delivery, current-master native-route acceptance or gameplay acceptance is claimed.
+
+All seven markers in OPEN_GOALS.md remain open. Source/model recovery is durable, but the separate model repository write has an unresolved connector approval; backup is not GitHub delivery. Actual exported-package studio views remain distinct from live game-camera acceptance. This is an increment within the original twenty-concept/P00–P21 scope, not a new queue or a completed game.
+
+## Historical implementation — 10 October 2026, 11:00 UTC
 
 Verified public draft PR #262 head: `9c959be34de1abc566763a1492b20251c2d36ac8`.
 The schema/save15 and dock-observer increment is published. Its simulation CI
