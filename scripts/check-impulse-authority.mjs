@@ -52,7 +52,10 @@ function assertImpulseRoutesThroughAuthority() {
   assert.equal(applied.length, 1, `blast must request exactly one impulse; got ${applied.length}`);
   const call = applied[0];
   assert.equal(call.entityId, TARGET_ID, 'impulse must target the blast victim');
-  assert.equal(call.point, null, 'blast impulse applies at the center of mass (point null)');
+  // SFQ-B134: the shove lands on the blast-facing skin contact (centre minus radial x hull radius),
+  // so where a charge sits decides the spin; bombs already shove from the same contact.
+  const skin = h.state.entities.get(TARGET_ID).radius;
+  assert.deepEqual(call.point, { x: 120 - skin, z: 0 }, 'blast impulse applies at the blast-facing skin contact');
   assert.equal(call.reason, 'impulse_charge', 'impulse must carry the reason for the combat trace');
   assert.equal(call.tick, h.state.tick, 'impulse must be sim-tick stamped');
 
