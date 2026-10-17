@@ -22,13 +22,15 @@ import { HELIOS_ACTIVITY_SECTOR_ID } from './sectorActivityPockets.js';
 // them, one per category, so the neighbourhood reads as one afternoon rather than four loops:
 //
 //   work      ev_prospector_stakes_claim  the seam miner hunts a rock and fires a stake      (miner)
-//   law       ev_customs_pullover         customs walks the loaded hauler aside and reads it (patrol, hauler)
+//   law       ev_customs_pullover         customs flags the freight hauler down and walks it aside (patrol, hauler)
 //   civilian  ev_prospectors_posture      the fence turns up and the two fly the argument    (miner, fence)
 //   crime     ev_claim_jump               the loser works the staked rock while the owner is away (fence, miner)
 //
 // The stake opens the cycle (the catalog's own composability: the posture and the jump are both
-// downstream of a staked rock). The pullover rides the same stake — the lot leaving the claim is
-// what customs reads — and runs in parallel on the freight spine, where the opening position is.
+// downstream of a staked rock). The pullover waits on the same stake — a staked claim is a claim
+// worth watching the freight spine for — and runs in parallel there, where the opening position is.
+// The Helios hauler is not guaranteed a manifest when customs reaches it, so nothing in this chain
+// (or its news line) claims a cargo: the beat is the stop and the walk-around, not the hold.
 //
 // Catalog boundaries recorded here, same discipline as the Ceres chain: the claim-mark prop, the
 // field-slot owner id and the second stake after a won jump stay unwired (no claim-mark object
@@ -72,16 +74,16 @@ export const HELIOS_CAUSAL_CHAIN = Object.freeze([
     ]),
   }),
   Object.freeze({
-    // law, next20: customs flags a loaded hauler down on the freight spine, walks it aside and
-    // reads the hold. The patrol closes on the hauler for the whole read (the Ceres patrol-scan
-    // redirect, generalized) and is released back to its beat when the link ends.
+    // law, next20: customs flags a hauler down on the freight spine, walks it aside and inspects
+    // it. The patrol closes on the hauler for the whole stop (the Ceres patrol-scan redirect,
+    // generalized) and is released back to its beat when the link ends.
     id: 'ev_customs_pullover',
     actorSlots: Object.freeze([HELIOS_CUSTOMS_PATROL, HELIOS_FREIGHT_HAULER]),
     requires: Object.freeze(['claim_staked']),
     seedAtPhase: 'inspect',
-    seeds: Object.freeze(['lot_read']),
-    // Aborted inspection (a hull lost): the catalog's "visible unexamined marker" — the lot went
-    // through unread, and the cycle's news line says so.
+    seeds: Object.freeze(['hauler_inspected']),
+    // Aborted inspection (a hull lost): the catalog's "visible unexamined marker" — the hauler
+    // went through unread, and the cycle's news line says so.
     interruptSeeds: Object.freeze(['lot_unread']),
     jobHints: Object.freeze([
       Object.freeze({
@@ -158,10 +160,10 @@ export const HELIOS_CAUSAL_CHAIN = Object.freeze([
 ]);
 
 function heliosCycleNewsText(seeds) {
-  // lot_unread is the only seed that diverges the cycle's story: customs lost a hull mid-read.
+  // lot_unread is the only seed that diverges the cycle's story: customs lost a hull mid-stop.
   return seeds && seeds.lot_unread === true
-    ? 'Helios customs waves a loaded hauler on unread; the Sanctioned Claim argues over a stake.'
-    : 'Helios customs reads another loaded hauler; the Sanctioned Claim argues over a stake.';
+    ? 'Helios customs waves a hauler on unread; the Sanctioned Claim argues over a stake.'
+    : 'Helios customs pulls another hauler aside; the Sanctioned Claim argues over a stake.';
 }
 
 /**

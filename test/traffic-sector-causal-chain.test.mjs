@@ -27,6 +27,7 @@ import {
 } from '../src/data/sectorActivityPockets.js';
 import { HELIOS_CAUSAL_CHAIN, SECTOR_CAUSAL_CHAIN_DEFS } from '../src/data/sectorCausalChains.js';
 import { createContactHailResponse, livingWorkStatusText } from '../src/data/contactHail.js';
+import { createMarketNews } from '../src/ui/marketNews.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import {
   CERES_CAUSAL_CHAIN,
@@ -94,6 +95,11 @@ function bootHelios() {
   bus.on('news:publish', (payload) => news.push(payload));
   bus.on('field:richSeamOpened', (payload) => richSeam.push(payload));
   bus.on('stationLife:deedNoticed', (payload) => deeds.push(payload));
+  // The real news consumer (the flight ticker + voice): the line must actually land there, not
+  // just leave the traffic owner.
+  const headlines = [];
+  bus.on('news:headline', (payload) => headlines.push(payload));
+  createMarketNews({ state, bus, helpers: { voice: { say: () => false } } });
   bus.emit('sector:enter', { sectorId: HELIOS, sector: heliosDef });
 
   const owner = sim.registry.get('traffic');
@@ -104,7 +110,7 @@ function bootHelios() {
   };
   const bySlot = (slotId) => state.entityList.find((entity) => entity.alive !== false
     && entity.data && entity.data.activityActorSlotId === slotId) || null;
-  return { sim, state, bus, owner, receipts, news, richSeam, deeds, advanceTo, bySlot, heliosDef };
+  return { sim, state, bus, owner, receipts, news, richSeam, deeds, headlines, advanceTo, bySlot, heliosDef };
 }
 
 const starts = (receipts) => receipts.filter((r) => r.kind === 'event_start');
@@ -289,7 +295,7 @@ test('a hull shared by two live links keeps the cue of the one still running', (
 });
 
 test('a cycle closes with one Helios news line, waits the shared gap, then re-arms', () => {
-  const { receipts, news, richSeam, deeds, advanceTo } = bootHelios();
+  const { receipts, news, richSeam, deeds, headlines, state, advanceTo } = bootHelios();
   advanceTo(260);
 
   const complete = receipts.find((r) => r.kind === 'cycle_complete');
@@ -305,8 +311,18 @@ test('a cycle closes with one Helios news line, waits the shared gap, then re-ar
   assert.equal(stories[0].sectorId, HELIOS);
   assert.equal(stories[0].cycle, 1);
   assert.equal(stories[0].sourceRef, 'traffic:sector-causal-chain');
-  assert.equal(stories[0].text, 'Helios customs reads another loaded hauler; the Sanctioned Claim argues over a stake.');
+  assert.equal(stories[0].text, 'Helios customs pulls another hauler aside; the Sanctioned Claim argues over a stake.');
   assert.doesNotMatch(stories[0].text, /[a-z]_[a-z]|[a-z][A-Z]/, 'plain words, no internal ids');
+  assert.doesNotMatch(stories[0].text, /loaded|cargo|manifest/i, 'the beat claims a stop, never a hold it cannot show');
+
+  // And it reaches the flight news ticker, verbatim, with its provenance.
+  const wired = headlines.filter((h) => h.kind === 'helios_claim_story');
+  assert.equal(wired.length, 1, 'the ticker surfaces the Helios line once');
+  assert.equal(wired[0].headline, stories[0].text);
+  assert.equal(wired[0].stationId, 'station_helios');
+  const logged = state.ui.marketNews.log.filter((row) => row.kind === 'helios_claim_story');
+  assert.equal(logged.length, 1);
+  assert.equal(logged[0].sourceRef, 'traffic:sector-causal-chain');
   assert.equal(news.filter((p) => p.kind === 'ceres_seam_story').length, 0, 'no Ceres line leaks out');
 
   const second = starts(receipts).filter((r) => r.cycle === 1);
@@ -319,7 +335,7 @@ test('a cycle closes with one Helios news line, waits the shared gap, then re-ar
   assert.equal(deeds.length, 0);
 });
 
-test('a customs link that loses a hull says the lot went through unread', () => {
+test('a customs link that loses a hull says the hauler went through unread', () => {
   const { owner, news, receipts, advanceTo, bySlot } = bootHelios();
   advanceTo(30);
   // Customs is lost mid-pullover: the link degrades (interrupt seeds) and the cycle still resolves.
@@ -330,7 +346,47 @@ test('a customs link that loses a hull says the lot went through unread', () => 
   assert.equal(owner.getCeresCausalChainSnapshot().cycle >= 1, true, 'the cycle still closes');
   const story = news.find((p) => p.kind === 'helios_claim_story');
   assert.ok(story);
-  assert.equal(story.text, 'Helios customs waves a loaded hauler on unread; the Sanctioned Claim argues over a stake.');
+  assert.equal(story.text, 'Helios customs waves a hauler on unread; the Sanctioned Claim argues over a stake.');
+});
+
+test('the chain finds a Helios hull by the durable id the cast was minted with', () => {
+  const { owner, state, advanceTo, bySlot } = bootHelios();
+  advanceTo(2);
+  for (const slotId of HELIOS_POCKET_ACTOR_SLOT_ORDER) {
+    const entity = bySlot(slotId);
+    assert.ok(entity.data.worldRecordId, `${slotId} carries a durable id`);
+    assert.equal(
+      owner._ceresCausalWorldRecordIdForSlot(slotId),
+      entity.data.worldRecordId,
+      `${slotId}: the chain's id for the slot is the id the cast was minted with`,
+    );
+    assert.equal(owner._ceresCausalSlotTerminallyGone(slotId), false, `${slotId} is alive, not terminal`);
+  }
+  // Once the world marks that record destroyed, the slot reads terminally gone in Helios exactly
+  // as it does in Ceres.
+  const recordId = bySlot('helios_customs_patrol').data.worldRecordId;
+  state.world.records = { byId: { [recordId]: { id: recordId, alive: false, outcome: 'destroyed' } } };
+  assert.equal(owner._ceresCausalSlotTerminallyGone('helios_customs_patrol'), true);
+});
+
+test('a Helios hull destroyed for good skips its link and never stalls the cycle', () => {
+  const { owner, state, receipts, advanceTo, bySlot } = bootHelios();
+  advanceTo(2);
+  const patrol = bySlot('helios_customs_patrol');
+  const recordId = patrol.data.worldRecordId;
+  // This harness runs no world system, so the destroyed-for-good record is written the way the
+  // world owner writes it on a kill.
+  state.world.records = { byId: { [recordId]: { id: recordId, alive: false, outcome: 'destroyed' } } };
+  patrol.alive = false;
+  advanceTo(260);
+
+  const skipped = receipts.find((r) => r.kind === 'event_interrupt' && r.eventId === 'ev_customs_pullover');
+  assert.ok(skipped, 'the pullover is skipped, not waited on forever');
+  assert.equal(skipped.outcome, 'skip_terminal_cast');
+  assert.ok(receipts.some((r) => r.kind === 'cycle_complete'), 'the remaining links still close the cycle');
+  assert.ok(owner.getCeresCausalChainSnapshot().cycle >= 1);
+  assert.equal(starts(receipts).some((r) => r.eventId === 'ev_customs_pullover'), false,
+    'a link with no customs hull never starts');
 });
 
 test('entering any other sector resets the Helios chain; the Ceres chain still arms on its own', () => {
