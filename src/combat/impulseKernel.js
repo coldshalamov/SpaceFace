@@ -73,6 +73,16 @@ export const SHOVE_BEAT_LAW = Object.freeze({
 // shares have their own tuned helm economies and keep the base law alone.
 const SHOVE_CLASS_HITSTUN_SOURCES = Object.freeze(new Set(['gun', 'weapon', 'bomb', 'impulse_charge', 'hull_burst']));
 
+// SFQ-B036 — bound control denial without removing power. Repeated concussions/stuns in
+// a row have diminishing returns (each chained hit keeps 0.65 of the duration it would
+// otherwise add) and hit a 5.0 s continuous helm-loss ceiling; once a ship enters its
+// post-tumble stabilization window, sub-shove grazes (u < 0.30) cannot re-tumble it.
+export const HITSTUN_CHAIN_LAW = Object.freeze({
+  decayPerChain: 0.65,
+  maxChainDurationS: 5.0,
+  recoveryReentryMinU: 0.30,
+});
+
 export function isShoveClassHitstunSource(source) {
   return SHOVE_CLASS_HITSTUN_SOURCES.has(source);
 }
@@ -127,6 +137,22 @@ export function resolveHitstunLaw(input = {}) {
   const entrySpin = durationS > 0
     ? clamp(HITSTUN_LAW.spinPerExcessU * (u - HITSTUN_LAW.uFloor), HITSTUN_LAW.spinMin, HITSTUN_LAW.spinMax)
     : 0;
+  // SFQ-B036 — a stabilizing ship shrugs sub-shove grazes instead of re-tumbling: the
+  // recovery window is its own beat, not an opening for a light follow-up.
+  const chainCount = nonNegativeInteger(input.chainCount);
+  const recovering = input.recovering === true;
+  if (recovering && durationS > 0 && u < HITSTUN_CHAIN_LAW.recoveryReentryMinU) {
+    return Object.freeze({ k, mF, u, durationS: 0, entrySpin: 0, shoveBeatS: 0, worldBody });
+  }
+  // SFQ-B036 — chained hits keep 0.65^n of the duration. Tick-quantized like the base law
+  // so stacked receipts land on the same clock. First hits are bit-identical to before
+  // (entry spin reads the undayed stun; only the clock decays).
+  if (chainCount > 0 && durationS > 0) {
+    durationS = Math.ceil(durationS * Math.pow(HITSTUN_CHAIN_LAW.decayPerChain, chainCount) * 60 - 1e-12) / 60;
+  }
+  if (chainCount > 0 || recovering) {
+    return Object.freeze({ k, mF, u, durationS, entrySpin, shoveBeatS, worldBody, chainCount });
+  }
   return Object.freeze({ k, mF, u, durationS, entrySpin, shoveBeatS, worldBody });
 }
 

@@ -26,6 +26,7 @@ import {
   TUMBLE_STATUS_ID,
 } from '../combat/tumbleStatus.js';
 import {
+  HITSTUN_CHAIN_LAW,
   HITSTUN_IMPULSE_EVENT,
   holdImpulseProvenance,
   impulseProvenanceGeneration,
@@ -244,6 +245,9 @@ export const tumbleStates = {
       if (recoveryMarker) {
         // The stabilization window just elapsed: tactics resume at full authority downstream.
         clearRecovery(e);
+        // SFQ-B036 — the chain resets once the ship has recovered: the next hit is a
+        // full first hit again, not a continuation of the old chain.
+        if (e.data && e.data.lastTumbleChainCount != null) delete e.data.lastTumbleChainCount;
         if (this.bus) this.bus.emit('massline:recovered', { victimId: e.id });
         continue;
       }
@@ -384,6 +388,17 @@ export const tumbleStates = {
     if (!input.requireMassline && !combatFlag('weaponImpulseConsequences')) return;
 
     const cruise = resolveGovernedCombatSpeed(victim, state, 0);
+    // SFQ-B036 — bound control denial: a ship already tumbling or stabilizing chains the
+    // hit (each chained hit keeps 0.65 of its duration, continuous helm loss caps at
+    // 5.0 s), and a stabilizing ship shrugs sub-shove grazes. First hits are untouched.
+    const now = finite(state.simTime, state.tick / 60);
+    const existing = readTumbleStatus(state, victim);
+    const recovering = isRecovering(state, victim);
+    const prevChain = existing && existing.data && Number.isFinite(existing.data.chainCount)
+      ? existing.data.chainCount
+      : (recovering ? (Number.isFinite(victim.data && victim.data.lastTumbleChainCount)
+        ? victim.data.lastTumbleChainCount : 1) : 0);
+    const chainCount = (existing || recovering) ? prevChain + 1 : 0;
     // Shove-class hits (the delivered-impulse weapon family) extend the helm loss to the coast
     // that carries a light victim about one screen off its line (SHOVE_BEAT_LAW); every other
     // source keeps the base law alone.
@@ -394,16 +409,19 @@ export const tumbleStates = {
       victimMass: massOf(victim),
       worldBody: input.worldBody === true,
       shove: isShoveClassHitstunSource(input.source),
+      chainCount,
+      recovering,
     });
     if (!(law.durationS > 0)) return;
 
-    const now = finite(state.simTime, state.tick / 60);
-    const existing = readTumbleStatus(state, victim);
     const existingUntil = existing && existing.data ? finite(existing.data.until, 0) : 0;
     const startedAt = existing && existing.data && Number.isFinite(existing.data.startedAt)
       ? existing.data.startedAt
       : now;
-    const until = Math.max(existingUntil, now + law.durationS);
+    const until = Math.min(
+      startedAt + HITSTUN_CHAIN_LAW.maxChainDurationS,
+      Math.max(existingUntil, now + law.durationS),
+    );
     const scheduled = this._scheduleTumbleStatus(victim, until - now, {
       kind: input.kind,
       startedAt,
@@ -415,8 +433,10 @@ export const tumbleStates = {
       k: law.k,
       mF: law.mF,
       shoveBeatS: law.shoveBeatS,
+      chainCount,
     });
     if (!scheduled) return;
+    if (victim.data) victim.data.lastTumbleChainCount = chainCount;
     // A fresh forced tumble cancels any stabilization already in progress: the helm is
     // decontrolled again, not recovering. Stacking and cap rules above are untouched.
     clearRecovery(victim);
