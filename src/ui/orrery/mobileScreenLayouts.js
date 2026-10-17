@@ -307,7 +307,8 @@ export const MOBILE_SCREEN_CSS = `
     ${B} .sxb-ops .of-facility-rail::-webkit-scrollbar { display:none; }
     ${B} .sxb-ops .of-facility-rail .sxb-ops__dock, ${B} .sxb-ops .of-facility-rail .sx-dock { width:max-content !important; min-width:100% !important; max-width:none !important; }
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { grid-template-columns:repeat(7, auto) !important;
-      width:max-content !important; min-width:100% !important; max-width:none !important; gap:0 12px !important; }
+      /* Close the six gaps so Ledger clears Comms at 844px with the readable 12px labels. */
+      width:max-content !important; min-width:100% !important; max-width:none !important; gap:0 4px !important; }
     ${B} .sxb-ops .sx-tile__label { letter-spacing:.07em !important; }
     ${B} .sxb-ops .sx-tile { min-height:44px !important; }
     ${B} .sxb-ops :is(.sx-comms, .sxb-launch-seat) { flex:none !important; }

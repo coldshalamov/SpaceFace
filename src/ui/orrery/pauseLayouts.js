@@ -16,6 +16,13 @@ const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stre
 const HALO = 'text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9), 0 0 18px rgb(4 6 9 / .75) !important;';
 
 export const PAUSE_LAYOUT_CSS = `
+/* Photo controls are siblings of Pause: keep each label in flow beside its own range. */
+body.k-photo #screens > .sf-photo-bar {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px 16px;
+  max-width:calc(100vw - 2 * var(--k-margin)); pointer-events:auto; }
+body.k-photo .sf-photo-control { display:inline-flex; align-items:center; gap:8px; margin:0; white-space:nowrap; }
+body.k-photo .sf-photo-control input { width:clamp(90px, 12vw, 144px); margin:0; }
+
 /* ---------- title: hotter bone + deeper halo so PAUSED cuts the held world ---------- */
 ${BOTH} .dp-title__name {
   color:rgb(${HOT}) !important; -webkit-text-fill-color:currentColor !important;
