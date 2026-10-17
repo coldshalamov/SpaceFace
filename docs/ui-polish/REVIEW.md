@@ -1644,3 +1644,13 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `--phone` station-ledger 4 → 0 at 390×844; station-ledger, station-market and station-contracts 0 at 390×844 and 360×780. Landscape phones (≤560 tall) and every desktop size are outside these rules (`data-sf-mobile` plus `min-height:561px`), so 960×540 / 1280×720 / 1920×1080 are untouched. Shots in `ui-shots/polish72/`.
 
 **Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) gives the berth head ~700px, so the tab body starts under COMMS (bench 4, same on master). The ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Tech-tree star hit boxes @844×390.
+
+## Station foot on a short narrow desktop window: every destination word on the rail (ui-polish-75)
+
+**Before (master 6391422a55):** at 651–800 wide and 461–800 tall, the seven destination words (~715px at full tracking) were capped at 64vw, so only MARKET and SHIPWORKS showed, INDUSTRY ran under COMMS, and MISSIONS, FACTIONS, BAR and LEDGER were off the rail.
+
+**After (`stationLayouts.js`, desktop only):** the foot becomes a two-column grid. The words own the left side, closed up and a size smaller (11px; 12px at 780–800), and the right side stacks UNDOCK over COMMS · HELP, so every word stands on the rail and the needle still sits under the open tab, inside the foot's old height. Selectors and IDs are unchanged.
+
+**Checked:** 651, 680, 700, 760 and 790 × 600 and 800×800 (Market), plus 700×600 Missions: every word on glass, no word under COMMS or UNDOCK. 390×844, 960×540, 1280×720, 1920×1080, phones (`data-sf-mobile`) and ≤460-tall windows don't match the query. Shots in `ui-shots/polish75/`.
+
+**Leftovers:** at 700×600 the Missions dossier column is squeezed (the title breaks mid-word); the 390-wide desktop berth head.
