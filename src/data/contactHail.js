@@ -1336,6 +1336,11 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
   'ev_rock_calving:calve': 'SEAM FAILING · STAND CLEAR OF THE FACE',
   // The surveyor's closing fix shares the patrol's pin cue but is not a law lock.
   'ev_surveyor_probe_line:drop_3_close': 'FINAL PROBE · PINNING SEAM',
+  // Helios claim-day chain: the catalog keeps the discord lamp and the spine wake for these
+  // phases, but no hull is failing and no tender is inbound — the shared rows would say so.
+  'ev_prospectors_posture:break': 'STAKE DISPUTED · ONE HULL BREAKING OFF',
+  'ev_claim_jump:yield_or_fight': 'STAKE DISPUTED · JUMPER YIELDING THE ROCK',
+  'ev_customs_pullover:wave_on': 'INSPECTION DONE · RETURNING TO THE LANE',
 });
 
 function workerStatusText(target, state = null) {

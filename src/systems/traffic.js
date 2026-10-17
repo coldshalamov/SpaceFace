@@ -111,6 +111,7 @@ import {
   activityActorSlotById,
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
+import { SECTOR_CAUSAL_CHAIN_DEFS } from '../data/sectorCausalChains.js';
 import { stepPallasWorkLoop } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
@@ -999,6 +1000,24 @@ const SECTOR_CAUSAL_CHAINS = new Map([
     cycleNews: ceresCycleNews,
   })],
 ]);
+// Data-declared sectors (src/data/sectorCausalChains.js) join the same table. Their cycle story is
+// one authored line chosen from the ledger's seeds; the news payload shape is Ceres's, verbatim.
+for (const def of Object.values(SECTOR_CAUSAL_CHAIN_DEFS)) {
+  if (SECTOR_CAUSAL_CHAINS.has(def.sectorId)) {
+    throw new Error(`sector causal chain declared twice: ${def.sectorId}`);
+  }
+  SECTOR_CAUSAL_CHAINS.set(def.sectorId, causalChainSpec({
+    sectorId: def.sectorId,
+    schema: SECTOR_CAUSAL_CHAIN_SCHEMA,
+    chain: def.chain,
+    cycleNews: (ledger) => ({
+      text: def.cycleNewsText(ledger.seeds),
+      kind: def.newsKind,
+      sourceRef: 'traffic:sector-causal-chain',
+      stationId: def.stationId,
+    }),
+  }));
+}
 
 // Exported for focused characterization tests (seconds-scale, seed-pinned). Not a new runtime seam.
 export {
