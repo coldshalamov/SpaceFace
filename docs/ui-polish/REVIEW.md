@@ -1654,3 +1654,13 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `station-market` 700×600 tangled 6 → 4 (the 4 left are the rail's INDUSTRY under COMMS, not Market); 800×600, 900×600 and 844×390 0. The CUT OFF/OFF FRAME notes at 900×600 are rows scrolled inside the register. Focused tests: `market-driver-presenter` 4/4, `station-field-hardware` 7/7. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish74/compare-market-{700x600,900x600}.png`.
 
 **Leftovers (not this pass):** the station rail at 651–720 × 600 still prints INDUSTRY under COMMS (shows as "II"). ROUTE INTELLIGENCE wraps to two lines at 700. The 390-wide desktop berth header.
+
+## Station foot on a short narrow desktop window: every destination word on the rail (ui-polish-75)
+
+**Before (master 6391422a55):** at 651–800 wide and 461–800 tall, the seven destination words (~715px at full tracking) were capped at 64vw, so only MARKET and SHIPWORKS showed, INDUSTRY ran under COMMS, and MISSIONS, FACTIONS, BAR and LEDGER were off the rail.
+
+**After (`stationLayouts.js`, desktop only):** the foot becomes a two-column grid. The words own the left side, closed up at the 12px type floor (tracking 0, word gaps 4–12px), and the right side stacks UNDOCK over COMMS · HELP. COMMS's unread pip sits on its top corner instead of widening it, so a landing receipt can't squeeze LEDGER off the rail; the receipt and the session log hang off the foot instead of COMMS, so they stand above it (the Market's TRADE CLEARED at its left, the rest at its right) rather than over UNDOCK or the words, so every word stands on the rail and the needle still sits under the open tab, inside the foot's old height. Selectors and IDs are unchanged.
+
+**Checked:** 651, 680, 700, 760 and 790 × 600 and 800×800 (Market), plus 700×600 Missions: every word on glass, no word under COMMS or UNDOCK. 390×844, 960×540, 1280×720, 1920×1080, phones (`data-sf-mobile`) and ≤460-tall windows don't match the query. Shots in `ui-shots/polish75/`.
+
+**Leftovers:** at 700×600 the Missions dossier column is squeezed (the title breaks mid-word); the 390-wide desktop berth head.
