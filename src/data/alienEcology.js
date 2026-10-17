@@ -633,6 +633,7 @@ export const ALIEN_SITES = Object.freeze({
     surveyOfferId: 'em_free_orchard_survey',
   }),
   preserved_cockpit: Object.freeze({
+    playerHullEcho: true,
     siteId: 'preserved_cockpit',
     sectorId: 'sector_charon_expanse',
     zoneId: 'zone_charon_preserved_cockpit',

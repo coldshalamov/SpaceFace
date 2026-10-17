@@ -59,6 +59,8 @@ import {
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
+import { materializePlayerHullEcho, handlePlayerHullEchoEvent, tickPlayerHullEcho,
+  playerHullEchoReadout } from '../world/playerHullEcho.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan, bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
@@ -150,6 +152,7 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
   for (const site of sites) {
     if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
     const rec = siteRecord(state, site.siteId);
+    if (site.playerHullEcho) materializePlayerHullEcho(world, site, active);
     if (site.nursery) materializeNurseryDressing(world, site, active);
     const rng = world.helpers.mulberry32(
       world.helpers.hash32(state.meta && state.meta.seed || 1, sector.id, epoch, 'alien-ecology', site.siteId));
@@ -564,6 +567,7 @@ function noteWreckCut(world, sectorId) {
 export function handleAlienEcologyEvent(world, type, payload) {
   const state = world && world.state;
   if (!state || !payload) return;
+  handlePlayerHullEchoEvent(world, ALIEN_SITES.preserved_cockpit, type, payload);
   handleVeilNurseryEvent(world, ALIEN_SITES[VEIL_NURSERY_ID], type, payload);
   const siteId = payload.siteId || 'cinder_nursery';
   const site = ALIEN_SITES[siteId];
@@ -1233,12 +1237,19 @@ export function tickAlienEcology(world, dt) {
     if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
     const rec = siteRecord(state, site.siteId);
     const siteGlobal = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
+    if (site.playerHullEcho) tickPlayerHullEcho(world, site);
+    const hullLoss = site.playerHullEcho && state.world.records?.hullLosses
+      ?.find(loss => loss.echo?.siteId === site.siteId);
     const coherent = rec.relaySevered !== true && rec.state !== 'severed';
 
     // Staged arrival beats (doc 09): bands around the site trigger the reveal choreography.
     if (player && player.pos) {
       const dSite = Math.sqrt(dist2(player.pos.x, player.pos.z, siteGlobal.x, siteGlobal.z));
-      const lines = site.arrivalLines || null;
+      const lines = hullLoss ? {
+        long: `An old flight signature repeats ahead — ${hullLoss.name}. Scan to compare it with your loss record.`,
+        mid: playerHullEchoReadout(hullLoss),
+        close: playerHullEchoReadout(hullLoss),
+      } : site.arrivalLines || null;
       if (!rec.beats.long && dSite < site.arrivalBands.long) {
         rec.beats.long = true;
         world.bus.emit('toast', {
@@ -1295,7 +1306,8 @@ export function tickAlienEcology(world, dt) {
           setRevelation(state, 2);
           world.bus.emit('comms:log', {
             from: 'Archive fragment', kind: 'ecology',
-            text: 'A knot of dense tissue replays the site’s construction — thermal signatures of a crew that stopped answering decades ago.',
+            text: hullLoss ? playerHullEchoReadout(hullLoss)
+              : 'A knot of dense tissue replays the site’s construction — thermal signatures of a crew that stopped answering decades ago.',
           });
         }
         if (mix.includes('mirror_membrane') && !rec.beats.membrane) {

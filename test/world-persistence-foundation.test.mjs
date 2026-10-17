@@ -109,13 +109,13 @@ test('v1 world records migrate abstract fields without dropping identity', () =>
   assert.equal(legacy.abstractTier, SIM_TIER.S0_EXACT);
   assert.equal(legacy.lastExactT, 0);
   assert.equal(legacy.extra.customLedgerNote, 'keep-me');
-  assert.equal(WORLD_RECORDS_SCHEMA_VERSION, 2);
+  assert.equal(WORLD_RECORDS_SCHEMA_VERSION, 3);
   const bag = normalizeRecordsBag({
     schemaId: 'spaceface.worldRecords.v1',
     schemaVersion: 1,
     byId: { wr_npc_aa: legacy },
   });
-  assert.equal(bag.schemaVersion, 2);
+  assert.equal(bag.schemaVersion, WORLD_RECORDS_SCHEMA_VERSION);
   assert.equal(bag.byId.wr_npc_aa.recordId, 'wr_npc_aa');
 });
 
