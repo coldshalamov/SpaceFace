@@ -70,7 +70,8 @@ import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcol
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
 import { VEIL_NURSERY_ID, materializeNurseryDressing, tickVeilNursery,
-  handleVeilNurseryEvent, applyNurseryDrive } from '../world/veilRayNursery.js';
+  handleVeilNurseryEvent, applyNurseryDrive, nurserySiteCenter, veilNurseryMemory,
+  nurseryDisturbance } from '../world/veilRayNursery.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -143,13 +144,107 @@ export function setRevelation(state, tier) {
   return ae.revelation;
 }
 
+// M24: relocation is an ecology operation, not a teleport of the animals. Coordinates
+// are sector-local and duration is simulation seconds of actual substrate travel.
+export function relocateAlienEcologySite(world, { siteId, center, duration } = {}) {
+  const state = world?.state, site = ALIEN_SITES[siteId];
+  if (!state || !site?.nursery || state.world.currentSectorId !== site.sectorId
+      || effectiveRevelation(state) < site.requiresRevelation) return { ok: false, reason: 'site-unavailable' };
+  if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)
+      || !Number.isFinite(duration) || duration <= 0) return { ok: false, reason: 'invalid-move' };
+  const ribs = state.entityList.filter(e => e.alive !== false && e.data?.siteId === siteId
+    && Number.isInteger(e.data.veilNurseryRib));
+  if (ribs.length !== 7) return { ok: false, reason: 'substrate-unavailable' };
+  const n = veilNurseryMemory(state);
+  if (!n) return { ok: false, reason: 'site-unavailable' };
+  const previous = n.relocation;
+  if (previous?.move) {
+    return previous.move.to.x === center.x && previous.move.to.z === center.z
+      ? { ok: true, status: previous.status } : { ok: false, reason: 'move-in-progress' };
+  }
+  const from = nurserySiteCenter(state, site);
+  const distance = Math.hypot(center.x - from.x, center.z - from.z);
+  if (distance === 0) return { ok: true, status: previous?.status || 'unchanged' };
+  const species = faunaSpeciesById('veil_ray');
+  // A stage stays within one mineral-crescent radius and the existing return speed.
+  // Starting another before the previous settling period ends also breaks the shelter.
+  const scattered = previous?.scattered === true || distance > site.arrivalBands.close / 3
+    || distance / duration > species.speed * 0.3 || n.mode !== 'QUIET'
+    || !!(previous && previous.status !== 'rehomed');
+  const relocation = n.relocation = {
+    center: { ...from }, status: scattered ? 'scattered' : 'moving', scattered,
+    stages: (previous?.stages || 0) + 1, settleSeconds: 0,
+    move: { from: { ...from }, to: { x: center.x, z: center.z }, elapsed: 0, duration },
+    scatterAnchors: previous?.scatterAnchors || {},
+  };
+  if (scattered && !previous?.scattered) {
+    for (const e of state.entityList) {
+      const eco = e.data?.ecology;
+      if (e.alive === false || eco?.siteId !== siteId || eco.aggregate) continue;
+      relocation.scatterAnchors[eco.faunaKey] = {
+        x: from.x + Math.cos(eco.phase) * site.arrivalBands.mid * 2,
+        z: from.z + Math.sin(eco.phase) * site.arrivalBands.mid * 2,
+      };
+    }
+    nurseryDisturbance(world, site, 'relocation', world._toGlobal(from, site.sectorId));
+    world.bus?.emit('toast', { text: 'The nursery scatters — the rays abandon the moving shelter.', kind: 'warn', ttl: 5 });
+  }
+  return { ok: true, status: relocation.status };
+}
+
+function tickNurseryRelocation(world, site, rec, fauna, dt) {
+  const relocation = rec.nursery?.relocation;
+  if (!relocation) return;
+  const adults = fauna.filter(e => e.data.ecology.siteId === site.siteId && !e.data.ecology.aggregate);
+  const move = relocation.move;
+  if (move) {
+    move.elapsed = Math.min(move.duration, move.elapsed + dt);
+    const t = move.elapsed / move.duration;
+    const next = { x: move.from.x + (move.to.x - move.from.x) * t,
+      z: move.from.z + (move.to.z - move.from.z) * t };
+    const dx = next.x - relocation.center.x, dz = next.z - relocation.center.z;
+    relocation.center = next;
+    // The seven existing solids move; animal positions remain under their drive engine.
+    for (const e of world.state.entityList) {
+      if (e.alive !== false && e.data?.siteId === site.siteId && Number.isInteger(e.data.veilNurseryRib)) {
+        e.pos.x += dx; e.pos.z += dz; e.physicsSleeping = false;
+      }
+    }
+    if (dx || dz) bumpCollidesFlipEpoch();
+    if (!relocation.scattered) for (const e of adults) {
+      e.data.ecology.anchor.x += dx; e.data.ecology.anchor.z += dz;
+    }
+    if (move.elapsed >= move.duration) {
+      delete relocation.move;
+      relocation.status = relocation.scattered ? 'scattered' : 'settling';
+    }
+  }
+  if (relocation.scattered) {
+    for (const e of adults) {
+      const anchor = relocation.scatterAnchors[e.data.ecology.faunaKey];
+      if (anchor) e.data.ecology.anchor = world._toGlobal(anchor, site.sectorId);
+    }
+  } else if (!move && relocation.status === 'settling') {
+    const settled = rec.nursery.mode === 'QUIET' && adults.length > 0 && adults.every(e => {
+      const anchor = e.data.ecology.anchor;
+      return Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= faunaSpeciesById(e.data.ecology.speciesId).preferredR;
+    });
+    relocation.settleSeconds = settled ? relocation.settleSeconds + dt : 0;
+    if (relocation.settleSeconds >= 12) {
+      relocation.status = 'rehomed';
+      world.bus?.emit('toast', { text: 'The rays have re-homed around the relocated nursery.', kind: 'good', ttl: 5 });
+    }
+  }
+}
+
 // ── Materialization (called from world._spawnDressing tail) ─────────────────────────────────
 export function materializeAlienEcology(world, sector, active, onlySites = null) {
   const state = world && world.state;
   const sites = onlySites || alienSitesForSector(sector && sector.id);
   if (!sites.length || !world.helpers) return;
   const epoch = 0;
-  for (const site of sites) {
+  for (const definition of sites) {
+    const site = definition.nursery ? { ...definition, center: nurserySiteCenter(state, definition) } : definition;
     if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
     const rec = siteRecord(state, site.siteId);
     if (site.playerHullEcho) materializePlayerHullEcho(world, site, active);
@@ -218,7 +313,8 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
         && e.data?.ecology?.faunaKey === member.faunaKey)) continue;
       const species = faunaSpeciesById(member.speciesId);
       if (!species) continue;
-      const pos = world._toGlobal({ x: site.center.x + member.dx, z: site.center.z + member.dz }, sector.id);
+      const scatterAnchor = rec.nursery?.relocation?.scatterAnchors?.[member.faunaKey];
+      const pos = world._toGlobal(scatterAnchor || { x: site.center.x + member.dx, z: site.center.z + member.dz }, sector.id);
       // Migration route: members of migrates species walk the waypoint loop. AE-165:
       // a site's authored routeEcho waypoints count as the route when no full
       // migrationRoute block is authored.
@@ -575,6 +671,8 @@ export function handleAlienEcologyEvent(world, type, payload) {
   const toast = (text, kind = 'info', ttl = 4.5) => world.bus && world.bus.emit('toast', { text, kind, ttl });
 
   switch (type) {
+    case 'alienEcology:relocateSite':
+      return relocateAlienEcologySite(world, payload);
     case 'alienEcology:nurseryPowered': {
       if (rec) rec.state = 'awake';
       setRevelation(state, 1);
@@ -1233,9 +1331,11 @@ export function tickAlienEcology(world, dt) {
     return sp && sp.heatHunter && f.alive !== false;
   });
 
-  for (const site of sites) {
-    if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
-    const rec = siteRecord(state, site.siteId);
+  for (const definition of sites) {
+    if (effectiveRevelation(state) < (definition.requiresRevelation || 0)) continue;
+    const rec = siteRecord(state, definition.siteId);
+    if (definition.nursery) tickNurseryRelocation(world, definition, rec, fauna, dt);
+    const site = definition.nursery ? { ...definition, center: nurserySiteCenter(state, definition) } : definition;
     const siteGlobal = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
     if (site.playerHullEcho) tickPlayerHullEcho(world, site);
     const hullLoss = site.playerHullEcho && state.world.records?.hullLosses

@@ -7,6 +7,12 @@ const DISTURBED_SECONDS = 8;
 const RECOVER_SECONDS = 18;
 const range = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
+// Sector-local substrate position; the ecology writer owns relocation in the same save bag.
+export function nurserySiteCenter(state, site) {
+  const center = state.world?.alienEcology?.sites?.[site.siteId]?.nursery?.relocation?.center;
+  return center && Number.isFinite(center.x) && Number.isFinite(center.z) ? center : site.center;
+}
+
 // This record lives in world's existing ecology save bag. It owns no resources,
 // population replenishment, mission reward, offscreen clock or juvenile AI.
 export function veilNurseryMemory(state) {
@@ -29,7 +35,7 @@ export function nurseryDisturbance(world, site, kind, origin) {
   const state = world?.state;
   if (state?.world?.currentSectorId !== site.sectorId || !origin
       || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return false;
-  const center = world._toGlobal(site.center, site.sectorId);
+  const center = world._toGlobal(nurserySiteCenter(state, site), site.sectorId);
   if (range(center, origin) > (kind === 'scan' ? 600 : 450)) return false;
   const n = veilNurseryMemory(state);
   if (!n) return false;
@@ -45,7 +51,7 @@ export function handleVeilNurseryEvent(world, site, type, payload) {
   if (!player?.alive || !payload) return;
   if (type === 'scan:pulse' && payload.source === 'player-scanner'
       && payload.scannerId === player.id && payload.pos && range(payload.pos, player.pos) < 2) {
-    const center = world._toGlobal(site.center, site.sectorId);
+    const center = world._toGlobal(nurserySiteCenter(state, site), site.sectorId);
     if (range(center, payload.pos) <= Math.max(0, Number(payload.radius) || 0) + 60) {
       nurseryDisturbance(world, site, 'scan', payload.pos);
     }
@@ -62,7 +68,7 @@ export function handleVeilNurseryEvent(world, site, type, payload) {
 export function tickVeilNursery(world, site, rec, fauna, player, dt) {
   const state = world.state, n = veilNurseryMemory(state);
   if (!n) return;
-  const center = world._toGlobal(site.center, site.sectorId);
+  const center = world._toGlobal(nurserySiteCenter(state, site), site.sectorId);
   const near = !!player?.alive && range(center, player.pos) < 450;
   // Read the default physics owner's consumed native force, not an input request.
   const native = world.registry?.get('physics')?._sg02;
@@ -107,8 +113,9 @@ export function tickVeilNursery(world, site, rec, fauna, player, dt) {
     flock.data.ecology.visibleMembers = adults.length ? 8 : 0;
     const lead = adults[0];
     if (lead) {
-      flock.pos.x = center.x * 0.65 + lead.pos.x * 0.35;
-      flock.pos.z = center.z * 0.65 + lead.pos.z * 0.35;
+      const shelter = n.relocation?.scattered ? lead.pos : center;
+      flock.pos.x = shelter.x * 0.65 + lead.pos.x * 0.35;
+      flock.pos.z = shelter.z * 0.65 + lead.pos.z * 0.35;
       flock.rot = lead.rot;
     }
   }
@@ -123,6 +130,7 @@ export function applyNurseryDrive(eco, rec) {
 
 export function materializeNurseryDressing(world, site, active) {
   const state = world.state;
+  const center = nurserySiteCenter(state, site);
   const existing = key => state.entityList.find(e => e.alive !== false && e.data?.nurseryDressingKey === key);
   const push = e => { if (e && !active.dressing.some(row => row.id === e.id)) active.dressing.push({ id: e.id, pos: e.pos, placeId: null, paletteClass: 'alien' }); };
   for (let i = 0; i < 7; i++) {
@@ -131,8 +139,8 @@ export function materializeNurseryDressing(world, site, active) {
     if (!e) {
       // A crescent leaves its east mouth and an unbounded outer bypass open.
       const a = Math.PI * .48 + i * Math.PI * 1.04 / 6;
-      const pos = world._toGlobal({ x: site.center.x + Math.cos(a) * 60,
-        z: site.center.z + Math.sin(a) * 60 }, site.sectorId);
+      const pos = world._toGlobal({ x: center.x + Math.cos(a) * 60,
+        z: center.z + Math.sin(a) * 60 }, site.sectorId);
       e = world.helpers.spawnEntity({ type: 'prop', pos, rot: a + Math.PI / 2,
         radius: 13, mass: 0, hull: 1, collides: true, flags: { invuln: true },
         physicsBody: { dynamic: false, material: 'asteroid', shape: 'compound',
@@ -147,7 +155,7 @@ export function materializeNurseryDressing(world, site, active) {
   const key = `${site.siteId}:juvenile-flock`;
   let flock = existing(key);
   if (!flock) flock = world.helpers.spawnEntity({ type: 'fauna',
-    pos: world._toGlobal(site.center, site.sectorId), rot: 0, radius: 35, mass: 0,
+    pos: world._toGlobal(center, site.sectorId), rot: 0, radius: 35, mass: 0,
     hull: 1, collides: false, physicsBody: false, flags: { invuln: true }, homeSectorId: site.sectorId,
     data: { nurseryDressingKey: key, siteId: site.siteId, strainId: site.strainId,
       homeSectorId: site.sectorId, scannerSignalKind: 'anomaly', scanLabel: 'Juvenile Veil-Rays · one sheltering flock',

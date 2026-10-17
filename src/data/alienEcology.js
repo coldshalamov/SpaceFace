@@ -914,8 +914,11 @@ export function pointContaminationAt(state, sectorId, x, z) {
   for (const site of alienSitesForSector(sectorId)) {
     const base = CONTAMINATION_SITE_BASE[site.siteId];
     if (!base) continue;
-    const dx = x - base.center.x;
-    const dz = z - base.center.z;
+    const relocated = state.world?.alienEcology?.sites?.[site.siteId]?.nursery?.relocation?.center;
+    const center = relocated && Number.isFinite(relocated.x) && Number.isFinite(relocated.z)
+      ? relocated : base.center;
+    const dx = x - center.x;
+    const dz = z - center.z;
     const d = Math.sqrt(dx * dx + dz * dz);
     if (d > base.radius) continue;
     // AE-167/194 sterile exclusion: machine-burned ground reads clean — the crater

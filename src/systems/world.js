@@ -722,6 +722,7 @@ export const world = {
     bus.on('alienEcology:nurseryPowered', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryPowered', p));
     bus.on('alienEcology:relaySevered', (p) => handleAlienEcologyEvent(this, 'alienEcology:relaySevered', p));
     bus.on('alienEcology:nurseryBloom', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryBloom', p));
+    bus.on('alienEcology:relocateSite', (p) => handleAlienEcologyEvent(this, 'alienEcology:relocateSite', p));
     bus.on('alienEcology:blackBoxRecovered', (p) => handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', p));
     // AE-051/079 stimulus + revelation intake: mining noise wakes dormant fauna; sector scans
     // against live sites teach the taxonomy ladder.
