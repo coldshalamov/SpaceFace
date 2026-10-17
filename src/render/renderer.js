@@ -18117,6 +18117,14 @@ export const render = {
         : await driveRevealCohort(firstFlightRoots);
       if (restoreFirstFlight === null) return cookSuperseded;
       const buffersStarted = cookNow();
+      // Serial-link route behind the loading shell: same 32-drawable residency batches as the
+      // first-frame census (each batch is a presented-frame wait + gl.finish there). Once the
+      // compile/touch passes above stopped pacing every cache-hit unit, this step stopped timing
+      // out against the prepare budget and ran 16.5 s on SwiftShader at 4 drawables per batch,
+      // ~80% of it idle main thread. The 8 MB batch byte cap still holds.
+      const bufferBatchDrawables = state.mode === 'loading'
+        && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })
+        ? 32 : undefined;
       let buffers;
       try {
         if (cookOverBudget()) {
@@ -18124,11 +18132,13 @@ export const render = {
         } else {
           buffers = options.skipBuffers === true
             ? await prepareStartupGpuResidency(renderer, firstFlightBufferRoots, {
+              geometryBatchDrawables: bufferBatchDrawables,
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
             })
             : await prepareStartupGpuResidency(renderer, scene, {
+              geometryBatchDrawables: bufferBatchDrawables,
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
