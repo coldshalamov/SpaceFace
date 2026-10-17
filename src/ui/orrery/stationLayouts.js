@@ -372,6 +372,14 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
      the moment a receipt landed and the dock's scroller cut LEDGER's last letter at 651 */
   ${D} .sxb-ops .sx-comms__toggle { position:relative !important; }
   ${D} .sxb-ops .sx-comms__count:not([hidden]) { position:absolute !important; top:-3px; right:-3px; margin:0 !important; }
+  /* COMMS now stands in the foot's lower right, so what hung off it (the receipt, the session log)
+     hangs off the foot instead: on its old anchor the receipt landed over UNDOCK and off the right
+     edge, and on the Market over the destination words. Clear of both, above the foot. */
+  ${D} .sxb-ops { position:relative !important; }
+  ${D} .sxb-ops > .sx-comms { position:static !important; }
+  ${D} .sxb-ops > .sx-comms > .sx-receipt { top:auto !important; left:auto !important; right:0 !important; bottom:calc(100% + 14px) !important; max-width:100% !important; }
+  ${D}:has(.sx-mkt.orr-market) .sxb-ops > .sx-comms > .sx-receipt { right:auto !important; left:0 !important; bottom:calc(100% + 4px) !important; }
+  ${D} .sxb-ops > .sx-comms > .sx-comms__history { left:auto !important; right:0 !important; bottom:calc(100% + 14px) !important; transform:none !important; max-width:100% !important; }
   ${D} .sxb-launch > .so-icon { display:none !important; }
   ${D} .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
 }
