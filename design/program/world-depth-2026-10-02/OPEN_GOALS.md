@@ -73,3 +73,11 @@ The following prior checkpoint is retained for recovery. Its open/draft and pend
 - Next action: update this register alongside the next coherent source increment; verify resulting remote ref/files; inspect exact-head checks and capture the production camera artifact when the workflow runs.
 - Awaiting user: manually dispatch the mobile-readiness workflow for feature/orchard-player-route-20261015; this is the one pending user action. No inference of an approval or authentication block is established by current reads.
 
+
+## Current increment evidence — 17 October 2026, 02:02 UTC
+
+- SF-PUBLISH / SF-RECOVER: verified PR #447 source head `0a77cbabce241f469152a52beed7bbc1e5452aab` preserves startup ownership and cargo-order source/tests on public-only ancestry. Source publication has no pending user action. The separate model-publication approval remains unresolved. Recovery supplements were independently restored, including the new source/test packet; GitHub remains required for model delivery.
+- SF-GAME / SF-ORCHARD: current-head save schema, 30/30 import-safety and 5,000 seeded fuzz cases passed; all 13 new startup regressions passed. Chromium mobile startup/controls/Continue passed. Existing standalone player-store verification is now registered in the aggregate; its next-head result is pending. WebKit menu crash, Market waits, ordinary towing delivery, visual quality and final acceptance remain open; see EXECUTION_STATUS.md for attribution limits.
+- Owner: continuation integration owner maintains this PR; the pinned route owner corrects only its exact semantic persistence oracle and retains original custody/budgets.
+- Next executable actions: follow the next exact-head player-store gate and remaining CI, continue the reviewed route from its genuine saved state, and preserve/publish the asset increment once its existing approval resolves.
+- All seven outcome markers remain open. No model export, local test, CI subset, source commit or recovery archive establishes whole-game completion.
