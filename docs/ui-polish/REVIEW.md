@@ -1611,3 +1611,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `station-market` 844×390 16→13, 900×420 16→14, 960×540 6→4, 1024×768 6→4, with every "Max"/"cr" finding gone. The rest are pre-existing: on master the head and rail findings that #442 fixes; at 960×540 "Refined Metals" over "100"; at 1024×768 "Machine Control Unit" over "176". 1280×720 and 390×844 are pixel-identical; 1920×1080 differs only in the scrolling price ticker. Phone landscape 844×390 (`--phone`) is unchanged (4→4). Focused tests pass: `station-field-hardware` 7/7, `next-wave-nxi-098` 5/5, `market-driver-presenter` 4/4; `ui-budgets` has 1 failure (digest staleness, same on master). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish70/{bench-before,bench-after}/`, `compare-market-*.png`.
 
 **Leftovers (not this pass):** Market register rows: the long commodity name prints over its price at 960×540 and 1024×768 ("Refined Metals"/100, "Machine Control Unit"/176). Ledger 390×844 title under COMMS. Tech-tree star hit boxes @844×390.
+
+## Station berth on an upright phone — crown, next step, tab foot (ui-polish-72)
+
+**Before (master f079f9e12c):** on a phone held upright (bench `--phone`, 390×844) the berth crown split its width evenly, so MUNITIONS broke as "MUNITION / S" and CREDIT LINE OPEN took three lines. The next step's hint was cut to "Hold is empty. Chec…" beside DISMISS (bench 4 ON TOP OF on every station tab). In the tab foot SHIPWORKS ran into INDUSTRY with no gap and the MISSIONS badge hung off the right edge; at 360×780 it was worse.
+
+**After (`mobileScreenLayouts.js`, phones only, ≥561 tall):**
+- The crown shares its width by what each column holds (the word reading gets 1.5 shares). Labels stay on one line, so MUNITIONS is one word and CREDIT LINE OPEN is two lines.
+- The next step's hint drops under its title at full width (two lines at most), so the whole sentence reads and DISMISS keeps its own column.
+- The tab words close up (.05em, 12px gaps; .02em and 6px gaps at ≤375 wide), so every tab has a gap and the badge stays on glass.
+
+**Checked:** bench `--phone` station-ledger 4 → 0 at 390×844; station-ledger, station-market and station-contracts 0 at 390×844 and 360×780. Landscape phones (≤560 tall) and every desktop size are outside these rules (`data-sf-mobile` plus `min-height:561px`), so 960×540 / 1280×720 / 1920×1080 are untouched. Shots in `ui-shots/polish72/`.
+
+**Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) gives the berth head ~700px, so the tab body starts under COMMS (bench 4, same on master). The ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Tech-tree star hit boxes @844×390.
