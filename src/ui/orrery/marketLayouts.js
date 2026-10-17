@@ -596,8 +596,8 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    ellipsis everywhere else; the SELL and STOCK heads ran together ("SELLSTOC"). The name column takes
    ~24px back (the family ladder's gutter 24 → 10px, slimmer number columns that still hold "136 ▲1%",
    "308" and "789u"), and a name that still does not fit wraps to a second line under its own first
-   letter, never under the price. The heads sit 6px apart over their numbers; STOCK may use the list's
-   20px right gutter. */
+   letter, never under the price. The heads sit apart over their numbers, and STOCK (tracking 0, 3px
+   lead) ends inside the rail's scroll box instead of losing its K. */
 @media (max-width:1100px) and (max-height:800px) {
   ${MD} .sx-mkt-browser { column-gap:10px !important; }
   ${MD} .sx-mkt-browser__filters { padding-right:0 !important; }
@@ -607,7 +607,8 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${MD} .sx-mkt-table :is(th, td):nth-child(n+2) { padding-left:4px !important; }
   ${MD} .sx-mkt-table thead th:nth-child(n+2) { letter-spacing:.02em !important; padding-left:0 !important; text-align:right !important; }
   ${MD} .sx-mkt-table thead th:nth-child(2) { padding-right:6px !important; }
-  ${MD} .sx-mkt-table thead th:nth-child(4) { padding-left:5px !important; text-align:left !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(3) { padding-right:3px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(4) { padding-left:3px !important; letter-spacing:0 !important; text-align:left !important; }
   ${MD} .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
     padding-left:52px !important; padding-right:4px !important; text-indent:-22px; line-height:14px !important; }
   ${MD} .sx-mkt-row .sx-mkt-row__name * { text-indent:0 !important; }
