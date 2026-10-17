@@ -31,6 +31,14 @@ export function ensureVelocityPlane(world, site, center) {
   if (!site || site.siteId !== VELOCITY_PLANE.siteId) return false;
   const fields = world && world.registry && world.registry.get && world.registry.get('fields');
   if (!fields || typeof fields.kernelList !== 'function' || typeof fields.registerExternal !== 'function') return false;
+  const sites = world.state && world.state.world && world.state.world.alienEcology
+    ? world.state.world.alienEcology.machineSites
+    : null;
+  const rec = sites ? sites[site.siteId] : null;
+  if (rec && rec.planeOnline === false) {
+    if (typeof fields.unregisterExternal === 'function') fields.unregisterExternal(VELOCITY_PLANE_ID);
+    return false;
+  }
   const live = fields.kernelList();
   if (live && live.some((field) => field && field.id === VELOCITY_PLANE_ID)) return false;
   fields.registerExternal(velocityPlaneRecord(center));

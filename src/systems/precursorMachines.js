@@ -31,10 +31,10 @@ import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSit
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
 import { judgePresentDirective, presentMissLine, presentOrderLine } from '../data/presentDirective.js';
-import { ensureBoundaryField } from '../data/boundaryField.js';
-import { ensureCurlField } from '../data/curlField.js';
-import { ensureLaneField } from '../data/laneField.js';
-import { ensureVelocityPlane } from '../data/velocityPlane.js';
+import { BOUNDARY_FIELD, BOUNDARY_FIELD_ID, ensureBoundaryField } from '../data/boundaryField.js';
+import { CURL_FIELD, CURL_FIELD_ID, ensureCurlField } from '../data/curlField.js';
+import { LANE_FIELD, LANE_FIELD_ID, ensureLaneField } from '../data/laneField.js';
+import { VELOCITY_PLANE, VELOCITY_PLANE_ID, ensureVelocityPlane } from '../data/velocityPlane.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -274,11 +274,41 @@ export function materializeMachineLayer(world, sector, active) {
 const _machineSiteLocalPos = { x: 0, z: 0 };
 const _machineSiteGlobalPos = { x: 0, z: 0 };
 
+// Field ids live on the record helpers. Sector homes live on the machine sites.
+// Leaving a sector drops that registration, including a sector with no machine sites.
+const PRECURSOR_FIELD_HOMES = [
+  { id: VELOCITY_PLANE_ID, siteId: VELOCITY_PLANE.siteId },
+  { id: CURL_FIELD_ID, siteId: CURL_FIELD.siteId },
+  { id: LANE_FIELD_ID, siteId: LANE_FIELD.siteId },
+  { id: BOUNDARY_FIELD_ID, siteId: BOUNDARY_FIELD.siteId },
+];
+
+function precursorFieldState(world) {
+  const state = world && world.state;
+  if (state && state.systems && state.systems.fields) return state;
+  const registry = world && world.registry;
+  const fields = registry && registry.get && registry.get('fields');
+  return { systems: { fields: fields || null } };
+}
+
+// Drop external precursor fields whose home sector is not the one being played.
+// Does not read or write any body's velocity.
+export function unregisterOffSectorPrecursorFields(state, activeSectorId) {
+  const fields = state && state.systems && state.systems.fields;
+  if (!fields || typeof fields.unregisterExternal !== 'function' || !activeSectorId) return;
+  for (let i = 0; i < PRECURSOR_FIELD_HOMES.length; i++) {
+    const home = PRECURSOR_FIELD_HOMES[i];
+    const site = MACHINE_SITES[home.siteId];
+    if (site && site.sectorId !== activeSectorId) fields.unregisterExternal(home.id);
+  }
+}
+
 export function tickMachineLayer(world, dt) {
   const state = world && world.state;
   if (!state || !state.entityList || dt <= 0) return;
   const sectorId = state.world && state.world.currentSectorId;
   if (!sectorId) return;
+  unregisterOffSectorPrecursorFields(precursorFieldState(world), sectorId);
   const sites = machineSitesForSector(sectorId);
   if (!sites.length) return;
   const ae = ensureAlienEcologyState(state);

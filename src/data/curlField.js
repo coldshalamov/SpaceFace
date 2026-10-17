@@ -26,6 +26,14 @@ export function ensureCurlField(world, site, center) {
   if (!site || site.siteId !== CURL_FIELD.siteId) return false;
   const fields = world && world.registry && world.registry.get && world.registry.get('fields');
   if (!fields || typeof fields.kernelList !== 'function' || typeof fields.registerExternal !== 'function') return false;
+  const sites = world.state && world.state.world && world.state.world.alienEcology
+    ? world.state.world.alienEcology.machineSites
+    : null;
+  const rec = sites ? sites[site.siteId] : null;
+  if (rec && rec.curlOnline === false) {
+    if (typeof fields.unregisterExternal === 'function') fields.unregisterExternal(CURL_FIELD_ID);
+    return false;
+  }
   const live = fields.kernelList();
   if (live && live.some((field) => field && field.id === CURL_FIELD_ID)) return false;
   fields.registerExternal(curlFieldRecord(center));
