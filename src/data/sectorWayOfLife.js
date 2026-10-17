@@ -218,7 +218,7 @@ export const SECTOR_WAY_OF_LIFE = Object.freeze([
     structures: 'Hyperion refinery and the claim station.',
     hazardGeometry: 'Dense asteroid. The cut is the hazard and the job.',
     landmark: 'Hyperion Cut station.',
-    signatureToy: 'explicitly none',
+    signatureToy: 'hyperion_yard_winch',
   }),
   row({
     id: 'sector_kepler_scar',
