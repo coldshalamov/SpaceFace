@@ -2705,6 +2705,15 @@ export const aftermathWrecks = {
     data.wreckFieldId = field.fieldId;
     data.wreckEcologyRole = role;
     data.wreckEcology = { fieldId: field.fieldId, role, sectorId: field.sectorId, zoneId: field.zoneId };
+    // The field's sector owns this inhabitant: without the home stamp a scavenger/squatter/trap
+    // survived the sector exit live and unbound (D207), and the next sector's salvor adopter
+    // claimed it — stamping its sectorId, and its tow target's, with the wrong sector.
+    if (field.sectorId && entity.homeSectorId == null) {
+      entity.homeSectorId = field.sectorId;
+      data.homeSectorId = field.sectorId;
+      if (data.sectorId == null) data.sectorId = field.sectorId;
+      syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
+    }
     return entity;
   },
 
