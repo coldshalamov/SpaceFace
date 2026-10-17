@@ -66,6 +66,7 @@ import { Masks } from '../core/entity.js';
 import { readPhysicsTelemetry, writePhysicsControl } from '../core/physicsAuthority.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 import {
   SWARM_BOSS_ROTATION,
   SWARM_ROSTER,
@@ -370,6 +371,24 @@ function authoredRoomFrame(toys) {
  * `fields` is capped at ARENA_FIELD_SLOT_IDS.length and its entries already carry their slot id.
  */
 export function planArenaInstall(args) {
+  if (args && args.ruleset === POWERED_CONVEYOR_RULESET && args.arenaId === FOUNDRY_ARENA_ID
+    && SURVIVAL_ARENA_PHASES.includes(args.arenaPhase)) {
+    // Keep the proven bank room and replace only its law. The offset leaves the pilot's
+    // starting position in a quiet side pocket; the current never cages a slow build.
+    const install = planArenaInstallBody({ ...args, arenaPhase: 'idle', bossRoom: null });
+    const at = args.anchor || { x: 0, z: 0 };
+    const lane = gateBearing('front');
+    const across = { x: -lane.z, z: lane.x };
+    const center = point(at, across.x * ROOM_SOLID_PILOT_CLEARANCE * 2,
+      across.z * ROOM_SOLID_PILOT_CLEARANCE * 2);
+    const sluice = planCinderInstall({ arenaPhase: 'idle', at: center, lane, across });
+    const current = sluice.fields[0];
+    install.phase = args.arenaPhase;
+    install.note = 'Powered conveyor: warning, downstream surge, then calm. Carry foes into the plates or hold the quiet sides. No rig required.';
+    install.fields = [{ ...current, poweredStrength: current.strength, strength: 0 }];
+    install.toys.push({ ...sluice.toys[0], id: 'powered_conveyor', poweredCycle: true });
+    return finalizeInstall(install);
+  }
   const install = planArenaInstallBody(args);
   // The swarm event's pre-place is a merge AFTER the phase's own room: the event rides the
   // install the wave already asked for (a mine berth on a flood lane, a well the storm runs
@@ -1051,7 +1070,10 @@ export const survivalArena = {
     this._unsubs.push(this.bus.on('mines:placed', (p) => this._onMinePlaced(p)));
     // fields._clearAll (sector change / new game / save load) empties the kernel under us. Drop the
     // bookkeeping so teardown never reports releasing something the kernel no longer holds.
-    const forget = () => this._forgetFields();
+    const forget = () => {
+      this._forgetFields();
+      if (this._lawId === POWERED_CONVEYOR_RULESET) this._teardown('world_changed');
+    };
     this._unsubs.push(this.bus.on('sector:enter', forget));
     this._unsubs.push(this.bus.on('sector:exit', forget));
     this._unsubs.push(this.bus.on('save:loaded', forget));
@@ -1107,7 +1129,7 @@ export const survivalArena = {
   update(_dt, state) {
     const st = state || this.state;
     if (!liveSurvivalRun(st)) return;
-    if (this._lawId === CINDER_ARENA_ID && this._cycleMachinery) {
+    if (this._cycleMachinery) {
       const system = this._fieldsSystem();
       if (system && typeof system.updateExternal === 'function') {
         const elapsed = simTimeOf(st) - (this._installedAt || 0);
@@ -1116,7 +1138,14 @@ export const survivalArena = {
         // next machinery update, and the authored strength coming back is the window's calm.
         const strength = cycle.strength === 0 ? 0
           : this._authoredStrength * this._surgeScale(ARENA_FIELD_SLOT_IDS[0]);
-        system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
+        const applied = system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
+        if (applied && this._lawId === POWERED_CONVEYOR_RULESET && this._conveyorPhase !== cycle.phase) {
+          this._conveyorPhase = cycle.phase;
+          if (cycle.phase === 'surge') this._emit('audio:cue', { id: 'sfx_field_deploy_cone', gain: 0.4 });
+          this._emit('toast', { text: `Conveyor ${cycle.phase}: ${cycle.phase === 'surge'
+            ? 'downstream carries; the sides stay quiet' : cycle.phase === 'warning'
+              ? 'pulse incoming; watch the workpiece' : 'power off; momentum remains'}`, kind: 'info', ttl: 2 });
+        }
       }
     } else if (this._lawId === CRYO_ARENA_ID) {
       this._tickCryo(st);
@@ -1148,6 +1177,7 @@ export const survivalArena = {
     const install = planArenaInstall({
       arenaPhase: phase,
       arenaId: run.arenaId,
+      ruleset: run.ruleset,
       wave,
       seed,
       anchor: playerAnchor(state),
@@ -1164,9 +1194,10 @@ export const survivalArena = {
     this._phase = install.phase;
     this._note = install.note;
     this._arenaId = run.arenaId;
-    this._lawId = isLawArena(run.arenaId) ? run.arenaId : null;
+    const conveyor = run.ruleset === POWERED_CONVEYOR_RULESET && run.arenaId === FOUNDRY_ARENA_ID;
+    this._lawId = conveyor ? POWERED_CONVEYOR_RULESET : (isLawArena(run.arenaId) ? run.arenaId : null);
     this._installedAt = simTimeOf(state);
-    this._cycleMachinery = run.arenaId === CINDER_ARENA_ID && CINDER_CYCLE_PHASES.has(phase);
+    this._cycleMachinery = conveyor || (run.arenaId === CINDER_ARENA_ID && CINDER_CYCLE_PHASES.has(phase));
     this._authoredStrength = 0;
     this._cryoRoom = run.arenaId === CRYO_ARENA_ID ? install : null;
     // FB-022: each prop pocket remembers its docked spot and its vented charge. The pocket
@@ -1191,7 +1222,8 @@ export const survivalArena = {
     this._cryoShocked = new Set();
     if (this._cycleMachinery) {
       const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
-      this._authoredStrength = cone && Number.isFinite(cone.strength) ? cone.strength : 0;
+      this._authoredStrength = conveyor ? cone.poweredStrength
+        : (cone && Number.isFinite(cone.strength) ? cone.strength : 0);
     }
     this._installedFields = Array.isArray(install.fields) ? install.fields.slice() : [];
     // The opening lesson is a still room: one hostile, one rock, nothing drifting. The room's
@@ -1209,6 +1241,7 @@ export const survivalArena = {
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
     this._materializeRoom(this._toys, wave);
+    if (conveyor && wave === 1) this._installConveyorWorkpiece(install.fields[0]);
     // The event director inherits the room it will spend through: the frame the install placed
     // against, and the field specs it may later surge (their authored strengths are the calm it
     // restores, not a re-read).
@@ -1224,6 +1257,7 @@ export const survivalArena = {
     this._emit('survivalArena:installed', {
       wave,
       arenaId: run.arenaId,
+      lawId: this._lawId,
       arenaPhase: install.phase,
       note: install.note,
       fields: this._fieldIds.length,
@@ -1618,6 +1652,27 @@ export const survivalArena = {
    * never through spawnBudget. Deterministic ids `survival-room-w{wave}-{toyId}`; idempotent by
    * the data tag, so a missed teardown can never double a solid.
    */
+  _installConveyorWorkpiece(field) {
+    const spawn = this.ctx && this.ctx.helpers && this.ctx.helpers.spawnEntity;
+    if (typeof spawn !== 'function' || !field) return;
+    const body = this.ctx.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: point(field.center, field.dir.x * 160, field.dir.z * 160),
+      vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+      radius: ARENA_TOY_LIGHT_RADIUS, mass: ARENA_TOY_LIGHT_MASS,
+      hull: 40, hullMax: 40, collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE,
+      physicsBody: {
+        schemaVersion: 1, radius: ARENA_TOY_LIGHT_RADIUS, mass: ARENA_TOY_LIGHT_MASS,
+        inertiaY: ARENA_TOY_LIGHT_MASS * ARENA_TOY_LIGHT_RADIUS ** 2,
+        dynamic: true, ccd: true, material: 'debris', revision: 0,
+      },
+      data: { roomOwner: ARENA_ROOM_OWNER, roomSolidId: 'conveyor-workpiece',
+        conveyorWorkpiece: true, majorDebris: true },
+    });
+    if (body && body.id != null) this._roomIds.push(body.id);
+  },
+
   _materializeRoom(toys, wave) {
     if (!Array.isArray(toys) || toys.length === 0) return;
     const helpers = this.ctx && this.ctx.helpers;
@@ -1813,6 +1868,7 @@ export const survivalArena = {
     this._arenaId = null;
     this._installedAt = 0;
     this._cycleMachinery = false;
+    this._conveyorPhase = null;
     this._authoredStrength = 0;
     this._cryoRoom = null;
     this._cryoVents = new Map();

@@ -35,6 +35,10 @@ export const CRUCIBLE_WEEKLY_ROTATION = Object.freeze([
 export const CRUCIBLE_REEF_LAYOUT_ID = 'crucible_reef';
 export const CRUCIBLE_SLALOM_WELL_COUNT = 3;
 
+// M20: an authored Foundry trial on the existing Crucible wave/field path.
+export const POWERED_CONVEYOR_RULESET = 'trial_powered_conveyor';
+export const POWERED_CONVEYOR_DEMO_TICKS = 4 * 60;
+
 /**
  * Named best builds for the four weekly games. Scored at compile time from the
  * compiled challenge — not from live hours. Hitch cannot carry M concussion.
@@ -196,6 +200,17 @@ export const SURVIVAL_MUTATOR_BY_ID = Object.freeze(Object.fromEntries(
 ));
 
 export const SURVIVAL_TRIAL_CATALOG = freezeDeep([
+  {
+    id: POWERED_CONVEYOR_RULESET,
+    ruleset: POWERED_CONVEYOR_RULESET,
+    label: 'A room with a different law',
+    blurb: 'The Foundry conveyor pulses downstream. Carry threats into the bank plates, or fight from the quiet sides. No rig required.',
+    impliedMutators: [],
+    hullId: null,
+    hullLocked: false,
+    skipDraft: false,
+    weaponLock: null,
+  },
   {
     id: 'trial_one_hull',
     ruleset: 'trial_one_hull',

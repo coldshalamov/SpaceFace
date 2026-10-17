@@ -21,6 +21,7 @@ import { SWARM_RULESET } from '../data/swarmMode.js';
 import { loadCrucibleMeta, normalizeBestLine } from '../systems/survivalRecords.js';
 import { isModeAvailable } from '../systems/survivalUnlocks.js';
 import { BLOCK_RULESET } from '../systems/survivalRun.js';
+import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 
 /** v1 ships one authored arena. The other two Combat Lab arenas are wave-authored but unpolished. */
 export const CRUCIBLE_ARENA_ID = 'helios_core';
@@ -49,7 +50,7 @@ export function crucibleStarterIdForSetup(setup) {
   }
   return CRUCIBLE_DEFAULT_STARTER_ID;
 }
-export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored', 'boss_circuit', BLOCK_RULESET]);
+export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored', 'boss_circuit', BLOCK_RULESET, POWERED_CONVEYOR_RULESET]);
 
 export function normalizeCrucibleRuleset(ruleset) {
   return CRUCIBLE_RULESETS.includes(ruleset) ? ruleset : CRUCIBLE_DEFAULT_RULESET;
@@ -74,7 +75,7 @@ export function crucibleSetupFor({
     // Survival ignores enemyPackageId — the wave owner decides what spawns — but the shared
     // schema requires a legal value.
     enemyPackageId: 'wasp_flight',
-    arenaId,
+    arenaId: ruleset === POWERED_CONVEYOR_RULESET ? CRUCIBLE_ARENA_ID : arenaId,
     seed: normalizeSeed(seed),
     // SWARM-04: the checkpoint's entry wave. Only a swarm launch reads it; the arc, block
     // and circuit always open at their authored first wave, so it is carried as schema.
@@ -116,7 +117,7 @@ export function crucibleHullSetupFor({
     hullId,
     loadout: [],
     enemyPackageId: 'wasp_flight',
-    arenaId,
+    arenaId: ruleset === POWERED_CONVEYOR_RULESET ? CRUCIBLE_ARENA_ID : arenaId,
     seed: normalizeSeed(seed),
     wave: Number.isInteger(startWave) && startWave > 1 ? startWave : 1,
   });

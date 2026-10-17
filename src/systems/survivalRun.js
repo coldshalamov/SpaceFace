@@ -41,6 +41,7 @@ import {
 } from './survivalRecords.js';
 import { applyHangarToPlayer } from './swarmHangar.js';
 import { swarmThreatMutatorIds } from '../data/swarmThreats.js';
+import { POWERED_CONVEYOR_RULESET, POWERED_CONVEYOR_DEMO_TICKS } from '../data/survivalMutators.js';
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
@@ -173,6 +174,9 @@ export const survivalRun = {
     }
     if (phase === 'wave_intro') {
       if (this._planFailed) return;
+      // Let the expendable workpiece show one powered pulse before any foe can arrive.
+      if (run.ruleset === POWERED_CONVEYOR_RULESET && run.wave === 1
+        && this._phaseTicks < POWERED_CONVEYOR_DEMO_TICKS) return;
       if (!this._waveIntroComplete && this._phaseTicks < SURVIVAL_WAVE_INTRO_TICKS) return;
       this._requestTransition('wave_intro', 'active', REASON_WAVE_START);
       return;
@@ -344,7 +348,9 @@ export const survivalRun = {
     }
     this._requestTransition('loadout', 'arena_intro', REASON_READY);
     this._requestTransition('arena_intro', 'wave_intro', REASON_INTRO_DONE);
-    if (!this._planFailed) this._requestTransition('wave_intro', 'active', REASON_WAVE_START);
+    if (!this._planFailed && run.ruleset !== POWERED_CONVEYOR_RULESET) {
+      this._requestTransition('wave_intro', 'active', REASON_WAVE_START);
+    }
   },
 
   _onArenaIntroComplete() {

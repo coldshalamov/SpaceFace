@@ -36,6 +36,7 @@ import { getCombatKernel } from '../../combat/kernel.js';
 import { mulberry32 } from '../../core/rng.js';
 import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
 import { SWARM_RULESET } from '../../data/swarmMode.js';
+import { POWERED_CONVEYOR_RULESET } from '../../data/survivalMutators.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../../data/swarmStakes.js';
 import { swarmThreatPurseMult } from '../../data/swarmThreats.js';
 import { swarmCheckpointPurseFor, swarmZoneIndexFor } from '../../data/swarmLadder.js';
@@ -195,7 +196,7 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
  * The survival rulesets a LAUNCH may name. Endless stays a Gauntlet refit continuation.
  * Boss circuit is a door mode once the account has earned it; the door refuses it otherwise.
  */
-const SURVIVAL_LAUNCH_RULESETS = new Set(['scored', SWARM_RULESET, 'boss_circuit']);
+const SURVIVAL_LAUNCH_RULESETS = new Set(['scored', SWARM_RULESET, 'boss_circuit', POWERED_CONVEYOR_RULESET]);
 
 /** Display names + config for each quick-setup card on the Sandbox screen. */
 export const SCENARIO_PRESETS = Object.freeze([

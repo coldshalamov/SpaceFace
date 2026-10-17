@@ -126,7 +126,7 @@ import {
   SCENARIO_PRESETS,
 } from '../sandbox/sandboxSetup.js';
 import { ensurePhysicsLabRoute, notePracticeLaunch } from './crucibleLabControls.js';
-import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
+import { SURVIVAL_MUTATOR_BY_ID, SURVIVAL_TRIAL_BY_RULESET, POWERED_CONVEYOR_RULESET } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import {
   availableOptions,
@@ -1134,7 +1134,13 @@ export const crucibleScreen = {
         syncGhost();
         return;
       }
-      const entry = ruleset === 'boss_circuit'
+      const entry = ruleset === POWERED_CONVEYOR_RULESET
+        ? {
+          blurb: SURVIVAL_TRIAL_BY_RULESET[POWERED_CONVEYOR_RULESET].label,
+          sub: SURVIVAL_TRIAL_BY_RULESET[POWERED_CONVEYOR_RULESET].blurb,
+          verb: 'Enter conveyor trial',
+        }
+        : ruleset === 'boss_circuit'
         ? {
           blurb: 'Five champions. Refit between them. No drafts.',
           sub: 'The authored wave-ten bosses, one after another, in the room you picked.',
@@ -2055,6 +2061,17 @@ export const crucibleScreen = {
       }
     }
 
+    // M20 is an authored trial under the ordinary Crucible door, with the same build and seed.
+    const conveyorTrial = SURVIVAL_TRIAL_BY_RULESET[POWERED_CONVEYOR_RULESET];
+    const conveyorRow = el('div', 'k-row sf-crd-practice');
+    const conveyorButton = word('Launch conveyor trial', 'k-word--emph');
+    conveyorButton.setAttribute('aria-label', `${conveyorTrial.label}: launch the Foundry conveyor trial with this build and seed`);
+    paintKey(conveyorButton, 'small');
+    conveyorButton.addEventListener('click', () => launchCurrent(POWERED_CONVEYOR_RULESET));
+    conveyorRow.appendChild(conveyorButton);
+    conveyorRow.appendChild(el('p', 'k-t-fine k-38', `${conveyorTrial.label}. ${conveyorTrial.blurb}`));
+    settings.appendChild(conveyorRow);
+
     // The record goes last, below the three settings: the door's job is to start a run, and the
     // reason to start another one is context for that, not a competitor for it. Reading the
     // profile must never be able to stop the door opening, so a broken or absent profile just
@@ -2117,7 +2134,10 @@ export const crucibleScreen = {
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Crucible');
     // The one launch path, shared by Enter and Quick play. INF-038.
-    function launchCurrent() {
+    function launchCurrent(trialRuleset = null) {
+      const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
+      const launchRuleset = conveyor ? POWERED_CONVEYOR_RULESET : ruleset;
+      const launchArenaId = conveyor ? CRUCIBLE_ARENA_ID : arenaId;
       const bareHull = typeof starterId === 'string' && starterId.startsWith('hull:');
       if (!bareHull && !isStarterAvailable(doorProfile, starterId)) {
         cue('deny');
@@ -2144,20 +2164,20 @@ export const crucibleScreen = {
         ? crucibleHullSetupFor({
           hullId: starterId.slice(5),
           seed: normalizeSeed(seedInput.value),
-          arenaId,
-          ruleset,
+          arenaId: launchArenaId,
+          ruleset: launchRuleset,
           swarmStake: launchStake,
           swarmThreats: launchThreats,
-          startWave,
+          startWave: conveyor ? 1 : startWave,
         })
         : crucibleSetupFor({
           starterId,
           seed: normalizeSeed(seedInput.value),
-          arenaId,
-          ruleset,
+          arenaId: launchArenaId,
+          ruleset: launchRuleset,
           swarmStake: launchStake,
           swarmThreats: launchThreats,
-          startWave,
+          startWave: conveyor ? 1 : startWave,
         });
       if (!setup.ok || !setup.value) {
         cue('deny');
@@ -2167,18 +2187,18 @@ export const crucibleScreen = {
       cue('confirm');
       const payload = { ...setup.value };
       const offer = currentGhostOffer();
-      let ghostHash = raceGhost && offer.available ? offer.hash : null;
+      let ghostHash = !conveyor && raceGhost && offer.available ? offer.hash : null;
       // PQ-160.02: a code-named ghost races when its block was imported to this machine.
-      if (ghostHash == null && pendingShare && pendingShare.ghostHash != null
+      if (!conveyor && ghostHash == null && pendingShare && pendingShare.ghostHash != null
         && lastGhostRowByHash(doorProfile, pendingShare.ghostHash)) {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
       const {
         shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
-      } = doorChallengeTerms();
+      } = conveyor ? { challengeMutators: [] } : doorChallengeTerms();
       if (weeklyMutatorId) payload.weeklyMutatorId = weeklyMutatorId;
-      if (daily || weeklyMutatorId || challengeMutators.length || shareDailyKey) {
+      if (!conveyor && (daily || weeklyMutatorId || challengeMutators.length || shareDailyKey)) {
         const dateKey = daily ? utcDateKeyNow() : shareDailyKey;
         if (dateKey) payload.dailyDateKey = dateKey;
         queueSurvivalChallenge({
@@ -2192,9 +2212,9 @@ export const crucibleScreen = {
       } else {
         clearQueuedChallenge();
         if (ghostHash != null) queueGhostPlayback(ghostHash);
-        if (practiceQueued) queuePracticeRun();
+        if (!conveyor && practiceQueued) queuePracticeRun();
       }
-      requestCrucibleRun(ctx.bus, payload, ruleset);
+      requestCrucibleRun(ctx.bus, payload, launchRuleset);
     }
     const quick = word('Quick play', 'k-word--emph');
     quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');

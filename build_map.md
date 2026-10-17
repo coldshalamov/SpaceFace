@@ -690,7 +690,6 @@ C9 lives at `PQ-137.08`; WORLD-ANSWERS/WORLD-REMEMBERS are landed (receipts
 | 353 | SFQ-M25 | A fossil made of motion: physical-evidence operation in site runtime — stimulate the motion-fossil, read its recorded path, follow it to a real place; settles once | BUILD | OPEN orch-demo-m30 |
 | 354 | SFQ-M30 | The clean cylinder: escort runtime in `missions.js` — keep a Shepherd charge's exposure clean across a contaminated corridor; repair mid-route; retreat with reduced-but-honest result | BUILD | OPEN orch-demo-m30 |
 | 355 | SFQ-M24 | Move the nursery, not the animals: ecology relocation in `alienEcology.js` — staged gentle move re-homes animals onto the moved substrate; violent move scatters (persisted) | BUILD | OPEN orch-demo-m30 |
-| 356 | SFQ-M20 | A room with a different law: one authored Crucible ruleset variant on the current ruleset registry, reachable from the ordinary Crucible surface; standard ruleset untouched when off | BUILD | OPEN orch-demo-m30 |
 
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
