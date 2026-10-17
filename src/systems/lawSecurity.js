@@ -2261,6 +2261,11 @@ export const lawSecurity = {
       return existing;
     }
 
+    if (kind === 'payload_theft' && offenderStableId === 'player'
+      && this.registry?.get('custodyConsequences')?.authorizesRecovery(payloadStableId)) {
+      return this._denyIncidentReport('recovery_authorized', { reportId, kind, causalTick });
+    }
+
     // Jurisdiction: the live authority owner decides, from the incident position.
     // Ceres/Ambush theft sits outside the station protection ring; reuse the same
     // ceresDistressJurisdiction helper npc_piracy already uses for pirate→loaded hauler.
@@ -2620,7 +2625,10 @@ export const lawSecurity = {
         pos: { x: pos.x, z: pos.z },
         causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
         reportId: victimStableId != null ? cleanLawId(`kill:${victimStableId}`) : null,
-        ...(pendingPerson && pendingCr > 0 ? { forPerson: pendingPerson, restitutionCr: pendingCr } : {}),
+        ...(pendingPerson && pendingCr > 0 ? {
+          forPerson: pendingPerson, restitutionCr: pendingCr,
+          recovery: restitutionRecovery(victim, state),
+        } : {}),
       });
       this._lawResponse('kill_unwitnessed', {
         outcome: 'no_charge',
@@ -4796,7 +4804,10 @@ export const lawSecurity = {
     const forPerson = restitutionPerson(entity && entity.data);
     const amountCr = pricedCargoCr(entity && entity.data);
     if (!forPerson || !(amountCr > 0) || !causeId) return null;
-    return this.noteComposedObligation({ kind: 'restitution', causeId, forPerson, amountCr });
+    return this.noteComposedObligation({
+      kind: 'restitution', causeId, forPerson, amountCr,
+      recovery: restitutionRecovery(entity, this.state),
+    });
   },
 
   _noteStoredRestitution(pending, causeId) {
@@ -4808,6 +4819,7 @@ export const lawSecurity = {
       causeId,
       forPerson: forPerson.length > 80 ? forPerson.slice(0, 80) : forPerson,
       amountCr,
+      recovery: pending.recovery,
     });
   },
 
@@ -4839,6 +4851,8 @@ export const lawSecurity = {
       remainingCr: amount,
       status: 'open',
       advertisePay: true,
+      ...(kind === 'restitution' && request.recovery
+        ? { recovery: normalizeRestitutionRecovery(request.recovery) } : {}),
     };
     own.composed[key] = row;
     const obligation = publicObligation(row);
@@ -4902,6 +4916,24 @@ export const lawSecurity = {
     const obligation = publicObligation(row);
     this._emit('law:obligationPaid', obligation);
     return obligation;
+  },
+
+  // Goods are credited by the bill's writer, at the same prices that opened the bill.
+  // A mission delivery is consumed once; a partial return never pardons another cause.
+  creditRestitutionDelivery({ causeId, commodityId, qty, deliveryId } = {}) {
+    const row = this.state?.lawSecurity?.composed?.[`restitution:${causeId}`];
+    const recovery = row && row.recovery;
+    const line = recovery?.lines.find((entry) => entry.commodityId === commodityId);
+    if (!line || row.status === 'paid' || !deliveryId || recovery.deliveries.includes(deliveryId)) return 0;
+    const units = Math.min(Math.max(0, Math.floor(Number(qty) || 0)), line.qty - line.returnedQty);
+    if (!(units > 0)) return 0;
+    recovery.deliveries.push(deliveryId);
+    line.returnedQty += units;
+    const applied = Math.min(row.remainingCr, pricedLineCr(commodityId, units));
+    row.remainingCr -= applied;
+    if (row.remainingCr === 0) { row.status = 'paid'; row.advertisePay = false; }
+    this._emit('law:obligationPaid', publicObligation(row));
+    return applied;
   },
 
   composedDisposition() {
@@ -5367,6 +5399,37 @@ function restitutionPerson(data) {
   const name = String(raw).trim();
   if (!name) return '';
   return name.length > 80 ? name.slice(0, 80) : name;
+}
+
+function restitutionRecovery(entity, state) {
+  const data = entity?.data || {};
+  const lines = data.commodityId
+    ? [{ commodityId: data.commodityId, qty: data.amount ?? data.qty }]
+    : data.cargoManifest?.lines || Object.entries(data.cargo || {}).map(([commodityId, qty]) => ({ commodityId, qty }));
+  return normalizeRestitutionRecovery({
+    lines, sectorId: state.world?.currentSectorId, pos: entity?.pos,
+    manifestId: data.cargoManifest?.manifestId || data.freightCargo?.manifestId || null,
+  });
+}
+
+function normalizeRestitutionRecovery(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const lines = [];
+  for (const item of Array.isArray(raw.lines) ? raw.lines : []) {
+    const commodityId = item?.commodityId || item?.id;
+    const qty = Math.floor(Number(item?.amount ?? item?.qty));
+    if (!(pricedLineCr(commodityId, qty) > 0)) continue;
+    const prior = lines.find((entry) => entry.commodityId === commodityId);
+    const returnedQty = Math.max(0, Math.min(qty, Math.floor(Number(item.returnedQty) || 0)));
+    if (prior) { prior.qty += qty; prior.returnedQty += returnedQty; }
+    else lines.push({ commodityId, qty, returnedQty });
+  }
+  return lines.length ? {
+    lines, sectorId: raw.sectorId || null,
+    pos: { x: Number(raw.pos?.x) || 0, z: Number(raw.pos?.z) || 0 },
+    manifestId: raw.manifestId || null,
+    deliveries: Array.isArray(raw.deliveries) ? raw.deliveries.filter((id) => typeof id === 'string') : [],
+  } : null;
 }
 
 function pricedLineCr(id, qty) {
@@ -6773,6 +6836,7 @@ function normalizeUnreportedKillLedger(raw) {
     if (forPerson && restitutionCr > 0) {
       row.forPerson = forPerson;
       row.restitutionCr = restitutionCr;
+      if (e.recovery) row.recovery = normalizeRestitutionRecovery(e.recovery);
     }
     out[victimStableId] = row;
     if (Object.keys(out).length >= UNREPORTED_KILL_CAP) break;
@@ -6853,6 +6917,7 @@ function publicObligation(row) {
     remainingCr: row.remainingCr,
     status: row.status,
     advertisePay: open,
+    ...(row.recovery ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
     whatFor: row.forPerson
       ? `${row.kind} for ${row.forPerson}`
       : `${row.label || row.kind} (${row.causeId})`,
@@ -7032,6 +7097,8 @@ function normalizeComposedObligations(raw) {
       remainingCr: paid ? 0 : remainingCr,
       status: paid ? 'paid' : 'open',
       advertisePay: !paid && remainingCr > 0,
+      ...(kind === 'restitution' && row.recovery
+        ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
     };
   }
   return out;

@@ -2886,6 +2886,7 @@ export const missions = {
       rawOffer.source === 'economyContract'
       || rawOffer.source === 'firstTradeContract'
       || rawOffer.source === 'encounterAftermath'
+      || rawOffer.source === 'custodyRecovery'
       || rawOffer.source === 'careerContract'
       || rawOffer.source === 'postEndingReplay'
       || rawOffer.source === 'poiBehavior'
@@ -2941,6 +2942,9 @@ export const missions = {
     if (!isFingerprintBoardSource(rawOffer.source)
       && board.slots.some((offer) => {
         if (!offer || offer.source !== rawOffer.source) return false;
+        if (rawOffer.source === 'custodyRecovery') {
+          return offer.cause?.fingerprint === rawOffer.cause?.fingerprint;
+        }
         if (isCompetingStarvedRow(rawOffer) && isCompetingStarvedRow(offer)) {
           return offer.destStationId === rawOffer.destStationId;
         }
@@ -4239,7 +4243,8 @@ export const missions = {
         };
       }
     }
-    if (!offer || !ONE_LOAD_CARGO_TYPES.has(offer.type)) return { ok: true };
+    // These return jobs supply no cargo and accept partial lots, including goods already held.
+    if (!offer || offer.source === 'custodyRecovery' || !ONE_LOAD_CARGO_TYPES.has(offer.type)) return { ok: true };
     const requiredVolume = cargoFootprint(offer);
     if (!(requiredVolume > 0)) return { ok: true };
     const cargo = this.state.player && this.state.player.cargo || {};
@@ -8395,6 +8400,11 @@ export const missions = {
       // Cargo/passenger/salvage/smuggling: require the actual cargo to be aboard, then consume it.
       if (t === 'cargo_delivery' || t === 'passenger_transport'
           || t === 'salvage_retrieval' || t === 'smuggling_run') {
+        if (m.source === 'custodyRecovery'
+          && !this.registry?.get('custodyConsequences')?.prepareRecoveryDelivery(m)) {
+          this._failMission(m, i, 'obligation_already_settled');
+          continue;
+        }
         // INF-066: a salvage successor that docks short of its full qty settles ONCE for what is
         // actually aboard — proportional pay on its own (halved) stake, goods consumed through
         // the cargo single-writer, mission completed as a partial recovery. Ordinary salvage
@@ -9127,6 +9137,8 @@ export const missions = {
    * preflight. A refused mutation NEVER leaves the player with no mission and no failure.
    */
   _mutateInsteadOfFail(m, reason) {
+    // Custody retains the original bill/field record and can repost its exact remainder.
+    if (m.source === 'custodyRecovery') return null;
     const baseDescriptor = missionMutationFor(reason);
     if (!baseDescriptor) return null;
     // A descriptor may type the successor by the job that failed (deadline: a lapsed escort is

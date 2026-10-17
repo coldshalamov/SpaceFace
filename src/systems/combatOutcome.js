@@ -9,7 +9,7 @@ import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
-import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 /** Bench A/B: production default ON. Quiet latch skips the 4-tick shipLike flee-scan
  * when no unrecalled flee candidates remain. Wakes on kill/flee/disable/surrender /
@@ -246,6 +246,7 @@ export const combatOutcome = {
           this._publishAftermath('sector:enter');
         }),
         this.bus.on('combat:aftermathChoose', this._onAftermathChoose),
+        this.bus.on('custody:aftermathChanged', () => this._publishAftermath('custody')),
         // Flee stamps that land without an ai:flee emit (doctrine/fsm churn, surrender
         // escape, pacing pin release, pirate parley/disengage) — wake so the next 4-tick
         // scan records them on the same cadence as before.
@@ -454,11 +455,38 @@ export const combatOutcome = {
         dead: record.dead === true,
       });
     }
-    const offer = aftermathChoices({
+    const custodyRows = Object.values(state.player?.custodyLedger?.raidAftermath || {})
+      .filter((row) => row.sectorId === sectorId && row.status === 'open');
+    const custody = custodyRows.map((row) => ({
+      key: row.key, fingerprint: row.fingerprint,
+      freightRemaining: row.lines.reduce((sum, line) => sum + line.qty - line.returnedQty, 0),
+      survivorsPending: Object.values(row.survivors).filter((person) => person.outcome === 'pending').length,
+    }));
+    // Persistent pods can receive a different numeric id on Continue. The crew's memory id
+    // identifies the same survivor; a recycled hull number never does.
+    const survivorPods = custodyRows.length ? new Map(indexedTypeScan(state, 'payloads')
+      .filter((pod) => pod?.alive !== false && pod?.data?.survivorPodCausal?.memoryId)
+      .map((pod) => [pod.data.survivorPodCausal.memoryId, pod])) : new Map();
+    for (const row of custodyRows) {
+      for (const person of Object.values(row.survivors)) {
+        const pod = survivorPods.get(person.survivorId);
+        if (person.outcome !== 'pending' || !pod || pod.alive === false
+          || pod.data?.survivorPodCausal?.memoryId !== person.survivorId) continue;
+        outcomes.unshift({ outcome: 'disabled', entityId: pod.id, sectorId, alive: true, dead: false });
+      }
+    }
+    const baseOffer = aftermathChoices({
       outcomes,
       sectorId,
       wreckIds,
     });
+    const freightRemaining = custody.reduce((sum, row) => sum + row.freightRemaining, 0);
+    const offer = custody.length ? { ...baseOffer, custody, choices: baseOffer.choices.map((choice) => ({
+      ...choice,
+      label: choice.id === 'salvage' && freightRemaining > 0
+        ? `${choice.label} (${freightRemaining}u freight unreturned)`
+        : choice.id === 'escape' ? `${choice.label} (custody stays open)` : choice.label,
+    })) } : baseOffer;
     // Before any fight or wreck in this sector there is nothing to choose. Escape-only is
     // published once a fight receipt or a field wreck exists, not on an empty cruise.
     const field = outcomes.length > 0 || offer.choices.some((choice) => choice.id === 'salvage');
@@ -470,13 +498,14 @@ export const combatOutcome = {
     // or the player entered the sector. A same-verb retarget must not reopen it.
     retargetChosenOffRecycledHull(state, own, offer);
     own.aftermath = offer;
-    const sig = `${sectorId}|${offer.choices.map((choice) => choice.id).join(',')}`;
+    const sig = `${sectorId}|${offer.choices.map((choice) => `${choice.id}:${choice.label}`).join(',')}`;
     const verbsChanged = sig !== this._choiceSig;
     if ((verbsChanged || reason === 'sector:enter') && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('combat:aftermathChoices', {
         sectorId,
         paused: false,
         choices: offer.choices.map((choice) => ({ id: choice.id, label: choice.label })),
+        ...(custody.length ? { custody } : {}),
       });
     }
     if (verbsChanged) {
