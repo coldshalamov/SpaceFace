@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { MACHINE_SITES } from '../src/data/precursorMachines.js';
 import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { materializeMachineLayer, tickMachineLayer, handleMachinePickupCollected } from '../src/systems/precursorMachines.js';
+import { handleFoundryProtocolAction } from '../src/systems/machineWork.js';
 import { serializeAlienEcologyState, deserializeAlienEcologyState } from '../src/systems/alienEcology.js';
 import { addCargo, removeCargo } from '../src/systems/cargo.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
@@ -116,7 +117,12 @@ test('B148 one ballast can enter preservation with spent repair charges and no t
   body.pos = { x: site.center.x + site.workCycle.preserveDx, z: site.center.z };
   body.vel.x = 30; f.seconds(4);
   assert.equal(rec.jurisdiction.status, 'waiting', 'fast crossings do not settle custody');
+  f.playerAt({ x: site.center.x, z: site.center.z + 400 });
+  handleFoundryProtocolAction(f.world, { siteId: site.siteId, verb: 'observe', approach: 'preservation' });
   body.vel.x = 0; f.seconds(4);
+  assert.equal(rec.jurisdiction.status, 'waiting', 'a settled body still needs the read/present/choose protocol');
+  handleFoundryProtocolAction(f.world, { siteId: site.siteId, verb: 'present' });
+  handleFoundryProtocolAction(f.world, { siteId: site.siteId, verb: 'choose' }); f.step();
   assert.equal(rec.jurisdiction.choice, 'preservation'); assert.equal(rec.jurisdiction.status, 'resolved');
   assert.equal(rec.workCycle.commissioned, false); assert.equal(rec.maintenance.material, 0);
   assert.equal(body.alive, true); assert.equal(consumePhysicsCommand(body), null);
@@ -128,8 +134,12 @@ test('B148 one ballast can enter preservation with spent repair charges and no t
 
 test('B148 east custody releases the Mason field, commissions once and persists the chosen body', () => {
   const { f, rec, body, site } = readyFoundry();
+  f.playerAt({ x: site.center.x, z: site.center.z + 400 });
+  handleFoundryProtocolAction(f.world, { siteId: site.siteId, verb: 'observe', approach: 'construction' });
+  handleFoundryProtocolAction(f.world, { siteId: site.siteId, verb: 'present' });
   body.pos = { x: site.center.x + site.workCycle.cradleDx, z: site.center.z };
   f.seconds(8);
+  handleFoundryProtocolAction(f.world, { siteId: site.siteId, verb: 'choose' }); f.seconds(4);
   assert.equal(rec.jurisdiction.choice, 'construction'); assert.equal(rec.jurisdiction.status, 'resolved');
   assert.equal(rec.masonry.status, 'placed'); assert.equal(rec.workCycle.commissioned, true);
   consumePhysicsCommand(body); f.seconds(2); assert.equal(consumePhysicsCommand(body), null);

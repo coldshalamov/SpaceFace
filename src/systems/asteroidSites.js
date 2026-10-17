@@ -64,6 +64,11 @@ import {
 } from './siteSurvey.js';
 import { getDressingRow, insertDressingRow } from '../world/dressingTable.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { handleFoundryProtocolAction, offerFoundryProtocol } from './machineWork.js';
+import {
+  handleMotionFossilAction, tickMotionFossil, interruptMotionFossil, copyMotionFossilState, captureMotionFossilState,
+  MOTION_FOSSIL_SITE,
+} from '../world/motionFossil.js';
 
 const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
 
@@ -576,6 +581,27 @@ export const asteroidSites = {
     if (this._wiredBus === this.bus) return;
     this._wiredBus = this.bus;
 
+    // Site evidence uses the existing decision deck and the real world's coordinate
+    // conversion. Keep these operations on the sim side in worker and main modes.
+    this.bus.on('siteEvidence:action', (request = {}) => {
+      const world = this._registry?.get('world');
+      if (!world || this._worldRestoreActive) return;
+      const result = handleFoundryProtocolAction(world, request) || handleMotionFossilAction(world, request);
+      if (result) this.bus.emit('siteEvidence:result', { siteId: request.siteId, ...result });
+    });
+    this.bus.on('scan:pulse', () => {
+      const world = this._registry?.get('world');
+      if (!world || this._worldRestoreActive) return;
+      offerFoundryProtocol(world, true);
+      if (this.state.world?.currentSectorId === 'sector_charon_expanse') {
+        handleMotionFossilAction(world, { siteId: MOTION_FOSSIL_SITE, verb: 'observe' });
+      }
+    });
+    this.bus.on('combat:fire', payload => {
+      const world = this._registry?.get('world');
+      if (world) interruptMotionFossil(world, payload);
+    });
+
     // Stamp machine housings onto the live drill field the moment a session opens, so the rover
     // is blocked by them and the screen can draw them. tile.structure is the ONE documented write
     // this system makes into state.drill (co-ownership noted in drill.js).
@@ -751,6 +777,7 @@ export const asteroidSites = {
       byId,
       worldOrder,
       worldById,
+      ...(src.motionFossil ? { motionFossil: copyMotionFossilState(captureMotionFossilState(this.state)) } : {}),
       anvilOrchard: readOrchardSaveSection(src),
       meta: { rngSeed: src.meta && src.meta.rngSeed || 0 },
     };
@@ -765,6 +792,11 @@ export const asteroidSites = {
   *deserializeChunked(data) {
     const next = makeDefaultSites();
     next.anvilOrchard = readOrchardSaveSection(data);
+    const fossil = copyMotionFossilState(data?.motionFossil);
+    // Fauna are rematerialized by ecology after load. Re-run a controlled observation
+    // rather than compare a pre-load baseline against newly materialized bodies.
+    if (fossil?.status === 'observing') { fossil.status = 'interrupted'; fossil.observedFor = 0; }
+    if (fossil) next.motionFossil = fossil;
     if (data && typeof data === 'object') {
       next.nextSiteNum = Math.max(1, Math.trunc(Number(data.nextSiteNum) || 1));
       if (data.meta && Number.isFinite(data.meta.rngSeed)) next.meta.rngSeed = data.meta.rngSeed >>> 0;
@@ -2141,6 +2173,8 @@ export const asteroidSites = {
 
   update(dt, state) {
     if (!Number.isFinite(dt) || dt <= 0 || state.timeScale === 0) return;
+    const world = this._registry?.get('world');
+    if (world && state.mode === 'flight' && !this._worldRestoreActive) tickMotionFossil(world, dt);
     this._pollWorldSiteAdmission();
     this._captureWorldSitePayloads();
     if (this._worldSyncWanted) this._syncWorldSites();
