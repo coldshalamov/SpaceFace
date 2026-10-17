@@ -17876,8 +17876,10 @@ export const render = {
             if (subjectProgramAtTouch(subject).program !== before.program) switched += 1;
             touched += 1;
             // Same queue pacing as the cohort compile above: on the serial route the touches'
-            // draws must drain in bounded groups, or the cook rebuilds the backlog. A touch that
-            // linked (its program switched or was not ready) drains alone.
+            // draws must drain in bounded groups, or the cook rebuilds the backlog. Only a touch
+            // whose program was not ready before the draw drains alone; a program switch is
+            // counted (switched) but does not force a drain. Perf lane cb1 logged 1-2 switches
+            // in 4 of 8 SwiftShader runs (notReady 0 in 7 of 8; run 4 had 1 not-ready touch).
             let paced = false;
             if (cohort && typeof cohort.paceQueue === 'function') {
               const coalesce = state.mode === 'loading';
@@ -18134,6 +18136,11 @@ export const render = {
       // Texture uploads on the same route/window: 16 textures / 8 MB per serial unit, not one unit
       // (yield + presented-frame wait + gl.finish) per texture; 131 opening textures made this step
       // ~10 s of idle main thread on SwiftShader. Other routes keep the per-texture default.
+      // A batch is one main-thread task. Measured from perf lane cpuprofiles (SwiftShader, tasks
+      // split on idle samples, batch tasks = startupGpuResidency texture-upload stacks): at 16 / 8 MB
+      // (cb1, 8 runs, 54 tasks) median 6 ms, p90 19 ms, max 65 ms; at 48 / 24 MB (cb2+cb3, 11 runs,
+      // 62 tasks) p90 11-19 ms, max 172 ms (one task, ~70 ms native + 35 ms GC; next 35 ms). Master's
+      // longest loading tasks are shader links of 2.9-14.4 s (per-run max median 3.5-4.9 s).
       const bufferTextureBatch = bufferBatchDrawables ? { textureBatchCount: 16, textureBatchBytes: 8 * 1024 * 1024 } : null;
       let buffers;
       try {
