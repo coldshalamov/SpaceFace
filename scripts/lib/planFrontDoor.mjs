@@ -206,7 +206,7 @@ function reservoirAdmissionUnit(entry) {
     boardRow: entry.number,
     title: `${entry.id} (build_map §1C row ${entry.number}): admit a program-family slice into numbered rows`,
     status: truncate(entry.status, 240),
-    instruction: 'Reservoir scope is real work that is not yet rows. Admission runs in parallel lanes, one program family per lane (owner 2026-10-12 — the serial one-level-per-sitting rule is retired): claim your family slug in your NOW.md row, outcome-map its candidates against current code, close already-true ones with evidence, mint genuinely new work as numbered §1C rows in your lane\'s band (next free block of 14 above the current max row, recorded in your NOW row before minting), and leave the ADMIT row OPEN until its catalog is fully dispositioned. When counted rows drain, this is the plan — do not switch to the inference catalog.',
+    instruction: 'This ADMIT row is one program family or brief batch of the reservoir — disposition every candidate it names: outcome-map each against current code, close already-true ones with evidence, route lane-owned work to that lane\'s backlog, and mint genuinely new work as numbered §1C rows (next free block of 14 above the current max row, recorded in your NOW row before minting). Delete the row when all its candidates are dispositioned. The board\'s "whole remaining count" table is the honest size of the plan — a drained queue is not an empty plan; do not switch to the inference catalog.',
   };
 }
 

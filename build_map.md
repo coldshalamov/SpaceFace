@@ -559,6 +559,20 @@ error recorded. `--status` prints every surface's count on one screen — the ho
   shows open surfaces, that is a defect: fix it in the same sitting (total-fix mode).
   `check:plan-integrity` in the fast gate fails the build when the front door cannot answer.
 
+### The whole remaining count — read this first (refreshed 2026-10-17)
+
+Everything unfinished, on one screen. A drained queue or a column of `done` seams is **not** a
+finished plan — the board is finished only when every number in this table is zero.
+
+| Surface | Remaining |
+|---|---|
+| Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D130, D188, D191, D198, D199, D202b, D210, D211 — plus standing import guard D175 |
+| Numbered board rows (§A–§M tables below) | **35 open** — quiet-host session 284; reservoir-admission rows 291, 348–380 (enumerated by name in §M). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F) |
+| Behind the admission rows | ~150 SFQ-B build candidates + ~84 SFQ-I inference candidates + 34 mission briefs + 36 model briefs — each §M row names the exact candidate range it owns; P09-economy and P20-audio are already fully dispositioned |
+| Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
+| Inference catalog (`INFERENCE_IDEAS.md`) | **37 OPEN lines** — gated: only under `--lane=inference` with an owner INFERENCE instruction |
+| vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
+
 ### Seams — what is free, and what another agent has
 
 One seam is one set of files. Five agents take five different seams. Read the Claim cell
@@ -610,7 +624,10 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| admit-systems | free | admit SFQ-P01–P08 family candidates (truth/hand/massline/weapons/adversaries/crucible/adventure/mission-craft) — ~80 build + ~32 inference | 348, 349, 350, 351, 352, 353, 354, 355 |
+| admit-world | free | admit SFQ-P10–P17 family candidates (mining/regions/people/alien/xenotech/machines/precursor/discovery) — ~80 build + ~32 inference | 356, 357, 358, 359, 360, 361, 362, 363 |
+| admit-craft | free | admit SFQ-P18/P19/P21–P24 family candidates (models/VFX/ORRERY/perf/save/finish) — ~60 build + ~24 inference | 364, 365, 366, 367, 368, 369 |
+| admit-content | free | admit mission briefs M01–M36, model briefs A01–A36, and the Depth roll-up — mints rows for missions/models/depth | 291, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -763,8 +780,9 @@ is mandatory before taking any SFQ unit.
 First-wave rows 220–227 all landed 2026-10-02..05 (wreck-body mass, starter verbs, tow lifecycle,
 wake socket, courier custody, opening picture, save-boundary seal, alien M4 proofs) — receipts in
 `roadmap/receipts/`, narratives in git history (consolidated 2026-10-15). The pack's open surface
-is `§M` rows 285–288 (~235 SFQ-B candidates undispositioned across 24 families, 96 SFQ-I, 36
-mission briefs, 36 model briefs). A finding outside the chosen scope uses the
+is `§M` rows 348–380 — one numbered row per program family or brief batch (~150 SFQ-B candidates
+undispositioned across 22 families, ~84 SFQ-I, 34 mission briefs, 36 model briefs; P09 and P20 are
+done). A finding outside the chosen scope uses the
 `DEMO_READINESS_2026-09-20.md` §6 ledger, not a new defect list.
 
 
@@ -824,22 +842,63 @@ host timing unmeasured); swarm gate preparation never reached play (local ledger
 the stall). These are implemented production outcomes, not full acceptance or FPS certification.
 
 
-**ADMIT** work below. An ADMIT row's done-when: every candidate in its named scope dispositioned
-on this board — closed with evidence, routed to a lane, or minted as a numbered row.
+**ADMIT** work below — decomposed 2026-10-17 into one numbered row per program family or brief
+batch, so the board itself lists the remaining work; nothing hides behind a catalog pointer. Rows
+285–288 were those pointers and are replaced by rows 348–380 (their disposition notes are kept
+below the table). An ADMIT row's done-when: every candidate it names is dispositioned on this
+board — closed with evidence, routed to a lane's backlog, or minted as a numbered row — then the
+row is deleted like any other. P09-economy and P20-audio finished dispositioning earlier (notes
+below), so they have no row.
 
 Owner ruling, 2026-10-12: **admission is parallel.** The serial pacing rules — one DAG level per
-sitting, one inference line at a time — are retired. Lanes partition a catalog by program family
-and admit concurrently; the prereq graph orders candidates *within* a lane, and a prereq whose
-outcome already exists in code satisfies itself without waiting. A candidate is blocked only by a
-real missing capability, never by another lane's sitting.
+sitting, one inference line at a time — are retired. The four `admit-*` seams above are the
+parallel lanes; claim a `free` one, then claim your family slug in your NOW.md row. The prereq
+graph orders candidates *within* a family, and a prereq whose outcome already exists in code
+satisfies itself without waiting. A candidate is blocked only by a real missing capability, never
+by another lane's sitting. Families 13–17 reconcile against merged PR-170 reality inside their own
+row. Minted rows take the lane's band — the next free block of 14 above the current max §1C row —
+recorded in the lane's NOW row before minting.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 285 | ADMIT-SFQ-B | Finish & Expansion build reservoir (`design/finish-expansion-2026-09/catalog/`): ~235 of 240 build candidates undispositioned across 24 program families. Outcome-map each candidate against current code, mint its rows or close it with evidence | ADMIT | OPEN — owner 2026-10-12: **admission runs parallel, one lane per program family** (~10 build candidates each; claim the family slug in your NOW.md row; families 13–17 reconcile against merged PR-170 reality inside their own lane). The serial one-level-per-sitting rule is retired. Within a lane, disposition prereq candidates first; a candidate whose prereq outcome already exists in code closes as already-true without waiting. Minted rows take the lane's band — the next free block of 14 above the current max §1C row — recorded in the lane's NOW row before minting. L0 dispositioned 2026-10-12 (B001/B004/B006/B007/B009; note below the table) |
-| 286 | ADMIT-SFQ-I | 96 SFQ-I inference candidates → `INFERENCE_IDEAS.md`, admitted per program family alongside row 285's family lanes; each candidate still requires its named dependency landed (or provably already true) and a real gap | ADMIT | OPEN — owner 2026-10-12: **groups admit in parallel, not one at a time**; a lane may carry its family's ~4 I-candidates in one bounded group. L0 dispositioned 2026-10-12: I001 closed already-true; I002/I003/I004 minted as INFERENCE_IDEAS PRO-16/17/18 (note below the table); next: I005+ with their families |
-| 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
-| 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
 | 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves; decompose disjoint M-rows and Depth tables in parallel | ADMIT | OPEN — parallel |
+| 348 | ADMIT-P01 | Truth, integration, first playable reference (SFQ-P01): disposition SFQ-B001–B010 + SFQ-I001–I004 | ADMIT | OPEN — L0 five B + all four I already dispositioned (notes below); ~5 B remain |
+| 349 | ADMIT-P02 | The hand: nimble control without stealing momentum (SFQ-P02): disposition SFQ-B011–B020 + I005–I008 | ADMIT | OPEN — B011/B012 already-true (toy-lane notes); ~8 B + 4 I remain |
+| 350 | ADMIT-P03 | Massline, contact, terrain as the signature toy (SFQ-P03): disposition SFQ-B021–B030 + I009–I012 | ADMIT | OPEN — B022/B023 landed (toy-lane notes); ~8 B + 4 I remain |
+| 351 | ADMIT-P04 | Weapons, states, combinatorial combat (SFQ-P04): disposition SFQ-B031–B040 + I013–I016 | ADMIT | OPEN — B032/B033/B034 landed (notes); ~7 B + 4 I remain |
+| 352 | ADMIT-P05 | Readable adversaries + living encounter director (SFQ-P05): disposition SFQ-B041–B050 + I017–I020 | ADMIT | OPEN — B043/B045 landed (notes); ~8 B + 4 I remain |
+| 353 | ADMIT-P06 | Crucible: the repeatable physics showcase (SFQ-P06): disposition SFQ-B051–B060 + I021–I024 | ADMIT | OPEN |
+| 354 | ADMIT-P07 | Adventure first-hour trust + campaign spine (SFQ-P07): disposition SFQ-B061–B070 + I025–I028 | ADMIT | OPEN — B064 landed (notes); ~9 B + 4 I remain |
+| 355 | ADMIT-P08 | Mission craft + authored world-site interactions (SFQ-P08): disposition SFQ-B071–B080 + I029–I032 | ADMIT | OPEN |
+| 356 | ADMIT-P10 | Mining, salvage, construction as tactile work (SFQ-P10): disposition SFQ-B091–B100 + I037–I040 | ADMIT | OPEN — B091 landed; B092–B100 routed to industry/hand/AI seams (notes) — verify the lane backlogs carry them, then close |
+| 357 | ADMIT-P11 | Regions, routes, places with physical identity (SFQ-P11): disposition SFQ-B101–B110 + I041–I044 | ADMIT | OPEN |
+| 358 | ADMIT-P12 | People, law, memorable consequences (SFQ-P12): disposition SFQ-B111–B120 + I045–I048 | ADMIT | OPEN — B111/B119/B120 landed (notes); ~7 B + 4 I remain |
+| 359 | ADMIT-P13 | Alien ecology sharing the physical world (SFQ-P13): disposition SFQ-B121–B130 + I049–I052 — reconcile against merged PR-170 | ADMIT | OPEN — B122/B124/B126 landed (notes); ~7 B + 4 I remain |
+| 360 | ADMIT-P14 | Xenotechnology: useful strange matter (SFQ-P14): disposition SFQ-B131–B140 + I053–I056 — reconcile against merged PR-170 | ADMIT | OPEN |
+| 361 | ADMIT-P15 | Ancient machines doing consequential work (SFQ-P15): disposition SFQ-B141–B150 + I057–I060 — reconcile against merged PR-170 | ADMIT | OPEN — B146 landed (notes); ~9 B + 4 I remain |
+| 362 | ADMIT-P16 | Precursor geometry force vocabulary (SFQ-P16): disposition SFQ-B151–B160 + I061–I064 — reconcile against merged PR-170 | ADMIT | OPEN — B151/B152/B153/B154 landed (notes); ~6 B + 4 I remain |
+| 363 | ADMIT-P17 | Discovery, behavioral archaeology, bounded regional change (SFQ-P17): disposition SFQ-B161–B170 + I065–I068 — reconcile against merged PR-170 | ADMIT | OPEN — B161/B162/B163–B168 landed (notes); ~2 B + 4 I remain |
+| 364 | ADMIT-P18 | Authored models, spaces, animation at the gameplay camera (SFQ-P18): disposition SFQ-B171–B180 + I069–I072 | ADMIT | OPEN |
+| 365 | ADMIT-P19 | Force-readable VFX with distinct lifecycles (SFQ-P19): disposition SFQ-B181–B190 + I073–I076 | ADMIT | OPEN — B182/B184/B185/B187/B188–B190 routed L-PICTURE (notes); ~4 B + 4 I remain |
+| 366 | ADMIT-P21 | ORRERY as a complete usable instrument (SFQ-P21): disposition SFQ-B201–B210 + I081–I084 | ADMIT | OPEN — instrument-lane slice dispositioned B201–B209 (notes); ~2 B + 4 I remain |
+| 367 | ADMIT-P22 | Smoothness, residency, predictable work (SFQ-P22): disposition SFQ-B211–B220 + I085–I088 | ADMIT | OPEN |
+| 368 | ADMIT-P23 | Save integrity, input access, product completeness (SFQ-P23): disposition SFQ-B221–B230 + I089–I092 | ADMIT | OPEN — slice dispositioned; B221/B224 parked, B229/B230 unopened (notes); ~4 B + 4 I remain |
+| 369 | ADMIT-P24 | A finite finish line, final convergence (SFQ-P24): disposition SFQ-B231–B240 + I093–I096 | ADMIT | OPEN |
+| 370 | ADMIT-MIS-A | Mission briefs M01–M06 → mission rows (`catalog/missions` M01–M06) | ADMIT | OPEN |
+| 371 | ADMIT-MIS-B | Mission briefs M07–M12 → mission rows | ADMIT | OPEN — M10 landed (notes); 5 remain |
+| 372 | ADMIT-MIS-C | Mission briefs M13–M18 → mission rows | ADMIT | OPEN — M16 landed (notes); 5 remain |
+| 373 | ADMIT-MIS-D | Mission briefs M19–M24 → mission rows | ADMIT | OPEN |
+| 374 | ADMIT-MIS-E | Mission briefs M25–M30 → mission rows | ADMIT | OPEN |
+| 375 | ADMIT-MIS-F | Mission briefs M31–M36 → mission rows | ADMIT | OPEN |
+| 376 | ADMIT-ART-PRE | Model briefs A23–A31 (precursor machine/architecture/archaeology, 9 briefs) → rows for L-PICTURE write sets | ADMIT | OPEN |
+| 377 | ADMIT-ART-BIO | Model briefs A13–A21 (fauna/fungus/biological/infected, 9 briefs) → rows for L-PICTURE | ADMIT | OPEN |
+| 378 | ADMIT-ART-HUM | Model briefs A01–A03, A07, A10, A11, A22, A35, A36 (human fleet/props/places, 9 briefs) → rows for L-PICTURE | ADMIT | OPEN |
+| 379 | ADMIT-ART-IND | Model briefs A04–A06, A08, A09, A12, A33 (industrial/xenotech/sensor/research, 7 briefs) → rows for L-PICTURE | ADMIT | OPEN |
+| 380 | ADMIT-ART-ENV | Model briefs A32 + A34 (far-field presence, ORRERY art plates, 2 briefs) → rows for L-PICTURE | ADMIT | OPEN |
+
+(The notes below predate the 2026-10-17 expansion: "Row 285/286 stays OPEN" in them now means the
+candidate's named family row — 348–369 above — which stays OPEN until every candidate it lists is
+dispositioned.)
 
 SFQ-B119 landed 2026-10-15: after a fight the field offers rescue, salvage, pursuit, and escape from what is actually there, and choosing does not pause physics (`test/sfq-b119-aftermath-choices.test.mjs`). Row 293 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B120 landed 2026-10-15: a named restitution returns only the standing its own cause took. A second payment does not charge, and heat and other hostility stay (`test/sfq-b120-restitution-standing.test.mjs`). Row 294 carried that outcome and was deleted on landing. Row 285 stays OPEN.
