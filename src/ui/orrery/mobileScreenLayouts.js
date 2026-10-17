@@ -287,8 +287,10 @@ export const MOBILE_SCREEN_CSS = `
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 12px !important; }
     ${B} .sxb-ops .sx-tile__label { letter-spacing:.05em !important; }
   }
-  /* …and a 360-wide phone closes the tab words and the crown labels once more for the same four columns. */
-  @media (min-height:561px) and (max-width:375px) {
+  /* …and a phone under 390 wide (360–389: 360, 375, 384 Android) closes the tab words and the crown labels once
+     more for the same four columns; at 376–389 the wider spacing left SHIPWORKS and INDUSTRY ~3px apart and the
+     MISSIONS badge cut by the foot's edge. */
+  @media (min-height:561px) and (max-width:389px) {
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 6px !important; }
     ${B} .sxb-ops .sx-tile__label { letter-spacing:.02em !important; }
     ${B} .sxb-vital__label { letter-spacing:.02em !important; }
