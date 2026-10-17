@@ -9063,6 +9063,31 @@ function liveSlotSummary(slot, envelope, state) {
 }
 
 /**
+ * The slot's game-mode word, resolved from the envelope the card already reads.
+ * PRO-20: swarm and gauntlet runs never reach a campaign slot (autosave and every
+ * write path refuse them while a survival run is live, and physics-venue flights
+ * are lifetime-owned), so the only modes a stored envelope can hold are adventure
+ * and racing — an adventure file with a live authored circuit race aboard. The word
+ * is DERIVED on the read path; the envelope bytes are untouched.
+ */
+export function resolveSlotModeWord(data) {
+  const missions = normalizeMissionSavePayload(data && data.missions);
+  const active = Array.isArray(missions.active) ? missions.active : [];
+  for (const mission of active) {
+    if (!mission || mission.status !== 'active' || mission.type !== 'race') continue;
+    const params = mission.params && typeof mission.params === 'object' ? mission.params : null;
+    // An authored circuit race (board, board race, time trial, cup heat) carries the
+    // circuit's contract id. Adventure speed contracts share type 'race' but name an
+    // adventureSpeedId with racingKind 'adventure' — those stay adventure content.
+    if (!params || typeof params.racingContractId !== 'string' || !params.racingContractId) continue;
+    if (typeof params.adventureSpeedId === 'string' && params.adventureSpeedId) continue;
+    if (params.racingKind === 'adventure') continue;
+    return 'racing';
+  }
+  return 'adventure';
+}
+
+/**
  * Menu card for one written envelope. Credits, ship, route, and story come from that envelope,
  * not from whatever the live run did while the bytes were encoding. `sectorNameOf` resolves the
  * frozen sector id against the authored table; it must not read the live current sector.
@@ -9102,6 +9127,7 @@ export function slotCardFromEnvelopeData(slot, env, sectorNameOf = null) {
     storySummary,
     objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
     endingChoice: completedEndingChoiceFromSaveData(data) || undefined,
+    mode: resolveSlotModeWord(data),
     version: env.version,
     ...(typeof env.label === 'string' && env.label.trim() ? { label: env.label.trim().slice(0, 48) } : {}),
     ...(boundSlotThumbnail(env.thumbnail)

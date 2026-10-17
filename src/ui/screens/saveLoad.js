@@ -448,6 +448,25 @@ function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
 }
 
+// PRO-20 — the slot's game-mode word in player language. The card resolves `mode`
+// from the envelope; a legacy card without one still names Adventure, and an empty
+// slot names no mode at all. Never a raw identifier.
+export function slotModeLabel(meta) {
+  if (!isOccupied(meta)) return '';
+  return meta && meta.mode === 'racing' ? 'Racing' : 'Adventure';
+}
+
+/**
+ * The slot row's sub line: the mode word first, then the hull, the sector, the
+ * playtime, and any save notice. Pure, so the row render and the test read one line.
+ */
+export function slotRowSubLine(meta, noteText) {
+  if (!isOccupied(meta)) return 'Empty slot';
+  return [slotModeLabel(meta), meta && meta.shipName && shipLabel(meta.shipName),
+    meta && meta.sectorName, meta && fmtPlaytime(meta.playtimeS), noteText]
+    .filter(Boolean).join(' · ') || 'Saved game';
+}
+
 export function latestOccupiedSlot(slots) {
   return selectLatestOccupiedSlot(slots);
 }
@@ -1190,7 +1209,7 @@ export const saveLoadScreen = {
         id,
         name: (meta && meta.label) || slotLabel(id),
         sub: occupied
-          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS), note && note.text].filter(Boolean).join(' · ') || 'Saved game'
+          ? slotRowSubLine(meta, note && note.text)
           : [summary.context, note && note.text].filter(Boolean).join(' · '),
         num: occupied ? fmtCredits(meta.credits) : '',
         selected: refs.selected === id,
