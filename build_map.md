@@ -610,7 +610,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 357, 358 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -685,11 +685,8 @@ C9 lives at `PQ-137.08`; WORLD-ANSWERS/WORLD-REMEMBERS are landed (receipts
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
-| 348 | SFQ-M15 | Shortage at the gate: a posted sector shortage generates a real delivery+repair contract offer (economy contract writer; two approaches; recoverable failure; service restoration receipt) | BUILD | OPEN orch-demo-m30 |
-| 352 | SFQ-M29 | Two correct orders: persistent per-site machine protocol state in the machine runtime; both orderings accepted; wrong order refused with reason; save round-trip | BUILD | OPEN orch-demo-m30 |
-| 353 | SFQ-M25 | A fossil made of motion: physical-evidence operation in site runtime — stimulate the motion-fossil, read its recorded path, follow it to a real place; settles once | BUILD | OPEN orch-demo-m30 |
-| 354 | SFQ-M30 | The clean cylinder: escort runtime in `missions.js` — keep a Shepherd charge's exposure clean across a contaminated corridor; repair mid-route; retreat with reduced-but-honest result | BUILD | OPEN orch-demo-m30 |
-| 355 | SFQ-M24 | Move the nursery, not the animals: ecology relocation in `alienEcology.js` — staged gentle move re-homes animals onto the moved substrate; violent move scatters (persisted) | BUILD | OPEN orch-demo-m30 |
+| 357 | SFQ-B166 | Warm Freighter standby heat changes real cyst and eel motion, leaves leeches unchanged, and restores on the same persisted switch | BUILD | OPEN codex-bm16-17; focused seed-4242 test `test/sfq-p17-field-effects-4242.test.mjs`; orchestrator closes on landing verification |
+| 358 | SFQ-B167 | Fabricated research lure deploys the existing heat stimulus, draws a live maw away from the hull, and records its field trial only on a real response | BUILD | OPEN codex-bm16-17; focused seed-4242 test `test/sfq-p17-field-effects-4242.test.mjs`; orchestrator closes on landing verification |
 
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
