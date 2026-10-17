@@ -220,6 +220,7 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_charon_expanse: 'charon',
   sector_io_reach: 'io',
   sector_ashfall_reach: 'ashfall',
+  sector_hyperion_cut: 'hyperion',
 });
 
 function buildKillMachine({
@@ -709,6 +710,49 @@ export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
   }],
 });
 
+// HYPERION CUT — the claim yard winch. The Half-Cut out at mid-sector (worldOneOffs
+// oneoff_half_cut, a drill platform that died mid-bite on a seamed rock) is the machine
+// that stopped; this is the one that kept running. station_hyperion_claim walks cut rock
+// off the yard apron through a winch gantry onto its breaking plate, and the shared shift
+// clock keeps the cycle across visits: warning registers quiet, surge is the winch's bite,
+// calm is the safe window between loads. Cracker family — the census's plain directional
+// feed, same law as the Helios starter and the Rift fissure cracker — because the yard's
+// claim is not a new shape, it is the live machine standing where the dead one is not:
+// south-east of the claim post on the open apron, aimed north-west up the seam side that
+// feeds it (f_hyperion_1), clear of the post (452 WU), the Cut Refinery (2443), both gates
+// (>3734), all three fields (f_hyperion_1 rim +489), the authored dense_asteroid disc
+// (rim +212), both POIs, and the Half-Cut itself (1733). Inside the Hyperion Seams zone
+// the way the claim post itself is — the yard works the seams; that overlap is one field.
+export const HYPERION_YARD_SECTOR_ID = 'sector_hyperion_cut';
+
+export const HYPERION_YARD_WINCH = buildKillMachine({
+  id: 'hyperion_yard_winch',
+  hazardType: 'debris',
+  placeId: 'place_maintenance_gantry',
+  sectorId: HYPERION_YARD_SECTOR_ID,
+  localPos: { x: 1180, z: -1150 },
+  // Aimed up the seam side (player compass: +z is north, screen up) at the rock that feeds
+  // the yard, so the bite volume and the claim post's docking approach sit on opposite
+  // sides of the gantry.
+  rot: 2.5,
+  phaseOffsetS: 22,
+  hazardRadius: 104,
+  anvil: { radius: 22, mass: 11000, along: 60, across: 0 },
+  mouth: { name: 'Yard Winch', radius: 18 },
+  fields: [{
+    idSuffix: 'intake',
+    kind: 'cone',
+    strength: 720,
+    radius: 100,
+    halfAngleRad: 0.5,
+    edgeSoftRad: 0.12,
+    falloff: 1.08,
+    along: -16,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, the Sker
 // baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
@@ -724,6 +768,7 @@ export const ALL_KILL_MACHINES = Object.freeze([
   CHARON_TAILINGS_SWEEP,
   IO_BELL_RINGER,
   ASHFALL_CLAIM_SCARECROW,
+  HYPERION_YARD_WINCH,
 ]);
 
 // The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
@@ -744,6 +789,7 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === CHARON_SWEEP_SECTOR_ID) return Object.freeze([CHARON_TAILINGS_SWEEP]);
   if (sectorId === IO_BELL_SECTOR_ID) return Object.freeze([IO_BELL_RINGER]);
   if (sectorId === ASHFALL_SCARECROW_SECTOR_ID) return Object.freeze([ASHFALL_CLAIM_SCARECROW]);
+  if (sectorId === HYPERION_YARD_SECTOR_ID) return Object.freeze([HYPERION_YARD_WINCH]);
   return Object.freeze([]);
 }
 

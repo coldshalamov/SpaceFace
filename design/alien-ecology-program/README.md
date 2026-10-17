@@ -1,6 +1,6 @@
 # Alien Ecology Program
 
-Status: durable design source; not admitted implementation work by itself.
+Status: durable design source; not admitted implementation work by itself. Disposition: PR #170's AE waves (cycles 1-3) merged to master, verified by test/sfq-b003-branch-reality.test.mjs; all alienEcology* and precursorMachines paths live on master.
 
 This folder turns the owner's alien-ecology direction into a buildable program. It is intentionally broader than a faction brief. The goal is to make the late game feel as though the known human world is gradually losing its monopoly on reality.
 

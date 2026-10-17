@@ -1645,6 +1645,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) gives the berth head ~700px, so the tab body starts under COMMS (bench 4, same on master). The ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Tech-tree star hit boxes @844×390.
 
+## Station Market in a mid-size desktop window — 651–900 wide, 461–800 tall (ui-polish-74)
+
+**Before (master 6391422a55):** at 700×600, 800×600 and 900×600 the Market kept the family ladder beside the register and the two-column reading, so the register's name column was a few pixels wide ("Iron Ore" sat under its own price, "Silicate / Rock" broke in two) and at 700×600 the analysis title stood one letter wide ("RAW / ORE / LEGAL", "Iro / n / Or / e"). Bench 700×600: 6 tangled.
+
+**After (`marketLayouts.js` only, CSS):** the three existing 651–900 × ≤460 rules now run up to 800 tall. The families wrap into a strip over the register (every family still on the board), so the commodity names get ~100px on one line. The reading is one column: kind line, name, then the price with YOU PAY · ONE UNIT NOW beside it and the trace at full width. At 651–720 the REPAIR NOW / FLY DAMAGED verbs stack in one column. ROUTE INTELLIGENCE closes up so it reads on one line from ~760 wide. Selectors and IDs are unchanged; 960 wide and up, phones and ≤460-tall windows are untouched.
+
+**Checked:** bench `station-market` 700×600 tangled 6 → 4 (the 4 left are the rail's INDUSTRY under COMMS, not Market); 800×600, 900×600 and 844×390 0. The CUT OFF/OFF FRAME notes at 900×600 are rows scrolled inside the register. Focused tests: `market-driver-presenter` 4/4, `station-field-hardware` 7/7. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish74/compare-market-{700x600,900x600}.png`.
+
+**Leftovers (not this pass):** the station rail at 651–720 × 600 still prints INDUSTRY under COMMS (shows as "II"). ROUTE INTELLIGENCE wraps to two lines at 700. The 390-wide desktop berth header.
+
 ## TRADE CLEARED receipt on the other station tabs, and the destination words at 801–999 (2026-10-17, ui-polish-73)
 
 **Before (master f079f9e12c):** after a trade the receipt (~480px, one line) stood over the comms words, ~340px from the right edge, so on every tab it ran off the right edge (844×390 by 241px, 960×540 and 1024×768 by 149px, 1280×720 by 37px). At 700–900 wide it was worse: the overflow scrolled the whole berth sideways, so "HELIOS STATION", the Hull dial and the tab list lost their left edge (900×600 Missions, 700×600 Missions/Factions/Bar/Ledger). The destination words were also cut: at 801–900 × 461–800 the rail is capped, so MISSIONS … LEDGER fell out of the dock, and at 960×540 LEDGER was clipped.

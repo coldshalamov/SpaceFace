@@ -11,8 +11,9 @@
 //   charon_tailings_sweep one sheet lying across the haul road   - the only machine that drags you along your own road
 //   io_bell_ringer      channel sheet + well on the anvil        - the only herd-then-hold
 //   ashfall_claim_scarecrow  repulsor ring keeping a claim hollow - the only machine that shoves you out
+//   hyperion_yard_winch  plain cracker feed at the claim yard    - the family shape, at the live yard
 //
-// All six run the shared law every mouth runs: warning registers the volume at strength 0,
+// All seven run the shared law every mouth runs: warning registers the volume at strength 0,
 // surge is the bite, calm is the safe window. None is a damage aura.
 
 import test from 'node:test';
@@ -26,6 +27,8 @@ import {
   ASHFALL_SCARECROW_SECTOR_ID,
   CHARON_SWEEP_SECTOR_ID,
   CHARON_TAILINGS_SWEEP,
+  HYPERION_YARD_SECTOR_ID,
+  HYPERION_YARD_WINCH,
   IO_BELL_RINGER,
   IO_BELL_SECTOR_ID,
   KILL_MACHINES,
@@ -57,6 +60,7 @@ const CR_FEED_MACHINES = Object.freeze([
   { machine: CHARON_TAILINGS_SWEEP, sectorId: CHARON_SWEEP_SECTOR_ID, kind: 'road-drag' },
   { machine: IO_BELL_RINGER, sectorId: IO_BELL_SECTOR_ID, kind: 'herd-then-hold' },
   { machine: ASHFALL_CLAIM_SCARECROW, sectorId: ASHFALL_SCARECROW_SECTOR_ID, kind: 'hollow-guard' },
+  { machine: HYPERION_YARD_WINCH, sectorId: HYPERION_YARD_SECTOR_ID, kind: 'yard-feed' },
 ]);
 
 function fieldAlong(machine, field) {
@@ -246,6 +250,18 @@ test('no two of them is the same kind of object', () => {
   assert.ok(crow.hazardRadius >= crow.fields[0].radius,
     `the mouth disc (${crow.hazardRadius}) covers the shove's reach (${crow.fields[0].radius})`);
 
+  // 7 - YARD-FEED: hyperion_yard_winch reuses the census's plain cracker shape on purpose -
+  // one forward cone intake behind the gantry, one breaking plate down-range, the same family
+  // as helios_claim_cracker and fissure_cracker. Its difference is siting and fiction, not a
+  // new shape axis: the live machine at the claim yard, standing where the dead Half-Cut is
+  // not. It must trip none of the six exclusive axes above - the loop below proves it.
+  const winch = HYPERION_YARD_WINCH;
+  assert.equal(winch.fields.length, 1, 'the winch is a single-field feed');
+  assert.equal(winch.fields[0].kind, 'cone', 'the intake is directional');
+  assert.equal(winch.fields[0].dirAlong, 1, 'the winch draws forward off the apron');
+  assert.ok(winch.fields[0].along < 0, 'the intake registers behind the gantry face');
+  assert.ok(anvilAlong(winch) > 0, 'the breaking plate sits down-range of the gantry');
+
   // The six axes are unique across the WHOLE census, not just across the new six - which is what
   // "non-copy" has to mean if a later sitting is going to keep the promise. The unit of comparison
   // is the machine's shape, not an individual field: the shear legitimately uses one reversed jaw
@@ -292,9 +308,32 @@ test('no two of them is the same kind of object', () => {
   assert.equal(straddlingSheet(sweep), true);
   assert.equal(herdThenHold(ringer), true);
   assert.equal(hollowGuard(crow), true);
+  // The yard-feed pins the promise it just read: family shape, none of the six special axes.
+  assert.equal(isConvergingPair(winch), false);
+  assert.equal(killsBehindItsFace(winch), false);
+  assert.equal(offCentreGather(winch), false);
+  assert.equal(straddlingSheet(winch), false);
+  assert.equal(herdThenHold(winch), false);
+  assert.equal(hollowGuard(winch), false);
 });
 
-test('all six run the shared law: warning quiet, surge bites, calm is the safe window', () => {
+test('hyperion_yard_winch: the live machine at the yard, never a second Half-Cut', () => {
+  // worldOneOffs oneoff_half_cut sits at station_hyperion_cut (-640, 480) + offset (580, -420)
+  // = (-60, 60) sector-local - the drill platform that died mid-bite on a seamed rock. The
+  // winch is its live cousin and stands on the claim apron, a sector away from the wreck.
+  const halfCut = { x: -60, z: 60 };
+  const d = Math.hypot(halfCut.x - HYPERION_YARD_WINCH.localPos.x, halfCut.z - HYPERION_YARD_WINCH.localPos.z);
+  assert.ok(d > 1200, `the live winch stands ${Math.round(d)} WU from the dead Half-Cut`);
+  // The crews' docking post is never inside the bite: the working face points up the seam
+  // side (north-west), the approach stays clear of every field the winch writes.
+  const post = SECTOR_ANCHORS[HYPERION_YARD_SECTOR_ID].stations
+    .find((s) => s.id === 'station_hyperion_claim');
+  assert.ok(post, 'the claim post is authored');
+  assert.equal(pointInsideKillMachine(HYPERION_YARD_WINCH, post.pos), false,
+    'the claim post sits outside every field of the winch');
+});
+
+test('all seven run the shared law: warning quiet, surge bites, calm is the safe window', () => {
   for (const { machine } of CR_FEED_MACHINES) {
     const cycle = machine.cycle;
     const at = (offsetS) => killMachinePhase(machine, machine.phaseOffsetS + offsetS);
