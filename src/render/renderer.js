@@ -15275,6 +15275,11 @@ export const render = {
       // serial GPU unit (presented-frame wait + gl.finish), and the default 4 made the first-frame
       // census ~28.7 s of mostly idle main thread on SwiftShader. The 8 MB batch byte cap still holds.
       const residencyBatchDrawables = () => (serialLinkRoute && state.mode === 'loading' ? 32 : undefined);
+      // Same route and window for texture uploads: up to 16 textures / 8 MB share one serial unit
+      // (one yield + presented-frame wait + gl.finish) instead of one unit per texture. Every other
+      // route (and flight) keeps the per-texture default.
+      const residencyTextureBatch = () => (serialLinkRoute && state.mode === 'loading'
+        ? { textureBatchCount: 16, textureBatchBytes: 8 * 1024 * 1024 } : null);
       // The composition settle and the queue-idle wait both pump the same authored
       // upgrade queue — the settle feeds it opening jobs, the idle waits for the
       // queue to empty. Serial waits paid settle-timeout + idle-timeout back to
@@ -16604,6 +16609,7 @@ export const render = {
           if (cookStale()) return cookSuperseded;
           firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
             geometryBatchDrawables: residencyBatchDrawables(),
+            ...residencyTextureBatch(),
             yieldToMain: createSlicedYield(yieldToBrowser, {
               sliceMs: 16,
               shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
@@ -18125,6 +18131,10 @@ export const render = {
       const bufferBatchDrawables = state.mode === 'loading'
         && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })
         ? 32 : undefined;
+      // Texture uploads on the same route/window: 16 textures / 8 MB per serial unit, not one unit
+      // (yield + presented-frame wait + gl.finish) per texture; 131 opening textures made this step
+      // ~10 s of idle main thread on SwiftShader. Other routes keep the per-texture default.
+      const bufferTextureBatch = bufferBatchDrawables ? { textureBatchCount: 16, textureBatchBytes: 8 * 1024 * 1024 } : null;
       let buffers;
       try {
         if (cookOverBudget()) {
@@ -18133,12 +18143,14 @@ export const render = {
           buffers = options.skipBuffers === true
             ? await prepareStartupGpuResidency(renderer, firstFlightBufferRoots, {
               geometryBatchDrawables: bufferBatchDrawables,
+              ...bufferTextureBatch,
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
             })
             : await prepareStartupGpuResidency(renderer, scene, {
               geometryBatchDrawables: bufferBatchDrawables,
+              ...bufferTextureBatch,
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
