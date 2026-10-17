@@ -1645,6 +1645,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** a 390-wide *desktop* window (not a phone) gives the berth head ~700px, so the tab body starts under COMMS (bench 4, same on master). The ≤800-tall receipt on the other station tabs still runs off the right edge when it's long. Tech-tree star hit boxes @844×390.
 
+## Station Market in a mid-size desktop window — 651–900 wide, 461–800 tall (ui-polish-74)
+
+**Before (master 6391422a55):** at 700×600, 800×600 and 900×600 the Market kept the family ladder beside the register and the two-column reading, so the register's name column was a few pixels wide ("Iron Ore" sat under its own price, "Silicate / Rock" broke in two) and at 700×600 the analysis title stood one letter wide ("RAW / ORE / LEGAL", "Iro / n / Or / e"). Bench 700×600: 6 tangled.
+
+**After (`marketLayouts.js` only, CSS):** the three existing 651–900 × ≤460 rules now run up to 800 tall. The families wrap into a strip over the register (every family still on the board), so the commodity names get ~100px on one line. The reading is one column: kind line, name, then the price with YOU PAY · ONE UNIT NOW beside it and the trace at full width. At 651–720 the REPAIR NOW / FLY DAMAGED verbs stack in one column. ROUTE INTELLIGENCE closes up so it reads on one line from ~760 wide. Selectors and IDs are unchanged; 960 wide and up, phones and ≤460-tall windows are untouched.
+
+**Checked:** bench `station-market` 700×600 tangled 6 → 4 (the 4 left are the rail's INDUSTRY under COMMS, not Market); 800×600, 900×600 and 844×390 0. The CUT OFF/OFF FRAME notes at 900×600 are rows scrolled inside the register. Focused tests: `market-driver-presenter` 4/4, `station-field-hardware` 7/7. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish74/compare-market-{700x600,900x600}.png`.
+
+**Leftovers (not this pass):** the station rail at 651–720 × 600 still prints INDUSTRY under COMMS (shows as "II"). ROUTE INTELLIGENCE wraps to two lines at 700. The 390-wide desktop berth header.
+
 ## Station foot on a short narrow desktop window: every destination word on the rail (ui-polish-75)
 
 **Before (master 6391422a55):** at 651–800 wide and 461–800 tall, the seven destination words (~715px at full tracking) were capped at 64vw, so only MARKET and SHIPWORKS showed, INDUSTRY ran under COMMS, and MISSIONS, FACTIONS, BAR and LEDGER were off the rail.
