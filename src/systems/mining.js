@@ -115,6 +115,14 @@ const BEAM_REFUSAL_TEXT = Object.freeze({
   'presentation-unavailable': 'The beam won\'t work that',
   'operation-unavailable': 'That job isn\'t open',
   'operation-no-progress': 'The beam isn\'t moving that',
+  'dependency-incomplete': 'Finish the prerequisite step on this site first',
+  'section-already-cut': 'That section is already cut free',
+  'payload-not-ready': 'Release the site payload before working that cradle',
+  'payload-not-delivered': 'Seat the payload in the receiver first',
+  'receiver-settled': 'That receiver has already settled its load',
+  'state-unavailable': 'That site component is not ready for the beam',
+  'component-state': 'That site component is not ready for the beam',
+  'complete': 'That site work is already finished',
   'orchard-site-beam-required': 'Select the Orchard frame and use the World Site beam',
   'orchard-invalid-frame': 'That Orchard frame is not ready for the beam',
   'orchard-select-socket': 'Select an Orchard pod socket first',
@@ -612,6 +620,7 @@ export const mining = {
         reason: 'presentation-unavailable',
       });
       this._noteBeamRefusal('presentation-unavailable');
+      this._stopBeam();
       return { ok: false, duplicate: false, reason: 'presentation-unavailable', moved: 0 };
     }
     // A completed component advertises no verb or operation (its authored work is a durable
@@ -629,6 +638,7 @@ export const mining = {
         reason,
       });
       this._noteBeamRefusal(reason);
+      this._stopBeam();
       return { ok: false, duplicate: false, reason, moved: 0 };
     }
     if (!completedOffer && (!component || !component.verb || !component.operationId)
@@ -640,6 +650,7 @@ export const mining = {
         reason: 'operation-unavailable',
       });
       this._noteBeamRefusal('operation-unavailable');
+      this._stopBeam();
       return { ok: false, reason: 'operation-unavailable' };
     }
 
@@ -656,15 +667,12 @@ export const mining = {
       tick: state.tick | 0,
     });
 
-    this._setLockTargetId(target.id);
-    this._activeVerb = component.verb;
-    this._beaming = true;
-    this._activeBeamLine = beamLineFor(player, target);
-    if (this._activeBeamLine) this._activeBeamLine.verb = component.verb;
-
-    // A replay is a complete no-op: asteroidSites returns the same record and no intents; the
-    // mining adapter likewise emits no synthetic success/start edge for the repeated receipt.
-    if (result.duplicate) return result;
+    // A replay or a refusal is not a live cut. Drop the beam before any lock is taken so a
+    // finished or rejected site job cannot keep the tool latched on.
+    if (result.duplicate) {
+      this._stopBeam();
+      return result;
+    }
     if (!result.ok || !(result.moved > 0)) {
       this.bus.emit('beam:denied', {
         minerId: player.id,
@@ -673,8 +681,15 @@ export const mining = {
         reason: result.reason || 'operation-no-progress',
       });
       this._noteBeamRefusal(result.reason || 'operation-no-progress');
+      this._stopBeam();
       return result;
     }
+
+    this._setLockTargetId(target.id);
+    this._activeVerb = component.verb;
+    this._beaming = true;
+    this._activeBeamLine = beamLineFor(player, target);
+    if (this._activeBeamLine) this._activeBeamLine.verb = component.verb;
 
     if (starting) {
       this.bus.emit('mining:start', {
@@ -684,6 +699,9 @@ export const mining = {
         position: { x: target.pos.x, z: target.pos.z },
       });
     }
+    // The finishing tick is the last one the pilot should see. Close the cycle in the same
+    // breath as the start edge so a completed cut, repair, or transfer does not stay latched.
+    if (result.receipt && result.receipt.complete) this._stopBeam();
     return result;
   },
 
