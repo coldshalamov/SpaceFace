@@ -11,6 +11,13 @@ export function pickupHoldIsFull(cargo) {
     && Number.isFinite(cargo.usedVolume) && cargo.usedVolume >= cargo.capVolume;
 }
 
+// TEACH-11 — a refusal took nothing from a hold already at its volume cap.
+// The scoop that filled the hold accepted units; that beat is not a refusal.
+export function isFullHoldRefusal(cargo, acceptedAmount = 0) {
+  if (Number(acceptedAmount) > 0) return false;
+  return pickupHoldIsFull(cargo);
+}
+
 export function finiteWholePickupAmount(value) {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
     ? Math.floor(value)

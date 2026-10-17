@@ -22,7 +22,7 @@
 
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { IS_DEMO } from '../core/demoMode.js';
-import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { isFullHoldRefusal, successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
 import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
@@ -431,6 +431,8 @@ export const onboarding = {
     this._modalAriaHidden = null;
     this._accum = 0;
     this._lastTextAtS = -Infinity;
+    this._holdGrewBeforeFull = false;
+    this._holdGrewClearQueued = false;
 
     this._dockControlInRange = false;
     this._gateControlInRange = false;
@@ -641,10 +643,14 @@ export const onboarding = {
       this._showHint('firstGate', firstUseLine('firstGate'), payload);
     });
 
-    // First cargo full: teach the player to sell.
-    bus.on('cargo:full', (p) => {
-      this._showHint('firstCargoFull', firstUseLine('firstCargoFull'), p);
-    });
+    // An add that fit emits cargo:changed and, when it also overflowed, cargo:full
+    // in the same turn. The flag dies with that turn: an exact fill never emits
+    // cargo:full, and the pickup listener below clears it before the next rock.
+    bus.on('cargo:changed', () => this._noteHoldGrew());
+    // First cargo full still teaches the sale — unless the hold was already full
+    // and this add took nothing. That refusal names the jettison key once (TEACH-11).
+    bus.on('cargo:full', (p) => this._onCargoFull(p || {}));
+    bus.on('pickup:collected', () => { this._holdGrewBeforeFull = false; });
 
     // First frontier crossing (2026-09-28 INFERENCE): the first uncharted sector the player
     // enters gets ONE line — the chart ends here, the rim is theirs to name. Fires on
@@ -924,6 +930,40 @@ export const onboarding = {
     if (hints && hints[key]) return false;
     this._showHint(key, line, p);
     return !!(st.player.hints && st.player.hints[key]);
+  },
+
+  // TEACH-11 — the first full-hold refusal names the bound jettison key, once per
+  // profile. Later rocks stay quiet. A scoop that still accepted units is the sell
+  // lesson above, not this one. No key to name (touch, unbound) leaves that lesson.
+  _noteHoldGrew() {
+    this._holdGrewBeforeFull = true;
+    if (this._holdGrewClearQueued) return;
+    this._holdGrewClearQueued = true;
+    queueMicrotask(() => {
+      this._holdGrewBeforeFull = false;
+      this._holdGrewClearQueued = false;
+    });
+  },
+
+  _onCargoFull(payload) {
+    const grew = this._holdGrewBeforeFull === true;
+    this._holdGrewBeforeFull = false;
+    const cargo = this.state && this.state.player && this.state.player.cargo;
+    if (isFullHoldRefusal(cargo, grew ? 1 : 0) && this._speakFullHoldJettison(payload)) return;
+    this._showHint('firstCargoFull', firstUseLine('firstCargoFull'), payload);
+  },
+
+  _speakFullHoldJettison(payload) {
+    const st = this.state;
+    if (!st || !st.player) return false;
+    if (st.player.hints && st.player.hints.firstFullHoldJettison) return true;
+    const label = verbBindingLabel(st, 'jettisonLot');
+    if (!label) return false;
+    const text = /[.!?]$/.test(label)
+      ? `Hold is full — jettison — ${label}`
+      : `Hold is full — jettison — ${label}.`;
+    this._showHint('firstFullHoldJettison', text, payload);
+    return !!(st.player.hints && st.player.hints.firstFullHoldJettison);
   },
 
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
