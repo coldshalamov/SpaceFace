@@ -1666,4 +1666,6 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Checked:** shots at 651×600, 700×600, 720×461, 800×600, 800×800 (in band) and 960×540, 1280×720 (out of band, as before). Focused tests: `station-field-hardware` 7/7, `next-wave-nxi-098` 5/5. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish76/{before,b0,after}/`.
 
+**Review fix (Code Work):** at 651 the 200px slot floor narrowed the job list 400 → 371px, so YOURS "Mass Variance Sample" ran into TRACKED (master keeps a gap). The floor is now 180px, so the list stays 390px across 651–790 (as at 700). Below 700 the term values had a ~46–66px column and split words ("contr/act", "accou/nt"), so at 651–699 each term's label now stands over its value.
+
 **Leftovers:** at 651×600 the head's DISMISS takes its own line, so ACCEPT sits under the fade until you scroll; at 720×461 only the title shows before scrolling. At 960×540 the legend still reads "PASSENGER TRANSPO…". The YOURS row at 651 still runs "Mass Variance Sample" into TRACKED (same on master).
