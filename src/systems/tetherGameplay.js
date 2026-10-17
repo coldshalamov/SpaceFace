@@ -200,6 +200,7 @@ export const tetherGameplay = {
     this._tensionEstimate = 0;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
+    this._noRelatchTargetId = null;
     this._pendingCut = null;
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
@@ -229,6 +230,8 @@ export const tetherGameplay = {
     this._resetAcquisitionRuntime(this.state);
     this._resetTwinBridleRuntime(this.state, null, true);
     const resetAfterLoad = () => {
+      this._noRelatchUntil = -Infinity;
+      this._noRelatchTargetId = null;
       this._resetCadenceRuntime(this.state);
       // Combat persistence restores attachment ids but remaps their live endpoints. Drop the
       // outgoing run's private endpoint cache so _adoptExisting reads the canonical restored line;
@@ -253,6 +256,8 @@ export const tetherGameplay = {
       this._snag = null;
     };
     const resetForNewGame = () => {
+      this._noRelatchUntil = -Infinity;
+      this._noRelatchTargetId = null;
       this._resetCadenceRuntime(this.state);
       this._cancelDrillApproach('new_game');
       this._npcBridleCutTicks.clear();
@@ -434,6 +439,7 @@ export const tetherGameplay = {
         this._pendingCut = null;
         this._ignoreReleaseCutUntilReelIdle = false;
         this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+        this._noRelatchTargetId = null;
         this._resetPhaseMirror();
         this._mirror(state, null, 0);
         return;
@@ -573,7 +579,12 @@ export const tetherGameplay = {
     if (!wantsLatch) return;
     // Readable failure reasons (T04): never fail latch silently. The ORDER below is load-bearing —
     // cooldown outranks a missing def (pinned by T04 §3 in test/tether-latch-eligibility.test.mjs).
-    if (now < this._noRelatchUntil) {
+    this._lastLatchDenial = null;
+    const commandLatch = nearestOnly && def ? this._acquireCommandTarget(player, def, state) : null;
+    const candidate = nearestOnly ? commandLatch?.entity
+      : state.entities.get(state.masslineAcquisition?.selected?.targetId);
+    if (now < this._noRelatchUntil && (this._noRelatchTargetId == null
+        || !candidate || candidate.id === this._noRelatchTargetId)) {
       this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
       return;
     }
@@ -582,9 +593,8 @@ export const tetherGameplay = {
       this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
       return;
     }
-    this._lastLatchDenial = null;
     const latch = nearestOnly
-      ? this._acquireCommandTarget(player, def, state)
+      ? commandLatch
       : this._consumeAcquisitionReceipt(player, def, state, now);
     let target = latch && latch.entity;
     if (!target) {
@@ -613,6 +623,8 @@ export const tetherGameplay = {
       return;
     }
 
+    this._noRelatchUntil = 0;
+    this._noRelatchTargetId = null;
     this._active = {
       attachmentId: result.attachment.id,
       targetId: target.id,
@@ -948,6 +960,7 @@ export const tetherGameplay = {
     const result = attachments.cut(attachmentId, player.id, 'tether_cut');
     this._bridleActive = null;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._noRelatchTargetId = null;
     this._endTwinBridleMirror(state, 'player_cut');
     if (result && result.ok) {
       this.bus.emit('massline:bridleCut', { attachmentId, sourceId, targetId });
@@ -1162,7 +1175,8 @@ export const tetherGameplay = {
       now,
       snapshot,
       stable.selected,
-      now < this._noRelatchUntil ? 'cooldown' : null,
+      now < this._noRelatchUntil && (this._noRelatchTargetId == null
+        || stable.selected?.id === this._noRelatchTargetId) ? 'cooldown' : null,
     );
     return state.masslineAcquisition;
   },
@@ -1318,6 +1332,7 @@ export const tetherGameplay = {
     this._pendingCut = null;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._noRelatchTargetId = reason === 'tether_cut' ? targetId : null;
     if (reason === 'tether_cut') {
       this.bus.emit('tether:released', { targetId });
       // A cut that lands through reconcile (e.g. the self-sling manual cut) is still the
@@ -1961,8 +1976,13 @@ export const tetherGameplay = {
     this._lastLineControlDenial = null;
     this._lastCutDenial = null;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._noRelatchTargetId = targetId;
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
+    const def = attachmentDef(combatKernel(this), TETHER_DEF_ID);
+    if (def && state.input?.tetherMode !== 'nearest') {
+      this._refreshAcquisitionPreview(player, def, state, now, true, true);
+    }
     return !!(result && result.ok);
   },
 
@@ -2189,6 +2209,7 @@ export const tetherGameplay = {
     if (typeof this._mirror === 'function') this._mirror(state, null, 0);
     const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._noRelatchTargetId = null;
     const playerState = state.player;
     if (playerState && playerState.targetId != null) {
       const target = state.entities && typeof state.entities.get === 'function'
@@ -2219,6 +2240,7 @@ export const tetherGameplay = {
     }
     const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._noRelatchTargetId = null;
     this._resetPhaseMirror();
     if (state.player && state.player.targetId === targetId) state.player.targetId = null;
     this._mirror(state, null, 0);
