@@ -1925,6 +1925,9 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch { gap:10px !important; }
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 16px) !important; }
+  /* the stacked COMMS/HELP box is taller, so #446's Market line (100% − 4px) fell onto the destination words and took their
+     clicks; on the Market too it rides 16px over the box (one class more than #446's rule, which is injected later) (Code Work review) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-comms > .sx-receipt { bottom:calc(100% + 16px) !important; }
 }
 @media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 24px) !important; padding:0 !important;
