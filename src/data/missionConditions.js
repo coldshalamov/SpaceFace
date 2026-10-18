@@ -77,6 +77,12 @@ export const QUIET_APPROACH_SPEED = 55;    // wu/s — a hot burn into a customs
 export const QUIET_APPROACH_HOLD_S = 2.0;
 export const SOLID_WHIP_RATINGS = Object.freeze(['solid', 'crushing']);
 export const CLEAN_RELEASE_CLASSES = Object.freeze(['clean', 'razor']);
+// M18 honest shortcut — a delivery punctuality premium earned by local geometry knowledge.
+// The sling must be recent (an old swing is not punctuality) and the delivery must land well
+// inside the window (a photo finish is scheduling, not a shortcut). Both are NEW tuning owned
+// by this catalog: no flight constant, no deadline, no payout base is retuned.
+export const HONEST_SLING_SLING_WINDOW_S = 240;  // the swing counts this long after the cut
+export const HONEST_SLING_EARLY_FRACTION = 0.6;  // settle inside the first 60% of the window
 
 const isPlayerOf = (id, ctx) => id != null && ctx && ctx.playerId != null && id === ctx.playerId;
 
@@ -330,10 +336,82 @@ export const MISSION_CONDITIONS = Object.freeze({
     },
   }),
 
-  // ── 10. LAND MASS ON THEM ───────────────────────────────────────────────────────────────────
-  // tether:whipImpact { victimId, relSpeed, mass, momentum, rating } — src/systems/masslineImpacts.js:184,
-  // ungated by any feature flag. A "solid" or "crushing" rating means you actually put weight into
-  // something. This is the game's thesis expressed as a contract term.
+  // ── 10. THE HONEST SHORTCUT (M18) ───────────────────────────────────────────────────────
+  // A delivery punctuality premium earned by local geometry knowledge, not by a faster ship:
+  // swing a Massline anchor and let go clean (the sling), then brake honestly and run out under
+  // control to the berth, settling well inside the contract window. Emitter verified:
+  // src/systems/tetherGameplay.js emits tether:releaseRated on every cut/break with the cadence
+  // grade (classification clean|razor on a real tangent release, deliberate on a player cut).
+  // The timing half is a tick sample against the mission's own window, so no new event exists.
+  //
+  // Premium-only (blocking false, onBreach unused): a delivery without the sling — or a slung
+  // run that arrives late or hot — still settles at exactly base pay. The turn-in is never
+  // refused and the contract never fails on this term; the receipt reads `unmet`, never breach.
+  // One event per definition (the language counts each half through the shared tally): the event
+  // half stamps the sling, the tick half stamps the early controlled arrival, and the term pays
+  // only when BOTH stamps are present at settlement. honest_sling is the catalog's first
+  // dual-half term, so TICK_CONDITION_IDS names it explicitly alongside the event-free terms —
+  // the observer routes the sling event, the per-tick slot routes the arrival sample.
+  honest_sling: Object.freeze({
+    id: 'honest_sling',
+    kind: 'require',
+    blocking: false,        // premium-only: never refuses the turn-in, never fails the contract
+    event: 'tether:releaseRated',
+    count: 2,               // TWO stamps through the one shared tally: the sling, then the arrival
+    rewardMult: 1.25,
+    label: 'Honest shortcut',
+    prose: 'Know the local geometry: sling an anchor and let go clean on the Massline, then brake honest and run out under control to the berth well inside the window. Early slung deliveries earn a punctuality premium on top of base pay.',
+    brief: 'Sling an anchor clean, deliver early and under control.',
+    pendingText: 'No honest shortcut logged yet — sling an anchor clean and bring her in early and under control.',
+    satisfiedText: 'Honest shortcut logged — early and under control off a clean sling.',
+    appliesTo: ['cargo_delivery'],
+    minRisk: 1,
+    match(payload, ctx) {
+      // The sling half: the PLAYER's deliberate clean-or-razor release. Breaks, target loss,
+      // and other pilots' lines never stamp it (rateRelease marks deliberate only on a cut).
+      if (!payload || !isPlayerOf(payload.sourceId, ctx)) return false;
+      if (payload.deliberate !== true) return false;
+      if (!CLEAN_RELEASE_CLASSES.includes(payload.classification)) return false;
+      const mission = ctx && ctx.mission;
+      if (mission) {
+        if (!mission._clauseState) mission._clauseState = {};
+        const runtime = mission._clauseState.honest_sling
+          || (mission._clauseState.honest_sling = { count: 0 });
+        // Stamp simTime, never a zero default: a sling fired at the epoch start must still
+        // read as fresh against the window math below.
+        runtime.slingAt = Number.isFinite(ctx.simTime) && ctx.simTime > 0 ? ctx.simTime : 0.001;
+      }
+      return true;
+    },
+    // The arrival half: well inside the mission's own window, alongside the berth and under
+    // control (BERTH_RANGE_WU / BERTH_SPEED, the same limits soft_berth teaches). Sampled per
+    // tick; the shared tally latches it exactly once. The SAME count-2 tally both halves share
+    // means the event arm alone (sling, 1 of 2) never satisfies — arrival must follow while the
+    // swing is fresh. A stale swing simply leaves the term at 1 of 2: unmet at settlement, never
+    // a breach.
+    holdS: BERTH_HOLD_S,
+    tickSample(ctx) {
+      const mission = ctx && ctx.mission;
+      if (!mission) return false;
+      const runtime = mission._clauseState && mission._clauseState.honest_sling;
+      // No sling, no shortcut: the arrival half cannot stamp first.
+      if (!runtime || !Number.isFinite(runtime.slingAt)) return false;
+      if (runtime.satisfied || runtime.breached) return false;
+      const now = Number.isFinite(ctx.simTime) ? ctx.simTime : 0;
+      // The swing goes stale: an old sling is not punctuality.
+      if (now - runtime.slingAt > HONEST_SLING_SLING_WINDOW_S) return false;
+      const acceptedAt = Number(mission.acceptedAt_s);
+      const deadline = Number(mission.deadline_s);
+      if (!Number.isFinite(acceptedAt) || !Number.isFinite(deadline) || deadline <= acceptedAt) return false;
+      if (now > acceptedAt + (deadline - acceptedAt) * HONEST_SLING_EARLY_FRACTION) return false;
+      if ((ctx.speed || 0) >= BERTH_SPEED) return false;
+      return berthDistance(ctx) <= BERTH_RANGE_WU;
+    },
+  }),
+
+  // ── 11. LAND MASS ON THEM ───────────────────────────────────────────────────────────────────
+  // tether:whipImpact carries a solid-or-crushing rating when real weight lands on something.
+  // This is the game's thesis expressed as a contract term.
   mass_on_target: Object.freeze({
     id: 'mass_on_target',
     kind: 'require',
@@ -353,7 +431,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     },
   }),
 
-  // ── 11. THROW IT ────────────────────────────────────────────────────────────────────────────
+  // ── 12. THROW IT ────────────────────────────────────────────────────────────────────────────
   // massline:throw (src/systems/masslineThrow.js:425) is gated on massline2Flag('throw') — ON in the
   // production profile, OFF in legacy47a. A require term that cannot fire would be a soft-lock, so
   // requiresFeature refuses attachment wherever the verb does not exist.
@@ -377,7 +455,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     },
   }),
 
-  // ── 12. BULK ON THE LINE ────────────────────────────────────────────────────────────────────
+  // ── 13. BULK ON THE LINE ────────────────────────────────────────────────────────────────────
   // Lane 5 made the bulk core chunk reachable for the first time; asteroid:chunked now carries
   // { bulkCore, massU } (src/systems/mining.js:966). A forfeit-grade term so a field with no rock
   // large enough to core can never void a contract — it only costs the premium.
@@ -400,7 +478,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     },
   }),
 
-  // ── 13. SILENT RUNNER ───────────────────────────────────────────────────────────────────────
+  // ── 14. SILENT RUNNER ───────────────────────────────────────────────────────────────────────
   // Covert infiltration discipline (Wave M2 §4.2 cloak integration): slip through the lane without
   // blowing your cloak via forced depletion or combat breach. Emitter verified: src/systems/cloak.js:117
   // emits cloak:dropped { reason, energy }. A breach reason of 'depleted' (ran out of power) or
@@ -425,7 +503,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     },
   }),
 
-  // ── 14–18. TWIST CLAUSES (PQ-152.03) ────────────────────────────────────────────────────────
+  // ── 15–19. TWIST CLAUSES (PQ-152.03) ────────────────────────────────────────────────────────
   // Mid-run terms. They fire during the job and mutate the contract (PQ-138.04) instead of
   // voiding it. `fits` stays false so the existing physics-term attach pool — and its goldens —
   // cannot see them. missions._withConditions stamps them on a separate `twist` seed stream.
@@ -632,9 +710,12 @@ export const MISSION_CONDITION_EVENTS = Object.freeze([...new Set(
     .filter((event) => typeof event === 'string' && event.length > 0),
 )]);
 
-/** Conditions with no `event` are evaluated by the per-tick predicate slot in missions.update(). */
+/** Conditions with no `event` — plus honest_sling, whose tick half stamps the arrival — are
+ * evaluated by the per-tick predicate slot in missions.update(). honest_sling carries an event
+ * (the sling half) AND a tickSample (the arrival half): the observer routes the sling, the slot
+ * routes the arrival, and the shared count-2 tally joins them. */
 export const TICK_CONDITION_IDS = Object.freeze(
-  MISSION_CONDITION_IDS.filter((id) => !MISSION_CONDITIONS[id].event),
+  MISSION_CONDITION_IDS.filter((id) => !MISSION_CONDITIONS[id].event || id === 'honest_sling'),
 );
 
 /** The serializable row a condition contributes to `offer.clauses` (same shape a clause uses). */
