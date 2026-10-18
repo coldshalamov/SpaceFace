@@ -6142,6 +6142,7 @@ function checkWingmenSpawnAsLiveEntities() {
     wingmen._fleetSourceIds = [];
     wingmen._orderedFleet = [];
     wingmen._orderRuntime = new Map();
+    wingmen._braceRuntime = new Map();
     wingmen.helpers = {
       spawnEntity(spec) {
         const e = { id: nextEntId++, type: 'ship', alive: true,
