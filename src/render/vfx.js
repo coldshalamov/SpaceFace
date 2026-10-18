@@ -224,6 +224,7 @@ import { GAS_VOLUME_PAYLOAD_READY } from './combat/gas/gasVolumeData.js';
 import { DENSITY_VOLUME_PAYLOAD_READY } from './combat/densityVolumeData.js';
 import { ExplosionRupture, explosionRuptureFamily, explosionSourceMaterial } from './combat/explosionRupture.js';
 import { TetherWebFx } from './combat/tetherWebFx.js';
+import { NpcCableFx } from './combat/npcCableFx.js';
 import {
   commitInstancedSpriteBuckets,
   createInstancedSpriteBuckets,
@@ -1825,6 +1826,8 @@ export const vfx = {
     this._explosionRupture = null;
     invokeVfxDisposer(this._tetherWebFx, 'Snarl cables');
     this._tetherWebFx = null;
+    invokeVfxDisposer(this._npcCableFx, 'NPC cables');
+    this._npcCableFx = null;
     // The gyre presentation holds ShaderMaterials/geometries/a lump pool + a scene handle —
     // skipping teardown leaks GPU resources and leaves _initGyreSnare's stale-handle early
     // return permanently muting gyre VFX after a scene rebuild.
@@ -2050,6 +2053,7 @@ export const vfx = {
     );
     for (const root of arcadeRoots || []) add(root);
     add(this._tetherWebFx?.mesh);
+    add(this._npcCableFx?.group);
     const presenterRoots = this._weaponPresenter && (
       this._weaponPresenter.getOwnerRoots?.() || this._weaponPresenter.getMeshes?.()
     );
@@ -2296,6 +2300,7 @@ export const vfx = {
     this._initRibbonTrails();
     this._initMiningBeam();
     this._initTetherCable();
+    this._npcCableFx = new NpcCableFx(this._scene, this._combatBeamLocalizer, resolveMasslineAccessibilityPolicy);
     this._initArcPreview();
     this._initMasslineReleaseArc();
     this._initMasslineSwingTrace();
@@ -12538,6 +12543,7 @@ export const vfx = {
         if (freezeDt > 0.1) freezeDt = 0.1;
         this._t += freezeDt;
         if (this._tetherCableActive()) this._updateTetherCable(freezeDt);
+        this._npcCableFx?.update(this.state);
       }
       return;
     }
@@ -12765,6 +12771,7 @@ export const vfx = {
       this._arcadeStructural.update(dt, cam, viewportH);
     }
     this._tetherWebFx?.update(this.state);
+    this._npcCableFx?.update(this.state);
     if (this._combatBeams) {
       // Quiet open-flight residual after #91: call site still paid camDist +
       // resolveVfxAccessibilityProfile + worldSizeForPixels every tick while

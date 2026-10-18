@@ -1456,6 +1456,7 @@ export function createDomainDiffer(options = {}) {
       // hot walk does not repeatedly classify the same path.
       ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
       isCombatTrace: isCombatTracePath(segs),
+      isCombatAttachments: segs.length === 2 && segs[0] === 'combat' && segs[1] === 'attachments',
       isNpcJobsById: isNpcJobsByIdPath(segs),
       isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
       cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]),
@@ -1487,6 +1488,7 @@ export function createDomainDiffer(options = {}) {
     metadata = {
       ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
       isCombatTrace: isCombatTracePath(segs),
+      isCombatAttachments: segs.length === 2 && segs[0] === 'combat' && segs[1] === 'attachments',
       isNpcJobsById: isNpcJobsByIdPath(segs),
       isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
       cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? node.path : segs[0]),
@@ -1629,7 +1631,8 @@ export function createDomainDiffer(options = {}) {
         runAdmissionBootstrap = true;
       }
     }
-    if (node.lastSign >= 0 && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
+    // Active cable loads and cuts belong to the same reply as their moving bodies, at any table size.
+    if (node.lastSign >= 0 && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
         && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
