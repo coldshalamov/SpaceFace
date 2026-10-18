@@ -325,8 +325,7 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
     for (let i = 0; i < growthCount; i += 1) {
       const g = growth[i % growth.length];
       const extra = i >= growth.length; // bloom ring spills wider
-      const calcite = g.moduleId === 'calcified_collar' || g.moduleId === 'mineral_root';
-      const spec = {
+      const row = insertDressingRow(state, {
         type: 'fx',
         pos: world._toGlobal({
           x: site.center.x + g.dx * (extra ? 1.6 : 1),
@@ -343,19 +342,9 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
           siteId: site.siteId,
           alienEcology: true,
           scannerSignalKind: 'anomaly',
+          ...(g.moduleId === 'calcified_collar' || g.moduleId === 'mineral_root' ? { material: 'calcite' } : {}),
         },
-      };
-      // Brittle growth uses the existing resource-body owner, including its saved
-      // heat and destroyed tombstones. The authored skin still renders the same piece.
-      const row = calcite ? world.helpers.spawnEntity({
-        ...spec, type: 'asteroid', collides: true, hull: 100, hullMax: 100,
-        physicsBody: { dynamic: true, radius: spec.radius },
-        data: { ...spec.data, material: 'calcite', fieldId: `alien_growth:${site.siteId}`,
-          asteroidSlotId: `${g.moduleId}:${i}`, yieldU: 0, orePool: {},
-          authoredGeologySkin: true, placeTargetRadius: spec.radius },
-      }) : insertDressingRow(state, spec);
-      if (calcite) world._restoreResourceBody?.(row);
-      if (!row || row.alive === false) continue;
+      });
       active.dressing.push({ id: row.id, placeId: `alien_growth_${g.moduleId}`, pos: row.pos, paletteClass: 'alien' });
     }
 

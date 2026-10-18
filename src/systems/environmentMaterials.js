@@ -142,8 +142,6 @@ export const environmentMaterials = {
         hull: Math.max(30, num(body.hullMax) / count), hullMax: Math.max(30, num(body.hullMax) / count),
         collides: true, flags: { persistent: true }, homeSectorId: body.homeSectorId || d.homeSectorId,
         data: environmentSurfaceData(material, { ...d, opticMaterial: undefined, opticStructureId: undefined, opticCell: undefined,
-          ...(d.alienEcology && material === 'calcite'
-            ? { authoredGeologySkin: undefined, placeId: undefined, moduleId: undefined, scale: undefined } : {}),
           // Rupture ends the bound aggregate. Fragments are ordinary material, never
           // new armed balls inheriting a stale core/member ledger or hold lifetime.
           gyreCore: undefined, gyreLaunched: undefined, gyreLaunchMeta: undefined,

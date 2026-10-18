@@ -9,9 +9,6 @@ import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { ENVIRONMENT_FAMILIES, environmentMaterialOf } from '../src/data/environmentMaterials.js';
 import { addEnvironmentHeat, environmentMaterials, queueEnvironmentImpact } from '../src/systems/environmentMaterials.js';
 import { materializeAlienEcology } from '../src/systems/alienEcology.js';
-import { world as worldSystem } from '../src/systems/world.js';
-import { serializeResourceBodyBag, deserializeResourceBodyBag } from '../src/world/resourceBodyRecords.js';
-import { hasExplicitAuthoredGeologyPresentation } from '../src/core/presentationAdmission.js';
 
 function boot() {
   const state = createGameState(4242);
@@ -22,7 +19,7 @@ function boot() {
   core.init(ctx);
   const owner = Object.create(environmentMaterials);
   owner.init(ctx);
-  return { state, bus, helpers, owner };
+  return { state, helpers, owner };
 }
 
 function body(h, x, data) {
@@ -170,73 +167,11 @@ test('seed 4242: a severed site stamps calcite on calcified collars and mineral 
     },
   };
   materializeAlienEcology(world, { id: site.sectorId }, active, [site]);
-  const rows = [...(state.world.dressing?.rows || []), ...state.entityList]
-    .filter((row) => row.data?.siteId === site.siteId && row.data?.alienEcology);
+  const rows = (state.world.dressing?.rows || []).filter((row) => row.data?.siteId === site.siteId);
   const calcite = rows.filter((row) => row.data.moduleId === 'calcified_collar' || row.data.moduleId === 'mineral_root');
   const rest = rows.filter((row) => row.data.moduleId !== 'calcified_collar' && row.data.moduleId !== 'mineral_root');
   assert.ok(calcite.length >= 2, 'the dead palette places a collar and a mineral root');
   assert.ok(calcite.every((row) => row.data.material === 'calcite'), 'those props are stamped calcite');
   assert.ok(rest.length > 0 && rest.every((row) => row.data.material !== 'calcite'),
     'the rest of the dead palette stays unstamped');
-});
-
-
-test('seed 4242: actual Closed Refinery calcite cracks through heat and collision and stays broken after restore', () => {
-  const site = ALIEN_SITES.closed_refinery;
-  function materialize(h) {
-    h.state.world.currentSectorId = site.sectorId;
-    const ae = ensureAlienEcologyState(h.state);
-    ae.revelation = 3;
-    ae.sites[site.siteId] = { state: 'severed', relaySevered: true, deadFauna: {}, signals: [], beats: {}, offersEmitted: {} };
-    const world = Object.assign(Object.create(worldSystem), {
-      state: h.state, helpers: h.helpers, bus: h.bus,
-      _toGlobal: (p) => ({ ...p }), active: { dressing: [], pois: [] },
-    });
-    h.owner.registry = { get: (name) => name === 'world' ? world : null };
-    materializeAlienEcology(world, { id: site.sectorId }, world.active, [site]);
-    return [...h.state.entityList, ...(h.state.world.dressing?.rows || [])]
-      .filter((e) => e.alive !== false && e.data?.siteId === site.siteId && e.data.material === 'calcite');
-  }
-  const h = boot();
-  try {
-    const calcite = materialize(h);
-    assert.ok(calcite.length >= 4, 'the production dead palette includes breakable calcite');
-    const [heated, struck, partial, landmark] = calcite;
-    assert.equal(addEnvironmentHeat(h.state, heated, 42), true, 'actual refinery growth accepts heat');
-    for (const e of calcite) {
-      assert.equal(h.state.entities.get(e.id), e, 'each calcite piece is a live body');
-      assert.equal(e.collides, true);
-      assert.equal(e.physicsBody.dynamic, true);
-      assert.equal(hasExplicitAuthoredGeologyPresentation(e), true, 'the body retains the authored growth visual');
-    }
-    landmark.data.isLandmark = true;
-    assert.equal(addEnvironmentHeat(h.state, landmark, 100), false);
-    assert.equal(queueEnvironmentImpact(h.state, landmark, 100), false);
-    h.bus.emit('physics:impact', { aId: struck.id, bId: -1, preSolveClosingSpeed: 60 });
-    assert.equal(addEnvironmentHeat(h.state, partial, 20), true);
-    h.owner.update(1 / 60);
-    for (const e of [heated, struck]) {
-      assert.equal(e.alive, false, 'heat and actual collision intake both retire the growth');
-      const shards = shardsFrom(h.state, e);
-      assert.equal(shards.length, 4);
-      assert.ok(shards.every((s) => Math.hypot(s.vel.x, s.vel.z) > 40));
-      assert.ok(shards.every((s) => !hasExplicitAuthoredGeologyPresentation(s)), 'shards do not duplicate the whole growth visual');
-    }
-    assert.equal(landmark.alive, true, 'anchored landmarks remain immune');
-    h.owner.serialize();
-    const saved = JSON.parse(JSON.stringify(serializeResourceBodyBag(h.state.world.resourceBodies)));
-    const restored = boot();
-    try {
-      restored.state.world.resourceBodies = deserializeResourceBodyBag(saved);
-      const growth = materialize(restored);
-      assert.ok(growth.every((e) => ![heated, struck].some((old) => old.data.asteroidSlotId === e.data.asteroidSlotId)),
-        'broken pieces do not respawn after re-materialization from the save');
-      const warm = growth.find((e) => e.data.asteroidSlotId === partial.data.asteroidSlotId);
-      assert.ok(warm, 'an intact piece returns');
-      assert.equal(warm.data.materialCondition.heat, 20, 'partial heat survives the save');
-      addEnvironmentHeat(restored.state, warm, 22);
-      restored.owner.update(1 / 60);
-      assert.equal(warm.alive, false, 'restored partial heat contributes to the same fracture threshold');
-    } finally { restored.owner.destroy(); }
-  } finally { h.owner.destroy(); }
 });
