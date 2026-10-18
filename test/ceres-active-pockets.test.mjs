@@ -95,7 +95,11 @@ const EXPECTED_COLLISION_ANCHORS = Object.freeze([
 // D196: 07d6812156 adds material/heat/optics metadata to all 90 rocks, without changing
 // their mining or physical stats. ba3f486419 reserves RUCKUS's 480-WU yard through the
 // Arranger, moving 16 unbound f_ceres_3 rocks out of it. Pin that authored baseline in full.
-const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = '725ea6bce02b3c1ce7e14f88177879864f11bb992aaad52880ab87ed02e34a85';
+// ceres-ambush-pack-dart (2026-10-18): every rock's ecologyFingerprint census tag moves with
+// the authored ambient population (the density-funded belt-shadow pack adds two live ships,
+// eco_14 → eco_12-class signatures). Positions, mining, and physical stats are unchanged —
+// the unaffected-position hash below still pins the exact seed-47 rock layout.
+const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = 'b5128153029d66e27debb1c41986fd74e473d1fd5cf212e294ac4fbd9b68224f';
 const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = 'b02b8d1186a1bdd1354ca2e27b28d3e46fbd9b69b3a71bc683d662e4dbab863b';
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
@@ -546,21 +550,28 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   //                 The activity object slots do NOT: each re-points an ambient prop the
   //                 belt-dressing loop was going to draw regardless, so the slot entity
   //                 stays a ghost (collides:false below) and adds no collider cost.
-  // D196: Second Measure (0b7f311994, landed in 000d3c0991) adds one inert site root.
-  // 7b89490b7f adds the Flare Rack and Weigh Pin: two inert approach markers. Together
-  // with Second Measure and RUCKUS's markerless POI (ba3f486419), four new POI rows
-  // consume eight spawn-stream draws. Seed 47 now retains a refinery patrol and two
-  // ambush raiders instead of one ambush actor: +2 bodies, +46 measured-skin primitives.
-  // Budget: 44 total / 3 ships / 18 collidable / 330 primitives in this world/site fixture;
-  // the six activity slots still reuse existing bodies. This is not D191's full-runtime census.
-  assert.deepEqual(first.census, {
-    total: 44,
-    byType: { asteroid: 6, fauna: 12, fx: 16, ship: 3, station: 6, wreck: 1 },
-    collidable: 18,
-    colliders: 330,
-    opticCells: 0,
-    opticResidentCells: 42,
-  }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
+// D196: Second Measure (0b7f311994, landed in 000d3c0991) adds one inert site root.
+// 7b89490b7f adds the Flare Rack and Weigh Pin: two inert approach markers. Together
+// with Second Measure and RUCKUS's markerless POI (ba3f486419), four new POI rows
+// consume eight spawn-stream draws. Seed 47 now retains a refinery patrol and two
+// ambush raiders instead of one ambush actor: +2 bodies, +46 measured-skin primitives.
+// Budget: 44 total / 3 ships / 18 collidable / 330 primitives in this world/site fixture;
+// the six activity slots still reuse existing bodies. This is not D191's full-runtime census.
+// Census re-pinned 2026-10-18 (ceres-ambush-pack-dart) — delta traced to authored work:
+//   ship 3 → 5, colliders 330 → 379, total 44 → 46 — the zone_ceres_ambush presence grows
+//   to the authored [3,4] pack (detonator dart weighted 2-of-4) and Ceres enemyDensity
+//   0.18 → 0.73 funds it, so seed 47's belt shadow fields one patrol plus a four-ship
+//   Reach pack (drone/pirate/dart/drone) instead of two ambush raiders: +2 bodies,
+//   +49 measured-skin primitives. The derelict scavenger plan row still lands inside the
+//   Belt Outpost bubble and is skipped, exactly as before this change.
+assert.deepEqual(first.census, {
+  total: 46,
+  byType: { asteroid: 6, fauna: 12, fx: 16, ship: 5, station: 6, wreck: 1 },
+  collidable: 20,
+  colliders: 379,
+  opticCells: 0,
+  opticResidentCells: 42,
+}, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
   assert.equal(new Set(first.activity.map((row) => row.slotId)).size, EXPECTED_OBJECT_SLOTS.length);
@@ -665,7 +676,10 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   // 499 → 501 (D90/D145): SOLSTICE / SL-9 (5103e8668) added poi_solstice_lantern — a fixed-pos
   // POI still consumes its two unconditional _spawnPOIs draws inside this content stream.
   // D196: 501 + 8 POI draws + 8 planZoneSpawns draws after the authored POIs shift its stream.
-  assert.equal(first.ceresRngDraws, 517,
+  // ceres-ambush-pack-dart (2026-10-18): 517 + 8 planZoneSpawns draws — the density-funded
+  // pack plans two more belt-shadow ships (4 placed + the derelict row the Outpost bubble
+  // skips → 6 planned vs 4) at four draws apiece.
+  assert.equal(first.ceresRngDraws, 525,
     'Ceres materialization must retain the complete pre-R5B content-stream draw count');
 
   // Buoy positions re-pinned 2026-10-05 (D90/D145): the Star Lantern POI's two stream draws

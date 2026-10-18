@@ -125,7 +125,12 @@ const CORE_SECTOR_ZONES = {
       reason: 'Crimson Reach skiffs lurk in the asteroid shadow, waiting for loaded ore haulers.',
       center: { x: -400, z: -2400 }, radius: 640,
       presence: {
-        ...P.pirates([1, 2]),
+        // The first fight a new pilot goes LOOKING for: the first trade contract routes straight
+        // past this lane, so the pack is the duet's replacement — wasp/reaver bodies plus a
+        // detonator dart weighted onto the roster (2 of 4 picks) so the roster's flying bomb and
+        // its shove/tether lesson actually appear on the starter ring, not first at tier 2. The
+        // throughline ambush adopts this squad whole (encounterDirector item.ships stays []).
+        ...P.pirates([3, 4], ['reaver_pirate', 'wasp_swarmer', 'detonator_dart', 'detonator_dart']),
         spawnCenter: { x: ZONE_CERES_THROUGHLINE.center.x + 145, z: ZONE_CERES_THROUGHLINE.center.z },
         clusterRadius: 18,
       } },

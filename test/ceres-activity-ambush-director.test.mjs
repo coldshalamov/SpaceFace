@@ -163,14 +163,16 @@ test('Ceres durable ambush presence is clustered in the Throughline interaction 
   ].join('|'));
 
   const ceres = run(CERES);
-  assert.equal(ceres.draws, 23, 'Ceres keeps the pre-existing exact planner RNG draw count');
+  assert.equal(ceres.draws, 31, 'Ceres keeps the pre-existing exact planner RNG draw count');
   assert.deepEqual(compact(ceres.plan), [
     'zone_ceres_refinery|patrol_lawman|4|-1049.185728|463.609752',
     'zone_ceres_refinery|patrol_lawman|3|-983.953908|612.698999',
-    'zone_ceres_ambush|wasp_swarmer|3|3305.926691|-969.969113',
-    'zone_ceres_derelict|wasp_swarmer|4|75.100496|-980.670741',
-    'zone_ceres_derelict|wasp_swarmer|4|240.000000|-946.000000',
-  ], 'full Ceres presence ordering/archetype/level sequence stays pinned; only ambush placement moves');
+    'zone_ceres_ambush|detonator_dart|3|3305.926691|-969.969113',
+    'zone_ceres_ambush|wasp_swarmer|4|3288.583880|-941.200282',
+    'zone_ceres_ambush|reaver_pirate|4|3300.000000|-938.800000',
+    'zone_ceres_derelict|reaver_pirate|3|240.000000|-1336.000000',
+    'zone_ceres_derelict|reaver_pirate|3|134.827791|-1256.412083',
+  ], 'full Ceres presence ordering/archetype/level sequence stays pinned (ceres-ambush-pack-dart: the ambush carries the 3-4 pack incl. the weighted detonator_dart)');
 
   const presence = zonesForSector(CERES).filter((zone) => zone.presence).map((zone) => ({
     id: zone.id,
@@ -179,12 +181,12 @@ test('Ceres durable ambush presence is clustered in the Throughline interaction 
   }));
   assert.deepEqual(presence, [
     { id: 'zone_ceres_refinery', size: [1, 2], archetypes: ['patrol_lawman'] },
-    { id: AMBUSH_ZONE, size: [1, 2], archetypes: ['reaver_pirate', 'wasp_swarmer'] },
+    { id: AMBUSH_ZONE, size: [3, 4], archetypes: ['reaver_pirate', 'wasp_swarmer', 'detonator_dart', 'detonator_dart'] },
     { id: 'zone_ceres_derelict', size: [1, 2], archetypes: ['wasp_swarmer', 'reaver_pirate'] },
-  ], 'presence sizes, archetype arrays, and zone order are unchanged');
+  ], 'presence sizes, archetype arrays, and zone order stay pinned to the authored ambush pack');
 
   const cohort = ceres.plan.filter((intent) => intent.zoneId === AMBUSH_ZONE);
-  assert.ok(cohort.length >= 1 && cohort.length <= 2);
+  assert.ok(cohort.length >= 3 && cohort.length <= 4, `authored ambush pack size ${cohort.length}`);
   for (const intent of cohort) {
     const distance = Math.hypot(
       intent.pos.x - ZONE_CERES_THROUGHLINE.center.x,
