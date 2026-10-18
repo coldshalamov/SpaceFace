@@ -958,6 +958,7 @@ export function upsertRecord(bag, record) {
   const prior = record && record.recordId ? b.byId[record.recordId] : null;
   const priorPermanent = isPermanentWorldRecord(prior);
   const priorTerminal = prior && (prior.outcome === 'defeated' || prior.outcome === 'destroyed');
+  const releasedMission = record && record.missionId === null && record.kind !== RECORD_KIND.MISSION_TARGET;
   const merged = prior && record && typeof record === 'object'
     ? {
       ...prior,
@@ -966,8 +967,8 @@ export function upsertRecord(bag, record) {
       // terminal identity back into ordinary recent memory.
       kind: priorPermanent ? prior.kind : record.kind,
       retentionClass: priorPermanent ? RETENTION_CLASS.PERMANENT : record.retentionClass,
-      missionId: record.missionId || prior.missionId,
-      missionTag: record.missionTag || prior.missionTag,
+      missionId: releasedMission ? null : record.missionId || prior.missionId,
+      missionTag: releasedMission ? null : record.missionTag || prior.missionTag,
       jobId: record.jobId || prior.jobId,
       playerOwned: prior.playerOwned === true || record.playerOwned === true,
       playerCreated: prior.playerCreated === true || record.playerCreated === true,

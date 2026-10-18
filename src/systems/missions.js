@@ -11874,12 +11874,6 @@ export const missions = {
     }
     const follow = m.params && m.params.poiSignalFollowup;
     const world = this.registry && this.registry.get && this.registry.get('world');
-    if (follow && world && typeof world.markWorldRecordDestroyed === 'function') {
-      world.markWorldRecordDestroyed(follow.targetRecordId, {
-        outcome: m.status === 'completed' ? 'investigated' : 'destroyed',
-        reason: 'mission_settled',
-      });
-    }
     const targetIds = new Set(m.targetEntityIds || []);
     if (follow) {
       // O(1) holder arm under a proven single count — the walk predicate pins the same
@@ -11905,10 +11899,22 @@ export const missions = {
     const sharedRecordIds = new Set();
     for (const other of this.state.missions.active) {
       if (other === m || other.status !== 'active') continue;
-      for (const id of other.targetEntityIds || []) sharedIds.add(id);
+      for (const id of other.targetEntityIds || []) {
+        sharedIds.add(id);
+        const e = this.state.entities.get(id);
+        if (e && e.data && e.data.worldRecordId != null) sharedRecordIds.add(e.data.worldRecordId);
+      }
       const otherFollow = other.params && other.params.poiSignalFollowup;
       if (otherFollow && otherFollow.targetRecordId != null) sharedRecordIds.add(otherFollow.targetRecordId);
     }
+    if (follow && !sharedRecordIds.has(follow.targetRecordId)
+        && world && typeof world.markWorldRecordDestroyed === 'function') {
+      world.markWorldRecordDestroyed(follow.targetRecordId, {
+        outcome: m.status === 'completed' ? 'investigated' : 'destroyed',
+        reason: 'mission_settled',
+      });
+    }
+    const releasedRecordIds = new Set();
     if (sharedRecordIds.size) {
       forEachLivingWorldActor(this.state, (e) => {
         if (e && e.data && sharedRecordIds.has(e.data.worldRecordId)) sharedIds.add(e.id);
@@ -11943,6 +11949,10 @@ export const missions = {
         e.data.escortee = null;
         e.data.missionTag = null;
         e.data.missionId = null;
+        e.data.missionPinned = false;
+        if (e.flags) e.flags.missionPinned = false;
+        if (e.data.flags) e.data.flags.missionPinned = false;
+        if (e.data.worldRecordId != null) releasedRecordIds.add(e.data.worldRecordId);
         if (e.data.intent) { e.data.intent.moveX = 0; e.data.intent.moveZ = 0; e.data.intent.boost = false; }
         targetIds.delete(e.id);
         const budget = this.helpers && this.helpers.spawnBudget;
@@ -11954,21 +11964,36 @@ export const missions = {
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) {
         if (this._handoffFleeingTarget(e)) {
+          if (e.data.worldRecordId != null) releasedRecordIds.add(e.data.worldRecordId);
           const budget = this.helpers && this.helpers.spawnBudget;
           if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
           continue;
         }
         e.alive = false; // swept end-of-step
-        // PB-MIS-E: the yard tug is the one yard body with a durable world record — a silent
-        // sweep would leave the record live and the hull would rematerialize on re-entry.
-        if (e.data && e.data.yardWorkOf != null && e.data.worldRecordId != null && world
-          && typeof world.markWorldRecordDestroyed === 'function') {
+        // A silent sweep must retire durable memory too, or re-entry resurrects the target.
+        if (e.data && e.data.worldRecordId != null && !sharedRecordIds.has(e.data.worldRecordId)
+          && world && typeof world.markWorldRecordDestroyed === 'function') {
           world.markWorldRecordDestroyed(e.data.worldRecordId, {
             outcome: 'destroyed', reason: 'mission_settled',
           });
         }
         const budget = this.helpers && this.helpers.spawnBudget;
         if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      }
+    }
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId;
+    for (const rec of Object.values(records || {})) {
+      if (!rec || String(rec.missionId || rec.missionTag || '') !== String(m.id)
+          || sharedRecordIds.has(rec.recordId)) continue;
+      if (releasedRecordIds.has(rec.recordId)) {
+        rec.missionId = null;
+        rec.missionTag = null;
+        if (rec.kind === 'mission_target') rec.kind = 'npc';
+      } else if (world && typeof world.markWorldRecordDestroyed === 'function') {
+        world.markWorldRecordDestroyed(rec.recordId, { outcome: 'destroyed', reason: 'mission_settled' });
+      } else {
+        rec.alive = false;
+        rec.outcome = 'destroyed';
       }
     }
     m.targetEntityIds = [];
@@ -12001,6 +12026,7 @@ export const missions = {
       }
     }
     data.missionPinned = false;
+    if (entity.flags) entity.flags.missionPinned = false;
     if (data.flags) data.flags.missionPinned = false;
     data.missionTag = null;
     data.missionId = null;
