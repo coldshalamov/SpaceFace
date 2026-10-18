@@ -44,6 +44,8 @@ const COMMIT_STALEMATE_S = 2.6;
 const STRIKE_STALEMATE_S = 3.0;
 const FRAME_MAX_ACCEL = 64;
 const FRAME_MAX_YAW = 1.18;
+const KICK_MIN_DELTA_SPEED = 30;
+const KICK_AUTHORITY_MARGIN = 2.5;
 const SOCKET_ORDER = Object.freeze([
   SQUAD_SOCKET.LEAD,
   SQUAD_SOCKET.LEFT,
@@ -222,6 +224,7 @@ function seedFrame(id, recipeId, recipe, members, tick, seed) {
     committedPeak: 0,
     pursuitFloorSpeed: INTERCEPT_SPEED,
     approach: false,
+    recoveryPoint: null,
   };
 }
 
@@ -313,6 +316,10 @@ function makeMember(id, socket, recipe) {
     transitUntil: -1,
     coast: false,
     rejoinTick: null,
+    kicked: false,
+    maxAccel: 0,
+    previousVx: null,
+    previousVz: null,
     fireAuthorized: false,
     faceTarget: false,
     speedFraction: recipe.ingressSpeedFraction,
@@ -334,6 +341,11 @@ function copyLive(rec, entity) {
   rec.vel.x = finite(vel.x);
   rec.vel.z = finite(vel.z);
   rec.rot = finite(entity.rot);
+  const model = entity.flightModel || entity.data?.derived?.flightModel || {};
+  rec.maxAccel = Math.hypot(
+    Math.max(finite(model.mainAccel, finite(entity.thrust)), finite(model.reverseAccel)),
+    finite(model.strafeAccel),
+  ) * (entity.data?.intent?.boost ? Math.max(1, finite(model.boostMult, 1)) : 1);
   rec.radius = Math.max(4, finite(entity.radius, 8));
   const hullMax = Number.isFinite(entity.hullMax) && entity.hullMax > 0 ? entity.hullMax : 1;
   rec.hullFraction = rec.alive ? saturate(finite(entity.hull, hullMax) / hullMax) : 0;
@@ -467,8 +479,16 @@ function detectDisruption(frame, recipe, tick, dt) {
     if (slotJump > Math.max(48, spacing * 0.8)) rec.transitUntil = tick + 240;
     if (err <= spacing) rec.transitUntil = 0;
     const transit = tick < rec.transitUntil;
-    const blown = !quiet && !transit
-      && (err > deform || (rec.tracking && relV > relBlow && err > spacing * 0.45));
+    // Quiet phases and slot-jump grace must not hide a physical kick. Ignore
+    // changes the hull could have produced with its own thrusters in this step.
+    const kickThreshold = Math.max(KICK_MIN_DELTA_SPEED, rec.maxAccel * dt * KICK_AUTHORITY_MARGIN);
+    const kicked = rec.previousVx != null
+      && Math.hypot(rec.vel.x - rec.previousVx, rec.vel.z - rec.previousVz) > kickThreshold;
+    rec.kicked = kicked;
+    rec.previousVx = rec.vel.x;
+    rec.previousVz = rec.vel.z;
+    const blown = kicked || (!quiet && !transit
+      && (err > deform || (rec.tracking && relV > relBlow && err > spacing * 0.45)));
     if (blown) {
       rec.disrupted = true;
       const extra = saturate((err - deform) / Math.max(deform, 1));
@@ -502,11 +522,26 @@ function maybeAbortMorph(frame, recipe, tick) {
     || frame.phase === PHASE.STRIKE;
   if (!morphing) return;
   let coasting = 0;
+  let kicked = false;
   for (const rec of frame.members.values()) {
     if (rec.alive && rec.coast) coasting++;
+    if (rec.alive && rec.kicked) kicked = true;
   }
   if (frame.integrity < 0.72 || coasting > 0) {
     frame.morphAborted = true;
+    if (kicked) {
+      // Regroup around the intact wing, rather than chasing a standoff point that
+      // keeps receding at almost the followers' entire reform speed budget.
+      let x = 0, z = 0, count = 0;
+      for (const rec of frame.members.values()) {
+        if (!rec.alive || rec.coast) continue;
+        x += rec.pos.x + frame.position.x - rec.slot.x;
+        z += rec.pos.z + frame.position.z - rec.slot.z;
+        count++;
+      }
+      frame.recoveryPoint = count ? { x: x / count, z: z / count } : { ...frame.position };
+      frame.reformHeading = frame.heading;
+    }
     enterPhase(frame, recipe, PHASE.RECOVER, tick);
   }
 }
@@ -631,6 +666,7 @@ function enterPhase(frame, recipe, phase, tick) {
     frame.strikeStartedTick = null;
     frame.extendStartedTick = null;
     frame.reformStartedTick = null;
+    frame.recoveryPoint = null;
     frame.passTick = null;
     for (const rec of frame.members.values()) {
       rec.laneSide = 0;
@@ -670,7 +706,7 @@ function beginReform(frame, recipe, target, tick) {
   const nx = hx * c - hz * s;
   const nz = hx * s + hz * c;
   const nlen = Math.hypot(nx, nz) || 1;
-  frame.reformHeading = Math.atan2(nz / nlen, nx / nlen);
+  if (!frame.recoveryPoint) frame.reformHeading = Math.atan2(nz / nlen, nx / nlen);
   frame.railLocked = false;
   frame.reformStartedTick = tick;
   enterPhase(frame, recipe, PHASE.REFORM, tick);
@@ -803,6 +839,9 @@ function integrateFrame(frame, recipe, target, tick, dt) {
 }
 
 function desiredFrameMotion(frame, recipe, target, maxSpeed) {
+  if (frame.recoveryPoint && (frame.phase === PHASE.RECOVER || frame.phase === PHASE.REFORM)) {
+    return { ...frame.recoveryPoint, vx: 0, vz: 0, heading: frame.reformHeading };
+  }
   const predX = target.x + target.vx * 0.35;
   const predZ = target.z + target.vz * 0.35;
   if (frame.phase === PHASE.REFORM || frame.phase === PHASE.RECOVER || frame.phase === PHASE.INGRESS && !frame.railLocked) {
@@ -926,14 +965,14 @@ function writeSlots(frame, recipe, target, tick) {
     rec.slot.z = frame.position.z + oz;
     let morphVx = 0;
     let morphVz = 0;
-    if (frame.phase === PHASE.TELEGRAPH || frame.phase === PHASE.REFORM) {
+    if (frame.phase === PHASE.TELEGRAPH || (frame.phase === PHASE.REFORM && u < 1)) {
       const dur = frame.phase === PHASE.TELEGRAPH ? recipe.morphTelegraphS : recipe.morphReformS;
       const dU = 1 / Math.max(dur, 0.05);
       const a = (shapeA.slots && shapeA.slots[rec.socket]) || { right: 0, forward: 0 };
       const b = (shapeB.slots && shapeB.slots[rec.socket]) || a;
       const dRight = (b.right - a.right) * dU * spacing;
       const dForward = (b.forward - a.forward) * dU * spacing;
-      const scaleRate = frame.phase === PHASE.TELEGRAPH ? 0.85 * dU : -0.85 * dU;
+      const scaleRate = frame.phase === PHASE.TELEGRAPH ? 0.85 * dU : 0;
       const base = spacing / Math.max(frame.spacingScale, 0.05);
       const dSp = scaleRate * base;
       morphVx = fwdX * (dForward + forward * dSp) + rightX * (dRight + right * dSp);
