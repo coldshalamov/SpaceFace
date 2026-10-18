@@ -59,6 +59,7 @@ export function createAsteroidInstancePool(scene, options = {}) {
     // renderer's hook routes it through the admission latch so its first live draw is not a
     // synchronous link inside a presented pass.
     onMeshCreated: typeof options.onMeshCreated === 'function' ? options.onMeshCreated : null,
+    onMeshRekick: typeof options.onMeshRekick === 'function' ? options.onMeshRekick : null,
     // Whether the owner can currently run the deferred depth-stage arm that restores a
     // withheld authored castShadow after the variant links. Read at mint time only.
     shadowStageGate: typeof options.shadowStageGate === 'function' ? options.shadowStageGate : null,
@@ -179,8 +180,23 @@ function adoptPoolLeaf(pool, entity, ownerRoot, leaf, detail) {
   ensureCapacity(pool, bucket, bucket.records.length + 1);
   if (!bucket.mesh) return false;
 
+  // A LATER record landing in a bucket whose batch is still behind the admission latch
+  // re-kicks that admission once (the renderer's rekick callback stamps flight urgency).
+  // The creating registration does not — its kick is the onMeshCreated call ensureCapacity
+  // just made — but a cook-warmed bucket still pending when the shell lifts, or a family
+  // whose first live registration beat its ambient admission, otherwise bills every later
+  // adoptee the remaining ambient FIFO wait (the rescue-rock cold-bucket blink).
+  const hadRecords = bucket.records.length > 0;
   const record = { entityId: entity.id, ownerRoot, leaf, detail: detail === true };
   bucket.records.push(record);
+  const bucketMesh = bucket.mesh;
+  if (hadRecords && bucketMesh && bucketMesh.userData
+      && bucketMesh.userData.pipelinesPending === true
+      && bucketMesh.userData.sfPoolAdoptRekick !== true
+      && typeof pool.onMeshRekick === 'function') {
+    bucketMesh.userData.sfPoolAdoptRekick = true;
+    try { pool.onMeshRekick(bucketMesh); } catch (_) { /* admission must never break registration */ }
+  }
   if (detail === true) {
     // The pool parks leaf.visible=false for the life of the record, so a LOD-hidden detail
     // leaf keeps its "would draw" state in poolLeafVisible (hlod writes it instead of visible).

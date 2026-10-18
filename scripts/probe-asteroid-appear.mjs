@@ -489,6 +489,52 @@ async function installAsteroidAppearProbe() {
           } catch (error) {
             ep.firstDebug = `error: ${String(error && error.message ? error.message : error).slice(0, 160)}`;
           }
+          try {
+            ep.firstUrgency = typeof r.debugLiveAdmissionUrgency === 'function'
+              ? r.debugLiveAdmissionUrgency(id) : 'debugLiveAdmissionUrgency unavailable';
+          } catch (error) {
+            ep.firstUrgency = `error: ${String(error && error.message ? error.message : error).slice(0, 160)}`;
+          }
+          // Why-urgent diagnostics: the live admission lane classifies urgency from
+          // root.position against the live camera frustum (rootOnLiveGlass, skirt 48).
+          // Record both arms so a mismatch between the sim position's frustum verdict
+          // (the episode's own on-screen test) and the root's shows directly.
+          try {
+            const root = verdict.root || (render._meshes && render._meshes.get(id)) || null;
+            if (root && root.position && Number.isFinite(root.position.x)) {
+              const lx = pos.x - ox;
+              const lz = pos.z - oz;
+              sphere.center.set(root.position.x, root.position.y || 0, root.position.z);
+              sphere.radius = Math.max(1, Number(item.radius) || 1) + 48;
+              ep.firstRoot = {
+                pos: {
+                  x: Math.round(root.position.x * 10) / 10,
+                  y: Math.round((root.position.y || 0) * 10) / 10,
+                  z: Math.round(root.position.z * 10) / 10,
+                },
+                frustum: frustum.intersectsSphere(sphere),
+                rootVisible: root.visible !== false,
+                offsetFromEntity: Math.round(Math.hypot(root.position.x - lx, root.position.z - lz)),
+              };
+            } else {
+              ep.firstRoot = root ? 'no-position' : 'no-root';
+            }
+          } catch (error) {
+            ep.firstRoot = `error: ${String(error && error.message ? error.message : error).slice(0, 120)}`;
+          }
+          try {
+            const lane = render._liveGeometryAdmissions;
+            if (lane && typeof lane.stats === 'function') {
+              const s = lane.stats();
+              ep.firstLane = {
+                queued: s.queued,
+                urgentQueued: s.urgentQueued,
+                drainingAmbient: s.drainingAmbient,
+                drainingUrgent: s.drainingUrgent,
+                stage: s.drainStage,
+              };
+            }
+          } catch (_) { /* lane stats are best-effort */ }
         }
         undrawnNow.push({
           id, kind: item.kind, dormant: item.dormant,

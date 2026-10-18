@@ -146,6 +146,45 @@ test('an adopted leaf keeps drawing directly until the sync that submits its ins
   assert.equal(pool.variants[0].mesh.count, 1);
 });
 
+// A record adopting into a bucket still behind the admission latch must re-kick that
+// admission (once per mesh, through the dedicated rekick callback so creation counting
+// stays honest) — the rescue-rock cold-bucket blink billed every adoptee the remaining
+// ambient FIFO wait.
+test('adopting into a still-pending bucket re-kicks its admission once', () => {
+  const scene = new THREE.Scene();
+  const created = [];
+  const rekicks = [];
+  const pool = createAsteroidInstancePool(scene, {
+    onMeshCreated: (mesh) => { mesh.userData.pipelinesPending = true; created.push(mesh); },
+    onMeshRekick: (mesh) => rekicks.push(mesh),
+  });
+  const geometry = new THREE.IcosahedronGeometry(1, 2);
+  const material = new THREE.MeshStandardMaterial();
+
+  const first = makeCommonRock(31, 2, geometry, material);
+  scene.add(first.root);
+  assert.equal(registerAsteroidBaseLeaf(pool, first.entity, first.root), true);
+  assert.equal(rekicks.length, 0, 'the creating kick already owns the first admission');
+
+  const second = makeCommonRock(32, 2, geometry, material);
+  scene.add(second.root);
+  assert.equal(registerAsteroidBaseLeaf(pool, second.entity, second.root), true);
+  assert.equal(created.length, 1);
+  assert.equal(rekicks.length, 1, 'an adoption into the pending bucket re-kicks it');
+  assert.equal(rekicks[0], created[0]);
+
+  const third = makeCommonRock(33, 2, geometry, material);
+  scene.add(third.root);
+  assert.equal(registerAsteroidBaseLeaf(pool, third.entity, third.root), true);
+  assert.equal(rekicks.length, 1, 'the rekick fires once per mesh, not per adoption');
+
+  created[0].userData.pipelinesPending = false;
+  const fourth = makeCommonRock(34, 2, geometry, material);
+  scene.add(fourth.root);
+  assert.equal(registerAsteroidBaseLeaf(pool, fourth.entity, fourth.root), true);
+  assert.equal(rekicks.length, 1, 'a settled bucket admits without another kick');
+});
+
 test('the renderer routes created pool meshes through the admission latch', () => {
   const poolStart = RENDERER_SOURCE.indexOf('createAsteroidInstancePool(scene, {');
   assert.ok(poolStart >= 0, 'the renderer must pass an admission hook to the pool');

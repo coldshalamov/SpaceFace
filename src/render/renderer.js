@@ -12367,6 +12367,18 @@ export const render = {
           this._queueShadowDepthStage(mesh, null, null, { authoredCastShadow: true });
         }
       },
+      // Adoption into a bucket still behind the admission latch re-kicks that
+      // admission (once per mesh) at flight urgency — a cook-warmed bucket whose
+      // ambient admission outlived the shell lift otherwise bills every adoptee
+      // the remaining FIFO wait (the rescue-rock cold-bucket blink).
+      onMeshRekick: (mesh) => {
+        void admitSubjectPipelines(mesh, {
+          debugBy: 'pool-adopt-rekick',
+          urgent: state.mode === 'flight'
+            && Number.isFinite(state.render && state.render.firstPlayableFrameAt),
+          joinOutstanding: true,
+        });
+      },
       // Mirrors the arm's own feasibility gate (shadow setting on + key light live)
       // so the mint's withhold decision and this queue's landing agree.
       shadowStageGate: () => this._shadowSettingOn === true
@@ -14283,6 +14295,65 @@ export const render = {
       }
       return flushed;
     };
+    // The one urgency verdict body the live admission lane's isUrgent runs — kept as a
+    // closure so the debug hook below answers with the exact same terms (and the same
+    // memoized frustum) the lane used, not a re-derivation that could disagree.
+    const liveAdmissionUrgencyTerms = (entity, root) => {
+      const state = this.state;
+      if (state.mode !== 'flight'
+          || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+          || !root || !root.position) {
+        return { urgent: false, reason: 'mode-or-root' };
+      }
+      const bounds = this._entityViewCullBounds();
+      const data = root.userData || {};
+      const hlodRadius = data.hlod && Number(data.hlod.visualRadius);
+      const cull = entityVisualCullRadius(entity, root);
+      const radius = Number.isFinite(hlodRadius) && hlodRadius > 0
+        ? Math.max(hlodRadius, cull)
+        : cull;
+      const liveCam = this.cam && this.cam.obj;
+      let frustum = null;
+      if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
+        // The camera can't move between entries inside one presented sync —
+        // memoize the frustum per view generation instead of rebuilding an
+        // identical frustum per pending entry per scan (and per stats call).
+        const frustumSeq = this._viewSyncSeq || 0;
+        const frustumMemo = this._liveUrgencyFrustumMemo;
+        if (frustumMemo && frustumMemo.seq === frustumSeq && frustumMemo.cam === liveCam) {
+          frustum = _liveViewFrustum;
+        } else {
+          liveCam.updateMatrixWorld();
+          _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
+          _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
+          this._liveUrgencyFrustumMemo = { seq: frustumSeq, cam: liveCam };
+          frustum = _liveViewFrustum;
+        }
+      }
+      const skirted = Math.max(0, Number(radius) || 0) + TABLE_FRAME_SKIRT_WU;
+      const rectArm = !!(bounds
+        && Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
+        && Math.abs(root.position.x - bounds.x) <= bounds.glassHalfX + skirted
+        && Math.abs(root.position.z - bounds.z) <= bounds.glassHalfZ + skirted);
+      const frustumArm = isOnLiveCameraView(frustum, root.position, skirted);
+      return {
+        urgent: rectArm || frustumArm,
+        reason: rectArm ? 'rect' : (frustumArm ? 'frustum' : 'off-glass'),
+        radius,
+        skirted,
+        frustumValid: frustum != null,
+        rectArm,
+        frustumArm,
+        bounds: bounds ? {
+          x: Math.round(bounds.x), z: Math.round(bounds.z),
+          glassHalfX: Math.round(bounds.glassHalfX), glassHalfZ: Math.round(bounds.glassHalfZ),
+        } : null,
+        rootPos: {
+          x: Math.round(root.position.x * 10) / 10,
+          z: Math.round(root.position.z * 10) / 10,
+        },
+      };
+    };
     this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({
       // Latched roots are deadline work: skip the ambient compile queue's quiet
       // window and first-flight auto-flush hold via the explicit lane. The
@@ -14309,37 +14380,7 @@ export const render = {
       // focus origin, same glass extents, same root position. A root that reads
       // pending-on-glass but fails this lane's test would serialize through the
       // per-entry path and sit invisible for a whole compile wait.
-      isUrgent: (entity, root) => {
-        if (state.mode !== 'flight'
-            || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
-            || !root || !root.position) return false;
-        const bounds = this._entityViewCullBounds();
-        const data = root.userData || {};
-        const hlodRadius = data.hlod && Number(data.hlod.visualRadius);
-        const cull = entityVisualCullRadius(entity, root);
-        const radius = Number.isFinite(hlodRadius) && hlodRadius > 0
-          ? Math.max(hlodRadius, cull)
-          : cull;
-        const liveCam = this.cam && this.cam.obj;
-        let frustum = null;
-        if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
-          // The camera can't move between entries inside one presented sync —
-          // memoize the frustum per view generation instead of rebuilding an
-          // identical frustum per pending entry per scan (and per stats call).
-          const frustumSeq = this._viewSyncSeq || 0;
-          const frustumMemo = this._liveUrgencyFrustumMemo;
-          if (frustumMemo && frustumMemo.seq === frustumSeq && frustumMemo.cam === liveCam) {
-            frustum = _liveViewFrustum;
-          } else {
-            liveCam.updateMatrixWorld();
-            _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
-            _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
-            this._liveUrgencyFrustumMemo = { seq: frustumSeq, cam: liveCam };
-            frustum = _liveViewFrustum;
-          }
-        }
-        return rootOnLiveGlass(bounds, frustum, root.position, radius);
-      },
+      isUrgent: (entity, root) => liveAdmissionUrgencyTerms(entity, root).urgent,
       // One root per present is the GPU-pacing contract; WHICH root drains next
       // is a deadline choice. Explicit focus first, then earliest
       // time-to-glass — a hull crossing the screen edge must not sit behind a
@@ -14408,6 +14449,28 @@ export const render = {
           : null;
       }
       return out;
+    };
+    // Asteroid-appear probe surface: the live admission lane's exact urgency terms for
+    // one entity's root, so a lane verdict that disagrees with the camera's real view
+    // shows its failing arm (rect vs frustum vs memo) instead of a bare false. A root
+    // pending in the lane is not yet the _meshes entry — resolve it through the
+    // presentation world's bound slot first, exactly like debugGeometryPending.
+    state.render.debugLiveAdmissionUrgency = (entityId) => {
+      if (typeof entityId === 'string' && /^\d+$/.test(entityId)) entityId = Number(entityId);
+      let root = this._meshes && this._meshes.get(entityId);
+      if (!root) {
+        const world = this._presentationWorld;
+        if (world && typeof world.handleForEntityId === 'function') {
+          const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
+          const slot = handle && handle.slot;
+          if (slot != null && world.alive[slot] === 1) root = world.meshRefs[slot];
+        }
+      }
+      const entity = this.state && this.state.entities
+        && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(entityId) : null;
+      if (!root) return { entityId, root: false };
+      return Object.assign({ entityId, entity: !!entity }, liveAdmissionUrgencyTerms(entity, root));
     };
     // Stepped twin: the plan is a chain of whole-scene censuses — yields split the
     // legs so async drives pace it under their slice clocks instead of paying one
