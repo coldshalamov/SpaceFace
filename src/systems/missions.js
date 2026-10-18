@@ -2297,7 +2297,9 @@ export const missions = {
   _syncQuietPassageOffer(info, board) {
     if (info.id !== QUIET_PASSAGE.stationId) return false;
     const exists = [...board.slots, ...this.state.missions.active].some(m => m.id === QUIET_PASSAGE.id || m.params?.quietPassage);
-    const settled = (this.state.missions.receipts || []).some(r => r.missionId === QUIET_PASSAGE.id && r.outcome === 'completed');
+    const settled = (this.state.missions.receipts || []).some(r => r.outcome === 'completed'
+      && (r.sourceOfferId === QUIET_PASSAGE.id || r.source === QUIET_PASSAGE.source
+        || r.missionId === QUIET_PASSAGE.id));
     if (exists || settled || this.state.story?.flags?.[QUIET_PASSAGE.id]) return false;
     board.slots.push(buildQuietPassageOffer());
     return true;
@@ -10810,8 +10812,15 @@ export const missions = {
     if ((state.world && state.world.currentSectorId) !== m.destSectorId) return;
     const p = m.params && m.params.quietPassage;
     if (!p) return;
+    // Older offers and saves stored the authored sector-local pose without its frame.
+    const localPose = p.poseSpace !== 'galaxy';
+    if (localPose) {
+      if (p.pose) p.pose = sectorLocalToGlobalForSector(p.pose, QUIET_PASSAGE.sectorId);
+      p.poseSpace = 'galaxy';
+    }
 
     let transport = m._transportId != null && state.entities ? state.entities.get(m._transportId) : null;
+    if (transport?.data?.quietPassageOf !== String(m.id)) transport = null;
     if (!transport || transport.alive === false) {
       if (state.entities) {
         for (const e of state.entities.values()) {
@@ -10822,6 +10831,12 @@ export const missions = {
           }
         }
       }
+    }
+
+    if (localPose && transport) {
+      const pose = sectorLocalToGlobalForSector(transport.pos, QUIET_PASSAGE.sectorId);
+      transport.pos.x = pose.x;
+      transport.pos.z = pose.z;
     }
 
     if (!transport && this.helpers && typeof this.helpers.spawnEntity === 'function') {

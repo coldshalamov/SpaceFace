@@ -2,6 +2,7 @@
 // Filament is the sample. Resin stands in if the filament is gone. No pile, no clock.
 
 import { HEAT_TRIAL_NOTE } from './heatProximityTrial.js';
+import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 
 export const LURE_SITE_ID = 'harvest_deep';
 export const LURE_FILAMENT = 'cmdty_filament_sample';
@@ -39,17 +40,20 @@ export function copyHeatDerivative(raw) {
 // a hot pass brings the charge (spooks the transport, degrading the contract).
 // Heat itself stays owned by heat.js (state.player.heat).
 
+// Convert authored local anchors once; the lane and its saved poses use galaxy coordinates.
+const QUIET_PASSAGE_SECTOR_ID = 'sector_tethys_junction';
+
 export const QUIET_PASSAGE = Object.freeze({
   id: 'm12_quiet_passage',
   type: 'passenger_transport',
   source: 'quietPassage',
   stationId: 'station_tethys',
   destStationId: 'station_customs',
-  sectorId: 'sector_tethys_junction',
+  sectorId: QUIET_PASSAGE_SECTOR_ID,
   checkpointZoneId: 'zone_tethys_checkpoint',
-  checkpointPos: Object.freeze({ x: -640, z: -1180 }),
+  checkpointPos: Object.freeze(sectorLocalToGlobalForSector({ x: -640, z: -1180 }, QUIET_PASSAGE_SECTOR_ID)),
   checkpointRadius: 320,
-  transportStartPos: Object.freeze({ x: -300, z: -700 }),
+  transportStartPos: Object.freeze(sectorLocalToGlobalForSector({ x: -300, z: -700 }, QUIET_PASSAGE_SECTOR_ID)),
   transportSpeed: 30,
   proximityRange: 400,
   quietSpeedLimit: 45,
@@ -112,6 +116,7 @@ export function buildQuietPassageOffer() {
         phase: 'transit',
         passedCheckpoint: false,
         pose: { ...QUIET_PASSAGE.transportStartPos },
+        poseSpace: 'galaxy',
       },
     },
   };

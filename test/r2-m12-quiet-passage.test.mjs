@@ -13,7 +13,13 @@ import {
   evaluatePassengerHeatProximity,
 } from '../src/data/heatLure.js';
 
+import { SECTORS } from '../src/data/sectors.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { world } from '../src/systems/world.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
+
 const SEED = 4242;
+const TRANSPORT_START = sectorLocalToGlobalForSector({ x: -300, z: -700 }, QUIET_PASSAGE.sectorId);
 
 function boot(seed = SEED) {
   const sim = createSimulation({
@@ -27,11 +33,17 @@ function boot(seed = SEED) {
   state.player.credits = 10000;
   state.player.heat = 0;
 
+  const sector = SECTORS.find((row) => row.id === QUIET_PASSAGE.sectorId);
+  const worldSystem = Object.assign(Object.create(world), { state, helpers: sim.helpers });
+  worldSystem._spawnStations(sector, { stations: [] }, mulberry32(hash32(seed, sector.id, 0)));
+  const stationTethys = state.entityList.find((row) => row.data?.stationId === QUIET_PASSAGE.stationId);
+  const stationCustoms = state.entityList.find((row) => row.data?.stationId === QUIET_PASSAGE.destStationId);
+
   const player = sim.spawn({
     type: 'ship',
     team: 0,
     isPlayer: true,
-    pos: { x: QUIET_PASSAGE.transportStartPos.x + 50, z: QUIET_PASSAGE.transportStartPos.z + 50 },
+    pos: { x: stationTethys.pos.x, z: stationTethys.pos.z },
     vel: { x: 0, z: 0 },
     radius: 12,
     mass: 24,
@@ -40,18 +52,6 @@ function boot(seed = SEED) {
     data: {},
   });
   state.playerId = player.id;
-
-  const stationTethys = sim.spawn({
-    type: 'station',
-    pos: { x: 500, z: 500 },
-    data: { stationId: QUIET_PASSAGE.stationId, dockRadius: 90, name: 'Tethys Trade Hub' },
-  });
-
-  const stationCustoms = sim.spawn({
-    type: 'station',
-    pos: { ...QUIET_PASSAGE.checkpointPos },
-    data: { stationId: QUIET_PASSAGE.destStationId, dockRadius: 90, name: 'Customs Gate' },
-  });
 
   const events = [];
   for (const name of ['mission:completed', 'mission:failed', 'mission:updated', 'toast', 'comms:popup', 'alert']) {
@@ -145,7 +145,7 @@ test('Quiet passage offer on Tethys board: inspect, decline commits nothing', ()
 test('Positive branch: quiet passage (cold coast) maintains comfort and pays full fee', () => {
   const h = boot();
   h.bus.emit('dock:docked', { stationId: 'station_tethys' });
-  assert.equal(h.missionSystem.acceptMission(QUIET_PASSAGE.id), true);
+  h.bus.emit('ui:acceptMission', { missionId: QUIET_PASSAGE.id });
 
   const mission = h.state.missions.active.find((m) => m.sourceOfferId === QUIET_PASSAGE.id || m.params?.quietPassage);
   assert.ok(mission, 'mission active');
@@ -165,8 +165,8 @@ test('Positive branch: quiet passage (cold coast) maintains comfort and pays ful
   h.state.player.heat = 0; // low heat
 
   // Advance transport near checkpoint
-  transport.pos.x = QUIET_PASSAGE.checkpointPos.x + 30;
-  transport.pos.z = QUIET_PASSAGE.checkpointPos.z + 30;
+  transport.pos.x = h.stationCustoms.pos.x + 30;
+  transport.pos.z = h.stationCustoms.pos.z + 30;
   h.player.pos.x = transport.pos.x + 50;
   h.player.pos.z = transport.pos.z + 50;
 
@@ -189,7 +189,7 @@ test('Positive branch: quiet passage (cold coast) maintains comfort and pays ful
 test('Negative branch: hot approach spooks transport and visibly degrades contract fee', () => {
   const h = boot();
   h.bus.emit('dock:docked', { stationId: 'station_tethys' });
-  assert.equal(h.missionSystem.acceptMission(QUIET_PASSAGE.id), true);
+  h.bus.emit('ui:acceptMission', { missionId: QUIET_PASSAGE.id });
 
   const mission = h.state.missions.active.find((m) => m.sourceOfferId === QUIET_PASSAGE.id || m.params?.quietPassage);
   assert.ok(mission, 'mission active');
@@ -218,8 +218,8 @@ test('Negative branch: hot approach spooks transport and visibly degrades contra
   assert.ok(warnToast, 'warning toast emitted on spook');
 
   // Transport passes checkpoint
-  transport.pos.x = QUIET_PASSAGE.checkpointPos.x + 20;
-  transport.pos.z = QUIET_PASSAGE.checkpointPos.z + 20;
+  transport.pos.x = h.stationCustoms.pos.x + 20;
+  transport.pos.z = h.stationCustoms.pos.z + 20;
 
   h.step();
 
@@ -233,4 +233,76 @@ test('Negative branch: hot approach spooks transport and visibly degrades contra
 
   const debriefPopup = h.events.find((e) => e.name === 'comms:popup' && e.payload?.text?.includes('Degraded delivery'));
   assert.ok(debriefPopup, 'debrief popup quotes degraded delivery');
+});
+
+test('Tethys board launches the liner into its real global Customs Gate lane', () => {
+  const h = boot();
+  h.bus.emit('dock:docked', { stationId: QUIET_PASSAGE.stationId });
+  h.bus.emit('ui:acceptMission', { missionId: QUIET_PASSAGE.id });
+  const mission = h.state.missions.active.find((row) => row.sourceOfferId === QUIET_PASSAGE.id);
+  assert.ok(mission);
+  h.step(0);
+  const transport = h.state.entityList.find((row) => row.data?.quietPassageOf === String(mission.id));
+  assert.ok(transport);
+  assert.deepEqual({ x: transport.pos.x, z: transport.pos.z }, TRANSPORT_START,
+    'liner starts in Tethys global coordinates');
+  assert.ok(Math.hypot(transport.pos.x - h.player.pos.x, transport.pos.z - h.player.pos.z) < 2000,
+    'liner is near the real Tethys hub');
+  const distanceBefore = Math.hypot(transport.pos.x - h.stationCustoms.pos.x,
+    transport.pos.z - h.stationCustoms.pos.z);
+  h.step();
+  assert.ok(Math.hypot(transport.pos.x - h.stationCustoms.pos.x,
+    transport.pos.z - h.stationCustoms.pos.z) < distanceBefore, 'liner heads for the real Customs Gate');
+
+  const savedPose = { x: transport.pos.x, z: transport.pos.z };
+  const saved = JSON.parse(JSON.stringify(h.missionSystem.serialize()));
+  const continued = boot();
+  continued.state.simTime = h.state.simTime;
+  continued.missionSystem.deserialize(saved);
+  continued.step(0);
+  const resumed = continued.state.missions.active.find((row) => row.sourceOfferId === QUIET_PASSAGE.id);
+  const liner = continued.state.entityList.find((row) => row.data?.quietPassageOf === String(resumed.id));
+  assert.ok(liner);
+  assert.deepEqual({ x: liner.pos.x, z: liner.pos.z }, savedPose, 'saved global pose is not converted twice');
+  for (let i = 0; i < 300 && resumed.status === 'active'; i++) {
+    continued.player.pos.x = liner.pos.x + 50;
+    continued.player.pos.z = liner.pos.z + 50;
+    continued.player.vel.x = liner.vel.x;
+    continued.player.vel.z = liner.vel.z;
+    continued.step();
+  }
+  assert.equal(resumed.status, 'completed');
+  assert.ok(Math.hypot(liner.pos.x - continued.stationCustoms.pos.x,
+    liner.pos.z - continued.stationCustoms.pos.z) <= QUIET_PASSAGE.checkpointRadius,
+    'payment requires passage at the real Customs Gate');
+});
+
+test('completed Quiet passage stays off a refreshed board before and after Continue', () => {
+  const h = boot();
+  h.bus.emit('dock:docked', { stationId: QUIET_PASSAGE.stationId });
+  h.bus.emit('ui:acceptMission', { missionId: QUIET_PASSAGE.id });
+  const mission = h.state.missions.active.find((row) => row.sourceOfferId === QUIET_PASSAGE.id);
+  assert.ok(mission);
+  assert.notEqual(mission.id, QUIET_PASSAGE.id, 'acceptance produces a generated runtime mission id');
+  h.step(0);
+  const transport = h.state.entityList.find((row) => row.data?.quietPassageOf === String(mission.id));
+  for (let i = 0; i < 300 && mission.status === 'active'; i++) h.step();
+  assert.equal(mission.status, 'completed');
+  assert.ok(Math.hypot(transport.pos.x - h.stationCustoms.pos.x,
+    transport.pos.z - h.stationCustoms.pos.z) <= QUIET_PASSAGE.checkpointRadius);
+  const receipt = h.state.missions.receipts.find((row) => row.missionId === mission.id);
+  assert.equal(receipt.outcome, 'completed');
+  assert.equal(receipt.sourceOfferId, QUIET_PASSAGE.id, 'settlement retains stable offer identity');
+
+  h.state.simTime += h.state.missions.config.refreshSec + 1;
+  let board = h.missionSystem.ensureBoard(QUIET_PASSAGE.stationId);
+  assert.equal(board.slots.some((row) => row.id === QUIET_PASSAGE.id), false,
+    'completed offer does not return on a real board refresh');
+  const saved = JSON.parse(JSON.stringify(h.missionSystem.serialize()));
+  const continued = boot();
+  continued.state.simTime = h.state.simTime + h.state.missions.config.refreshSec + 1;
+  continued.missionSystem.deserialize(saved);
+  board = continued.missionSystem.ensureBoard(QUIET_PASSAGE.stationId);
+  assert.equal(board.slots.some((row) => row.id === QUIET_PASSAGE.id), false,
+    'saved completion identity suppresses the offer after Continue');
 });

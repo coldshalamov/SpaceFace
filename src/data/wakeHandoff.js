@@ -84,7 +84,7 @@ export function buildWakeHandoffOffer() {
       wakeHandoff: {
         windowS: WAKE_HANDOFF.windowS,
         closeAt: null,
-        spawned: false,
+        pose: null,
         haulerName: WAKE_HANDOFF.haulerName,
       },
     },

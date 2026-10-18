@@ -2,6 +2,9 @@
 // only keeps the hauler's lane and reads the existing scoop (`pickup:collected`).
 
 import { WAKE_HANDOFF, buildWakeHandoffOffer, wakePassRead } from '../data/wakeHandoff.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+
+const LANE_START = sectorLocalToGlobalForSector(WAKE_HANDOFF.start, WAKE_HANDOFF.sectorId);
 
 export function syncWakeHandoffOffer(host, info, board) {
   if (!info || info.id !== WAKE_HANDOFF.stationId || !board || !Array.isArray(board.slots)) return false;
@@ -29,6 +32,8 @@ function rememberWakeBodies(state, mission) {
     ? state.entities.get(mission._wakeHaulerId) : null;
   let pod = mission._wakePodId != null && state.entities
     ? state.entities.get(mission._wakePodId) : null;
+  if (hauler?.data?.wakeHaulerOf !== String(mission.id)) hauler = null;
+  if (pod?.data?.wakePodOf !== String(mission.id)) pod = null;
   if (!state.entities || typeof state.entities.values !== 'function') {
     return { hauler: hauler && hauler.alive !== false ? hauler : null, pod: pod && pod.alive !== false ? pod : null };
   }
@@ -57,15 +62,20 @@ function dropWakeBodies(state, mission) {
 }
 
 function ensureWakeLane(host, mission, spec) {
-  if (spec.spawned) return rememberWakeBodies(host.state, mission);
+  let { hauler, pod } = rememberWakeBodies(host.state, mission);
+  if (hauler && pod) return { hauler, pod };
   const spawn = host.helpers && host.helpers.spawnEntity;
-  if (typeof spawn !== 'function') return { hauler: null, pod: null };
+  if (typeof spawn !== 'function') return { hauler, pod };
   const heading = WAKE_HANDOFF.heading;
   const speed = WAKE_HANDOFF.speed;
   const vx = Math.cos(heading) * speed;
   const vz = Math.sin(heading) * speed;
-  const origin = WAKE_HANDOFF.start;
-  const hauler = spawn({
+  // Runtime ids and the legacy spawn latch do not survive world residency or Continue.
+  const elapsed = spec.spawned
+    ? Math.max(0, (Number(host.state.simTime) || 0) - (spec.closeAt - WAKE_HANDOFF.windowS)) : 0;
+  const origin = hauler?.pos || (Number.isFinite(spec.pose?.x) && Number.isFinite(spec.pose?.z)
+    ? spec.pose : { x: LANE_START.x + vx * elapsed, z: LANE_START.z + vz * elapsed });
+  if (!hauler) hauler = spawn({
     type: 'ship',
     team: 0,
     pos: { x: origin.x, z: origin.z },
@@ -85,9 +95,9 @@ function ensureWakeLane(host, mission, spec) {
       intent: { moveX: 0, moveZ: 0, boost: false, fire: false, aimAngle: heading },
     },
   });
-  if (!hauler) return { hauler: null, pod: null };
+  if (!hauler) return { hauler: null, pod };
   const back = WAKE_HANDOFF.wakeOffset;
-  const pod = spawn({
+  if (!pod) pod = spawn({
     type: 'pickup',
     pos: { x: origin.x - Math.cos(heading) * back, z: origin.z - Math.sin(heading) * back },
     vel: { x: vx, z: vz },
@@ -104,12 +114,12 @@ function ensureWakeLane(host, mission, spec) {
       // wake. The crew-cut object is the existing "fly into the body" door.
       // No miner title, so the law does not read the scoop as theft.
       npcMiningSource: { wakePass: true },
-      despawnAt: (Number(host.state.simTime) || 0) + WAKE_HANDOFF.windowS + 5,
+      despawnAt: spec.closeAt + 5,
     },
   });
   mission._wakeHaulerId = hauler.id;
   if (pod) mission._wakePodId = pod.id;
-  spec.spawned = true;
+  spec.pose = { x: hauler.pos.x, z: hauler.pos.z };
   return { hauler, pod: pod && pod.alive !== false ? pod : null };
 }
 
@@ -126,6 +136,7 @@ function stepWakeLane(state, mission, dt) {
   hauler.rot = heading;
   hauler.pos.x += hauler.vel.x * step;
   hauler.pos.z += hauler.vel.z * step;
+  mission.params.wakeHandoff.pose = { x: hauler.pos.x, z: hauler.pos.z };
   const pod = mission._wakePodId != null ? state.entities.get(mission._wakePodId) : null;
   if (!pod || pod.alive === false) return;
   const back = WAKE_HANDOFF.wakeOffset;
@@ -191,7 +202,8 @@ export function onWakePickupCollected(host, payload) {
 
 export function wakeHandoffFocus(host, mission) {
   const bodies = host && host.state ? rememberWakeBodies(host.state, mission) : { hauler: null, pod: null };
-  const mark = (bodies.pod && bodies.pod.pos) || (bodies.hauler && bodies.hauler.pos) || WAKE_HANDOFF.start;
+  const mark = (bodies.pod && bodies.pod.pos) || (bodies.hauler && bodies.hauler.pos)
+    || mission?.params?.wakeHandoff?.pose || LANE_START;
   return {
     pos: { x: mark.x, z: mark.z },
     presentationEntityId: bodies.pod ? bodies.pod.id : (bodies.hauler ? bodies.hauler.id : null),
