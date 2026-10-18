@@ -680,6 +680,26 @@ const SMUGGLER_CACHE_DRIFT_WU_S = 4;
 const SMUGGLER_CACHE_AMOUNT_LO = 4;
 const SMUGGLER_CACHE_AMOUNT_HI = 8;
 const SMUGGLER_CACHE_TTL_S = 600;
+// ev_debris_stream_crossing (microevent catalog, environmental): a ribbon of 8-10 small FAST
+// debris rocks on parallel vectors rakes the corridor diagonally in about a minute — the
+// drifting field's "dangerous cousin (fast and linear where that one is slow and cloudy)".
+// The stream is the event: real collidable rocks on one ballistic heading the player threads
+// (skill expression per the catalog) or waits out at the edge. The patrol/sweeper cast and
+// the lane-pin first-strike stay unwired — the catalog's optional roles — while the rake
+// itself needs nothing else to read.
+const DEBRIS_STREAM_MEAN_INTERVAL_S = 3000;
+const DEBRIS_STREAM_SPAWN_RADIUS_WU = 2600;
+const DEBRIS_STREAM_MISS_MAX_WU = 700;
+const DEBRIS_STREAM_SPEED_LO_WU_S = 210;
+const DEBRIS_STREAM_SPEED_HI_WU_S = 280;
+const DEBRIS_STREAM_PIECES_LO = 8;
+const DEBRIS_STREAM_PIECES_HI = 10;
+const DEBRIS_STREAM_RADIUS_LO_WU = 2;
+const DEBRIS_STREAM_RADIUS_HI_WU = 4.5;
+const DEBRIS_STREAM_RIBBON_WU = 420;
+const DEBRIS_STREAM_HEADING_JITTER_RAD = 0.07;
+const DEBRIS_STREAM_TYPE_ID = 'ast_common_rock';
+const DEBRIS_STREAM_EXIT_PAD_S = 8;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5521,6 +5541,7 @@ export const traffic = {
     this._stepPocketMeteorPass(dt, state);
     this._stepPocketDebrisField(dt, state);
     this._stepSmugglerDeadDrop(dt, state);
+    this._stepPocketDebrisStream(dt, state);
     // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
     // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
     // stale ledger here instead of letting its stamps and jobs outlive the sector.
@@ -11567,6 +11588,130 @@ export const traffic = {
   },
 
   /**
+   * ev_debris_stream_crossing cadence: one rake per roll on a persisted clock (the same
+   * saved-bag pattern as the meteor pass). The live-stream record is instance-local — a
+   * restored stream re-derives the "one at a time" guard through the live-entity scan in
+   * _spawnPocketDebrisStream.
+   */
+  _stepPocketDebrisStream(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const stream = this._debrisStream;
+    if (stream) {
+      let anyAlive = false;
+      const byId = state.entities && typeof state.entities.get === 'function' ? state.entities : null;
+      if (byId) {
+        for (let i = 0; i < stream.rockIds.length; i++) {
+          const rock = byId.get(stream.rockIds[i]);
+          if (rock && rock.alive !== false) { anyAlive = true; break; }
+        }
+      }
+      if (!anyAlive) this._debrisStream = null;
+    }
+    if (!Number.isFinite(bag.nextDebrisStreamAt)) {
+      bag.nextDebrisStreamAt = now + this._debrisStreamIntervalS();
+      return;
+    }
+    if (now < bag.nextDebrisStreamAt) return;
+    bag.nextDebrisStreamAt = now + this._debrisStreamIntervalS();
+    if (this._debrisStream) return;
+    this._spawnPocketDebrisStream(state);
+  },
+
+  _debrisStreamIntervalS() {
+    return DEBRIS_STREAM_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The catalog's arrangement: 8-10 small rocks on parallel vectors crossing the corridor
+   * diagonally — a rake, not a cloud. Every rock is a real collidable dynamic body on the
+   * shared ballistic heading (heading jitter ≤ ~4° keeps the ribbon parallel, spacing across
+   * the perpendicular band keeps it a ribbon), fast enough that contact is a strike rather
+   * than a nudge. The crossing chord aims across the player's own route inside the miss
+   * band, so the rake arrives where the player is looking. Mining a fast rock on the way
+   * through is the authored counter-play; the despawn sweep owns every exit.
+   */
+  _spawnPocketDebrisStream(state) {
+    const helpers = this.helpers;
+    const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
+    if (!state || !spawn) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return null;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e && e.alive !== false && e.data && e.data.debrisStream === true) return null;
+    }
+    const bearing = this._rng() * Math.PI * 2;
+    const miss = (this._rng() - 0.5) * 2 * DEBRIS_STREAM_MISS_MAX_WU;
+    const baseSpeed = DEBRIS_STREAM_SPEED_LO_WU_S
+      + this._rng() * (DEBRIS_STREAM_SPEED_HI_WU_S - DEBRIS_STREAM_SPEED_LO_WU_S);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const pieces = DEBRIS_STREAM_PIECES_LO
+      + Math.floor(this._rng() * (DEBRIS_STREAM_PIECES_HI - DEBRIS_STREAM_PIECES_LO + 1));
+    const travelS = (DEBRIS_STREAM_SPAWN_RADIUS_WU * 2) / baseSpeed;
+    const despawnAt = now + travelS + DEBRIS_STREAM_EXIT_PAD_S;
+    const dirX = Math.cos(bearing);
+    const dirZ = Math.sin(bearing);
+    const centerX = player.pos.x - dirX * DEBRIS_STREAM_SPAWN_RADIUS_WU - dirZ * miss;
+    const centerZ = player.pos.z - dirZ * DEBRIS_STREAM_SPAWN_RADIUS_WU + dirX * miss;
+    const rockIds = [];
+    for (let i = 0; i < pieces; i++) {
+      const across = (this._rng() - 0.5) * 2 * DEBRIS_STREAM_RIBBON_WU;
+      const along = (this._rng() - 0.5) * 2 * DEBRIS_STREAM_RIBBON_WU;
+      const heading = bearing + (this._rng() - 0.5) * 2 * DEBRIS_STREAM_HEADING_JITTER_RAD;
+      const speed = baseSpeed * (0.92 + this._rng() * 0.16);
+      const radius = DEBRIS_STREAM_RADIUS_LO_WU
+        + this._rng() * (DEBRIS_STREAM_RADIUS_HI_WU - DEBRIS_STREAM_RADIUS_LO_WU);
+      const oreHP = Math.round(radius * 8);
+      const yieldU = Math.max(2, Math.round(radius * 0.5));
+      const entity = spawn({
+        type: 'asteroid',
+        pos: {
+          x: centerX - dirZ * across + dirX * along,
+          z: centerZ + dirX * across + dirZ * along,
+        },
+        vel: { x: Math.cos(heading) * speed, z: Math.sin(heading) * speed },
+        rot: this._rng() * Math.PI * 2,
+        angVel: (this._rng() - 0.5) * 0.8,
+        radius,
+        mass: Math.max(1, Math.round(radius * radius * radius * 0.25)),
+        physicsBody: {
+          radius: asteroidColliderRadius(DEBRIS_STREAM_TYPE_ID, radius),
+          dynamic: true,
+        },
+        hull: oreHP,
+        hullMax: oreHP,
+        collides: true,
+        homeSectorId: sectorId,
+        data: {
+          typeId: DEBRIS_STREAM_TYPE_ID,
+          tier: 0,
+          tierCap: 0,
+          oreHP,
+          oreHPMax: oreHP,
+          yieldU,
+          size: radius,
+          debrisStream: true,
+          despawnAt,
+        },
+      });
+      if (entity) rockIds.push(typeof entity === 'object' ? entity.id : entity);
+    }
+    if (rockIds.length) {
+      this._debrisStream = {
+        rockIds,
+        sectorId,
+        bornAt: now,
+      };
+    }
+    return rockIds.length ? rockIds : null;
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -12754,6 +12899,8 @@ export const traffic = {
         ? { nextDebrisFieldAt: this.state.traffic.nextDebrisFieldAt } : {}),
       ...(Number.isFinite(this.state.traffic.nextSmugglerCacheAt)
         ? { nextSmugglerCacheAt: this.state.traffic.nextSmugglerCacheAt } : {}),
+      ...(Number.isFinite(this.state.traffic.nextDebrisStreamAt)
+        ? { nextDebrisStreamAt: this.state.traffic.nextDebrisStreamAt } : {}),
     };
   },
 
@@ -12828,9 +12975,12 @@ export const traffic = {
       ? data.nextDebrisFieldAt : undefined;
     this.state.traffic.nextSmugglerCacheAt = validTrafficSave && Number.isFinite(data.nextSmugglerCacheAt)
       ? data.nextSmugglerCacheAt : undefined;
+    this.state.traffic.nextDebrisStreamAt = validTrafficSave && Number.isFinite(data.nextDebrisStreamAt)
+      ? data.nextDebrisStreamAt : undefined;
     this._meteorPass = null;
     this._debrisField = null;
     this._smugglerCache = null;
+    this._debrisStream = null;
   },
 
   newGame() {
@@ -12852,6 +13002,7 @@ export const traffic = {
     this._meteorPass = null;
     this._debrisField = null;
     this._smugglerCache = null;
+    this._debrisStream = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
