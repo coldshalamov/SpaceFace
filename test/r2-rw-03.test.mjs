@@ -6,14 +6,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createBus } from '../src/core/eventBus.js';
+import { makeEntity } from '../src/core/entity.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { ensureCombatant } from '../src/combat/runtime.js';
 import { CRYO_LOCK_STATUS_ID } from '../src/combat/cryoLock.js';
 import { BURNING_STATUS_ID } from '../src/combat/thermalShock.js';
-import { combat } from '../src/systems/combat.js';
+import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { masslineSnares } from '../src/systems/masslineSnares.js';
-import { WEB_DEF_ID } from '../src/combat/tetherWebs.js';
+import { ARC_WIRE, WEB_DEF_ID } from '../src/combat/tetherWebs.js';
 import { TetherWebFx } from '../src/render/combat/tetherWebFx.js';
 
 const DT = 1 / 60;
@@ -43,12 +44,12 @@ function ship(id, x, z, extra = {}) {
   };
 }
 
-function makeWorld(t) {
+function makeWorld(t, crossingHull = null) {
   const player = ship(1, -80, 40, { team: 1, shield: 40 });
   const nodeA = ship(2, 0, 0, { radius: 8, hull: 400, shield: 0 });
   const nodeB = ship(3, 160, 0, { radius: 8, hull: 400, shield: 0 });
   // Current pose is already past the chord; the previous pose (rewound by vel * dt) is on the other side.
-  const crosser = ship(10, 80, -12, { shield: 80, vz: -900 });
+  const crosser = crossingHull || ship(10, 80, -12, { shield: 80, vz: -900 });
   const beside = ship(11, 80, 48, { shield: 80, vx: 40 });
   const late = ship(12, 110, -12, { shield: 80, vz: -900 });
   const list = [player, nodeA, nodeB, crosser, beside, late];
@@ -171,6 +172,32 @@ test('a hull crossing a beam-charged snarl chord takes shield strip and Cryo Loc
   assert.equal(late.shield, lateShield, 'a spent chord does not keep biting while its clock still runs');
   assert.equal(cryoOf(state, late.id), null);
 });
+
+for (const [facing, rot] of [['rear', 0], ['front', Math.PI]]) {
+  test(`an authored Foreman crossing with its ${facing} toward the node only loses the intended shield strip`, async (t) => {
+    for (const shield of [10, 0, 80]) {
+      await t.test(`starting shield ${shield}`, (t) => {
+        const spec = makeEnemySpawnSpec('mirrorjaw_foreman', 4, { x: 80, z: -12 });
+        const foreman = makeEntity({
+          ...spec, id: 10, rot, vel: { x: 0, z: -900 },
+          hull: 200, hullMax: 200, armorHp: 40, shield,
+        });
+        const world = makeWorld(t, foreman);
+        shootEnergy(world);
+        world.snares.update(DT, world.state);
+
+        assert.equal(foreman.armorHp, 40, 'the shield strip never spills into Foreman armor');
+        assert.equal(foreman.hull, 200, 'the shield strip never damages the Foreman hull');
+        assert.equal(foreman.shield, Math.max(0, shield - ARC_WIRE.shieldStrip),
+          'prow and stern multipliers do not change the authored shield strip');
+        assert.equal(world.chord.arcWire.left, 0, 'the crossing spends the charge even with no shield');
+        world.state.tick += 1;
+        world.kernel.prePhysics(DT);
+        assert.ok(cryoOf(world.state, foreman.id), 'the Foreman still takes Cryo Lock');
+      });
+    }
+  });
+}
 
 test('charge dies on sim time, and a fresh shot can arm the chord again', (t) => {
   const world = makeWorld(t);

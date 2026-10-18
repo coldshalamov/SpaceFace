@@ -362,8 +362,7 @@ function applyArcCrossing(state, registry, chord, hull, a, b) {
   const burning = runtime.statuses && runtime.statuses[BURNING_STATUS_ID];
   const shield = Math.max(0, Number(hull.shield) || 0);
   const strip = Math.min(ARC_WIRE.shieldStrip, shield);
-  // The chord is not a gun. Crediting a pinned node keeps the difficulty gun dial
-  // from rewriting the authored strip (that dial only scales hits by or on the player).
+  // Keep the trap credited to its pinned node; the damage owner handles the shield-only drain.
   const attackerId = chord.ownerId != null ? chord.ownerId : chord.controllerId;
   const statuses = burning ? [] : [{
     id: CRYO_LOCK_STATUS_ID,
@@ -373,7 +372,7 @@ function applyArcCrossing(state, registry, chord, hull, a, b) {
   let landed = false;
   if (strip > 0 || statuses.length) {
     const ionMult = kernel.catalog.damageModel.shieldMultipliers.ion || 1;
-    const ion = strip > 0 ? (strip / ionMult) * (1 - 1e-6) : 0;
+    const ion = strip > 0 ? strip / ionMult : 0;
     const routed = kernel.routeDamage({
       attackerId,
       targetId: hull.id,
@@ -383,7 +382,7 @@ function applyArcCrossing(state, registry, chord, hull, a, b) {
         shieldBypass: 0,
         heat: 0,
         statuses,
-        flags: { ignoreFriendlyFire: true },
+        flags: { ignoreFriendlyFire: true, shieldOnly: true },
       },
       origin: { kind: 'arc_wire', id: WEB_DEF_ID },
     });
