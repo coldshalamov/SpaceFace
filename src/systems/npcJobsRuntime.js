@@ -1,6 +1,7 @@
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
+import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 // npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
 // PQ-014 / SF-15 / W06 integration ("natural NPC miner/hauler/patrol jobs").
 //
@@ -738,6 +739,9 @@ function jobPersistenceAnchorReason(entity) {
   const d = (entity && entity.data) || {};
   const f = (entity && entity.flags) || {};
   const ai = d.ai || {};
+  // The finite Orchard owner needs the authored source/lot body in the save.
+  // A durable record alone reconstructs a generic wreck, not its native compound.
+  if (isOrchardFrame(entity) || isOrchardPod(entity)) return 'orchard';
   if (d.persistent) return 'data.persistent';
   if (d.persistenceOwner) return 'persistence-owner';
   if (f.missionPinned || d.missionPinned || d.missionId || d.missionTag

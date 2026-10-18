@@ -97,7 +97,7 @@ jobs:
 
       - name: Validate Orchard worker Continue
         if: ${{ !cancelled() && matrix.shard == 1 }}
-        run: node --test --test-concurrency=1 test/anvil-work-rematerialization.test.mjs test/anvil-orchard-input-route.test.mjs test/anvil-orchard-refill-residency.test.mjs test/anvil-worker-world-promotion.test.mjs test/anvil-outbound-field-arrival.test.mjs
+        run: node --test --test-concurrency=1 test/anvil-work-rematerialization.test.mjs test/anvil-orchard-input-route.test.mjs test/anvil-orchard-refill-residency.test.mjs test/anvil-worker-world-promotion.test.mjs test/anvil-outbound-field-arrival.test.mjs test/npc-jobs-orchard-persistence.test.mjs test/anvil-orchard-production-continue.test.mjs
 
       - name: Validate Ceres physical workfleet and Continue
         if: ${{ !cancelled() && matrix.shard == 1 }}
