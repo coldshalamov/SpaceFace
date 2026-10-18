@@ -10621,6 +10621,13 @@ export function disposeRendererOwnedResources(owner, options = {}) {
     try { owner._crucibleGhostPresentation?.detach?.(); } catch (_) { /* best effort */ }
     try { owner._phaseBlinkPresentation?.detach?.(); } catch (_) { /* best effort */ }
   }
+  for (const owned of owner._nemesisHullPresentations?.values() || []) {
+    try {
+      if (disposeGpu) owned.presentation.dispose();
+      else owned.presentation.detach();
+    } catch (_) { /* best effort */ }
+  }
+  owner._nemesisHullPresentations?.clear();
   disposeRendererMeshRoots(owner, scene, disposeGpu);
   disposeBolusView(owner, { disposeGpu });
   disposeMarrowCone(owner, { disposeGpu });
@@ -10781,6 +10788,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._shipAuxPool = null;
   owner._asteroidInstancePool = null;
   owner._livingHullPresentation = null;
+  owner._nemesisHullPresentations = null;
   owner._crucibleGhostPresentation = null;
   owner._phaseBlinkPresentation = null;
   owner._assetResidency = null;
@@ -11576,6 +11584,7 @@ export const render = {
             }
           }
         }
+        if (target && entity) this._syncNemesisHullPresentation?.(entity, target);
         if (target && entity && entity.id === state.playerId && this._livingHullPresentation) {
           this._livingHullPresentation.attach(target);
           this._livingHullPresentation.sync(
@@ -26092,6 +26101,30 @@ export const render = {
     });
   },
 
+  _syncNemesisHullPresentation(entity, mesh) {
+    let owned = this._nemesisHullPresentations?.get(mesh);
+    if (owned && (owned.entityId !== entity.id || !entity.data?.nemesis)) {
+      this._releaseNemesisHullPresentation(mesh);
+      owned = null;
+    }
+    if (entity.id === this.state.playerId || entity.type !== 'ship' || !entity.data?.nemesis) return;
+    if (!owned) {
+      if (!entity.data.livingHull) return;
+      owned = { entityId: entity.id, presentation: createLivingHullPresentation() };
+      if (!this._nemesisHullPresentations) this._nemesisHullPresentations = new Map();
+      this._nemesisHullPresentations.set(mesh, owned);
+    }
+    owned.presentation.attach(mesh);
+    owned.presentation.sync(entity.data.livingHull, this.state.simTime, entity);
+  },
+
+  _releaseNemesisHullPresentation(mesh, entityId = null) {
+    const owned = this._nemesisHullPresentations?.get(mesh);
+    if (!owned || (entityId != null && owned.entityId !== entityId)) return;
+    owned.presentation.dispose();
+    this._nemesisHullPresentations.delete(mesh);
+  },
+
   _bindPresentationMesh(entity, mesh) {
     const world = this._presentationWorld;
     if (!entity || !mesh) return false;
@@ -26103,6 +26136,7 @@ export const render = {
     // owner's pending release — the registries resolve the pending entry
     // through the side index and would clear the NEW owner's record.
     if (this._meshReleasePending) this._meshReleasePending.delete(mesh);
+    this._syncNemesisHullPresentation?.(entity, mesh);
     if (entity.id === this.state.playerId && this._livingHullPresentation) {
       this._livingHullPresentation.attach(mesh);
       this._livingHullPresentation.sync(
@@ -26275,6 +26309,7 @@ export const render = {
         delete mesh.userData.presentationEntityId;
       }
     }
+    this._releaseNemesisHullPresentation?.(mesh, entityId);
     const machinery = this.state?.entities?.get(entityId);
     if (ceresWorkfleetRole(machinery) && machinery.mesh === mesh) machineryPresentationPlace(machinery, this.state);
     if (this._livingHullPresentation) {
@@ -26591,6 +26626,7 @@ export const render = {
         // hull overlay stays parented to whatever hull it last attached to, and motion records
         // can pin the tree through a recycled entity id.
         try { this._livingHullPresentation?.detach?.(owner); } catch (_) { /* best effort */ }
+        this._releaseNemesisHullPresentation?.(owner);
         deadOwners.add(owner);
         // The depth-stage bookkeeping is teardown-blind — a parked/withheld
         // owner would keep its arm rows (and the withheld mesh refs they name)
@@ -29265,6 +29301,7 @@ export const render = {
         // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
         const farSpeck = lodLevel === 'lod2' && !isPlayer;
         if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, simNow);
+        if (entity) this._syncNemesisHullPresentation?.(entity, mesh);
         if (isPlayer && entity && this._livingHullPresentation) {
           this._livingHullPresentation.sync(
             entity.data && entity.data.livingHull,
