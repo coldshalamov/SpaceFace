@@ -36,6 +36,7 @@ import {
 } from './uniqueWreckEncounterScripts.js';
 import { markEntityGhost } from './scanner.js';
 import { mines as minesSystem, MINE_TELEGRAPH_CUE, mineCorridorLayout } from './mines.js';
+import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
 import { isPdScreenActor } from '../ai/pdScreen.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
@@ -2797,6 +2798,36 @@ function convoyChoose(d, live, state, choiceId) {
   live.phase = 'transit';
 }
 
+// The jackal wake is the tactical-AI doctrine that scores cargo and wrecks ahead of a clean
+// kill. A live raid's point-defense screen is its escort wing; once that wing is gone the
+// remaining raiders stop pressing and sweep the spill.
+const RAID_LOOT_SWEEP_DOCTRINE = CombatDoctrineId.MINE_LAYER_WAKE;
+
+function isRaidEscortWingMember(entity) {
+  if (!entity) return false;
+  if (isPdScreenActor(entity)) return true;
+  const ai = entity.data && entity.data.ai;
+  return !!(ai && ai.combatDoctrineId === CombatDoctrineId.ESCORT_SCREEN);
+}
+
+function flipRaidSurvivorsToLootSweep(d, live, state, killedId) {
+  const predation = live && live.plan && live.plan.predation;
+  if (!predation || predation.enabled !== true || killedId == null) return;
+  const raiderRole = predation.raiderRole || 'raider';
+  if (!live.roles || live.roles[killedId] !== raiderRole) return;
+  const killed = state && state.entities && state.entities.get(killedId);
+  if (!isRaidEscortWingMember(killed)) return;
+  const raiders = d.entsOf(live, raiderRole);
+  for (let i = 0; i < raiders.length; i++) {
+    if (isRaidEscortWingMember(raiders[i])) return;
+  }
+  for (let i = 0; i < raiders.length; i++) {
+    const ai = raiders[i].data && raiders[i].data.ai;
+    if (!ai || ai.combatDoctrineId === RAID_LOOT_SWEEP_DOCTRINE) continue;
+    ai.combatDoctrineId = RAID_LOOT_SWEEP_DOCTRINE;
+  }
+}
+
 const convoy = {
   restoreCustody(d, state, envelope) { return restoreFreightCargoCustody(d, state, envelope); },
   fire(d, live, state) { convoyFire(d, live, state, true); },
@@ -2967,6 +2998,7 @@ const convoy = {
         }
         if (p.id === live.data.predationRaiderId) clearConvoyPredation(d, live, 'raider_destroyed');
         if (p.byPlayer) live.data.guardKills += 1;
+        flipRaidSurvivorsToLootSweep(d, live, state, p.id);
       }
     }
     if (name === 'guardKill') live.data.guardKills += 1; // player killed an attacker near the convoy
