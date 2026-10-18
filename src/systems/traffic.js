@@ -645,6 +645,24 @@ const METEOR_PASS_RADIUS_LO_WU = 10;
 const METEOR_PASS_RADIUS_HI_WU = 18;
 const METEOR_PASS_TYPE_ID = 'ast_common_rock';
 const METEOR_PASS_EXIT_PAD_S = 6;
+// ev_debris_on_route (microevent catalog, accident): a cluster of real debris pickups on ONE
+// shared slow drift vector crossing the pocket the player is in — "sparkles where nothing
+// should sparkle, a constellation moving as one against the parallax". Scheduled environmental
+// spawn (the catalog's other start, wreck-field aftermath, already has the cutter spill). The
+// field is all pickup: the catalog's authored interference is the player diving in and
+// collecting it piece by piece through the standard pipeline. No field, no slot, no sweeper
+// cast — the catalog's "the event still reads without the janitor" — and the ordinary
+// despawnAt sweep owns every piece's exit past the far edge.
+const DEBRIS_FIELD_MEAN_INTERVAL_S = 2400;
+const DEBRIS_FIELD_SPAWN_RADIUS_WU = 2600;
+const DEBRIS_FIELD_MISS_MAX_WU = 700;
+const DEBRIS_FIELD_SPEED_LO_WU_S = 11;
+const DEBRIS_FIELD_SPEED_HI_WU_S = 17;
+const DEBRIS_FIELD_PIECES_LO = 8;
+const DEBRIS_FIELD_PIECES_HI = 12;
+const DEBRIS_FIELD_SPREAD_WU = 240;
+const DEBRIS_FIELD_DRIFT_JITTER_WU_S = 3;
+const DEBRIS_FIELD_EXIT_PAD_S = 45;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5484,6 +5502,7 @@ export const traffic = {
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
+    this._stepPocketDebrisField(dt, state);
     // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
     // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
     // stale ledger here instead of letting its stamps and jobs outlive the sector.
@@ -11315,6 +11334,112 @@ export const traffic = {
   },
 
   /**
+   * ev_debris_on_route cadence: one field per roll on a schedule that survives a Continue
+   * (same persisted-bag pattern as the meteor pass). The live-field record stays
+   * instance-local — a restored field re-derives the "one at a time" guard through the
+   * live-entity scan in _spawnPocketDebrisField.
+   */
+  _stepPocketDebrisField(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const field = this._debrisField;
+    if (field) {
+      let anyAlive = false;
+      const byId = state.entities && typeof state.entities.get === 'function' ? state.entities : null;
+      if (byId) {
+        for (let i = 0; i < field.pieceIds.length; i++) {
+          const piece = byId.get(field.pieceIds[i]);
+          if (piece && piece.alive !== false) { anyAlive = true; break; }
+        }
+      }
+      if (!anyAlive) this._debrisField = null;
+    }
+    if (!Number.isFinite(bag.nextDebrisFieldAt)) {
+      bag.nextDebrisFieldAt = now + this._debrisFieldIntervalS();
+      return;
+    }
+    if (now < bag.nextDebrisFieldAt) return;
+    bag.nextDebrisFieldAt = now + this._debrisFieldIntervalS();
+    if (this._debrisField) return;
+    this._spawnPocketDebrisField(state);
+  },
+
+  _debrisFieldIntervalS() {
+    return DEBRIS_FIELD_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The catalog's arrangement: 8-12 small pieces on parallel tracks entering at the pocket
+   * edge on one shared slow vector — a ribbon crossing the player's route over about two
+   * minutes, not a cloud parked on it. Every piece is a standard scrap pickup (collides,
+   * TTL'd, collectible by the ordinary custody pipeline), spread across a band perpendicular
+   * to the drift so the constellation reads at range. A piece the player catches simply
+   * leaves the constellation early; the rest exit at the far edge under despawnAt.
+   */
+  _spawnPocketDebrisField(state) {
+    const helpers = this.helpers;
+    const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
+    if (!state || !spawn) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return null;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e && e.alive !== false && e.data && e.data.debrisOnRoute === true) return null;
+    }
+    const bearing = this._rng() * Math.PI * 2;
+    const dirX = Math.cos(bearing);
+    const dirZ = Math.sin(bearing);
+    const miss = (this._rng() - 0.5) * 2 * DEBRIS_FIELD_MISS_MAX_WU;
+    const speed = DEBRIS_FIELD_SPEED_LO_WU_S
+      + this._rng() * (DEBRIS_FIELD_SPEED_HI_WU_S - DEBRIS_FIELD_SPEED_LO_WU_S);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const pieces = DEBRIS_FIELD_PIECES_LO
+      + Math.floor(this._rng() * (DEBRIS_FIELD_PIECES_HI - DEBRIS_FIELD_PIECES_LO + 1));
+    const travelS = (DEBRIS_FIELD_SPAWN_RADIUS_WU * 2) / speed;
+    const despawnAt = now + travelS + DEBRIS_FIELD_EXIT_PAD_S;
+    const pieceIds = [];
+    // The ribbon's center enters on the player's far side aimed across their route within the
+    // miss band — the field drifts through where the player is actually looking.
+    const centerX = player.pos.x - dirX * DEBRIS_FIELD_SPAWN_RADIUS_WU - dirZ * miss;
+    const centerZ = player.pos.z - dirZ * DEBRIS_FIELD_SPAWN_RADIUS_WU + dirX * miss;
+    for (let i = 0; i < pieces; i++) {
+      const across = (this._rng() - 0.5) * 2 * DEBRIS_FIELD_SPREAD_WU;
+      const along = (this._rng() - 0.5) * 2 * DEBRIS_FIELD_SPREAD_WU;
+      const jitX = (this._rng() - 0.5) * 2 * DEBRIS_FIELD_DRIFT_JITTER_WU_S;
+      const jitZ = (this._rng() - 0.5) * 2 * DEBRIS_FIELD_DRIFT_JITTER_WU_S;
+      const amount = 1 + Math.floor(this._rng() * 3);
+      const entity = spawn({
+        type: 'pickup',
+        pos: {
+          x: centerX - dirZ * across + dirX * along,
+          z: centerZ + dirX * across + dirZ * along,
+        },
+        vel: { x: dirX * speed + jitX, z: dirZ * speed + jitZ },
+        radius: 2.4, mass: 0.4, collides: true,
+        homeSectorId: sectorId,
+        data: {
+          kind: 'ore', commodityId: 'cmdty_scrap_metal', amount,
+          despawnAt,
+          debrisOnRoute: true,
+        },
+      });
+      if (entity) pieceIds.push(typeof entity === 'object' ? entity.id : entity);
+    }
+    if (pieceIds.length) {
+      this._debrisField = {
+        pieceIds,
+        sectorId,
+        bornAt: now,
+      };
+    }
+    return pieceIds.length ? pieceIds : null;
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -12498,6 +12623,8 @@ export const traffic = {
       ...(heliosFreightTallies.length ? { heliosFreightTallies } : {}),
       ...(Number.isFinite(this.state.traffic.nextMeteorPassAt)
         ? { nextMeteorPassAt: this.state.traffic.nextMeteorPassAt } : {}),
+      ...(Number.isFinite(this.state.traffic.nextDebrisFieldAt)
+        ? { nextDebrisFieldAt: this.state.traffic.nextDebrisFieldAt } : {}),
     };
   },
 
@@ -12568,7 +12695,10 @@ export const traffic = {
     // The sky clock survives a Continue; a save without it re-rolls on the next step.
     this.state.traffic.nextMeteorPassAt = validTrafficSave && Number.isFinite(data.nextMeteorPassAt)
       ? data.nextMeteorPassAt : undefined;
+    this.state.traffic.nextDebrisFieldAt = validTrafficSave && Number.isFinite(data.nextDebrisFieldAt)
+      ? data.nextDebrisFieldAt : undefined;
     this._meteorPass = null;
+    this._debrisField = null;
   },
 
   newGame() {
@@ -12588,6 +12718,7 @@ export const traffic = {
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
     this._meteorPass = null;
+    this._debrisField = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
