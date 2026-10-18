@@ -6,7 +6,12 @@ import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // the player is working on. This system does not edit salvage.js, mining.js, or combat.js.
 
 import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
-import { COMMON_SALVAGE_COMMODITY_ID, salvagePoolForWreck } from '../data/salvageLegality.js';
+import {
+  CLASSIFIED_SALVAGE_COMMODITY_ID,
+  COMMON_SALVAGE_COMMODITY_ID,
+  restrictedSalvageForWreck,
+  salvagePoolForWreck,
+} from '../data/salvageLegality.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { hash32 } from '../core/rng.js';
 
@@ -258,7 +263,7 @@ export const salvageActions = {
       radius: 3, mass: 0.5, collides: true,
       data: {
         kind: 'cargo',
-        commodityId: 'cmdty_salvage_electronics',
+        commodityId: restrictedSalvageForWreck(wreck) ? CLASSIFIED_SALVAGE_COMMODITY_ID : COMMON_SALVAGE_COMMODITY_ID,
         amount: (unstable.damage || 0) >= 22 ? 3 : 2,
         despawnAt: now + REACTOR_CORE_TTL_S,
         ventedCore: true,

@@ -2008,8 +2008,15 @@ export const mining = {
       remaining = Object.values(pool).reduce((a, b) => a + b, 0);
     }
     for (const id in got) {
-      this.bus.emit('mining:yield', { commodityId: id, qty: got[id], pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player ? player.id : null });
-      this._spawnPickup(wreck, id, got[id]);
+      const take = got[id];
+      const spawned = this._spawnPickup(wreck, id, take);
+      if (spawned > 0) {
+        this.bus.emit('mining:yield', { commodityId: id, qty: spawned, pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player ? player.id : null });
+      }
+      if (spawned < take) {
+        pool[id] = (pool[id] || 0) + (take - spawned);
+        if (sourceKey) d.salvageSourceKey = null;
+      }
     }
     // The beam bypasses the salvage claim protocol (player drains via drainSource or the
     // direct pool, never _claimSource), so a staked wreck defends itself here: the flag
@@ -2020,7 +2027,11 @@ export const mining = {
     // path, so scanning first and beaming first never double-pay.
     this._crackDebrisCache(wreck, got, sourceKey);
 
-    if (d.salvageTimeLeft <= 0 || remaining <= 0) {
+    remaining = Object.values(pool).reduce((a, b) => a + b, 0);
+    if (remaining > 0) {
+      wreck.alive = true;
+      d.salvageTimeLeft = Math.max(dt, d.salvageTimeLeft);
+    } else {
       this.bus.emit('salvage:completed', {
         wreckId: wreck.id,
         markerId: d.markerId || d.provenance && d.provenance.markerId || null,
