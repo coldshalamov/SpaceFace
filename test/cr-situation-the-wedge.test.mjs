@@ -218,12 +218,43 @@ test('public Massline tape: fly to each pod, hold the line key, haul it out the 
     const player = () => h.ent(h.state.playerId);
     const blocking = () => h.w.podIds.map(h.ent).filter((p) => podBlocksLane(h.w, p));
     const hauled = [];
+    // Nearest latch is pure distance. The dead hauler sits just past the positive lane edge,
+    // so the usual 45 wu outward stand of a pod that has slid up against it is the wreck, and
+    // the line takes the wreck. Keep that stand while an ore pod is still the close body;
+    // otherwise park inboard or along the lane, where the ore is closest, and haul out from there.
+    const lane = h.w.lane;
+    const standFor = (pod, out) => {
+      const ores = h.w.podIds.map(h.ent).filter((e) => e && e.pos && e.alive !== false);
+      const threats = [h.w.hulkId, ...h.w.rackIds, ...h.w.haulerIds]
+        .map(h.ent).filter((e) => e && e.pos && e.alive !== false);
+      const marginAt = (dx, dz) => {
+        const x = pod.pos.x + dx, z = pod.pos.z + dz;
+        const surf = (e) => Math.max(0, Math.hypot(e.pos.x - x, e.pos.z - z) - Math.max(0, Number(e.radius) || 0));
+        const oreS = Math.min(...ores.map(surf));
+        const threatS = threats.length ? Math.min(...threats.map(surf)) : Infinity;
+        return { dx, dz, margin: threatS - oreS, outward: dx * out.x + dz * out.z };
+      };
+      const options = [];
+      for (const a of [45, 32]) options.push(marginAt(out.x * a, out.z * a));
+      for (const a of [28, 36]) options.push(marginAt(-out.x * a, -out.z * a));
+      for (const b of [56, -56]) {
+        options.push(marginAt(out.x * 28 + lane.x * b, out.z * 28 + lane.z * b));
+        options.push(marginAt(-out.x * 28 + lane.x * b, -out.z * 28 + lane.z * b));
+      }
+      const clear = options.filter((o) => o.margin >= 36);
+      const pool = clear.length ? clear : options;
+      pool.sort((a, b) => (clear.length ? b.outward - a.outward : b.margin - a.margin));
+      return pool[0];
+    };
     for (let attempt = 0; attempt < 10 && blocking().length && outcomes(h).length === 0; attempt++) {
       const pod = blocking().reduce((a, b) => (Math.abs(across(b)) > Math.abs(across(a)) ? b : a));
       const s = Math.sign(across(pod)) || 1, out = { x: side.x * s, z: side.z * s };
-      const near = () => ({ x: pod.pos.x + out.x * 45, z: pod.pos.z + out.z * 45 });
+      const near = () => {
+        const stand = standFor(pod, out);
+        return { x: pod.pos.x + stand.dx, z: pod.pos.z + stand.dz };
+      };
       const flown = h.host.step(30 * 60, { before: () => tape({ arrive: near(), match: pod }),
-        after: () => podBlocksLane(h.w, pod) && (Math.hypot(near().x - player().pos.x, near().z - player().pos.z) > 15
+        after: () => podBlocksLane(h.w, pod) && (Math.hypot(near().x - player().pos.x, near().z - player().pos.z) > 10
           || Math.hypot(player().vel.x - pod.vel.x, player().vel.z - pod.vel.z) > 4) });
       if (!podBlocksLane(h.w, pod)) continue; // knocked clear by the pod already on the line
       assert.ok(flown < 30 * 60, `attempt ${attempt}: the tape flies alongside pod ${pod.id} (gap ${Math.hypot(near().x - player().pos.x, near().z - player().pos.z).toFixed(1)}, speed ${Math.hypot(player().vel.x, player().vel.z).toFixed(1)}, pod v ${Math.hypot(pod.vel.x, pod.vel.z).toFixed(1)}, tether ${JSON.stringify(h.state.player.tether && h.state.player.tether.active)})`);
@@ -231,7 +262,7 @@ test('public Massline tape: fly to each pod, hold the line key, haul it out the 
       const tether = h.state.player.tether;
       assert.ok(tether && tether.active, 'holding the Massline key latched');
       const towed = h.ent(tether.targetId);
-      assert.ok(h.w.podIds.includes(towed.id), `the line took an ore pod (got ${towed && towed.defId})`);
+      assert.ok(h.w.podIds.includes(towed.id), `the line took an ore pod (got ${towed && towed.data && towed.data.scanLabel})`);
       const ts = Math.sign(across(towed)) || 1, pullDir = { x: side.x * ts, z: side.z * ts };
       const startAcross = Math.abs(across(towed));
       h.host.step(15 * 60, { before: () => tape({ haul: { x: player().pos.x + pullDir.x * 400, z: player().pos.z + pullDir.z * 400 }, throttle: 0.6 }),
