@@ -115,16 +115,9 @@ export function missingThreeBoosting(state, player) {
 
 export function missingThreeStrokeActive(input) {
   const path = input && input.autoTargetPath;
-  if (path) {
-    const points = Array.isArray(path.points) ? path.points : [];
-    // A drawn path is the stroke the rail was written for.
-    if (path.drawing || (path.active && points.length >= 2)) return true;
-  }
-  // The live combat stick is the same verb without a path: G mode publishes
-  // autoTargetVector, and a real deflection (active, magnitude above zero)
-  // means the pilot is already flying that stroke.
-  const vector = input && input.autoTargetVector;
-  return !!(input && input.autoFire && vector && vector.active && vector.magnitude > 0);
+  if (!path) return false;
+  const points = Array.isArray(path.points) ? path.points : [];
+  return !!(path.drawing || (path.active && points.length >= 2));
 }
 
 export function missingThreeWithinHour(atS, startedAt, windowS = FIRST_HOUR_S) {
