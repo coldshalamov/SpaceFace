@@ -15,7 +15,9 @@
 // its SG-02 static layer and projectile broadphase via dressingStaticLayerFor — without
 // entityList membership, index churn, or save-schema changes.
 
-import { modelTruthRow } from '../data/modelTruth.js';
+import { primitiveBlocksSegment } from '../combat/lineOfSight.js';
+import { modelTruthRow, modelTruthSkinPrimitives } from '../data/modelTruth.js';
+import { skinContains } from '../data/modelTruthMath.js';
 import { ensureDressingTable } from './dressingTable.js';
 
 // Below this the drawn object is smaller than the smallest craft hull — colliding it would
@@ -68,6 +70,32 @@ export function solidDressingPlanFor(placeId, { radius = 0, placeTargetRadius = 
     silhouetteWu,
     drawScale,
   };
+}
+
+function finitePlanePoint(value) {
+  return !!value && Number.isFinite(value.x) && Number.isFinite(value.z);
+}
+
+/**
+ * True when `hull` is in the radar shadow of a solid-dressing body. The segment
+ * from the transmitter to the hull has to cross the measured skin, and the hull
+ * has to sit outside that skin. Range to the body's center is not a term: the
+ * same distance beside the silhouette is open.
+ */
+export function hullInSolidRadarShadow(occluder, transmitter, hull) {
+  if (!occluder || occluder.alive === false || occluder.collides !== true) return false;
+  const data = occluder.data;
+  const proxy = data && data.collisionProxy;
+  if (typeof proxy !== 'string' || !proxy.startsWith('skin:')) return false;
+  if (!finitePlanePoint(transmitter) || !finitePlanePoint(hull) || !finitePlanePoint(occluder.pos)) return false;
+  const primitives = modelTruthSkinPrimitives(occluder);
+  if (!primitives || primitives.length === 0) return false;
+  if (skinContains(hull.x, hull.z, primitives)) return false;
+  if (skinContains(transmitter.x, transmitter.z, primitives)) return false;
+  for (let i = 0; i < primitives.length; i += 1) {
+    if (primitiveBlocksSegment(transmitter, hull, primitives[i])) return true;
+  }
+  return false;
 }
 
 /**

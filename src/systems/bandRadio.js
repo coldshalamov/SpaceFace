@@ -17,6 +17,12 @@ import {
   resolveLandmarkBleed,
   selectBandLine,
 } from '../data/bandRadio.js';
+import {
+  NUMBERS_SHADOW_NOISE,
+  NUMBERS_SHADOW_STATION,
+  numbersShadowFact,
+} from '../data/numbersShadow.js';
+import { hullInSolidRadarShadow } from '../world/solidDressing.js';
 
 export const BAND_STATE_VERSION = 1;
 export const BAND_PRIORITY = 5;
@@ -300,6 +306,19 @@ export const bandRadio = {
       return;
     }
 
+    if (tuned.id === 'numbers_station' && !bleed) {
+      const shadowLine = this._numbersShadowLine();
+      if (shadowLine) {
+        if (!this._say(shadowLine, tuned.id)) return;
+        own.lastLineIdByChannel[effectiveKey] = shadowLine.id;
+        if (!own.heardLineIds.includes(shadowLine.id)) own.heardLineIds.push(shadowLine.id);
+        if (own.heardLineIds.length > 256) own.heardLineIds.splice(0, own.heardLineIds.length - 256);
+        own.sequence += 1;
+        own.nextLineAtS = now + this._cadenceForSignal(own.signalStrength);
+        return;
+      }
+    }
+
     if (tuned.id === 'numbers_station' && !bleed && !own.numbersReceipt) {
       if (own.pendingBearingRequest) {
         this._emitOutstandingBearingRequest();
@@ -476,6 +495,34 @@ export const bandRadio = {
     own.identPending = !!own.channelId;
   },
 
+  _numbersShadowLine() {
+    const station = NUMBERS_SHADOW_STATION;
+    const world = this.state.world || {};
+    if (world.currentSectorId !== station.sectorId) return null;
+    const pois = world.activeSector && Array.isArray(world.activeSector.pois) ? world.activeSector.pois : null;
+    if (!pois) return null;
+    const broadcaster = pois.find((row) => row && row.poiId === station.broadcasterPoiId && finitePoint(row.pos));
+    if (!broadcaster) return null;
+    const occluder = shadowBody(this.state, station.occluderPoiId, station.sectorId);
+    const reward = shadowBody(this.state, station.rewardPoiId, station.sectorId);
+    const occluderName = displayName(occluder);
+    const rewardName = displayName(reward);
+    if (!occluder || !reward || !occluderName || !rewardName) return null;
+    const entities = this.state.entities;
+    const player = entities && typeof entities.get === 'function' ? entities.get(this.state.playerId) : null;
+    if (!player || !finitePoint(player.pos)) return null;
+    if (!hullInSolidRadarShadow(occluder, broadcaster.pos, player.pos)) {
+      return { id: 'numbers_shadow_noise', text: NUMBERS_SHADOW_NOISE };
+    }
+    const text = numbersShadowFact(
+      occluderName,
+      rewardName,
+      reward.pos.x - occluder.pos.x,
+      reward.pos.z - occluder.pos.z,
+    );
+    return text ? { id: 'numbers_shadow_clean', text } : null;
+  },
+
   _signalContext() {
     const world = this.state.world || {};
     const sectorId = world.currentSectorId || null;
@@ -637,6 +684,23 @@ export const bandRadio = {
 };
 
 function finitePoint(value) { return !!value && Number.isFinite(value.x) && Number.isFinite(value.z); }
+
+function displayName(entity) {
+  const name = entity && entity.data && entity.data.name;
+  return typeof name === 'string' && name.trim() ? name.trim() : null;
+}
+
+function shadowBody(state, poiId, sectorId) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return null;
+  for (const entity of entities.values()) {
+    if (!entity || entity.alive === false || !entity.data || entity.data.poiId !== poiId) continue;
+    const home = entity.homeSectorId || entity.data.homeSectorId || entity.data.sectorId;
+    if (home && home !== sectorId) continue;
+    return entity;
+  }
+  return null;
+}
 
 function setProximityValue(target, sourceId, strength) {
   if (strength > 0) target[sourceId] = clamp01(strength);
