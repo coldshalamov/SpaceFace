@@ -700,6 +700,17 @@ const DEBRIS_STREAM_RIBBON_WU = 420;
 const DEBRIS_STREAM_HEADING_JITTER_RAD = 0.07;
 const DEBRIS_STREAM_TYPE_ID = 'ast_common_rock';
 const DEBRIS_STREAM_EXIT_PAD_S = 8;
+// CR-CHAIN (build_map §23.2): "a hitch on a working miner" — braid jobs x cargo. A loaded
+// working hauler occasionally loses a piece off the back: one real cargo pod of ITS OWN
+// manifest slips off the stern and drifts behind on the lane. The pod keeps the hauler's
+// owner identity, so it is that truck's freight — the player who scoops it answers the
+// ordinary custody/law read for taking owned cargo, and the hauler file keeps rolling.
+const HITCH_SHED_MEAN_INTERVAL_S = 1100;
+const HITCH_SHED_MIN_SPEED_WU_S = 20;
+const HITCH_SHED_AMOUNT_LO = 1;
+const HITCH_SHED_AMOUNT_HI = 3;
+const HITCH_SHED_BACK_OFF_WU = 30;
+const HITCH_SHED_BACK_VEL_WU_S = 6;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5542,6 +5553,7 @@ export const traffic = {
     this._stepPocketDebrisField(dt, state);
     this._stepSmugglerDeadDrop(dt, state);
     this._stepPocketDebrisStream(dt, state);
+    this._stepHitchShed(dt, state);
     // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
     // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
     // stale ledger here instead of letting its stamps and jobs outlive the sector.
@@ -11712,6 +11724,93 @@ export const traffic = {
   },
 
   /**
+   * CR-CHAIN hitch cadence: one shed per roll on a persisted clock. The pod is real owned
+   * freight (spawnJettisonedCargoPod caps and persists it); the live record only suppresses
+   * a second shed while the last hitch is still loose in the pocket.
+   */
+  _stepHitchShed(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const shed = this._hitchShed;
+    if (shed) {
+      const e = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(shed.podId) : null;
+      if (!e || e.alive === false) this._hitchShed = null;
+    }
+    if (!Number.isFinite(bag.nextHitchShedAt)) {
+      bag.nextHitchShedAt = now + this._hitchShedIntervalS();
+      return;
+    }
+    if (now < bag.nextHitchShedAt) return;
+    bag.nextHitchShedAt = now + this._hitchShedIntervalS();
+    if (this._hitchShed) return;
+    this._shedHaulerHitch(state);
+  },
+
+  _hitchShedIntervalS() {
+    return HITCH_SHED_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The braid: pick a loaded hauler actually under way (job-bound, above the drift line,
+   * carrying manifest lines) and let one piece of its own freight slip off the stern. The
+   * pod spawns behind the hull on the hauler's own velocity minus a small back-off, so it
+   * drops straight back into the lane it came from. Owner stamps make it that truck's
+   * cargo — stealing it is the ordinary owned-cargo answer, not a free find.
+   */
+  _shedHaulerHitch(state) {
+    if (typeof spawnJettisonedCargoPod !== 'function') return null;
+    const list = state && state.traffic && state.traffic.freighters;
+    const byId = state && state.entities && typeof state.entities.get === 'function' ? state.entities : null;
+    if (!Array.isArray(list) || !list.length || !byId) return null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const start = Math.floor(this._rng() * list.length);
+    for (let i = 0; i < list.length; i++) {
+      const rec = list[(start + i) % list.length];
+      const hauler = rec && byId.get(rec.id);
+      if (!hauler || hauler.alive === false || !hauler.pos || !hauler.vel) continue;
+      if (!hauler.data || !hauler.data.jobId) continue;
+      const manifest = hauler.data.cargoManifest;
+      const lines = manifest && Array.isArray(manifest.lines) ? manifest.lines : null;
+      if (!lines || !lines.length) continue;
+      const speed = Math.hypot(hauler.vel.x || 0, hauler.vel.z || 0);
+      if (speed < HITCH_SHED_MIN_SPEED_WU_S) continue;
+      const line = lines[0];
+      const commodityId = line && line.commodityId;
+      if (typeof commodityId !== 'string' || !commodityId) continue;
+      const amount = HITCH_SHED_AMOUNT_LO
+        + Math.floor(this._rng() * (HITCH_SHED_AMOUNT_HI - HITCH_SHED_AMOUNT_LO + 1));
+      const backX = -hauler.vel.x / speed;
+      const backZ = -hauler.vel.z / speed;
+      const stern = (hauler.radius || 10) + HITCH_SHED_BACK_OFF_WU;
+      const pod = spawnJettisonedCargoPod(state, {
+        commodityId,
+        amount,
+        pos: { x: hauler.pos.x + backX * stern, z: hauler.pos.z + backZ * stern },
+        vel: {
+          x: hauler.vel.x + backX * HITCH_SHED_BACK_VEL_WU_S,
+          z: hauler.vel.z + backZ * HITCH_SHED_BACK_VEL_WU_S,
+        },
+        ownerId: hauler.id,
+        ownerName: hauler.name || hauler.data.name || null,
+        originId: hauler.data.originStationId || null,
+        destinationId: hauler.data.destStationId || null,
+        factionId: hauler.factionId || 'faction_free',
+      }, this.helpers);
+      if (!pod) return null;
+      pod.data = pod.data || {};
+      pod.data.hitchShed = true;
+      pod.data.shedFromJobId = hauler.data.jobId;
+      pod.homeSectorId = pod.homeSectorId || sectorId;
+      this._hitchShed = { podId: pod.id, haulerId: hauler.id, sectorId, bornAt: now };
+      return pod;
+    }
+    return null;
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -12901,6 +13000,8 @@ export const traffic = {
         ? { nextSmugglerCacheAt: this.state.traffic.nextSmugglerCacheAt } : {}),
       ...(Number.isFinite(this.state.traffic.nextDebrisStreamAt)
         ? { nextDebrisStreamAt: this.state.traffic.nextDebrisStreamAt } : {}),
+      ...(Number.isFinite(this.state.traffic.nextHitchShedAt)
+        ? { nextHitchShedAt: this.state.traffic.nextHitchShedAt } : {}),
     };
   },
 
@@ -12977,10 +13078,13 @@ export const traffic = {
       ? data.nextSmugglerCacheAt : undefined;
     this.state.traffic.nextDebrisStreamAt = validTrafficSave && Number.isFinite(data.nextDebrisStreamAt)
       ? data.nextDebrisStreamAt : undefined;
+    this.state.traffic.nextHitchShedAt = validTrafficSave && Number.isFinite(data.nextHitchShedAt)
+      ? data.nextHitchShedAt : undefined;
     this._meteorPass = null;
     this._debrisField = null;
     this._smugglerCache = null;
     this._debrisStream = null;
+    this._hitchShed = null;
   },
 
   newGame() {
@@ -13003,6 +13107,7 @@ export const traffic = {
     this._debrisField = null;
     this._smugglerCache = null;
     this._debrisStream = null;
+    this._hitchShed = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
