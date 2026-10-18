@@ -13,6 +13,7 @@
 // wall clock, no rng, no writes. Expired status keys are treated as absent, matching the
 // kernel's own recompute skip (src/combat/subsystems.js recomputeCombatantModifiers).
 import { ACTION_DEFS } from '../data/combatDefs.js';
+import { HEAVY_AS_TERRAIN_MASS } from '../combat/impulseKernel.js';
 
 // The powered attack verb the control statuses already govern: the specialists' burst pays
 // capacitor, needs weapon+sensor capabilities, and is tag-blocked by tumbling/overheated.
@@ -74,13 +75,30 @@ function fireGate(runtime, entity, tick) {
 
 /**
  * The delivered-condition facts for one target, or null when the target carries no combat
- * runtime (rocks, wrecks, clean hulls before first damage).
+ * runtime (rocks, wrecks, clean hulls before first damage) — except a heavy hull, whose
+ * mass response is a standing fact of the hull, not of any delivered payload.
  */
 export function targetConditionReadout(state, target) {
   if (!state || !target || target.alive === false) return null;
+  // SFQ-I016: a heavy hull (mass >= HEAVY_AS_TERRAIN_MASS) answers concussions and shoves
+  // with less motion and never earns the screen-clearing shove beat — the kernel's mass
+  // law, not a status — so the lock names it up front instead of leaving the weak shoves
+  // unexplained. Gated to ships/drones so heavy rocks never print a combat token.
+  const heavyMass = (target.type === 'ship' || target.type === 'drone')
+    && Number.isFinite(target.mass) && target.mass >= HEAVY_AS_TERRAIN_MASS
+    ? true : null;
   const table = state.combat && state.combat.entities;
   const runtime = table ? table[String(target.id)] : null;
-  if (!runtime) return null;
+  if (!runtime) {
+    if (!heavyMass) return null;
+    return Object.freeze({
+      steer: null,
+      fire: null,
+      burn: null,
+      heavyMass,
+      text: 'HEAVY MASS · SHOVE RESISTANT',
+    });
+  }
   const tick = state.tick | 0;
 
   // STEER: tumbling (the havoc/massline disturbance — helm decontrolled, settling to expiry)
@@ -105,6 +123,7 @@ export function targetConditionReadout(state, target) {
     : null;
 
   const parts = [];
+  if (heavyMass) parts.push('HEAVY MASS · SHOVE RESISTANT');
   if (steer) {
     // A tumble IS the helm-out fact; a wrecked drive spells it (its lock has no clock).
     parts.push(steer.secondsLeft != null ? `${steer.label} ${fmtSeconds(steer.secondsLeft)}` : `${steer.label} · HELM OUT`);
@@ -120,6 +139,7 @@ export function targetConditionReadout(state, target) {
     steer: steer ? Object.freeze(steer) : null,
     fire: fire ? Object.freeze(fire) : null,
     burn: burn ? Object.freeze(burn) : null,
+    heavyMass: heavyMass || null,
     text: parts.join(' · '),
   });
 }
