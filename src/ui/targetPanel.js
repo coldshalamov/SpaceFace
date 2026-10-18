@@ -314,14 +314,14 @@ export function wingLineFor(target, playerId) {
   const wingRole = IDENTITY_WING_ROLE[doctrineId] || (doctrineId ? 'press' : null);
   const tracking = target.data && target.data.combat && target.data.combat.targetId != null
     && playerId != null && target.data.combat.targetId === playerId;
-  // Squad ids are internal hex slugs — a long one shows only its tail as a unit number, never
-  // a truncated hash ('WING SQ-77F3C2A19B04D1E…').
-  const shortId = squadId.length > 8 ? squadId.slice(-4) : squadId;
-  let line = `WING ${shortId.toUpperCase()}`;
-  // Role slugs are already display-shaped (area_denial reads AREA DENIAL), so the panel
-  // shares the grammar's vocabulary instead of keeping a second table to drift.
-  if (wingRole) line += ` · ${wingRole.replace(/_/g, ' ').toUpperCase()}`;
-  if (tracking) line += ' · TRACKING YOU';
+  // A hex slug is not a callsign: show its tail as a unit number, never a chopped hash
+  // ('WING SQ-77F3C2A19B04D1E…'). A readable designation stays whole when the line fits.
+  const full = squadId.toUpperCase();
+  const role = wingRole ? ` · ${wingRole.replace(/_/g, ' ').toUpperCase()}` : '';
+  const track = tracking ? ' · TRACKING YOU' : '';
+  const tail = /[0-9A-F]{12,}/.test(full);
+  let line = `WING ${tail ? full.slice(-4) : full}${role}${track}`;
+  if (line.length > 64) line = `WING ${full.slice(-4)}${role}${track}`;
   return line;
 }
 
