@@ -747,6 +747,53 @@ export function injectHudCss() {
   }
   @media (max-width: 959px), (max-height: 599px) {
     #hud { --sf-hud-edge-fit:.62; --sf-vtape-fit:.68; }
+    /* D202b: a real phone keeps a text-scale floor so declared 12px text lands at >= 9px; a small desktop window keeps its authored fit. */
+    :root[data-sf-mobile="1"] #hud { --sf-hud-edge-fit:.75; --sf-vtape-fit:.78; }
+
+    /* D202b: Hide lowest-priority blocks on phones: keyboard numpad keytags (irrelevant on touch), ambient radio tape */
+    :root[data-sf-mobile="1"] #hud .orr-cluster__keytag,
+    :root[data-sf-mobile="1"] #hud .orr-cluster__key b,
+    :root[data-sf-mobile="1"] #hud .sf-commtape {
+      display: none !important;
+    }
+
+    /* D202b: Floor on mobile flight rightdock and radar so nested radar does not double-scale to 0.248x */
+    :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock {
+      transform: none !important;
+      right: calc(90px + var(--sf-safe-right, 0px)) !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap {
+      position: relative !important;
+      top: auto !important;
+      right: auto !important;
+      transform: scale(0.75) !important;
+      transform-origin: top right !important;
+    }
+
+    /* D202b: Ensure ring legends, compass engraving, and micro text maintain >= 9px effective rendered size */
+    :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-micro text {
+      font-size: 20px !important;
+    }
+    :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-label,
+    :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-value,
+    :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-cluster__legend b,
+    :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-cluster__legend i {
+      font-size: max(16px, calc(9px / (var(--sf-hud-edge-fit, .75) * var(--orr-cluster-scale, .6)))) !important;
+    }
+    :root[data-sf-mobile="1"] #hud .sf-radar-orrery text {
+      font-size: 15px !important;
+    }
+
+    /* D202b: Prevent clipping and overlap of contextual strip on phone heights */
+    :root[data-sf-mobile="1"] #hud > .sf-leftcontext {
+      max-height: calc(100dvh - 190px) !important;
+      overflow: visible !important;
+    }
+    :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext {
+      top: calc(186px + var(--sf-safe-top, 0px)) !important;
+    }
   }
   @media (max-width: 1279px), (max-height: 719px) {
     #hud .orr-hud-cluster,
