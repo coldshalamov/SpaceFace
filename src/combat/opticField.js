@@ -612,3 +612,23 @@ export function opticBeamBolt(beam, contact, owner) {
     },
   };
 }
+
+/**
+ * An energy bolt or continuous beam into a pinned Snarl node loads the chord.
+ * Optic rocks keep absorb / reflect / prism — the wire does not steal that contact.
+ * `chords` is the active Snarl attachments that already pin `target` (the web owner
+ * decides which bodies are nodes). Returns null when this contact is not an arc-wire.
+ */
+export function planArcWireContact(target, contact, chords) {
+  if (!target || target.id == null || !contact || !chords || !chords.length) return null;
+  if (contact.kind === 'missile') return null;
+  if (contact.damageType !== 'energy' && contact.kind !== 'beam') return null;
+  if (opticMaterialOf(target)) return null;
+  const chordIds = [];
+  for (let i = 0; i < chords.length; i++) {
+    const chord = chords[i];
+    if (chord && chord.id != null) chordIds.push(chord.id);
+  }
+  if (!chordIds.length) return null;
+  return { kind: 'arc', reason: 'pinned_web', nodeId: target.id, chordIds };
+}

@@ -177,7 +177,7 @@ export const masslineSnares = {
   },
 
   update(dt, state) {
-    this._webs?.update();
+    this._webs?.update(dt);
     const deployment = this._deployment;
     if (!deployment) return;
     const player = entity(state, state.playerId);

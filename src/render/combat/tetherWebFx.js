@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WEB_DEF_ID, WEB_LIMITS } from '../../combat/tetherWebs.js';
+import { arcWireWidthScale, WEB_DEF_ID, WEB_LIMITS } from '../../combat/tetherWebs.js';
 import { resolveMasslineWebStrandProfile } from '../masslinePresentation.js';
 
 const SEGMENTS = 10;
@@ -93,7 +93,8 @@ export class TetherWebFx {
       if (span < 0.5) continue;
       const nx = -dz / span, nz = dx / span;
       // A fresh catch briefly gains substance without moving the physical load curve.
-      const width = 0.48 * (1 + 0.3 * tetherWebFormationAccent(link, state.simTime, motionReduce));
+      // A charged chord thickens on top of that, peaking where the energizing shot landed.
+      const baseWidth = 0.48 * (1 + 0.3 * tetherWebFormationAccent(link, state.simTime, motionReduce));
       // Tension shapes the LAY, not the colour and not the gauge. A rope's turn count is fixed by
       // how it was laid; what a pull changes is how far the strands stand off the axis. So the two
       // physical strands collapse toward one taut line as the line is worked and bloom back out as
@@ -105,6 +106,9 @@ export class TetherWebFx {
         let px = startX, pz = startZ, py = STRAND_Y;
         for (let i = 1; i <= SEGMENTS; i++) {
           const t = i / SEGMENTS;
+          const width = baseWidth * arcWireWidthScale(
+            link, state.simTime, a.pos.x, a.pos.z, b.pos.x, b.pos.z, t,
+          );
           const envelope = Math.sin(Math.PI * t);
           const braid = Math.sin(t * turn + phase) * lay.braidAmplitude * envelope;
           const bend = slack * envelope + braid;

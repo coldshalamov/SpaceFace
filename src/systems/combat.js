@@ -24,7 +24,8 @@ import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/dama
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
-import { opticBeamHit, opticMaterialOf } from '../combat/opticField.js';
+import { opticBeamHit, opticMaterialOf, planArcWireContact } from '../combat/opticField.js';
+import { activeWebChords, noteArcWireShot } from '../combat/tetherWebs.js';
 import { markDirty, isDirty, hasDirty, DIRTY } from '../core/dirtyJournal.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
@@ -780,6 +781,14 @@ export const combat = {
         ? { kind: 'weapon', id: weaponId || authoredPacket.source.weaponId }
         : { kind: 'legacy', id: 'projectile:hit' }),
     });
+    // Arc-wire: an energy shot into a hull the Snarl has pinned loads that chord. Kinetic
+    // shots and optic rocks keep their own contact. The chord, not this hit, pays the crosser.
+    if (result.ok && target && damageType === 'energy') {
+      const chords = activeWebChords(this.state, target.id);
+      if (planArcWireContact(target, { damageType }, chords)) {
+        noteArcWireShot(this.state, target, pos || null, chords);
+      }
+    }
     if (result.ok && targetId === this.state.playerId) {
       this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2 });
     }
