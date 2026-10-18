@@ -51,7 +51,8 @@ import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
-import { lawSecurity } from '../systems/lawSecurity.js';
+import { lawSecurity, lawWitnessesNear } from '../systems/lawSecurity.js';
+import { setDeadDropWitnessSource } from '../systems/boreDeadDrop.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
 import { pirateParley } from '../systems/pirateParley.js';
 import { pirateDisengage } from '../systems/pirateDisengage.js';
@@ -715,6 +716,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
 }
 
 export function createRegistry(ctx) {
+  // The bore dead-drop cannot import the law system (cycle through combat and cargo): it gets the witness query here.
+  setDeadDropWitnessSource(lawWitnessesNear);
   const aiSlot = selectAISystem(ctx);
   // Normal play is SG-06 tactical AI + Flight V3 on rapier-dynamic. Legacy/custom branches stay
   // available for explicit tool/test fixtures, not player-facing settings or save restore.

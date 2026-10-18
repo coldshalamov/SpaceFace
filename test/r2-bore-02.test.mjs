@@ -9,6 +9,18 @@ import { readCustomsWeir } from '../src/presentation/customsWeir.js';
 import { asteroidSites, makeSiteRecord } from '../src/systems/asteroidSites.js';
 import { addCargo, cargo as cargoBase } from '../src/systems/cargo.js';
 import { economy as economyBase } from '../src/systems/economy.js';
+import { lawWitnessesNear } from '../src/systems/lawSecurity.js';
+import { setDeadDropWitnessSource } from '../src/systems/boreDeadDrop.js';
+import { readFileSync } from 'node:fs';
+
+// The composition root (src/core/registry.js) registers this at game start; the test does the same.
+setDeadDropWitnessSource(lawWitnessesNear);
+
+test('the dead-drop helper stays browser-loadable: no node: import in the module the whole game imports through cargo', () => {
+  const src = readFileSync(new URL('../src/systems/boreDeadDrop.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /from\s+['"]node:/, 'a node: import here breaks the browser module graph');
+  assert.doesNotMatch(src, /createRequire|\brequire\(/, 'a Node require() here breaks the browser module graph');
+});
 
 const DRILL_COLS = 28;
 const APPROACH = { col: 2, row: 2 };

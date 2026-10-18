@@ -2,14 +2,13 @@
 // Cargo remains the only writer of the hold: this module plans the pocket, disguises
 // the mouth, and lists stacks a lawful scan is already allowed to see.
 //
-// lawSecurity is loaded on the first witness check, not at import. It pulls combat,
-// and combat imports cargo, which imports this file. A static import would close
-// that cycle while cargo is still evaluating.
+// lawSecurity pulls combat, and combat imports cargo, which imports this file, so this
+// module cannot import lawSecurity without closing that cycle while cargo is still
+// evaluating. The composition root (src/core/registry.js) hands the witness query in
+// through setDeadDropWitnessSource instead; until it does, nobody has seen the mouth.
+// (A Node-only module import here would stop the browser build from loading.)
 
-import { createRequire } from 'node:module';
 import { COMMODITIES } from '../data/commodities.js';
-
-const require = createRequire(import.meta.url);
 
 // drill.js owns this width and also imports addCargo. Inlined so the cache does
 // not import the drill system. A refilled mouth must leave the cleared-tile list
@@ -45,11 +44,12 @@ export function deadDropReturnLine(commodityId) {
   return `${commodityDisplayName(commodityId)} is back aboard.`;
 }
 
+/** The law system's witness query, registered once by the composition root. */
+export function setDeadDropWitnessSource(fn) {
+  witnessesNearFn = typeof fn === 'function' ? fn : null;
+}
+
 function witnessesNear(state, query) {
-  if (!witnessesNearFn) {
-    const loaded = require('./lawSecurity.js');
-    witnessesNearFn = loaded && loaded.lawWitnessesNear;
-  }
   if (typeof witnessesNearFn !== 'function') return [];
   const seen = witnessesNearFn(state, query);
   return Array.isArray(seen) ? seen : [];
