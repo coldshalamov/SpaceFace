@@ -912,6 +912,8 @@ export const combat = {
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
       targetHostileToPlayer,
       baseKind: d.baseKind || null,
+      // A lethal whip need not leave an impulse record; keep its damage-owned cause.
+      ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' } : {}),
       presentation,
     });
     // SEAM-BASE: a destructible base entity is an ordinary damageable station carrying
