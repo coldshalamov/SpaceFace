@@ -292,7 +292,7 @@ export const lawSecurity = {
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
       this._lastCustomsSubmitTick = -1;
-      this._customsWaivedPatrols.clear();
+      if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
       this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
@@ -377,7 +377,7 @@ export const lawSecurity = {
   },
 
   newGame() {
-    this._customsWaivedPatrols.clear();
+    if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
     this._releaseAllJobResponses('new_game');
     if (this.state) this.state.lawSecurity = freshState();
     if (this._warrantWaves) this._warrantWaves.deserialize(null);
@@ -475,7 +475,7 @@ export const lawSecurity = {
     else delete own.fineSettled;
     if (src.customsTrust != null) own.customsTrust = normalizeCustomsTrust(src.customsTrust);
     else delete own.customsTrust;
-    this._customsWaivedPatrols.clear();
+    if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
     if (src.fineOffer && typeof src.fineOffer === 'object' && !Array.isArray(src.fineOffer)) {
       own.fineOffer = cloneLawPlain(src.fineOffer);
     } else {
@@ -3209,8 +3209,9 @@ export const lawSecurity = {
     const illicit = this._economy()?.illicitCargo?.(this.state);
     if (!Array.isArray(illicit) || illicit.length > 0) return false;
     const key = `${payload.stationId}:${payload.patrolId ?? 'station'}`;
-    if (this._customsWaivedPatrols.get(key) !== day) {
-      this._customsWaivedPatrols.set(key, day);
+    const waived = this._customsWaivedPatrols || (this._customsWaivedPatrols = new Map());
+    if (waived.get(key) !== day) {
+      waived.set(key, day);
       this._emit('customs:scanWaived', {
         stationId: payload.stationId, stationName: stationDisplayName(payload.stationId), day,
       });
