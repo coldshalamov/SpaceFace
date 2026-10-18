@@ -185,6 +185,9 @@ import {
   activeOwnedShip,
   nextStarterStep,
   shipCarriesModule,
+  starterRamHail,
+  starterRamKill,
+  starterRamSentence,
 } from '../data/starterJobs.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -1425,9 +1428,13 @@ function missionNavReason(m, station, sector) {
       if (p.quietPassage) return 'Escort passenger transport cold through Customs Gate checkpoint';
       return `Transport passenger to ${stationName}`;
     case 'escort': return `Escort convoy to ${stationName}`;
-    case 'bounty_hunt': return p.markName
-      ? `Find ${p.markName} near ${sectorName}`
-      : `Find the bounty near ${sectorName}`;
+    case 'bounty_hunt': {
+      const ram = starterRamSentence(p);
+      if (ram) return ram;
+      return p.markName
+        ? `Find ${p.markName} near ${sectorName}`
+        : `Find the bounty near ${sectorName}`;
+    }
     case 'patrol_clear': return `Clear hostiles in ${sectorName}`;
     case 'recon_scan': return `Scan sites in ${sectorName}`;
     case 'tow_recovery': return `Tow the ${p.massU} t slag core to ${stationName}, or sling it into the yard`;
@@ -3264,6 +3271,19 @@ export const missions = {
     offer.params.starterJobId = next.job.id;
     offer.params.starterStep = next.step.step;
     offer.params.requiredModule = next.job.requiredModule;
+    if (next.step.runnerName) {
+      const who = next.step.runnerName;
+      offer.params.markName = who;
+      offer.brief = `${who} is running the gate. The plate closes the writ. A gun does not.`;
+      const prior = offer.storyTarget && typeof offer.storyTarget === 'object' ? offer.storyTarget : {};
+      offer.storyTarget = {
+        ...prior,
+        id: prior.id || `mark:${offer.id}`,
+        name: who,
+        label: `${who.toUpperCase()} — RUNNER`,
+        role: prior.role || 'board_writ',
+      };
+    }
     if (next.step.cmdtyId) {
       offer.params.cmdtyId = next.step.cmdtyId;
       offer.params.qty = next.step.qty;
@@ -5026,7 +5046,15 @@ export const missions = {
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const target = this._firstLiveMissionTarget(m);
       const markName = m.params && m.params.markName;
-      if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: markName ? `Intercept ${markName}` : 'Intercept the marked hostile' };
+      if (target) {
+        const ram = starterRamSentence(m.params);
+        return {
+          ...base,
+          targetEntityId: target.id,
+          pos: { x: target.pos.x, z: target.pos.z },
+          reason: ram || (markName ? `Intercept ${markName}` : 'Intercept the marked hostile'),
+        };
+      }
       return base;
     }
 
@@ -5664,10 +5692,7 @@ export const missions = {
     if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
     if (m.params && m.params.requiredModule === 'mod_ram_plate') {
       if (!shipCarriesModule(activeOwnedShip(this.state), 'mod_ram_plate')) return;
-      const weapon = p.weaponId || p.tag
-        || (p.presentation && p.presentation.weaponId)
-        || (p.provenance && p.provenance.weaponId);
-      if (weapon !== 'mod_ram_plate' && weapon !== 'ram_plate') return;
+      if (!starterRamKill(p)) return;
     }
     if (m.storyTag === CONTRACT_47A_B2_TAG) {
       this._resolveContract47aB2(m, i, 'force', p.id);
@@ -8936,6 +8961,10 @@ export const missions = {
         if (p.wakeHandoff) return 'The crate came aboard in the hauler\'s wake. Drift Market paid for the pass.';
         return 'The cargo disappeared into ' + dest + '\'s books without becoming a customs story.';
       case 'bounty_hunt':
+        if (p.requiredModule === 'mod_ram_plate') {
+          const who = p.markName || 'the runner';
+          return `The plate closed ${who}. The board logged a ram, not a shot.`;
+        }
         return 'Tag closed near ' + dest + '. The board will update before the rumor does.';
       case 'escort':
         return 'Convoy arrived at ' + dest + ' intact. That is all the client wanted written down.';
@@ -10290,7 +10319,8 @@ export const missions = {
     const dz = mark.pos.z - player.pos.z;
     if (dx * dx + dz * dz > MARK_HAIL_RANGE_WU * MARK_HAIL_RANGE_WU) return;
     m._markHailed = true;
-    const text = bountyMarkHail((state.meta && state.meta.seed) || 1, m.id);
+    const text = starterRamHail(m.params)
+      || bountyMarkHail((state.meta && state.meta.seed) || 1, m.id);
     const voice = this.helpers && this.helpers.voice;
     // A line the arbiter already voiced stays out of the live feed — `_viaVoice` logs it to the
     // backlog only, so the player never reads the same hail twice.

@@ -8,9 +8,15 @@ import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
 import { NEW_GAME_STARTERS } from '../src/data/newGameDefaults.js';
 import { SECTORS } from '../src/data/sectors.js';
-import { starterJobForShip } from '../src/data/starterJobs.js';
+import { starterJobForShip, starterRamHail } from '../src/data/starterJobs.js';
+import { buildKillPresentationReceipt } from '../src/systems/combat.js';
+import {
+  buildCollisionPresentationProvenance,
+  playerRamPlateImpact,
+} from '../src/systems/collisionConsequences.js';
 import { missions } from '../src/systems/missions.js';
-import { fittingsFromDefaultModules } from '../src/systems/ships.js';
+import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
+import { missionCommandBrief, objectiveText } from '../src/ui/screens/missionLog.js';
 
 const SEED = 4242;
 
@@ -122,6 +128,7 @@ test('seed 4242 each starter flies its chain to payout and the other fits are re
       assert.equal(h.missionsSys.acceptMission(offer.id), true, `${starter.id} accepts step ${step.step}`);
       const mission = h.state.missions.active.find((row) => row.params && row.params.starterStep === step.step);
       assert.ok(mission, 'the step is active');
+      if (starter.id === 'starter_wasp') assertWaspWrit(h, mission, step);
       finish(h, mission);
       assert.equal(h.state.missions.active.some((row) => row.id === mission.id), false, 'the step settled');
       paid += step.rewardCr;
@@ -158,4 +165,128 @@ test('seed 4242 each starter flies its chain to payout and the other fits are re
   hitchRun.state.missions.boards[info.id] = { refreshEpoch: 0, slots: [waspJob] };
   assert.equal(hitchRun.missionsSys.acceptMission(waspJob.id), false, 'the hitch cannot take the ram job');
   hitchRun.sim.dispose();
+});
+
+function assertWaspWrit(h, mission, step) {
+  const who = step.runnerName;
+  assert.equal(mission.title, step.title);
+  assert.equal(mission.params.markName, who);
+  assert.equal(mission.brief, `${who} is running the gate. The plate closes the writ. A gun does not.`);
+  const objective = objectiveText(mission);
+  assert.equal(objective, `Ram ${who} — guns do not count`);
+  const mark = h.state.entities.get(mission.targetEntityIds[0]);
+  assert.ok(mark && mark.data, 'the named runner spawned');
+  assert.equal(mark.data.name, who);
+  assert.equal(mark.data.scanLabel, `${who.toUpperCase()} — RUNNER`);
+  const waypoint = h.missionsSys._missionWaypoint(mission);
+  assert.equal(waypoint.reason, objective);
+  assert.equal(waypoint.targetEntityId, mark.id);
+  const command = missionCommandBrief(mission, h.state);
+  assert.equal(command.what, objective);
+  assert.equal(command.how, `${objective}.`);
+  assert.match(command.why, /The plate closes the writ/);
+  mark.pos.x = h.player.pos.x;
+  mark.pos.z = h.player.pos.z;
+  const hails = [];
+  h.sim.bus.on('comms:popup', (payload) => hails.push(payload));
+  h.missionsSys._maybeMarkHail(mission, h.state);
+  h.missionsSys._maybeMarkHail(mission, h.state);
+  assert.equal(hails.length, 1, 'the runner hails once');
+  assert.equal(hails[0].sender, who);
+  assert.equal(hails[0].text, starterRamHail(mission.params));
+  assert.match(
+    h.missionsSys._missionSuccessDebriefText(mission),
+    new RegExp(`The plate closed ${who.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+  );
+}
+
+test('seed 4242 a live ram receipt closes the wasp writ and a gun or a flail does not', () => {
+  const wasp = NEW_GAME_STARTERS.find((starter) => starter.id === 'starter_wasp');
+  const h = boot(wasp);
+  const fittings = h.state.player.ownedShips[0].fittings;
+  const derived = getDerivedStats(wasp.shipId, fittings);
+  assert.ok(derived.ramDamageDealtMult > 1, 'the fitted plate is the live ram');
+  h.player.data = h.player.data || {};
+  h.player.data.derived = derived;
+  const board = h.missionsSys.ensureBoard(h.info.id);
+  const offer = starterOffer(board.slots, 'starter_wasp', 1);
+  assert.equal(h.missionsSys.acceptMission(offer.id), true);
+  const mission = h.state.missions.active.find((row) => row.params && row.params.starterStep === 1);
+  const targetId = mission.targetEntityIds[0];
+  const mark = h.state.entities.get(targetId);
+  assert.equal(mark.data.name, 'Nim Gatecut');
+
+  const gun = buildKillPresentationReceipt(h.state, mark, h.state.playerId, {
+    origin: { kind: 'weapon', id: 'wpn_autocannon', weaponId: 'wpn_autocannon' },
+    packet: { source: { kind: 'weapon', weaponId: 'wpn_autocannon' } },
+  });
+  h.sim.bus.emit('entity:killed', {
+    id: targetId,
+    killerId: h.state.playerId,
+    type: mark.type,
+    pos: { x: mark.pos.x, z: mark.pos.z },
+    presentation: gun,
+  });
+  assert.equal(stillActive(h, mission), true, 'a gun receipt does not close the writ');
+
+  h.sim.bus.emit('entity:killed', {
+    id: targetId,
+    killerId: h.state.playerId,
+    type: mark.type,
+    pos: { x: mark.pos.x, z: mark.pos.z },
+    presentation: {
+      version: 1,
+      cause: 'ship_collision',
+      impactLink: { actorId: h.state.playerId, tag: 'tow_flail', appliedTick: 1, holdUntilTick: null },
+    },
+  });
+  assert.equal(stillActive(h, mission), true, 'a tow flail does not close the writ');
+
+  const tick = 12;
+  h.player.vel = h.player.vel || { x: 0, z: 0 };
+  mark.vel = mark.vel || { x: 0, z: 0 };
+  h.player.vel.x = 40;
+  h.player.vel.z = 0;
+  const impact = playerRamPlateImpact(
+    h.player,
+    h.state.playerId,
+    tick,
+    { actorId: h.state.playerId, tag: 'direct_contact', appliedTick: tick },
+    h.state,
+  );
+  assert.ok(impact, 'the plate claims the contact');
+  assert.equal(impact.provenance.weaponId, 'mod_ram_plate');
+  assert.equal(impact.provenance.tag, 'ram_plate');
+  const collisionPresentation = buildCollisionPresentationProvenance(mark, h.player, {
+    pos: { x: mark.pos.x, z: mark.pos.z },
+    normal: { x: 1, z: 0 },
+    surface: 'craft',
+    deltaV: 40,
+    exchangedMomentum: 800,
+    impactDamage: 50,
+    provenance: impact.provenance,
+  });
+  const presentation = buildKillPresentationReceipt(h.state, mark, h.state.playerId, {
+    origin: { kind: 'collision', id: 'craft', weaponId: impact.provenance.weaponId },
+    packet: {
+      source: {
+        kind: 'collision_craft',
+        weaponId: impact.provenance.weaponId,
+        impulseProvenance: impact.provenance,
+        collisionPresentation,
+      },
+    },
+  });
+  assert.equal(presentation.impactLink && presentation.impactLink.tag, 'ram_plate');
+  assert.equal(presentation.weaponId, undefined, 'the live kill drops weaponId and keeps the tag');
+  h.sim.bus.emit('entity:killed', {
+    id: targetId,
+    killerId: h.state.playerId,
+    type: mark.type,
+    pos: { x: mark.pos.x, z: mark.pos.z },
+    presentation,
+  });
+  assert.equal(stillActive(h, mission), false, 'the live plate receipt closes the writ');
+  assert.ok(h.payouts[0] >= 480, 'the board paid the ram');
+  h.sim.dispose();
 });

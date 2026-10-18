@@ -14,6 +14,7 @@
 // Export: missionLogScreen  (id 'missionLog').
 
 import { SECTORS } from '../../data/sectors.js';
+import { starterRamSentence } from '../../data/starterJobs.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
@@ -409,7 +410,7 @@ export function objectiveText(m) {
     case 'mining_quota':
       return `Mine ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
     case 'bounty_hunt':
-      return 'Eliminate target';
+      return starterRamSentence(p) || 'Eliminate target';
     case 'patrol_clear':
       return `Clear ${prog}/${tgt} hostiles`;
     case 'escort': {
@@ -597,8 +598,11 @@ function nextStepText(m, state) {
       return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field and keep cargo space free.';
     case 'salvage_retrieval':
       return 'Next: recover the marked cargo, keep enough hold space, and deliver it to ' + dest + '.';
-    case 'bounty_hunt':
+    case 'bounty_hunt': {
+      const ram = starterRamSentence(p);
+      if (ram) return `Next: ${ram}.`;
       return 'Next: follow tracked nav and take down the target.';
+    }
     case 'patrol_clear':
       return 'Next: follow tracked nav and clear hostiles until the progress bar fills.';
     case 'escort':
