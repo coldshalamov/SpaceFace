@@ -5,6 +5,7 @@ export const ENVIRONMENT_MATERIALS = Object.freeze({
   volatile: { name: 'Volatile rock', conductivity: 0.25, reflectivity: 0, ignitionHeat: 36 },
   debris: { name: 'Conductive wreckage', conductivity: 0.9, reflectivity: 0 },
   cryo: { name: 'Cryo ice', conductivity: 0.35, reflectivity: 0.05 },
+  calcite: { name: 'Calcified residue', conductivity: 0.15, reflectivity: 0, fractureHeat: 42 },
 });
 
 // RW-04 slag quench (build_map §30.1): a Frame Coupler line into cryo ice is a heat sink.
@@ -30,6 +31,7 @@ export function environmentMaterialOf(entity) {
   if (/metal|mirror/.test(tag)) return 'metal';
   if (/volatile/.test(tag)) return 'volatile';
   if (/icy|cryo/.test(tag)) return 'cryo';
+  if (/calcite|calcified/.test(tag)) return 'calcite';
   return entity?.type === 'wreck' ? 'debris' : entity?.type === 'asteroid' ? 'rock' : null;
 }
 
@@ -48,7 +50,7 @@ export function stampEnvironmentMaterial(entity, material = environmentMaterialO
 }
 
 export const ENVIRONMENT_FAMILIES = Object.freeze(['rock', 'metal', 'crystal', 'volatile', 'debris', 'cryo']);
-const TINTS = Object.freeze({ metal: 0xd5dee8, crystal: 0xe7fbff, volatile: 0xd98236, debris: 0x759fa4, cryo: 0xbfe9f5 });
+const TINTS = Object.freeze({ metal: 0xd5dee8, crystal: 0xe7fbff, volatile: 0xd98236, debris: 0x759fa4, cryo: 0xbfe9f5, calcite: 0xd8d2c5 });
 
 /** Surface identity is independent of mining type, so material pockets do not change ore. */
 export function environmentSurfaceData(material, data = {}) {

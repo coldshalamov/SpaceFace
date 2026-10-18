@@ -342,6 +342,7 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
           siteId: site.siteId,
           alienEcology: true,
           scannerSignalKind: 'anomaly',
+          ...(g.moduleId === 'calcified_collar' || g.moduleId === 'mineral_root' ? { material: 'calcite' } : {}),
         },
       });
       active.dressing.push({ id: row.id, placeId: `alien_growth_${g.moduleId}`, pos: row.pos, paletteClass: 'alien' });

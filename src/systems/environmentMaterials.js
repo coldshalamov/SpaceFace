@@ -22,6 +22,7 @@ function sameRef(entity, ref) {
   return own.id === ref.id;
 }
 function threshold(entity, material) {
+  if (material === 'calcite') return 42;
   if (material === 'crystal') return 48;
   if (material === 'volatile') return 36;
   // RW-04: a cryo rock drained as a heat sink has no cold left to hold together — it cracks
@@ -79,7 +80,7 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
   // kill (PQ-138.03: the wreck keeps the victim's momentum; wrecks are terrain and ammunition
   // to ricochet off, not ordnance that pops on the first bump). Heat weapons and blasts still
   // cook residual fuel off.
-  if (!entity || entity.alive === false || !(closingSpeed >= impactThreshold) || !['rock', 'crystal', 'volatile'].includes(material)) return false;
+  if (!entity || entity.alive === false || !(closingSpeed >= impactThreshold) || !['rock', 'crystal', 'volatile', 'calcite'].includes(material)) return false;
   stampEnvironmentMaterial(entity, material);
   if (material !== 'rock' && threshold(entity, material) === Infinity) return false;
   queueReaction(state, entity, material, origin);
@@ -221,7 +222,7 @@ export const environmentMaterials = {
       const condition = body.data.materialCondition;
       if (condition.reacted) continue;
       condition.pending = false; condition.reacted = true; jobs++;
-      if (job.material === 'crystal' || job.material === 'rock') this._fracture(body);
+      if (job.material === 'crystal' || job.material === 'rock' || job.material === 'calcite') this._fracture(body);
       else this._detonate(body, job.origin);
     }
     state.materialReactions.push(...waiting);
