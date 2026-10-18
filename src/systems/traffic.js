@@ -663,6 +663,23 @@ const DEBRIS_FIELD_PIECES_HI = 12;
 const DEBRIS_FIELD_SPREAD_WU = 240;
 const DEBRIS_FIELD_DRIFT_JITTER_WU_S = 3;
 const DEBRIS_FIELD_EXIT_PAD_S = 45;
+// ev_smuggler_dumps_cache (microevent catalog, crime): a smuggler on a wide pointless arc sheds
+// ONE dark cache beside a landmark rock without stopping — "one unlit pickup separates at the
+// landmark - no strobe, no plume; you catch it by silhouette occlusion or not at all". The
+// catalog's teaching beat ("the drop TEACHES the mechanic: quiet pickups exist") lands on the
+// cache itself: real contraband-class cargo that carries no takeable ring, sitting dark until
+// the player (or nobody) collects it. The smuggler hull is the catalog's casting note — the
+// legible player content is the dead-drop; a flyby shed means the cache creeps on the hull's
+// release velocity, exactly like a pod cut loose mid-pass.
+const SMUGGLER_CACHE_MEAN_INTERVAL_S = 2700;
+const SMUGGLER_CACHE_LANDMARK_MIN_WU = 400;
+const SMUGGLER_CACHE_LANDMARK_MAX_WU = 1600;
+const SMUGGLER_CACHE_OFFSET_LO_WU = 70;
+const SMUGGLER_CACHE_OFFSET_HI_WU = 140;
+const SMUGGLER_CACHE_DRIFT_WU_S = 4;
+const SMUGGLER_CACHE_AMOUNT_LO = 4;
+const SMUGGLER_CACHE_AMOUNT_HI = 8;
+const SMUGGLER_CACHE_TTL_S = 600;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5503,6 +5520,7 @@ export const traffic = {
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
     this._stepPocketDebrisField(dt, state);
+    this._stepSmugglerDeadDrop(dt, state);
     // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
     // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
     // stale ledger here instead of letting its stamps and jobs outlive the sector.
@@ -11440,6 +11458,115 @@ export const traffic = {
   },
 
   /**
+   * ev_smuggler_dumps_cache cadence: one live cache per roll on a persisted clock (same
+   * saved-bag pattern as the meteor and debris field). The live record is instance-local;
+   * a restored cache re-derives the guard through the live-entity scan in
+   * _spawnSmugglerDeadDrop.
+   */
+  _stepSmugglerDeadDrop(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const cache = this._smugglerCache;
+    if (cache) {
+      const e = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(cache.cacheId) : null;
+      if (!e || e.alive === false) this._smugglerCache = null;
+    }
+    if (!Number.isFinite(bag.nextSmugglerCacheAt)) {
+      bag.nextSmugglerCacheAt = now + this._smugglerCacheIntervalS();
+      return;
+    }
+    if (now < bag.nextSmugglerCacheAt) return;
+    bag.nextSmugglerCacheAt = now + this._smugglerCacheIntervalS();
+    if (this._smugglerCache) return;
+    this._spawnSmugglerDeadDrop(state);
+  },
+
+  _smugglerCacheIntervalS() {
+    return SMUGGLER_CACHE_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The catalog's arrangement: the dead-drop lands BESIDE a landmark — a real rock off the
+   * lane — where "catch it by silhouette occlusion or not at all" is honest geometry. The
+   * cache is a standard cargo pickup carrying hot contraband (cmdty_stolen_goods legality
+   * stamps it; the scan fine is the point of taking it) with `unlitDrop` — the motion
+   * presentation suppresses the transponder strobe and the takeable ring, so the find is
+   * silhouette-reading, not signal-following. A slow creep keeps it near the landmark until
+   * the despawn sweep clears an unclaimed drop.
+   */
+  _spawnSmugglerDeadDrop(state) {
+    const helpers = this.helpers;
+    const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
+    if (!state || !spawn) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return null;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e && e.alive !== false && e.data && e.data.smugglerCache === true) return null;
+    }
+    // Landmark: a real pocket rock near the player's route — the catalog's "distinctive rock
+    // marker away from lanes". Nearest qualifying asteroid inside the band wins; with no rock
+    // in reach the drop still happens on a hashed bearing off the player's route (the
+    // landmark is the story cue, not a hard gate — the catalog's interruption is the scan).
+    let landmark = null;
+    let landmarkDist = Infinity;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      const d = Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z);
+      if (d >= SMUGGLER_CACHE_LANDMARK_MIN_WU && d <= SMUGGLER_CACHE_LANDMARK_MAX_WU
+        && d < landmarkDist) {
+        landmark = e;
+        landmarkDist = d;
+      }
+    }
+    const bearing = this._rng() * Math.PI * 2;
+    const anchor = landmark
+      ? landmark.pos
+      : {
+          x: player.pos.x + Math.cos(bearing) * SMUGGLER_CACHE_LANDMARK_MIN_WU,
+          z: player.pos.z + Math.sin(bearing) * SMUGGLER_CACHE_LANDMARK_MIN_WU,
+        };
+    const offBearing = this._rng() * Math.PI * 2;
+    const offDist = SMUGGLER_CACHE_OFFSET_LO_WU
+      + this._rng() * (SMUGGLER_CACHE_OFFSET_HI_WU - SMUGGLER_CACHE_OFFSET_LO_WU);
+    const drift = this._rng() * SMUGGLER_CACHE_DRIFT_WU_S;
+    const amount = SMUGGLER_CACHE_AMOUNT_LO
+      + Math.floor(this._rng() * (SMUGGLER_CACHE_AMOUNT_HI - SMUGGLER_CACHE_AMOUNT_LO + 1));
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const entity = spawn({
+      type: 'pickup',
+      pos: {
+        x: anchor.x + Math.cos(offBearing) * offDist,
+        z: anchor.z + Math.sin(offBearing) * offDist,
+      },
+      vel: { x: Math.cos(offBearing) * drift, z: Math.sin(offBearing) * drift },
+      radius: 2.4, mass: 0.4, collides: true,
+      homeSectorId: sectorId,
+      data: {
+        kind: 'cargo', commodityId: 'cmdty_stolen_goods', amount,
+        legality: 'contraband',
+        despawnAt: now + SMUGGLER_CACHE_TTL_S,
+        smugglerCache: true,
+        unlitDrop: true,
+      },
+    });
+    if (entity) {
+      this._smugglerCache = {
+        cacheId: typeof entity === 'object' ? entity.id : entity,
+        sectorId,
+        bornAt: now,
+      };
+    }
+    return entity || null;
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -12625,6 +12752,8 @@ export const traffic = {
         ? { nextMeteorPassAt: this.state.traffic.nextMeteorPassAt } : {}),
       ...(Number.isFinite(this.state.traffic.nextDebrisFieldAt)
         ? { nextDebrisFieldAt: this.state.traffic.nextDebrisFieldAt } : {}),
+      ...(Number.isFinite(this.state.traffic.nextSmugglerCacheAt)
+        ? { nextSmugglerCacheAt: this.state.traffic.nextSmugglerCacheAt } : {}),
     };
   },
 
@@ -12697,8 +12826,11 @@ export const traffic = {
       ? data.nextMeteorPassAt : undefined;
     this.state.traffic.nextDebrisFieldAt = validTrafficSave && Number.isFinite(data.nextDebrisFieldAt)
       ? data.nextDebrisFieldAt : undefined;
+    this.state.traffic.nextSmugglerCacheAt = validTrafficSave && Number.isFinite(data.nextSmugglerCacheAt)
+      ? data.nextSmugglerCacheAt : undefined;
     this._meteorPass = null;
     this._debrisField = null;
+    this._smugglerCache = null;
   },
 
   newGame() {
@@ -12719,6 +12851,7 @@ export const traffic = {
     this._restoreEpochPending = false;
     this._meteorPass = null;
     this._debrisField = null;
+    this._smugglerCache = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.

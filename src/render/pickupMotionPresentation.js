@@ -338,8 +338,11 @@ export function createPickupMotionTracker() {
     else if (cyc > 0.14 && cyc < 0.24) strobe = Math.exp(-(cyc - 0.14) * 60) * 0.7;
     if (reducedMotion) strobe *= 0.5;
     // FB-075: a volatile lot's hazard ping kicks hotter — the warning survives the chase camera.
-    const strobeGain = (entity.data && (entity.data.volatileClass || entity.data.volatileLamp))
-      ? 0.058 : 0.035;
+    // A dead-dropped cache stays dark on purpose (ev_smuggler_dumps_cache): no strobe, no ring.
+    const unlitDrop = entity.data && entity.data.unlitDrop === true;
+    const strobeGain = unlitDrop ? 0
+      : (entity.data && (entity.data.volatileClass || entity.data.volatileLamp))
+        ? 0.058 : 0.035;
 
     // Eject materialize: overshoot ramp on arrival.
     let matMul = 1;
@@ -372,7 +375,10 @@ export function createPickupMotionTracker() {
     // Beacon ring: precesses with the drop's phase, flashes on the transponder beat, and rides
     // the same scaleRatio so it shrinks into the scoop with the body. Deterministic per drop.
     const halo = mesh.userData && mesh.userData.pickupHalo;
-    if (halo) {
+    if (halo && unlitDrop) {
+      const mat = halo.material;
+      if (mat && 'opacity' in mat) mat.opacity = 0;
+    } else if (halo) {
       const pose = resolvePickupHaloPose(simTime, rec.phase, reducedMotion, haloPoseScratch);
       halo.rotation.x = pose.spinX;
       halo.rotation.y = pose.spinY;
