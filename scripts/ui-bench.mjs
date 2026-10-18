@@ -71,10 +71,11 @@ async function shoot(page, id, outDir, base) {
     return { ok: false, report, file: path.relative(ROOT, file) };
   }
   if (report.overlay) console.log(`  overlay: ${report.overlay}`);
-  const findingCount = printFindings(report);
+  let findingCount = printFindings(report);
   console.log('  Open this PNG and look at it.');
   if (args.probe) await probe(page, args.probe);
   const walked = args.walk ? await walk(page, id, outDir) : null;
+  findingCount += walked?.actions.reduce((n, row) => n + (row.controlReachability?.length || 0), 0) || 0;
   return { ok: !walked || walked.complete, report, findingCount, file: path.relative(ROOT, file), walk: walked,
     visualReview: 'required; empty geometry findings do not prove a good picture' };
 }
@@ -159,6 +160,8 @@ async function walk(page, id, outDir) {
       await settleAnimations(page);
       const clicked = await page.evaluate(() => window.BENCH.signature()), clickEffect = describe(beforeClick, clicked);
       row.click = clickEffect;
+      row.controlReachability = await page.evaluate(() => window.BENCH.reachability());
+      for (const finding of row.controlReachability) console.log(`  UNREACHABLE after ${label}  ${finding}`);
       if (clickEffect === 'no visible change' || clickEffect === 'disabled') { console.log(`  ${name} ${clickEffect}`); continue; }
       const clickFile = path.join(outDir, `${safeName(id)}--${String(index + 1).padStart(2, '0')}-${slug(label || 'control')}.png`);
       await page.screenshot({ path: clickFile, timeout: args.timeoutMs }); row.clickFile = path.relative(ROOT, clickFile);
@@ -180,10 +183,10 @@ function describe(before, after) {
 }
 function printFindings(report) {
   const rows = [['tangled', 'ON TOP OF'], ['buried', 'BURIED'], ['severed', 'CUT OFF'], ['overlaps', 'OVERLAP'],
-    ['clipped', 'CLIPPED'], ['offscreen', 'OFF FRAME'], ['dead', 'EMPTY BOX']];
+    ['clipped', 'CLIPPED'], ['offscreen', 'OFF FRAME'], ['dead', 'EMPTY BOX'], ['controlReachability', 'UNREACHABLE']];
   let total = 0;
   for (const [key, tag] of rows) for (const row of report[key] || []) { console.log(`  ${tag}  ${row}`); total++; }
-  if (!total) console.log('  measured: no tangled, buried, cut-off or offscreen type, and no empty boxes');
+  if (!total) console.log('  measured: no tangled, buried, cut-off or offscreen type, no empty boxes, and primary controls reachable');
   return total;
 }
 function bgUrl(value) {
