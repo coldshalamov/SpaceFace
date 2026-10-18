@@ -18,13 +18,18 @@ SPEC = 'design/program/world-depth-2026-10-02/references/sf20-2026-10-03/package
 COLORS = {'paint': '#6a746a', 'paint2': '#8b4327', 'stripe': '#a69d8a', 'dark': '#252a27',
           'glass': '#263f3e', 'glow_drive': '#6aa4a8', 'glow_warm': '#b89a62'}
 
-def crew_details(s, width, top, stern, windows_x=5.6):
+def crew_details(s, width, top, stern, windows_x=5.6, knot_top=None, window_top=None, xoff=0):
     # The common slash is seated in the roof, and the mark is an original three-ended knot.
-    F.beams(s, 'CrewWhiteSlash', [((-3,-width*.60,top),(.7,width*.65,top))], .40,
+    # knot_top/window_top let a hull whose deck steps down forward of the shoulder seat each
+    # mark on its own surface instead of hovering at the shoulder's height. xoff slides the
+    # whole mark layout along the hull so it lands inside the deck that carries it.
+    if knot_top is None: knot_top = top
+    if window_top is None: window_top = top
+    F.beams(s, 'CrewWhiteSlash', [((-3+xoff,-width*.60,top),(.7+xoff,width*.65,top))], .40,
             h=.035, material='stripe', bevel=.006)
-    F.beams(s, 'ThreeEndedKnot', [((2.4,0,top),(3.6,0,top)),((3.1,0,top),(2.7,.9,top)),
-            ((3.1,0,top),(2.7,-.9,top))], .14,h=.04,material='stripe',bevel=.005)
-    F.boxes(s, 'SeatedCrewWindows', [((windows_x,y,top+.025),(.55,.20,.07)) for y in (-.65,0,.65)],
+    F.beams(s, 'ThreeEndedKnot', [((2.4+xoff,0,knot_top),(3.6+xoff,0,knot_top)),((3.1+xoff,0,knot_top),(2.7+xoff,.9,knot_top)),
+            ((3.1+xoff,0,knot_top),(2.7+xoff,-.9,knot_top))], .14,h=.04,material='stripe',bevel=.005)
+    F.boxes(s, 'SeatedCrewWindows', [((windows_x+xoff,y,window_top+.025),(.55,.20,.07)) for y in (-.65,0,.65)],
             material='glow_warm', bevel=.018)
     for y in (-width*.50,width*.50):
         F.nozzle(s, 'WorkingDrive'+str(y), (stern,y,-.2), .82,.63,
@@ -54,7 +59,9 @@ def build_mara():
         F.beams(s,'JawRootSupport'+str(side),[((1.6,side*3.0,-.15),(2.7,side*6.2,-.15))],
                 1.35,h=1.55,material='dark',bevel=.055)
         support=s.objects[support_start:]
-        outline=[(1,side*4.8),(11,side*4.8),(12.5,side*5.6),(11.5,side*8.0),(2,side*7.7)]
+        # The inner rail roots into the core flank (hull half-width ~4.0 at x=3): a clamp jaw
+        # that meets the body reads as one machined arm, not a pontoon floating beside it.
+        outline=[(1,side*3.3),(11,side*3.3),(12.5,side*5.6),(11.5,side*8.0),(2,side*7.7)]
         if side < 0: outline.reverse()
         jaw=F.plate(s,'SupportedJaw'+str(side),outline, z0=-1.15,thickness=2.5,
             material='paint2',chamfer=.26,bevel=.035)
@@ -68,7 +75,9 @@ def build_mara():
         groups[key]=s.objects[start:]
         pivots[key]=s.motion_group(key,(4,side*5.35,1.43),groups[key])
     F.box(s,'BridgeShoulder',(-.6,0,2.43),(4.1,3.6,.35),material='dark',bevel=.16)
-    crew_details(s,4.2,2.83,-12.20,windows_x=3.7)
+    # Deck steps: shoulder panel top is 2.605, the bare roof runs flat at 2.6 to x=3 then falls
+    # toward ~2.42 at the window row — seat each mark on its own surface, not on thin air.
+    crew_details(s,4.2,2.62,-12.20,windows_x=3.7,knot_top=2.62,window_top=2.44)
     s.socket_names=list(s.sockets)
     s.finish()
     return s,components,pivots,groups,['Open forward throat between the two original jaw solids']
@@ -114,14 +123,17 @@ def build_kit():
             ((-7.2,side*4.6+1.0,1.3),(-2.8,side*4.6+1.0,1.3))],.19,h=.17,
             material='paint2',bevel=.02)
     start=len(s.objects)
-    F.beams(s,'RescueLampArm',[((-1.8,0,2.48),(-1.8,0,3.30)),
+    # Lamp post must root into the cabin roof (top ~2.4), not hover above it.
+    F.beams(s,'RescueLampArm',[((-1.8,0,2.38),(-1.8,0,3.30)),
             ((-1.8,0,3.3),(-.1,0,3.30))],.22,h=.20,material='dark',bevel=.02)
     F.box(s,'RescueLampHead',(-.1,0,3.30),(.60,.70,.35),material='paint2',bevel=.08)
     F.box(s,'RescueLampLens',(-.1,-.365,3.30),(.40,.035,.18),material='glow_warm',bevel=.02)
     key='towline_acknowledge'
     groups={key:s.objects[start:]}
-    pivots={key:s.motion_group(key,(-1.8,0,2.48),groups[key])}
-    crew_details(s,6.2,2.49,-11.12)
+    pivots={key:s.motion_group(key,(-1.8,0,2.38),groups[key])}
+    # Marks belong on the cabin roof (top 2.4, footprint x -2..7, half-width ~2.6): the old
+    # 6.2-wide layout hovered 0.07-0.2 up and ended mid-air off the cabin edge.
+    crew_details(s,4.4,2.44,-11.12,windows_x=4.6,window_top=2.26,xoff=1.0)
     s.socket_names=list(s.sockets)
     s.finish()
     return s,{'deck':[core],'cabin':[cabin]},pivots,groups,[]

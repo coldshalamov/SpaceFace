@@ -2,7 +2,7 @@
   "schema": "spaceface.rigidMotionBank.v1",
   "rigId": "towline_mara_controls",
   "sourceAssetId": "SF_SHIP_TOWLINE_MARA",
-  "sourceGlbSha256": "192c897cfe6364ae9062e0e155a159090ece69ec5476507734323b8fbe25b08b",
+  "sourceGlbSha256": "f0c87048cfd78a2306f7f6f6cc5a24e1b8097e05c5be0ee1e70f09eb0fadca9d",
   "fps": 60,
   "bindings": [
     {

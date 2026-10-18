@@ -2,12 +2,12 @@
   "schema": "spaceface.conceptSourceGeometry.v1",
   "assetId": "SF_SHIP_TOWLINE_KIT",
   "renderScale": 1,
-  "recipeSha256": "eb4727de79e10110c5da3b1e10f3fcfed20f560f276c5da18a56405495958225",
+  "recipeSha256": "42e09152d8c1846ee92f72d703c7a6465445f308b5bdfb0425901071aeb107ab",
   "lods": {
     "0": {
       "file": "towline_kit.glb",
-      "sha256": "c7c30f1c1d66295dadf804a81c623a6e8809ec90088cb0dd78385d06b213fef7",
-      "bytes": 519124,
+      "sha256": "fcd9a7894deb5b6b8199fca6f15dffb3afbb24c67f1764a52b9a6dae470a1846",
+      "bytes": 519492,
       "triangles": 4720,
       "drawPrimitives": 9,
       "materials": 6,
@@ -15,8 +15,8 @@
     },
     "1": {
       "file": "towline_kit_lod1.glb",
-      "sha256": "dfc9274cb6337a20bbd65efdeb4489f749089d55db6c921de023fc688dc53e87",
-      "bytes": 387988,
+      "sha256": "d9ad52699f48934273476ec144b082b613f904f87a4665308e4d04e4636ca1c9",
+      "bytes": 387744,
       "triangles": 1886,
       "drawPrimitives": 9,
       "materials": 6,
@@ -24,8 +24,8 @@
     },
     "2": {
       "file": "towline_kit_lod2.glb",
-      "sha256": "1916745a6c583e77fde76a3bedc28b4cf2350aa13f4cc43e570cb90314f3428a",
-      "bytes": 337180,
+      "sha256": "dee44e9a2b03867622b533512e9b91f387bee23b79dc079177e23bc25adab6e0",
+      "bytes": 337264,
       "triangles": 848,
       "drawPrimitives": 9,
       "materials": 6,
@@ -4659,7 +4659,7 @@
       "node": "MOTION_TOWLINE_ACKNOWLEDGE",
       "pivotGltf": [
         -1.8,
-        2.48,
+        2.38,
         -0.0
       ]
     }
@@ -4692,7 +4692,7 @@
     "SOCKET_Camera_Focus": {
       "positionGltf": [
         0.0,
-        1.245,
+        1.22,
         0.0
       ],
       "forwardGltf": [
