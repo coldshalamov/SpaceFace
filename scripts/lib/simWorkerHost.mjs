@@ -259,7 +259,7 @@ export function sabFreePackSlot(header, pack) {
 // questions the live entity would.
 const VITAL_FIELDS = [
   'hull', 'hullMax', 'shield', 'shieldMax', 'cap', 'capMax', 'fuel', 'fuelMax', 'heat', 'heatMax',
-  'rot', 'bank', 'pitch', 'angVel', 'radius', 'team', 'collides', 'alive', 'ttl',
+  'rot', 'bank', 'pitch', 'angVel', 'radius', 'mass', 'team', 'collides', 'alive', 'ttl',
   'isPlayer', 'physicsSleeping',
 ];
 
@@ -275,6 +275,11 @@ export function entityVitalsOf(e) {
   if (e.boost && typeof e.boost === 'object') {
     if (e.boost.energy !== undefined) fields.boostEnergy = e.boost.energy;
     if (e.boost.max !== undefined) fields.boostMax = e.boost.max;
+  }
+  const machine = e.data && e.data.machine;
+  if (machine) {
+    fields.machineRepairing = Boolean(machine.repairing);
+    fields.machineWorking = Boolean(machine.working);
   }
   return fields;
 }
@@ -308,6 +313,9 @@ function vitalShadowMatches(e, shadow) {
   const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
   if (vitalShadowValue(boost ? boost.energy : undefined) !== shadow[i++]) return false;
   if (vitalShadowValue(boost ? boost.max : undefined) !== shadow[i++]) return false;
+  const machine = e.data && e.data.machine;
+  if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   return true;
 }
 
@@ -320,6 +328,9 @@ function writeVitalShadow(e, shadow) {
   const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
   shadow[i++] = vitalShadowValue(boost ? boost.energy : undefined);
   shadow[i++] = vitalShadowValue(boost ? boost.max : undefined);
+  const machine = e.data && e.data.machine;
+  shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
+  shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow.length = i;
   return shadow;
 }

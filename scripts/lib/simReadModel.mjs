@@ -63,6 +63,15 @@ function foldBoostVitals(row, fields) {
   if (fields.boostMax !== undefined) row.boost.max = fields.boostMax;
 }
 
+// Work flags change after spawn; keep the machine data object held by visuals.
+function foldMachineVitals(row, fields) {
+  if (fields.machineRepairing === undefined && fields.machineWorking === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  if (!row.data.machine || typeof row.data.machine !== 'object') row.data.machine = {};
+  if (fields.machineRepairing !== undefined) row.data.machine.repairing = fields.machineRepairing;
+  if (fields.machineWorking !== undefined) row.data.machine.working = fields.machineWorking;
+}
+
 export function createReadModel() {
   return {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
@@ -144,6 +153,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
     if (info.vitals && typeof info.vitals === 'object') {
       Object.assign(row, canonicalClone(info.vitals));
       foldBoostVitals(row, info.vitals);
+      foldMachineVitals(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -218,6 +228,7 @@ export function applyEntityVitals(readModel, vitals) {
       else row[key] = v;
     }
     foldBoostVitals(row, fields);
+    foldMachineVitals(row, fields);
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
     // carries — refold so both views stay coherent.
