@@ -603,11 +603,12 @@ export function buildMachineProp(placeId, radius = 20) {
         s.translate(0, 1.9, 0);
         return s;
       }), metalMat());
-      needle.scale.setScalar(r * 0.5);
+      // The boundary grows to the field radius; the reference needle stays human-scale.
+      needle.scale.setScalar(Math.min(r, 26) * 0.5);
       g.add(needle);
-      const ref = new THREE.Mesh(geo('mp_ref', () => new THREE.TorusGeometry(0.4, 0.05, 6, 24)), lightMat(1.2));
-      ref.position.y = r * 0.4;
-      ref.scale.setScalar(r * 0.5);
+      const ref = new THREE.Mesh(geo('mp_ref', () => new THREE.TorusGeometry(1, 0.004, 6, 96)), lightMat(1.2));
+      ref.rotation.x = Math.PI / 2;
+      ref.scale.setScalar(r);
       g.add(ref);
       break;
     }

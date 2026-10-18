@@ -221,7 +221,8 @@ export function materializeMachineLayer(world, sector, active) {
           type: 'fx',
           pos: world._toGlobal({ x: site.center.x + dx, z: site.center.z + dz }, sector.id),
           rot: rng() * TWO_PI,
-          radius: site.kind === 'vault' ? 90 : 26,
+          radius: site.siteId === VELOCITY_PLANE.siteId
+            ? VELOCITY_PLANE.radius : site.kind === 'vault' ? 90 : 26,
           homeSectorId: sector.id,
           data: {
             placeId: ring.propId,
