@@ -16,6 +16,37 @@ function distance(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 const workpieceBodies = new WeakMap();
 const protocolOffers = new WeakMap();
 
+// Live frames file their job on `kind`. Callers pass that job as `role`; a frame
+// that also carries `role` matches the same way. The flag is what the weld/repair
+// cadence reads, so idle frames stay dark.
+function syncSiteRoleFlag(state, siteId, role, field, value) {
+  const entities = state?.entities;
+  if (!entities) return;
+  const list = typeof entities.values === 'function' ? entities.values() : entities;
+  const on = Boolean(value);
+  for (const e of list) {
+    const machine = e?.data?.machine;
+    if (!machine || machine.siteId !== siteId) continue;
+    if (machine.kind !== role && machine.role !== role) continue;
+    machine[field] = on;
+  }
+}
+
+// Completion files what the site granted. The two-order filing already owns
+// rec.protocol as a record (step, sequences); replacing that object would drop
+// the saved order. A string standing still advances, unless the site withdrew.
+function noteWorksiteSatisfied(state, rec, site, status) {
+  const ae = ensureAlienEcologyState(state);
+  if (!ae.machineAccess || typeof ae.machineAccess !== 'object') ae.machineAccess = {};
+  ae.machineAccess[site.siteId] = status;
+  const protocol = rec.protocol;
+  if (protocol && typeof protocol === 'object') {
+    if (protocol.standing !== 'withdrawn') protocol.standing = 'satisfied';
+    return;
+  }
+  if (protocol !== 'withdrawn') rec.protocol = 'satisfied';
+}
+
 // The two machines have different, equally valid filing procedures. These are runtime
 // records, not global protocol standing or mutable catalog definitions.
 function foundryProtocol(rec) {
@@ -135,15 +166,17 @@ function foundryReceipt(rec) {
 
 function tickFoundryRepair(world, entity, dt, site, rec) {
   const cycle = cycleRecord(rec);
+  const markRepairing = (on) => syncSiteRoleFlag(world.state, site.siteId, 'custodian', 'repairing', on);
   const job = rec.maintenance ||= { integrity: 0.25, material: site.workCycle.charges, work: 0, completed: false };
   const component = world.state.world?.dressing?.rows?.find(row => row.alive !== false
     && row.data?.machineSite === site.siteId && row.data.placeId === 'machine_gantry');
-  if (!component) return true;
+  if (!component) { markRepairing(false); return true; }
   component.data.machineIntegrity = job.integrity;
   component.data.name = `Foundry gantry — ${Math.round(job.integrity * 100)}% integrity`;
   component.data.scanLabel = component.data.name;
-  if (job.completed) return true;
+  if (job.completed) { markRepairing(false); return true; }
   if (!foundryReceipt(rec)) {
+    markRepairing(false);
     if (!job.mailHinted) { job.mailHinted = true; log(world, site.name,
       'REPAIR HELD. RETURN THE ROUTE AUTHORITY TOKEN TO THE CENTRAL INTAKE. THREE GANTRY CHARGES REMAIN RESERVED.'); }
     return true;
@@ -152,6 +185,7 @@ function tickFoundryRepair(world, entity, dt, site, rec) {
   const faceDistance = distance(entity.pos, component.pos);
   entity.rot = Math.atan2(component.pos.z - entity.pos.z, component.pos.x - entity.pos.x);
   if (faceDistance > 90) {
+    markRepairing(false);
     const travel = Math.min(faceDistance - 90, machineKindById('custodian').speed * dt);
     entity.pos.x += Math.cos(entity.rot) * travel;
     entity.pos.z += Math.sin(entity.rot) * travel;
@@ -159,11 +193,15 @@ function tickFoundryRepair(world, entity, dt, site, rec) {
   }
   const player = world.state.entities.get(world.state.playerId);
   if (player?.alive !== false && player?.pos && distance(player.pos, component.pos) < (player.radius || 10) + 38) {
+    markRepairing(false);
     if (!job.paused) log(world, site.name, 'GANTRY REPAIR PAUSED. CLEAR THE WORK FACE; USED CHARGES AND PARTIAL WORK ARE RETAINED.');
     job.paused = true;
     return true;
   }
   job.paused = false;
+  // At the face with charges left: the repair is in progress. Travel, a blocked
+  // face, a missing token, and a finished gantry are not.
+  markRepairing(job.material > 0);
   job.work += dt;
   while (job.work >= site.workCycle.repairS && job.material > 0) {
     job.work -= site.workCycle.repairS;
@@ -178,6 +216,7 @@ function tickFoundryRepair(world, entity, dt, site, rec) {
   }
   if (job.material === 0 && !job.completed) {
     job.completed = true;
+    markRepairing(false);
     cycle.status = 'jurisdiction';
     world.bus.emit('machine:repairCompleted', { siteId: site.siteId, component: 'foundry_gantry', integrity: job.integrity });
   }
@@ -214,6 +253,7 @@ function tickFoundryJurisdiction(world, body, dt, center, site, rec) {
     body.data.scanLabel = 'PRESERVED FOUNDRY BALLAST — GANTRY CHARGES SPENT';
     cycle.status = 'preserved';
     cycle.commissioned = false;
+    noteWorksiteSatisfied(world.state, rec, site, cycle.status);
     log(world, 'Conservator', 'PRESERVATION CUSTODY ACCEPTED. BALLAST RETAINED; FOUNDRY UNCOMMISSIONED. THREE GANTRY CHARGES SPENT.');
   } else {
     cycle.status = 'placing';
@@ -251,16 +291,18 @@ export function tickCustodianWork(world, entity, dt) {
   const job = rec.maintenance ||= { integrity: 0.25, material: 3, work: 0, completed: false };
   const component = state.world?.dressing?.rows?.find(row => row.alive !== false
     && row.data?.machineSite === m.siteId && row.data.placeId === 'machine_pylon');
-  if (!component) return true;
+  const markRepairing = (on) => syncSiteRoleFlag(state, site.siteId, 'custodian', 'repairing', on);
+  if (!component) { markRepairing(false); return true; }
   component.data.name = `Maintenance pylon — ${Math.round(job.integrity * 100)}% integrity`;
   component.data.scanLabel = component.data.name;
   component.data.machineIntegrity = job.integrity;
-  if (job.completed) return true;
+  if (job.completed) { markRepairing(false); return true; }
   if (!job.started) { job.started = true; log(world, site.name, 'PYLON FRACTURE. THREE REPAIR CHARGES RESERVED. KEEP THE WORK FACE CLEAR.'); }
   const player = state.entities.get(state.playerId);
   const obstructed = player?.alive !== false && player?.pos
     && distance(player.pos, component.pos) < (player.radius || 10) + 38;
   if (obstructed || distance(entity.pos, component.pos) > 100) {
+    markRepairing(false);
     if (!job.paused) log(world, site.name, 'REPAIR PAUSED. CLEAR THE PYLON FACE; COMPLETED WORK IS RETAINED.');
     job.paused = true;
     return true;
@@ -268,6 +310,7 @@ export function tickCustodianWork(world, entity, dt) {
   job.paused = false;
   const desired = Math.atan2(component.pos.z - entity.pos.z, component.pos.x - entity.pos.x);
   entity.rot = desired;
+  markRepairing(job.material > 0);
   job.work += dt;
   if (job.work >= 9 && job.material > 0) {
     job.work -= 9;
@@ -281,6 +324,7 @@ export function tickCustodianWork(world, entity, dt) {
     log(world, site.name, `PYLON REPAIRED TO ${Math.round(job.integrity * 100)}%. ${job.material} REPAIR CHARGES REMAIN.`);
     if (job.material === 0) {
       job.completed = true;
+      markRepairing(false);
       world.bus.emit('machine:repairCompleted', { siteId: m.siteId, component: 'maintenance_pylon', integrity: job.integrity });
     }
   }
@@ -292,20 +336,23 @@ export function tickMasonWork(world, entity, dt) {
   if (m.siteId !== 'pallas_empty_foundry') return false;
   const state = world.state, rec = siteRecord(state, m.siteId);
   const site = MACHINE_SITES[m.siteId];
+  const markWorking = (on) => syncSiteRoleFlag(state, site.siteId, 'mason', 'working', on);
   const center = world._toGlobal(site.center, site.sectorId);
   // Retirement must also run when a lost workpiece makes the procedure return early.
   offerFoundryProtocol(world);
   if (site.workCycle && (!foundryReceipt(rec) || rec.maintenance?.completed !== true)) {
     cycleRecord(rec);
+    markWorking(false);
     return true;
   }
   const job = rec.masonry ||= { status: 'moving', pos: { x: center.x - 260, z: center.z }, settled: 0 };
-  if (job.status === 'lost') return true;
+  if (job.status === 'lost') { markWorking(false); return true; }
   let body = state.entityList.find(e => e.alive !== false && e.data?.machineWorkpiece === m.siteId);
   if (!body) {
     const previous = workpieceBodies.get(job) || (m.workpieceId != null && state.entities.get(m.workpieceId));
     if (previous?.data?.machineWorkpiece === m.siteId && previous.hull <= 0) {
-      job.status = 'lost'; log(world, site.name, 'WORKPIECE DESTROYED. RELOCATION CANCELLED.'); return true;
+      job.status = 'lost'; log(world, site.name, 'WORKPIECE DESTROYED. RELOCATION CANCELLED.');
+      markWorking(false); return true;
     }
     body = world.helpers.spawnEntity({
       type: 'asteroid', pos: { ...job.pos }, vel: { x: 0, z: 0 }, rot: 0,
@@ -317,13 +364,18 @@ export function tickMasonWork(world, entity, dt) {
         name: 'Foundry ballast workpiece', machineWorkpiece: m.siteId,
         scanLabel: 'FOUNDRY BALLAST — MOVING TO EAST CRADLE', orePool: {}, transientSector: false },
     });
-    if (!body) return true;
+    if (!body) { markWorking(false); return true; }
     m.workpieceId = body.id;
   }
   workpieceBodies.set(job, body);
   job.pos = { x: body.pos.x, z: body.pos.z };
-  if (site.workCycle && !tickFoundryJurisdiction(world, body, dt, center, site, rec)) return true;
-  if (job.status === 'placed') return true;
+  if (site.workCycle && !tickFoundryJurisdiction(world, body, dt, center, site, rec)) {
+    markWorking(false);
+    return true;
+  }
+  if (job.status === 'placed') { markWorking(false); return true; }
+  if (job.status === 'moving') job.status = 'placing';
+  markWorking(job.status === 'placing');
   const destination = { x: center.x + 180, z: center.z };
   drawWorkpiece(world, body, destination, dt, 14);
   if (!job.announced) {
@@ -334,7 +386,13 @@ export function tickMasonWork(world, entity, dt) {
   job.settled = aligned ? job.settled + dt : 0;
   if (job.settled >= 3) {
     job.status = 'placed';
-    if (site.workCycle) { cycleRecord(rec).status = 'complete'; rec.workCycle.commissioned = true; }
+    markWorking(false);
+    if (site.workCycle) {
+      const cycle = cycleRecord(rec);
+      cycle.status = 'complete';
+      cycle.commissioned = true;
+      noteWorksiteSatisfied(state, rec, site, cycle.status);
+    }
     body.data.scanLabel = 'FOUNDRY BALLAST — EAST CRADLE COMPLETE';
     log(world, site.name, 'BALLAST SEATED. TRANSFER FIELD RELEASED.');
     world.bus.emit('machine:workpiecePlaced', { siteId: m.siteId, entityId: body.id });

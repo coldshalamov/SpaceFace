@@ -283,6 +283,45 @@ const PRECURSOR_FIELD_HOMES = [
   { id: BOUNDARY_FIELD_ID, siteId: BOUNDARY_FIELD.siteId },
 ];
 
+function workCycleStatusWords(status) {
+  switch (status) {
+    case 'awaiting_mail': return 'waiting on route mail';
+    case 'repairing': return 'repairing the gantry';
+    case 'jurisdiction': return 'waiting on a custody choice';
+    case 'placing': return 'placing the ballast';
+    case 'preserved': return 'preserved';
+    case 'complete': return 'complete';
+    default: return null;
+  }
+}
+
+function emitComms(world, sender, text) {
+  if (!world?.bus?.emit || !text) return;
+  world.bus.emit('comms:message', { sender, text, channel: 'machine' });
+}
+
+// Inside the work volume and past the skirt are different questions. A crossing
+// of the band between them must not announce, and the first arrival is not a return.
+function noteMachineWorkReturn(world, site, rec, player, origin) {
+  if (!player?.pos || !origin) return;
+  const d = Math.sqrt(dist2(player.pos.x, player.pos.z, origin.x, origin.z));
+  if (d > site.radius + 600) {
+    if (rec.seen) rec.playerInRange = false;
+    return;
+  }
+  if (d >= site.radius + 400) return;
+  const status = rec.workCycle?.status;
+  if (rec.seen && rec.playerInRange === false && status
+      && rec.lastReturnAnnouncedStatus !== status) {
+    const words = workCycleStatusWords(status);
+    if (words) {
+      emitComms(world, site.name, `${site.name} work cycle is ${words}.`);
+      rec.lastReturnAnnouncedStatus = status;
+    }
+  }
+  if (rec.seen) rec.playerInRange = true;
+}
+
 function precursorFieldState(world) {
   const state = world && world.state;
   if (state && state.systems && state.systems.fields) return state;
@@ -484,6 +523,7 @@ export function tickMachineLayer(world, dt) {
     }
     if (site.siteId === 'veil_exception_chamber' && rec.directiveResolved
       && ae.machineProtocol === 'exception') grantChamberCredentials(world, rec, site, sectorId);
+    noteMachineWorkReturn(world, site, rec, player, g);
   }
 
   // ── Machine kinematics ──
@@ -573,19 +613,24 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'mason': {
-        if (tickMasonWork(world, e, dt)) break;
-        // AE-234 (I07): orbits its workpiece; the weld cadence emits a ping beat.
-        const w = now * 0.10 + m.phase;
-        const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
-        const tz = m.anchor.z + Math.sin(w) * kind.orbitR;
-        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
-        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
-        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
-        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
-        m.sweepT += dt;
-        if (m.sweepT >= kind.weldPeriodS) {
-          m.sweepT = 0;
-          world.bus.emit('audio:cue', { id: 'scan_resolve' });
+        const onSite = tickMasonWork(world, e, dt);
+        if (!onSite) {
+          // AE-234 (I07): orbits its workpiece when no foundry job owns the frame.
+          const w = now * 0.10 + m.phase;
+          const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
+          const tz = m.anchor.z + Math.sin(w) * kind.orbitR;
+          const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+          e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+          e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+          e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        }
+        // Weld cadence only while a block is actually being placed.
+        if (Boolean(m.working)) {
+          m.sweepT = (m.sweepT || 0) + dt;
+          if (m.sweepT >= kind.weldPeriodS) {
+            m.sweepT = 0;
+            world.bus.emit('audio:cue', { id: 'scan_resolve' });
+          }
         }
         break;
       }
