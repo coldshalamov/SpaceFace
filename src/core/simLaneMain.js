@@ -53,7 +53,8 @@ import { flattenEventPayload, resolveEventEntityRef } from '../../scripts/lib/si
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
-import { normalizePadSensitivity } from '../systems/gamepad.js';
+import { normalizePadSensitivity, sampleGamepadFrame } from '../systems/gamepad.js';
+import { getPromptDevice, getGamepadCaptureHandler } from '../ui/bindings.js';
 import { applySharedPlayerStoreCapability } from '../save/sharedPlayerStore.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
@@ -1162,6 +1163,18 @@ export function createSimLaneRuntime({
     stallWatchdogTimer = timer;
   }
 
+  function appendGamepadFrame(commands) {
+    pushLaneCommand(envelopeRing, {
+      kind: 'domEvent',
+      d: {
+        type: 'gamepadFrame',
+        frame: sampleGamepadFrame(!!getGamepadCaptureHandler()),
+        promptDevice: getPromptDevice(),
+      },
+    });
+    commands.push(...envelopeRing.drain());
+  }
+
   function appendCursorProjection(commands) {
     // Camera/galactic-origin geometry belongs to presentation. The worker has
     // no renderer raycast helper: project on main for every batch, even when
@@ -1182,6 +1195,7 @@ export function createSimLaneRuntime({
 
   function flushWorkerClockDirectives({ projectCursor = false } = {}) {
     if (laneClosed || !ready || workerClockMode !== 'worker-local') return;
+    if (projectCursor) cursorProjectionPending = true;
     // A timer tick can publish just before a main command reaches the worker's
     // serialized chain. Its reply has commandSequence 0 (or an older command
     // sequence) but still needs an ACK; withholding that ACK while the command
@@ -1197,6 +1211,7 @@ export function createSimLaneRuntime({
     // synthetic cursorProjection command on every reply, which schedules the
     // next reply indefinitely. Reproject only at rAF or input boundaries.
     if (projectCursor || cursorProjectionPending) {
+      appendGamepadFrame(commands);
       appendCursorProjection(commands);
       cursorProjectionPending = false;
     }
@@ -1268,6 +1283,7 @@ export function createSimLaneRuntime({
     if (inFlight) return;
     const commands = envelopeRing.drain();
     if (pendingSteps <= 0 && commands.length === 0 && pendingAckEnd === 0) return;
+    appendGamepadFrame(commands);
     appendCursorProjection(commands);
     capPendingSteps(MAX_CATCHUP_STEPS);
 

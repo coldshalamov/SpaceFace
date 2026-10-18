@@ -1271,7 +1271,7 @@ export function createUiInput(ctx, screenManager) {
     const modalOpen = !!(screenManager && screenManager.isOpen && screenManager.isOpen());
     const menusLive = state.mode !== 'flight' || state.timeScale === 0 || modalOpen
       || !!(state.ui && state.ui.docked);
-    if (gp && menusLive) {
+    if (gp && (menusLive || ctx.simLane === 'worker')) {
       gp.tick(dt);
     }
     if (ctx.touch && menusLive) {

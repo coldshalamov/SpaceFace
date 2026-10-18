@@ -139,7 +139,7 @@ export function shelfHostileChargeReady(state, isHostile) {
  *             touch player cannot press is the same lie as naming a dead binding.
  */
 export function verbBindingLabel(state, action, device) {
-  const dev = device || getPromptDevice();
+  const dev = device || state?.input?.promptDevice || getPromptDevice();
   if (dev === 'touch') return '';
   if (dev === 'gamepad') {
     const padAction = GAMEPAD_VERB_ALIASES[action] || action;

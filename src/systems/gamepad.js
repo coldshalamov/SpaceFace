@@ -796,7 +796,27 @@ function observeHapticCompletion(request) {
   if (request && typeof request.catch === 'function') request.catch(ignoreHapticFailure);
 }
 
-export function createGamepad(ctx) {
+// The Gamepad API belongs to the main realm. Ship only cloneable physical samples;
+// both realms keep the existing reducer for deadzones, remaps and device generations.
+export function sampleGamepadFrame(captureMode = false) {
+  const list = typeof navigator !== 'undefined' && navigator.getGamepads
+    ? (navigator.getGamepads() || []) : [];
+  const pads = [];
+  for (let i = 0; i < Math.min(list.length, PAD_SLOT_LIMIT); i++) {
+    const pad = list[i];
+    pads.push(pad && pad.connected ? {
+      id: pad.id || '', connected: true, index: pad.index, mapping: pad.mapping,
+      axes: Array.from(pad.axes || []).slice(0, 4),
+      buttons: Array.from(pad.buttons || []).slice(0, 17).map(button => ({
+        pressed: !!button.pressed,
+        value: typeof button.value === 'number' ? button.value : (button.pressed ? 1 : 0),
+      })),
+    } : null);
+  }
+  return { pads, captureMode: captureMode === true };
+}
+
+export function createGamepad(ctx, { connectionEvents = true, laneHaptics = false } = {}) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
 
@@ -846,7 +866,7 @@ export function createGamepad(ctx) {
     return true;
   };
   const CHARGE_PLAYER_TRIGGERS = new Set(['manual', 'proximity']);
-  if (bus && typeof bus.on === 'function') {
+  if (!laneHaptics && bus && typeof bus.on === 'function') {
     bus.on('physics:impact', onImpact, { presentation: true });
     bus.on('combat:collisionConsequence', onImpact);
     bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched'));
@@ -1021,6 +1041,11 @@ export function createGamepad(ctx) {
       return this.actions[name] || { held: false, pressed: false, released: false, value: 0 };
     },
 
+    applyLaneFrame(frame) {
+      this._laneFrame = frame && Array.isArray(frame.pads) ? frame : { pads: [] };
+      this.captureMode = this._laneFrame.captureMode === true;
+    },
+
     tick(/* dt */ _dt, tickState = null, inputHost = null) {
       // Prefer live state passed from input.update so tick stamps stay authoritative.
       const live = tickState || state;
@@ -1034,9 +1059,9 @@ export function createGamepad(ctx) {
       const dzRight = typeof cfg.deadzoneRight === 'number' ? cfg.deadzoneRight : dz;
       const invertY = !!cfg.invertY;
 
-      const padList = (enabled && typeof navigator !== 'undefined' && navigator.getGamepads)
-        ? (navigator.getGamepads() || [])
-        : [];
+      const padList = !enabled ? [] : this._laneFrame ? this._laneFrame.pads
+        : (typeof navigator !== 'undefined' && navigator.getGamepads)
+          ? (navigator.getGamepads() || []) : [];
       const pad = selectActivePad(this, padList, dz);
 
       const wasConnected = this.connected;
@@ -1050,7 +1075,7 @@ export function createGamepad(ctx) {
         this._idleClean = true;
         this.helmGestureEdge = false;
         this.deviceLostThisFrame = true;
-        if (bus && bus.emit) {
+        if (connectionEvents && bus && bus.emit) {
           bus.emit('gamepad:disconnected', {});
           // The connect path toasts its scheme offer; a dropped device owes the player the
           // same honesty — the controls they were flying by are gone.
@@ -1067,12 +1092,12 @@ export function createGamepad(ctx) {
         this.id = pad.id || 'gamepad';
         // Connecting is not a helm gesture and does not bump lastActiveTick. A deliberate
         // reacquire publishes only its new edge; buttons already held stay silent.
-        if (bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
+        if (connectionEvents && bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
         // PQ-164.04: offer the twin-stick scheme once per profile on pad connect — a toast,
         // never a silent default change; 'drive' stays the shipping pad feel until picked.
         const gpSettings = live && live.settings && live.settings.controls
           && live.settings.controls.gamepad;
-        if (gpSettings && gpSettings.scheme !== 'twinstick' && gpSettings.schemeSuggested !== true) {
+        if (connectionEvents && gpSettings && gpSettings.scheme !== 'twinstick' && gpSettings.schemeSuggested !== true) {
           gpSettings.schemeSuggested = true;
           if (bus && bus.emit) {
             bus.emit('toast', {
@@ -1314,6 +1339,12 @@ export function createGamepad(ctx) {
     // level yields an inert frame and resets the motors; the frame is always recorded on
     // `this.haptics` for inspection.
     _stepHaptics(pad, live, cfg) {
+      if (laneHaptics) {
+        // Velocity, line load and gyre mass belong to the sim, not the facade.
+        const frame = live && live.input && live.input.gamepadHaptics;
+        if (frame) { this.haptics = frame; this._applyHaptics(pad, frame); }
+        return;
+      }
       const access = live && live.settings && live.settings.accessibility;
       const level = (cfg && cfg.haptics === false)
         ? 'off'

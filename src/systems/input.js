@@ -1168,6 +1168,15 @@ export const input = {
         else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
         break;
       }
+      case 'gamepadFrame':
+        if (this.gamepad && typeof this.gamepad.applyLaneFrame === 'function') {
+          this.gamepad.applyLaneFrame(d.frame);
+        }
+        if (this.state && this.state.input) {
+          this.state.input.promptDevice = d.promptDevice === 'gamepad' || d.promptDevice === 'touch'
+            ? d.promptDevice : 'kbm';
+        }
+        break;
       case 'touchFrame': {
         // The mobile deck runs on the main realm (DOM detector + view + model);
         // its resolved frame lands here — the lane touch reducer applies axes,
@@ -1543,6 +1552,7 @@ export const input = {
     const gp = this.gamepad;
     if (gp) {
       gp.tick(dt, state, this);
+      if (gp._laneFrame) state.input.gamepadHaptics = gp.haptics;
       this._refreshGamepadLifecycleQuarantine(gp);
     }
     const tp = this.touch;

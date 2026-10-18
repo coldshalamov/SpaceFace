@@ -22,6 +22,7 @@ import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
 import { physics } from './physics.js';
 import { input } from '../systems/input.js';
+import { createGamepad } from '../systems/gamepad.js';
 import { autoTargetAssist } from '../systems/autoTargetAssist.js';
 import { flybyFocus } from '../systems/flybyFocus.js';
 import { scanner } from '../systems/scanner.js';
@@ -948,6 +949,8 @@ export function createRegistry(ctx) {
   // lifecycle init/destroy sets exclude sim-owned systems entirely — they are
   // owned by the worker's own registry.
   const laneWorker = ctx && ctx.simLane === 'worker';
+  // UI owns browser polling; the authoritative pad emits connection notices once.
+  if (laneWorker) ctx.gamepad = createGamepad(ctx, { connectionEvents: false, laneHaptics: true });
   const laneSimOwned = laneWorker
     ? new Set(resolved.authoritativeSystemIds.filter((id) => isNodeSafeSystemId(id)))
     : null;
@@ -1073,6 +1076,7 @@ export function createRegistry(ctx) {
           name: 'input',
           releaseHeldControls: () => laneDomEvent({ type: 'blur' }),
           getInput: () => (st ? st.input : null),
+          get gamepad() { return ctx.gamepad; },
           inputActivityStamp: () => null,
           // worldObjectInteraction cancels the m2 object gesture via this — the
           // gesture state is sim-owned, so it ships as a DOM descriptor.
