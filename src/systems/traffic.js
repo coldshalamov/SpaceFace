@@ -125,6 +125,7 @@ import {
   richSeamOpportunityForEntity,
 } from './fieldDepletion.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
+import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { admitRichSeamGlint, endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
@@ -711,6 +712,16 @@ const HITCH_SHED_AMOUNT_LO = 1;
 const HITCH_SHED_AMOUNT_HI = 3;
 const HITCH_SHED_BACK_OFF_WU = 30;
 const HITCH_SHED_BACK_VEL_WU_S = 6;
+// CR-CHAIN (build_map §23.2): "a volatile pod as a moving mine" — the braid's second leg.
+// A working volatiles tanker occasionally sloughs one pressurized pod of its OWN volatile
+// manifest line off the stern. The pod is a real jettisoned-cargo body, so the volatile
+// machinery stamps it automatically: the class lamp strobes, the slam behavior is armed,
+// and it drifts in the lane as a live mine the player threads, shoves, or shoots clear.
+const VOLATILE_SLOUGH_MEAN_INTERVAL_S = 1500;
+const VOLATILE_SLOUGH_MIN_SPEED_WU_S = 20;
+const VOLATILE_SLOUGH_AMOUNT = 1;
+const VOLATILE_SLOUGH_BACK_OFF_WU = 30;
+const VOLATILE_SLOUGH_BACK_VEL_WU_S = 4;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5554,6 +5565,7 @@ export const traffic = {
     this._stepSmugglerDeadDrop(dt, state);
     this._stepPocketDebrisStream(dt, state);
     this._stepHitchShed(dt, state);
+    this._stepVolatileSlough(dt, state);
     // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
     // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
     // stale ledger here instead of letting its stamps and jobs outlive the sector.
@@ -11811,6 +11823,98 @@ export const traffic = {
   },
 
   /**
+   * Volatile-slough cadence: one pressurized pod per roll on a persisted clock, and only
+   * while the last one is not still loose in the pocket. Rarer than the freight hitch —
+   * this is a hazard read, not a cargo beat.
+   */
+  _stepVolatileSlough(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const slough = this._volatileSlough;
+    if (slough) {
+      const e = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(slough.podId) : null;
+      if (!e || e.alive === false) this._volatileSlough = null;
+    }
+    if (!Number.isFinite(bag.nextVolatileSloughAt)) {
+      bag.nextVolatileSloughAt = now + this._volatileSloughIntervalS();
+      return;
+    }
+    if (now < bag.nextVolatileSloughAt) return;
+    bag.nextVolatileSloughAt = now + this._volatileSloughIntervalS();
+    if (this._volatileSlough) return;
+    this._sloughVolatilePod(state);
+  },
+
+  _volatileSloughIntervalS() {
+    return VOLATILE_SLOUGH_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The moving mine: pick a volatiles tanker actually under way and let one pod of its own
+   * volatile manifest line slip the stern. Prefers the tanker's biggest volatile lot (the
+   * dominant lot is what the pod mostly IS); a tanker with no volatile line sheds nothing.
+   */
+  _sloughVolatilePod(state) {
+    if (typeof spawnJettisonedCargoPod !== 'function') return null;
+    const list = state && state.traffic && state.traffic.freighters;
+    const byId = state && state.entities && typeof state.entities.get === 'function' ? state.entities : null;
+    if (!Array.isArray(list) || !list.length || !byId) return null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const start = Math.floor(this._rng() * list.length);
+    for (let i = 0; i < list.length; i++) {
+      const rec = list[(start + i) % list.length];
+      if (!rec || rec.role !== 'tanker') continue;
+      const tanker = byId.get(rec.id);
+      if (!tanker || tanker.alive === false || !tanker.pos || !tanker.vel) continue;
+      if (!tanker.data || !tanker.data.jobId) continue;
+      const manifest = tanker.data.cargoManifest;
+      const lines = manifest && Array.isArray(manifest.lines) ? manifest.lines : null;
+      if (!lines || !lines.length) continue;
+      const speed = Math.hypot(tanker.vel.x || 0, tanker.vel.z || 0);
+      if (speed < VOLATILE_SLOUGH_MIN_SPEED_WU_S) continue;
+      let volatileLine = null;
+      let volatileQty = 0;
+      for (const line of lines) {
+        const qty = Math.max(0, Math.floor(Number(line && line.qty) || 0));
+        if (qty > volatileQty && typeof volatileClassOf === 'function'
+            && volatileClassOf(line && line.commodityId)) {
+          volatileLine = line;
+          volatileQty = qty;
+        }
+      }
+      if (!volatileLine) continue;
+      const backX = -tanker.vel.x / speed;
+      const backZ = -tanker.vel.z / speed;
+      const stern = (tanker.radius || 10) + VOLATILE_SLOUGH_BACK_OFF_WU;
+      const pod = spawnJettisonedCargoPod(state, {
+        commodityId: volatileLine.commodityId,
+        amount: VOLATILE_SLOUGH_AMOUNT,
+        pos: { x: tanker.pos.x + backX * stern, z: tanker.pos.z + backZ * stern },
+        vel: {
+          x: tanker.vel.x + backX * VOLATILE_SLOUGH_BACK_VEL_WU_S,
+          z: tanker.vel.z + backZ * VOLATILE_SLOUGH_BACK_VEL_WU_S,
+        },
+        ownerId: tanker.id,
+        ownerName: tanker.name || tanker.data.name || null,
+        originId: tanker.data.originStationId || null,
+        destinationId: tanker.data.destStationId || null,
+        factionId: tanker.factionId || 'faction_free',
+      }, this.helpers);
+      if (!pod) return null;
+      pod.data = pod.data || {};
+      pod.data.volatileSlough = true;
+      pod.data.shedFromJobId = tanker.data.jobId;
+      pod.homeSectorId = pod.homeSectorId || sectorId;
+      this._volatileSlough = { podId: pod.id, tankerId: tanker.id, sectorId, bornAt: now };
+      return pod;
+    }
+    return null;
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -13002,6 +13106,8 @@ export const traffic = {
         ? { nextDebrisStreamAt: this.state.traffic.nextDebrisStreamAt } : {}),
       ...(Number.isFinite(this.state.traffic.nextHitchShedAt)
         ? { nextHitchShedAt: this.state.traffic.nextHitchShedAt } : {}),
+      ...(Number.isFinite(this.state.traffic.nextVolatileSloughAt)
+        ? { nextVolatileSloughAt: this.state.traffic.nextVolatileSloughAt } : {}),
     };
   },
 
@@ -13080,11 +13186,14 @@ export const traffic = {
       ? data.nextDebrisStreamAt : undefined;
     this.state.traffic.nextHitchShedAt = validTrafficSave && Number.isFinite(data.nextHitchShedAt)
       ? data.nextHitchShedAt : undefined;
+    this.state.traffic.nextVolatileSloughAt = validTrafficSave && Number.isFinite(data.nextVolatileSloughAt)
+      ? data.nextVolatileSloughAt : undefined;
     this._meteorPass = null;
     this._debrisField = null;
     this._smugglerCache = null;
     this._debrisStream = null;
     this._hitchShed = null;
+    this._volatileSlough = null;
   },
 
   newGame() {
@@ -13108,6 +13217,7 @@ export const traffic = {
     this._smugglerCache = null;
     this._debrisStream = null;
     this._hitchShed = null;
+    this._volatileSlough = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
