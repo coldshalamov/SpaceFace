@@ -51,9 +51,12 @@ export function requestReplaySeek(tick) {
 /** Resolve the recording from the in-memory store or a transient presentation field on state. */
 export function resolveReplayRecording(ctx) {
   if (activeRecording) return activeRecording;
+  const state = ctx && ctx.state;
+  // A recovered black box is the tape most recently loaded onto the deck.
+  const blackBox = state && state.replay && state.replay.blackBoxTape;
+  if (blackBox) return blackBox;
   const captured = getFlightFootage()?.recording();
   if (captured) return captured;
-  const state = ctx && ctx.state;
   const fromState = state && state.replay && state.replay.recording;
   return fromState || null;
 }
@@ -78,7 +81,7 @@ export function replaySummary(recording) {
     ticks,
     tickRate,
     seconds,
-    label: 'Last ' + Math.round(seconds) + ' s',
+    label: recording.label || 'Last ' + Math.round(seconds) + ' s',
     detail: ticks + ' ticks · seed ' + recording.seed,
   };
 }

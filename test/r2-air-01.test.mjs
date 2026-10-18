@@ -18,6 +18,8 @@ import {
 } from '../src/core/runShareCode.js';
 import { crucibleSetupFor } from '../src/ui/crucibleLaunch.js';
 import { applyRunShareCode, requestSharedCrucibleRun, runShareCodeForRun } from '../src/ui/screens/shareCode.js';
+import { noteKillReplaySample, resetKillReplay } from '../src/systems/killReplay.js';
+import { replaySummary, replayTapeEvents, resolveReplayRecording } from '../src/ui/screens/replay.js';
 
 const SEED = 4242;
 
@@ -69,6 +71,7 @@ test('AIR-01: a run without a wreck and an absent code remain quiet', () => {
 
 function deadRun() {
   const launch = setup();
+  resetKillReplay();   // the tape ring is a module singleton — every dead run starts clean
   const sim = createSimulation({ seed: SEED, systems: [runSession, survivalResults] });
   sim.state.mode = 'flight';
   sim.state.world.currentSectorId = 'sector_helios_prime';
@@ -213,7 +216,7 @@ test('AIR-01: unsupported and foreign wrecks are refused without touching the ga
   const sim = galaxy();
   try {
     for (const change of [
-      { v: 0 }, { v: 2 }, { hullId: 'foreign_hull' }, { sectorId: 'foreign_sector' },
+      { v: 0 }, { v: 2 }, { v: 3 }, { hullId: 'foreign_hull' }, { sectorId: 'foreign_sector' },
       { pos: { x: null, z: 10 } }, { loadout: [{ slotIndex: 0, defId: 'foreign_module' }] },
     ]) {
       const wreck = { ...result.wreck, ...change };
@@ -226,6 +229,88 @@ test('AIR-01: unsupported and foreign wrecks are refused without touching the ga
     sim.bus.emit('game:newGame', {});
     sim.bus.emit('game:started', {});
     assert.equal(ghosts(sim).length, 0);
+  } finally { sim.dispose(); }
+});
+
+test('AIR-01: the black box tape rides the code into the ghost and back onto the replay deck', () => {
+  const launch = setup();
+  const sim = createSimulation({ seed: SEED, systems: [runSession, survivalResults] });
+  sim.state.mode = 'flight';
+  sim.state.world.currentSectorId = 'sector_helios_prime';
+  const fittings = launch.loadout.reduce((out, entry) => {
+    out[entry.slotIndex] = entry.defId;
+    return out;
+  }, []);
+  sim.state.player.ownedShips = [{ defId: launch.hullId, fittings }];
+  sim.state.player.activeShipIndex = 0;
+  const player = sim.spawn({
+    type: 'ship', pos: { x: 123.25, z: -456.5 }, radius: 10,
+    data: { defId: launch.hullId, fittings },
+  });
+  sim.state.playerId = player.id;
+  resetKillReplay();
+  for (let i = 0; i < 40; i += 1) noteKillReplaySample(100 + i, 200 + i * 2, 400 - i, 300);
+  sim.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED });
+  sim.bus.emit('player:death', {});
+  const result = sim.registry.get('survivalResults').lastResult();
+  sim.dispose();
+  assert.equal(result.wreck.v, 2, 'a wreck with a black box is its own record version');
+  const tape = result.wreck.killReplay;
+  assert.ok(tape && tape.samples.length === 21, 'the 60 Hz capture thins to 30 Hz plus the death sample');
+  assert.equal(tape.samples.at(-1).bx, Math.round(player.pos.x * 10) / 10,
+    'the last track point is the death body');
+
+  const imported = applyRunShareCode(runShareCodeForRun(launch, result));
+  assert.equal(imported.ok, true);
+  assert.equal(imported.wreck.v, 2);
+  assert.deepEqual(imported.wreck.killReplay, tape,
+    'the tape canonicalizes byte-identically through the pasted code');
+
+  const g = galaxy();
+  try {
+    g.bus.emit('game:newGame', { wreck: imported.wreck });
+    g.bus.emit('sector:enter', { sectorId: g.state.world.currentSectorId });
+    const entity = ghosts(g)[0];
+    assert.deepEqual(entity.data.blackBox, tape, 'the spawned ghost carries its black box');
+    assert.equal(entity.data.blackBoxRecovered, false);
+    assert.match(entity.data.scanDescription, /black box/i);
+
+    g.bus.emit('scan:pulse', { pos: { x: entity.pos.x + 5, z: entity.pos.z } });
+    assert.equal(entity.data.blackBoxRecovered, true);
+    assert.equal(entity.data.scanned, true);
+    const deck = g.state.replay && g.state.replay.blackBoxTape;
+    assert.ok(deck, 'the pulse hands the tape to the replay deck');
+    assert.equal(resolveReplayRecording({ state: g.state }), deck,
+      'the Replay surface resolves the deck tape');
+    const summary = replaySummary(deck);
+    assert.equal(summary.available, true);
+    assert.equal(summary.label, 'Black box tape');
+    assert.equal(Math.round(summary.seconds), Math.round(tape.durationS));
+    const events = replayTapeEvents(deck);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, 'kill');
+    assert.equal(events[0].tick, deck.ticks - 1, 'the death mark sits at the end of the tape');
+
+    g.bus.emit('scan:pulse', { pos: { x: entity.pos.x, z: entity.pos.z } });
+    assert.equal(g.state.replay.blackBoxTape, deck, 'a second pulse does not reload the deck');
+  } finally { g.dispose(); }
+});
+
+test('AIR-01: a v2 wreck refuses a malformed or absent tape', () => {
+  const launch = setup();
+  const { result } = deadRun();
+  const base = decodeRunShareCode(runShareCodeForRun(launch, result)).spec;
+  const sim = galaxy();
+  try {
+    for (const wreck of [
+      { ...result.wreck, v: 2 },                                    // claims the version, no tape
+      { ...result.wreck, v: 2, killReplay: { durationS: 5 } },     // missing samples
+      { ...result.wreck, v: 2, killReplay: { durationS: 5, hullLength: 8, samples: [{ x: 0 }] } },
+      { ...result.wreck, v: 1, killReplay: { junk: true } },       // v1 smuggling a bad tape
+    ]) {
+      const response = applyRunShareCode(encodeShareBlock(RUN_SHARE_PREFIX, { ...base, e: wreck }));
+      assert.equal(response.ok, false, `malformed tape refused: ${JSON.stringify(wreck.killReplay)}`);
+    }
   } finally { sim.dispose(); }
 });
 

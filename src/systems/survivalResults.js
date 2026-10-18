@@ -18,6 +18,7 @@ import { challengeFromRun } from './survivalMutators.js';
 import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { captureKillReplay } from './killReplay.js';
+import { thinBlackBoxTape } from '../sim/blackBoxTape.js';
 import { normalizeRunShareWreck } from '../core/runShareCode.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
@@ -906,6 +907,9 @@ export const survivalResults = {
       hullId: owned?.defId || player?.data?.defId,
       livingHull: owned?.livingHull || player?.data?.livingHull,
       loadout: fittings.flatMap((defId, slotIndex) => defId ? [{ slotIndex, defId }] : []),
+      // The black box: the last seconds of this death ride the wreck record so the ghost
+      // it becomes can replay them. 30 Hz keeps the pasted code pasteable.
+      killReplay: thinBlackBoxTape(captureKillReplay(this.state, player), 2) || undefined,
     });
     this._deathMark = { tick: this._tickNow(), simTime: this._simNow() };
     this._stopReason = 'player_death';

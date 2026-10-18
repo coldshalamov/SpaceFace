@@ -13,6 +13,7 @@ import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { normalizeRunShareWreck, runShareWreckId } from '../core/runShareCode.js';
+import { blackBoxRecording } from '../sim/blackBoxTape.js';
 import { SHIPS } from '../data/ships.js';
 import {
   complicationEncounterId,
@@ -1330,10 +1331,12 @@ export const uniqueWrecks = {
         data: {
           uniqueWreckId: id, crossRunWreck: true, persistenceOwner: 'uniqueWrecks',
           sectorId, name: 'Echo of a fallen pilot', scanLabel: 'Wreck from another run',
-          scanDescription: `A fallen ${ship.name}. Its hull scars and fitted equipment survived the crossing.`,
+          scanDescription: `A fallen ${ship.name}. Its hull scars and fitted equipment survived the crossing.`
+            + (wreck.killReplay ? ' Its black box survived too — pulse scan to pull the tape.' : ''),
           parentType: 'ship', wreckClass: 'battlefield',
           hulkOfDefId: wreck.hullId, hulkVisual: { defId: wreck.hullId, fittings },
           livingHull: clonePlain(wreck.livingHull), loadout: clonePlain(wreck.loadout), fittings,
+          ...(wreck.killReplay ? { blackBox: clonePlain(wreck.killReplay), blackBoxRecovered: false } : {}),
           proportions: WRECK_COLLIDER_PROPORTIONS,
         },
       });
@@ -1638,6 +1641,32 @@ export const uniqueWrecks = {
         ttl: 6,
       });
       this._triggerFixedComplications(def, record);
+    }
+    // A cross-run wreck carries its own black box: a pulse inside the scan ring hands the
+    // last five seconds of the death to the replay deck as an ordinary recording.
+    for (const entity of indexedTypeScan(this.state, 'wrecks')) {
+      const data = entity && entity.data;
+      if (!entity || entity.alive === false || !data || data.crossRunWreck !== true
+        || !data.blackBox || data.blackBoxRecovered || data.sectorId !== sectorId) continue;
+      if (!entity.pos || distance(origin, entity.pos) > UNIQUE_WRECK_SCAN_RADIUS) continue;
+      data.blackBoxRecovered = true;
+      data.scanned = true;
+      const recording = blackBoxRecording(data.blackBox, {
+        wreckId: data.uniqueWreckId, hullId: data.hulkOfDefId,
+      });
+      if (recording) {
+        this.state.replay = this.state.replay || {};
+        this.state.replay.blackBoxTape = recording;
+      }
+      this._receipt('black_box', data.uniqueWreckId);
+      this.bus.emit('uniqueWreck:blackBoxRecovered', {
+        wreckId: data.uniqueWreckId, sectorId,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+      });
+      this.bus.emit('toast', {
+        text: 'Black box recovered — the last five seconds are on the replay deck.',
+        kind: 'objective', ttl: 6,
+      });
     }
   },
 

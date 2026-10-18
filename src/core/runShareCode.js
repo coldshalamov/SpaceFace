@@ -24,9 +24,40 @@ const HULL_IDS = new Set(SHIPS.map((ship) => ship.id));
 const FIT_IDS = new Set([...MODULES, ...WEAPONS].map((item) => item.id));
 const SECTOR_IDS = new Set(SECTORS.map((sector) => sector.id));
 
+const BLACK_BOX_MAX_SAMPLES = 480;
+const roundDec = (v, places) => { const f = 10 ** places; return Math.round(v * f) / f; };
+
+/**
+ * The wreck's black-box tape (AIR-01): the last seconds of the death as a short pose
+ * track — the pilot's path (x,z) and the nearest other hull's path (bx,bz), quantized
+ * so the same tape canonicalizes to the same text on every machine. Unknown content
+ * must never become another ship's tape.
+ */
+export function normalizeBlackBoxTape(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const samples = Array.isArray(input.samples) ? input.samples : null;
+  if (!samples || samples.length < 2 || samples.length > BLACK_BOX_MAX_SAMPLES) return null;
+  const durationS = Number(input.durationS);
+  const hullLength = Number(input.hullLength);
+  if (!Number.isFinite(durationS) || durationS <= 0 || durationS > 60
+    || !Number.isFinite(hullLength) || hullLength <= 0) return null;
+  const clean = [];
+  for (const sample of samples) {
+    const x = Number(sample?.x), z = Number(sample?.z);
+    const bx = Number(sample?.bx), bz = Number(sample?.bz);
+    if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(bx) || !Number.isFinite(bz)) return null;
+    clean.push({ x: roundDec(x, 1), z: roundDec(z, 1), bx: roundDec(bx, 1), bz: roundDec(bz, 1) });
+  }
+  const tape = { durationS: roundDec(durationS, 2), hullLength: roundDec(hullLength, 2), samples: clean };
+  if (Number.isInteger(input.seed) && input.seed > 0 && input.seed <= 0xffffffff) tape.seed = input.seed;
+  if (Number.isInteger(input.tick) && input.tick >= 0) tape.tick = input.tick;
+  return tape;
+}
+
 /** The optional dead hull has its own version; unknown content must never become another ship. */
 export function normalizeRunShareWreck(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input) || input.v !== 1
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+    || (input.v !== 1 && input.v !== 2)
     || !HULL_IDS.has(input.hullId) || !SECTOR_IDS.has(input.sectorId)
     || !Number.isFinite(input.pos?.x) || !Number.isFinite(input.pos?.z)
     || !Array.isArray(input.loadout) || input.loadout.length > 64) return null;
@@ -47,6 +78,14 @@ export function normalizeRunShareWreck(input) {
     livingHull: normalizeLivingHull(input.livingHull),
     loadout,
   };
+  if (input.killReplay != null) {
+    // Record version 2 exists to carry the black box; a malformed tape refuses the whole
+    // wreck rather than silently shipping a hull that lost its recording.
+    const tape = normalizeBlackBoxTape(input.killReplay);
+    if (!tape) return null;
+    wreck.v = 2;
+    wreck.killReplay = tape;
+  } else if (input.v === 2) return null;
   if (Number.isInteger(input.seed) && input.seed > 0 && input.seed <= 0xffffffff) wreck.seed = input.seed;
   return wreck;
 }
