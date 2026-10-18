@@ -10,16 +10,18 @@ const canonicalRendererPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)), '../src/render/renderer.js',
 );
 
-// Keep the candidate's public relative imports intact. The executable fixture only rewrites this
-// one copied module's direct imports to the real repository modules; those modules retain their
-// production relative imports and execute the actual renderer driver.
+// Resolve the copied module's direct imports from the checkout, including bare packages:
+// a clean CI temp directory has no repository node_modules ancestor. Imported production
+// modules retain their own imports and execute the actual renderer driver.
 const runtimeRoot = await mkdtemp(path.join(tmpdir(), 'spaceface-opening-owner-'));
 const runtimeRendererPath = path.join(runtimeRoot, 'renderer.mjs');
 const rendererSource = await readFile(canonicalRendererPath, 'utf8');
 const productionRendererDir = path.join(repoRoot, 'src/render');
-const absoluteImport = (specifier) => pathToFileURL(path.resolve(productionRendererDir, specifier)).href;
+const absoluteImport = (specifier) => specifier.startsWith('.')
+  ? pathToFileURL(path.resolve(productionRendererDir, specifier)).href
+  : import.meta.resolve(specifier);
 const runtimeSource = rendererSource.replace(
-  /((?:\bfrom\s+|\bimport\s*\(\s*))(['"])(\.\.?\/[^'"]+)\2/g,
+  /((?:\bfrom\s+|\bimport\s*\(\s*))(['"])(\.\.?\/[^'"]+|[^\s'"]+)\2/g,
   (_match, prefix, quote, specifier) => `${prefix}${quote}${absoluteImport(specifier)}${quote}`,
 );
 await writeFile(runtimeRendererPath, runtimeSource, 'utf8');

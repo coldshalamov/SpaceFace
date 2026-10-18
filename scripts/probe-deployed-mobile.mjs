@@ -64,14 +64,31 @@ function recordMobileCapabilities(capabilities) {
   report.mobileProfile.mismatches = mismatches;
   report.acceptance.mobileCapabilities = mismatches.length ? 'mismatch' : 'passed';
 }
-// Concrete GL failures only: ordinary warnings and intentional preview-context disposal are not gates.
-const rendererError = text => /(?:WebGL|GL_INVALID|CONTEXT_LOST_WEBGL)/i.test(text)
-  && /(?:drawElements.*(?:Vertex buffer is not big enough|out of bounds)|INVALID_.*(?:generateMipmap|mipmap|texture|framebuffer)|(?:generateMipmap|mipmap|texture|framebuffer).*(?:INVALID_|incomplete|not (?:valid|renderable)|unsupported)|OUT_OF_MEMORY)/i.test(text);
-const noteRendererError = (text, source = 'console') => {
-  report.rendererErrorCount++;
-  if (report.rendererErrors.length < 32) report.rendererErrors.push({ route: activeRoute,
-    actorStage, at: new Date().toISOString(), source, text: text.slice(0, 3000) });
-};
+const MAX_RENDERER_ERROR_SAMPLES = 32;
+// Concrete error-level GL failures gate health; ordinary warnings remain diagnostics.
+function isConcreteRendererConsoleError(type, text) {
+  if (type !== 'error') return false;
+  const value = String(text || '');
+  if (!/(?:WebGL|GL_INVALID|CONTEXT_LOST_WEBGL)/i.test(value)) return false;
+  return /(?:CONTEXT_LOST_WEBGL|GL_INVALID_[A-Z_]+|WebGL[^\n]*(?:INVALID_[A-Z_]+|CONTEXT_LOST_WEBGL)|WebGL[^\n]*(?:context\s+(?:was\s+)?lost)|WebGL[^\n]*(?:draw(?:Range)?Elements(?:Instanced)?|Vertex buffer|out of bounds|OUT_OF_MEMORY))/i.test(value);
+}
+function noteRendererError(target, text, route, stage, source = 'console') {
+  target.rendererErrorCount++;
+  if (target.rendererErrors.length < MAX_RENDERER_ERROR_SAMPLES) {
+    target.rendererErrors.push({ route, actorStage: stage, at: new Date().toISOString(), source,
+      text: String(text || '').slice(0, 3000) });
+  }
+}
+function finalizeRendererHealth(target) {
+  target.acceptance.rendererHealth = target.rendererErrorCount ? 'failed'
+    : target.acceptance.startupAndControls === 'passed' ? 'passed' : 'unverified';
+  if (target.rendererErrorCount) {
+    target.passed = false;
+    target.failure ||= `Renderer health failed: ${target.rendererErrorCount} concrete WebGL error(s); see rendererErrors`;
+    return false;
+  }
+  return true;
+}
 let browser;
 async function boundedBrowserRead(read, timeoutMs = 20000) {
   let timer;
@@ -140,9 +157,11 @@ async function waitForPublicSave(page, { slot, afterAt, timeoutMs = 90000 } = {}
   while (Date.now() < deadline) {
     const result = await boundedBrowserRead(() => page.evaluate(({ slot, startedAt }) => {
       const events = window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.()?.events || [];
-      const saved = events.findLast(event => event.type === 'save:completed' && event.at >= startedAt);
+      const saved = events.findLast(event => event.type === 'save:completed'
+        && event.slot === slot && event.at >= startedAt);
       if (saved) return { saved: { source: 'save:completed', slot, ...saved } };
-      const failed = events.findLast(event => event.type === 'save:error' && event.at >= startedAt);
+      const failed = events.findLast(event => event.type === 'save:error'
+        && event.slot === slot && event.at >= startedAt);
       if (failed) return { failed };
       // Retail builds strip SF.bus. The selected row was verified empty before the public tap;
       // observing its new, real envelope is the durable-write receipt on that route.
@@ -283,7 +302,7 @@ try {
     const text = message.text();
     const route = activeRoute;
     const stage = actorStage, at = new Date().toISOString();
-    if (rendererError(text)) noteRendererError(text);
+    if (isConcreteRendererConsoleError(message.type(), text)) noteRendererError(report, text, route, stage);
     if (drawErrorMode === 'on-error' && !report.drawErrorArm
         && ['error', 'warning'].includes(message.type())
         && /(?:WebGL|GL_INVALID_OPERATION)/i.test(text)
@@ -438,6 +457,9 @@ try {
       ...(state?.toasts || [])].map(text => String(text || '').trim()).filter(Boolean))];
     let observations = 0;
     let leftMenu = false;
+    let previousTick = null;
+    let previousSimTime = null;
+    let advanced = route !== 'continue';
     const click = report.continueClick;
     const acceptedContinue = route === 'continue' && click?.action === 'continue'
       && click.isTrusted === true && !click.disabled && click.ariaDisabled !== 'true';
@@ -448,6 +470,18 @@ try {
       const state = await snapshot(page);
       const mode = state.runtime?.frame?.mode;
       if (mode && mode !== 'menu') leftMenu = true;
+      if (route === 'continue') {
+        const tick = Number(state.runtime?.frame?.tick);
+        const simTime = Number(state.runtime?.frame?.simTime ?? state.runtime?.frame?.time);
+        if (Number.isFinite(tick)) {
+          if (Number.isFinite(previousTick) && tick > previousTick) advanced = true;
+          previousTick = tick;
+        }
+        if (Number.isFinite(simTime)) {
+          if (Number.isFinite(previousSimTime) && simTime > previousSimTime) advanced = true;
+          previousSimTime = simTime;
+        }
+      }
       report.observations.push({ route, elapsedMs: Date.now() - launchAt, ...state });
       if (observations++ % 5 === 0) {
         console.log(JSON.stringify({ engine, route, elapsedMs: Date.now() - launchAt,
@@ -495,7 +529,7 @@ try {
           && state.alerts.some(text => /could not finish loading|did not finish preparing|could not start/i.test(text)))
         throw new Error(`Game refused mobile startup: ${state.alerts.filter(Boolean).join(' ')}`);
       if (state.flight === '1' && !state.loading.length
-          && Number.isFinite(state.runtime?.post?.firstPlayableFrameAt)) return Date.now() - launchAt;
+          && Number.isFinite(state.runtime?.post?.firstPlayableFrameAt) && advanced) return Date.now() - launchAt;
       if (leftMenu && mode === 'menu' && !state.loading.length
           && Date.now() - launchAt > 5000 && await visible(page, menu)) {
         const feedback = publicRecoveryFeedback(state);
@@ -505,6 +539,8 @@ try {
           ? `: ${feedback.join(' | ')}` : '; no visible public recovery text was found'}`);
       }
     }
+    if (route === 'continue' && !advanced)
+      throw new Error('Continue did not observe an advancing simulation tick or simTime after reload');
     throw new Error(`${label} did not reach mobile flight UI with the loading shell cleared within five minutes`);
   };
   await waitForMenu();
@@ -625,7 +661,8 @@ try {
     const continueClick = await boundedBrowserRead(() => page.evaluate(() =>
       window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.()?.lastPublicClick || null));
     report.continueClick = continueClick;
-    if (continueClick?.action !== 'continue' || continueClick.disabled || continueClick.ariaDisabled === 'true')
+    if (continueClick?.action !== 'continue' || continueClick.isTrusted !== true
+        || continueClick.disabled || continueClick.ariaDisabled === 'true')
       throw new Error('Continue public tap was not delivered to an enabled Continue control');
     report.continueLaunchMs = await waitForFlight('continue', Date.now());
     actorStage = 'continue-flight-controls';
@@ -689,17 +726,11 @@ try {
         contextFailures.add(`main canvas ${event.type}: ${event.statusMessage || 'no driver message'}`);
     }
   }
-  for (const text of contextFailures) noteRendererError(text, 'runtime-context');
-  if (observedInvalidDraws) noteRendererError(
+  for (const text of contextFailures) noteRendererError(report, text, activeRoute, actorStage, 'runtime-context');
+  if (observedInvalidDraws) noteRendererError(report,
     `Indexed draw observer recorded INVALID_OPERATION (${observedInvalidDraws} invalid draw(s)); see drawErrors witnesses`,
-    'draw-observer');
-  report.acceptance.rendererHealth = report.rendererErrorCount ? 'failed'
-    : report.acceptance.startupAndControls === 'passed' ? 'passed' : 'unverified';
-  if (report.rendererErrorCount) {
-    report.passed = false;
-    report.failure ||= `Renderer health failed: ${report.rendererErrorCount} concrete WebGL error(s); see rendererErrors`;
-    process.exitCode = 1;
-  }
+    activeRoute, actorStage, 'draw-observer');
+  if (!finalizeRendererHealth(report)) process.exitCode = 1;
   // Persist diagnostics before a crashed renderer can stall browser shutdown.
   await writeFile(join(out, 'report.json'), JSON.stringify(report, null, 2));
   await Promise.race([browser?.close(), new Promise(resolve => {

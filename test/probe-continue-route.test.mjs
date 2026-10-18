@@ -41,8 +41,9 @@ test('the focused fixture reads the Continue candidate and keeps the route actor
   assert.match(source, /finalizeRendererHealth\(report\)/);
   assert.match(source, /rendererErrors: \[\]/);
   assert.match(source, /report\.acceptance\.continue = 'passed'/);
-  assert.match(source, /report\.passed = true/);
-  assert.ok(source.indexOf("report.acceptance.continue = 'passed'") < source.indexOf('report.passed = true'),
+  assert.match(source, /report\.passed = report\.acceptance\.mobileCapabilities === 'passed'/);
+  assert.ok(source.indexOf("report.acceptance.continue = 'passed'")
+    < source.indexOf("report.passed = report.acceptance.mobileCapabilities === 'passed'"),
     'the requested Continue route finishes before the overall pass');
 });
 
@@ -55,7 +56,7 @@ function extractFunction(functionName, nextFunctionName) {
 
 function extractHealthGuard() {
   const start = source.indexOf('function assertContinuePageHealth');
-  const end = source.indexOf('\nfunction installStartupObserver', start);
+  const end = source.indexOf('\nconst snapshotBase =', start);
   assert.ok(start >= 0 && end > start, 'found Continue page-error guard in candidate');
   return source.slice(start, end);
 }
@@ -85,14 +86,54 @@ function makeSaveHarness({ events = [], envelope = null } = {}) {
   return { context, page };
 }
 
+function makeFlightHarness(frames) {
+  let now = 0;
+  let index = 0;
+  const context = {
+    Date: { now: () => now },
+    page: { waitForTimeout: async ms => { now += ms; } },
+    snapshot: async () => ({
+      flight: '1', loading: [], simLaneEvents: [],
+      runtime: { frame: { mode: 'flight', ...frames[Math.min(index++, frames.length - 1)] },
+        post: { firstPlayableFrameAt: 0 } },
+    }),
+    report: { console: [], observations: [], stages: [],
+      continueClick: { action: 'continue', isTrusted: true, simLaneEventsBeforeClick: [] } },
+    console: { log() {} },
+    engine: 'fixture', out: '', join: () => '', writeFile: async () => {},
+    visible: async () => false,
+  };
+  const start = source.indexOf('  const waitForFlight = async');
+  const end = source.indexOf('\n  await waitForMenu();', start);
+  assert.ok(start >= 0 && end > start, 'found flight wait in candidate');
+  vm.runInNewContext(`${source.slice(start, end)}\nglobalThis.waitForFlight = waitForFlight;`, context);
+  return context;
+}
+
+test('Continue flight rejects a frozen simulation even when the flight UI is ready', async () => {
+  const context = makeFlightHarness([{ tick: 42, simTime: 1 }]);
+  await assert.rejects(context.waitForFlight('continue', 0),
+    /Continue did not observe an advancing simulation tick or simTime/);
+});
+
+test('Continue flight waits for an advancing tick or simulation time', async () => {
+  for (const frames of [[{ tick: 42 }, { tick: 42 }, { tick: 43 }],
+    [{ simTime: 0 }, { simTime: 0 }, { simTime: 1 }]]) {
+    const context = makeFlightHarness(frames);
+    assert.equal(await context.waitForFlight('continue', 0), 6000);
+  }
+});
+
 test('save receipt matches the selected slot and ignores historical or autosave receipts', async () => {
   const { context, page } = makeSaveHarness({ events: [
     { type: 'save:completed', slot: 'slot-2', at: 20 },
     { type: 'save:completed', slot: 'slot-1', at: 120 },
+    { type: 'save:completed', slot: 'autosave', at: 130 },
   ] });
   const receipt = await context.waitForPublicSave(page, { slot: 'slot-1', afterAt: 100, timeoutMs: 20 });
   assert.equal(receipt.source, 'save:completed');
   assert.equal(receipt.slot, 'slot-1');
+  assert.equal(receipt.at, 120, 'a later autosave cannot stand in for the selected slot');
 });
 
 test('an uncaught Save/reload pageerror rejects an otherwise successful Continue flight', async () => {
@@ -157,7 +198,10 @@ test('bus-free storage envelope is a read-only save receipt and a new selected-s
     { slot: 'slot-3', afterAt: 100, timeoutMs: 20 });
   assert.equal(historicalReceipt.source, 'storage-envelope');
 
-  const fallback = makeSaveHarness({ envelope: { fmt: 'spaceface-save-gz', savedAt: 'receipt' } });
+  const fallback = makeSaveHarness({
+    events: [{ type: 'save:error', slot: 'autosave', at: 120, reason: 'unrelated_failure' }],
+    envelope: { fmt: 'spaceface-save-gz', savedAt: 'receipt' },
+  });
   const receipt = await fallback.context.waitForPublicSave(fallback.page, { slot: 'slot-3', afterAt: 100, timeoutMs: 20 });
   assert.equal(receipt.source, 'storage-envelope');
   assert.equal(receipt.slot, 'slot-3');
