@@ -8,7 +8,7 @@ function harness(expiresAtEpoch) {
   const state = createGameState(471);
   const bus = createBus();
   const events = [];
-  for (const event of ['toast', 'mission:accepted', 'economy:chargeCredits', 'mission:updated']) {
+  for (const event of ['toast', 'mission:accepted', 'economy:chargeCredits', 'mission:updated', 'ui:endgameChoose']) {
     bus.on(event, payload => events.push({ event, payload }));
   }
   state.simTime = 1200;
@@ -52,4 +52,23 @@ test('unexpired and non-expiring authored offers still accept', () => {
     assert.equal(state.missions.active.length, 1);
     assert.equal(state.player.cargo.items.cmdty_fuel_cells, 8);
   }
+});
+
+test('an endgame disposition remains selectable when ordinary contracts fill the active cap', () => {
+  const { state, owner, events } = harness(undefined);
+  state.missions.active = Array.from({ length: 8 }, (_, index) => ({
+    id: `m_${index + 1}`, status: 'active',
+  }));
+  const offer = {
+    id: 'ending-a', stationId: 'station_helios', storyDisposition: 'A',
+  };
+  state.missions.boards.station_helios.slots.push(offer);
+
+  assert.equal(owner.acceptMission(offer.id), true,
+    'a story choice does not need an ordinary mission slot');
+  assert.equal(state.missions.active.length, 8, 'selection does not add a contract');
+  assert.deepEqual(events.find(row => row.event === 'ui:endgameChoose').payload, {
+    choice: 'A', source: 'ashfall_mission_board', offerId: offer.id,
+  });
+  assert.equal(events.some(row => row.event === 'mission:accepted' || row.event === 'economy:chargeCredits'), false);
 });

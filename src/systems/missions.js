@@ -3966,10 +3966,6 @@ export const missions = {
       && state.missions.active.some((mission) => (
         mission && mission.id === retiringMissionId && mission.status === 'active'
       ));
-    if (state.missions.active.length - (retiringActive ? 1 : 0) >= (cfg.maxActive || 8)) {
-      this.bus.emit('toast', { text: 'Too many active missions', kind: 'error', ttl: 3 });
-      return false;
-    }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
     // A row can remain displayed across a refresh boundary. Revalidate its own published
@@ -4021,6 +4017,10 @@ export const missions = {
       // Stage irreversible confirmation (story resolves only on ui:endgameConfirm / confirm:true).
       this.bus.emit('ui:endgameChoose', { choice, source: 'ashfall_mission_board', offerId: offer.id });
       return true;
+    }
+    if (state.missions.active.length - (retiringActive ? 1 : 0) >= (cfg.maxActive || 8)) {
+      this.bus.emit('toast', { text: 'Too many active missions', kind: 'error', ttl: 3 });
+      return false;
     }
     const preflight = this._acceptPreflight(offer);
     if (!preflight.ok) {
