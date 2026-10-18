@@ -475,8 +475,9 @@ export const MACHINE_SITES = Object.freeze({
     kind: 'beacon',
     // AE-243 (J08): a navigation reference older than the sector's human chart names.
     // Its reading is the K04 Inertial Datum source — approach mints the credential.
+    // The ring a pilot sees is the velocity plane: one step outside it, the face lets go.
     center: Object.freeze({ x: -2200, z: -800 }),
-    radius: 140,
+    radius: 180,
     propRing: Object.freeze({ count: 1, radius: 0, propId: 'machine_marker' }),
     machines: Object.freeze([Object.freeze({ kind: 'measure', dx: 90, dz: -40 })]),
     directive: null,
@@ -552,9 +553,10 @@ export const MACHINE_SITES = Object.freeze({
     kind: 'boundary',
     // AE-247 (J12): a surveyed quarantine boundary marked by a walker pair.
     // M08: crossing while watched logs a violation beat.
+    // The spine row is the lane. It runs the length of the push and stops where the push stops.
     center: Object.freeze({ x: -800, z: 1600 }),
     radius: 900,
-    propRing: Object.freeze({ count: 8, radius: 700, propId: 'machine_spine', linear: true }),
+    propRing: Object.freeze({ count: 8, radius: 640, propId: 'machine_spine', linear: true }),
     machines: Object.freeze([
       Object.freeze({ kind: 'boundary_walker', dx: -300, dz: 0 }),
       Object.freeze({ kind: 'boundary_walker', dx: 300, dz: 0 }),
