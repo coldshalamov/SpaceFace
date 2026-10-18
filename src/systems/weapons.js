@@ -29,7 +29,7 @@ import {
 } from '../combat/impulseKernel.js';
 import { isHostileToPlayer } from './scanner.js';
 import { cloakHidesEntityFrom } from './cloak.js';
-import { ambushSignatureForShape } from '../data/ambushSignatures.js';
+import { towedLureSignature } from '../ai/towedLure.js';
 import { lockLineageSuppressed } from './countermeasures.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
@@ -2343,17 +2343,8 @@ function refreshTowedLureDivert(helpers, state, d) {
   d.divertPos = { x: towed.pos.x, z: towed.pos.z };
 }
 
-// Pure read of the towed lure's standing against the authored threshold contract.
-// Returns { hot, signature } or null when no lure is towed.
-function towedLureSignature(towed) {
-  if (!towed || towed.alive === false || !towed.pos) return null;
-  const signature = Number(towed.data && towed.data.lureSignature);
-  if (!Number.isFinite(signature)) return null;
-  const contract = ambushSignatureForShape('towed_lure');
-  const weights = (contract && contract.targeting) || {};
-  const threshold = Number.isFinite(weights.threshold) ? weights.threshold : 0.6;
-  return { hot: signature >= threshold, signature };
-}
+// The signature read itself is shared in src/ai/towedLure.js — the same pure function serves
+// this divert and the ship-side pursuit claim there (one read owner, one authored threshold).
 
 function npcWeaponsNeedTick(e, state) {
   const data = e && e.data;

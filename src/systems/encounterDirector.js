@@ -128,6 +128,7 @@ import {
   sweepStaleLootSweeps,
   tickLootSweeps,
 } from '../ai/lootSweep.js';
+import { tickTowedLurePursuits } from '../ai/towedLure.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
@@ -435,6 +436,14 @@ export const encounterDirector = {
     this._tickHostilePursuitResolution(dir, state, now);
     this._tickAmbientPredation(state);
     tickLootSweeps(this._lootSweepCtx());
+    // RW-02 second slice: a hot towed bell claims its pursuers on the doctrine clock, and a
+    // cooled/severed/consumed one hands them back to the hull. Seeker-round re-acquisition
+    // stays on the per-tick weapons path — this is the ship-side twin of the same signature.
+    try {
+      tickTowedLurePursuits(state);
+    } catch (err) {
+      dedupWarn('encounterDirector/towed-lure-pursuit', '[encounterDirector] towed lure pursuit tick failed', err);
+    }
     this._springCeresActivityAmbushOnPrey();
   },
 

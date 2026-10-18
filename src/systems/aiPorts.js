@@ -12,6 +12,7 @@ import {
   wrapAngle,
 } from '../ai/contracts.js';
 import { activityAllowsOffense, authoritativeAssignmentTargetId, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
+import { towedLureContactFor } from '../ai/towedLure.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { mountFollowsAimAngle } from '../ai/fireDiscipline.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
@@ -1407,6 +1408,31 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
       out.push(rec);
     } else {
       out.push({ ...base, visible: false, confidence: REPORTED_TRACK_CONFIDENCE, threat, hostile });
+    }
+  }
+  // RW-02 second slice — the towed bell is LOUD. An observer already prosecuting the towing
+  // hull (or holding its own lure claim on it) hears the signature as an objective contact —
+  // the same sensed-objective family a freight pod reads as — so the pursuit can re-acquire
+  // the bell through the ordinary contact→intercept path instead of steering on a ghost.
+  // Range-gated like any live sighting: no signature, no contact, and a cold lure simply
+  // drops out of the frame again.
+  const towedLure = towedLureContactFor(state, self);
+  if (towedLure && towedLure.alive !== false && towedLure.pos
+    && !out.some(c => c.id === towedLure.id)) {
+    const dxl = finite(self.pos && self.pos.x) - finite(towedLure.pos && towedLure.pos.x);
+    const dzl = finite(self.pos && self.pos.z) - finite(towedLure.pos && towedLure.pos.z);
+    const lureDistanceSq = dxl * dxl + dzl * dzl;
+    if (lureDistanceSq <= rangeSq) {
+      const base = buildContactBase(state, towedLure, combatRuntimeFor(state, towedLure.id),
+        attachmentIndex, ContactKind.OBJECTIVE, freeze, cacheOwner);
+      const hostile = isHostileForAI(state, self, towedLure);
+      const threat = threatFor(state, self, towedLure, hostile);
+      const confidence = confidenceFor(Math.sqrt(lureDistanceSq), range, state, self);
+      if (records) {
+        out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile));
+      } else {
+        out.push({ ...base, confidence, threat, hostile });
+      }
     }
   }
   return out;

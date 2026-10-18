@@ -16,6 +16,16 @@ import { ambushSignatureForShape } from '../src/data/ambushSignatures.js';
 import { createBus } from '../src/core/eventBus.js';
 import { weapons } from '../src/systems/weapons.js';
 import { EIGHTH_BELL_RUNTIME } from '../src/systems/eighthBellRuntime.js';
+import {
+  playerTowedLure,
+  tickTowedLurePursuits,
+  towedLureContactFor,
+} from '../src/ai/towedLure.js';
+import { setEntityDoctrine } from '../src/ai/doctrine.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
+import { createBroodEngine } from '../src/systems/swarmBrood.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createRunState } from '../src/core/runState.js';
 
 const SECTOR_ID = 'sector_pallas_drift';
 const ZONE_ID = 'zone_pallas_ambush';
@@ -357,4 +367,211 @@ test('RW-02: the bell launches cold, rings hot, and cools below threshold when q
   d.setNow(tolledAt + 13);
   EIGHTH_BELL_RUNTIME.tick(d, live, state, d.now());
   assert.equal(bell.data.lureSignature, 0, 'a quiet tow cools below threshold');
+});
+
+// ── RW-02 second slice — the pursuers themselves track the signature. The missile leg above
+// re-acquires a round through divertPos; here the ships holding the guns answer the same hot
+// bell through their ordinary combat/activity targets, and the blind brood steers by the
+// loudest signature on the line. Same authored threshold, same signature source, same
+// claim/release vocabulary — never a second steering path.
+
+function pursuitScene({ lureSignature = 1.0, tether = 'live' } = {}) {
+  const player = {
+    id: 1, type: 'ship', alive: true, team: 0, radius: 10,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+    data: {},
+  };
+  const lure = {
+    id: 7, type: 'beacon', alive: true, team: 2, radius: 12,
+    pos: { x: 300, z: 200 }, vel: { x: 0, z: 0 }, rot: 0,
+    data: { masslineTetherable: true, lureSignature },
+  };
+  const pirate = {
+    id: 30, type: 'ship', alive: true, team: 1, radius: 12,
+    pos: { x: 150, z: 60 }, vel: { x: 0, z: 0 }, rot: 0,
+    data: { ai: {}, combat: { targetId: player.id } },
+  };
+  const state = {
+    mode: 'flight', playerId: player.id, tick: 120, simTime: 2, rng: () => 0.5,
+    runtime: { features: {} },
+    player: tether === 'live'
+      ? { tether: { active: true, targetId: lure.id, phase: 'loaded' } }
+      : { tether: { active: false, targetId: null, phase: 'slack' } },
+    input: {},
+    entities: new Map([[player.id, player], [lure.id, lure], [pirate.id, pirate]]),
+    entityList: [player, lure, pirate],
+  };
+  return { state, player, lure, pirate };
+}
+
+test('RW-02: a hot towed lure re-aims a pursuing pirate at the signature', () => {
+  const s = pursuitScene();
+  setEntityDoctrine(s.pirate, {
+    activity: { kind: 'attack_run', reason: 'ambush:marked_prey', targetId: s.player.id, startedTick: 0 },
+  });
+  tickTowedLurePursuits(s.state);
+  assert.equal(s.pirate.data.combat.targetId, s.lure.id, 'the pursuit answers the signature');
+  assert.equal(s.pirate.data.combat.lureDiverted, true, 'the claim carries the lure mark');
+  assert.equal(s.pirate.data.combat.lureHullId, s.player.id, 'the hull is remembered for release');
+  assert.equal(s.pirate.data.ai.activity.targetId, s.lure.id,
+    'the authoritative assignment re-points so its fire gate and intercept stay coherent');
+});
+
+test('RW-02: a cold or severed lure hands the pursuit back to the hull', () => {
+  const cooled = pursuitScene();
+  tickTowedLurePursuits(cooled.state);
+  assert.equal(cooled.pirate.data.combat.targetId, cooled.lure.id);
+  cooled.lure.data.lureSignature = 0;
+  tickTowedLurePursuits(cooled.state);
+  assert.equal(cooled.pirate.data.combat.targetId, cooled.player.id, 'cooled: the hull re-acquires');
+  assert.equal(cooled.pirate.data.combat.lureDiverted, false, 'the mark lifts with the claim');
+
+  const severed = pursuitScene();
+  tickTowedLurePursuits(severed.state);
+  assert.equal(severed.pirate.data.combat.targetId, severed.lure.id);
+  severed.state.player.tether = { active: false, targetId: null, phase: 'slack' };
+  tickTowedLurePursuits(severed.state);
+  assert.equal(severed.pirate.data.combat.targetId, severed.player.id, 'severed: the hull re-acquires');
+  assert.equal(severed.pirate.data.combat.lureDiverted, false);
+
+  const eaten = pursuitScene();
+  tickTowedLurePursuits(eaten.state);
+  eaten.lure.alive = false;
+  tickTowedLurePursuits(eaten.state);
+  assert.equal(eaten.pirate.data.combat.targetId, eaten.player.id, 'consumed: the hull re-acquires');
+});
+
+test('RW-02: a pursuer fighting something else never hears the bell', () => {
+  const s = pursuitScene();
+  s.pirate.data.combat.targetId = 99;   // its own fight, not the hull
+  tickTowedLurePursuits(s.state);
+  assert.equal(s.pirate.data.combat.targetId, 99, 'foreign prosecution is untouched');
+  assert.equal(s.pirate.data.combat.lureDiverted, undefined, 'no claim is written');
+});
+
+test('RW-02: doctrine churn back to the hull is re-claimed, a foreign repoint is not', () => {
+  const s = pursuitScene();
+  tickTowedLurePursuits(s.state);
+  assert.equal(s.pirate.data.combat.targetId, s.lure.id);
+  // The decision cycle re-selects the hull while the bell still rings — the signature
+  // still owns the pursuit and takes the claim back.
+  s.pirate.data.combat.targetId = s.player.id;
+  tickTowedLurePursuits(s.state);
+  assert.equal(s.pirate.data.combat.targetId, s.lure.id, 'a hot lure keeps the pursuit');
+  assert.equal(s.pirate.data.combat.lureDiverted, true);
+  // A legitimate foreign repoint (retaliation onto an attacker, a squad order) is not ours
+  // to stomp — the mark lifts and its write stands.
+  s.pirate.data.combat.targetId = 42;
+  tickTowedLurePursuits(s.state);
+  assert.equal(s.pirate.data.combat.targetId, 42, 'a foreign retarget stands');
+  assert.equal(s.pirate.data.combat.lureDiverted, false, 'the lure mark releases');
+});
+
+test('RW-02: the hot bell joins the pursuer\'s sensor picture; bystanders hear nothing', () => {
+  const sim = createSimulation({ seed: 2011, systems: [aiPorts] });
+  sim.state.mode = 'flight';
+  const player = sim.spawn({
+    type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 },
+    radius: 10, hull: 100, data: {},
+  });
+  sim.state.playerId = player.id;
+  const bell = sim.spawn({
+    type: 'beacon', alive: true, team: 2, pos: { x: -30, z: 0 }, vel: { x: 40, z: 0 },
+    radius: 12, data: { masslineTetherable: true, lureSignature: 1.0 },
+  });
+  sim.state.player = { tether: { active: true, targetId: bell.id, phase: 'loaded' } };
+  const pirate = sim.spawn({
+    type: 'ship', alive: true, team: 1, pos: { x: 300, z: 0 },
+    radius: 12, hull: 100, data: { ai: {}, combat: { targetId: player.id } },
+  });
+  const bystander = sim.spawn({
+    type: 'ship', alive: true, team: 1, pos: { x: 300, z: 80 },
+    radius: 12, hull: 100, data: { ai: {}, combat: { targetId: null } },
+  });
+
+  const frame = sim.helpers.aiSensors.frameFor(pirate.id, 1);
+  const contact = frame.contacts.find((c) => c.id === bell.id);
+  assert.ok(contact, 'a beacon is contact-invisible without the signature — the bell must be heard');
+  assert.equal(contact.kind, 'objective', 'the bell reads as a sensed chase objective, not a hull');
+  assert.equal(contact.pos.x, -30, 'the contact carries the lure\'s live position');
+
+  const quiet = sim.helpers.aiSensors.frameFor(bystander.id, 1);
+  assert.equal(quiet.contacts.some((c) => c.id === bell.id), false,
+    'a hull not prosecuting the towing ship never hears the bell');
+
+  bell.data.lureSignature = 0;
+  const cold = sim.helpers.aiSensors.frameFor(pirate.id, 2);
+  assert.equal(cold.contacts.some((c) => c.id === bell.id), false,
+    'a cooled lure drops out of the picture');
+});
+
+// Blind swarmers: the brood's whole world is the signature scalars cachePlayer feeds it — a hot
+// bell on the pilot's line IS the target. Drive the real engine long enough for the flock to
+// leave its arrival anchor and commit to the signature.
+test('RW-02: blind swarmers steer at the hot bell, not the cold hull', () => {
+  const state = createGameState(4242);
+  const bus = createBus();
+  const player = {
+    id: state.nextEntityId++, alive: true, type: 'ship', pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 }, radius: 6, mass: 400, hull: 200, hullMax: 200, data: {},
+  };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  const bell = {
+    id: state.nextEntityId++, alive: true, type: 'beacon', pos: { x: 260, z: 0 },
+    vel: { x: 0, z: 0 }, radius: 12, mass: 60, hull: 160, hullMax: 160,
+    data: { masslineTetherable: true, lureSignature: 1.0 },
+  };
+  state.entities.set(bell.id, bell);
+  state.entityList.push(bell);
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true, ready: true,
+    shipLike: [player], asteroids: [],
+  };
+  state.player = { tether: { active: true, targetId: bell.id, phase: 'loaded' } };
+  state.run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: 4242 });
+  state.run.phase = 'active';
+  state.run.wave = 3;
+  state.mode = 'flight';
+
+  const damage = [];
+  const engine = createBroodEngine({
+    bus,
+    getState: () => state,
+    fieldList: () => null,
+    routeDamage: (request) => { damage.push(request); return { ok: true }; },
+  });
+  const DT = 1 / 60;
+  const step = (seconds) => {
+    for (let i = 0; i < Math.round(seconds / DT); i += 1) {
+      state.simTime += DT;
+      state.tick += 1;
+      engine.step(state);
+    }
+  };
+  engine.prepareWave(state.run, 3);
+  engine.spawnWave(state);
+  step(8);
+  const bodies = engine._bodies;
+  const meanDistance = (point) => {
+    let live = 0, sum = 0;
+    for (let i = 0; i < bodies.px.length; i += 1) {
+      if (!bodies.alive[i]) continue;
+      live += 1;
+      sum += Math.hypot(bodies.px[i] - point.x, bodies.pz[i] - point.z);
+    }
+    return { live, mean: live ? sum / live : Infinity };
+  };
+  const hot = { bell: meanDistance(bell.pos), hull: meanDistance(player.pos) };
+  assert.ok(hot.bell.live > 0, 'the flock must field bodies');
+  assert.ok(hot.bell.mean < hot.hull.mean,
+    `the flock must close on the signature (mean ${hot.bell.mean.toFixed(0)} to bell vs ${hot.hull.mean.toFixed(0)} to hull)`);
+
+  // Quiet the bell: the signature hands the pursuit back to the hull on the same tick clock.
+  bell.data.lureSignature = 0;
+  step(8);
+  const cold = { bell: meanDistance(bell.pos), hull: meanDistance(player.pos) };
+  assert.ok(cold.hull.mean < cold.bell.mean,
+    `a cold bell releases the flock to the hull (mean ${cold.hull.mean.toFixed(0)} to hull vs ${cold.bell.mean.toFixed(0)} to bell)`);
 });

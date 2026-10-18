@@ -54,6 +54,7 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { validateRunState } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
 import { findSwarmArrival } from './swarmSafety.js';
 import {
@@ -522,16 +523,25 @@ export function createBroodEngine(deps = {}) {
   let playerRad = 6;
   let playerMass = 400;
   let playerRef = null;
+  // The body the flock physically prosecutes this tick — the hot towed signature when one
+  // rides the pilot's Massline, else the pilot. RW-02 second slice: the brood is blind, it
+  // steers by the loudest signature on the line, not by the hull's outline. Steering,
+  // telegraphs, splashes, latches, shoves, and the damage target all read through this ref,
+  // so a cooled, severed, or eaten lure hands the signature back to the pilot next tick —
+  // the same authored towed_lure threshold the seekers use, the same signature source.
+  let signatureRef = null;
 
   function cachePlayer(state) {
     playerRef = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
-    playerX = finite(playerRef && playerRef.pos && playerRef.pos.x);
-    playerZ = finite(playerRef && playerRef.pos && playerRef.pos.z);
-    playerVX = finite(playerRef && playerRef.vel && playerRef.vel.x);
-    playerVZ = finite(playerRef && playerRef.vel && playerRef.vel.z);
-    playerRad = finite(playerRef && playerRef.radius, 6);
-    const body = playerRef && resolvePhysicsBodySpec(playerRef);
-    playerMass = Math.max(1, finite(body?.mass, finite(playerRef?.mass, 400)));
+    const lure = playerTowedLure(state);
+    signatureRef = lure && lure.lure.hot === true ? lure.towed : playerRef;
+    playerX = finite(signatureRef && signatureRef.pos && signatureRef.pos.x);
+    playerZ = finite(signatureRef && signatureRef.pos && signatureRef.pos.z);
+    playerVX = finite(signatureRef && signatureRef.vel && signatureRef.vel.x);
+    playerVZ = finite(signatureRef && signatureRef.vel && signatureRef.vel.z);
+    playerRad = finite(signatureRef && signatureRef.radius, 6);
+    const body = signatureRef && resolvePhysicsBodySpec(signatureRef);
+    playerMass = Math.max(1, finite(body?.mass, finite(signatureRef?.mass, 400)));
   }
 
   function playerOwnsBody(state, entity) {
@@ -919,7 +929,7 @@ export function createBroodEngine(deps = {}) {
 
   function splash(x, z, state) {
     // The pilot: dodge the marker, take nothing.
-    if (routeDamage && playerRef && playerRef.alive !== false) {
+    if (routeDamage && signatureRef && signatureRef.alive !== false) {
       const dx = playerX - x;
       const dz = playerZ - z;
       if (dx * dx + dz * dz <= (BROOD_SPITTER_SPLASH_RADIUS + playerRad * 0.5) ** 2) {
@@ -954,7 +964,7 @@ export function createBroodEngine(deps = {}) {
       poolAge[i] += dt;
       if (poolAge[i] >= poolTtl[i]) continue;
       live += 1;
-      if (playerRef && playerRef.alive !== false) {
+      if (signatureRef && signatureRef.alive !== false) {
         const dx = playerX - poolX[i];
         const dz = playerZ - poolZ[i];
         if (dx * dx + dz * dz <= (BROOD_SPITTER_POOL_RADIUS + playerRad * 0.5) ** 2) playerIn = true;
@@ -978,7 +988,7 @@ export function createBroodEngine(deps = {}) {
     if (!routeDamage || !(damage > 0)) return;
     routeDamage({
       attackerId: null,
-      targetId: playerRef ? playerRef.id : null,
+      targetId: signatureRef ? signatureRef.id : null,
       packet: scalarHitToDamagePacket({
         damage,
         damageType: BROOD_PLASMA_TYPE,
@@ -1012,7 +1022,7 @@ export function createBroodEngine(deps = {}) {
   /** One tick of a live pass: the hull takes it and the shove it carries, once per dash. */
   function stepChargerDash(i, fam, state) {
     const rad = liveFamilyRadius[fam];
-    if (playerRef && playerRef.alive !== false) {
+    if (signatureRef && signatureRef.alive !== false) {
       const sx = playerX - px[i];
       const sz = playerZ - pz[i];
       const rr = playerRad + rad;
@@ -1020,7 +1030,7 @@ export function createBroodEngine(deps = {}) {
         routePlayerDamage(BROOD_CHARGER_SLAM_DAMAGE, px[i], pz[i], 'brood_charger');
         const d = Math.sqrt(sx * sx + sz * sz) || 1;
         // The pass lands as an ADDITIVE shove across the membrane, never a velocity write.
-        queuePhysicsImpulse(playerRef, {
+        queuePhysicsImpulse(signatureRef, {
           x: (sx / d) * BROOD_CHARGER_SHOVE_DV * playerMass,
           y: 0,
           z: (sz / d) * BROOD_CHARGER_SHOVE_DV * playerMass,
@@ -1052,8 +1062,8 @@ export function createBroodEngine(deps = {}) {
   // --- the leecher: latch, brake, and the shed verb the pilot already owns -------------------
 
   function stepLeecher(i, fam, dp) {
-    if (dp <= BROOD_LEECHER_LATCH_RANGE + playerRad * 0.5 && playerRef
-      && playerRef.alive !== false) {
+    if (dp <= BROOD_LEECHER_LATCH_RANGE + playerRad * 0.5 && signatureRef
+      && signatureRef.alive !== false) {
       phase[i] = BROOD_PHASE_LATCHED;
       timer[i] = 0;
       teleDir[i] = seedPhase[i];
@@ -1074,12 +1084,12 @@ export function createBroodEngine(deps = {}) {
     // The drag: an ADDITIVE braking impulse across the membrane, capped so it can never
     // reverse the hull — a drag, not a tether.
     const speed = Math.sqrt(playerVX * playerVX + playerVZ * playerVZ);
-    if (speed > 1 && playerRef) {
+    if (speed > 1 && signatureRef) {
       // All latches share this tick's budget. N independent min(dv, speed) checks could
       // sum to more than the ship's entire momentum and reverse it in one solver step.
       const dv = Math.min(BROOD_LEECHER_BRAKE_ACCEL * dt, brakeDvBudget);
       brakeDvBudget -= dv;
-      queuePhysicsImpulse(playerRef, {
+      queuePhysicsImpulse(signatureRef, {
         x: -(playerVX / speed) * dv * playerMass,
         y: 0,
         z: -(playerVZ / speed) * dv * playerMass,
@@ -1235,14 +1245,14 @@ export function createBroodEngine(deps = {}) {
       // Hull contact: the body's approach is its own telegraph — a light sting and a shove,
       // on the same cadence law the flock uses so a chain rakes instead of melting.
       segContactT[i] -= dt;
-      if (segContactT[i] <= 0 && playerRef && playerRef.alive !== false && sp2 > 1) {
+      if (segContactT[i] <= 0 && signatureRef && signatureRef.alive !== false && sp2 > 1) {
         const dx = playerX - segX[i];
         const dz = playerZ - segZ[i];
         const rr = playerRad + TENDRIL_SEG_RADIUS;
         if (dx * dx + dz * dz <= rr * rr) {
           routePlayerDamage(TENDRIL_SEG_CONTACT_DAMAGE, segX[i], segZ[i], 'brood_tendril');
           const d = Math.sqrt(dx * dx + dz * dz) || 1;
-          queuePhysicsImpulse(playerRef, {
+          queuePhysicsImpulse(signatureRef, {
             x: (dx / d) * TENDRIL_SEG_CONTACT_SHOVE_DV * playerMass,
             y: 0,
             z: (dz / d) * TENDRIL_SEG_CONTACT_SHOVE_DV * playerMass,
