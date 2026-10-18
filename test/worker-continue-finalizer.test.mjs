@@ -8,6 +8,7 @@ import { GameStartReadinessError, describeGameStartFailure } from '../src/core/n
 import { holdOpeningPresentationUntilPaint } from '../src/render/pipelineReadiness.js';
 import { handleTitleContinueLoadFailure } from '../src/ui/screens/mainMenu.js';
 import { shouldToastSaveError } from '../src/ui/saveFeedback.js';
+import { mountStartupFailurePresenter } from './helpers/startup-failure-presenter.mjs';
 
 // Run the boot owner's real callback and finalizer without booting the registry or GPU.
 const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
@@ -34,7 +35,7 @@ function createEnterFlightMode(hold = holdOpeningPresentationUntilPaint,
   )(createTimeEffects, hold, setMode, describeGameStartFailure);
 }
 
-function fixture({ worker = true, library = true, visuals = true, picture = async () => true,
+function fixture(t, { worker = true, library = true, visuals = true, picture = async () => true,
   realFlight = false, holdOptions = {} } = {}) {
   const state = {
     mode: 'menu', timeScale: 0,
@@ -42,6 +43,7 @@ function fixture({ worker = true, library = true, visuals = true, picture = asyn
     ui: { screenStack: ['mainMenu'] },
   };
   const bus = createBus();
+  const failureUi = mountStartupFailurePresenter(t, bus, state);
   const guard = createRunTransitionGuard();
   const errors = [];
   const startsFailed = [];
@@ -86,14 +88,14 @@ function fixture({ worker = true, library = true, visuals = true, picture = asyn
   });
   bus.on('game:startFailed', payload => startsFailed.push(payload));
   bus.on('toast', payload => toasts.push(payload));
-  return { state, bus, guard, errors, startsFailed, logs, summary, attributes, toasts,
+  return { state, bus, guard, errors, startsFailed, logs, summary, attributes, toasts, ...failureUi,
     finalize: payload => finalize(state, bus, { get: () => null }, guard, payload),
     pending: () => pending, finalizerCalls: () => finalizerCalls };
 }
 
-test('worker Continue observes an async graphics rejection and retains its classified title failure', async () => {
+test('worker Continue observes an async graphics rejection and retains its classified title failure', async (t) => {
   const gate = deferred();
-  const h = fixture({ picture: () => gate.promise });
+  const h = fixture(t, { picture: () => gate.promise });
   const rejected = new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources',
     'WebGL context was lost while preparing the first picture');
   h.bus.emit('save:loaded', { slot: 'quick' });
@@ -112,14 +114,17 @@ test('worker Continue observes an async graphics rejection and retains its class
   assert.equal(h.attributes.get('role'), 'alert');
   assert.equal(h.attributes.get('aria-live'), 'assertive');
   assert.match(h.summary.textContent, /WebGL context was lost/);
-  assert.equal(h.toasts.length, 1, 'the persistent title receipt adds no duplicate toast');
+  assert.equal(h.overlay.querySelectorAll('[data-startup-failure]').length, 1, 'the failure has one persistent panel');
+  assert.equal(h.overlay.classList.contains('hidden'), false);
+  assert.equal(h.overlay.querySelector('.sf-state__detail').textContent, rejected.message);
+  assert.equal(h.toasts.length, 0, 'the persistent panel and title receipt add no duplicate toast');
   assert.ok(h.logs.some(row => row[0] === '[SpaceFace] lane finalizeLoadedGame failed' && row[1] === rejected));
   await assert.rejects(h.pending(), error => error === rejected,
     'an awaited finalizer still receives the original failure');
 });
 
-test('successful worker Continue keeps its normal flight handoff without failure receipts', async () => {
-  const h = fixture();
+test('successful worker Continue keeps its normal flight handoff without failure receipts', async (t) => {
+  const h = fixture(t);
   const closed = [];
   h.bus.on('ui:closeAll', payload => closed.push(payload));
   h.bus.emit('save:loaded', { slot: 'quick' });
@@ -131,10 +136,10 @@ test('successful worker Continue keeps its normal flight handoff without failure
   assert.deepEqual(h.logs, []);
 });
 
-test('a late Continue first-picture failure recovers after finalizer success and emits one durable receipt', async () => {
+test('a late Continue first-picture failure recovers after finalizer success and emits one durable receipt', async (t) => {
   for (const worker of [true, false]) {
     let deadline;
-    const h = fixture({
+    const h = fixture(t, {
       worker,
       realFlight: true,
       holdOptions: {
@@ -168,18 +173,23 @@ test('a late Continue first-picture failure recovers after finalizer success and
     assert.equal(h.errors[0].code, 'GAME_START_FAILED');
     assert.equal(h.errors[0].stage, 'startup');
     assert.match(h.errors[0].error, /first world picture/);
-    assert.equal(h.toasts.length, 1, 'the classified start failure supplies the one visible toast');
+    assert.equal(h.overlay.querySelectorAll('[data-startup-failure]').length, 1, 'the classified start failure supplies one visible panel');
+    assert.equal(h.overlay.classList.contains('hidden'), false);
+    assert.equal(h.overlay.querySelector('.sf-state__detail').textContent, h.errors[0].error);
+    assert.equal(h.toasts.length, 0, 'the persistent panel replaces the expiring toast');
 
     deadline();
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(h.startsFailed.length, 1, 'a duplicate deadline callback cannot recover twice');
     assert.equal(h.errors.length, 1, 'a duplicate deadline callback cannot emit a second save receipt');
+    assert.equal(h.overlay.querySelectorAll('[data-startup-failure]').length, 1);
+    h.close();
   }
 });
 
-test('a late Continue callback is rejected after a newer transition owns the guard', async () => {
+test('a late Continue callback is rejected after a newer transition owns the guard', async (t) => {
   let deadline;
-  const h = fixture({
+  const h = fixture(t, {
     realFlight: true,
     holdOptions: {
       timeoutMs: 0,
@@ -237,7 +247,7 @@ test('a guarded worker Continue failure survives the brief main mode mirror lag'
   assert.equal(errors[0].slot, 'quick');
 });
 
-test('a late New Game callback remains classified but never fabricates a save receipt', async () => {
+test('a late New Game callback remains classified but never fabricates a save receipt', async (t) => {
   const state = {
     mode: 'loading',
     timeScale: 0,
@@ -245,6 +255,7 @@ test('a late New Game callback remains classified but never fabricates a save re
     ui: { screenStack: ['newGame'] },
   };
   const bus = createBus();
+  const { overlay } = mountStartupFailurePresenter(t, bus, state);
   const guard = createRunTransitionGuard();
   const token = guard.begin('new-game');
   const startsFailed = [];
@@ -269,12 +280,15 @@ test('a late New Game callback remains classified but never fabricates a save re
   assert.equal(state.mode, 'menu');
   assert.equal(startsFailed.length, 1);
   assert.deepEqual(errors, []);
-  assert.equal(toasts.length, 1);
+  assert.equal(overlay.querySelectorAll('[data-startup-failure]').length, 1);
+  assert.equal(overlay.classList.contains('hidden'), false);
+  assert.match(overlay.querySelector('.sf-state__detail').textContent, /first world picture/);
+  assert.equal(toasts.length, 0, 'New Game retains its failure without adding an expiring toast');
 });
 
-test('a superseded worker Continue cannot publish late failure or erase the newer route', async () => {
+test('a superseded worker Continue cannot publish late failure or erase the newer route', async (t) => {
   const gate = deferred();
-  const h = fixture({ picture: () => gate.promise });
+  const h = fixture(t, { picture: () => gate.promise });
   h.bus.emit('save:loaded', { slot: 'quick' });
   await new Promise(resolve => setImmediate(resolve));
   h.guard.begin('new-game');
@@ -287,8 +301,8 @@ test('a superseded worker Continue cannot publish late failure or erase the newe
   assert.deepEqual(h.logs, []);
 });
 
-test('main-lane save:loaded does not run or observe its save-owner finalizer twice', async () => {
-  const h = fixture({ worker: false, picture: async () => { throw new Error('awaited failure'); } });
+test('main-lane save:loaded does not run or observe its save-owner finalizer twice', async (t) => {
+  const h = fixture(t, { worker: false, picture: async () => { throw new Error('awaited failure'); } });
   h.bus.emit('save:loaded', { slot: 'quick' });
   assert.equal(h.finalizerCalls(), 0);
   await assert.rejects(h.finalize({ slot: 'quick' }), /awaited failure/);
@@ -300,8 +314,8 @@ for (const [kind, options, code, stage] of [
   ['library', { library: false }, 'AUTHORED_LIBRARY_UNAVAILABLE', 'authored-library'],
   ['visuals', { visuals: false }, 'AUTHORED_VISUALS_UNAVAILABLE', 'authored-visuals'],
 ]) {
-  test(`worker Continue classifies a rejected ${kind} gate before returning to the title`, async () => {
-    const h = fixture(options);
+  test(`worker Continue classifies a rejected ${kind} gate before returning to the title`, async (t) => {
+    const h = fixture(t, options);
     h.bus.emit('save:loaded', { slot: 'quick' });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(h.errors.length, 1);

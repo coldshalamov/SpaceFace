@@ -29,6 +29,8 @@ import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { laneSetMode } from '../src/core/simLaneCommands.js';
+import { mountStartupFailurePresenter } from './helpers/startup-failure-presenter.mjs';
+import { textLines } from './helpers/fake-dom.mjs';
 
 const MAIN_PATH = new URL('../src/main.js', import.meta.url);
 const SOAK_PROBE_PATH = new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url);
@@ -208,7 +210,7 @@ return { nextFrame, nextPaint };`)(
   assert.equal(frame, true, 'repeated compositor starvation takes the bounded task fallback');
 });
 
-test('a failed restore lands in the recoverable start-failed menu with a visible affordance', () => {
+test('a failed restore retains one visible failure panel with Retry and Back to menu', (t) => {
   const main = readFileSync(MAIN_PATH, 'utf8');
   const start = main.indexOf('function failGameStart');
   const end = main.indexOf('async function waitForAuthoredPartLibrary', start);
@@ -217,6 +219,7 @@ test('a failed restore lands in the recoverable start-failed menu with a visible
     `${main.slice(start, end)}; return failGameStart;`)(createTimeEffects, laneSetMode);
   const state = { mode: 'loading', timeScale: 0, render: {}, ui: { screenStack: [] } };
   const bus = createBus();
+  const { overlay } = mountStartupFailurePresenter(t, bus, state);
   const events = [];
   bus.on('game:startFailed', (payload) => events.push(['failure', payload]));
   bus.on('toast', (payload) => events.push(['toast', payload]));
@@ -238,10 +241,26 @@ test('a failed restore lands in the recoverable start-failed menu with a visible
   assert.equal(failure.code, 'AUTHORED_LIBRARY_UNAVAILABLE');
   assert.equal(failure.stage, 'appearance');
   assert.equal(failure.retryable, true);
-  assert.deepEqual(state.ui.screenStack, ['mainMenu'],
-    'a quick-load from flight must expose Continue/New Game instead of only a paused HUD');
-  assert.equal(events.find(([name]) => name === 'screen')[1].source, 'game-start-failed');
-  assert.deepEqual(events.find(([name]) => name === 'toast')[1], { text: 'Retry Continue', kind: 'error', ttl: 8 });
+  assert.deepEqual(state.ui.screenStack, [], 'the failure panel owns recovery until the player dismisses it');
+  assert.equal(overlay.querySelectorAll('[data-startup-failure]').length, 1);
+  const pane = overlay.querySelector('[data-startup-failure]');
+  assert.equal(pane.getAttribute('role'), 'alert');
+  assert.equal(overlay.classList.contains('hidden'), false);
+  assert.equal(pane.querySelector('.sf-state__head').textContent, 'Startup could not finish');
+  assert.equal(pane.querySelector('.sf-state__detail').textContent, 'required ship.glb missing');
+  const buttons = pane.querySelectorAll('button');
+  assert.deepEqual(buttons.map(button => textLines(button).join('')), ['Retry', 'Back to menu']);
+  const retries = [];
+  bus.on('game:retryStart', payload => retries.push(payload));
+  buttons[0].click();
+  assert.deepEqual(retries, [{ source: 'startup-failure-overlay' }]);
+  assert.equal(overlay.querySelector('[data-startup-failure]'), pane, 'Retry retains the cause until a new start');
+  buttons[1].click();
+  assert.deepEqual(state.ui.screenStack, ['mainMenu'], 'Back exposes Continue/New Game after a failed quick-load');
+  assert.equal(events.find(([name]) => name === 'screen')[1].source, 'startup-failure-overlay');
+  assert.equal(overlay.querySelector('[data-startup-failure]'), null);
+  assert.equal(overlay.classList.contains('hidden'), true);
+  assert.deepEqual(events.filter(([name]) => name === 'toast'), [], 'the persistent panel replaces the expiring toast');
 });
 
 test('failed startup preserves a mounted retry screen and its error listener', () => {
