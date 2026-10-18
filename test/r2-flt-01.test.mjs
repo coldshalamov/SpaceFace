@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { makeEntity } from '../src/core/entity.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { isHostileForAI } from '../src/ai/engagementAuthority.js';
 
 import {
   P,
@@ -24,14 +28,9 @@ function makeFixture({
   cargoFull = false,
   seed = 4242,
 } = {}) {
-  const player = {
-    id: 1,
-    alive: true,
-    type: 'player',
-    pos: { x: 0, z: 0 },
-    hull: 100,
-    hullMax: 100,
-  };
+  const player = makeEntity({ ...makeShipEntitySpec('ship_kestrel', {
+    isPlayer: true, pos: { x: 0, z: 0 },
+  }), id: 1 });
   const rock = {
     id: 2,
     alive: true,
@@ -48,14 +47,9 @@ function makeFixture({
     pos: { x: -200, z: 0 },
     data: { stationId: 'station_prime' },
   };
-  const pirate = {
-    id: 4,
-    alive: true,
-    type: 'ship',
-    factionId: 'pirate',
-    isHostile: true,
-    pos: { x: 60, z: 10 },
-  };
+  const pirate = makeEntity({
+    ...makeEnemySpawnSpec('reaver_pirate', 1, { x: 60, z: 10 }), id: 4,
+  });
 
   const entities = new Map([
     [1, player],
@@ -194,7 +188,8 @@ test('FLT-01: positive branch — ON threat-near interrupts loop, flees to stati
   const { group, ctx, getMinedCount, getSteerTarget } = fixture;
   assert.equal(group.programState.pc, 0, 'starts at step 0 (mine)');
 
-  // 1. Tick with threat near: interrupt triggers, steers to depot station
+  assert.equal(isHostileForAI(ctx.state, ctx.state.entities.get(1), ctx.state.entities.get(4)), true);
+  // 1. Tick with a production Reaver near: interrupt triggers and steers to the depot.
   tickProgram(group, ctx, 1 / 60);
 
   assert.ok(group.programState.interrupt, 'interrupt is active');

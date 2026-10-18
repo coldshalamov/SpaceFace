@@ -799,11 +799,12 @@ export const automation = {
     if (!g || !this.state) return false;
     const curSector = (this.state.world && this.state.world.currentSectorId) || null;
     if (g.sectorId && curSector && g.sectorId !== curSector) return false;
+    let self = this.state.entities?.get(this.state.playerId);
     let pos = g.originPos;
     if (g.entityIds && g.entityIds.length) {
       const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities && this.state.entities.get(id));
       const lead = getEnt(g.entityIds[0]);
-      if (lead && lead.pos) pos = lead.pos;
+      if (lead && lead.alive !== false && lead.pos) { self = lead; pos = lead.pos; }
     }
     if (!pos && this.state.entities) {
       const p = this.state.entities.get(this.state.playerId);
@@ -821,13 +822,7 @@ export const automation = {
       if (!e || e.alive === false) continue;
       if (e.id === this.state.playerId) continue;
       if (g.entityIds && g.entityIds.includes(e.id)) continue;
-      const isHostile = Boolean(
-        e.isHostile ||
-        e.factionId === 'pirate' ||
-        e.factionId === 'hostile' ||
-        (e.data && (e.data.isHostile || e.data.hostile))
-      );
-      if (!isHostile) continue;
+      if (!isHostileForAI(this.state, self, e)) continue;
       if (!e.pos) continue;
       const dx = e.pos.x - pos.x;
       const dz = e.pos.z - pos.z;
@@ -3419,25 +3414,7 @@ function makeProgramContext(host) {
       return host._programSellCargo(this.group, stationId);
     },
     dropBeacon() {
-      const g = this.group;
-      const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state && this.state.entities && this.state.entities.get(id));
-      let pos = g ? g.originPos : null;
-      if (g && g.entityIds && g.entityIds.length) {
-        const lead = getEnt(g.entityIds[0]);
-        if (lead && lead.pos) pos = { x: lead.pos.x, z: lead.pos.z };
-      }
-      if (!pos && this.state && this.state.entities) {
-        const p = this.state.entities.get(this.state.playerId);
-        pos = p && p.pos ? { x: p.pos.x, z: p.pos.z } : { x: 0, z: 0 };
-      }
-      const b = this.bus || host.bus;
-      if (b && typeof b.emit === 'function') {
-        b.emit('automation:droneBeacon', {
-          id: `drone_beacon_${g ? g.id : 'unknown'}`,
-          pos: pos || { x: 0, z: 0 },
-          source: 'drone',
-        });
-      }
+      return host._registry?.get('beacons')?.deployDrone(this.group) || false;
     },
     hailStation(stationId) {
       const stName = resolveStationDisplayName(this.state, stationId);

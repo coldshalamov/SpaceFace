@@ -22,6 +22,7 @@
 // still go through economy:grantCredits via the automation seller.
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { hasMachineProtocol } from '../data/alienEcology.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 // Primitive type tags.
 export const P = Object.freeze({
@@ -165,10 +166,11 @@ export function checkThreatNear(group, ctx) {
   if (typeof ctx.threatNear === 'boolean') return ctx.threatNear;
   const state = ctx.state;
   if (!state) return false;
+  let self = state.entities?.get(state.playerId);
   let pos = group.originPos;
-  if (!pos && group.entityIds && group.entityIds.length && state.entities) {
-    const e = state.entities.get(group.entityIds[0]);
-    if (e && e.pos) pos = e.pos;
+  if (group.entityIds && group.entityIds.length && state.entities) {
+    const lead = state.entities.get(group.entityIds[0]);
+    if (lead && lead.alive !== false && lead.pos) { self = lead; pos = lead.pos; }
   }
   if (!pos && state.entities) {
     const p = state.entities.get(state.playerId);
@@ -185,13 +187,7 @@ export function checkThreatNear(group, ctx) {
     if (!e || e.alive === false) continue;
     if (e.id === state.playerId) continue;
     if (group.entityIds && group.entityIds.includes(e.id)) continue;
-    const isHostile = Boolean(
-      e.isHostile ||
-      e.factionId === 'pirate' ||
-      e.factionId === 'hostile' ||
-      (e.data && (e.data.isHostile || e.data.hostile))
-    );
-    if (!isHostile) continue;
+    if (!isHostileForAI(state, self, e)) continue;
     if (!e.pos) continue;
     const dx = e.pos.x - pos.x;
     const dz = e.pos.z - pos.z;

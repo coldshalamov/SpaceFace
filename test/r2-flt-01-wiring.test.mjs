@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 
 import { automation } from '../src/systems/automation.js';
 import { SHIPS } from '../src/data/ships.js';
-import { buildSlotList } from '../src/systems/ships.js';
-import { REACTION_TOKENS } from '../src/systems/alphabet.js';
+import { buildSlotList, makeShipEntitySpec } from '../src/systems/ships.js';
+import { createSimulation } from '../src/core/sim.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { isHostileForAI } from '../src/ai/engagementAuthority.js';
+import { beacons } from '../src/systems/beacons.js';
+import { checkThreatNear } from '../src/systems/alphabet.js';
+import { addToShipment } from '../src/systems/cargoCustody.js';
 
 function rangerWithDroneBay() {
   const hull = SHIPS.find((def) => def.id === 'ship_ranger');
@@ -15,125 +20,45 @@ function rangerWithDroneBay() {
   return { defId: 'ship_ranger', fittings };
 }
 
-function makeBus() {
-  const handlers = new Map();
-  const emitted = [];
-  return {
-    emitted,
-    on(event, fn) {
-      if (!handlers.has(event)) handlers.set(event, []);
-      handlers.get(event).push(fn);
-    },
-    off() {},
-    emit(event, payload) {
-      emitted.push({ event, payload });
-      for (const fn of (handlers.get(event) || []).slice()) fn(payload);
-    },
-  };
-}
-
 function boot(seed = 4242, machineProtocol = 'observed') {
-  const player = {
-    id: 1,
-    alive: true,
-    type: 'player',
+  const sim = createSimulation({ seed, systems: [automation, beacons] });
+  const { state, bus } = sim;
+  bus.emitted = [];
+  const emit = bus.emit.bind(bus);
+  bus.emit = (event, payload) => { bus.emitted.push({ event, payload }); emit(event, payload); };
+  state.mode = 'flight';
+  state.simTime = 120;
+  state.world.currentSectorId = 'sector_helios_prime';
+  state.world.alienEcology = { machineProtocol };
+  Object.assign(state.player, {
+    credits: 100_000, droneTierCap: 1, researchedNodes: ['tech_drone_control'],
+    activeShipIndex: 0, ownedShips: [rangerWithDroneBay()],
+  });
+  const player = sim.spawn(makeShipEntitySpec('ship_ranger', {
+    isPlayer: true, player: state.player, fittings: state.player.ownedShips[0].fittings,
     pos: { x: 0, z: 0 },
-    rot: 0,
-    hull: 100,
-    hullMax: 100,
-  };
-  const station = {
-    id: 10,
-    alive: true,
-    type: 'station',
-    name: 'Helios Depot',
-    pos: { x: -300, z: 0 },
-    radius: 50,
+  }));
+  state.playerId = player.id;
+  const station = sim.spawn({
+    type: 'station', name: 'Helios Depot', pos: { x: -300, z: 0 }, radius: 50,
     data: { stationId: 'station_helios_depot', dockRadius: 50, name: 'Helios Depot' },
-  };
-  const rock = {
-    id: 20,
-    alive: true,
-    type: 'asteroid',
-    pos: { x: 200, z: 0 },
-    radius: 10,
+  });
+  const rock = sim.spawn({
+    type: 'asteroid', pos: { x: 200, z: 0 }, radius: 10,
     data: { oreHP: 200, oreHPMax: 200 },
-  };
-  const droneEnt = {
-    id: 30,
-    alive: true,
-    type: 'drone',
-    pos: { x: 190, z: 0 },
-    rot: 0,
-    radius: 5,
-    data: { groupId: 'drone_g1', kind: 'mining_drone' },
-  };
-
-  const entities = new Map([
-    [1, player],
-    [10, station],
-    [20, rock],
-    [30, droneEnt],
-  ]);
-  const entityList = [player, station, rock, droneEnt];
-
-  const state = {
-    simTime: 120,
-    tick: 1,
-    meta: { seed },
-    playerId: 1,
-    mode: 'flight',
-    player: {
-      credits: 100_000,
-      droneTierCap: 1,
-      researchedNodes: ['tech_drone_control'],
-      activeShipIndex: 0,
-      stats: {},
-      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 200, capMass: 200 },
-      ownedShips: [rangerWithDroneBay()],
-    },
-    world: {
-      currentSectorId: 'sector_helios_prime',
-      activeSector: null,
-      alienEcology: {
-        machineProtocol,
-      },
-    },
-    entities,
-    entityList,
-    automation: null,
-  };
-
-  const bus = makeBus();
-  const inst = Object.create(automation);
-  inst.init({ state, bus, helpers: { getEntity: (id) => state.entities.get(id) }, registry: null });
-  inst.newGame();
-
-  const group = {
-    id: 'drone_g1',
-    defId: 'drone_mk1',
-    count: 1,
-    sectorId: 'sector_helios_prime',
-    oreType: 'cmdty_ore_iron',
-    buffer: 0,
-    bufferCap: 40,
-    fuel: 240,
-    fuelMax: 240,
-    durability: 40,
-    status: 'mining',
-    entityIds: [30],
-    originPos: { x: 200, z: 0 },
-  };
-  state.automation.drones.push(group);
-
-  return { state, inst, bus, group, droneEnt, station, rock };
+  });
+  const inst = sim.registry.get('automation');
+  assert.equal(inst.buyDrone('drone_mk1'), true, 'real purchase spawns the group and its drone');
+  const group = state.automation.drones[0];
+  const droneEnt = state.entities.get(group.entityIds[0]);
+  return { state, inst, bus, group, droneEnt, station, rock, sim };
 }
 
 test('FLT-01 wiring: real automation tick interrupts on hostile, steers to depot, emits line once, resumes when clear', () => {
-  const { state, inst, bus, group, droneEnt } = boot(4242, 'observed');
+  const { state, inst, bus, group, droneEnt, sim } = boot(4242, 'observed');
 
   // Assign program with default reaction (no explicit reaction specified)
-  inst.assignProgram('drone_g1', 'mine_to_depot');
+  inst.assignProgram(group.id, 'mine_to_depot');
   assert.ok(group.program, 'program assigned');
   assert.equal(group.program.templateId, 'mine_to_depot');
 
@@ -141,17 +66,9 @@ test('FLT-01 wiring: real automation tick interrupts on hostile, steers to depot
   inst.update(1 / 60, state);
   assert.equal(group.programState.interrupt, null, 'no interrupt when clear');
 
-  // 2. Introduce hostile hull inside threat radius (< 600m from drone at x:190, z:0)
-  const hostile = {
-    id: 99,
-    alive: true,
-    type: 'ship',
-    factionId: 'pirate',
-    isHostile: true,
-    pos: { x: 300, z: 0 }, // 110m away from drone
-  };
-  state.entities.set(99, hostile);
-  state.entityList.push(hostile);
+  // 2. Introduce a production Reaver inside the live drone threat radius.
+  const hostile = sim.spawn(makeEnemySpawnSpec('reaver_pirate', 1, { x: 250, z: 0 }));
+  assert.equal(isHostileForAI(state, state.entities.get(state.playerId), hostile), true);
 
   // Tick with hostile near
   inst.update(1 / 60, state);
@@ -167,7 +84,7 @@ test('FLT-01 wiring: real automation tick interrupts on hostile, steers to depot
   assert.match(toasts[0].payload.text, /Drone group falls back to Helios Depot/);
   // Verify no raw identifiers leaked into player sentence
   assert.doesNotMatch(toasts[0].payload.text, /station_helios_depot/);
-  assert.doesNotMatch(toasts[0].payload.text, /drone_g1/);
+  assert.ok(!toasts[0].payload.text.includes(group.id), 'the live group id is not player copy');
 
   // Tick again while hostile is still near: verify no duplicate toast while latched
   inst.update(1 / 60, state);
@@ -189,21 +106,13 @@ test('FLT-01 wiring: real automation tick interrupts on hostile, steers to depot
 });
 
 test('FLT-01 wiring: negative case — machine protocol unknown means no reaction slot fires on real tick', () => {
-  const { state, inst, bus, group } = boot(4242, 'unknown');
+  const { state, inst, bus, group, sim } = boot(4242, 'unknown');
 
-  inst.assignProgram('drone_g1', 'mine_to_depot');
+  inst.assignProgram(group.id, 'mine_to_depot');
 
   // Introduce hostile inside threat radius
-  const hostile = {
-    id: 99,
-    alive: true,
-    type: 'ship',
-    factionId: 'pirate',
-    isHostile: true,
-    pos: { x: 250, z: 0 },
-  };
-  state.entities.set(99, hostile);
-  state.entityList.push(hostile);
+  const hostile = sim.spawn(makeEnemySpawnSpec('reaver_pirate', 1, { x: 250, z: 0 }));
+  assert.equal(isHostileForAI(state, state.entities.get(state.playerId), hostile), true);
 
   inst.update(1 / 60, state);
 
@@ -213,25 +122,17 @@ test('FLT-01 wiring: negative case — machine protocol unknown means no reactio
 });
 
 test('FLT-01 wiring: explicit assignReaction overrides default reaction token', () => {
-  const { state, inst, bus, group } = boot(4242, 'observed');
-  inst.assignProgram('drone_g1', 'mine_to_depot');
+  const { state, inst, bus, group, sim } = boot(4242, 'observed');
+  inst.assignProgram(group.id, 'mine_to_depot');
 
   // Explicitly assign evacuate_on_threat (exit mode)
-  inst.assignReaction('drone_g1', 'evacuate_on_threat');
+  inst.assignReaction(group.id, 'evacuate_on_threat');
   assert.equal(group.program.reaction.id, 'evacuate_on_threat');
   assert.equal(group.program.reaction.mode, 'exit');
 
   // Hostile appears
-  const hostile = {
-    id: 99,
-    alive: true,
-    type: 'ship',
-    factionId: 'pirate',
-    isHostile: true,
-    pos: { x: 250, z: 0 },
-  };
-  state.entities.set(99, hostile);
-  state.entityList.push(hostile);
+  const hostile = sim.spawn(makeEnemySpawnSpec('reaver_pirate', 1, { x: 250, z: 0 }));
+  assert.equal(isHostileForAI(state, state.entities.get(state.playerId), hostile), true);
 
   inst.update(1 / 60, state);
   assert.ok(group.programState.interrupt, 'evacuate interrupt active');
@@ -240,22 +141,63 @@ test('FLT-01 wiring: explicit assignReaction overrides default reaction token', 
   assert.match(toasts[0].payload.text, /Drone group evacuates to Helios Depot — program aborted/);
 });
 
-test('FLT-01 wiring: drop_beacon_and_hail_on_cargo_full emits a drone beacon (not the player beacon event) and comms hail on real tick', () => {
-  const { state, inst, bus, group } = boot(4242, 'observed');
-  inst.assignProgram('drone_g1', 'mine_to_depot');
-  inst.assignReaction('drone_g1', 'drop_beacon_and_hail_on_cargo_full');
+test('FLT-01 wiring: full cargo plants a real drone-owned buoy and hails without player deployment effects', () => {
+  const { state, inst, bus, group, sim } = boot(4242, 'observed');
+  inst.assignProgram(group.id, 'mine_to_depot');
+  inst.assignReaction(group.id, 'drop_beacon_and_hail_on_cargo_full');
 
-  // Fill group buffer to capacity
-  group.buffer = 40;
+  // Fill the programmed miner's real custody store through its owner.
+  assert.equal(addToShipment(group, group.oreType, group.bufferCap, group.bufferCap), group.bufferCap);
 
   inst.update(1 / 60, state);
 
-  const beaconEvents = bus.emitted.filter((e) => e.event === 'automation:droneBeacon');
-  assert.ok(beaconEvents.length >= 1, 'drone beacon emitted on full cargo reaction');
-  assert.equal(beaconEvents[0].payload.source, 'drone');
+  assert.equal(state.beacons.length, 1, 'the real beacon owner plants a record');
+  const rec = state.beacons[0];
+  const drone = state.entities.get(group.entityIds[0]);
+  const buoy = state.entities.get(rec.entityId);
+  assert.equal(rec.source, 'drone');
+  assert.equal(rec.ownerId, drone.id);
+  assert.equal(rec.groupId, group.id);
+  assert.ok(buoy?.alive, 'the real spawn helper creates a live buoy');
+  assert.equal(buoy.type, 'beacon');
+  assert.equal(buoy.data.claimBeaconId, rec.id);
+  assert.equal(buoy.data.masslineTetherable, true);
+  assert.equal(buoy.data.source, 'drone');
+  assert.equal(buoy.data.ownerId, drone.id);
+  assert.equal(buoy.data.groupId, group.id);
+  assert.equal(buoy.pos.x, rec.x);
+  assert.equal(buoy.pos.z, rec.z);
+  assert.equal(rec.x, drone.pos.x - Math.cos(drone.rot) * (drone.radius + 18));
+  assert.equal(rec.z, drone.pos.z - Math.sin(drone.rot) * (drone.radius + 18));
+  assert.equal(bus.emitted.filter(e => e.event === 'beacon:deployed').length, 0,
+    'the event that triggers the player hint, VFX and micro-motion never fires');
+  assert.equal(bus.emitted.filter(e => e.event === 'automation:droneBeacon').length, 0,
+    'the dead event is removed');
+  assert.equal(bus.emitted.filter(e => e.event === 'economy:chargeCredits' && e.payload.reason === 'claim_beacon').length, 0);
+  inst.update(1 / 60, state);
+  assert.equal(state.beacons.length, 1, 'a latched full hold does not plant twice');
 
   const hailToasts = bus.emitted.filter((e) => e.event === 'toast' && e.payload?.text?.includes('hails'));
   assert.ok(hailToasts.length >= 1, 'hail toast emitted');
   assert.match(hailToasts[0].payload.text, /Drone group hails Helios Depot/);
   assert.doesNotMatch(hailToasts[0].payload.text, /station_helios_depot/);
+  state.simTime = rec.expireAt + 0.1;
+  sim.registry.get('beacons').update(1 / 60, state);
+  assert.equal(state.beacons.length, 0, 'the beacon owner expires its record');
+  sim.step(); // Core removes the dead buoy at the normal end-of-step sweep.
+  assert.equal(state.entities.has(buoy.id), false, 'the beacon owner removes its buoy');
+});
+
+test('FLT-01 wiring: both scans leave a clean lawful patrol alone at the live drone position', () => {
+  const { state, inst, group, droneEnt, sim } = boot();
+  inst.assignProgram(group.id, 'mine_to_depot');
+  droneEnt.pos.x = 1500;
+  const patrol = sim.spawn(makeEnemySpawnSpec('patrol_lawman', 1, { x: 1550, z: 0 }));
+  assert.equal(isHostileForAI(state, droneEnt, patrol), false);
+  assert.equal(inst._isDroneThreatNear(group), false);
+  assert.equal(checkThreatNear(group, { state }), false);
+  const pirate = sim.spawn(makeEnemySpawnSpec('reaver_pirate', 1, { x: 1550, z: 0 }));
+  assert.equal(isHostileForAI(state, droneEnt, pirate), true);
+  assert.equal(inst._isDroneThreatNear(group), true);
+  assert.equal(checkThreatNear(group, { state }), true, 'the drone position outranks the stored origin');
 });

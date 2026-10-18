@@ -84,15 +84,39 @@ export const beacons = {
     }
 
     this.bus.emit('economy:chargeCredits', { amount: BEACON_COST, reason: 'claim_beacon' });
+    const rec = this._plantBeacon(player);
+    const pos = { x: rec.x, z: rec.z };
+    this.bus.emit('beacon:deployed', { id: rec.id, pos });
+    this.bus.emit('toast', {
+      text: rec.node ? ('Claim beacon set · marking ' + rec.node) : 'Claim beacon deployed · drawing attention',
+      kind: 'good', ttl: 3,
+    });
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    return true;
+  },
+
+  // Drone programs use the same bounded buoy owner without teaching or animating a player verb.
+  deployDrone(group) {
+    const state = this.state;
+    if (state.mode !== 'flight' || !group || group.sectorId !== state.world?.currentSectorId) return false;
+    if (state.beacons.filter((b) => b.alive !== false).length >= BEACON_MAX_ACTIVE) return false;
+    const drone = state.entities.get(group.entityIds?.[0]);
+    if (!drone || !drone.alive || drone.type !== 'drone' || drone.data?.groupId !== group.id) return false;
+    this._plantBeacon(drone, { source: 'drone', ownerId: drone.id, groupId: group.id });
+    return true;
+  },
+
+  _plantBeacon(entity, attribution = {}) {
+    const state = this.state;
     // The buoy drops AFT of the hull, not centered in it: the physics statics layer builds the
     // beacon entity as a fixed collider, and an r=5 ball spawned inside the player's capsule would
     // depenetrate the ship in an arbitrary direction on every deploy. Record, lure, radar marker
     // and entity all use this same dropped point.
-    const dropDist = (player.radius || 12) + 18;
-    const rot = Number.isFinite(player.rot) ? player.rot : 0;
+    const dropDist = (entity.radius || 12) + 18;
+    const rot = Number.isFinite(entity.rot) ? entity.rot : 0;
     const pos = {
-      x: player.pos.x - Math.cos(rot) * dropDist,
-      z: player.pos.z - Math.sin(rot) * dropDist,
+      x: entity.pos.x - Math.cos(rot) * dropDist,
+      z: entity.pos.z - Math.sin(rot) * dropDist,
     };
     const node = this._nearestNode(state, pos);
     const now0 = state.simTime || 0;
@@ -105,16 +129,11 @@ export const beacons = {
       node: node ? node.label : null,
       alive: true,
       entityId: null,
+      ...attribution,
     };
     rec.entityId = this._spawnBuoy(state, rec);
     state.beacons.push(rec);
-    this.bus.emit('beacon:deployed', { id: rec.id, pos });
-    this.bus.emit('toast', {
-      text: node ? ('Claim beacon set · marking ' + node.label) : 'Claim beacon deployed · drawing attention',
-      kind: 'good', ttl: 3,
-    });
-    this.bus.emit('audio:cue', { id: 'confirm' });
-    return true;
+    return rec;
   },
 
   update(dt, state) {
@@ -175,6 +194,7 @@ export const beacons = {
         scanLabel: 'Claim beacon',
         storyPropKind: 'claim_beacon',
         claimBeaconId: rec.id,
+        ...(rec.source === 'drone' ? { source: rec.source, ownerId: rec.ownerId, groupId: rec.groupId } : {}),
         tetherable: true,
         // The latch gate's real field (src/systems/tetherGameplay.js reads data.masslineTetherable);
         // `tetherable` above stays as descriptive metadata matching the other story-prop writers.
