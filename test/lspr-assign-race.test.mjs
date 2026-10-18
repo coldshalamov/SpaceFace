@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { waitForOpeningGpuResources } from '../src/render/pipelineReadiness.js';
+import * as THREE from 'three';
+import { render, createRendererLifecycleBindings } from '../src/render/renderer.js';
 
 const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 const rendererSource = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
@@ -50,6 +52,7 @@ function extractObjectMethod(source, name) {
 }
 
 function extractedRendererMethod(name) {
+  if (name === '_touchOpeningBargeFamilyUnderShell') return render[name];
   const methodSource = extractObjectMethod(rendererSource, name);
   return new Function(`return ({ ${methodSource}\n});`)()[name];
 }
@@ -360,4 +363,113 @@ test('opening barge touch is one pass after the warm settles and yields to a cov
   await wait(10);
   assert.equal(coveredTouches, 0);
   assert.equal(covered.render.openingBargeWarm.reason, 'live-cook-covers');
+});
+
+function bargeWaitFixture() {
+  const realSet = globalThis.setTimeout, realClear = globalThis.clearTimeout, realNow = Date.now;
+  const jobs = new Map();
+  let nextId = 0;
+  globalThis.setTimeout = (callback, delay) => {
+    const id = ++nextId;
+    jobs.set(id, { callback, delay });
+    return id;
+  };
+  globalThis.clearTimeout = (id) => jobs.delete(id);
+  Date.now = () => 1000;
+  const state = { mode: 'loading', world: {}, render: { gpu: { software: true } } };
+  const owner = Object.create(render);
+  owner.state = state;
+  owner.renderer = { extensions: { get: () => null } };
+  owner.scene = new THREE.Scene();
+  owner._contextLost = true;
+  owner._rendererLifecycle = createRendererLifecycleBindings();
+  const root = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial();
+  material.name = 'Forge_ore_barge_paint';
+  const child = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  child.userData.authoredAssetState = 'authored';
+  root.add(child);
+  owner.scene.add(root);
+  owner._rosterPrewarmRoots = [root];
+  const touches = [];
+  state.render.touchSubjectExactTarget = async (subject) => { touches.push(subject); };
+  let release;
+  const warm = { root, building: true, pendingAttachments: [new Promise((resolve) => { release = resolve; })], settleDeadlineAt: 6000 };
+  let settledCallbacks = 0;
+  return {
+    owner, state, root, warm, touches, jobs, release,
+    get settledCallbacks() { return settledCallbacks; },
+    start() {
+      owner._armCrucibleWarmBuildingSettle(warm, () => { settledCallbacks += 1; });
+      owner._touchOpeningBargeFamilyUnderShell(root, warm);
+      const initial = [...jobs.entries()].find(([, job]) => job.delay === 0);
+      assert.ok(initial, 'the single pass schedules its initial loading callback');
+      jobs.delete(initial[0]);
+      initial[1].callback();
+    },
+    restore() {
+      owner._rendererLifecycle.destroy();
+      globalThis.setTimeout = realSet;
+      globalThis.clearTimeout = realClear;
+      Date.now = realNow;
+      child.geometry.dispose();
+      material.dispose();
+    },
+  };
+}
+
+async function flushBargeWait() {
+  for (let step = 0; step < 20; step += 1) await Promise.resolve();
+}
+
+test('settled barge attachments clear both losing deadline arms and record the route', async () => {
+  const f = bargeWaitFixture();
+  try {
+    f.start();
+    assert.equal(f.jobs.size, 2, 'both attachment waits have a deadline');
+    f.release();
+    await flushBargeWait();
+    assert.equal(f.jobs.size, 0, 'settlement clears every losing timer arm');
+    assert.equal(f.touches.length, 1);
+    assert.equal(f.settledCallbacks, 1);
+    assert.equal(f.state.render.openingBargeWarm.reason, 'single-pass');
+    assert.equal(f.state.render.openingBargeWarm.route, 'serial-link-loading');
+  } finally { f.restore(); }
+});
+
+for (const retirement of ['renderer teardown', 'warm release']) {
+  test(`${retirement} during the barge wait leaves no timer or later touch`, async () => {
+    const f = bargeWaitFixture();
+    try {
+      f.start();
+      assert.equal(f.jobs.size, 2);
+      if (retirement === 'renderer teardown') f.owner._rendererLifecycle.destroy();
+      else f.owner._releaseSurvivalRosterPrewarm('test-retirement');
+      await flushBargeWait();
+      assert.equal(f.jobs.size, 0, 'retirement clears every wait timer immediately');
+      f.release();
+      await flushBargeWait();
+      assert.equal(f.touches.length, 0, 'late attachment settlement cannot touch a retired root');
+      assert.equal(f.settledCallbacks, 0, 'retired settles cannot mutate the warm owner');
+      assert.equal(f.state.render.openingBargeWarm, undefined);
+    } finally { f.restore(); }
+  });
+}
+
+test('an attachment queued during settlement keeps the barge waiting under the same deadline', async () => {
+  const f = bargeWaitFixture();
+  let releaseLate;
+  try {
+    f.start();
+    f.warm.pendingAttachments.push(new Promise((resolve) => { releaseLate = resolve; }));
+    f.release();
+    await flushBargeWait();
+    assert.equal(f.touches.length, 0, 'the newer attachment still owns the wait');
+    assert.equal(f.jobs.size, 2, 'each wait replaces its old timer instead of retaining it');
+    assert.ok([...f.jobs.values()].every((job) => job.delay === 5000));
+    releaseLate();
+    await flushBargeWait();
+    assert.equal(f.jobs.size, 0);
+    assert.equal(f.touches.length, 1);
+  } finally { releaseLate?.(); f.restore(); }
 });

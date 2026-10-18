@@ -10,6 +10,7 @@ import { createPhaseBlinkPresentation } from '../src/render/phaseBlinkPresentati
 import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
 import { isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
+import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
@@ -390,7 +391,7 @@ function fixture(providers = []) {
   const owner = { state, _rendererGeneration: 2, _liveSectorCookGeneration: 0, _simHelpers: { sectorCookProviders: providers },
     _meshes: new Map(), _meshBuildQueue: [], _meshBuildQueueHead: 0, _meshBuildQueuedIds: new Set() };
   const noop = () => {};
-  const values = { ...lifecycleHelpers, state,
+  const values = { ...lifecycleHelpers, openingLoadPolicy, state,
     isMobileRenderContext: () => false,
     rendererGenerationIsActive: () => owner._rendererGeneration === 2 && !owner._rendererResourcesDisposed, scene: { environment: {} },
     renderer: { getContext: () => ({ flush: noop, isContextLost: () => false }) },

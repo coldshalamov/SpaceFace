@@ -457,6 +457,7 @@ import {
   GOVERNOR_RESIDENCY_BYTE_CEILING,
 } from './resourceGovernor.js';
 import { isMobileRenderContext, shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
+import { openingLoadPolicy } from './openingLoadPolicy.js';
 import {
   collectStartupGeometries,
   collectStartupGeometriesSteps,
@@ -10306,6 +10307,58 @@ export function createRendererLifecycleBindings({
   };
 }
 
+// Both opening attachment waits share a deadline, but each owns and retires its timer arm.
+async function waitForWarmAttachments(owner, warm, isActive = () => true) {
+  if (!warm || !Array.isArray(warm.pendingAttachments)) return true;
+  const root = warm.root;
+  const state = owner.state;
+  const world = state && state.world;
+  const renderState = state && state.render;
+  const nativeRenderer = owner.renderer;
+  const renderer = renderState && renderState.renderer;
+  const context = state && state.contextRestoreSeq;
+  const generation = renderState && renderState.admissionRunGeneration;
+  const lifecycle = owner._rendererLifecycle;
+  const current = () => isActive() && (!lifecycle || lifecycle.isActive())
+    && owner.state === state && owner.renderer === nativeRenderer
+    && (!state || (state.world === world && state.render === renderState
+      && state.contextRestoreSeq === context))
+    && (!renderState || (renderState.renderer === renderer
+      && renderState.admissionRunGeneration === generation));
+  const deadlineAt = Number.isFinite(warm.settleDeadlineAt)
+    ? warm.settleDeadlineAt : Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
+  let timer = null;
+  let cancel;
+  const cancelled = new Promise((resolve) => {
+    cancel = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      resolve(false);
+    };
+  });
+  root?.addEventListener?.('removed', cancel);
+  const unregister = lifecycle?.onDestroy(cancel);
+  try {
+    while (current()) {
+      const snapshotLength = warm.pendingAttachments.length;
+      const completed = await Promise.race([
+        Promise.allSettled(warm.pendingAttachments).then(() => true),
+        new Promise((resolve) => { timer = setTimeout(() => resolve(true), Math.max(0, deadlineAt - Date.now())); }),
+        cancelled,
+      ]);
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      if (!completed || !current()) return false;
+      if (warm.pendingAttachments.length <= snapshotLength || Date.now() >= deadlineAt) return true;
+    }
+    return false;
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+    root?.removeEventListener?.('removed', cancel);
+    unregister?.();
+  }
+}
+
 /** Publish first-present readiness only for the still-current, live renderer generation. */
 export function publishFirstPresentGpuReady(owner, lifecycle) {
   if (!owner || owner._rendererLifecycle !== lifecycle || !lifecycle?.isActive()) return false;
@@ -15276,19 +15329,15 @@ export const render = {
       // Kick them here so the live-scene cook sees their authored materials,
       // not the procedural stand-in that first flight would otherwise compile.
       let liveStepStarted = prepareNow();
-      // Serial-link routes: software GL with no KHR_parallel_shader_compile. The composition settle
-      // keeps its 12 s cap on every route (cutting it to 3 s moved the wait into the cook and cost
-      // bar 2.4a on SwiftShader; perf lane co1/cp1 on #444).
-      const serialLinkRoute = !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer });
-      // Same route, behind the loading shell: drawables per 1x1 residency batch. Each batch is a
-      // serial GPU unit (presented-frame wait + gl.finish), and the default 4 made the first-frame
-      // census ~28.7 s of mostly idle main thread on SwiftShader. The 8 MB batch byte cap still holds.
-      const residencyBatchDrawables = () => (serialLinkRoute && state.mode === 'loading' ? 32 : undefined);
-      // Same route and window for texture uploads: up to 16 textures / 8 MB share one serial unit
-      // (one yield + presented-frame wait + gl.finish) instead of one unit per texture. Every other
-      // route (and flight) keeps the per-texture default.
-      const residencyTextureBatch = () => (serialLinkRoute && state.mode === 'loading'
-        ? { textureBatchCount: 16, textureBatchBytes: 8 * 1024 * 1024 } : null);
+      const loadPolicy = openingLoadPolicy({
+        shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
+        mode: state.mode,
+      });
+      // Preserve the captured compile route while re-reading the shell mode at each upload.
+      const residencyPolicy = () => openingLoadPolicy({
+        shouldAwaitGpuCook: !loadPolicy.serialLinkRoute,
+        mode: state.mode,
+      });
       // The composition settle and the queue-idle wait both pump the same authored
       // upgrade queue — the settle feeds it opening jobs, the idle waits for the
       // queue to empty. Serial waits paid settle-timeout + idle-timeout back to
@@ -15298,7 +15347,7 @@ export const render = {
         ? Promise.resolve({ skipped: true, settled: true, reason: 'session-recook-visuals-already-ready' })
         : waitForOpeningCompositionSettled(state, {
           stale: cookStale,
-          timeoutMs: Math.min(12000, remainingMs()),
+          timeoutMs: Math.min(loadPolicy.compositionSettleMs, remainingMs()),
           yieldToMain: yieldAndFlushLiveSectorGpu,
           renderer,
           scene,
@@ -15308,7 +15357,7 @@ export const render = {
         ? Promise.resolve({ skipped: true, reason: 'session-recook-hold-leftover-fx' })
         : waitForAuthoredUpgradeQueueIdle(scene, {
           stale: cookStale,
-          timeoutMs: Math.min(12000, remainingMs()),
+          timeoutMs: Math.min(loadPolicy.compositionSettleMs, remainingMs()),
           yieldToMain: yieldAndFlushLiveSectorGpu,
         });
       if (cookStale()) return cookSuperseded;
@@ -16110,10 +16159,10 @@ export const render = {
         // loading shell, then let post-opening compile+touch everything it just attached before
         // the plan/receipt recapture below freezes the final identities. The software route owns
         // this barrier inside waitForRenderPipelineWarmup; there only the lane release remains.
-        const ownsFirstPictureBarrier = shouldAwaitOpeningGpuCook({
-          gpu: state.render && state.render.gpu,
-          renderer,
-        });
+        const ownsFirstPictureBarrier = !openingLoadPolicy({
+          shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
+          mode: state.mode,
+        }).serialLinkRoute;
         const censusStarted = prepareNow();
         let firstPictureError = null;
         if (ownsFirstPictureBarrier) {
@@ -16572,7 +16621,7 @@ export const render = {
             try {
               if (cookStale()) return cookSuperseded;
               warmResidency = await prepareStartupGeometryResidency(renderer, warmRoots, {
-                geometryBatchDrawables: residencyBatchDrawables(),
+                geometryBatchDrawables: residencyPolicy().geometryBatchDrawables,
                 includeEmpty: false,
                 yieldToMain: createSlicedYield(yieldToBrowser, {
                   sliceMs: 16,
@@ -16617,8 +16666,8 @@ export const render = {
           // with the shell presenter, just without donating a frame per item.
           if (cookStale()) return cookSuperseded;
           firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
-            geometryBatchDrawables: residencyBatchDrawables(),
-            ...residencyTextureBatch(),
+            geometryBatchDrawables: residencyPolicy().geometryBatchDrawables,
+            ...residencyPolicy().textureBatch,
             yieldToMain: createSlicedYield(yieldToBrowser, {
               sliceMs: 16,
               shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
@@ -18134,23 +18183,10 @@ export const render = {
         : await driveRevealCohort(firstFlightRoots);
       if (restoreFirstFlight === null) return cookSuperseded;
       const buffersStarted = cookNow();
-      // Serial-link route behind the loading shell: same 32-drawable residency batches as the
-      // first-frame census (each batch is a presented-frame wait + gl.finish there). Once the
-      // compile/touch passes above stopped pacing every cache-hit unit, this step stopped timing
-      // out against the prepare budget and ran 16.5 s on SwiftShader at 4 drawables per batch,
-      // ~80% of it idle main thread. The 8 MB batch byte cap still holds.
-      const bufferBatchDrawables = state.mode === 'loading'
-        && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })
-        ? 32 : undefined;
-      // Texture uploads on the same route/window: 16 textures / 8 MB per serial unit, not one unit
-      // (yield + presented-frame wait + gl.finish) per texture; 131 opening textures made this step
-      // ~10 s of idle main thread on SwiftShader. Other routes keep the per-texture default.
-      // A batch is one main-thread task. Measured from perf lane cpuprofiles (SwiftShader, tasks
-      // split on idle samples, batch tasks = startupGpuResidency texture-upload stacks): at 16 / 8 MB
-      // (cb1, 8 runs, 54 tasks) median 6 ms, p90 19 ms, max 65 ms; at 48 / 24 MB (cb2+cb3, 11 runs,
-      // 62 tasks) p90 11-19 ms, max 172 ms (one task, ~70 ms native + 35 ms GC; next 35 ms). Master's
-      // longest loading tasks are shader links of 2.9-14.4 s (per-run max median 3.5-4.9 s).
-      const bufferTextureBatch = bufferBatchDrawables ? { textureBatchCount: 16, textureBatchBytes: 8 * 1024 * 1024 } : null;
+      const bufferPolicy = openingLoadPolicy({
+        shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
+        mode: state.mode,
+      });
       let buffers;
       try {
         if (cookOverBudget()) {
@@ -18158,15 +18194,15 @@ export const render = {
         } else {
           buffers = options.skipBuffers === true
             ? await prepareStartupGpuResidency(renderer, firstFlightBufferRoots, {
-              geometryBatchDrawables: bufferBatchDrawables,
-              ...bufferTextureBatch,
+              geometryBatchDrawables: bufferPolicy.geometryBatchDrawables,
+              ...bufferPolicy.textureBatch,
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
             })
             : await prepareStartupGpuResidency(renderer, scene, {
-              geometryBatchDrawables: bufferBatchDrawables,
-              ...bufferTextureBatch,
+              geometryBatchDrawables: bufferPolicy.geometryBatchDrawables,
+              ...bufferPolicy.textureBatch,
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
@@ -20003,7 +20039,10 @@ export const render = {
         // Soft-GPU / no-KHR: a prior miss showed waiting here just renamed cost into
         // drainWait+residency (~2.5 s wall). Do not poll — use a plan already published
         // by the concurrent warmup if present, otherwise self-build below.
-        if (!plan && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
+        if (!plan && openingLoadPolicy({
+          shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
+          mode: state.mode,
+        }).serialLinkRoute) {
           const planWaitStarted = openingNow();
       if (this.planetDetailLibraryReady) {
         await Promise.race([this.planetDetailLibraryReady, new Promise((resolve) => setTimeout(resolve, 4000))]);
@@ -20061,15 +20100,16 @@ export const render = {
           return { skipped: true, reason: 'opening-plan-incomplete' };
         }
         openingStepStarted = openingNow();
-        const softGpuOpening = !shouldAwaitOpeningGpuCook({
-          gpu: state.render && state.render.gpu,
-          renderer,
+        const resourcePolicy = openingLoadPolicy({
+          shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
+          mode: state.mode,
         });
+        const softGpuOpening = resourcePolicy.serialLinkRoute;
         // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
         // bounded so this stage yields back to the loading/flight event loop sooner.
         // Also pass deadlineMs into the uploader — Promise.race alone misses sync initTexture
         // bursts that starve the timer until well past the budget.
-        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
+        const residencyBudgetMs = resourcePolicy.residencyBudgetMs;
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           // Same sliced cadence as the end-of-cook census: per-item task hops
           // cost more than the small uploads themselves on a contended host.
@@ -20175,7 +20215,10 @@ export const render = {
         // dominant prepareOpeningGpuResources wall after planWait was removed (~1.9 s).
         // Freeze the receipt with whatever is already resident and let mid-flight admission
         // cover the rest — same fire-and-forget policy as waitForOpeningGpuResources.
-        if (!shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
+        if (openingLoadPolicy({
+          shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
+          mode: state.mode,
+        }).serialLinkRoute) {
           recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
             budgetMs: 0,
             reason: 'soft-gpu-no-await',
@@ -23665,40 +23708,27 @@ export const render = {
     if (!Number.isFinite(warm.settleDeadlineAt)) {
       warm.settleDeadlineAt = Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
     }
-    const settle = (snapshotLength) => {
-      Promise.race([
-        Promise.allSettled(warm.pendingAttachments),
-        new Promise((resolve) => setTimeout(
-          resolve,
-          Math.max(0, warm.settleDeadlineAt - Date.now()),
-        )),
-      ]).then(() => {
-        if (warm.pendingAttachments.length > snapshotLength
-            && Date.now() < warm.settleDeadlineAt) {
-          settle(warm.pendingAttachments.length);
-          return;
-        }
-        warm.censusSettled = true;
-        warm.building = false;
-        if (warm.root && warm.root.userData) {
-          warm.root.userData.warmBuilding = false;
-          warm.root.userData.warmCensusSettled = true;
-        }
-        // An ordinary opening may have painted while this bounded settle was still waiting on a
-        // late attach. Release is permitted only after the finish/census wrapper has installed its
-        // residency owner and marked the census complete; otherwise the root stays owned until
-        // the wrapper's finally retry.
-        if (warm.profile === 'opening' && warm.censusFinished === true
-            && warm.residencyHookInstalled === true) {
-          try { this._releaseOrdinaryOpeningWarm('opening-warm-settled'); }
-          catch (_) { /* release is best-effort; the normal teardown remains authoritative */ }
-        }
-        if (typeof onSettled === 'function') {
-          try { onSettled(); } catch (_) { /* best-effort */ }
-        }
-      });
-    };
-    settle(warm.pendingAttachments.length);
+    void waitForWarmAttachments(this, warm).then((settled) => {
+      if (!settled) return;
+      warm.censusSettled = true;
+      warm.building = false;
+      if (warm.root && warm.root.userData) {
+        warm.root.userData.warmBuilding = false;
+        warm.root.userData.warmCensusSettled = true;
+      }
+      // An ordinary opening may have painted while this bounded settle was still waiting on a
+      // late attach. Release is permitted only after the finish/census wrapper has installed its
+      // residency owner and marked the census complete; otherwise the root stays owned until
+      // the wrapper's finally retry.
+      if (warm.profile === 'opening' && warm.censusFinished === true
+          && warm.residencyHookInstalled === true) {
+        try { this._releaseOrdinaryOpeningWarm('opening-warm-settled'); }
+        catch (_) { /* release is best-effort; the normal teardown remains authoritative */ }
+      }
+      if (typeof onSettled === 'function') {
+        try { onSettled(); } catch (_) { /* best-effort */ }
+      }
+    });
   },
 
   /**
@@ -25199,7 +25229,13 @@ export const render = {
     const state = this.state;
     if (!root || !state) return;
     const BARGE_FAMILY = /^(Forge_ore_barge|Forge_massline_express_liner_ceramic)/;
-    const receipt = { touched: 0, reason: 'pending', at: null };
+    const receipt = {
+      touched: 0, reason: 'pending', at: null,
+      route: openingLoadPolicy({
+        shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer: this.renderer }),
+        mode: state.mode,
+      }).routeName,
+    };
     const world = state.world;
     const render = state.render;
     const nativeRenderer = this.renderer;
@@ -25243,20 +25279,9 @@ export const render = {
     // the bounded warm roots (barge sections included), so this pass would only duplicate it.
     const liveCookCovers = () => !!((render && render.liveSectorGpuAdmission === true)
       || this._postOpeningPipelineAdmissionReleased === true);
-    const attachmentsSettled = () => {
-      if (!warm || !Array.isArray(warm.pendingAttachments)) return Promise.resolve();
-      const deadlineAt = Number.isFinite(warm.settleDeadlineAt)
-        ? warm.settleDeadlineAt : Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
-      const wait = (snapshotLength) => Promise.race([
-        Promise.allSettled(warm.pendingAttachments),
-        new Promise((resolve) => setTimeout(resolve, Math.max(0, deadlineAt - Date.now()))),
-      ]).then(() => (warm.pendingAttachments.length > snapshotLength && Date.now() < deadlineAt
-        ? wait(warm.pendingAttachments.length) : undefined));
-      return wait(warm.pendingAttachments.length);
-    };
     const step = async () => {
       if (!owned()) return;
-      await attachmentsSettled();
+      if (!await waitForWarmAttachments(this, warm, owned)) return;
       if (!owned()) return;
       if (state.mode !== 'loading') return publish('shell-released');
       if (liveCookCovers()) return publish('live-cook-covers');
@@ -25282,7 +25307,9 @@ export const render = {
       if (!owned()) return;
       return publish(state.mode !== 'loading' ? 'shell-released' : 'single-pass');
     };
-    setTimeout(() => { void step(); }, 0);
+    const schedule = this._rendererLifecycle
+      ? this._rendererLifecycle.setTimeout : setTimeout;
+    schedule(() => { void step(); }, 0);
   },
 
   /**

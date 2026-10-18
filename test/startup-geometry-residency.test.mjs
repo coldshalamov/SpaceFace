@@ -772,18 +772,30 @@ test('residency batches skip the program compile unit once the shared raw proxy 
     'only the first batch pays the compile unit; later batches draw on the linked program');
 });
 
-test('serial-link loading routes widen residency batches and keep the 12 s composition settle', () => {
+test('opening policy preserves geometry batches and the composition settle on every route', async () => {
+  const { openingLoadPolicy } = await import('../src/render/openingLoadPolicy.js');
+  for (const shouldAwaitGpuCook of [true, false]) {
+    for (const mode of ['loading', 'flight', 'restore']) {
+      const policy = openingLoadPolicy({ shouldAwaitGpuCook, mode });
+      const subjects = Array.from({ length: 35 }, () => new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+      const draws = [];
+      const harness = createRendererHarness({ render({ scene }) { draws.push(scene.children.length); } });
+      const result = await prepareStartupGeometryResidency(harness.renderer, subjects, {
+        geometryBatchDrawables: policy.geometryBatchDrawables,
+        paceQueue: async () => {}, yieldToMain: async () => {},
+      });
+      const expected = !shouldAwaitGpuCook && mode === 'loading' ? [32, 3] : [...Array(8).fill(4), 3];
+      assert.deepEqual(draws, expected, policy.routeName);
+      assert.equal(result.batches.length, expected.length);
+      assert.equal(policy.compositionSettleMs, 12000);
+    }
+  }
+  // The harness above owns batching behavior; these narrow assertions pin the actual caller wiring.
   const start = RENDERER_SOURCE.indexOf('state.render.prepareLiveSectorBeforeFlight = async');
   const end = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async', start);
   const preflight = RENDERER_SOURCE.slice(start, end);
-  assert.match(preflight,
-    /const serialLinkRoute = !shouldAwaitOpeningGpuCook\(\{ gpu: state\.render && state\.render\.gpu, renderer \}\);/);
-  assert.match(preflight,
-    /waitForOpeningCompositionSettled\(state, \{\s*stale: cookStale,\s*timeoutMs: Math\.min\(12000, remainingMs\(\)\),/);
-  assert.match(preflight,
-    /const residencyBatchDrawables = \(\) => \(serialLinkRoute && state\.mode === 'loading' \? 32 : undefined\);/);
-  assert.match(preflight,
-    /firstFrameResidency = await prepareStartupGpuResidency\(renderer, scene, \{\s*geometryBatchDrawables: residencyBatchDrawables\(\),/);
-  assert.match(preflight,
-    /warmResidency = await prepareStartupGeometryResidency\(renderer, warmRoots, \{\s*geometryBatchDrawables: residencyBatchDrawables\(\),/);
+  assert.match(preflight, /const residencyPolicy = \(\) => openingLoadPolicy\(/);
+  assert.match(preflight, /timeoutMs: Math\.min\(loadPolicy\.compositionSettleMs, remainingMs\(\)\)/);
+  assert.match(preflight, /warmResidency = await prepareStartupGeometryResidency\(renderer, warmRoots, \{\s*geometryBatchDrawables: residencyPolicy\(\)\.geometryBatchDrawables,/);
+  assert.match(preflight, /firstFrameResidency = await prepareStartupGpuResidency\(renderer, scene, \{\s*geometryBatchDrawables: residencyPolicy\(\)\.geometryBatchDrawables,/);
 });

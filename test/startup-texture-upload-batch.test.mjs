@@ -108,13 +108,20 @@ test('estimateTextureUploadBytes counts mips, typed payloads and plain images', 
   assert.equal(estimateTextureUploadBytes(null), 0);
 });
 
-test('only the serial-link route behind the loading shell batches texture uploads', () => {
+test('opening policy batches texture uploads only on serial-link loading routes', async () => {
+  const { openingLoadPolicy } = await import('../src/render/openingLoadPolicy.js');
+  for (const shouldAwaitGpuCook of [true, false]) {
+    for (const mode of ['loading', 'flight', 'restore']) {
+      const policy = openingLoadPolicy({ shouldAwaitGpuCook, mode });
+      const { timeline, result } = await run(textures(17), { ...policy.textureBatch });
+      assert.equal(result.uploads.length, 17);
+      assert.deepEqual(uploadsPerPace(timeline),
+        !shouldAwaitGpuCook && mode === 'loading' ? [16, 1] : Array(17).fill(1), policy.routeName);
+    }
+  }
+  // Keep only the producer-to-consumer wiring assertion; values and route behavior run above.
   const renderer = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(renderer, /const residencyTextureBatch = \(\) => \(serialLinkRoute && state\.mode === 'loading'\s*\? \{ textureBatchCount: 16, textureBatchBytes: 8 \* 1024 \* 1024 \} : null\);/);
-  assert.match(renderer, /firstFrameResidency = await prepareStartupGpuResidency\(renderer, scene, \{\s*geometryBatchDrawables: residencyBatchDrawables\(\),\s*\.\.\.residencyTextureBatch\(\),/);
-  assert.match(renderer, /const bufferTextureBatch = bufferBatchDrawables \? \{ textureBatchCount: 16, textureBatchBytes: 8 \* 1024 \* 1024 \} : null;/);
-  assert.equal((renderer.match(/geometryBatchDrawables: bufferBatchDrawables,\s*\.\.\.bufferTextureBatch,/g) || []).length, 2);
-  const bufferGate = renderer.indexOf('const bufferBatchDrawables = state.mode === \'loading\'');
-  assert.ok(bufferGate > 0);
-  assert.match(renderer.slice(bufferGate, bufferGate + 200), /!shouldAwaitOpeningGpuCook\(/);
+  assert.match(renderer, /firstFrameResidency = await prepareStartupGpuResidency\(renderer, scene, \{\s*geometryBatchDrawables: residencyPolicy\(\)\.geometryBatchDrawables,\s*\.\.\.residencyPolicy\(\)\.textureBatch,/);
+  assert.match(renderer, /const bufferPolicy = openingLoadPolicy\(/);
+  assert.equal((renderer.match(/geometryBatchDrawables: bufferPolicy\.geometryBatchDrawables,\s*\.\.\.bufferPolicy\.textureBatch,/g) || []).length, 2);
 });
