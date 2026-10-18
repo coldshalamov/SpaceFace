@@ -1169,12 +1169,40 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W} .sx-chooser__head h3:has(.k-38) { white-space:normal !important; }
   ${W} .sx-chooser__head h3 .k-38 { letter-spacing:0 !important; white-space:nowrap !important; }
 }
-/* …and at 651-800 wide (the identity rides over the nameplate as above). The verbs (in flow
-   under the stage here) always break after TAKE THE HITCH, so LEFT · CENTER · RIGHT stand on the
-   second line beside RECORD · PAINT instead of across them */
+/* …and at 651-800 wide (the identity rides over the nameplate as above). The stage is under
+   160px here, so stageRingGeo() returns null and seatVerbs cannot run — the verbs keep their
+   sheet seat (left:258px) and would print off the ~460px main's right edge. Seat them on the
+   stage's 50px foot inside the main instead, as the unseated rack sits at 801-1100. */
 @media (min-width:651px) and (max-width:800px) and (max-height:460px) and (hover:hover) {
-  ${W} .sx-sw-verbs.sx-sw-verbs--unseated { right:auto !important; width:max-content !important; max-width:260px !important; }
-  ${W} .sx-sw__main:has(> .sx-sw-verbs--unseated) > .sx-sw__stage.is-live > .sx-sw__camera { top:calc(100% + 24px) !important; }
+  /* The berth gives this tab a ~200px cell and scrolls to the rest (the same trade the
+     651-1100 band makes at 844x390). The main is the scroll host (the verbs are its
+     children): the stage takes all but the 22px identity line, and the verb row rides
+     just under the main's fold — a row below the fold of a scroller is reachable,
+     not cut. */
+  /* the :has() forms must be repeated — they outrank the plain selector above, and with a
+     ~170px stage seatVerbs does add --unseated here */
+  ${D}.orr-sw--jig .sx-sw__main,
+  ${D}.orr-sw--jig .sx-sw__main:has(.sx-sw-verbs--unseated),
+  ${D}.orr-sw--jig .sx-sw__main:has(.sx-sw__stats--unseated) { overflow-y:auto !important; overscroll-behavior:contain; }
+  ${D}.orr-sw--jig .sx-sw__main > .sx-sw__stage { inset:22px 0 8px 0 !important; }
+  ${D}.orr-sw--jig .sx-sw-verbs.sx-sw-verbs,
+  ${D} .sx-sw-verbs.sx-sw-verbs--unseated { position:absolute !important; left:8px !important; right:8px !important;
+    top:calc(100% + 4px) !important; bottom:auto !important; width:auto !important; max-width:none !important; margin:0 !important;
+    flex-wrap:wrap !important; justify-content:flex-end !important; gap:2px 12px !important; }
+  /* one-line callout cards (as at 801-1100): a two-line card is ~29px and the columns under
+     the nameplate only stand ~60-90px here, so name and state share a line (the solver
+     measures the cards live) */
+  ${D} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:flex !important; align-items:baseline !important; gap:0 8px !important;
+    line-height:15px !important; padding-block:1px !important; }
+  ${D} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { display:inline !important; line-height:15px !important; }
+  /* the nameplate's ink is the solver's keep-out: it must stay ONE row (name · DOCKED ·
+     rename ≈ 250px in a ~418px stage), because a wrapped crest doubles the zone's height and
+     the shortened column then fails the solver's viability check — the obstacle is dropped
+     whole and the first card lands on "Tessera". The blurb sleeps at this height. */
+  ${D}.orr-sw--jig .sx-sw__nameplate .sx-sw__crestLine { flex-wrap:nowrap !important; }
+  ${D}.orr-sw--jig .sx-sw__nameplate .sx-sw__blurb { display:none !important; }
+  /* the camera words take the foot's left end under the stage, clear of the right-set verbs */
+  ${D} .sx-sw__stage.is-live > .sx-sw__camera { left:8px !important; right:auto !important; top:calc(100% + 2px) !important; bottom:auto !important; }
 }
 @media (min-width:651px) and (max-width:699px) and (max-height:460px) and (hover:hover) {
   ${W} .sx-sw__stage.is-live > .sx-sw__camera { column-gap:10px !important; }

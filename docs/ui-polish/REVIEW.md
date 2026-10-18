@@ -1751,3 +1751,21 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 **Checked:** standard six-size bench plus the complete final warm matrix after the Inspect repair; all final arrival PNGs opened. Control reachability 8/8, station-field-hardware 7/7, market-driver-presenter 4/4. The 1280x720 walk reached 13 labeled controls before its 240-second cell cap; a continuation within the packet's twelve-minute allowance reached 16 more, including Range / Record / Paint. The remaining 14 index attempts returned empty labels after Undock left the persistent fixture faded, so full interaction acceptance is **not done**. All 31 walk PNGs were opened. Evidence and commands stay in `.devshots/delegates/oct17/build-e/RECEIPT.md`.
 
 **Leftovers:** the fleet at 960x540 and lower operation panel at 1024x768 scroll. Expanded readout prose can be clipped horizontally, and Record rows require scrolling in the left apron. Shipworks at <=844 and the <=760 Missions, Factions and Ledger findings remain open; this is a scoped laptop repair, not a redesign of those tabs. Bench actions exercise fixture UI and do not certify live simulation transactions or performance.
+
+## Station Shipworks and Missions at 651–800 wide, ≤460 tall (d223, 2026-10-18)
+
+**Before:** at 700x460 Shipworks showed 6 tangled and 6 cut findings and at 760x420 six more off-frame — the berth head took ~208px of a ~360px body, the jig's stage collapsed to ~0–79px, `stageRingGeo()` returns null under 160px so `seatVerbs` never ran and the verb rack kept its sheet seat ~258px from the left of a ~460px main (off the frame), and the callout cards piled onto the nameplate. Missions' dossier kept its 461px-min-height composition, so at ≤460 the wrapped two-column flow left the reading column ~0px and the passenger legend printed over the dossier title and client.
+
+**After (`stationLayouts.js`, `shipworksLayouts.js`, `stationTabsLayouts.js`; every new selector carries `html:root:not([data-sf-mobile="1"])`):**
+- At 651–800 × ≤460 the berth head is capped at 100px and scrolls its services for both `.sx-sw` and `.sx-ct`, and the Shipworks body row keeps a 200px floor so the berth itself scrolls — the same trade the 651–1100 band already makes at 844x390.
+- `.sx-sw__main` is the scroll host at this band (the `:has(.sx-sw-verbs--unseated)` / `:has(.sx-sw__stats--unseated)` overflow forms are repeated inside the query so the plain rule wins); the stage takes all but the 22px identity line, and the verb rack sits just under the main's fold — inside the scroller, so the rack is a scrolled reach, not clipped content.
+- Callout cards go one-line (`b`/`em` inline at 15px, the solver measures live) as at 801–1100; the nameplate's crest is pinned to one row with its blurb asleep — a wrapped crest doubled the ink keep-out, the shortened column then failed the solver's viability check, the obstacle was dropped whole, and the first card landed on the hull name. Camera words take the stage foot's left end.
+- The Missions one-column scrolling dossier (previously 461–800 tall only) now applies through ≤460, and the 651–699 label-over-value terms rule likewise.
+
+| Viewport | Shipworks before | Shipworks after | Contracts before | Contracts after |
+|---|---:|---:|---:|---:|
+| 700x460 | 6 tangled / 6 cut | 0 | tangled legend/title/client | 0 |
+| 760x420 | 6 off-frame | 0 | same | 0 |
+| 960x540 / 1280x720 / 1366x768 / 1920x1080 | 0 | 0 | 0 | 0 |
+
+**Checked:** bench clean (0 text + 0 arrival control findings) on all four small-window tabs at 700x460 and 760x420, Factions and Ledger included (they were already repaired earlier on 2026-10-18); both changed tabs clean at 960x540, 1280x720, 1366x768 and 1920x1080 — no rule above matches at those sizes. All PNGs opened. Walks: Shipworks 25 controls at both small sizes (25 at 960x540), Contracts 27 at both small sizes. The post-action UNREACHABLE notes in walk output are the command palette / comms history / help / departure-check layers the walk opens covering the tabs beneath — the same contextual observations the reachability section above documents, present identically at 960x540.

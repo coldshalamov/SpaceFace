@@ -215,8 +215,8 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-14px; }
   ${T} .sx-ct__dossier { padding-bottom:6px !important; }
 }
-/* the dossier in a narrow, mid-height window (651–800 × 461–800): one column that scrolls, so the title, the reward and ACCEPT read as words, not letters */
-@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+/* the dossier in a narrow window (651–800 × ≤800): one column that scrolls, so the title, the reward and ACCEPT read as words, not letters. ≤460 high included — the wrapped two-column flow below 461 left the reading column ~0px and the caps printed over the title and client (700×460 / 760×420). */
+@media (min-width:651px) and (max-width:800px) and (max-height:800px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) clamp(180px, calc(100vw - 470px), 320px) !important; }
   ${D} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; align-content:start !important;
     height:100% !important; overflow-y:auto !important; overscroll-behavior:contain; row-gap:0 !important; padding-top:6px !important; padding-right:4px !important;
@@ -234,7 +234,7 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
-@media (min-width:651px) and (max-width:699px) and (min-height:461px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:699px) and (max-height:800px) {
   ${D} .sx-dossier__terms > li { grid-template-columns:minmax(0, 1fr) !important; row-gap:1px !important; }
 }
 @media (max-width:1400px) {
