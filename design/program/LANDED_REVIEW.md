@@ -25,6 +25,5 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
-| R-6926e5d | 6926e5d09c9cd6d634fd24fb998ec1a6e08e7eab | BGS-D229 Ceres derelict scavenger spawn | Seed-4242 Ceres entry materializes the zone_ceres_derelict contact with the zone and wreck anchor aligned outside Belt Outpost protection | OPEN |
 | R-cc46e17 | cc46e17abcf8e4691a80d69c02aca21d1e45e4af | §1.8 demo sweep: save, input, and station trade recovery | Continue rechecks the primary and recovery bytes after async validation before choosing a restore source | OPEN |
 | R-48e411f | 48e411f4d22af25ec4b4e5ed7e1956efa09d2cb2 | §1.8 demo sweep: endgame mission disposition | With eight active contracts, an endgame choice still emits `ui:endgameChoose` without consuming a mission slot | OPEN |
