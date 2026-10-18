@@ -10,6 +10,7 @@ import {
   packageTextureDetachCovers,
 } from './packageCpuDetach.js';
 import { releaseSharedImageSource } from './imageSourceDedupe.js';
+import { compileShadowDepthPipelines } from './shadowDepthAdmission.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
 const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
@@ -1157,4 +1158,245 @@ function clockNow() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : Date.now();
+}
+
+function programCacheKeyOf(program) {
+  if (!program) return '';
+  return String(program.cacheKey || program.name || '');
+}
+
+/** Program cache keys Three has already acquired on this renderer, in list order. */
+export function rendererProgramCacheKeys(renderer) {
+  const programs = renderer && renderer.info && renderer.info.programs;
+  if (!Array.isArray(programs)) return [];
+  const keys = [];
+  const seen = new Set();
+  for (const program of programs) {
+    const key = programCacheKeyOf(program);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    keys.push(key);
+  }
+  return keys;
+}
+
+/**
+ * Keys acquired between two snapshots. This is the program count a presented
+ * frame linked: Three appends to info.programs as it compiles.
+ */
+export function worksPresentedFrameLinkedKeys(beforeKeys, afterKeys) {
+  const before = beforeKeys instanceof Set ? beforeKeys : new Set(beforeKeys || []);
+  const linked = [];
+  const seen = new Set();
+  for (const key of afterKeys || []) {
+    const value = String(key || '');
+    if (!value || before.has(value) || seen.has(value)) continue;
+    seen.add(value);
+    linked.push(value);
+  }
+  linked.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  return linked;
+}
+
+function absorbProgramKeys(target, keys) {
+  for (const key of keys || []) {
+    const value = String(key || '');
+    if (value) target.add(value);
+  }
+}
+
+function boundMaterialProgramKey(renderer, material) {
+  if (!renderer || !material || !renderer.properties
+      || typeof renderer.properties.get !== 'function') return '';
+  try {
+    const props = renderer.properties.get(material);
+    return programCacheKeyOf(props && props.currentProgram);
+  } catch (_) {
+    return '';
+  }
+}
+
+function captureWorksObjectHome(object) {
+  const parent = object && object.parent ? object.parent : null;
+  return {
+    object,
+    parent,
+    index: parent && Array.isArray(parent.children) ? parent.children.indexOf(object) : -1,
+  };
+}
+
+function restoreWorksObjectHome(home) {
+  const object = home && home.object;
+  if (!object) return;
+  const parent = home.parent;
+  object.matrixWorldNeedsUpdate = true;
+  if (!parent) {
+    if (object.parent && typeof object.parent.remove === 'function') object.parent.remove(object);
+    return;
+  }
+  if (object.parent !== parent && typeof parent.add === 'function') parent.add(object);
+  const children = parent.children;
+  if (!Array.isArray(children)) return;
+  const current = children.indexOf(object);
+  const index = home.index;
+  if (current < 0 || index < 0 || current === index) return;
+  children.splice(current, 1);
+  children.splice(Math.min(index, children.length), 0, object);
+}
+
+/**
+ * Link the programs the first presented Asteroid Works picture used to compile
+ * inside the draw. This context is not the flight renderer, so the flight
+ * opening warm never reaches it: bloom's post materials, the scene color
+ * cohort, and the shadow-depth variants public compile() does not build.
+ * The returned keys are the ones a later presented frame must not link again.
+ */
+export async function warmWorksOpeningPrograms(options = {}) {
+  const renderer = options.renderer || null;
+  const yieldToMain = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : yieldToBrowser;
+  // Leave the display callback before any link. The presented frame that asked
+  // for this warm returns without drawing.
+  await yieldToMain();
+  const keys = new Set();
+  const notes = [];
+  const bloom = options.bloom || null;
+
+  if (bloom && typeof bloom.prepareResources === 'function') {
+    const before = rendererProgramCacheKeys(renderer);
+    let prepared = null;
+    try {
+      prepared = await bloom.prepareResources(yieldToMain);
+    } catch (_) {
+      prepared = { skipped: true, reason: 'post-prepare-failed' };
+    }
+    if (!prepared || prepared.skipped === true) {
+      notes.push(String((prepared && prepared.reason) || 'post-skipped'));
+    }
+    absorbProgramKeys(keys, worksPresentedFrameLinkedKeys(before, rendererProgramCacheKeys(renderer)));
+    if (typeof bloom.openingProgramMaterials === 'function') {
+      const materials = bloom.openingProgramMaterials() || [];
+      for (const material of materials) {
+        const key = boundMaterialProgramKey(renderer, material);
+        if (key) keys.add(key);
+      }
+    }
+  } else {
+    notes.push('no-bloom');
+  }
+
+  if (typeof options.compileScene === 'function') {
+    const before = rendererProgramCacheKeys(renderer);
+    try {
+      await options.compileScene();
+    } catch (_) {
+      notes.push('scene-compile-failed');
+    }
+    absorbProgramKeys(keys, worksPresentedFrameLinkedKeys(before, rendererProgramCacheKeys(renderer)));
+  }
+
+  let depth = null;
+  const scene = options.scene || null;
+  const camera = options.camera || null;
+  const light = options.light || null;
+  if (renderer && scene && camera && light) {
+    try {
+      depth = compileShadowDepthPipelines({
+        renderer,
+        light,
+        camera,
+        subjects: [scene],
+        lightingScene: scene,
+        forceEnable: true,
+        THREE: options.THREE || THREE,
+        captureObjectHome: options.captureObjectHome || captureWorksObjectHome,
+        restoreObjectHome: options.restoreObjectHome || restoreWorksObjectHome,
+        stagingName: 'SF_WorksOpeningShadowDepth',
+      });
+    } catch (_) {
+      depth = { skipped: true, reason: 'depth-compile-failed', programCacheKeys: [] };
+    }
+    if (depth && Array.isArray(depth.programCacheKeys)) absorbProgramKeys(keys, depth.programCacheKeys);
+    if (!depth || depth.skipped === true) {
+      const reason = depth && depth.reason ? String(depth.reason) : 'depth-skipped';
+      if (reason !== 'no shadow-casting subjects') notes.push(reason);
+    }
+  } else {
+    notes.push('no-depth-rig');
+    depth = { skipped: true, reason: 'no-depth-rig' };
+  }
+
+  return {
+    keys: Object.freeze([...keys].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))),
+    depthSkipped: !depth || depth.skipped === true,
+    depthReason: depth && depth.reason ? String(depth.reason) : '',
+    notes: Object.freeze(notes),
+  };
+}
+
+function warmedKeySet(keys) {
+  const warmed = new Set();
+  absorbProgramKeys(warmed, keys);
+  return warmed;
+}
+
+/**
+ * One opening per works context. The first bloom.render waits until the warm
+ * owns its program keys. A context loss drops the linked programs with the
+ * GL context, so reset() arms the warm again.
+ */
+export function createWorksOpeningGate() {
+  let generation = 0;
+  let warmed = null;
+  let pending = null;
+  return {
+    ready() { return warmed != null; },
+    reset() {
+      generation += 1;
+      warmed = null;
+      pending = null;
+    },
+    settle(keys) {
+      warmed = warmedKeySet(keys);
+      pending = Promise.resolve(warmed);
+      return warmed;
+    },
+    ensure(startWarm) {
+      if (warmed) return Promise.resolve(warmed);
+      if (pending) return pending;
+      const gen = generation;
+      pending = Promise.resolve()
+        .then(() => (typeof startWarm === 'function' ? startWarm() : { keys: [] }))
+        .then((receipt) => {
+          if (gen !== generation) return warmed;
+          warmed = warmedKeySet(receipt && receipt.keys);
+          return warmed;
+        })
+        .catch((error) => {
+          if (gen === generation) pending = null;
+          throw error;
+        });
+      return pending;
+    },
+    frameLinkedKeys(observedKeys) {
+      if (!warmed) return worksPresentedFrameLinkedKeys([], observedKeys);
+      return worksPresentedFrameLinkedKeys(warmed, observedKeys);
+    },
+  };
+}
+
+/**
+ * Present one works frame. While the opening warm is unfinished the frame
+ * does not draw, so it cannot link the cohort inside the picture.
+ */
+export function runWorksPresentedFrame(gate, draw) {
+  if (!gate || typeof gate.ready !== 'function' || gate.ready() !== true) {
+    return { drew: false, linkedKeys: [] };
+  }
+  const observed = typeof draw === 'function' ? draw() : [];
+  const linkedKeys = typeof gate.frameLinkedKeys === 'function'
+    ? gate.frameLinkedKeys(observed)
+    : worksPresentedFrameLinkedKeys([], observed);
+  return { drew: true, linkedKeys };
 }

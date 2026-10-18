@@ -62,7 +62,11 @@ import {
   INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
 import { applyWorksFurnaceHeat } from '../../render/industrialMaterialFamilies.js';
-import { collectStartupGeometries, collectStartupGeometryDrawables, collectStartupTextures } from '../../render/startupGpuResidency.js';
+import {
+  collectStartupGeometries, collectStartupGeometryDrawables, collectStartupTextures,
+  createWorksOpeningGate, rendererProgramCacheKeys, runWorksPresentedFrame,
+  warmWorksOpeningPrograms, worksPresentedFrameLinkedKeys, yieldToBrowser,
+} from '../../render/startupGpuResidency.js';
 import {
   armGeometryGpuResidentLedger,
   detachedGeometryUploadPending,
@@ -1394,6 +1398,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const worksPresentationEnvironment = scene.environment;
 
   let disposed = false;   // guards async surface arrival against a screen that already left
+  // This private context never rides the flight opening warm. Hold the first
+  // picture until bloom's post programs, the scene color cohort, and the
+  // shadow-depth variants are already linked — otherwise each one blocks
+  // inside the first drawn frames.
+  const worksOpeningGate = createWorksOpeningGate();
   let worksTearingDown = false;
   // This private context can die and restore independently of the main one (W140-G4). On
   // restore the uploadedOn ledger on the live renderer object still claims records the lost
@@ -1412,6 +1421,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const onWorksContextRestored = () => {
     if (disposed || worksTearingDown || glTeardownDone) return;
     dropGeometryGpuResidencyLedger(renderer);
+    worksOpeningGate.reset();
     if (contextRestoreConsult) return;
     // The latch clears on the assigned promise, not inside the body: with empty pendings the
     // body's finally runs synchronously, before the assignment stores the promise, and the
@@ -8844,7 +8854,33 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     stepDom(d, dt);
     // Hold the draw while a context-restore rehydrate is in flight — a bind on emptied
     // payloads is exactly what the consult exists to prevent (W140-G4).
-    if (!contextRestoreConsult) bloom.render(scene, camera);
+    if (!contextRestoreConsult) {
+      const outcome = runWorksPresentedFrame(worksOpeningGate, () => {
+        const before = rendererProgramCacheKeys(renderer);
+        bloom.render(scene, camera);
+        return worksPresentedFrameLinkedKeys(before, rendererProgramCacheKeys(renderer));
+      });
+      if (!outcome.drew) {
+        void worksOpeningGate.ensure(() => {
+          if (disposed || worksTearingDown) return { keys: [] };
+          return warmWorksOpeningPrograms({
+            renderer,
+            bloom,
+            scene,
+            camera,
+            light: key,
+            THREE,
+            compileScene: () => queueWorksPipelines(scene),
+            yieldToMain: yieldToBrowser,
+          });
+        }).catch((error) => {
+          console.warn('[asteroidRenderer3d] opening program warm failed', error);
+          if (!worksOpeningGate.ready()) worksOpeningGate.settle([]);
+        });
+      } else if (renderer.userData) {
+        renderer.userData.spacefaceWorksFrameLinkedKeys = outcome.linkedKeys;
+      }
+    }
   }
 
   // ---------------------------------------------------------------- teardown
@@ -8997,7 +9033,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   function readiness() {
     return {
-      ready: terrainReady && rockSurfaceReady && authoredRoverState.ready && rover.visible,
+      ready: worksOpeningGate.ready() && terrainReady && rockSurfaceReady && authoredRoverState.ready && rover.visible,
       failed: terrainFailed || authoredRoverState.failed,
       terrain: terrainReady && rockSurfaceReady,
       rover: authoredRoverState.ready && rover.visible,
