@@ -64,8 +64,14 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // 41 entities { asteroid 6, fauna 12, fx 14, ship 3, station 6 } / 17 collidable / 306 colliders
 // with the Cathedral at 15/15 materialized (14 shelved); entity/type/collider pins below move
 // to that measured truth. Prior digest 8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e.
+// Re-pinned 2026-10-18 (ceres-ambush-pack-dart): Ceres enemyDensity 0.18 → 0.73 funds the
+// authored belt-shadow pack (zone_ceres_ambush [3,4] incl. the weighted detonator_dart), so
+// the one-tick core carries two more live squad ships and the density-fed aftermath dressing
+// adds two solids: 43 entities { ship 3 → 5 } / 19 collidable / 355 colliders. Causality-proved
+// by neutralization (HEAD data passes, authored data fails). Prior digest
+// d0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'd0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd';
+  '2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -146,7 +152,8 @@ test('PQ-020 authors four separated Ceres pockets around the immutable Cathedral
   assert.equal(receipt.production.beltOutpostInsideProduction, true);
   assert.deepEqual(receipt.deterministicEffects.offscreenEmbodiment, {
     intentCount: 3,
-    digest: 2416862514,
+    // ceres-ambush-pack-dart (2026-10-18): two more live belt-shadow ships join the mix.
+    digest: 3217214187,
     roleMixBias: {
       hauler: 1.4,
       miner: 2.2,
@@ -186,13 +193,14 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // patrol ship inside the live range), collidable 16 → 17, colliders 284 → 306;
   // worldSite.shelvedEntities still reads 14.
   assert.deepEqual(first.structuralCost.entities, {
-    total: 41,
-    byType: { asteroid: 6, fauna: 12, fx: 14, ship: 3, station: 6 },
-    collidable: 17,
+    total: 43,
+    byType: { asteroid: 6, fauna: 12, fx: 14, ship: 5, station: 6 },
+    collidable: 19,
   });
-  // Latest core260 + one 24-primitive patrol skin; the seven canonical Cathedral solids are
+  // Latest core260 + the patrol skin + the belt-shadow squad's two extra hulls and the two
+  // density-fed aftermath solids; the seven canonical Cathedral solids are
   // shelved at boot and return on approach.
-  assert.equal(first.structuralCost.colliders, 306);
+  assert.equal(first.structuralCost.colliders, 355);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
@@ -266,10 +274,10 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // craft-scale floor joined the yard tug as fixed measured-skin solids (totals collidable
   // 1 → 15, colliders 24 → 299). Pieces under the floor stay ghosts.
   assert.deepEqual(first.additiveDressing.totals, {
-    entities: 21,
-    byType: { fx: 20, wreck: 1 },
-    collidable: 15,
-    colliders: 279,
+    entities: 23,
+    byType: { fx: 22, wreck: 1 },
+    collidable: 17,
+    colliders: 309,
   });
   assert.equal(first.additiveDressing.ambiguousEntities, 0);
   assert.deepEqual(first.additiveDressing.groups, [
@@ -286,7 +294,8 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     {
       id: 'wreckAftermath',
       dataFlag: 'wreckAftermath',
-      live: { entities: 4, byType: { fx: 4 }, collidable: 3, colliders: 38 },
+      // ceres-ambush-pack-dart (2026-10-18): the density dial feeds aftermath dressing volume.
+      live: { entities: 6, byType: { fx: 6 }, collidable: 5, colliders: 68 },
     },
   ]);
 

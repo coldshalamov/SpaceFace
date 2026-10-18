@@ -162,8 +162,14 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // beacon rows: two entities, no colliders, no pocket intrusion — the corridor a new player
 // crosses after the first jump). Prior digest was
 // 8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e.
+// 2026-10-18 (ceres-ambush-pack-dart): Ceres enemyDensity 0.18 → 0.73 funds the authored
+// belt-shadow pack, and the density dial is a direct wreckAftermathDressingForSector input
+// (world.js passes sector.enemyDensity), so the Reach-heavy belt authors two more aftermath
+// solids (fx 4→6, colliders 38→68) plus the two live squad ships. Causality-proved by
+// neutralization: HEAD data passes, the authored data fails, the re-pin passes. Prior digest
+// was d0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'd0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd';
+  '2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed';
 
 // PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
 // wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres
@@ -181,12 +187,14 @@ const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
     colliders: 58,
   }),
   wreckAftermath: Object.freeze({
-    entities: 4,
-    byType: Object.freeze({ fx: 4 }),
-    collidable: 3,
+    entities: 6,
+    byType: Object.freeze({ fx: 6 }),
+    collidable: 5,
     // Second Measure adds a wreck-field anchor. The same isolated aftermath RNG now selects
     // a different ordinary field (pre-PR221 sectors alone restore the old 58 primitives).
-    colliders: 38,
+    // ceres-ambush-pack-dart (2026-10-18): enemyDensity is a direct aftermath dressing input,
+    // so funding the belt-shadow pack (0.18 → 0.73) authors two more Reach-wreck solids.
+    colliders: 68,
   }),
   // PQ-143.02: the Long Berth yard tug is an authored physical wreck (0c6f0ea1a). It used to
   // leave this census whenever the far-actor shelf took it; D141 (09132834b) deliberately
@@ -595,7 +603,9 @@ export function validatePq020CeresTopologySnapshot(snapshot) {
     failures,
     'offscreenEmbodiment.digest',
     snapshot?.deterministicEffects?.offscreenEmbodiment?.digest,
-    2416862514,
+    // ceres-ambush-pack-dart (2026-10-18): the density-funded belt-shadow squad (two more
+    // live ships) joins the offscreen embodiment mix. Prior digest was 2416862514.
+    3217214187,
   );
   exact(
     failures,
