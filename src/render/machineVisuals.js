@@ -73,7 +73,7 @@ function buildSurveyorPrism() {
 }
 
 // Custodian: a low radial shell with articulated maintenance arms — reads industrious.
-function buildCustodian() {
+function buildCustodian(entity = null) {
   const g = new THREE.Group();
   const shell = new THREE.Mesh(geo('cust_shell', () => {
     const s = new THREE.SphereGeometry(1, 16, 8);
@@ -87,6 +87,8 @@ function buildCustodian() {
     s.translate(0, 0, -1.0);
     return s;
   });
+  const tipMat = lightMat(1.8);
+  const tips = [];
   for (let i = 0; i < 4; i += 1) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
     const m = new THREE.Mesh(arm, seamMat());
@@ -94,16 +96,48 @@ function buildCustodian() {
     m.rotation.y = -a;
     m.scale.setScalar(8);
     g.add(m);
-    const tip = new THREE.Mesh(geo('cust_tip', () => new THREE.SphereGeometry(0.14, 8, 6)), lightMat(1.8));
+    const tip = new THREE.Mesh(geo('cust_tip', () => new THREE.SphereGeometry(0.14, 8, 6)), tipMat);
+    tip.name = 'cust_tip';
     tip.position.set(Math.cos(a) * 12 + Math.sin(-a) * 0 - Math.sin(a) * -14, -3, Math.sin(a) * 12 + Math.cos(a) * -14);
     tip.scale.setScalar(6);
     g.add(tip);
+    tips.push(tip);
   }
   const eye = new THREE.Mesh(geo('cust_eye', () => new THREE.SphereGeometry(0.22, 8, 6)), lightMat(1.5));
   eye.position.y = 5;
   eye.scale.setScalar(10);
   g.add(eye);
   g.name = 'SF_Machine_custodian';
+
+  let motionTime = 0;
+  g.userData.updateAuthoredMotion = (arg1, arg2) => {
+    let dt = 0.016;
+    let live = null;
+    if (typeof arg1 === 'number') {
+      dt = arg1;
+      live = arg2;
+    } else if (arg1 && typeof arg1 === 'object') {
+      live = arg1;
+      if (typeof arg2 === 'number') dt = arg2;
+    } else if (typeof arg2 === 'number') {
+      dt = arg2;
+    }
+    const current = (live && typeof live === 'object') ? live : (entity && typeof entity === 'object' ? entity : null);
+    if (typeof arg2 === 'number' && typeof arg1 !== 'number') {
+      motionTime = arg2;
+    } else {
+      motionTime += Math.max(0, Math.min(1, dt));
+    }
+    const isRepairing = Boolean(current?.data?.machine?.repairing);
+    const targetIntensity = isRepairing
+      ? 1.8 + (Math.sin(motionTime * 6) * 0.5 + 0.5) * 0.6
+      : 0.25;
+    tipMat.emissiveIntensity = targetIntensity;
+    for (const t of tips) {
+      if (t.material) t.material.emissiveIntensity = targetIntensity;
+    }
+  };
+
   return g;
 }
 
@@ -189,7 +223,7 @@ function buildShepherd() {
 }
 
 // Mason: an assembly cradle — two open gantries holding an empty axis.
-function buildMason() {
+function buildMason(entity = null) {
   const g = new THREE.Group();
   const arm = geo('msn_arm', () => {
     const s = new THREE.TorusGeometry(1.0, 0.09, 6, 24, Math.PI);
@@ -202,10 +236,40 @@ function buildMason() {
     a.position.x = i === 0 ? -2 : 2;
     g.add(a);
   }
-  const weld = new THREE.Mesh(geo('msn_weld', () => new THREE.SphereGeometry(0.12, 8, 6)), lightMat(2.8));
+  const weldMat = lightMat(2.8);
+  const weld = new THREE.Mesh(geo('msn_weld', () => new THREE.SphereGeometry(0.12, 8, 6)), weldMat);
+  weld.name = 'msn_weld';
   weld.scale.setScalar(14);
   g.add(weld);
   g.name = 'SF_Machine_mason';
+
+  let motionTime = 0;
+  g.userData.updateAuthoredMotion = (arg1, arg2) => {
+    let dt = 0.016;
+    let live = null;
+    if (typeof arg1 === 'number') {
+      dt = arg1;
+      live = arg2;
+    } else if (arg1 && typeof arg1 === 'object') {
+      live = arg1;
+      if (typeof arg2 === 'number') dt = arg2;
+    } else if (typeof arg2 === 'number') {
+      dt = arg2;
+    }
+    const current = (live && typeof live === 'object') ? live : (entity && typeof entity === 'object' ? entity : null);
+    if (typeof arg2 === 'number' && typeof arg1 !== 'number') {
+      motionTime = arg2;
+    } else {
+      motionTime += Math.max(0, Math.min(1, dt));
+    }
+    const isWorking = Boolean(current?.data?.machine?.working);
+    const targetIntensity = isWorking
+      ? 2.8 + (Math.sin(motionTime * 8) * 0.5 + 0.5) * 0.8
+      : 0.25;
+    weldMat.emissiveIntensity = targetIntensity;
+    if (weld.material) weld.material.emissiveIntensity = targetIntensity;
+  };
+
   return g;
 }
 
@@ -395,12 +459,14 @@ const MACHINE_BUILDERS = {
   sleeping_jury: buildSleepingJury,
 };
 
-export function buildMachineMesh(entity) {
-  const m = entity && entity.data && entity.data.machine;
-  const kind = machineKindById(m && m.kind);
+export function buildMachineMesh(entityOrKind) {
+  const kindId = typeof entityOrKind === 'string'
+    ? entityOrKind
+    : (entityOrKind?.data?.machine?.kind || entityOrKind?.kind || entityOrKind?.machineKind);
+  const kind = machineKindById(kindId);
   if (!kind) return null;
   const builder = MACHINE_BUILDERS[kind.id];
-  const root = builder ? builder() : null;
+  const root = builder ? builder(typeof entityOrKind === 'object' ? entityOrKind : null) : null;
   if (root) {
     root.userData.kind = 'machine';
     root.userData.machineKind = kind.id;
