@@ -84,6 +84,8 @@ const migratePlayerStore = process.env.SPACEFACE_MIGRATE_PLAYER_STORE === '1';
 // through the explicit dual gate; the environment variable alone has no effect on normal play.
 const allowEvidenceBackgroundExecution = launchConfig.isolatedEvidence === true
   && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION === '1';
+const hideEvidenceWindow = launchConfig.isolatedEvidence === true
+  && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW === '1';
 const backgroundThrottling = !allowEvidenceBackgroundExecution;
 const RECEIPT_PATH = process.env.SPACEFACE_LAUNCH_RECEIPT || '';
 const receipt = (status, details = {}) => appendLaunchReceipt(RECEIPT_PATH, status, details);
@@ -392,6 +394,10 @@ function systemLifecycleSuspended() {
 
 function deriveWindowLifecycleState(win) {
   if (systemLifecycleSuspended()) return 'system-suspended';
+  // An explicitly hidden isolated probe presents offscreen without stealing focus.
+  if (hideEvidenceWindow && allowEvidenceBackgroundExecution && win && !win.isDestroyed()) {
+    return 'foreground-visible';
+  }
   if (!win || win.isDestroyed() || win.isMinimized() || !win.isVisible()) {
     return 'hidden-or-minimized';
   }
@@ -801,12 +807,17 @@ async function createWindow() {
       spellcheck: false,
       preload: path.join(__dirname, 'preload.cjs'),
       backgroundThrottling,
+      offscreen: hideEvidenceWindow,
       // Each module is fetched once per launch, so the 'code' heat check never arms on
       // this graph; 'bypassHeatCheck' writes the V8 code cache on first load and lets
       // later launches deserialize bytecode instead of recompiling every module.
       v8CacheOptions: 'bypassHeatCheck',
     },
   });
+  if (hideEvidenceWindow) {
+    win.webContents.setFrameRate(60);
+    win.webContents.startPainting();
+  }
   // S1 stage D: SPACEFACE_SIM_LANE opts the authoritative sim into its worker
   // lane for a launched shell — the canonical URL forbids query params, so the
   // lane ships through localStorage 'sf.simLane' via preload.cjs instead.
@@ -843,7 +854,7 @@ async function createWindow() {
       evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
       fullscreen: !launchConfig.isolatedEvidence,
     });
-    win.show();
+    if (!hideEvidenceWindow) win.show();
   });
   win.webContents.on('did-fail-load', (_event, code, message, url, isMainFrame) => {
     if (!isMainFrame) return;

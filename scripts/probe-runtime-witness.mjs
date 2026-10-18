@@ -43,6 +43,7 @@ const SAMPLE_EVERY_MS = 500;
 const FIXED_SEED = 47;
 const FULL_SYSTEM_TIMING = process.env.SPACEFACE_WITNESS_FULL_SYSTEM_TIMING === '1';
 const CONTINUE_ROUTE = process.argv.includes('--continue');
+const CONTINUE_PROFILE = process.argv.includes('--continue-profile');
 const SECTOR_ENTRY_ROUTE = process.argv.includes('--sector-entry');
 const SHADOWS_OFF_DIAGNOSTIC = process.argv.includes('--shadows-off-diagnostic');
 const OPAQUE_BATCH_OFF_DIAGNOSTIC = process.argv.includes('--opaque-batch-off-diagnostic');
@@ -78,8 +79,12 @@ const CPU_PROFILE = process.argv.includes('--cpu-profile');
 // Exercise the reported failure using the normal nearest-latch, turn, winch and cut controls.
 // This is a diagnostic input route; it never spawns or teleports bodies or edits simulation state.
 const TETHER_BOOST_STRESS = process.argv.includes('--tether-boost-stress');
-const TETHER_STRESS = process.argv.includes('--tether-stress') || TETHER_BOOST_STRESS;
+const TETHER_HOLD_STRESS = process.argv.includes('--tether-hold-stress');
+const TETHER_STRESS = process.argv.includes('--tether-stress') || TETHER_BOOST_STRESS || TETHER_HOLD_STRESS;
 const FOCUS_RECOVERY_STRESS = process.argv.includes('--focus-recovery-stress');
+const BACKGROUND_FLIGHT_STRESS = process.argv.includes('--background-flight-stress');
+const SAVE_TETHER_STRESS = process.argv.includes('--save-tether-stress');
+const NORMAL_DESKTOP_LIFECYCLE = process.argv.includes('--normal-desktop-lifecycle') || BACKGROUND_FLIGHT_STRESS;
 const COMBAT_STRESS = process.argv.includes('--combat-stress');
 // The CPU profile charges browser-native work (style, layout, paint, GPU command flush) to one
 // opaque "(program)" bucket. A devtools.timeline trace over the same window names it.
@@ -1960,6 +1965,7 @@ async function restoreOpeningExactOwnerTouchWitness(targetPage) {
 }
 
 async function armProbeInstrumentation(targetPage) {
+  await targetPage.waitForFunction(() => typeof window.SF?.state?.perfRuntime?.reset === 'function', null, { timeout: 30_000 });
   const instrumentation = await targetPage.evaluate((fullSystemTiming) => {
     const perf = window.SF?.state?.perfRuntime;
     const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
@@ -3159,9 +3165,10 @@ async function launchUntilFlight(targetPage, timeoutMs = 120_000) {
 function readContinueSaveSnapshot() {
   const dir = resolvePlayerSaveDir(process.env);
   const all = readPlayerStoreKeysSync(dir);
-  const pairs = Object.fromEntries(Object.entries(all).filter(([key]) => key.startsWith('sf.save.')));
+  const pairs = Object.fromEntries(Object.entries(all).filter(([key]) => key.startsWith('sf.save.')
+    || (CONTINUE_PROFILE && key === 'sf.settings.profile.v1')));
   const slots = Object.keys(pairs)
-    .filter((key) => key !== 'sf.save.index')
+    .filter((key) => key.startsWith('sf.save.') && key !== 'sf.save.index')
     .map((key) => key.slice('sf.save.'.length))
     .sort();
   if (slots.length === 0 || !pairs['sf.save.index']) {
@@ -3232,7 +3239,7 @@ try {
     timeout: 180_000,
     baseEnv: {
       ...process.env,
-      SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: FOCUS_RECOVERY_STRESS ? '0' : '1',
+      SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: FOCUS_RECOVERY_STRESS || NORMAL_DESKTOP_LIFECYCLE ? '0' : '1',
     },
   });
   log('launching isolated Electron');
@@ -3240,6 +3247,15 @@ try {
   childProcess = app.process();
   processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
   page = await app.firstWindow({ timeout: 180_000 });
+  if (NORMAL_DESKTOP_LIFECYCLE) {
+    await app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
+      win.show();
+      win.setFullScreen(true);
+      win.focus();
+      win.webContents.focus();
+    });
+  }
   installCspSafePlaywrightPolling(page);
   const urlDeadline = Date.now() + 20_000;
   while (Date.now() < urlDeadline) {
@@ -3472,8 +3488,8 @@ try {
   }
   if (FOCUS_RECOVERY_STRESS) {
     // Model Electron returning native focus while Chromium loses the DOM focus event.
-    // The native window and the real worker own the transition; the observer only drops
-    // that one DOM notification, never writes game state or fabricates shell commands.
+    // The native window and the real worker own the transition; the observer drops
+    // the DOM notifications, never writes game state or fabricates shell commands.
     const gameWindowId = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].id);
     await app.evaluate(({ app, BrowserWindow }, id) => {
       app.focus();
@@ -3485,9 +3501,9 @@ try {
     await page.evaluate(() => {
       const trace = { interceptedFocus: 0, blur: 0 };
       trace.dropFocus = (event) => { trace.interceptedFocus++; event.stopImmediatePropagation(); };
-      trace.onBlur = () => { trace.blur++; };
+      trace.onBlur = (event) => { trace.blur++; event.stopImmediatePropagation(); };
       window.addEventListener('focus', trace.dropFocus, true);
-      window.addEventListener('blur', trace.onBlur);
+      window.addEventListener('blur', trace.onBlur, true);
       window.__SF_FOCUS_RECOVERY_PROBE__ = trace;
     });
     const motionStart = await page.evaluate(() => window.SF.state.simTime);
@@ -3497,6 +3513,11 @@ try {
       const player = state.entities.get(state.playerId);
       return state.simTime > start + 0.3 && Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0) > 5;
     }, motionStart, { polling: 50, timeout: 8000 });
+    if (TETHER_STRESS) {
+      await page.keyboard.press('ControlLeft+Space');
+      await page.waitForFunction(() => window.SF.state.player.tether.active === true, null, { timeout: 8000 });
+      await page.keyboard.down('BracketLeft');
+    }
     const before = await page.evaluate(() => ({ simTime: window.SF.state.simTime, scale: window.SF.state.timeScale }));
     const nativeBefore = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
     log(`focus-recovery: before blur nativeFocused=${nativeBefore}, scale=${before.scale}`);
@@ -3533,18 +3554,34 @@ try {
         worker: window.SF.simLaneDiag?.().workerClockLastDiagnostics,
       }));
       const nativeFocused = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
-      const receipt = { before, nativeBefore, paused, nativePaused, resumed: result, nativeFocused };
+      const resumedInput = await page.evaluate(async () => {
+        if (typeof window.SF.simLaneDiag !== 'function') {
+          const input = window.SF.state.input;
+          return { moveZ: input.moveZ, autoFire: input.autoFire };
+        }
+        const { laneRpc } = await import('/src/core/simLaneCommands.js');
+        const probe = await laneRpc('probeState');
+        return probe.ok ? probe.result?.input : null;
+      });
+      const receipt = { before, nativeBefore, paused, nativePaused, resumed: result, nativeFocused, resumedInput };
       await writeFile(path.join(OUT, 'focus-recovery.json'), JSON.stringify(receipt, null, 2));
       if (!nativeBefore || nativePaused || !nativeFocused || paused.lifecycle !== 'foreground-occluded') {
         throw new Error('focus-recovery stress did not exercise the native focused -> occluded -> focused transition');
       }
+      if (resumedInput?.moveZ !== 0 || resumedInput?.autoFire !== false) {
+        throw new Error(`native focus recovery retained held controls: ${JSON.stringify(resumedInput)}`);
+      }
       log(`focus-recovery: native focus resumed simulation ${paused.simTime} -> ${result.simTime} despite dropped DOM focus`);
     } finally {
       await page.keyboard.up('KeyW');
+      await page.keyboard.up('BracketLeft');
+      if (TETHER_STRESS && await page.evaluate(() => window.SF.state.player.tether.active === true)) {
+        await page.keyboard.press('Space');
+      }
       await page.evaluate(() => {
         const trace = window.__SF_FOCUS_RECOVERY_PROBE__;
         window.removeEventListener('focus', trace.dropFocus, true);
-        window.removeEventListener('blur', trace.onBlur);
+        window.removeEventListener('blur', trace.onBlur, true);
         delete window.__SF_FOCUS_RECOVERY_PROBE__;
       });
     }
@@ -3665,8 +3702,42 @@ try {
   const started = Date.now();
   let shotIndex = 0;
   let tetherStage = 0;
+  let backgroundWindowId = null;
+  let backgroundStage = 0;
+  let backgroundBefore = null;
+  let saveStressCount = 0;
   while (Date.now() - started < SAMPLE_MS) {
     const elapsedMs = Date.now() - started;
+    if (SAVE_TETHER_STRESS && saveStressCount < 3 && elapsedMs >= 8_000 + saveStressCount * 12_000) {
+      await page.keyboard.press('F5');
+      saveStressCount++;
+      log(`save-tether: public quicksave ${saveStressCount} while tether remains held`);
+    }
+    if (BACKGROUND_FLIGHT_STRESS && backgroundStage === 0 && elapsedMs >= 8_000) {
+      backgroundBefore = await page.evaluate(readWitnessInPage);
+      backgroundWindowId = await app.evaluate(({ BrowserWindow }) => {
+        const game = BrowserWindow.getAllWindows().find((win) => !win.isDestroyed());
+        const helper = new BrowserWindow({ width: 180, height: 100, show: true, skipTaskbar: true });
+        globalThis.__SF_BACKGROUND_FLIGHT_HELPER__ = helper;
+        helper.focus();
+        return game.id;
+      });
+      backgroundStage = 1;
+      log('background-flight: owned helper takes native focus while tether remains held');
+    } else if (BACKGROUND_FLIGHT_STRESS && backgroundStage === 1 && elapsedMs >= 20_000) {
+      const occluded = await page.evaluate(readWitnessInPage);
+      const nativeFocused = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), backgroundWindowId);
+      await writeFile(path.join(OUT, 'background-flight.json'), JSON.stringify({ before: backgroundBefore, occluded, nativeFocused }, null, 2));
+      await app.evaluate(({ BrowserWindow }, id) => {
+        const win = BrowserWindow.fromId(id);
+        win.focus();
+        win.webContents.focus();
+        globalThis.__SF_BACKGROUND_FLIGHT_HELPER__?.destroy();
+        delete globalThis.__SF_BACKGROUND_FLIGHT_HELPER__;
+      }, backgroundWindowId);
+      backgroundStage = 2;
+      log(`background-flight: returned native focus; sim advanced ${occluded.simTime - backgroundBefore.simTime}s while occluded`);
+    }
     if (TETHER_STRESS && tetherStage === 0) {
       await page.keyboard.press('ControlLeft+Space');
       tetherStage = 1;
@@ -3676,7 +3747,7 @@ try {
       await page.keyboard.down('BracketLeft');
       tetherStage = 2;
       log('tether-stress: turn + reel in');
-    } else if (TETHER_STRESS && tetherStage === 2 && elapsedMs >= 12_000) {
+    } else if (TETHER_STRESS && !TETHER_HOLD_STRESS && tetherStage === 2 && elapsedMs >= 12_000) {
       await page.keyboard.up('BracketLeft');
       await page.keyboard.up('KeyA');
       await page.keyboard.press('Space');
@@ -3699,7 +3770,12 @@ try {
         const pose = (entity) => entity ? {
           id: entity.id, pos: { x: entity.pos?.x, z: entity.pos?.z },
           vel: { x: entity.vel?.x, z: entity.vel?.z }, rot: entity.rot,
-          mesh: entity.mesh ? { x: entity.mesh.position?.x, z: entity.mesh.position?.z } : null,
+          mesh: entity.mesh ? {
+            x: entity.mesh.position?.x, z: entity.mesh.position?.z,
+            worldX: entity.mesh.matrixWorld?.elements?.[12], worldZ: entity.mesh.matrixWorld?.elements?.[14],
+            matrixAutoUpdate: entity.mesh.matrixAutoUpdate,
+            matrixWorldNeedsUpdate: entity.mesh.matrixWorldNeedsUpdate,
+          } : null,
         } : null;
         const diag = window.SF?.simLaneDiag?.() || null;
         const native = await Promise.race([
