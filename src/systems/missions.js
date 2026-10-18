@@ -261,7 +261,7 @@ import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity }
 import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
 // NXI-171 — the shared starvation-row prose builder, so a board refresh re-quotes a live
 // deficit in the exact voice the emit-only producer posted it (no second wording authority).
-import { starvedOfferProse, isShortageGateRepair } from '../data/economyContractTemplates.js';
+import { starvedOfferProse, isShortageGateRepair, WARM_CARGO_CONTRACT } from '../data/economyContractTemplates.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -2102,6 +2102,7 @@ export const missions = {
       const counterweightChanged = this._syncCounterweightOffer(info, board, epoch);
       const yardChanged = this._syncYardContractOffers(info, board, epoch);
       const cylinderChanged = this._syncCleanCylinderOffer(info, board);
+      const warmCargoChanged = this._syncWarmCargoOffer(info, board);
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
@@ -2109,7 +2110,7 @@ export const missions = {
       const shortageChanged = this._syncShortageOffers(board);
       const starterChanged = this._syncStarterJobOffer(info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || cylinderChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
+        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2254,12 +2255,35 @@ export const missions = {
     this._syncCounterweightOffer(info, board, epoch);
     this._syncYardContractOffers(info, board, epoch);
     this._syncCleanCylinderOffer(info, board);
+    this._syncWarmCargoOffer(info, board);
     this._syncAuthoredSetPieceOffers(info, board, epoch);
     this._syncMegaHeistOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
     this._syncAdventureSpeedOffers(info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  _syncWarmCargoOffer(info, board) {
+    const lot = WARM_CARGO_CONTRACT;
+    if (info.id !== lot.stationId) return false;
+    const exists = [...board.slots, ...this.state.missions.active].some(m => m?.source === lot.source);
+    const settled = (this.state.missions.receipts || []).some(r => r.source === lot.source && r.outcome === 'completed');
+    if (exists || settled) return false;
+    const text = lot.boardText.replace('{limit}', String(lot.handlingLimit));
+    board.slots.push({
+      id: `warm_cargo_${lot.stationId}`, source: lot.source, type: lot.offerType,
+      stationId: lot.stationId, factionId: lot.factionId,
+      destStationId: lot.destStationId, destSectorId: lot.destSectorId, distance: lot.distance,
+      reward_cr: lot.paysCr, collateral_cr: 0, riskTier: 0, minRep: 0,
+      time_limit_s: 1200, duration_s: 1200, preloadedCargo: true,
+      params: { cmdtyId: lot.cmdtyId, qty: lot.qty, handlingLimit: lot.handlingLimit,
+        cargoValue: lot.qty, fValue: 1, taskTime: 20, passengers: 0 },
+      title: text, brief: text, summary: text,
+      cause: { tag: lot.key, axis: 'handling', line: text },
+      expiresAtEpoch: this._epoch() + 1, storyTag: null,
+    });
+    return true;
   },
 
   _syncCleanCylinderOffer(info, board) {
