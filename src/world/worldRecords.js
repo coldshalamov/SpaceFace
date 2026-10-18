@@ -15,6 +15,8 @@ import { normalizeIntent } from './worldCatchup.js';
 import { SECTORS } from '../data/sectors.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SHIPS } from '../data/ships.js';
+import { PLANET_SITE } from '../data/planets.js';
+import { makeShipEntitySpec } from '../systems/ships.js';
 
 export const WORLD_RECORDS_SCHEMA_ID = 'spaceface.worldRecords.v1';
 export const WORLD_RECORDS_SCHEMA_VERSION = 3;
@@ -1179,7 +1181,7 @@ export function spawnSpecFromRecord(record) {
   }
 
   // Ship / NPC / convoy / mission target — world prefers makeEnemySpawnSpec; this is a shell.
-  return {
+  const spec = {
     type: 'ship',
     factionId: rec.factionId,
     team: rec.team,
@@ -1225,6 +1227,19 @@ export function spawnSpecFromRecord(record) {
       ? { missionPinned: true }
       : {},
   };
+  // Anvil's two workers start with canonical Mule hardware. A defId-only shell changes
+  // their drive, mass and collision scale on Continue. Reconstruct hardware before
+  // native admission; saved motion, damage, itinerary and cargo remain authoritative.
+  if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId === 'ship_mule'
+    && rec.sectorId === PLANET_SITE.sectorId && rec.itinerary?.kind === 'anvil_work'
+    && ['collector', 'receiver'].includes(rec.itinerary.role)) {
+    const hardware = makeShipEntitySpec(rec.shipDefId, {
+      team: rec.team, factionId: rec.factionId, pos: spec.pos, rot: spec.rot, ai: spec.data.ai,
+    });
+    return { ...hardware, ...spec, radius: hardware.radius, mass: hardware.mass,
+      data: { ...hardware.data, ...spec.data } };
+  }
+  return spec;
 }
 
 /**
