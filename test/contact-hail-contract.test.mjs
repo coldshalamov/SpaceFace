@@ -16,6 +16,7 @@ assert.ok(existsSync(PROMPT_URL), 'contact hail prompt module must exist before 
 const {
   CONTACT_HAIL_RANGE,
   contactHailAvailability,
+  createContactHailOffer,
   createContactHailResponse,
 } = await import(DATA_URL);
 const { scanner } = await import('../src/systems/scanner.js');
@@ -599,4 +600,82 @@ test('availability traversal is scanner-cadenced, target-dirty, and absent from 
   assert.match(scannerSource, /targetDirty/);
   assert.match(scannerSource, /now\s*>=\s*Number\(active\.expiresAt\)/,
     'active offer expiry remains checked every simulation update');
+});
+
+// INF title-legend: systems/titles.js stamps data.titleName/titleId/titleIds (and Thunderchild's
+// titleKillMarks) onto every holder — NPC hulls included — but no surface ever read the stamp.
+// The hail headline and the IDENTIFY answer now carry it in the name slot, so a hull the sector
+// titled answers with the name it earned. Pure presentation read of a stamp the writer owns.
+function titledWorker(id = 'worker-1', stamp = {}) {
+  return entity(id, {
+    data: {
+      trafficRole: 'miner',
+      callsign: 'KELT OF THE PALE',
+      titleId: 'title_lifeline',
+      titleName: 'Lifeline',
+      titleIds: ['title_lifeline'],
+      ai: { passive: true, spawnContext: 'mining' },
+      ...stamp,
+    },
+  });
+}
+
+function identifyLine(state, target, kind = 'worker') {
+  const offer = { requestId: 'titled', targetId: target.id, kind };
+  const response = createContactHailResponse(state, offer, 'identify');
+  return response && response.lines.join(' ');
+}
+
+test('a title-holding worker answers IDENTIFY with the name the world gave it', () => {
+  const target = titledWorker();
+  const state = baseState(target);
+  const line = identifyLine(state, target);
+  assert.match(line, /KELT OF THE PALE · LIFELINE · MINER/);
+  assert.doesNotMatch(line, /MARKS/, 'counter titles carry no kill marks');
+});
+
+test('Thunderchild speaks its witness marks with the title', () => {
+  const target = titledWorker('worker-1', {
+    titleId: 'title_thunderchild',
+    titleName: 'Thunderchild',
+    titleIds: ['title_thunderchild'],
+    titleKillMarks: 14,
+  });
+  const state = baseState(target);
+  assert.match(identifyLine(state, target), /KELT OF THE PALE · THUNDERCHILD · 14 MARKS · MINER/);
+});
+
+test('an untitled hull answers IDENTIFY exactly as before', () => {
+  const plain = titledWorker('worker-1', { titleId: null, titleName: null, titleIds: null });
+  delete plain.data.titleId;
+  delete plain.data.titleName;
+  delete plain.data.titleIds;
+  const state = baseState(plain);
+  const line = identifyLine(state, plain);
+  assert.equal(line, 'KELT OF THE PALE · MINER');
+});
+
+test('a title-holding patrol carries the name through headline and IDENTIFY', () => {
+  const target = patrol('patrol-1');
+  target.data.titleId = 'title_thunderchild';
+  target.data.titleName = 'Thunderchild';
+  target.data.titleIds = ['title_thunderchild'];
+  target.data.titleKillMarks = 3;
+  const state = baseState(target);
+  const availability = contactHailAvailability(state);
+  assert.equal(availability.enabled, true);
+  const offer = createContactHailOffer(state, availability, 'req-1', 99);
+  assert.match(offer.lines[0], /CONCORD SEVEN · THUNDERCHILD · 3 MARKS · LAWFUL PATROL/);
+  assert.match(identifyLine(state, target, 'patrol'),
+    /CONCORD SEVEN · THUNDERCHILD · 3 MARKS · LAWFUL PATROL · SWEEPING THE LANE/);
+});
+
+test('an untitled patrol headline and IDENTIFY are unchanged', () => {
+  const target = patrol('patrol-1');
+  const state = baseState(target);
+  const availability = contactHailAvailability(state);
+  const offer = createContactHailOffer(state, availability, 'req-1', 99);
+  assert.equal(offer.lines[0], 'CONCORD SEVEN · LAWFUL PATROL');
+  assert.equal(identifyLine(state, target, 'patrol'),
+    'CONCORD SEVEN · LAWFUL PATROL · SWEEPING THE LANE');
 });

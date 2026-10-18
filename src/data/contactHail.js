@@ -447,6 +447,20 @@ function callsign(entity) {
     .replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
+// The title system stamps data.titleName onto every holder — NPC hulls included — but nothing
+// spoke it. The hail headline and the IDENTIFY answer carry it in the name slot so a hull the
+// sector titled answers with the name it earned; Thunderchild's stamp adds its witness marks.
+// Pure read of the stamp the writer already owns — no gameplay state changes.
+function titleSegment(entity) {
+  const data = entity && entity.data || {};
+  const name = typeof data.titleName === 'string' ? data.titleName.replace(/\s+/g, ' ').trim() : '';
+  if (!name) return '';
+  const marks = Number.isSafeInteger(data.titleKillMarks) && data.titleKillMarks > 0
+    ? ` · ${data.titleKillMarks} MARKS`
+    : '';
+  return ` · ${name.toUpperCase()}${marks}`;
+}
+
 // ── NXB-042 rescued-worker memory ─────────────────────────────────────────────────────────────
 // A worker who was pulled out of a survivor pod and returned to their real job remembers the
 // player — once, in their own voice. This read is pure: the durable person record lives in the
@@ -937,7 +951,7 @@ function aceHailIdentifyText(state, entity) {
   const found = aceHailRecord(state, entity);
   const crew = String(found && found.ace.crew || 'KNOWN HUNTER').toUpperCase();
   const tier = found && found.rec.returnTier | 0;
-  return `${callsign(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
+  return `${callsign(entity)}${titleSegment(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
 }
 
 // THE WORLD REMEMBERS (U-E): a lawful patrol hailing a pilot this loud in this sector opens with
@@ -976,7 +990,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   }
 
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
-  const name = callsign(availability.entity);
+  const name = callsign(availability.entity) + titleSegment(availability.entity);
   const voice = hailVoiceLine(state, availability.entity);
   if (availability.kind === 'ace') {
     const found = aceHailRecord(state, availability.entity);
@@ -1443,7 +1457,7 @@ function workerIdentifyText(target) {
     ? String(data.ceresCausalEventId).replace(/^ev_/, '').replace(/_/g, ' ').toUpperCase()
     : null;
   const eventBit = eventId ? ` · CHAIN ${eventId}` : '';
-  return `${callsign(target)} · ${role}${eventBit}`;
+  return `${callsign(target)}${titleSegment(target)} · ${role}${eventBit}`;
 }
 
 function routeText(state, target) {
@@ -1495,7 +1509,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
   } else if (offer.kind === 'patrol' && id === 'identify') {
-    line = `${callsign(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
+    line = `${callsign(target)}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
   } else if (offer.kind === 'worker' && id === 'identify') {
