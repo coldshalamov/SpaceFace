@@ -102,6 +102,14 @@ function hold(e) {
   e.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null,
     aimAngle: finite(e.rot), brake: true };
 }
+function counterFieldThrottle(owner, e, p) {
+  const accel = owner._registry?.get?.('fields')?.readAcceptedFieldAcceleration?.(e,
+    owner._anvilFieldAccel ||= { ax: 0, az: 0 });
+  if (!accel) return 0;
+  const rot = finite(e.rot);
+  return Math.max(0, -accel.ax * Math.cos(rot) - accel.az * Math.sin(rot))
+    / Math.max(1, finite(p.mainAccel));
+}
 // Uses Flight V3's civilian intent, never writes velocity/position. Arrive is speed-limited
 // with the same braking-distance contract as the existing Helios ore-carrier approach.
 function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed) {
@@ -115,8 +123,12 @@ function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed) {
   const brake = distance <= reach || Math.cos(aim - finite(e.rot)) < 0.85
     || Math.hypot(finite(e.vel?.x), finite(e.vel?.z)) > desired + 3
     || closing * closing / (2 * accel) >= distance - reach;
-  e.data.intent = { moveX: 0, moveZ: brake ? 0 : Math.min(1,
-    Math.max((p.assist?.deadInput || 0.025) + 0.001, desired / Math.max(1, p.combatSpeed || e.maxSpeed || 100))),
+  const governedSpeed = Math.max(1, p.combatSpeed || e.maxSpeed || 100);
+  // A speed fraction also limits main-thruster force. Counter the last accepted opposing
+  // field force, retaining the authored speed and brakes; fields owns upcoming admission.
+  e.data.intent = { moveX: 0, moveZ: brake ? 0 : Math.min(1, speed / governedSpeed,
+    Math.max((p.assist?.deadInput || 0.025) + 0.001, desired / governedSpeed)
+      + counterFieldThrottle(owner, e, p)),
   boost: false, fire: false, fireGroup: null, aimAngle: aim, brake };
   return distance <= reach;
 }
