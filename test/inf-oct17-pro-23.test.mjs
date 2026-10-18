@@ -328,3 +328,11 @@ test('PRO-23: every promotion the CC0 provenance file records has a credits row'
     assert.equal(row.license, 'CC0');
   }
 });
+
+test('PRO-23: credits rows speak plain words, never a raw asset id', () => {
+  for (const row of CREDITS.assets) {
+    for (const field of ['name', 'role', 'author']) {
+      assert.doesNotMatch(String(row[field] || ''), /[a-z0-9]_[a-z0-9]/i, `${row.name}: ${field} must not show a snake_case id`);
+    }
+  }
+});
