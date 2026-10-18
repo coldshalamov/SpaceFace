@@ -8,14 +8,14 @@ import { ringLegendText } from '../src/ui/orrery/ringLegend.js';
 
 test('SFQ ship name ring a given name replaces the class on the ring', () => {
   assert.equal(
-    ringLegendText({ defName: 'Kestrel', classLine: 'fighter Â· tier 0', customName: '  Kolyma  ' }),
-    'KOLYMA Â· FIGHTER Â· TIER 0',
+    ringLegendText({ defName: 'Kestrel', classLine: 'fighter · tier 0', customName: '  Kolyma  ' }),
+    'KOLYMA · FIGHTER · TIER 0',
   );
   assert.equal(
-    ringLegendText({ defName: 'Kestrel', classLine: 'fighter Â· tier 0', customName: '   ' }),
-    'KESTREL Â· FIGHTER Â· TIER 0',
+    ringLegendText({ defName: 'Kestrel', classLine: 'fighter · tier 0', customName: '   ' }),
+    'KESTREL · FIGHTER · TIER 0',
   );
-  assert.equal(ringLegendText({ defName: 'Kestrel', classLine: 'fighter Â· tier 0' }), 'KESTREL Â· FIGHTER Â· TIER 0');
+  assert.equal(ringLegendText({ defName: 'Kestrel', classLine: 'fighter · tier 0' }), 'KESTREL · FIGHTER · TIER 0');
   assert.equal(ringLegendText({ defName: '', classLine: '', customName: '' }), 'HULL');
 });
 

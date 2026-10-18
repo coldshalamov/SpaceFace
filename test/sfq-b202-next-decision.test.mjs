@@ -1,4 +1,4 @@
-// SFQ-B202 â€” the flight cluster answers the next decision, and stays quiet when it should.
+// SFQ-B202 — the flight cluster answers the next decision, and stays quiet when it should.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -13,22 +13,22 @@ const QUIET = Object.freeze({
 test('SFQ-B202 a quiet cluster says nothing and a critical hull says break off', () => {
   assert.equal(nextFlightDecision(QUIET), '');
   assert.equal(nextFlightDecision(null), '');
-  assert.equal(nextFlightDecision({ ...QUIET, hull: 29 }), 'Hull critical â€” disengage and repair at a station');
+  assert.equal(nextFlightDecision({ ...QUIET, hull: 29 }), 'Hull critical — disengage and repair at a station');
   assert.equal(nextFlightDecision({ ...QUIET, hull: 30 }), '');
   assert.equal(
     nextFlightDecision({ ...QUIET, hull: 20, shield: 0, heat: 0.9, ordnance: { 1: { state: 'empty' } }, speed: 200 }),
-    'Hull critical â€” disengage and repair at a station',
+    'Hull critical — disengage and repair at a station',
   );
 });
 
 test('SFQ-B202 shield, heat, empty ordnance, and the governed mark speak in that order', () => {
-  assert.equal(nextFlightDecision({ ...QUIET, shield: 0 }), 'Shield is down â€” keep the next hit off the hull');
+  assert.equal(nextFlightDecision({ ...QUIET, shield: 0 }), 'Shield is down — keep the next hit off the hull');
   assert.equal(nextFlightDecision({ ...QUIET, shield: 1 }), '');
-  assert.equal(nextFlightDecision({ ...QUIET, shieldMax: 0, shield: 0, heat: 0.76 }), 'Ease fire â€” the gun is hot');
+  assert.equal(nextFlightDecision({ ...QUIET, shieldMax: 0, shield: 0, heat: 0.76 }), 'Ease fire — the gun is hot');
   assert.equal(nextFlightDecision({ ...QUIET, heat: 0.75 }), '');
   assert.equal(
     nextFlightDecision({ ...QUIET, ordnance: { beam: { state: 'ready' }, rack: { state: 'empty', consumable: true } } }),
-    'Ordnance is empty â€” restock at a station',
+    'Ordnance is empty — restock at a station',
   );
   assert.equal(nextFlightDecision({ ...QUIET, speed: 103, speedRef: 100 }), '');
   assert.equal(nextFlightDecision({ ...QUIET, speed: 102, speedRef: 100 }), '');
