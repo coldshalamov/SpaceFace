@@ -61,6 +61,7 @@ import {
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
+import { captureClosedRefineryProps, reconcileClosedRefineryProps, registerClosedRefineryProp } from './closedRefineryProps.js';
 import { materializePlayerHullEcho, handlePlayerHullEchoEvent, tickPlayerHullEcho,
   playerHullEchoReadout } from '../world/playerHullEcho.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan, bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
@@ -325,6 +326,9 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
     for (let i = 0; i < growthCount; i += 1) {
       const g = growth[i % growth.length];
       const extra = i >= growth.length; // bloom ring spills wider
+      const refineryCalcite = site.siteId === 'closed_refinery'
+        && (g.moduleId === 'calcified_collar' || g.moduleId === 'mineral_root');
+      if (refineryCalcite && rec.brokenCalcite?.[i]) continue;
       const row = insertDressingRow(state, {
         type: 'fx',
         pos: world._toGlobal({
@@ -345,6 +349,7 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
           ...(g.moduleId === 'calcified_collar' || g.moduleId === 'mineral_root' ? { material: 'calcite' } : {}),
         },
       });
+      if (refineryCalcite) registerClosedRefineryProp(state, row, rec, i);
       active.dressing.push({ id: row.id, placeId: `alien_growth_${g.moduleId}`, pos: row.pos, paletteClass: 'alien' });
     }
 
@@ -1177,6 +1182,7 @@ export function tickAlienEcology(world, dt) {
   if (!sectorId) return;
   const sites = alienSitesForSector(sectorId);
   if (!sites.length) return;
+  reconcileClosedRefineryProps(world);
   const player = state.playerId != null ? state.entities.get(state.playerId) : null;
   const nursery = ALIEN_SITES[VEIL_NURSERY_ID];
   const active = state.world.activeSector;
@@ -2320,6 +2326,7 @@ export function recordEvidence(state, id, sectorId = null) {
 
 // ── Persistence (world.serialize / deserialize fields) ──────────────────────────────────────
 export function serializeAlienEcologyState(state) {
+  captureClosedRefineryProps(state);
   const ae = ensureAlienEcologyState(state);
   const heatDerivative = copyHeatDerivative(ae.heatDerivative);
   const surveyCopy = copySurveySale(ae.surveyCopy);

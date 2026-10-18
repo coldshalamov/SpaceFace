@@ -874,7 +874,6 @@ recorded in the lane's NOW row before minting.
 | 385 | M07 | Cargo in the wake: a covert physical handoff alongside a moving hauler (`smuggling_run` in `src/systems/missions.js`, `src/data/heistMission.js`) | BUILD | OPEN |
 | 386 | M12 | Quiet passage: a heat-sensitive passenger transport (`src/data/heatLure.js`, `heatProximityTrial.js`, `passenger_transport`) | BUILD | OPEN |
 | 387 | ADHESIVE-LAW | Build the spray/coating/bridge/sever law that briefs M23 (glue, meet mass) and M32 (two ships, one mistake) name as their own prerequisite: no such law exists in `reactiveMatter`, `alienEcology`, `precursorMachines` or `modules`. A missing capability is implementation work: add the data and one system seam as the briefs describe, then the two scenes | BUILD | OPEN |
-| 388 | CALCITE-APPROACH | The Closed Refinery's calcified collars and mineral roots (SFQ-B138 follow-up) should be breakable bodies that materialize on approach, like the Cathedral's approach-dormant sections. The 2026-10-17 attempt made them eager bodies and raised the Ceres boot census from 41 entities / 17 colliders to 53 / 29 (the pq020 structural-cost digest), so it was reverted; today only asteroids stamped calcite crack | BUILD | OPEN |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
 

@@ -78,6 +78,7 @@ function requiresProductionWholeShip(entity) {
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
   if (isOrchardFrame(entity) || isLatchActor(entity) || isTallyThreeAssessor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
+  if (entity.type === 'prop' && entity.data.closedRefineryProp === true) return true;
   if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
 }
