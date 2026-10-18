@@ -1,4 +1,4 @@
-import { expandNativeAttestationTables } from '../save/nativeAttestationTables.js';
+import { expandNativeAttestationTables, validateNativeAttestationTables } from '../save/nativeAttestationTables.js';
 import { consumeSaucerVelocity } from './physicsAuthority.js';
 import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
@@ -775,6 +775,7 @@ export class Sg02DynamicBodyOwner {
   rebuildWorldFromEntities(entities = [], options = {}) {
     if(options.orchardRestoreInputs && !orchardRestoreInputsCurrent(options.orchardRestoreInputs,this))throw Error('orchard_restore_inputs_changed');
     const destinationBoundary = retainNativeDestination(this);
+    const contactRestore = retainPlayerContactRestore(options);
     const originalContracts = new Map(entities.filter(Boolean).map(entity => [entity, {
       spec: entity.physicsBody, data: entity.data, life: entity.occupantGeneration,
     }]));
@@ -813,6 +814,7 @@ export class Sg02DynamicBodyOwner {
         rec.entity = entity;
         if (ceresWorkfleetSlideRole(entity)) {rec.ceresWorkfleetEntity=entity;rec.ceresWorkfleetLife=entity.occupantGeneration;}
       }
+      candidate._restorePlayerContactEpisodes(contactRestore, originalContracts, entities, mirrors);
       this._commitNativeOwner(candidate, mirrors, { destinationBoundary, originalContracts, orchardColdRestore:options.orchardColdRestore===true,orchardFiniteState:options.orchardFiniteState,orchardRestoreInputs:options.orchardRestoreInputs });
     } catch (error) { candidate.dispose(); throw error; }
   }
@@ -853,6 +855,7 @@ export class Sg02DynamicBodyOwner {
   *rebuildWorldFromEntitiesSteps(entities = [], options = {}, yieldEvery = 16) {
     if(options.orchardRestoreInputs && !orchardRestoreInputsCurrent(options.orchardRestoreInputs,this))throw Error('orchard_restore_inputs_changed');
     const destinationBoundary = retainNativeDestination(this);
+    const contactRestore = retainPlayerContactRestore(options);
     const originalContracts = new Map(entities.filter(Boolean).map(entity => [entity, {
       spec: entity.physicsBody, data: entity.data, life: entity.occupantGeneration,
     }]));
@@ -894,6 +897,7 @@ export class Sg02DynamicBodyOwner {
         if (ceresWorkfleetSlideRole(entity)) {rec.ceresWorkfleetEntity=entity;rec.ceresWorkfleetLife=entity.occupantGeneration;}
       }
       yield 'native-rebuild-mirrored';
+      candidate._restorePlayerContactEpisodes(contactRestore, originalContracts, entities, mirrors);
       this._commitNativeOwner(candidate, mirrors, { destinationBoundary, originalContracts, orchardColdRestore:options.orchardColdRestore===true,orchardFiniteState:options.orchardFiniteState,orchardRestoreInputs:options.orchardRestoreInputs });
       committed = true;
     } finally {
@@ -901,6 +905,39 @@ export class Sg02DynamicBodyOwner {
       // runs finally but never catch — the scratch RAPIER world + its
       // colliders would leak without the committed flag.
       if (!committed) candidate.dispose();
+    }
+  }
+
+  // The collision episode is gameplay budget, not a native handle/solver cache. A foreign
+  // nonpersistent joint may require scalar reconstruction without replenishing this player's
+  // already-spent budget. Keep the same per-body identity/contract gates as exact adoption.
+  _restorePlayerContactEpisodes(restore, originalContracts, entities, mirrors) {
+    if (!restore || !restore.current()) return;
+    const { claims, remap, tick } = restore;
+    const byId = new Map([...this.records.values()].map(rec => [String(rec.entity.id), rec]));
+    for (const [savedId, saved] of claims) {
+      const id = remap ? remap.get(savedId) : savedId;
+      if (id == null) continue;
+      const rec = byId.get(String(id));
+      const entity = rec?.entity, original = originalContracts.get(entity);
+      if (!entity || entity.alive === false || entity.isPlayer !== true || !rec.spec.dynamic
+        || !original || !entities.includes(entity) || original.life !== entity.occupantGeneration
+        || original.spec !== entity.physicsBody || original.data !== entity.data) continue;
+      if (mirrors.some(mirror => mirror.entity === entity.pos || mirror.entity === entity.prevPos)) continue;
+      if (!remap && (!Number.isSafeInteger(saved?.sourceLife) || saved.sourceLife <= 0
+        || occupantGenerationOf(entity) !== saved.sourceLife)) continue;
+      const episode = saved?.contactEpisode;
+      if (!episode || !Number.isSafeInteger(episode.lastTick) || episode.lastTick < 0
+        || episode.lastTick > tick || tick - episode.lastTick > PLAYER_CONTACT_EVENT_BRIDGE_TICKS
+        || !Number.isFinite(episode.cumulativeDeltaV) || episode.cumulativeDeltaV < 0) continue;
+      if (![entity.pos?.x, entity.pos?.z, entity.vel?.x, entity.vel?.z, entity.rot, entity.angVel].every(Number.isFinite)) continue;
+      const spec = resolvePhysicsBodySpec(entity);
+      if (!spec || !sameNativeValue(spec, rec.spec)
+        || !sameNativeValue(nativeEntityIdentity(entity), saved.identity)
+        || !sameNativeValue(nativeEntityKinematics(entity), saved.state)
+        || !sameNativeValue(nativeBodyContract(entity, spec), saved.contract)) continue;
+      rec._playerContactLastTick = episode.lastTick;
+      rec._playerContactCumulativeDeltaV = episode.cumulativeDeltaV;
     }
   }
 
@@ -5508,4 +5545,37 @@ function orchardAllocationClaimed(owner, world, queue, body, colliders = []) {
     if (claimed || !current()) return true;
   }
   return !current() || semanticClaim();
+}
+
+// Capture the save owner's mapping before paced construction can yield. Semantic aliases do
+// not claim bodies; duplicate body claims, a changed map, or a changed restore clock refuse
+// only this optional metadata transfer. The scalar world remains an honest reconstruction.
+function retainPlayerContactRestore(options) {
+  const source = options.contactEpisodeSnapshot;
+  const payload = expandNativeAttestationTables(source);
+  const tick = options.contactEpisodeTick, sourceMap = options.entityIdRemap;
+  if (!payload || !validateNativeAttestationTables(payload, true).ok
+    || payload.schema !== 3 || payload.backend !== 'rapier-dynamic'
+    || payload.nativeGeometryRevision !== SG02_NATIVE_GEOMETRY_REVISION
+    || !payload.bodies || Array.isArray(payload.bodies) || !sameNativeKeys(payload.bodyOrder, payload.bodies)
+    || !Number.isSafeInteger(tick) || tick < 0
+    || (sourceMap != null && !(sourceMap instanceof Map))) return null;
+  const remap = sourceMap == null ? null : new Map(sourceMap), targets = new Set();
+  if (remap) for (const [id, target] of remap) {
+    if (typeof id !== 'string' || target == null) return null;
+    if (!Object.hasOwn(payload.bodies, id)) continue;
+    if (targets.has(String(target))) return null;
+    targets.add(String(target));
+  }
+  // Retain only player gameplay-budget claims, never opaque solver bytes or unrelated bodies.
+  // The table validator bounds traversal and excludes accessors/nonfinite values before cloning.
+  const claims = payload.bodyOrder.filter(id => payload.bodies[id]?.identity?.isPlayer === true)
+    .map(id => { const saved = payload.bodies[id]; return [id, nativePlain({
+      identity: saved.identity, sourceLife: saved.sourceLife, state: saved.state,
+      contract: saved.contract, contactEpisode: saved.contactEpisode,
+    })]; });
+  return { claims, remap, tick, current: () => options.contactEpisodeSnapshot === source
+    && options.contactEpisodeTick === tick && options.entityIdRemap === sourceMap
+    && (!remap || (sourceMap.size === remap.size && [...remap].every(([id, target]) => sourceMap.get(id) === target)))
+    && (typeof options.contactEpisodeCurrent !== 'function' || options.contactEpisodeCurrent()) };
 }

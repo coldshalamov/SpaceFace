@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { captureStartupFailureDiagnostics, observeStartupFailureEvents } from './lib/startup-failure-diagnostics.mjs';
+
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -16,33 +18,49 @@ const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
+let page = null;
 
 try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+  page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page, { playerStoreMounted: false });
 
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
   // Boot liveness on a contended runner: cooperative startup yields, so the SF surface can take
   // tens of seconds to appear. AUTHORED_START_TIMEOUT_MS budgets the wait without asserting boot speed.
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.eventTrace, null, { timeout: AUTHORED_START_TIMEOUT_MS });
-  await page.evaluate(() => {
-    window.SF.eventTrace.clear();
-    window.SF.bus.emit('game:new', { name: '47-A Live Cold Open Check', seed: 47 });
-  });
-  await page.waitForFunction(
-    (scenarioId) => {
-      const sf = window.SF;
-      return sf && sf.state
-        && sf.state.mode === 'flight'
-        && sf.state.scenario
-        && sf.state.scenario.active
-        && sf.state.scenario.active.id === scenarioId;
-    },
-    SCENARIO_ID,
-    { timeout: AUTHORED_START_TIMEOUT_MS },
-  );
+  try {
+    await page.evaluate(`(() => {
+      try { window.__SF_STARTUP_FAILURE_OBSERVER__ = (${observeStartupFailureEvents.toString()})(window.SF); } catch (_) {}
+      window.SF.eventTrace.clear();
+      window.SF.bus.emit('game:new', { name: '47-A Live Cold Open Check', seed: 47 });
+    })()`);
+    await page.waitForFunction(
+      (scenarioId) => {
+        const sf = window.SF;
+        return sf && sf.state
+          && sf.state.mode === 'flight'
+          && sf.state.scenario
+          && sf.state.scenario.active
+          && sf.state.scenario.active.id === scenarioId;
+      },
+      SCENARIO_ID,
+      { timeout: AUTHORED_START_TIMEOUT_MS },
+    );
+  } catch (error) {
+    // Failure-only, bounded observation. Preserve the original error and 90s acceptance window.
+    let timer;
+    try {
+      const diagnostics = await Promise.race([
+        page.evaluate(`(${captureStartupFailureDiagnostics.toString()})(window.SF, window.__SF_STARTUP_FAILURE_OBSERVER__)`),
+        new Promise(resolve => { timer = setTimeout(() => resolve({ unavailable: true }), 1000); }),
+      ]);
+      console.error(`[47a-cold-open] startup gate diagnostics ${JSON.stringify(diagnostics)}`);
+    } catch (_) { console.error('[47a-cold-open] startup gate diagnostics unavailable'); }
+    finally { clearTimeout(timer); }
+    throw error;
+  }
   await page.waitForFunction(
     () => window.SF.eventTrace.snapshot().some((record) => record.type === 'presentation:cueApplied'),
     null,
@@ -235,6 +253,20 @@ try {
 
   console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);
 } finally {
+  // A wedged page cannot delay owned-browser cleanup indefinitely.
+  let cleanupTimer;
+  if (page) {
+    try {
+      await Promise.race([
+        page.evaluate(() => {
+          window.__SF_STARTUP_FAILURE_OBSERVER__?.dispose();
+          delete window.__SF_STARTUP_FAILURE_OBSERVER__;
+        }),
+        new Promise(resolve => { cleanupTimer = setTimeout(resolve, 1000); }),
+      ]);
+    } catch (_) { /* Closing the owned page below also releases its listeners. */ }
+    finally { clearTimeout(cleanupTimer); }
+  }
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
 }

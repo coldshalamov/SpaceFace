@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { captureStartupFailureDiagnostics, observeStartupFailureEvents } from './lib/startup-failure-diagnostics.mjs';
+
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -83,6 +85,7 @@ const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'src/render/materialBatchKey.js',
   'assets/ships/render-packages/pilots.json',
   'scripts/probe-authored-assets-live.mjs',
+  'scripts/lib/startup-failure-diagnostics.mjs',
 ]);
 
 // Declared here, beside the source-file list it extends, because runAuthoredAssetsLiveProbe()
@@ -161,6 +164,7 @@ try {
   await installStartupTrace(cdp);
 
   await evalVoid(cdp, `(() => {
+    try { window.__SF_STARTUP_FAILURE_OBSERVER__ = (${observeStartupFailureEvents.toString()})(window.SF); } catch (_) {}
     window.SF.bus.emit('game:new', { name: 'Authored Asset Live Probe', seed: 47 });
     window.SF.bus.emit('ui:closeAll', {});
   })()`);
@@ -170,12 +174,16 @@ try {
     playable = await waitFor(cdp, isPlayable, PLAYABLE_TIMEOUT_MS, 'seeded flight session');
   } catch (error) {
     enterStage('startup failure diagnostics', FAILURE_DIAGNOSTICS_TIMEOUT_MS);
+    // Capture the gate before the more expensive authored report can advance it.
+    const gateDiagnostics = await evalJson(cdp, `(${captureStartupFailureDiagnostics.toString()})(window.SF, window.__SF_STARTUP_FAILURE_OBSERVER__)`)
+      .catch(() => ({ unavailable: true }));
     const startupReport = await collectAuthoredReport(cdp).catch((reportError) => ({
       error: reportError && reportError.message ? reportError.message : String(reportError),
     }));
     const startupTrace = await getStartupTrace(cdp).catch(() => []);
     const liveReadiness = await evalJson(cdp, `(() => { try { return window.SF && window.SF.authoredVisualReadiness ? window.SF.authoredVisualReadiness() : null; } catch (e) { return { evalError: String(e && e.message || e) }; } })()`).catch((e) => ({ collectError: String(e && e.message || e) }));
     startupReport.liveReadiness = liveReadiness;
+    startupReport.gateDiagnostics = gateDiagnostics;
     throw new Error(`seeded flight session did not become playable before authored asset proof: ${JSON.stringify(compactStartupFailure(startupReport, startupTrace, error, pageIssues), null, 2)}`);
   }
   const startTick = playable.tick;
@@ -440,7 +448,11 @@ try {
     console.error(`[authored-assets] retained ship diagnostics ${JSON.stringify(error.authoredShipDiagnostics)}`);
   }
 } finally {
-  enterStage('owned runtime cleanup');
+  enterStage('owned runtime cleanup', 1000);
+  if (cdp) await evalVoid(cdp, `(() => {
+    window.__SF_STARTUP_FAILURE_OBSERVER__?.dispose();
+    delete window.__SF_STARTUP_FAILURE_OBSERVER__;
+  })()`).catch(() => {});
   cdp?.dispose();
   cleanupProof = await closeOwnedAuthoredProbeRuntime({
     ws,
@@ -2716,6 +2728,7 @@ function compactStartupFailure(report, startupTrace, cause, pageIssues) {
     },
     startupTrace: Array.isArray(startupTrace) ? startupTrace.slice(-12) : [],
     liveReadiness: report && report.liveReadiness,
+    gateDiagnostics: report && report.gateDiagnostics,
     criticalStations: report && Array.isArray(report.criticalStations) ? report.criticalStations : [],
     authoredUpgradeDiagnostics: report && report.authoredUpgradeDiagnostics || null,
     pageIssues: {

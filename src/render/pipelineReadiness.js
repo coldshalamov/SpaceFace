@@ -354,7 +354,12 @@ export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {
   };
   const work = (async () => {
     startPhase('mesh-staging');
-    await bounded(Promise.resolve().then(() => render.beginOpeningLoadingAdmission?.()), timeoutMs);
+    await bounded(Promise.resolve().then(() => {
+      // The launch may be replaced before this queued callback runs. Mesh staging releases the
+      // current graph/defer holds, so reject stale work before entering that mutating owner.
+      assertActive();
+      return render.beginOpeningLoadingAdmission?.();
+    }), timeoutMs);
     assertActive();
     // Main calls this gate after its library and visual prerequisites. Per-subject work
     // starts earlier, but the broad cook must census/freeze their committed composition.
