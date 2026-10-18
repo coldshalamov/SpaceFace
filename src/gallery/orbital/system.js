@@ -31,13 +31,14 @@ export const orbitalGallery = {
     on('physics:impact', payload => this.live.impact(payload));
     on('tether:broken', payload => this.live.cut(payload));
     for (const name of ['game:exitToMenu', 'sector:exit', 'save:restoring']) on(name, () => this.leave());
-    on('game:newGame', () => this.live.newGame());
+    on('game:newGame', () => this.newGame());
   },
 
   start(id) { return this.live.start(id); },
   retry() { return this.live.retry(); },
   next() { return this.live.next(); },
   leave() { this.live?.leave(); },
+  newGame() { this.live.newGame(); this.live.publish(); },
   status() { return this.live.status(); },
   serialize() { return this.live.serialize(); },
   deserialize(raw) { this.live.deserialize(raw); },

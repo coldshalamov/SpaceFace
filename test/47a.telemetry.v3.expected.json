@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "6edd7a362cdfd730bc27142d7600dacca9528fdd5f2074dc1b64c659c915aa8e",
+    "authoritativeHash": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f",
     "authoritativeHashByReloadAt": {
-      "60": "6edd7a362cdfd730bc27142d7600dacca9528fdd5f2074dc1b64c659c915aa8e",
-      "600": "6edd7a362cdfd730bc27142d7600dacca9528fdd5f2074dc1b64c659c915aa8e"
+      "60": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f",
+      "600": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -257,6 +257,13 @@
     "Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact canonical hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged.",
     "2026-10-18 native-save version-only migration: AIR-01 raised the save version 17 to 18. Bisect over 37d1af00f27..HEAD pins the drift to bd013cbc0f2; every earlier commit reproduces the prior hash.",
     "Full paired base/head snapshots (inspect --tick 720 --reload-at 600) differ only at $.meta.version (17 to 18); metrics, trace counts and event families are identical for both controllers and reload points 60 and 600.",
-    "The prior authoritativeHash was ae12dca3425e570494a17fde9d1a7a4347d1ff8c1824b7c3c4ca1bd0eac11261."
+    "The prior authoritativeHash was ae12dca3425e570494a17fde9d1a7a4347d1ff8c1824b7c3c4ca1bd0eac11261.",
+    "2026-10-18 intentional native contact topology change: exact convex unions replace origin-fan colliders (Wasp24 to8, Hornet24 to10). Fewer internal contact manifolds intentionally change contact motion.",
+    "Native tests preserve exact XZ footprint, authored mass/inertia, materials and free impulse response; spinning-box, gentle-contact and save/restore checks pass.",
+    "Controlled single-module comparison: current tree with HEAD SG02 owner reproduces prior hash 6edd7a362cdfd730bc27142d7600dacca9528fdd5f2074dc1b64c659c915aa8e.",
+    "The convex owner produces 310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f. No other module differs in the paired comparison.",
+    "At tick720 player position changes from (2915.300537,352.188141) to (2919.108643,352.274017). These are reviewed contact-response changes, not a version-only re-record.",
+    "Both runs retain17 fires,10 hits,10 damage events,17 entities,5000 credits,and tether attach/cut ticks4/128. Event-family counts match; impact timing may differ with changed trajectories.",
+    "Reload60 and reload600 retain deterministic continuation. Acceptance bounds, repeat minimum, input tape and event families are unchanged."
   ]
 }

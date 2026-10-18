@@ -662,7 +662,10 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
 function restoreSources(entries) {
   for (const entry of entries || EMPTY_ARRAY) {
     if (!entry || !entry.source) continue;
-    entry.source.visible = entry.originalVisible;
+    // Admission only masked the layer set — source.visible was never written by this path.
+    // Writing the admission-time snapshot back would resurrect a source a live owner hid
+    // while the batch was active (damage hide, scripted removal), and the planner would
+    // re-admit it on the next sync.
     if (entry.source.layers && Number.isFinite(entry.layersMask)) {
       entry.source.layers.mask = entry.layersMask;
     }
@@ -908,7 +911,6 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         // full rollback path, which restores all remaining source state before rebuilding.
         return false;
       }
-      entry.source.visible = entry.originalVisible;
       if (entry.source.layers && Number.isFinite(entry.layersMask)) {
         entry.source.layers.mask = entry.layersMask;
       }

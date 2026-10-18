@@ -13600,7 +13600,12 @@ export const render = {
     });
     const assertResidencyOwnerActive = (subject, admissionOptions) => {
       if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive(subject) !== true) {
-        throw new Error('Authored GPU residency owner became inactive before texture upload');
+        // Owner-inactive is the admission design's expected-supersede class: AbortError is how
+        // observePipelineAdmission and the appearance failure record tell a cancelled owner
+        // apart from a real GPU failure. Guard and rejection itself are unchanged.
+        const error = new Error('Authored GPU residency owner became inactive before texture upload');
+        error.name = 'AbortError';
+        throw error;
       }
     };
     const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => {
@@ -35855,7 +35860,7 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
   }
 }
 
-function disposeObjectNode(c, state = null) {
+export function disposeObjectNode(c, state = null) {
   if (!c) return false;
   const heldLight = c.isLight === true;
   // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down

@@ -543,6 +543,8 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
     const searchStart = await simNow(page);
     let boostUntil = searchStart;
     let wasAligned = false;
+    let thrustHeldSince = null;
+    let thrustDiagnosticChecked = false;
     try {
       await waitSim(page, 2.4, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: async () => {
         const fresh = await observeTarget(page);
@@ -566,6 +568,7 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
         // input and the turn remains bounded by the painted bearing, so this never steers from
         // hidden world coordinates. Boost stays alignment-gated below.
         await setHeld('KeyW', true);
+        if (thrustHeldSince === null) thrustHeldSince = now;
         if (aligned && !wasAligned) boostUntil = now + 0.35;
         wasAligned = aligned;
         // Boost is a short public course pulse, not a second continuous chase throttle.
@@ -574,6 +577,11 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
         // frozen clock for another sample, while its finally block still releases every key.
         if (await page.evaluate(readCombatPhaseEnded)) return true;
         await tapFightTurn(page, bearing);
+        if (!thrustDiagnosticChecked && now >= 80 && now - thrustHeldSince >= 2
+          && typeof page.__ptThrustDiagnostic === 'function') {
+          thrustDiagnosticChecked = true;
+          await page.__ptThrustDiagnostic(now - thrustHeldSince);
+        }
         return false;
       } });
     } finally {

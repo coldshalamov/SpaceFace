@@ -73,6 +73,40 @@ function normalizeImpulseObserverResponse(response) {
   return value;
 }
 
+// One paired observation when a public W hold is failing. Keep the input boundary, worker
+// command, and native pose together so a stationary facade cannot be mistaken for lost thrust.
+export async function readStalledThrustDiagnostic() {
+  const st = window.SF?.state;
+  const p = st?.entities?.get(st.playerId);
+  if (!p || st.simTime < 80 || Math.hypot(p.vel?.x || 0, p.vel?.z || 0) >= 3) return null;
+  const input = st.input || {}; const active = document.activeElement;
+  const main = {
+    sim: st.simTime, tick: st.tick, mode: st.mode, t: performance.now(),
+    hasFocus: document.hasFocus(), visibility: document.visibilityState,
+    activeElement: active ? { tag: active.tagName, id: active.id, role: active.getAttribute('role'),
+      editable: active.isContentEditable } : null,
+    screenStack: (st.ui?.screenStack || []).map(s => typeof s === 'string' ? s : s?.id || s?.screenId || null),
+    input: { moveX: input.moveX, moveZ: input.moveZ, turnIntent: input.turnIntent,
+      boost: input.boost, brake: input.brake, blocked: input.blocked, autoFire: input.autoFire,
+      actionBrake: input.actions?.brake, massline: input.actions?.massline?.lineControl },
+    player: { id: p.id, occupantGeneration: p.occupantGeneration,
+      position: { x: p.pos.x, z: p.pos.z }, velocity: { x: p.vel?.x, z: p.vel?.z }, rot: p.rot },
+  };
+  let timer;
+  try {
+    const { laneRpc } = await import('/src/core/simLaneCommands.js');
+    const response = await Promise.race([laneRpc('probeState', { entityId: p.id }),
+      new Promise(resolve => { timer = setTimeout(() => resolve({ error: 'probe-timeout' }), 2000); })]);
+    const worker = response?.result ?? response;
+    return { main, worker: worker ? { tick: worker.tick, sim: worker.simTime, mode: worker.mode,
+      input: worker.input, ui: worker.ui, player: worker.player, flight: worker.flight,
+      physics: worker.physics, error: worker.error } : null,
+      endT: performance.now() };
+  } catch (error) {
+    return { main, error: String(error?.message || error).slice(0, 200), endT: performance.now() };
+  } finally { clearTimeout(timer); }
+}
+
 /** Observe the preparation the public door actually produced, including its enabled Rearm choice. */
 export function preparationSnapshot({ ruleset, includeButton = true }) {
   const state = window.SF?.state; const run = state?.run;
@@ -538,6 +572,14 @@ async function runOne(args, arena, extra = {}) {
   let lastProgress = 0; let progressMark = null;
   let readerOn = false; let stopReason = null; let environmentLoss = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
   let impulseObserver = null;
+  page.__ptThrustDiagnostic = async (heldSim) => {
+    const records = trace.thrustDiagnostics || (trace.thrustDiagnostics = []);
+    if (records.length >= 3) return;
+    const now = await simNow(page);
+    if (records.length && now - records[records.length - 1].main.sim < 10) return;
+    const record = await page.evaluate(readStalledThrustDiagnostic).catch(() => null);
+    if (record) records.push({ heldSim, ...record });
+  };
 
   const drain = async ({ all = false } = {}) => {
     if (!readerOn || draining) return;
@@ -909,6 +951,7 @@ async function runOne(args, arena, extra = {}) {
     await stopWindowGuard();
     page.__ptObserve = null;
     page.__ptOnTargetRead = null;
+    page.__ptThrustDiagnostic = null;
     clearInterval(shotTimer); clearInterval(drainTimer);
     while (busy || draining) await new Promise((r) => setTimeout(r, 100));
     await drain({ all: true }).catch(() => {});

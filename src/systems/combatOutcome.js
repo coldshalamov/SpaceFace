@@ -492,6 +492,14 @@ export const combatOutcome = {
     const field = outcomes.length > 0 || offer.choices.some((choice) => choice.id === 'salvage');
     if (!field) {
       own.aftermath = null;
+      // A card can stay mounted on a field that drained in-sector: receipts persist, but
+      // wreck markers do not. An empty choice list is the resolve signal the deck adapter
+      // already honors — it unmounts the card and releases the borrowed answer digits.
+      // Resetting the signature also lets an identical re-formed field publish again.
+      if (this._choiceSig && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('combat:aftermathChoices', { sectorId, paused: false, choices: [] });
+      }
+      this._choiceSig = '';
       return null;
     }
     // The answered pick follows the wreck. The card stays closed unless the verbs changed

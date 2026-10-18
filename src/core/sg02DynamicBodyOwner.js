@@ -1,6 +1,7 @@
 import { expandNativeAttestationTables, validateNativeAttestationTables } from '../save/nativeAttestationTables.js';
 import { consumeSaucerVelocity } from './physicsAuthority.js';
 import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
+import { mergeConvexPlanarFan } from './convexPlanarFan.js';
 export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 // SG-02 dynamic body owner.
 import { claimsOrchardFrame, claimsOrchardPod, prepareOrchardFrameConstruction, initializeOrchardFrame, retainConstructedOrchardFrame, readOrchardFramePose, orchardFrameSnapshotReady, retainAdoptedOrchardFrame, prepareOrchardFrameTransfer, orchardFrameRootMatches, orchardConstructionCurrent, orchardFrameSpines, registerOrchardOwner, resetOrchardOwnerWorld, retireOrchardOwner, orchardOwnerAvailable, requestOrchardMotion, beginOrchardOwnerStep, orchardStepCurrent, finishOrchardOwnerStep, cancelOrchardOwnerStep, publishOrchardCompletedContacts, orchardNativeExportReady, publishOrchardPoseReceipts, detachOrchardFrame, prepareOrchardResidencyRetirement, retainOrchardResidentPod, permitOrchardNativeSolve, orchardNativeMutationReady, recoverOrchardFrame, permitOrchardConstructionRehomes, queryOrchardPodCavity, prepareOrchardPodInsertion, cancelOrchardPodInsertion, prepareOrchardPodFill, requestOrchardFiniteRelease, requestOrchardFiniteClose, prepareOrchardPodCollection, commitOrchardPodLoss, orchardFixedPodRootMatches, prepareOrchardPodHandoff, resumeOrchardPodHandoff, readOrchardPodReady, orchardReadyTransferEntryCurrent, orchardRestoreInputsCurrent, resolveOrchardRestoreBody } from './anvilOrchardNative.js';
@@ -52,7 +53,7 @@ export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_WORLD_SNAPSHOT_SCHEMA_VERSION = 3;
 // Independent of envelope schema: NEXT schema 2 also carried shallow geometry.
 // Missing/mismatched revisions require authoritative entity-state reconstruction.
-export const SG02_NATIVE_GEOMETRY_REVISION = 'xz-support-prism-obb-v3';
+export const SG02_NATIVE_GEOMETRY_REVISION = 'xz-convex-prism-obb-v4';
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 // Contact-force receipts are gameplay signals, not solver inputs. A zero threshold makes every
@@ -5271,6 +5272,25 @@ function dressProxyColliderDesc(R, desc, entity, spec, material, captureContactI
   return desc;
 }
 
+const PLANAR_FAN_PARTS = new WeakMap();
+function convexPlanarParts(manifest, scale) {
+  const vertices = manifest.planarPolygon;
+  let edgeMask = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    const a = vertices[i], b = vertices[(i + 1) % vertices.length];
+    // Preserve the existing scale-dependent degenerate-triangle admission exactly.
+    if (Math.abs((a.x * scale) * (b.z * scale) - (a.z * scale) * (b.x * scale)) >= 1e-9) edgeMask |= 1 << i;
+  }
+  let masks = PLANAR_FAN_PARTS.get(manifest);
+  if (!masks) PLANAR_FAN_PARTS.set(manifest, masks = new Map());
+  let parts = masks.get(edgeMask);
+  if (!parts) {
+    parts = mergeConvexPlanarFan(vertices, edgeMask);
+    masks.set(edgeMask, parts);
+  }
+  return parts;
+}
+
 function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, captureContactImpacts = true, parameters = {}) {
   const scale = proxyScaleFor(entity, manifest);
   const hasConvexHull = typeof R.ColliderDesc.convexHull === 'function';
@@ -5298,18 +5318,13 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
     && manifest.planarPolygon.length >= 3
     && manifest.planarPolygon.length <= MAX_PROXY_PRIMITIVES
     && hasConvexHull) {
-    const verts = manifest.planarPolygon;
     const descs = [];
     let ok = true;
-    for (let i = 0; i < verts.length; i += 1) {
-      const a = verts[i];
-      const b = verts[(i + 1) % verts.length];
-      const ax = a.x * scale;
-      const az = a.z * scale;
-      const bx = b.x * scale;
-      const bz = b.z * scale;
-      if (Math.abs(ax * bz - az * bx) < 1e-9) continue;
-      const desc = convexPrismDesc(R, [{ x: 0, z: 0 }, a, b], scale, parameters);
+    // XZ translations/yaw are the physical contract. Shared interior triangle edges
+    // add contact manifolds without adding silhouette. Merge only convex exact unions;
+    // retain every boundary vertex and the existing conservative prism depth law.
+    for (const vertices of convexPlanarParts(manifest, scale)) {
+      const desc = convexPrismDesc(R, vertices, scale, parameters);
       if (!desc) { ok = false; break; }
       descs.push(desc);
     }

@@ -21,5 +21,5 @@ test('native parameters inconsistent with otherwise matching envelope are reject
  const source=await createSg02DynamicBodyOwner(),entity=ship();source.syncFromEntities([entity]);const valid=source.exportWorldSnapshot();source.world.integrationParameters.normalizedPredictionDistance=0;const forged={...valid,snapshot:Buffer.from(source.world.takeSnapshot()).toString('base64')};const receiving=await createSg02DynamicBodyOwner(),before=receiving.world;assert.equal(receiving.adoptWorldSnapshot(forged,[entity]),false);assert.equal(receiving.world,before);assert.equal(receiving.records.size,0);source.dispose();receiving.dispose();
 });
 test('tiny and large supported Hornet scales still create complete solid skins and valid native snapshots',async()=>{
- for(const radius of [.001,.01,.1,1,16,1000]){const owner=await createSg02DynamicBodyOwner();owner.syncFromEntities([ship(1,radius)]);assert.equal(owner.records.get(1).colliders.length,24);assert.ok(owner.exportWorldSnapshot());owner.dispose();}
+ for(const radius of [.001,.01,.1,1,16,1000]){const owner=await createSg02DynamicBodyOwner();owner.syncFromEntities([ship(1,radius)]);const count=owner.records.get(1).colliders.length;assert.ok(count>0&&count<24,'complete skin uses merged convex cells');assert.ok(owner.exportWorldSnapshot());owner.dispose();}
 });

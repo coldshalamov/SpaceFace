@@ -75,6 +75,14 @@ function simTimeOf(state) {
 
 /** A single brood receipt joins at most this many bodies into the multi-kill window. */
 const SWARM_BROOD_WINDOW_CAP = 64;
+/**
+ * Sim seconds of released floor after a hit-stop beat before the next storm receipt may arm
+ * one. A multi-kill window is a beat — one dip, then quiet. Without the gap a kill storm
+ * re-arms the request on nearly every receipt (each fresh window beats the drained remainder),
+ * so 'swarm:juice-hitstop' pins ~0.35 for as long as killing continues: a held time floor, not
+ * hit-stop — and the sim-clock timer that releases it drains slower the deeper the dip holds.
+ */
+const SWARM_HITSTOP_REARM_GAP_S = 1;
 
 // --- the sound of the big moments -----------------------------------------------------------
 // Every moment below used to play in silence, and the chain tier borrowed the plain alert beep
@@ -192,6 +200,7 @@ export const swarmJuice = {
 
   _reset() {
     this._releaseHitStop();
+    this._hitStopNextAt = 0;
     if (!this._deathLedger) this._deathLedger = createRewardDeathLedger();
     else this._deathLedger.clear();
     this._recent = [];              // { t, cause } player-kill window for multi/pile-up
@@ -608,8 +617,12 @@ export const swarmJuice = {
     const seconds = Number.isFinite(forceSeconds) ? forceSeconds
       : Math.max(0.06, swarmHitStopSeconds(this._lastChain || 0));
     if (!this.timeEffects) return;
+    // Storm retriggers wait for the live dip plus one beat of silence (SWARM_HITSTOP_REARM_GAP_S)
+    // so the floor releases between beats; forced dips (boss down) always land.
+    if (!Number.isFinite(forceSeconds) && simTimeOf(this.state) < this._hitStopNextAt) return;
     if (seconds > this._hitStopLeft) {
       this._hitStopLeft = seconds;
+      this._hitStopNextAt = simTimeOf(this.state) + seconds + SWARM_HITSTOP_REARM_GAP_S;
       this.timeEffects.set(SWARM_HITSTOP_SOURCE, { scale: SWARM_HITSTOP_SCALE });
     }
   },

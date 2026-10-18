@@ -219,6 +219,7 @@ export function installProgramBinaryCache(gl) {
   const origShaderSource = gl.shaderSource.bind(gl);
   const origAttach = gl.attachShader.bind(gl);
   const origLink = gl.linkProgram.bind(gl);
+  const origDelete = typeof gl.deleteProgram === 'function' ? gl.deleteProgram.bind(gl) : null;
 
   gl.shaderSource = (shader, source) => {
     shaderSources.set(shader, String(source || ''));
@@ -253,6 +254,21 @@ export function installProgramBinaryCache(gl) {
       scheduleDrain();
     }
   };
+
+  // A program retired before its harvest drain (releaseProgram → deleteProgram when an aborted
+  // admission's subjects tear down) leaves its raw handle in pending. The next drain's
+  // COMPLETION_STATUS query on that dead handle answers null (GL_INVALID_VALUE "Program object
+  // expected") and — read as "still linking" — wedges the entry, re-queried by every later
+  // drain. Three passes this exact handle object to linkProgram and deleteProgram (vendored
+  // WebGLProgram.destroy), so identity eviction here removes it before any drain can query it.
+  if (origDelete) {
+    gl.deleteProgram = (program) => {
+      for (let i = pending.length - 1; i >= 0; i--) {
+        if (pending[i].program === program) pending.splice(i, 1);
+      }
+      return origDelete(program);
+    };
+  }
 
   const installed = {
     ok: true,

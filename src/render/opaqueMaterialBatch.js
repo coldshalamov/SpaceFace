@@ -72,6 +72,8 @@ export function createOpaqueMaterialBatchState() {
     batches: new Map(),
     consolidatedChunks: new Set(),
     slots: new Map(),
+    chunkIds: new WeakMap(),
+    nextChunkId: 0,
     stats: createBatchStats(),
   };
 }
@@ -135,8 +137,22 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
   return stats;
 }
 
-function slotKeyFor(chunk, index, lane) {
-  return `${chunk.pool.key}|${index}|${lane}`;
+function chunkIdFor(state, chunk) {
+  if (!state.chunkIds) state.chunkIds = new WeakMap();
+  let id = state.chunkIds.get(chunk);
+  if (id == null) {
+    id = (state.nextChunkId || 0) + 1;
+    state.nextChunkId = id;
+    state.chunkIds.set(chunk, id);
+  }
+  return id;
+}
+
+// Chunks are InstancedMesh slices of one pool (64-instance capacity each): every chunk in a
+// pool shares pool.key and its visible indices are chunk-local, so the chunk identity must be
+// part of the slot key or same-index instances in sibling chunks would share one slot.
+function slotKeyFor(state, chunk, index, lane) {
+  return `${chunk.pool.key}|${chunkIdFor(state, chunk)}|${index}|${lane}`;
 }
 
 function matrixHashFromArray(array, offset) {
@@ -170,7 +186,7 @@ function consolidateChunk(state, chunk, options) {
   }
   const created = [];
   for (const item of planned) {
-    const key = slotKeyFor(chunk, item.index, item.lane);
+    const key = slotKeyFor(state, chunk, item.index, item.lane);
     let slot = state.slots.get(key);
     if (!slot) {
       const reservation = reserveBatchInstance(state, chunk, item.lane, options.scene);
@@ -180,6 +196,7 @@ function consolidateChunk(state, chunk, options) {
         return false;
       }
       slot = {
+        chunk,
         batch: reservation.batch,
         instanceId: reservation.instanceId,
         matrixHash: null,
@@ -224,10 +241,9 @@ function consolidateChunk(state, chunk, options) {
 
 function restoreConsolidatedChunk(state, chunk) {
   if (!chunk || !chunk.mesh) return false;
-  if (state && chunk.pool && chunk.pool.key != null && state.slots) {
-    const prefix = `${chunk.pool.key}|`;
+  if (state && state.slots) {
     for (const [key, slot] of [...state.slots]) {
-      if (!String(key).startsWith(prefix)) continue;
+      if (slot.chunk !== chunk) continue;
       releaseSlot(state, key, slot);
     }
   }
@@ -405,9 +421,11 @@ export function refreshBatchWorldBounds(mesh) {
 }
 
 function hideUnusedInstances(batch) {
-  for (let i = batch.used; i < batch.allocated; i++) {
+  // `used` is a live-slot count, not a boundary over instanceIds — the actually-unused
+  // instanceIds are exactly the released ids parked in freeIds.
+  for (const id of batch.freeIds || []) {
     try {
-      batch.mesh.setVisibleAt(batch.instanceIds[i], false);
+      batch.mesh.setVisibleAt(id, false);
     } catch (_) {
       // Deleted or not yet validated instance; skip.
     }

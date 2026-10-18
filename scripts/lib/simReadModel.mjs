@@ -958,6 +958,10 @@ function expandDepthFor(segs) {
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
   if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast') return 0;
+  // One live cable changes every tick, while the bounded broken-line history is mostly static.
+  // Keep the complete facade, but diff individual attachment records so that live tension does
+  // not clone and transport every old cable on every pose reply.
+  if (segs[0] === 'combat' && segs[1] === 'attachments') return 3;
   let depth = DOMAIN_EXPAND[segs[0]] || 0;
   for (const rule of activeDomainConfig.expandPaths) {
     const p = rule.segs;
@@ -1480,7 +1484,7 @@ export function createDomainDiffer(options = {}) {
       // hot walk does not repeatedly classify the same path.
       ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
       isCombatTrace: isCombatTracePath(segs),
-      isCombatAttachments: segs.length === 2 && segs[0] === 'combat' && segs[1] === 'attachments',
+      isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
       isNpcJobsById: isNpcJobsByIdPath(segs),
       isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
       cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]),
@@ -1512,7 +1516,7 @@ export function createDomainDiffer(options = {}) {
     metadata = {
       ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
       isCombatTrace: isCombatTracePath(segs),
-      isCombatAttachments: segs.length === 2 && segs[0] === 'combat' && segs[1] === 'attachments',
+      isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
       isNpcJobsById: isNpcJobsByIdPath(segs),
       isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
       cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? node.path : segs[0]),
@@ -1536,6 +1540,18 @@ export function createDomainDiffer(options = {}) {
     if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
       if (node.leaf) {
         releaseProbeSlot(node); // leaf -> container
+        if (metadata.isCombatAttachments) {
+          // Expanded paths still carry empty dictionaries and scalar-to-object resets. The
+          // following child deltas fill this container without retaining an old null value.
+          updates.push({ segs, v: {}, bytes: 2 });
+          stats.shipBytes += 2;
+          stats.ships++;
+          // The last scalar signature no longer describes the published container. Invalidate
+          // it even for an empty dictionary, so null -> {} -> null publishes the second null.
+          node.lastSign = -1;
+          node.signature = null;
+          node.digest = null;
+        }
         if (segs[0] === 'run' && segs.length === 1) {
           // A reset/null run must enumerate the new identity on its first reply.
           node.lastEnum = null;
@@ -1544,7 +1560,9 @@ export function createDomainDiffer(options = {}) {
         }
       }
       node.leaf = false;
-      const enumDue = freshOwnerSnapshot || node.lastEnum == null
+      // Cable admission, cuts and history pruning must accompany this tick's bodies. Unlike
+      // cold domain inventories, this bounded table cannot wait ten replies to enumerate.
+      const enumDue = metadata.isCombatAttachments || freshOwnerSnapshot || node.lastEnum == null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
         const previousKids = node.kids;

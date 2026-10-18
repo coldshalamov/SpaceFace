@@ -23,6 +23,7 @@ import { actions } from '../../src/systems/actions.js';
 import { flight } from '../../src/systems/flight.js';
 import { weapons } from '../../src/systems/weapons.js';
 import { physics } from '../../src/core/physics.js';
+import { readPhysicsTelemetry } from '../../src/core/physicsAuthority.js';
 import { combat } from '../../src/systems/combat.js';
 import { cargo } from '../../src/systems/cargo.js';
 import { economy } from '../../src/systems/economy.js';
@@ -1427,6 +1428,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
         const flight = registry.get('flight') || registry.get('flightSlot') || null;
         const physics = registry.get('physics') || null;
+        const nativeRecord = e && physics?._sg02?.records?.get(e.id);
+        const nativeBody = nativeRecord?.entity === e ? nativeRecord.body : null;
+        const telemetry = e ? readPhysicsTelemetry(e) : null;
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {
           tick: state.tick,
@@ -1451,7 +1455,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           } : null,
           playerId: state.playerId,
           skipFullTick: shouldSkipFullTickSystems(state),
-          input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ, boost: state.input.boost, blocked: state.input.blocked } : null,
+          input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ,
+            turnIntent: state.input.turnIntent, boost: state.input.boost, brake: state.input.brake,
+            actionBrake: state.input.actions?.brake, autoFire: state.input.autoFire,
+            blocked: state.input.blocked, lastInputSeq: host.lastInputSeq,
+            lastInputWallMs: host.lastInputWallMs } : null,
           ui: state.ui ? {
             docked: state.ui.docked,
             screenStackLen: Array.isArray(state.ui.screenStack) ? state.ui.screenStack.length : -1,
@@ -1503,10 +1511,16 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           })(),
           player: e ? {
             id: e.id, type: e.type, alive: e.alive,
-            vx: e.vx, vz: e.vz,
+            vx: e.vel?.x ?? e.vx, vz: e.vel?.z ?? e.vz,
             pos: e.pos ? { x: e.pos.x, y: e.pos.y, z: e.pos.z } : null,
             prevPos: e.prevPos ? { x: e.prevPos.x, z: e.prevPos.z } : null,
             rot: e.rot, hull: e.hull, physicsSleeping: e.physicsSleeping === true,
+            occupantGeneration: e.occupantGeneration,
+            native: nativeBody ? { position: nativeBody.translation(), velocity: nativeBody.linvel(),
+              sleeping: nativeBody.isSleeping(), mass: nativeBody.mass(),
+              frameOrigin: physics._sg02.getFrameOrigin() } : null,
+            control: telemetry ? { tick: telemetry.tick, force: telemetry.force,
+              torque: telemetry.torque, authority: telemetry.authority, mode: telemetry.mode } : null,
           } : null,
           entityCount: state.entities && typeof state.entities.size === 'number' ? state.entities.size : null,
           entityListLen: Array.isArray(state.entityList) ? state.entityList.length : null,
@@ -2172,6 +2186,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const auxJournalBreaches = host.auxVerify ? verifyAuxJournal(state) : 0;
     const domains = diffDomains(state, host.domainDiffSeq++);
     const warmStubs = host.warmStubs.length ? host.warmStubs.splice(0) : null;
+    const weaponVfxProjectiles = collectWeaponVfxProjectiles(state);
+    const boundaryMs = Number(nowNs() - workStart) / 1e6;
     return {
       tick: msg.tick,
       arrivalNs,
@@ -2195,7 +2211,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       journalValid: !journal.needsRebuild(),
       pack,
       spawnInfos,
-      weaponVfxProjectiles: collectWeaponVfxProjectiles(state),
+      weaponVfxProjectiles,
       events,
       warmStubs,
       commandsProbe: msg.commandsProbe ? { farId: host.cmdProbeFarId != null ? host.cmdProbeFarId : null } : undefined,
@@ -2212,6 +2228,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
       packMs: Number(packNs) / 1e6,
+      boundaryMs,
       sendNs: 0, // stamped just before postMessage/dispatch resolve
       stateTick: state.tick,
       simTime: state.simTime,

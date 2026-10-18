@@ -426,6 +426,8 @@ const HS_CAPITAL_KILL = 0.80; // s — capital-kill hit-stop window (≤ 800 ms,
 const HS_DEATH = 0.90;        // s — dip duration for the player dying (the biggest beat)
 const HS_RAMP_TIME = 0.25;    // s — cinematic ease-IN for the death dip (1 -> floor over this window)
 const HS_DEPTH = 0.12;        // timeScale floor during a normal dip
+const SMALL_BEAT_MAX_S = 0.1; // dips at/below this share a retrigger cooldown (kill/heavy/impact tier)
+const SMALL_BEAT_HITSTOP_COOLDOWN = 0.18; // s of real frame time between small-tier dips
 // Rated-moment feel (PQ-146.03 + PQ-159.02). A `moment:holyShit` bus event is the moment
 // detector's output (bulletTime rates `stunt:trickDetected`). The beat is a 150 ms time dip,
 // a camera hold, and a stinger — never a raw collision. Min-wins with bulletTime's longer
@@ -716,6 +718,13 @@ export const feel = {
   name: 'feel',
 
   init(ctx) {
+    // A re-init (registry destroy → init on the same runtime, or a test re-seating this
+    // singleton) must finish through the OLD references before they are replaced: an in-flight
+    // hit-stop is a live 'feel:hit-stop' request on the previous time-effects service, and the
+    // previous bus still owns every listener _subscribe installed. The fields below are all
+    // re-zeroed, so without this pass the request would leak (frame() only clears it while
+    // _hsTimer > 0) and every event would fire one duplicate listener per init.
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.timeEffects = ctx.timeEffects || createTimeEffects(this.state);
@@ -725,6 +734,7 @@ export const feel = {
     this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
     this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
+    this._smallHitstopCooldown = 0;     // same gate for the small kill/damage dip tier
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
     this._collisionFeelScratch = {};
@@ -734,6 +744,7 @@ export const feel = {
     this._armedCollisionBId = null;
     this._chainBeats = new Map();   // causal rootId -> { bodies:Set, fired, lastTick } — F9 once-per-chain
     this._chainBeatQueued = 0;      // extra dip seconds owed to a chain's third-body contact
+    this._unsubs = [];              // _subscribe listener offs — drained by destroy()
     this._velocityDriveScratch = {};
     this._legacyDriveScratch = {};
     this._regionCrossfadeScratch = {};
@@ -750,6 +761,29 @@ export const feel = {
     this._injectStyle();
     this._mountVignette();
     this._subscribe();
+  },
+
+  // Registry teardown / re-init boundary. _resetHitStop releases the request through whatever
+  // service this instance currently owns and zeroes every dip field (including a queued-but-
+  // unflushed contact and the chain-beat queue) so a later frame() cannot resurrect a request;
+  // the guard keeps it idempotent before first init. Then drop every tracked bus listener.
+  destroy() {
+    if (this._chainBeats) {
+      this._resetHitStop();
+    } else {
+      if (this.timeEffects && typeof this.timeEffects.clear === 'function') {
+        this.timeEffects.clear('feel:hit-stop');
+      }
+      this._hsTimer = 0;
+      this._hsRampIn = 0;
+      this._hsFreezeTimer = 0;
+    }
+    if (Array.isArray(this._unsubs)) {
+      for (const off of this._unsubs) {
+        if (typeof off === 'function') off();
+      }
+      this._unsubs = [];
+    }
   },
 
   _injectStyle() {
@@ -1231,7 +1265,16 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
   },
 
   _subscribe() {
-    const bus = this.bus, state = this.state;
+    const state = this.state;
+    // Every subscription is tracked so destroy()/re-init can finish through the old bus instead
+    // of stacking duplicate listeners — each duplicate would re-run _trigger and friends per
+    // event (double FOV punch, double vignette) and could write a stale-bus event into the new
+    // time-effects service.
+    const bus = { on: (event, fn, opts) => {
+      const off = this.bus.on(event, fn, opts);
+      (this._unsubs ||= []).push(off);
+      return off;
+    } };
 
     const clearHitStop = () => this._resetHitStop();
     bus.on('sim:pause', clearHitStop);
@@ -1787,14 +1830,23 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // Hit-stop: take the longer of the current remaining dip and the new one (don't truncate a
     // death punch with a late small hit). Floor the timeScale for the dip duration.
     if (hsDur > this._hsTimer) {
-      this._hsTimer = hsDur;
-      this._hsFreezeTimer = 0;
-      // Death gets a cinematic RAMP-IN (timeScale eases 1 -> floor over ~0.25s) instead of the
-      // snappy snap-to-floor normal hits use. Reads as slow-motion rather than a stutter. Only set
-      // when this is the death beat (vigCls === 'death').
-      this._hsRampIn = (vigCls === 'death') ? HS_RAMP_TIME : 0;
-      this._hsRequest.scale = this._hsRampIn > 0 ? 1 : HS_DEPTH;
-      this.timeEffects.set('feel:hit-stop', this._hsRequest);
+      const smallBeat = hsDur <= SMALL_BEAT_MAX_S;
+      // A kill/damage storm re-arms a small dip on nearly every receipt — the floor never
+      // releases and the world stays dipped at HS_DEPTH for as long as killing continues.
+      // Small beats share the collision grind's real-time cooldown: while cooling, the
+      // punch/vignette still land but the time floor stays released. Bigger beats — moments,
+      // capital kills, death — are discrete and always land.
+      if (!smallBeat || this._smallHitstopCooldown <= 0) {
+        this._hsTimer = hsDur;
+        this._hsFreezeTimer = 0;
+        // Death gets a cinematic RAMP-IN (timeScale eases 1 -> floor over ~0.25s) instead of the
+        // snappy snap-to-floor normal hits use. Reads as slow-motion rather than a stutter. Only
+        // set when this is the death beat (vigCls === 'death').
+        this._hsRampIn = (vigCls === 'death') ? HS_RAMP_TIME : 0;
+        this._hsRequest.scale = this._hsRampIn > 0 ? 1 : HS_DEPTH;
+        this.timeEffects.set('feel:hit-stop', this._hsRequest);
+        if (smallBeat) this._smallHitstopCooldown = SMALL_BEAT_HITSTOP_COOLDOWN;
+      }
     }
     // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
     this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
@@ -1833,6 +1885,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     this._hsFreezeTimer = 0;
     this.timeEffects.clear('feel:hit-stop');
     this._collisionHitstopCooldown = 0;
+    this._smallHitstopCooldown = 0;
     this._armedCollisionDeltaV = 0;
     this._pendingCollisionFeel = null;
     this._armedCollisionTick = null;
@@ -1849,6 +1902,9 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // ---- hit-stop timer updates only its time-effects request ----
     if (this._collisionHitstopCooldown > 0) {
       this._collisionHitstopCooldown = Math.max(0, this._collisionHitstopCooldown - frameDt);
+    }
+    if (this._smallHitstopCooldown > 0) {
+      this._smallHitstopCooldown = Math.max(0, this._smallHitstopCooldown - frameDt);
     }
     if (this._hsTimer > 0) {
       this._hsTimer -= frameDt;

@@ -34,6 +34,7 @@ const ARRAY_KEYS = Object.freeze([
 const NULLABLE_STRING_KEYS = Object.freeze([
   'arenaId', 'ruleset', 'wavePlanId', 'buildCode',
 ]);
+const BOOLEAN_KEYS = Object.freeze(['practice']);
 const JSON_DEPTH_CAP = 24;
 
 // Adjacency from §27.4, plus abort-to-ended from every non-terminal phase and
@@ -152,6 +153,7 @@ export function createRunState({ kind = 'adventure', ruleset = null, seed = 0 } 
     arenaMutators: [],
     buildCode: null,
     result: null,
+    practice: false,
     telemetry: {},
   };
 }
@@ -205,6 +207,10 @@ function validateRunStateInner(run) {
     if (!Object.prototype.hasOwnProperty.call(run, key)) continue;
     const value = run[key];
     if (value !== null && typeof value !== 'string') issues.push(`${key}: expected string`);
+  }
+  for (const key of BOOLEAN_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(run, key)) continue;
+    if (typeof run[key] !== 'boolean') issues.push(`${key}: expected boolean`);
   }
   if (Object.prototype.hasOwnProperty.call(run, 'result')) {
     const value = run.result;

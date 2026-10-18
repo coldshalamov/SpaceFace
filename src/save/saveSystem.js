@@ -6128,6 +6128,12 @@ export const save = {
       ? options.rollbackSnapshot : null;
     const s = this._openRestoreSession(data, slot, deferredMarker
       ? Object.assign({}, options, { deferRestoringEmit: true }) : options);
+    if (s && s.openFailed === true) {
+      if (s.hadPendingRunTransition) {
+        return { restored: false, superseded: true, stale: true, slot, drained: s.drainedRunTransition };
+      }
+      throw s.error;
+    }
     if (deferredMarker) {
       // The capture must serialize live state BEFORE the session's save:restoring emit —
       // its listeners wipe tensionDirector.policy, predation bindings, and free-id order,
@@ -6192,6 +6198,12 @@ export const save = {
       ? options.rollbackSnapshot : null;
     const s = this._openRestoreSession(data, slot, deferredMarker
       ? Object.assign({}, options, { deferRestoringEmit: true }) : options);
+    if (s && s.openFailed === true) {
+      if (s.hadPendingRunTransition) {
+        return { restored: false, superseded: true, stale: true, slot, drained: s.drainedRunTransition };
+      }
+      throw s.error;
+    }
     if (deferredMarker) {
       // A live-sim caller deferred its O(world) rollback capture to this point — the
       // session's scale-0 freeze + _restoring-gated writes hold the sim still between
@@ -6286,6 +6298,9 @@ export const save = {
   _openRestoreSession(data, slot, options) {
     const state = this.state;
     this._restoring = true;
+    let timeEffects = null;
+    let restoreSource = null;
+    try {
     const finalizeLoadedGame = this.helpers && typeof this.helpers.finalizeLoadedGame === 'function'
       ? this.helpers.finalizeLoadedGame
       : null;
@@ -6299,9 +6314,9 @@ export const save = {
     // Per-session channel for the mid-restore 'loading' flip: a chunk-level throw must hand
     // the pre-flip mode back to the failure path, or the veil gate stays armed forever.
     this._restoreModeBeforeLoading = null;
-    const timeEffects = createTimeEffects(state); // fixtures may call _restore without init()
+    timeEffects = createTimeEffects(state); // fixtures may call _restore without init()
     this._beginRestoreSequence();
-    const restoreSource = `save:restore:${this._restoreSequence}`;
+    restoreSource = `save:restore:${this._restoreSequence}`;
     // A sector:enter tail pending at restore start drains during the restore's early yields
     // while the last live serial still sits on state.world — mint a fresh epoch now so every
     // pre-restore payload mismatches the enterEpoch guards from the first yield onward (the
@@ -6358,6 +6373,35 @@ export const save = {
       pendingRestoringEmit,
       finalizerPending: false,
     };
+    } catch (error) {
+      // The gate was taken before the session existed, so no close can clean up after a
+      // mid-open fault: release it here or every later save refuses as 'restoring' and
+      // every later load queues a transition no epilogue ever drains. Budget arms and the
+      // scale-0 freeze may already be installed — disarm them with the same contract
+      // _closeRestoreSession applies, then surface the failure marker.
+      if (typeof this.bus.setEmitSliceBudget === 'function') {
+        try { this.bus.setEmitSliceBudget('sector:exit', 0); } catch (_) { /* budget disarm is best-effort */ }
+        try { this.bus.setEmitSliceBudget('mode:changed', 0); } catch (_) { /* budget disarm is best-effort */ }
+      }
+      if (timeEffects && restoreSource) {
+        try { timeEffects.clear(restoreSource); } catch (_) { /* freeze release is best-effort */ }
+      }
+      const pendingRunTransition = this._pendingRunTransition;
+      this._pendingRunTransition = null;
+      this._restoring = false;
+      // Record-id deferral is restore-scoped (cleared in _closeRestoreSession): a publish that
+      // ran before the fault must not suppress record rematerialize for the rest of the run.
+      delete state.restoreEnvelopeRecordIds;
+      let drainedRunTransition = null;
+      if (pendingRunTransition) {
+        try { drainedRunTransition = pendingRunTransition(); }
+        catch (drainError) {
+          console.error('[save] deferred run transition failed', drainError);
+          this.bus.emit('save:error', { reason: 'deferred_transition_failed' });
+        }
+      }
+      return { openFailed: true, error, hadPendingRunTransition: !!pendingRunTransition, drainedRunTransition };
+    }
   },
 
   // Fires a save:restoring emit _openRestoreSession held for a deferred rollback capture —
@@ -6974,6 +7018,9 @@ export const save = {
     if (typeof this.bus.setEmitSliceBudget === 'function') {
       this.bus.setEmitSliceBudget('sector:exit', 0);
       this.bus.setEmitSliceBudget('mode:changed', 0);
+      // save:loaded slicing is armed inside _restoreChunks for this session's own emit —
+      // the same restore-scoped rule as the two above, and equally dead outside it.
+      this.bus.setEmitSliceBudget('save:loaded', 0);
     }
     // The envelope's record-id deferral is restore-scoped: every rematerialize that could see
     // it ran inside _restoreChunks (membership enter + residency drain), and a drained newer

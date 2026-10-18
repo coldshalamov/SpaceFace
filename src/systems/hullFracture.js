@@ -33,6 +33,118 @@ const LETHAL_BLOW_KEY_CAP = 512;
 export const PENDING_SLAM_KEY_CAP = 512;
 const FRACTURE_SPLIT_SPEED = 12;
 const BREAKUP_CLEARANCE = 0.25;
+export const PHYSICAL_BREAKUP_LAW = Object.freeze({ livePieceCap: 32, tearOffLifetimeS: 60 });
+const livePieceBudgets = new WeakMap();
+
+// Ship plating, loose wreck chips and lethal seam splits share one physics population.
+// A per-producer cap misses the loose-wreck path, and a per-parent cap still lets every
+// original wreck in an offscreen field add two permanent bodies. Count the shared population
+// once on a spawning tick, then account for this owner's new bodies in the same tick.
+function livePieceBudget(state) {
+  const tick = finite(state.tick, finite(state.simTime));
+  const list = state.entityList;
+  const entities = state.entities;
+  let budget = livePieceBudgets.get(state);
+  if (!budget || budget.tick !== tick || budget.list !== list || budget.entities !== entities
+    || budget.listLength !== list?.length || budget.mapSize !== entities?.size) {
+    let count = 0;
+    for (const entity of list || entities?.values() || []) {
+      if (entity?.alive !== false && (entity?.data?.collisionTearOff === true || entity?.data?.fracturePiece)) count++;
+    }
+    budget = { tick, list, entities, listLength: list?.length, mapSize: entities?.size, count };
+    livePieceBudgets.set(state, budget);
+  }
+  return budget;
+}
+
+function recordLivePieces(state, budget, count) {
+  budget.count += count;
+  budget.listLength = state.entityList?.length;
+  budget.mapSize = state.entities?.size;
+}
+
+function plainSalvagePool(entity) {
+  const pool = entity?.data?.salvagePool;
+  if (pool == null) return true;
+  return typeof pool === 'object' && !Array.isArray(pool)
+    && Object.values(pool).every((amount) => Number.isFinite(amount) && amount >= 0);
+}
+
+function protectedPlatingIds(state) {
+  const ids = new Set();
+  const add = (id) => { if (id != null) ids.add(id); };
+  add(state.player?.miningTargetId);
+  if (state.player?.tether?.active) {
+    add(state.player.tether.targetId);
+    add(state.player.tether.sourceId);
+  }
+  const remote = state.player?.remoteMassline;
+  if (remote?.active) {
+    add(remote.sourceId);
+    add(remote.targetId);
+    add(remote.caughtId);
+  }
+  // The attachment ledger is authoritative before player mirrors adopt a restored
+  // line, and also includes NPC tows and remote lines that have no primary mirror.
+  for (const attachment of Object.values(state.combat?.attachments?.byId || {})) {
+    if (attachment?.state !== 'active') continue;
+    add(attachment.ownerId);
+    add(attachment.targetId);
+  }
+  return ids;
+}
+
+function transientPlating(entity, protectedIds = null) {
+  const data = entity?.data;
+  return entity?.type === 'wreck' && data?.collisionTearOff === true
+    && !data.fracturePiece && !data.markerId && !data.aftermath && !data.arenaShardOf
+    && !data.cargo && !entity.cargo && !data.loot?.length && plainSalvagePool(entity)
+    && !protectedIds?.has(entity.id);
+}
+
+export function holdAttachedPlatingLifetimes(state, dt) {
+  if (!state || !(dt > 0) || !Number.isFinite(dt)) return;
+  // Iterate the few active endpoints, never the whole wreck field. Adding this tick
+  // back pauses the expiry clock that core advances while the body is in use.
+  for (const id of protectedPlatingIds(state)) {
+    const piece = state.entities?.get(id);
+    if (!piece || piece.alive === false || !transientPlating(piece)) continue;
+    piece.ttl = Number.isFinite(piece.ttl)
+      ? Math.max(piece.ttl, dt) + dt
+      : PHYSICAL_BREAKUP_LAW.tearOffLifetimeS + dt;
+  }
+}
+
+// Older saves predate both the shared cap and plating TTL. Merely refusing new pieces
+// leaves their existing hundreds of physics bodies alive forever. Restore the bounded
+// population at the run/load boundary, preserving cargo, durable wrecks and salvage value.
+export function restoreCollisionTearOffs(state) {
+  if (!state) return;
+  const pieces = [];
+  const durable = [];
+  const protectedIds = protectedPlatingIds(state);
+  for (const entity of state.entityList || state.entities?.values() || []) {
+    if (!entity || entity.alive === false) continue;
+    if (transientPlating(entity, protectedIds)) pieces.push(entity);
+    else if (entity.data?.collisionTearOff === true || entity.data?.fracturePiece) durable.push(entity);
+  }
+  const keep = Math.max(0, PHYSICAL_BREAKUP_LAW.livePieceCap - durable.length);
+  const sink = pieces[0] && keep > 0 ? pieces[0]
+    : durable.find((entity) => entity.type === 'wreck' && plainSalvagePool(entity));
+  for (let i = 0; i < pieces.length; i++) {
+    const piece = pieces[i];
+    piece.ttl = Number.isFinite(piece.ttl)
+      ? Math.min(piece.ttl, PHYSICAL_BREAKUP_LAW.tearOffLifetimeS)
+      : PHYSICAL_BREAKUP_LAW.tearOffLifetimeS;
+    if (i < keep || !sink) continue;
+    const pool = sink.data.salvagePool || (sink.data.salvagePool = {});
+    for (const [id, amount] of Object.entries(piece.data.salvagePool || {})) {
+      pool[id] = (pool[id] || 0) + amount;
+    }
+    piece.alive = false;
+  }
+  livePieceBudgets.delete(state);
+}
 
 // FIGHT-13 — fresh capital debris is dangerous for its first seconds, then it is salvage.
 //
@@ -351,6 +463,11 @@ export function spawnFracturePieces(ctx, note, options = {}) {
   const victim = state.entities?.get(note.victimId);
   if (breakupConsumed(victim)) return null;
 
+  const budget = livePieceBudget(state);
+  // A lethal split is atomic: mining falls back to the ordinary wreck if two pieces
+  // cannot fit. Spawning one here would leave that piece beside the fallback wreck.
+  if (budget.count + 2 > PHYSICAL_BREAKUP_LAW.livePieceCap) return null;
+
   const classId = hullClassForMass(note.mass);
   const seam = seamFor(classId, state.rng);
   if (!seam) return null;
@@ -406,6 +523,7 @@ export function spawnFracturePieces(ctx, note, options = {}) {
   }));
 
   const pieces = [seamEntity, remEntity].filter(Boolean);
+  recordLivePieces(state, budget, pieces.length);
   if (pieces.length) consumeBreakup(victim);
   for (const piece of pieces) {
     const sign = piece.data && piece.data.fracturePiece === 'remainder' ? -1 : 1;
@@ -483,6 +601,7 @@ function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
     mass,
     hull: 1,
     hullMax: 1,
+    ttl: PHYSICAL_BREAKUP_LAW.tearOffLifetimeS,
     collides: true,
     physicsBody: wreckPhysicsBody(mass, radius),
     data: {
@@ -516,6 +635,9 @@ export function spawnCollisionTearOff(ctx, note) {
   if (!note.pos || !Number.isFinite(note.pos.x) || !Number.isFinite(note.pos.z)) return null;
   const victim = state.entities?.get(note.victimId);
   if (breakupConsumed(victim)) return null;
+  const budget = livePieceBudget(state);
+  const remaining = Math.max(0, PHYSICAL_BREAKUP_LAW.livePieceCap - budget.count);
+  if (remaining === 0) return null;
   // Ship receipts name a surface contact point; wreck receipts name the centre. Use
   // the source body's centre consistently when placing the separated physical chip.
   const spawnNote = victim?.pos
@@ -532,7 +654,7 @@ export function spawnCollisionTearOff(ctx, note) {
   const tz = n.x;
   const flingBase = TEAROFF_FLING_MIN + finite(note.closingSpeed, 0) * 0.18;
   const fling = Math.min(TEAROFF_FLING_MAX, Math.max(TEAROFF_FLING_MIN, flingBase));
-  const count = Math.max(1, Math.min(TEAROFF_PIECE_CAP, Math.trunc(finite(note.count, 1))));
+  const count = Math.max(1, Math.min(remaining, TEAROFF_PIECE_CAP, Math.trunc(finite(note.count, 1))));
   const sectorId = note.sectorId != null
     ? note.sectorId
     : (state.world && state.world.currentSectorId) || null;
@@ -555,6 +677,7 @@ export function spawnCollisionTearOff(ctx, note) {
     if (entity) spawned.push(entity);
   }
   if (!spawned.length) return null;
+  recordLivePieces(state, budget, spawned.length);
   consumeBreakup(victim);
 
   if (ctx.bus && typeof ctx.bus.emit === 'function') {

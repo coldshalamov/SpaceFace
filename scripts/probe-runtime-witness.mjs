@@ -75,6 +75,10 @@ const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
 // callback (timers, message handlers, decode, GC). A sampled CPU profile over the flight window
 // attributes that time per function and per file; the raw profile opens in DevTools.
 const CPU_PROFILE = process.argv.includes('--cpu-profile');
+// Exercise the reported failure using the normal nearest-latch, turn, winch and cut controls.
+// This is a diagnostic input route; it never spawns or teleports bodies or edits simulation state.
+const TETHER_STRESS = process.argv.includes('--tether-stress');
+const COMBAT_STRESS = process.argv.includes('--combat-stress');
 // The CPU profile charges browser-native work (style, layout, paint, GPU command flush) to one
 // opaque "(program)" bucket. A devtools.timeline trace over the same window names it.
 const TIMELINE_TRACE = process.argv.includes('--timeline-trace');
@@ -3482,6 +3486,12 @@ try {
     });
   }
   await page.keyboard.down('KeyW');
+  if (COMBAT_STRESS) {
+    const viewport = page.viewportSize() || { width: 1280, height: 720 };
+    await page.mouse.move(viewport.width * 0.5, viewport.height * 0.25);
+    await page.mouse.down({ button: 'left' });
+    log('combat-stress: forward public cursor aim + primary fire');
+  }
   if (PRODUCTION_ROUTE?.id === 'earned-speed-traversal') await page.keyboard.down('ShiftLeft');
   if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC || OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
     const inputResponded = await page.waitForFunction((baseline) => {
@@ -3572,13 +3582,67 @@ try {
   hostLoadStart = snapshotHostLoadStart();
   const started = Date.now();
   let shotIndex = 0;
+  let tetherStage = 0;
   while (Date.now() - started < SAMPLE_MS) {
     const elapsedMs = Date.now() - started;
+    if (TETHER_STRESS && tetherStage === 0) {
+      await page.keyboard.press('ControlLeft+Space');
+      tetherStage = 1;
+      log('tether-stress: nearest latch + thrust');
+    } else if (TETHER_STRESS && tetherStage === 1 && elapsedMs >= 5_000) {
+      await page.keyboard.down('KeyA');
+      await page.keyboard.down('BracketLeft');
+      tetherStage = 2;
+      log('tether-stress: turn + reel in');
+    } else if (TETHER_STRESS && tetherStage === 2 && elapsedMs >= 12_000) {
+      await page.keyboard.up('BracketLeft');
+      await page.keyboard.up('KeyA');
+      await page.keyboard.press('Space');
+      tetherStage = 3;
+      log('tether-stress: cut + continue thrust');
+    }
     const row = await page.evaluate(readWitnessInPage).catch((error) => ({
       wallMs: Date.now(),
       evaluateError: String(error && error.message || error),
     }));
     row.elapsedMs = elapsedMs;
+    if (TETHER_STRESS) {
+      row.tetherMotion = await page.evaluate(async () => {
+        const { readTimeEffectsRequests } = await import('/src/core/timeEffects.js');
+        const state = window.SF?.state;
+        const player = state?.entities?.get?.(state.playerId);
+        const tether = state?.player?.tether;
+        const target = state?.entities?.get?.(tether?.targetId);
+        const pose = (entity) => entity ? {
+          id: entity.id, pos: { x: entity.pos?.x, z: entity.pos?.z },
+          vel: { x: entity.vel?.x, z: entity.vel?.z }, rot: entity.rot,
+          mesh: entity.mesh ? { x: entity.mesh.position?.x, z: entity.mesh.position?.z } : null,
+        } : null;
+        const diag = window.SF?.simLaneDiag?.() || null;
+        return {
+          tick: state?.tick, scale: state?.timeScale,
+          timeEffects: state ? readTimeEffectsRequests(state) : null,
+          active: tether?.active === true, targetId: tether?.targetId ?? null,
+          player: pose(player), target: pose(target),
+          bodies: state?.entityList?.filter((entity) => entity.alive !== false && entity.collides !== false).length,
+          fragments: state?.entityList?.filter((entity) => entity.alive !== false
+            && (entity.data?.collisionTearOff || entity.data?.fracturePiece)).length,
+          lane: diag ? {
+            closed: diag.closed, clockOwner: diag.clockOwner,
+            replyCount: diag.replyCount,
+            lastCommandSequence: diag.workerClockLastAppliedCommandSequence,
+            lastReplyWork: diag.workerLastReplyWork,
+            clock: diag.workerClockLastDiagnostics,
+            completedTicksPending: diag.completedTicksPending,
+            readModelEntities: diag.readModelEntities,
+            boundaryErrorCount: diag.boundaryErrorCount,
+            droppedEnvelopes: diag.droppedEnvelopes,
+            error: diag.error, errorSite: diag.errorSite,
+          } : null,
+        };
+      });
+      row.tetherStage = tetherStage;
+    }
     snapshots.push(row);
     if (!NO_SAMPLE_SHOTS && !PRODUCTION_ROUTE && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
       const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
@@ -3587,6 +3651,7 @@ try {
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
   }
+  if (TETHER_STRESS) await writeFile(path.join(OUT, 'tether-motion.json'), JSON.stringify(snapshots, null, 2));
   // A one-off in-page question on the live flight scene ("what is that object?"), asked after the
   // sample so it cannot perturb the measured window. Printed and kept in the report.
   if (process.env.SPACEFACE_WITNESS_EVAL) {
@@ -3701,6 +3766,11 @@ try {
   }
   await page?.keyboard.up('KeyW').catch(() => {});
   await page?.keyboard.up('ShiftLeft').catch(() => {});
+  await page?.keyboard.up('KeyA').catch(() => {});
+  await page?.keyboard.up('BracketLeft').catch(() => {});
+  await page?.keyboard.up('ControlLeft').catch(() => {});
+  await page?.keyboard.up('Space').catch(() => {});
+  await page?.mouse.up({ button: 'left' }).catch(() => {});
   if (page && OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
     const restored = await restoreOpeningFirstTouchOwnerWitness(page).catch(() => null);
     if (restored) openingFirstTouchOwner = restored;

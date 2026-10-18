@@ -97,9 +97,19 @@ export const spectrum = {
     for (const [event, handler] of [['scan:pulse', this._onPulse], ['signal:investigate', this._onInvestigate],
       ['signal:track', this._onTrack], ['spectrum:arm', this._onArm], ['spectrum:tow', this._onTow],
       ['spectrum:focus', this._onFocus], ['sector:exit', () => this._leave()],
-      ['game:new', () => { this._leave(); this._sectorState = {}; this._completed = {}; this.state.spectrum = null; }]]) {
+      ['game:new', () => this.newGame()]]) {
       this._off.push(this.bus.on(event, handler));
     }
+  },
+
+  newGame() {
+    this._leave();
+    this._sectorState = {};
+    this._completed = {};
+    this._savedBodies = null;
+    // Resolution keys and scanner sequence numbers include run-local clocks and entity ids.
+    // They must not suppress the same authored case when those identities start over.
+    this._resolvedKeys = new Set();
   },
 
   arm(payload) {

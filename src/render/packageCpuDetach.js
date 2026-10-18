@@ -293,8 +293,16 @@ export function createPackageDetachManifest(loaded, options = {}) {
         fingerprint: null,
       };
       // vendored onGeometryDispose drops the renderer's attribute records; the next draw then
-      // re-uploads, which the gate must see even if no version moved.
-      geometry.addEventListener('dispose', () => { entry.recordsDied = true; });
+      // re-uploads, which the gate must see even if no version moved. The dispatch reaches every
+      // context that drew the geometry — each renderer registers its own listener — so every
+      // uploadedOn stamp describes records that just died: void them all and let post-dispose
+      // draws re-stamp honestly. Without the reset, one renderer's re-upload clearing
+      // recordsDied would erase a sibling context's death certificate while its stale stamp
+      // still satisfied the pending gate.
+      geometry.addEventListener('dispose', () => {
+        entry.recordsDied = true;
+        entry.uploadedOn = new WeakMap();
+      });
       return entry;
     }),
     entries: textures.map((texture, ordinal) => {
@@ -608,6 +616,13 @@ export function noteGeometryGpuResident(geometry, renderer) {
   const found = geometryManifestEntry(geometry);
   if (!found || !renderer) return false;
   found.entry.uploadedOn.set(renderer, true);
+  // A noted upload/draw on a still-attached entry re-created the attribute records a
+  // dispose destroyed — the death certificate is stale (a retiring twin disposing the
+  // shared geometry, then the survivor's own draw re-uploading it). Left set, the flag
+  // would outlive a later detach and pend every presented draw into a full re-decode.
+  // A detached entry keeps it: a draw of emptied arrays proves nothing — the armed
+  // ledger refuses to note those, and a stamp here could only come from a blind bind.
+  if (!found.entry.detached) found.entry.recordsDied = false;
   return true;
 }
 

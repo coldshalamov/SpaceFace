@@ -937,7 +937,10 @@ export function createThreatHalo(root, busOrOpts) {
 
     let edge;
     let along;
-    if (tx < ty) {
+    // The bearing belongs to the full viewport, as offscreenShooterMarker reports it.
+    // The chip inset only positions the glyph; using its smaller aspect ratio to choose
+    // a side flips near-corner shooters onto an adjacent edge on rectangular viewports.
+    if (Math.abs(dx) / Math.max(1, centerX) >= Math.abs(dy) / Math.max(1, centerY)) {
       edge = dx < 0 ? EDGE_LEFT : EDGE_RIGHT;
       along = centerY + dy * tx;
     } else {

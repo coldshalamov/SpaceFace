@@ -2,6 +2,7 @@
 import { LAST_ARGUMENT as C } from '../data/lastArgument.js';
 import { isLastArgument } from '../data/lastArgumentBody.js';
 import { LAST_ARGUMENT_SCORE } from '../data/encounters/capital-boss/last-argument.js';
+import { refreshStaticTransform } from './staticChildMatrices.js';
 const beats = new Map(LAST_ARGUMENT_SCORE.score.beats.map(b => [b.id,b]));
 const clamp = x => Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const smooth = x => { const a=clamp(x);return a*a*(3-2*a); };
@@ -39,6 +40,9 @@ export function createLastArgumentVisualDriver(root, entity) {
     bound.push({node,name:node.name,position:[node.position.x,node.position.y,node.position.z],
       rotation:[node.rotation.x,node.rotation.y,node.rotation.z],scale:[node.scale.x,node.scale.y,node.scale.z],
       auto:node.matrixAutoUpdate});node.matrixAutoUpdate=true;
+    // Binding an interior animated hook must release the static ancestor marks, or a
+    // stationary hull prunes the branch before its per-frame dirty flag can be seen.
+    refreshStaticTransform(node);
   });
   const reset=({node,position:p,rotation:r,scale:s})=>{
     node.position.set(...p);node.rotation.set(...r);node.scale.set(...s);node.updateMatrix();

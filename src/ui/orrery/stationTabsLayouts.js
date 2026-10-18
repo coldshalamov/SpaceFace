@@ -1847,10 +1847,18 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-choice { font-size:13px !important; padding-top:3px !important; padding-bottom:3px !important; }
   ${D} .sx-talk__keys { display:none !important; }
 }
-/* Ledger at 960×540-class (761–1100 wide, ≤640 tall): the ~192px body held the tape (176px) and put the
+/* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
+   beside the authority kicker, and at this width the two printed on each other (D223). The kicker
+   takes the whole first row; the standing keeps the right corner of the name's row, under the
+   watermark crest. */
+@media (max-width:800px) and (max-height:640px) {
+  ${D} .sx-fac-overview > .k-caps { grid-column:1 / -1 !important; }
+  ${D} .sx-fac-heroes { grid-row:2 !important; }
+}
+/* Ledger at 960×540-class (651–1100 wide, ≤640 tall): the ~192px body held the tape (176px) and put the
    reading and the purse under it, so BOUGHT / SOLD / NET and the entry's reading were clipped away. The
    purse stands beside the tape at its full height; the reading sits under a shorter tape. */
-@media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
+@media (min-width:651px) and (max-width:1100px) and (max-height:640px) {
   ${D} .sx-ledger > .st-ledger { max-width:40%; }
   ${D} .sx-ledger > .st-ledger .st-sub-h { font-size:24px !important; }
   /* the list owns what the ~192px body leaves under the title: the intro and the narrator's line yield, and
@@ -1863,6 +1871,14 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; margin:6px 0 0 !important; }
   ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:6px !important; padding-bottom:6px !important; }
   ${D} .sx-ledger .sx-ledger__keys { display:none !important; }
+  /* #sx-panel clamps the panel to the body height (~60px at 460 tall) and hides overflow, so a
+     trapped panel is unreachable by wheel: scrollIntoView moves overflow:hidden boxes but a user
+     cannot. The panel becomes the one scroll surface (the dp-frame__scroll contract its sibling
+     tabs already carry), the left column takes its content height inside it, and the right column
+     unpins its bottom edge so tape / purse / reading ride the same scroll instead of clipping. */
+  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important; }
+  ${D} .sx-ledger > .st-ledger { height:auto !important; min-height:100% !important; }
+  ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; }
   /* the purse needs ~220px so its ring (radius = half its box less 60, as at 1280) clears NET · CR */
   ${D} .sx-ledger > .sx-ledger__right { left:calc(40% + 22px) !important; display:grid !important; grid-template-columns:minmax(0, 1fr) 220px; grid-template-rows:auto minmax(0, 1fr); column-gap:8px; row-gap:0 !important; }
   /* the tape keeps the height its axis figures need (~176px: majors ~21px apart, as before); the reading rises into
@@ -1883,11 +1899,11 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read-hand { display:none !important; }
 }
 
-/* Ledger at 800×600-class (761–900 wide, ≤640 tall): the prior 140px purse starved the ring so
+/* Ledger at 800×600-class (651–900 wide, ≤640 tall): the prior 140px purse starved the ring so
    BOUGHT / SOLD / NET · CR clipped. Restore ~200px for the purse and narrow the list to ~34%
    so the reading column still holds title+cargo beside a trimmed figure; CYCLE stays above the
-   line so list items share the row. Parent 761–1100 (40% / 220px) and 960+ stay unchanged. */
-@media (min-width:761px) and (max-width:900px) and (max-height:640px) {
+   line so list items share the row. Parent 651–1100 (40% / 220px) and 960+ stay unchanged. */
+@media (min-width:651px) and (max-width:900px) and (max-height:640px) {
   /* list yields ~6% so reading + ~200px purse clear BOUGHT/SOLD/NET without crushing cargo */
   ${D} .sx-ledger > .st-ledger { max-width:34%; }
   ${D} .sx-ledger > .sx-ledger__right { left:calc(34% + 22px) !important; grid-template-columns:minmax(0, 1fr) 200px !important; column-gap:6px !important; }

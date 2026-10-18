@@ -27,10 +27,12 @@ import {
   clearPendingSlam,
   closingSpeedFromImpact,
   hotDebrisContactScale,
+  holdAttachedPlatingLifetimes,
   isSlamFractureCandidate,
   noteLethalBlow,
   notePendingSlam,
   resetPendingSlams,
+  restoreCollisionTearOffs,
   spawnCollisionTearOff,
 } from './hullFracture.js';
 import { OVERKILL_ORIGIN_KINDS } from '../data/hullFractureSeams.js';
@@ -86,6 +88,7 @@ export const collisionConsequences = {
     this.bus = ctx.bus;
     this.registry = ctx.registry;
     this.helpers = ctx.helpers || {};
+    restoreCollisionTearOffs(this.state);
     this._pairTicks = new Map();
     this._pendingCraftContacts = new Map();
     this._applicationEnabled = combatFlag('weaponImpulseConsequences');
@@ -99,9 +102,13 @@ export const collisionConsequences = {
       this._unsubs.push(this.bus.on(RESOLVE_PENDING_CRAFT_CONTACT_EVENT,
         (payload) => this._resolvePendingCraftContact(payload || {})));
       this._unsubs.push(this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})));
-      this._unsubs.push(this.bus.on('save:loaded', () => this._resetTransientState()));
-      this._unsubs.push(this.bus.on('game:started', () => this._resetTransientState()));
-      this._unsubs.push(this.bus.on('game:newGame', () => this._resetTransientState()));
+      const onRunRestored = () => {
+        this._resetTransientState();
+        restoreCollisionTearOffs(this.state);
+      };
+      this._unsubs.push(this.bus.on('save:loaded', onRunRestored));
+      this._unsubs.push(this.bus.on('game:started', onRunRestored));
+      this._unsubs.push(this.bus.on('game:newGame', onRunRestored));
     }
   },
 
@@ -111,7 +118,8 @@ export const collisionConsequences = {
     this._resetTransientState();
   },
 
-  update(_dt, state) {
+  update(dt, state) {
+    if (state?.mode === 'flight') holdAttachedPlatingLifetimes(state, dt);
     const enabled = combatFlag('weaponImpulseConsequences');
     if (!enabled) {
       if (this._applicationEnabled) this._resetTransientState();

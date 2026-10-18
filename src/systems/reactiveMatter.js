@@ -523,7 +523,20 @@ export const reactiveMatter = {
         if (this.pending.length > 128) this.pending.shift();
       }));
       this._off.push(ctx.bus.on('sector:exit', () => this._clearLive()));
-      this._off.push(ctx.bus.on('game:new', () => { this._clearLive(); this.state.reactiveMatterWorld = null; }));
+      this._off.push(ctx.bus.on('game:new', () => this.newGame()));
+    }
+  },
+
+  newGame() {
+    this._clearLive();
+    this.cues = [];
+    if (this.state) {
+      // A fresh run owns new material identities and terminal reactions. Retained worker
+      // boots call this canonical hook without replaying the main realm's game:new event.
+      this.state.reactiveMatterWorld = null;
+      this.state.reactiveMatterCues = [];
+      this.state.reactiveMatterLast = null;
+      this.state.reactiveMatterDemo = null;
     }
   },
 

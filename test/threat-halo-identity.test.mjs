@@ -71,6 +71,32 @@ test('every visible hostile arc carries a readable label; closing outranks holdi
   } finally { globalThis.document = old; }
 });
 
+test('near-corner bearing uses the viewport side before the chip inset is applied', () => {
+  const old = globalThis.document;
+  try {
+    // Gauntlet seed4242, sim46.65: the shooter is outside only X. Comparing against
+    // the smaller inset rectangle incorrectly moved its right-hand marker onto the top.
+    for (const [x, y, edge] of [
+      [1283.2540673731626, 2.1249740009887885, 'right'],
+      [-3.2540673731626, 2.1249740009887885, 'left'],
+      [1283.2540673731626, 717.8750259990112, 'right'],
+      [-3.2540673731626, 717.8750259990112, 'left'],
+    ]) {
+      const mock = mockDocument();
+      globalThis.document = mock.document;
+      const halo = createThreatHalo(mock.document.createElement('div'), busOf());
+      const p = player();
+      const attacker = hostile(404, { x: 400, z: 0 });
+      const state = { tick: 2799, simTime: 46.65, playerId: p.id, entityList: [p, attacker] };
+      halo.update(p, state, (_world, out) => Object.assign(out, { x, y, onScreen: false, behind: false }));
+      const visible = arcs(mock).filter((el) => el.style.display === 'block');
+      assert.equal(visible.length, 1, `${edge} corner keeps the shooter marker`);
+      assert.equal(visible[0].getAttribute('data-edge'), edge, `${x},${y}`);
+      halo.destroy();
+    }
+  } finally { globalThis.document = old; }
+});
+
 test('telegraph wins the label while tether-cut latch still wins overall', () => {
   const mock = mockDocument();
   const old = globalThis.document;

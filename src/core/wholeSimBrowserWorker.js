@@ -53,6 +53,7 @@ let sabEnv = null;
 const LOCAL_FIXED_DT = 1 / 60;
 const LOCAL_MAX_STEPS = 4;
 const LOCAL_HITCH_CATCHUP_STEPS = 2;
+const LOCAL_MAX_DEBT_SECONDS = 0.25;
 const LOCAL_DURABLE_LIMIT = 4096;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_JOURNAL_SCALAR_STRIDE = 18;
@@ -86,6 +87,9 @@ const localClock = {
   needsRebuildOnSend: false,
   durableCount: 0,
   backpressured: false,
+  backpressureEpisodes: 0,
+  backpressureSinceMs: 0,
+  backpressureTotalMs: 0,
   timerFires: 0,
   stepCount: 0,
   shedStepCount: 0,
@@ -121,16 +125,31 @@ export function nextLocalClockDeadline(deadlineMs, nowMs, intervalMs = LOCAL_TIM
   return next;
 }
 
-function localClampFrameSeconds(elapsedMs) {
+function localElapsedSeconds(elapsedMs) {
   const seconds = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs / 1000) : 0;
-  return Math.min(seconds, 0.25);
+  return seconds;
+}
+
+function resetLocalClockTiming() {
+  localClock.anchorMs = localNowMs();
+  localClock.deadlineMs = 0;
+  // A pause/rate/epoch boundary starts a new wall interval. Preserve only the sub-tick phase;
+  // old whole-step debt must not execute at a new rate or after a hidden/paused interval.
+  localClock.accumulator %= LOCAL_FIXED_DT;
+  if (localClock.accumulator < 1e-12 || LOCAL_FIXED_DT - localClock.accumulator < 1e-12) {
+    localClock.accumulator = 0;
+  }
 }
 
 const LOCAL_DURABLE_KEYS = Object.freeze([
   'events', 'storageOps', 'rpcAcks', 'settingsAcks', 'spawnAcks',
   'commandAcks', 'inputPublishes', 'auxUpserts', 'auxRemovals',
-  'domainUpdates', 'spawnInfos', 'entityVitals', 'warmStubs',
+  'spawnInfos', 'warmStubs',
 ]);
+// These are complete read snapshots, unlike one-shot events and lifecycle receipts. Retaining
+// every intermediate value makes a slow presentation consumer stop an otherwise healthy sim.
+const LOCAL_LATEST_KEYS = Object.freeze(['entityVitals', 'domainUpdates']);
+const localReplyLatestRows = new WeakMap();
 
 // A worker-local clock can finish several authoritative ticks before the main
 // lane ACKs the previous presentation reply. Keep those ranges without
@@ -256,7 +275,36 @@ function localArrayLength(reply, key) {
 function localDurableCount(reply) {
   let count = 0;
   for (const key of LOCAL_DURABLE_KEYS) count += localArrayLength(reply, key);
+  for (const key of LOCAL_LATEST_KEYS) count += localArrayLength(reply, key);
   return count;
+}
+
+function localMergeLatestRows(previous, next, key) {
+  const incoming = Array.isArray(next?.[key]) ? next[key] : [];
+  const spawns = key === 'entityVitals' && Array.isArray(next?.spawnInfos) ? next.spawnInfos : [];
+  if (!incoming.length && !spawns.length) return;
+  let tables = localReplyLatestRows.get(previous);
+  if (!tables) localReplyLatestRows.set(previous, tables = new Map());
+  let rows = tables.get(key);
+  const identity = key === 'entityVitals'
+    ? (row) => Number.isSafeInteger(row?.[0]) ? row[0] : Symbol()
+    : (row) => Array.isArray(row?.segs) ? JSON.stringify(row.segs) : Symbol();
+  if (!rows) {
+    rows = new Map();
+    for (const row of previous[key] || []) rows.set(identity(row), row);
+    tables.set(key, rows);
+  }
+  // Spawn/rebuild infos include a fresh complete vitals row. An older occupant's retained
+  // scalars must not overwrite that row when a numeric id is retired and reused.
+  for (const info of spawns) rows.delete(info?.entityId);
+  for (const row of incoming) {
+    const id = identity(row);
+    // Preserve last-write order. A parent null/reset must stay after every older descendant,
+    // while a later descendant may legitimately repopulate that reset container.
+    rows.delete(id);
+    rows.set(id, row);
+  }
+  previous[key] = Array.from(rows.values());
 }
 
 function localCompletedTickCount(reply) {
@@ -314,6 +362,7 @@ function localMergeReply(previous, next) {
     if (!Array.isArray(previous[key])) previous[key] = [];
     previous[key].push(...incoming);
   }
+  for (const key of LOCAL_LATEST_KEYS) localMergeLatestRows(previous, next, key);
   const previousFullRebuild = previous.journalFullRebuild === true;
   const nextFullRebuild = next?.journalFullRebuild === true;
   const previousSegments = localReplySegments(previous);
@@ -389,7 +438,8 @@ function localMergeReply(previous, next) {
   for (const key of [
     'tick', 'arrivalNs', 'journalRebuildGeneration', 'journalValid',
     'stateTick', 'simTime',
-    'workMs', 'packMs', 'sendNs', 'clockAccumulator', 'clockDiagnostics',
+    'workMs', 'packMs', 'boundaryMs', 'domainDiffMs', 'domainShipBytes',
+    'sendNs', 'clockAccumulator', 'clockDiagnostics',
     'weaponVfxProjectiles', 'timeEffectsSnapshot',
   ]) {
     if (next && next[key] !== undefined) previous[key] = next[key];
@@ -429,9 +479,29 @@ function localMergeReply(previous, next) {
   return previous;
 }
 
+function localSetBackpressure(value) {
+  const next = value === true;
+  if (next && !localClock.backpressured) {
+    localClock.backpressureEpisodes++;
+    localClock.backpressureSinceMs = localNowMs();
+  } else if (!next && localClock.backpressured) {
+    localClock.backpressureTotalMs += Math.max(0, localNowMs() - localClock.backpressureSinceMs);
+    localClock.backpressureSinceMs = 0;
+  }
+  localClock.backpressured = next;
+}
+
 function localRefreshDurablePressure() {
   localClock.durableCount = localDurableCount(localClock.latestReply);
-  localClock.backpressured = localClock.durableCount >= LOCAL_DURABLE_LIMIT;
+  localSetBackpressure(localClock.durableCount >= LOCAL_DURABLE_LIMIT);
+  const diagnostics = localClock.latestReply?.clockDiagnostics;
+  if (diagnostics) {
+    diagnostics.backpressured = localClock.backpressured;
+    diagnostics.retainedRows = localClock.durableCount;
+    diagnostics.retainedVitals = localArrayLength(localClock.latestReply, 'entityVitals');
+    diagnostics.retainedDomainUpdates = localArrayLength(localClock.latestReply, 'domainUpdates');
+    diagnostics.backpressureEpisodes = localClock.backpressureEpisodes;
+  }
 }
 
 // An active ACK is already a presentation boundary. If the worker accumulated
@@ -513,8 +583,9 @@ async function publishLocalReply(reply) {
   localClock.sentClockSequence = reply.clockSequence;
   localClock.sentJournalEnd = Number.isSafeInteger(reply.journalEnd) ? reply.journalEnd : 0;
   localClock.latestReply = null;
+  localReplyLatestRows.delete(reply);
   localClock.durableCount = 0;
-  localClock.backpressured = false;
+  localSetBackpressure(false);
   postTickLikeReply(reply);
 }
 
@@ -534,20 +605,23 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   if (Number.isSafeInteger(explicitSteps) && explicitSteps > 0) {
     steps = Math.min(LOCAL_MAX_STEPS, explicitSteps);
   } else if (localClock.active && localClock.scale > 0) {
-    localClock.accumulator += localClampFrameSeconds(elapsedMs) * localClock.scale;
+    localClock.accumulator += localElapsedSeconds(elapsedMs) * localClock.scale;
+    // Cap carried simulation debt, not the work consumed by this one timer turn. A late wake
+    // must not permanently slow the sim by dropping every tick beyond its small work batch.
+    if (localClock.accumulator > LOCAL_MAX_DEBT_SECONDS) {
+      shedSteps = Math.max(0, Math.ceil(
+        (localClock.accumulator - LOCAL_MAX_DEBT_SECONDS) / LOCAL_FIXED_DT - 1e-9,
+      ));
+      localClock.accumulator -= shedSteps * LOCAL_FIXED_DT;
+    }
     const hitch = elapsedMs > LOCAL_FIXED_DT * 1000 * 6.5;
     const cap = hitch ? LOCAL_HITCH_CATCHUP_STEPS : LOCAL_MAX_STEPS;
-    while (localClock.accumulator >= LOCAL_FIXED_DT && steps < cap) {
+    while (localClock.accumulator + 1e-12 >= LOCAL_FIXED_DT && steps < cap) {
       localClock.accumulator -= LOCAL_FIXED_DT;
       steps++;
     }
-    if (localClock.accumulator >= LOCAL_FIXED_DT) {
-      const whole = Math.floor(localClock.accumulator / LOCAL_FIXED_DT);
-      shedSteps = whole;
-      localClock.accumulator -= whole * LOCAL_FIXED_DT;
-      if (localClock.accumulator < 1e-12 || LOCAL_FIXED_DT - localClock.accumulator < 1e-12) {
-        localClock.accumulator = 0;
-      }
+    if (localClock.accumulator < 1e-12) {
+      localClock.accumulator = 0;
     }
   }
 
@@ -601,6 +675,9 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     appliedCommandSequence: localClock.appliedCommandSequence,
     awaitingAck: localClock.sentAwaitingAck,
     backpressured: localClock.backpressured,
+    backpressureEpisodes: localClock.backpressureEpisodes,
+    backpressureMs: localClock.backpressureTotalMs + (localClock.backpressured
+      ? Math.max(0, now - localClock.backpressureSinceMs) : 0),
   };
   localStampCompletedMetadata(reply);
   if (coalescedForPublish) reply.journalFullRebuild = true;
@@ -664,8 +741,13 @@ function scheduleLocalClock() {
   if (!localClock.enabled || localClock.stopped || !localClock.active
     || localClock.scale <= 0 || localClock.timer !== null || localClock.backpressured) return;
   const now = localNowMs();
-  localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, now);
-  const delayMs = Math.max(0, localClock.deadlineMs - now);
+  // Include authoritative work since the last batch began. If that work itself left a whole
+  // tick owed, yield to one new task promptly instead of waiting another fixed interval.
+  const pendingDebt = localClock.accumulator
+    + localElapsedSeconds(now - localClock.anchorMs) * localClock.scale;
+  const hasWholeDebt = pendingDebt + 1e-12 >= LOCAL_FIXED_DT;
+  if (!hasWholeDebt) localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, now);
+  const delayMs = hasWholeDebt ? 0 : Math.max(0, localClock.deadlineMs - now);
   const generation = localClock.generation;
   localClock.timer = setTimeout(() => {
     localClock.timer = null;
@@ -675,7 +757,7 @@ function scheduleLocalClock() {
     // Keep at most one timer-driven tick queued. When the worker is busy, a
     // timer per 16.67 ms would create an unbounded promise queue and turn a
     // bounded catch-up policy into a delayed burst. The next run measures the
-    // whole elapsed interval and sheds it through the same fixed-step cap.
+    // whole elapsed interval and consumes another bounded batch from its capped debt.
     if (localClock.tickQueued) return;
     localClock.tickQueued = true;
     chain = chain.then(() => runLocalClockTick(false)).catch((error) => {
@@ -695,8 +777,7 @@ function refreshLocalClockScale(fallback) {
     localClock.scale = next;
     // The pause interval is not catch-up debt. Keep the fractional fixed-step phase, but
     // start the new rate at this boundary instead of charging hidden/paused wall time.
-    localClock.anchorMs = localNowMs();
-    localClock.deadlineMs = 0;
+    resetLocalClockTiming();
   }
 }
 
@@ -709,12 +790,11 @@ async function handleLocalClockControl(msg) {
   applyPresentationTimeEffects(msg.timeEffectsSnapshot, localClock.lifecycleGeneration);
   refreshLocalClockScale(msg.timeScale);
   localClock.active = msg.active === true;
-  localClock.anchorMs = localNowMs();
+  resetLocalClockTiming();
   if (localClock.timer !== null) {
     clearTimeout(localClock.timer);
     localClock.timer = null;
   }
-  localClock.deadlineMs = 0;
   if (localClock.active) scheduleLocalClock();
 }
 
@@ -736,7 +816,7 @@ async function handleLocalClockAck(msg) {
       localClock.needsRebuildOnSend = Number.isSafeInteger(localClock.latestReply.journalStart)
         && localClock.latestReply.journalStart > ackEnd;
     }
-    localClock.backpressured = false;
+    localSetBackpressure(false);
     retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
   }
   const needsImmediateMaintenance = !localClock.active || localClock.scale <= 0;
@@ -759,7 +839,10 @@ async function handleLocalClockCommand(msg) {
   if (Number.isSafeInteger(msg.lifecycleGeneration) && msg.lifecycleGeneration < localClock.lifecycleGeneration) return;
   let retainedReplyPublished = false;
   localClock.commandCount++;
-  if (Number.isSafeInteger(msg.lifecycleGeneration)) localClock.lifecycleGeneration = msg.lifecycleGeneration;
+  if (Number.isSafeInteger(msg.lifecycleGeneration)) {
+    if (msg.lifecycleGeneration !== localClock.lifecycleGeneration) resetLocalClockTiming();
+    localClock.lifecycleGeneration = msg.lifecycleGeneration;
+  }
   applyPresentationTimeEffects(msg.timeEffectsSnapshot, localClock.lifecycleGeneration);
   refreshLocalClockScale(msg.timeScale);
   if (Number.isSafeInteger(msg.ackJournalEnd)) {
@@ -773,7 +856,7 @@ async function handleLocalClockCommand(msg) {
       localClock.needsRebuildOnSend = Number.isSafeInteger(localClock.latestReply.journalStart)
         && localClock.latestReply.journalStart > ackEnd;
     }
-    localClock.backpressured = false;
+    localSetBackpressure(false);
     retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
   }
   if (Number.isSafeInteger(msg.commandSequence)) {

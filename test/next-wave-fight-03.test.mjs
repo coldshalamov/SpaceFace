@@ -104,7 +104,30 @@ test('a kestrel pick stores the author record, including an empty hardpoint', ()
   assert.equal(harness.state.player.ownedShips[harness.state.player.activeShipIndex].fittings[0], offer.defId);
 });
 
-test('a wave the author rejects still fits the weapon and still closes the draft', () => {
+test('the opening armory (run.wave 0) stamps its pick as wave 1, not a lost note', () => {
+  // run.wave counts cleared waves, so the pre-wave-1 armory legitimately sits at 0; the
+  // record's contract is the 1-based wave that offered it (validator still drops wave 0).
+  const harness = boot();
+  enterDraft(harness);
+  const offer = survivalDraft.currentOffers()[0];
+  harness.state.run.wave = 0;
+  const mark = harness.emitted.length;
+  harness.bus.emit('run:draftPickRequested', { offerId: offer.id });
+  const after = harness.emitted.slice(mark);
+  const notes = after.filter((entry) => entry.event === 'run:modifierRecordRequested');
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].payload.record.wave, 1);
+  assert.equal(validateRunModifier(notes[0].payload.record).ok, true);
+  assert.equal(harness.state.run.modifiers.length, 1);
+  assert.equal(harness.state.run.modifiers[0].wave, 1);
+  assert.equal(after.filter((entry) => entry.event === 'run:draftResolved').length, 1);
+  assert.equal(
+    harness.state.player.ownedShips[harness.state.player.activeShipIndex].fittings[offer.slotIndex],
+    offer.defId,
+  );
+});
+
+test('a note the author rejects still fits the weapon and still closes the draft', () => {
   const malformed = runModifierRecord({ kind: 'weapon', offerId: 'x', defId: 'wpn_pulse_laser_s', wave: 0 });
   assert.equal(validateRunModifier(null).ok, false);
   assert.equal(validateRunModifier(malformed).ok, false);
@@ -118,7 +141,9 @@ test('a wave the author rejects still fits the weapon and still closes the draft
   const harness = boot();
   enterDraft(harness);
   const offer = survivalDraft.currentOffers()[0];
-  harness.state.run.wave = 0;
+  // The verb is the display word the note carries; a card holding one the catalog never
+  // authored produces a note the validator must drop — the refusal is what this pins.
+  offer.verb = 'not-a-verb';
   const mark = harness.emitted.length;
   harness.bus.emit('run:draftPickRequested', { offerId: offer.id });
   const after = harness.emitted.slice(mark);

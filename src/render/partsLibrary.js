@@ -9168,6 +9168,16 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
   // links) and keep each covered program key alive after the boundary's materials release.
   const programSpecimenMount = await pacePolicyWalk(() => mountCanonicalProgramSpecimens(root));
+  // A parked render-package pool candidate stays a direct draw until a second same-key owner
+  // promotes it — the deferred chunk then links the USE_INSTANCING program variant wherever
+  // that promotion lands, in-flight for mid-round traffic hulls (frame-solid
+  // 2026-10-18T11-08-44-814Z: both Yard Tug GLTFKit_InstancePool links at +134 s differed
+  // from their nearest program only at cache-key index 51, the instancing bit). A count-0
+  // instanced twin per parked candidate material rides THIS admission's compile, so the
+  // later promotion is a program-cache hit instead of an in-flight link.
+  const poolCandidateTwinMount = await pacePolicyWalk(
+    () => mountPackagePoolCandidateInstancedTwins(root),
+  );
   const tier1 = tier1CausalCounters();
   if (tier1) {
     tier1.countPipelinePreparation('material-policies', 1);
@@ -9182,6 +9192,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
       : { skipped: true, reason: 'pipeline compiler unavailable' };
   } finally {
     settleCanonicalProgramSpecimens(root, programSpecimenMount);
+    settlePackagePoolCandidateInstancedTwins(root, poolCandidateTwinMount);
   }
   const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
@@ -9206,6 +9217,57 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     compileMs: Math.round(compileMs),
     residencyMs: Math.round(residencyMs),
   };
+}
+
+/**
+ * Parked render-package pool candidates (userData.spacefacePackagePoolCandidate) still draw
+ * as direct meshes, but a second same-key owner later promotes them into a pool chunk —
+ * an InstancedMesh over the same geometry+material whose USE_INSTANCING program variant
+ * otherwise links wherever that promotion lands, in-flight for mid-round spawns. Mount one
+ * count-0 InstancedMesh twin per unique candidate material under this admission's compile
+ * root so the same shader family links inside the boundary's own paced admission instead
+ * (the roster catalog's SF_RosterPrewarm_InstanceTwin pattern, scoped to live boundaries).
+ * The twin draws nothing — count 0 — and the holder detaches on settle.
+ */
+export function mountPackagePoolCandidateInstancedTwins(root) {
+  if (!root || typeof root.traverse !== 'function') return null;
+  const twins = [];
+  const seenPairs = new Set();
+  root.traverse((object) => {
+    if (object.isMesh !== true) return;
+    if (!object.userData || object.userData.spacefacePackagePoolCandidate !== true) return;
+    const geometry = object.geometry;
+    const material = object.material;
+    if (!geometry || !material) return;
+    // Geometry feeds the program key too (vertexTangents/uv defines), so dedupe on the same
+    // (geometry, material) pair identity the pool chunks key on — not on material alone.
+    const pairKey = `${geometry.uuid}:${Array.isArray(material)
+      ? material.map((entry) => entry && entry.uuid).join('/')
+      : material.uuid}`;
+    if (seenPairs.has(pairKey)) return;
+    seenPairs.add(pairKey);
+    const twin = new THREE.InstancedMesh(geometry, material, 1);
+    twin.count = 0;
+    twin.visible = true;
+    twin.frustumCulled = false;
+    twin.name = 'SF_PoolCandidate_InstanceTwin';
+    twins.push(twin);
+  });
+  if (!twins.length) return null;
+  const holder = new THREE.Group();
+  holder.name = 'SF_PoolCandidateTwinHolder';
+  for (const twin of twins) holder.add(twin);
+  root.add(holder);
+  return holder;
+}
+
+export function settlePackagePoolCandidateInstancedTwins(root, holder) {
+  if (!holder) return;
+  if (holder.parent === root) root.remove(holder);
+  else if (holder.parent) holder.parent.remove(holder);
+  for (const twin of holder.children) {
+    if (twin && typeof twin.dispose === 'function') twin.dispose();
+  }
 }
 
 // Logical cancellation releases the queue; the existing driver promise retains its resources.

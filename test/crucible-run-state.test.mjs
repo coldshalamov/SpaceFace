@@ -31,7 +31,7 @@ const EXPECTED_RUN_KEYS = Object.freeze([
   'schemaVersion', 'kind', 'ruleset', 'seed', 'arenaId', 'phase', 'wave', 'block', 'act',
   'wavePlanId', 'threatBudget', 'spawnedThreat', 'resolvedThreat', 'credits', 'xp', 'level',
   'score', 'style', 'modifiers', 'draftHistory', 'shopHistory', 'arenaMutators', 'buildCode',
-  'result', 'telemetry',
+  'result', 'practice', 'telemetry',
 ]);
 
 const ILLEGAL_TRANSITIONS = Object.freeze([

@@ -103,7 +103,7 @@ for (const controlMode of ['bounty_contest', 'wingman_brace', 'npc_tow']) {
     link.lastTension = link.tetherPolicy.break.maxTension * 0.6;
     const reply = await f.tick();
     const shipped = f.state.combat.attachments.byId[link.id];
-    assert.ok(reply.domainUpdates.some(u => u.segs.join('.') === 'combat.attachments'));
+    assert.ok(reply.domainUpdates.some(u => u.segs.join('.') === `combat.attachments.byId.${link.id}`));
     for (const key of ['id', 'ownerId', 'targetId', 'state', 'lastTension', 'controlMode']) {
       assert.equal(shipped[key], link[key], `real transport preserves ${key}`);
     }

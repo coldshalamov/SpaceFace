@@ -415,10 +415,17 @@ export const survivalWave = {
         this._resolveCohort(id);
         continue;
       }
-      if (!this._isCohortMemberDisabled(id, member)) continue;
       const data = entity.data || {};
       if (data.isBoss === true || data.bossId != null
         || data.missionTag === 'capital_boss' || data.bossDressing != null) continue;
+      // A hull the morale rules routed — surrendered or broken off — resolves the round
+      // without a kill: its crew's fate belongs to the surrender-recovery/aftermath flow,
+      // and executing it here would record a death the pilot never ordered.
+      if (this._isCohortMemberOutOfFight(id, member, entity)) {
+        this._resolveCohort(id);
+        continue;
+      }
+      if (!this._isCohortMemberDisabled(id, member)) continue;
       // The defeat the round already recorded, pronounced honestly: dead
       // before the emit, exactly like every real emitter (SF-069).
       entity.alive = false;
@@ -918,7 +925,30 @@ export const survivalWave = {
   _isCohortMemberActionable(id, member) {
     const entity = this._resolveCohortEntity(id, member);
     if (!entity || entity.alive === false) return false;
-    return !this._isCohortMemberDisabled(id, member);
+    return !this._isCohortMemberOutOfFight(id, member, entity)
+      && !this._isCohortMemberDisabled(id, member);
+  },
+
+  /**
+   * A hull the morale rules already took out of the fight — surrendered or broken off —
+   * has lost the round: combatOutcome records 'surrendered'/'fled' as its terminal outcome
+   * the same way a kill is recorded, and `ai.passive` drops it out of the hostile target
+   * seam at once. Counting it as still fightable strands the wave on a non-combatant the
+   * pilot cannot even select: the round can never end through public controls. The same
+   * covers an ordinary hull's authored forceFlee retreat. Boss phases keep their existing
+   * defeat authority. `ai.fsm` alone is not trusted — tacticalAI may
+   * rewrite it next tick — so the check binds the durable morale stamps instead.
+   */
+  _isCohortMemberOutOfFight(id, _member, entity) {
+    if (!entity || !entity.data) return false;
+    if (this._bossIds && this._bossIds.has(id)) return false;
+    const data = entity.data;
+    if (data.isBoss === true || data.bossId != null
+      || data.missionTag === 'capital_boss' || data.bossDressing != null) return false;
+    const ai = data.ai;
+    if (ai && (ai.forceFlee === true || ai.pirateDisengaged === true)) return true;
+    const disengage = data.pirateDisengage;
+    return disengage?.phase === 'flee' || disengage?.phase === 'surrender';
   },
 
   _disabledCohortCount() {
@@ -939,7 +969,14 @@ export const survivalWave = {
    */
   _releaseStragglers() {
     if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
-    if (this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length)) return;
+    // The ledger gate guards the arrival phase only: while the wave is still inside its
+    // authored duration, outstanding quota may still be inbound. Past that budget the quota
+    // is debt, not arrival — a stalled ledger (a pending batch retrying a refused arrival,
+    // clamp-dropped chaff the stream cannot refill while far stragglers hold the room) is
+    // produced BY the tail this tool exists to clear, so it cannot be allowed to disarm it.
+    const pastBudget = !(this._elapsedSeconds() < this._durationSeconds());
+    if ((this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length))
+      && !pastBudget) return;
     const helpers = this.helpers;
     const state = this.state;
     if (!helpers || typeof helpers.removeEntity !== 'function' || !state || !state.entities) return;
@@ -966,9 +1003,33 @@ export const survivalWave = {
   },
 
   _commitLastStand() {
-    if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
-    if (this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length)) return;
-    if (this._elapsedSeconds() < this._durationSeconds()) return;
+    if (!this._cohort || this._cohort.size === 0) return;
+    const swarmKillRound = !!(this._swarm && this._swarm.killTarget);
+    if (swarmKillRound) {
+      // Same stalemate as the straggler gate above: inside the finite duration the ledger
+      // check is already implied by the clock; past it, owed quota is debt. A late tail
+      // commits regardless of what the stream still owes — it still has to be killed, and
+      // _checkCleared still waits for the full quota before clearing.
+      if (this._elapsedSeconds() < this._durationSeconds()) return;
+    } else {
+      // An ordinary/scored wave owns the same tail the swarm clock was built for: once every
+      // scheduled threat is in the field and the wave has outlived its round budget — the
+      // plan's authored completionRules.durationTicks when it declares one, else the same
+      // finite wave duration a swarm round uses — the last few live hulls stop orbiting at
+      // range and commit to the pilot. A kited survivor that holds a won round open for
+      // minutes (player-truth gauntlet-repaired: one wasp jousted 5–8 km out for 300+ s) is
+      // a cleanup chore, not a fight. Nothing is resolved or removed here: the committed
+      // body stays actionable and still has to be killed.
+      if (this._swarm) return; // a legacy timed swarm still clears on its own clock
+      if (this._pending && this._pending.length) return;
+      if (!playerIsAlive(this.state)) return;
+      const authored = this._plan && this._plan.completionRules
+        && Number.isInteger(this._plan.completionRules.durationTicks)
+        && this._plan.completionRules.durationTicks > 0
+        ? this._plan.completionRules.durationTicks : 0;
+      const budgetSeconds = authored > 0 ? authored / 60 : this._durationSeconds();
+      if (this._elapsedSeconds() < budgetSeconds) return;
+    }
     const rows = [];
     for (const [id, member] of this._cohort.entries()) {
       if (!this._isCohortMemberActionable(id, member)) continue;
@@ -981,6 +1042,9 @@ export const survivalWave = {
       const data = entity && entity.data;
       if (!data || !data.ai || data.ai.swarmLastStand === true) continue;
       if (data.isBoss === true || data.bossId != null) continue;
+      // An ordinary wave also honors the staged-boss marks — a capital boss or a
+      // boss-dressed hull is never the tail this commitment exists to close.
+      if (!swarmKillRound && (data.missionTag === 'capital_boss' || data.bossDressing != null)) continue;
       data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
       data.ai.swarmLastStand = true;
     }

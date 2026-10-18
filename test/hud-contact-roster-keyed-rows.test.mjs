@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import * as hud from '../src/ui/hud.js';
+import { glyphSvg } from '../src/ui/glyphs.js';
 import { createBus } from '../src/core/eventBus.js';
 
 test('destroying the HUD releases its event-bus subscriptions', () => {
@@ -291,6 +292,28 @@ test('a derelict resolving from unscanned to scanned rewrites only its detail li
   }
 });
 
+test('a contact carrying a hull defId resolves its class glyph through the ship catalogue', () => {
+  const fx = mountHudFixture();
+  try {
+    // Runtime-witness regression (oct18-final-tether-v2): getClassGlyph read SHIP_BY_ID, which
+    // hud.js never defined, so every 5 Hz roster sample crashed on any defId-bearing contact —
+    // i.e. any spawned NPC hull. The fixture ships deliberately carry no defId so this test is
+    // the only row-mapping coverage of that branch.
+    fx.entity('threat-1').data.defId = 'ship_wasp';      // visuals.family 'fighter'
+    fx.entity('ally').data.defId = 'ship_kestrel';       // visuals.family 'scout'
+    fx.step(24);                                         // pre-fix: ReferenceError inside frame()
+
+    const byName = rowsByName(fx);
+    assert.equal(classGlyphHtml(byName.get('Threat One')), glyphSvg('fighter', 13),
+      'a fighter-family hull draws the fighter class glyph');
+    assert.equal(classGlyphHtml(byName.get('Wing Ally')), glyphSvg('scout', 13),
+      'a scout-family hull draws the scout class glyph');
+    assert.equal(fx.overview.rebuildCount, 0, 'defId rows still sync through the retained path');
+  } finally {
+    fx.restore();
+  }
+});
+
 // ---------------------------------------------------------------------------------------------
 // fixture
 
@@ -302,6 +325,7 @@ function rowsByName(fx) {
   return new Map(rows(fx).map((row) => [row.querySelector('.sf-overview-row__name').textContent, row]));
 }
 function distanceOf(row) { return row.querySelector('.sf-overview-row__right').children[1].textContent; }
+function classGlyphHtml(row) { return row.querySelector('.sf-overview-row__left').children[2].innerHTML; }
 function distances(fx) { return rows(fx).map(distanceOf); }
 function clickListeners(row) { return (row._listeners.get('click') || []).length; }
 

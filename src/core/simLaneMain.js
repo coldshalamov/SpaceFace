@@ -438,11 +438,26 @@ export function createSimLaneRuntime({
     if (retiredIds.length) applyDestroyIds(readModel, retiredIds);
     return true;
   }
-  function foldPackIntoReadModel(start, end) {
+  function foldPackIntoReadModel(start, end, hasSpawnInfos = false) {
+    // Spawn infos are already installed. A delayed reply can span multiple lives of one
+    // numeric id; older destroys/poses must not retire or move its newest occupant.
+    const finalLives = hasSpawnInfos ? new Map() : null;
+    if (finalLives) {
+      journal.visitRange(start, end, recordScratch, (rec) => {
+        if (rec.kind === PRESENTATION_JOURNAL_KINDS.SPAWN
+          || rec.kind === PRESENTATION_JOURNAL_KINDS.DESTROY) {
+          finalLives.set(rec.entityId, { generation: rec.generation,
+            alive: rec.kind === PRESENTATION_JOURNAL_KINDS.SPAWN });
+        }
+      });
+      for (const [id, life] of finalLives) if (!life.alive) applyDestroyIds(readModel, [id]);
+    }
     journal.visitRange(start, end, recordScratch, (rec) => {
-      if (rec.kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) {
+      const life = finalLives?.get(rec.entityId);
+      if (rec.kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM
+        && (!life || (life.alive && life.generation === rec.generation))) {
         applyFacadePose(readModel, rec.entityId, rec);
-      } else if (rec.kind === PRESENTATION_JOURNAL_KINDS.DESTROY) {
+      } else if (!finalLives && rec.kind === PRESENTATION_JOURNAL_KINDS.DESTROY) {
         applyDestroyIds(readModel, [rec.entityId]);
       }
     });
@@ -466,6 +481,7 @@ export function createSimLaneRuntime({
   let laneErrorSite = null;
   let ready = false;
   let replyCount = 0;
+  let workerLastReplyWork = null;
   let postedDirectives = 0;
   let postedSteps = 0;
   let droppedEnvelopes = 0;
@@ -768,12 +784,12 @@ export function createSimLaneRuntime({
     if (msg.initRebuild && msg.initRebuild.pack) {
       const applied = journal.applyRebuildPack(msg.initRebuild);
       retireMissingFullRebuildEntities(msg.initRebuild.start, msg.initRebuild.end, applied);
-      foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end);
       if (Array.isArray(msg.initRebuild.spawnInfos)) {
         applySpawnInfos(readModel, msg.initRebuild.spawnInfos);
       }
     }
     if (Array.isArray(msg.spawnInfos)) applySpawnInfos(readModel, msg.spawnInfos);
+    if (msg.initRebuild?.pack) foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end, true);
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
     }
@@ -809,6 +825,20 @@ export function createSimLaneRuntime({
 
   function applyTickReply(msg) {
     replyCount++;
+    // Keep the worker's own completed-boundary costs beside its liveness counters. Main-thread
+    // frame timings cannot distinguish a slow authoritative step from a slow mirror/pack.
+    const cost = (value) => Number.isFinite(value) && value >= 0 ? value : null;
+    workerLastReplyWork = {
+      workMs: cost(msg.workMs),
+      packMs: cost(msg.packMs),
+      domainDiffMs: cost(msg.domainDiffMs),
+      boundaryMs: cost(msg.boundaryMs),
+      journalRecords: Number.isSafeInteger(msg.pack?.count) ? msg.pack.count : 0,
+      entityVitals: Array.isArray(msg.entityVitals) ? msg.entityVitals.length : 0,
+      domainUpdates: Array.isArray(msg.domainUpdates) ? msg.domainUpdates.length : 0,
+      domainShipBytes: cost(msg.domainShipBytes),
+      events: Array.isArray(msg.events) ? msg.events.length : 0,
+    };
     if (Number.isSafeInteger(msg.stateTick)) lastShippedTick = msg.stateTick;
 
     // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
@@ -832,18 +862,23 @@ export function createSimLaneRuntime({
 
     let journalLo = -1;
     let journalHi = -1;
+    let rebuildApplied = false;
     if (msg.journalFullRebuild === true && msg.pack) {
-      const applied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
-      retireMissingFullRebuildEntities(msg.journalStart, msg.journalEnd, applied);
+      rebuildApplied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
       journalLo = msg.journalStart; journalHi = msg.journalEnd;
     } else if (msg.pack && msg.pack.count > 0) {
       journal.applyPack(msg.pack);
       journalLo = msg.pack.start; journalHi = msg.pack.end;
     }
-    if (journalLo >= 0 && journalHi > journalLo) foldPackIntoReadModel(journalLo, journalHi);
 
     if (Array.isArray(msg.spawnInfos) && msg.spawnInfos.length) {
       applySpawnInfos(readModel, msg.spawnInfos);
+    }
+    if (msg.journalFullRebuild === true) {
+      retireMissingFullRebuildEntities(msg.journalStart, msg.journalEnd, rebuildApplied);
+    }
+    if (journalLo >= 0 && journalHi > journalLo) {
+      foldPackIntoReadModel(journalLo, journalHi, msg.spawnInfos?.length > 0);
     }
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
@@ -952,6 +987,11 @@ export function createSimLaneRuntime({
         appliedCommandSequence: bounded(d.appliedCommandSequence),
         awaitingAck: d.awaitingAck === true,
         backpressured: d.backpressured === true,
+        retainedRows: bounded(d.retainedRows),
+        retainedVitals: bounded(d.retainedVitals),
+        retainedDomainUpdates: bounded(d.retainedDomainUpdates),
+        backpressureEpisodes: bounded(d.backpressureEpisodes),
+        backpressureMs: bounded(d.backpressureMs, Number.MAX_SAFE_INTEGER),
       };
     }
 
@@ -1764,6 +1804,7 @@ export function createSimLaneRuntime({
         domainProfileRequested: resolved.domainProfileRequested,
         laneReady: ready,
         replyCount,
+        workerLastReplyWork,
         postedDirectives,
         postedSteps,
         pendingSteps,

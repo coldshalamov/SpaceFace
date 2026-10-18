@@ -350,11 +350,18 @@ export function* unfreezeHiddenSubtreeMatricesSteps(root) {
   return restored;
 }
 
-// Explicit dirty() for the rare move of a node inside a frozen subtree: recompose its local
-// matrix and refresh it plus every descendant's world matrix immediately — the per-frame walk
-// will skip the subtree again once all needsUpdate flags are consumed.
+// Explicit dirty() for the rare move of a node inside a frozen subtree: release the stale
+// sfMatrixFrozen marks on the node and its ancestors first — the vendored walk prunes on an
+// ancestor's clean mark, so a mark left over a moved node hides every later needsUpdate write
+// below it (the same clear the vendored add()/attach() hooks and markAnimated() already run).
+// Then recompose its local matrix and refresh it plus every descendant's world matrix
+// immediately — updateWorldMatrix bypasses the pruned walk, so this frame's pose always lands.
 export function refreshStaticTransform(node) {
   if (!node) return;
+  for (let walk = node; walk; walk = walk.parent) {
+    const data = walk.userData;
+    if (data && data.sfMatrixFrozen === true) data.sfMatrixFrozen = false;
+  }
   if (typeof node.updateMatrix === 'function') node.updateMatrix();
   if (typeof node.updateWorldMatrix === 'function') node.updateWorldMatrix(false, true);
 }

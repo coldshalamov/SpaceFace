@@ -32,6 +32,7 @@ import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
+import { SHIPS } from '../data/ships.js';
 import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
@@ -197,6 +198,7 @@ for (const sec of SECTORS) {
 }
 const MT_CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const PERSISTENT_CARGO_BY_ID = new Map(PERSISTENT_CARGO.map((c) => [c.id, c]));
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const STATION_ROLE_LABELS = {
   trade_hub: 'Trade Hub',
   refinery: 'Refinery',
