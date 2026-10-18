@@ -6,6 +6,7 @@
 import { hash32 } from '../core/rng.js';
 import { ORES } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { WARM_CARGO_CONTRACT } from '../data/economyContractTemplates.js';
 import { removeCargo } from './cargo.js';
 
 export const FRAGILE_CARGO_HARD_DELTA_V = 18;
@@ -26,6 +27,9 @@ export const FRAGILE_CARGO_TRADE_GOODS = Object.freeze([
   'cmdty_quantum_cores',
   'cmdty_luxury_goods',
   'cmdty_electronics',
+  // Ice Volatiles already wear the fragile hold badge. The warm-cargo lot spoils
+  // through this same impact path; the handling limit itself is not retuned.
+  'cmdty_volatiles',
 ]);
 
 const STATE_VERSION = 1;
@@ -96,20 +100,67 @@ export function fragileCargoGlyphFor(commodityId) {
   return isFragileCommodity(commodityId) ? { ...FRAGILE_GLYPH } : null;
 }
 
+function warmCargoRow(state) {
+  const key = WARM_CARGO_CONTRACT.key;
+  const source = WARM_CARGO_CONTRACT.source;
+  const match = (row) => !!(row && (
+    (row.cause && row.cause.tag === key)
+    || (row.source === source && row.params && row.params.cmdtyId === WARM_CARGO_CONTRACT.cmdtyId)
+  ));
+  const active = state && state.missions && state.missions.active;
+  if (Array.isArray(active)) {
+    const live = active.find((row) => row && row.status === 'active' && match(row));
+    if (live) return live;
+  }
+  const boards = state && state.missions && state.missions.boards;
+  if (!boards || typeof boards !== 'object') return null;
+  for (const board of Object.values(boards)) {
+    const slots = board && board.slots;
+    if (!Array.isArray(slots)) continue;
+    const posted = slots.find(match);
+    if (posted) return posted;
+  }
+  return null;
+}
+
+function warmCargoCardText(limit) {
+  return WARM_CARGO_CONTRACT.boardText.replace('{limit}', String(limit));
+}
+
 export function fragileCargoReadout(state) {
   const items = state && state.player && state.player.cargo && state.player.cargo.items;
-  if (!items) return [];
   const stacks = [];
-  for (const commodityId of sortIds(Object.keys(items))) {
-    const qty = Math.max(0, Math.floor(items[commodityId] || 0));
-    const glyph = qty > 0 ? fragileCargoGlyphFor(commodityId) : null;
-    if (!glyph) continue;
-    stacks.push({
-      commodityId,
-      name: commodityName(commodityId),
-      qty,
-      glyph,
-    });
+  if (items) {
+    for (const commodityId of sortIds(Object.keys(items))) {
+      const qty = Math.max(0, Math.floor(items[commodityId] || 0));
+      const glyph = qty > 0 ? fragileCargoGlyphFor(commodityId) : null;
+      if (!glyph) continue;
+      stacks.push({
+        commodityId,
+        name: commodityName(commodityId),
+        qty,
+        glyph,
+      });
+    }
+  }
+  const contract = warmCargoRow(state);
+  if (contract) {
+    const raw = contract.params && contract.params.handlingLimit;
+    const limit = Number.isFinite(Number(raw)) ? Number(raw) : WARM_CARGO_CONTRACT.handlingLimit;
+    const text = warmCargoCardText(limit);
+    let row = stacks.find((stack) => stack.commodityId === WARM_CARGO_CONTRACT.cmdtyId);
+    if (!row) {
+      const qty = Math.max(0, Math.floor(Number(contract.params && contract.params.qty) || 0));
+      stacks.push({
+        commodityId: WARM_CARGO_CONTRACT.cmdtyId,
+        name: commodityName(WARM_CARGO_CONTRACT.cmdtyId),
+        qty,
+        glyph: fragileCargoGlyphFor(WARM_CARGO_CONTRACT.cmdtyId) || { ...FRAGILE_GLYPH },
+        text,
+      });
+    } else {
+      row.text = text;
+    }
   }
   return stacks;
 }

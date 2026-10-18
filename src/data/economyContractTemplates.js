@@ -74,6 +74,28 @@ export const BLOCKADE_PAY_SCALE = 2.0;
 /** BP-12 BLOCKADE_RELIEF: the commodities a besieged station is starving for (relief cargo pool). */
 export const BLOCKADE_RELIEF_CMDTYS = Object.freeze(['cmdty_medical', 'cmdty_food', 'cmdty_fuel_cells']);
 
+/**
+ * M03 warm cargo. One frozen volatile-lot haul on the ordinary cargo_delivery path.
+ * `{limit}` is filled by the hold readout from `handlingLimit`, which is the fragile
+ * impact constant (fragileCargo.js FRAGILE_CARGO_HARD_DELTA_V). This file does not
+ * import that system: economy already imports this module, and the system imports cargo.
+ */
+export const WARM_CARGO_CONTRACT = Object.freeze({
+  key: 'volatile_lot',
+  offerType: 'cargo_delivery',
+  source: 'warmCargoContract',
+  cmdtyId: 'cmdty_volatiles',
+  qty: 10,
+  paysCr: 1000,
+  handlingLimit: 18,
+  stationId: 'station_helios',
+  factionId: 'faction_scn',
+  destStationId: 'station_ceres',
+  destSectorId: 'sector_ceres_belt',
+  distance: 8900,
+  boardText: 'Ice Volatiles for Ceres Refinery. Handling limit {limit}: a harder knock spoils units off the manifest. What arrives intact pays the posted price.',
+});
+
 // ── C11 — heat × contracts (THE WORLD ANSWERS): the deniable job ─────────────────────────────
 // WANTED at an outlaw-friendly berth → the board offers a double-pay run with an ambush clause.
 // The pay is the lawful quote × DENIABLE_PAY_SCALE (the same shape as the scarcity/blockade
