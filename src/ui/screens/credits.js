@@ -31,6 +31,7 @@ const SECTIONS = [
   { id: 'made', label: 'Made by' },
   { id: 'type', label: 'Type' },
   { id: 'libraries', label: 'Libraries' },
+  { id: 'assets', label: 'Assets' },
   { id: 'fonts', label: 'Fonts and licences' },
   { id: 'notices', label: 'Third-party notices' },
 ];
@@ -288,6 +289,13 @@ export const creditsScreen = {
           sec.appendChild(staticRows(c.libraries.map((l) => ({
             name: l.name, sub: [l.version, l.author, creditsHost(l.homepage)].filter(Boolean).join(' · '), value: l.license,
           })), 'Libraries'));
+          break;
+        case 'assets':
+          sec.appendChild(staticRows((c.assets || []).map((a) => ({
+            name: a.name, sub: [a.author, a.role, creditsHost(a.homepage)].filter(Boolean).join(' · '), value: a.license,
+          })), 'Assets'));
+          sec.appendChild(el('p', 'k-sentence k-measure fh-body orr-cr-line',
+            'Every asset listed above is promoted from reference files under Creative Commons Zero (CC0); full notices ship beside each asset.'));
           break;
         case 'fonts':
           sec.appendChild(staticRows(c.type.map((t) => ({ name: t.name, sub: t.author, value: t.license })), 'Fonts and licences'));

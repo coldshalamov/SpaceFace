@@ -81,6 +81,48 @@ export const CREDITS = {
       "homepage": "https://quarks.art"
     }
   ],
+  "assets": [
+    {
+      "name": "Kenney — Interface Sounds (Denied Latch)",
+      "author": "Kenney",
+      "license": "CC0",
+      "role": "audio: Massline deny latch tick (massline_deny)",
+      "homepage": "https://kenney.nl/assets/interface-sounds",
+      "origin": "kenney/interface/Audio/tick_001.ogg",
+      "promotedFile": "assets/audio/massline/massline_deny.wav",
+      "licenseText": "Interface Sounds (1.0)\n\nCreated/distributed by Kenney (www.kenney.nl)\nCreation date: 11-02-2020\n\nLicense: (Creative Commons Zero, CC0)\nhttp://creativecommons.org/publicdomain/zero/1.0/\n\nThis content is free to use in personal, educational and commercial projects.\nSupport us by crediting Kenney or www.kenney.nl (this is not mandatory)\n\nDonate: http://support.kenney.nl\nPatreon: http://patreon.com/kenney/\nTwitter: http://twitter.com/KenneyNL"
+    },
+    {
+      "name": "Kenney — Interface Sounds (UI Hover)",
+      "author": "Kenney",
+      "license": "CC0",
+      "role": "audio: Interface hover tick (ui_hover)",
+      "homepage": "https://kenney.nl/assets/interface-sounds",
+      "origin": "kenney/interface/Audio/tick_002.ogg",
+      "promotedFile": "assets/audio/ui/ui_hover.wav",
+      "licenseText": "Interface Sounds (1.0)\n\nCreated/distributed by Kenney (www.kenney.nl)\nCreation date: 11-02-2020\n\nLicense: (Creative Commons Zero, CC0)\nhttp://creativecommons.org/publicdomain/zero/1.0/\n\nThis content is free to use in personal, educational and commercial projects.\nSupport us by crediting Kenney or www.kenney.nl (this is not mandatory)\n\nDonate: http://support.kenney.nl\nPatreon: http://patreon.com/kenney/\nTwitter: http://twitter.com/KenneyNL"
+    },
+    {
+      "name": "Kenney — Interface Sounds (UI Tab)",
+      "author": "Kenney",
+      "license": "CC0",
+      "role": "audio: Interface tab selection tick (ui_tab)",
+      "homepage": "https://kenney.nl/assets/interface-sounds",
+      "origin": "kenney/interface/Audio/select_002.ogg",
+      "promotedFile": "assets/audio/ui/ui_tab.wav",
+      "licenseText": "Interface Sounds (1.0)\n\nCreated/distributed by Kenney (www.kenney.nl)\nCreation date: 11-02-2020\n\nLicense: (Creative Commons Zero, CC0)\nhttp://creativecommons.org/publicdomain/zero/1.0/\n\nThis content is free to use in personal, educational and commercial projects.\nSupport us by crediting Kenney or www.kenney.nl (this is not mandatory)\n\nDonate: http://support.kenney.nl\nPatreon: http://patreon.com/kenney/\nTwitter: http://twitter.com/KenneyNL"
+    },
+    {
+      "name": "Poly Haven — Industrial Workshop Foundry",
+      "author": "Poly Haven",
+      "license": "CC0",
+      "role": "lighting: alternate industrial IBL (industrial_workshop_foundry_2k)",
+      "homepage": "https://polyhaven.com/a/industrial_workshop_foundry",
+      "origin": "polyhaven/industrial_workshop_foundry/industrial_workshop_foundry_2k.hdr",
+      "promotedFile": "assets/background/env/industrial_workshop_foundry_2k.hdr",
+      "licenseText": "Poly Haven — Industrial Workshop Foundry (2K HDR)\nSource: https://polyhaven.com/a/industrial_workshop_foundry\nLicense: CC0 1.0 (Creative Commons Zero, CC0)\nhttps://polyhaven.com/license\n\nCC0 1.0 Universal Public Domain Dedication:\nThe person who associated a work with this deed has dedicated the work to the public domain by waiving all of his or her rights to the work worldwide under copyright law, including all related and neighboring rights, to the extent allowed by law.\nYou can copy, modify, distribute and perform the work, even for commercial purposes, all without asking permission."
+    }
+  ],
   "notices": [
     {
       "name": "@dimforge/rapier3d-compat 0.19.3",
