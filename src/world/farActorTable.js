@@ -4,6 +4,8 @@ import {claimsTallyAssessor,canPromoteTallyAssessor,decorateTallyAssessorSpec} f
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { MORROW } from '../data/morrow.js';
 import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
+import { PLANET_SITE } from '../data/planets.js';
+import { makeShipEntitySpec } from '../systems/ships.js';
 // Far ships and wrecks beyond the combat table. They stay as compact records and
 // rematerialize when the player approaches, or when a projectile's flight reaches
 // them. They are not GameState combat entities while shelved.
@@ -357,6 +359,13 @@ function pickHullDefId(data) {
   return data.hullDefId || data.shipDefId || data.defId || data.typeId || null;
 }
 
+function isAnvilWorker(entity) {
+  const d = entity?.data, route = d?.itinerary;
+  return entity?.type === 'ship' && pickHullDefId(d) === 'ship_mule' && !!d.worldRecordId
+    && (entity.homeSectorId || d.homeSectorId || d.sectorId) === PLANET_SITE.sectorId
+    && route?.kind === 'anvil_work' && (route.role === 'collector' || route.role === 'receiver');
+}
+
 function leanIdentityData(entity) {
   const d = entity && entity.data && typeof entity.data === 'object' ? entity.data : {};
   const out = {};
@@ -403,6 +412,14 @@ function leanIdentityData(entity) {
   const ai = d.ai && typeof d.ai === 'object' ? d.ai
     : (entity && entity.ai && typeof entity.ai === 'object' ? entity.ai : null);
   if (ai) out.ai = ai;
+  // A promoted worker must rejoin the same finite shift, with its manifest still owned by
+  // traffic. Losing these fields also overwrites the durable world record on its next capture.
+  if (isAnvilWorker(entity)) {
+    for (const key of ['itinerary', 'cargoManifest', 'freightDockSeq', 'anvilSlingWitness',
+      'name', 'named', 'durable', 'propulsionRuntime']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
   if(claimsTallyAssessor(entity))for(const key of ['placeId','archetypeGlb','placeScale','callsign','name','transientSector','tallyThree','cargoManifest','route','itinerary','carrying','cargoDumped','freightDockSeq'])if(Object.hasOwn(d,key))out[key]=cloneTree(d[key]);
   return out;
 }
@@ -504,6 +521,12 @@ export function catchUpFarRecord(rec, simTime, table = null) {
 export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   const table = ensureFarActorTable(state);
   const rec = snapshotActor(entity, simTime);
+  if (isAnvilWorker(entity)) {
+    rec.physicsBody = cloneTree(entity.physicsBody);
+    for (const key of ['armorHp', 'armorMax', 'armorFlat', 'cap', 'capMax', 'lastDamageT']) {
+      if (Number.isFinite(entity[key])) rec[key] = entity[key];
+    }
+  }
   if(claimsTallyAssessor(entity))rec.physicsBody=cloneTree(entity.physicsBody);
   if (!rec.intent) {
     // The entity's live control intent ({moveX,moveZ,...}) carries no itinerary kind, so
@@ -801,6 +824,19 @@ export function promoteFarActor(state, id, helpers) {
     collides: rec.collides,
     data,
   };
+  if (isAnvilWorker(rec)) {
+    const hardware = makeShipEntitySpec('ship_mule', {
+      team: spec.team, factionId: spec.factionId, pos: spec.pos, rot: spec.rot,
+    });
+    // The lean shell's saved motion and damage override fresh hardware. The canonical
+    // drive/fittings keep this promotion equivalent to the worker's world-record restore.
+    const saved = {};
+    for (const key of ['armorHp', 'armorMax', 'armorFlat', 'cap', 'capMax', 'lastDamageT']) {
+      if (Number.isFinite(rec[key])) saved[key] = rec[key];
+    }
+    if (rec.physicsBody != null) saved.physicsBody = cloneTree(rec.physicsBody);
+    Object.assign(spec, { ...hardware, ...spec, ...saved, data: { ...hardware.data, ...data } });
+  }
   if(claimsTallyAssessor(rec)){decorateTallyAssessorSpec(spec);spec.physicsBody=cloneTree(rec.physicsBody);}
   const ent = spawn(spec);
   if (!ent) {

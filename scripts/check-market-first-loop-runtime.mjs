@@ -143,9 +143,14 @@ try {
   const c0 = await page.evaluate(() => window.SF.state.player.credits);
   await domClick(page, '[data-screen="station"] .sx-mkt-row');
   await page.waitForTimeout(200);
-  await domClick(page, '[data-screen="station"] .sx-trade__go[data-go]');
-  await page.waitForFunction((prev) => window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS })
-    .catch(() => { throw new Error('a Market BUY should move the player\'s credits (trade must actually execute)'); });
+  const buyObservation = await startMarketBuyObservation(page);
+  try {
+    await domClick(page, '[data-screen="station"] .sx-trade__go[data-go]');
+    await page.waitForFunction((prev) => window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS })
+      .catch(() => { throw new Error('a Market BUY should move the player\'s credits (trade must actually execute)'); });
+  } finally {
+    await endMarketBuyObservation(buyObservation);
+  }
   const c1 = await page.evaluate(() => window.SF.state.player.credits);
   assert.ok(c1 < c0, 'buying should spend credits: ' + c0 + ' -> ' + c1);
 
@@ -301,4 +306,81 @@ function isPortFree(port) {
 
 async function reachable(url) {
   try { const res = await fetch(url, { method: 'GET' }); return !!res.ok; } catch (_) { return false; }
+}
+
+// Read-only evidence for the existing BUY assertion. No quote/execute calls, retries or timers.
+async function startMarketBuyObservation(page) {
+  try {
+    return await page.evaluateHandle(() => {
+      const text = el => String(el?.textContent || '').replace(/\s+/g, ' ').trim();
+      const read = () => {
+        const state = window.SF?.state;
+        const market = document.querySelector('[data-screen="station"] .sx-mkt');
+        const selected = market?.querySelector('.sx-mkt-row.is-active[data-cmdty]')?.getAttribute('data-cmdty') || null;
+        const mode = market?.querySelector('.sx-seg__btn.is-on')?.getAttribute('data-mode') || null;
+        const rawQuantity = market?.querySelector('.sx-qty__in')?.value ?? null;
+        const go = market?.querySelector('.sx-trade__go[data-go]');
+        const stationId = state?.ui?.dockedStationId || null;
+        const cargo = state?.player?.cargo;
+        return { tick: state?.tick ?? null, simTime: state?.simTime ?? null,
+          stationId, selectedCommodity: selected, mode, rawQuantity,
+          quantity: rawQuantity != null && String(rawQuantity).trim() !== '' && Number.isFinite(Number(rawQuantity)) ? Number(rawQuantity) : null,
+          buttonPresent: !!go, buttonDisabled: go ? !!go.disabled : null, buttonText: text(go),
+          note: text(market?.querySelector('.sx-trade__note')),
+          credits: state?.player?.credits ?? null,
+          cargoCapacity: cargo?.capVolume ?? null, cargoUsed: cargo?.usedVolume ?? null,
+          selectedCargo: selected ? cargo?.items?.[selected] ?? null : null,
+          stock: selected ? state?.economy?.markets?.[stationId]?.[selected]?.stock ?? null : null,
+          toasts: [...document.querySelectorAll('#toasts .sf-toast__text')].map(text) };
+      };
+      const before = read(), events = [], unsubs = [], seenToasts = new Set();
+      let dropped = 0, observer = null;
+      const remember = (event, payload) => {
+        // Diagnostics must never throw into the game's bus or retain mutable event payloads.
+        try {
+          if (events.length >= 32) { dropped++; return; }
+          let copy;
+          try { copy = payload == null ? payload : JSON.parse(JSON.stringify(payload)); }
+          catch (_) { copy = { serializationError: true }; }
+          events.push({ event, tick: window.SF?.state?.tick ?? null, payload: copy });
+        } catch (_) {}
+      };
+      for (const name of ['ui:buy', 'economy:tradeFailed', 'economy:tradeCompleted', 'toast']) {
+        const off = window.SF?.bus?.on?.(name, payload => remember(name, payload));
+        if (typeof off === 'function') unsubs.push(off);
+      }
+      const toastRoot = document.getElementById('toasts');
+      if (toastRoot && typeof MutationObserver === 'function') {
+        observer = new MutationObserver(() => {
+          for (const el of toastRoot.querySelectorAll('.sf-toast__text')) {
+            const value = text(el);
+            if (value && !seenToasts.has(value)) { seenToasts.add(value); remember('toast:dom', value); }
+          }
+        });
+        observer.observe(toastRoot, { childList: true, subtree: true, characterData: true });
+      }
+      return { finish() {
+        try { return { before, after: read(), events, dropped }; }
+        finally {
+          for (const off of unsubs) { try { off(); } catch (_) {} }
+          observer?.disconnect();
+        }
+      } };
+    });
+  } catch (error) {
+    console.error('Market BUY observation unavailable:', error?.message || String(error));
+    return null;
+  }
+}
+
+async function endMarketBuyObservation(handle) {
+  if (!handle) return;
+  try {
+    const evidence = await handle.evaluate(observer => observer.finish());
+    console.error('Market BUY observation:', JSON.stringify(evidence));
+  } catch (error) {
+    console.error('Market BUY observation unavailable:', error?.message || String(error));
+  } finally {
+    try { await handle.dispose(); } catch (_) {}
+  }
 }

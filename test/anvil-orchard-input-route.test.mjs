@@ -32,12 +32,13 @@ const { world } = await import('../src/systems/world.js');
 
 // Focused owner composition, not a complete production-manifest or browser proof.
 // The route starts at Anvil's worker berth. Its normal worker, flight, input, planet,
-// physics, mining, cargo and save owners execute; galaxy population/rendering do not.
-const worldRecords = { name: 'world', init(ctx) { this.state = ctx.state; },
-  upsertWorldRecord: world.upsertWorldRecord };
+// physics, mining, cargo and save owners execute. Continue uses the real world
+// restoration entry; ambient world ticks and rendering remain outside this fixture.
+// spawnBudget/crowded admission and the full production Continue finalizer are omitted.
+const worldRecords = { ...world, update() {} };
 const trafficWork = { ...traffic, update(dt, state) { this._stepAnvilWork(dt, state); } };
 
-test('raw flight and beam input harvest, resume, release and physically collect one original Orchard lot', async () => {
+test('raw input harvests an Orchard lot and Continue preserves worker hardware and closes its socket', async () => {
   const previousPlanet = PLANET_FLAGS.enabled, previousFields = FIELD_FLAGS.enabled;
   PLANET_FLAGS.enabled = true; FIELD_FLAGS.enabled = true;
   const sim = createSimulation({ seed: 424214, systems: [worldRecords, trafficWork,
@@ -49,11 +50,42 @@ test('raw flight and beam input harvest, resume, release and physically collect 
     let frame = state.entities.get(state.planet.orchardFrameId);
     assert.ok(frame);
     const collector = state.entities.get(state.planet.witnessId);
+    const receiver = state.entityList.find(e => e.alive !== false
+      && e.data?.itinerary?.kind === 'anvil_work' && e.data.itinerary.role === 'receiver');
+    assert.ok(receiver);
+    const workerRecordIds = { collector: collector.data.worldRecordId, receiver: receiver.data.worldRecordId };
     let player = sim.spawn({ ...makeShipEntitySpec('ship_kestrel', {
       pos: { x: collector.pos.x, z: collector.pos.z - 100 }, rot: Math.PI }), isPlayer: true });
     state.playerId = player.id;
     const facade = sim.registry.get('physics'), keys = sim.registry.get('input');
     assert.equal(await facade.prepareBackend(state), true);
+    const assertRestoredWorkers = () => {
+      const canonical = makeShipEntitySpec('ship_mule');
+      const workers = {}, nativeAdmission = {};
+      for (const [role, recordId] of Object.entries(workerRecordIds)) {
+        const matches = state.entityList.filter(e => e.alive !== false && e.data?.worldRecordId === recordId);
+        assert.equal(matches.length, 1, `${role} has exactly one live body for its durable ID`);
+        const worker = workers[role] = matches[0];
+        assert.equal(state.entities.get(worker.id), worker);
+        assert.equal(worker.mass, canonical.mass);
+        assert.equal(worker.radius, canonical.radius);
+        assert.deepEqual(worker.propulsion, canonical.propulsion);
+        assert.deepEqual(worker.data.weapons, []);
+        assert.deepEqual(worker.data.fittings, canonical.data.fittings);
+        assert.ok(worker.data.fittings.every(slot => slot === null));
+        const record = facade._sg02.records.get(worker.id);
+        nativeAdmission[role] = !!record;
+        if (role === 'collector') assert.ok(record, 'the restored producer has actual native admission');
+        if (record) {
+          assert.equal(record.entity, worker);
+          assert.equal(worker.physicsBody.mass, canonical.mass);
+          assert.ok(Math.abs(record.body.mass() - canonical.mass) < 1e-4);
+        }
+      }
+      console.log(JSON.stringify({ route: 'focused-worker-admission', tick: state.tick,
+        livePerDurableId: { collector: 1, receiver: 1 }, nativeAdmission }));
+      return workers;
+    };
     sim.bus.on('ui:cycleTarget', ({ dir }) => cycleTarget(state, dir, sim.bus));
     sim.bus.on('ui:cycleComponent', ({ dir }) => orchardRouteCycleComponent(state, dir, sim.bus));
     let pickupEvents = 0;
@@ -82,8 +114,10 @@ test('raw flight and beam input harvest, resume, release and physically collect 
       for (let i = 0; i < state.entityList.length && state.player.targetId !== frame.id; i++)
         sim.bus.emit('ui:cycleTarget', { dir: 1 });
       assert.equal(state.player.targetId, frame.id);
-      for (let i = 0; i < 4 && state.ui.componentSelection?.componentId !== `orchard_socket_${socket}`; i++)
+      for (let i = 0; i < 4 && (state.ui.componentSelection?.targetId !== frame.id
+        || state.ui.componentSelection?.componentId !== `orchard_socket_${socket}`); i++)
         sim.bus.emit('ui:cycleComponent', { dir: 1 });
+      assert.equal(state.ui.componentSelection?.targetId, frame.id);
       assert.equal(state.ui.componentSelection?.componentId, `orchard_socket_${socket}`);
     };
     for (let i = 0; i < 7200 && !state.sites.anvilOrchard.lots.some(l => l.units === 4); i++) {
@@ -102,6 +136,8 @@ test('raw flight and beam input harvest, resume, release and physically collect 
     assert.equal(savedSlot.progress, 9);
     assert.equal(savedSlot.status, 'releasing');
     let admission, finalizerCalls = 0;
+    // Focused replacement: native cold preparation plus flight-mode entry only.
+    // Production renderer readiness and the complete UI finalizer are not exercised.
     sim.helpers.finalizeLoadedGame = () => {
       finalizerCalls++;
       assert.equal(state.mode, 'loading');
@@ -114,6 +150,7 @@ test('raw flight and beam input harvest, resume, release and physically collect 
     assert.equal(saves.loadEnvelope(JSON.parse(JSON.stringify(saves.serialize('orchard-input-opening')))), true);
     assert.equal(finalizerCalls, 1); assert.ok(admission); await admission;
     assert.equal(state.mode, 'flight');
+    assertRestoredWorkers();
     assert.deepEqual(state.sites.anvilOrchard.sockets[socket], savedSlot);
     assert.deepEqual(state.sites.anvilOrchard.lots.find(l => l.id === lotId), savedLot);
     player = state.entities.get(state.playerId);
@@ -143,6 +180,7 @@ test('raw flight and beam input harvest, resume, release and physically collect 
     assert.equal(saves.loadEnvelope(JSON.parse(JSON.stringify(saves.serialize('orchard-input-collected')))), true);
     assert.equal(finalizerCalls, 2); assert.ok(admission); await admission;
     assert.equal(state.mode, 'flight');
+    const restoredCollector = assertRestoredWorkers().collector;
     assert.equal(state.player.cargo.items.cmdty_gas_hydrogen, before + 4);
     assert.equal(state.entityList.some(e => e.alive !== false && e.data?.worldRecordId === lotId), false);
     assert.equal(state.sites.anvilOrchard.lots.find(l => l.id === lotId).outcome, 'delivered');
@@ -150,6 +188,27 @@ test('raw flight and beam input harvest, resume, release and physically collect 
       savedProgress: savedSlot.progress, releaseTick, collectedTick, lotId,
       cargo: state.player.cargo.items.cmdty_gas_hydrogen, sourceRemaining: state.sites.anvilOrchard.sourceRemaining,
       finalizerCalls, pickupEvents }));
+
+    // The delivered socket re-arms only through ordinary service after Continue.
+    // Bound the wait to one weather cycle plus the native closing work.
+    player = state.entities.get(state.playerId);
+    frame = state.entityList.find(e => e.alive !== false && e.data?.orchardKind === 'frame');
+    goal = { x: frame.pos.x + 170, z: frame.pos.z };
+    for (let i = 0; i < 1200 && state.sites.anvilOrchard.sockets[socket].operation !== 'closed'; i++) {
+      pilot(); sim.step();
+    }
+    brake();
+    assert.equal(state.sites.anvilOrchard.sockets[socket].operation, 'closed');
+    assert.equal(state.sites.anvilOrchard.sockets[socket].progress, 0);
+    assert.equal(facade.readOrchardFramePose(frame).progress[socket], 0);
+    assert.equal(state.sites.anvilOrchard.lots.length, 1);
+    assert.equal(state.sites.anvilOrchard.lots[0].outcome, 'delivered');
+    assert.equal(state.sites.anvilOrchard.sourceRemaining, 44);
+    assert.equal(state.player.cargo.items.cmdty_gas_hydrogen, before + 4);
+    assert.equal(pickupEvents, 1);
+    console.log(JSON.stringify({ route: 'focused-Continue-native-service', closeTick: state.tick,
+      workerId: restoredCollector.id, workerMass: restoredCollector.mass, workerRadius: restoredCollector.radius,
+      sourceRemaining: state.sites.anvilOrchard.sourceRemaining, pickupEvents }));
   } finally {
     sim.dispose(); PLANET_FLAGS.enabled = previousPlanet; FIELD_FLAGS.enabled = previousFields;
   }

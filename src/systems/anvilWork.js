@@ -23,13 +23,13 @@ const used = (e) => Math.max(0, finite(e?.data?.cargoManifest?.totalQty));
 export function anvilWorkerRecordId(state, role = 'collector') {
   return stableRecordId(state.meta?.seed || 1, PLANET_SITE.sectorId, RECORD_KIND.CONVOY, `anvil:shift:${role}`);
 }
-function validManifest(e, capacity) {
-  const m = e?.data?.cargoManifest;
+function validManifest(m, capacity) {
   if (!m || !Number.isSafeInteger(m.totalQty) || m.totalQty < 0 || m.totalQty > capacity
     || !Array.isArray(m.lines)) return false;
   let total = 0;
   for (const line of m.lines) {
-    if (line.commodityId !== PLANET_SITE.harvest.commodityShallow
+    if (!line || typeof line !== 'object' || Array.isArray(line)
+      || line.commodityId !== PLANET_SITE.harvest.commodityShallow
       || !Number.isSafeInteger(line.qty) || line.qty <= 0) return false;
     total += line.qty;
   }
@@ -45,6 +45,22 @@ function actor(owner, role) {
   // into whichever duplicate happened to win the entity index.
   if (secondLiveWorldRecordCarrier(owner.state, id, e)) return null;
   return e;
+}
+
+function retainedReceiver(owner) {
+  const state = owner.state, id = anvilWorkerRecordId(state, 'receiver');
+  // Residency may shelf a healthy tender while the collector is still local. Its retained
+  // position is a flight waypoint only; custody still requires the live actor below.
+  const resident = indexedWorldRecordEntity(state, id);
+  if (resident && resident.alive !== false && state.entities.get(resident.id) === resident) return null;
+  const rec = state.world?.records?.byId?.[id];
+  if (!rec || rec.recordId !== id || rec.kind !== RECORD_KIND.CONVOY
+    || rec.sectorId !== PLANET_SITE.sectorId || rec.shipDefId !== 'ship_mule'
+    || rec.alive !== true || !(rec.hull > 0) || rec.jobId
+    || rec.itinerary?.kind !== KIND || rec.itinerary.role !== 'receiver'
+    || !Number.isFinite(rec.pos?.x) || !Number.isFinite(rec.pos?.z)
+    || !validManifest(rec.cargoManifest, ANVIL_WORK.receiverCapacity)) return null;
+  return rec;
 }
 
 /**
@@ -86,6 +102,14 @@ function hold(e) {
   e.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null,
     aimAngle: finite(e.rot), brake: true };
 }
+function counterFieldThrottle(owner, e, p) {
+  const accel = owner._registry?.get?.('fields')?.readAcceptedFieldAcceleration?.(e,
+    owner._anvilFieldAccel ||= { ax: 0, az: 0 });
+  if (!accel) return 0;
+  const rot = finite(e.rot);
+  return Math.max(0, -accel.ax * Math.cos(rot) - accel.az * Math.sin(rot))
+    / Math.max(1, finite(p.mainAccel));
+}
 // Uses Flight V3's civilian intent, never writes velocity/position. Arrive is speed-limited
 // with the same braking-distance contract as the existing Helios ore-carrier approach.
 function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed) {
@@ -99,8 +123,12 @@ function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed) {
   const brake = distance <= reach || Math.cos(aim - finite(e.rot)) < 0.85
     || Math.hypot(finite(e.vel?.x), finite(e.vel?.z)) > desired + 3
     || closing * closing / (2 * accel) >= distance - reach;
-  e.data.intent = { moveX: 0, moveZ: brake ? 0 : Math.min(1,
-    Math.max((p.assist?.deadInput || 0.025) + 0.001, desired / Math.max(1, p.combatSpeed || e.maxSpeed || 100))),
+  const governedSpeed = Math.max(1, p.combatSpeed || e.maxSpeed || 100);
+  // A speed fraction also limits main-thruster force. Counter the last accepted opposing
+  // field force, retaining the authored speed and brakes; fields owns upcoming admission.
+  e.data.intent = { moveX: 0, moveZ: brake ? 0 : Math.min(1, speed / governedSpeed,
+    Math.max((p.assist?.deadInput || 0.025) + 0.001, desired / governedSpeed)
+      + counterFieldThrottle(owner, e, p)),
   boost: false, fire: false, fireGroup: null, aimAngle: aim, brake };
   return distance <= reach;
 }
@@ -176,7 +204,7 @@ export const anvilTrafficMethods = {
     if (actor(this, 'collector') !== e || itinerary(e).phase !== 'collect'
       || siteId !== PLANET_SITE.id || commodityId !== PLANET_SITE.harvest.commodityShallow
       || !Number.isSafeInteger(qty) || qty <= 0
-      || !validManifest(e, ANVIL_WORK.capacity)) return 0;
+      || !validManifest(e?.data?.cargoManifest, ANVIL_WORK.capacity)) return 0;
     const amount = Math.min(qty, Math.max(0, ANVIL_WORK.capacity - used(e)));
     if (!amount) return 0;
     this._setTrafficManifest(e, recFor(this, e), manifest(this, e, used(e) + amount, used(e) > 0 ? e.data.cargoManifest : null));
@@ -187,8 +215,8 @@ export const anvilTrafficMethods = {
   _transferAnvilLoad(e, receiver) {
     if (actor(this, 'collector') !== e || actor(this, 'receiver') !== receiver
       || itinerary(e).phase !== 'return' || e.data.jobId || receiver.data.jobId
-      || !validManifest(e, ANVIL_WORK.capacity)
-      || !validManifest(receiver, ANVIL_WORK.receiverCapacity)) return 0;
+      || !validManifest(e?.data?.cargoManifest, ANVIL_WORK.capacity)
+      || !validManifest(receiver?.data?.cargoManifest, ANVIL_WORK.receiverCapacity)) return 0;
     const distance = Math.hypot(e.pos.x - receiver.pos.x, e.pos.z - receiver.pos.z);
     const relativeSpeed = Math.hypot(finite(e.vel?.x) - finite(receiver.vel?.x), finite(e.vel?.z) - finite(receiver.vel?.z));
     if (distance > ANVIL_WORK.transferRange || relativeSpeed > ANVIL_WORK.transferSpeed) return 0;
@@ -221,10 +249,12 @@ export const anvilTrafficMethods = {
     }
     const route = itinerary(e), center = route.center;
     if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) { hold(e); return; }
-    if (!receiver) { hold(e); return; } // retain finite cargo if berth was destroyed or removed
+    const berth = receiver || retainedReceiver(this);
+    if (!berth) { hold(e); return; } // retain finite cargo if berth was destroyed or removed
     const heat = state.planet?.ships?.[e.id]?.heat || 0;
     if (route.phase === 'berthed') {
-      if (used(receiver) >= ANVIL_WORK.receiverCapacity || heat > 0.1) { hold(e); return; }
+      const receivedQty = receiver ? used(receiver) : berth.cargoManifest.totalQty;
+      if (receivedQty >= ANVIL_WORK.receiverCapacity || heat > 0.1) { hold(e); return; }
       route.phase = 'outbound';
     }
     if (route.phase === 'outbound') {
@@ -255,14 +285,15 @@ export const anvilTrafficMethods = {
       // Follow the outer arc until the receiver's radial approach is safe. A direct chord
       // across the opposite limb would cut through the planet rather than return a load.
       const angle = Math.atan2(e.pos.z - center.z, e.pos.x - center.x);
-      const targetAngle = Math.atan2(receiver.pos.z - center.z, receiver.pos.x - center.x);
+      const targetAngle = Math.atan2(berth.pos.z - center.z, berth.pos.x - center.x);
       const delta = Math.atan2(Math.sin(targetAngle - angle), Math.cos(targetAngle - angle));
       if (Math.abs(delta) > 0.35) {
         const next = angle + Math.sign(delta) * 0.22;
         steer(this, e, { x: center.x + Math.cos(next) * ANVIL_WORK.berthRadius,
           z: center.z + Math.sin(next) * ANVIL_WORK.berthRadius }, 0);
       } else {
-        steer(this, e, receiver.pos, ANVIL_WORK.transferRange * 0.65, 40);
+        steer(this, e, berth.pos, ANVIL_WORK.transferRange * 0.65, 40);
+        if (!receiver) return; // world residency must restore the physical tender before arrival
         this._transferAnvilLoad(e, receiver);
         // An empty return still has to physically arrive. Otherwise a heat-aborted
         // collection pass can restart from hundreds of units away from the tender.

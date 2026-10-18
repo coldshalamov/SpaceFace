@@ -28,7 +28,7 @@ import {
   mergeClusterSecondaries,
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
-import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
+import { queryPhysicalBodies, deliverPhysicalImpulseDetailed } from '../combat/physicalEffects.js';
 import { isAnchoredPhysicalBody, isPhysicalMissionBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -517,6 +517,8 @@ export const fields = {
     this._evidenceRows = new WeakMap();
     this._evidenceAmbiguous = { kind: 'field', tick: 0, provenance: null };
     this._affected = new Map();
+    this._acceptedFieldAccel = new WeakMap();
+    this._fieldForcePass = 0;
     this._massStateFields = new Map();
     this._massStateStrengths = new Map();
     // PB-ORD-B pin watch: bodies already inside a pin-capable field this force pass.
@@ -954,6 +956,8 @@ export const fields = {
   },
 
   update(dt, state) {
+    // Even a skipped force tick retires feedback from the preceding pass.
+    this._fieldForcePass++;
     const rt = ensureRuntime(state);
     this._familyDt = dt;
     // The set of entity ids a live field claims this tick, published for the activity
@@ -1655,6 +1659,8 @@ export const fields = {
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     this._orbitScanned = false;
     if (this._kernel) this._kernel.clear();
+    this._acceptedFieldAccel = new WeakMap();
+    this._fieldForcePass++;
     this._seedLockFieldId = null;
     if (this._insideRing) this._insideRing.clear();
     if (this._insideRingPrev) this._insideRingPrev.clear();
@@ -1754,6 +1760,27 @@ export const fields = {
     return this._kernel ? this._kernel.list() : [];
   },
 
+  // Feedback from the latest accepted force pass, current or previous tick. This does not
+  // predict the later field tick's membership or repeat its promotion/capacity admission.
+  readAcceptedFieldAcceleration(entity, out = null) {
+    const state = this.state;
+    if (!fieldsFlag('enabled') || state?.mode !== 'flight'
+      || !entity || entity.alive === false || state.entities?.get(entity.id) !== entity
+      || entity.flags?.docked || (entity.id === state.playerId && state.ui?.docked)) return null;
+    const sample = this._acceptedFieldAccel?.get(entity);
+    const age = state.tick - sample?.tick;
+    if (!sample || sample.pass !== this._fieldForcePass || (age !== 0 && age !== 1)
+      || sample.generation !== entity.occupantGeneration) return null;
+    const now = nowOf(state);
+    for (let i = 0; i < sample.fields.length; i++) {
+      const field = sample.fields[i];
+      if (this._kernel?.get(field.id) !== field || field.expireAt <= now) return null;
+    }
+    const result = out || {};
+    result.ax = sample.ax; result.az = sample.az; result.tick = sample.tick;
+    return result;
+  },
+
   // ── force application (the ONE kernel → membrane) ────────────────────────────────────────────
 
   _forceableBody(e) {
@@ -1836,6 +1863,7 @@ export const fields = {
   },
 
   _applyForces(dt, state, rt) {
+    const pass = ++this._fieldForcePass;
     const now = nowOf(state);
     if (this._kernel && typeof this._kernel.expire === 'function') this._kernel.expire(now);
     const fieldsList = this._kernel.list();
@@ -1928,7 +1956,16 @@ export const fields = {
       impulse.y = 0;
       impulse.z = accel.az * mass * dt;
       const evidence = this._fieldEvidence(e, affected.get(e), state, profile);
-      if (!deliverPhysicalImpulse(state, e, impulse, evidence, { scaleEnvironment: false, continuous: true, dt })) continue;
+      const delivered = deliverPhysicalImpulseDetailed(state, e, impulse, evidence,
+        { scaleEnvironment: false, continuous: true, dt });
+      if (!delivered.accepted) continue;
+      let feedback = this._acceptedFieldAccel.get(e);
+      if (!feedback) { feedback = {}; this._acceptedFieldAccel.set(e, feedback); }
+      feedback.ax = delivered.impulse.x / (mass * dt);
+      feedback.az = delivered.impulse.z / (mass * dt);
+      feedback.tick = state.tick; feedback.pass = pass;
+      feedback.generation = e.occupantGeneration;
+      feedback.fields = affected.get(e);
       if (evidence?.provenance?.actorId != null) recordImpulseProvenance(e, {
         ...evidence.provenance, magnitude: Math.hypot(impulse.x, impulse.z), appliedTick: state.tick,
       });
