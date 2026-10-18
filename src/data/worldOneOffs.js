@@ -150,6 +150,37 @@ export const WORLD_ONE_OFFS = Object.freeze([
     why: 'Concord seized it, Meridian billed for it, and the count will not run until the desks agree. It has been "temporary" for a year.',
   }),
   Object.freeze({
+    // CR-TEXTURE — The Toll Saint's Toll-Box: a memorial destination on the toll approach,
+    // out past the lamp and the disputed keg. Haulers leave tally plates and the occasional
+    // keepsake for the lane's toll-keeper — the cluster props are the piled toll; the
+    // `offerings` rows are REAL dark pickups (unlitDrop — silhouette finds, no strobe) of
+    // station-owned freight. First oneoff with collectable content: world.js spawns one pod
+    // per slot on materialization and re-offers the ones somebody took last visit — "the
+    // lane keeps leaving tolls." The black box is the keepsake every old crew leaves.
+    id: 'oneoff_toll_saint_box',
+    name: "The Toll Saint's Box — tally plates for the lane's toll-keeper",
+    placeId: 'place_memorial_array',
+    sectorId: 'sector_tethys_junction',
+    anchor: { type: 'station', id: 'station_customs' },
+    offsetLocal: Object.freeze({ x: 420, z: -320 }),
+    rot: 0.9,
+    spin: 0,
+    radius: 14,
+    cluster: Object.freeze({
+      props: Object.freeze([
+        Object.freeze({ placeId: 'place_cargo_pod_standard', dx: 22, dz: 14, rot: 0.3, radius: 5 }),
+        Object.freeze({ placeId: 'place_cargo_pod_standard', dx: -18, dz: 20, rot: 1.7, radius: 5 }),
+        Object.freeze({ placeId: 'place_cargo_pod_standard', dx: 6, dz: -24, rot: 4.1, radius: 5 }),
+      ]),
+    }),
+    offerings: Object.freeze([
+      Object.freeze({ commodityId: 'cmdty_scrap_metal', amount: 1, dx: 30, dz: -8, name: 'Tally Plate' }),
+      Object.freeze({ commodityId: 'cmdty_scrap_metal', amount: 1, dx: -26, dz: -14, name: 'Tally Plate' }),
+      Object.freeze({ commodityId: 'cmdty_dmc_black_box', amount: 1, dx: 10, dz: 30, name: "The Toll Saint's Keepsake" }),
+    ]),
+    why: 'Nobody remembers which toll-keeper the box is for. Every crew pays anyway — a plate, a pod, once in a while a flight recorder. The plates pile up; the keepsakes wander off and new ones appear. The lane keeps its own ledger.',
+  }),
+  Object.freeze({
     // 2026-09-28 INFERENCE — the contested floor's own texture. A customs pinnace died holding
     // the Reach dock early in the fighting; whoever holds the dock this week keeps her lit
     // rather than salvage her, because the pylon beside her is the only approach marker every

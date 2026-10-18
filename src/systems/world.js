@@ -3256,6 +3256,7 @@ export const world = {
           z: pos.z + part.dz,
         }, { rot: part.rot, name: oneOff.name, radius: part.radius, worldOneOff: true });
       }
+      this._spawnOneOffOfferings(oneOff, pos, sector, active);
     }
     this._spawnHeliosRopeCache(sector, active);
     this._spawnKettleLinePayoff(sector, active);
@@ -3296,6 +3297,54 @@ export const world = {
     });
     this._stampHomeSector(ent, sector.id);
     return ent;
+  },
+
+  /**
+   * One-off offerings (CR-TEXTURE): real collectable pods left AT the set piece — the
+   * Toll Saint's tally plates and keepsakes. Each `offerings` slot spawns one dark cargo
+   * pickup (`unlitDrop` — a silhouette find, no strobe) beside the one-off, owned by the
+   * one-off itself so taking one answers the ordinary owned-cargo read. Slot ids live on
+   * `active.oneOffOfferings`: a taken offering stays empty for the visit, and the next
+   * materialization re-offers it — the lane keeps leaving tolls. `persistent` stays false
+   * so residency despawn clears the pile on sector exit; `anchored` keeps the sector's
+   * own materialize sweep from wiping the pod it just placed (the rope-cache treatment).
+   */
+  _spawnOneOffOfferings(oneOff, pos, sector, active) {
+    const offerings = oneOff && oneOff.offerings;
+    if (!Array.isArray(offerings) || !offerings.length || !pos) return;
+    const bag = active.oneOffOfferings || (active.oneOffOfferings = {});
+    const slots = bag[oneOff.id] || (bag[oneOff.id] = []);
+    const byId = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities : null;
+    for (let i = 0; i < offerings.length; i++) {
+      const priorId = slots[i];
+      const prior = priorId != null && byId ? byId.get(priorId) : null;
+      if (prior && prior.alive !== false) continue;
+      const offer = offerings[i];
+      const pod = spawnJettisonedCargoPod(this.state, {
+        commodityId: offer.commodityId,
+        amount: offer.amount || 1,
+        pos: { x: pos.x + (offer.dx || 0), z: pos.z + (offer.dz || 0) },
+        vel: { x: 0, z: 0 },
+        radius: offer.radius || 3,
+        ownerId: oneOff.id,
+        ownerName: oneOff.name,
+        originId: oneOff.id,
+        factionId: 'faction_free',
+      }, this.helpers);
+      if (!pod) { slots[i] = null; continue; }
+      pod.data = pod.data || {};
+      pod.data.unlitDrop = true;
+      pod.data.offeringFor = oneOff.id;
+      pod.data.offeringSlot = i;
+      pod.data.anchored = true;
+      pod.data.worldOneOff = true;
+      pod.data.oneOffId = oneOff.id;
+      if (offer.name) pod.data.name = offer.name;
+      pod.flags = Object.assign({}, pod.flags, { persistent: false });
+      this._stampHomeSector(pod, sector.id);
+      slots[i] = pod.id;
+    }
   },
 
   // The Candle Fleet cache is a live cargo pod, not dressing: dressing cannot be roped, and a
