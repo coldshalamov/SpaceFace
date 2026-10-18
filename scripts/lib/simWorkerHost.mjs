@@ -298,6 +298,7 @@ export function entityVitalsOf(e) {
     fields.machineWorking = Boolean(machine.working);
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
   const ecology = e.data && e.data.ecology;
   if (ecology) {
     fields.ecologyName = e.data.name ?? null;
@@ -356,6 +357,7 @@ function vitalShadowMatches(e, shadow) {
   if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const ecology = e.data && e.data.ecology;
   if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
@@ -391,6 +393,7 @@ function writeVitalShadow(e, shadow) {
   shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
   const ecology = e.data && e.data.ecology;
   shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
   shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;

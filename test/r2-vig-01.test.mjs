@@ -1,11 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createSimulation } from '../src/core/sim.js';
 import { ENCOUNTERS } from '../src/data/encounters/index.generated.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { encounterDirector, planEncounters } from '../src/systems/encounterDirector.js';
 import { ships } from '../src/systems/ships.js';
+import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { createReadModel, applySpawnInfos, applyEntityVitals } from '../scripts/lib/simReadModel.mjs';
+import { targetDisplayName } from '../src/ui/targetPanel.js';
 
 const SECTOR = 'sector_vesta_forge';
 const SHAPE = 'the_blind_welder';
@@ -348,4 +352,67 @@ test('the three cracks are bodies the pilot can see, carrying heading and bead p
   assert.match(String(current.data.scanLabel || ''), /bead is taking/i,
     'the open crack shows the bead progress');
   assert.equal(current.rot, rec.vars.seams[0].arc);
+});
+
+test('worker seam transitions refresh the selected target label once and retain its data', async () => {
+  const worker = createSimHost();
+  try {
+    const init = await worker.init({ profile: 'production', seed: 4242,
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')) });
+    const { state, bus, runtime, registry } = worker.host;
+    state.mode = 'flight';
+    state.ui.docked = false;
+    state.world.currentSectorId = SECTOR;
+    state.world.activeSector = { stations: [{ id: 'station_forge', name: 'Vesta Forge', pos: { x: 500, z: 600 } }], pois: [] };
+    const player = runtime.spawn({ type: 'ship', team: 0, radius: 8, mass: 100, physicsBody: false,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, data: { intent: {}, ai: {} } });
+    state.playerId = player.id;
+    const t = { state, bus, director: registry.get('encounterDirector') };
+    const id = force(t, 'transport');
+    const seamId = live(t, id).vars.seams[0].id;
+    const native = state.entities.get(seamId);
+    const main = createReadModel();
+    let ackEnd = init.initRebuild?.end ?? 0;
+    let sequence = 0;
+    const transport = async () => {
+      const reply = structuredClone(await worker.tick({ tick: ++sequence, steps: 0, commands: [], ackEnd }));
+      ackEnd = reply.journalEnd;
+      applySpawnInfos(main, reply.spawnInfos);
+      applyEntityVitals(main, reply.entityVitals);
+      return reply;
+    };
+    await transport();
+    const selected = main.entities.get(seamId);
+    assert.ok(selected, 'the real encounter prop reaches the spawn-info mirror');
+    assert.notEqual(selected.data, native.data, 'the selected body is a transported copy');
+    assert.match(targetDisplayName(selected), /bead has not started/i);
+    const data = selected.data;
+    assert.ok(!(await transport()).entityVitals.some(([entityId]) => entityId === seamId),
+      'an unchanged seam sends no repeated vitals row');
+    holdLine(t, id);
+    let takingSeen = false;
+    for (let second = 0; second < 6 && live(t, id).vars.tracedSeams === 0; second++) {
+      parkBargeOnSeam(t, id, 0);
+      state.simTime += 1;
+      state.tick += 60;
+      t.director.update(1, state);
+      const changed = await transport();
+      assert.equal(main.entities.get(seamId), selected, 'label updates keep the selected entity');
+      assert.equal(selected.data, data, 'label updates preserve spawn-time prop data');
+      assert.equal(selected.data.storyPropKind, 'blind_welder_seam');
+      assert.equal(targetDisplayName(selected), native.data.scanLabel,
+        'the selected target shows the real producer label after the worker reply');
+      if (/bead is taking/i.test(native.data.scanLabel)) takingSeen = true;
+      if (/SEAM CLOSED/.test(native.data.scanLabel)) {
+        assert.ok(changed.entityVitals.some(([entityId]) => entityId === seamId),
+          'the closed seam ships a changed entity row without respawning');
+        assert.ok(!changed.spawnInfos.some((info) => info.entityId === seamId));
+      }
+    }
+    assert.equal(takingSeen, true, 'the producer crosses the in-progress bead state');
+    assert.equal(live(t, id).vars.tracedSeams, 1, 'the real welder closes exactly the first seam');
+    assert.match(targetDisplayName(selected), /SEAM CLOSED.*the bead holds/);
+    assert.ok(!(await transport()).entityVitals.some(([entityId]) => entityId === seamId),
+      'a stable closed label sends no further row');
+  } finally { worker.shutdown(); }
 });

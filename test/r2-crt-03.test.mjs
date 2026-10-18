@@ -16,6 +16,9 @@ import { lawSecurity as lawPrototype } from '../src/systems/lawSecurity.js';
 import { lossLedger as lossPrototype } from '../src/systems/lossLedger.js';
 import { buildSlotList, getDerivedStats, ships as shipsPrototype } from '../src/systems/ships.js';
 import { SHIPS } from '../src/data/ships.js';
+import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
+import { createShipStage } from '../src/ui/station/screens/shipworks.js';
+import { fakeDom } from './helpers/fake-dom.mjs';
 
 const WASP = SHIPS.find((ship) => ship.id === 'ship_wasp');
 const HITCH = SHIPS.find((ship) => ship.id === 'ship_kestrel');
@@ -570,6 +573,138 @@ test('Shipworks quotes the actual used hull and its purchase button buys that li
   }
 });
 
+
+// Mount the real stage without a browser. Only frame regions and rendered purchase
+// buttons need DOM behavior; layout, WebGL and animation are outside this test.
+function shipworksDom() {
+  const doc = fakeDom();
+  const make = doc.createElement;
+  const regions = new Map();
+  doc.createElement = (tag) => {
+    const node = make(tag);
+    node.ownerDocument = doc;
+    node.hidden = true;
+    node.style.removeProperty = (key) => { delete node.style[key]; };
+    node.hasAttribute = (key) => node.getAttribute(key) !== null;
+    node.removeEventListener = () => {};
+    node.remove = () => {};
+    node.prepend = (...children) => children.forEach((child) => node.appendChild(child));
+    node.insertBefore = (child) => node.appendChild(child);
+    node.after = () => {};
+    node.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0 });
+    node.getContext = () => null;
+    node.contains = (child) => child?.parentNode === node;
+    node.querySelector = (selector) => {
+      if (node.className === 'k-panel sx-sw') {
+        if (!regions.has(selector)) regions.set(selector, doc.createElement('div'));
+        return regions.get(selector);
+      }
+      if (/^\[data-gauge-(?:value|ghost)\]$/.test(selector)) {
+        node.gaugeNodes ||= new Map();
+        if (!node.gaugeNodes.has(selector)) node.gaugeNodes.set(selector, doc.createElement('span'));
+        return node.gaugeNodes.get(selector);
+      }
+      const attr = selector.match(/^\[(data-(?:buyship|buy|mode))(?:="([^"]*)")?\]$/);
+      if (!attr) return null;
+      const button = [...node.innerHTML.matchAll(/<button\b[^>]*>/g)]
+        .find(([html]) => html.includes(`${attr[1]}="${attr[2] || ''}`));
+      if (!button) return null;
+      const control = doc.createElement('button');
+      for (const [, key, value] of button[0].matchAll(/([\w-]+)="([^"]*)"/g)) control.setAttribute(key, value);
+      control.disabled = /\sdisabled(?:\s|>)/.test(button[0]);
+      control.parentNode = node;
+      control.closest = (sel) => sel === `[${attr[1]}]` ? control : null;
+      return control;
+    };
+    node.fire = async (target) => {
+      for (const handler of node.listeners.click || []) await handler({ target, preventDefault() {}, stopPropagation() {} });
+    };
+    return node;
+  };
+  doc.createElementNS = (_ns, tag) => doc.createElement(tag);
+  doc.documentElement = doc.createElement('html');
+  doc.body = doc.createElement('body');
+  return { doc, regions };
+}
+
+test('worker impound updates let the real Shipworks stage buy, remove and replace the used lot', async (t) => {
+  const h = boot({ credits: 15000 });
+  t.after(() => h.ledger.destroy());
+  const differ = createDomainDiffer();
+  const domains = new Map();
+  const main = createGameState(4242);
+  const transport = (tick) => {
+    for (const update of structuredClone(differ.diff(h.state, tick).updates)) {
+      const segs = update.segs.length === 1 ? update.segs[0].split('.') : update.segs;
+      domains.set(segs[0], main[segs[0]]);
+      applyDomainPathUpdate(domains, { ...update, segs }, new WeakSet());
+      main[segs[0]] = domains.get(segs[0]);
+    }
+  };
+  transport(0);
+  spawnVictim(h.state, { id: 7, defId: WASP.id, name: 'Marrow', callsign: 'Marrow', livingHull: markedHull(true) });
+  combatPrototype.kill.call({ state: h.state, bus: h.bus }, h.state.entities.get(7), 1);
+  const listing = h.state.lossLedger.impound;
+  assert.equal(listing.price, 11200, 'the real combat and ledger owners create the used lot');
+  transport(1);
+
+  const dom = shipworksDom();
+  const previous = new Map(['document', 'window', 'requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout'].map((key) => [key, globalThis[key]]));
+  globalThis.document = dom.doc;
+  globalThis.window = { innerWidth: 1920, innerHeight: 1080, addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: true }) };
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => {};
+  globalThis.setTimeout = () => 1;
+  let stage;
+  try {
+    main.render = { renderer: { getContext: () => ({ isContextLost: () => true }) } };
+    const bus = createBus();
+    const intents = [];
+    bus.on('ui:buyShip', (payload) => { intents.push(payload); h.bus.emit('ui:buyShip', payload); });
+    stage = createShipStage({ state: main, bus, screenMemory: {
+      read: (_screen, key, fallback) => ({ mode: 'buy', buyId: WASP.id })[key] ?? fallback,
+      set() {},
+    } });
+    stage.onShow();
+    const rail = dom.regions.get('.sx-sw__list');
+    const side = dom.regions.get('.sx-sw__side');
+    assert.match(rail.innerHTML.match(/<button[^>]*data-buy="ship_wasp"[\s\S]*?<\/button>/)[0], /11,200/,
+      'the transported lot replaces the stock price on the actual Shipworks rail');
+    assert.match(side.innerHTML, /Marrow/);
+    assert.ok(side.innerHTML.includes(listing.scarSentence));
+    assert.ok(side.innerHTML.includes(listing.deedLine));
+    let buy = side.querySelector('[data-buyship="ship_wasp"]');
+    assert.equal(buy.disabled, false, '15,000 credits can buy the worker lot');
+    assert.equal(buy.getAttribute('data-listing-id'), listing.listingId);
+    main.player.credits = 100;
+    stage.refresh();
+    assert.equal(side.querySelector('[data-buyship="ship_wasp"]').disabled, true);
+    assert.match(side.innerHTML, /11,100 cr short/);
+    main.player.credits = 15000;
+    stage.refresh();
+    buy = side.querySelector('[data-buyship="ship_wasp"]');
+    await side.fire(buy);
+    assert.deepEqual(intents, [{ defId: WASP.id, listingId: listing.listingId }]);
+    assert.equal(h.charges.at(-1).amount, listing.price);
+    for (let tick = 2; tick <= 61; tick++) transport(tick);
+    assert.equal(main.lossLedger.impound, undefined, 'purchase removes the transported lot');
+    stage.refresh();
+    assert.doesNotMatch(side.innerHTML, /data-listing-id=/, 'the removed lot cannot be bought again');
+    spawnVictim(h.state, { id: 8, defId: WASP.id, name: 'New Dawn', callsign: 'New Dawn', livingHull: markedHull(false) });
+    combatPrototype.kill.call({ state: h.state, bus: h.bus }, h.state.entities.get(8), 1);
+    transport(62);
+    stage.refresh();
+    assert.notEqual(main.lossLedger.impound.listingId, listing.listingId);
+    assert.match(side.innerHTML, /New Dawn/);
+    assert.equal(side.querySelector('[data-buyship="ship_wasp"]').getAttribute('data-listing-id'), h.state.lossLedger.impound.listingId);
+    assert.equal(main.lossLedger.entries, undefined, 'the loss history stays authoritative');
+  } finally {
+    stage?.dispose();
+    for (const [key, value] of previous) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});
 
 test('a catalog intent never substitutes a used hull, and a stale listing never buys stock', () => {
   const h = boot({ credits: 100000 });

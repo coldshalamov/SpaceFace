@@ -79,6 +79,13 @@ function foldMineVitals(row, fields) {
   row.data.armed = fields.mineArmed;
 }
 
+// Story props change scanner text as work progresses after their spawn.
+function foldScanLabel(row, fields) {
+  if (fields.dataScanLabel === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.scanLabel = fields.dataScanLabel;
+}
+
 // Revelation changes labels and the sail's silhouette after its spawn.
 function foldEcologyVitals(row, fields) {
   if (fields.ecologyDisguised === undefined) return;
@@ -205,6 +212,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
       foldBoostVitals(row, info.vitals);
       foldMachineVitals(row, info.vitals);
       foldMineVitals(row, info.vitals);
+      foldScanLabel(row, info.vitals);
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
       foldAiState(row, info.vitals);
@@ -285,6 +293,7 @@ export function applyEntityVitals(readModel, vitals) {
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
     foldMineVitals(row, fields);
+    foldScanLabel(row, fields);
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
@@ -601,6 +610,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
+  'lossLedger.impound',
   'sectorSim.field', 'npcJobs.byId', 'npcJobs.revision', 'factionPresence.boarding',
   'automation.meta', 'automation.traders', 'automation.fleet',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
