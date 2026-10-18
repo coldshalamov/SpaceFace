@@ -550,6 +550,18 @@ function* partitionGeometryWorkSteps(work, options = {}) {
   return batches;
 }
 
+function residencyProgramLinked(renderer, material) {
+  try {
+    const properties = renderer && renderer.properties && typeof renderer.properties.get === 'function'
+      ? renderer.properties.get(material) : null;
+    const programs = properties && properties.programs;
+    return !!(material && material.isRawShaderMaterial === true && programs
+      && typeof programs.size === 'number' && programs.size > 0 && properties.currentProgram);
+  } catch {
+    return false;
+  }
+}
+
 function createResidencyMaterial() {
   // WebGLObjects.update() uploads every BufferGeometry attribute before renderBufferDirect() binds
   // the program. The shader stays tiny and clips every vertex outside the 1x1 target.
@@ -790,7 +802,12 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
         for (const entry of proxyEntries) scene.add(entry.proxy);
         try {
-          if (typeof renderer.compileAsync === 'function') {
+          // The residency material is a RawShaderMaterial, whose program cache key is only its
+          // shader source and defines (no instancing/points/line/morph parameters), so every proxy
+          // in every batch shares one program. Once that program is linked on this renderer the
+          // compile unit is a pure serial-route round trip (a presented-frame wait + gl.finish per
+          // batch on SwiftShader); skip it. A miss is still safe: the draw links synchronously.
+          if (typeof renderer.compileAsync === 'function' && !residencyProgramLinked(renderer, material)) {
             const { compilePipelinesContextSafe } = await import('./bloom.js');
             const compile = () => {
               if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
@@ -912,6 +929,33 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   };
 }
 
+// Rough upload size of one texture, for the optional batch byte cap below. Mip chains and
+// compressed payloads count their own bytes; a plain image counts width*height*4 (+1/3 when it
+// will generate mipmaps). Unknown sizes count 0, so they only ever share a batch by count.
+export function estimateTextureUploadBytes(texture) {
+  try {
+    const mipmaps = texture && Array.isArray(texture.mipmaps) ? texture.mipmaps : null;
+    if (mipmaps && mipmaps.length) {
+      let bytes = 0;
+      for (const mip of mipmaps) {
+        const data = mip && mip.data;
+        if (data && typeof data.byteLength === 'number') bytes += data.byteLength;
+        else if (mip && mip.width && mip.height) bytes += mip.width * mip.height * 4;
+      }
+      return bytes;
+    }
+    const data = texture && (texture.image || (texture.source && texture.source.data));
+    if (data && data.data && typeof data.data.byteLength === 'number') return data.data.byteLength;
+    const width = Number(data && data.width) || 0;
+    const height = Number(data && data.height) || 0;
+    const depth = Number(data && data.depth) || 1;
+    const base = width * height * depth * 4;
+    return texture && texture.generateMipmaps === true ? Math.ceil(base * 4 / 3) : base;
+  } catch {
+    return 0;
+  }
+}
+
 export async function prepareStartupGpuResidency(renderer, subjects, options = {}) {
   if (!renderer || typeof renderer.initTexture !== 'function') {
     return { skipped: true, reason: 'initTexture unavailable', textures: 0 };
@@ -959,6 +1003,35 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const startedAt = now();
   let hitDeadline = false;
   let scanStrideAt = startedAt;
+  // Optional upload batching (serial-link route behind the loading shell only; callers pass
+  // these). By default every upload is its own serial unit, so on SwiftShader each texture pays a
+  // yield plus a presented-frame wait + gl.finish; the 131 opening textures made cook.buffers
+  // mostly idle main thread. A batch shares one yield and one serial unit, capped by count and
+  // bytes. Count 1 (the default) is exactly the per-texture path.
+  const textureBatchCount = Math.max(1, Math.floor(Number(options.textureBatchCount)) || 1);
+  const textureBatchBytes = Number(options.textureBatchBytes) > 0 ? Number(options.textureBatchBytes) : Infinity;
+  let pendingUploads = [];
+  let pendingBytes = 0;
+  const flushUploads = async () => {
+    if (!pendingUploads.length) return null;
+    const batch = pendingUploads;
+    pendingUploads = [];
+    pendingBytes = 0;
+    const runBatch = () => {
+      for (const upload of batch) {
+        upload();
+        if (hitDeadline) break;
+      }
+    };
+    if (submitSerial) {
+      const outcome = await submitSerial(runBatch, { urgent: options.urgent === true });
+      if (outcome && outcome.contextLost) return outcome;
+    } else {
+      runBatch();
+      if (paceQueue) await paceQueue();
+    }
+    return null;
+  };
   for (let index = 0; index < count; index++) {
     if (hasDeadline && now() - startedAt >= deadlineMs) {
       hitDeadline = true;
@@ -1007,10 +1080,12 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       }
       continue;
     }
-    await yieldToMain();
-    if (hasDeadline && now() - startedAt >= deadlineMs) {
-      hitDeadline = true;
-      break;
+    if (!pendingUploads.length) {
+      await yieldToMain();
+      if (hasDeadline && now() - startedAt >= deadlineMs) {
+        hitDeadline = true;
+        break;
+      }
     }
     const upload = () => {
       if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
@@ -1057,14 +1132,19 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
         textureProgress.update(index + 1, success);
       }
     };
-    if (submitSerial) {
-      const outcome = await submitSerial(upload, { urgent: options.urgent === true });
-      if (outcome && outcome.contextLost) return { ...outcome, textures: uploads.length, uploads, residentTextures };
-    } else {
-      upload();
-      if (paceQueue) await paceQueue();
+    pendingUploads.push(upload);
+    if (textureBatchBytes !== Infinity) pendingBytes += estimateTextureUploadBytes(texture);
+    if (pendingUploads.length >= textureBatchCount || pendingBytes >= textureBatchBytes || index === count - 1) {
+      const outcome = await flushUploads();
+      if (outcome) return { ...outcome, textures: uploads.length, uploads, residentTextures };
     }
     if (hitDeadline) break;
+  }
+  // A batch still open when the scan ended on resident rows (or hit the deadline) runs now;
+  // each upload re-checks the deadline and the residency stamp itself.
+  {
+    const outcome = await flushUploads();
+    if (outcome) return { ...outcome, textures: uploads.length, uploads, residentTextures };
   }
   let geometryResidency;
   if (hitDeadline) {
