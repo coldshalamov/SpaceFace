@@ -1131,6 +1131,34 @@ export function refreshAlienLabels(world) {
   }
 }
 
+// Arrival beats latch once, so a later life-stage change would be silent on the next
+// visit. Leaving past the long band arms one return line for that stage. Garden and
+// collar sites already speak on their own return edge; this is the other sites.
+const RETURN_STAGE_TEXT = {
+  awake: (name) => `${name} reads awake on the return pass. What slept here is moving now.`,
+  bloom: (name) => `${name} is in bloom on the return pass. The growth has spread since you left.`,
+  severed: (name) => `${name} reads severed on the return pass. The chorus that held this place has gone dark.`,
+};
+
+function noteStageReturn(world, site, rec, dSite) {
+  if (!site || site.siteId === WRECK_SITE_ID || site.siteId === COLLAR_SITE_ID) return;
+  const bands = site.arrivalBands;
+  if (!rec || !rec.beats || !bands || !(bands.long > 0) || !(bands.mid > 0)) return;
+  if (dSite > bands.long) {
+    if (rec.beats.long || rec.beats.mid || rec.beats.close) rec.returnAway = true;
+    return;
+  }
+  if (rec.returnAway !== true || !(dSite < bands.mid)) return;
+  rec.returnAway = false;
+  const say = RETURN_STAGE_TEXT[rec.state];
+  if (!say || rec.returnStageSeen === rec.state) return;
+  rec.returnStageSeen = rec.state;
+  const name = typeof site.name === 'string' && site.name ? site.name : 'The site';
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: name, kind: 'ecology', text: say(name) });
+  }
+}
+
 // ── Per-tick drive engine (called from world.update) ────────────────────────────────────────
 export function tickAlienEcology(world, dt) {
   const state = world && world.state;
@@ -1593,6 +1621,7 @@ export function tickAlienEcology(world, dt) {
           text: `Cartography resolves the host under the growth — ${site.name}.`, kind: 'info', ttl: 5,
         });
       }
+      noteStageReturn(world, site, rec, dSite);
     }
 
     // AE-056 signal decay: rupture/feed signals live ~30s in the record.
@@ -2390,6 +2419,10 @@ export function deserializeAlienEcologyState(state, data) {
         ...(rec.collarGreeted === true ? { collarGreeted: true } : {}),
         ...(rec.heatOnline === false ? { heatOnline: false } : {}),
         ...(rec.heatEdge === true ? { heatEdge: true } : {}),
+        ...(rec.returnAway === true ? { returnAway: true } : {}),
+        ...(rec.returnStageSeen === 'awake' || rec.returnStageSeen === 'bloom'
+          || rec.returnStageSeen === 'severed'
+          ? { returnStageSeen: rec.returnStageSeen } : {}),
       };
     }
   }
