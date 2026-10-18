@@ -139,6 +139,15 @@ function scan(ctx) {
   return ctx.economySys.runScan({ security: 1, scannerCloak: 0, factionId: 'faction_scn' });
 }
 
+function assertDrillableCap(tile) {
+  assert.ok(tile);
+  assert.notEqual(tile.type, 'empty');
+  assert.notEqual(tile.type, 'gas');
+  assert.notEqual(tile.hazard, true);
+  assert.equal(tile.ore, null);
+  assert.ok(tile.hp > 0);
+}
+
 test('a sealed bore hides narcotics from a lawful scan that still flags the same goods on the hull', () => {
   const ctx = boot();
   addCargo(ctx.state, 'cmdty_narcotics', 2);
@@ -262,4 +271,114 @@ test('the cache is still in the rock after the site is saved, and drilling the c
   assert.ok(back);
   assert.match(back, /Narcotics/);
   assertPlain(back);
+});
+
+function exposedDrop(place) {
+  return {
+    sealed: true,
+    witnessed: true,
+    mouth: { col: MOUTH.col, row: MOUTH.row },
+    approach: { col: APPROACH.col, row: APPROACH.row },
+    room: [{ col: ROOM.col, row: ROOM.row }],
+    stacks: { cmdty_narcotics: 2 },
+    place: { x: place.x, z: place.z },
+  };
+}
+
+test('a Helios patrol scan fines and takes only the stash that scan can physically reach', () => {
+  const ctx = boot();
+  addCargo(ctx.state, 'cmdty_narcotics', 2);
+  dumpLot(ctx, true);
+  const patrol = {
+    id: 9, type: 'ship', alive: true, pos: { x: 80, z: 0 }, radius: 12,
+    data: { ai: { lawful: true } },
+  };
+  ctx.state.entities.set(9, patrol);
+  ctx.state.entityList.push(patrol);
+  ctx.cargoSys.update(1 / 60, ctx.state);
+  assert.equal(ctx.site.deadDrop.witnessed, true);
+  assert.equal(ctx.site.deadDrop.stacks.cmdty_narcotics, 2);
+
+  const far = makeSiteRecord({
+    id: 'site_far', asteroidId: 71, sectorId: 'sector_helios_prime', createdT: 0,
+  });
+  far.anchored = true;
+  far.anchor = { x: 5000, z: 0, radius: 30, typeId: 'asteroid_iron', yieldU: 20 };
+  far.deadDrop = exposedDrop({ x: 5000, z: 0 });
+
+  const pallas = makeSiteRecord({
+    id: 'site_pallas', asteroidId: 70, sectorId: 'sector_pallas_drift', createdT: 0,
+  });
+  pallas.anchored = true;
+  pallas.anchor = { x: 120, z: -40, radius: 30, typeId: 'asteroid_iron', yieldU: 20 };
+  pallas.deadDrop = exposedDrop({ x: 120, z: -40 });
+
+  ctx.state.sites.byId.site_far = far;
+  ctx.state.sites.byId.site_pallas = pallas;
+  ctx.state.sites.order = ['site_pallas', 'site_far', 'site_1'];
+
+  ctx.bus.emit('patrol:proximity', {
+    patrolId: patrol.id,
+    factionId: 'faction_scn',
+    security: 1,
+  });
+
+  assert.equal(ctx.busts.length, 1);
+  assert.equal(ctx.busts[0].confiscated.length, 1);
+  assert.equal(ctx.busts[0].confiscated[0].commodityId, 'cmdty_narcotics');
+  assert.equal(ctx.busts[0].confiscated[0].qty, 2);
+  assert.equal(ctx.site.deadDrop.stacks.cmdty_narcotics, undefined);
+  assert.equal(far.deadDrop.stacks.cmdty_narcotics, 2);
+  assert.equal(pallas.deadDrop.stacks.cmdty_narcotics, 2);
+});
+
+test('a save taken inside the bore restores a drillable rock cap over the hidden room', () => {
+  const ctx = boot();
+  ctx.rock.data.siteId = 'site_1';
+  ctx.site.boreSeed = 7;
+  const sites = Object.create(asteroidSites);
+  sites.init({ state: ctx.state, bus: ctx.bus, helpers: {}, registry: { get() { return null; } } });
+  ctx.cargoSys.registry = {
+    get(name) { return name === 'asteroidSites' ? sites : null; },
+  };
+
+  ctx.bus.emit('drill:break', {
+    col: MOUTH.col, row: MOUTH.row, type: 'rock', ore: null, wasVein: false, wasGas: false,
+  });
+  assert.equal(ctx.site.cleared.includes(MOUTH_INDEX), true);
+  const openField = sites._runtime(ctx.site);
+  assert.equal(openField.field[MOUTH.col][MOUTH.row].type, 'empty');
+
+  addCargo(ctx.state, 'cmdty_narcotics', 2);
+  dumpLot(ctx, true);
+  assert.equal(ctx.site.deadDrop.sealed, true);
+  assert.equal(ctx.site.deadDrop.stacks.cmdty_narcotics, 2);
+
+  const sealedField = sites._runtime(ctx.site);
+  assert.equal(ctx.site.cleared.includes(MOUTH_INDEX), false);
+  assertDrillableCap(sealedField.field[MOUTH.col][MOUTH.row]);
+
+  const saved = JSON.parse(JSON.stringify(sites.serialize()));
+  saved.byId.site_1.cleared = [...(saved.byId.site_1.cleared || []), MOUTH_INDEX];
+  sites.deserialize(saved);
+  const restored = ctx.state.sites.byId.site_1;
+  assert.equal(restored.deadDrop.sealed, true);
+  assert.equal(restored.deadDrop.stacks.cmdty_narcotics, 2);
+  assert.equal(restored.cleared.includes(MOUTH_INDEX), false);
+  const rebuilt = sites._runtime(restored);
+  assertDrillableCap(rebuilt.field[MOUTH.col][MOUTH.row]);
+
+  ctx.state.drill = {
+    active: true,
+    asteroidId: restored.asteroidId,
+    field: rebuilt.field,
+    avatar: { col: APPROACH.col, row: APPROACH.row, faceDir: 'right' },
+  };
+  ctx.rock.data.siteId = restored.id;
+  ctx.rock.data.drillCleared = restored.cleared.slice();
+  ctx.state.entities.set(restored.asteroidId, ctx.rock);
+  ctx.bus.emit('drill:break', {
+    col: MOUTH.col, row: MOUTH.row, type: 'rock', ore: null, wasVein: false, wasGas: false,
+  });
+  assert.equal(restored.deadDrop.sealed, false);
 });

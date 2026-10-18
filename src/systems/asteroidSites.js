@@ -23,6 +23,7 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // (generateDrillField + cleared list) to recompute machine contact rings with no live session —
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
 import { generateDrillField, applyClearedTiles, normalizeClearedTiles, tileIndex, DRILL_CONST } from './drill.js';
+import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { addCargo, removeCargo } from './cargo.js';
 import {
   addToShipment,
@@ -901,6 +902,9 @@ export const asteroidSites = {
       // shape guards above so each pass sees real objects; both are fixed points on honest data.
       normalizeSiteMachines(site);
       normalizeSiteCustody(site);
+      // A save taken inside a sealed bore may still list the mouth as open.
+      // Continue has to put that cell back in the rock before the field is rebuilt.
+      applySealedDeadDropCap(site, null);
     }
     // A corrupt site counter must never mint an id a surviving claim already owns.
     sites.nextSiteNum = Math.max(maxSiteNum + 1, Math.trunc(Number(sites.nextSiteNum)) || 1, 1);
@@ -1291,12 +1295,15 @@ export const asteroidSites = {
       rt = { field: null, fieldDirty: true, netDirty: true, geoDirty: true, status: {}, compRatio: {}, laneComps: [], powerComps: [], stores: {}, capacity: {}, geo: {} };
       this._rt.set(site.id, rt);
     }
+    if (rt.field && sealedDeadDropCapMissing(rt.field, site)) rt.fieldDirty = true;
     if (rt.fieldDirty || !rt.field) {
       const seed = Number.isFinite(site.boreSeed) ? site.boreSeed : site.asteroidId;
       rt.field = generateDrillField((seed >>> 0) || 1);
       applyClearedTiles(rt.field, site.cleared);
       // A fallen slab is rock again, painted after the cleared list reopens the cell.
       paintStructuralFalls(rt.field, site.structure);
+      // The sealed mouth is a cap even when an older cleared list still names it.
+      applySealedDeadDropCap(site, rt.field);
       rt.fieldDirty = false;
       rt.geoDirty = true;
     }
@@ -1351,6 +1358,17 @@ export const asteroidSites = {
     if (net) rt.netDirty = true;
   },
 
+  /** The bore just sealed a mouth. Drop it from the durable list and rebuild the field cache. */
+  noteDeadDropSealed(site) {
+    if (!site || !site.id) return;
+    const state = this.state;
+    const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+    const live = state.drill;
+    const field = live && live.field && live.asteroidId === site.asteroidId ? live.field : null;
+    applySealedDeadDropCap(site, field, ent && ent.data);
+    this._markDirty(site.id, { field: true });
+  },
+
   /** Stamp machine housings onto the LIVE drill session field (documented co-write). */
   _stampStructures(site) {
     const d = this.state.drill;
@@ -1361,6 +1379,25 @@ export const asteroidSites = {
     }
     // Same co-write as housings: the slab has to be in the field the rover walks.
     paintStructuralFalls(d.field, site.structure);
+    const ent = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(site.asteroidId) : null;
+    const mouth = site.deadDrop && site.deadDrop.sealed === true ? site.deadDrop.mouth : null;
+    const avatar = d.avatar;
+    applySealedDeadDropCap(site, d.field, ent && ent.data);
+    // Re-entry can spawn the rig in a mouth the old cleared list had left empty.
+    if (!mouth || !avatar) return;
+    const col = Math.trunc(Number(mouth.col));
+    const row = Math.trunc(Number(mouth.row));
+    if (avatar.col !== col || avatar.row !== row) return;
+    const approach = site.deadDrop.approach;
+    const ac = approach ? Math.trunc(Number(approach.col)) : NaN;
+    const ar = approach ? Math.trunc(Number(approach.row)) : NaN;
+    const tile = Number.isFinite(ac) && Number.isFinite(ar) && d.field[ac] && d.field[ac][ar];
+    if (!tile || tile.type !== 'empty') return;
+    avatar.col = ac;
+    avatar.row = ar;
+    avatar.fromCol = ac;
+    avatar.fromRow = ar;
   },
 
   // ------------------------------------------------------------ player intents
@@ -2647,6 +2684,20 @@ export const asteroidSites = {
     }
   },
 
+  _captureRadiatorDamage(entity, killed = false) {
+    const data = entity?.data;
+    if (!data?.radiatorFin || this._worldRestoreActive) return;
+    const site = this.getSite(data.siteId);
+    const fin = site?.radiatorFins?.find((row) => row.id === data.finId);
+    if (!radiatorFinIntact(fin) || !Number.isFinite(entity.hull)) return;
+    // Damage receipts fire synchronously, before combat's death and the corpse sweep.
+    // An alive:false body alone can be a residency retirement, never durable destruction.
+    fin.hull = killed ? 0 : Math.max(0, entity.hull);
+    if (fin.hull > 0) return;
+    fin.intact = false;
+    this._announceRadiator(site, this.state, 'warn', RADIATOR_SHEARED);
+  },
+
   _stepExteriorRadiators(site, state, rt, dtS) {
     const helpers = this.ctx && this.ctx.helpers;
     const notes = stepExteriorRadiators({
@@ -2684,20 +2735,6 @@ export const asteroidSites = {
     const structure = site && site.structure;
     if (!structure || !Array.isArray(structure.falls) || !structure.falls.length) return;
     const falls = structure.falls.filter((fall) => fall.col !== col || fall.row !== row);
-  _captureRadiatorDamage(entity, killed = false) {
-    const data = entity?.data;
-    if (!data?.radiatorFin || this._worldRestoreActive) return;
-    const site = this.getSite(data.siteId);
-    const fin = site?.radiatorFins?.find((row) => row.id === data.finId);
-    if (!radiatorFinIntact(fin) || !Number.isFinite(entity.hull)) return;
-    // Damage receipts fire synchronously, before combat's death and the corpse sweep.
-    // An alive:false body alone can be a residency retirement, never durable destruction.
-    fin.hull = killed ? 0 : Math.max(0, entity.hull);
-    if (fin.hull > 0) return;
-    fin.intact = false;
-    this._announceRadiator(site, this.state, 'warn', RADIATOR_SHEARED);
-  },
-
     if (falls.length === structure.falls.length) return;
     site.structure = { ...structure, falls };
   },
@@ -3120,7 +3157,16 @@ export const asteroidSites = {
     const podRecipe = SITE_RECIPE_BY_ID.get('sr_fab_courier');
     // Pod destination + options resolved HERE so the screen never imports sector data itself.
     const destSector = SECTOR_BY_ID.get(site.sectorId);
+    // The screen/worker read view has no cadence cache. Use its freshly projected
+    // power networks with the same kernels as the live exterior-fin step.
+    const radiatorRuntime = {
+      ...rt,
+      compRatio: Object.fromEntries(power.map((row) => [row.key, row.ratio])),
+      compPower: Object.fromEntries(power.map((row) => [row.key, row])),
+    };
     return {
+      thermal: solveRadiatorThermal(site, radiatorRuntime, 0),
+      signature: radiatorSignature(site, radiatorRuntime),
       site,
       hasCore: this.hasCore(site),
       anchored: site.anchored,
@@ -3145,12 +3191,3 @@ export const asteroidSites = {
     };
   },
 };
-    // The screen/worker read view has no cadence cache. Use its freshly projected
-    // power networks with the same kernels as the live exterior-fin step.
-    const radiatorRuntime = {
-      ...rt,
-      compRatio: Object.fromEntries(power.map((row) => [row.key, row.ratio])),
-      compPower: Object.fromEntries(power.map((row) => [row.key, row])),
-    };
-      thermal: solveRadiatorThermal(site, radiatorRuntime, 0),
-      signature: radiatorSignature(site, radiatorRuntime),

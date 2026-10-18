@@ -183,6 +183,76 @@ function placeOf(site, rock) {
   return { x: 0, z: 0 };
 }
 
+function dropClearedIndex(list, index) {
+  if (!Array.isArray(list)) return list;
+  return list.filter((value) => Math.trunc(Number(value)) !== index);
+}
+
+function sealedMouth(site) {
+  const drop = site && site.deadDrop;
+  if (!drop || drop.sealed !== true || !drop.mouth) return null;
+  const col = Math.trunc(Number(drop.mouth.col));
+  const row = Math.trunc(Number(drop.mouth.row));
+  if (!Number.isInteger(col) || !Number.isInteger(row)) return null;
+  return { col, row, index: tileIndex(col, row) };
+}
+
+// A scan may read a cache only when that cache is in the scan's sector and
+// inside the scan's reach. Callers pass the sector plus the scanner positions.
+// Patrol holds and lawful inspections reach 700 WU; a customs cone reaches 90.
+function cacheCoveredByScan(site, drop, coverage) {
+  if (!coverage || typeof coverage.sectorId !== 'string' || !coverage.sectorId) return false;
+  if (!site || site.sectorId !== coverage.sectorId) return false;
+  const place = drop && drop.place && Number.isFinite(drop.place.x) && Number.isFinite(drop.place.z)
+    ? drop.place
+    : (site.anchor && Number.isFinite(site.anchor.x) && Number.isFinite(site.anchor.z) ? site.anchor : null);
+  if (!place) return false;
+  const range = Number(coverage.range);
+  if (!(range > 0) || !Array.isArray(coverage.points) || coverage.points.length === 0) return false;
+  const reach = range * range;
+  for (let i = 0; i < coverage.points.length; i++) {
+    const point = coverage.points[i];
+    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) continue;
+    const dx = place.x - point.x;
+    const dz = place.z - point.z;
+    if ((dx * dx) + (dz * dz) <= reach) return true;
+  }
+  return false;
+}
+
+/** The sealed mouth is missing its drillable rock cap on this field. */
+export function sealedDeadDropCapMissing(field, site) {
+  const mouth = sealedMouth(site);
+  if (!mouth || !field) return false;
+  const column = field[mouth.col];
+  if (!Array.isArray(column) || mouth.row < 0 || mouth.row >= column.length) return false;
+  const tile = column[mouth.row];
+  if (!tile || tile.type === 'empty' || tile.type === 'gas' || tile.hazard === true) return true;
+  return tile.ore != null;
+}
+
+/** Drop the sealed mouth from the durable bore and paint a plain rock cap. */
+export function applySealedDeadDropCap(site, field, rockData) {
+  const mouth = sealedMouth(site);
+  if (!mouth) return false;
+  if (site && Array.isArray(site.cleared)) site.cleared = dropClearedIndex(site.cleared, mouth.index);
+  if (rockData && Array.isArray(rockData.drillCleared)) {
+    rockData.drillCleared = dropClearedIndex(rockData.drillCleared, mouth.index);
+  }
+  if (!field || !sealedDeadDropCapMissing(field, site)) return true;
+  const disguise = capFromNeighbor(field, mouth.col, mouth.row);
+  field[mouth.col][mouth.row] = {
+    type: 'rock',
+    hp: disguise.hp,
+    maxHp: disguise.maxHp,
+    ore: null,
+    hazard: false,
+    tierReq: 1,
+    hardness: disguise.hardness,
+  };
+  return true;
+}
+
 export function planDeadDropStow(state, commodityId, qty) {
   const amount = Math.floor(Number(qty) || 0);
   if (typeof commodityId !== 'string' || !commodityId || !Number.isInteger(amount) || amount <= 0) return null;
@@ -263,10 +333,13 @@ export function commitDeadDropStow(state, plan, removed) {
     hardness: disguise.hardness,
   };
   const rock = asteroidEntity(state);
+  const idx = tileIndex(col, row);
   const cleared = rock && rock.data && rock.data.drillCleared;
-  if (Array.isArray(cleared)) {
-    const idx = tileIndex(col, row);
-    rock.data.drillCleared = cleared.filter((value) => Math.trunc(Number(value)) !== idx);
+  if (Array.isArray(cleared)) rock.data.drillCleared = dropClearedIndex(cleared, idx);
+  // The entity list is transient. The site list is what a save clones while the
+  // bore is still open, so the mouth has to leave both or Continue reopens it.
+  if (plan.site && Array.isArray(plan.site.cleared)) {
+    plan.site.cleared = dropClearedIndex(plan.site.cleared, idx);
   }
   const stacks = {};
   stacks[plan.commodityId] = qty;
@@ -338,12 +411,12 @@ export function acceptDeadDropLoad(drop, commodityId, accepted) {
   else delete drop.stacks[commodityId];
 }
 
-export function exposedDeadDropStacks(state, commodityDef) {
+export function exposedDeadDropStacks(state, commodityDef, coverage) {
   const out = [];
   const sites = anchoredSites(state);
   for (let s = 0; s < sites.length; s++) {
     const drop = sites[s].deadDrop;
-    if (!drop || isHidden(drop)) continue;
+    if (!drop || isHidden(drop) || !cacheCoveredByScan(sites[s], drop, coverage)) continue;
     const read = readStacks(drop.stacks);
     const ids = Object.keys(read.stacks).sort();
     for (let i = 0; i < ids.length; i++) {
@@ -355,14 +428,14 @@ export function exposedDeadDropStacks(state, commodityDef) {
   return out;
 }
 
-export function takeExposedDeadDrop(state, commodityId, qty) {
+export function takeExposedDeadDrop(state, commodityId, qty, coverage) {
   let left = Math.floor(Number(qty) || 0);
   if (!Number.isInteger(left) || left <= 0) return 0;
   let taken = 0;
   const sites = anchoredSites(state);
   for (let i = 0; i < sites.length && left > 0; i++) {
     const drop = sites[i].deadDrop;
-    if (!drop || !drop.stacks || isHidden(drop)) continue;
+    if (!drop || !drop.stacks || isHidden(drop) || !cacheCoveredByScan(sites[i], drop, coverage)) continue;
     const have = Math.floor(Number(drop.stacks[commodityId]) || 0);
     if (have <= 0) continue;
     const n = Math.min(have, left);

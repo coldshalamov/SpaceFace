@@ -2359,6 +2359,29 @@ export function serializeAlienEcologyState(state) {
   };
 }
 
+// Broken calcite at the closed refinery. Keys are growth-ring indices. The
+// authored ring is 24 and a bloom spills eight more; anything past that cannot
+// be a collar or root this site will grow again.
+const BROKEN_CALCITE_INDEX_LIMIT = 40;
+
+function copyBrokenCalcite(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out = {};
+  const keys = Object.keys(raw);
+  let kept = 0;
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (!/^\d{1,2}$/.test(key)) continue;
+    const index = Number(key);
+    if (!Number.isInteger(index) || index < 0 || index >= BROKEN_CALCITE_INDEX_LIMIT) continue;
+    if (raw[key] !== true) continue;
+    out[String(index)] = true;
+    kept += 1;
+    if (kept >= BROKEN_CALCITE_INDEX_LIMIT) break;
+  }
+  return kept > 0 ? out : null;
+}
+
 export function deserializeAlienEcologyState(state, data) {
   const ae = ensureAlienEcologyState(state);
   if (!data || typeof data !== 'object' || data.schema !== ALIEN_ECOLOGY_SCHEMA) return ae;
@@ -2404,6 +2427,7 @@ export function deserializeAlienEcologyState(state, data) {
     for (const [siteId, rec] of Object.entries(data.sites)) {
       if (!rec || typeof rec !== 'object') continue;
       const lifeRead = copyLifeRead(rec.lifeRead);
+      const brokenCalcite = copyBrokenCalcite(rec.brokenCalcite);
       ae.sites[siteId] = {
         state: typeof rec.state === 'string' ? rec.state : 'dormant',
         // Legacy saves encoded severance only in state; fold it into the flag.
@@ -2428,6 +2452,7 @@ export function deserializeAlienEcologyState(state, data) {
         claimCrew: rec.claimCrew && typeof rec.claimCrew === 'object'
           ? JSON.parse(JSON.stringify(rec.claimCrew)) : null,
         ...(lifeRead ? { lifeRead } : {}),
+        ...(brokenCalcite ? { brokenCalcite } : {}),
         ...(rec.wreckStage === 'warned' || rec.wreckStage === 'sealed'
           ? { wreckStage: rec.wreckStage } : {}),
         ...(rec.wreckEdge === true ? { wreckEdge: true } : {}),

@@ -4537,8 +4537,37 @@ export const economy = {
     };
   },
 
+  // Where this scan can physically see a rock cache. The sector is the scan's
+  // jurisdiction. The points are the patrol doing the reading and the hull being
+  // read. 700 WU matches the patrol hold and the lawful-inspection range; a
+  // customs cone matches its 90 WU beam. No location means the scan covers no rock.
+  _deadDropScanCoverage(p) {
+    const state = this.state;
+    const sectorId = state && state.world && state.world.currentSectorId;
+    if (typeof sectorId !== 'string' || !sectorId) return null;
+    const points = [];
+    const add = (pos) => {
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) points.push({ x: pos.x, z: pos.z });
+    };
+    const entities = state.entities;
+    if (p && p.patrolId != null && entities && typeof entities.get === 'function') {
+      const patrol = entities.get(p.patrolId);
+      if (patrol) add(patrol.pos);
+    }
+    if (entities && typeof entities.get === 'function' && state.playerId != null) {
+      const player = entities.get(state.playerId);
+      if (player) add(player.pos);
+    }
+    if (!points.length) return null;
+    const source = p && p.source;
+    const range = (source === 'customs_weir' || source === 'customs_weir_bolt' || source === 'customs_scan_cone')
+      ? 90
+      : 700;
+    return { sectorId, points, range };
+  },
+
   /** List scan-exposed illicit stacks currently in the hold: [{ commodityId, qty, def }]. */
-  illicitCargo(state) {
+  illicitCargo(state, coverage) {
     let all = [];
     const items = state.player.cargo.items;
     for (const id in items) {
@@ -4564,7 +4593,8 @@ export const economy = {
     }
     // Rock goods are not the fitted hold and not the salvage bay. A hidden hold
     // must not cover them, and a sealed bore must not cover what is still aboard.
-    for (const stack of exposedDeadDropStacks(state, commodityDef)) {
+    const scan = coverage === undefined ? this._deadDropScanCoverage(null) : coverage;
+    for (const stack of exposedDeadDropStacks(state, commodityDef, scan)) {
       const row = combined.get(stack.commodityId) || {
         commodityId: stack.commodityId, qty: 0, holdQty: 0, bayQty: 0, def: stack.def,
       };
@@ -4663,7 +4693,8 @@ export const economy = {
    *  is the incident/strike ledger; it must not apply a second reputation hit. */
   runScan(p) {
     const state = this.state;
-    let illicit = this.illicitCargo(state);
+    const deadDropCoverage = this._deadDropScanCoverage(p);
+    let illicit = this.illicitCargo(state, deadDropCoverage);
     const bonded = p && p.bondedCargo;
     if (bonded && bonded.size > 0 && illicit.length) {
       illicit = illicit
@@ -4718,7 +4749,7 @@ export const economy = {
     for (const stack of illicit) {
       this.removeFromCargo(cargoSys, state, stack.commodityId, stack.holdQty);
       removeSalvageBayCargo(state, stack.commodityId, stack.bayQty);
-      if (stack.cacheQty > 0) takeExposedDeadDrop(state, stack.commodityId, stack.cacheQty);
+      if (stack.cacheQty > 0) takeExposedDeadDrop(state, stack.commodityId, stack.cacheQty, deadDropCoverage);
     }
     // charge fine; unpaid remainder -> debt + bounty
     const credits = normalizeCredits(state.player.credits);

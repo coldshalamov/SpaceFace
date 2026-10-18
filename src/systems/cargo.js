@@ -869,6 +869,11 @@ export const cargo = {
       if (plan) {
         const removed = removeCargo(state, commodityId, qty);
         const sealed = removed > 0 && commitDeadDropStow(state, plan, removed);
+        if (sealed) {
+          const sites = this.registry && typeof this.registry.get === 'function'
+            ? this.registry.get('asteroidSites') : null;
+          if (sites && typeof sites.noteDeadDropSealed === 'function') sites.noteDeadDropSealed(plan.site);
+        }
         if (!sealed && removed > 0) addCargo(state, commodityId, removed);
         if (this.bus) {
           const witnessed = !!(sealed && plan.site.deadDrop && plan.site.deadDrop.witnessed);

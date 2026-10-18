@@ -4,8 +4,17 @@ import { readFileSync } from 'node:fs';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createReadModel, applySpawnInfos, applyAuxUpserts, applyAuxRemovals } from '../scripts/lib/simReadModel.mjs';
 import { ALIEN_SITES } from '../src/data/alienEcology.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
 import { addEnvironmentHeat, queueEnvironmentImpact } from '../src/systems/environmentMaterials.js';
-import { serializeAlienEcologyState } from '../src/systems/alienEcology.js';
+import {
+  deserializeAlienEcologyState,
+  materializeAlienEcology,
+  serializeAlienEcologyState,
+} from '../src/systems/alienEcology.js';
+import {
+  captureClosedRefineryProps,
+  reconcileClosedRefineryProps,
+} from '../src/systems/closedRefineryProps.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
@@ -100,4 +109,91 @@ test('seed 4242: refinery calcite sleeps at boot, materializes through the worke
     assert.equal(bodies().length, 0, 'a sector departure also releases the refinery bodies');
     console.log(`calcite approach: boot=0, near=${count}, fractured=2, departed=0, returned=${count - 2}; worker geometry delivered`);
   } finally { lane.shutdown(); }
+});
+
+const CALCITE_PLACE = new Set(['alien_growth_calcified_collar', 'alien_growth_mineral_root']);
+
+function refineryWorld(seed) {
+  let nextId = 1;
+  const state = {
+    meta: { seed },
+    simTime: 12,
+    mode: 'flight',
+    playerId: 1,
+    player: {},
+    entities: new Map(),
+    entityList: [],
+    world: { currentSectorId: site.sectorId },
+  };
+  const player = { id: 1, alive: true, pos: { x: site.center.x, z: site.center.z }, data: {} };
+  state.entities.set(1, player);
+  state.entityList.push(player);
+  const world = {
+    state,
+    _toGlobal(pos) { return { x: pos.x, z: pos.z }; },
+    helpers: {
+      hash32,
+      mulberry32,
+      spawnEntity(spec) {
+        const entity = {
+          id: ++nextId,
+          alive: true,
+          hull: spec.hull,
+          hullMax: spec.hullMax,
+          pos: spec.pos ? { ...spec.pos } : { x: 0, z: 0 },
+          rot: spec.rot || 0,
+          radius: spec.radius,
+          data: spec.data ? { ...spec.data } : {},
+          flags: {},
+        };
+        state.entities.set(entity.id, entity);
+        state.entityList.push(entity);
+        return entity;
+      },
+      removeEntity(id) {
+        const entity = state.entities.get(id);
+        if (entity) entity.alive = false;
+      },
+    },
+  };
+  return world;
+}
+
+function calciteDressing(active) {
+  return (active.dressing || []).filter((row) => CALCITE_PLACE.has(row.placeId));
+}
+
+test('broken calcite stays broken after the site is saved and continued', () => {
+  const world = refineryWorld(4242);
+  const active = { dressing: [] };
+  materializeAlienEcology(world, { id: site.sectorId }, active, [site]);
+  const grown = calciteDressing(active);
+  assert.ok(grown.length >= 2, 'the refinery ring grows collars and roots');
+  reconcileClosedRefineryProps(world);
+  const bodies = world.state.entityList.filter((entity) => entity.alive !== false
+    && entity.data && CALCITE_PLACE.has(`alien_growth_${entity.data.moduleId}`));
+  assert.equal(bodies.length, grown.length, 'closing in promotes the calcite dressing to bodies');
+  const broken = bodies.slice(0, 2);
+  for (const body of broken) body.hull = 0;
+  captureClosedRefineryProps(world.state);
+  const saved = JSON.parse(JSON.stringify(serializeAlienEcologyState(world.state)));
+  const brokenKeys = Object.keys(saved.sites[site.siteId].brokenCalcite || {}).sort();
+  assert.equal(brokenKeys.length, 2);
+
+  saved.sites[site.siteId].brokenCalcite.nope = true;
+  saved.sites[site.siteId].brokenCalcite['99'] = true;
+  saved.sites[site.siteId].brokenCalcite.bad = 'yes';
+
+  const continued = { meta: { seed: 4242 }, simTime: 12, player: {}, entities: new Map(), entityList: [], world: {} };
+  deserializeAlienEcologyState(continued, saved);
+  const restored = continued.world.alienEcology.sites[site.siteId].brokenCalcite;
+  assert.deepEqual(Object.keys(restored).sort(), brokenKeys);
+  for (const key of brokenKeys) assert.equal(restored[key], true);
+
+  const againWorld = refineryWorld(4242);
+  againWorld.state.world.alienEcology = continued.world.alienEcology;
+  const again = { dressing: [] };
+  materializeAlienEcology(againWorld, { id: site.sectorId }, again, [site]);
+  assert.equal(calciteDressing(again).length, grown.length - 2,
+    'continue does not grow back the collars and roots that were already broken');
 });
