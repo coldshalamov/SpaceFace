@@ -4,9 +4,9 @@
 Additive design data for the low-interference world-depth brief: **58 ambient events**
 (10 s – 2 min) that make the existing role/job/world systems produce visible situations.
 
-The catalog is still data-only (no runtime module imports this tree), but **fifteen catalog ids are
+The catalog is still data-only (no runtime module imports this tree), but **twenty catalog ids are
 wired** into live causal stories, each a choreography timer bound to a cast that already flies. That
-is runtime wiring, not ordinary-route acceptance. The other 43 catalog entries remain unwired and
+is runtime wiring, not ordinary-route acceptance. The other 38 catalog entries remain unwired and
 need a named live owner plus route proof before they leave integration debt.
 
 The causal-chain timer is a per-sector table (`traffic.SECTOR_CAUSAL_CHAINS`): every sector row runs
@@ -23,6 +23,12 @@ links. The wired list:
   `ev_customs_pullover` (law), `ev_prospectors_posture` (civilian), `ev_claim_jump` (crime). The
   cycle closes with one `news:publish` line (`helios_claim_story`). Proof:
   `test/traffic-sector-causal-chain.test.mjs`.
+- **Tethys Junction, "the quiet handoff"** (`src/data/sectorCausalChains.js`, five catalog ids
+  across the junction's authored cast, none shared with Ceres or Helios): `ev_tanker_holds_for_berth`
+  (logistics), `ev_patrol_shift_change` (law), `ev_criminal_handoff` (crime), `ev_smuggler_breaks`
+  (law), `ev_observation_stop` (civilian). The swap and the jettison drop real contraband pickups
+  through the standard pipeline. The cycle closes with one `news:publish` line
+  (`tethys_quiet_handoff`). Proof: `test/traffic-sector-causal-chain.test.mjs`.
 - **Standalone**: `ev_meteor_passage` (`traffic._stepPocketMeteorPass`).
 
 To give another sector a story, add a row to `SECTOR_CAUSAL_CHAIN_DEFS` with links whose

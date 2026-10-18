@@ -112,6 +112,7 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
   CERES_ACTIVITY_SERVICE_SLOTS,
+  TETHYS_ACTIVITY_SECTOR_ID,
   activityActorSlotById,
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
@@ -626,6 +627,18 @@ const CERES_CAPSULE_LAUNCH_CLEARANCE_WU = 12;
 // the catalog aftermath is "fresh faces are visibly brighter ore", so the re-armed window is the
 // richer one. The target panel names it FRESH SEAM and the Hold's lot row shows the bonus size.
 const CERES_CALVED_SEAM_BONUS_U = 12;
+// Tethys "quiet handoff" chain (src/data/sectorCausalChains.js) physical legs. ev_criminal_handoff's
+// swap drops the three pieces the catalog counts ("three pickups cross the gap one at a time") as
+// real contraband pickups in the gap between keeper and runner — grabbable evidence of a meet the
+// law never saw. ev_smuggler_breaks' jettison sprays the runner's load off its tail (catalog:
+// "dumps three cargo pickups in a spray to shed mass — and evidence"). Both ride the standard
+// pickup pipeline exactly like the Ceres spills: the collecting player owns the cargo write.
+const TETHYS_HANDOFF_PICKUPS = 3;
+const TETHYS_HANDOFF_DRIFT_WU_S = 5;
+const TETHYS_HANDOFF_TTL_S = 120;
+const TETHYS_JETTISON_PICKUPS = 3;
+const TETHYS_JETTISON_TTL_S = 150;
+const TETHYS_JETTISON_SPREAD_WU_S = 7;
 // ev_pod_breaks_clamp: one loaded pod shears off the refinery's cargo face while the day's ore
 // is in custody (ore_handoff). The cast flies no tug, so the catalog's "no tug available"
 // interruption IS the legible story — the pod drifts free on a slow tumble as a real
@@ -11310,6 +11323,99 @@ export const traffic = {
     live.countSpilled = true;
   },
 
+  /**
+   * ev_criminal_handoff's swap: three contraband pickups drifting in the gap between the keeper
+   * and the runner — the catalog's "three pickups cross the gap one at a time, each fully landed
+   * before the next leaves". They land mid-gap on a slow spread so the meet reads as an exchange,
+   * not a dump, and each is a standard cargo pickup the player can pocket: the chain's evidence
+   * is real freight, not a decal. Deterministic spread (hash32, no shared-rng draw), TTL-bounded,
+   * once per link.
+   */
+  _dropTethysHandoffLoad(live) {
+    if (!live || live.handoffDropped) return;
+    const runner = this._ceresCausalActorBySlot('tethys_quiet_runner');
+    const keeper = this._ceresCausalActorBySlot('tethys_quiet_keeper');
+    if (!runner || !runner.entity || !runner.entity.pos) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const a = runner.entity.pos;
+    const b = keeper && keeper.entity && keeper.entity.pos ? keeper.entity.pos : a;
+    for (let index = 0; index < TETHYS_HANDOFF_PICKUPS; index++) {
+      // Piece i crosses first: the three land spaced across the gap, drifting gently on the
+      // line between the hulls so a witness reads the exchange order.
+      const t = (index + 1) / (TETHYS_HANDOFF_PICKUPS + 1);
+      const jitter = (hash32(live.eventId, index, 'handoff-jitter') % 6284) / 1000;
+      const jx = Math.cos(jitter) * 2;
+      const jz = Math.sin(jitter) * 2;
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: a.x + dx * t + jx, z: a.z + dz * t + jz },
+        vel: {
+          x: (dx / dist) * TETHYS_HANDOFF_DRIFT_WU_S,
+          z: (dz / dist) * TETHYS_HANDOFF_DRIFT_WU_S,
+        },
+        radius: 2.4, mass: 0.4, collides: true,
+        homeSectorId: TETHYS_ACTIVITY_SECTOR_ID,
+        data: {
+          kind: 'cargo', commodityId: 'cmdty_stolen_goods', amount: 1,
+          legality: 'contraband',
+          despawnAt: now + TETHYS_HANDOFF_TTL_S,
+          tethysHandoff: true,
+        },
+      });
+    }
+    live.handoffDropped = true;
+  },
+
+  /**
+   * ev_smuggler_breaks' jettison: the bolting runner sheds its load off its own tail — three
+   * pickups sprayed behind the hull on inherited velocity plus a fan (the catalog's "dumps
+   * three cargo pickups in a spray to shed mass"). Same pipeline as the handoff: the player
+   * who beats the patrol to the drift owns the take.
+   */
+  _sprayTethysRunnerJettison(live) {
+    if (!live || live.jettisonSprayed) return;
+    const bound = this._ceresCausalActorBySlot('tethys_quiet_runner');
+    if (!bound || !bound.entity || !bound.entity.pos) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const entity = bound.entity;
+    const vx = (entity.vel && entity.vel.x) || 0;
+    const vz = (entity.vel && entity.vel.z) || 0;
+    const speed = Math.hypot(vx, vz);
+    const heading = speed > 0.5 ? Math.atan2(vz, vx) : 0;
+    for (let index = 0; index < TETHYS_JETTISON_PICKUPS; index++) {
+      // Fan the three pieces behind the hull: mostly aft, each on its own scatter so the spray
+      // is a cone, not a stack.
+      const scatter = ((hash32(live.eventId, index, 'jettison-scatter') % 6284) / 1000) - Math.PI;
+      const back = heading + Math.PI + scatter * 0.35;
+      const drop = 4 + (hash32(live.eventId, index, 'jettison-drop') % 7);
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: {
+          x: entity.pos.x + Math.cos(back) * drop,
+          z: entity.pos.z + Math.sin(back) * drop,
+        },
+        vel: {
+          x: vx * 0.85 + Math.cos(back) * TETHYS_JETTISON_SPREAD_WU_S,
+          z: vz * 0.85 + Math.sin(back) * TETHYS_JETTISON_SPREAD_WU_S,
+        },
+        radius: 2.4, mass: 0.4, collides: true,
+        homeSectorId: TETHYS_ACTIVITY_SECTOR_ID,
+        data: {
+          kind: 'cargo', commodityId: 'cmdty_stolen_goods', amount: 1,
+          legality: 'contraband',
+          despawnAt: now + TETHYS_JETTISON_TTL_S,
+          tethysJettison: true,
+        },
+      });
+    }
+    live.jettisonSprayed = true;
+  },
+
   /** The refinery dock the chain's station-owned links (capsule, clamp pod) shear/launch from. */
   _ceresCausalRefineryStation() {
     const stations = this._sectorStations();
@@ -12483,6 +12589,14 @@ export const traffic = {
     }
     if (isCeres && def.id === 'ev_pod_breaks_clamp' && phaseName === 'drift') {
       this._shearCeresClampPod(live);
+    }
+    if (!isCeres && this._ceresCausal.sectorId === TETHYS_ACTIVITY_SECTOR_ID) {
+      if (def.id === 'ev_criminal_handoff' && phaseName === 'swap') {
+        this._dropTethysHandoffLoad(live);
+      }
+      if (def.id === 'ev_smuggler_breaks' && phaseName === 'jettison') {
+        this._sprayTethysRunnerJettison(live);
+      }
     }
     this._applyCeresCausalJobHints(def, live, phaseName);
     void phaseName;

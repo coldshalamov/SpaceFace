@@ -23,9 +23,15 @@ import {
   HELIOS_ACTIVITY_SECTOR_ID,
   HELIOS_POCKET_ACTOR_SLOT_ORDER,
   PALLAS_ACTIVITY_SECTOR_ID,
+  TETHYS_ACTIVITY_SECTOR_ID,
+  TETHYS_POCKET_ACTOR_SLOT_ORDER,
   activityPocketById,
 } from '../src/data/sectorActivityPockets.js';
-import { HELIOS_CAUSAL_CHAIN, SECTOR_CAUSAL_CHAIN_DEFS } from '../src/data/sectorCausalChains.js';
+import {
+  HELIOS_CAUSAL_CHAIN,
+  SECTOR_CAUSAL_CHAIN_DEFS,
+  TETHYS_CAUSAL_CHAIN,
+} from '../src/data/sectorCausalChains.js';
 import { createContactHailResponse, livingWorkStatusText } from '../src/data/contactHail.js';
 import { createMarketNews } from '../src/ui/marketNews.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
@@ -48,6 +54,7 @@ import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 
 const SEED = 4242;
 const HELIOS = HELIOS_ACTIVITY_SECTOR_ID;
+const TETHYS = TETHYS_ACTIVITY_SECTOR_ID;
 const SECTOR_SCHEMA = SECTOR_CAUSAL_CHAIN_SCHEMA;
 
 const CATALOG_DIR = path.join(
@@ -111,6 +118,51 @@ function bootHelios() {
   const bySlot = (slotId) => state.entityList.find((entity) => entity.alive !== false
     && entity.data && entity.data.activityActorSlotId === slotId) || null;
   return { sim, state, bus, owner, receipts, news, richSeam, deeds, headlines, advanceTo, bySlot, heliosDef };
+}
+
+function bootTethys() {
+  const tethysDef = SECTORS.find((sector) => sector.id === TETHYS);
+  const systems = [spawnBudget, traffic, cargo, economy, factions, heat, encounterDirector, npcJobsRuntime];
+  const sim = createSimulation({ seed: SEED, systems });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.world.currentSectorId = TETHYS;
+  sim.spawn({
+    type: 'station', team: 2, pos: { x: 1050, z: 380 }, radius: 42, mass: 1e6,
+    data: { stationId: 'station_tethys', name: 'Tethys Station' },
+  });
+  sim.spawn({
+    type: 'station', team: 2, pos: { x: -640, z: -1180 }, radius: 42, mass: 1e6,
+    data: { stationId: 'station_customs', name: 'Tethys Customs' },
+  });
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 1100, z: 340 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 6,
+  });
+  state.playerId = player.id;
+  state.player.heat = 0;
+  state.onboarding = { active: false, finished: true };
+
+  const receipts = [];
+  const news = [];
+  bus.on(CERES_CAUSAL_CHAIN_EVENT, (payload) => receipts.push(payload));
+  bus.on('news:publish', (payload) => news.push(payload));
+  const headlines = [];
+  bus.on('news:headline', (payload) => headlines.push(payload));
+  createMarketNews({ state, bus, helpers: { voice: { say: () => false } } });
+  bus.emit('sector:enter', { sectorId: TETHYS, sector: tethysDef });
+
+  const owner = sim.registry.get('traffic');
+  const advanceTo = (seconds) => {
+    const target = Math.round(seconds * 60);
+    const now = Math.round(state.simTime * 60);
+    if (target > now) sim.runTicks(target - now);
+  };
+  const bySlot = (slotId) => state.entityList.find((entity) => entity.alive !== false
+    && entity.data && entity.data.activityActorSlotId === slotId) || null;
+  const pickups = (mark) => state.entityList.filter((entity) => entity.alive !== false
+    && entity.type === 'pickup' && entity.data && entity.data[mark] === true);
+  return { sim, state, bus, owner, receipts, news, headlines, advanceTo, bySlot, pickups, tethysDef };
 }
 
 const starts = (receipts) => receipts.filter((r) => r.kind === 'event_start');
@@ -441,4 +493,200 @@ test('entering any other sector resets the Helios chain; the Ceres chain still a
     assert.ok(receipts.some((r) => r.kind === 'chain_ready' && r.sectorId === CERES_ACTIVITY_SECTOR_ID
       && r.schema === CERES_CAUSAL_CHAIN_SCHEMA));
   }
+});
+
+// ── Tethys Junction, "the quiet handoff" ─────────────────────────────────────────────────────────
+// Third chain row: five catalog events strung across the junction's authored cast so one Tethys
+// afternoon reads as the catalog's own causal story — the queue holds, the watch passes its pin,
+// the handoff slips through the hole that opens, the runner bolts and dumps, and the day's coda
+// is a small hull looking at the yard the law's work ends up in.
+
+test('the Tethys chain is a registered table row: five catalog events, none borrowed from another story', () => {
+  const tethys = SECTOR_CAUSAL_CHAINS.get(TETHYS);
+  assert.ok(tethys, 'Tethys has a chain row');
+  assert.equal(tethys.chain, TETHYS_CAUSAL_CHAIN);
+  assert.equal(tethys.schema, SECTOR_SCHEMA);
+  assert.equal(SECTOR_CAUSAL_CHAIN_DEFS[TETHYS].chain, TETHYS_CAUSAL_CHAIN);
+  assert.equal(tethys.maxConcurrent, CERES_CAUSAL_CHAIN_MAX_CONCURRENT);
+  assert.equal(tethys.cycleGapS, CERES_CAUSAL_CHAIN_CYCLE_GAP_S);
+
+  const taken = new Set([
+    ...CERES_CAUSAL_CHAIN.map((link) => link.id),
+    ...HELIOS_CAUSAL_CHAIN.map((link) => link.id),
+  ]);
+  const ids = TETHYS_CAUSAL_CHAIN.map((link) => link.id);
+  assert.equal(new Set(ids).size, ids.length, 'unique link ids');
+  for (const id of ids) assert.equal(taken.has(id), false, `${id} is not Ceres or Helios's`);
+});
+
+test('every Tethys link is the catalog event it names: phases, durations, and signals verbatim', () => {
+  const catalog = loadCatalog();
+  const categories = new Set();
+  for (const link of TETHYS_CAUSAL_CHAIN) {
+    const event = catalog.get(link.id);
+    assert.ok(event, `${link.id} exists in the microevent catalog`);
+    categories.add(event.category);
+    assert.deepEqual(
+      link.phases.map((phase) => phase.name),
+      event.phases.map((phase) => phase.name),
+      `${link.id} keeps the catalog's phase names`,
+    );
+    assert.deepEqual(
+      link.phases.map((phase) => phase.durationS),
+      event.phases.map((phase) => phase.durationS),
+      `${link.id} keeps the catalog's phase durations`,
+    );
+    link.phases.forEach((phase, index) => {
+      const signals = event.phases[index].signals || [];
+      if (signals.length === 0) assert.equal(phase.cue, null, `${link.id}/${phase.name} has no cue`);
+      else assert.ok(signals.includes(phase.cue), `${link.id}/${phase.name} cue ${phase.cue} is a catalog signal`);
+    });
+  }
+  assert.ok(categories.size >= 3, 'the story spans categories: logistics, law, crime, civilian');
+});
+
+test('the Tethys links ride authored hulls and every requirement is planted by an earlier link', () => {
+  const tethysSlots = new Set(TETHYS_POCKET_ACTOR_SLOT_ORDER);
+  const planted = new Set();
+  const used = new Set();
+  for (const link of TETHYS_CAUSAL_CHAIN) {
+    for (const slotId of link.actorSlots) {
+      assert.ok(tethysSlots.has(slotId), `${link.id} binds a real Tethys slot: ${slotId}`);
+      used.add(slotId);
+    }
+    for (const hint of link.jobHints) {
+      assert.ok(link.actorSlots.includes(hint.actorSlotId), `${link.id} hint actor is a link actor`);
+      if (hint.subjectSlotId) assert.ok(link.actorSlots.includes(hint.subjectSlotId));
+      for (const phaseName of hint.phases) {
+        assert.ok(link.phases.some((phase) => phase.name === phaseName), `${link.id} hint phase ${phaseName}`);
+      }
+    }
+    assert.ok(link.phases.some((phase) => phase.name === link.seedAtPhase), `${link.id} seeds at a real phase`);
+    for (const need of link.requires) assert.ok(planted.has(need), `${link.id} requires ${need}, planted earlier`);
+    for (const seed of link.seeds) planted.add(seed);
+    for (const seed of link.interruptSeeds) planted.add(seed);
+  }
+  assert.equal(used.size, 6, 'six authored hulls take part across the five links');
+
+  // The cast sits where the fiction says: the handoff pair live at the Quiet Cache, the law and
+  // the queue at the customs gate.
+  const cache = activityPocketById('tethys_quiet_cache');
+  const queue = activityPocketById('tethys_checkpoint_queue');
+  const inPocket = (pocket, slotId) => pocket.actorSlots.some((slot) => slot.id === slotId);
+  assert.ok(inPocket(cache, 'tethys_quiet_runner') && inPocket(cache, 'tethys_quiet_keeper'));
+  assert.ok(inPocket(queue, 'tethys_toll_hauler') && inPocket(queue, 'tethys_customs_patrol'));
+});
+
+test('seed 4242: entering Tethys stages the chain in authored order, capped at two live links', () => {
+  const { receipts, advanceTo, owner } = bootTethys();
+  advanceTo(300);
+
+  const started = starts(receipts);
+  const ids = started.map((r) => r.eventId);
+  assert.deepEqual(ids.slice(0, 5), [
+    'ev_tanker_holds_for_berth',
+    'ev_patrol_shift_change',
+    'ev_criminal_handoff',
+    'ev_smuggler_breaks',
+    'ev_observation_stop',
+  ], 'the five links open in authored order (cycle one may re-arm inside the window)');
+  assert.ok(started[0].simTime < 0.1, 'the queue opens the moment the sector arms');
+  for (const r of receipts) {
+    assert.equal(r.sectorId, TETHYS, 'every receipt names Tethys');
+    assert.equal(r.schema, SECTOR_SCHEMA);
+    assert.ok(r.activeCount <= CERES_CAUSAL_CHAIN_MAX_CONCURRENT, `cap respected at ${r.simTime}: ${r.activeCount}`);
+  }
+  assert.ok(receipts.some((r) => r.activeCount === 2), 'the cap is actually used: two links overlap');
+  const snap = owner.getCeresCausalChainSnapshot();
+  assert.equal(snap.sectorId, TETHYS);
+});
+
+test('seed 4242: the shift change flies the relief to the beat corner, then restores both beats', () => {
+  const { advanceTo, bySlot, state } = bootTethys();
+  const stamp = (slotId) => {
+    const entity = bySlot(slotId);
+    const data = entity && entity.data || {};
+    return [data.ceresCausalEventId || null, data.ceresCausalPhase || null, data.ceresCausalCue || null];
+  };
+  const laneJob = bySlot('tethys_lane_patrol');
+  const beatJobId = laneJob.data.jobId;
+  const routeIds = () => state.npcJobs.byId[laneJob.data.jobId].job.route.map((node) => node.id);
+
+  // t≈80: the berth cleared at 60 and the watch change is mid-flight — the lane patrol is
+  // closing on the gate patrol's corner, not walking its lane.
+  advanceTo(80);
+  assert.deepEqual(stamp('tethys_toll_hauler'), ['ev_tanker_holds_for_berth', 'approach', 'stacking']);
+  assert.deepEqual(stamp('tethys_lane_patrol'), ['ev_patrol_shift_change', 'relief_inbound', 'clean_burn']);
+  assert.deepEqual(routeIds(), [
+    'causal:ev_patrol_shift_change:origin',
+    'causal:ev_patrol_shift_change:subject',
+  ], 'the relief is closing on the gate patrol');
+
+  // t≈121: the pin passed (the link completes ≈118) and both hulls are back on their authored
+  // beats, unstamped — before the runner's bolt re-stamps the lane patrol at ≈125.
+  advanceTo(121);
+  assert.deepEqual(stamp('tethys_lane_patrol'), [null, null, null]);
+  assert.deepEqual(stamp('tethys_customs_patrol'), [null, null, null]);
+  assert.equal(laneJob.data.jobId, beatJobId, 'the lane patrol keeps its authored job id');
+});
+
+test('seed 4242: the swap drops three real pickups in the gap; the jettison sprays three off the runner', () => {
+  const { receipts, advanceTo, bySlot, pickups } = bootTethys();
+
+  // The handoff's swap enters ≈125 s: the keeper closes on the runner and the three pieces land.
+  advanceTo(140);
+  const swap = receipts.find((r) => r.kind === 'phase' && r.eventId === 'ev_criminal_handoff');
+  assert.ok(swap, 'the handoff ran its phases');
+  const dropped = pickups('tethysHandoff');
+  assert.equal(dropped.length, 3, 'three pieces of contraband ride the gap');
+  for (const piece of dropped) {
+    assert.equal(piece.data.legality, 'contraband', 'the take is evidence, not clean freight');
+    assert.equal(piece.data.commodityId, 'cmdty_stolen_goods');
+  }
+  const runner = bySlot('tethys_quiet_runner');
+  const keeper = bySlot('tethys_quiet_keeper');
+  for (const piece of dropped) {
+    const dRunner = Math.hypot(piece.pos.x - runner.pos.x, piece.pos.z - runner.pos.z);
+    const dKeeper = Math.hypot(piece.pos.x - keeper.pos.x, piece.pos.z - keeper.pos.z);
+    assert.ok(Math.min(dRunner, dKeeper) < 40, `the piece lies in the meet gap (${Math.min(dRunner, dKeeper).toFixed(1)} wu)`);
+  }
+
+  // The jettison enters ≈163 s: three pieces off the runner's tail.
+  advanceTo(175);
+  const sprayed = pickups('tethysJettison');
+  assert.equal(sprayed.length, 3, 'the runner shed three pieces');
+  for (const piece of sprayed) {
+    assert.equal(piece.data.legality, 'contraband');
+    assert.ok(Number.isFinite(piece.data.despawnAt), 'TTL-bounded evidence');
+  }
+});
+
+test('a Tethys cycle closes with one news line on the customs station, then re-arms', () => {
+  const { receipts, news, headlines, advanceTo, state } = bootTethys();
+  advanceTo(300);
+
+  const complete = receipts.find((r) => r.kind === 'cycle_complete');
+  assert.ok(complete, 'the five-link cycle resolves with no player input');
+  assert.equal(complete.cycle, 1);
+  assert.ok(Math.abs(complete.nextEligibleAt - (complete.simTime + CERES_CAUSAL_CHAIN_CYCLE_GAP_S)) < 1e-6);
+
+  const stories = news.filter((p) => p.kind === 'tethys_quiet_handoff');
+  assert.equal(stories.length, 1, 'one cycle, one line');
+  assert.equal(stories[0].stationId, 'station_customs');
+  assert.equal(stories[0].sectorId, TETHYS);
+  assert.equal(stories[0].sourceRef, 'traffic:sector-causal-chain');
+  assert.equal(stories[0].text,
+    'A runner bolted the Tethys lane and dumped its load; the Quiet Cache keeps its own hours.');
+  assert.doesNotMatch(stories[0].text, /[a-z]_[a-z]|[a-z][A-Z]/, 'plain words, no internal ids');
+
+  const wired = headlines.filter((h) => h.kind === 'tethys_quiet_handoff');
+  assert.equal(wired.length, 1, 'the ticker surfaces the Tethys line once');
+  assert.equal(wired[0].headline, stories[0].text);
+  const logged = state.ui.marketNews.log.filter((row) => row.kind === 'tethys_quiet_handoff');
+  assert.equal(logged.length, 1);
+  assert.equal(news.filter((p) => p.kind === 'helios_claim_story').length, 0, 'no Helios line leaks out');
+
+  const second = starts(receipts).filter((r) => r.cycle === 1);
+  assert.ok(second.length >= 1, 'the chain re-arms after the gap');
+  assert.equal(second[0].eventId, 'ev_tanker_holds_for_berth');
 });
