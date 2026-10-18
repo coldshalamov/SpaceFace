@@ -40,6 +40,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { ORES } from '../data/mining.js';
 import { playerBearingName } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
+import { masslineCounterplayBarkFor } from '../data/masslineCounters.js';
 import { isHostileToPlayer } from './scanner.js';
 import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
@@ -72,16 +73,13 @@ export const AMBIENT_BASE_GAP_S = 12.0;
 export const AMBIENT_GAP_STEP_S = 12.0;
 
 /** One line in the contestant's register. Null when the event is not a contest. */
-export function npcCounterplayBark(payload) {
+export function npcCounterplayBark(payload, rng) {
   if (!payload || payload.actorId == null) return null;
   const role = payload.role === 'ace' ? 'ace' : 'specialist';
-  const text = role === 'ace'
-    ? 'Ace on your line. Cutting it.'
-    : 'Specialist on your line. Cutting it.';
-  return { role, text, actorId: payload.actorId };
+  if (role === 'ace') return { role, text: 'Ace on your line. Cutting it.', actorId: payload.actorId };
+  return { role, text: masslineCounterplayBarkFor(rng), actorId: payload.actorId };
 }
 
-/** At most one contest bark per ambient gap. */
 /** One departing line per disengage. Null when the event has no attacker. */
 export function harasserDepartingBark(payload) {
   if (!payload || payload.attackerId == null) return null;
@@ -91,12 +89,22 @@ export function harasserDepartingBark(payload) {
   };
 }
 
+// FIGHT-12 — one counterplay bark per engagement, in the specialist's register. The
+// first countered latch speaks through the voice arbiter's bark channel; the rest of
+// the engagement stays quiet. A combat outcome closes the engagement and re-arms. The
+// ambient gap is the anti-spam floor across engagements, never the per-engagement gate.
 export function admitNpcCounterplayBark(host, payload, now) {
-  const bark = npcCounterplayBark(payload);
+  const bark = npcCounterplayBark(payload, payload && payload.actorId);
   if (!bark || !host) return null;
+  const engagement = host._npcCounterplayEngagement != null
+    ? host._npcCounterplayEngagement
+    : 0;
+  if (host._npcCounterplaySpokenAt === engagement) return null;
   const t = Number(now) || 0;
-  if (host._npcCounterplayAt != null && t - host._npcCounterplayAt < AMBIENT_GAP_STEP_S) return null;
+  if (host._npcCounterplayAt != null && t - host._npcCounterplayAt < AMBIENT_GAP_STEP_S
+    && host._npcCounterplaySpokenAt != null) return null;
   host._npcCounterplayAt = t;
+  host._npcCounterplaySpokenAt = engagement;
   if (!Array.isArray(host._npcCounterplayBarks)) host._npcCounterplayBarks = [];
   host._npcCounterplayBarks.push(bark);
   return bark;
@@ -671,7 +679,11 @@ export const barkDirector = {
       this._speakFromEvent(payload, 'flee', 'ai:flee');
     };
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
-    this._onCombatOutcome = (payload) => { this.noteBarkWake(); this._enterPostCombatSilence(payload); };
+    this._onCombatOutcome = (payload) => {
+      this.noteBarkWake();
+      this._npcCounterplayEngagement = (this._npcCounterplayEngagement | 0) + 1;
+      this._enterPostCombatSilence(payload);
+    };
     // The ship-history owner (systems/ships.js) is the single writer of the living-hull record and
     // republishes it whenever a witnessed act attaches to the hull. Listening to that receipt keeps
     // this observer independent of system init order.
@@ -829,10 +841,52 @@ export const barkDirector = {
       this._onDockDeed = (payload) => this._speakDockDeed(payload || {});
       this.bus.on('dock:docked', this._onDockDeed);
       this._onNpcCounterplay = (payload) => {
-        const bark = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
+        if (!payload || payload.actorId == null) return;
+        const admitted = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
+        if (!admitted) return;
+        const entity = this.state && this.state.entities
+          && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(payload.actorId)
+          : null;
         const voice = this.helpers && this.helpers.voice;
-        if (bark && voice && typeof voice.say === 'function') {
-          voice.say({ channel: 'bark', text: bark.text, kind: bark.role, ttl: BARK_VOICE_TTL_S, id: bark.actorId });
+        if (!voice || typeof voice.say !== 'function') return;
+        // In the specialist's register, through the bark channel: one voice at a time
+        // (voiceArbiter priority queue, channel 'bark'). The arbiter replaces a live
+        // entry with the same id, so the id carries the engagement: the next
+        // engagement is a new line, never a silent replace of the old one. The
+        // per-entity `npc-counterplay` receipt below is the second gate — if this
+        // say is refused the engagement slot stays spent, same as every register
+        // that spends its one line on the attempt.
+        const engagement = this._npcCounterplayEngagement != null
+          ? this._npcCounterplayEngagement
+          : 0;
+        const accepted = voice.say({
+          channel: 'bark',
+          text: admitted.text,
+          kind: admitted.role,
+          ttl: BARK_VOICE_TTL_S,
+          id: `barkDirector:${admitted.actorId}:npc-counterplay:${engagement}`,
+          register: admitted.role,
+        });
+        if (!accepted) return;
+        if (!entity) return;
+        const state = this.state;
+        const own = ensureState(state);
+        const entityId = String(entity.id);
+        const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+        rec.said['npc-counterplay'] = true;
+        rec.lastSpokenAt = state.simTime || 0;
+        rec.history.push({ situation: 'npc-counterplay', reason: 'massline:npcCounterplay', t: rec.lastSpokenAt, text: admitted.text });
+        if (rec.history.length > 8) rec.history.shift();
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('barkDirector:voice', {
+            entityId: entity.id,
+            situation: 'npc-counterplay',
+            reason: 'massline:npcCounterplay',
+            text: admitted.text,
+            factionId: factionFor(entity),
+            t: rec.lastSpokenAt,
+          });
         }
       };
       this.bus.on('massline:npcCounterplay', this._onNpcCounterplay);
@@ -861,6 +915,8 @@ export const barkDirector = {
       this._onStuntLoad?.();
     }
     this._npcCounterplayAt = null;
+    this._npcCounterplayEngagement = 0;
+    this._npcCounterplaySpokenAt = -1;
     if (Array.isArray(this._npcCounterplayBarks)) this._npcCounterplayBarks.length = 0;
     if (Array.isArray(this._harasserDepartures)) this._harasserDepartures.length = 0;
     this._spillNoticeKeys = null;

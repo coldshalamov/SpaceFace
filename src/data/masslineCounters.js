@@ -60,3 +60,28 @@ const COUNTER_BY_HEAD_ID = new Map(MASSLINE_COUNTERS.map((entry) => [entry.headI
 export function masslineCounterByHead(headId) {
   return COUNTER_BY_HEAD_ID.get(headId) || null;
 }
+
+// FIGHT-12 — the specialist that counters your Massline names what it did, once per
+// engagement, in its own register through the bark director. Plain words: the barks
+// name the cut, never an id. Deterministic pick by actor, same contract as the
+// barks.js selectors (numeric rng wraps into range).
+export const MASSLINE_COUNTERPLAY_BARKS = Object.freeze([
+  'Line cutter on you. I am cutting your line.',
+  'Your line is mine to cut. Cutting it now.',
+  'Caught your line. Severing it.',
+]);
+
+/** One deterministic counterplay line for the cutting specialist. */
+export function masslineCounterplayBarkFor(rng) {
+  const lines = MASSLINE_COUNTERPLAY_BARKS;
+  let index = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    index = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
+  } else if (typeof rng === 'function') {
+    const v = rng();
+    const f = (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+    index = Math.floor((f < 0 ? 0 : f >= 1 ? 0.9999999 : f) * lines.length);
+  }
+  const line = lines[index] || lines[0];
+  return typeof line === 'string' && line.length ? line : '...';
+}

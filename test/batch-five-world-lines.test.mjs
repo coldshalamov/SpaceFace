@@ -6,19 +6,25 @@ import {
   AMBIENT_GAP_STEP_S,
   admitNpcCounterplayBark,
 } from '../src/systems/barkDirector.js';
+import { MASSLINE_COUNTERPLAY_BARKS } from '../src/data/masslineCounters.js';
 import { broadcastDishBeatRecord } from '../src/render/stationSideEventVfx.js';
 import { createMarketNews } from '../src/ui/marketNews.js';
 import { buildReply, rememberGhostConvoyRumor } from '../src/ui/station/barContacts.js';
 import { resolveGateVerdictRingRate } from '../src/render/infrastructureMotion.js';
 
-test('an NPC contesting the line barks once inside the ambient gap', () => {
+test('an NPC contesting the line barks once per engagement, and the next engagement speaks again', () => {
+  // FIGHT-12 changed the gate from once per ambient gap to once per engagement (a combat outcome
+  // closes the engagement), and the specialist now speaks from its own authored lines.
   const host = {};
   const first = admitNpcCounterplayBark(host, { actorId: 4, role: 'specialist' }, 0);
   const second = admitNpcCounterplayBark(host, { actorId: 4, role: 'specialist' }, 1);
-  const later = admitNpcCounterplayBark(host, { actorId: 9, role: 'ace' }, AMBIENT_GAP_STEP_S);
-  assert.equal(first.text, 'Specialist on your line. Cutting it.');
+  const sameEngagementLater = admitNpcCounterplayBark(host, { actorId: 9, role: 'ace' }, AMBIENT_GAP_STEP_S);
+  assert.ok(MASSLINE_COUNTERPLAY_BARKS.includes(first.text), 'the specialist speaks one of its authored lines');
   assert.equal(second, null);
-  assert.equal(later.role, 'ace');
+  assert.equal(sameEngagementLater, null, 'a second counter in the same engagement stays quiet, even past the ambient gap');
+  host._npcCounterplayEngagement = 1; // what a combat outcome does
+  const nextEngagement = admitNpcCounterplayBark(host, { actorId: 9, role: 'ace' }, AMBIENT_GAP_STEP_S * 2);
+  assert.equal(nextEngagement.role, 'ace');
   assert.equal(host._npcCounterplayBarks.length, 2);
 });
 
