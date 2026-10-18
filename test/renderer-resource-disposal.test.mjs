@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
+import { livingHullWithScar } from '../src/core/livingHull.js';
 
 import {
   createRendererLifecycleBindings,
@@ -231,6 +233,48 @@ test('a fresh renderer generation can be destroyed after the prior one without s
     for (const [key, snapshot] of saved) {
       if (snapshot.present) render[key] = snapshot.value;
       else delete render[key];
+    }
+  }
+});
+
+
+test('retiring a scarred rival releases every instance buffer across repeated presentation rebinds', () => {
+  const owner = Object.create(render);
+  owner.state = { playerId: 1, simTime: 10 };
+  owner._nemesisHullPresentations = new Map();
+  const entity = {
+    id: 7, type: 'ship', radius: 12,
+    data: { nemesis: true, livingHull: livingHullWithScar(null, {
+      id: 'weapon:8:bow', cause: 'weapon', surface: 'weapon',
+      band: 'hard', facing: 'bow', tick: 8,
+    }, 8) },
+  };
+  const mesh = new THREE.Group();
+  mesh.userData.authoredAssetState = 'authored';
+  const retired = new Set();
+  for (let rebind = 0; rebind < 3; rebind++) {
+    owner._syncNemesisHullPresentation(entity, mesh);
+    const controller = owner._nemesisHullPresentations.get(mesh).presentation;
+    assert.equal(controller.diagnostics().scarMarks, 1);
+    const instances = controller.root.children.filter((child) => child.isInstancedMesh);
+    assert.equal(instances.length, 4, 'the hull owns tally, patch, scorch, and grime instances');
+    const released = new Map();
+    const geometries = new Set(instances.map((child) => child.geometry));
+    for (const resource of [...instances, ...geometries]) {
+      assert.equal(retired.has(resource), false, 'a rebound presentation owns fresh resources');
+      released.set(resource, 0);
+      resource.addEventListener('dispose', () => released.set(resource, released.get(resource) + 1));
+      retired.add(resource);
+    }
+    owner._releaseNemesisHullPresentation(mesh, entity.id);
+    owner._releaseNemesisHullPresentation(mesh, entity.id);
+    controller.dispose();
+    assert.equal(owner._nemesisHullPresentations.size, 0);
+    assert.equal(controller.root.parent, null);
+    assert.equal(controller.root.children.length, 0);
+    for (const resource of [...instances, ...geometries]) {
+      assert.equal(released.get(resource), 1,
+        `${resource.name || resource.type} releases its GPU resources exactly once on retirement`);
     }
   }
 });

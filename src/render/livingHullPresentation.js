@@ -652,6 +652,10 @@ export function createLivingHullPresentation(options = {}) {
     if (disposed) return;
     detach();
     disposed = true;
+    tallies.dispose();
+    patches.dispose();
+    scorch.dispose();
+    grime.dispose();
     planeGeometry.dispose();
     patchGeometry.dispose();
     scorchGeometry.dispose();
