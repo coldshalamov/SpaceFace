@@ -8,6 +8,7 @@
 // a scout plinking every 0.6 s used to wipe the charge, deny the escape, and keep the yaw
 // stumble permanently armed — see docs/GAMEPLAY_FLOW_RISKS.md §3.1 / TUNING_JOBS #2.
 
+import { wrapAngle } from '../core/rng.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { WEAPONS } from '../data/weapons.js';
 
@@ -19,6 +20,8 @@ const STUMBLE_REARM_S = 1.5;        // s — a drop inside the window does not r
 const DAMAGE_DROP_FLOOR = 25;       // authored def.dmg — one heavy packet is a real hit at any mercy scale
 const CHIP_WINDOW_S = 1.25;         // rolling window for sustained weapon pressure
 const CHIP_WINDOW_FLOOR = 36;       // applied dmg in-window — above sustained starter fire (~31), below beams
+// VERB-36: bow-on-course threshold for the cruise spool on a laid route (radians).
+const ROUTE_ALIGN_MAX_OFF_COURSE_RAD = 30 * Math.PI / 180;
 const DROP_REASONS = Object.freeze({
   DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual', SNARED: 'snared', DRIVE: 'drive',
   BOOST: 'boost', FIRED: 'fired',
@@ -102,7 +105,14 @@ export const cruise = {
     }
 
     if (cruise.phase === 'charging') {
-      cruise.t += dt;
+      // VERB-36: on a laid route the bow must be on the course before the burn. More than
+      // 30° off holds the spool (the clock does not advance) until the pilot steers onto
+      // the course. This gates the burn only — it never steers and never changes charge time.
+      if (routeCourseOffBow(state, player)) {
+        cruise.t = 0;
+      } else {
+        cruise.t += dt;
+      }
       if (cruise.t >= CHARGE_NEEDED) {
         cruise.t = CHARGE_NEEDED;
         cruise.phase = 'cruising';
@@ -250,6 +260,28 @@ function playerDriveOut(state, player) {
   const runtime = book[String(player.id)];
   const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
   return !!(drive && drive.effectiveDisabled === true);
+}
+
+// VERB-36: the alignment gate for the cruise spool. True when the ship has an ACTIVE
+// route (an engaged executor with a current leg target) and the bow is more than 30° off
+// the course bearing to that target. The 30° threshold is authored here next to the cruise
+// owner. Reads only the decomposed leg target the follower already publishes — no steering,
+// no charge-time change, and no routeFollower import (a second owner file must not reach in).
+function routeCourseOffBow(state, player) {
+  const nav = state && state.nav;
+  const executor = nav && nav.executor;
+  if (!executor || executor.engaged !== true) return false;
+  const legs = Array.isArray(executor.legs) ? executor.legs : [];
+  const leg = legs[executor.legIndex];
+  const target = leg && leg.target;
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.z)) return false;
+  if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
+  if (!Number.isFinite(player.rot)) return false;
+  const dx = target.x - player.pos.x;
+  const dz = target.z - player.pos.z;
+  if (dx === 0 && dz === 0) return false;
+  const offCourse = Math.abs(wrapAngle(Math.atan2(dz, dx) - player.rot));
+  return offCourse > ROUTE_ALIGN_MAX_OFF_COURSE_RAD;
 }
 
 // Query helpers used by other systems (camera, vfx, flight profile hooks).
