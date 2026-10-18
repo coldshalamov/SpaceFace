@@ -1341,6 +1341,17 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
   'ev_prospectors_posture:break': 'STAKE DISPUTED · ONE HULL BREAKING OFF',
   'ev_claim_jump:yield_or_fight': 'STAKE DISPUTED · JUMPER YIELDING THE ROCK',
   'ev_customs_pullover:wave_on': 'INSPECTION DONE · RETURNING TO THE LANE',
+  // Tethys quiet-handoff chain: the shared cue rows claim a law lock, a tender, and a clean
+  // transit burn on hulls that are queueing, bolting, or sightseeing — same lamp, different
+  // truth, so the phases carry their own means.
+  'ev_tanker_holds_for_berth:arrive_hold': 'HOLDING FOR BERTH · QUEUE AHEAD',
+  'ev_tanker_holds_for_berth:cleared': 'BERTH CLEARED · RUNNING IN',
+  'ev_patrol_shift_change:pass_the_pin': 'WATCH HANDOFF · PIN PASSING',
+  'ev_criminal_handoff:standoff': 'HOLDING STATION · NO LAMPS',
+  'ev_smuggler_breaks:bolt': 'RUNNER BOLTING · PURSUIT FORMING',
+  'ev_smuggler_breaks:jettison': 'SHEDDING LOAD · EVIDENCE ADRIFT',
+  'ev_smuggler_breaks:resolve': 'SECURING DRIFT · RESUMING BEAT',
+  'ev_observation_stop:linger': 'ON LOOKOUT · STATION-KEEPING',
 });
 
 function workerStatusText(target, state = null) {

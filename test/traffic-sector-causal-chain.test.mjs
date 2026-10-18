@@ -661,6 +661,29 @@ test('seed 4242: the swap drops three real pickups in the gap; the jettison spra
   }
 });
 
+test('seed 4242: the chain lamps never claim a failure or a law lock the hull does not have', () => {
+  const { advanceTo, bySlot, state } = bootTethys();
+  const hail = (slotId) => JSON.stringify(createContactHailResponse(
+    state,
+    { kind: 'worker', targetId: bySlot(slotId).id },
+    'status',
+  ));
+
+  // The queueing hauler carries the patrol's pin cue but is not under a law lock, and its
+  // cleared spine wake is no tender callout.
+  advanceTo(10);
+  assert.match(hail('tethys_toll_hauler'), /HOLDING FOR BERTH · QUEUE AHEAD/);
+  assert.doesNotMatch(hail('tethys_toll_hauler'), /LAW LOCK|TENDER INBOUND/);
+  advanceTo(65);
+  assert.match(hail('tethys_toll_hauler'), /BERTH CLEARED · RUNNING IN/);
+  assert.doesNotMatch(hail('tethys_toll_hauler'), /TENDER INBOUND/);
+
+  // The bolting runner's clean burn is a flight, not a transit.
+  advanceTo(130);
+  assert.match(hail('tethys_quiet_runner'), /RUNNER BOLTING · PURSUIT FORMING/);
+  assert.doesNotMatch(hail('tethys_quiet_runner'), /CLEAN TRANSIT BURN/);
+});
+
 test('a Tethys cycle closes with one news line on the customs station, then re-arms', () => {
   const { receipts, news, headlines, advanceTo, state } = bootTethys();
   advanceTo(300);
