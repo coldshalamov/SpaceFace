@@ -130,6 +130,7 @@ import {
 } from './fieldDepletion.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
+import { customsWeirForSector, pointInsideCustomsWeir } from '../world/customsWeir.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { admitRichSeamGlint, endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
@@ -744,6 +745,17 @@ const BREAKER_FEED_PRODUCTS_HI = 4;
 const BREAKER_FEED_PRODUCT_TTL_S = 90;
 const BREAKER_FEED_PRODUCT_SPIT_WU_S = 18;
 const BREAKER_FEED_TYPE_ID = 'ast_metallic';
+// CR-WEIR (build_map §23.2): "the toll that runs itself" — a hauler threading the customs
+// weir pays its toll in kind: one token pod of station-owned freight slips off at the gap
+// and drifts to rest. The till accumulates at the booth; when the pile fills, the booth
+// banks the oldest pod. The player who snatches one takes station-owned freight — the
+// ordinary owned-cargo answer, applied to the customs till.
+const WEIR_TILL_MAX_PODS = 6;
+const WEIR_TILL_CROSS_MIN_SPEED_WU_S = 8;
+const WEIR_TILL_DRIFT_SCALE = 0.15;
+const WEIR_TILL_EMBARGO_S = 20;
+const WEIR_TILL_COMMODITY = 'cmdty_scrap_metal';
+const WEIR_TILL_AMOUNT = 1;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5589,6 +5601,7 @@ export const traffic = {
     this._stepHitchShed(dt, state);
     this._stepVolatileSlough(dt, state);
     this._stepBreakerFeed(dt, state);
+    this._stepWeirTill(dt, state);
     // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
     // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
     // stale ledger here instead of letting its stamps and jobs outlive the sector.
@@ -12117,6 +12130,88 @@ export const traffic = {
   },
 
   /**
+   * CR-WEIR till: crossing detection + the booth's banking pass. A freighter that was
+   * inside the weir last tick and is outside now — still making way, not held — has paid
+   * its toll. The till is instance-local bookkeeping over real station-owned pods; the
+   * pods themselves are persistent jettisoned cargo (capped), and a restored sector
+   * re-derives the inside-set cleanly because it is only a crossing detector.
+   */
+  _stepWeirTill(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const weir = sectorId && typeof customsWeirForSector === 'function'
+      ? customsWeirForSector(sectorId) : null;
+    if (!weir) {
+      if (this._weirInside) this._weirInside.clear();
+      if (this._weirTill) this._weirTill.length = 0;
+      return;
+    }
+    if (!this._weirInside) this._weirInside = new Set();
+    if (!this._weirTill) this._weirTill = [];
+    // The booth banks the pile's tail: a full till's oldest pod is collected.
+    while (this._weirTill.length >= WEIR_TILL_MAX_PODS) {
+      const oldest = this._weirTill.shift();
+      const e = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(oldest) : null;
+      if (e && e.alive !== false && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(oldest);
+      }
+    }
+    for (let i = this._weirTill.length - 1; i >= 0; i--) {
+      const e = state.entities.get(this._weirTill[i]);
+      if (!e || e.alive === false) this._weirTill.splice(i, 1);
+    }
+    const list = Array.isArray(bag.freighters) ? bag.freighters : [];
+    const insideNow = new Set();
+    for (const rec of list) {
+      const hauler = rec && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(rec.id) : null;
+      if (!hauler || hauler.alive === false || !hauler.pos) continue;
+      if (!hauler.data || !hauler.data.jobId) continue;
+      if (pointInsideCustomsWeir(weir, hauler.pos)) {
+        insideNow.add(hauler.id);
+        continue;
+      }
+      if (!this._weirInside.has(hauler.id)) continue;
+      const speed = Math.hypot((hauler.vel && hauler.vel.x) || 0, (hauler.vel && hauler.vel.z) || 0);
+      if (speed < WEIR_TILL_CROSS_MIN_SPEED_WU_S) continue;
+      this._payWeirToll(hauler, weir, now, state, speed);
+    }
+    this._weirInside = insideNow;
+  },
+
+  /**
+   * The toll in kind: one pod of the booth's own freight slips off at the crossing point
+   * and settles almost still — the till piles where the lane pays. Station-owned: the
+   * pod that tempts a passerby answers as station freight taken.
+   */
+  _payWeirToll(hauler, weir, now, state, speed) {
+    if (typeof spawnJettisonedCargoPod !== 'function') return null;
+    const pod = spawnJettisonedCargoPod(state, {
+      commodityId: WEIR_TILL_COMMODITY,
+      amount: WEIR_TILL_AMOUNT,
+      pos: { x: hauler.pos.x, z: hauler.pos.z },
+      vel: {
+        x: (hauler.vel ? hauler.vel.x : 0) * WEIR_TILL_DRIFT_SCALE,
+        z: (hauler.vel ? hauler.vel.z : 0) * WEIR_TILL_DRIFT_SCALE,
+      },
+      ownerId: weir.stationId,
+      ownerName: weir.stationId,
+      pickupEmbargoUntil: now + WEIR_TILL_EMBARGO_S,
+      factionId: 'faction_scn',
+    }, this.helpers);
+    if (!pod) return null;
+    pod.data = pod.data || {};
+    pod.data.tollPaid = true;
+    pod.data.tollWeirId = weir.id;
+    pod.data.shedFromJobId = hauler.data.jobId;
+    this._weirTill.push(pod.id);
+    return pod;
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -13401,6 +13496,8 @@ export const traffic = {
     this._hitchShed = null;
     this._volatileSlough = null;
     this._breakerFeed = null;
+    if (this._weirInside) this._weirInside.clear();
+    if (this._weirTill) this._weirTill.length = 0;
   },
 
   newGame() {
@@ -13426,6 +13523,8 @@ export const traffic = {
     this._hitchShed = null;
     this._volatileSlough = null;
     this._breakerFeed = null;
+    if (this._weirInside) this._weirInside.clear();
+    if (this._weirTill) this._weirTill.length = 0;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
