@@ -25,11 +25,10 @@ export function towedLureSignature(towed) {
 
 /**
  * The payload currently riding the PLAYER's Massline plus its signature standing —
- * { towed, lure } or null. Same tether read the seeker divert performs; an NPC dragging a
- * loud payload does not pull your pursuers.
+ * { towed, lure } or null. The caller supplies the current player tether; omitting it means
+ * no tow. An NPC dragging a loud payload does not pull your pursuers.
  */
-export function playerTowedLure(state) {
-  const tether = state && state.player && state.player.tether;
+export function playerTowedLure(state, tether = null) {
   const towedId = tether && tether.active === true ? tether.targetId : null;
   const towed = towedId != null ? entityById(state, towedId) : null;
   const lure = towedLureSignature(towed);
@@ -44,9 +43,9 @@ export function playerTowedLure(state) {
  * hands acquisition back to the hull — a chaff break, a foreign retarget, or an unrelated
  * combat target is never touched.
  */
-export function tickTowedLurePursuits(state) {
+export function tickTowedLurePursuits(state, tether = null) {
   if (!state || state.playerId == null) return;
-  const pair = playerTowedLure(state);
+  const pair = playerTowedLure(state, tether);
   const hot = pair && pair.lure && pair.lure.hot === true ? pair : null;
   const ships = shipsForPursuitScan(state);
   for (const entity of ships) {
@@ -60,12 +59,12 @@ export function tickTowedLurePursuits(state) {
  * already hunting that signature, silent to bystanders. Returns the towed entity or null;
  * the caller decides how the contact is shaped.
  */
-export function towedLureContactFor(state, self) {
+export function towedLureContactFor(state, self, tether = null) {
   if (!state || !self || self.id === state.playerId) return null;
   const combat = self.data && self.data.combat;
   if (!combat) return null;
   if (!(combat.lureDiverted === true || combat.targetId === state.playerId)) return null;
-  const pair = playerTowedLure(state);
+  const pair = playerTowedLure(state, tether);
   return pair && pair.lure && pair.lure.hot === true ? pair.towed : null;
 }
 

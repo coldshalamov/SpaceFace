@@ -1416,7 +1416,7 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
   // the bell through the ordinary contact→intercept path instead of steering on a ghost.
   // Range-gated like any live sighting: no signature, no contact, and a cold lure simply
   // drops out of the frame again.
-  const towedLure = towedLureContactFor(state, self);
+  const towedLure = towedLureContactFor(state, self, state.player && state.player.tether);
   if (towedLure && towedLure.alive !== false && towedLure.pos
     && !out.some(c => c.id === towedLure.id)) {
     const dxl = finite(self.pos && self.pos.x) - finite(towedLure.pos && towedLure.pos.x);

@@ -404,12 +404,39 @@ function pursuitScene({ lureSignature = 1.0, tether = 'live' } = {}) {
   return { state, player, lure, pirate };
 }
 
+test('RW-02: without a supplied tether the AI treats the player as not towing', () => {
+  const s = pursuitScene();
+  assert.equal(playerTowedLure(s.state), null, 'a private tether is not an AI input');
+  assert.equal(towedLureContactFor(s.state, s.pirate), null, 'no supplied tether means no lure contact');
+  tickTowedLurePursuits(s.state);
+  assert.equal(s.pirate.data.combat.targetId, s.player.id, 'no supplied tether leaves pursuit on the hull');
+  assert.equal(s.pirate.data.combat.lureDiverted, undefined, 'no lure claim is acquired');
+});
+
+test('RW-02: the supplied tether drives lure contacts and pursuit without a private player record', () => {
+  const s = pursuitScene();
+  const tether = s.state.player.tether;
+  delete s.state.player;
+  assert.equal(playerTowedLure(s.state, tether)?.towed, s.lure, 'the supplied tow resolves the signature');
+  assert.equal(towedLureContactFor(s.state, s.pirate, tether), s.lure, 'the supplied tow reaches the sensor helper');
+  tickTowedLurePursuits(s.state, tether);
+  assert.equal(s.pirate.data.combat.targetId, s.lure.id, 'the supplied tow claims the pursuit');
+  assert.equal(s.pirate.data.combat.lureDiverted, true);
+
+  const severed = { active: false, targetId: null, phase: 'slack' };
+  assert.equal(playerTowedLure(s.state, severed), null, 'a replacement severed tether has no lure');
+  assert.equal(towedLureContactFor(s.state, s.pirate, severed), null, 'a replacement severed tether removes the contact');
+  tickTowedLurePursuits(s.state, severed);
+  assert.equal(s.pirate.data.combat.targetId, s.player.id, 'the current supplied tether releases the pursuit');
+  assert.equal(s.pirate.data.combat.lureDiverted, false);
+});
+
 test('RW-02: a hot towed lure re-aims a pursuing pirate at the signature', () => {
   const s = pursuitScene();
   setEntityDoctrine(s.pirate, {
     activity: { kind: 'attack_run', reason: 'ambush:marked_prey', targetId: s.player.id, startedTick: 0 },
   });
-  tickTowedLurePursuits(s.state);
+  tickTowedLurePursuits(s.state, s.state.player.tether);
   assert.equal(s.pirate.data.combat.targetId, s.lure.id, 'the pursuit answers the signature');
   assert.equal(s.pirate.data.combat.lureDiverted, true, 'the claim carries the lure mark');
   assert.equal(s.pirate.data.combat.lureHullId, s.player.id, 'the hull is remembered for release');
@@ -419,50 +446,50 @@ test('RW-02: a hot towed lure re-aims a pursuing pirate at the signature', () =>
 
 test('RW-02: a cold or severed lure hands the pursuit back to the hull', () => {
   const cooled = pursuitScene();
-  tickTowedLurePursuits(cooled.state);
+  tickTowedLurePursuits(cooled.state, cooled.state.player.tether);
   assert.equal(cooled.pirate.data.combat.targetId, cooled.lure.id);
   cooled.lure.data.lureSignature = 0;
-  tickTowedLurePursuits(cooled.state);
+  tickTowedLurePursuits(cooled.state, cooled.state.player.tether);
   assert.equal(cooled.pirate.data.combat.targetId, cooled.player.id, 'cooled: the hull re-acquires');
   assert.equal(cooled.pirate.data.combat.lureDiverted, false, 'the mark lifts with the claim');
 
   const severed = pursuitScene();
-  tickTowedLurePursuits(severed.state);
+  tickTowedLurePursuits(severed.state, severed.state.player.tether);
   assert.equal(severed.pirate.data.combat.targetId, severed.lure.id);
   severed.state.player.tether = { active: false, targetId: null, phase: 'slack' };
-  tickTowedLurePursuits(severed.state);
+  tickTowedLurePursuits(severed.state, severed.state.player.tether);
   assert.equal(severed.pirate.data.combat.targetId, severed.player.id, 'severed: the hull re-acquires');
   assert.equal(severed.pirate.data.combat.lureDiverted, false);
 
   const eaten = pursuitScene();
-  tickTowedLurePursuits(eaten.state);
+  tickTowedLurePursuits(eaten.state, eaten.state.player.tether);
   eaten.lure.alive = false;
-  tickTowedLurePursuits(eaten.state);
+  tickTowedLurePursuits(eaten.state, eaten.state.player.tether);
   assert.equal(eaten.pirate.data.combat.targetId, eaten.player.id, 'consumed: the hull re-acquires');
 });
 
 test('RW-02: a pursuer fighting something else never hears the bell', () => {
   const s = pursuitScene();
   s.pirate.data.combat.targetId = 99;   // its own fight, not the hull
-  tickTowedLurePursuits(s.state);
+  tickTowedLurePursuits(s.state, s.state.player.tether);
   assert.equal(s.pirate.data.combat.targetId, 99, 'foreign prosecution is untouched');
   assert.equal(s.pirate.data.combat.lureDiverted, undefined, 'no claim is written');
 });
 
 test('RW-02: doctrine churn back to the hull is re-claimed, a foreign repoint is not', () => {
   const s = pursuitScene();
-  tickTowedLurePursuits(s.state);
+  tickTowedLurePursuits(s.state, s.state.player.tether);
   assert.equal(s.pirate.data.combat.targetId, s.lure.id);
   // The decision cycle re-selects the hull while the bell still rings — the signature
   // still owns the pursuit and takes the claim back.
   s.pirate.data.combat.targetId = s.player.id;
-  tickTowedLurePursuits(s.state);
+  tickTowedLurePursuits(s.state, s.state.player.tether);
   assert.equal(s.pirate.data.combat.targetId, s.lure.id, 'a hot lure keeps the pursuit');
   assert.equal(s.pirate.data.combat.lureDiverted, true);
   // A legitimate foreign repoint (retaliation onto an attacker, a squad order) is not ours
   // to stomp — the mark lifts and its write stands.
   s.pirate.data.combat.targetId = 42;
-  tickTowedLurePursuits(s.state);
+  tickTowedLurePursuits(s.state, s.state.player.tether);
   assert.equal(s.pirate.data.combat.targetId, 42, 'a foreign retarget stands');
   assert.equal(s.pirate.data.combat.lureDiverted, false, 'the lure mark releases');
 });
@@ -499,8 +526,17 @@ test('RW-02: the hot bell joins the pursuer\'s sensor picture; bystanders hear n
   assert.equal(quiet.contacts.some((c) => c.id === bell.id), false,
     'a hull not prosecuting the towing ship never hears the bell');
 
+  sim.state.player.tether = { active: false, targetId: null, phase: 'slack' };
+  const severed = sim.helpers.aiSensors.frameFor(pirate.id, 2);
+  assert.equal(severed.contacts.some((c) => c.id === bell.id), false,
+    'replacing the tether with a severed line removes the contact on the next frame');
+  sim.state.player.tether = { active: true, targetId: bell.id, phase: 'loaded' };
+  const reattached = sim.helpers.aiSensors.frameFor(pirate.id, 3);
+  assert.ok(reattached.contacts.some((c) => c.id === bell.id),
+    'reattaching the hot bell restores its contact on the next frame');
+
   bell.data.lureSignature = 0;
-  const cold = sim.helpers.aiSensors.frameFor(pirate.id, 2);
+  const cold = sim.helpers.aiSensors.frameFor(pirate.id, 4);
   assert.equal(cold.contacts.some((c) => c.id === bell.id), false,
     'a cooled lure drops out of the picture');
 });
@@ -574,4 +610,17 @@ test('RW-02: blind swarmers steer at the hot bell, not the cold hull', () => {
   const cold = { bell: meanDistance(bell.pos), hull: meanDistance(player.pos) };
   assert.ok(cold.hull.mean < cold.bell.mean,
     `a cold bell releases the flock to the hull (mean ${cold.hull.mean.toFixed(0)} to hull vs ${cold.bell.mean.toFixed(0)} to bell)`);
+
+  bell.data.lureSignature = 1;
+  state.player.tether = { active: false, targetId: null, phase: 'slack' };
+  step(8);
+  assert.ok(meanDistance(player.pos).mean < meanDistance(bell.pos).mean,
+    'a hot bell on a replacement severed line does not reclaim the flock');
+  const beforeRetether = meanDistance(bell.pos);
+  state.player.tether = { active: true, targetId: bell.id, phase: 'loaded' };
+  step(8);
+  const reattached = meanDistance(bell.pos);
+  assert.ok(reattached.live > 0, 'surviving swarmers remain for the reattachment check');
+  assert.ok(reattached.mean < beforeRetether.mean,
+    `reattaching the hot bell brings surviving swarmers toward it (${beforeRetether.mean.toFixed(0)} to ${reattached.mean.toFixed(0)} wu)`);
 });

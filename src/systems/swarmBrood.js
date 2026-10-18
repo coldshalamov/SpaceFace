@@ -533,7 +533,7 @@ export function createBroodEngine(deps = {}) {
 
   function cachePlayer(state) {
     playerRef = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
-    const lure = playerTowedLure(state);
+    const lure = playerTowedLure(state, state.player && state.player.tether);
     signatureRef = lure && lure.lure.hot === true ? lure.towed : playerRef;
     playerX = finite(signatureRef && signatureRef.pos && signatureRef.pos.x);
     playerZ = finite(signatureRef && signatureRef.pos && signatureRef.pos.z);
