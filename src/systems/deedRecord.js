@@ -297,7 +297,15 @@ export const deedRecord = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
+    this.registry = ctx.registry || null;
     this._subs = [];
+    this._listen('wreckCourt:ruled', p => {
+      if (!this.registry?.get('wreckCourt')?.verifyInsuranceRuling(p)) return;
+      const claim = p.ruling.insurance;
+      recordDeed(this.state, { kind: claim.fraud ? 'wanted_tier' : 'stunt',
+        id: p.receiptId, sectorId: this._here(), factionId: claim.factionId, subject: claim.name,
+        detail: { insurance: true, fraud: claim.fraud, accusedId: claim.fraud ? this.state.playerId : claim.accusedId, tier: 'nets' } });
+    });
     this._listen('station:slammed', (p) => this._onSlammed(p));
     this._listen('economy:oreFlood', (p) => this._onOreFlood(p));
     this._listen('well:haulerDragged', (p) => this._onHaulerDragged(p));

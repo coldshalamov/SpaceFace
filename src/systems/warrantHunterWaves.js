@@ -29,6 +29,7 @@ import {
 import { LOCAL_PORTRAIT_ROOT } from '../data/localPortraits.js';
 import {
   WARRANT_CREW_MAX,
+  WARRANT_HUNTERS,
   WARRANT_HAIL_RANGE_WU,
   WARRANT_HUNTER_SCHEMA,
   WARRANT_MAX_BOLDNESS,
@@ -67,6 +68,8 @@ const BOLDER_CAP = WARRANT_MAX_BOLDNESS - 1;
 export function createWarrantHunterWaves(host) {
   const subs = [];
   const ctl = {
+    courtPending: [],
+    courtReceipts: new Set(),
     arrivals: 0, // session counter until the first wave makes the durable memory
     pending: null, // one held wave: { hunterId, trigger, tier, sectorId, ... }
     live: new Map(), // entityId -> { entity, hunterId, role, waveId, tierRank, ... }
@@ -241,8 +244,24 @@ export function createWarrantHunterWaves(host) {
     };
   }
 
+  // Court claims use the same cast and spawn owner, with the convicted ship as the target.
+  function onCourtRuling(p) {
+    const s = state();
+    if (sealed(s) || !host.registry?.get('wreckCourt')?.verifyInsuranceRuling(p) || ctl.courtReceipts.has(p.receiptId)) return;
+    const claim = p.ruling.insurance;
+    const targetId = claim.fraud ? s.playerId : claim.accusedId;
+    if (!s.entities.get(targetId)?.alive) return;
+    const cast = WARRANT_HUNTERS.filter(h => h.licensed && !isRecovering(s, h.id));
+    if (!cast.length) return;
+    const hunter = cast[hash32(seedOf(s), p.receiptId, 'court-hunter') % cast.length];
+    ctl.courtReceipts.add(p.receiptId);
+    ctl.courtPending.push({ hunterId: hunter.id, trigger: 'court', tier: WANTED_TIER.NETS,
+      arrivalIdx: p.receiptId, targetId, sectorId: sectorOf(s), armedT: nowOf(s), dueT: nowOf(s), tries: 0 });
+  }
+
   // ── landing the wave ───────────────────────────────────────────────────────────────────────
   function update(dt, s) {
+    if (!ctl.pending && ctl.courtPending.length) ctl.pending = ctl.courtPending.shift();
     if (!ctl.pending && ctl.live.size === 0 && !ctl.offer) return;
     if (sealed(s)) return;
     const now = nowOf(s);
@@ -257,7 +276,7 @@ export function createWarrantHunterWaves(host) {
 
   function landWave(s, p, now) {
     const hunter = warrantHunterById(p.hunterId);
-    const player = playerOf(s);
+    const player = p.targetId != null ? s.entities.get(p.targetId) : playerOf(s);
     if (!hunter || !player || player.alive === false || !player.pos) { ctl.pending = null; return; }
     if (isDocked(s) || directorBusy(s)) { p.dueT = now + WARRANT_WAVE_RETRY_S; return; }
     const helpers = host.helpers || {};
@@ -284,7 +303,7 @@ export function createWarrantHunterWaves(host) {
     }
 
     const spawned = [];
-    const wave = { waveId, tier: p.tier, boldness, returning, style, bossPos: null };
+    const wave = { waveId, tier: p.tier, boldness, returning, style, bossPos: null, targetId: player.id, court: p.trigger === 'court' };
     for (let i = 0; i < ships.length && spawned.length < grant; i++) {
       const spec = buildSpec(s, hunter, ships[i], i, wave);
       let entity = null;
@@ -301,10 +320,11 @@ export function createWarrantHunterWaves(host) {
 
     rec.encounters = (rec.encounters | 0) + 1;
     rec.lastSectorId = sectorOf(s);
-    const offerAmount = hunter.quirk.id === 'hails_first' ? Math.max(0, Math.round(Number(s.player.bounty) || 0)) : 0;
+    const offerAmount = player.id === s.playerId && hunter.quirk.id === 'hails_first' ? Math.max(0, Math.round(Number(s.player.bounty) || 0)) : 0;
     for (const row of spawned) {
       ctl.live.set(row.entity.id, {
         entity: row.entity,
+        targetId: player.id,
         hunterId: hunter.id,
         role: row.role,
         waveId,
@@ -324,6 +344,7 @@ export function createWarrantHunterWaves(host) {
       tier: p.tier,
       sectorId: sectorOf(s),
       trigger: p.trigger,
+      targetId: player.id,
       tippedBy: p.tippedBy || null, // the fence who sold the pilot, when one did
       crewCount: Math.max(0, spawned.length - 1),
       tick: s.tick | 0,
@@ -361,12 +382,12 @@ export function createWarrantHunterWaves(host) {
   }
 
   function buildSpec(s, hunter, ship, index, wave) {
-    const player = playerOf(s);
+    const player = s.entities.get(wave.targetId) || playerOf(s);
     const seed = seedOf(s);
     const contractId = `${wave.waveId}:${index}`;
     const pos = arrivalPoint(s, hunter, ship, index, contractId, player, wave);
     const huntSpec = makePlayerWarrantHunterSpec({
-      contractId, playerId: s.playerId, pos, factionId: hunter.factionId,
+      contractId, playerId: player.id, pos, factionId: hunter.factionId,
     });
     const isBoss = ship.role === 'boss';
     const trickId = isBoss ? hunter.trick : (hunter.escortTrick || DEFAULT_ESCORT_TRICK);
@@ -400,23 +421,24 @@ export function createWarrantHunterWaves(host) {
       applyStyleLoadoutToSpec(hull, styleLoadoutForAce(warrantHunterAce(hunter), wave.style));
     }
 
+    hull.data.wantedWarrant = player.id === s.playerId;
     const ai = hull.data.ai;
     ai.motive = 'wanted_warrant';
-    ai.engagementTrigger = 'wanted_bounty';
+    ai.engagementTrigger = wave.court ? 'security_response' : 'wanted_bounty';
     ai.zoneId = 'warrant_hunter';
     ai.approachTelegraph = 'hunter_inbound';
     if (!ai.combatDoctrineId) ai.combatDoctrineId = 'interceptor_flyby';
     ai.noFireResponseWindowS = 1.5;
     ai.spawnContext = BOUNTY_HUNTER_PLAYER_CONTEXT;
-    ai.forcePlayerTarget = true;
-    ai.hostileTeams = [0];
+    ai.forcePlayerTarget = player.id === s.playerId;
+    ai.hostileTeams = player.id === s.playerId ? [0] : [];
     ai.squadId = wave.waveId;
     ai.encounterKind = 'warrant_hunter';
     ai.encounterRole = ship.role;
     // Licensed contractors fly through the law's own gate (securityTargetId) so killing one is a
     // lawful_kill on the law's record; freelancers are plain hostile bounty muscle.
     ai.lawful = hunter.licensed === true;
-    ai.securityTargetId = hunter.licensed === true ? s.playerId : null;
+    ai.securityTargetId = hunter.licensed === true ? player.id : null;
     ai.roe = 'weapons_free';
     ai.passive = false;
     ai.sensorRange = 8000;
@@ -427,14 +449,14 @@ export function createWarrantHunterWaves(host) {
       anchor: { x: player.pos.x, z: player.pos.z },
       leashRadius: 9000,
       startedTick: s.tick | 0,
-      targetId: s.playerId,
+      targetId: player.id,
       encounterId: wave.waveId,
     });
     const combat = hull.data.combat || (hull.data.combat = {});
-    combat.targetId = s.playerId;
+    combat.targetId = player.id;
     const intent = hull.data.intent || (hull.data.intent = {});
-    intent.targetId = s.playerId;
-    intent.mode = 'bounty_player';
+    intent.targetId = player.id;
+    intent.mode = player.id === s.playerId ? 'bounty_player' : 'bounty_contract';
 
     // Identity: the target panel reads d.name || ai.name || d.callsign (named aces ride the same).
     const displayName = isBoss ? hunter.name : (ship.name || `${hunter.callsign} ${ship.role}`);
@@ -442,7 +464,8 @@ export function createWarrantHunterWaves(host) {
     hull.data.name = displayName;
     hull.data.callsign = isBoss ? hunter.callsign : displayName;
     hull.data.warrantHunterId = hunter.id;
-    hull.data.hostileContext = BOUNTY_HUNTER_PLAYER_CONTEXT;
+    hull.data.hostileContext = player.id === s.playerId ? BOUNTY_HUNTER_PLAYER_CONTEXT : 'bounty_contract';
+    if (player.id !== s.playerId) ai.spawnContext = 'bounty_contract';
     hull.data.warrantHunter = {
       schemaVersion: WARRANT_HUNTER_SCHEMA,
       id: hunter.id,
@@ -459,10 +482,10 @@ export function createWarrantHunterWaves(host) {
       portrait: portraitPath(hunter),
     };
     // Hold fire until the hail for the hunter that offers the bounty (only when there is one).
-    if (isBoss && hunter.quirk.id === 'hails_first' && (Number(s.player.bounty) || 0) > 0) {
+    if (player.id === s.playerId && isBoss && hunter.quirk.id === 'hails_first' && (Number(s.player.bounty) || 0) > 0) {
       ai.roe = 'hold_fire';
     }
-    hull.data.contractTargetId = s.playerId;
+    hull.data.contractTargetId = player.id;
     return hull;
   }
 
@@ -508,6 +531,7 @@ export function createWarrantHunterWaves(host) {
     for (const [id, entry] of ctl.live) {
       const entity = entry.entity;
       if (!entity || entity.alive === false || s.entities.get(id) !== entity) { ctl.live.delete(id); continue; }
+      if (entry.targetId != null && entry.targetId !== s.playerId) continue;
       if (entry.role !== 'boss' || !player || !player.pos || !entity.pos) continue;
       const hunter = warrantHunterById(entry.hunterId);
       if (!hunter) continue;
@@ -708,6 +732,7 @@ export function createWarrantHunterWaves(host) {
     if (sealed(s)) return;
     const wave = new Set();
     for (const [id, entry] of ctl.live) {
+      if (entry.targetId != null && entry.targetId !== s.playerId) { wave.add(entry.waveId); continue; }
       if (entry.role !== 'boss') continue;
       const hunter = warrantHunterById(entry.hunterId);
       const entity = entry.entity;
@@ -834,6 +859,7 @@ export function createWarrantHunterWaves(host) {
     if (!packet || ctl.live.size === 0 || sealed(s)) return;
     const rank = TIER_RANK[packet.tier] || 0;
     for (const entry of ctl.live.values()) {
+      if (entry.targetId != null && entry.targetId !== s.playerId) continue;
       if (entry.role !== 'boss' || rank <= entry.tierRank) continue;
       entry.tierRank = rank;
       const hunter = warrantHunterById(entry.hunterId);
@@ -842,6 +868,8 @@ export function createWarrantHunterWaves(host) {
   }
 
   function resetSession() {
+    ctl.courtPending.length = 0;
+    ctl.courtReceipts.clear();
     ctl.pending = null;
     ctl.live.clear();
     ctl.offer = null;
@@ -877,6 +905,7 @@ export function createWarrantHunterWaves(host) {
   listen('dock:docked', (p) => onArrival('dock', p));
   listen('dock:undocked', onUndock);
   listen('law:fenceTip', onFenceTip);
+  listen('wreckCourt:ruled', onCourtRuling);
   listen('law:killedAdjudicated', onAdjudicated);
   listen('entity:killed', onKilled);
   listen('entity:destroyed', onGone);

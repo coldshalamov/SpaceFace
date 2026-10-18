@@ -8,6 +8,8 @@
 import { DT, ageFromTemperature, temperatureFromAge, bodyVisible, backIntegratePoint } from '../data/wreckCourt/physics.js';
 import { WRECK_COURT_PLACES } from '../data/wreckCourt/places.js';
 import { hash32 } from '../core/rng.js';
+import { WEAPONS } from '../data/weapons.js';
+import { FACTION_META } from '../data/factions.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import {
   ballisticFit,
@@ -109,7 +111,7 @@ export function openCourt({ caseId, seed }) {
     assayPoints: scene.assayPoints.map((p) => ({ ...p })),
     player: { ...scene.playerStart },
     bodies: scene.bodies.map(cloneBody),
-    hypotheses: scene.hypotheses,
+    hypotheses: scene.hypotheses.slice(),
     revealed: Object.create(null),
     grappled: null,
     simTime: 0,
@@ -295,7 +297,9 @@ function doScan(session, targetId, mode) {
   if (prior) return { ok: true, measurement: prior };
   let data = null;
   if (mode === 'visual') data = scanVisual(body);
-  else if (mode === 'spectro') data = { material: body.scar ? body.scar.material : null, cooked: false };
+  else if (mode === 'spectro') data = { material: body.scar ? body.scar.material : null, cooked: false,
+    ...(body.claimShot ? { signature: `${body.claimShot.name}: ${body.claimShot.weaponName}`,
+      sample: { x: body.x, z: body.z, vx: body.vx, vz: body.vz } } : {}) };
   else if (mode === 'mass') data = { mass: body.mass, mu: body.mu || 0 };
   else if (mode === 'thermal') data = { temperature: body.temperature, age: ageFromTemperature(body.temperature) };
   else if (mode === 'magazine') {
@@ -525,7 +529,7 @@ function applyEffects(session, effects) {
 }
 
 function doFile(session, hypothesisId) {
-  if (session.ruling && session.ruling.status === 'accepted') return fail('already_ruled');
+  if (session.receipt || session.ruling && session.ruling.status === 'accepted') return fail('already_ruled');
   const hypothesis = session.hypotheses.find((h) => h.id === hypothesisId);
   if (!hypothesis) return fail('unknown_claim');
   const report = evaluateHypothesis(strippedHypothesis(hypothesis), session.notebook, evidenceScene(session));
@@ -541,12 +545,17 @@ function doFile(session, hypothesisId) {
         worldFacts: [],
       },
     };
+    if (hypothesis.insurance && session.notebook.measurements[`reconstruct:ballistic:${hypothesis.id}`]) {
+      session.ruling.insurance = { ...hypothesis.insurance, fraud: true };
+      session.ruling.situation = 'The shot path or cooling age conflicts with the claim. Insurance refuses payment and issues a fraud warrant against you.';
+    }
     return { ok: true, ruling: session.ruling };
   }
   const cons = hypothesis.consequence;
   applyEffects(session, cons.effects);
   session.ruling = {
     status: 'accepted',
+    ...(hypothesis.insurance ? { insurance: { ...hypothesis.insurance, fraud: false } } : {}),
     hypothesisId,
     statement: hypothesis.statement,
     situation: cons.situation,
@@ -611,7 +620,9 @@ export function restoreCourt(blob) {
     const session = openCourt({ caseId: raw.caseId, seed: raw.seed });
     if (raw.bodies.length !== session.bodies.length || raw.bodies.some((b) => !session.bodies.some((s) => s.id === b.id)
       || ![b.x, b.z, b.vx, b.vz].every(Number.isFinite))) throw new Error('bad live wreck court bodies');
-    return Object.assign(session, JSON.parse(JSON.stringify(raw)), { hypotheses: session.hypotheses, _truth: session._truth });
+    Object.assign(session, JSON.parse(JSON.stringify(raw)), { hypotheses: session.hypotheses, _truth: session._truth });
+    for (const body of session.bodies) if (body.claimShot) addInsuranceHypothesis(session, body);
+    return session;
   }
   if (!blob || blob.v !== WRECK_COURT_SCHEMA_VERSION) throw new Error('bad wreck court save');
   const session = openCourt({ caseId: blob.caseId, seed: blob.seed });
@@ -646,6 +657,20 @@ function scanVisible(session, modes, spectro) {
 }
 
 function reconstructFromNotebook(session) {
+  for (const body of session.bodies) {
+    const shot = body.claimShot;
+    const scar = session.notebook.measurements[`scan:${body.id}:spectro`];
+    const thermal = session.notebook.measurements[`scan:${body.id}:thermal`];
+    if (!shot || !scar?.data.sample || !thermal) continue;
+    const elapsed = scar.sampleTime - shot.at;
+    const fit = ballisticFit([{ ...scar.data.sample, mass: body.mass },
+      { x: shot.x + shot.vx * elapsed, z: shot.z + shot.vz * elapsed, vx: shot.vx, vz: shot.vz, mass: 1 }]);
+    const thermalElapsed = thermal.sampleTime - shot.at;
+    const id = `reconstruct:ballistic:insurance:${body.id}`;
+    measurement(session, id, { id, kind: 'reconstruct', spoiled: false, data: { ...fit,
+      group: `insurance:${body.id}`, originError: Math.abs(-fit.originT - elapsed),
+      thermalError: Number.isFinite(thermal.data.age) ? Math.abs(thermal.data.age - thermalElapsed) : Infinity } });
+  }
   const groups = new Map();
   for (const m of Object.values(session.notebook.measurements)) {
     if (m.kind !== 'scan' || m.mode !== 'signal' || !m.data || !m.data.group) continue;
@@ -804,6 +829,21 @@ const liveAdventure = (s) => s.mode === 'flight' && !s.physicsVenueSession && !s
   && (!s.run || s.run.phase === 'inactive' || s.run.kind === 'adventure');
 const jsonCopy = (v) => JSON.parse(JSON.stringify(v));
 
+function addInsuranceHypothesis(session, body) {
+  const shot = body.claimShot, id = `insurance:${body.id}`;
+  const prior = session.hypotheses.findIndex(h => h.id === id);
+  const hypothesis = { id, statement: `${shot.name} caused this hull loss. File an insurance recovery.`,
+    insurance: { accusedId: shot.accusedId, factionId: shot.factionId, name: shot.name },
+    requires: [
+      { op: 'recon', model: 'ballistic', group: id, field: 'residual', lt: Math.max(2.5, body.radius / 2) },
+      { op: 'recon', model: 'ballistic', group: id, field: 'originError', lt: 0.75 },
+      { op: 'recon', model: 'ballistic', group: id, field: 'thermalError', lt: 0.75 },
+    ], falsifiedBy: [], consequence: { payout_cr: 640, payee: 'player', effects: [], worldFacts: [],
+      situation: `Insurance pays 640 credits. The shot path and cooling scar name ${shot.name}; warrant hunters have the claim.` } };
+  if (prior < 0) session.hypotheses.push(hypothesis);
+  else session.hypotheses[prior] = hypothesis;
+}
+
 export function createWreckCourtSystem() {
   return {
     name: 'wreckCourt',
@@ -816,7 +856,7 @@ export function createWreckCourtSystem() {
       on('wreckCourt:action', (p) => { const result = this.action(p); ctx.bus.emit('wreckCourt:result', { ...result, requestId: p?.requestId }); });
       on('scan:pulse', (p) => { if (p?.source !== 'player-scanner' || !this.session) return;
         this.observe(); for (const b of this.session.bodies) for (const mode of SCAN_MODES) this.action({ verb: 'scan', targetId: b.id, mode }); });
-      on('combat:damage', (p) => { const body = this.session?.bodies.find((b) => b.entityId === p?.targetId); if (body && !body.trajectoryLocked) body.historySpoiled = true; });
+      on('combat:damage', (p) => this.damage(p));
       on('sector:exit', () => this.leave()); on('game:newGame', () => { this.leave(); this.failures = {}; });
     },
     entity(body) {
@@ -824,6 +864,29 @@ export function createWreckCourtSystem() {
       return e?.alive && tag?.uid === this.session?.uid && tag.bodyId === body.id ? e : null;
     },
     newGame() { this.leave(); this.failures = {}; },
+    damage(p) {
+      const s = this.session, state = this.ctx.state;
+      const body = s?.bodies.find(b => b.entityId === p?.targetId);
+      if (!body) return;
+      if (!body.trajectoryLocked) body.historySpoiled = true;
+      if (s.receipt || !(p.applied > 0) || !(p.channels?.thermal > 0 || p.channels?.plasma > 0) || !p.weaponId) return;
+      const target = this.entity(body), shooter = state.entities.get(p.attackerId);
+      const weapon = WEAPONS.find(w => w.id === p.weaponId);
+      if (!target || !shooter || !(weapon?.projSpeed > 0) || body.integrity >= 0.9) return;
+      body.claimHeatAt = state.simTime;
+      body.temperature = temperatureFromAge(0);
+      for (const mode of ['thermal', 'spectro']) delete s.notebook.measurements[`scan:${body.id}:${mode}`];
+      delete s.notebook.measurements[`reconstruct:ballistic:insurance:${body.id}`];
+      if (shooter.id === state.playerId || shooter.type !== 'ship' || !shooter.factionId) return;
+      const dx = p.approach?.x ?? target.pos.x - shooter.pos.x, dz = p.approach?.z ?? target.pos.z - shooter.pos.z;
+      const length = Math.hypot(dx, dz);
+      if (!(length > 0)) return;
+      const faction = FACTION_META.find(f => f.id === shooter.factionId);
+      const name = shooter.data?.name || shooter.data?.ai?.name || faction?.name || 'The rival ship';
+      body.claimShot = { at: state.simTime, accusedId: shooter.id, factionId: shooter.factionId, name,
+        weaponName: weapon.name, x: target.pos.x, z: target.pos.z, vx: dx / length * weapon.projSpeed, vz: dz / length * weapon.projSpeed };
+      addInsuranceHypothesis(s, body);
+    },
     open({ caseId = WRECK_COURT_ENTRY_CASE, seed, origin, missionId = null } = {}) {
       const { state } = this.ctx; const p = state.entities.get(state.playerId);
       if (!liveAdventure(state) || !p?.alive || !this.ctx.helpers?.spawnEntity) return fail('not_in_adventure');
@@ -853,14 +916,14 @@ export function createWreckCourtSystem() {
     spawn(b) {
       const { state, helpers } = this.ctx;
       const existing = (state.entityList || []).find((e) => e.alive && e.data?.wreckCourt?.uid === this.session.uid && e.data.wreckCourt.bodyId === b.id);
-      if (existing) { b.entityId = existing.id; return existing; }
+      if (existing) { existing.data.combatProfileId = 'combat_profile_tether_anchor'; b.entityId = existing.id; return existing; }
       const radius = Math.max(2.5, b.radius);
       const e = helpers.spawnEntity({ type: 'fx', ttl: Infinity, team: 2, alive: true, pos: { x: b.x, y: 0, z: b.z },
         vel: { x: b.vx, y: 0, z: b.vz }, rot: b.heading, angVel: b.omega, radius, mass: b.mass,
         hull: Math.max(1, Math.round(b.integrity * 100)), hullMax: 100, collides: !b.noCollide,
         physicsBody: b.noCollide ? false : { dynamic: !b.fixed, shape: 'ball', radius, mass: b.mass, ccd: true },
         data: { placeId: LIVE_PLACES[b.variant] || 'place_aftermath_frag_plate_curl', placeTargetRadius: radius, worldOneOff: true,
-          salvageProtected: true, masslineTetherable: !b.noCollide, displayName: `${this.session.title}: ${b.id}`, scanLabel: `${this.session.title}: ${b.id}`, wreckCourt: { uid: this.session.uid, bodyId: b.id, variant: b.variant } },
+          combatProfileId: 'combat_profile_tether_anchor', salvageProtected: true, masslineTetherable: !b.noCollide, displayName: `${this.session.title}: ${b.id}`, scanLabel: `${this.session.title}: ${b.id}`, wreckCourt: { uid: this.session.uid, bodyId: b.id, variant: b.variant } },
         flags: { persistent: true } });
       b.entityId = e.id; return e;
     },
@@ -897,7 +960,8 @@ export function createWreckCourtSystem() {
           const factor = Math.min(20, rock.mu / (distance * distance)) * b.mass * dt / distance;
           queuePhysicsImpulse(e, { x: dx * factor, y: 0, z: dz * factor });
         }
-        if (b.initialAge != null && b.thermalLock == null) b.temperature = temperatureFromAge(b.initialAge + state.simTime - s.openedAt, b.shedTemp);
+        if (b.claimHeatAt != null) b.temperature = temperatureFromAge(state.simTime - b.claimHeatAt);
+        else if (b.initialAge != null && b.thermalLock == null) b.temperature = temperatureFromAge(b.initialAge + state.simTime - s.openedAt, b.shedTemp);
         const assay = s.assayPoints.some((a) => Math.hypot(a.x - b.x, a.z - b.z) <= ASSAY_RANGE);
         b.assayHold = assay && Math.hypot(b.vx, b.vz) <= 8 ? (b.assayHold || 0) + dt : 0;
         if (b.departure?.remaining > 0 && !b.fixed) { queuePhysicsImpulse(e, { x: Math.cos(b.departure.heading) * b.mass * 6 * dt, y: 0, z: Math.sin(b.departure.heading) * b.mass * 6 * dt }); b.departure.remaining -= dt; }
@@ -921,7 +985,7 @@ export function createWreckCourtSystem() {
       let result;
       if (action?.verb === 'reconstructAll') { reconstructFromNotebook(s); result = { ok: true, support: s.hypotheses.map((h) => supportReport(s, h.id)) }; }
       else result = act(s, action, { record: false });
-      if (result.ok && s.ruling?.status === 'accepted' && !s.receipt) {
+      if (result.ok && (s.ruling?.status === 'accepted' || s.ruling?.insurance?.fraud) && !s.receipt) {
         s.receipt = `${s.uid}:${s.ruling.hypothesisId}`;
         const intent = s.ruling.intents.economy;
         if (intent.payee === 'player' && intent.amount > 0) this.ctx.bus.emit('economy:grantCredits', { amount: intent.amount, reason: intent.reason, receiptId: s.receipt });
@@ -929,7 +993,7 @@ export function createWreckCourtSystem() {
         if (s.ruling.intents.heat) this.ctx.bus.emit('wreckCourt:lawFact', { ...s.ruling.intents.heat, source: this.name, receiptId: s.receipt, caseId: s.caseId });
         this.ctx.bus.emit('wreckCourt:ruled', { missionId: s.missionId, receiptId: s.receipt, ruling: s.ruling });
         this.ctx.bus.emit('toast', { text: s.ruling.situation, kind: 'info', ttl: 9 });
-        if (s.missionId) this.ctx.bus.emit('mission:venueProof', { missionId: s.missionId, source: this.name, receiptId: s.receipt, kind: 'court-ruled' });
+        if (s.missionId && s.ruling.status === 'accepted') this.ctx.bus.emit('mission:venueProof', { missionId: s.missionId, source: this.name, receiptId: s.receipt, kind: 'court-ruled' });
       }
       this.ctx.state.wreckCourt = this.ctx.state.wreckCourtPublic = this.report(); return result;
     },
@@ -941,6 +1005,8 @@ export function createWreckCourtSystem() {
     verifyMissionProof(p) { const s = this.session, m = this.ctx.state.missions?.active?.find((m) => m.id === p?.missionId);
       return { ok: !!(m?.params?.wreckCourtCaseId && s?.missionId === m.id && p.source === this.name && p.kind === 'court-ruled'
         && s.ruling?.status === 'accepted' && s.receipt === p.receiptId && s.caseId === m.params.wreckCourtCaseId) }; },
+    verifyInsuranceRuling(p) { return !!(this.session?.receipt && p?.receiptId === this.session.receipt
+      && p.ruling === this.session.ruling && p.ruling.insurance); },
     verifyMissionFailure(p) { const m = this.ctx.state.missions?.active?.find((m) => m.id === p?.missionId), saved = this.failures[p?.receiptId];
       return { ok: !!(m?.params?.wreckCourtCaseId && p.source === this.name && saved?.missionId === m.id && saved.kind === p.kind) }; },
     verifyRulingFact(p) {
