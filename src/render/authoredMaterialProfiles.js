@@ -131,6 +131,13 @@ function applyForgeFinish(material, role, options = {}) {
     spacefacePbrRemasterRequired: false,
   };
   delete material.userData.spacefaceHullLayout;
+  // Hull-space anchor for the runtime stencil decals (src/render/illustratedStencils.js). Forge
+  // hulls skip the paint-layout restyle, but their painted-on marks are authored at runtime.
+  if (options.bounds && Array.isArray(options.bounds.center) && Array.isArray(options.bounds.size)) {
+    material.userData.spacefaceHullBounds = {
+      center: options.bounds.center.slice(0, 3), size: options.bounds.size.slice(0, 3),
+    };
+  }
   material.dithering = true;
   if ('envMapIntensity' in material && FORGE_ENV_INTENSITY[role] != null) {
     material.envMapIntensity = FORGE_ENV_INTENSITY[role];
@@ -196,6 +203,16 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
   if (authoredConstruction) delete material.userData.spacefaceHullLayout;
   if (layout && layoutSurface && options.bounds && !authoredConstruction) {
     material.userData.spacefaceHullLayout = { ...layout, center: [...options.bounds.center], size: [...options.bounds.size] };
+  }
+  // Hull-space anchor for runtime stencil decals, on the structural roles a deck mark can cross.
+  const stencilSurface = role === 'hull' || role === 'accent' || role === 'service'
+    || role === 'mechanical' || role === 'docking' || role === 'repair';
+  if (stencilSurface && options.bounds && Array.isArray(options.bounds.center) && Array.isArray(options.bounds.size)) {
+    material.userData.spacefaceHullBounds = {
+      center: options.bounds.center.slice(0, 3), size: options.bounds.size.slice(0, 3),
+    };
+  } else if (!stencilSurface) {
+    delete material.userData.spacefaceHullBounds;
   }
   material.dithering = true;
   const coverage = inspectAuthoredPbrCoverage(material);

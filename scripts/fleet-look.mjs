@@ -142,7 +142,11 @@ try {
       let res;
       try {
         for (let attempt = 0; attempt < 4; attempt++) {
-          const shotSpec = { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0), ...(args.ab ? { ab: JSON.parse(String(args.ab)) } : {}) };
+          const shotSpec = { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0), ...(args.ab ? { ab: JSON.parse(String(args.ab)) } : {}),
+            // --appearance='{"decalId":"concord"}' poses the hull with that paint record;
+            // --factionId=<id> poses it as that faction's NPC (palette + default stencils).
+            ...(args.appearance ? { appearance: JSON.parse(String(args.appearance)) } : {}),
+            ...(args.factionId ? { factionId: String(args.factionId) } : {}) };
           if (args.mood || args.tune || args.post || args.lights) {
             // isolate() re-applies the sector rig and mood on the first shot; shoot once to settle
             // it, apply the switches over the settled state, then take the real frame.

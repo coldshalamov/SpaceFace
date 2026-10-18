@@ -38,6 +38,7 @@ import {
   SHIP_ACCENT_PAINTS,
   SHIP_FINISH_STOCK,
   SHIP_WEAR_STOCK,
+  SHIP_DECAL_STOCK,
   buildPaintAppearance,
   shipPaintRow,
 } from '../../../data/shipPaints.js';
@@ -2897,9 +2898,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const w0 = [...rack.children].reduce((s, li) => s + (li.offsetWidth || 0), 0)
       + Math.max(0, rack.children.length - 1) * gap;
     if (w0 * k > sr.width - 12) { rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return; }
-    // a short dock stage (~192–280px at 960×540): the fixed seat lands on the nameplate or the
-    // destination rail — hand the row back to flow under the stage (CSS --unseated).
-    if (host === 'dock' && ringShort() && sr.height < 300) {
+    // Short laptop berths reserve a local foot for Range / Record / Paint. A viewport-fixed
+    // seat can cross that foot or chase a callout back onto the hull (1280×720 / 1366×768).
+    const laptopDock = el.ownerDocument?.documentElement?.dataset?.sfMobile !== '1'
+      && typeof window !== 'undefined' && window.innerWidth >= 901 && window.innerWidth <= 1366;
+    if (host === 'dock' && ringShort() && (sr.height < 300 || laptopDock)) {
       rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return;
     }
     rack.classList.remove('sx-sw-verbs--unseated');
@@ -4601,6 +4604,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `</li>`
       );
     });
+    const decalRows = SHIP_DECAL_STOCK.map((d) => {
+      const on = current.decalId === d.decalId;
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(d.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">` +
+            `<span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(d.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-decal="${escapeHtml(d.id)}"${dis()}>${on ? 'On the deck' : 'Mark'}</button></span>` +
+        `</li>`
+      );
+    });
 
     chooserEl.innerHTML =
       `<div class="sx-chooser__panel" role="region" aria-label="Paint rack for the ${escapeHtml(def.name || def.id)}">` +
@@ -4614,6 +4628,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         paintGroupHtml('Trim', accentRows) +
         paintGroupHtml('Finish', finishRows) +
         paintGroupHtml('Wear', wearRows) +
+        paintGroupHtml('Markings', decalRows) +
         `<p class="k-sentence sx-muted">Berth work, no charge — the finish is painted into the hull record and flies with you.</p>` +
       `</div>`;
     dressChooser();
@@ -4638,6 +4653,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     } else if (kind === 'wear') {
       const row = shipPaintRow(SHIP_WEAR_STOCK, rowId);
       if (row) patch = { wear: row.wear };
+    } else if (kind === 'decal') {
+      const row = shipPaintRow(SHIP_DECAL_STOCK, rowId);
+      if (row) patch = { decalId: row.decalId };
     }
     if (!patch) return false;
     if (!ctx.bus) return false;
@@ -5287,6 +5305,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (paintFinish) { paintIntent(paintFinish, 'finish'); return; }
     const paintWear = ev.target.closest('[data-paint-wear]');
     if (paintWear) { paintIntent(paintWear, 'wear'); return; }
+    const paintDecal = ev.target.closest('[data-paint-decal]');
+    if (paintDecal) { paintIntent(paintDecal, 'decal'); return; }
     const bf = ev.target.closest('[data-buyfit]');
     if (bf && !bf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
       if (buyConfirmBusy || isConfirmOpen()) return;

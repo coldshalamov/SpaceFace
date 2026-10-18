@@ -7,6 +7,7 @@
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
 import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
+import { STENCIL_GLSL, stencilFallbackTexture } from './illustratedStencils.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
 import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
 export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v17';
@@ -264,6 +265,11 @@ export function installIllustratedSurface(material) {
     shader.uniforms.sfLayoutAccent = { value: new Color(layout?.accent || '#ffffff') };
     shader.uniforms.sfHullCenter = { value: new Vector3().fromArray(layout?.center || [0, 0, 0]) };
     shader.uniforms.sfHullSize = { value: new Vector3().fromArray(layout?.size || [1, 1, 1]) };
+    const stencils = this.userData?.spacefaceHullStencils;
+    shader.uniforms.sfStencilMap = { value: stencils?.texture || stencilFallbackTexture() };
+    shader.uniforms.sfStencilStrength = { value: stencils?.strength || 0 };
+    shader.uniforms.sfStencilCenter = { value: new Vector3().fromArray(stencils?.center || [0, 0, 0]) };
+    shader.uniforms.sfStencilSize = { value: new Vector3().fromArray(stencils?.size || [1, 1, 1]) };
     if (shader.vertexShader) shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
@@ -300,15 +306,19 @@ export function installIllustratedSurface(material) {
         uniform vec3 sfLayoutAccent;
         uniform vec3 sfHullCenter;
         uniform vec3 sfHullSize;
+        uniform sampler2D sfStencilMap;
+        uniform float sfStencilStrength;
+        uniform vec3 sfStencilCenter;
+        uniform vec3 sfStencilSize;
         varying vec3 vSfHullPosition;
       `)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float sfSurfaceRelief = 0.0;
-        // Materials carrying neither pigment nor layout produce only identity contributions
-        // here (mix(c, x, 0) == c), so the whole chain skips under one uniform-coherent
-        // predicate — no new program key, no per-pixel branch. Layout still reads
-        // sfAlbedoY/sfNeutralPaint, so the shared terms sit inside the disjunction.
-        if (sfPaintStrength > 0.0 || sfLayoutStrength > 0.0) {
+        // Materials carrying neither pigment, layout nor a stencil sheet produce only identity
+        // contributions here (mix(c, x, 0) == c), so the whole chain skips under one
+        // uniform-coherent predicate — no new program key, no per-pixel branch. Layout still
+        // reads sfAlbedoY/sfNeutralPaint, so the shared terms sit inside the disjunction.
+        if (sfPaintStrength > 0.0 || sfLayoutStrength > 0.0 || sfStencilStrength > 0.0) {
           float sfAlbedoY = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
           float sfChroma = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))
             - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
@@ -321,6 +331,7 @@ export function installIllustratedSurface(material) {
             diffuseColor.rgb = mix(diffuseColor.rgb, sfLacquer, sfNeutralPaint * sfPaintStrength);
           }
           if (sfLayoutStrength > 0.0) { ${HULL_LAYOUT_GLSL} }
+          if (sfStencilStrength > 0.0) { ${STENCIL_GLSL} }
         }
       `)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>

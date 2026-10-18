@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
 import { SECTORS } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
+import { defaultShipAppearance } from '../core/shipAppearance.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
@@ -211,18 +212,27 @@ export function installFleetLook(SF) {
     // the harness could not tell a lighting failure from a different hull. Deterministic ids also
     // let a before/after pair be compared as the same object, which is the entire job of this tool.
     const ent = {
-      id: 900000 + stablePreviewId(def.id), kind: 'ship', defId: def.id, def,
+      id: 900000 + stablePreviewId(def.id), kind: 'ship',
+      // visualFactory dispatches on e.type (visualFactory.js:6443) — a preview entity is a ship
+      // exactly like a flight entity is.
+      type: 'ship', defId: def.id, def,
       x: 0, z: 0, y: 0, rot: 0, vx: 0, vz: 0, radius: def.radius || 6,
       faction: opts.faction || 'player', isPlayer: opts.isPlayer !== false,
       fittings: [], hull: def.hull || 100, maxHull: def.hull || 100, shield: 0, maxShield: 0,
       role: opts.role, archetype: opts.archetype,
+      // The live appearance record a real hull flies with (paint, wear, hull stencils). A shot
+      // can override it via `appearance` or pose as an NPC via `factionId`.
+      data: { defId: def.id, appearance: opts.appearance || defaultShipAppearance(def.id) },
+      factionId: opts.factionId || undefined,
     };
     let mesh = vf.build(ent);
     mesh = wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true });
     holder.add(mesh);
     const req = mesh.userData && mesh.userData.requestAuthoredUpgrade;
     if (typeof req === 'function') req(renderer, scene);
-    return { root: mesh, radius: ent.radius, entity: ent };
+    const diagNames = [];
+    mesh.traverse((o) => { if (diagNames.length < 12) diagNames.push(`${o.name || o.type}${o.visible ? '' : ':INVIS'}`); });
+    return { root: mesh, radius: ent.radius, entity: ent, diagNames };
   }
 
   async function shoot(opts = {}) {
@@ -288,7 +298,7 @@ export function installFleetLook(SF) {
     if (opts.ab?.noEnvironment) scene.environment = opts._env;
     if (opts.ab?.noBackground) scene.background = opts._bg;
     return {
-      url, ok, radius,
+      url, ok, radius, diagNames: built.diagNames,
       size: box.getSize(new THREE.Vector3()).toArray(),
       materials: collectMaterials(built.root),
     };

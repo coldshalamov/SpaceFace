@@ -144,6 +144,9 @@ function illustratedMaterialPayloadKey(material) {
   const layoutCenter = layout && layout.center;
   const layoutSize = layout && layout.size;
   const layoutAccent = layout && layout.accent;
+  const stencil = data && data.spacefaceHullStencils;
+  const stencilCenter = stencil && stencil.center;
+  const stencilSize = stencil && stencil.size;
   const env = material && material.envMap;
   const envId = env && (env.uuid || env.name || 'texture');
   return [
@@ -155,6 +158,11 @@ function illustratedMaterialPayloadKey(material) {
     `center:${arrayKey(layoutCenter)}`,
     `size:${arrayKey(layoutSize)}`,
     `accent:${scalarKey(layoutAccent)}`,
+    // The stencil sheet and its hull-space anchor are compile-time uniforms too: one retained
+    // batch must never paint the Hitch's tag onto a Concord patrol hull.
+    `stencil:${stencil ? scalarKey(stencil.decalId) : '-'}:${stencil ? scalarKey(stencil.strength) : '-'}`,
+    `stencilCenter:${arrayKey(stencilCenter)}`,
+    `stencilSize:${arrayKey(stencilSize)}`,
     `env:${scalarKey(envId)}:${scalarKey(material && material.envMapIntensity)}`,
   ].join('|');
 }

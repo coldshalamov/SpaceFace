@@ -56,6 +56,9 @@ test('appearance palette overrides only declared colors and carries finish ident
     wear: 0.1,
     appearanceHullOverride: true,
     appearanceAccentOverride: false,
+    // The palette is the seam the renderer reads hull stencils from (illustratedStencils.js):
+    // a record without a decal choice normalizes to the hull default, here the generic 'none'.
+    decalId: 'none',
   });
   assert.notEqual(shipAppearanceSignature(entity.data.appearance), shipAppearanceSignature(null));
 });

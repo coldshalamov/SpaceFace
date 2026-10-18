@@ -31,8 +31,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
 import { textureGpuResident } from './startupGpuResidency.js';
-import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
+import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES, paintDecalForPersonality } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
+import { FACTION_META } from '../data/factions.js';
+import { stencilPayloadFor } from './illustratedStencils.js';
 import { SHIPS } from '../data/ships.js';
 import { modelTruthMountFractions, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
 import { factionBerthById } from '../data/factionBerths.js';
@@ -16913,16 +16915,32 @@ export function runAuthoredInstanceRangeContractProbe() {
 // (shipMicroMotion's bell heat skin) can use it without importing this module.
 export { cloneMaterialPreservingShaderHooks };
 
+// Hull stencils land on structural deck surfaces; glass, signals and drives stay clean.
+const STENCIL_SURFACE_ROLES = new Set(['hull', 'accent', 'service', 'mechanical', 'docking', 'repair']);
+
+/** Paint the variant's decal sheet onto a structural material carrying the asset's hull bounds.
+ * The payload is immutable shared data: one canvas per style, fleet-wide. */
+function installShipStencils(material, base, palette) {
+  const decalId = palette?.decalId;
+  if (!decalId || decalId === 'none' || !base?.userData?.spacefaceHullBounds) return;
+  const semanticRole = String(base.userData.spacefaceMaterialRole || '').trim().toLowerCase();
+  if (!STENCIL_SURFACE_ROLES.has(semanticRole)) return;
+  const payload = stencilPayloadFor(decalId, base.userData.spacefaceHullBounds, palette.wear);
+  if (!payload) return;
+  material.userData = { ...(material.userData || {}), spacefaceHullStencils: payload };
+}
+
 function sharedMaterialFor(base, tags, palette) {
   const role = authoredSurfaceTintRole(tags, base);
   const tint = tintHex(palette, role);
   const explicitTint = appearanceOverrideForRole(palette, role);
   const finish = palette.finish || 'authored';
   const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
+  const decalToken = palette.decalId || 'none';
   // Instance key still includes tint so faction colors remain distinct material.color uniforms.
   // Program-family identity (name + spacefaceProgramFamily) deliberately omits tint: color is a
   // per-instance uniform, not a distinct compiled program.
-  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}${lampShareToken(base)}`;
+  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}${lampShareToken(base)}|${decalToken}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
     material = applyAppearanceFinish(
@@ -16930,10 +16948,11 @@ function sharedMaterialFor(base, tags, palette) {
         applyAuthoredSurfaceTint(cloneMaterialPreservingShaderHooks(base), tint, role, explicitTint), base, role,
       ), palette, role,
     );
+    installShipStencils(material, base, palette);
     material.name = authoredMaterialName(base, tags, role, tint, false);
     const programFamily = authoredMaterialProgramFamily(base, tags, role, false);
     const tintToken = hullMaterialSuffix(tint);
-    const canonical = resolveCanonicalHullMaterial(material, tintToken);
+    const canonical = resolveCanonicalHullMaterial(material, tintToken, decalToken);
     if (canonical !== material) {
       stampSharedMaterialRole(canonical, sharedMaterialRoleFromAuthored(tags, base));
       sharedMaterialVariants.set(key, canonical);
@@ -16951,7 +16970,7 @@ function sharedMaterialFor(base, tags, palette) {
     material.dispose = () => {};
     sharedMaterialVariants.set(key, material);
   }
-  return resolveCanonicalHullMaterial(material, hullMaterialSuffix(tint));
+  return resolveCanonicalHullMaterial(material, hullMaterialSuffix(tint), palette.decalId);
 }
 
 function dedicatedMaterialFor(base, tags, palette, cache, instanceKey) {
@@ -16969,7 +16988,8 @@ function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
   const explicitTint = appearanceOverrideForRole(palette, role);
   const finish = palette.finish || 'authored';
   const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
-  const key = `${materialBatchSignature(base)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}|${materialMutationScope(tags, instanceKey)}`;
+  const decalToken = palette.decalId || 'none';
+  const key = `${materialBatchSignature(base)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}|${decalToken}|${materialMutationScope(tags, instanceKey)}`;
   let material = cache.get(key);
   if (!material) {
     material = applyAppearanceFinish(
@@ -16977,6 +16997,7 @@ function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
         applyAuthoredSurfaceTint(cloneMaterialPreservingShaderHooks(base), tint, role, explicitTint), base, role,
       ), palette, role,
     );
+    installShipStencils(material, base, palette);
     material.name = authoredMaterialName(base, tags, role, tint, true);
     material.userData = {
       ...(material.userData || {}),
@@ -17226,39 +17247,48 @@ function isTexturedSharedHullName(name) {
   return n === 'SF_Shared_hull_textured_hull' || /^SF_Shared_hull_textured_hull_[0-9a-f]+$/i.test(n);
 }
 
-function findCanonicalTexturedHullMaterial(tint) {
+function hullDecalToken(material) {
+  return material?.userData?.spacefaceHullStencils?.decalId || 'none';
+}
+
+function findCanonicalTexturedHullMaterial(tint, decalToken) {
   const targetTint = hullMaterialSuffix(tint);
+  const targetDecal = decalToken || 'none';
   for (const material of sharedMaterialVariants.values()) {
     if (!isTexturedSharedHullName(material.name)) continue;
-    const materialTint = hullMaterialSuffix(material);
-    if (materialTint === targetTint) return material;
+    if (hullMaterialSuffix(material) !== targetTint) continue;
+    // Two hulls wearing the same coat but different decals are different paint jobs; never
+    // hand one the other's marks through the canonical alias.
+    if (hullDecalToken(material) !== targetDecal) continue;
+    return material;
   }
   return null;
 }
 
-function resolveCanonicalHullMaterial(material, tintToken) {
+function resolveCanonicalHullMaterial(material, tintToken, decalToken) {
   if (!material) return material;
   const name = String(material.name || '');
   if (!isMaplessSharedHullName(name)) return material;
   const tint = tintToken || hullMaterialSuffix(material);
-  return findCanonicalTexturedHullMaterial(tint) || material;
+  return findCanonicalTexturedHullMaterial(tint, decalToken) || material;
 }
 
 function reconcileMaplessHullMaterialAliases(palette) {
   const tint = tintHex(palette, 'hull');
-  const canonical = findCanonicalTexturedHullMaterial(tint);
+  const canonical = findCanonicalTexturedHullMaterial(tint, palette.decalId);
   if (!canonical) return;
   for (const [key, material] of sharedMaterialVariants.entries()) {
     if (material === canonical) continue;
     const name = String(material.name || '');
     if (!isMaplessSharedHullName(name)) continue;
+    if (hullDecalToken(material) !== hullDecalToken(canonical)) continue;
     sharedMaterialVariants.set(key, canonical);
   }
 }
 
 function* canonicalizeMaplessHullMaterials(root, palette) {
   const tint = tintHex(palette, 'hull');
-  const canonical = findCanonicalTexturedHullMaterial(tint);
+  const canonical = findCanonicalTexturedHullMaterial(tint, palette.decalId);
   if (!canonical || !root) return;
   const stack = [root];
   let visited = 0;
@@ -17560,6 +17590,8 @@ function ensureStandardSockets(hull, hullRecord) {
   }
 }
 
+const FACTION_PERSONALITY = new Map(FACTION_META.map((f) => [f.id, f.personality]));
+
 function paletteFor(entity) {
   const faction = entity.factionId && FACTION_PALETTES[entity.factionId];
   let base;
@@ -17580,7 +17612,14 @@ function paletteFor(entity) {
     const civilian = TEAM_FALLBACK_PALETTES.civilian;
     base = { hull: civilian.hull, accent: civilian.accent, thruster: civilian.thruster, dark: civilian.dark };
   }
-  return paletteWithShipAppearance(entity, base);
+  const palette = paletteWithShipAppearance(entity, base);
+  // A hull with no appearance record of its own wears its faction's stencils (an explicit
+  // appearance — including a deliberate 'none' — always wins).
+  if (!palette.decalId && entity?.factionId) {
+    const decal = paintDecalForPersonality(FACTION_PERSONALITY.get(entity.factionId));
+    if (decal) return { ...palette, decalId: decal };
+  }
+  return palette;
 }
 
 function snapshotMounts(mounts) {

@@ -71,6 +71,8 @@ export function paletteWithShipAppearance(entity, basePalette) {
   }
   base.finish = appearance.finish;
   base.wear = appearance.wear;
+  // An explicit appearance record owns the hull stencils too, including a deliberate 'none'.
+  base.decalId = appearance.decalId;
   return base;
 }
 

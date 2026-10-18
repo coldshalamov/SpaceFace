@@ -59,7 +59,7 @@ import {
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
   makeGrimeTexture, makePatchTexture, makeNoseArtTexture,
 } from './canvasTextures.js';
-import { FACTION_PALETTES, SHIP_RECIPES, paintProfileFor, PLAYER_NOSE_ART } from '../data/palettes.js';
+import { FACTION_PALETTES, SHIP_RECIPES, paintProfileFor, paintDecalForPersonality, PLAYER_NOSE_ART } from '../data/palettes.js';
 import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -151,7 +151,10 @@ function resolvePalette(e) {
   }
   const appearance = paletteWithShipAppearance(e, colors);
   if (Number.isFinite(Number(appearance.wear))) profile.grime = appearance.wear;
-  return Object.assign({}, appearance, { profile, isPlayer: e.team === 0 });
+  // A hull with no appearance record wears its faction's stencils; an explicit record (even a
+  // deliberate 'none') wins.
+  const decalId = appearance.decalId || paintDecalForPersonality(personality) || undefined;
+  return Object.assign({}, appearance, { profile, isPlayer: e.team === 0, decalId });
 }
 
 // Stable hash from an entity id (number or string) → small int, for seeding per-entity variety.

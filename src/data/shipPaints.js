@@ -6,8 +6,8 @@
 // the authored swatch stock the yard carries; pure data, no runtime side effects.
 //
 // hex: null means "back to the factory coat" — the hull's own palette colors (no override).
-// Decals are intentionally NOT surfaced here: decalId has no renderer consumer yet, and the rack
-// never offers a knob the picture does not answer.
+// Decals ARE stocked below: decalId has a renderer consumer since hull stencils shipped
+// (src/render/illustratedStencils.js) — the picture answers.
 
 export const SHIP_HULL_PAINTS = Object.freeze([
   { id: 'bare', name: 'Bare hull', hex: null, sentence: 'The factory coat the hull was delivered in.' },
@@ -47,6 +47,16 @@ export const SHIP_WEAR_STOCK = Object.freeze([
   { id: 'veteran', wear: 0.75, name: 'Veteran', sentence: 'Every mark a story. The yard only dusts it off.' },
 ]);
 
+// Hull markings — the stencil deck (src/render/illustratedStencils.js draws them in code). The ids
+// are the persisted SHIP_DECALS vocabulary; 'bare' is the absence the other rows paint over.
+export const SHIP_DECAL_STOCK = Object.freeze([
+  { id: 'bare', decalId: 'none', name: 'Bare deck', sentence: 'No marks. Just the coat and the dents.' },
+  { id: 'borrowed_time', decalId: 'borrowed_time', name: 'Borrowed time', sentence: 'A spray tag, a ghost, thirteen tallies. The old crowd still says hello.' },
+  { id: 'concord', decalId: 'concord', name: 'Patrol registry', sentence: 'Crisp serials and the inspection roundel. Reads official at any dock.' },
+  { id: 'industrial', decalId: 'industrial', name: 'Yard hazard', sentence: 'Lift points, hazard glyphs, the yard serial in safety yellow.' },
+  { id: 'frontier', decalId: 'frontier', name: 'Frontier brand', sentence: 'A hand-painted star and route tallies, faded honest by the sun.' },
+]);
+
 /** The next appearance object the rack emits for one swatch selection: patch exactly one field of
  * the current appearance and let ships.js normalize the whole record (version, wear clamp,
  * decal default). `current` may be null — the hull's default appearance is the baseline. */
@@ -57,12 +67,14 @@ export function buildPaintAppearance(current, patch) {
     accentColor: base.accentColor != null ? base.accentColor : null,
     finish: base.finish != null ? base.finish : 'satin',
     wear: Number.isFinite(Number(base.wear)) ? Number(base.wear) : 0.25,
+    decalId: base.decalId != null ? base.decalId : null,
   };
   if (!patch || typeof patch !== 'object') return next;
   if (patch.hullColor !== undefined) next.hullColor = patch.hullColor;
   if (patch.accentColor !== undefined) next.accentColor = patch.accentColor;
   if (patch.finish !== undefined) next.finish = patch.finish;
   if (patch.wear !== undefined) next.wear = Number(patch.wear);
+  if (patch.decalId !== undefined) next.decalId = patch.decalId;
   return next;
 }
 

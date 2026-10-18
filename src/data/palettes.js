@@ -153,28 +153,30 @@ export const TEAM_FALLBACK_PALETTES = Object.freeze({
 //   noseArt   null | 'bomber' | 'punk' | 'insignia' — decal style on the hull flanks/nose.
 //   killMarks true  — bomb/kill tallies stenciled near the cockpit (combat veterans only).
 //   patches   0..1  — probability of bolted-on repair patches (welded plates over battle damage).
+//   decal     null | SHIP_DECALS id — the hull stencils the personality wears by default
+//             (src/render/illustratedStencils.js). An appearance record that names a decalId wins.
 //
 // The player's faction_free (independent) profile is the haunted ex-gangster runner: heavy grime,
 // bomber+punk hybrid nose-art, kill marks, repair patches — a ship with a dark history nobody else
 // would touch. Concord/Meridian authority are pristine chrome. Pirates are the filthiest.
 export const PAINT_PROFILES = {
-  lawful:      { grime: 0.05, chrome: 0.85, noseArt: 'insignia', killMarks: false, patches: 0.0 },  // Concord Navy — pristine chrome, clean insignia
-  corporate:   { grime: 0.10, chrome: 0.70, noseArt: 'insignia', killMarks: false, patches: 0.0 },  // Meridian — clean chrome, corporate logos
-  independent: { grime: 0.55, chrome: 0.05, noseArt: 'bomber', killMarks: true, patches: 0.4 },     // Free Frontier (PLAYER) — haunted ex-gangster runner
-  blue_collar: { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3 },          // Drift Miners — workhorse, honest grime
-  'blue-collar': { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3 },        // Canonical faction-data spelling; keep blue_collar for legacy callers
-  pirate:      { grime: 0.85, chrome: 0.0, noseArt: 'punk', killMarks: true, patches: 0.6 },         // Crimson Reach — filthy, tagged, scarred
-  smuggler:    { grime: 0.50, chrome: 0.0, noseArt: 'punk', killMarks: false, patches: 0.35 },       // The Quiet — stealthy grime, tags
-  xenophobic:  { grime: 0.15, chrome: 0.30, noseArt: 'insignia', killMarks: true, patches: 0.1 },    // The Vael — alien, austere
-  zealot:      { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2 },         // Choir explicit row; preserves the shipped fallback appearance
-  paper:       { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2 },         // Helix is content-only today; explicit for schema completeness
-  saprophyte:  { grime: 1.00, chrome: 0.00, noseArt: null, killMarks: true, patches: 1.0 },          // Understory — every hull is a recovered loss-ledger carcass
-  clinical_automaton: { grime: 0.00, chrome: 0.90, noseArt: null, killMarks: false, patches: 0.0 }, // Fulfillment — sterile routing machinery
-  archivist:   { grime: 0.08, chrome: 0.25, noseArt: null, killMarks: false, patches: 0.0 },         // Archive — dark, maintained, ceremonial
-  pitborn_patchwork: { grime: 0.90, chrome: 0.00, noseArt: 'punk', killMarks: true, patches: 1.0 }, // Pitborn — repaired stolen hulls and loud orange patches
-  nacre_precursor: { grime: 0.00, chrome: 1.00, noseArt: null, killMarks: false, patches: 0.0 },     // Verge-Layers — immaculate nacre precursor surfaces
+  lawful:      { grime: 0.05, chrome: 0.85, noseArt: 'insignia', killMarks: false, patches: 0.0, decal: 'concord' },       // Concord Navy — pristine chrome, clean insignia
+  corporate:   { grime: 0.10, chrome: 0.70, noseArt: 'insignia', killMarks: false, patches: 0.0, decal: 'concord' },       // Meridian — clean chrome, corporate logos
+  independent: { grime: 0.55, chrome: 0.05, noseArt: 'bomber', killMarks: true, patches: 0.4, decal: 'borrowed_time' },    // Free Frontier (PLAYER) — haunted ex-gangster runner
+  blue_collar: { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3, decal: 'industrial' },           // Drift Miners — workhorse, honest grime
+  'blue-collar': { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3, decal: 'industrial' },         // Canonical faction-data spelling; keep blue_collar for legacy callers
+  pirate:      { grime: 0.85, chrome: 0.0, noseArt: 'punk', killMarks: true, patches: 0.6, decal: 'borrowed_time' },       // Crimson Reach — filthy, tagged, scarred
+  smuggler:    { grime: 0.50, chrome: 0.0, noseArt: 'punk', killMarks: false, patches: 0.35, decal: 'frontier' },          // The Quiet — stealthy grime, tags
+  xenophobic:  { grime: 0.15, chrome: 0.30, noseArt: 'insignia', killMarks: true, patches: 0.1, decal: 'concord' },        // The Vael — alien, austere
+  zealot:      { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2, decal: null },                  // Choir explicit row; preserves the shipped fallback appearance
+  paper:       { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2, decal: null },                  // Helix is content-only today; explicit for schema completeness
+  saprophyte:  { grime: 1.00, chrome: 0.00, noseArt: null, killMarks: true, patches: 1.0, decal: 'frontier' },             // Understory — every hull is a recovered loss-ledger carcass
+  clinical_automaton: { grime: 0.00, chrome: 0.90, noseArt: null, killMarks: false, patches: 0.0, decal: null },           // Fulfillment — sterile routing machinery
+  archivist:   { grime: 0.08, chrome: 0.25, noseArt: null, killMarks: false, patches: 0.0, decal: null },                  // Archive — dark, maintained, ceremonial
+  pitborn_patchwork: { grime: 0.90, chrome: 0.00, noseArt: 'punk', killMarks: true, patches: 1.0, decal: 'borrowed_time' },// Pitborn — repaired stolen hulls and loud orange patches
+  nacre_precursor: { grime: 0.00, chrome: 1.00, noseArt: null, killMarks: false, patches: 0.0, decal: null },              // Verge-Layers — immaculate nacre precursor surfaces
   // default fallback for any faction lacking a personality match
-  default:     { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2 },
+  default:     { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2, decal: null },
 };
 
 // The player ship's canonical nose-art seed text — drives the dark-humor stenciled graffiti on the
@@ -188,6 +190,11 @@ export const PLAYER_NOSE_ART = {
 // can safely tweak per-ship without mutating the shared profile.
 export function paintProfileFor(personality) {
   return Object.assign({}, PAINT_PROFILES[personality] || PAINT_PROFILES.default);
+}
+
+/** The hull-stencil style a personality wears when no appearance record names one. Null = bare. */
+export function paintDecalForPersonality(personality) {
+  return PAINT_PROFILES[personality]?.decal || null;
 }
 
 export const SECTOR_PALETTES = {
