@@ -507,7 +507,7 @@ function orchardSocketInfoLine(target, state) {
   // The machine's wreck envelope carries generic salvage data. The finite socket descriptors
   // own its player-facing facts; this projection grants no native release/pickup authority.
   if (state?.world?.currentSectorId !== ANVIL_ORCHARD.sectorId
-    || state.entities?.get?.(target.id) !== target) return 'Orchard status unavailable';
+    || !state.sites?.anvilOrchard || state.entities?.get?.(target.id) !== target) return 'Orchard status unavailable';
   const components = listSelectableComponents(state, target);
   if (components.length !== ANVIL_ORCHARD.socketCount) return 'Orchard status unavailable';
   if (components[0].inactiveReason === 'frame-destroyed') return 'Frame destroyed · release unavailable';

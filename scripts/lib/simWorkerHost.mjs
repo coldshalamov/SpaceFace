@@ -31,6 +31,7 @@ import { story } from '../../src/systems/story.js';
 import { save } from '../../src/save/saveSystem.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../src/systems/ships.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
+import { isOrchardFrame } from '../../src/data/anvilOrchardIdentity.js';
 import { COMBAT_FLAGS, applyFeatureConfigToMaps } from '../../src/data/featureFlags.js';
 import {
   makeEvidenceSpindleSpec,
@@ -456,6 +457,7 @@ function entityInfoBlock(state, entityId) {
     farResident: e.farResident === true,
     fieldResident: e.fieldResident === true,
     flags: flatFlags,
+    ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) } : {}),
     vitals: entityVitalsOf(e),
     data: canonicalClone(data),
   };

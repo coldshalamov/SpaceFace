@@ -203,6 +203,8 @@ export function applySpawnInfos(readModel, spawnInfos) {
         },
       activity: { presentationTier: info.presentationTier || 0 },
     };
+    // The authored frame body is presentation identity, never a native owner or motor.
+    if (info.physicsBody) row.physicsBody = canonicalClone(info.physicsBody);
     // Stage-8 vitals: per-entity scalar fields the renderer/UI read off the live
     // entity (hull, shield, fuel, and friends). Shipped on spawn and refreshed by
     // the vitals diff channel; absent fields stay undefined rather than 0.
@@ -615,7 +617,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'automation.meta', 'automation.traders', 'automation.fleet',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
-  'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'automation.drones',
+  'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
   'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
   'drill.asteroidId',
   'save.slots', 'save.currentSlot',
@@ -1654,7 +1656,8 @@ export function createDomainDiffer(options = {}) {
       }
     }
     // Active cable loads and cuts belong to the same reply as their moving bodies, at any table size.
-    if (node.lastSign >= 0 && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
+    // The finite Orchard ledger (three sockets, at most twelve lots) also carries live motor progress.
+    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
         && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
