@@ -43,6 +43,7 @@
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import { dedupWarn } from '../core/warnDedup.js';
 import { CLEAN_CYLINDER, buildCleanCylinderOffer } from '../data/cleanCylinder.js';
+import { QUIET_PASSAGE, buildQuietPassageOffer, evaluatePassengerHeatProximity } from '../data/heatLure.js';
 import { pointContaminationAt } from '../data/alienEcology.js';
 import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
 import { validIlexOutcome } from '../data/ilexArk.js';
@@ -228,6 +229,10 @@ import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (
 import { COMMODITIES } from '../data/commodities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
+import {
+  workingBattlefieldObjective, workingBattlefieldFocus, workingBattlefieldPreflight, grantWorkingBattlefieldPolymers,
+  spawnWorkingBattlefield, workingBattlefieldKilled, driveWorkingBattlefield, snapshotWorkingBattlefield,
+} from './workingBattlefieldRuntime.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -1400,6 +1405,7 @@ function missionNavReason(m, station, sector) {
     return `Scan the ${plainFollowupPlace(p.poiSignalFollowup)} in ${sectorName}`;
   }
   if (isShortageGateRepair(m)) return `Buy or salvage ${p.qty}u ${cargo}, then deliver to ${stationName}`;
+  if (p.workingBattlefield) return workingBattlefieldObjective(m);
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -1407,7 +1413,9 @@ function missionNavReason(m, station, sector) {
     case 'mining_quota': return `Mine ${remaining || p.qty || ''}u ${cargo}`.trim();
     case 'salvage_retrieval': return `Recover ${p.qty || ''}u ${cargo} for ${stationName}`.trim();
     case 'smuggling_run': return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
-    case 'passenger_transport': return `Transport passenger to ${stationName}`;
+    case 'passenger_transport':
+      if (p.quietPassage) return 'Escort passenger transport cold through Customs Gate checkpoint';
+      return `Transport passenger to ${stationName}`;
     case 'escort': return `Escort convoy to ${stationName}`;
     case 'bounty_hunt': return p.markName
       ? `Find ${p.markName} near ${sectorName}`
@@ -1837,6 +1845,7 @@ export const missions = {
     for (let i = active.length - 1; i >= 0; i--) {
       const m = active[i];
       if (m.status !== 'active') continue;
+      if (m.params?.workingBattlefield) { driveWorkingBattlefield(this, m, i); continue; }
       // Expiry by deadline.
       if (m.deadline_s != null && Number.isFinite(m.deadline_s) && now >= m.deadline_s) { this._expireMission(m, i); continue; }
       // PQ-019C: the capsule run's bounded window is an arbitrated `expired` CANDIDATE, never a
@@ -1852,6 +1861,10 @@ export const missions = {
         this._steerEscortee(m, state, dt);
         if (m.params?.cleanCylinder) { this._driveCleanCylinder(m, i, state, dt); continue; }
         this._maybeTurnEscort(m, state);
+      }
+      if (m.type === 'passenger_transport' && m.params?.quietPassage) {
+        this._driveQuietPassage(m, i, state, dt);
+        continue;
       }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
@@ -2103,6 +2116,7 @@ export const missions = {
       const yardChanged = this._syncYardContractOffers(info, board, epoch);
       const cylinderChanged = this._syncCleanCylinderOffer(info, board);
       const warmCargoChanged = this._syncWarmCargoOffer(info, board);
+      const quietPassageChanged = this._syncQuietPassageOffer(info, board);
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
@@ -2110,7 +2124,7 @@ export const missions = {
       const shortageChanged = this._syncShortageOffers(board);
       const starterChanged = this._syncStarterJobOffer(info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
+        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2256,12 +2270,22 @@ export const missions = {
     this._syncYardContractOffers(info, board, epoch);
     this._syncCleanCylinderOffer(info, board);
     this._syncWarmCargoOffer(info, board);
+    this._syncQuietPassageOffer(info, board);
     this._syncAuthoredSetPieceOffers(info, board, epoch);
     this._syncMegaHeistOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
     this._syncAdventureSpeedOffers(info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  _syncQuietPassageOffer(info, board) {
+    if (info.id !== QUIET_PASSAGE.stationId) return false;
+    const exists = [...board.slots, ...this.state.missions.active].some(m => m.id === QUIET_PASSAGE.id || m.params?.quietPassage);
+    const settled = (this.state.missions.receipts || []).some(r => r.missionId === QUIET_PASSAGE.id && r.outcome === 'completed');
+    if (exists || settled || this.state.story?.flags?.[QUIET_PASSAGE.id]) return false;
+    board.slots.push(buildQuietPassageOffer());
+    return true;
   },
 
   _syncWarmCargoOffer(info, board) {
@@ -4027,6 +4051,7 @@ export const missions = {
       this.bus.emit('economy:chargeCredits', { amount: upfrontCostCr, reason: `mission_upfront:${offer.id}` });
     }
     state.missions.active.push(inst);
+    if (inst.params?.workingBattlefield) grantWorkingBattlefieldPolymers(this, inst, addCargo);
     // B5 is a real choice: once one loop is accepted, withdraw the two tutorial siblings before
     // synchronous mission:accepted listeners run. The accepted instance remains an ordinary live
     // mission; only the unchosen board invitations disappear.
@@ -4303,6 +4328,10 @@ export const missions = {
   },
 
   _acceptPreflight(offer) {
+    if (offer?.params?.workingBattlefield) {
+      const ready = workingBattlefieldPreflight(this.state);
+      if (!ready.ok) return ready;
+    }
     if (offer?.type === 'race' && (this.state.missions.active || []).some(m => m?.status === 'active' && m.type === 'race')) {
       return { ok: false, reason: 'Finish or leave the current run before accepting another.' };
     }
@@ -4980,6 +5009,9 @@ export const missions = {
       return base;
     }
 
+    if (m.params?.workingBattlefield) {
+      return { ...base, stationId: null, sectorId: m.destSectorId, ...workingBattlefieldFocus(this, m) };
+    }
     if (PHYSICAL_TYPE_SET.has(m.type)) {
       const target = this._firstLivePhysicalTarget(m);
       if (target) {
@@ -5007,6 +5039,13 @@ export const missions = {
       const targetStation = this._liveStation(m.destStationId);
       if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z }, reason: 'Escort the convoy to dock' };
       return base;
+    }
+
+    if (m.type === 'passenger_transport' && m.params?.quietPassage) {
+      const transport = m._transportId != null && this.state.entities ? this.state.entities.get(m._transportId) : null;
+      if (transport?.alive) {
+        return { ...base, targetEntityId: transport.id, pos: { x: transport.pos.x, z: transport.pos.z }, reason: m.brief };
+      }
     }
 
     // INF-066: a salvage successor's recovery leg marks the wreck it was mutated for. While the
@@ -6810,6 +6849,7 @@ export const missions = {
   _spawnPhysicalTargetsFor(m, nextRng, px, pz) {
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity || !m) return;
+    if (m.params?.workingBattlefield) { spawnWorkingBattlefield(this, m); return; }
     const b2RescueDefinition = isCampaign47aB2Rescue(m) ? authoredDefinitionOf(m) : null;
     const b2Rescue = !!b2RescueDefinition;
     const rescueEncounter = b2Rescue ? authoredEncounterOf(b2RescueDefinition) : null;
@@ -7811,7 +7851,7 @@ export const missions = {
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.victimId)) continue;
       const tower = this.state.entities.get(p.victimId);
       if (!tower || physicalRoleOf(tower) !== PHYSICAL_ROLE.TOWER) continue;
-      this._completePhysical(m, i, 'wrecking_ball');
+      if (!m.params?.workingBattlefield) this._completePhysical(m, i, 'wrecking_ball');
     }
   },
 
@@ -7865,6 +7905,7 @@ export const missions = {
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
       const victim = this.state.entities.get(p.id);
       const role = physicalRoleOf(victim) || p.physicalRole || null;
+      if (m.params?.workingBattlefield) { workingBattlefieldKilled(this, m, p, victim); continue; }
       if (m.type === AUTHORED_SET_PIECE_TYPE) {
         this._tryCompleteAuthored(m, i, 'kill', role, victim);
         continue;
@@ -7945,6 +7986,7 @@ export const missions = {
       const mapped = this.state.entities && this.state.entities.get(p.id);
       const victim = (p.entity && mapped !== p.entity) ? p.entity : (mapped || p.entity || null);
       const role = physicalRoleOf(victim);
+      if (m.params?.workingBattlefield) continue; // Retirement is not demolition.
       if ((m.type === 'tow_recovery' || (m.type === AUTHORED_SET_PIECE_TYPE && role === PHYSICAL_ROLE.SLAG_CORE))
         && role === PHYSICAL_ROLE.SLAG_CORE) {
         // A kill-event settlement (player 'core_lost' is impossible here — kills arrive on the
@@ -8875,6 +8917,11 @@ export const missions = {
       case 'recon_scan':
         return 'Scan packet received. The map is now less wrong where it matters.';
       case 'passenger_transport': {
+        if (p.quietPassage) {
+          return p.quietPassage.spooked
+            ? 'Degraded delivery: the transport was spooked by a hot approach. Fee reduced.'
+            : 'Clean transit: the transport slipped past the checkpoint quiet. Full fee paid.';
+        }
         // A1: the receipt quotes the fare the run made real, not a seat count.
         const pax = p.passenger;
         if (pax && pax.name) {
@@ -9089,6 +9136,7 @@ export const missions = {
     const clauseSettlement = settleContractClauses(m);
     const settledRewardCr = clauseSettlement.rewardCr;
     m.status = 'completed';
+    if (m.params?.workingBattlefield) state.story.flags.workingBattlefieldCompleted = true;
     if (m.params?.adventureSpeedId) {
       const completed = state.missions.adventureSpeedCompleted || (state.missions.adventureSpeedCompleted = {});
       completed[m.params.adventureSpeedId] = true;
@@ -10719,6 +10767,127 @@ export const missions = {
     }
   },
 
+  /**
+   * M12 — Quiet passage: drive the heat-sensitive passenger transport toward the Customs Gate checkpoint.
+   * Near the transport, player heat signature (low heat, cold coast) preserves comfort and full fee;
+   * a hot approach (high WANTED heat, high burn speed) spooks the transport and visibly degrades fee.
+   */
+  _driveQuietPassage(m, index, state, dt) {
+    if ((state.world && state.world.currentSectorId) !== m.destSectorId) return;
+    const p = m.params && m.params.quietPassage;
+    if (!p) return;
+
+    let transport = m._transportId != null && state.entities ? state.entities.get(m._transportId) : null;
+    if (!transport || transport.alive === false) {
+      if (state.entities) {
+        for (const e of state.entities.values()) {
+          if (e && e.alive !== false && e.data?.quietPassageOf === String(m.id)) {
+            transport = e;
+            m._transportId = e.id;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!transport && this.helpers && typeof this.helpers.spawnEntity === 'function') {
+      const pose = p.pose || QUIET_PASSAGE.transportStartPos;
+      transport = this.helpers.spawnEntity({
+        type: 'ship',
+        team: 0,
+        pos: { x: pose.x, z: pose.z },
+        vel: { x: 0, z: 0 },
+        radius: 16,
+        hull: 150,
+        hullMax: 150,
+        data: {
+          defId: 'ship_mule',
+          shipName: 'Vance Liner',
+          quietPassageOf: String(m.id),
+          physicalRole: 'passenger_transport',
+          factionId: 'faction_free',
+          intent: { moveX: 0, moveZ: 0, boost: false, fire: false, aimAngle: 0 },
+        },
+      });
+      if (transport) {
+        m._transportId = transport.id;
+        m.targetEntityIds = [transport.id];
+      }
+    }
+
+    if (!transport || transport.alive === false) {
+      if (transport && transport.alive === false) {
+        this._failMission(m, index, 'passenger_transport_destroyed');
+      }
+      return;
+    }
+
+    // Steer transport toward checkpoint
+    const checkpoint = QUIET_PASSAGE.checkpointPos;
+    const dx = checkpoint.x - transport.pos.x;
+    const dz = checkpoint.z - transport.pos.z;
+    const distToCheckpoint = Math.hypot(dx, dz);
+
+    if (distToCheckpoint > 20) {
+      const angle = Math.atan2(dz, dx);
+      transport.rot = angle;
+      const speed = QUIET_PASSAGE.transportSpeed;
+      transport.vel.x = Math.cos(angle) * speed;
+      transport.vel.z = Math.sin(angle) * speed;
+      transport.pos.x += transport.vel.x * dt;
+      transport.pos.z += transport.vel.z * dt;
+      if (transport.data?.intent) {
+        transport.data.intent.aimAngle = angle;
+        transport.data.intent.moveZ = 1;
+      }
+    }
+
+    p.pose = { x: transport.pos.x, z: transport.pos.z };
+
+    // Player heat & proximity evaluation
+    const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
+    if (player && player.alive !== false) {
+      const playerHeat = state.player?.heat ?? player.heat ?? 0;
+      const reading = evaluatePassengerHeatProximity(player, transport, playerHeat);
+      if (reading.inRange) {
+        if (reading.isHot && !p.spooked) {
+          p.spooked = true;
+          p.comfort = 0;
+          p.alarm = 'spooked';
+          m.reward_cr = QUIET_PASSAGE.degradedRewardCr;
+          if (this.bus && this.bus.emit) {
+            this.bus.emit('toast', {
+              text: 'Passenger transport alarmed: hot approach compromised quiet passage. Fee docked.',
+              kind: 'warn',
+              ttl: 4,
+            });
+            this.bus.emit('mission:updated', { missionId: m.id, twist: 'spooked' });
+          }
+        } else if (!p.spooked) {
+          p.comfort = 1;
+          p.alarm = 'calm';
+        }
+      }
+    }
+
+    // Checkpoint passage
+    if (distToCheckpoint <= QUIET_PASSAGE.checkpointRadius) {
+      p.passedCheckpoint = true;
+      m.objectiveProgress = 1;
+      const spooked = p.spooked === true;
+      if (this.bus && this.bus.emit) {
+        this.bus.emit('toast', {
+          text: spooked
+            ? 'Degraded passage: transport cleared the checkpoint, but the fee was docked.'
+            : 'Quiet passage: transport cleared the checkpoint cold. Full fee paid.',
+          kind: spooked ? 'warn' : 'success',
+          ttl: 4,
+        });
+      }
+      this._completeMission(m, index);
+    }
+  },
+
   /** Drive the convoy toward the destination station (or sector centre). Writes data.intent
    *  which flight consumes; marks m._escorteeArrived when the LEAD reaches the dock ring —
    *  wings run the lane in trail formation and do not gate completion. Deterministic
@@ -12297,6 +12466,7 @@ export const missions = {
     // Hard leave retires mission-pinned targets explicitly; world correctly refuses to evict them.
     for (const m of this.state.missions.active) {
       if (m.needsTargets && m.destSectorId === sectorId) {
+        if (m.params?.workingBattlefield) snapshotWorkingBattlefield(this, m);
         for (const id of m.targetEntityIds || []) {
           const entity = this.state.entities.get(id);
           if (!entity || entity.id === this.state.playerId) continue;
@@ -12982,6 +13152,7 @@ export const missions = {
     // Strip transient runtime fields (entity ids) from active missions.
     const active = source.map((a) => {
       if (a.params?.cleanCylinder) this._snapshotCleanCylinder(a);
+      if (a.params?.workingBattlefield) snapshotWorkingBattlefield(this, a);
       const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, _swarmClockParkedAt, _swarmClockDeadline, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active

@@ -867,7 +867,6 @@ recorded in the lane's NOW row before minting.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 382 | M17 | The working battlefield (ore crusher keeps hammering while its guards fight; time the swing onto the marked tower, or shut it down first). Needs two missing capabilities first: a shutdown/death input for kill machines (`src/systems/environmentalMachinery.js`) and wreck-body damage in the collision owner (`src/systems/collisionConsequences.js`) | BUILD | OPEN - prerequisites named; no new mission engine |
 | 383 | SFQ-B175 | A creature's body expresses charging, fleeing or drifting before it touches you (`src/render/faunaVisuals.js`, `src/data/faunaMotionRead.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 | 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 | 385 | M07 | Cargo in the wake: a covert physical handoff alongside a moving hauler (`smuggling_run` in `src/systems/missions.js`, `src/data/heistMission.js`) | BUILD | OPEN |

@@ -757,7 +757,15 @@ export const combat = {
     }
     markDirty(this.state, targetId, DIRTY.COMBAT);
     if (ownerId != null) markDirty(this.state, ownerId, DIRTY.COMBAT);
-    const authoredPacket = damagePacket || packet || null;
+    let authoredPacket = damagePacket || packet || null;
+    const target = this.state.entities.get(targetId);
+    // This demolition cast is physical wreckage; gun damage still belongs to the kernel.
+    if (['wreck', 'asteroid'].includes(target?.type) && Number.isInteger(target.data?.battlefieldSlot)
+      && this.state.missions?.active?.some(m => m.status === 'active'
+        && m.id === target.data.missionTag && m.params?.workingBattlefield)) {
+      authoredPacket ||= legacyHitToDamagePacket({ damage, damageType, pos, penetration, impulse, heat, statuses });
+      authoredPacket = { ...authoredPacket, flags: { ...authoredPacket.flags, allowAnyTarget: true } };
+    }
     // Weak-point bonus (BP-02): a PLAYER shot landing in a large hull's exposed subsystem arc does
     // bonus damage. Player-only + flag-gated (`combat.weakPoints`, OFF in the golden) + geometric, so
     // NPC combat and the deterministic 47-A sim are untouched. Scales the outgoing packet.
