@@ -102,6 +102,10 @@ import {
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
   cinderSluicePhase,
   pointInsideCinderSluice,
+  killMachinesForSector,
+  killMachineFieldCenter,
+  killMachineFieldDir,
+  killMachinePhase,
 } from '../data/environmentalMachinery.js';
 import { ceresDisabledHaulerManifestTruth, HEAVE_TO_COMPLIANT_ROLES } from '../data/contactHail.js';
 import {
@@ -722,6 +726,24 @@ const VOLATILE_SLOUGH_MIN_SPEED_WU_S = 20;
 const VOLATILE_SLOUGH_AMOUNT = 1;
 const VOLATILE_SLOUGH_BACK_OFF_WU = 30;
 const VOLATILE_SLOUGH_BACK_VEL_WU_S = 4;
+// CR-FEED (build_map §23.2): "a machine rhythmically chews a feed — a scrap chunk drifts
+// in, the mouth bites, ore spills out." The kill machines already have authored mouths,
+// intake fields, and a warning/surge/calm cycle; what was missing is the FEED. On a
+// cadence a small scrap asteroid enters the machine's own intake volume on a drift aimed
+// at the mouth — the player can watch it ride the cone in, mine it, or bump it off the
+// lane. At the rim it waits in the jaws until the machine's next surge, then bursts into
+// a few ore pickups spat back out of the mouth.
+const BREAKER_FEED_MEAN_INTERVAL_S = 1300;
+const BREAKER_FEED_DRIFT_WU_S = 14;
+const BREAKER_FEED_CHUNK_RADIUS_LO_WU = 6;
+const BREAKER_FEED_CHUNK_RADIUS_HI_WU = 9;
+const BREAKER_FEED_RIM_PAD_WU = 6;
+const BREAKER_FEED_TTL_S = 240;
+const BREAKER_FEED_PRODUCTS_LO = 2;
+const BREAKER_FEED_PRODUCTS_HI = 4;
+const BREAKER_FEED_PRODUCT_TTL_S = 90;
+const BREAKER_FEED_PRODUCT_SPIT_WU_S = 18;
+const BREAKER_FEED_TYPE_ID = 'ast_metallic';
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5566,6 +5588,7 @@ export const traffic = {
     this._stepPocketDebrisStream(dt, state);
     this._stepHitchShed(dt, state);
     this._stepVolatileSlough(dt, state);
+    this._stepBreakerFeed(dt, state);
     // A causal ledger belongs to exactly one sector's chain. A continuous or no-teleport exit never
     // runs the hard-enter cleanup, so standing in any other sector (chainless or not) retires the
     // stale ledger here instead of letting its stamps and jobs outlive the sector.
@@ -11915,6 +11938,185 @@ export const traffic = {
   },
 
   /**
+   * CR-FEED cadence + the chew. One live feed chunk at a time on a persisted clock. While
+   * a chunk is live the stepper also owns its last metres: it holds at the mouth rim
+   * through warning/calm and bursts on the machine's own surge tick, so the bite the
+   * player watches is the machine's authored rhythm, not the feed's arrival.
+   */
+  _stepBreakerFeed(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const feed = this._breakerFeed;
+    if (feed) {
+      const e = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(feed.chunkId) : null;
+      if (!e || e.alive === false) this._breakerFeed = null;
+      else this._driveBreakerFeed(e, feed, now, state);
+    }
+    if (!Number.isFinite(bag.nextBreakerFeedAt)) {
+      bag.nextBreakerFeedAt = now + this._breakerFeedIntervalS();
+      return;
+    }
+    if (now < bag.nextBreakerFeedAt) return;
+    bag.nextBreakerFeedAt = now + this._breakerFeedIntervalS();
+    if (this._breakerFeed) return;
+    this._spawnBreakerFeed(state);
+  },
+
+  _breakerFeedIntervalS() {
+    return BREAKER_FEED_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The feed: one small metallic scrap chunk enters the machine's own intake volume — the
+   * field's real force can take it from there — on a drift aimed at the mouth. Minable
+   * and bumpable on the way in: the player who steals the feed steals the chew.
+   */
+  _spawnBreakerFeed(state) {
+    const helpers = this.helpers;
+    const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
+    if (!state || !spawn) return null;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const machines = sectorId && typeof killMachinesForSector === 'function'
+      ? killMachinesForSector(sectorId) : null;
+    if (!machines || !machines.length) return null;
+    const candidates = [];
+    for (const machine of machines) {
+      if (machine && machine.mouth && machine.globalPos
+          && Array.isArray(machine.fields) && machine.fields.length) candidates.push(machine);
+    }
+    if (!candidates.length) return null;
+    const machine = candidates[Math.floor(this._rng() * candidates.length)];
+    const field = machine.fields[0];
+    const center = killMachineFieldCenter(machine, field);
+    const dir = killMachineFieldDir(machine, field);
+    // Half-way down the cone, off-axis a touch — inside the intake, not already at the rim.
+    const along = (field.radius || 60) * (0.35 + this._rng() * 0.3);
+    const across = (this._rng() - 0.5) * (field.halfWidth || field.radius || 60) * 0.5;
+    const spawnX = center.x + dir.x * along + -dir.z * across;
+    const spawnZ = center.z + dir.z * along + dir.x * across;
+    const mx = machine.globalPos.x - spawnX;
+    const mz = machine.globalPos.z - spawnZ;
+    const mDist = Math.hypot(mx, mz) || 1;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const radius = BREAKER_FEED_CHUNK_RADIUS_LO_WU
+      + this._rng() * (BREAKER_FEED_CHUNK_RADIUS_HI_WU - BREAKER_FEED_CHUNK_RADIUS_LO_WU);
+    const oreHP = Math.round(radius * 8);
+    const yieldU = Math.max(2, Math.round(radius * 0.5));
+    const chunk = spawn({
+      type: 'asteroid',
+      pos: { x: spawnX, z: spawnZ },
+      vel: { x: (mx / mDist) * BREAKER_FEED_DRIFT_WU_S, z: (mz / mDist) * BREAKER_FEED_DRIFT_WU_S },
+      rot: this._rng() * Math.PI * 2,
+      angVel: (this._rng() - 0.5) * 0.6,
+      radius,
+      mass: Math.max(1, Math.round(radius * radius * radius * 0.25)),
+      physicsBody: {
+        radius: asteroidColliderRadius(BREAKER_FEED_TYPE_ID, radius),
+        dynamic: true,
+      },
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      homeSectorId: sectorId,
+      data: {
+        typeId: BREAKER_FEED_TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU,
+        breakerFeed: true,
+        breakerMachineId: machine.id,
+        despawnAt: now + BREAKER_FEED_TTL_S,
+      },
+    });
+    if (!chunk) return null;
+    this._breakerFeed = {
+      chunkId: typeof chunk === 'object' ? chunk.id : chunk,
+      machineId: machine.id,
+      sectorId,
+      bornAt: now,
+    };
+    return chunk;
+  },
+
+  /**
+   * The last metres. Inside the rim distance the chunk waits for the bite — the machine's
+   * own surge is the chew, so a feed that arrives during calm sits in the jaws until the
+   * cycle comes round. On surge: the chunk is gone and a few ore pickups spit back out of
+   * the mouth — the product, collectable through the ordinary pickup pipeline.
+   */
+  _driveBreakerFeed(chunk, feed, now, state) {
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    if (sectorId !== feed.sectorId || !chunk.pos) { this._breakerFeed = null; return; }
+    const machines = typeof killMachinesForSector === 'function' ? killMachinesForSector(sectorId) : [];
+    let machine = null;
+    for (const m of machines) { if (m && m.id === feed.machineId) { machine = m; break; } }
+    if (!machine || !machine.mouth || !machine.globalPos) { this._breakerFeed = null; return; }
+    const rim = (machine.mouth.radius || 18) + (chunk.radius || 6) + BREAKER_FEED_RIM_PAD_WU;
+    const dx = machine.globalPos.x - chunk.pos.x;
+    const dz = machine.globalPos.z - chunk.pos.z;
+    if (Math.hypot(dx, dz) > rim) return;
+    const phase = typeof killMachinePhase === 'function' ? killMachinePhase(machine, now) : null;
+    if (!phase || phase.phase !== 'surge') {
+      // Waiting in the jaws: hold at the rim — the field still shoves, the drift is spent.
+      if (chunk.vel) { chunk.vel.x = 0; chunk.vel.z = 0; }
+      return;
+    }
+    if (this.helpers && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(chunk.id);
+    } else {
+      chunk.alive = false;
+    }
+    this._breakerFeed = null;
+    this._spitBreakerProducts(machine, now, state);
+  },
+
+  _spitBreakerProducts(machine, now, state) {
+    const spawn = this.helpers && typeof this.helpers.spawnEntity === 'function'
+      ? this.helpers.spawnEntity : null;
+    if (!spawn) return;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const count = BREAKER_FEED_PRODUCTS_LO
+      + Math.floor(this._rng() * (BREAKER_FEED_PRODUCTS_HI - BREAKER_FEED_PRODUCTS_LO + 1));
+    // The chew product blows back out the intake side — toward the field that fed it.
+    const field = machine.fields && machine.fields[0];
+    let outDir = machine.dir || { x: 1, z: 0 };
+    if (field) {
+      const fc = killMachineFieldCenter(machine, field);
+      const fx = fc.x - machine.globalPos.x;
+      const fz = fc.z - machine.globalPos.z;
+      const fl = Math.hypot(fx, fz);
+      if (fl > 1e-3) outDir = { x: fx / fl, z: fz / fl };
+    }
+    const dir = outDir;
+    const despawnAt = now + BREAKER_FEED_PRODUCT_TTL_S;
+    for (let i = 0; i < count; i++) {
+      const spread = (i - (count - 1) / 2) * 0.5 + (this._rng() - 0.5) * 0.3;
+      const outX = dir.x * Math.cos(spread) - dir.z * Math.sin(spread);
+      const outZ = dir.x * Math.sin(spread) + dir.z * Math.cos(spread);
+      const amount = 1 + Math.floor(this._rng() * 3);
+      spawn({
+        type: 'pickup',
+        pos: {
+          x: machine.globalPos.x + outX * ((machine.mouth.radius || 18) + 4),
+          z: machine.globalPos.z + outZ * ((machine.mouth.radius || 18) + 4),
+        },
+        vel: { x: outX * BREAKER_FEED_PRODUCT_SPIT_WU_S, z: outZ * BREAKER_FEED_PRODUCT_SPIT_WU_S },
+        radius: 2.4, mass: 0.4, collides: true,
+        homeSectorId: sectorId,
+        data: {
+          kind: 'ore', commodityId: 'cmdty_scrap_metal', amount,
+          despawnAt,
+          breakerProduct: true,
+        },
+      });
+    }
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -13108,6 +13310,8 @@ export const traffic = {
         ? { nextHitchShedAt: this.state.traffic.nextHitchShedAt } : {}),
       ...(Number.isFinite(this.state.traffic.nextVolatileSloughAt)
         ? { nextVolatileSloughAt: this.state.traffic.nextVolatileSloughAt } : {}),
+      ...(Number.isFinite(this.state.traffic.nextBreakerFeedAt)
+        ? { nextBreakerFeedAt: this.state.traffic.nextBreakerFeedAt } : {}),
     };
   },
 
@@ -13188,12 +13392,15 @@ export const traffic = {
       ? data.nextHitchShedAt : undefined;
     this.state.traffic.nextVolatileSloughAt = validTrafficSave && Number.isFinite(data.nextVolatileSloughAt)
       ? data.nextVolatileSloughAt : undefined;
+    this.state.traffic.nextBreakerFeedAt = validTrafficSave && Number.isFinite(data.nextBreakerFeedAt)
+      ? data.nextBreakerFeedAt : undefined;
     this._meteorPass = null;
     this._debrisField = null;
     this._smugglerCache = null;
     this._debrisStream = null;
     this._hitchShed = null;
     this._volatileSlough = null;
+    this._breakerFeed = null;
   },
 
   newGame() {
@@ -13218,6 +13425,7 @@ export const traffic = {
     this._debrisStream = null;
     this._hitchShed = null;
     this._volatileSlough = null;
+    this._breakerFeed = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
