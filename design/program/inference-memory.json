@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-099",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "market sell limit/qty-pin/confirm now cap to sellableCargoQty; execute and quote clamp likewise",
-      "fingerprint": "verb=sell,subject=sealed-freight,domain=econ,layer=market",
-      "references": [],
-      "integration": "live",
-      "commit": "c394430c2",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-100",
       "date": "2026-10-01",
       "wf": "WF-11",
@@ -1684,6 +1671,19 @@
       "references": [],
       "integration": "live",
       "commit": "f209449d132",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wasp-starter-ram-receipt",
+      "date": "2026-10-18",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "the wasp opening ram job pays on the live plate receipt and names one runner",
+      "fingerprint": "verb=ram,subject=wasp-starter,sector=helios,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "4c19cda2608046072dc650beb7d11c9bb26fd60e",
       "verification": "focused_green"
     }
   ],
