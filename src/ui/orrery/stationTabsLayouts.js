@@ -1914,6 +1914,51 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
 }
 
+/* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,
+   so on every tab but the Market (which #446 handles in marketLayouts.js) it ran off the right edge, and at
+   651–1100 wide it pushed the whole berth sideways: the page scrolled and "HELIOS STATION" lost its first
+   letters. It now ends just left of COMMS, above the destination words, on a solid strip so it reads over a scrolled list.
+   The destination words also fit: at 801–900 × 461–800 the rail takes the row's free width (it was capped
+   and cut MISSIONS … LEDGER); 651–800 × 461–800 is left to #451's foot rules in stationLayouts.js
+   (the receipt hangs off the foot there); at 901–999 the words close up so LEDGER is not cut. Desktop only. */
+@media (min-width:801px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important; bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
+}
+/* ≤460 tall the destination words ride level with the comms box, so the line (and its strip, 5px below the text) sits 12px over it,
+   clear of the words; at +2px the strip blanked the top half of MARKET … LEDGER while it showed (Code Work review) */
+@media (min-width:801px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 12px) !important; }
+}
+/* 651–800 × 461–800 is #451's foot (stationLayouts.js): there the receipt hangs off the foot above UNDOCK, so neither the strip nor
+   the click-through below applies (Code Work review, master merge) */
+@media (max-width:650px) and (max-height:800px), (min-width:801px) and (max-height:800px), (max-height:460px) {
+  /* it now stands over list rows for its 3.6s, so clicks go through it to the row beneath (Code Work review) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { pointer-events:none !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt::before { left:-36px !important; right:-36px !important; top:-5px !important; bottom:-5px !important;
+    background:linear-gradient(90deg, rgb(7 8 10 / 0), rgb(7 8 10 / .92) 32px, rgb(7 8 10 / .92) calc(100% - 32px), rgb(7 8 10 / 0)) !important; }
+}
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops { column-gap:12px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .of-facility-rail { max-width:none !important; flex:1 1 auto !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 5px !important; padding-left:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-tile { padding:4px 1px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-comms { margin-left:0 !important; display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:.06em !important; min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch > .so-icon { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch { gap:10px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 16px) !important; }
+  /* the stacked COMMS/HELP box is taller, so #446's Market line (100% − 4px) fell onto the destination words and took their
+     clicks; on the Market too it rides 16px over the box (one class more than #446's rule, which is injected later) (Code Work review) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-comms > .sx-receipt { bottom:calc(100% + 16px) !important; }
+}
+@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 60px) !important; max-width:none !important; padding:0 !important; }
+}
+@media (min-width:901px) and (max-width:999px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
+}
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
