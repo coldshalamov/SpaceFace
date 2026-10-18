@@ -28,7 +28,7 @@ import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionClassLine, interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
-import { initialMouseToolLane } from '../systems/input.js';
+import { initialMouseToolLane, resolveActionLabel } from '../systems/input.js';
 import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { oreTableByWeight, oreTableForAsteroidType } from '../data/mining.js';
 import { listSelectableComponents } from '../systems/interactionDescriptors.js';
@@ -39,6 +39,8 @@ import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
+import { stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetConditionReadout } from './targetCondition.js';
 import { BINDINGS } from './bindings.js';
@@ -501,12 +503,55 @@ function orchardThermalFacts(target, state) {
   return facts;
 }
 
+function orchardSocketInfoLine(target, state) {
+  // The machine's wreck envelope carries generic salvage data. The finite socket descriptors
+  // own its player-facing facts; this projection grants no native release/pickup authority.
+  if (state?.world?.currentSectorId !== ANVIL_ORCHARD.sectorId
+    || state.entities?.get?.(target.id) !== target) return 'Orchard status unavailable';
+  const components = listSelectableComponents(state, target);
+  if (components.length !== ANVIL_ORCHARD.socketCount) return 'Orchard status unavailable';
+  if (components[0].inactiveReason === 'frame-destroyed') return 'Frame destroyed · release unavailable';
+  const selection = state.ui?.componentSelection;
+  const component = selection?.targetId === target.id
+    && (selection.stableKey == null || selection.stableKey === stableEntityKey(target))
+    ? components.find(entry => entry.componentId === selection.componentId)
+    : null;
+  if (!component) {
+    const reserve = state.sites.anvilOrchard.sourceRemaining;
+    return `${reserve} ${reserve === 1 ? 'unit' : 'units'} in reserve · select a pod socket`;
+  }
+  const units = `${component.units} ${component.units === 1 ? 'unit' : 'units'}`;
+  if (component.status === 'empty') return 'Empty socket · awaiting harvest';
+  if (component.operation === 'closing') {
+    const progress = Math.round(component.workRemaining / component.workThreshold * 100);
+    const outcome = component.status === 'delivered' ? 'Collected' : component.status === 'lost' ? 'Pod lost' : units;
+    return `${outcome} · closing ${progress}%`;
+  }
+  if (component.status === 'delivered') return `Collected · socket ${component.operation === 'closed' ? 'closed' : 'open'}`;
+  if (component.status === 'lost') return component.operation === 'closed' ? 'Pod lost · socket closed' : 'Pod lost';
+  if (component.status === 'drifting') return `${units} · released`;
+  if (component.operation === 'open') return `${units} · releasing pod`;
+  const opening = component.operation === 'opening';
+  const progress = opening ? ` · opening ${Math.round(component.workApplied / component.workThreshold * 100)}%` : '';
+  if (component.inactiveReason === 'phase-ineligible') return `${units}${progress} · wait for calm`;
+  const beam = resolveActionLabel(state, 'siteBeam');
+  const hold = beam ? `hold ${beam}` : 'hold the release beam';
+  if (opening) return `${units}${progress} · ${hold}`;
+  if (component.active) {
+    const commodity = COMMODITY_BY_ID.get(ANVIL_ORCHARD.commodityId)?.name || 'Hydrogen';
+    return `${commodity} · ${units} · ${hold} to release`;
+  }
+  return `${units} · release unavailable`;
+}
+
 export function objectInfoLine(t, state, p, dist) {
   if (t.type === 'ship' || t.type === 'drone') return presentationStatusWord(t) || '';
   if (t.type === 'station') {
     const services = stationContactServices(t.data && t.data.stationId);
     return services.length ? `Services: ${services.map(stationServiceLabel).join(' · ')}` : '';
   }
+  if (isOrchardFrame(t)) return orchardSocketInfoLine(t, state);
+  if (t.data?.orchardId === ANVIL_ORCHARD.id && t.data.orchardKind === 'frame') return 'Orchard status unavailable';
   const d = t.data || {};
   const facts = orchardThermalFacts(t, state);
   if (t.type === 'asteroid') {
