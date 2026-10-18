@@ -431,6 +431,8 @@ export const onboarding = {
     this._kickerLabelEl = null;
     this._modalAriaHidden = null;
     this._accum = 0;
+    this._autoFireWasOn = null;
+    this._combatStickHintOwed = false;
     this._lastTextAtS = -Infinity;
     this._holdGrewBeforeFull = false;
     this._holdGrewClearQueued = false;
@@ -484,6 +486,8 @@ export const onboarding = {
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
       this._fitFeltOwed = false;
+      this._autoFireWasOn = null;
+      this._combatStickHintOwed = false;
       this._gateControlInRange = false;
       this._lastControlMode = null;
       // FB-114: a first-hour rail serialized mid-flight resumes at its saved beat —
@@ -1175,6 +1179,8 @@ export const onboarding = {
   _begin(payload) {
     const st = this.state;
     this._resumeMainTutorial = false;
+    this._autoFireWasOn = null;
+    this._combatStickHintOwed = false;
     // Temporary physics challenges share New Game, but own their actors and instructions.
     if (st.physicsVenueSession === true) {
       this._teardown({ removeActors: false });
@@ -1850,6 +1856,7 @@ export const onboarding = {
     if (isRacingCorridorSession(state)) return;
     // Modal UI hides the objective via CSS; mirror that in assistive state without focus side-effects.
     try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
+    try { this._speakCombatStickHint(state); } catch (_) { /* never let onboarding break the loop */ }
 
     // ── First-hour pacing (only while active) ────────────────────────────────────────────
     const ob = state.onboarding;
@@ -3499,6 +3506,47 @@ export const onboarding = {
     const rated = rateCadenceTechnique(pair, { phase: tether.phase });
     if (rated.technique !== 'swing') return;
     this._showHint('masslineCadenceWinch', firstUseLine('masslineCadenceWinch'), { entityId: tether.targetId });
+  },
+
+  // SFQ-I008 — on a keyboard the G combat stick is a relative stick whose origin is
+  // the cursor, which nothing else says. One hint names the live-bound key and that
+  // cursor origin the first time the stick toggles on in flight. The device comes from
+  // state.input.promptDevice — worker-visible and kept current by the worker lane (D214) —
+  // never the main-thread-only prompt-device flag. A pad names its own toggle button
+  // but has no cursor origin to explain, so it stays quiet, and touch (no key to name)
+  // stays quiet. While the staged rail owns the voice the lesson parks and speaks once
+  // the rail lets go, if the stick is still on.
+  _speakCombatStickHint(state) {
+    const st = state || this.state;
+    if (!st || !st.input) return;
+    const on = st.input.autoFire === true;
+    if (this._autoFireWasOn == null) {
+      // A loaded save or a new game is not the pilot pressing the key: sample the
+      // stick where it already is so only a later off-to-on counts as a toggle.
+      this._autoFireWasOn = on;
+      return;
+    }
+    const was = this._autoFireWasOn === true;
+    this._autoFireWasOn = on;
+    if (!on) return;
+    const hintsOff = !!(st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false);
+    const inFlight = st.mode === 'flight' && !(st.ui && st.ui.docked);
+    const survival = !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'inactive');
+    const device = st.input.promptDevice === 'gamepad' || st.input.promptDevice === 'touch'
+      ? st.input.promptDevice : 'kbm';
+    const kbm = device === 'kbm';
+    if (!was && inFlight && kbm && !hintsOff && !survival) this._combatStickHintOwed = true;
+    if (!this._combatStickHintOwed) return;
+    if (st.player && st.player.hints && st.player.hints.combatStickOrigin) {
+      this._combatStickHintOwed = false;
+      return;
+    }
+    if (!inFlight || !kbm || hintsOff || survival || this._tutorialRailOwnsVoice()) return;
+    const label = verbBindingLabel(st, 'autoFire');
+    if (!label) return;
+    const text = `${label} — the cursor is the stick's center. Deflect from that center to fly.`;
+    this._showHint('combatStickOrigin', text, { shipId: st.playerId });
+    if (st.player && st.player.hints && st.player.hints.combatStickOrigin) this._combatStickHintOwed = false;
   },
 
   _noteMissingThreeUses() {
