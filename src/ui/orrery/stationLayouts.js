@@ -594,6 +594,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-vital--note .sxb-vital__value { top:0; white-space:normal !important; }
   ${D} .sxb-vital--note .orr-vnum.is-word { white-space:normal !important; letter-spacing:.12em !important; line-height:1.25 !important; }
 }
+/* 700x460, 760x420 and 844x390: the full berth head left BUY/SELL and the quantity
+   steps underneath the pinned foot. Keep its services in a scrollable head and give the
+   Market the remaining height; the destination words and UNDOCK retain their own row. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+  ${D}:has(.sx-mkt.orr-market) { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
+  ${D}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
+}
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
   ${S} { zoom:1.25; --k-s:1; }

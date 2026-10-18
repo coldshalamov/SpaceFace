@@ -757,6 +757,16 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${MD} .orr-mkt-subkey__bit b { white-space:nowrap; }
   ${MD} .so-route-disclosure > summary { letter-spacing:.02em !important; white-space:normal !important; line-height:14px; }
 }
+/* 760x420 and 844x390: BUY/SELL must fit beside the analysis on arrival. The compact
+   dial leaves the total and both verbs ahead of the expandable quote, which still scrolls. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:430px) {
+  ${MD} .sx-trade { grid-template-areas:"dial" "total" "verb" "breakdown" !important; row-gap:1px !important; }
+  ${MD} .sx-trade > .sx-qty { height:96px; }
+  ${MD} .sx-qty .orr-qdial { left:33px; width:80px; height:80px; }
+  ${MD} .sx-qty .sx-qty__in { top:18px; }
+  ${MD} .sx-qty .sx-qty__k { top:43px; }
+  ${MD} .sx-qty .sx-qty__words { top:78px; }
+}
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {
