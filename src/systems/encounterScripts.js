@@ -1342,6 +1342,14 @@ function ensureFreightCargoCustody(d, live, state, carrier) {
     pods: [],
     nextPodIndex: 0,
     respillSeq: 0,
+    // FIGHT-15 — the loot sweep. Null until the raid's escort wing is observed cleared; the
+    // surviving raider-role hulls then join the one designated thief on the spill: approach a
+    // pod, collect through this same custody writer, depart with the take. Escapees and
+    // persistence ownership are per-sweeper maps keyed on the entity id.
+    hadEscortWing: null,
+    sweepStartedAt: null,
+    sweepEscapees: null,
+    sweepPersistenceOwned: null,
     disableSpilled: false,
     deathSpilled: false,
     spillWindowClosed: false,
@@ -1452,6 +1460,15 @@ function releaseFreightCustodyActors(live, state, record) {
   releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
   record.carrierPersistenceOwned = false;
   record.raiderPersistenceOwned = false;
+  // Loot-sweep survivors holding pods claimed persistence per hull; custody closing releases
+  // each still-owned claim. Escapees already deleted their entries (and keep their mark).
+  const sweepOwned = record.sweepPersistenceOwned;
+  if (sweepOwned) {
+    record.sweepPersistenceOwned = null;
+    for (const key of Object.keys(sweepOwned)) {
+      releaseFreightCustodyPersistence(state.entities.get(Number(key)), record, sweepOwned[key] === true);
+    }
+  }
 }
 
 /**
@@ -1518,6 +1535,299 @@ function releaseEscapedFreightRaider(live, record, raider) {
   if (rosterIndex !== -1) live.ids.splice(rosterIndex, 1);
   if (live.roles) delete live.roles[raider.id];
   return true;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// FIGHT-15 — the loot sweep. The escort wing is the only thing standing between the surviving
+// raiders and the spill: while it lives the raider squad fights, the moment it is cleared every
+// survivor stops fighting and starts hauling. The sweep is not a second custody path — each
+// sweeper approaches a pod and collects through the one freight-custody writer above, its take
+// held by its own hull (securedById), its respill and escape following the same rules as the
+// designated thief's.
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+
+function freightLootSweepEligible(d, live, record) {
+  if (!record || record.terminal) return false;
+  if (record.hadEscortWing == null) {
+    // Roles survive a member's death (squadKill reads them after), so the roster still names
+    // the escort wing it spawned with even after the last escort is gone. Persisted on the
+    // record so a save/restore cycle — whose rebound roster holds only custody actors — keeps
+    // the same answer.
+    record.hadEscortWing = !!(live.roles && Object.values(live.roles).includes('escort'));
+  }
+  if (!record.hadEscortWing) return false;
+  return d.aliveCount(live, 'escort') === 0;
+}
+
+function freightSweeperForCollector(live, state, record, collectorId) {
+  if (collectorId == null || collectorId === live.data.predationRaiderId || !record || !state) return null;
+  // The sweep is runtime-transient like the side ledger: the durable envelope only promises
+  // carrier, designated thief, and spill. A restored record carries no sweepStartedAt — stale
+  // sweeper marks on a persisted hull then admit nobody, and its held pods read as the thief's.
+  if (record.sweepStartedAt == null) return null;
+  if (record.sweepEscapees && record.sweepEscapees[collectorId] === true) return null;
+  const entity = state.entities && state.entities.get(collectorId);
+  const data = entity && entity.data;
+  if (!entity || entity.alive === false || entity.type !== 'ship' || !data) return null;
+  if (data.freightSweeperCustodyId !== record.custodyId || data.freightSweeperKey == null) return null;
+  if (live.roles && live.roles[collectorId] !== 'raider') return null;
+  return entity;
+}
+
+function beginFreightLootSweep(d, live, state, record, now) {
+  record.sweepStartedAt = now;
+  const raiderRole = live.plan && live.plan.predation && live.plan.predation.raiderRole || 'raider';
+  const survivors = d.entsOf(live, raiderRole).filter((entity) => {
+    if (!entity || entity.id === live.data.predationRaiderId || !entity.data) return false;
+    if (entity.data.freightSweeperCustodyId != null) return false;
+    // A surrendered hull stays surrendered — it is nobody's survivor. Any other stand-down is
+    // exactly what the cleared screen undoes: the survivor turns back for the spill.
+    const ai = entity.data.ai;
+    const phase = entity.data.pirateDisengage && entity.data.pirateDisengage.phase;
+    return !(ai && ai.fsm === 'surrender') && phase !== 'surrender';
+  });
+  for (const sweeper of survivors) {
+    const data = sweeper.data;
+    const ai = data.ai || (data.ai = {});
+    data.freightSweeperCustodyId = record.custodyId;
+    data.freightSweeperKey = data.predationIdentityKey || `${record.custodyId}:sweep:${sweeper.id}`;
+    // Undo whichever stand-down the raid already stamped (predation target-disabled, morale
+    // flee): the sweep is the new order and isPirateDisengaged must not keep telling targetting
+    // and threat systems this hull is leaving.
+    ai.fsm = null;
+    ai.passive = false;
+    ai.pirateDisengaged = false;
+    ai.motiveSatisfied = false;
+    delete ai.disengageUntil;
+    delete data.pirateDisengage;
+    ai.predationStatus = 'loot_sweep';
+  }
+  d.emit('freight:lootSweepStarted', {
+    encounterId: live.id,
+    custodyId: record.custodyId,
+    reason: 'escort_cleared',
+    sweeperIds: survivors.map((entity) => entity.id),
+    t: now,
+  });
+}
+
+function resumeFreightSweeperRaidDoctrine(d, live, state, sweeper) {
+  const data = sweeper.data;
+  const ai = data.ai || (data.ai = {});
+  if (ai.predationStatus === 'raid_resume') return;
+  ai.passive = false;
+  ai.predationStatus = 'raid_resume';
+  const carrier = live.data.predationTargetId != null ? state.entities.get(live.data.predationTargetId) : null;
+  setEntityDoctrine(sweeper, {
+    activity: {
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `${live.shapeId}:raid_resume`,
+      anchor: live.anchor,
+      leashRadius: Math.max(700, Number(live.plan.predation && live.plan.predation.leashRadius) || 2600),
+      startedTick: state.tick | 0,
+      targetId: carrier && carrier.alive !== false ? carrier.id : null,
+      encounterId: live.id,
+    },
+    roe: RulesOfEngagement.WEAPONS_FREE,
+  });
+}
+
+function beginFreightSweeperEscape(d, live, state, record, sweeper, now) {
+  const data = sweeper.data;
+  if (!data || (data.freightSweepEscape && data.freightSweepEscape.target)) return;
+  const rng = d.stream(live, `freight-sweep-escape:${sweeper.id}`);
+  let dx = sweeper.pos.x - (live.anchor && live.anchor.x || 0);
+  let dz = sweeper.pos.z - (live.anchor && live.anchor.z || 0);
+  let len = Math.hypot(dx, dz);
+  if (!(len > 0.001)) {
+    const angle = rng() * Math.PI * 2;
+    dx = Math.cos(angle); dz = Math.sin(angle); len = 1;
+  }
+  const escapeRadius = FREIGHT_RAIDER_ESCAPE_R;
+  const target = {
+    x: sweeper.pos.x + dx / len * escapeRadius * 1.25,
+    z: sweeper.pos.z + dz / len * escapeRadius * 1.25,
+  };
+  data.freightSweepEscape = {
+    origin: { x: sweeper.pos.x, z: sweeper.pos.z },
+    target,
+    radius: escapeRadius,
+    startedAt: now,
+  };
+  const ai = data.ai || (data.ai = {});
+  ai.passive = false;
+  ai.predationStatus = 'loot_sweep_escape';
+  setEntityDoctrine(sweeper, {
+    activity: {
+      kind: ActivityKind.FLEE,
+      reason: `${live.shapeId}:freight_sweep_escape`,
+      anchor: target,
+      leashRadius: escapeRadius * 1.5,
+      startedTick: state.tick | 0,
+      deadlineTick: (state.tick | 0) + Math.ceil(FREIGHT_RAIDER_ESCAPE_S * 60),
+      encounterId: live.id,
+    },
+    roe: RulesOfEngagement.HOLD_FIRE,
+  });
+}
+
+/**
+ * A sweeper's clean getaway books exactly like the designated thief's: the take moves onto its
+ * durable ai.stolenLoot bag (so the generic kill/pressure paths respill it later), the custody
+ * marker and roster membership leave, and the hull rides the ordinary actor lifecycle. The pods
+ * keep their raider_secured line — the record's terminal accounting still books the take once.
+ */
+function releaseEscapedFreightSweeper(d, live, record, sweeper) {
+  if (!sweeper || sweeper.alive === false || !sweeper.data) return false;
+  const data = sweeper.data;
+  const ai = data.ai || (data.ai = {});
+  const secured = record.pods
+    .filter((pod) => pod.status === 'raider_secured' && pod.securedById === sweeper.id)
+    .map((pod) => ({ commodityId: record.commodityId, qty: Math.floor(Number(pod.qty) || 0) }))
+    .filter((line) => line.qty > 0);
+  if (secured.length) {
+    const loot = ai.stolenLoot && typeof ai.stolenLoot === 'object' ? ai.stolenLoot : null;
+    const lines = loot && Array.isArray(loot.lines) ? loot.lines : [];
+    for (const line of secured) {
+      const existing = lines.find((row) => row.commodityId === line.commodityId);
+      if (existing) existing.qty += line.qty;
+      else lines.push(line);
+    }
+    ai.stolenLoot = {
+      lines,
+      victimId: record.carrierId != null ? record.carrierId
+        : (record.carrierIdentityKey != null ? record.carrierIdentityKey
+          : (loot && loot.victimId != null ? loot.victimId : null)),
+      manifestId: record.manifestId || (loot && loot.manifestId) || null,
+    };
+  }
+  // Like the escaped thief: the custody marker leaves, the flags.persistent mark the sweep
+  // gave the hull stays — the trail on this sweeper is physical too.
+  if (data.freightCustodyPersistence && data.freightCustodyPersistence.custodyId === record.custodyId) {
+    delete data.freightCustodyPersistence;
+  }
+  if (record.sweepPersistenceOwned) delete record.sweepPersistenceOwned[sweeper.id];
+  delete data.freightSweeperKey;
+  delete data.freightSweeperCustodyId;
+  delete data.freightSweepEscape;
+  delete data.predationEncounterId;
+  delete data.predationRole;
+  delete data.predationIdentityKey;
+  ai.predationStatus = 'cleared';
+  ai.predationEndReason = 'sweep_escaped';
+  delete ai.predationTargetId;
+  delete ai.predationTargetIdentityKey;
+  delete ai.predationObjective;
+  delete ai.predationLeashRadius;
+  const rosterIndex = live.ids.indexOf(sweeper.id);
+  if (rosterIndex !== -1) live.ids.splice(rosterIndex, 1);
+  if (live.roles) delete live.roles[sweeper.id];
+  return true;
+}
+
+function tickFreightLootSweep(d, live, state, record, now) {
+  const raiderRole = live.plan && live.plan.predation && live.plan.predation.raiderRole || 'raider';
+  const escapees = record.sweepEscapees || (record.sweepEscapees = {});
+  const sweepers = d.entsOf(live, raiderRole).filter((entity) => (
+    entity && entity.id !== live.data.predationRaiderId
+      && entity.data && entity.data.freightSweeperCustodyId === record.custodyId
+      && escapees[entity.id] !== true
+  ));
+  if (!sweepers.length) return;
+  const livePods = record.pods
+    .filter((pod) => pod.status === 'live')
+    .map((pod) => ({ pod, entity: podEntityForRecord(state, record, pod) }))
+    .filter((entry) => entry.entity);
+  const leash = Math.max(700, Number(live.plan.predation && live.plan.predation.leashRadius) || 2600);
+  const claimed = new Set();
+  for (const sweeper of sweepers) {
+    const data = sweeper.data;
+    const ai = data.ai || (data.ai = {});
+    const securedQty = freightHeldQty(record, sweeper.id);
+    const escape = data.freightSweepEscape;
+    if (escape && escape.target) {
+      const radius = Math.max(1, Number(escape.radius) || FREIGHT_RAIDER_ESCAPE_R);
+      if (Number.isFinite(escape.startedAt) && now - escape.startedAt > FREIGHT_RAIDER_ESCAPE_S) {
+        // A run that cannot make the leash inside the thief's own window gives the take back:
+        // same stall rule, per-hull.
+        respillFreightFromRaider(d, live, state, record, sweeper, 'sweeper_escape_stalled', sweeper.id);
+        delete data.freightSweepEscape;
+        continue;
+      }
+      if (dist2(sweeper.pos.x, sweeper.pos.z, escape.origin.x, escape.origin.z) >= radius * radius) {
+        escapees[sweeper.id] = true;
+        releaseEscapedFreightSweeper(d, live, record, sweeper);
+        d.emit('freight:sweeperEscaped', {
+          encounterId: live.id,
+          custodyId: record.custodyId,
+          sweeperId: sweeper.id,
+          qty: securedQty,
+          t: now,
+        });
+      }
+      continue;
+    }
+    const ineligible = freightRaiderIneligibleReason(state, sweeper);
+    if (ineligible) {
+      if (securedQty > 0) {
+        respillFreightFromRaider(d, live, state, record, sweeper, `sweeper_${ineligible}`, sweeper.id);
+      }
+      continue;
+    }
+    // The nearest pod no earlier sweeper claimed this tick: one hull per pod, never a queue.
+    let target = null;
+    let best = Infinity;
+    for (const entry of livePods) {
+      if (claimed.has(entry.entity.id)) continue;
+      const dd = dist2(sweeper.pos.x, sweeper.pos.z, entry.entity.pos.x, entry.entity.pos.z);
+      if (dd < best || (dd === best && target && entry.pod.podIndex < target.pod.podIndex)) {
+        best = dd;
+        target = entry;
+      }
+    }
+    if (target) {
+      claimed.add(target.entity.id);
+      ai.predationStatus = 'loot_sweep';
+      const contactRange = Math.max(
+        1,
+        (Number(sweeper.radius) || 0) + (Number(target.entity.radius) || 0) - FREIGHT_RAIDER_CONTACT_PAD,
+      );
+      setEntityDoctrine(sweeper, {
+        activity: {
+          kind: ActivityKind.TRANSIT,
+          reason: `${live.shapeId}:freight_pod_sweep`,
+          anchor: target.entity.pos,
+          leashRadius: leash,
+          preferredRange: contactRange,
+          startedTick: state.tick | 0,
+          targetId: target.entity.id,
+          encounterId: live.id,
+        },
+        roe: RulesOfEngagement.HOLD_FIRE,
+      });
+    } else if (securedQty > 0) {
+      beginFreightSweeperEscape(d, live, state, record, sweeper, now);
+    } else {
+      // Nothing to carry and nothing left to grab: the survivor goes back to being a raider.
+      resumeFreightSweeperRaidDoctrine(d, live, state, sweeper);
+    }
+  }
+}
+
+/**
+ * A rostered sweeper's destruction spills only the pods riding on its own hull — the designated
+ * thief's take and every other sweeper's stay put. Escaped sweepers are free actors: their take
+ * already moved to stolenLoot and is none of this record's business.
+ */
+function freightSweeperGone(d, live, state, record, entityId) {
+  if (!record || record.terminal || record.sweepStartedAt == null || entityId == null) return false;
+  if (entityId === record.raiderId) return false;
+  if (record.sweepEscapees && record.sweepEscapees[entityId] === true) return false;
+  if (freightHeldQty(record, entityId) <= 0) return false;
+  const body = state.entities && state.entities.get(entityId);
+  const respilled = respillFreightFromRaider(d, live, state, record, body, 'sweeper_destroyed', entityId);
+  if (respilled) publishFreightCustody(d, live, record, 'sweeper_destroyed');
+  return respilled;
 }
 
 function liveFreightPodQty(record) {
@@ -1760,7 +2070,7 @@ function podEntityForRecord(state, record, pod) {
     : null;
 }
 
-function settleFreightPod(d, live, state, record, pod, status, reason) {
+function settleFreightPod(d, live, state, record, pod, status, reason, collector) {
   if (!pod || pod.status !== 'live') return false;
   const entity = podEntityForRecord(state, record, pod);
   if (!entity) return false;
@@ -1771,11 +2081,24 @@ function settleFreightPod(d, live, state, record, pod, status, reason) {
   }
   else if (status === 'raider_secured') {
     record.raiderSecuredQty += pod.qty;
-    const raider = selectedFreightRaider(live, state);
-    if (raider) {
-      record.raiderId = raider.id;
-      record.raiderPersistenceOwned = claimFreightCustodyPersistence(raider, record, 'secured_raider')
-        || record.raiderPersistenceOwned;
+    if (collector) {
+      // A loot-sweep survivor: the pod rides with ITS hull, so per-holder respill and escape
+      // accounting can name the body the take is physically on. Custody stays in this record —
+      // one writer — the sweeper only adds a held-by line inside it.
+      pod.securedById = collector.id;
+      pod.securedByIdentityKey = collector.data && collector.data.freightSweeperKey || null;
+      const owned = record.sweepPersistenceOwned || (record.sweepPersistenceOwned = {});
+      owned[collector.id] = claimFreightCustodyPersistence(collector, record, 'sweep_raider')
+        || owned[collector.id] === true;
+    } else {
+      const raider = selectedFreightRaider(live, state);
+      if (raider) {
+        pod.securedById = raider.id;
+        pod.securedByIdentityKey = raider.data && raider.data.predationIdentityKey || null;
+        record.raiderId = raider.id;
+        record.raiderPersistenceOwned = claimFreightCustodyPersistence(raider, record, 'secured_raider')
+          || record.raiderPersistenceOwned;
+      }
     }
   }
   else record.lostQty += pod.qty;
@@ -1844,6 +2167,14 @@ function collectFreightPod(d, live, state, payload) {
     payload.rejectedAmount = 0;
     return settleFreightPod(d, live, state, record, pod, 'raider_secured', 'raider_secured');
   }
+  // FIGHT-15 — a rostered loot-sweep survivor collects through the same writer: its take is
+  // held by its own hull (securedById), never a second custody path.
+  const sweeper = freightSweeperForCollector(live, state, record, payload.collectorId);
+  if (sweeper) {
+    payload.acceptedAmount = pod.qty;
+    payload.rejectedAmount = 0;
+    return settleFreightPod(d, live, state, record, pod, 'raider_secured', 'raider_secured', sweeper);
+  }
   // Physics asks every overlapping ship through the same synchronous acceptance payload. Only the
   // exact stable raider may take manifest custody; other NPC overlaps reject the pickup so the
   // selected hull can still make real contact on a later physics step.
@@ -1877,12 +2208,30 @@ function freightRaiderIneligibleReason(state, raider) {
   return null;
 }
 
-function respillFreightFromRaider(d, live, state, record, raider, reason) {
-  // Escaped cargo is gone with the raider: once the leash crossing has settled the theft,
-  // no later event (drive disable inside the despawn window, entityGone) may respawn it.
-  if (!record || record.terminal || record.raiderEscaped || record.raiderSecuredQty <= 0) return false;
+function freightHeldQty(record, holderId) {
+  return record.pods.reduce((sum, pod) => {
+    if (pod.status !== 'raider_secured') return sum;
+    // securedById is stamped at collect; pods from records older than the sweep carry no holder
+    // line and belong to the designated raider by definition.
+    const held = pod.securedById != null ? pod.securedById === holderId : holderId === record.raiderId;
+    return sum + (held ? pod.qty : 0);
+  }, 0);
+}
+
+function respillFreightFromRaider(d, live, state, record, raider, reason, holderId) {
+  if (!record || record.terminal || record.raiderSecuredQty <= 0) return false;
+  // The holder defaults to the designated raider so every pre-sweep callsite keeps its exact
+  // contract; a loot-sweep survivor respills only the pods riding on its own hull.
+  const holder = holderId != null ? holderId
+    : (raider && raider.id != null ? raider.id : record.raiderId);
+  // Escaped cargo is gone with ITS holder: once the leash crossing settles a theft no later
+  // event (drive disable inside the despawn window, entityGone) may respawn it — but another
+  // sweeper's take still rides this record.
+  if (holder === record.raiderId ? record.raiderEscaped
+      : (record.sweepEscapees && record.sweepEscapees[holder] === true)) return false;
   const secured = record.pods
-    .filter((pod) => pod.status === 'raider_secured')
+    .filter((pod) => pod.status === 'raider_secured'
+      && (pod.securedById != null ? pod.securedById === holder : holder === record.raiderId))
     .sort((a, b) => a.podIndex - b.podIndex);
   if (!secured.length) return false;
   const liveCount = record.pods.filter((pod) => pod.status === 'live').length;
@@ -1943,14 +2292,20 @@ function respillFreightFromRaider(d, live, state, record, raider, reason) {
   }
   if (respilledQty <= 0) return false;
   record.raiderSecuredQty = Math.max(0, record.raiderSecuredQty);
-  if (record.raiderSecuredQty === 0) {
-    releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
-    record.raiderPersistenceOwned = false;
+  if (holder === record.raiderId) {
+    if (record.raiderSecuredQty === 0) {
+      releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
+      record.raiderPersistenceOwned = false;
+    }
+    record.escapeStartedAt = null;
+    record.escapeDeadlineAt = null;
+    record.escapeOrigin = null;
+    record.escapeTarget = null;
+  } else if (freightHeldQty(record, holder) === 0) {
+    const ownedMap = record.sweepPersistenceOwned || {};
+    releaseFreightCustodyPersistence(raider, record, ownedMap[holder] === true);
+    delete ownedMap[holder];
   }
-  record.escapeStartedAt = null;
-  record.escapeDeadlineAt = null;
-  record.escapeOrigin = null;
-  record.escapeTarget = null;
   if (reason === 'raider_escape_stalled' || reason === 'custody_timeout_respill') {
     record.raiderRecoveryClosed = true;
   }
@@ -1978,6 +2333,7 @@ function respillFreightFromRaider(d, live, state, record, raider, reason) {
     manifestId: record.manifestId,
     carrierId: record.carrierId,
     raiderId: record.raiderId,
+    holderId: holder,
     cause: reason,
     qty: respilledQty,
     podCount: liveCount + respilledCount,
@@ -2091,6 +2447,16 @@ function tickFreightCargoCustody(d, live, state, now) {
       },
       roe: RulesOfEngagement.HOLD_FIRE,
     });
+  }
+
+  // FIGHT-15 — the escort wing was the only thing between the surviving raiders and the spill.
+  // Once it is cleared each survivor joins the loot sweep beside the designated thief. The latch
+  // lives on the record so a dead-but-restored encounter cannot restart it.
+  if (record.sweepStartedAt == null && freightLootSweepEligible(d, live, record)) {
+    beginFreightLootSweep(d, live, state, record, now);
+  }
+  if (record.sweepStartedAt != null) {
+    tickFreightLootSweep(d, live, state, record, now);
   }
 
   const remainingLivePods = record.pods.some((pod) => pod.status === 'live');
@@ -2910,6 +3276,10 @@ const convoy = {
         respillFreightFromRaider(d, live, state, record, selectedFreightRaider(live, state, true) || p,
           'raider_destroyed');
         publishFreightCustody(d, live, record, 'raider_destroyed');
+      } else {
+        // A sweeper leaving the world by any non-escape path (despawn sweep, scene close)
+        // respills what it held; an escapee's take already settled off-record.
+        freightSweeperGone(d, live, state, record, p.id);
       }
       return;
     }
@@ -2964,6 +3334,9 @@ const convoy = {
           respillFreightFromRaider(d, live, state, record, selectedFreightRaider(live, state, true),
             'raider_destroyed');
           publishFreightCustody(d, live, record, 'raider_destroyed');
+        } else if (record) {
+          // A loot-sweep survivor's death spills only its own take, through the same writer.
+          freightSweeperGone(d, live, state, record, p.id);
         }
         if (p.id === live.data.predationRaiderId) clearConvoyPredation(d, live, 'raider_destroyed');
         if (p.byPlayer) live.data.guardKills += 1;

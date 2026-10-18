@@ -2247,6 +2247,60 @@ export const POD_HUNT_BARKS = Object.freeze({
       'Easier ransom than a fight. Let us have the pod.',
     ]),
   }),
+  pirate_loot_sweep_break: Object.freeze({
+    faction_reach: Object.freeze([
+      'Screen’s down — take the freight and run!',
+      'No more cover. Sweep the spill, leave the fight!',
+      'Forget the hull. The cargo’s loose — grab it and go!',
+    ]),
+    faction_quiet: Object.freeze([
+      'The screen is gone. Take the freight.',
+      'Cargo over combat. Move.',
+      'The escorts fell. Collect.',
+    ]),
+    faction_choir: Object.freeze([
+      'The screen’s verse ends. Gather what the field spills.',
+      'Escorts silent. The freight calls — answer it.',
+      'The pattern shifts: hold the goods, not the line.',
+    ]),
+    faction_pitborn: Object.freeze([
+      'Screen’s scrap, kin! Sweep the freight and burn!',
+      'No escorts, no fight — the cargo’s ours, take it!',
+      'Leave the shooting. The yard wants that freight!',
+    ]),
+    faction_free: Object.freeze([
+      'Cover’s gone — grab the freight and fly!',
+      'The screen fell. Sweep the spill, skip the fight!',
+      'Cargo first. Take it and run!',
+    ]),
+  }),
+  pirate_loot_sweep_take: Object.freeze({
+    faction_reach: Object.freeze([
+      'Freight’s aboard. We’re done here.',
+      'Got the goods — cutting loose.',
+      'Secured. Nothing left worth shooting at.',
+    ]),
+    faction_quiet: Object.freeze([
+      'Freight secured. Withdrawing.',
+      'Taken. Leaving.',
+      'The cargo rides with us.',
+    ]),
+    faction_choir: Object.freeze([
+      'The goods join the verse. We depart.',
+      'Gathered. The pattern moves on.',
+      'The freight is held. The fight is finished.',
+    ]),
+    faction_pitborn: Object.freeze([
+      'Load’s aboard, kin — the yard eats tonight!',
+      'Freight’s ours. We’re gone!',
+      'Took the goods. Keep the wreck!',
+    ]),
+    faction_free: Object.freeze([
+      'Freight’s in. We’re out.',
+      'Got what we came for — flying!',
+      'Cargo secured. Enjoy the silence.',
+    ]),
+  }),
   pirate_pod_hunt_capture: Object.freeze({
     faction_reach: Object.freeze([
       'Pod’s ours. Ransom goes to whoever pays.',

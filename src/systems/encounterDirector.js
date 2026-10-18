@@ -122,7 +122,14 @@ import {
   releaseBoundRaiderForRetaliation,
   updateAmbientPredation,
 } from '../ai/ambientPredation.js';
+import {
+  lootSweepOnEscortDown,
+  lootSweepPickupCollected,
+  sweepStaleLootSweeps,
+  tickLootSweeps,
+} from '../ai/lootSweep.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
+import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
 import { DENIABLE_CAUSE_TAG } from '../data/economyContractTemplates.js';
 import { heatLevelFor } from './heat.js'; // READ-ONLY (C11 clause tier)
@@ -326,6 +333,7 @@ export const encounterDirector = {
       this.bus.on('pickup:collected', (p) => {
         this._routeToScript('convoy', 'pickupCollected', p);
         ambientPickupCollected(this.state, p);
+        lootSweepPickupCollected(this._lootSweepCtx(), p);
       });
       this.bus.on('freight:recovery', (p) => this._routeToScript('convoy', 'freightRecovered', p));
       this.bus.on('freight:recoveryAbandoned', (p) => this._routeToScript('convoy', 'freightRecoveryAbandoned', p));
@@ -426,6 +434,7 @@ export const encounterDirector = {
     this._tickHarassMercy(dir, state, now);
     this._tickHostilePursuitResolution(dir, state, now);
     this._tickAmbientPredation(state);
+    tickLootSweeps(this._lootSweepCtx());
     this._springCeresActivityAmbushOnPrey();
   },
 
@@ -455,6 +464,20 @@ export const encounterDirector = {
           ? this.helpers.removeEntity(id, opts)
           : false
       ),
+    };
+  },
+
+  /**
+   * FIGHT-15 loot sweep — the rule lives in src/ai/lootSweep.js; this seam only supplies the
+   * entity surface, the event bus, and the sanctioned disarm sweep (same shape survivorPod uses).
+   */
+  _lootSweepCtx() {
+    const state = this.state;
+    return {
+      state,
+      bus: this.bus,
+      helpers: this.helpers,
+      disarm: () => clearIneligibleAIFiringIntents(state, this.helpers),
     };
   },
 
@@ -620,6 +643,7 @@ export const encounterDirector = {
     const state = this.state;
     const prev = state.encounterDirector;
     clearAllPredationBindings(state, 'save_loaded');
+    sweepStaleLootSweeps(state);
     const fresh = freshState();
     if (prev && typeof prev === 'object') {
       if (prev.named && typeof prev.named === 'object' && !Array.isArray(prev.named)) fresh.named = prev.named;
@@ -2513,6 +2537,7 @@ export const encounterDirector = {
         }
       }
     }
+    if (handled) this._onRaidEscortDown(handled, p);
     if (handled || !byPlayer) return;
     // A player kill OUTSIDE any encounter squad, near a convoy → potential guard credit.
     for (const lid of Object.keys(dir.live)) {
@@ -2523,6 +2548,35 @@ export const encounterDirector = {
         if (dx * dx + dz * dz <= 1500 * 1500) { this._scriptEvent(live, 'guardKill', p); break; }
       }
     }
+  },
+
+  /**
+   * FIGHT-15 — the raid's screen is the escort wing. When a squadKill removes the last living
+   * escort row, the surviving fighters of the fallen screen's faction peel onto the loose spill:
+   * physical pods, the ordinary pickup acceptance seam, ai.stolenLoot custody, a finite leave leg.
+   * Fires once per live record (escortWingDownAt latch); lawful convoy guards flip nothing because
+   * the survivors that remain must share the dead escorts' faction and hold a fighter role.
+   */
+  _onRaidEscortDown(live, p) {
+    if (!live || live.phase === 'done' || !live.data) return;
+    if (!live.roles || live.roles[p.id] !== 'escort') return;
+    if (live.data.escortWingDownAt != null) return;
+    // A freight-custody record owns its own sweep: its pods carry title, its writer books
+    // raider_secured, and its escape releases through the same custody lifecycle. The generic
+    // loose-pod sweep keeps to raids with no manifest ledger.
+    if (live.data.freightCargoCustody) return;
+    let remaining = 0;
+    for (const id of live.ids) {
+      if (live.roles[id] !== 'escort') continue;
+      const e = this.state.entities && this.state.entities.get ? this.state.entities.get(id) : null;
+      if (e && e.alive !== false) remaining++;
+    }
+    if (remaining > 0) return;
+    live.data.escortWingDownAt = this.state.simTime || 0;
+    const dead = (p.entity && p.entity.factionId)
+      || (this.state.entities && this.state.entities.get
+        ? (this.state.entities.get(p.id) || {}).factionId : null);
+    lootSweepOnEscortDown(this._lootSweepCtx(), live, dead || null);
   },
 
   _onExternalNamedBound(p) {

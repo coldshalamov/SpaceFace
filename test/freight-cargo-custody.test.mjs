@@ -100,10 +100,10 @@ async function bootMotion(seed = 47517) {
   return h;
 }
 
-function fire(h, suffix = '') {
+function fire(h, suffix = '', shapeId = 'curtain_convoy') {
   const encounterId = `pq047:cargo-custody${suffix}`;
   assert.deepEqual(h.director.requestAuthoredEncounter({
-    shapeId: 'curtain_convoy', encounterId, sectorId: SECTOR_ID,
+    shapeId, encounterId, sectorId: SECTOR_ID,
     anchor: { ...ANCHOR }, zoneType: 'trade_lane', zoneRadius: 800, force: true,
   }), { ok: true, encounterId });
   const live = h.state.encounterDirector.live[encounterId];
@@ -1190,4 +1190,137 @@ test('Continue preserves the convoy stance: defend pledge survives save and load
   after.sim.runTicks(61); // restored live ticks cleanly with the stance intact
   assert.equal(resumed.data.convoyStance, 'defend');
   assertConserved(resumed.data.freightCargoCustody);
+});
+
+// FIGHT-15 — clearing a raid's escort wing flips the surviving raiders to the loot sweep:
+// each survivor steers for the spill and collects through the one freight-custody writer,
+// its take riding its own hull, its death respilling only its own share, its getaway booked
+// like the designated thief's.
+function collectBySweeper(h, sweeper, pod) {
+  const payload = {
+    pickupId: pod.id,
+    collectorId: sweeper.id,
+    kind: pod.data.kind,
+    amount: pod.data.amount,
+    commodityId: pod.data.commodityId,
+    pos: { x: pod.pos.x, z: pod.pos.z },
+  };
+  h.bus.emit('pickup:collected', payload);
+  if (payload.rejectedAmount <= 0) pod.alive = false;
+  return payload;
+}
+
+test('FIGHT-15: escort wing cleared flips survivors to the loot sweep, one custody writer', () => {
+  const h = boot(47540);
+  const live = fire(h, ':loot-sweep', 'vael_warden_convoy');
+  const { carrier, raider } = disable(h, live);
+  kill(h, carrier, raider.id);
+  const record = live.data.freightCargoCustody;
+  const escorts = h.director.entsOf(live, 'escort');
+  assert.ok(escorts.length > 0, 'the authored escort wing exists');
+  const survivors = h.director.entsOf(live, 'raider').filter((entity) => entity.id !== raider.id);
+  assert.ok(survivors.length > 0, 'non-designated raider survivors exist');
+
+  h.sim.runTicks(61);
+  assert.equal(record.sweepStartedAt, null, 'the wing holds — no sweep while escorts live');
+  assert.ok(survivors.every((entity) => entity.data.ai.predationStatus !== 'loot_sweep'));
+
+  const sweepEvents = [];
+  h.bus.on('freight:lootSweepStarted', (payload) => sweepEvents.push(structuredClone(payload)));
+  const escapeEvents = [];
+  h.bus.on('freight:sweeperEscaped', (payload) => escapeEvents.push(structuredClone(payload)));
+
+  for (const escort of escorts) kill(h, escort, h.player.id);
+  h.sim.runTicks(61);
+
+  assert.notEqual(record.sweepStartedAt, null, 'clearing the wing latches the sweep');
+  assert.equal(sweepEvents.length, 1, 'the sweep starts once');
+  assert.deepEqual([...sweepEvents[0].sweeperIds].sort(), survivors.map((entity) => entity.id).sort());
+  const livePodIds = new Set(pods(h, live).filter((pod) => pod.alive !== false).map((pod) => pod.id));
+  for (const sweeper of survivors) {
+    assert.equal(sweeper.data.ai.predationStatus, 'loot_sweep');
+    assert.equal(sweeper.data.ai.passive, false, 'a sweeper is rostered for AI-owned movement');
+    const activity = sweeper.data.ai.activity;
+    assert.equal(activity && activity.kind, 'transit');
+    assert.match(String(activity && activity.reason || ''), /freight_pod_sweep/);
+    assert.ok(livePodIds.has(activity.targetId), 'the sweep doctrine physically steers at a pod');
+    assert.equal(sweeper.data.freightSweeperCustodyId, record.custodyId);
+  }
+
+  const spilled = pods(h, live).filter((pod) => pod.alive !== false);
+  assert.ok(spilled.length > 0);
+  const [firstSweeper, ...rest] = survivors;
+  const firstPod = spilled[0];
+  const payload = collectBySweeper(h, firstSweeper, firstPod);
+  assert.equal(payload.acceptedAmount, firstPod.data.amount,
+    'the survivor collects through the same acceptance writer, not a second path');
+  const heldPod = record.pods.find((pod) => pod.entityId === firstPod.id || pod.podIndex === 0);
+  assert.equal(heldPod.status, 'raider_secured');
+  assert.equal(heldPod.securedById, firstSweeper.id, 'the take names the hull that holds it');
+  assert.equal(record.sweepPersistenceOwned[firstSweeper.id] !== undefined, true);
+  assertConserved(record);
+
+  h.director._routeToScript('convoy', 'pickupCollected', payload);
+  assert.equal(record.raiderSecuredQty, heldPod.qty,
+    'a duplicate observer delivery cannot secure the pod twice');
+
+  // A second survivor's death spills only its own take, never the first sweeper's share.
+  const secondSweeper = rest[0];
+  if (secondSweeper && spilled.length > 1) {
+    const secondPod = spilled[1];
+    collectBySweeper(h, secondSweeper, secondPod);
+    assert.equal(record.pods.find((pod) => pod.entityId === secondPod.id).securedById, secondSweeper.id);
+    const heldByFirst = record.raiderSecuredQty;
+    kill(h, secondSweeper, h.player.id);
+    assert.ok(
+      record.raiderSecuredQty < heldByFirst,
+      'the dead sweeper gives its own share back to the world',
+    );
+    assert.ok(
+      record.pods.some((pod) => pod.status === 'raider_secured' && pod.securedById === firstSweeper.id),
+      'the living sweeper keeps its take',
+    );
+    assertConserved(record);
+  }
+
+  // With nothing left to grab the holder runs: the getaway is booked like the thief's.
+  for (const pod of pods(h, live).filter((entity) => entity.alive !== false)) {
+    collectBySweeper(h, firstSweeper, pod);
+  }
+  h.sim.runTicks(61);
+  const escape = firstSweeper.data.freightSweepEscape;
+  assert.ok(escape && escape.target, 'a sweeper holding the last take runs for the leash');
+  assert.equal(firstSweeper.data.ai.predationStatus, 'loot_sweep_escape');
+  assert.equal(firstSweeper.data.ai.activity.kind, 'flee');
+
+  const radius = Math.max(1, Number(escape.radius) || 1);
+  firstSweeper.pos.set(escape.origin.x + radius + 1, 0, escape.origin.z);
+  h.sim.runTicks(61);
+  assert.equal(record.sweepEscapees[firstSweeper.id], true);
+  assert.equal(live.ids.includes(firstSweeper.id), false, 'the escapee leaves the roster');
+  const loot = firstSweeper.data.ai.stolenLoot;
+  assert.ok(loot && Array.isArray(loot.lines) && loot.lines.length > 0,
+    'the take moves to the durable stolenLoot bag like the thief\'s');
+  const lootQty = loot.lines.reduce((sum, line) => sum + line.qty, 0);
+  const held = record.pods.filter(
+    (pod) => pod.status === 'raider_secured' && pod.securedById === firstSweeper.id,
+  );
+  assert.equal(held.reduce((sum, pod) => sum + pod.qty, 0), lootQty,
+    'every pod the escapee held is on its bag');
+  assert.equal(escapeEvents.length, 1);
+  assert.equal(escapeEvents[0].sweeperId, firstSweeper.id);
+  assertConserved(record);
+});
+
+test('FIGHT-15: a held wing pins the raid doctrine; curtain convoys have no wing to clear', () => {
+  const h = boot(47541);
+  const live = fire(h, ':wing-holds', 'vael_warden_convoy');
+  const { carrier, raider } = disable(h, live);
+  const record = live.data.freightCargoCustody;
+  const survivors = h.director.entsOf(live, 'raider').filter((entity) => entity.id !== raider.id);
+  h.sim.runTicks(61);
+  assert.equal(record.sweepStartedAt, null);
+  assert.ok(h.director.entsOf(live, 'escort').length > 0);
+  assert.ok(survivors.every((entity) => entity.data.ai.predationStatus !== 'loot_sweep'));
+  assertConserved(record);
 });
