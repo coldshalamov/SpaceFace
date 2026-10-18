@@ -23222,7 +23222,7 @@ export const render = {
       teardownWarm();
       return null;
     }
-    if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root);
+    if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root, warm);
     if (profile === 'opening') this._touchOpeningEffectFamilyUnderShell();
     return warm;
   },
@@ -25091,13 +25091,12 @@ export const render = {
    * with on first draw in flight (557-1062 ms on software GL). The opening species warm root
    * already carries authored aftermath sections that use exactly those materials, so touch only
    * those children through the exact-target pass while the loading shell owns the picture.
-   * Nothing is composed or added; the sweep stops the moment loading releases.
+   * Nothing is composed or added; the single pass stops the moment loading releases.
    */
-  _touchOpeningBargeFamilyUnderShell(root) {
+  _touchOpeningBargeFamilyUnderShell(root, warm = null) {
     const state = this.state;
     if (!root || !state) return;
     const BARGE_FAMILY = /^(Forge_ore_barge|Forge_massline_express_liner_ceramic)/;
-    const seen = new Set();
     const receipt = { touched: 0, reason: 'pending', at: null };
     const world = state.world;
     const render = state.render;
@@ -25136,16 +25135,36 @@ export const render = {
       });
       return hit;
     };
+    // One pass, after the warm root's authored attaches settle (bounded by the warm's own settle
+    // deadline), instead of re-sweeping every 250 ms for the whole loading shell. When the live
+    // sector cook is already running under the shell, its post-opening pass reveals and touches
+    // the bounded warm roots (barge sections included), so this pass would only duplicate it.
+    const liveCookCovers = () => !!((render && render.liveSectorGpuAdmission === true)
+      || this._postOpeningPipelineAdmissionReleased === true);
+    const attachmentsSettled = () => {
+      if (!warm || !Array.isArray(warm.pendingAttachments)) return Promise.resolve();
+      const deadlineAt = Number.isFinite(warm.settleDeadlineAt)
+        ? warm.settleDeadlineAt : Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
+      const wait = (snapshotLength) => Promise.race([
+        Promise.allSettled(warm.pendingAttachments),
+        new Promise((resolve) => setTimeout(resolve, Math.max(0, deadlineAt - Date.now()))),
+      ]).then(() => (warm.pendingAttachments.length > snapshotLength && Date.now() < deadlineAt
+        ? wait(warm.pendingAttachments.length) : undefined));
+      return wait(warm.pendingAttachments.length);
+    };
     const step = async () => {
       if (!owned()) return;
+      await attachmentsSettled();
+      if (!owned()) return;
       if (state.mode !== 'loading') return publish('shell-released');
+      if (liveCookCovers()) return publish('live-cook-covers');
       const touch = render && render.touchSubjectExactTarget;
       if (typeof touch === 'function') {
         for (const child of [...root.children]) {
           if (!loading()) break;
-          if (seen.has(child) || !child.userData || child.userData.authoredAssetState !== 'authored') continue;
-          seen.add(child);
+          if (!child.userData || child.userData.authoredAssetState !== 'authored') continue;
           if (!carriesBargeFamily(child)) continue;
+          if (liveCookCovers()) return publish('live-cook-covers');
           try {
             await touch(child);
             // The touch may yield across teardown, a context restore, or a new admission run.
@@ -25159,11 +25178,7 @@ export const render = {
         }
       }
       if (!owned()) return;
-      if (state.mode !== 'loading') return publish('shell-released');
-      publish('pending');
-      if (!owned() || state.mode !== 'loading') return;
-      setTimeout(() => { void step(); }, 250);
-      return null;
+      return publish(state.mode !== 'loading' ? 'shell-released' : 'single-pass');
     };
     setTimeout(() => { void step(); }, 0);
   },
