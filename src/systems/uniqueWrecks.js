@@ -12,6 +12,8 @@ import { hash32, mulberry32 } from '../core/rng.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { normalizeRunShareWreck, runShareWreckId } from '../core/runShareCode.js';
+import { SHIPS } from '../data/ships.js';
 import {
   complicationEncounterId,
   deterministicTimer,
@@ -213,6 +215,19 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     occupationSwitch: normalizeOccupationSwitch(input.occupationSwitch),
     warm: {},
   };
+  if (Array.isArray(input.crossRunWrecks)) {
+    const seen = new Set();
+    const wrecks = [];
+    for (const candidate of input.crossRunWrecks) {
+      const wreck = normalizeRunShareWreck(candidate);
+      if (!wreck) continue;
+      const id = runShareWreckId(wreck);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      wrecks.push(wreck);
+    }
+    if (wrecks.length) out.crossRunWrecks = wrecks;
+  }
   const bearings = input.bearings && typeof input.bearings === 'object' ? input.bearings : {};
   for (const def of UNIQUE_WRECKS) {
     const record = bearings[def.id];
@@ -449,6 +464,7 @@ export const uniqueWrecks = {
     this._rescuedWorkers = createRescuedWorkerReturn(this);
     this._occupationSwitch = createScavengerOccupationSwitch(this);
 
+    this._listen('game:newGame', (payload) => this._importRunWreck(payload?.wreck));
     this._listen('game:started', () => this._onGameStarted());
     this._listen('save:loaded', () => this._onSaveLoaded());
     this._listen('save:restoring', () => this._clearRuntime());
@@ -558,6 +574,7 @@ export const uniqueWrecks = {
   },
 
   _onGameStarted() {
+    this._syncRunWrecks(this.state.world?.currentSectorId);
     // Crucible runs carry no adventure rumor/news surface — the arena is its own content.
     if (isSurvivalRunLive(this.state && this.state.run)) return;
     this._gameStartDispatch = true;
@@ -597,7 +614,8 @@ export const uniqueWrecks = {
   },
 
   _onSaveLoaded() {
-    this._ensureState();
+    const player = ensurePlayer(this.state);
+    player.uniqueWrecks = normalizeUniqueWreckState(player.uniqueWrecks, this.state.meta?.seed);
     this._clearRuntime();
     // encounterDirector deliberately does not serialize live entity references. An authored boss
     // that was active at save time is therefore pending again until the post-load sector entry.
@@ -945,7 +963,6 @@ export const uniqueWrecks = {
   },
 
   *_onSectorEnterSteps(payload) {
-    if (isSurvivalRunLive(this.state && this.state.run)) return;
     const sectorId = payload && typeof payload === 'object' ? payload.sectorId : payload;
     // A tail-drained emit carries the epoch of the enter that minted it: a replayed
     // payload whose enterEpoch no longer matches the world's serial is stale — do not
@@ -954,6 +971,8 @@ export const uniqueWrecks = {
     if (payload && typeof payload === 'object' && payload.enterEpoch != null
         && this.state && this.state.world && this.state.world.enterSerial != null
         && payload.enterEpoch !== this.state.world.enterSerial) return;
+    this._syncRunWrecks(sectorId);
+    if (isSurvivalRunLive(this.state && this.state.run)) return;
     yield* this._syncSectorSteps(sectorId);
     this._pumpComplications();
     this._surfaceSectorRumors(sectorId);
@@ -1286,7 +1305,48 @@ export const uniqueWrecks = {
     return requested;
   },
 
+  _importRunWreck(input) {
+    const wreck = normalizeRunShareWreck(input);
+    if (!wreck) return;
+    const own = this._ensureState();
+    const records = own.crossRunWrecks || (own.crossRunWrecks = []);
+    const id = runShareWreckId(wreck);
+    if (!records.some((record) => runShareWreckId(record) === id)) records.push(wreck);
+  },
+
+  _syncRunWrecks(sectorId) {
+    if (sectorId !== this.state.world?.currentSectorId) return;
+    for (const wreck of this._ensureState().crossRunWrecks || []) {
+      if (wreck.sectorId !== sectorId) continue;
+      const id = runShareWreckId(wreck);
+      if (this._findLive(id)) continue;
+      const ship = SHIPS.find((def) => def.id === wreck.hullId);
+      const fittings = [];
+      for (const entry of wreck.loadout) fittings[entry.slotIndex] = entry.defId;
+      const entity = this.helpers.spawnEntity({
+        type: 'wreck', pos: { ...wreck.pos }, vel: { x: 0, z: 0 },
+        radius: ship.radius || 10, mass: ship.mass || 100, hull: 1, hullMax: 1,
+        physicsBody: { shape: 'capsule', mass: ship.mass || 100 },
+        data: {
+          uniqueWreckId: id, crossRunWreck: true, persistenceOwner: 'uniqueWrecks',
+          sectorId, name: 'Echo of a fallen pilot', scanLabel: 'Wreck from another run',
+          scanDescription: `A fallen ${ship.name}. Its hull scars and fitted equipment survived the crossing.`,
+          parentType: 'ship', wreckClass: 'battlefield',
+          hulkOfDefId: wreck.hullId, hulkVisual: { defId: wreck.hullId, fittings },
+          livingHull: clonePlain(wreck.livingHull), loadout: clonePlain(wreck.loadout), fittings,
+          proportions: WRECK_COLLIDER_PROPORTIONS,
+        },
+      });
+      if (entity) {
+        this._entityByWreck.set(id, entity.id);
+        this._wreckByEntity.set(entity.id, id);
+        syncEntitySectorMembership(this.state, entity, sectorId);
+      }
+    }
+  },
+
   _syncSector(sectorId) {
+    this._syncRunWrecks(sectorId);
     for (const _ of this._syncSectorSteps(sectorId)) { /* inline */ }
   },
 

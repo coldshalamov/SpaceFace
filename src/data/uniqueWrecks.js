@@ -14,7 +14,7 @@ import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { wreckClassById } from './wreckClasses.js';
 import { ASHFALL_BURN_SURGE_PERIOD_S, ASHFALL_BURN_VENT_WINDOW_S } from './environmentalMachinery.js';
 
-export const UNIQUE_WRECK_STATE_SCHEMA_VERSION = 2;
+export const UNIQUE_WRECK_STATE_SCHEMA_VERSION = 3;
 export const UNIQUE_WRECK_RECEIPT_LIMIT = 24;
 export const UNIQUE_WRECK_SCAN_RADIUS = 1200;
 

@@ -15,4 +15,5 @@
 // v15: pending material fractures/blasts and partial environmental heat survive Continue.
 // v16: exact compact native attestation tables; legacy schema3 remains accepted.
 // v17: permanent per-hull loss identities under world.records.hullLosses.
-export const CURRENT_VERSION = 17;
+// v18: imported cross-run dead hulls persist under player.uniqueWrecks.
+export const CURRENT_VERSION = 18;

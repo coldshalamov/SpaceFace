@@ -13,6 +13,7 @@ import {
   encodeRunShareCode,
   encodeShareBlock,
   runShareSpecFields,
+  normalizeRunShareWreck,
 } from '../../core/runShareCode.js';
 import {
   canonicalGhostTape,
@@ -33,6 +34,7 @@ import {
   crucibleStarterIdForSetup,
   normalizeCrucibleRuleset,
   normalizeSeed,
+  requestCrucibleRun,
 } from '../crucibleLaunch.js';
 
 function starterKnown(starterId) {
@@ -71,6 +73,7 @@ export function runShareCodeForRun(setup, result, { ghostHash = null } = {}) {
     weeklyMutatorId: typeof src.weeklyMutatorId === 'string' ? src.weeklyMutatorId : null,
     ghostHash: Number.isInteger(ghostHash) ? ghostHash : null,
     stake: typeof src.swarmStake === 'string' && src.swarmStake ? src.swarmStake : null,
+    ...(res.wreck ? { wreck: res.wreck } : {}),
   });
 }
 
@@ -115,13 +118,13 @@ export function doorRunShareCode({
  */
 export function applyRunShareCode(code) {
   const decoded = decodeRunShareCode(code);
-  if (!decoded.ok) return { ok: false, error: decoded.error };
+  if (!decoded.ok) return { ok: false, error: 'This run code could not be read. Use a complete code from this version of the game.' };
   const fields = runShareSpecFields(decoded.spec);
   // NXB-020: a ruleset this build does not ship is a different game — the attempt is
   // not comparable. Normalizing it to the default ruleset would silently replay the
   // challenge under new rules, which is exactly what the envelope must not do.
   if (fields.ruleset && !CRUCIBLE_RULESETS.includes(fields.ruleset)) {
-    return { ok: false, error: `ruleset "${fields.ruleset}" is not in this version — the attempt is not comparable` };
+    return { ok: false, error: 'This run uses rules not in this version — the attempt is not comparable.' };
   }
   let starterId = fields.starterId && starterKnown(fields.starterId)
     ? fields.starterId
@@ -135,9 +138,7 @@ export function applyRunShareCode(code) {
   if (!starterId) {
     return {
       ok: false,
-      error: fields.starterId
-        ? `starter build "${fields.starterId}" is not in this version`
-        : 'code carries no starter build',
+      error: 'This starter build is not in this version.',
     };
   }
   return {
@@ -153,7 +154,20 @@ export function applyRunShareCode(code) {
     weeklyMutatorId: fields.weeklyMutatorId,
     ghostHash: fields.ghostHash,
     stake: fields.stake,
+    ...(fields.wreck ? { wreck: fields.wreck } : {}),
   };
+}
+
+/** The wreck rides the native New Game command beside the closed combat-lab setup schema. */
+export function requestSharedCrucibleRun(bus, setup, ruleset) {
+  if (setup?.wreck == null) return requestCrucibleRun(bus, setup, ruleset);
+  const wreck = normalizeRunShareWreck(setup.wreck);
+  if (!wreck) return false;
+  return requestCrucibleRun({
+    emit(event, payload) {
+      return bus.emit(event, event === 'game:new' ? { ...payload, wreck } : payload);
+    },
+  }, setup, ruleset);
 }
 
 /* ------------------------------------------------------------------------- *

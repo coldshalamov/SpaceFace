@@ -8,6 +8,7 @@
 // here for convenience.
 // When the schema changes: bump CURRENT_VERSION in saveVersion.js and append { from:N-1, to:N, fn }.
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { UNIQUE_WRECK_STATE_SCHEMA_VERSION } from '../data/uniqueWrecks.js';
 import { COORDINATE_SCHEMA } from '../core/coordinates.js';
 import {
   createEmptyRecordsBag,
@@ -340,6 +341,15 @@ export const MIGRATIONS = [
         data.world.records = createEmptyRecordsBag();
       } else if (!Array.isArray(data.world.records.hullLosses)) {
         data.world.records.hullLosses = [];
+      }
+    },
+  },
+  {
+    from: 17,
+    to: 18,
+    fn(data) {
+      if (data?.player?.uniqueWrecks) {
+        data.player.uniqueWrecks.schemaVersion = UNIQUE_WRECK_STATE_SCHEMA_VERSION;
       }
     },
   },

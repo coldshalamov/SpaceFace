@@ -18,6 +18,7 @@ import { challengeFromRun } from './survivalMutators.js';
 import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { captureKillReplay } from './killReplay.js';
+import { normalizeRunShareWreck } from '../core/runShareCode.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -603,6 +604,7 @@ export const survivalResults = {
     this._defeatReceipt = null;
     this._stuntKills = [];
     this._lastKillReplay = null;
+    this._deadHull = null;
     this._collisionsTaken = 0;
     this._improvisedKills = 0;
     this._breathsBought = 0;
@@ -893,6 +895,18 @@ export const survivalResults = {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
     this._defeatReceipt = payload || null;
+    const player = this.state.entities?.get(this.state.playerId);
+    const owned = this.state.player?.ownedShips?.[this.state.player.activeShipIndex || 0];
+    const fittings = owned?.fittings || player?.data?.fittings || [];
+    this._deadHull = normalizeRunShareWreck({
+      v: 1,
+      seed: run.seed,
+      sectorId: this.state.world?.currentSectorId,
+      pos: player?.pos,
+      hullId: owned?.defId || player?.data?.defId,
+      livingHull: owned?.livingHull || player?.data?.livingHull,
+      loadout: fittings.flatMap((defId, slotIndex) => defId ? [{ slotIndex, defId }] : []),
+    });
     this._deathMark = { tick: this._tickNow(), simTime: this._simNow() };
     this._stopReason = 'player_death';
     // SWARM-04: where the defeat landed, in zone terms — the ladder's second star asks
@@ -1102,6 +1116,7 @@ export const survivalResults = {
       const perks = run.telemetry && Array.isArray(run.telemetry.perks) ? run.telemetry.perks : [];
       if (perks.length) result.perks = perks.slice();
     }
+    if (this._deadHull) result.wreck = structuredClone(this._deadHull);
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
     result.stuntKills = this._stuntKills.map((s) => ({ ...s }));
     result.killReplay = this._lastKillReplay

@@ -26,7 +26,6 @@ import {
   lastCrucibleSetup,
   normalizeSeed,
   practiceLaunchFor,
-  requestCrucibleRun,
 } from '../crucibleLaunch.js';
 import {
   SWARM_STAKES,
@@ -116,6 +115,7 @@ import {
   ghostShareForRun,
   importGhostShareText,
   runShareCodeForRun,
+  requestSharedCrucibleRun,
   runShareSummary,
   shareTextHref,
 } from './shareCode.js';
@@ -1923,6 +1923,7 @@ export const crucibleScreen = {
         dailyDateKey: res.dailyDateKey,
         weeklyMutatorId: res.weeklyMutatorId,
         ghostHash: res.ghostHash,
+        ...(res.wreck ? { wreck: res.wreck } : {}),
       };
       starterId = res.starterId;
       if (typeof res.stake === 'string' && res.stake) stake = normalizeSwarmStake(res.stake);
@@ -2194,6 +2195,7 @@ export const crucibleScreen = {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
+      if (!conveyor && pendingShare?.wreck) payload.wreck = pendingShare.wreck;
       const {
         shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
       } = conveyor ? { challengeMutators: [] } : doorChallengeTerms();
@@ -2214,7 +2216,7 @@ export const crucibleScreen = {
         if (ghostHash != null) queueGhostPlayback(ghostHash);
         if (!conveyor && practiceQueued) queuePracticeRun();
       }
-      requestCrucibleRun(ctx.bus, payload, launchRuleset);
+      requestSharedCrucibleRun(ctx.bus, payload, launchRuleset);
     }
     const quick = word('Quick play', 'k-word--emph');
     quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
@@ -3564,7 +3566,7 @@ export const crucibleResultsScreen = {
       } else if (setup.ghostHash != null) {
         queueGhostPlayback(setup.ghostHash);
       }
-      requestCrucibleRun(ctx.bus, setup, retry.ruleset);
+      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
     });
 
     // §7.4 — the ways out name where they go: Again (same seed above), the Hangar (the

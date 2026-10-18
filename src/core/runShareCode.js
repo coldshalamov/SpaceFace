@@ -14,6 +14,47 @@
 // seeding a different run.
 
 import { hash32 } from './rng.js';
+import { normalizeLivingHull } from './livingHull.js';
+import { SHIPS } from '../data/ships.js';
+import { MODULES } from '../data/modules.js';
+import { WEAPONS } from '../data/weapons.js';
+import { SECTORS } from '../data/sectors.js';
+
+const HULL_IDS = new Set(SHIPS.map((ship) => ship.id));
+const FIT_IDS = new Set([...MODULES, ...WEAPONS].map((item) => item.id));
+const SECTOR_IDS = new Set(SECTORS.map((sector) => sector.id));
+
+/** The optional dead hull has its own version; unknown content must never become another ship. */
+export function normalizeRunShareWreck(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) || input.v !== 1
+    || !HULL_IDS.has(input.hullId) || !SECTOR_IDS.has(input.sectorId)
+    || !Number.isFinite(input.pos?.x) || !Number.isFinite(input.pos?.z)
+    || !Array.isArray(input.loadout) || input.loadout.length > 64) return null;
+  const slots = new Set();
+  const loadout = [];
+  for (const entry of input.loadout) {
+    if (!Number.isInteger(entry?.slotIndex) || entry.slotIndex < 0 || entry.slotIndex >= 64
+      || slots.has(entry.slotIndex) || !FIT_IDS.has(entry.defId)) return null;
+    slots.add(entry.slotIndex);
+    loadout.push({ slotIndex: entry.slotIndex, defId: entry.defId });
+  }
+  loadout.sort((a, b) => a.slotIndex - b.slotIndex);
+  const wreck = {
+    v: 1,
+    sectorId: input.sectorId,
+    pos: { x: input.pos.x, z: input.pos.z },
+    hullId: input.hullId,
+    livingHull: normalizeLivingHull(input.livingHull),
+    loadout,
+  };
+  if (Number.isInteger(input.seed) && input.seed > 0 && input.seed <= 0xffffffff) wreck.seed = input.seed;
+  return wreck;
+}
+
+export function runShareWreckId(wreck) {
+  const canonical = stableShareJson(wreck);
+  return `cross-run:${hash32(canonical).toString(16)}:${hash32('wreck:v1', canonical).toString(16)}`;
+}
 
 export const RUN_SHARE_PREFIX = 'SFC1';
 export const GHOST_SHARE_PREFIX = 'SFG1';
@@ -199,6 +240,7 @@ export function decodeShareBlock(text, expectedPrefix = null) {
  *   g  ghostHash  (optional uint32 — the exporter's ghost tape hash; resolves only if the
  *      receiving machine also imported the ghost block)
  *   t  swarmStake (optional — the swarm's purse/pressure contract; swarm only)
+ *   e  versioned dead hull (optional; exact global position, scars and final fitted modules)
  * ------------------------------------------------------------------------- */
 
 function asId(value) {
@@ -268,6 +310,12 @@ export function normalizeRunShareSpec(input) {
   if (ghostHash != null) spec.g = ghostHash;
   const stake = asId(src.t != null ? src.t : src.stake);
   if (stake) spec.t = stake;
+  const wreckIn = src.e != null ? src.e : src.wreck;
+  if (wreckIn != null) {
+    const wreck = normalizeRunShareWreck(wreckIn);
+    if (!wreck) return null;
+    spec.e = wreck;
+  }
   return spec;
 }
 
@@ -291,6 +339,9 @@ export function decodeRunShareCode(code) {
       ok: false,
       error: `code was written by codec v${Number.isInteger(version) ? version : '?'} — this build reads v${SHARE_CODE_VERSION}; the attempt is not comparable`,
     };
+  }
+  if (res.payload.e != null && !normalizeRunShareWreck(res.payload.e)) {
+    return { ok: false, error: 'This wreck code uses an unsupported ship record. Use a code from this version of the game.' };
   }
   const spec = normalizeRunShareSpec(res.payload);
   if (!spec) return { ok: false, error: 'code carries no run seed' };
@@ -343,5 +394,6 @@ export function runShareSpecFields(spec) {
     weeklyMutatorId: asId(s.w),
     ghostHash: asHash(s.g),
     stake: asId(s.t),
+    ...(s.e != null ? { wreck: normalizeRunShareWreck(s.e) } : {}),
   };
 }
