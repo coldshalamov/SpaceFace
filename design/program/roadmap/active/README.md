@@ -1,39 +1,18 @@
 # Active Roadmap Queue
 
-<!-- LIFETIME: QUEUE -->
+<!-- LIFETIME: ACTIVE_PACKET -->
 
 This is the admitted queue. It is sorted by packet number. Packet files live in this directory
 while active. When a packet is fully integrated and has all its terminal receipts, it moves to
 `../retired/`.
 
 Packet creation rules, lifecycle states, gate rules, and execution protocol live in
-[`00_EXECUTION_PROTOCOL.md`](./00_EXECUTION_PROTOCOL.md).
-
-For the broader portfolio plan that organizes packets into milestone horizons, see
-[`../PORTFOLIO_EXECUTION_PLAN.md`](../PORTFOLIO_EXECUTION_PLAN.md).
+[`00_EXECUTION_PROTOCOL.md`](../00_EXECUTION_PROTOCOL.md).
 
 ## Quick index
 
 | Packet | One-line outcome | Current status |
 |---|---|---|
-| [`PQ-001.md`](../retired/PQ-001.md) | RETIRED 2026-09-02 — baseline check suite green on master | — |
-| [`PQ-002.md`](../retired/PQ-002.md) | RETIRED 2026-09-03 — verify simulation determinism across runs | — |
-| [`PQ-003.md`](../retired/PQ-003.md) | RETIRED 2026-09-03 — fix ship rotation drift during physics pause | — |
-| [`PQ-004.md`](../retired/PQ-004.md) | RETIRED 2026-09-04 — mission state persists across sector transitions | — |
-| [`PQ-005.md`](../retired/PQ-005.md) | RETIRED 2026-09-04 — commodity pricing responds to local market supply/demand | — |
-| [`PQ-006.md`](../retired/PQ-006.md) | RETIRED 2026-09-05 — audio bus levels normalize across combat intensity spikes | — |
-| [`PQ-007.md`](../retired/PQ-007.md) | RETIRED 2026-09-05 — radar blips distinguish friendly, neutral, and hostile | — |
-| [`PQ-008.md`](../retired/PQ-008.md) | RETIRED 2026-09-06 — cargo jettison does not duplicate inventory on reload | — |
-| [`PQ-009.md`](../retired/PQ-009.md) | RETIRED 2026-09-07 — ship collisions produce directional impulse and tumble | — |
-| [`PQ-010.md`](../retired/PQ-010.md) | RETIRED 2026-09-07 — shield recharge delay resets on damage tick | — |
-| [`PQ-011.md`](../retired/PQ-011.md) | RETIRED 2026-09-08 — weapon heat dissipates correctly during cruise mode | — |
-| [`PQ-012.md`](../retired/PQ-012.md) | RETIRED 2026-09-08 — NPC patrol routes avoid known hazard zones | — |
-| [`PQ-013.md`](../retired/PQ-013.md) | RETIRED 2026-09-09 — station docking clamp engages only below velocity threshold | — |
-| [`PQ-014.md`](../retired/PQ-014.md) | RETIRED 2026-09-09 — asteroid field density scales with distance from star | — |
-| [`PQ-015.md`](../retired/PQ-015.md) | RETIRED 2026-09-10 — bounty payout scales with target threat tier | — |
-| [`PQ-016.md`](../retired/PQ-016.md) | RETIRED 2026-09-11 — fuel consumption rates match authored ship class specs | — |
-| [`PQ-017.md`](../retired/PQ-017.md) | RETIRED 2026-09-12 — repair bay costs reflect local station tech level | — |
-| [`PQ-018.md`](../retired/PQ-018.md) | RETIRED 2026-09-13 — save file schema migration preserves legacy save data | — |
 | [`PQ-019.md`](../retired/PQ-019.md) | RETIRED 2026-09-13 — the contract board reads as an institution | — |
 | [`PQ-020.md`](../retired/PQ-020.md) | RETIRED 2026-09-14 — Ceres topology is integrated with its Cathedral-keyed route, presence review, and matched performance | — |
 | [`PQ-022.md`](./PQ-022.md) | run asset/family leaf packets through source→release→route→perf | exact leaf selected from the queue |
