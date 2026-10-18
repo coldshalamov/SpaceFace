@@ -567,10 +567,10 @@ finished plan — the board is finished only when every number in this table is 
 | Surface | Remaining |
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **10 open defects** — D130, D188, D191, D198, D199, D202b, D211, D212, D213, D214 — plus standing import guard D175 |
-| Numbered board rows (§A–§M tables below) | **8 open** — quiet-host session 284; residual rows 381–386 and 388 (minted 2026-10-17: earned-momentum tagging, the ore-crusher battlefield, two render-animation briefs, two mission scenes, approach-materialized calcite props). Plus 10 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F), 387 (adhesive law needs an owner decision) |
+| Numbered board rows (§A–§M tables below) | **11 open** — quiet-host session 284; residual rows 381–389 (minted 2026-10-17: earned-momentum tagging, the ore-crusher battlefield, two render-animation briefs, two mission scenes, the honest-shortcut delivery, approach-materialized calcite props, the adhesive law). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 381–387 and the INFERENCE lines |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
-| Inference catalog (`INFERENCE_IDEAS.md`) | **15 OPEN lines** — gated: only under `--lane=inference` with an owner INFERENCE instruction |
+| Inference catalog (`INFERENCE_IDEAS.md`) | **19 OPEN lines** — gated: only under `--lane=inference` with an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
 
 ### Seams — what is free, and what another agent has
@@ -615,7 +615,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | people | done (devin-sweep-oct2) | jobs, aftermath, convoys | - |
 | ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | - |
 | hand | free | flight, tether, massline, onboarding | 381 |
-| missions | free | missions | 382, 385, 386, 387 |
+| missions | free | missions | 382, 385, 386, 387, 389 |
 | world | free | sectors, traffic, factions, news | 388 |
 | story | done (devin-oct2-batch) | story | - |
 | input | done (devin-oct2-batch) | gamepad, input, settings behavior | - |
@@ -873,8 +873,9 @@ recorded in the lane's NOW row before minting.
 | 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 | 385 | M07 | Cargo in the wake: a covert physical handoff alongside a moving hauler (`smuggling_run` in `src/systems/missions.js`, `src/data/heistMission.js`) | BUILD | OPEN |
 | 386 | M12 | Quiet passage: a heat-sensitive passenger transport (`src/data/heatLure.js`, `heatProximityTrial.js`, `passenger_transport`) | BUILD | OPEN |
-| 387 | ADHESIVE-LAW | The spray/coating/bridge/sever law that briefs M23 and M32 are blocked on; no such law exists in `reactiveMatter`, `alienEcology`, `precursorMachines` or `modules` | BUILD | PARKED needs the owner to decide whether the adhesive toy exists |
+| 387 | ADHESIVE-LAW | Build the spray/coating/bridge/sever law that briefs M23 (glue, meet mass) and M32 (two ships, one mistake) name as their own prerequisite: no such law exists in `reactiveMatter`, `alienEcology`, `precursorMachines` or `modules`. A missing capability is implementation work: add the data and one system seam as the briefs describe, then the two scenes | BUILD | OPEN |
 | 388 | CALCITE-APPROACH | The Closed Refinery's calcified collars and mineral roots (SFQ-B138 follow-up) should be breakable bodies that materialize on approach, like the Cathedral's approach-dormant sections. The 2026-10-17 attempt made them eager bodies and raised the Ceres boot census from 41 entities / 17 colliders to 53 / 29 (the pq020 structural-cost digest), so it was reverted; today only asteroids stamped calcite crack | BUILD | OPEN |
+| 389 | M18 | The honest shortcut: a delivery contract where local geometry knowledge (anchor sling plus honest braking and runout) earns a bounded punctuality bonus on top of base pay; speed contracts exist (`adventureSpeedContracts.js`: gate windows, escape margins) but only as scored race levels | BUILD | OPEN |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
 

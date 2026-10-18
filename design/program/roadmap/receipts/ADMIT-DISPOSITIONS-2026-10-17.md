@@ -3,14 +3,14 @@
 Condensed verdict tables from the read-only mapping passes that closed the build-board ADMIT rows 291 and 348-380
 (mapping workers: Gemini 4 Argon for P02-P17/P23, Grok and Muse for the rest; every verdict was read from live code, the
 landed-candidate notes, or a commit message). A candidate is `ALREADY-TRUE` (evidence file:line and a pinning test),
-`LANDED` (a commit), `RESIDUAL-BUILD` (built the same day when marked BUILT below), `RESIDUAL-ROW` (minted as a numbered row),
+`LANDED` (a commit), `RESIDUAL-BUILD` (built the same day: see the landed list at the end, or minted as a numbered row), `RESIDUAL-ROW` (minted as a numbered row),
 `ROUTE-LANE` (owned by a lane), or `STALE-DOC`. Long notes are trimmed; the full reports were scratch outputs.
 
 ## a1 - Hand, Massline, Weapons, Adversaries (rows 349-352, SFQ-P02..P05)
 
 - SFQ-B011: ALREADY-TRUE - src/systems/dynamicFlightStick.js:49-120, test/sfq-b011-gstick-seed-4242.test.mjs, test/sfq-b011-gstick-verification.test.mjs
 - SFQ-B012: ALREADY-TRUE - src/systems/input.js:1572-1620, test/sfq-b011-gstick-verification.test.mjs, test/massline-input-grammar.test.mjs
-- SFQ-B013: RESIDUAL-BUILD - src/systems/flightV3.js:211-215, 1017-1031, src/core/flight/propulsionKernel.js:545-557, 979-988
+- SFQ-B013: RESIDUAL-BUILD (row 381) - src/systems/flightV3.js:211-215, 1017-1031, src/core/flight/propulsionKernel.js:545-557, 979-988
 - SFQ-B014: ALREADY-TRUE - src/systems/input.js:899-907, 1363-1402, test/input-modal-release-boundary.test.mjs
 - SFQ-B015: ALREADY-TRUE - src/systems/ships.js:930-989, 1360-1409, 2972-2985, test/pq-176-mass-and-split.test.mjs, test/inf-086-hold-handling.test.mjs
 - SFQ-B016: ALREADY-TRUE - src/render/camera.js:1-90, test/camera-nimble-regime.test.mjs, test/camera-focus-separation.test.mjs
@@ -224,7 +224,7 @@ landed-candidate notes, or a commit message). A candidate is `ALREADY-TRUE` (evi
 - SFQ-B221: ALREADY-TRUE - src/save/saveSystem.js:291-306,845-1154, src/combat/persistence.js:1-260, src/systems/alienEcology.js:2236-2358; test/ceres-workfleet-attachment-save.test.mjs:90-210, te...
 - SFQ-B222: ALREADY-TRUE - src/save/migrations.js, src/save/saveSystem.js:186-216, src/ui/screens/saveNotices.js, src/ui/screens/saveLoad.js; test/fb-repaired-save-notice.test.mjs:19-57
 - SFQ-B223: ALREADY-TRUE - src/save/saveSystem.js:834-841, src/core/runTransitionGuard.js; test/sfq-b223-overlapping-transition.test.mjs:1-170
-- SFQ-B224: ALREADY-TRUE - src/systems/input.js, src/systems/gamepad.js:89-300,1224-1308,1391-1428, src/ui/screens/settings.js:239-433; test/input-lifecycle.test.mjs:90-572, test/input-pointer-loc...
+- SFQ-B224: ALREADY-TRUE for keyboard, mouse and pointer paths; controller delivery on the default worker lane is residual to ledger D214 - src/systems/input.js, src/systems/gamepad.js:89-300,1224-1308,1391-1428, src/ui/screens/settings.js:239-433; test/input-lifecycle.test.mjs:90-572, test/input-pointer-loc...
 - SFQ-B225: ALREADY-TRUE - src/ui/screens/settings.js:154-200,471-555,674-769, electron/main.cjs:189-214, electron/windowState.cjs; test/fb-settings-a11y.test.mjs:12-43, test/fb-electron-window-st...
 - SFQ-B226: ALREADY-TRUE - src/ui/accessibility.js, src/ui/accessibilityChecklist.js, src/ui/views/settingsControls.js, src/ui/screens/settings.js:172-200; test/fb-settings-a11y.test.mjs:12-63
 - SFQ-B227: ALREADY-TRUE - src/localization/pipeline.js, src/localization/gameLocalization.js, src/ui/screens/settings.js:43,209-213; test/fb-locale-readiness-gate.test.mjs:24-78
@@ -297,16 +297,16 @@ landed-candidate notes, or a commit message). A candidate is `ALREADY-TRUE` (evi
 - SFQ-B172: ALREADY-TRUE - src/data/modelTruth.js:290-340, test/sfq-b172-hornet-hardpoints.test.mjs:1-125
 - SFQ-B173: ROUTE-LANE - tools/blender/forge/, build_map.md:378-379
 - SFQ-B174: ROUTE-LANE - tools/blender/forge/, build_map.md:377
-- SFQ-B175: RESIDUAL-BUILD - src/render/faunaVisuals.js:40-120, src/data/faunaMotionRead.js:15-60
-- SFQ-B176: RESIDUAL-BUILD - src/render/machineVisuals.js:30-90, src/systems/machineWork.js:10-50
+- SFQ-B175: RESIDUAL-BUILD (rows 383/384, L-PICTURE) - src/render/faunaVisuals.js:40-120, src/data/faunaMotionRead.js:15-60
+- SFQ-B176: RESIDUAL-BUILD (rows 383/384, L-PICTURE) - src/render/machineVisuals.js:30-90, src/systems/machineWork.js:10-50
 - SFQ-B177: ROUTE-LANE - tools/blender/forge/, build_map.md:380
 - SFQ-B178: ROUTE-LANE - tools/blender/forge/, design/program/GRAPHICS_PROGRAM.md:95-105
 - SFQ-B179: ALREADY-TRUE - src/render/partsLibrary.js:45-120, test/check-parts-manifest-asset-contract.test.mjs:1-60, test/live-ship-visual-package-coverage.test.mjs:1-45
 - SFQ-B180: ALREADY-TRUE - src/render/visualFactory.js:6450-6520, test/visual-factory-no-blue-box-fallback.test.mjs:1-30
 - SFQ-I069: ALREADY-TRUE - src/data/modelTruth.js:460-490, test/sfq-b172-hornet-hardpoints.test.mjs:75-95
-- SFQ-I070: PROPOSE-LINE - tools/blender/forge/fleet.json
-- SFQ-I071: PROPOSE-LINE - src/render/wholeShipLodPolicy.js
-- SFQ-I072: PROPOSE-LINE - src/data/modelTruth.js
+- SFQ-I070: PROPOSE-LINE (minted into INFERENCE_IDEAS) - tools/blender/forge/fleet.json
+- SFQ-I071: PROPOSE-LINE (minted into INFERENCE_IDEAS) - src/render/wholeShipLodPolicy.js
+- SFQ-I072: PROPOSE-LINE (minted into INFERENCE_IDEAS) - src/data/modelTruth.js
 - SFQ-B181: ALREADY-TRUE - src/render/thruster/ribbon/driveForge.js:15-60, test/thruster-history-contract.test.mjs:1-45
 - SFQ-B182: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
 - SFQ-B183: ALREADY-TRUE - src/render/combat/explosionRupture.js, src/combat/impulseKernel.js, test/sfq-b183-impulse-throw-read.test.mjs:1-55
@@ -317,7 +317,7 @@ landed-candidate notes, or a commit message). A candidate is `ALREADY-TRUE` (evi
 - SFQ-B188: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
 - SFQ-B189: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
 - SFQ-B190: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
-- SFQ-I073: PROPOSE-LINE - src/render/thruster/ribbon/driveForge.js
+- SFQ-I073: PROPOSE-LINE (minted into INFERENCE_IDEAS) - src/render/thruster/ribbon/driveForge.js
 - SFQ-I074: ALREADY-TRUE - src/render/combat/explosionRupture.js:reproject, test/explosion-rupture.test.mjs:20-35
 - SFQ-I075: ALREADY-TRUE - src/render/renderer.js:8566, src/render/renderer.js:prepareFrame, src/render/visualFactory.js:nowSec
 - SFQ-I076: ALREADY-TRUE - src/combat/impulseKernel.js, test/b5-impact-channel-spread.test.mjs:1-50
@@ -358,8 +358,8 @@ landed-candidate notes, or a commit message). A candidate is `ALREADY-TRUE` (evi
 - M14 A rival remembers: ALREADY-TRUE - src/data/nemesisRival.js (Sile Orra: fallible-observer rival, refit-on-inference flaw, return archetype/level); src/data/hunterTricks.js (one readable gimmick per hunter...
 - M15 Shortage at the gate: LANDED - sha a5b2b49bf22 ("M15 shortage at the gate (row 348): a posted shortage becomes a real delivery-and-repair contract"); test/m15-shortage-at-the-gate.test.mjs; src/data/e...
 - M16 Build your own escape: LANDED - sha bc81be46687 ("M16: tow the only anchor into your escape lane, then take the cache"); src/data/encounters/569-build-your-own-escape.js; test/m16-build-your-own-escape...
-- M17 The working battlefield: RESIDUAL-BUILD - —
-- M18 The honest shortcut: RESIDUAL-BUILD - —
+- M17 The working battlefield: RESIDUAL-BUILD (row 382, prerequisites named) - —
+- M18 The honest shortcut: RESIDUAL-BUILD - minted as build_map row 389
 
 ## m4 - Mission briefs M19-M36 (rows 373-375)
 
@@ -402,7 +402,7 @@ landed-candidate notes, or a commit message). A candidate is `ALREADY-TRUE` (evi
 - S1 Vael ship family: ROUTE-LANE - One live hull: tools/blender/forge/ships/ashline_lode_vael.py (fleet.json ashline_lode_vael). faction_vael enemies and barks are live
 - S2 Fulfillment + Understory kits: ROUTE-LANE - src/data/palettes.js faction_fulfillment / faction_understory; src/systems/barkDirector.js speaks both. No Forge ship file for either
 - W1 planet-state sky: ROUTE-LANE - src/data/planetStates.js:18 four states; src/systems/scanner.js:805 publishes their scanner signals. No render reader of fracture_web, animated_fire_front, or the other ...
-- W2 planet states 5–8: RESIDUAL-ROW - PLANET_STATE_DEFS is exactly four ids. test/depth-program-w1-planet-states.test.mjs pins those four
+- W2 planet states 5–8: CLOSED-UNSPECIFIED (the roll-up names no states 5–8, so there is no leaf to build; not minted) - PLANET_STATE_DEFS is exactly four ids. test/depth-program-w1-planet-states.test.mjs pins those four
 - A3 Living Hull: ALREADY-TRUE - src/core/livingHull.js; src/render/livingHullPresentation.js; test/inf-oct17-pic-34.test.mjs. Commit message: ba2633fc4e9 load screen reads yard repairs off the living h...
 - PQ-032 five endings: ALREADY-TRUE - src/story/endings/endingDefs.js:6 ENDING_IDS A–E plus SANDBOX
 - PQ-047 multi-hauler cargo drop: ALREADY-TRUE - src/systems/encounterScripts.js:1726 and :2825 spill a second custody-stamped hauler through spawnFreightCargo. test/convoy-hauler-death-spill.test.mjs
