@@ -1,0 +1,516 @@
+# ADMIT dispositions - 2026-10-17
+
+Condensed verdict tables from the read-only mapping passes that closed the build-board ADMIT rows 291 and 348-380
+(mapping workers: Gemini 4 Argon for P02-P17/P23, Grok and Muse for the rest; every verdict was read from live code, the
+landed-candidate notes, or a commit message). A candidate is `ALREADY-TRUE` (evidence file:line and a pinning test),
+`LANDED` (a commit), `RESIDUAL-BUILD` (built the same day when marked BUILT below), `RESIDUAL-ROW` (minted as a numbered row),
+`ROUTE-LANE` (owned by a lane), or `STALE-DOC`. Long notes are trimmed; the full reports were scratch outputs.
+
+## a1 - Hand, Massline, Weapons, Adversaries (rows 349-352, SFQ-P02..P05)
+
+- SFQ-B011: ALREADY-TRUE - src/systems/dynamicFlightStick.js:49-120, test/sfq-b011-gstick-seed-4242.test.mjs, test/sfq-b011-gstick-verification.test.mjs
+- SFQ-B012: ALREADY-TRUE - src/systems/input.js:1572-1620, test/sfq-b011-gstick-verification.test.mjs, test/massline-input-grammar.test.mjs
+- SFQ-B013: RESIDUAL-BUILD - src/systems/flightV3.js:211-215, 1017-1031, src/core/flight/propulsionKernel.js:545-557, 979-988
+- SFQ-B014: ALREADY-TRUE - src/systems/input.js:899-907, 1363-1402, test/input-modal-release-boundary.test.mjs
+- SFQ-B015: ALREADY-TRUE - src/systems/ships.js:930-989, 1360-1409, 2972-2985, test/pq-176-mass-and-split.test.mjs, test/inf-086-hold-handling.test.mjs
+- SFQ-B016: ALREADY-TRUE - src/render/camera.js:1-90, test/camera-nimble-regime.test.mjs, test/camera-focus-separation.test.mjs
+- SFQ-B017: ALREADY-TRUE - src/core/flight/propulsionKernel.js:982-1018, src/render/vfx.js:14803-14935, test/vp220-p2-hotpath-brake-dynamics.test.mjs, test/verb-27-brake-stop-preview.test.mjs
+- SFQ-B018: ALREADY-TRUE - src/systems/input.js:706-760, src/core/simulationRunner.js:69-75, 623-643, src/core/timeEffects.js:9-25, test/seam-bullet-time.test.mjs
+- SFQ-B019: ALREADY-TRUE - src/combat/impulseKernel.js:21-97, test/sg02-player-contact-give.test.mjs, test/sg02-player-contact-separation.test.mjs, test/sg02-contact-sanity-recovery.test.mjs
+- SFQ-B020: ALREADY-TRUE - src/systems/onboarding.js:213-370, src/onboarding/rescueOpening.js, test/contract-47a-b1-followup.test.mjs, test/missing-three.test.mjs
+- SFQ-I005: ALREADY-TRUE - src/systems/input.js:899-907, 1224, 1251-1255, 1363-1402, test/input-modal-release-boundary.test.mjs
+- SFQ-I006: ALREADY-TRUE - src/render/vfx.js:14803-14935, test/infer-p08-brake-cue.test.mjs
+- SFQ-I007: ALREADY-TRUE - src/ui/station/outfittingGuidance.js:484-606, src/ui/ship/shipBandModels.js:905-955, test/inf-081-fitting-braking.test.mjs
+- SFQ-I008: PROPOSE-LINE - src/onboarding/missingThree.js:116-121, src/systems/onboarding.js:485, 866, 1122
+- SFQ-B021: ALREADY-TRUE - src/systems/tetherGameplay.js:3147-3166, 3538-3560, test/hand-220-latch-eligibility.test.mjs, test/row220-fresh-wreck-body.test.mjs
+- SFQ-B022: ALREADY-TRUE - src/ui/masslineHud.js:1-120, src/systems/tetherGameplay.js:1810-1910, test/sfq-b022-coupling-readout.test.mjs
+- SFQ-B023: ALREADY-TRUE - src/ui/masslineHud.js:120-210, src/render/vfx.js:10422-10426, test/sfq-b023-release-break.test.mjs
+- SFQ-B024: RESIDUAL-BUILD - src/systems/tetherGameplay.js:108, 574-578, 1963
+- SFQ-B025: ALREADY-TRUE - src/systems/aftermathWrecks.js:1-160, src/systems/hullFracture.js:37-85, 320-380, test/row220-fresh-wreck-body.test.mjs, test/sfq-b071-b079-tow-lifecycle.test.mjs
+- SFQ-B026: ALREADY-TRUE - src/systems/tetherGameplay.js:140-150, src/ui/masslineHud.js, scripts/check-massline-tension-estimate.mjs, test/fb-massline-readout-columns.test.mjs
+- SFQ-B027: ALREADY-TRUE - src/systems/terrainAnchors.js:61-450, test/seam-terrain-anchors.test.mjs, test/pq-027-00-kill-machines.test.mjs, test/pq-027-01-reef-pinball.test.mjs
+- SFQ-B028: ALREADY-TRUE - src/systems/mining.js:3361-3415, test/verb-10-latched-pickup-vacuum.test.mjs, test/sfq-b071-b079-tow-lifecycle.test.mjs
+- SFQ-B029: ALREADY-TRUE - src/systems/tetherGameplay.js:77-88, src/ai/specialistCounterplay.js, test/massline-counter-tether-response.test.mjs, test/massline-sweep-commit-snag.test.mjs
+- SFQ-B030: RESIDUAL-BUILD - src/combat/stuntRecognition.js:39-80, 127-156, src/combat/stuntEvidence.js:125-159
+- SFQ-I009: ALREADY-TRUE - src/systems/tetherGameplay.js:3147-3166, test/hand-220-latch-eligibility.test.mjs
+- SFQ-I010: ALREADY-TRUE - src/render/vfx.js:10422-10426, test/sfq-b192-massline-four-voices.test.mjs, test/sfq-b023-release-break.test.mjs
+- SFQ-I011: ALREADY-TRUE - src/systems/mining.js:3361-3415, test/verb-10-latched-pickup-vacuum.test.mjs
+- SFQ-I012: ALREADY-TRUE - src/systems/tetherGameplay.js:1215, 3538-3560, test/hand-220-latch-eligibility.test.mjs
+- SFQ-B031: ALREADY-TRUE - src/data/weapons.js, src/systems/weapons.js, test/sfq-b031-b033-starter-verbs.test.mjs
+- SFQ-B032: ALREADY-TRUE - src/systems/bombs.js:41-90, test/sfq-b032-ordnance-coverage.test.mjs
+- SFQ-B033: ALREADY-TRUE - src/data/statusPayoffs.js, src/ui/stuntCallout.js, test/sfq-b033-status-payoff.test.mjs
+- SFQ-B034: ALREADY-TRUE - src/combat/bombDynamics.js, src/systems/bombs.js:1095-1104, 1176-1178, test/sfq-b034-inherited-velocity-4242.test.mjs
+- SFQ-B035: ALREADY-TRUE - src/combat/bombDynamics.js, src/systems/bombs.js:1382-1405, test/sfq-b035-directional-impulse.test.mjs
+- SFQ-B036: RESIDUAL-BUILD - src/combat/impulseKernel.js:97-131, src/systems/tumbleStates.js:386-423
+- SFQ-B037: ALREADY-TRUE - src/systems/hullFracture.js:37-85, 320-380, 448-495, src/systems/swarmArena.js, test/hull-overkill-fracture.test.mjs, test/swarm-cover-fracture.test.mjs
+- SFQ-B038: ALREADY-TRUE - src/combat/damage.js:61-68, 526-570, test/inf-025-directional-armor.test.mjs, test/beam-armor-flat.test.mjs
+- SFQ-B039: ALREADY-TRUE - scripts/lib/bench/archetypePilotData.mjs, src/systems/ships.js, test/build-identity-pilots.test.mjs
+- SFQ-B040: ALREADY-TRUE - src/combat/validate.js:11-160, src/combat/emergentPrimitives.js:61-103, src/systems/bombs.js:41-90, test/sfq-b032-ordnance-coverage.test.mjs, test/seam-combat-statuses.t...
+- SFQ-I013: PROPOSE-LINE - src/ui/powerRail.js:502, 536-538, src/ui/orrery/hudAdapter.js:105, 124-129
+- SFQ-I014: ALREADY-TRUE - src/systems/bombs.js:1184, 1200-1215, 1529-1580, test/pb-ord-d-ordnance-law.test.mjs
+- SFQ-I015: ALREADY-TRUE - src/systems/bombs.js:1234-1260, test/bomb-audio-cues.test.mjs, test/bomb-detonation-vfx.test.mjs
+- SFQ-I016: PROPOSE-LINE - src/ui/targetPanel.js:266, 471-476, 504-506, src/ui/targetCondition.js:48-95
+- SFQ-B041: ALREADY-TRUE - src/ai/egressExit.js:19-78, src/systems/encounterDirector.js, test/pb-tac-d-ingress-breather.test.mjs, test/pq206-02-egress-exit.test.mjs
+- SFQ-B042: RESIDUAL-BUILD - src/ai/squad.js:21-27, 60-63, 117-134, 477-491, 594-655
+- SFQ-B043: ALREADY-TRUE - src/ai/squad.js, src/systems/tetherGameplay.js, test/sfq-b043-formation-break.test.mjs
+- SFQ-B044: ALREADY-TRUE - src/data/enemies.js:23-684, src/ai/specialistPlans.js, test/fb-telegraph-every-archetype.test.mjs, test/pq-161-01-telegraphs.test.mjs
+- SFQ-B045: ALREADY-TRUE - src/ai/reflexes.js, src/systems/tacticalAI.js, test/sfq-b045-thrown-body-dodge.test.mjs
+- SFQ-B046: ALREADY-TRUE - src/ai/squad.js:302-338, src/systems/lawSecurity.js, test/nxi-055-surrender-standdown-disposition.test.mjs, test/inf-inst-37-surrender-chip.test.mjs, test/pq-141-03-ambu...
+- SFQ-B047: ALREADY-TRUE - src/systems/missions.js, src/world/ceresWorkfleet.js, test/ceres-escort-formation.test.mjs, test/convoy-transit-critical.test.mjs, test/escort-convoy-final-approach.test...
+- SFQ-B048: ALREADY-TRUE - src/systems/encounterDirector.js, src/systems/survivalSwarm.js, test/crucible-no-hp-scaling.test.mjs, test/run-threat-cadence.test.mjs
+- SFQ-B049: ALREADY-TRUE - src/systems/alienEcology.js, src/ai/engagementAuthority.js:338-445, test/alienEcology.test.mjs, test/combat-ecology-roles.test.mjs
+- SFQ-B050: RESIDUAL-BUILD - src/systems/survivalAnnounce.js:80-93, src/data/enemies.js:25-190, src/data/palletJack.js:36-70, test/infer-rider-hint-tokens.test.mjs, test/fb-roster-mass-class.test.mjs
+- SFQ-I017: PROPOSE-LINE - src/render/actionVfx.js:67-75, 302
+- SFQ-I018: ALREADY-TRUE - src/ai/engagementAuthority.js:143-177, 395-445, test/infer-p05-patrol-hostility-live.test.mjs, test/infer-p05-patrol-hostility.test.mjs
+- SFQ-I019: ALREADY-TRUE - src/ai/egressExit.js:39-78, src/systems/missions.js, test/infer-p07-flee-exit.test.mjs
+- SFQ-I020: ALREADY-TRUE - src/ui/threatHalo.js:148-175, test/infer-p05-threat-glyph.test.mjs
+- INF-P02-I008: Toggling G combat... - src/onboarding/missingThree.js, src/systems/onboarding.js
+- INF-P04-I013: When the world bo... - src/ui/powerRail.js, src/ui/orrery/hudAdapter.js
+- INF-P04-I016: Targeting a heavy... - src/ui/targetCondition.js, src/ui/targetPanel.js
+- INF-P05-I017: Killing or tumbli... - src/render/actionVfx.js
+
+## a2 - Crucible, Adventure, Mission craft, Mining (rows 353-355, 356, SFQ-P06..P08, P10)
+
+- SFQ-B051: ALREADY-TRUE - src/systems/survivalWave.js:153-220, src/systems/swarmArena.js:1-120, test/swarm-wave1-lesson-hull.test.mjs, test/crucible-swarm-arena.test.mjs
+- SFQ-B052: ALREADY-TRUE - src/data/survivalWaves.js:1-120, src/systems/survivalWavePlanner.js:1-90, test/crucible-thirty-wave-arc.test.mjs, test/pq-175-00-wave-questions.test.mjs, test/crucible-n...
+- SFQ-B053: ALREADY-TRUE - src/systems/aftermathWrecks.js:730-790, src/systems/survivalWave.js:1-45, test/crucible-wreck-body.test.mjs, test/infer-swarm-03-leftover-retire.test.mjs
+- SFQ-B054: ALREADY-TRUE - src/data/survivalDraft.js:1-140, src/systems/survivalDraft.js:1-120, test/pq-175-02-draft-verbs.test.mjs, test/pq-175-02-draft-shapes.test.mjs, test/nxb-018-draft-offers...
+- SFQ-B055: RESIDUAL-BUILD - src/systems/survivalRewards.js:26-53, src/ui/survivalHud.js:143-157
+- SFQ-B056: ALREADY-TRUE - src/data/survivalArenas.js:1-140, src/data/arenaModuleLibrary.js:1-90, src/systems/swarmArena.js:1-160, test/pq-174-04-arena-laws.test.mjs, test/pq-175-01-arena-toys.tes...
+- SFQ-B057: ALREADY-TRUE - src/systems/survivalRun.js:51-52,122-130, src/ai/specialistCounterplay.js:1-90, test/pq-174-01-harvest-waves.test.mjs, test/swarm-overhaul-room-settle.test.mjs, test/fb-...
+- SFQ-B058: RESIDUAL-BUILD - src/combat/playerDefeat.js:73-79,185-194,396-438, src/systems/survivalResults.js:183-191
+- SFQ-B059: ALREADY-TRUE - src/core/runShareCode.js:1-120, src/ui/screens/shareCode.js:1-90, test/nxb-020-challenge-code.test.mjs
+- SFQ-B060: ALREADY-TRUE - src/systems/survivalRun.js:110-160, src/ui/crucibleLaunch.js:1-90, src/core/runReset.js:1-80, test/crucible-ten-wave-shell.test.mjs, test/survival-results-retry-cancel.t...
+- SFQ-I021: ALREADY-TRUE - src/ui/screens/crucible.js, src/systems/survivalResults.js, test/infer-p06-results-seed.test.mjs
+- SFQ-I022: ALREADY-TRUE - src/ui/powerRail.js:483-548, src/systems/bombs.js:220-292, test/next-wave-nxi-033.test.mjs, test/infer-bomb-refusal-voice.test.mjs
+- SFQ-I023: ALREADY-TRUE - src/render/vfx.js, test/infer-p06-retry-loop.test.mjs
+- SFQ-I024: ALREADY-TRUE - src/systems/survivalRewards.js:26-53, test/infer-p06-reward-cause.test.mjs
+- SFQ-B061: ALREADY-TRUE - src/story/campaign47a/campaignTransitions.js:61-250, src/story/campaign47a/campaignData.js:78-240, src/systems/story.js:344-404, test/story-spine-route.test.mjs, test/st...
+- SFQ-B062: ALREADY-TRUE - src/data/encounters/344-opening-hauler-raid.js, test/first-hour-opening-choice.test.mjs, test/first-hour-choice-contracts.test.mjs
+- SFQ-B063: ALREADY-TRUE - src/systems/onboarding.js:1-220, src/onboarding/rescueOpening.js:1-120, test/first-hour-stuck-hint.test.mjs, test/inf-062-latch-denial-hint.test.mjs
+- SFQ-B064: ALREADY-TRUE - src/onboarding/fitFeel.js:1-90, src/ui/station/outfittingGuidance.js:1-110, test/sfq-b064-fit-felt.test.mjs
+- SFQ-B065: ALREADY-TRUE - src/story/campaign47a/campaignData.js:78-240, src/systems/story.js:1946-1965, test/story-spine-route.test.mjs, test/onboarding-rail-yields-to-contract.test.mjs
+- SFQ-B066: ALREADY-TRUE - src/systems/missions.js:9525-9586, test/inf-068-convoy-wreck-pocket.test.mjs, test/convoy-choices.test.mjs, test/nxi-135-convoy-result-split.test.mjs
+- SFQ-B067: RESIDUAL-ROW - src/systems/alienEcology.js:1097-1115 (refreshAlienLabels)
+- SFQ-B068: ALREADY-TRUE - src/systems/story.js:464-520, src/data/narrative.js:638-680, test/sfq-b068-character-interrupts.test.mjs
+- SFQ-B069: RESIDUAL-BUILD - src/systems/story.js:522-535,1911-1917,2609-2618
+- SFQ-B070: ALREADY-TRUE - src/story/endings/resolve.js:1-120, src/systems/postEndingReplay.js:1-140, src/systems/story.js:1660-1690, test/story-endings.test.mjs, test/post-ending-replay-chains.te...
+- SFQ-I025: ALREADY-TRUE - src/missions/poiCausalOffers.js, src/systems/missions.js, test/infer-p07-objective-action.test.mjs
+- SFQ-I026: ALREADY-TRUE - src/systems/onboarding.js, test/fb-onboarding-pad-save.test.mjs, test/infer-onboarding-main-rail-save.test.mjs
+- SFQ-I027: ALREADY-TRUE - src/systems/ships.js, src/ui/station/outfittingGuidance.js, test/sfq-b064-fit-felt.test.mjs, test/shipworks-fit-from-hold.test.mjs
+- SFQ-I028: ALREADY-TRUE - src/systems/story.js:876-940, src/story/endings/index.js, test/infer-p07-chapter-prereq.test.mjs
+- SFQ-B071: ALREADY-TRUE - src/systems/missions.js:7580-7925, test/sfq-b071-b079-tow-lifecycle.test.mjs:106-163,201-266
+- SFQ-B072: RESIDUAL-BUILD - src/systems/missions.js:7343-7361,7454-7494,8819-8820
+- SFQ-B073: ALREADY-TRUE - src/systems/missions.js:10310-10760, src/world/customsWeir.js, test/convoy-transit-critical.test.mjs, test/escort-convoy-final-approach.test.mjs, test/economy-smuggling-...
+- SFQ-B074: ALREADY-TRUE - src/data/worldSiteManifests.js, src/systems/worldSiteKernel.js:693-760, src/systems/asteroidSites.js, test/ceres-world-site-census.test.mjs, test/ceres-shipbreak-route.t...
+- SFQ-B075: ALREADY-TRUE - src/data/encounters/m10-false-bloom.js, src/systems/missions.js:6099-6340, test/m10-false-bloom.test.mjs, test/anomaly-whisper-chain.test.mjs, test/borrowed-voice-route....
+- SFQ-B076: ALREADY-TRUE - src/systems/worldSiteKernel.js:496-600, src/systems/asteroidSites.js, test/sfq-b078-nursery-claim-crew.test.mjs, test/ceres-shipbreak-route.test.mjs, test/sfq-machine-wo...
+- SFQ-B077: ALREADY-TRUE - src/systems/missions.js:8780-8806,10328-10358, test/sfq-m-dead-letter.test.mjs, test/sfq-m-missing-piece.test.mjs, test/convoy-choices.test.mjs
+- SFQ-B078: ALREADY-TRUE - src/systems/world.js, src/systems/asteroidSites.js, test/sfq-b078-nursery-claim-crew.test.mjs, test/sfq-m-mason-cover.test.mjs, test/sfq-m-edge-of-order.test.mjs, test/s...
+- SFQ-B079: ALREADY-TRUE - src/systems/missions.js:7856-7925,9521-9654, test/sfq-b071-b079-tow-lifecycle.test.mjs:165-199
+- SFQ-B080: RESIDUAL-BUILD - src/systems/missions.js:10063-10073,11809-11921, src/world/worldRecords.js:955-1000
+- SFQ-I029: ALREADY-TRUE - src/systems/missions.js:5514-5676,7778-7925, test/sfq-b071-b079-tow-lifecycle.test.mjs:165-187
+- SFQ-I030: ALREADY-TRUE - src/systems/missions.js, test/infer-p09-capacity-before-pay.test.mjs
+- SFQ-I031: ALREADY-TRUE - src/systems/missions.js:8403-8620, test/infer-p09-finish-once.test.mjs
+- SFQ-I032: PROPOSE-LINE - src/systems/missions.js:11809-11921, src/world/worldRecords.js:955-1000
+- SFQ-B091: ALREADY-TRUE - src/render/actionVfx.js, src/render/vfx/worldCueRecipes.js, src/audio/audioSystem.js, test/sfq-b091-extraction-phases.test.mjs
+- SFQ-B092: ALREADY-TRUE - src/systems/mining.js:812-913,2329-2485,2760-2802, src/systems/drill.js:1276-1668, test/mining-hud-three-rhythms.test.mjs, test/mining-beam-heat-no-lockout.test.mjs, tes...
+- SFQ-B093: ALREADY-TRUE - src/systems/mining.js:1868-1921, src/systems/lootShards.js:444-508, test/sfq-build-industry-residuals.test.mjs:9-40, test/mining-beam-pod-split-f12.test.mjs
+- SFQ-B094: ALREADY-TRUE - src/systems/salvageActions.js:164-192, src/systems/fieldDepletion.js, src/systems/regionalEcology.js, test/sfq-build-industry-residuals.test.mjs:42-76, test/m4-regional-...
+- SFQ-B095: ALREADY-TRUE - src/systems/economy.js, src/systems/stationServices.js, src/systems/refining.js, test/sfq-build-economy-law-residuals.test.mjs:109-153, test/batch3-econ-workflows.test.m...
+- SFQ-B096: ALREADY-TRUE - src/systems/asteroidSites.js, src/systems/automationAttacks.js, test/sfq-build-industry-residuals.test.mjs:78-110, test/automation-outpost-presence.test.mjs
+- SFQ-B097: RESIDUAL-BUILD - src/systems/mining.js:1923-2026, src/systems/salvageActions.js:246-291
+- SFQ-B098: ALREADY-TRUE - src/systems/npcJobsRuntime.js, src/systems/mining.js:2729-2758, test/sfq-build-industry-residuals.test.mjs:112-132, test/infer-world-picture.test.mjs
+- SFQ-B099: RESIDUAL-BUILD - src/systems/mining.js:102-127,603-688
+- SFQ-B100: RESIDUAL-BUILD - src/systems/mining.js:436-458
+- SFQ-I037: ALREADY-TRUE - src/systems/mining.js:392-397,1167-1170,1938-1942, test/infer-beam-refusal.test.mjs
+- SFQ-I038: ALREADY-TRUE - src/systems/mining.js:1587-1657,2541-2615, src/core/physics.js, test/pickup-partial-acceptance.test.mjs
+- SFQ-I039: ALREADY-TRUE - src/systems/mining.js:793-805, src/audio/audioSystem.js:2613,4320, test/mining-lock-recycle-sweep.test.mjs
+- SFQ-I040: ALREADY-TRUE - src/systems/salvageActions.js:193-291, src/systems/drill.js:1471-1495, test/salvage-reactor-cookoff.test.mjs, test/salvage-vent-core.test.mjs, test/mining-warning-audio-...
+- SFQ-I032: A contract that f... - src/systems/missions.js, src/world/worldRecords.js
+
+## a3 - Regions, People/law, Alien ecology, Xenotech (rows 357-360, SFQ-P11..P14)
+
+- SFQ-B101: ALREADY-TRUE - src/data/sectorPhysical.js:15-420, src/data/sectorCompositions.js:1-180, test/pq-153-01-hazard-geometry.test.mjs, test/fb-sector-physical-complete.test.mjs
+- SFQ-B102: ALREADY-TRUE - src/data/sectorAnchors.js:25-100, src/render/entityMeshVisibility.js:14-61, src/render/hlod.js:67-106, test/p10-opening-world-on-the-way.test.mjs, test/d54-landmark-plac...
+- SFQ-B103: ALREADY-TRUE - src/systems/encounterDirector.js:2198-2278,2706,2846,4401, test/lived-world.test.mjs, test/e6-encounter-shape-budget.test.mjs, test/world-24-harasser-disengage-bark.test...
+- SFQ-B104: ALREADY-TRUE - src/systems/aftermathWrecks.js:2174-2350, src/systems/uniqueWrecks.js:1-120, test/pq-154-wreck-terrain.test.mjs, test/nxb-007-one-kill-one-aftermath.test.mjs
+- SFQ-B105: ALREADY-TRUE - src/ui/galaxyMap.js:1615-1690, src/ui/uniqueWreckMapLayer.js:1-140, test/infer-p11-marker-discovered-position.test.mjs, test/depth-program-unique-wreck-map.test.mjs
+- SFQ-B106: ALREADY-TRUE - src/systems/world.js:5530-5580,6145-6221, src/data/collarService.js:17-45, test/jump-verb-notice.test.mjs, test/sfq-b165-collar-service.test.mjs, test/pq-153-01-hazard-g...
+- SFQ-B107: ALREADY-TRUE - src/data/collarService.js:17-29, src/systems/alienEcology.js:1530-1542,2399-2559, src/data/wreckSuccession.js:1-60, test/sfq-b078-nursery-claim-crew.test.mjs, test/sfq-b...
+- SFQ-B108: ALREADY-TRUE - src/render/spaceBackground.js:1272-1290,3112-3386, src/render/tabletopPolicy.js:1-90, test/pb-pic-a-sky-identity.test.mjs, test/wave-c6-sky-plates.test.mjs
+- SFQ-B109: ALREADY-TRUE - src/systems/uniqueWrecks.js:1710-1755, src/systems/alienEcology.js:642-704,751, test/depth-program-unique-wreck-choice.test.mjs, test/sfq-b167-heat-lure.test.mjs, test/s...
+- SFQ-B110: ALREADY-TRUE - src/data/sectorPhysical.js:1-420, src/data/livedSectorOverlays.js:1-220, test/pq-153-02-landmarks.test.mjs, test/lived-frontier-pockets.test.mjs
+- SFQ-I041: ALREADY-TRUE - src/ui/galaxyMap.js:1620-1670, test/infer-p11-marker-discovered-position.test.mjs
+- SFQ-I042: ALREADY-TRUE - src/render/hlod.js:67-106, src/render/lod.js:84-135, src/render/entityMeshVisibility.js:67-80, test/entity-mesh-visibility.test.mjs
+- SFQ-I043: ALREADY-TRUE - src/systems/world.js:341-357,5525-5555, src/ui/jumpNotice.js:1-95, test/infer-p11-gate-remedy.test.mjs, test/jump-verb-notice.test.mjs
+- SFQ-I044: ALREADY-TRUE - src/systems/aftermathWrecks.js:2174-2216,2273-2279, test/immediate-aftermath-wreck-identity.test.mjs, test/f15-wrecks-still-there-tomorrow.test.mjs
+- SFQ-B111: ALREADY-TRUE - src/systems/lawSecurity.js:1-260, test/sfq-b111-impact-class.test.mjs, test/first-hour-collateral.test.mjs
+- SFQ-B112: ALREADY-TRUE - src/ui/sectorLawPresenter.js:116-148, src/systems/lawSecurity.js:260-420, test/first-hour-law-read.test.mjs
+- SFQ-B113: ALREADY-TRUE - src/systems/uniqueWrecks.js:900-980, src/systems/stationContacts.js:1-180, test/sfq-build-rescued-return-retry.test.mjs, test/first-hour-rescue-recognition.test.mjs, tes...
+- SFQ-B114: ALREADY-TRUE - src/systems/nemesis.js:36-49,104-146, src/nemesis/learning.js:1-190, test/nemesis-observation-bridge.test.mjs, test/nemesis-enemy-mind-save.test.mjs
+- SFQ-B115: ALREADY-TRUE - src/systems/lawSecurity.js:340-460, src/systems/missions.js:1-200, test/sfq-build-economy-law-residuals.test.mjs:155-198, test/m13-pay-back-the-wake.test.mjs
+- SFQ-B116: ALREADY-TRUE - src/systems/npcJobsRuntime.js:1-240, src/data/livedSectorOverlays.js:1-220, test/world-08-dmc-contact-grammar.test.mjs, test/world-09-mts-contact-grammar.test.mjs, test/...
+- SFQ-B117: ALREADY-TRUE - src/systems/barkDirector.js:1-220, test/infer-p12-bark-coalesce.test.mjs, test/world-answers-barks-ore-flood-rake.test.mjs
+- SFQ-B118: ALREADY-TRUE - src/systems/shipLedger.js:47-60, src/core/livingHull.js:1-140, src/systems/ships.js:1-200, test/infer-p12-hull-history.test.mjs, test/depth-program-a2-ship-ledger.test.m...
+- SFQ-B119: ALREADY-TRUE - src/systems/aftermathWrecks.js, test/sfq-b119-aftermath-choices.test.mjs
+- SFQ-B120: ALREADY-TRUE - src/systems/factions.js, src/systems/lawSecurity.js, test/sfq-b120-restitution-standing.test.mjs
+- SFQ-I045: ALREADY-TRUE - src/systems/lawSecurity.js, src/systems/provenanceLedger.js, test/infer-p12-incident-reason.test.mjs
+- SFQ-I046: ALREADY-TRUE - src/systems/stationContacts.js, test/infer-p12-contact-payout.test.mjs
+- SFQ-I047: ALREADY-TRUE - src/systems/barkDirector.js, test/infer-p12-bark-coalesce.test.mjs
+- SFQ-I048: ALREADY-TRUE - src/systems/shipLedger.js:47-60, test/infer-p12-hull-history.test.mjs
+- SFQ-B121: ALREADY-TRUE - src/systems/bombs.js:41-92,1500-1526, src/systems/alienEcology.js:415-422,832-861,920-958,1691-1718, test/sfq-b032-ordnance-coverage.test.mjs, test/sfq-b035-directional-...
+- SFQ-B122: ALREADY-TRUE - src/systems/alienEcology.js, test/sfq-b122-fauna-motion.test.mjs
+- SFQ-B123: RESIDUAL-BUILD - src/systems/alienEcology.js:1767,1806,1890,2146-2154, src/data/alienEcology.js:91-128
+- SFQ-B124: ALREADY-TRUE - src/data/ecologyFoodWeb.js, src/systems/alienEcology.js, test/sfq-b124-food-web.test.mjs
+- SFQ-B125: ALREADY-TRUE - src/systems/alienEcology.js:920-958,1691-1718, test/sfq-build-ecology-residuals.test.mjs:51-83
+- SFQ-B126: ALREADY-TRUE - src/data/ecologyRouteEcho.js, src/systems/alienEcology.js, test/sfq-b126-route-echo.test.mjs
+- SFQ-B127: ALREADY-TRUE - src/systems/alienEcology.js:863-894,1014-1094,2373-2389, src/data/alienEcology.js:471-493,1875-1895, test/sfq-build-ecology-residuals.test.mjs:85-96
+- SFQ-B128: ALREADY-TRUE - src/systems/alienEcology.js:959-978,1720-1740,2203-2217, test/sfq-build-ecology-residuals.test.mjs:98-173
+- SFQ-B129: ALREADY-TRUE - src/systems/alienEcology.js:304-490,739-776,1409-1516,2399-2559, test/sfq-b078-nursery-claim-crew.test.mjs, test/alienEcology.test.mjs
+- SFQ-B130: ALREADY-TRUE - src/data/alienFauna.js:88-575, src/systems/alienEcology.js:1676-1689,1896-2135, test/sfq-build-ecology-residuals.test.mjs:175-184, test/alienEcologyWave2.test.mjs:89-99
+- SFQ-I049: PROPOSE-LINE - src/systems/alienEcology.js:1056-1057,1097-1115
+- SFQ-I050: ALREADY-TRUE - src/systems/alienEcology.js:959-978,2203-2217, test/sfq-build-ecology-residuals.test.mjs:128-157
+- SFQ-I051: ALREADY-TRUE - src/systems/alienEcology.js:920-958, test/sfq-build-ecology-residuals.test.mjs:51-71
+- SFQ-I052: ALREADY-TRUE - src/data/siteLifeRead.js:1-60, src/systems/alienEcology.js:1246-1267, test/sfq-b163-site-life.test.mjs
+- SFQ-B131: ALREADY-TRUE - src/systems/bombs.js:1507-1526,1547-1583, src/render/vfx/statusMatterVfx.js:229-243, src/systems/weapons.js:1655-1657, test/infer-p08-goo-expiry.test.mjs, test/nxi-040-g...
+- SFQ-B132: ALREADY-TRUE - src/render/vfx/statusMatterVfx.js:120-132,212-244, src/data/combatDefs.js, src/combat/damage.js
+- SFQ-B133: ALREADY-TRUE - src/matter/reactive/step.js:186-277, src/systems/reactiveMatter.js:199-230, src/systems/weapons.js:2838-2950, test/reactive-matter-configurations.test.mjs:119-139,194-201
+- SFQ-B134: RESIDUAL-BUILD - src/systems/impulseCharges.js:1455,1502-1507, src/combat/impulseKernel.js:133-151
+- SFQ-B135: RESIDUAL-BUILD - src/systems/alienEcology.js:959-978,1720-1740,2203-2217
+- SFQ-B136: ALREADY-TRUE - src/systems/alienEcology.js:2203-2217,2810-2822, test/sfq-build-ecology-residuals.test.mjs:98-173
+- SFQ-B137: ALREADY-TRUE - src/data/heatLure.js:1-65, src/systems/alienEcology.js:642-676, src/data/commodities.js, test/sfq-b167-heat-lure.test.mjs, test/alienEcologyWave2.test.mjs:153-169
+- SFQ-B138: RESIDUAL-BUILD - src/data/environmentMaterials.js:1-61, src/systems/environmentMaterials.js:24-87,224-225, src/systems/alienEcology.js:495-545
+- SFQ-B139: ALREADY-TRUE - src/systems/alienEcology.js:642-676,1783-1869,2155-2166,2399-2559,2672-2795, test/sfq-b167-heat-lure.test.mjs, test/sfq-b078-nursery-claim-crew.test.mjs
+- SFQ-B140: ALREADY-TRUE - src/data/reactiveMatter/families.js:45-57, src/data/modules.js, src/data/weapons.js, test/sfq-b193-sonic-verbs.test.mjs, test/reactive-matter-laws.test.mjs
+- SFQ-I053: ALREADY-TRUE - src/systems/bombs.js:1533,1553-1583, src/render/vfx/statusMatterVfx.js:189-190, test/infer-p08-goo-expiry.test.mjs, test/nxi-040-goo-contribution.test.mjs
+- SFQ-I054: ALREADY-TRUE - src/systems/impulseCharges.js:1071-1094, test/impulse-charge-sticky-pose.test.mjs, test/inference-charge-host-release.test.mjs
+- SFQ-I055: ALREADY-TRUE - src/systems/weapons.js:1655-1657,2184-2190, src/combat/tetherFireControl.js:62-79, src/systems/bombs.js:1091
+- SFQ-I056: PROPOSE-LINE - src/systems/alienEcology.js:959-978,2203-2217
+- SFQ-I049: A sector scan or ... - src/systems/alienEcology.js
+- SFQ-I056: Docking with a fi... - src/systems/alienEcology.js
+
+## a4 - Machines, Precursor fields, Discovery, Save/input (rows 361-363, 368, SFQ-P15..P17, P23)
+
+- SFQ-B141: ALREADY-TRUE - src/systems/precursorMachines.js:749-1106 (tickCourierToken, settleCourierTokenDelivery, tickCourierTokenReturn, handleMachinePickupCollected, handleMachineTokenDestroye...
+- SFQ-B142: ALREADY-TRUE - src/systems/machineWork.js:136-185,242-288 (tickFoundryRepair, tickCustodianWork); test/sfq-machine-work.test.mjs:29-49
+- SFQ-B143: ALREADY-TRUE - src/systems/machineWork.js:228-240,290-344 (drawWorkpiece, tickMasonWork); test/sfq-machine-work.test.mjs:51-87
+- SFQ-B144: ALREADY-TRUE - src/systems/machineWork.js:346-424 (protectedMaterial, tickSorterWork); test/sfq-machine-work.test.mjs:89-138
+- SFQ-B145: ALREADY-TRUE - src/data/precursorMachines.js:523-546, src/systems/machineWork.js:126-185,290-344; test/batch3-machine-procedures.test.mjs:67-106
+- SFQ-B147: ALREADY-TRUE - src/systems/precursorMachines.js:132-184 (tickManifestAppeal); test/batch3-machine-procedures.test.mjs:174-206
+- SFQ-B148: ALREADY-TRUE - src/systems/machineWork.js:19-124,191-226 (foundryProtocol, offerFoundryProtocol, handleFoundryProtocolAction, tickFoundryJurisdiction); test/batch3-machine-procedures.t...
+- SFQ-B149: ALREADY-TRUE - src/systems/precursorMachines.js:562-628; test/sfq-machine-work.test.mjs:151-168, test/batch3-machine-procedures.test.mjs:208-230
+- SFQ-B150: RESIDUAL-BUILD - src/systems/machineWork.js:126-344, src/systems/precursorMachines.js:302-343,483-496,545-561
+- SFQ-I057: ALREADY-TRUE - src/systems/precursorMachines.js:760-802,990-1106 (courierTokenBodies, ensureCourierTokenBody, handleMachinePickupCollected); test/sfq-b141-courier-token.test.mjs:298-452
+- SFQ-I058: ALREADY-TRUE - src/systems/precursorMachines.js:320-321,438-444; test/sfq-machine-work.test.mjs:140-149
+- SFQ-I059: PROPOSE-LINE - src/render/machineVisuals.js:76-108,192-210,398-409
+- SFQ-I060: PROPOSE-LINE - src/systems/precursorMachines.js:585-591
+- SFQ-B155: RESIDUAL-BUILD - src/data/velocityPlane.js:30-46, src/data/curlField.js:25-41, src/data/boundaryField.js:26-42, src/systems/precursorMachines.js:280-299
+- SFQ-B156: ALREADY-TRUE - src/data/encounters/1102-missing-piece.js:18-276, src/systems/encounterDirector.js:68; test/sfq-m-missing-piece.test.mjs:1-198
+- SFQ-B157: ALREADY-TRUE - src/core/fields/fieldKernel.js:519-541, src/data/boundaryField.js:1-42; test/sfq-b157-boundary-materials.test.mjs:1-142
+- SFQ-B158: RESIDUAL-BUILD - src/core/fields/fieldKernel.js:519-541, src/systems/fields.js:1727-1731
+- SFQ-B159: ALREADY-TRUE - src/data/fields.js:16-25, src/core/fields/fieldKernel.js:36-45
+- SFQ-B160: ALREADY-TRUE - src/data/fields.js:16-25, src/systems/precursorMachines.js:295-298
+- SFQ-I061: PROPOSE-LINE - src/data/precursorMachines.js:479,557, src/data/velocityPlane.js:8, src/data/laneField.js:8
+- SFQ-I062: PROPOSE-LINE - src/data/velocityPlane.js:30-46, src/data/curlField.js:25-41, src/data/boundaryField.js:26-42
+- SFQ-I063: PROPOSE-LINE - src/systems/fields.js, src/render/vfx.js
+- SFQ-I064: ALREADY-TRUE - src/core/fields/fieldKernel.js:230,264,319,336,350,530; test/sfq-b153-curl-disk.test.mjs:59-61, test/nxi-038-zero-range-field.test.mjs
+- SFQ-B169: RESIDUAL-BUILD - src/data/alienEcology.js:818-828,1089-1090,1382-1402, src/systems/alienEcology.js:1455-1463,2220-2233
+- SFQ-B170: ALREADY-TRUE - src/systems/sectorSim.js:56-60,810-836, src/systems/alienEcology.js:2236-2358; test/sfq-b164-wreck-succession.test.mjs, test/sfq-b165-collar-service.test.mjs, test/sfq-b...
+- SFQ-I065: PROPOSE-LINE - src/systems/alienEcology.js:2220-2233, src/data/alienEcology.js:1064-1109
+- SFQ-I066: ALREADY-TRUE - src/data/siteLifeRead.js:1-95, src/systems/alienEcology.js:1244-1268; test/sfq-b163-site-life.test.mjs:28-187
+- SFQ-I067: ALREADY-TRUE - src/data/surveyCopy.js:1-60, src/systems/alienEcology.js:678-704,2239,2303-2305; test/sfq-b168-survey-copy.test.mjs:113-225
+- SFQ-I068: PROPOSE-LINE - src/systems/alienEcology.js:1410-1453,2314-2346
+- SFQ-B221: ALREADY-TRUE - src/save/saveSystem.js:291-306,845-1154, src/combat/persistence.js:1-260, src/systems/alienEcology.js:2236-2358; test/ceres-workfleet-attachment-save.test.mjs:90-210, te...
+- SFQ-B222: ALREADY-TRUE - src/save/migrations.js, src/save/saveSystem.js:186-216, src/ui/screens/saveNotices.js, src/ui/screens/saveLoad.js; test/fb-repaired-save-notice.test.mjs:19-57
+- SFQ-B223: ALREADY-TRUE - src/save/saveSystem.js:834-841, src/core/runTransitionGuard.js; test/sfq-b223-overlapping-transition.test.mjs:1-170
+- SFQ-B224: ALREADY-TRUE - src/systems/input.js, src/systems/gamepad.js:89-300,1224-1308,1391-1428, src/ui/screens/settings.js:239-433; test/input-lifecycle.test.mjs:90-572, test/input-pointer-loc...
+- SFQ-B225: ALREADY-TRUE - src/ui/screens/settings.js:154-200,471-555,674-769, electron/main.cjs:189-214, electron/windowState.cjs; test/fb-settings-a11y.test.mjs:12-43, test/fb-electron-window-st...
+- SFQ-B226: ALREADY-TRUE - src/ui/accessibility.js, src/ui/accessibilityChecklist.js, src/ui/views/settingsControls.js, src/ui/screens/settings.js:172-200; test/fb-settings-a11y.test.mjs:12-63
+- SFQ-B227: ALREADY-TRUE - src/localization/pipeline.js, src/localization/gameLocalization.js, src/ui/screens/settings.js:43,209-213; test/fb-locale-readiness-gate.test.mjs:24-78
+- SFQ-B228: ALREADY-TRUE - src/save/saveSystem.js, src/ui/uiRoot.js, src/ui/runtimeFailurePresenter.js; test/sfq-b228-error-exits.test.mjs:1-325
+- SFQ-B229: ALREADY-TRUE - electron/main.cjs:24-51,170-175,299-350, scripts/lib/gameServer.cjs, scripts/lib/electronLaunchProtocol.cjs, electron/releaseIdentity.cjs; test/fb-electron-window-state....
+- SFQ-B230: ALREADY-TRUE - src/save/saveSystem.js:571-593, src/systems/input.js, src/systems/autoTargetAssist.js; test/input-lifecycle.test.mjs, test/sfq-b223-overlapping-transition.test.mjs, test...
+- SFQ-I089: ALREADY-TRUE - src/save/saveSystem.js:291-305, src/combat/persistence.js; test/ceres-workfleet-attachment-save.test.mjs:99-118
+- SFQ-I090: ALREADY-TRUE - src/systems/gamepad.js:1249-1276,1391-1428, src/systems/autoTargetAssist.js; test/input-lifecycle.test.mjs:90-220, test/input-pointer-lock-recovery.test.mjs:72-128
+- SFQ-I091: ALREADY-TRUE - src/ui/accessibility.js, src/ui/accessibilityChecklist.js; test/fb-settings-a11y.test.mjs:31-40
+- SFQ-I092: ALREADY-TRUE - src/ui/runtimeFailurePresenter.js, src/ui/uiRoot.js, src/ui/screens/saveNotices.js; test/sfq-b228-error-exits.test.mjs:1-325, test/fb-repaired-save-notice.test.mjs:19-40
+- SFQ-I059: Custodian repair ... - src/render/machineVisuals.js
+- SFQ-I060: Executor quaranti... - src/systems/precursorMachines.js
+- SFQ-I061: At charon_star_ma... - src/data/precursorMachines.js, src/data/velocityPlane.js, src/data/laneField.js
+- SFQ-I062: Setting a precurs... - src/data/velocityPlane.js, src/data/curlField.js, src/data/boundaryField.js
+- SFQ-I063: When an excluded ... - src/systems/fields.js, src/render/vfx.js
+- SFQ-I065: recordEvidence(st... - src/systems/alienEcology.js
+- SFQ-I068: Once rec.beats.lo... - src/systems/alienEcology.js
+
+## m1 - Truth/integration, Finish line, Performance (rows 348, 369, 367, SFQ-P01/P24/P22)
+
+- P01 Truth, integration, first playable reference: 14 - 0
+- P22 Smoothness, residency, predictable work: 9 - 0
+- P24 Finite finish line: 9 - 0
+- SFQ-B001: ALREADY-TRUE - design/finish-expansion-2026-09/catalog/task_catalog.json:3 is_native_queue: false; scripts/program-dispatch.mjs:36-41 returns one unit and treats a drained queue as not...
+- SFQ-B002: ALREADY-TRUE - scripts/player-truth/run.mjs:4-5 and :52 modes swarm, gauntlet, adventure, racing; :44 crucibleToArmory / adventureToFlight; :849 reads docked
+- SFQ-B003: ALREADY-TRUE - test/sfq-b003-branch-reality.test.mjs:1-15 walks the chart from the new-game sector to Cinder Nursery and live machine sites, resolves the data chain, and round-trips th...
+- SFQ-B004: ALREADY-TRUE - src/systems/cruise.js:6-9 chip harassment no longer drops cruise; test/infer-cruise-hit-drop.test.mjs:37-62 shield plink stays cruising, hull damage drops it, seed 4242;...
+- SFQ-B005: ALREADY-TRUE - Bomb rack: test/bomb-rack-economy.test.mjs:1-6 buy, dock-side load, in-flight cycle, economy credits, save. Massline upgrade: src/data/modules.js:538-540 Industrial Mass...
+- SFQ-B006: ALREADY-TRUE - design/program/VM_LANES.md:29-35 per-folder vm-drop import onto master; ledger D175 (design/program/DEMO_READINESS_2026-09-20.md:240) is the standing "drop dead-location...
+- SFQ-B007: ALREADY-TRUE - design/program/DEMO_READINESS_2026-09-20.md:199-212 is the one list; rows leave only by deletion in the fixing commit
+- SFQ-B008: ALREADY-TRUE - Same ordinary sectors already hold the three verbs: shoot (test/sfq-b032-ordnance-coverage.test.mjs:18-26), move mass (src/data/modules.js:530-540 tow/spool), lawful aft...
+- SFQ-B009: ALREADY-TRUE - design/program/roadmap/program-queue.json:5-25 stateContract planned → implemented → focused_green → route_accepted → integrated, and integration requires commit, accept...
+- SFQ-B010: ALREADY-TRUE - scripts/program-dispatch.mjs:30-41 --next is the next safe unit, with paths and a skip reason when a surface fails
+- SFQ-I001: ALREADY-TRUE - docs/MODULE_MAP.md:51 flightV3 is the live controller; :259 flight.js / ai.js are not the defaults
+- SFQ-I002: ALREADY-TRUE - src/systems/cruise.js:6-9; test/infer-cruise-hit-drop.test.mjs:37; design/program/INFERENCE_IDEAS.md:620 PRO-16 SHIPPED 2026-10-13
+- SFQ-I003: ALREADY-TRUE - design/alien-ecology-program/README.md:3 says PR #170 merged and names test/sfq-b003-branch-reality.test.mjs; design/program/INFERENCE_IDEAS.md:621 PRO-17 SHIPPED
+- SFQ-I004: ALREADY-TRUE - design/program/INFERENCE_IDEAS.md:622 PRO-18 SHIPPED 2026-10-13; the phrase "ordinary-route acceptance remains unclaimed" is gone under design/program/roadmap/
+- SFQ-B211: ROUTE-LANE - Tools already name a stall: scripts/program-dispatch.mjs is not the owner; frame attribution is node scripts/probe-frame-solid.mjs (root AGENTS.md §9) and the ledger. D1...
+- SFQ-B212: ROUTE-LANE - Warmup exists: src/render/precompile.js:294 precompilePipelines, :505 precompileGlobalPipelines. First Works open still links shaders: ledger D211 (DEMO_READINESS_2026-0...
+- SFQ-B213: ALREADY-TRUE - src/core/spatialHash.js:528 queryRadius; src/core/spatialQuery.js:2-9; test/fb-spatial-hash-gate.test.mjs:72 gate skips and neighbour identity
+- SFQ-B214: ROUTE-LANE - Quiet-empty latches and retained scratch are the live method: src/render/vfx.js:1555-1574, test/law-heat-telegraph-quiet-skip.test.mjs:55. A further garbage burst needs ...
+- SFQ-B215: ROUTE-LANE - Sharing and batching already preserve the picture: src/render/partsLibrary.js:16854-16892 sharedMaterialFor; test/lamp-bus.test.mjs:415 two hulls, one material; test/rig...
+- SFQ-B216: ALREADY-TRUE - src/ui/bandHud.js:152-157 identical tuner text returns without a write; src/ui/alerts.js:253 writes only when textContent differs; src/ui/commandBar.js:206 setText
+- SFQ-B217: ALREADY-TRUE - src/render/assetLoader.js:322-323 a stale generation cannot release the live loader; test/asset-residency-refcounts.test.mjs:142-163 one dispose, then a fresh owner reac...
+- SFQ-B218: ALREADY-TRUE - src/render/renderer.js:11760-11764 pauses the sim and says "Graphics context lost — game paused, recovering…"; :11810 "Graphics recovered."; src/render/contextResourceLi...
+- SFQ-B219: ALREADY-TRUE - Bounds already exist: src/render/vfx.js:457 visiblePointLightBudget; src/systems/traffic.js:295 CLAIM_CONVOY_MAX_LIVE; src/systems/swarmSupply.js:49 SWARM_REPAIR_MAX_LIV...
+- SFQ-B220: ROUTE-LANE - Quiet-host owns sustained full-quality measurement (design/program/VM_LANES.md:11-16). Ledger D130 (DEMO_READINESS_2026-09-20.md:236) says the whole-game hitch target is...
+- SFQ-I085: ALREADY-TRUE - src/render/vfx.js:1570-1574 law-heat quiet latch; :1583-1588 projectile-trail quiet latch; test/law-heat-telegraph-quiet-skip.test.mjs:55-70 idle skips, scan wakes
+- SFQ-I086: ALREADY-TRUE - src/render/partsLibrary.js:16864-16890 one variant per key, dispose is a no-op so a shared material is not freed per instance; test/lamp-bus.test.mjs:415-416; test/autho...
+- SFQ-I087: ALREADY-TRUE - src/render/assetLoader.js:736-805 cancel on depart / abort / retire; test/asset-residency-refcounts.test.mjs:142-163 cancelled generation disposes once and a later retai...
+- SFQ-I088: ALREADY-TRUE - src/ui/bandHud.js:155-159; src/ui/commandBar.js:206; src/ui/alerts.js:253
+- SFQ-B231: RESIDUAL-ROW - Modes are named (scripts/player-truth/run.mjs:52; design/program/FINISH_THE_GAME.md:21 boot, fly, dock, pause, fight). The 240 pack ids are not a quota (design/finish-ex...
+- SFQ-B232: ALREADY-TRUE - scripts/program-dispatch.mjs:36-41 --next walks the demo defect ledger before queue, seams, and vm-drop
+- SFQ-B233: ALREADY-TRUE - test/first-hour-choice-contracts.test.mjs:174 first-hour choices come from the starter roll; test/career-origins-contract.test.mjs:103 one origin owns the first-hour mis...
+- SFQ-B234: ALREADY-TRUE - test/sfq-b032-ordnance-coverage.test.mjs:18-26 a machine takes no damage, shove, status, or fuze, and the matrix names wreck, pickup, fauna, craft, and station
+- SFQ-B235: ROUTE-LANE - Picture and ear lanes. Root policy still says the live game reads cheap (AGENTS.md §1). Program refusal: no new aesthetic direction (programs/24-convergence.md candidate...
+- SFQ-B236: RESIDUAL-ROW - Open player-blocking rows in design/program/DEMO_READINESS_2026-09-20.md §6: D188 physical phone, D191 Ceres sim cost, D198 New Game stall, D199 asteroid contrast, D211 ...
+- SFQ-B237: RESIDUAL-ROW - Mission and build owners exist (src/data/missions.js, src/data/modules.js) and already differ by verb
+- SFQ-B238: ALREADY-TRUE - One game path for browser and Electron (root AGENTS.md §6). Progress survives save on the routes pinned above (ecology round-trip test/alienEcology.test.mjs:211-213, bom...
+- SFQ-B239: ALREADY-TRUE - Release identity is ready for a later activation and is not a play blocker: electron/releaseIdentity.cjs:1-8; crash extras carry the hash test/pq-033-01-crash-version.te...
+- SFQ-B240: RESIDUAL-ROW - The honest remainder is already §6 of design/program/DEMO_READINESS_2026-09-20.md. Nothing claims the game is A-list because the pack exists (programs/24-convergence.md:...
+- SFQ-I093: ALREADY-TRUE - A reviewer reaches play from scripts/player-truth/run.mjs:4-5 without the August matrix
+- SFQ-I094: ALREADY-TRUE - design/program/DEMO_READINESS_2026-09-20.md:207-212 fixed rows are deleted, never struck through or archived. Current table rows are OPEN or the intentional D175 guard
+- SFQ-I095: ALREADY-TRUE - Core boot does not require Steam. Achievements treat telemetry as optional (src/systems/achievements.js:1074). Crash/build identity works with no network (electron/relea...
+- SFQ-I096: ALREADY-TRUE - electron/releaseIdentity.cjs:1-8 one hash for crash report, update check, and title/pause fine print; src/ui/screens/mainMenu.js:261-269 leftoverVersionLabel; test/pq-03...
+
+## m2 - Models, VFX, ORRERY (rows 364, 365, 366, SFQ-P18/P19/P21)
+
+- SFQ-B171: ROUTE-LANE - tools/blender/forge/FORGE.md, design/program/GRAPHICS_PROGRAM.md:85-115
+- SFQ-B172: ALREADY-TRUE - src/data/modelTruth.js:290-340, test/sfq-b172-hornet-hardpoints.test.mjs:1-125
+- SFQ-B173: ROUTE-LANE - tools/blender/forge/, build_map.md:378-379
+- SFQ-B174: ROUTE-LANE - tools/blender/forge/, build_map.md:377
+- SFQ-B175: RESIDUAL-BUILD - src/render/faunaVisuals.js:40-120, src/data/faunaMotionRead.js:15-60
+- SFQ-B176: RESIDUAL-BUILD - src/render/machineVisuals.js:30-90, src/systems/machineWork.js:10-50
+- SFQ-B177: ROUTE-LANE - tools/blender/forge/, build_map.md:380
+- SFQ-B178: ROUTE-LANE - tools/blender/forge/, design/program/GRAPHICS_PROGRAM.md:95-105
+- SFQ-B179: ALREADY-TRUE - src/render/partsLibrary.js:45-120, test/check-parts-manifest-asset-contract.test.mjs:1-60, test/live-ship-visual-package-coverage.test.mjs:1-45
+- SFQ-B180: ALREADY-TRUE - src/render/visualFactory.js:6450-6520, test/visual-factory-no-blue-box-fallback.test.mjs:1-30
+- SFQ-I069: ALREADY-TRUE - src/data/modelTruth.js:460-490, test/sfq-b172-hornet-hardpoints.test.mjs:75-95
+- SFQ-I070: PROPOSE-LINE - tools/blender/forge/fleet.json
+- SFQ-I071: PROPOSE-LINE - src/render/wholeShipLodPolicy.js
+- SFQ-I072: PROPOSE-LINE - src/data/modelTruth.js
+- SFQ-B181: ALREADY-TRUE - src/render/thruster/ribbon/driveForge.js:15-60, test/thruster-history-contract.test.mjs:1-45
+- SFQ-B182: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
+- SFQ-B183: ALREADY-TRUE - src/render/combat/explosionRupture.js, src/combat/impulseKernel.js, test/sfq-b183-impulse-throw-read.test.mjs:1-55
+- SFQ-B184: ROUTE-LANE - src/render/forceLanguage/fieldForcePresentation.js, build_map.md:960, test/vfx-field-lifecycle.test.mjs:1-40
+- SFQ-B185: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
+- SFQ-B186: ALREADY-TRUE - src/render/combat/explosionRupture.js:12-250, test/explosion-rupture.test.mjs:1-60
+- SFQ-B187: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
+- SFQ-B188: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
+- SFQ-B189: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
+- SFQ-B190: ROUTE-LANE - docs/visual-assets/VFX_TECHNIQUE_STANDARD.md, build_map.md:960
+- SFQ-I073: PROPOSE-LINE - src/render/thruster/ribbon/driveForge.js
+- SFQ-I074: ALREADY-TRUE - src/render/combat/explosionRupture.js:reproject, test/explosion-rupture.test.mjs:20-35
+- SFQ-I075: ALREADY-TRUE - src/render/renderer.js:8566, src/render/renderer.js:prepareFrame, src/render/visualFactory.js:nowSec
+- SFQ-I076: ALREADY-TRUE - src/combat/impulseKernel.js, test/b5-impact-channel-spread.test.mjs:1-50
+- SFQ-B201: ALREADY-TRUE - src/ui/screens/mainMenu.js:28-85
+- SFQ-B202: ALREADY-TRUE - src/ui/hud.js:210-260, test/sfq-b202-next-decision.test.mjs:1-40
+- SFQ-B203: ALREADY-TRUE - src/ui/station/screens/tuner.js, test/sfq-b203-bearing-refusal.test.mjs:1-30
+- SFQ-B204: ALREADY-TRUE - src/ui/station/screens/shipworks.js, test/sfq-b204-preset-rejection.test.mjs:1-35
+- SFQ-B205: ALREADY-TRUE - src/ui/station/screens/market.js:140-190
+- SFQ-B206: ALREADY-TRUE - src/ui/station/screens/yard.js
+- SFQ-B207: ALREADY-TRUE - src/ui/screens/saveLoad.js:80-160
+- SFQ-B208: RESIDUAL-BUILD - src/ui/orrery/slotJig.js:30-80, src/ui/station/screens/shipworks.js:120-170, test/next-wave-nxb-056.test.mjs
+- SFQ-B209: ALREADY-TRUE - src/ui/screens/clusterArrival.js:35-70, test/pq-165-03-reduced-motion-information.test.mjs:1-45
+- SFQ-B210: ROUTE-LANE - design/frontend/ORRERY.md, scripts/ui-bench.mjs
+- SFQ-I081: ALREADY-TRUE - src/ui/toasts.js:formatCombatActionRejectLine, test/infer-disabled-action-line.test.mjs:1-35
+- SFQ-I082: ALREADY-TRUE - src/ui/toasts.js, src/ui/screenManager.js, test/toast-modal-focus-fast-follow.test.mjs:1-50
+- SFQ-I083: ALREADY-TRUE - src/ui/ship/calloutLayout.js:layoutHullCallouts, test/ship-callout-density.test.mjs:1-60
+- SFQ-I084: ALREADY-TRUE - src/ui/reducedMotionInformation.js, test/pq-165-03-reduced-motion-information.test.mjs:1-40
+- SFQ-I070: Authored ship or ... - tools/blender/forge/fleet.json
+- SFQ-I071: Ship silhouette d... - src/render/wholeShipLodPolicy.js
+- SFQ-I072: Station or place ... - src/data/modelTruth.js
+- SFQ-I073: Thruster plume or... - src/render/thruster/ribbon/driveForge.js
+
+## m3 - Mission briefs M01-M18 (rows 370-372)
+
+- M01 The opening raid, made whole: LANDED - sha 1cfd08f2a62 ("M13 + M01 (rows 349, 350): restitution offers and raid-aftermath custody"); src/data/encounters/344-opening-hauler-raid.js; test/m01-opening-raid-after...
+- M02 Breakaway freight: LANDED - sha 1fa8dd864c7 ("feat(missions): M02 breakaway freight encounter (1100) on refinery approaches"); src/data/encounters/1100-breakaway-freight.js; test/sfq-m-breakaway-fr...
+- M03 Warm cargo, narrow margin: ALREADY-TRUE - src/systems/fragileCargo.js (fragile handling + spill); test/seam-fragile-cargo.test.mjs, test/fragile-cargo-spill.test.mjs, test/volatile-cargo-expansion.test.mjs
+- M04 Counterweight shift: ALREADY-TRUE - test/breakaway-third-shift-route.test.mjs (+ -save-reload); commits 9918b9b4414 ("Put The Third Shift on the Tethys board as a lawful SP-07 recovery"), 7d4b664635c ("Nev...
+- M05 A pod in the crossfire: ALREADY-TRUE - src/data/wreckMissions.js:206-215 (wm_live_pods, type rescue_under_fire: two pods, one failing faster, raiders inbound, strip-or-pull choice); src/data/encounters/579-sc...
+- M06 The moving manifest: ALREADY-TRUE - src/data/heistMission.js:29 (heist_intercept); test/pq019c-heist-mission.test.mjs (+ pq019c-heist-routes/save-reload/tuning/cues/receiver-refusal); test/pq019-heist-arbi...
+- M07 Cargo in the wake: RESIDUAL-ROW - Owner files: src/systems/missions.js (smuggling_run owner), src/data/heistMission.js, test/pq-148-02-smuggling-physics.test.mjs
+- M08 The impounded machine: ALREADY-TRUE - test/pq-151-03-impound-heist.test.mjs ("impound is a yard with a bill. Pay it, work it off, or steal the hull"); test/pb-impound-clear.test.mjs; src/systems/custodyConse...
+- M09 The salvage dispute: LANDED - sha 34e68d55aa8 ("feat(missions): M09 salvage dispute encounter (1101) in derelict fields"); src/data/encounters/1101-salvage-dispute.js; test/sfq-m-salvage-dispute.test...
+- M10 False bloom: LANDED - sha 512b69609cb ("M10: a 'bloom' quarantine you can disprove by scanning or by dragging the lamp away") + follow-ups 124b58a7c1d, 67b7c1597ae, 5efb5343d2b; src/data/enco...
+- M11 The ship that flew this before: LANDED - sha ffb7dff92b8 ("M11 the ship that flew this before (row 351): a lost hull is a place you can meet again") + repairs ab73d786883; test/m11-ship-that-flew-before.test.mjs
+- M12 Quiet passage: RESIDUAL-ROW - Owner files: src/data/heatLure.js (+ heatProximityTrial.js), src/systems/missions.js (passenger_transport at missions.js:3372,3604), src/data/alienEcology.js (recon_scan...
+- M13 Pay back the wake: LANDED - sha 1cfd08f2a62 (same commit as M01, "M13 + M01 (rows 349, 350)"); test/m13-pay-back-the-wake.test.mjs; src/systems/missions.js:641-652 (lapsed contracts refile as resti...
+- M14 A rival remembers: ALREADY-TRUE - src/data/nemesisRival.js (Sile Orra: fallible-observer rival, refit-on-inference flaw, return archetype/level); src/data/hunterTricks.js (one readable gimmick per hunter...
+- M15 Shortage at the gate: LANDED - sha a5b2b49bf22 ("M15 shortage at the gate (row 348): a posted shortage becomes a real delivery-and-repair contract"); test/m15-shortage-at-the-gate.test.mjs; src/data/e...
+- M16 Build your own escape: LANDED - sha bc81be46687 ("M16: tow the only anchor into your escape lane, then take the cache"); src/data/encounters/569-build-your-own-escape.js; test/m16-build-your-own-escape...
+- M17 The working battlefield: RESIDUAL-BUILD - —
+- M18 The honest shortcut: RESIDUAL-BUILD - —
+
+## m4 - Mission briefs M19-M36 (rows 373-375)
+
+- M19 Arena of useful wrecks: ALREADY-TRUE - test/crucible-wreck-body.test.mjs (kill leaves exactly one durable latchable wreck; 8-body cap retires farthest; latch survives shop transition); src/systems/survivalAre...
+- M20 A room with a different law: LANDED - 6719d0358d4 M20 a room with a different law (row 356); test/m20-room-with-a-different-law.test.mjs; src/data/survivalMutators.js:39 (POWERED_CONVEYOR_RULESET), src/syste...
+- M21 Cinder Nursery: the physical return: LANDED - src/data/worldSiteManifests.js:598-656 (cinder nursery manifest: restore_power_bus → powered stage, sever_relay_node → quieted stage, unseal_black_box → DMC Flight Recor...
+- M22 The sample that must arrive alive: ALREADY-TRUE - src/systems/alienEcology.js:921-946 (cradle capture: stress refusal, cmdty_live_specimen custody); test/alienEcologyDeep.test.mjs:220-231 (cradle writes live-specimen lo...
+- M23 Glue, meet mass: RESIDUAL-ROW - gap: no adhesive/spray/coating/prototype-lease law anywhere (reactiveMatter, alienEcology, precursorMachines, modules all clean)
+- M24 Move the nursery, not the animals: LANDED - 11b9be7e091 M24 move the nursery, not the animals (row 355); repairs in b8d9b35a3a2; test/m24-move-the-nursery.test.mjs (staged moves re-home, rushed moves scatter)
+- M25 A fossil made of motion: LANDED - 6d6427455b8 M29 + M25 (rows 352, 353); src/world/motionFossil.js; test/m25-fossil-made-of-motion.test.mjs (restore → compare → stimulate → recorded → follow)
+- M26 The station that kept breathing: LANDED - e5879059603 ecology: the breathing dock closes its berth when the carrier takes it; src/data/collarService.js; test/sfq-b165-collar-service.test.mjs:114 (berth closes fo...
+- M27 Dead-letter delivery: LANDED - 6f2dd8e128e feat(missions): M27 dead-letter delivery encounter (1104); src/data/encounters/1104-dead-letter.js; test/sfq-m-dead-letter.test.mjs
+- M28 A place for the missing piece: LANDED - 039153e138e feat(missions): M28 missing piece encounter (1102); src/data/encounters/1102-missing-piece.js; test/sfq-m-missing-piece.test.mjs
+- M29 Two correct orders: LANDED - 6d6427455b8 M29 + M25 (rows 352, 353) + repairs in b8d9b35a3a2; test/m29-two-correct-orders.test.mjs (both orderings accepted, one workpiece committed once)
+- M30 The clean cylinder: LANDED - 67b4f405a14 M30 the clean cylinder (row 354); src/data/cleanCylinder.js; test/m30-clean-cylinder.test.mjs
+- M31 The Mason moves the cover: LANDED - 51346ca0db8 feat(missions): M31 the Mason moves the cover encounter (1105); src/data/encounters/1105-mason-cover.js; test/sfq-m-mason-cover.test.mjs
+- M32 Two ships, one mistake: RESIDUAL-ROW - gap: same missing adhesive law as M23 (no spray/coating/bridge/sever law in tree); prior pass PARKED on identical grounds
+- M33 At the edge of order: LANDED - 2a4566f8dd5 feat(missions): M33 at the edge of order encounter (1106); src/data/encounters/1106-edge-of-order.js; test/sfq-m-edge-of-order.test.mjs
+- M34 The harvest somebody else owns: LANDED - 8f51fe1fb45 feat(missions): M34 harvest somebody else owns encounter (1103); src/data/encounters/1103-harvest-owned.js; test/sfq-m-harvest-owned.test.mjs
+- M35 The route that closes ahead: ROUTE-LANE - no closure-sequence/refuge-predicate machinery in tree (only racing speed contracts in src/data/adventureSpeedContracts.js); brief says "no required new ending" and name...
+- M36 The universe keeps working: ROUTE-LANE - composite finish-route acceptance, not mission content; covered in production by the player-truth gate (design/program/player-truth/SUMMARY.md) over existing modes
+
+## m5 - Depth roll-up and art briefs (rows 291, 376-380)
+
+- Depth, 25 concrete items: 10 - 1
+- Art A01–A36: 28 - —
+- V2 rumor producers (ad-board, Quiessence, Hush, wreck rumor...: ALREADY-TRUE - src/data/flavor/020-ad-board.js, 060-quiessence.js, 070-hush.js, 010-wreck-rumors.js; src/ui/station/adBoard.js:63 renderAdBoardNotice
+- R1/R2 unique wrecks: ALREADY-TRUE - src/data/uniqueWrecks.js program slots D1–D17 (seventeen named wrecks); src/systems/missions.js listens for uniqueWreck:rumorRecorded through uniqueWreck:resolved
+- A1 The Band (Quiessence / Hush actors): ALREADY-TRUE - src/systems/world.js places place_quiessence_freighter_a/b/c; release GLBs under assets/ships/release/parts/places/; src/data/flavor/040-band.js and 070-hush.js
+- A2 Ship's Ledger: ALREADY-TRUE - src/systems/shipLedger.js:1; src/ui/shipLedgerPanel.js; src/ui/station/screens/ledger.js
+- L1 faction livery: ALREADY-TRUE - src/render/partsLibrary.js paletteFor (~17501) reads FACTION_PALETTES; src/data/palettes.js has Vael, Choir, Fulfillment, Understory; Forge ashline_lode_vael.py, ashline...
+- H1a Wreck Cathedral: ALREADY-TRUE - Release place_landmark_wreck_cathedral.glb; src/render/partsLibrary.js:238; src/data/worldSiteManifests.js:289 staged place
+- H1b Obelisk + Shard Sphere: ROUTE-LANE - src/data/flavor/080-landmark-lore.js C2/C9; src/data/landmarkMissions.js targets; poi_anomaly has flavorTargetRef and no landmarkGlb. Only four place_landmark_*.glb file...
+- H1c Candle Fleet + Quiessence: ALREADY-TRUE - place_landmark_candle_fleet.glb and tools/blender/forge/ships/place_landmark_candle_fleet.py; src/data/sectorAnchors.js landmarkGlb: 'place_landmark_candle_fleet'; Quies...
+- H1d Lung of Charon + Funnel: ROUTE-LANE - Flavor refs landmark_c7_lung_of_charon, landmark_c10_funnel. No matching GLB or Forge recipe. stone_lung in faunaVisuals.js is a creature
+- H1e Flight Deck + Caved Shaft: ROUTE-LANE - landmarkMissions.js landmark_c6_caved_shaft; frontier flavor refs for C6 and C8. No GLB
+- H1f Arc + Watcher + Metronome: ROUTE-LANE - Missions for landmark_c11_ringworld_arc and landmark_c12_metronome; src/systems/world.js calls metronomeHazardZone. No three landmark GLBs
+- H1g Vault Maw + Iron Maw: ROUTE-LANE - src/data/sectors.js poi_vault_maw / Iron Maw flavor; src/data/enemies.js iron_maw_screen. No landmark GLB
+- H1h five faction capitals: ROUTE-LANE - Shared station kit place_station_*.py only. tools/blender/forge/asset_bank_large.py has a capital_berth_outrigger piece, not five capitals
+- S1 Vael ship family: ROUTE-LANE - One live hull: tools/blender/forge/ships/ashline_lode_vael.py (fleet.json ashline_lode_vael). faction_vael enemies and barks are live
+- S2 Fulfillment + Understory kits: ROUTE-LANE - src/data/palettes.js faction_fulfillment / faction_understory; src/systems/barkDirector.js speaks both. No Forge ship file for either
+- W1 planet-state sky: ROUTE-LANE - src/data/planetStates.js:18 four states; src/systems/scanner.js:805 publishes their scanner signals. No render reader of fracture_web, animated_fire_front, or the other ...
+- W2 planet states 5–8: RESIDUAL-ROW - PLANET_STATE_DEFS is exactly four ids. test/depth-program-w1-planet-states.test.mjs pins those four
+- A3 Living Hull: ALREADY-TRUE - src/core/livingHull.js; src/render/livingHullPresentation.js; test/inf-oct17-pic-34.test.mjs. Commit message: ba2633fc4e9 load screen reads yard repairs off the living h...
+- PQ-032 five endings: ALREADY-TRUE - src/story/endings/endingDefs.js:6 ENDING_IDS A–E plus SANDBOX
+- PQ-047 multi-hauler cargo drop: ALREADY-TRUE - src/systems/encounterScripts.js:1726 and :2825 spill a second custody-stamped hauler through spawnFreightCargo. test/convoy-hauler-death-spill.test.mjs
+- PQ-137 straight radial tug-of-war: RESIDUAL-ROW - src/core/sg02DynamicBodyOwner.js:101 load-scaled rope, STABLE_OMEGA_DT for 60 Hz
+- PQ-137-10 massline bars B2/B3/B4/B5/B6-damage/B8/B11 "still...: RESIDUAL-ROW - Tests now name some of those bars: test/sfq-b011-gstick-verification.test.mjs (B2/B3), test/fun-bench-flight-scenarios.test.mjs (B3), test/pq-137-terrain-lethal.test.mjs...
+- PQ-150 double speaker (owned by PQ-207): LANDED - 57832cb0f3c "verify and complete PQ-149, PQ-150, PQ-207, and PQ-151"; 9b29ce12cd1 PQ-207.03. src/ui/station/barContacts.js:468 pickDeedOpener returns one speaker
+- PQ-195 arrestor overlap (visual half): ROUTE-LANE - src/systems/heistFacilities.js:767 spawns the rear arrestor on the same projection as the visual. The roll-up already records the broadphase-mask half at c98bbb9d4
+- PQ-135 motion-lab reds: RESIDUAL-ROW - test/motion-lab-scenarios.test.mjs still runs M1, M6, M8 (timeout 180s)
+- A01 Working civilian hauler: ALREADY-TRUE - Forge mule.py, ore_barge.py, helios_span.py, helios_cradle.py, volatiles_tanker.py, yard_tug.py
+- A02 Freight and salvage lots: ALREADY-TRUE - place_cargo_pod_standard.py, place_container_rack.py, place_ore_bulk_container.py, pod_cargo_container.py
+- A03 Cause-readable wrecks: ALREADY-TRUE - Release place_aftermath_wreck_*.glb and place_aftermath_deb_*.glb; Forge place_dead_hulk.py
+- A04 Coupler, tow lug, workpiece: ALREADY-TRUE - place_transfer_arm.py, place_breakaway_fork.py, yard_tug.py
+- A05 Containment cradle and cage: ALREADY-TRUE - place_ceres_section_cradle.py, place_scrap_cage.py
+- A06 Flywheel / rotor: ALREADY-TRUE - place_breakaway_sp07.py; src/render/partsLibrary.js:196 SP-07 flywheel payload
+- A07 Survivor pod and rescue berth: ALREADY-TRUE - place_47a_rescue_capsule.py, rescue_lifter.py
+- A08 Signal, lure, survey beacon: ALREADY-TRUE - place_lane_beacon.py, place_sensor_mast.py, survey_pin.py, place_nav_buoy.py
+- A09 Transfer / field-work frame: ALREADY-TRUE - place_maintenance_gantry.py, place_conveyor_truss.py, place_transfer_arm.py
+- A10 Station berth and approach: ALREADY-TRUE - place_station_refinery.py, place_station_trade_hub.py, place_station_mining.py, place_dock_interior.py, place_improvised_dock.py
+- A11 Derelict investigation shell: ALREADY-TRUE - place_dead_hulk.py, place_ceres_bait_wreck.py
+- A12 Reference instrument / nav marker: ALREADY-TRUE - place_nav_buoy.py, place_lane_pin.py, place_sensor_mast.py, place_tally_post.py
+- A13 Infestation filament and seams: ALREADY-TRUE - src/render/faunaVisuals.js buildAlienGrowthProp cases filament_sheet, membrane_patch
+- A14 Relay node: ALREADY-TRUE - Same builder, cases node_bulb_small / node_bulb_large
+- A15 Adhesive deposit and calcite: ROUTE-LANE - Only calcified_collar exists in that switch. No wet-sheet, stretch, or cure mesh
+- A16 Pressure-sac device body: ROUTE-LANE - No sac-in-a-cage mesh. lung_bladder / vent_lung are site organs, not a fitted device
+- A17 Breathing valve occupation kit: ROUTE-LANE - poi_ashfall_breathing_dock is an ecology site id. No valve mesh in faunaVisuals.js
+- A18 Structural colony bridge: ROUTE-LANE - false_cable / nerve_lace are threads, not a load path between wreck sections
+- A19 Ray and route-echo: ALREADY-TRUE - faunaVisuals.js veil_ray → buildVeilRay
+- A20 Capturable small host: ALREADY-TRUE - suture_mite, bolus_* builders in the same file
+- A21 Carrier / migration silhouette: ALREADY-TRUE - void_carrier, spindle_mother, pilgrim_spine builders
+- A22 Field research rack and prototype cradle: ALREADY-TRUE - stormshift_cooling_rack.py, place_station_research.py
+- A23 Courier frame and token: ALREADY-TRUE - src/render/machineVisuals.js MACHINE_BUILDERS.courier; src/data/precursorMachines.js kind courier
+- A24 Custodian: ALREADY-TRUE - MACHINE_BUILDERS.custodian
+- A25 Mason: ALREADY-TRUE - MACHINE_BUILDERS.mason
+- A26 Gate Auditor: ALREADY-TRUE - MACHINE_BUILDERS.auditor (buildGateAuditor)
+- A27 Shepherd corridor engine: ALREADY-TRUE - MACHINE_BUILDERS.shepherd
+- A28 Sorter: ALREADY-TRUE - MACHINE_BUILDERS.debris_sorter; encounter 1103-harvest-owned.js stamps that kind
+- A29 Machine site work kit: ALREADY-TRUE - buildMachineProp cases pylon, monolith, spine, plate, husk, vault
+- A30 Containment aperture and boundary markers: ALREADY-TRUE - buildMachineProp plate and vault; machine kind boundary_walker
+- A31 Deep-time record structure: ROUTE-LANE - husk is one partial torus, not a partly absent array
+- A32 Indirect domain-scale presence: ROUTE-LANE - src/data/alienEcology.js label vethari-scale architecture evidence only. No sky/occlusion asset. No Vethari body, which the brief forbids
+- A33 Human-clamped xenoprojector: ROUTE-LANE - No xenoprojector (or equivalent sprayer) in src/
+- A34 ORRERY produced-art plates: ROUTE-LANE - Brief is interface art. Not in the Forge ship/place set
+- A35 Combat role silhouettes: ALREADY-TRUE - Forge hornet.py, ashline_dart.py, bastion.py, warden.py, leviathan.py, kestrel.py
+- A36 Personal hull state kit: ALREADY-TRUE - Forge player hulls plus src/render/livingHullPresentation.js scar/grime/patch decals
+
+## Landed the same day (commit evidence)
+
+Every commit of the 2026-10-17 admission push, in order. Review fixes follow the unit they fix.
+
+- c14b15bf420 D210: the first Alt hold opens the comms fan and the practice room keeps its seed and Hornet on the worker lane
+- 20bd85521f6 INFERENCE VERB-37: a decoy dropped while boosting inherits your vector, so it flies like you
+- 0c982521dc0 INFERENCE PIC-33: the next race gate is lit ahead of the rest, so the line reads at racing speed
+- e7656e6fd0d test: NXI-038 pins the centred hull, and now also proves nearby hulls still take the blast
+- a42584bd2dc SFQ-B169: closing on the Harvest Deep files its deep-trace evidence once, with its source site
+- 3c4d3c82278 INFERENCE PRO-21: the window title names the mode and sector while you fly
+- 1ad05c8e94b INFERENCE FIGHT-11: a mine-layer's halo counts its armed mines
+- 8584d0f888c SFQ-B155: a precursor site's force fields switch off with the site and with leaving its sector
+- 394c41e2294 INFERENCE TEACH-11: the first full-hold refusal names the jettison key
+- 2a286d1042d SFQ-B158: a moving boundary damps a coated hull against its own motion, and a lane's corners keep their push
+- 3cab3058158 INFERENCE WORLD-46: a hauler whose raiders you killed remembers you at the next crossing
+- 1501cb0e099 test: NXI-038 zero-range field pins the centred hull and proves nearby hulls still take the blast
+- 169c0c6fc88 SFQ-B042: enemy wings commit to the ship they are pressing instead of flickering between near-equal targets
+- 213b7284bff SFQ-B030: a rope, a gravity well and a blast in one continuous scene are recognised as one stunt with its full cause chain
+- 64343df178d SFQ-B134: where a pressure sac sits on the hull decides which way the blast spins it
+- b7ec6e527da SFQ-B024: letting go of one anchor no longer blocks snap-catching a different one
+- 2c0adfa7ace INFERENCE TEACH-13: the first missile lock with decoys in stock names the countermeasure key
+- 0e060fdb8bb INFERENCE WORLD-47: the Vesta foundry runs a slag-pour side event you can watch from the lane
+- 880429f09cf SFQ-B058: a Crucible run that ends to a thrown mass, whip or collision names it instead of 'unidentified weapon'
+- b9cf9fc1630 SFQ-B099: the beam says why a locked or finished world-site piece refuses it, and switches off when the job is done
+- 368efcf64b3 SFQ-B069: arriving at Ashfall Reach in Chapter 3 plays its arrival even after an earlier visit, with your real ship named
+- 7f1832d763d SFQ-B055: a Swarm kill by thrown mass, whip, ram or collision names its method on the earn line
+- bcd8b4f24c9 SFQ-B050: every enemy on the 26-hull roster speaks a readable counter hint when first met
+- c96610248f1 INFERENCE PIC-34: a returning nemesis hull wears the scars from its last defeat
+- f5e1db535af SFQ-B123: severing a site's relay means different things for different swarms
+- b7ad7eaa83a SFQ-B072: a tow-in mission needs the barge to reach the berth, and letting go of the rope clears the job's latch
+- 5e4d4ffb814 INFERENCE PRO-20: the save browser names each slot's game mode
+- 9e9c4f68f8c check: impulse authority pins the blast-facing skin contact that SFQ-B134 introduced
+- 89ffc4edfaf SFQ-B036: hammering a ship with concussions no longer locks its helm down forever
+- 4e5bc2ee275 SFQ-B097: venting a military wreck ejects matching classified salvage, and a refused beam no longer destroys the goods
+- c9ba40be2ca SFQ-B150: the Empty Foundry's machines look and sound like they are working only while they work
+- 3a5c59fb78d SFQ-B135: alien matter has two counters - heat calcifies a hull leech in place, a mechanical purge flings it live
+- 39218e47caa SFQ-M03 warm cargo, narrow margin: a posted Ice Volatiles haul names its handling limit and pays for what survives
+- f7ecbb7a2c8 SFQ-B080: a contract that ends no longer leaves its target behind to respawn as an orphan
+- c03f22257ea INFERENCE SFQ-I017: a startup tell dies with the hull that was winding up
+- 9230d97cb0e INFERENCE SFQ-I059: precursor machine tips glow only while the machine works
+- 3ef32ec712b SFQ-B100: holding the beam on a target it cannot work announces the refusal once and stops
+- efee3d57974 INFERENCE SFQ-I060: the Executor's quarantine warning names the flagged cargo
+- a52d65c9740 SFQ-I060 follow-up: the Executor warning names lots by display name only, never a raw id
+- 95d630f14dc INFERENCE SFQ-I016: locking a very heavy ship says why concussions barely move it
+- c9bc78c0e71 INFERENCE SFQ-I013: a full bomb field no longer reads as a full bay
+- 27ef531ec9c INFERENCE SFQ-I061: the ring you can see at a precursor field ends where the field lets go
+- d3acc2d088b INFERENCE SFQ-I008: turning the combat stick on with the keyboard explains where its centre is
+- db43eb2b3fa SFQ-B138: calcified residue is a brittle layer that cracks into four shards under heat or a hard hit
+- 8538fc07d97 INFERENCE SFQ-I068: returning to an alien site that has changed puts one stage-aware line in the log
+- 214c95136b2 SFQ-B036 review fix: the five-second helm-denial cap survives the status-expiry handoff
+- c63a29ecacf FIGHT-11 review fix: the mine-layer's armed-mine count is drawn, not hidden in attributes
+- e04bfd1c00a tests: re-pin 18 stale tests in six files to the real contracts (Ceres structural masses, rich-ore custody, sandbox materials, job effects, bowling)
+- ce8654730e7 PIC-34 review fix: a returning rival's scars are drawn on its own ship in the real renderer
+- d21405b287d M03 review fix: the Helios board actually publishes the warm-cargo run
+- 9ae24c76498 review fixes: a thrown decoy's marker follows its bait point, and a removed or replaced hull releases its warning
+- 1b50676e810 SFQ-B055 review fix: a Swarm kill by a whipped body names the Massline whip on the earn line
+- 72545317c79 SFQ-B097 review fix: a refused salvage pickup stays in the wreck's one balance instead of being copied
+- 0e7f853ec6f SFQ-I016 and SFQ-I059 review fixes: the main thread now receives a hull's mass and a machine's work flags
+- b959b054db0 INFERENCE SFQ-I049: a sector scan no longer renames a disguised Black Sail, and fauna names follow the fitted bio-scan head
+- 920457debd9 Revert SFQ-I008: the keyboard-only combat-stick hint cannot tell a keyboard toggle from touch on the worker lane
+- f77a7a8ef30 SFQ-B138 review fix: the Closed Refinery's calcified collars and mineral roots are real breakable bodies
+- 3c8e89e9351 SFQ-B150 review fix: the mason's weld cue plays when placement begins, so normal construction is audible
+- f4f995ea443 tests: re-pin 12 stale tests to the real contracts (Swarm score waits for a pilot act, nursery pick, dead-press fixtures, system order, bomb VFX owner, Cruc
+- 756cdcfb0c3 INF-022: a wing target shows its real callsign instead of a chopped tail
+- 680f0ebbf60 arsenal: the saucer's two built-in guns get their own marks and explanations
+- 9725c8851a1 SFQ-I061 review fix: the Star Marker's visible ring is drawn at the velocity plane's real edge
