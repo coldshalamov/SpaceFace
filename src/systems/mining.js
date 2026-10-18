@@ -443,6 +443,13 @@ export const mining = {
     };
     const resolved = resolveBeamVerb(desc, toolState);
 
+    if (!resolved.ok) {
+      this._stopBeam();
+      this.bus.emit('beam:denied', { minerId: player.id, targetId: target.id, verb: resolved.verb, reason: resolved.reason });
+      this._noteBeamRefusal(resolved.reason);
+      return;
+    }
+
     if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== resolved.verb) {
       this._setLockTargetId(target.id);
       this._activeVerb = resolved.verb;
@@ -457,12 +464,6 @@ export const mining = {
 
     this._activeBeamLine = beamLineFor(player, target);
     if (this._activeBeamLine) this._activeBeamLine.verb = resolved.verb;
-
-    if (!resolved.ok) {
-      this.bus.emit('beam:denied', { minerId: player.id, targetId: target.id, verb: resolved.verb, reason: resolved.reason });
-      this._noteBeamRefusal(resolved.reason);
-      return;
-    }
 
     const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
     switch (resolved.verb) {
