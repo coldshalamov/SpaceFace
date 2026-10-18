@@ -870,7 +870,6 @@ recorded in the lane's NOW row before minting.
 | 383 | SFQ-B175 | A creature's body expresses charging, fleeing or drifting before it touches you (`src/render/faunaVisuals.js`, `src/data/faunaMotionRead.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 | 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 | 385 | M07 | Cargo in the wake: a covert physical handoff alongside a moving hauler (`smuggling_run` in `src/systems/missions.js`, `src/data/heistMission.js`) | BUILD | OPEN |
-| 387 | ADHESIVE-LAW | Build the spray/coating/bridge/sever law that briefs M23 (glue, meet mass) and M32 (two ships, one mistake) name as their own prerequisite: no such law exists in `reactiveMatter`, `alienEcology`, `precursorMachines` or `modules`. A missing capability is implementation work: add the data and one system seam as the briefs describe, then the two scenes | BUILD | OPEN |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
 
