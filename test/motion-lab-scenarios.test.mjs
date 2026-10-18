@@ -384,12 +384,18 @@ test('mutation: impulse-cancelling steering turns the throwability gate red', LO
   const live = await runM11({ seed: SEED, crescent: false });
   forceFodderCohortMutation({ cancelImpulses: true });
   try {
-    const mutated = await runM11({ seed: SEED, crescent: false });
+    // cancelImpulses removes the coast window and cranks the slot pull, but that only rewrites
+    // the normalized request. The request is delivered through each hull's own actuator
+    // authority, which cannot shed the repulsor throw inside the throwability window — so the
+    // mutation must also raise delivered authority, or the gate stays green for the wrong
+    // reason (an oracle that cannot redden). 8x delivered accel is the regression shape this
+    // gate exists to catch: steering with enough authority to kill a thrown body's coast.
+    const mutated = await runM11({ seed: SEED, crescent: false, actuatorAuthorityMult: 8 });
     assert.ok(live.metrics.cohort12.disruptionResponseS > 0.35, 'live river already has a visible coast');
     assert.ok(
       mutated.metrics.cohort12.disruptionResponseS <= 0.35
       || mutated.metrics.cohort12.impulseRetention < 0.50,
-      'cranking steering to cancel impulses must fail throwability',
+      'impulse-cancelling steering with delivered actuator authority must fail throwability',
     );
   } finally {
     forceFodderCohortMutation(null);

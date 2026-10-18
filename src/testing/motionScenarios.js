@@ -210,7 +210,13 @@ export async function runM4Hulls({ seed = MOTION_LAB_SEED, sharedEnvelope = fals
     const byHull = {};
     const traces = {};
     for (const hull of M4_INTENT_HULLS) {
-      const result = await runM4HullIntent(seed, hull);
+      // A shared envelope must be shared end to end: planning scales are already identity at
+      // the request seam, so the mutation also flattens each hull's actuator authority (the
+      // numbers aiPorts' controlFromManeuver multiplies requests by). Without the second half
+      // the mutated run still differentiates and the oracle fails for the wrong reason.
+      const result = await runM4HullIntent(seed, hull, {
+        authorityFromDefId: sharedEnvelope ? M4_INTENT_HULLS[0].id : null,
+      });
       byHull[hull.id] = result.metrics;
       traces[hull.id] = result.trace;
     }
@@ -480,22 +486,25 @@ export async function runM8({ seed = MOTION_LAB_SEED } = {}) {
   }
 }
 
-export async function runM11({ seed = MOTION_LAB_SEED, crescent = true } = {}) {
+export async function runM11({ seed = MOTION_LAB_SEED, crescent = true, actuatorAuthorityMult = 1 } = {}) {
   const cohort12 = await runSwarmCohort(seed, {
     count: 12,
     recipeId: COHORT_RECIPE_RIVER,
     squadId: 'm11_river_12',
+    actuatorAuthorityMult,
   });
   const cohort24 = await runSwarmCohort(seed, {
     count: 24,
     recipeId: COHORT_RECIPE_RIVER,
     squadId: 'm11_river_24',
+    actuatorAuthorityMult,
   });
   const crescent12 = crescent
     ? await runSwarmCohort(seed, {
       count: 12,
       recipeId: COHORT_RECIPE_CRESCENT,
       squadId: 'm11_crescent_12',
+      actuatorAuthorityMult,
     })
     : null;
   const payload = {
@@ -915,6 +924,7 @@ async function runSwarmCohort(seed, opts) {
   const count = typeof opts === 'number' ? opts : (opts && opts.count) || 12;
   const recipeId = (opts && opts.recipeId) || COHORT_RECIPE_RIVER;
   const squadId = (opts && opts.squadId) || `m11_${recipeId}_${count}`;
+  const actuatorAuthorityMult = (opts && opts.actuatorAuthorityMult) || 1;
   const shape = recipeId === COHORT_RECIPE_CRESCENT ? 'crescent' : 'river';
   const host = await bootMotionLab({ seed, kind: 'ai' });
   const started = nowNs();
@@ -926,6 +936,7 @@ async function runSwarmCohort(seed, opts) {
       recipeId,
       count,
       playerPos: player.pos,
+      actuatorAuthorityMult,
     });
     await host.ready();
     const ids = ships.map((e) => e.id);
@@ -1067,7 +1078,7 @@ async function runSwarmCohort(seed, opts) {
   }
 }
 
-function spawnFodderCohort(host, { squadId, recipeId, count }) {
+function spawnFodderCohort(host, { squadId, recipeId, count, actuatorAuthorityMult = 1 }) {
   const ships = [];
   const crescent = recipeId === COHORT_RECIPE_CRESCENT;
   const lanes = count <= 12 ? 3 : 4;
@@ -1089,6 +1100,7 @@ function spawnFodderCohort(host, { squadId, recipeId, count }) {
         cohortRecipe: recipeId,
         rot: 0,
         gate,
+        actuatorAuthorityMult,
       }));
     }
     return ships;
@@ -1104,6 +1116,7 @@ function spawnFodderCohort(host, { squadId, recipeId, count }) {
       cohortRecipe: recipeId,
       rot: 0,
       gate,
+      actuatorAuthorityMult,
     }));
   }
   return ships;
@@ -1288,7 +1301,7 @@ function spawnPlayer(host, hullId, pos, rot = 0) {
   return entity;
 }
 
-function spawnNpcShip(host, { defId, pos, rot = 0, team = 1 }) {
+function spawnNpcShip(host, { defId, pos, rot = 0, team = 1, authorityFromDefId = null }) {
   const spec = makeShipEntitySpec(defId, {
     isPlayer: false,
     fittings: [],
@@ -1296,6 +1309,16 @@ function spawnNpcShip(host, { defId, pos, rot = 0, team = 1 }) {
     rot,
     team,
   });
+  if (authorityFromDefId && authorityFromDefId !== defId) {
+    const reference = makeShipEntitySpec(authorityFromDefId, {
+      isPlayer: false,
+      fittings: [],
+      pos,
+      rot,
+      team,
+    });
+    shareActuatorAuthority(spec, reference);
+  }
   spec.data = spec.data || {};
   spec.data.intent = emptyIntent();
   return host.runtime.spawn(spec);
@@ -1335,6 +1358,7 @@ function spawnEnemy(host, typeId, pos, opts = {}) {
   spec.data.intent = emptyIntent();
   spec.data.combat = spec.data.combat || {};
   if (host.state.playerId) spec.data.combat.targetId = host.state.playerId;
+  scaleActuatorAuthority(spec, opts.actuatorAuthorityMult);
   return host.runtime.spawn(spec);
 }
 
@@ -1444,7 +1468,7 @@ function emptyIntent() {
   return { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false };
 }
 
-async function runM4HullIntent(seed, hull) {
+async function runM4HullIntent(seed, hull, opts = {}) {
   const host = await bootMotionLab({ seed, kind: 'actuator' });
   try {
     const follower = spawnNpcShip(host, {
@@ -1452,6 +1476,7 @@ async function runM4HullIntent(seed, hull) {
       pos: { x: -90, z: 140 },
       rot: 0,
       team: 1,
+      authorityFromDefId: opts.authorityFromDefId || null,
     });
     await host.ready();
     const planner = new ManeuverPlanner({
@@ -1638,6 +1663,69 @@ function requestActuator(host, entity, request) {
   const packet = makeThrusterRequest(entity.id, host.state.tick | 0, request);
   if (packet.version !== AI_CONTRACT_VERSION) return false;
   return helpers.aiManeuver.request(packet);
+}
+
+// --- mutation seam: per-entity actuator authority ----------------------------------------
+// aiPorts' controlFromManeuver turns every normalized thruster request into force through the
+// entity's OWN resolved authority: flightModel numbers (merged over thrust/turnRate/drag/
+// maxSpeed) for tuned hulls, the propulsion catalog as the ambient fallback, and a uniform
+// healthy thruster layout (authority ~1 for every fresh spawn). Planning scales are identity
+// at this seam, so mutations that only touch planning leave delivered force per-hull — the
+// oracle must move the authority source fields on the spawned lab entity instead. Each
+// entity's own mass/inertia/identity stay put (they cancel out of delivered accel anyway);
+// only the delivered accel/turn/brake numbers move. Spec objects are replaced, never mutated
+// in place: derived blocks are frozen and shared across same-def spawns.
+
+const ACTUATOR_TOP_LEVEL_KEYS = Object.freeze(['thrust', 'turnRate', 'maxSpeed', 'drag']);
+const ACTUATOR_OWNED_MODEL_KEYS = Object.freeze(['mass', 'inertia', 'flightClass', 'role']);
+const ACTUATOR_ACCEL_MODEL_KEYS = Object.freeze([
+  'mainAccel', 'reverseAccel', 'strafeAccel', 'angularAccel', 'angularBrake',
+  'assistStrength', 'reverseBrake',
+]);
+const ACTUATOR_ACCEL_PROPULSION_KEYS = Object.freeze([
+  'mainAccel', 'maxAccel', 'reverseAccel', 'strafeAccel', 'yawAccel', 'yawBrake',
+  'rcsForwardAccel', 'rcsReverseAccel', 'rcsStrafeAccel',
+  'brakeAccel', 'maxBrakeAccel', 'fieldAccel', 'trimAccel',
+]);
+
+function shareActuatorAuthority(spec, referenceSpec) {
+  const refModel = (referenceSpec && referenceSpec.flightModel) || null;
+  if (refModel) {
+    const own = (spec && spec.flightModel) || {};
+    const shared = { ...refModel };
+    for (const key of ACTUATOR_OWNED_MODEL_KEYS) {
+      if (own[key] !== undefined) shared[key] = own[key];
+      else delete shared[key];
+    }
+    spec.flightModel = shared;
+  }
+  for (const key of ACTUATOR_TOP_LEVEL_KEYS) {
+    if (Number.isFinite(referenceSpec && referenceSpec[key])) spec[key] = referenceSpec[key];
+  }
+  if (referenceSpec && referenceSpec.propulsion) {
+    spec.propulsion = { ...referenceSpec.propulsion };
+  }
+}
+
+function scaleActuatorAuthority(spec, mult) {
+  const k = Number(mult);
+  if (!(k > 0) || k === 1 || !spec || typeof spec !== 'object') return;
+  if (spec.flightModel && typeof spec.flightModel === 'object') {
+    const next = { ...spec.flightModel };
+    for (const key of ACTUATOR_ACCEL_MODEL_KEYS) {
+      if (Number.isFinite(next[key])) next[key] *= k;
+    }
+    spec.flightModel = next;
+  }
+  if (spec.propulsion && typeof spec.propulsion === 'object') {
+    const next = { ...spec.propulsion };
+    for (const key of ACTUATOR_ACCEL_PROPULSION_KEYS) {
+      if (Number.isFinite(next[key])) next[key] *= k;
+    }
+    spec.propulsion = next;
+  }
+  if (Number.isFinite(spec.thrust)) spec.thrust *= k;
+  if (Number.isFinite(spec.turnRate)) spec.turnRate *= k;
 }
 
 function applyStandardRepulsorImpulse(entities, dir) {
