@@ -1,5 +1,6 @@
 // Reactive matter on the live entity graph.
-// Laws stay in src/matter/reactive/step.js. This system copies entity kinematics in,
+// Family laws stay in src/matter/reactive/step.js. Adhesive spray, bridge, and sever
+// live in src/matter/reactive/adhesive.js. This system copies entity kinematics in,
 // then writes impulses, debris, collider revisions, and attachment.targetId back out
 // through the public physics and massline seams. It does not integrate positions.
 
@@ -14,8 +15,11 @@ import { REACTIVE_DT } from '../data/reactiveMatter/budgets.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { reactiveHabitatFor } from '../data/reactiveMatter/habitats.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { ADHESIVE, ADHESIVE_LINES } from '../data/reactiveMatter/adhesive.js';
 import { modelById } from '../data/reactiveMatter/models.js';
+import { refreshAdhesiveCoat, stepAdhesive } from '../matter/reactive/adhesive.js';
 import { stepReactiveMatter } from '../matter/reactive/step.js';
+import { removeCargo } from './cargo.js';
 import {
   addHitch,
   addMachine,
@@ -448,6 +452,55 @@ function commitRetargets(state, world, result, owner, attachments) {
   }
 }
 
+function adhesivePair(state, a, b) {
+  const aPlayer = !!(a && (a.isPlayer === true || a.id === state.playerId));
+  const bPlayer = !!(b && (b.isPlayer === true || b.id === state.playerId));
+  if (aPlayer && !bPlayer) return { player: a, target: b };
+  if (bPlayer && !aPlayer) return { player: b, target: a };
+  return null;
+}
+
+// A gentle contact while polymers are aboard is the spray. A hard strike, a
+// distant contact, or an empty hold leaves the hull bare — a miss is not a status.
+function commitAdhesive(state, world, deposits, dt) {
+  const notices = [];
+  const rows = deposits.slice().sort((p, q) => {
+    const ps = String(p.target && (p.target.data?.reactiveMatter?.key ?? p.target.id));
+    const qs = String(q.target && (q.target.data?.reactiveMatter?.key ?? q.target.id));
+    if (ps < qs) return -1;
+    if (ps > qs) return 1;
+    return 0;
+  });
+  const seen = new Set();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const target = row.target;
+    const player = row.player;
+    if (!target || target.alive === false || !target.data?.reactiveMatter || !player?.pos || !target.pos) continue;
+    const key = target.data.reactiveMatter.key ?? target.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const body = world.bodies.get(key);
+    if (!body || body.phase === 'fractured') continue;
+    const dist = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+    const reach = (player.radius || 1) + (target.radius || 1) + ADHESIVE.sprayReach;
+    const closing = Number.isFinite(row.closing) ? row.closing : Infinity;
+    if (dist > reach || closing < 0 || closing > ADHESIVE.depositClosingMax) continue;
+    const bag = world.adhesive;
+    const existing = bag && bag.coatings.get(key);
+    if (existing && existing.integrity >= 0.999) continue;
+    const count = bag ? bag.coatings.size : 0;
+    if (!existing && count >= ADHESIVE.maxCoatings) continue;
+    if (!state.player || !state.player.cargo) continue;
+    const removed = removeCargo(state, ADHESIVE.polymerId, ADHESIVE.polymerCost);
+    if (!(removed > 0)) continue;
+    refreshAdhesiveCoat(world, key);
+    notices.push({ text: ADHESIVE_LINES.sprayTook, kind: 'info' });
+  }
+  const stepped = stepAdhesive(world, dt);
+  return { notices: notices.concat(stepped.notices), impulses: stepped.impulses };
+}
+
 export const reactiveMatter = {
   name: 'reactiveMatter',
 
@@ -497,7 +550,7 @@ export const reactiveMatter = {
     if (this.helpers.reactiveMatterLab) applyDemo(state, world, stepDt, owner);
     const player = state.entities.get(state.playerId);
     if (player) ensureCounterpart(world, player);
-    const contacts = [], seen = new Set();
+    const contacts = [], deposits = [], seen = new Set();
     for (const row of this.pending.splice(0)) {
       const a = state.entities.get(row.aId), b = state.entities.get(row.bId);
       if (!a?.data?.reactiveMatter && !b?.data?.reactiveMatter) continue;
@@ -505,8 +558,16 @@ export const reactiveMatter = {
       if (seen.has(key)) continue;
       seen.add(key);
       contacts.push({ ...row, aId: ensureCounterpart(world, a), bId: ensureCounterpart(world, b) });
+      const pair = adhesivePair(state, a, b);
+      if (pair) deposits.push({ player: pair.player, target: pair.target, closing: row.closingSpeed });
     }
     const result = stepReactiveMatter(world, { dt: stepDt, contacts });
+    const adhesive = commitAdhesive(state, world, deposits, result.dt);
+    for (let i = 0; i < adhesive.impulses.length; i++) result.impulses.push(adhesive.impulses[i]);
+    for (let i = 0; i < adhesive.notices.length; i++) {
+      const notice = adhesive.notices[i];
+      this.bus?.emit?.('toast', { text: notice.text, kind: notice.kind, ttl: 4 });
+    }
     for (let i = 0; i < result.impulses.length; i++) queuePair(state, world, result.impulses[i], result.dt);
     commitSpawns(state, world, result.spawned, this.helpers.reactiveMatterLab ? null : this.helpers);
     commitBodies(state, world);
