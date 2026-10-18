@@ -2268,7 +2268,8 @@ export const missions = {
     const lot = WARM_CARGO_CONTRACT;
     if (info.id !== lot.stationId) return false;
     const exists = [...board.slots, ...this.state.missions.active].some(m => m?.source === lot.source);
-    const settled = (this.state.missions.receipts || []).some(r => r.source === lot.source && r.outcome === 'completed');
+    const settled = this.state.story?.flags?.warm_cargo_completed === true
+      || (this.state.missions.receipts || []).some(r => r.source === lot.source && r.outcome === 'completed');
     if (exists || settled) return false;
     const text = lot.boardText.replace('{limit}', String(lot.handlingLimit));
     board.slots.push({
@@ -9758,6 +9759,13 @@ export const missions = {
   _recordMissionReceipt(m, outcome, reason, settlement = {}) {
     if (!this.state.missions) return null;
     this.state.missions.receipts = normalizeMissionReceipts(this.state.missions.receipts);
+    // Retire the one-time lot independently of the recent-receipt cap. Promote surviving legacy
+    // receipts too, before a later settlement can evict their completion evidence.
+    if ((m?.source === WARM_CARGO_CONTRACT.source && outcome === 'completed')
+      || this.state.missions.receipts.some(r => r.source === WARM_CARGO_CONTRACT.source && r.outcome === 'completed')) {
+      const flags = this.state.story.flags || (this.state.story.flags = {});
+      flags.warm_cargo_completed = true;
+    }
     // PB-MIS-E: a settled yard contract is retired by its authored id — the board-sync ledger
     // reads this so a refresh can never repost a completed, failed, or abandoned yard job.
     const yardContractId = m && m.params && m.params.yardContractId;
