@@ -9,10 +9,11 @@ import {
 } from '../world/farActorTable.js';
 import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 import { SITE_MACHINE_BY_ID } from '../data/sites.js';
+import { Masks } from '../core/entity.js';
 import { hash32 } from '../core/rng.js';
-import { stepSiteThermal } from './siteThermalModel.js';
+import { stepSiteThermal, THERMAL_BANDS } from './siteThermalModel.js';
 import { buildSiteSignature } from './siteSignatureModel.js';
-import { RADIATOR_FIN, radiatorFinIntact } from './radiatorFins.js';
+import { RADIATOR_FIN, RADIATOR_SHEARED, radiatorFinIntact } from './radiatorFins.js';
 // PQ-017 — imported materialization helper. asteroidSites remains the sole registered owner.
 
 import { planWorldSiteMaterialization } from './worldSiteKernel.js';
@@ -1468,7 +1469,6 @@ function structuralData(entry, admitted) {
 // player is in the sector.
 
 const RADIATOR_WELDED = 'Radiator fins welded onto the rock. The halls settle, and the site reads bright.';
-const RADIATOR_SHEARED = 'The radiator fin sheared off. The halls are overheating again.';
 
 function sectorAllowsRadiatorBody(state, site) {
   const current = state && state.world && state.world.currentSectorId;
@@ -1524,7 +1524,8 @@ function spawnRadiatorBody(spawnEntity, site, state, fin) {
     mass: 12,
     hull: fin.hull,
     hullMax: RADIATOR_FIN.hull,
-    collides: false,
+    collides: true,
+    collisionMask: Masks.PROJECTILE,
     data: {
       name: RADIATOR_FIN.name,
       radiatorFin: true,
@@ -1572,17 +1573,20 @@ function radiatorMachineRows(site, rt) {
   return { rows, defs };
 }
 
-function solveRadiatorThermal(site, rt, dtS) {
+export function solveRadiatorThermal(site, rt, dtS) {
   const { rows, defs } = radiatorMachineRows(site, rt);
-  return stepSiteThermal({
+  const thermal = stepSiteThermal({
     dtS,
     machines: rows,
     radiatorFins: site.radiatorFins,
     ...(Object.keys(defs).length ? { defs } : {}),
   });
+  // The plain-words band name rides the result so readers (the scanner) never import the thermal kernel.
+  const band = THERMAL_BANDS.find((row) => row.id === thermal.worstBand);
+  return { ...thermal, worstBandLabel: band ? band.label : '' };
 }
 
-function radiatorSignature(site, rt) {
+export function radiatorSignature(site, rt) {
   const { rows } = radiatorMachineRows(site, rt);
   const power = [];
   const comp = rt.compPower;
@@ -1624,14 +1628,14 @@ export function stepExteriorRadiators(input = {}) {
     const fin = site.radiatorFins[0];
     const body = findRadiatorBody(state, site, rt);
     if (fin && radiatorFinIntact(fin)) {
-      const dead = body && (body.alive === false || !(Number(body.hull) > 0));
+      const dead = body && !(Number(body.hull) > 0);
       if (dead) {
         fin.intact = false;
         fin.hull = 0;
         retireRadiatorBody(input.removeEntity, body);
         sheared = true;
         bodyId = null;
-      } else if (body) {
+      } else if (body && body.alive !== false) {
         if (Number.isFinite(Number(body.hull))) fin.hull = Number(body.hull);
         bodyId = body.id;
       } else if (sectorAllowsRadiatorBody(state, site) && typeof input.spawnEntity === 'function') {

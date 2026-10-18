@@ -10,7 +10,17 @@ import { createDamageRouter, scalarHitToDamagePacket } from '../src/combat/damag
 import { createCombatCatalog } from '../src/combat/runtime.js';
 import { stepSiteThermal } from '../src/systems/siteThermalModel.js';
 import { buildSiteSignature } from '../src/systems/siteSignatureModel.js';
-import { asteroidSites } from '../src/systems/asteroidSites.js';
+import { combat } from '../src/systems/combat.js';
+import { tileIndex } from '../src/systems/drill.js';
+import { core } from '../src/core/coreSystem.js';
+import { physics } from '../src/core/physics.js';
+import { weapons } from '../src/systems/weapons.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { scanner, setScannerSiteProjectionSource } from '../src/systems/scanner.js';
+import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
+import { asteroidSites, makeSiteRecord, findAsteroidSiteFromState, projectAsteroidSiteFromState } from '../src/systems/asteroidSites.js';
+// The composition root (src/core/registry.js) registers the site projection with the scanner at game start; the test does the same.
+setScannerSiteProjectionSource({ find: findAsteroidSiteFromState, project: projectAsteroidSiteFromState });
 
 const HOLLOW = Object.freeze({ matrix: 0, basalt: 0, gas: 0, ores: {} });
 const FABRICATOR = Object.freeze({ id: 'syn_fabricator', name: 'Fabricator', power: -10 });
@@ -169,4 +179,158 @@ test('a hall that is not overheating grows no fin and keeps a quiet signature', 
   sys._stepExteriorRadiators(restored, state, hot, 60);
   assert.equal(restored.radiatorFins[0].intact, false);
   assert.equal(hot.radiator.worstBand, 'fault');
+});
+
+// Use the shipped site/network, weapon emission, projectile sweep and combat owners.
+function productionHall() {
+  const state = createGameState(4242);
+  state.mode = 'flight';
+  const bus = createBus();
+  const ctx = { state, bus, helpers: {}, registry: { get() { return null; } } };
+  const coreHost = Object.create(core);
+  coreHost.init(ctx);
+  const physicsHost = Object.create(physics);
+  physicsHost.init(ctx);
+  const weaponsHost = Object.create(weapons);
+  weaponsHost.init(ctx);
+  const combatHost = Object.create(combat);
+  combatHost.init(ctx);
+  const sites = Object.create(asteroidSites);
+  sites.init(ctx);
+  const site = makeSiteRecord({ id: 'site_bore_test', asteroidId: 700,
+    sectorId: state.world.currentSectorId, createdT: 0 });
+  site.anchored = true;
+  site.anchor = { x: 100, z: -40, radius: 12 };
+  site.boreSeed = 4242;
+  site.machines = [
+    { id: 'core', defId: 'sm_massline_core', col: 10, row: 10 },
+    { id: 'bay', defId: 'sm_fabricator', col: 11, row: 10, mode: 'sr_fab_courier' },
+  ];
+  // A hollow contact ring, reached through the durable excavation recipe.
+  for (let row = 9; row <= 11; row++) {
+    for (let col = 9; col <= 12; col++) site.cleared.push(tileIndex(col, row));
+  }
+  state.sites.order.push(site.id);
+  state.sites.byId[site.id] = site;
+  sites._tickSite(site, 1, state);
+  const fin = state.entityList.find(e => e.data?.radiatorFin);
+  assert.ok(fin, 'the live production step welds a fin');
+  const player = ctx.helpers.spawnEntity({ type: 'ship', team: 0,
+    pos: { x: fin.pos.x - 60, z: fin.pos.z }, radius: 2,
+    hull: 100, hullMax: 100, data: {} });
+  state.playerId = player.id;
+  function shoot() {
+    const def = WEAPONS.find(w => w.id === 'wpn_autocannon_s');
+    weaponsHost._spawnProjectile(player, { defId: def.id }, def, 0, null, false, state);
+    const shot = state.entityList.findLast(e => e.type === 'projectile');
+    // Advance the emitted round along its own velocity, then run the ordinary sweep.
+    const dt = 0.2;
+    shot.prevPos.copy(shot.pos);
+    shot.pos.x += shot.vel.x * dt;
+    shot.pos.z += shot.vel.z * dt;
+    physicsHost.sweepProjectiles(dt, state);
+    return shot;
+  }
+  return { state, bus, ctx, coreHost, sites, site, fin, shoot };
+}
+
+test('9: a real weapon round reaches the fin through physics and combat', () => {
+  const h = productionHall();
+  const before = h.fin.hull;
+  let hit = null;
+  h.bus.on('projectile:hit', p => { hit = p; });
+  h.shoot();
+  assert.equal(hit?.targetId, h.fin.id, 'physics must hit the exterior fin');
+  assert.ok(h.fin.hull < before, 'combat must apply the swept shot to fin hull');
+});
+
+
+test('10: lethal gunfire is durable before corpse sweep, save and the next site cadence', () => {
+  const h = productionHall();
+  for (let i = 0; i < 20 && h.fin.alive; i++) h.shoot();
+  assert.equal(h.fin.alive, false, 'ordinary combat kills the fin');
+  assert.equal(h.site.radiatorFins[0].intact, false, 'lethal damage must synchronously mark the durable fin');
+  h.coreHost.lifetimeSweep(1 / 60, h.state);
+  assert.equal(h.state.entities.has(h.fin.id), false, 'the real end-of-step sweep removes the corpse');
+  const saved = h.sites.serialize();
+  h.sites.deserialize(saved);
+  const restored = h.sites.getSite(h.site.id);
+  h.sites._tickSite(restored, 1, h.state);
+  assert.equal(restored.radiatorFins[0].intact, false);
+  assert.equal(restored.radiatorFins[0].hull, 0);
+  assert.equal(h.sites._rt.get(restored.id).radiator.worstBand, 'fault');
+  assert.equal(h.state.entityList.some(e => e.alive && e.data?.radiatorFin), false, 'Continue must not respawn a destroyed fin');
+});
+
+test('10: ordinary residency retirement preserves an intact fin and its remaining hull', () => {
+  const h = productionHall();
+  h.shoot();
+  const remaining = h.fin.hull;
+  assert.ok(remaining > 0 && remaining < h.fin.hullMax);
+  h.ctx.helpers.removeEntity(h.fin.id, { reason: 'sector_exit' });
+  h.coreHost.lifetimeSweep(1 / 60, h.state);
+  h.sites._tickSite(h.site, 1, h.state);
+  const replacement = h.state.entityList.find(e => e.alive && e.data?.radiatorFin);
+  assert.ok(replacement, 'an unbroken fin rematerializes on reentry');
+  assert.equal(h.site.radiatorFins[0].intact, true);
+  assert.equal(replacement.hull, remaining, 'nonlethal damage survives retirement');
+});
+
+
+test('19: the site screen projection carries fin readings through the real worker domain mirror', () => {
+  const h = productionHall();
+  function mirroredProjection() {
+    const domains = new Map();
+    for (const update of createDomainDiffer().diff(h.state, 0).updates) {
+      applyDomainPathUpdate(domains, update, new WeakSet());
+    }
+    return projectAsteroidSiteFromState({ ...h.state, sites: {
+      byId: domains.get('sites.byId'), order: domains.get('sites.order'),
+    } }, h.site.id);
+  }
+  const cooled = mirroredProjection();
+  assert.ok(cooled.thermal, 'the public site projection must expose thermal readings');
+  assert.ok(cooled.signature, 'the public site projection must expose signature readings');
+  assert.notEqual(cooled.thermal.worstBand, 'fault');
+  for (let i = 0; i < 20 && h.fin.alive; i++) h.shoot();
+  h.coreHost.lifetimeSweep(1 / 60, h.state);
+  const broken = mirroredProjection();
+  assert.equal(broken.thermal.worstBand, 'fault');
+  assert.ok(broken.signature.total < cooled.signature.total);
+});
+
+test('19: real scanner pulses detect a finned site farther away and report the changed hall', () => {
+  const h = productionHall();
+  const scan = Object.create(scanner);
+  scan.init(h.ctx);
+  let result;
+  h.bus.on('signal:scanResults', payload => { result = payload; });
+  const player = h.state.entities.get(h.state.playerId);
+  const firingPos = player.pos.clone();
+  function pulse(distance = 40) {
+    player.pos.x = h.site.anchor.x + distance;
+    player.pos.z = h.site.anchor.z;
+    result = null;
+    scan._pulse(h.state, player, h.state.simTime);
+    return result?.signals.find(row => row.sourceId === h.site.id);
+  }
+  const cooled = pulse();
+  assert.ok(cooled, 'the normal scanner must publish the operating site');
+  assert.match(cooled.detail, /signature/i, 'the player readout must name its signature');
+  assert.doesNotMatch(cooled.detail, /Thermal Fault|site_|sm_|skin/);
+  const farDistance = cooled.range - 1;
+  assert.ok(pulse(farDistance), 'an intact fin must be detected at its published range');
+  player.pos.copy(firingPos);
+  for (let i = 0; i < 20 && h.fin.alive; i++) h.shoot();
+  h.coreHost.lifetimeSweep(1 / 60, h.state);
+  h.sites._tickSite(h.site, 1, h.state);
+  const broken = pulse();
+  assert.ok(broken);
+  assert.match(broken.detail, /Thermal Fault/);
+  assert.match(broken.detail, /signature/i);
+  assert.doesNotMatch(broken.detail, /site_|sm_|skin/);
+  assert.ok(broken.range < cooled.range, 'losing the bright fin must reduce detection range');
+  assert.equal(pulse(farDistance), undefined, 'the same far pulse can no longer detect the sheared site');
+  h.site.sectorId = 'sector_pallas';
+  assert.equal(pulse(), undefined, 'a pulse must not read sites in another sector');
 });

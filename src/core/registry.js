@@ -25,7 +25,7 @@ import { input } from '../systems/input.js';
 import { createGamepad } from '../systems/gamepad.js';
 import { autoTargetAssist } from '../systems/autoTargetAssist.js';
 import { flybyFocus } from '../systems/flybyFocus.js';
-import { scanner } from '../systems/scanner.js';
+import { scanner, setScannerSiteProjectionSource } from '../systems/scanner.js';
 import { mines } from '../systems/mines.js';
 import { bombs } from '../systems/bombs.js';
 import { dockingCorridor } from '../systems/dockingCorridor.js'; // PQ-008: truthful exterior corridor/capture docking (assist via physics membrane)
@@ -718,6 +718,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
 export function createRegistry(ctx) {
   // The bore dead-drop cannot import the law system (cycle through combat and cargo): it gets the witness query here.
   setDeadDropWitnessSource(lawWitnessesNear);
+  // The scanner cannot import the asteroid-site owner (cycle through drill, cargo and combat): same seam.
+  setScannerSiteProjectionSource({ find: findAsteroidSiteFromState, project: projectAsteroidSiteFromState });
   const aiSlot = selectAISystem(ctx);
   // Normal play is SG-06 tactical AI + Flight V3 on rapier-dynamic. Legacy/custom branches stay
   // available for explicit tool/test fixtures, not player-facing settings or save restore.

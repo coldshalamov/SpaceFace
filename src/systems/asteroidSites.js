@@ -59,9 +59,9 @@ import {
 } from './worldSiteKernel.js';
 import {
   syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
-  reconcileWorldSiteResidency, stepExteriorRadiators,
+  reconcileWorldSiteResidency, stepExteriorRadiators, solveRadiatorThermal, radiatorSignature,
 } from './worldSiteRuntime.js';
-import { normalizeRadiatorFins } from './radiatorFins.js';
+import { normalizeRadiatorFins, radiatorFinIntact, RADIATOR_SHEARED } from './radiatorFins.js';
 import {
   SURVEY_LIMITS, selectSurveyTarget, surveyRevealFrontier, validateSurveyTarget,
   normalizeSurveyRecord,
@@ -740,7 +740,13 @@ export const asteroidSites = {
         // emit listener drains the same steps synchronously.
         .push(this._enterCookProvider);
     }
-    this.bus.on('entity:killed', (payload = {}) => this._onWorldSiteSectionKilled(payload));
+    this.bus.on('combat:damage', (payload = {}) => {
+      this._captureRadiatorDamage(this.state.entities.get(payload.targetId));
+    });
+    this.bus.on('entity:killed', (payload = {}) => {
+      this._captureRadiatorDamage(this.state.entities.get(payload.id), true);
+      this._onWorldSiteSectionKilled(payload);
+    });
     this.bus.on('entity:destroyed', (payload = {}) => {
       if (payload.entity?.hull <= 0) this._onWorldSiteSectionKilled(payload);
     });
@@ -2678,6 +2684,20 @@ export const asteroidSites = {
     const structure = site && site.structure;
     if (!structure || !Array.isArray(structure.falls) || !structure.falls.length) return;
     const falls = structure.falls.filter((fall) => fall.col !== col || fall.row !== row);
+  _captureRadiatorDamage(entity, killed = false) {
+    const data = entity?.data;
+    if (!data?.radiatorFin || this._worldRestoreActive) return;
+    const site = this.getSite(data.siteId);
+    const fin = site?.radiatorFins?.find((row) => row.id === data.finId);
+    if (!radiatorFinIntact(fin) || !Number.isFinite(entity.hull)) return;
+    // Damage receipts fire synchronously, before combat's death and the corpse sweep.
+    // An alive:false body alone can be a residency retirement, never durable destruction.
+    fin.hull = killed ? 0 : Math.max(0, entity.hull);
+    if (fin.hull > 0) return;
+    fin.intact = false;
+    this._announceRadiator(site, this.state, 'warn', RADIATOR_SHEARED);
+  },
+
     if (falls.length === structure.falls.length) return;
     site.structure = { ...structure, falls };
   },
@@ -3125,3 +3145,12 @@ export const asteroidSites = {
     };
   },
 };
+    // The screen/worker read view has no cadence cache. Use its freshly projected
+    // power networks with the same kernels as the live exterior-fin step.
+    const radiatorRuntime = {
+      ...rt,
+      compRatio: Object.fromEntries(power.map((row) => [row.key, row.ratio])),
+      compPower: Object.fromEntries(power.map((row) => [row.key, row])),
+    };
+      thermal: solveRadiatorThermal(site, radiatorRuntime, 0),
+      signature: radiatorSignature(site, radiatorRuntime),

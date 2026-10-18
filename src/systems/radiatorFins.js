@@ -4,6 +4,8 @@
 // A fin counts only while it is intact and still has hull. Hull at zero, or an
 // explicit intact:false, is a vane that has been shot off.
 
+export const RADIATOR_SHEARED = 'The radiator fin sheared off. The halls are overheating again.';
+
 export const RADIATOR_FIN = Object.freeze({
   id: 'skin',
   name: 'Radiator Fin',

@@ -6,6 +6,14 @@
 import { asteroidScanGlyph } from '../data/mining.js';
 import { mothlightScannerReading } from '../data/mothlight.js';
 import { borrowedVoiceScannerReading } from './borrowedVoice.js';
+
+// The asteroid-site projection reaches the scanner through the composition root (createRegistry registers it):
+// a static import of asteroidSites here closes a cycle through drill -> cargo -> combat -> scanner and makes
+// the module graph depend on which file a test or the app happens to import first.
+let siteProjectionSource = null;
+export function setScannerSiteProjectionSource(source) {
+  siteProjectionSource = source && typeof source.find === 'function' && typeof source.project === 'function' ? source : null;
+}
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
@@ -699,6 +707,9 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     // authored sourceId rather than a transient numeric entity id.
     if (entity.data && entity.data.poi) continue;
     if (entity.data && entity.data.requiresTriangulation) continue;
+    // An operating claim has one stable site return below, including after rock rematerialization.
+    const claim = entity.type === 'asteroid' && siteProjectionSource ? siteProjectionSource.find(state, entity.id) : null;
+    if (claim?.anchored && claim.sectorId === sectorId && claim.machines?.length) continue;
     const sourceReading = mothlightScannerReading(state, entity) || borrowedVoiceScannerReading(state, entity);
     const kind = sourceReading?.kind || signalKindForEntity(entity);
     if (!kind) continue;
@@ -780,6 +791,30 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
         clueKind: 'shipment',
         clueSubjectId: `shipment:${row.behaviorId}`,
       } : {}),
+    });
+  }
+
+  // The same site projection serves the workbench and the scanner. Hot skin vanes
+  // carry a stronger return farther within the pulse; shearing them quiets that return.
+  const sites = siteProjectionSource ? state.sites : null;
+  for (const siteId of sites?.order || Object.keys(sites?.byId || {}).sort()) {
+    const site = sites.byId?.[siteId];
+    if (!site?.anchored || site.sectorId !== sectorId || !site.machines?.length) continue;
+    const rock = state.entities?.get(site.asteroidId);
+    const pos = rock?.alive ? rock.pos : site.anchor;
+    if (!pos || dist(origin, pos) > profile.nearRadius) continue;
+    const reading = siteProjectionSource.project(state, siteId);
+    if (!reading) continue;
+    add({
+      id: `signal:site:${siteId}`,
+      kind: 'ore',
+      sourceId: siteId,
+      entityId: rock?.alive ? rock.id : null,
+      pos,
+      range: profile.nearRadius * (0.5 + 0.5 * reading.signature.total),
+      resolvedLabel: 'Industrial site',
+      resolvedDetail: `${reading.thermal.worstBandLabel}. ${reading.signature.signatureLabel} signature.`,
+      repeatableScannerSignal: true,
     });
   }
 
