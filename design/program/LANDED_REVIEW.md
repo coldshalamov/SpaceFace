@@ -25,3 +25,4 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-6926e5d | 6926e5d09c9cd6d634fd24fb998ec1a6e08e7eab | BGS-D229 Ceres derelict scavenger spawn | Seed-4242 Ceres entry materializes the zone_ceres_derelict contact with the zone and wreck anchor aligned outside Belt Outpost protection | OPEN |
