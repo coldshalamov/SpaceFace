@@ -202,3 +202,48 @@ test('a graze inside the 0.9 s window is refused without clearing recovery; afte
     }
   });
 });
+
+for (const hitTimes of [[0], [0, 2, 4, 4.5]]) {
+  test(`kernel expiry preserves the original denial cap through recovery after ${hitTimes.length} hits`, () => {
+    withFlags(() => {
+      const h = harness();
+      try {
+        for (const at of hitTimes) {
+          seek(h, at);
+          fire(h, SHOVE_DELTA_V);
+        }
+        const active = readTumbleStatus(h.state, h.victim);
+        const startedAt = active.data.startedAt;
+        const cap = startedAt + CHAIN().maxChainDurationS;
+        h.state.tick = active.expiresTick;
+        h.state.simTime = h.state.tick / 60;
+        h.kernel.prePhysics(1 / 60);
+        h.tumble.update(1 / 60, h.state);
+        assert.equal(readTumbleStatus(h.state, h.victim), null, 'the kernel expires the real active status');
+        assert.equal(isRecovering(h.state, h.victim), true, 'stabilization begins before the next emitter');
+        const recoveringUntil = h.victim.data.recoveringUntil;
+
+        // Weapons emit after the expiry sweep and tumble update on this same tick.
+        h.bus.emit(HITSTUN_IMPULSE_EVENT, hitPayload(h.victim.id, SHOVE_DELTA_V, h.state.tick));
+        const renewed = readTumbleStatus(h.state, h.victim);
+        assert.ok(!renewed || renewed.data.until <= cap + 1e-9,
+          `renewed start ${renewed?.data.startedAt}, end ${renewed?.data.until} must stay within original cap ${cap}`);
+        if (h.state.simTime >= cap) {
+          assert.equal(renewed, null, 'a capped chain cannot schedule even one more tick of helm loss');
+          assert.equal(h.victim.data.recoveringUntil, recoveringUntil, 'a capped shove cannot cancel stabilization');
+          seek(h, recoveringUntil - 1 / 60);
+          h.bus.emit(HITSTUN_IMPULSE_EVENT, hitPayload(h.victim.id, SHOVE_DELTA_V, h.state.tick));
+          assert.equal(readTumbleStatus(h.state, h.victim), null, 'the cap holds throughout stabilization');
+          seek(h, recoveringUntil + 1 / 60);
+          h.tumble.update(1 / 60, h.state);
+          fire(h, SHOVE_DELTA_V);
+          const fresh = readTumbleStatus(h.state, h.victim);
+          assert.equal(fresh.data.chainCount, 0, 'a fully recovered helm starts a new chain');
+          assert.equal(fresh.data.until - fresh.data.startedAt, 4, 'the next shove regains its full duration');
+        } else {
+          assert.equal(renewed.data.startedAt, startedAt, 'reentry before the cap retains the original start');
+        }
+      } finally { h.tumble.destroy(); }
+    });
+  });
+}

@@ -247,7 +247,10 @@ export const tumbleStates = {
         clearRecovery(e);
         // SFQ-B036 — the chain resets once the ship has recovered: the next hit is a
         // full first hit again, not a continuation of the old chain.
-        if (e.data && e.data.lastTumbleChainCount != null) delete e.data.lastTumbleChainCount;
+        if (e.data) {
+          delete e.data.lastTumbleChainCount;
+          delete e.data.lastTumbleStartedAt;
+        }
         if (this.bus) this.bus.emit('massline:recovered', { victimId: e.id });
         continue;
       }
@@ -417,11 +420,14 @@ export const tumbleStates = {
     const existingUntil = existing && existing.data ? finite(existing.data.until, 0) : 0;
     const startedAt = existing && existing.data && Number.isFinite(existing.data.startedAt)
       ? existing.data.startedAt
-      : now;
+      : (recovering && Number.isFinite(victim.data.lastTumbleStartedAt) ? victim.data.lastTumbleStartedAt : now);
     const until = Math.min(
       startedAt + HITSTUN_CHAIN_LAW.maxChainDurationS,
       Math.max(existingUntil, now + law.durationS),
     );
+    // The kernel may have expired the capped status earlier this tick. Keep stabilization
+    // intact rather than scheduling a fresh minimum-tick tumble from an exhausted chain.
+    if (!(until > now)) return;
     const scheduled = this._scheduleTumbleStatus(victim, until - now, {
       kind: input.kind,
       startedAt,
@@ -633,7 +639,10 @@ export const tumbleStates = {
   // massline:recovered closes the beat so the end of the opening is recognizable.
   _beginRecovery(entity, now, durationS) {
     const recoverUntil = now + TUMBLE_RECOVERY_S;
-    if (entity.data) entity.data.recoveringUntil = recoverUntil;
+    if (entity.data) {
+      entity.data.recoveringUntil = recoverUntil;
+      entity.data.lastTumbleStartedAt = now - durationS;
+    }
     if (this.bus) {
       this.bus.emit('massline:tumbleEnd', { victimId: entity.id, durationS, recoverUntil });
       this.bus.emit('massline:recovering', { victimId: entity.id, recoverUntil });
