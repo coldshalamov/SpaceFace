@@ -39,6 +39,9 @@ import {
   contactProfile, machineCapability, stepContinuousRecipe, stepFabricator, clamp01, round3,
 } from './siteProduction.js';
 import {
+  stepSiteStructure, normalizeSiteStructure, paintStructuralFalls, paintStructuralFracture,
+} from './siteStructuralModel.js';
+import {
   buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, podLossChance, podTravelS,
   previewStoreReconciliation, wouldOwnComponent, storePressure,
 } from './siteLogistics.js';
@@ -180,6 +183,14 @@ const EMPTY_MACHINE_STATUS = Object.freeze({});
 
 function makeLedgerEntry(t, kind, text) {
   return { t: Math.round((Number(t) || 0) * 10) / 10, kind, text };
+}
+
+/** Display names only. Two of a kind read as "Refinery beside Refinery". */
+function harmonicGroanLine(names) {
+  const a = names && typeof names[0] === 'string' ? names[0] : '';
+  const b = names && typeof names[1] === 'string' ? names[1] : '';
+  if (a && b) return `${a} beside ${b} — the ceiling is groaning.`;
+  return 'The ceiling is groaning.';
 }
 
 // Construction shares the rover's cardinal traversal law. Machines are obstacles, even
@@ -620,6 +631,9 @@ export const asteroidSites = {
       if (!site) return;
       const idx = tileIndex(col, row);
       if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      // Drilling out a fallen slab is the bore again. Leave it cleared; do not
+      // drop a second slab on the next tick (fractured stays true).
+      this._releaseFallenSlab(site, col, row);
       this._markDirty(site.id, { field: true });
     });
 
@@ -860,6 +874,11 @@ export const asteroidSites = {
       if (!site.fleet) site.fleet = makeSiteRecord({}).fleet;
       if (!Array.isArray(site.fleet.inFlight)) site.fleet.inFlight = [];
       if (!Array.isArray(site.ledger)) site.ledger = [];
+      if (site.structure != null) {
+        const structure = normalizeSiteStructure(site.structure, COLS, ROWS);
+        if (structure) site.structure = structure;
+        else delete site.structure;
+      }
       if (!site.stats) site.stats = { grossCr: 0, creditedCr: 0, exportedU: 0 };
       // PQ-024: the durable survey record rides the EXISTING anchored-site save path. Harden it
       // here (malformed formation drops the record; an unprovable producing demotes to committed)
@@ -1268,6 +1287,8 @@ export const asteroidSites = {
       const seed = Number.isFinite(site.boreSeed) ? site.boreSeed : site.asteroidId;
       rt.field = generateDrillField((seed >>> 0) || 1);
       applyClearedTiles(rt.field, site.cleared);
+      // A fallen slab is rock again, painted after the cleared list reopens the cell.
+      paintStructuralFalls(rt.field, site.structure);
       rt.fieldDirty = false;
       rt.geoDirty = true;
     }
@@ -1330,6 +1351,8 @@ export const asteroidSites = {
       const tile = d.field[m.col] && d.field[m.col][m.row];
       if (tile && tile.type === 'empty') tile.structure = m.id;
     }
+    // Same co-write as housings: the slab has to be in the field the rover walks.
+    paintStructuralFalls(d.field, site.structure);
   },
 
   // ------------------------------------------------------------ player intents
@@ -2547,6 +2570,90 @@ export const asteroidSites = {
         siteId: site.id, machineId: t.machineId, state: t.state, prev: t.prev,
       });
     }
+
+    // Harmonic stress rides this same step and keeps its own record. It never
+    // writes heat, cargo, credits, or a machine's derived stats.
+    this._stepHarmonicStress(site, state, rt, dtS);
+  },
+
+  /**
+   * Heavy housings shaking an unbraced bay. The groan is the existing rock-groan
+   * cue; the fall is one ceiling tile landing in the bore. A pillar (solid cell
+   * on the line between them) never loads. Off in another sector: the ledger
+   * still records it, the cockpit stays quiet.
+   */
+  _stepHarmonicStress(site, state, rt, dtS) {
+    const live = state.drill;
+    const liveField = live && live.active && live.field && live.asteroidId === site.asteroidId
+      ? live.field : null;
+    const field = liveField || (rt && rt.field);
+    if (!field) return;
+    const avatar = liveField && live.avatar && Number.isInteger(live.avatar.col)
+      ? { col: live.avatar.col, row: live.avatar.row } : null;
+    const machines = [];
+    for (const m of site.machines) {
+      const powerKey = rt.powerCompByMachine[m.id];
+      const powerRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : 0;
+      machines.push({
+        id: m.id, defId: m.defId, col: m.col, row: m.row, powerRatio,
+      });
+    }
+    const result = stepSiteStructure({
+      dtS, cols: COLS, rows: ROWS, machines, field, avatar, structure: site.structure || null,
+    });
+    const next = result.structure;
+    const prev = site.structure;
+    const changed = !prev
+      ? next.stressS > 0 || next.warned || next.fractured || next.falls.length > 0
+      : prev.stressS !== next.stressS || prev.warned !== next.warned
+        || prev.fractured !== next.fractured || (prev.falls ? prev.falls.length : 0) !== next.falls.length;
+    if (changed) site.structure = next;
+    if (!result.rumble && !result.fracture) return;
+
+    const audible = !!liveField || (
+      state.world && site.sectorId && state.world.currentSectorId === site.sectorId
+    );
+    if (result.rumble) {
+      const text = harmonicGroanLine(result.rumble.names);
+      this._ledger(site, 'warn', text);
+      if (audible && this.bus) {
+        this._emitHarmonicCue('presentation.mining.fracture_warning', site, 0.72);
+        this.bus.emit('presentation:caption', { text, assertive: false });
+      }
+    }
+    if (result.fracture) {
+      const idx = tileIndex(result.fracture.fromCol, result.fracture.fromRow);
+      if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+      if (ent && ent.data) {
+        if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+        if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+      }
+      if (liveField) paintStructuralFracture(liveField, result.fracture);
+      if (rt && rt.field && rt.field !== liveField) paintStructuralFracture(rt.field, result.fracture);
+      this._markDirty(site.id, { field: true });
+      this._ledger(site, 'warn', 'A ceiling slab fell and blocked the bore.');
+      if (audible && this.bus) this._emitHarmonicCue('presentation.mining.fracture_break', site, 0.85);
+    }
+  },
+
+  _emitHarmonicCue(id, site, gain) {
+    const rock = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(site.asteroidId) : null;
+    const pos = rock && rock.pos;
+    this.bus.emit('audio:cue', {
+      id,
+      gain,
+      ...(pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? { position: { x: pos.x, z: pos.z } } : {}),
+    });
+  },
+
+  _releaseFallenSlab(site, col, row) {
+    const structure = site && site.structure;
+    if (!structure || !Array.isArray(structure.falls) || !structure.falls.length) return;
+    const falls = structure.falls.filter((fall) => fall.col !== col || fall.row !== row);
+    if (falls.length === structure.falls.length) return;
+    site.structure = { ...structure, falls };
   },
 
   _tryLaunch(site, state, portStatus) {
