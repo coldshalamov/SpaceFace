@@ -379,7 +379,15 @@ export const MISSION_CONDITIONS = Object.freeze({
           || (mission._clauseState.honest_sling = { count: 0 });
         // Stamp simTime, never a zero default: a sling fired at the epoch start must still
         // read as fresh against the window math below.
-        runtime.slingAt = Number.isFinite(ctx.simTime) && ctx.simTime > 0 ? ctx.simTime : 0.001;
+        const stamped = Number.isFinite(ctx.simTime) && ctx.simTime > 0 ? ctx.simTime : 0.001;
+        // The release half latches separately: a second clean release refreshes the swing
+        // but never stamps the arrival half, so two releases alone stay at 1 of 2 and only
+        // a qualifying early controlled arrival can satisfy the term.
+        if ((runtime.count || 0) >= 1 || Number.isFinite(runtime.slingAt)) {
+          runtime.slingAt = stamped;
+          return false;
+        }
+        runtime.slingAt = stamped;
       }
       return true;
     },

@@ -68,10 +68,11 @@ function layout(player, hub) {
   }
   const mid = { x: player.x + ax * AHEAD, z: player.z + az * AHEAD };
   const half = GAP / 2;
-  const hubDist = Math.hypot(hub.x - mid.x, hub.z - mid.z);
-  const service = hubDist <= TOW + 40
-    ? { x: hub.x, z: hub.z, name: hub.name }
-    : { x: mid.x + ax * TOW, z: mid.z + az * TOW, name: hub.name };
+  // The paired-delivery destination is the real hub berth: the named station's entity
+  // position from the sector's live producer (hubOf). An invented point near the pair
+  // would pay the hub ending for a short tow into open space while the station sits
+  // thousands of WU away.
+  const service = { x: hub.x, z: hub.z, name: hub.name };
   return {
     ax,
     az,
@@ -322,7 +323,9 @@ export const TWO_SHIPS_ONE_MISTAKE_RUNTIME = Object.freeze({
       return finish(d, live, state, live.vars.strikes > 0 ? 'harmed' : 'lost', 0);
     }
     const player = d.player();
-    const mid = live.vars.mid || { x: (first.pos.x + second.pos.x) / 2, z: (first.pos.z + second.pos.z) / 2 };
+    // The lane stops watching when the player leaves the PAIR, not the spot it started at: towing the
+    // pair to a hub thousands of WU away must stay a live job all the way to the berth.
+    const mid = { x: (first.pos.x + second.pos.x) / 2, z: (first.pos.z + second.pos.z) / 2 };
     if (player && player.pos && Math.hypot(player.pos.x - mid.x, player.pos.z - mid.z) > LEAVE_WU) {
       return finish(d, live, state, 'left', 0);
     }

@@ -333,3 +333,65 @@ test('a hard yank snaps the film, scatters the load, and pays nothing', () => {
   assert.match(receipt.payload.text, /SNAPPED/i);
   t.sim.dispose();
 });
+
+test('the paired-delivery destination is the real hub, even when the hub is far (fix-r3b-6 finding 15)', () => {
+  const t = boot();
+  // Move the named hub thousands of WU away from the encounter anchor. The real
+  // producer of the hub position is the named station row in the active sector.
+  t.state.world.activeSector.stations = [
+    { id: 'station_tethys', name: 'Tethys Trade Hub', pos: { x: 6000, z: 0 } },
+  ];
+  const job = accept(t, 'farhub');
+  const service = live(t, job.id).vars.service;
+  assert.ok(service, 'the encounter must name a paired-delivery destination');
+  assert.ok(Math.hypot(service.x - 6000, service.z - 0) <= 40,
+    `the paired-delivery point must be the real hub berth, got (${service.x}, ${service.z})`);
+  // Towing the pair a short distance into open space must NOT award the hub ending.
+  const midx = (job.first.pos.x + job.second.pos.x) / 2 + 110;
+  const midz = (job.first.pos.z + job.second.pos.z) / 2;
+  const dx = job.second.pos.x - job.first.pos.x;
+  const dz = job.second.pos.z - job.first.pos.z;
+  job.first.pos.x = midx - dx / 2;
+  job.first.pos.z = midz - dz / 2;
+  job.second.pos.x = midx + dx / 2;
+  job.second.pos.z = midz + dz / 2;
+  job.first.vel.x = 0;
+  job.first.vel.z = 0;
+  job.second.vel.x = 0;
+  job.second.vel.z = 0;
+  for (let i = 0; i < 40 && !completion(t); i += 1) t.sim.runTicks(10);
+  assert.notEqual(completion(t)?.outcome, 'paired',
+    'a short tow into open space thousands of WU from the named hub must not pay the hub ending');
+  assert.equal(t.state.player.credits, 0, 'no hub credit lands for an open-space stop');
+  t.sim.dispose();
+});
+
+test('a far hub is still reachable: towing the pair thousands of WU keeps the job live and pays at the berth', () => {
+  const t = boot();
+  const events = collect(t, ['economy:grantCredits']);
+  t.state.world.activeSector.stations = [
+    { id: 'station_tethys', name: 'Tethys Trade Hub', pos: { x: 4200, z: 0 } },
+  ];
+  const job = accept(t, 'longtow');
+  const service = live(t, job.id).vars.service;
+  assert.ok(Math.hypot(service.x - 4200, service.z) <= 40, 'destination is the real, far hub');
+  const dx = job.second.pos.x - job.first.pos.x;
+  const dz = job.second.pos.z - job.first.pos.z;
+  const place = (x, z) => {
+    job.first.pos.x = x - dx / 2; job.first.pos.z = z - dz / 2;
+    job.second.pos.x = x + dx / 2; job.second.pos.z = z + dz / 2;
+    for (const e of [job.first, job.second]) { e.vel.x = 0; e.vel.z = 0; }
+    t.player.pos.x = x - 20; t.player.pos.z = z; // the player tows from just behind the pair
+  };
+  // Tow in 1,000 WU legs: the player never leaves the pair, but ends far from where the job began.
+  for (let x = 1000; x < service.x - 500; x += 1000) {
+    place(x, 0);
+    t.sim.runTicks(30);
+    assert.equal(completion(t), null, `the job is still live ${x} WU along the tow`);
+  }
+  place(service.x, service.z);
+  t.sim.runTicks(70);
+  assert.equal(completion(t)?.outcome, 'paired', 'arriving at the far hub with the film holding pays the pair ending');
+  assert.equal(events.filter((row) => row.name === 'economy:grantCredits').length, 1);
+  t.sim.dispose();
+});

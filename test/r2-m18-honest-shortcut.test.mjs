@@ -200,4 +200,58 @@ function step(h, seconds) {
   assert.deepEqual([...settled.unmet], ['honest_sling'], 'the stale term reads as unmet, never a breach');
 }
 
+// ── two releases alone must never satisfy the term (fix-r3b-6 finding 13) ──────────
+// Drives the REAL producer path: the tether owner's tether:releaseRated event through
+// contractClauses._scoreCondition into the shared tally. Two clean deliberate releases at
+// times 90 and 91 — both AFTER the 60 s early window — must leave the term at 1 of 2.
+{
+  const h = boot();
+  const m = activateDelivery(h, { reward: 1000, acceptedAt: 0, durationS: 100 });
+  h.clear();
+  h.state.simTime = 90;
+  h.sim.bus.emit('tether:releaseRated', {
+    sourceId: h.state.playerId, targetId: 999,
+    classification: 'clean', deliberate: true,
+  });
+  h.state.simTime = 91;
+  h.sim.bus.emit('tether:releaseRated', {
+    sourceId: h.state.playerId, targetId: 999,
+    classification: 'clean', deliberate: true,
+  });
+  const rt = m._clauseState.honest_sling || {};
+  assert.equal(rt.count, 1,
+    'the second release must refresh the swing, not stamp arrival — two releases are 1 of 2');
+  assert.ok(!rt.satisfied,
+    'two releases with no arrival must never satisfy the honest shortcut');
+  assert.equal(settleContractClauses(m).rewardCr, 1000,
+    'a late double-release with no arrival pays exactly base pay');
+}
+
+// ── release then LATE arrival earns no premium (fix-r3b-6 finding 13) ────────────
+// Fresh clean release at t=10, then an under-control berth arrival at t=90 — after the
+// 60 s early window. The arrival half's window gate refuses the stamp: 1 of 2, base pay.
+{
+  const h = boot();
+  const m = activateDelivery(h, { reward: 1000, acceptedAt: 0, durationS: 100 });
+  const berth = h.sim.spawn({
+    type: 'station', pos: { x: 4000, z: 0 }, radius: 60, collides: false,
+    data: { stationId: 'station_helios' },
+  });
+  h.clear();
+  h.state.simTime = 10;
+  h.sim.bus.emit('tether:releaseRated', {
+    sourceId: h.state.playerId, targetId: 999,
+    classification: 'clean', deliberate: true,
+  });
+  h.state.simTime = 90;
+  h.player.pos = { x: berth.pos.x - 600, z: 0 };
+  h.player.vel = { x: 10, z: 0 };
+  step(h, 2);
+  const rt = m._clauseState.honest_sling || {};
+  assert.equal(rt.count, 1, 'a late arrival must not stamp the arrival half');
+  assert.ok(!rt.satisfied, 'a late arrival must not satisfy the honest shortcut');
+  assert.equal(settleContractClauses(m).rewardCr, 1000,
+    'a fresh release followed by a late arrival pays exactly base pay');
+}
+
 console.log('r2-m18 honest shortcut OK — sling + early controlled delivery pays a bounded bonus on top of base pay.');
