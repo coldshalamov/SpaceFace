@@ -314,6 +314,12 @@ export function entityVitalsOf(e) {
     fields.cmEffectZ = cm.effect?.originZ ?? null;
     fields.cmEffectT = cm.effectT || 0;
   }
+  const ai = e.data && e.data.ai;
+  if (ai && typeof ai === 'object') {
+    fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
+      ? ai.fsm
+      : (typeof ai.state === 'string' && ai.state ? ai.state : null);
+  }
   return fields;
 }
 
@@ -362,6 +368,13 @@ function vitalShadowMatches(e, shadow) {
   if ((cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const ai = e.data && e.data.ai;
+  const aiFsm = (ai && typeof ai === 'object')
+    ? (typeof ai.fsm === 'string' && ai.fsm
+      ? ai.fsm
+      : (typeof ai.state === 'string' && ai.state ? ai.state : null))
+    : VITAL_SHADOW_MISSING;
+  if (aiFsm !== shadow[i++]) return false;
   return true;
 }
 
@@ -390,6 +403,12 @@ function writeVitalShadow(e, shadow) {
   shadow[i++] = cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING;
   shadow[i++] = cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING;
   shadow[i++] = cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING;
+  const ai = e.data && e.data.ai;
+  shadow[i++] = (ai && typeof ai === 'object')
+    ? (typeof ai.fsm === 'string' && ai.fsm
+      ? ai.fsm
+      : (typeof ai.state === 'string' && ai.state ? ai.state : null))
+    : VITAL_SHADOW_MISSING;
   shadow.length = i;
   return shadow;
 }

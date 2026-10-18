@@ -97,6 +97,16 @@ function foldNemesisHullVitals(row, fields) {
   row.data.livingHull = fields.nemesisLivingHullJson === null ? null : JSON.parse(fields.nemesisLivingHullJson);
 }
 
+// Traffic writes the memorial sightseer's flee onto data.ai after spawn.
+// The spawn clone would keep the old loiter state; this scalar refreshes it.
+function foldAiState(row, fields) {
+  if (fields.aiFsm === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  if (!row.data.ai || typeof row.data.ai !== 'object') row.data.ai = {};
+  row.data.ai.fsm = fields.aiFsm;
+  row.data.ai.state = fields.aiFsm;
+}
+
 // Retain one small presentation object per deployment so VFX can follow later replies.
 function foldCountermeasureVitals(row, fields) {
   if (fields.cmEffectId === undefined) return;
@@ -197,6 +207,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
       foldMineVitals(row, info.vitals);
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
+      foldAiState(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -276,6 +287,7 @@ export function applyEntityVitals(readModel, vitals) {
     foldMineVitals(row, fields);
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
+    foldAiState(row, fields);
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
     // carries — refold so both views stay coherent.

@@ -631,6 +631,13 @@ const PASS_HAIL_RANGE_WU = 300;
 const PASS_HAIL_RANGE_SQ = PASS_HAIL_RANGE_WU * PASS_HAIL_RANGE_WU;
 
 const FLEE_FSMS = new Set(['flee', 'retreat', 'withdraw']);
+// WORLD-45. The memorial sightseer leaves in a tour voice. A Concord patrol
+// disengage line would sound like the law, not the passengers.
+const MEMORIAL_TOURIST_SCATTER = Object.freeze([
+  'Shots at the memorial. The tour is leaving.',
+  'Gunfire on the array. Sightseers, we are pulling out.',
+  'They are shooting. Passengers, hold on — we are gone.',
+]);
 const ATTACK_FSMS = new Set(['attack', 'strafe', 'engage', 'fight']);
 const SCAN_FSMS = new Set(['scan', 'inspect', 'intercept', 'pursue', 'approach', 'patrol']);
 const WARN_FSMS = new Set(['warn', 'challenge', 'blockade']);
@@ -659,7 +666,10 @@ export const barkDirector = {
       if (!isBarkQuietWakeCandidate(entity)) return;
       this.noteBarkWake();
     };
-    this._onFlee = (payload) => this._speakFromEvent(payload, 'flee', 'ai:flee');
+    this._onFlee = (payload) => {
+      if (this._speakMemorialTouristScatter(payload)) return;
+      this._speakFromEvent(payload, 'flee', 'ai:flee');
+    };
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
     this._onCombatOutcome = (payload) => { this.noteBarkWake(); this._enterPostCombatSilence(payload); };
     // The ship-history owner (systems/ships.js) is the single writer of the living-hull record and
@@ -1766,6 +1776,28 @@ export const barkDirector = {
 
   _speakTouristHail(entity) {
     return this._speakRegisterHail(entity, 'tourist', 'tourist-hail', 'touristHail');
+  },
+
+  // True when this flee belongs to the memorial sightseer, whether or not the
+  // line was accepted. A second Concord flee line must not follow it.
+  _speakMemorialTouristScatter(payload) {
+    if (!payload || !this.state || !this.state.entities || typeof this.state.entities.get !== 'function') return false;
+    const entityId = payload.entityId ?? payload.ownerId ?? payload.shipId ?? payload.id;
+    if (entityId == null) return false;
+    const entity = this.state.entities.get(entityId);
+    if (!entity || !entity.data || entity.data.memorialScatter !== true) return false;
+    const role = String(entity.data.trafficRole || entity.data.role || '').toLowerCase();
+    if (role !== 'tourist') return false;
+    const ai = entity.data.ai || {};
+    if (String(ai.fsm || ai.state || '').toLowerCase() !== 'flee') return false;
+    this._speakEventLine(
+      entity,
+      'memorial-scatter',
+      'ai:flee',
+      (_factionId, index) => MEMORIAL_TOURIST_SCATTER[(index >>> 0) % MEMORIAL_TOURIST_SCATTER.length],
+      payload,
+    );
+    return true;
   },
 
   // 363 — the Grandee hails a passing pilot in her own register, once per contact.

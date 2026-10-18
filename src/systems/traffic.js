@@ -115,6 +115,7 @@ import { SECTOR_CAUSAL_CHAIN_DEFS } from '../data/sectorCausalChains.js';
 import { stepPallasWorkLoop } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
+import { zoneAt } from '../data/sectorZones.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
   claimRichSeamOpportunity,
@@ -508,6 +509,16 @@ export const HELIOS_MEMORIAL_TOURIST = Object.freeze({
   role: 'tourist',
   pos: Object.freeze({ x: 1680, z: -820 }),
 });
+
+// The memorial disc is smaller than the civilian-core disc around it, so zoneAt's
+// tightest match is the array itself. Shots anywhere on that disc count, not only
+// the 300-unit bubble used for ordinary lane panic.
+function pointInHeliosMemorial(sectorId, x, z) {
+  if (sectorId !== HELIOS_MEMORIAL_TOURIST.sectorId) return false;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+  const zone = zoneAt(sectorId, x, z);
+  return !!(zone && zone.id === HELIOS_MEMORIAL_TOURIST.zoneId);
+}
 
 
 
@@ -5003,6 +5014,10 @@ export const traffic = {
       orbitPhase: 0,
       dockSeq: 0,
       manifest: null,
+      // Stay on the array. A scenic-body pick would walk the sightseer out of the
+      // memorial before a firefight there could reach them.
+      scenicPos: { x: pos.x, z: pos.z },
+      scenicRadius: 90,
     });
   },
 
@@ -5741,6 +5756,18 @@ export const traffic = {
     // Same tick, same rule: a loose body in the pocket is a tow somebody is paid to make.
     this._dispatchYardTugs(state.world && state.world.currentSectorId);
     this._maintainYardTugJobs();
+    this._publishTrafficCount(state);
+  },
+
+  _publishTrafficCount(state = this.state) {
+    if (!state) return;
+    const freighters = state.traffic && state.traffic.freighters;
+    const count = Array.isArray(freighters) ? freighters.length : 0;
+    if (state.traffic) {
+      state.traffic.count = count;
+      state.traffic.liveCount = count;
+    }
+    if (state.player) state.player.trafficCount = count;
   },
 
   _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null, worldRecordIndexIsLive = false) {
@@ -5972,23 +5999,23 @@ export const traffic = {
       ? state.entities.get(ownerId)
       : null;
     if (!shooter || shooter.type !== 'ship') return;
+    if (isSurvivalCohort(shooter)) return;
     const victim = this._combatAimedShipVictim(shooter, p);
+    const sectorId = state && state.world && state.world.currentSectorId;
+    const originInMemorial = pointInHeliosMemorial(sectorId, origin.x, origin.z);
+    // Bare fire is ignored on the lanes. Shots whose muzzle is on the memorial disc
+    // are the firefight reaching the array, even with no ship under the sights.
+    if (!victim && !originInMemorial) return;
+    if (victim && isSurvivalCohort(victim)) return;
+    const t = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    if (originInMemorial) this._recordViolence(origin.x, origin.z, ownerId, null, t);
     if (!victim) return;
-    if (isSurvivalCohort(shooter) || isSurvivalCohort(victim)) return;
     // Stamp the threatened hull, not the muzzle: witnesses (including the hull) sit in the 300 WU
     // bubble. Leave victimId empty so the existing combatant-skip still applies only to confirmed hits.
     const at = entityPos(victim) || origin;
-    this._recordViolence(
-      at.x,
-      at.z,
-      ownerId,
-      null,
-      Number.isFinite(state && state.simTime) ? state.simTime : 0,
-    );
+    this._recordViolence(at.x, at.z, ownerId, null, t);
     this._spillHaulerCargoFromViolence(victim, shooter, 'combat_fire');
-    if (victim) {
-      this._broadcastCivilianDistress(victim, shooter, 'combat_fire');
-    }
+    this._broadcastCivilianDistress(victim, shooter, 'combat_fire');
   },
 
   _findNearbyDisabledShip(state, tug, maxRadius = 1500) {
@@ -6265,6 +6292,38 @@ export const traffic = {
     return pod;
   },
 
+  _stampMemorialTouristFlee(e, rec) {
+    if (rec) rec.civilianReaction = 'flee';
+    if (!e || !e.data) return;
+    e.data.civilianReaction = 'flee';
+    e.data.memorialScatter = true;
+    if (!e.data.ai || typeof e.data.ai !== 'object') e.data.ai = {};
+    e.data.ai.fsm = 'flee';
+    e.data.ai.state = 'flee';
+  },
+
+  // The array is wider than the 300-unit lane bubble. A sightseer on the memorial
+  // still hears a shot at the far edge of the disc.
+  _memorialZoneViolence(entity, now) {
+    const ring = this._violenceRing;
+    if (!ring) return null;
+    const sectorId = this.state && this.state.world && this.state.world.currentSectorId;
+    const selfId = entity && entity.id;
+    let best = null;
+    let bestT = -Infinity;
+    for (let i = 0; i < ring.length; i++) {
+      const row = ring[i];
+      if (!row || now - row.t > CIVILIAN_ALARM_TTL_S) continue;
+      if (selfId != null && selfId === row.attackerId) continue;
+      if (!pointInHeliosMemorial(sectorId, row.x, row.z)) continue;
+      if (row.t >= bestT) {
+        bestT = row.t;
+        best = row;
+      }
+    }
+    return best;
+  },
+
   _emitCivilianViolenceFlee(entity) {
     if (!entity || !entity.data) return false;
     if (entity.data.violenceFleeEmitted === true) return false;
@@ -6364,7 +6423,12 @@ export const traffic = {
     if (isSurvivalCohort(e)) return false;
 
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    const hit = this._nearbyViolence(e, now);
+    const sectorId = state.world && state.world.currentSectorId;
+    let hit = this._nearbyViolence(e, now);
+    if (roleName === 'tourist' && e.pos && pointInHeliosMemorial(sectorId, e.pos.x, e.pos.z)) {
+      const memorialHit = this._memorialZoneViolence(e, now);
+      if (memorialHit) hit = memorialHit;
+    }
     const jobId = e.data && e.data.jobId;
     const jobs = this.helpers && this.helpers.npcJobs;
     const carrying = !!((rec && rec.carrying)
@@ -6378,6 +6442,13 @@ export const traffic = {
         if (e.data) {
           e.data.violenceAlarmed = false;
           e.data.violenceFleeEmitted = false;
+          if (e.data.memorialScatter) {
+            e.data.memorialScatter = false;
+            if (e.data.ai) {
+              if (e.data.ai.fsm === 'flee') delete e.data.ai.fsm;
+              if (e.data.ai.state === 'flee') delete e.data.ai.state;
+            }
+          }
         }
         if (jobId && jobs && typeof jobs.resume === 'function') jobs.resume(jobId);
         const resumeId = rec ? rec.violenceResumeTargetId : null;
@@ -6395,6 +6466,10 @@ export const traffic = {
 
     const hold = doesHold && !carrying;
     const alreadyAlarmed = (rec && rec.violenceAlarmed) || (e.data && e.data.violenceAlarmed);
+    const memorialScatter = roleName === 'tourist'
+      && !!(e.pos && pointInHeliosMemorial(sectorId, e.pos.x, e.pos.z))
+      && pointInHeliosMemorial(sectorId, hit.x, hit.z);
+    if (memorialScatter) this._stampMemorialTouristFlee(e, rec);
     if (doesFlee && !hold && !alreadyAlarmed) this._emitCivilianViolenceFlee(e);
     const threatEnt = hit.attackerId != null && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(hit.attackerId)
@@ -6513,6 +6588,12 @@ export const traffic = {
     }
 
     if (roleName === 'tourist') {
+      if (memorialScatter) {
+        this._stampMemorialTouristFlee(e, rec);
+        setIntent(e, 0, 1, true, false, null, aim);
+        if (e.data && e.data.intent) e.data.intent.brake = false;
+        return true;
+      }
       const reaction = 'scenic_loiter';
       if (rec) rec.civilianReaction = reaction;
       if (e.data) e.data.civilianReaction = reaction;
@@ -12261,6 +12342,10 @@ export const traffic = {
   _ensureState() {
     if (!this.state.traffic) this.state.traffic = { freighters: [] };
     if (!Array.isArray(this.state.traffic.freighters)) this.state.traffic.freighters = [];
+    const count = this.state.traffic.freighters.length;
+    this.state.traffic.count = count;
+    this.state.traffic.liveCount = count;
+    if (this.state.player) this.state.player.trafficCount = count;
     this.state.traffic.disruptedStationIds = leftoverNormalizeDisruptedStationIds(
       this.state.traffic.disruptedStationIds,
       true,
