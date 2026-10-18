@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { authorizeAIEngagement } from '../src/ai/engagementAuthority.js';
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { DRIFT_AUCTION_RUNTIME } from '../src/systems/driftAuctionRuntime.js';
@@ -73,20 +74,24 @@ function tickAuction(t, encounterId, ticks) {
 }
 
 function scanPulse(t, encounterId, targetId, sourceId) {
-  const rec = live(t, encounterId);
-  DRIFT_AUCTION_RUNTIME.event(t.director, rec, t.state, 'scanPulse', {
-    sourceId, targetId,
+  const entity = t.state.entities.get(targetId);
+  const seq = (t._pulseSeq = (t._pulseSeq || 0) + 1);
+  // scanner.js _pulse emits this shape and nothing else. The director forwards it.
+  t.bus.emit('scan:pulse', {
+    pos: entity && entity.pos ? { x: entity.pos.x, z: entity.pos.z } : { x: 0, z: 0 },
+    radius: 1200,
     source: 'player-scanner',
-    pos: { x: 0, z: 0 }, radius: 1200,
+    scannerId: sourceId != null ? sourceId : t.state.playerId,
+    seq,
     simTime: t.director.now(),
   });
+  return encounterId;
 }
 
 function tetherLatch(t, encounterId, actorId, targetId) {
-  const rec = live(t, encounterId);
-  DRIFT_AUCTION_RUNTIME.event(t.director, rec, t.state, 'tetherAttached', {
-    actorId, targetId,
-  });
+  assert.ok(live(t, encounterId), 'the auction is live when the line goes on');
+  // attachments.create emits tether:attached; the director routes it as tetherAttached.
+  t.bus.emit('tether:attached', { actorId, targetId });
 }
 
 function crateOf(t, encounterId, index) {
@@ -216,4 +221,46 @@ test('cutting a tether is theft: rivals turn hostile and no law answers', () => 
     return ai && ai.activity && ai.activity.kind === 'attack_run'
       && ai.activity.targetId === t.state.playerId;
   }), 'a rival turns its nose on the thief through doctrine');
+  assert.ok(rivals.every((rival) => rival.data && rival.data.ai && rival.data.ai.passive === false),
+    'theft clears the rivals\' spawn-time passivity');
+  const player = t.state.entities.get(t.state.playerId);
+  for (const rival of rivals) {
+    const verdict = authorizeAIEngagement({ state: t.state, self: rival, target: player });
+    assert.notEqual(verdict.reason, 'passive', 'engagement authority must not reject the rival as passive');
+  }
+});
+
+test('a real scanner pulse bids the crate it lands on', () => {
+  const t = boot();
+  const id = fireAuction(t, 'geometry');
+  const target = crateOf(t, id, 2);
+  t.bus.emit('scan:pulse', {
+    pos: { x: target.pos.x, z: target.pos.z },
+    radius: 1200,
+    source: 'player-scanner',
+    scannerId: t.state.playerId,
+    seq: 1,
+    simTime: t.director.now(),
+  });
+  const rec = live(t, id);
+  assert.equal(rec.vars.bids.length, 1, 'the pulse that lands on a crate is a bid');
+  assert.equal(rec.vars.bids[0].bidder, 'player');
+  assert.equal(rec.vars.bids[0].crate, 2, 'the nearest crate inside the pulse is the one under the dish');
+});
+
+test('a pulse that only names a crate id and lands far away is not a bid', () => {
+  const t = boot();
+  const id = fireAuction(t, 'far');
+  const named = crateOf(t, id, 1);
+  t.bus.emit('scan:pulse', {
+    targetId: named.id,
+    sourceId: t.state.playerId,
+    pos: { x: 50000, z: 50000 },
+    radius: 1200,
+    source: 'player-scanner',
+    scannerId: t.state.playerId,
+    seq: 1,
+    simTime: t.director.now(),
+  });
+  assert.equal(live(t, id).vars.bids.length, 0, 'the scanner never sends a crate id, and a far pulse misses');
 });

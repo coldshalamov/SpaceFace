@@ -109,6 +109,33 @@ function bargeOf(t, encounterId) {
   return t.state.entities.get(rec.vars.bargeId);
 }
 
+function holdLine(t, encounterId) {
+  const barge = bargeOf(t, encounterId);
+  const playerId = t.state.playerId;
+  const combat = t.state.combat || (t.state.combat = {});
+  const attachments = combat.attachments || (combat.attachments = { byId: {}, nextId: 1 });
+  // tetherGameplay's attachments.create writes this row, then emits tether:attached.
+  attachments.byId.att_welder = {
+    id: 'att_welder',
+    state: 'active',
+    ownerId: playerId,
+    targetId: barge.id,
+  };
+  t.bus.emit('tether:attached', {
+    actorId: playerId,
+    targetId: barge.id,
+    attachmentId: 'att_welder',
+  });
+}
+
+function cutLine(t) {
+  const row = t.state.combat && t.state.combat.attachments
+    && t.state.combat.attachments.byId.att_welder;
+  assert.ok(row && row.state === 'active', 'the kernel row is active before the cut');
+  row.state = 'broken';
+  row.breakReason = 'tether_cut';
+}
+
 function parkBargeOnSeam(t, encounterId, seamIndex) {
   const rec = live(t, encounterId);
   const barge = bargeOf(t, encounterId);
@@ -173,7 +200,7 @@ test('tracing all three seams inside the tow gate welds the strut, repairs the s
   const id = force(t, 'weld');
   assert.equal(openScars(t).length, 2, 'precondition: the hull carries two open scars');
 
-  t.bus.emit('tether:attached', { actorId: t.state.playerId, targetId: bargeOf(t, id).id });
+  holdLine(t, id);
   assert.equal(live(t, id).phase, 'towing', 'the latch itself is the answer');
 
   for (let seam = 0; seam < 3; seam += 1) {
@@ -226,7 +253,7 @@ test('a fast tow blows the gate — the barge shears loose and stays adrift for 
   const t = boot();
   const events = collect(t, ['encounter:voice', 'encounter:resolved']);
   const id = force(t, 'fast');
-  t.bus.emit('tether:attached', { actorId: t.state.playerId, targetId: bargeOf(t, id).id });
+  holdLine(t, id);
   assert.equal(live(t, id).phase, 'towing');
 
   // Sustain 30 WU/s against the 8 WU/s gate: 4 batches re-applied since an
@@ -263,4 +290,62 @@ test('refusing leaves the barge adrift and reachable later', () => {
     sectorId: SECTOR, anchor: { x: 0, z: 0 }, force: true,
   });
   assert.equal(refire.ok, true, 'a refused barge waits for a kinder lane');
+});
+
+test('accepting the tow in words does not weld a barge that was never attached', () => {
+  const t = boot();
+  const id = force(t, 'vow');
+  t.bus.emit('encounter:choose', { encounterId: id, choiceId: 'tow' });
+  assert.equal(live(t, id).phase, 'towing', 'the vow starts the job');
+  for (let batch = 0; batch < 4; batch += 1) {
+    if (!live(t, id)) break;
+    parkBargeOnSeam(t, id, 0);
+    t.sim.runTicks(70);
+  }
+  const rec = live(t, id);
+  assert.ok(rec, 'a vow without a line must not finish the weld');
+  assert.equal(rec.vars.tracedSeams || 0, 0, 'dialogue is not an attachment');
+  assert.equal(completion(t), null);
+});
+
+test('cutting the line stops the weld', () => {
+  const t = boot();
+  const id = force(t, 'cut');
+  holdLine(t, id);
+  parkBargeOnSeam(t, id, 0);
+  t.sim.runTicks(60);
+  const before = (live(t, id).vars.tracedSeams | 0);
+  cutLine(t);
+  for (let batch = 0; batch < 6; batch += 1) {
+    if (!live(t, id)) break;
+    parkBargeOnSeam(t, id, 0);
+    t.sim.runTicks(70);
+  }
+  const rec = live(t, id);
+  assert.ok(rec, 'cutting the line must not finish the weld');
+  assert.equal(rec.vars.tracedSeams | 0, before, 'no further seam closes after the cut');
+  assert.equal(rec.vars.seamDwellS || 0, 0, 'the bead stops the moment the line is gone');
+});
+
+test('the three cracks are bodies the pilot can see, carrying heading and bead progress', () => {
+  const t = boot();
+  const id = force(t, 'marks');
+  const rec = live(t, id);
+  assert.equal(rec.vars.seams.length, 3);
+  for (const seam of rec.vars.seams) {
+    const body = t.state.entities.get(seam.id);
+    assert.ok(body && body.alive !== false, 'each crack is a body in the world');
+    assert.equal(body.pos.x, seam.x);
+    assert.equal(body.pos.z, seam.z);
+    assert.equal(body.rot, seam.arc, 'the body faces the heading the weld requires');
+    assert.match(String(body.data.scanLabel || ''), /crack|seam/i);
+    assert.doesNotMatch(String(body.data.scanLabel || ''), /blind_welder|seam_[0-9]/);
+  }
+  holdLine(t, id);
+  parkBargeOnSeam(t, id, 0);
+  t.sim.runTicks(130);
+  const current = t.state.entities.get(live(t, id).vars.seams[0].id);
+  assert.match(String(current.data.scanLabel || ''), /bead is taking/i,
+    'the open crack shows the bead progress');
+  assert.equal(current.rot, rec.vars.seams[0].arc);
 });

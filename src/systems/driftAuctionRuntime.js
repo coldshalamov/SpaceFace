@@ -34,6 +34,30 @@ const REAL_LOTS = Object.freeze([
 ]);
 const DUD_LOT = Object.freeze({ commodityId: 'cmdty_scrap_metal', amount: 3, label: 'SCRAP' });
 
+// scanner.js _pulse is the producer: pos, radius, source, scannerId, seq, simTime.
+// The nearest crate whose center lies inside that pulse, and inside the bid
+// landing radius, is the bid. The pulse does not name a crate.
+function crateIndexForPulse(state, live, payload) {
+  const pos = payload && payload.pos;
+  const radius = Number(payload && payload.radius);
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return -1;
+  if (!Number.isFinite(radius) || radius <= 0) return -1;
+  const reach = Math.min(radius, BID_PULSE_RADIUS);
+  const crates = live.vars.crates || [];
+  let best = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < crates.length; i += 1) {
+    const entity = crateEntity(state, live, i);
+    if (!entity || !entity.pos) continue;
+    const dist = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
+    if (dist <= reach && dist < bestDist) {
+      best = i;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
 function crateEntity(state, live, index) {
   const crates = live.vars.crates;
   const crate = Array.isArray(crates) ? crates[index] : null;
@@ -303,17 +327,14 @@ export const DRIFT_AUCTION_RUNTIME = Object.freeze({
     const vars = live.vars;
     if (name === 'scanPulse') {
       if (live.phase !== 'bidding') return;
-      const targetId = payload && payload.targetId;
-      const sourceId = payload && (payload.sourceId ?? payload.scannerId);
-      // A pulse that names no crate is table talk, not a bid. A pulse from a
-      // rival hull is its answer — routed through the same bid path.
-      const crates = vars.crates || [];
-      let crateIndex = -1;
-      for (let i = 0; i < crates.length; i += 1) {
-        if (crates[i].id === targetId) { crateIndex = i; break; }
-      }
-      if (crateIndex < 0) {
-        // Untargeted pulse near the scow: first one reads the registry line.
+      // Producer: scanner.js _pulse (pos, radius, source, scannerId, seq, simTime).
+      // The director forwards that payload unchanged. A pulse that covers no crate
+      // is table talk. A pulse from a rival hull is its answer, on the same path.
+      const scannerId = payload && payload.scannerId;
+      const fromPlayer = !!(payload && payload.source === 'player-scanner'
+        && scannerId === state.playerId);
+      const crateIndex = crateIndexForPulse(state, live, payload);
+      if (crateIndex < 0 || scannerId == null) {
         if (!vars.scanned) {
           vars.scanned = true;
           d.say(live, 'info',
@@ -322,8 +343,8 @@ export const DRIFT_AUCTION_RUNTIME = Object.freeze({
         }
         return;
       }
-      const crate = crates[crateIndex];
-      const bidder = sourceId === state.playerId ? 'player' : `rival:${sourceId}`;
+      const crate = (vars.crates || [])[crateIndex];
+      const bidder = fromPlayer ? 'player' : `rival:${scannerId}`;
       if (bidder === 'player') {
         // A peek rides on the first pulse per crate: mass and thermal decay tell
         // the dud from the salvage before the bidding closes.
@@ -351,6 +372,9 @@ export const DRIFT_AUCTION_RUNTIME = Object.freeze({
       vars.stolen = true;
       vars.soldCrate = stolen;
       vars.winner = 'player_theft';
+      // engagementAuthority rejects a passive hull before it reads doctrine.
+      // setPassive is the director's owner for that flag on ships it spawned.
+      if (typeof d.setPassive === 'function') d.setPassive(live, false, 'rival');
       for (const rivalId of vars.rivals || []) {
         const rival = state.entities && state.entities.get
           ? state.entities.get(rivalId) : null;
