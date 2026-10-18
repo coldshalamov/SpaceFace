@@ -72,6 +72,27 @@ function foldMachineVitals(row, fields) {
   if (fields.machineWorking !== undefined) row.data.machine.working = fields.machineWorking;
 }
 
+// Mines arm after their spawn; the halo counts the authoritative nested flag.
+function foldMineVitals(row, fields) {
+  if (fields.mineArmed === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.armed = fields.mineArmed;
+}
+
+// Retain one small presentation object per deployment so VFX can follow later replies.
+function foldCountermeasureVitals(row, fields) {
+  if (fields.cmEffectId === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  const cm = row.data.cm || (row.data.cm = {});
+  cm.effectT = fields.cmEffectT;
+  if (fields.cmEffectId === null) { cm.effect = null; return; }
+  if (cm.effect?.presentationId !== fields.cmEffectId) {
+    cm.effect = { presentationId: fields.cmEffectId, cfg: { kind: fields.cmEffectKind } };
+  }
+  cm.effect.originX = fields.cmEffectX;
+  cm.effect.originZ = fields.cmEffectZ;
+}
+
 export function createReadModel() {
   return {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
@@ -154,6 +175,8 @@ export function applySpawnInfos(readModel, spawnInfos) {
       Object.assign(row, canonicalClone(info.vitals));
       foldBoostVitals(row, info.vitals);
       foldMachineVitals(row, info.vitals);
+      foldMineVitals(row, info.vitals);
+      foldCountermeasureVitals(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -229,6 +252,8 @@ export function applyEntityVitals(readModel, vitals) {
     }
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
+    foldMineVitals(row, fields);
+    foldCountermeasureVitals(row, fields);
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
     // carries — refold so both views stay coherent.

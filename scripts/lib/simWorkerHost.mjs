@@ -263,6 +263,14 @@ const VITAL_FIELDS = [
   'isPlayer', 'physicsSleeping',
 ];
 
+// Native effects are replaced on deployment; their wire identity must survive clones.
+const countermeasureEffectIds = new WeakMap();
+let nextCountermeasureEffectId = 0;
+function countermeasureEffectId(effect) {
+  if (!countermeasureEffectIds.has(effect)) countermeasureEffectIds.set(effect, ++nextCountermeasureEffectId);
+  return countermeasureEffectIds.get(effect);
+}
+
 export function entityVitalsOf(e) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
@@ -280,6 +288,15 @@ export function entityVitalsOf(e) {
   if (machine) {
     fields.machineRepairing = Boolean(machine.repairing);
     fields.machineWorking = Boolean(machine.working);
+  }
+  if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  const cm = e.data && e.data.cm;
+  if (cm) {
+    fields.cmEffectId = cm.effect ? countermeasureEffectId(cm.effect) : null;
+    fields.cmEffectKind = cm.effect?.cfg?.kind ?? null;
+    fields.cmEffectX = cm.effect?.originX ?? null;
+    fields.cmEffectZ = cm.effect?.originZ ?? null;
+    fields.cmEffectT = cm.effectT || 0;
   }
   return fields;
 }
@@ -316,6 +333,13 @@ function vitalShadowMatches(e, shadow) {
   const machine = e.data && e.data.machine;
   if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const cm = e.data && e.data.cm;
+  if ((cm ? cm.effect || null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   return true;
 }
 
@@ -331,6 +355,13 @@ function writeVitalShadow(e, shadow) {
   const machine = e.data && e.data.machine;
   shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
+  const cm = e.data && e.data.cm;
+  shadow[i++] = cm ? cm.effect || null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING;
   shadow.length = i;
   return shadow;
 }
