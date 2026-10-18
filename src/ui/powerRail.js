@@ -499,7 +499,12 @@ export function readBombBayModel(state, nowS) {
     if (e.data.phase === 'drift' && nowS >= e.data.armedAt) armedCount++;
   }
   const until = def ? Math.max(rt.cooldownUntil || 0, rt.cooldowns?.[def.id] || 0) : 0;
-  const full = deployed >= BOMB_DRIFT.maxActive || worldCount >= BOMB_DRIFT.maxWorldActive;
+  const bayFull = deployed >= BOMB_DRIFT.maxActive;
+  const worldFull = worldCount >= BOMB_DRIFT.maxWorldActive;
+  const full = bayFull || worldFull;
+  const fullWhy = bayFull
+    ? 'Bay is full — trigger armed ordnance'
+    : 'Field is full of armed ordnance — wait for one to finish';
   const owner = state.entities?.get?.(state.playerId);
   const locked = !owner?.alive || owner.flags?.docked || state.mode !== 'flight';
   if (cells && !def) {
@@ -533,8 +538,8 @@ export function readBombBayModel(state, nowS) {
     // Bombs OUT of the ship, not bombs in the rack: "BAY 0/6" over a loaded key read as an empty
     // magazine. The legend counts drifting bombs only while there are some.
     badge: deployed > 0 ? `BAY ${deployed}/${BOMB_DRIFT.maxActive}` : 'BAY',
-    why: locked ? (full ? 'Bay is full — trigger armed ordnance' : 'Undock to use the bay')
-      : full ? 'Bay is full — trigger armed ordnance'
+    why: locked ? (full ? fullWhy : 'Undock to use the bay')
+      : full ? fullWhy
         : until > nowS ? `Recharging — ${Math.ceil(until - nowS)}s` : 'Ready',
     // Rack honesty: the loaded magazine count rides the description, never the name.
     description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
