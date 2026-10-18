@@ -8,6 +8,11 @@ import {
   isWorldSiteStaticAnatomy,
 } from '../world/farActorTable.js';
 import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
+import { SITE_MACHINE_BY_ID } from '../data/sites.js';
+import { hash32 } from '../core/rng.js';
+import { stepSiteThermal } from './siteThermalModel.js';
+import { buildSiteSignature } from './siteSignatureModel.js';
+import { RADIATOR_FIN, radiatorFinIntact } from './radiatorFins.js';
 // PQ-017 — imported materialization helper. asteroidSites remains the sole registered owner.
 
 import { planWorldSiteMaterialization } from './worldSiteKernel.js';
@@ -1454,4 +1459,216 @@ function structuralData(entry, admitted) {
     ...(entry.placeId ? { placeId: entry.placeId, placeScale: entry.structural.placeScale || 1 } : {}),
     tetherPayload: true,
   };
+}
+
+// --- Exterior radiator fins (BORE-03) -----------------------------------------------------------
+// A hollow, powered hall welds one vane onto the rock. The vane is a payload the
+// player can shoot. Shearing it puts the hall back in thermal fault. A cool hall
+// grows nothing. The record lives on the site; the body is re-ensured while the
+// player is in the sector.
+
+const RADIATOR_WELDED = 'Radiator fins welded onto the rock. The halls settle, and the site reads bright.';
+const RADIATOR_SHEARED = 'The radiator fin sheared off. The halls are overheating again.';
+
+function sectorAllowsRadiatorBody(state, site) {
+  const current = state && state.world && state.world.currentSectorId;
+  if (current == null || current === '') return true;
+  return !!(site && current === site.sectorId);
+}
+
+function radiatorPlace(site, state) {
+  const rock = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(site.asteroidId) : null;
+  const anchor = (rock && rock.pos) || site.anchor || { x: 0, z: 0 };
+  const radius = (rock && Number(rock.radius)) || (site.anchor && Number(site.anchor.radius)) || 8;
+  const span = Number.isFinite(radius) && radius > 0 ? radius : 8;
+  const ang = ((hash32(String(site.id || 'fin')) % 628) / 100);
+  const dist = span + 6;
+  return {
+    x: (Number(anchor.x) || 0) + Math.cos(ang) * dist,
+    z: (Number(anchor.z) || 0) + Math.sin(ang) * dist,
+    rot: ang,
+  };
+}
+
+function findRadiatorBody(state, site, rt) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  const remembered = rt && rt.radiator && rt.radiator.entityId;
+  if (remembered != null) {
+    const hit = entities.get(remembered);
+    if (hit && hit.data && hit.data.radiatorFin === true && hit.data.siteId === site.id) return hit;
+  }
+  if (typeof entities.values !== 'function') return null;
+  for (const entity of entities.values()) {
+    if (!entity || !entity.data || entity.data.radiatorFin !== true) continue;
+    if (entity.data.siteId === site.id) return entity;
+  }
+  return null;
+}
+
+function retireRadiatorBody(removeEntity, entity) {
+  if (!entity || entity.alive === false) return;
+  if (typeof removeEntity === 'function') removeEntity(entity.id);
+  else entity.alive = false;
+}
+
+function spawnRadiatorBody(spawnEntity, site, state, fin) {
+  const place = radiatorPlace(site, state);
+  return spawnEntity({
+    type: 'payload',
+    pos: { x: place.x, z: place.z },
+    vel: { x: 0, z: 0 },
+    rot: place.rot,
+    radius: 4,
+    mass: 12,
+    hull: fin.hull,
+    hullMax: RADIATOR_FIN.hull,
+    collides: false,
+    data: {
+      name: RADIATOR_FIN.name,
+      radiatorFin: true,
+      worldSiteTargetable: true,
+      siteId: site.id,
+      finId: fin.id,
+      homeSectorId: site.sectorId || null,
+      sectorId: site.sectorId || null,
+    },
+  });
+}
+
+function radiatorMachineRows(site, rt) {
+  const machines = Array.isArray(site.machines) ? site.machines : [];
+  const rows = [];
+  const defs = {};
+  for (let i = 0; i < machines.length; i++) {
+    const m = machines[i];
+    if (!m || typeof m !== 'object') continue;
+    const powerKey = rt.powerCompByMachine && rt.powerCompByMachine[m.id];
+    let ratio = 0;
+    if (powerKey != null && rt.compRatio) {
+      const raw = Number(rt.compRatio[powerKey]);
+      ratio = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0;
+    } else {
+      const known = typeof m.defId === 'string' ? SITE_MACHINE_BY_ID.get(m.defId) : null;
+      ratio = known && known.power > 0 ? 1 : 0;
+    }
+    rows.push({
+      id: m.id,
+      defId: m.defId,
+      profile: rt.geo && rt.geo[m.id],
+      powerRatio: ratio,
+      mode: m.mode,
+      col: m.col,
+      row: m.row,
+    });
+    if (typeof m.defId === 'string' && !SITE_MACHINE_BY_ID.get(m.defId) && !defs[m.defId]) {
+      const comp = powerKey != null && rt.compPower ? rt.compPower[powerKey] : null;
+      const draw = comp && Number.isFinite(Number(comp.draw)) ? Math.max(0, Number(comp.draw)) : 0;
+      // Harnesses report served draw. Catalog machines keep their real def and ratio.
+      defs[m.defId] = { id: m.defId, power: -draw };
+    }
+  }
+  return { rows, defs };
+}
+
+function solveRadiatorThermal(site, rt, dtS) {
+  const { rows, defs } = radiatorMachineRows(site, rt);
+  return stepSiteThermal({
+    dtS,
+    machines: rows,
+    radiatorFins: site.radiatorFins,
+    ...(Object.keys(defs).length ? { defs } : {}),
+  });
+}
+
+function radiatorSignature(site, rt) {
+  const { rows } = radiatorMachineRows(site, rt);
+  const power = [];
+  const comp = rt.compPower;
+  if (comp && typeof comp === 'object') {
+    for (const key of Object.keys(comp).sort()) {
+      const row = comp[key];
+      if (!row || typeof row !== 'object') continue;
+      power.push({ key, gen: row.gen, draw: row.draw });
+    }
+  }
+  return buildSiteSignature({
+    cleared: Array.isArray(site.cleared) ? site.cleared : [],
+    machines: rows,
+    power,
+    radiatorFins: site.radiatorFins,
+  });
+}
+
+function intactRadiatorCount(fins) {
+  const list = Array.isArray(fins) ? fins : [];
+  let n = 0;
+  for (let i = 0; i < list.length; i++) if (radiatorFinIntact(list[i])) n += 1;
+  return n;
+}
+
+/**
+ * One site step. Mutates `site.radiatorFins` and `rt.radiator`. Returns the
+ * ledger sentences, or nulls when the hall had nothing to say.
+ */
+export function stepExteriorRadiators(input = {}) {
+  const site = input.site;
+  const state = input.state;
+  const rt = input.rt && typeof input.rt === 'object' ? input.rt : null;
+  if (!site || !rt) return { welded: null, sheared: null };
+
+  let sheared = false;
+  let bodyId = rt.radiator && rt.radiator.entityId != null ? rt.radiator.entityId : null;
+  if (Array.isArray(site.radiatorFins) && site.radiatorFins.length) {
+    const fin = site.radiatorFins[0];
+    const body = findRadiatorBody(state, site, rt);
+    if (fin && radiatorFinIntact(fin)) {
+      const dead = body && (body.alive === false || !(Number(body.hull) > 0));
+      if (dead) {
+        fin.intact = false;
+        fin.hull = 0;
+        retireRadiatorBody(input.removeEntity, body);
+        sheared = true;
+        bodyId = null;
+      } else if (body) {
+        if (Number.isFinite(Number(body.hull))) fin.hull = Number(body.hull);
+        bodyId = body.id;
+      } else if (sectorAllowsRadiatorBody(state, site) && typeof input.spawnEntity === 'function') {
+        const spawned = spawnRadiatorBody(input.spawnEntity, site, state, fin);
+        if (spawned) bodyId = spawned.id;
+      }
+    } else if (body) {
+      retireRadiatorBody(input.removeEntity, body);
+      bodyId = null;
+    }
+  }
+
+  let thermal = solveRadiatorThermal(site, rt, input.dtS);
+  let welded = null;
+  if (site.radiatorFins == null && site.anchored === true && thermal.worstBand === 'fault') {
+    const fin = { id: RADIATOR_FIN.id, intact: true, hull: RADIATOR_FIN.hull };
+    const allowBody = sectorAllowsRadiatorBody(state, site);
+    let spawned = null;
+    if (allowBody && typeof input.spawnEntity === 'function') {
+      spawned = spawnRadiatorBody(input.spawnEntity, site, state, fin);
+    }
+    // A body in this sector, or a record held until the player arrives.
+    if (spawned || !allowBody) {
+      site.radiatorFins = [fin];
+      if (spawned) bodyId = spawned.id;
+      welded = RADIATOR_WELDED;
+      thermal = solveRadiatorThermal(site, rt, input.dtS);
+    }
+  }
+
+  const sig = radiatorSignature(site, rt);
+  rt.radiator = {
+    worstBand: thermal.worstBand,
+    signatureClass: sig.signatureClass,
+    signatureLabel: sig.signatureLabel,
+    intact: intactRadiatorCount(site.radiatorFins),
+    entityId: bodyId,
+  };
+  return { welded, sheared: sheared ? RADIATOR_SHEARED : null };
 }

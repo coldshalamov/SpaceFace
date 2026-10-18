@@ -26,8 +26,8 @@
 //   • SINGLE-PASS / STEADY-STATE. There is no iterative thermal relaxation and there never may be:
 //     relaxation would make the answer depend on visit order, which the order-independence proof
 //     forbids outright. Every machine is solved independently from its own ring.
-//   • UNWIRED. This kernel writes nothing and nothing in src/ imports it. Classifying a band is this
-//     packet's whole job.
+//   • PURE KERNEL. It writes nothing. worldSiteRuntime reads a band and welds an exterior
+//     vane; classifying the band stays this file's whole job.
 //   • FAIL-CLOSED, AND FAIL *HOT*. Malformed input never throws and never leaks NaN/Infinity; it
 //     lands in `rejected[]` with a reason. Where a fail-closed default must be chosen it is the one
 //     that does NOT grant free cooling: an energy product that overflows saturates to the ceiling
@@ -58,6 +58,7 @@
 
 import { SITE_MACHINE_BY_ID } from '../data/sites.js';
 import { machineCapability } from './siteProduction.js';
+import { radiatorFinSink } from './radiatorFins.js';
 
 export const THERMAL_MODEL_VERSION = 1;
 
@@ -483,6 +484,8 @@ function bandIndexOf(id) {
  *                                 Radiator Mast and Coolant Loop are unbuilt Wave 2 machines
  *                                 (VISION:90), so this stays a named parameter rather than an
  *                                 invented sm_radiator. Same stance as A08's `masking`.
+ *   @prop {number} [finSink]      exterior vanes, heat units/min. 0 when none are intact.
+ *                                 Separate from coolingRate so a sheared fin cannot hide in it.
  *   @prop {number} [dtS]          step length in seconds
  */
 export function machineThermalState(input) {
@@ -492,7 +495,8 @@ export function machineThermalState(input) {
   const heat = heatPerMachine(def, inp.profile, inp.powerRatio, inp.mode);
   const rockSink = rockSinkFor(inp.profile);
   const cooling = nonNegative(inp.coolingRate);
-  const sinkRaw = stableSum([rockSink, cooling]);
+  const finSink = nonNegative(inp.finSink);
+  const sinkRaw = stableSum([rockSink, cooling, finSink]);
   const sink = sinkRaw > SITE_THERMAL.maxEnergy ? SITE_THERMAL.maxEnergy : nonNegative(sinkRaw);
 
   const load = roundRatio(thermalLoad(heat, sink));
@@ -527,6 +531,7 @@ export function machineThermalState(input) {
     net: nz(heat - sink),
     rockSink: nonNegative(rockSink),
     cooling,
+    finSink,
     load,
     band,
     bandIndex: bandIndexOf(band),
@@ -629,6 +634,8 @@ export function stepSiteThermal(snapshot) {
   }
 
   const raw = Array.isArray(snap.machines) ? snap.machines : [];
+  // Site-wide: every bay vents through the same skin vanes. A sheared list sinks 0.
+  const finSink = radiatorFinSink(snap.radiatorFins);
 
   // Canonical order FIRST, then dedupe — so which duplicate survives never depends on caller order.
   const keyed = [];
@@ -668,6 +675,7 @@ export function stepSiteThermal(snapshot) {
       mode: m.mode,
       storedHeat: m.storedHeat,
       coolingRate: m.coolingRate,
+      finSink,
       dtS,
     }));
   }

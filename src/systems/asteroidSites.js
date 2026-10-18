@@ -59,8 +59,9 @@ import {
 } from './worldSiteKernel.js';
 import {
   syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
-  reconcileWorldSiteResidency,
+  reconcileWorldSiteResidency, stepExteriorRadiators,
 } from './worldSiteRuntime.js';
+import { normalizeRadiatorFins } from './radiatorFins.js';
 import {
   SURVEY_LIMITS, selectSurveyTarget, surveyRevealFrontier, validateSurveyTarget,
   normalizeSurveyRecord,
@@ -879,6 +880,7 @@ export const asteroidSites = {
         if (structure) site.structure = structure;
         else delete site.structure;
       }
+      if (site.radiatorFins != null) site.radiatorFins = normalizeRadiatorFins(site.radiatorFins);
       if (!site.stats) site.stats = { grossCr: 0, creditedCr: 0, exportedU: 0 };
       // PQ-024: the durable survey record rides the EXISTING anchored-site save path. Harden it
       // here (malformed formation drops the record; an unprovable producing demotes to committed)
@@ -2574,6 +2576,8 @@ export const asteroidSites = {
     // Harmonic stress rides this same step and keeps its own record. It never
     // writes heat, cargo, credits, or a machine's derived stats.
     this._stepHarmonicStress(site, state, rt, dtS);
+    // Exterior vanes: a faulting hall welds one, a shot vane brings the fault back.
+    this._stepExteriorRadiators(site, state, rt, dtS);
   },
 
   /**
@@ -2635,6 +2639,28 @@ export const asteroidSites = {
       this._ledger(site, 'warn', 'A ceiling slab fell and blocked the bore.');
       if (audible && this.bus) this._emitHarmonicCue('presentation.mining.fracture_break', site, 0.85);
     }
+  },
+
+  _stepExteriorRadiators(site, state, rt, dtS) {
+    const helpers = this.ctx && this.ctx.helpers;
+    const notes = stepExteriorRadiators({
+      site,
+      state,
+      rt,
+      dtS,
+      spawnEntity: helpers && helpers.spawnEntity,
+      removeEntity: helpers && helpers.removeEntity,
+    });
+    if (!notes) return;
+    if (notes.welded) this._announceRadiator(site, state, 'info', notes.welded);
+    if (notes.sheared) this._announceRadiator(site, state, 'warn', notes.sheared);
+  },
+
+  _announceRadiator(site, state, kind, text) {
+    this._ledger(site, kind, text);
+    const here = !!(state && state.world && state.world.currentSectorId
+      && site && state.world.currentSectorId === site.sectorId);
+    if (here && this.bus) this.bus.emit('presentation:caption', { text, assertive: kind === 'warn' });
   },
 
   _emitHarmonicCue(id, site, gain) {

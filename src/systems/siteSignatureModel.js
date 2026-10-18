@@ -53,6 +53,7 @@
 // monotonicity, the floor, determinism) rather than magnitudes, so rebalancing cannot falsify it.
 
 import { CONTACT_YIELD, SITE_BALANCE, SITE_MACHINE_BY_ID } from '../data/sites.js';
+import { radiatorFinLoudness } from './radiatorFins.js';
 
 export const SIGNATURE_MODEL_VERSION = 1;
 
@@ -162,6 +163,30 @@ export const SIGNATURE_MASKING = Object.freeze({
 
 /** Decimal places every emitted scalar is rounded to. */
 export const SIGNATURE_PRECISION = 4;
+
+/**
+ * Bands on the published total, ascending by `min`. Labels are player words.
+ * Exterior vanes are not a fifth weight — they are a skin tell blended on
+ * after the partition, so a bare rock still reads exactly as it did.
+ */
+export const SIGNATURE_CLASSES = Object.freeze([
+  Object.freeze({ id: 'quiet', label: 'Quiet', min: 0 }),
+  Object.freeze({ id: 'faint', label: 'Faint', min: 0.05 }),
+  Object.freeze({ id: 'bright', label: 'Bright', min: 0.18 }),
+  Object.freeze({ id: 'blazing', label: 'Blazing', min: 0.55 }),
+]);
+
+function signatureClassFor(total) {
+  const v = clamp01(num(total, 0));
+  let chosen = SIGNATURE_CLASSES[0];
+  for (let i = SIGNATURE_CLASSES.length - 1; i >= 0; i--) {
+    if (v + 1e-12 >= SIGNATURE_CLASSES[i].min) {
+      chosen = SIGNATURE_CLASSES[i];
+      break;
+    }
+  }
+  return chosen;
+}
 
 // --- Numeric helpers ----------------------------------------------------------------------------
 
@@ -480,17 +505,24 @@ export function buildSiteSignature(snapshot) {
   const attenuation = clamp01(masking * clamp01(SIGNATURE_MASKING.maxAttenuation));
 
   const band = Math.max(0, raw - floor);
-  const emitted = clamp01(floor + band * (1 - attenuation));
+  const emittedBare = clamp01(floor + band * (1 - attenuation));
+  // Intact vanes glow. Loudness 0 leaves `emitted` byte-identical to the bare partition.
+  const finLoud = radiatorFinLoudness(snap.radiatorFins);
+  const emitted = clamp01(emittedBare + (1 - emittedBare) * finLoud);
 
   // Background ordering: the operating site is layered ON the dormant rock's own loudness, so the
   // total can never read below it, collapses to exactly it when nothing is operating, and stays
   // monotone in `emitted`.
   const background = clamp01(num(snap.background, 0));
   const totalValue = clamp01(background + (1 - background) * emitted);
+  const total = round(totalValue);
+  const signatureClass = signatureClassFor(total);
 
   return deepFreeze({
     version: SIGNATURE_MODEL_VERSION,
-    total: round(totalValue),
+    total,
+    signatureClass: signatureClass.id,
+    signatureLabel: signatureClass.label,
     background: round(background),
     emitted: round(emitted),
     floor: round(floor),
@@ -512,6 +544,7 @@ export function buildSiteSignature(snapshot) {
       machineActivity: round(machinery.activityScore),
       exportRatePerMin: round(transport.exportRatePerMin),
       inFlightCount: round(transport.inFlightCount),
+      radiatorLoudness: round(finLoud),
     },
   });
 }

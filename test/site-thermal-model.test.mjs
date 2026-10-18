@@ -964,11 +964,12 @@ test('§12 thermalLoad degenerates in the HOT direction', () => {
 
 // ============================================================= 13. UNWIRED
 
-test('§13 nothing in src/ imports this kernel', () => {
-  // The A01/A08 precedent: an unwired kernel is provably hash-inert, so landing it cannot move a
-  // single golden fixture. A07 is the packet that gets to wire it.
+test('§13 only the exterior-fin owner imports this kernel', () => {
+  // The kernel stayed unwired so landing it could not move a golden. BORE-03 is the
+  // reader: exterior vanes. Any other src importer is still a defect.
   const here = fileURLToPath(new URL('.', import.meta.url));
   const srcRoot = join(here, '..', 'src');
+  const allowed = new Set(['worldSiteRuntime.js']);
 
   const offenders = [];
   const walk = (dir) => {
@@ -977,6 +978,7 @@ test('§13 nothing in src/ imports this kernel', () => {
       if (statSync(full).isDirectory()) { walk(full); continue; }
       if (!/\.(m?js)$/.test(entry)) continue;
       if (full.endsWith('siteThermalModel.js')) continue;
+      if (allowed.has(entry)) continue;
       const text = readFileSync(full, 'utf8');
       // A real edge, not a mention: comments and generated localization provenance strings
       // (en-US.generated.js keys carry source paths) may name the module without importing it.
@@ -988,7 +990,7 @@ test('§13 nothing in src/ imports this kernel', () => {
   };
   walk(srcRoot);
 
-  assert.deepStrictEqual(offenders, [], `A06 must stay unwired; importers found: ${offenders.join(', ')}`);
+  assert.deepStrictEqual(offenders, [], `A06 reader must stay the fin owner; importers found: ${offenders.join(', ')}`);
 });
 
 test('§13 the kernel imports no Three.js, no DOM and no clock', () => {
