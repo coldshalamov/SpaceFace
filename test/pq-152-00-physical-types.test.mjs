@@ -11,6 +11,7 @@ import {
 } from '../src/data/missions.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { missions } from '../src/systems/missions.js';
+import { towClassMassFor } from '../src/systems/shipCapabilities.js';
 
 const SEED = 15200;
 const TYPES = PHYSICAL_MISSION_TYPES;
@@ -180,13 +181,21 @@ test('SF-117 tow offers scale to the fit’s real tow class and name the load', 
   const base = h.missionsSys._rollParams('tow_recovery', {}, {}, 1, () => 0.5);
   assert.equal(base.massU, 37, 'the plain fit sees the ordinary band');
 
-  // A drive that puts 100 t on the line: force = accel × mass, tow class = force/40 − mass.
+  // The published tow class includes the live player translation response. Keep this board
+  // contract tied to that capability, so a flight-law change cannot leave an obsolete limit here.
   h.player.data = { derived: { propulsion: { mainAccel: 120 }, operationalMass: 50 } };
+  const towClassMassT = towClassMassFor(h.player.data.derived);
   const heavy = h.missionsSys._rollParams('tow_recovery', {}, {}, 1, () => 0.999);
   assert.ok(heavy.massU > 45, 'a stronger drive posts heavier cores on the board');
-  assert.ok(heavy.massU <= 115, 'the ceiling is the real tow class, not a free roll');
+  assert.equal(heavy.massU, Math.floor(towClassMassT * 1.15),
+    'the highest offer follows the fit’s published tow class');
   // Pay scales through the recorded terms (mass × price), never a bonus multiplier.
   assert.equal(heavy.cargoValue, heavy.massU * 22);
+
+  h.player.data = { derived: { propulsion: { mainAccel: 40 }, operationalMass: 50 } };
+  const lighter = h.missionsSys._rollParams('tow_recovery', {}, {}, 1, () => 0.999);
+  assert.equal(lighter.massU, 45, 'a light fit retains the standard board band');
+  h.player.data = { derived: { propulsion: { mainAccel: 120 }, operationalMass: 50 } };
 
   // The offer names the physical load so the fit-screen verb maps onto the opportunity.
   const origin = stationInfo('station_helios');
