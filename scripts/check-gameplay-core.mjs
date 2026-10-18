@@ -51,6 +51,7 @@ import {
 import { ships, buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec, PLAYER_GIMBAL_ARC } from '../src/systems/ships.js';
 import { cycleTarget, targetNearestHostileToPlayer } from '../src/ui/uiRoot.js';
 import { weaponHeatSummary } from '../src/ui/weaponHeat.js';
+import { readClusterModel } from '../src/ui/orrery/hudAdapter.js';
 import { world } from '../src/systems/world.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../src/systems/scanner.js';
 import { SHIPS } from '../src/data/ships.js';
@@ -1047,11 +1048,31 @@ function checkWeaponHeatHudSummary() {
   assert.deepEqual(scratch, { frac: 0, pct: 0, overheated: false, armed: false },
     'unarmed transition fully clears the retained heat summary');
 
-  const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
-  assert.match(hudSrc, /weaponHeatSummary\(p\.data && p\.data\.weapons,\s*weaponHeatScratch\)/,
-    'flight HUD bottom-left HEAT bar must aggregate weapon-instance heat into retained storage');
-  assert.doesNotMatch(hudSrc, /p\.data\.heat/,
-    'flight HUD must not read the dead p.data.heat field for the weapon heat bar');
+  const player = { data: { weapons: [
+    { _heat: 36, heatMax: 100 }, { _heat: 72, heatMax: 100 },
+  ] } };
+  Object.defineProperty(player.data, 'heat', {
+    get() { assert.fail('flight HUD must not read the dead p.data.heat field'); },
+  });
+  const options = { ordnance: {}, weaponHeatScratch: scratch };
+  assert.equal(readClusterModel({}, player, options).heat, 0.72,
+    'live flight HUD heat must follow the hottest weapon mount');
+  assert.deepEqual(scratch, warm,
+    'live flight HUD must aggregate weapon-instance heat into retained storage');
+  player.data.weapons = [{ _heat: 100, heatMax: 100 }];
+  assert.equal(readClusterModel({}, player, options).heat, 1,
+    'live flight HUD must show pegged weapon heat');
+  assert.deepEqual(scratch, pegged, 'live flight HUD reuses the summary as weapons heat up');
+  player.data.weapons = [];
+  assert.equal(readClusterModel({}, player, options).heat, 0,
+    'live flight HUD must clear heat when the loadout becomes unarmed');
+  assert.deepEqual(scratch, { frac: 0, pct: 0, overheated: false, armed: false },
+    'live flight HUD clears the retained summary on an unarmed transition');
+
+  const adapterSrc = readFileSync(new URL('../src/ui/orrery/hudAdapter.js', import.meta.url), 'utf8');
+  const mountSrc = adapterSrc.slice(adapterSrc.indexOf('export function mountOrreryCluster('));
+  assert.match(mountSrc, /const weaponHeatScratch = \{\};[\s\S]*readClusterModel\(liveState, p, \{ ordnance, speedMax: ceiling, weaponHeatScratch \}\)/,
+    'mounted flight HUD must retain and pass its own weapon heat summary between frames');
   console.log(`[PASS] weapon-heat-hud warm=${warm.pct}% pegged=${pegged.pct}% overheated=${pegged.overheated}`);
 }
 

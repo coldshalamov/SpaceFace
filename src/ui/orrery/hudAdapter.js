@@ -156,8 +156,8 @@ export function readSpeedCeiling(state, p) {
   try { return finite(resolveTravelCeiling(resolvePropulsionProfile(p, state))); } catch { return 0; }
 }
 
-/** The Cluster's model for this frame, from the player entity and state. Pure apart from `tracker`. */
-export function readClusterModel(state, p, { tracker = null, ordnance = null, bindings = null, speedMax = 0 } = {}) {
+/** The Cluster's model for this frame; only the caller's tracker and heat scratch are updated. */
+export function readClusterModel(state, p, { tracker = null, ordnance = null, bindings = null, speedMax = 0, weaponHeatScratch = null } = {}) {
   if (!p) return null;
   const drive = travelDriveOf(state);
   const vx = finite(p.vel && p.vel.x);
@@ -170,7 +170,7 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     while (rel <= -180) rel += 360;
     drift = rel;
   }
-  const heat = weaponHeatSummary(p.data && p.data.weapons);
+  const heat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
   const player = (state && state.player) || {};
   const local = player.tether;
   const tether = local && local.active ? local : player.remoteMassline;
@@ -243,6 +243,7 @@ export function mountOrreryCluster(root, state, { bus = null } = {}) {
   const removeSkin = applyOrreryHudSkin(document);
   cluster.arrive();
   const tracker = createCooldownTracker();
+  const weaponHeatScratch = {};
   let ordnance = null;
   let ceiling = null;
   const syncLegend = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
@@ -278,7 +279,7 @@ export function mountOrreryCluster(root, state, { bus = null } = {}) {
       if (!p) return;
       if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker);
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
-      const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling });
+      const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling, weaponHeatScratch });
       if (model) cluster.update(model);
     },
     dispose() {
