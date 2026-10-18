@@ -406,6 +406,17 @@ export const salvage = {
       return { ok: false, taken: {}, source: this._sourceSnapshot(sourceKey) };
     }
     const taken = takePool(record.remainingPool, request.requested);
+    // Pickup admission can refuse reserved units. Return them through this owner before
+    // syncing or retiring the source so the wreck and saved ledger keep one balance.
+    if (typeof request.admit === 'function') {
+      for (const id of Object.keys(taken)) {
+        const qty = taken[id];
+        const admitted = Math.min(qty, Math.max(0, Math.floor(Number(request.admit(id, qty)) || 0)));
+        if (admitted < qty) record.remainingPool[id] = (record.remainingPool[id] || 0) + qty - admitted;
+        if (admitted > 0) taken[id] = admitted;
+        else delete taken[id];
+      }
+    }
     if (poolTotal(taken) <= 0) return { ok: false, taken: {}, source: snapshotSourceRecord(record, sourceDescriptor(sourceKey)) };
     if (record.claimId && record.claimId !== minerId) record.disputedBy = minerId;
     if (poolTotal(record.remainingPool) <= 0) {

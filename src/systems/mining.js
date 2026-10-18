@@ -1979,6 +1979,7 @@ export const mining = {
     if (release > remaining) release = remaining;
 
     let got = {};
+    const admitted = {};
     let n = release;
     if (sourceKey) {
       const requested = {};
@@ -1988,7 +1989,13 @@ export const mining = {
         if (take > 0) { requested[id] = take; n -= take; }
       }
       const drained = salvageApi && typeof salvageApi.drainSource === 'function'
-        ? salvageApi.drainSource({ sourceKey, minerId: player && player.id, requested })
+        ? salvageApi.drainSource({
+          sourceKey, minerId: player && player.id, requested,
+          admit: (id, qty) => {
+            admitted[id] = this._spawnPickup(wreck, id, qty);
+            return admitted[id];
+          },
+        })
         : null;
       got = drained && drained.ok && drained.taken ? drained.taken : {};
       const takenTotal = Object.values(got).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
@@ -2010,13 +2017,13 @@ export const mining = {
     }
     for (const id in got) {
       const take = got[id];
-      const spawned = this._spawnPickup(wreck, id, take);
+      const spawned = admitted[id] ?? this._spawnPickup(wreck, id, take);
       if (spawned > 0) {
         this.bus.emit('mining:yield', { commodityId: id, qty: spawned, pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player ? player.id : null });
       }
       if (spawned < take) {
         pool[id] = (pool[id] || 0) + (take - spawned);
-        if (sourceKey) d.salvageSourceKey = null;
+        if (sourceKey && remaining <= 0) d.salvageSourceKey = null;
       }
     }
     // The beam bypasses the salvage claim protocol (player drains via drainSource or the
