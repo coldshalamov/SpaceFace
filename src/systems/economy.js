@@ -74,6 +74,7 @@ import {
   hotUntilActive,
   HOT_DURATION_S,
 } from '../economy/customsRisk.js';
+import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
 import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState, rankServiceDiscount } from './factions.js';
@@ -4561,6 +4562,16 @@ export const economy = {
       const row = combined.get(id) || { commodityId: id, qty: 0, holdQty: 0, bayQty: 0, def };
       row.bayQty += qty; row.qty += qty; combined.set(id, row);
     }
+    // Rock goods are not the fitted hold and not the salvage bay. A hidden hold
+    // must not cover them, and a sealed bore must not cover what is still aboard.
+    for (const stack of exposedDeadDropStacks(state, commodityDef)) {
+      const row = combined.get(stack.commodityId) || {
+        commodityId: stack.commodityId, qty: 0, holdQty: 0, bayQty: 0, def: stack.def,
+      };
+      row.cacheQty = (row.cacheQty || 0) + stack.qty;
+      row.qty += stack.qty;
+      combined.set(stack.commodityId, row);
+    }
     return [...combined.values()];
   },
 
@@ -4658,7 +4669,8 @@ export const economy = {
       illicit = illicit
         .map((s) => {
           const holdQty = Math.max(0, s.holdQty - Math.max(0, Number(bonded.get(s.commodityId)) || 0));
-          return { ...s, holdQty, qty: holdQty + s.bayQty };
+          const cacheQty = Math.max(0, Math.floor(Number(s.cacheQty) || 0));
+          return { ...s, holdQty, qty: holdQty + s.bayQty + cacheQty };
         })
         .filter((s) => s.qty > 0);
     }
@@ -4706,6 +4718,7 @@ export const economy = {
     for (const stack of illicit) {
       this.removeFromCargo(cargoSys, state, stack.commodityId, stack.holdQty);
       removeSalvageBayCargo(state, stack.commodityId, stack.bayQty);
+      if (stack.cacheQty > 0) takeExposedDeadDrop(state, stack.commodityId, stack.cacheQty);
     }
     // charge fine; unpaid remainder -> debt + bounty
     const credits = normalizeCredits(state.player.credits);

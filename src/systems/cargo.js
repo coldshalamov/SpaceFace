@@ -15,6 +15,17 @@ import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.j
 import { getDerivedStats, shipworksStationAccess } from './ships.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
 import { salvageBaySaleAllowsIllicit } from './economy.js';
+import {
+  acceptDeadDropLoad,
+  collectDeadDropLoads,
+  commitDeadDropStow,
+  deadDropReturnLine,
+  deadDropStowLine,
+  deadDropWitnessLine,
+  noteDeadDropWitness,
+  openDeadDropCap,
+  planDeadDropStow,
+} from './boreDeadDrop.js';
 
 /** Explicit SF20-03 receiver intent. Source and payment owners commit before Massline retires. */
 export function deliverTallyThreeCrate(state,quote,registry) {
@@ -816,27 +827,66 @@ export const cargo = {
     // The cargo-deck verb: docked at a shipyard with a second hull parked, the deck crew moves
     // units between the live hold and that hull's hold. UI emits the intent only.
     subscribe(binding, 'ui:transferParkedCargo', (payload) => this._transferParkedCargo(payload || {}));
+    // Drilling the false cap opens the room. The goods stay put until the pilot
+    // steps inside; this listener only unseals the site record.
+    subscribe(binding, 'drill:break', (payload) => {
+      const opened = openDeadDropCap(state, payload);
+      if (opened && opened.witnessedFlip && this.bus) {
+        this.bus.emit('toast', { text: deadDropWitnessLine(), kind: 'warn', ttl: 2.2 });
+      }
+    });
 
     this.recompute(); // seed caches from whatever the starting hold contains
   },
 
   update(dt, state) {
+    if (noteDeadDropWitness(state) && this.bus) {
+      this.bus.emit('toast', { text: deadDropWitnessLine(), kind: 'warn', ttl: 2.2 });
+    }
+    const loads = collectDeadDropLoads(state);
+    for (let i = 0; i < loads.length; i++) {
+      const load = loads[i];
+      const accepted = addCargo(state, load.commodityId, load.qty);
+      if (!(accepted > 0)) continue;
+      acceptDeadDropLoad(load.drop, load.commodityId, accepted);
+      if (this.bus) {
+        this.bus.emit('toast', { text: deadDropReturnLine(load.commodityId), kind: 'info', ttl: 1.8 });
+      }
+    }
     const actions = state && state.input && state.input.actions;
     if (actions && (actions.jettisonLot || actions.jettisonLotAll)) {
       // VERB-33: the modified edge dumps the whole selected lot — `qty == null` means every
       // free unit, spawning the remainder as ONE payload body beside the rich-source pods.
       // The unmodified tap stays the one-unit release VERB-13 authored.
+      // A sealed bore mouth is not a pod: the same verb stows the lot behind the cap.
       const whole = !!actions.jettisonLotAll;
       actions.jettisonLot = false;
       actions.jettisonLotAll = false;
       const commodityId = selectedJettisonLot(state);
-      const dumped = commodityId ? this.jettison(commodityId, whole ? null : 1) : 0;
-      if (!(dumped > 0) && this.bus) {
-        this.bus.emit('toast', {
-          text: commodityId ? 'Cargo could not be released — it stays aboard' : jettisonRefusalText(state),
-          kind: 'warn',
-          ttl: 1.6,
-        });
+      const free = commodityId ? sellableCargoQuantity(state, commodityId) : 0;
+      const qty = whole ? free : Math.min(1, free);
+      const plan = commodityId && qty > 0 ? planDeadDropStow(state, commodityId, qty) : null;
+      if (plan) {
+        const removed = removeCargo(state, commodityId, qty);
+        const sealed = removed > 0 && commitDeadDropStow(state, plan, removed);
+        if (!sealed && removed > 0) addCargo(state, commodityId, removed);
+        if (this.bus) {
+          const witnessed = !!(sealed && plan.site.deadDrop && plan.site.deadDrop.witnessed);
+          this.bus.emit('toast', {
+            text: sealed ? deadDropStowLine(commodityId, witnessed) : 'Cargo could not be released — it stays aboard',
+            kind: sealed && !witnessed ? 'info' : 'warn',
+            ttl: sealed ? 2.2 : 1.6,
+          });
+        }
+      } else {
+        const dumped = commodityId ? this.jettison(commodityId, whole ? null : 1) : 0;
+        if (!(dumped > 0) && this.bus) {
+          this.bus.emit('toast', {
+            text: commodityId ? 'Cargo could not be released — it stays aboard' : jettisonRefusalText(state),
+            kind: 'warn',
+            ttl: 1.6,
+          });
+        }
       }
     }
     const binding = stateBindings.get(state);
