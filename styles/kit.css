@@ -432,124 +432,241 @@ body.k-screen-top #modal-backdrop { background: none; }
 .k-screen .sf-drawer__x { all: unset; cursor: pointer; font-size: var(--k-fs-body); color: var(--k-bone-62); }
 
 /* Task D additions */
-/* §4.2: the confirm dialog (src/ui/confirm.js) — the Deckplate modal: a printed field on the
-   void, no border, no card radius; its edge is corner ticks plus the flag word, never colour
-   alone. The verbs are pressable fields with the one 45° cut: destructive is bone at rest with a
-   red rule and red arrives with intent; a non-danger affirmative is the lamp key. Deckplate
-   tokens with kit fallbacks, so the dialog renders the same wherever it mounts. */
-#sf-confirm-root { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--dp-void, #05070a) 78%, transparent); opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); pointer-events: auto; }
+/* ═══ POPUPS — one pane language for every layer that rises over a screen ═══════════════════════
+   The confirm dialog, the find palette, the tier-2 tooltip and the dossier drawer (ui.css §14) are
+   the same object: deep glass over a dimmed, softly blurred world; no border, no card radius; the
+   edge is implied by four corner brackets that float just outside the glass and by one lit rule
+   along the top. The Hand (the small orrery emblem) leads the head of each; amber means "yours"
+   and red means "irreversible", never decoration. Keys keep the one 45° cut; focus is a latching
+   bracket round the key, never a hard rectangle. Arrival is authored (scrim, unfold, rule draws,
+   rows rise) and every motion has both reduced-motion guards. Menus only: these layers sit over a
+   paused or static world, which is the one place a backdrop blur is allowed (ORRERY §3.1). */
+:root {
+  --sf-pop-emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9' stroke-width='1.2'/%3E%3Cpath d='M12 1.4v2.8M12 19.8v2.8M1.4 12h2.8M19.8 12h2.8' stroke-width='1.2'/%3E%3Cpath d='M12 12l6.3-6.3' stroke-width='2.1'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/svg%3E");
+  --sf-pop-scrim: radial-gradient(120% 90% at 50% 44%, rgb(5 7 10 / .6) 0%, rgb(5 7 10 / .9) 100%);
+  --sf-pop-glass: linear-gradient(180deg, rgb(18 21 28 / .9), rgb(8 10 14 / .96));
+  --sf-pop-edge: rgb(232 226 212 / .5);
+  --sf-pop-bloom: rgb(232 226 212 / .16);
+  --sf-pop-wash: rgb(232 226 212 / .055);
+  --sf-pop-tick: rgb(232 226 212 / .55);
+  --sf-pop-hand: var(--dp-lamp, #f2b950);
+  --sf-pop-settle: var(--dp-ease-settle, cubic-bezier(.16, 1, .3, 1));
+  --sf-pop-over: var(--dp-ease-snap, cubic-bezier(.3, 1.6, .4, 1));
+}
+/* The corner brackets — shared by every pane (::before) and every focused key (::after). */
+@keyframes sf-pop-scrim { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sf-pop-unfold {
+  from { opacity: 0; clip-path: inset(46% -30px 46% -30px); transform: translateY(8px) scale(.985); }
+  to   { opacity: 1; clip-path: inset(-30px -30px -30px -30px); transform: none; }
+}
+@keyframes sf-pop-draw { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes sf-pop-brackets { from { opacity: 0; inset: -26px; } to { opacity: 1; inset: -8px; } }
+@keyframes sf-pop-rise { from { opacity: 0; transform: translateY(7px); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes sf-pop-swing { from { transform: rotate(-140deg); opacity: 0; } to { transform: rotate(0); opacity: 1; } }
+@keyframes sf-pop-tip { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+/* ── Confirm ─────────────────────────────────────────────────────────────────────────────────── */
+#sf-confirm-root { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center;
+  background: var(--sf-pop-scrim); -webkit-backdrop-filter: blur(9px) saturate(.8); backdrop-filter: blur(9px) saturate(.8);
+  opacity: 0; transition: opacity 140ms var(--sf-pop-settle); pointer-events: auto; }
 #sf-confirm-root:empty { display: none; pointer-events: none; }
-#sf-confirm-root.sf-confirm--in { opacity: 1; }
-.sf-confirm { position: relative; width: min(calc(560px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: calc(14px * var(--k-s));
-  box-sizing: border-box; padding: calc(20px * var(--k-s)) calc(26px * var(--k-s)) calc(24px * var(--k-s));
-  background: var(--dp-field, rgb(10 12 16 / .84));
-  box-shadow: none;
-  animation: sf-confirm-settle 200ms var(--k-ease) both; }
-/* The edge: four corner ticks (two 1 px strokes per corner), never a border. */
-.sf-confirm::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-  --sf-confirm-tick: var(--dp-rule-hi, rgb(232 226 212 / .38));
+#sf-confirm-root.sf-confirm--in { opacity: 1; transition-duration: 260ms; }
+#sf-confirm-root :focus-visible { outline: none !important; }
+.sf-confirm { position: relative; width: min(calc(620px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: calc(18px * var(--k-s));
+  box-sizing: border-box; padding: calc(28px * var(--k-s)) calc(36px * var(--k-s)) calc(32px * var(--k-s));
+  background: radial-gradient(70% 150px at 50% 0, var(--sf-pop-wash), transparent), var(--sf-pop-glass);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15);
+  box-shadow: none; animation: sf-pop-unfold 420ms var(--sf-pop-settle) backwards; }
+.sf-confirm--danger { --sf-pop-edge: rgb(255 138 112 / .85); --sf-pop-bloom: rgb(255 80 56 / .3); --sf-pop-wash: rgb(255 80 56 / .09);
+  --sf-pop-tick: rgb(255 138 112 / .6); --sf-pop-hand: var(--dp-danger, #ff5038); }
+/* The lit rule along the top: a 1 px core with its bloom as geometry (a second, wider stroke). */
+.sf-confirm::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--sf-pop-edge) 16%, var(--sf-pop-edge) 84%, transparent);
+  box-shadow: 0 0 22px 3px var(--sf-pop-bloom); transform-origin: 50% 50%;
+  animation: sf-pop-draw 560ms var(--sf-pop-settle) 80ms backwards; }
+/* The edge: four corner brackets floating just outside the glass, never a border. */
+.sf-confirm::before { content: ""; position: absolute; inset: -8px; pointer-events: none;
   background:
-    linear-gradient(var(--sf-confirm-tick) 0 0) left top / 16px 1px,
-    linear-gradient(var(--sf-confirm-tick) 0 0) left top / 1px 16px,
-    linear-gradient(var(--sf-confirm-tick) 0 0) right top / 16px 1px,
-    linear-gradient(var(--sf-confirm-tick) 0 0) right top / 1px 16px,
-    linear-gradient(var(--sf-confirm-tick) 0 0) left bottom / 16px 1px,
-    linear-gradient(var(--sf-confirm-tick) 0 0) left bottom / 1px 16px,
-    linear-gradient(var(--sf-confirm-tick) 0 0) right bottom / 16px 1px,
-    linear-gradient(var(--sf-confirm-tick) 0 0) right bottom / 1px 16px;
-  background-repeat: no-repeat; }
-@keyframes sf-confirm-settle { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .sf-confirm { animation: none; } }
-html.sf-reduce-motion .sf-confirm { animation: none; }
+    linear-gradient(var(--sf-pop-tick) 0 0) left top / 16px 1px,
+    linear-gradient(var(--sf-pop-tick) 0 0) left top / 1px 16px,
+    linear-gradient(var(--sf-pop-tick) 0 0) right top / 16px 1px,
+    linear-gradient(var(--sf-pop-tick) 0 0) right top / 1px 16px,
+    linear-gradient(var(--sf-pop-tick) 0 0) left bottom / 16px 1px,
+    linear-gradient(var(--sf-pop-tick) 0 0) left bottom / 1px 16px,
+    linear-gradient(var(--sf-pop-tick) 0 0) right bottom / 16px 1px,
+    linear-gradient(var(--sf-pop-tick) 0 0) right bottom / 1px 16px;
+  background-repeat: no-repeat; animation: sf-pop-brackets 520ms var(--sf-pop-settle) 40ms backwards; }
+.sf-confirm > * { animation: sf-pop-rise 420ms var(--sf-pop-settle) backwards; }
+.sf-confirm > :nth-child(1) { animation-delay: 110ms; }
+.sf-confirm > :nth-child(2) { animation-delay: 160ms; }
+.sf-confirm > :nth-child(3) { animation-delay: 210ms; }
+.sf-confirm > :nth-child(4) { animation-delay: 250ms; }
+.sf-confirm > :nth-child(5) { animation-delay: 290ms; }
 
-.sf-confirm__head { display: flex; align-items: center; gap: 14px; min-height: 14px; }
+.sf-confirm__head { display: flex; align-items: center; gap: 12px; min-height: 18px; }
+.sf-confirm__head::before { content: ""; flex: none; width: 18px; height: 18px; background: var(--sf-pop-hand);
+  -webkit-mask: var(--sf-pop-emblem) center / contain no-repeat; mask: var(--sf-pop-emblem) center / contain no-repeat;
+  animation: sf-pop-swing 640ms var(--sf-pop-over) 160ms backwards; }
+.sf-confirm__head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--dp-rule-hi, rgb(232 226 212 / .22)), transparent); }
 .sf-confirm__flag { flex: none; font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif);
-  font-variation-settings: "wght" 700, "wdth" 72; font-size: max(12px, calc(11px * var(--k-s)));
-  letter-spacing: .22em; text-transform: uppercase; color: var(--dp-ink-mute, #b0aea6); }
+  font-variation-settings: "wght" 650, "wdth" 112; font-size: max(12px, calc(12px * var(--k-s)));
+  letter-spacing: .2em; text-transform: uppercase; color: var(--dp-ink-mute, #b0aea6); }
 .sf-confirm__flag--danger { color: var(--dp-danger-hot, #ff8a70); }
-.sf-confirm__head::after { content: ""; flex: 1; height: 1px; background: var(--dp-rule, rgb(232 226 212 / .14)); }
 
-.sf-confirm__title { margin: 0; font-family: var(--dp-face-display, "Archivo", "Instrument Sans", system-ui, sans-serif);
-  font-variation-settings: "wght" 780, "wdth" 110; font-size: var(--k-fs-emph);
-  letter-spacing: .04em; text-transform: uppercase; line-height: 1.1; color: var(--dp-ink, #e8e2d4); }
-.sf-confirm__title--danger { color: var(--dp-danger-hot, #ff8a70); }
-.sf-confirm__body { margin: calc(-4px * var(--k-s)) 0 0; white-space: pre-line;
+.sf-confirm__title { margin: calc(2px * var(--k-s)) 0 0; font-family: var(--dp-face-display, "Archivo", "Instrument Sans", system-ui, sans-serif);
+  font-variation-settings: "wght" 780, "wdth" 116; font-size: max(22px, calc(32px * var(--k-s) * var(--sf-text-scale, 1)));
+  letter-spacing: -.012em; text-transform: none; line-height: 1.06; color: var(--dp-ink, #e8e2d4); text-wrap: balance; }
+.sf-confirm__title--danger { color: var(--dp-ink, #e8e2d4); }
+.sf-confirm__body { margin: calc(-6px * var(--k-s)) 0 0; white-space: pre-line; max-width: 46ch;
   font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
-  font-size: var(--k-fs-data); line-height: 1.5; letter-spacing: .01em; color: var(--dp-ink-dim, #b7b4a6); }
+  font-size: var(--k-fs-body); line-height: 1.55; letter-spacing: .005em; color: var(--dp-ink-dim, #b7b4a6); text-wrap: pretty; }
 .sf-confirm__body:empty { display: none; }
-.sf-confirm__note { margin: 0; font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
-  font-size: var(--k-fs-data); font-weight: 600; line-height: 1.45; color: var(--dp-danger-hot, #ff8a70); }
+.sf-confirm__note { position: relative; margin: 0; padding-left: 16px; max-width: 46ch; font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  font-size: var(--k-fs-data); font-weight: 600; line-height: 1.5; color: var(--dp-danger-hot, #ff8a70); }
+.sf-confirm__note::before { content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 2px; background: var(--dp-danger, #ff5038); }
 .sf-confirm__note[hidden] { display: none; }
 
 /* Verbs: pressable fields with the one cut (top-right 45°, painted by the fill gradient —
-   deckplate CUT_FILL). Focus is the bone bracket; the destructive verb floods red on intent. */
-.sf-confirm__keys { display: flex; flex-wrap: wrap; gap: 10px; margin-top: calc(4px * var(--k-s)); }
+   deckplate CUT_FILL). Focus latches a bracket round the key; the destructive verb floods red
+   on intent and keeps a red rule at rest. */
+.sf-confirm__keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: calc(10px * var(--k-s)); }
 .sf-confirm__key { all: unset; box-sizing: border-box; cursor: pointer; position: relative;
-  display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px 0 15px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: calc(46px * var(--k-s)); padding: 0 24px 0 20px;
   font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif);
-  font-variation-settings: "wght" 700, "wdth" 92; font-size: var(--k-fs-fine);
-  letter-spacing: .12em; text-transform: uppercase; line-height: 1;
+  font-variation-settings: "wght" 700, "wdth" 96; font-size: var(--k-fs-data);
+  letter-spacing: .13em; text-transform: uppercase; line-height: 1;
   color: var(--dp-ink, #e8e2d4);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink, rgb(232 226 212 / .06)) 0);
-  transition: color 120ms var(--k-ease), box-shadow 120ms var(--k-ease); }
+  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink, rgb(232 226 212 / .08)) 0);
+  transition: color 140ms var(--sf-pop-settle), background 140ms var(--sf-pop-settle), box-shadow 200ms var(--sf-pop-settle), transform 90ms var(--sf-pop-settle); }
 .sf-confirm__key:hover, .sf-confirm__key:focus-visible {
   color: var(--dp-lamp-hot, #ffd98c);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink-hi, rgb(232 226 212 / .12)) 0); }
+  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0); }
 .sf-confirm__key:active { transform: translateY(1px); }
-.sf-confirm__key:focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .sf-confirm__key:active { transform: none; } }
-html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
+.sf-confirm__key::after, .sf-drawer__verb::after, .sf-drawer__x::after { content: ""; position: absolute; inset: -6px; pointer-events: none; opacity: 0; transform: scale(1.08);
+  --sf-bk: var(--dp-ink, #e8e2d4);
+  background:
+    linear-gradient(var(--sf-bk) 0 0) left top / 8px 1.5px,
+    linear-gradient(var(--sf-bk) 0 0) left top / 1.5px 8px,
+    linear-gradient(var(--sf-bk) 0 0) right top / 8px 1.5px,
+    linear-gradient(var(--sf-bk) 0 0) right top / 1.5px 8px,
+    linear-gradient(var(--sf-bk) 0 0) left bottom / 8px 1.5px,
+    linear-gradient(var(--sf-bk) 0 0) left bottom / 1.5px 8px,
+    linear-gradient(var(--sf-bk) 0 0) right bottom / 8px 1.5px,
+    linear-gradient(var(--sf-bk) 0 0) right bottom / 1.5px 8px;
+  background-repeat: no-repeat; transition: opacity 120ms var(--sf-pop-settle), transform 220ms var(--sf-pop-over); }
+.sf-confirm__key:focus-visible::after, .sf-drawer__verb:focus-visible::after, .sf-drawer__x:focus-visible::after { opacity: 1; transform: none; }
 .sf-confirm__key--lamp { color: var(--dp-metal-0, #10131a);
   background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp, #f2b950) 0);
   font-variation-settings: "wght" 800, "wdth" 100; }
 .sf-confirm__key--lamp:hover, .sf-confirm__key--lamp:focus-visible {
   color: var(--dp-metal-0, #10131a);
   background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp-hot, #ffd98c) 0);
-  box-shadow: 0 0 18px var(--dp-lamp-bloom, rgb(242 185 80 / .35)); }
+  box-shadow: 0 0 22px var(--dp-lamp-bloom, rgb(242 185 80 / .35)); }
+.sf-confirm__key--lamp::after { --sf-bk: var(--dp-lamp-hot, #ffd98c); }
 .sf-confirm__key--hazard { box-shadow: inset 0 -2px 0 var(--dp-danger, #ff5038); }
 .sf-confirm__key--hazard:hover, .sf-confirm__key--hazard:focus-visible {
   color: var(--dp-metal-0, #10131a);
   background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-danger, #ff5038) 0);
-  box-shadow: 0 0 18px var(--dp-danger-bloom, rgb(255 80 56 / .4)); }
-.sf-confirm__kbd { display: inline-block; margin-left: 9px; padding: 3px 5px 2px;
-  border: 1px solid var(--dp-rule-hi, rgb(232 226 212 / .38)); border-radius: 0;
-  font-size: max(12px, calc(10px * var(--k-s))); letter-spacing: .08em; color: var(--dp-ink-mute, #b0aea6); }
-.sf-confirm__key:hover .sf-confirm__kbd, .sf-confirm__key:focus-visible .sf-confirm__kbd { color: inherit; border-color: currentColor; }
+  box-shadow: 0 0 22px var(--dp-danger-bloom, rgb(255 80 56 / .4)); }
+.sf-confirm__key--hazard::after { --sf-bk: var(--dp-danger-hot, #ff8a70); }
+/* The Esc legend: an etched cap, filled not boxed. */
+.sf-confirm__kbd { display: inline-block; padding: 4px 7px 3px; border: 0; border-radius: 0;
+  background: var(--dp-field-ink, rgb(232 226 212 / .08));
+  font-variation-settings: "wght" 650, "wdth" 100; font-size: max(12px, calc(12px * var(--k-s))); letter-spacing: .1em; color: var(--dp-ink-mute, #b0aea6); }
+.sf-confirm__key:hover .sf-confirm__kbd, .sf-confirm__key:focus-visible .sf-confirm__kbd { color: inherit; background: rgb(232 226 212 / .1); }
+@media (max-width: 520px) { .sf-confirm__keys { justify-content: stretch; } .sf-confirm__key { flex: 1 1 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  #sf-confirm-root, #sf-confirm-root.sf-confirm--in { transition: none; }
+  .sf-confirm, .sf-confirm::before, .sf-confirm::after, .sf-confirm > *, .sf-confirm__head::before { animation: none; }
+  .sf-confirm__key, .sf-confirm__key::after, .sf-drawer__verb::after, .sf-drawer__x::after { transition: none; }
+  .sf-confirm__key:active { transform: none; }
+}
+html.sf-reduce-motion #sf-confirm-root, html.sf-reduce-motion #sf-confirm-root.sf-confirm--in { transition: none; }
+html.sf-reduce-motion .sf-confirm, html.sf-reduce-motion .sf-confirm::before, html.sf-reduce-motion .sf-confirm::after,
+html.sf-reduce-motion .sf-confirm > *, html.sf-reduce-motion .sf-confirm__head::before { animation: none; }
+html.sf-reduce-motion .sf-confirm__key, html.sf-reduce-motion .sf-confirm__key::after,
+html.sf-reduce-motion .sf-drawer__verb::after, html.sf-reduce-motion .sf-drawer__x::after { transition: none; }
+html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
 @media (forced-colors: active) {
   .sf-confirm { background: Canvas; }
+  .sf-confirm::before, .sf-confirm::after { display: none; }
+  .sf-confirm__head::before { background: CanvasText; }
   .sf-confirm__key { background: Canvas; color: CanvasText; box-shadow: none; border: 1px solid CanvasText; }
-  .sf-confirm__key:hover, .sf-confirm__key:focus-visible { color: Highlight; }
-  .sf-confirm__kbd { border-color: CanvasText; }
+  .sf-confirm__key:hover, .sf-confirm__key:focus-visible { color: Highlight; outline: 2px solid Highlight !important; }
+  .sf-confirm__kbd { background: Canvas; border: 1px solid CanvasText; }
 }
 
-/* ===== PQ-183.02 global find — the `/` palette ===== */
-/* Over a screen it is a floating panel; in flight it is the screen itself (.screen host so the
-   dossier drawer still mounts). Same chrome language as sf-confirm: a bordered deck on dimmed
-   glass, never a new material. */
+/* ── Tier-2 tooltip (whyReveal.js) ───────────────────────────────────────────────────────────── */
+#sf-why-tip { padding: 12px 18px 13px 20px; background: linear-gradient(180deg, rgb(18 21 28 / .94), rgb(8 10 14 / .97));
+  -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15);
+  font: 500 14px/1.5 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); letter-spacing: .005em; color: var(--dp-ink, #e8e2d4);
+  text-wrap: pretty; animation: sf-pop-tip 160ms var(--sf-pop-settle) backwards; }
+/* The leader: one bone rule down the near edge, its head a short lit segment. */
+#sf-why-tip::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 1px;
+  background: linear-gradient(180deg, var(--sf-pop-edge) 0 22px, rgb(232 226 212 / .2) 22px); }
+#sf-why-tip::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(90deg, rgb(232 226 212 / .45), transparent 70%); }
+@media (prefers-reduced-motion: reduce) { #sf-why-tip { animation: none; } }
+html.sf-reduce-motion #sf-why-tip { animation: none; }
+@media (forced-colors: active) { #sf-why-tip { background: Canvas; color: CanvasText; border: 1px solid CanvasText; } }
+
+/* ── Find palette (the `/` key, globalFind.js) ────────────────────────────────────────────────── */
+/* Over a screen it floats on the scrim; in flight it is the screen itself (.screen host so the
+   dossier drawer still mounts). One input on glass with a lit underline, a ladder of results. */
 .sf-find { position: fixed; inset: 0; z-index: 4500; display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-start; padding-top: 14vh;
-  background: color-mix(in srgb, var(--k-ink) 74%, transparent); pointer-events: auto; }
+  align-items: center; justify-content: flex-start; padding-top: 13vh;
+  background: var(--sf-pop-scrim); -webkit-backdrop-filter: blur(9px) saturate(.8); backdrop-filter: blur(9px) saturate(.8);
+  pointer-events: auto; animation: sf-pop-scrim 220ms var(--sf-pop-settle) backwards; }
 .sf-find--host { position: fixed; }
-.sf-find__input { width: min(calc(560px * var(--k-s)), 92vw); box-sizing: border-box;
-  font: 500 var(--k-fs-body)/1.2 var(--k-face-body, inherit); color: var(--k-text-live);
-  background: var(--k-surface, rgb(10 14 12 / .92)); border: 1px solid var(--k-hair);
-  padding: 10px 14px; outline: none; }
-.sf-find__input:focus { border-color: var(--k-bone); }
-.sf-find__results { width: min(calc(560px * var(--k-s)), 92vw); max-height: 46vh; overflow-y: auto;
-  border: 1px solid var(--k-hair); border-top: 0; background: var(--k-surface, rgb(10 14 12 / .92)); }
-.sf-find__results:empty { border: 0; }
-.sf-find__row { display: flex; align-items: baseline; gap: 10px; width: 100%; box-sizing: border-box;
-  padding: 7px 14px; background: none; border: 0; border-top: 1px solid color-mix(in srgb, var(--k-hair) 40%, transparent);
-  color: var(--k-text); text-align: left; cursor: pointer; }
-.sf-find__row:first-child { border-top: 0; }
-.sf-find__row--sel, .sf-find__row:hover, .sf-find__row:focus-visible { color: var(--k-text-live);
-  background: color-mix(in srgb, var(--k-bone) 8%, transparent); }
-.sf-find__kind { flex: none; width: 62px; font-family: var(--hud-data, monospace); font-size: var(--k-fs-fine, 12px);
-  letter-spacing: .06em; color: var(--k-signal); opacity: .8; }
-.sf-find__name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sf-find__detail { flex: none; color: var(--k-bone-62); font-size: var(--k-fs-fine, 12px); }
-.sf-find__empty { padding: 10px 14px; color: var(--k-bone-62); }
-.sf-find__hint { width: min(calc(560px * var(--k-s)), 92vw); padding: 6px 2px 0; color: var(--k-bone-62); }
+.sf-find :focus-visible { outline: none !important; }
+.sf-find input.sf-find__input, .sf-find__results { width: min(calc(660px * var(--k-s)), 92vw); box-sizing: border-box; }
+.sf-find input.sf-find__input, .sf-find input.sf-find__input:hover, .sf-find input.sf-find__input:focus { all: unset; box-sizing: border-box; display: block; width: min(calc(660px * var(--k-s)), 92vw);
+  padding: calc(22px * var(--k-s)) calc(28px * var(--k-s)) calc(20px * var(--k-s));
+  font: 500 max(18px, calc(24px * var(--k-s))) / 1.2 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); letter-spacing: -.005em; color: var(--dp-ink, #e8e2d4);
+  caret-color: var(--dp-lamp, #f2b950);
+  background:
+    linear-gradient(90deg, transparent, var(--dp-rule-hi, rgb(232 226 212 / .22)) 10%, var(--dp-rule-hi, rgb(232 226 212 / .22)) 90%, transparent) bottom / 100% 1px no-repeat,
+    radial-gradient(70% 90px at 50% 0, var(--sf-pop-wash), transparent),
+    var(--sf-pop-glass);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15);
+  animation: sf-pop-unfold 380ms var(--sf-pop-settle) backwards; transition: background-color 160ms; }
+.sf-find input.sf-find__input::placeholder { color: var(--dp-ink-mute, #b0aea6); opacity: 1; }
+.sf-find input.sf-find__input:focus {
+  background:
+    linear-gradient(90deg, transparent, var(--dp-lamp, #f2b950) 8%, var(--dp-lamp-hot, #ffd98c) 50%, var(--dp-lamp, #f2b950) 92%, transparent) bottom / 100% 1.5px no-repeat,
+    radial-gradient(70% 90px at 50% 0, var(--sf-pop-wash), transparent),
+    var(--sf-pop-glass); }
+.sf-find__results { max-height: 46vh; overflow-y: auto; padding: calc(6px * var(--k-s)) 0 calc(10px * var(--k-s));
+  background: linear-gradient(180deg, rgb(10 12 17 / .94), rgb(8 10 14 / .96));
+  -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15);
+  animation: sf-pop-rise 320ms var(--sf-pop-settle) 80ms backwards; }
+.sf-find__results:empty { display: none; }
+.sf-find__row { all: unset; box-sizing: border-box; position: relative; display: grid; grid-template-columns: calc(92px * var(--k-s)) minmax(0, 1fr) auto; align-items: baseline; column-gap: 14px;
+  width: 100%; padding: calc(11px * var(--k-s)) calc(28px * var(--k-s)); cursor: pointer; color: var(--dp-ink-dim, #b7b4a6);
+  font: 500 var(--k-fs-body) / 1.3 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  transition: background 120ms var(--sf-pop-settle), color 120ms var(--sf-pop-settle); }
+/* The Hand's tick: the selected row carries one lamp bar on its leading edge. */
+.sf-find__row::before { content: ""; position: absolute; left: 0; top: 18%; bottom: 18%; width: 2px; background: var(--dp-lamp, #f2b950);
+  transform: scaleY(0); transform-origin: 50% 50%; transition: transform 200ms var(--sf-pop-over); }
+.sf-find__row--sel, .sf-find__row:hover, .sf-find__row:focus-visible { color: var(--dp-ink, #e8e2d4);
+  background: linear-gradient(90deg, var(--dp-field-ink-hi, rgb(232 226 212 / .14)), transparent 88%); }
+.sf-find__row--sel::before, .sf-find__row:focus-visible::before { transform: scaleY(1); }
+.sf-find__kind { flex: none; font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif);
+  font-variation-settings: "wght" 650, "wdth" 108; font-size: max(12px, calc(12px * var(--k-s))); letter-spacing: .16em; text-transform: uppercase; color: var(--dp-ink-mute, #b0aea6); }
+.sf-find__row--sel .sf-find__kind, .sf-find__row:hover .sf-find__kind { color: var(--dp-lamp-hot, #ffd98c); }
+.sf-find__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-find__detail { color: var(--dp-ink-mute, #b0aea6); font-size: var(--k-fs-fine, 12px); }
+.sf-find__empty { padding: calc(18px * var(--k-s)) calc(28px * var(--k-s)); color: var(--dp-ink-mute, #b0aea6); font: 500 var(--k-fs-data) / 1.4 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); }
+.sf-find__hint { width: min(calc(660px * var(--k-s)), 92vw); box-sizing: border-box; padding: calc(14px * var(--k-s)) calc(28px * var(--k-s)) 0; color: var(--dp-ink-mute, #b0aea6);
+  font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif); font-variation-settings: "wght" 600, "wdth" 104; font-size: max(12px, calc(12px * var(--k-s)));
+  letter-spacing: .12em; text-transform: uppercase; animation: sf-pop-rise 320ms var(--sf-pop-settle) 160ms backwards; }
+@media (prefers-reduced-motion: reduce) { .sf-find, .sf-find__input, .sf-find__results, .sf-find__hint { animation: none; } .sf-find__row, .sf-find__row::before { transition: none; } }
+html.sf-reduce-motion .sf-find, html.sf-reduce-motion .sf-find__input, html.sf-reduce-motion .sf-find__results, html.sf-reduce-motion .sf-find__hint { animation: none; }
+html.sf-reduce-motion .sf-find__row, html.sf-reduce-motion .sf-find__row::before { transition: none; }
+@media (forced-colors: active) {
+  .sf-find__input, .sf-find__results { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+  .sf-find__row--sel, .sf-find__row:hover, .sf-find__row:focus-visible { outline: 2px solid Highlight !important; }
+}
 /* §3: legacy ui.css `.sf-tab:hover` paints an accent tint under any kit tab word that keeps the `.sf-tab` hook (help, codex, settings). */
 .k-screen .sf-tab:hover, .k-screen .sf-tab:focus-visible { background: none; }
 /* §1.3: a panel column ordered before its DOM siblings (the results ledger reads first for the eye, second for a reader). */
@@ -1001,3 +1118,24 @@ html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
 /* Forced-colours pause rows: the row plate is a class-driven `border-image-source` on `.k-word`
    (not an inline `!important`), so the block above can strip the nine-slice and put a Highlight
    outline on the live row. */
+
+/* ── Sector arrival postcard (sectorPostcard.js) — a flight popup, so no backdrop blur ───────────── */
+#sf-sector-postcard { position: absolute; top: 9%; left: 50%; transform: translateX(-50%); z-index: 40; max-width: 50ch; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 22px 44px 24px; text-align: center; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(6 8 12 / .82), rgb(6 8 12 / .66) 62%, transparent);
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); font-size: 14px; line-height: 1.45; color: var(--dp-ink-dim, #b7b4a6);
+  animation: sf-pop-rise 520ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) backwards; }
+#sf-sector-postcard::before, #sf-sector-postcard::after { content: ""; position: absolute; left: 14%; right: 14%; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--dp-rule-hi, rgb(232 226 212 / .22)) 22%, var(--dp-rule-hi, rgb(232 226 212 / .22)) 78%, transparent);
+  animation: sf-pop-draw 640ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) 120ms backwards; }
+#sf-sector-postcard::before { top: 0; }
+#sf-sector-postcard::after { bottom: 0; }
+.sf-postcard__name { font-family: var(--dp-face-display, "Archivo", "Instrument Sans", system-ui, sans-serif); font-variation-settings: "wght" 780, "wdth" 116;
+  font-size: 30px; letter-spacing: -.01em; line-height: 1.05; color: var(--dp-ink, #e8e2d4); }
+.sf-postcard__way { color: var(--dp-ink, #e8e2d4); }
+.sf-postcard__tag { margin: 4px 0 2px; font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif); font-variation-settings: "wght" 650, "wdth" 112;
+  font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--dp-lamp, #f2b950); }
+.sf-postcard__dim { color: var(--dp-ink-dim, #b7b4a6); }
+.sf-postcard__rumor { margin-top: 6px; font-style: italic; color: var(--dp-ink-mute, #b0aea6); }
+@media (prefers-reduced-motion: reduce) { #sf-sector-postcard, #sf-sector-postcard::before, #sf-sector-postcard::after { animation: none; } }
+html.sf-reduce-motion #sf-sector-postcard, html.sf-reduce-motion #sf-sector-postcard::before, html.sf-reduce-motion #sf-sector-postcard::after { animation: none; }

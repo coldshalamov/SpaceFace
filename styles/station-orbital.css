@@ -474,7 +474,7 @@
     linear-gradient(92deg, rgb(6 7 10 / .90) 0%, rgb(6 7 10 / .82) 34%, rgb(6 7 10 / .54) 62%, rgb(6 7 10 / .30) 84%, rgb(6 7 10 / .22) 100%),
     radial-gradient(150% 120% at 74% 46%, transparent 0%, rgb(6 7 10 / .38) 62%, rgb(6 7 10 / .62) 100%);
 }
-:is(#screens .sx-observatory, .sx-observatory) > :not(.sxb-veil):not(.k-world) { position: relative; z-index: 1; }
+:is(#screens .sx-observatory, .sx-observatory) > :not(.sxb-veil):not(.k-world):not(.sf-drawerlayer):not(.sf-find) { position: relative; z-index: 1; }
 
 /* ── The crest wall's dossier head ────────────────────────────────────────────────────────────
    The crest was absolutely positioned at 45 % behind the faction's name: the highest-detail art

@@ -203,34 +203,30 @@ export const sectorPostcard = {
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
     el.setAttribute('aria-label', 'Sector arrival');
-    // Non-diegetic card, top-center, pointer-events none so it can NEVER block flight input.
-    el.style.cssText = [
-      'position:absolute', 'top:9%', 'left:50%', 'transform:translateX(-50%)',
-      'padding:10px 18px', 'background:rgba(8,14,26,0.82)', 'border:1px solid rgba(110,150,210,0.35)',
-      'border-radius:6px', 'color:#cfe2ff', 'font:13px/1.45 system-ui,sans-serif',
-      'text-align:center', 'pointer-events:none', 'z-index:40', 'max-width:46ch',
-    ].join(';');
+    // Non-diegetic card, top-center, pointer-events none so it can NEVER block flight input. The look
+    // (flight-safe wash, lit rule, faces) is styles/kit.css `#sf-sector-postcard` — no backdrop blur in flight.
+    el.className = 'sf-postcard';
 
     // Six fields max, ONE line per field (packet failureMode: lore dump).
-    const line = (text, style) => {
+    const line = (text, cls) => {
       if (!text) return;
       const d = document.createElement('div');
-      if (style) d.style.cssText = style;
+      d.className = cls || 'sf-postcard__line';
       d.textContent = text;
       el.appendChild(d);
     };
-    line(card.name, 'font-size:17px;font-weight:600;letter-spacing:0.06em');
-    line(card.wayOfLife, 'opacity:0.92');
+    line(card.name, 'sf-postcard__name');
+    line(card.wayOfLife, 'sf-postcard__way');
     if (card.signatureToy && card.signatureToy !== 'explicitly none') {
       // The way-of-life row carries the machine's stable id; the card shows its mouth name.
       const toy = ALL_KILL_MACHINE_BY_ID[card.signatureToy];
-      line((toy && toy.mouth && toy.mouth.name) || card.signatureToy.replace(/_/g, ' '), 'opacity:0.8');
+      line((toy && toy.mouth && toy.mouth.name) || card.signatureToy.replace(/_/g, ' '), 'sf-postcard__dim');
     }
-    line([card.faction, card.securityTier && card.securityTier.toUpperCase()].filter(Boolean).join(' · '));
+    line([card.faction, card.securityTier && card.securityTier.toUpperCase()].filter(Boolean).join(' · '), 'sf-postcard__tag');
     if (card.hazards && card.hazards.length) {
-      line(card.hazards.map((h) => `${h.glyph} ${h.label}`).join('   '), 'opacity:0.9');
+      line(card.hazards.map((h) => `${h.glyph} ${h.label}`).join('   '), 'sf-postcard__dim');
     }
-    line(card.primaryCommodity && `trades: ${card.primaryCommodity}`, 'opacity:0.85');
+    line(card.primaryCommodity && `trades: ${card.primaryCommodity}`, 'sf-postcard__dim');
     const placeIdentity = [
       card.ecology && card.ecology.familyLabel,
       card.dominantZone && card.dominantZone.name,
@@ -238,8 +234,8 @@ export const sectorPostcard = {
         ? `${card.ecology.unresolvedCauses} active consequence${card.ecology.unresolvedCauses === 1 ? '' : 's'}`
         : null,
     ].filter(Boolean).join(' · ');
-    line(placeIdentity, 'opacity:0.85');
-    line(card.rumor && `“${card.rumor}”`, 'opacity:0.75;font-style:italic');
+    line(placeIdentity, 'sf-postcard__dim');
+    line(card.rumor && `“${card.rumor}”`, 'sf-postcard__rumor');
 
     host.appendChild(el);
     this._cardEl = el;

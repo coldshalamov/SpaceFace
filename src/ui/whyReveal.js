@@ -40,16 +40,9 @@ const TIP_STYLE = [
   // wrapping. Content still wraps at word boundaries (white-space:pre-line).
   'max-width:min(42ch, calc(100vw - 24px))',
   'box-sizing:border-box',
-  'padding:8px 12px',
   'white-space:pre-line',
-  'background:rgba(8,14,26,0.92)',
-  'border:1px solid rgba(110,150,210,0.4)',
-  'border-radius:5px',
-  'box-shadow:0 8px 24px rgba(0,0,0,0.65), 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-  'backdrop-filter:blur(8px)',
-  'letter-spacing:0.01em',
-  'color:#cfe2ff',
-  'font:12px/1.45 system-ui,sans-serif',
+  // The look (glass, leader rule, face, arrival) lives in styles/kit.css `#sf-why-tip` — the one
+  // popup pane language. Only layout-critical properties stay inline.
   'pointer-events:none',
   // DOM layering (src/ui/AGENTS.md): screens sit at z100, alerts at z1100. A tier-2 reveal is
   // raised BY screen content, so it must clear the screen layer; it never blocks input.

@@ -58,6 +58,12 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'orrery-flight', screen: 'orreryFlight', backdrop: 'space' },
   { id: 'comms-radial', screen: 'flight', overlay: 'comms', backdrop: 'world' },
   { id: 'wingman-radial', screen: 'flight', overlay: 'wingman', backdrop: 'world' },
+  // Popups: the layers that rise over a screen — confirmation, find palette, tier-2 tooltip, dossier drawer.
+  { id: 'popup-confirm', screen: 'station', overlay: 'confirm', backdrop: 'shell' },
+  { id: 'popup-confirm-danger', screen: 'station', overlay: 'confirm-danger', backdrop: 'shell' },
+  { id: 'popup-find', screen: 'station', overlay: 'find', backdrop: 'shell' },
+  { id: 'popup-tooltip', screen: 'station', overlay: 'tooltip', backdrop: 'shell' },
+  { id: 'popup-dossier', screen: 'station', overlay: 'dossier', backdrop: 'shell' },
 
   { id: 'ship', screen: 'ship', backdrop: 'world' },
   // Footprint over a lived-in record (tools/ui-bench-footprint.js): wanted by default (heat T3 outside the

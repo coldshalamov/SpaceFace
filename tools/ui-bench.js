@@ -26,6 +26,7 @@ import { injectHudCss } from '../src/ui/views/hudStyles.js';
 import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/stationStyles.js';
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
 import { createBenchSaveSystem } from './ui-bench-saves.js';
+import { measureControlReachability } from './ui-bench-controls.js';
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
 import { seedRecordShot, unseedRecordShot } from './ui-bench-record.js';
@@ -1043,6 +1044,44 @@ async function openOverlay(kind) {
     const node = document.getElementById('sf-wingman-radial');
     window.__BENCH_OVERLAY = node && !node.hidden ? 'wingman open' : 'wingman did not open';
     if (node && !node.hidden) window.__BENCH_OVERLAY_EL = node;
+    return;
+  }
+  if (kind === 'confirm' || kind === 'confirm-danger') {
+    const { confirm } = await import('../src/ui/confirm.js');
+    const danger = kind === 'confirm-danger';
+    confirm(danger
+      ? { title: 'Sell ship?', body: 'The Kestrel leaves your fleet for good.\nRefund: 12,500 CR (50% of hull value).', note: 'Fitted modules are sold with the hull. This cannot be undone.', confirmLabel: 'Sell ship', danger: true }
+      : { title: 'Leave the dock?', body: 'Undocking launches you into the sector. Unsold cargo stays in your hold.', confirmLabel: 'Undock' });
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    window.__BENCH_OVERLAY = document.querySelector('.sf-confirm') ? `${kind} open` : `${kind} did not open`;
+    return;
+  }
+  if (kind === 'find') {
+    const { createGlobalFind } = await import('../src/ui/globalFind.js');
+    const find = createGlobalFind(ctx);
+    find.open();
+    const input = document.querySelector('.sf-find__input');
+    if (input) { input.value = 'kes'; input.dispatchEvent(new Event('input', { bubbles: true })); }
+    window.__BENCH_OVERLAY = document.querySelector('.sf-find') ? 'find open' : 'find did not open';
+    return;
+  }
+  if (kind === 'tooltip') {
+    const { showWhyTip } = await import('../src/ui/whyReveal.js');
+    const anchor = [...document.querySelectorAll('#screens button')].find((b) => b.getBoundingClientRect().width > 40) || document.body;
+    const r = anchor.getBoundingClientRect();
+    showWhyTip('Prices here run 8% over the sector average: the Ledger Compact is short on fuel cells and the last convoy was turned back at the border.', r.left + 24, r.bottom - 8, 'data-why');
+    window.__BENCH_OVERLAY = document.getElementById('sf-why-tip') ? 'tooltip open' : 'tooltip did not open';
+    return;
+  }
+  if (kind === 'dossier') {
+    const { createEntityLinks } = await import('../src/ui/entityLinks.js');
+    const links = createEntityLinks(ctx);
+    const { searchEntities } = await import('../src/ui/entityResolver.js');
+    const refs = searchEntities(state, 'a', { limit: 40 }).map((row) => row.ref);
+    const pick = refs.find((ref) => ref.startsWith('station:')) || refs[0];
+    const opened = !!pick && links.open(pick);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    window.__BENCH_OVERLAY = opened ? 'dossier open' : 'dossier did not open';
   }
 }
 
@@ -1754,7 +1793,7 @@ function layoutAudit() {
   // relations rail of losing its rows when they were one flick away. Text that is clipped with no
   // way to reach it is a different finding, and severedType makes it.
   scrolledGroups.clear();
-  return { overlaps, clipped, offscreen, ...pictureAudit() };
+  return { overlaps, clipped, offscreen, controlReachability: measureControlReachability(document, current), ...pictureAudit() };
 }
 
 function controlAction(index, kind) {
@@ -1804,6 +1843,7 @@ window.BENCH = {
       disabled: window.__BENCH_LAST_DISABLED === true,
     };
   },
+  reachability() { return measureControlReachability(document, current); },
   report() {
     const broken = document.getElementById('bench-broken');
     return {

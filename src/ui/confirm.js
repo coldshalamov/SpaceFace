@@ -117,7 +117,7 @@ export function confirm(opts) {
 
   const titleCls = 'sf-confirm__title' + (opts.danger ? ' sf-confirm__title--danger' : '');
   const dialog = document.createElement('div');
-  dialog.className = 'sf-confirm';
+  dialog.className = 'sf-confirm' + (opts.danger ? ' sf-confirm--danger' : '');
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
   dialog.innerHTML =
