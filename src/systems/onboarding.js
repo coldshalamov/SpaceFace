@@ -34,7 +34,7 @@ import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
-import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
+import { readCadencePair, rateCadenceTechnique, STRAIN_GLOW_DANGER_THRESHOLD } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
 import { decoyAnswersLock } from './countermeasures.js';
 import { fitFeelRowFor, pickFitFelt } from '../onboarding/fitFeel.js';
@@ -47,7 +47,7 @@ import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { MASS_ANCHOR_RATIO } from './tetherGameplay.js';
 
-export { MASS_ANCHOR_RATIO };
+export { MASS_ANCHOR_RATIO, STRAIN_GLOW_DANGER_THRESHOLD };
 
 // U5 — the planetary bands' first-contact lines. Instrument register, one line each: what
 // the band is, and the law that governs it. Spoken once per band per body per save.
@@ -786,6 +786,9 @@ export const onboarding = {
     });
     // TEACH-12 — the first latch on a far heavier body teaches the brace once per profile.
     bus.on('tether:latched', (payload) => this._onTetherLatchedBrace(payload || {}));
+    // TEACH-14 — the first swing that loads the rope toward its limit names the release window once per profile.
+    bus.on('tether:nearBreak', (payload) => this._teachReleaseWindow(payload || {}));
+    bus.on('tether:strain', (payload) => this._teachReleaseWindow(payload || {}));
     bus.on('tether:whipImpact', (payload) => {
       if (!massline2Flag('throw')) return;
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -1903,6 +1906,7 @@ export const onboarding = {
       this._noteMissingThreeUses();
       this._teachFieldEscapes();
       this._teachCadencePump();
+      this._teachReleaseWindow();
       this._tickShelfVerbs(intervalS, state);
       this._tickFitFelt(state);
       if (!ob.active || ob.finished) return;
@@ -3540,6 +3544,41 @@ export const onboarding = {
     const rated = rateCadenceTechnique(pair, { phase: tether.phase });
     if (rated.technique !== 'swing') return;
     this._showHint('masslineCadenceWinch', firstUseLine('masslineCadenceWinch'), { entityId: tether.targetId });
+  },
+
+  /** TEACH-14 — the first swing that loads the rope toward its limit names the release
+   *  window. Earned when the pair's technique rating reads 'swing' and line strain or
+   *  strain-glow crosses the danger band (STRAIN_GLOW_DANGER_THRESHOLD). Once per profile
+   *  via player.hints.masslineReleaseWindow so later swings stay silent. */
+  _teachReleaseWindow(payload = null) {
+    if (!massline2Flag('throw')) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.player.hints && st.player.hints.masslineReleaseWindow) return;
+    const tether = st.player.tether;
+    if (!tether || tether.active !== true || tether.targetId == null) return;
+    const owner = st.entities && st.entities.get(st.playerId);
+    const targetId = (payload && payload.targetId != null) ? payload.targetId : tether.targetId;
+    const target = st.entities && st.entities.get(targetId);
+    if (!owner || !target || target.alive === false) return;
+    const pair = readCadencePair(owner, target, Number(tether.restLength) || 0);
+    const rated = rateCadenceTechnique(pair, { phase: tether.phase });
+    if (rated.technique !== 'swing') return;
+    const eventRatio = Number(payload && payload.ratio);
+    const strain = Math.max(
+      Number.isFinite(eventRatio) ? eventRatio : 0,
+      Number(tether.strainGlow) || 0,
+      Number(tether.strain) || 0,
+      Number(tether.load) || 0,
+    );
+    if (strain < STRAIN_GLOW_DANGER_THRESHOLD && tether.phase !== 'overload') return;
+    const label = verbBindingLabel(st, 'tether') || resolveActionLabel(st, 'tether', { empty: 'RELEASE' });
+    const text = label
+      ? (/[.!?]$/.test(label)
+        ? `Line near limit — release early — ${label}`
+        : `Line near limit — release early — ${label}.`)
+      : 'Line near limit — release early.';
+    this._showHint('masslineReleaseWindow', text, { entityId: targetId });
   },
 
   // SFQ-I008 — on a keyboard the G combat stick is a relative stick whose origin is

@@ -6,6 +6,10 @@
  * Winch work below is telemetry in game force*distance units, NOT a second resource charge.
  */
 export const CADENCE_VERSION = 1;
+// INF-TEACH-14 — danger threshold where load/strain/strain-glow on the massline warns of an impending break
+export const STRAIN_GLOW_DANGER_THRESHOLD = 0.75;
+export const STRAIN_DANGER_THRESHOLD = 0.75;
+export const STRAIN_GLOW_DANGER_BAND = 0.75;
 export const MASSLINE_CADENCE = Object.freeze({
   deadzone: 0.08,
   precisionLinear: 0.3,
@@ -18,6 +22,7 @@ export const MASSLINE_CADENCE = Object.freeze({
   workingSpeed: 55,
   razorSpeed: 95,
   recoveryRadialRatio: 0.6,
+  strainGlowDangerThreshold: STRAIN_GLOW_DANGER_THRESHOLD,
 });
 
 const finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
