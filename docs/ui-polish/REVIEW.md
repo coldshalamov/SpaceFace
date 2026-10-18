@@ -1709,3 +1709,13 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 **Checked:** console content vs. box at 960×540 205/191 → 190/190; BUY 1 top 425 → 411 (960×540, 1024×768). Bench `station-market` at 700×600, 844×390, 960×540, 1024×768, 1280×720, 1920×1080: no new findings (700×600 keeps the rail's INDUSTRY/COMMS overlap, fixed in #451, and register rows scrolled in their panel). Pixel Δ against master: 0% at 1280×720 and 390×844; the 1920×1080 Δ is the moving price tape. Focused tests: `market-driver-presenter` 4/4, `station-field-hardware` 7/7. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish77/{before,after}/`, `compare-market-*.png`.
 
 **Leftovers (not this pass):** the "YOU PAY · ONE UNIT NOW" words stack four lines beside the price at 960–1100. At 1024×768 SPREAD TIGHT CORE runs under the console. The STATION EXCHANGE label still wraps beside the find at 651–760.
+
+## Station Market at 651–800 wide: TRADE CLEARED on-frame when short, whole reading words when narrow (ui-polish-78)
+
+**Before (master 076c4bbe51):** at 651–800 × ≤460 (700×460, 760×420) the Market's TRADE CLEARED receipt was placed to end 24px left of COMMS, which sits at the left edge there, so it started ~470px off-screen and only its last letter showed. At 651–760 × ≤800 the analysis column is ~120–150px, so the kind line read "RAW ORE · LEGA", the readings read "SECTOR NO CONF" (SPREAD and TREND sat in a second column past the edge) and ROUTE INTELLIGENCE ran under the column's clipped edge.
+
+**After (`marketLayouts.js` only, CSS, desktop only):** at ≤460 tall the receipt starts 24px right of COMMS, in the empty band between HELP and UNDOCK, and wraps in that room. At 651–760 the readings stand in one column, and the kind line, readings and ROUTE INTELLIGENCE close up slightly and wrap at word breaks; each reading's value stays whole. Selectors and IDs are unchanged.
+
+**Checked:** probe at 651×700, 720×700, 760×600, 700×460 and 760×420, idle and after a trade: receipt fully on-frame at 700×460 (134–484) and 760×420 (134–544), readings one column with every word whole, page scrollWidth = viewport. 390×844, 960×540, 1280×720, 1920×1080 and phones (`data-sf-mobile`) are outside both queries. Shots in `ui-shots/polish78/`.
+
+**Leftovers:** at 651–720 the price trace's "4 SPREAD" label sits on the chart's top value; at 760×420 the QUOTE BREAKDOWN line is cut at the top of the console; on the Market tab at 651–800 × 461–800 the receipt stands over the bottom register rows.

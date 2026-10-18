@@ -738,6 +738,25 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
     -webkit-mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
     mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 }
+/* ≤460 tall at 651–800 the berth sets COMMS · HELP at the left edge, so the line that ends 24px left
+   of COMMS started ~470px off-screen (only its last letter showed). Here it starts 24px right of
+   COMMS instead, in the empty band between HELP and UNDOCK, and wraps in that room. */
+@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { left:calc(100% + 24px) !important; right:auto !important; top:-2px !important; bottom:auto !important;
+    flex-wrap:wrap !important; white-space:normal !important; width:max-content !important; max-width:calc(100vw - 350px) !important; row-gap:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt > * { white-space:nowrap; }
+}
+/* ---- 651–760 × ≤800: the analysis column is ~120–150px, so the kind line ("RAW ORE · LEGA"), the
+   readings ("SECTOR NO CONF", with SPREAD and TREND in a second column past the edge) and ROUTE
+   INTELLIGENCE ran under its clipped edge. The readings stand in one column, and the lines close up
+   and wrap at word breaks; each reading's value stays whole. */
+@media (min-width:651px) and (max-width:760px) and (max-height:800px) {
+  ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { letter-spacing:.06em !important; white-space:normal !important; line-height:14px !important; }
+  ${MD} .orr-mkt-subkey { grid-template-columns:minmax(0, 1fr) !important; row-gap:2px !important; }
+  ${MD} .orr-mkt-subkey__bit { letter-spacing:.04em !important; white-space:normal !important; line-height:14px; }
+  ${MD} .orr-mkt-subkey__bit b { white-space:nowrap; }
+  ${MD} .so-route-disclosure > summary { letter-spacing:.02em !important; white-space:normal !important; line-height:14px; }
+}
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {
