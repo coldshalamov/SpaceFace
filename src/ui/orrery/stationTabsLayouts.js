@@ -1956,7 +1956,7 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 @media (min-width:651px) and (max-width:800px) and (max-height:460px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 60px) !important; max-width:none !important; padding:0 !important; }
 }
-@media (min-width:901px) and (max-width:999px) {
+@media (min-width:901px) and (max-width:999px) and (max-height:800px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
 }
 `;

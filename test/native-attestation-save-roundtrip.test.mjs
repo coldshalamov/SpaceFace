@@ -39,7 +39,7 @@ test('real SaveSystem compact capture encode and normal load restore the native 
     assert.equal(await system.prepareBackend(sim.state), true);
     assert.equal(system._sg02.records.size, 2);
     const captured = saver.serialize('compact-roundtrip');
-    assert.equal(captured.version, 16);
+    assert.equal(captured.version, CURRENT_VERSION);
     assert.equal(captured.data.physics.schema, 4);
     assert.equal(Object.keys(captured.data.physics.bodies).length, 2);
     assert.ok(captured.data.physics.snapshot.length > 0);

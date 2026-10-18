@@ -31,7 +31,7 @@ test('main and both workers reject every compact hostile shape identically',()=>
  const changes=[p=>Object.setPrototypeOf(p.attestations.contracts[0],{x:1}),p=>{let x=p.attestations.contracts[0].manifest;for(let i=0;i<64;i++)x=x.next={};},p=>p.bodyOrder[1]=p.bodyOrder[0],p=>p.attestations.native.push(structuredClone(p.attestations.native[0])),p=>p.attestations.native[0].colliders.push(p),p=>{Object.defineProperty(p.bodies[1],'nativeRef',{get(){throw Error('getter executed');},enumerable:true})}];
  for(const change of changes){const e=envelope(compact(physics(2)));change(e.data.physics);const a=mainPreflight(e);assert.equal(a.ok,false);assert.deepEqual(workerPreflight(e),a);assert.deepEqual(inline.preflightSaveImport(e),a);}
 });
-test('v15 migration is a full no-op and v16 is final',()=>{
- assert.equal(CURRENT_VERSION,16);assert.equal(MIGRATIONS.some(m=>m.from===16),false);
+test('v15 migration is a full no-op and stays one after later versions are added',()=>{
+ assert.ok(CURRENT_VERSION>=16);assert.equal(MIGRATIONS.filter(m=>m.from===15).length,1);
  for(const payload of [physics(2),compact(physics(2)),null]){const data={physics:payload,cargo:{items:{scrap:2}},settings:{gameplay:{flightAssist:true}},extra:{retained:1}};const before=JSON.stringify(data);const migration=MIGRATIONS.find(m=>m.from===15);migration.fn(data);migration.fn(data);assert.equal(JSON.stringify(data),before);}
 });
