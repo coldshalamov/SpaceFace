@@ -4765,6 +4765,10 @@ export const vfx = {
 
   _onPresentationCue(p) {
     if (!this._scene || !p) return;
+    if (p.id === 'inertFieldPass' || p.kind === 'inertFieldPass') {
+      this._drawInertFieldPass(p);
+      return;
+    }
     // The normalized cue retains measured subsystem identity before the generic adapter drops it.
     if (p.id === 'subsystem.disabled' || p.id === 'subsystem.restored') return;
     if (p.lane === STRUCTURAL_FX_CUE_KIND || p.kind === STRUCTURAL_FX_CUE_KIND) {
@@ -4837,6 +4841,29 @@ export const vfx = {
       lightsActivated,
       flashReduced: !!p.flashReduced,
       admissionPriority,
+    };
+  },
+
+  // A body the field does not catch still touches the face. The read is the
+  // ring growing and a small puff at the slip. Bloom and hue are not consulted:
+  // both sprites write opacity into the color buffer, and no event light is lit.
+  _drawInertFieldPass(p) {
+    const pos = (p && (p.position || p.pos)) || null;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    const radius = Math.max(1.5, Math.min(24, Number(p.radius) || 4));
+    const ink = '#c5ccd4';
+    const ring = this._spawnSprite(
+      SPR_RING, pos.x, 0.16, pos.z, 0.42, radius * 0.28, radius * 1.45, 0.86, 0.0, ink, 0, 0, 1, 0,
+    );
+    const puff = this._spawnSprite(
+      SPR_PUFF, pos.x, 0.08, pos.z, 0.32, radius * 0.18, radius * 0.62, 0.5, 0.0, ink, 0, 0, 1, 0,
+    );
+    this._lastInertFieldPass = {
+      shape: ring ? 'ring' : null,
+      puff: !!puff,
+      bloomIndependent: true,
+      lights: 0,
+      opacity: ring ? ring.op0 : 0,
     };
   },
 

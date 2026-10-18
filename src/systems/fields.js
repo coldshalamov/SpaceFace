@@ -371,6 +371,42 @@ function aimDirection(player, state) {
  * Target selection is intentionally absent: only an earned combat-status multiplier changes field
  * response, so clicking another contact can neither grant nor transfer Gravity Mark.
  */
+// Materials a selective plane or boundary lets through. They take no force from
+// that field. The contact is a shape cue, stamped once per crossing.
+const INERT_PASS_MATERIALS = new Set(['token', 'precursor_composite', 'mineral']);
+const INERT_PASS_CAP = 8;
+const INERT_PASS_SPEED = 0.5;
+
+function commodityMaterialCategory(id) {
+  if (typeof id !== 'string' || !id) return null;
+  if (id === 'cmdty_gate_handshake') return 'token';
+  if (id === 'cmdty_unclassified_composite') return 'precursor_composite';
+  if (id.startsWith('cmdty_ore_') || id.startsWith('cmdty_gem_')
+    || id === 'cmdty_silicate' || id === 'cmdty_ice_water' || id === 'cmdty_volatiles') return 'mineral';
+  return null;
+}
+
+function readMaterialCategory(entity) {
+  if (!entity) return null;
+  if (typeof entity.materialCategory === 'string' && entity.materialCategory) return entity.materialCategory;
+  const data = entity.data;
+  if (data && typeof data.materialCategory === 'string' && data.materialCategory) return data.materialCategory;
+  if (data && data.machineToken) return 'token';
+  const commodity = (data && data.commodityId) || entity.commodityId;
+  const fromCommodity = commodityMaterialCategory(commodity);
+  if (fromCommodity) return fromCommodity;
+  if (entity.type === 'asteroid') return 'mineral';
+  return null;
+}
+
+function fieldExcludesMaterial(field, category) {
+  if (!field || typeof category !== 'string' || !category) return false;
+  if (field.kind !== FIELD_KINDS.PLANE && field.kind !== FIELD_KINDS.BOUNDARY) return false;
+  const list = field.filters && field.filters.excludeMaterials;
+  if (Array.isArray(list)) return list.includes(category);
+  return INERT_PASS_MATERIALS.has(category);
+}
+
 export function fieldBodyProfile(entity, state, out = null) {
   const profile = out || {};
   const runtime = entity && state && state.combat && state.combat.entities
@@ -410,6 +446,7 @@ export function fieldBodyProfile(entity, state, out = null) {
   // Unmoored = 0.3x). Coupling never reads it — it is not a mass CLASS, it is the effective solver
   // mass the queued impulse has to be authored against. See _applyForces.
   profile.physicsMassScale = positive(massScale, 1);
+  profile.materialCategory = readMaterialCategory(entity);
   return profile;
 }
 
@@ -512,7 +549,9 @@ export const fields = {
       chainStarted: false,
       entityOf: null,
     };
-    this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null, primed: false };
+    this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null, primed: false, materialCategory: null };
+    this._inertOccupancy = new Set();
+    this._inertTouched = new Set();
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
     // Mass Seed hitch post: the live seed mirrors into a kernel lock-ring; ring-entry edges
@@ -1810,10 +1849,13 @@ export const fields = {
         this._pinWatchSeen.clear();
         this._massStateFields.clear();
         this._massStateStrengths.clear();
+        if (this._inertTouched) this._inertTouched.clear();
+        this._flushInertOccupancy();
       }
       this._flushEndedWells(state);
       return { queries: 0, affected: 0, accelSum: 0 };
     }
+    if (this._inertTouched) this._inertTouched.clear();
     this._pinWatch.length = 0;
     this._pinWatchSeen.clear();
     const queryRadius = this.helpers && this.helpers.queryRadius;
@@ -1837,6 +1879,12 @@ export const fields = {
         this._noteFamilyPin(field, e);
         if (this._forceableBody(e)) {
           const profile = this._profileFor(e, state);
+          // Excluded matter slips the face. It is not a member of this field's
+          // force set, so the impulse below cannot include it.
+          if (fieldExcludesMaterial(field, profile.materialCategory)) {
+            this._noteInertFieldPass(e, field, state);
+            continue;
+          }
           if (!fieldAffectsBody(field, profile)) continue;
           const membership = affected.get(e) || [];
           membership.push(field);
@@ -1891,7 +1939,58 @@ export const fields = {
     this._detectWellGrind(state);
     this._flushEndedWells(state);
     this._publishClusterWatch(state);
+    this._flushInertOccupancy();
     return { queries, affected: affectedCount, accelSum };
+  },
+
+  // One stamp per crossing. A body that stays inside does not stamp again.
+  // Leaving clears the slot so the next entry can. The set is capped so a
+  // crowd of ore cannot fill the bus.
+  _noteInertFieldPass(entity, field, state) {
+    if (!entity || entity.id == null || !field || !entity.pos) return;
+    if (!this._inertOccupancy) this._inertOccupancy = new Set();
+    if (!this._inertTouched) this._inertTouched = new Set();
+    const key = `${entity.id}|${field.id}`;
+    this._inertTouched.add(key);
+    const speed = Math.hypot(finite(entity.vel && entity.vel.x), finite(entity.vel && entity.vel.z));
+    if (!(speed > INERT_PASS_SPEED)) return;
+    if (this._inertOccupancy.has(key) || this._inertOccupancy.size >= INERT_PASS_CAP) return;
+    this._inertOccupancy.add(key);
+    const rt = ensureRuntime(state);
+    const log = rt.inertFieldPass || (rt.inertFieldPass = []);
+    if (log.length >= INERT_PASS_CAP) log.shift();
+    log.push({
+      entityId: entity.id,
+      fieldId: field.id,
+      fieldKind: field.kind,
+      x: entity.pos.x,
+      z: entity.pos.z,
+      tick: state.tick | 0,
+    });
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const radius = Math.max(2, Math.min(18, Number(entity.radius) || 4));
+    this.bus.emit('presentation:vfxCue', {
+      id: 'inertFieldPass',
+      lane: 'field',
+      kind: 'inertFieldPass',
+      shape: 'ring',
+      bloomIndependent: true,
+      particles: 0,
+      lights: 0,
+      position: { x: entity.pos.x, z: entity.pos.z },
+      radius,
+      flashReduced: true,
+    });
+  },
+
+  _flushInertOccupancy() {
+    const held = this._inertOccupancy;
+    const touched = this._inertTouched;
+    if (!held || !touched) return;
+    for (const key of held) {
+      if (!touched.has(key)) held.delete(key);
+    }
+    touched.clear();
   },
 
   /**
