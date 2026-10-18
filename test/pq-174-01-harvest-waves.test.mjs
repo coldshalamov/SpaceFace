@@ -309,6 +309,10 @@ function measureQuiet(seed) {
   const alive = [];
   const killAt = [];
   const spawnAt = [];
+  // The reservoir's announced breathing hold after an earned wipe (commit 1c358ca574f,
+  // pinned by test/swarm-pressure-reservoir.test.mjs). An empty second inside it is the
+  // deliberate breath, not a depleted farm; every other empty second is still a failure.
+  const holdAt = [];
   let t = 0;
   let wave1ClearTick = null;
   let wave2StartTick = null;
@@ -330,6 +334,7 @@ function measureQuiet(seed) {
     tick(h, 1);
     if (killed) killAt[t] = true;
     alive[t] = liveHostiles(h).length;
+    holdAt[t] = swarmPressureIsHolding();
     t += 1;
   }
 
@@ -351,15 +356,21 @@ function measureQuiet(seed) {
   }
 
   const wave1End = wave1ClearTick == null ? t : wave1ClearTick;
-  const emptyWave1 = wholeSeconds(wave1StartTick, wave1End, (k) => (alive[k] || 0) === 0);
+  const emptyNoHold = (k) => (alive[k] || 0) === 0 && !holdAt[k];
+  const emptyWave1 = wholeSeconds(wave1StartTick, wave1End, emptyNoHold);
   const boundaryLo = wave1ClearTick == null ? t : wave1ClearTick;
   const boundaryHi = wave2StartTick == null ? t : Math.min(t, wave2StartTick + 60);
-  const emptyBoundary = wholeSeconds(boundaryLo, boundaryHi, (k) => (alive[k] || 0) === 0);
+  const emptyBoundary = wholeSeconds(boundaryLo, boundaryHi, emptyNoHold);
   const memoLo = wave1StartTick + Math.ceil(22.733 * 60);
   const memoHi = wave1StartTick + 3600;
-  const emptyMemoWindow = wholeSeconds(memoLo, Math.min(memoHi, wave1End), (k) => (alive[k] || 0) === 0);
+  const emptyMemoWindow = wholeSeconds(memoLo, Math.min(memoHi, wave1End), emptyNoHold);
   const quietActivityWave1 = wholeSeconds(wave1StartTick, wave1End, (k) => !killAt[k] && !spawnAt[k]);
-  const emptyTicksWave1 = alive.slice(wave1StartTick, wave1End).filter((n) => n === 0).length;
+  let emptyTicksWave1 = 0;
+  let holdEmptyTicksWave1 = 0;
+  for (let k = wave1StartTick; k < wave1End; k++) {
+    if ((alive[k] || 0) !== 0) continue;
+    if (holdAt[k]) holdEmptyTicksWave1 += 1; else emptyTicksWave1 += 1;
+  }
   const postClearPhase = h.state.run && h.state.run.phase;
   swarmArena.destroy();
   bindSwarmPressureContext(null);
@@ -373,6 +384,7 @@ function measureQuiet(seed) {
     emptyMemoWindow,
     quietActivityWave1,
     emptyTicksWave1,
+    holdEmptyTicksWave1,
     wave1Seconds: (wave1End - wave1StartTick) / 60,
     postClearPhase,
   };
@@ -392,7 +404,10 @@ test('quiet seconds on 4242/8008/13502: a live wave is never an empty farm', () 
     );
     assert.ok(m.wave1ClearTick != null, `seed ${seed} closed wave 1`);
     assert.equal(m.emptyWave1, 0, `seed ${seed} had ${m.emptyWave1} empty seconds inside wave 1`);
-    assert.equal(m.emptyTicksWave1, 0, `seed ${seed} had ${m.emptyTicksWave1} empty ticks inside wave 1`);
+    assert.equal(m.emptyTicksWave1, 0, `seed ${seed} had ${m.emptyTicksWave1} empty ticks inside wave 1 outside the announced breathing hold`);
+    // The hold is the only excuse, and it is bounded: one breath (SWARM_BREATH_TICKS) per earned wipe.
+    assert.ok(m.holdEmptyTicksWave1 <= SWARM_BREATH_TICKS,
+      `seed ${seed}: ${m.holdEmptyTicksWave1} empty ticks inside the hold must not exceed one breath (${SWARM_BREATH_TICKS})`);
     assert.equal(m.emptyMemoWindow, 0, `seed ${seed} had ${m.emptyMemoWindow} empty seconds in 22.733..60`);
     assert.equal(m.postClearPhase !== 'active', true,
       `seed ${seed}: the cleared round must park in a player-gated break, not a live empty room`);
