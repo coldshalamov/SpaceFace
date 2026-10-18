@@ -1696,3 +1696,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-budgets` fails 1 (#10 digest staleness, same on master).
 
 **Leftovers (not this pass):** the receipt's band over the tab foot covers the last list row while it shows (by design; the list scrolls). At 801–900 × 461–800 the Market's receipt rides 16px over the stacked COMMS/HELP box (fix to #446's line, which otherwise fell on the destination words); at 850–900 × 800 its band covers the Market's half-clipped "Repair now" row for 3.6s (that row is already clipped by the panel on master). Market at 700×600 has a broken register (names under prices, OFF-FRAME numbers; bench 12, same as master). In a 390-wide desktop window the berth header still pushes the tab under COMMS.
+
+## Market console at ≤1100 × ≤800 — BUY 1 back on the stage, QUANTITY inside the dial (ui-polish-77)
+
+**Before (master bbd7500d49):** in the compact console (≤1100 wide, ≤800 tall) the 96px quantity dial printed QUANTITY (~95px at the label width and tracking) across the ring's lower arc, and "› QUOTE BREAKDOWN" took two lines. At 960×540 that made the console 205px in a 191px stage, so BUY 1 and SELL were cut off at the bottom edge. At 651–760 wide ROUTE INTELLIGENCE wrapped to two lines.
+
+**After (`marketLayouts.js` only, desktop only):**
+- The number rides 4px higher and QUANTITY sets at the plain width (~60px) under it, inside the ring. QUOTE BREAKDOWN sets the same way on one line, so the console is 190px and BUY 1 / SELL sit whole at 960×540.
+- ROUTE INTELLIGENCE closes to .02em and reads on one line from ~760 wide (760×420 now one line). Under ~720 its column (~113–138px) cannot hold the ~158px line, so it still wraps whole to two lines there (review fix: a nowrap here clipped it to "ROUTE INTELLIGE" at 651×700 and 700×600).
+- Selectors and IDs unchanged. 1280×720, 1920×1080 and phones are untouched.
+
+**Checked:** console content vs. box at 960×540 205/191 → 190/190; BUY 1 top 425 → 411 (960×540, 1024×768). Bench `station-market` at 700×600, 844×390, 960×540, 1024×768, 1280×720, 1920×1080: no new findings (700×600 keeps the rail's INDUSTRY/COMMS overlap, fixed in #451, and register rows scrolled in their panel). Pixel Δ against master: 0% at 1280×720 and 390×844; the 1920×1080 Δ is the moving price tape. Focused tests: `market-driver-presenter` 4/4, `station-field-hardware` 7/7. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish77/{before,after}/`, `compare-market-*.png`.
+
+**Leftovers (not this pass):** the "YOU PAY · ONE UNIT NOW" words stack four lines beside the price at 960–1100. At 1024×768 SPREAD TIGHT CORE runs under the console. The STATION EXCHANGE label still wraps beside the find at 651–760.
