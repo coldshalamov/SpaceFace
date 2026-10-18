@@ -305,6 +305,9 @@ export const flightV3 = {
     for (const entity of flightCraftCandidates(state)) {
       if (!entity || entity.id === state.playerId || entity.alive === false) continue;
       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+      // A wake-handoff hauler keeps an authored cruise. Flight drag would change the
+      // speed the pilot has to match, so this hull is not a flight craft.
+      if (entity.data && entity.data.wakeHaulerOf) continue;
       // Abstract/dormant/aggregate stay under catch-up unless a wake carries intent.
       if (!entityNeedsFlightStep(entity)) continue;
       const ceresControl=consumeCeresBreakerControl(entity,state);

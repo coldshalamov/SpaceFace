@@ -233,6 +233,9 @@ import {
   workingBattlefieldObjective, workingBattlefieldFocus, workingBattlefieldPreflight, grantWorkingBattlefieldPolymers,
   spawnWorkingBattlefield, workingBattlefieldKilled, driveWorkingBattlefield, snapshotWorkingBattlefield,
 } from './workingBattlefieldRuntime.js';
+import {
+  syncWakeHandoffOffer, driveWakeHandoff, onWakePickupCollected, wakeHandoffFocus,
+} from './wakeHandoffRuntime.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -745,6 +748,9 @@ const FAIL_REASON_WORD = Object.freeze({
   busted: 'the lot was seized',
   heist_failed: 'the job fell apart',
   failed: 'the contract could not be completed',
+  wake_missed: 'the hauler left the lane',
+  wake_unmatched: 'the crate was taken off the wake',
+  wake_refused: 'the hold refused the crate',
 });
 function failReasonWord(reason) {
   const text = reason == null ? '' : String(reason);
@@ -1412,7 +1418,9 @@ function missionNavReason(m, station, sector) {
     case BULK_HAUL_TYPE: return `Tether-haul ${remaining || p.massU || ''}u bulk ore to ${stationName}`.trim();
     case 'mining_quota': return `Mine ${remaining || p.qty || ''}u ${cargo}`.trim();
     case 'salvage_retrieval': return `Recover ${p.qty || ''}u ${cargo} for ${stationName}`.trim();
-    case 'smuggling_run': return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
+    case 'smuggling_run':
+      if (p.wakeHandoff) return 'Match the hauler and take the crate in its wake';
+      return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'passenger_transport':
       if (p.quietPassage) return 'Escort passenger transport cold through Customs Gate checkpoint';
       return `Transport passenger to ${stationName}`;
@@ -1595,6 +1603,7 @@ export const missions = {
       this._activateContract47aB3OnDeparture();
       this._onPassengerUndock();
     });
+    bus.on('pickup:collected', (payload) => onWakePickupCollected(this, payload));
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
@@ -1866,6 +1875,10 @@ export const missions = {
         this._driveQuietPassage(m, i, state, dt);
         continue;
       }
+      if (m.type === 'smuggling_run' && m.params?.wakeHandoff) {
+        driveWakeHandoff(this, m, i, dt);
+        continue;
+      }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
       }
@@ -2117,6 +2130,7 @@ export const missions = {
       const cylinderChanged = this._syncCleanCylinderOffer(info, board);
       const warmCargoChanged = this._syncWarmCargoOffer(info, board);
       const quietPassageChanged = this._syncQuietPassageOffer(info, board);
+      this._syncWakeHandoffOffer(info, board);
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
@@ -2271,6 +2285,7 @@ export const missions = {
     this._syncCleanCylinderOffer(info, board);
     this._syncWarmCargoOffer(info, board);
     this._syncQuietPassageOffer(info, board);
+    this._syncWakeHandoffOffer(info, board);
     this._syncAuthoredSetPieceOffers(info, board, epoch);
     this._syncMegaHeistOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
@@ -2286,6 +2301,10 @@ export const missions = {
     if (exists || settled || this.state.story?.flags?.[QUIET_PASSAGE.id]) return false;
     board.slots.push(buildQuietPassageOffer());
     return true;
+  },
+
+  _syncWakeHandoffOffer(info, board) {
+    return syncWakeHandoffOffer(this, info, board);
   },
 
   _syncWarmCargoOffer(info, board) {
@@ -5172,6 +5191,10 @@ export const missions = {
       const targetStation = this._liveStation(m.destStationId);
       if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z } };
       return base;
+    }
+
+    if (m.params?.wakeHandoff) {
+      return { ...base, stationId: null, sectorId: m.destSectorId, ...wakeHandoffFocus(this, m) };
     }
 
     const targetStation = this._liveStation(m.destStationId);
@@ -8527,6 +8550,7 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
+      if (m.params?.wakeHandoff) continue;
       const t = m.type;
       if (m.params && String(m.params.setPieceObjective || '').startsWith('long_read_')) continue;
       if (m.storyTag === CONTRACT_47A_B1_TAG && m.params && m.params.cargoRecoveryNeeded
@@ -8907,6 +8931,7 @@ export const missions = {
         return 'Recovery logged. Useful wreckage became inventory before another crew filed the claim.';
       }
       case 'smuggling_run':
+        if (p.wakeHandoff) return 'The crate came aboard in the hauler\'s wake. Drift Market paid for the pass.';
         return 'The cargo disappeared into ' + dest + '\'s books without becoming a customs story.';
       case 'bounty_hunt':
         return 'Tag closed near ' + dest + '. The board will update before the rumor does.';
@@ -8957,6 +8982,15 @@ export const missions = {
 
   _missionLossDebriefText(m, reason) {
     const dest = this._destName(m);
+    if (m && m.params && m.params.wakeHandoff && reason === 'wake_missed') {
+      return 'The hauler left the lane. The wake closed before the crate changed hands.';
+    }
+    if (m && m.params && m.params.wakeHandoff && reason === 'wake_unmatched') {
+      return 'The crate came aboard off the wake. You were not flying the hauler\'s speed, so Drift Market will not pay.';
+    }
+    if (m && m.params && m.params.wakeHandoff && reason === 'wake_refused') {
+      return 'The hold refused the crate. The pass is blown and Drift Market will not pay.';
+    }
     // INF-069: the convoy client's answer to abandonment or expiry — a closed file, no thanks.
     if (isMutationRecovery(m)) {
       const voice = convoyClientVoice(m, 'failed', this._stationName(m && m.destStationId));

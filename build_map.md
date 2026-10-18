@@ -869,7 +869,6 @@ recorded in the lane's NOW row before minting.
 |---|---|---|---|---|
 | 383 | SFQ-B175 | A creature's body expresses charging, fleeing or drifting before it touches you (`src/render/faunaVisuals.js`, `src/data/faunaMotionRead.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 | 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
-| 385 | M07 | Cargo in the wake: a covert physical handoff alongside a moving hauler (`smuggling_run` in `src/systems/missions.js`, `src/data/heistMission.js`) | BUILD | OPEN |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
 
