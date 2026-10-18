@@ -194,7 +194,12 @@ function adoptPoolLeaf(pool, entity, ownerRoot, leaf, detail) {
     pool.byEntity.set(entity.id, { bucket, record });
   }
   pool.dirty = true;
-  leaf.visible = false;
+  // Defer hiding the source leaf to the sync that first submits its instance:
+  // the bucket's count still excludes this record until then, so the leaf keeps
+  // drawing directly across the adoption frame instead of blinking for the
+  // presents between adoption and the next submission pass (the promotion-window
+  // poolNotSubmitted blink, 2026-10-18 asteroid-appear probe). syncPoolBucket
+  // re-hides every adopted leaf each pass before writing matrices.
   info.asteroidInstanceAdopted = true;
   return true;
 }

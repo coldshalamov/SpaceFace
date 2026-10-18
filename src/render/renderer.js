@@ -12349,7 +12349,17 @@ export const render = {
       // the admission latch — the 771 ms bloomScene brick was one uncompiled SF_CommonRock
       // instanced variant linking inside the presented pass on first live draw.
       onMeshCreated: (mesh) => {
-        void admitSubjectPipelines(mesh, { debugBy: 'on-mesh-created' });
+        // A bucket minted mid-flight has waiters by construction: a capacity rebuild whose
+        // new records sit outside the retiring bridge, or a keyed family's first adoption.
+        // The subject's own glass classification can never fire for a bucket (no entity id
+        // to climb to, instances live in per-record matrices), so pass the flight context
+        // explicitly — ambient priority billed promoted rocks ~1 s of invisibility while
+        // the FIFO drained (2026-10-18 asteroid-appear probe: programUnready 977–1338 ms).
+        // Cook-time warms stay ambient: they run behind the loading shell, where the
+        // firstPlayableFrameAt check below is false.
+        const flightAdmission = state.mode === 'flight'
+          && Number.isFinite(state.render && state.render.firstPlayableFrameAt);
+        void admitSubjectPipelines(mesh, { debugBy: 'on-mesh-created', urgent: flightAdmission });
         // Instanced bucket families never entered the warm census: authored-cast
         // chunks mint withheld above, and the depth arm stages their variant then
         // lands the authored flag — the same contract ship roots ride.
@@ -13747,9 +13757,17 @@ export const render = {
       rendererData.spacefacePendingPipelineSubjects = pendingPipelineSubjects;
       // Bloom's unready-drawable pass routes never-compiled drawables through
       // this lane so a missed admission hides + queues instead of linking
-      // inside the presented frame.
+      // inside the presented frame. Every subject arriving here was refused
+      // (or hidden) on a presented pass — it is on the glass by construction —
+      // but a pool bucket can never self-classify there (no entity id to climb
+      // to), so stamp the flight context the same way onMeshCreated does.
       rendererData.spacefaceQueuePipelineAdmission = (subject) => (
-        subject ? admitSubjectPipelines(subject, { debugBy: 'bloom-unready', joinOutstanding: true }) : Promise.resolve({ skipped: true })
+        subject ? admitSubjectPipelines(subject, {
+          debugBy: 'bloom-unready',
+          urgent: state.mode === 'flight'
+            && Number.isFinite(state.render && state.render.firstPlayableFrameAt),
+          joinOutstanding: true,
+        }) : Promise.resolve({ skipped: true })
       );
     }
     const pendingSubjectHolds = new Map();

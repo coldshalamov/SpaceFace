@@ -1439,9 +1439,12 @@ export function createUnreadyDrawableGuard(renderer) {
   // traverse was paying a props.get + program.isReady() GL query per drawable even
   // though the verdict is identical for every sibling. A material's verdict cannot
   // change mid-pass (isReady only goes false→true asynchronously), so memoizing the
-  // same-object verdict for the duration of one walk is exact.
-  const unreadyCheckedMaterials = new Set();
-  const unreadyHiddenMaterials = new Set();
+  // same-object verdict for the duration of one walk is exact — keyed by the draw's
+  // instancing flags, because one shared material now draws both pooled InstancedMesh
+  // buckets and direct leaves in the same pass, and those bind different program
+  // variants with independent readiness.
+  const unreadyCheckedMaterials = new Map();
+  const unreadyHiddenMaterials = new Map();
 
   function scanPresentedDrawables(root) {
     // Three skips an invisible object's whole subtree. The readiness walk
@@ -1626,26 +1629,35 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function hideIfProgramUnready(object, material, props) {
     if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
-    if (unreadyCheckedMaterials.has(material)) return false;
-    if (unreadyHiddenMaterials.has(material)) {
+    const wanted = instancingFlags(object);
+    if (unreadyCheckedMaterials.get(material) === wanted) return false;
+    if (unreadyHiddenMaterials.get(material) === wanted) {
       unreadySceneScratch[unreadySceneCount] = object;
       unreadySceneCount += 1;
       object.visible = false;
       return true;
     }
-    let program = null;
+    let rec = null;
     try {
-      const rec = props.get(material);
-      program = rec && rec.currentProgram || null;
+      rec = props.get(material);
     } catch (_) {
       return false;
     }
-    if (!program) {
-      // Never compiled: drawing would link the driver program inside this
-      // presented pass. Hide the drawable and route its scene root through the
-      // pipeline admission lane; the pending latch keeps it hidden until
-      // compile + residency settle. The material stamp dedupes re-queues across
-      // sibling meshes and successive scans while one admission is in flight.
+    // The draw guard binds the object's instancing variant, not necessarily the
+    // last-bound currentProgram — evaluate the exact wrapper the draw will, or
+    // the walk passes a bucket whose non-instanced variant is current while the
+    // guard then refuses the instanced draw (the family flaps hidden-ready
+    // while its missing variant links, 2026-10-18 asteroid-appear probe).
+    const variant = (rec && rec.currentProgram)
+      ? linkedInstancingVariant(rec, material, object)
+      : null;
+    // Never compiled, or the variant this draw needs is not linked yet: drawing
+    // would link the driver program inside this presented pass. Hide the
+    // drawable and route its scene root through the pipeline admission lane;
+    // the pending latch keeps it hidden until compile + residency settle. The
+    // material stamp dedupes re-queues across sibling meshes and successive
+    // scans while one admission is in flight.
+    if (!rec || !rec.currentProgram || !variant) {
       const materialData = material.userData || (material.userData = {});
       const queueAdmission = renderer && renderer.userData
         ? renderer.userData.spacefaceQueuePipelineAdmission : null;
@@ -1663,23 +1675,23 @@ export function createUnreadyDrawableGuard(renderer) {
             .finally(() => { materialData.__sfPipelineAdmission = false; });
         }
       }
-      unreadyHiddenMaterials.add(material);
+      unreadyHiddenMaterials.set(material, wanted);
       unreadySceneScratch[unreadySceneCount] = object;
       unreadySceneCount += 1;
       object.visible = false;
       return true;
     }
-    if (typeof program.isReady !== 'function' || programWrapperDead(admissionGl, program)) {
-      unreadyCheckedMaterials.add(material);
+    if (typeof variant.isReady !== 'function' || programWrapperDead(admissionGl, variant)) {
+      unreadyCheckedMaterials.set(material, wanted);
       return false;
     }
     let ready = true;
-    try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    try { ready = variant.isReady() === true; } catch (_) { ready = false; }
     if (ready) {
-      unreadyCheckedMaterials.add(material);
+      unreadyCheckedMaterials.set(material, wanted);
       return false;
     }
-    unreadyHiddenMaterials.add(material);
+    unreadyHiddenMaterials.set(material, wanted);
     unreadySceneScratch[unreadySceneCount] = object;
     unreadySceneCount += 1;
     object.visible = false;

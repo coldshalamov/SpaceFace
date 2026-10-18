@@ -122,10 +122,38 @@ test('a grown bucket keeps its outgoing batch drawing until the replacement clea
   assert.equal(plainOriginal.parent, null, 'the old batch is disposed on the spot as before');
 });
 
+// 2026-10-18 asteroid-appear probe: a promoted rock's adoption hid its source leaf at
+// registration while the bucket's count still excluded the record — the presents between
+// adoption and the next submission pass drew nothing (the poolNotSubmitted promotion blink).
+// The handoff must be seamless: direct draw until the SAME sync that submits the instance.
+test('an adopted leaf keeps drawing directly until the sync that submits its instance', () => {
+  const scene = new THREE.Scene();
+  const pool = createAsteroidInstancePool(scene);
+  const geometry = new THREE.IcosahedronGeometry(1, 2);
+  const material = new THREE.MeshStandardMaterial();
+
+  const rock = makeCommonRock(21, 0, geometry, material);
+  scene.add(rock.root);
+  assert.equal(registerAsteroidBaseLeaf(pool, rock.entity, rock.root), true);
+  assert.equal(pool.variants[0].mesh.count, 0, 'the bucket has not submitted the record yet');
+  assert.equal(rock.root.userData.asteroidInstanceBody.visible, true,
+    'the source leaf stays drawable across the adoption frame — no blink window');
+
+  const stats = syncAsteroidInstancePool(pool);
+  assert.equal(stats.submitted, 1);
+  assert.equal(rock.root.userData.asteroidInstanceBody.visible, false,
+    'the submitting sync is the same pass that hides the source leaf');
+  assert.equal(pool.variants[0].mesh.count, 1);
+});
+
 test('the renderer routes created pool meshes through the admission latch', () => {
   const poolStart = RENDERER_SOURCE.indexOf('createAsteroidInstancePool(scene, {');
   assert.ok(poolStart >= 0, 'the renderer must pass an admission hook to the pool');
-  const block = RENDERER_SOURCE.slice(poolStart, poolStart + 400);
-  assert.match(block, /onMeshCreated:\s*\(mesh\)\s*=>\s*\{\s*void admitSubjectPipelines\(mesh[,\s]/,
-    'created pool meshes must compile+upload behind the pending latch');
+  const block = RENDERER_SOURCE.slice(poolStart, poolStart + 1400);
+  // The hook must route every minted bucket through admitSubjectPipelines, and in playable
+  // flight it must pass urgent — a bucket cannot self-classify onto the deadline glass (no
+  // entity id to climb to), so ambient priority billed promoted rocks ~1 s of invisibility
+  // while the FIFO drained (2026-10-18 asteroid-appear probe: programUnready 977–1338 ms).
+  assert.match(block, /onMeshCreated:\s*\(mesh\)\s*=>\s*\{[^}]*?void admitSubjectPipelines\(mesh\s*,\s*\{[^}]*?debugBy:\s*'on-mesh-created'[^}]*?urgent:/,
+    'created pool meshes must compile+upload behind the pending latch, urgently in flight');
 });
