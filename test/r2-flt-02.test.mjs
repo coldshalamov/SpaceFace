@@ -4,6 +4,10 @@ import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { createSg02DynamicBodyOwner, createSg02CombatPhysicsPort } from '../src/core/sg02DynamicBodyOwner.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { wingmen } from '../src/systems/wingmen.js';
+import { stuntGrammar } from '../src/systems/stuntGrammar.js';
+import { titlesSystem } from '../src/systems/titles.js';
+import { bodyLife, observeConstraint, observeRelease, observeContact, evidenceForConsequence } from '../src/combat/stuntEvidence.js';
+import { observeStuntWitnesses } from '../src/combat/stuntWitnesses.js';
 import { automation } from '../src/systems/automation.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { flightV3 } from '../src/systems/flightV3.js';
@@ -13,8 +17,8 @@ import { makeShipEntitySpec, fittingsFromDefaultModules } from '../src/systems/s
 
 const combatOwner = { name: 'combat', init(ctx) { this.kernel = getCombatKernel(ctx); } };
 
-async function scene({ order = 'attack', heavyDef = 'ship_warden', wingDef = 'ship_wasp', heavyTeam = 1, far = false, followUp = false } = {}) {
-  const sim = createSimulation({ seed: 4242, systems: [combatOwner, automation, wingmen, aiPorts, flightV3],
+async function scene({ order = 'attack', heavyDef = 'ship_warden', wingDef = 'ship_wasp', heavyTeam = 1, far = false, followUp = false, stunts = false } = {}) {
+  const sim = createSimulation({ seed: 4242, systems: [combatOwner, automation, wingmen, aiPorts, flightV3, ...(stunts ? [stuntGrammar, titlesSystem] : [])],
     // The production helm consumes last tick's wingman intent; the tactical port yields passive hulls.
     updateOrder: [flightV3, aiPorts, wingmen] });
   const { state, bus } = sim;
@@ -65,6 +69,50 @@ async function scene({ order = 'attack', heavyDef = 'ship_warden', wingDef = 'sh
 
 function braceLine(s) {
   return s.kernel.attachments.listForEntity(s.wing.id).find(a => a.ownerId === s.wing.id && a.targetId === s.heavy.id);
+}
+
+// Feed the real grammar a journal-backed consequence; titles admits witnesses from
+// physical samples. The detector's player-owned trick has no witness arrays.
+function recordSharedStunt(s, { amended = false, payoffVisible = true } = {}) {
+  if (amended) {
+    const receipt = { ...s.stuntReceipt, tick: s.state.tick, targetKilled: true };
+    receipt.victimLife = { ...receipt.victimLife, dead: true };
+    s.bus.emit('combat:collisionConsequence', receipt);
+    return;
+  }
+  s.player.pos = { x: 300, z: -20 };
+  s.wing.pos = { x: 280, z: 25 };
+  const source = s.sim.spawn(makeShipEntitySpec('ship_kestrel', { team: 1,
+    factionId: 'faction_reach', ai: { hostileTeams: [0] }, pos: { x: 340, z: -20 } }));
+  const target = s.sim.spawn(makeShipEntitySpec('ship_kestrel', { team: 1,
+    factionId: 'faction_reach', pos: { x: 300, z: 60 } }));
+  const attachment = { id: 'player-stunt-line', ownerId: s.player.id,
+    owner: { entity: s.player }, target: { entity: source },
+    springState: { lastTension: 5 }, defId: 'tether_standard' };
+  for (let i = 0; i < 18; i++) {
+    s.state.tick++; s.state.simTime += SIM_DT;
+    const angle = i / 17 * Math.PI / 2;
+    source.pos = { x: 300 + 40 * Math.cos(angle), z: -20 + 40 * Math.sin(angle) };
+    observeConstraint(attachment, { x: 10, z: 0 }, { x: 10, z: 1000 }, s.state.tick, s.state);
+    observeStuntWitnesses(s.state);
+  }
+  s.wing.data.sensorsEnabled = payoffVisible;
+  observeRelease(attachment.id, s.state.tick, 'tether_cut', s.state);
+  for (let i = 0; i < 7; i++) {
+    s.state.tick++; s.state.simTime += SIM_DT;
+    observeStuntWitnesses(s.state);
+  }
+  observeContact(source, target, { beforeA: { x: 10, z: 1000 }, beforeB: { x: 0, z: 0 },
+    normal: { x: 0, z: 1 }, preSolveClosingSpeed: 1000 }, s.state);
+  const receipt = { tick: s.state.tick, targetId: target.id, otherId: source.id,
+    targetName: 'Raider', targetHostile: true, damageApplied: true, targetKilled: false,
+    hullDamage: target.hullMax / 2, targetHullMax: target.hullMax, helmLossSeconds: 2,
+    surface: 'craft', otherMass: source.mass,
+    victimLife: { lifeId: bodyLife(target, s.state).id, dead: false } };
+  receipt.stuntEvidence = evidenceForConsequence(receipt, s.state);
+  assert.ok(receipt.stuntEvidence, 'the physical journal supplies the consequence evidence');
+  s.stuntReceipt = receipt;
+  s.bus.emit('combat:collisionConsequence', receipt);
 }
 
 test('seed 4242: Attack physically flies a wingman into range and creates its own kernel Massline', async () => {
@@ -140,7 +188,7 @@ test('seed 4242: the same two player Massline presses land a Clothesline follow-
 });
 
 test('seed 4242: overload snaps the kernel line and the same order cannot silently relatch or earn credit', async () => {
-  const s = await scene();
+  const s = await scene({ stunts: true });
   try {
     s.run(1);
     const line = braceLine(s);
@@ -161,7 +209,8 @@ test('seed 4242: overload snaps the kernel line and the same order cannot silent
     s.run(3);
     assert.equal(braceLine(s), undefined, 'a failed brace gets one attempt per command');
     assert.equal(s.fs.braceTargetId, null);
-    s.bus.emit('stunt:trickDetected', { trickId: 'one_two', actorId: s.player.id, witnessIds: [s.wing.id] });
+    recordSharedStunt(s);
+    assert.ok(s.state.story.titles.stuntIncidents[0].witnessIds.includes(String(s.wing.id)));
     assert.equal(s.fs.callsign, undefined, 'a snapped brace earns nothing');
   } finally { s.close(); }
 });
@@ -202,15 +251,21 @@ test('seed 4242: releasing the order, either death, fleeing and hard sector exit
 });
 
 test('seed 4242: a witnessed shared stunt gives morale and a callsign that survives fleet save and rematerialization', async () => {
-  const s = await scene();
+  const s = await scene({ stunts: true });
   try {
     s.run(1);
     assert.equal(s.fs.braceTargetId, s.heavy.id);
-    s.bus.emit('stunt:trickDetected', { trickId: 'clothesline', actorId: s.player.id, witnessIds: [] });
-    assert.equal(s.fs.callsign, undefined, 'an unwitnessed stunt earns nothing');
-    s.bus.emit('stunt:trickDetected', { trickId: 'clothesline', name: 'Clothesline',
-      episodeId: 'brace-episode', actorId: s.player.id, witnessIds: [s.wing.id] });
-    assert.equal(s.wing.data.ai.wingMorale.reason, 'brace_shared_stunt');
+    const tricks = [];
+    s.bus.on('stunt:trickDetected', p => tricks.push(p));
+    recordSharedStunt(s);
+    assert.equal(tricks.length, 1);
+    assert.equal(tricks[0].actorId, s.player.id);
+    assert.equal(tricks[0].witnessIds, undefined, 'the production trick has no witnesses');
+    const incident = s.state.story.titles.stuntIncidents[0];
+    assert.ok(incident.witnessIds.includes(String(s.wing.id)), 'titles admits the live bracing wingman');
+    assert.equal(s.wing.data.ai.wingMorale?.reason, 'brace_shared_stunt', 'the admitted incident rewards the wingman');
+    assert.equal(s.wing.data.ai.wingMorale.trickId, incident.trickId);
+    assert.equal(s.wing.data.ai.wingMorale.episodeId, incident.id);
     assert.ok(s.wing.data.ai.wingMorale.until > s.state.simTime);
     assert.equal(s.wing.data.morale, 'steady');
     assert.match(s.fs.callsign, /^[A-Z][a-z]+$/);
@@ -224,3 +279,28 @@ test('seed 4242: a witnessed shared stunt gives morale and a callsign that survi
     assert.ok(s.toasts.some(p => p.text === `Mira earned the callsign ${s.fs.callsign}`));
   } finally { s.close(); }
 });
+
+for (const sensors of [true, false]) {
+  test(`seed 4242: incident amendments reward only an admitted witness (sensors ${sensors})`, async () => {
+    const s = await scene({ stunts: true });
+    try {
+      s.run(1);
+      recordSharedStunt(s, { payoffVisible: false });
+      const incident = s.state.story.titles.stuntIncidents[0];
+      assert.equal(incident.witnessIds.includes(String(s.wing.id)), false);
+      assert.equal(s.fs.callsign, undefined, 'an unobserved incident earns nothing');
+      s.wing.data.sensorsEnabled = sensors;
+      if (sensors) {
+        // The same observer regains sensors before the real outcome amendment.
+        for (let i = 0; i < 7; i++) {
+          s.state.tick++; s.state.simTime += SIM_DT;
+          observeStuntWitnesses(s.state);
+        }
+      }
+      // Titles republishes the same episode when the detector upgrades its victim outcome.
+      recordSharedStunt(s, { amended: true });
+      assert.equal(incident.witnessIds.includes(String(s.wing.id)), sensors, 'the titles owner admits only the observed update');
+      assert.equal(Boolean(s.fs.callsign), sensors, 'only the admitted incident update rewards the witness');
+    } finally { s.close(); }
+  });
+}

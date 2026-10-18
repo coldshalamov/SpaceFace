@@ -146,8 +146,8 @@ export const wingmen = {
     this.bus.on('ui:fleetOrder', (p) => { this._wingmenQuiet = null; if (p) this._onFleetOrder(p); });
     this.bus.on('wingOrder:accepted', (p) => { this._wingmenQuiet = null; if (p) this._onWingOrderAccepted(p); });
     // FLT-02: a stunt the braced wingman witnesses spikes morale + earns a callsign.
-    this.bus.on('stunt:trickDetected', (p) => { if (p) this._onBraceSharedStunt(p); });
-    this.bus.on('stunt:trickAmended', (p) => { if (p) this._onBraceSharedStunt(p); });
+    this.bus.on('story:stuntIncidentRecorded', (p) => { if (p) this._onBraceSharedStunt(p); });
+    this.bus.on('story:stuntIncidentUpdated', (p) => { if (p) this._onBraceSharedStunt(p); });
     this.bus.on('save:loaded', () => { this._wingmenQuiet = null; });
     this.bus.on('game:started', () => { this._wingmenQuiet = null; });
   },
@@ -560,20 +560,17 @@ export const wingmen = {
   },
 
   // A witnessed shared stunt spikes the bracing wingman's morale and earns a
-  // callsign. Witness = the live wingman id is named in the stunt receipt's witness
-  // list (or is the actor beside the player). The morale write lands on the live
+  // callsign. Titles admits complete physical witnesses on the incident; the raw
+  // player-owned trick has no witness list. The morale write lands on the live
   // wingman's ai.wingMorale (reason 'brace_shared_stunt') so the whole AI stack can
   // read it; the callsign writes to the fleet ledger row (fs.callsign, mirrored to
   // the live hull's data.callsign) — persistent identity, plain words, never an id.
   _onBraceSharedStunt(p) {
     const state = this.state;
+    const incident = p.incident;
     const fleet = state.automation && state.automation.fleet;
-    if (!fleet || !fleet.length || !state.entities) return;
-    const witnessIds = new Set(
-      []
-        .concat(p.witnessIds || [], p.witnesses || [], p.actorId != null ? [p.actorId] : [])
-        .map((id) => (id != null ? String(id) : null)),
-    );
+    if (!incident || !fleet || !fleet.length || !state.entities) return;
+    const witnessIds = new Set((incident.witnessIds || []).map(String));
     for (const fs of fleet) {
       if (fs == null || fs.braceTargetId == null || fs._liveId == null) continue;
       const entity = state.entities.get(fs._liveId);
@@ -585,8 +582,8 @@ export const wingmen = {
       const ai = entity.data.ai || (entity.data.ai = {});
       ai.wingMorale = {
         reason: 'brace_shared_stunt',
-        trickId: p.trickId != null ? String(p.trickId) : null,
-        episodeId: p.episodeId != null ? String(p.episodeId) : null,
+        trickId: incident.trickId != null ? String(incident.trickId) : null,
+        episodeId: incident.id != null ? String(incident.id) : null,
         until: (Number(state.simTime) || 0) + 30,
       };
       entity.data.morale = 'steady';

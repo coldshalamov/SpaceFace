@@ -91,8 +91,8 @@ export function harasserDepartingBark(payload) {
 
 // FIGHT-12 — one counterplay bark per engagement, in the specialist's register. The
 // first countered latch speaks through the voice arbiter's bark channel; the rest of
-// the engagement stays quiet. A combat outcome closes the engagement and re-arms. The
-// ambient gap is the anti-spam floor across engagements, never the per-engagement gate.
+// the engagement stays quiet. The aftermath census re-arms only once no hostile
+// still presses the player. The ambient gap remains the cross-engagement spam floor.
 export function admitNpcCounterplayBark(host, payload, now) {
   const bark = npcCounterplayBark(payload, payload && payload.actorId);
   if (!bark || !host) return null;
@@ -681,7 +681,6 @@ export const barkDirector = {
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
     this._onCombatOutcome = (payload) => {
       this.noteBarkWake();
-      this._npcCounterplayEngagement = (this._npcCounterplayEngagement | 0) + 1;
       this._enterPostCombatSilence(payload);
     };
     // The ship-history owner (systems/ships.js) is the single writer of the living-hull record and
@@ -1772,6 +1771,11 @@ export const barkDirector = {
     ambient.quietSince = now;
     ambient.nextAt = Math.max(Number(ambient.nextAt) || -Infinity, until);
     if (this._hostilesStillPressing(outcome && outcome.entityId) > 0) return true;
+    // Per-ship outcomes only close the spent engagement at the actual aftermath
+    // boundary; later quiet receipts cannot advance it again.
+    if (this._npcCounterplaySpokenAt === (this._npcCounterplayEngagement | 0)) {
+      this._npcCounterplayEngagement = (this._npcCounterplayEngagement | 0) + 1;
+    }
     this._emit('barkDirector:silence', { sectorId, until, t: now, reason: 'combat:outcome' });
     return true;
   },
