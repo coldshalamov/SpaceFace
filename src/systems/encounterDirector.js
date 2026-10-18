@@ -482,8 +482,10 @@ export const encounterDirector = {
    */
   _lootSweepCtx() {
     const state = this.state;
+    const tether = state && state.player && state.player.tether;
     return {
       state,
+      playerTowedPodId: tether ? tether.targetId : null,
       bus: this.bus,
       helpers: this.helpers,
       disarm: () => clearIneligibleAIFiringIntents(state, this.helpers),

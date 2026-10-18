@@ -9,7 +9,7 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
-import { sweepStaleLootSweeps } from '../src/ai/lootSweep.js';
+import { looseSweepPod, sweepStaleLootSweeps } from '../src/ai/lootSweep.js';
 
 function boot(seed = 4242) {
   const voices = [];
@@ -139,6 +139,54 @@ test('seed 4242: freight custody pods stay with the custody script — sweepers 
   const c = { pickupId: 'custody_pod_x', collectorId: r1.id, kind: 'cargo', amount: 4 };
   t.bus.emit('pickup:collected', c);
   assert.equal(c.acceptedAmount, undefined);
+});
+
+test('a sweep excludes the tow target supplied by its systems caller', () => {
+  const t = boot();
+  const hunter = spawnRaider(t.sim, { x: 600, z: 60 });
+  const pod = spawnPod(t.sim, { x: 700, z: 80 });
+  assert.equal(looseSweepPod(t.state, pod, hunter, t.state.simTime), true);
+  assert.equal(looseSweepPod(t.state, pod, hunter, t.state.simTime, {
+    playerTowedPodId: pod.id,
+  }), false, 'the supplied tow target is unavailable to a sweep');
+});
+
+test('seed 4242: the player tow is checked at dispatch, pickup, and every sweep step', () => {
+  const t = boot();
+  const escort = spawnRaider(t.sim, { x: 500, z: 0 });
+  const hunter = spawnRaider(t.sim, { x: 600, z: 60 });
+  const pod = spawnPod(t.sim, { x: 700, z: 80 });
+  t.state.player.tether = { active: true, targetId: pod.id };
+  bindLive(t, [escort, hunter], { [escort.id]: 'escort', [hunter.id]: 'raider' }, 'live_fight15_tow');
+
+  kill(t, escort);
+  const ai = hunter.data.ai;
+  assert.equal(ai.lootSweep.phase, 'scan', 'a pod already on the player line is not targeted');
+  assert.equal(ai.lootSweep.podId, null);
+
+  t.state.player.tether = null;
+  for (let n = 0; n < 80; n++) t.sim.step();
+  assert.equal(ai.activity.targetId, pod.id, 'releasing the line makes the pod available');
+
+  t.state.player.tether = { active: true, targetId: pod.id };
+  const pickup = { pickupId: pod.id, collectorId: hunter.id, kind: 'cargo', commodityId: 'cmdty_alloys', amount: 7 };
+  t.bus.emit('pickup:collected', pickup);
+  assert.equal(pickup.acceptedAmount, undefined, 'a fresh tow blocks collection between sweep ticks');
+  assert.equal(ai.stolenLoot, undefined, 'the player-towed cargo never enters the hunter hold');
+
+  for (let n = 0; n < 80; n++) t.sim.step();
+  assert.equal(ai.lootSweep.phase, 'scan', 'grabbing the target mid-sweep drops the errand claim');
+  assert.equal(ai.lootSweep.podId, null);
+  assert.equal(ai.activity.kind, 'loiter');
+
+  t.state.player.tether = null;
+  for (let n = 0; n < 80; n++) t.sim.step();
+  assert.equal(ai.activity.targetId, pod.id, 'a later release is observed by the next sweep step');
+  const releasedPickup = { ...pickup };
+  t.bus.emit('pickup:collected', releasedPickup);
+  assert.equal(releasedPickup.acceptedAmount, 7, 'loose cargo still uses the ordinary sweep receipt');
+  assert.deepEqual(ai.stolenLoot.lines, [{ commodityId: 'cmdty_alloys', qty: 7 }]);
+  console.log('seed=4242 tow: dispatch=excluded pickup=blocked mid-sweep=scan release=7u collected');
 });
 
 test('seed 4242: lawful guards and foreign hulls do not sweep — only the raid\'s own faction peels', () => {

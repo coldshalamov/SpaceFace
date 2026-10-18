@@ -95,7 +95,7 @@ function say(ctx, { id, key, kind, factionId, hunterId }) {
  * pods are excluded even though an outlaw may legally take one on contact: the custody script owns
  * their receipt.
  */
-export function looseSweepPod(state, pod, hunter, now) {
+export function looseSweepPod(state, pod, hunter, now, opts = {}) {
   if (!pod || pod.alive === false || !pod.pos || !pod.data) return false;
   const d = pod.data;
   if (d.kind !== 'cargo' && d.kind !== 'ore') return false;
@@ -104,12 +104,11 @@ export function looseSweepPod(state, pod, hunter, now) {
   if (d.playerCollectOnly === true) return false;
   if (Number(d.pickupEmbargoUntil) > finite(now)) return false;
   if (hunter && d.ownerId != null && d.ownerId === hunter.id) return false;
-  const tether = state && state.player && state.player.tether;
-  if (tether && tether.targetId === pod.id) return false;
+  if (opts.playerTowedPodId != null && opts.playerTowedPodId === pod.id) return false;
   return true;
 }
 
-function nearestSweepPod(state, hunter, b, now) {
+function nearestSweepPod(state, hunter, b, now, opts) {
   const reach2 = LOOT_SWEEP.seekRadiusWu * LOOT_SWEEP.seekRadiusWu;
   let best = null;
   let bestD2 = Infinity;
@@ -119,7 +118,7 @@ function nearestSweepPod(state, hunter, b, now) {
     for (let i = 0; i < list.length; i++) {
       const pod = list[i];
       if (!pod || pod.id == null || b.byPod[pod.id] != null) continue;
-      if (!looseSweepPod(state, pod, hunter, now)) continue;
+      if (!looseSweepPod(state, pod, hunter, now, opts)) continue;
       const dist = d2(hunter.pos, pod.pos);
       if (dist > reach2) continue;
       if (dist < bestD2 || (dist === bestD2 && best && pod.id < best.id)) {
@@ -283,7 +282,7 @@ function startErrand(ctx, b, live, hunter, now) {
   if (combat.targetId === state.playerId) combat.targetId = null;
   if (combat.lockTarget === state.playerId) combat.lockTarget = null;
 
-  const pod = nearestSweepPod(state, hunter, b, now);
+  const pod = nearestSweepPod(state, hunter, b, now, ctx);
   if (pod) {
     rec.podId = pod.id;
     b.byPod[pod.id] = hunter.id;
@@ -377,12 +376,12 @@ function tickErrand(ctx, b, rec, now) {
 
   if (rec.phase === 'seek') {
     const pod = entityById(state, rec.podId);
-    if (!pod || !looseSweepPod(state, pod, hunter, now)) {
+    if (!pod || !looseSweepPod(state, pod, hunter, now, ctx)) {
       // Collected by someone else first, despawned, or claimed: drop the claim and re-scan.
       if (rec.podId != null && b.byPod[rec.podId] === rec.hunterId) delete b.byPod[rec.podId];
       rec.podId = null;
       ai.lootSweep.podId = null;
-      const next = nearestSweepPod(state, hunter, b, now);
+      const next = nearestSweepPod(state, hunter, b, now, ctx);
       if (next) {
         rec.podId = next.id;
         b.byPod[next.id] = hunter.id;
@@ -405,7 +404,7 @@ function tickErrand(ctx, b, rec, now) {
   }
 
   // phase 'scan': hover the spill field; a late-dropping pod still gets taken.
-  const pod = nearestSweepPod(state, hunter, b, now);
+  const pod = nearestSweepPod(state, hunter, b, now, ctx);
   if (pod) {
     rec.podId = pod.id;
     b.byPod[pod.id] = hunter.id;
@@ -461,7 +460,7 @@ export function lootSweepPickupCollected(ctx, payload) {
   if (!stamp || stamp.phase === 'leave') return false;
   const pod = entityById(state, p.pickupId);
   const now = finite(state.simTime);
-  if (!looseSweepPod(state, pod, collector, now)) return false;
+  if (!looseSweepPod(state, pod, collector, now, ctx)) return false;
   const qty = Math.max(0, Math.floor(Number(p.amount) || 0));
   if (!(qty > 0)) return false;
   p.acceptedAmount = qty;
