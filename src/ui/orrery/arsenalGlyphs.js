@@ -85,6 +85,9 @@ const raw = {
   gyros: [C(12,12,5), C(4,8,2), C(20,16,2), P('M4 12Q3 22 14 21 M20 12Q21 2 10 3 M12 8V16 M9 10 15 14 M9 14 15 10')],
   fan: [P('M12 22V3 M12 22 4 6 M12 22 20 6 M8 6 12 3 16 6 M2 10 4 6 8 7 M16 7 20 6 22 10')],
   capacitor: [C(4,18,2), C(20,6,2), P('M6 16 10 12 M14 8 18 4 M8 8 16 16 M11 5 19 13')],
+  // Saucer intrinsics. A disc with a crosshair is the death ray; a cored burst is the annihilator.
+  'death-ray': [C(12,12,7), P('M12 4V20 M4 12H20 M8 8 16 16 M16 8 8 16')],
+  annihilator: [C(12,12,3), C(12,12,8), P('M12 1V4 M12 20V23 M1 12H4 M20 12H23 M5 5 7 7 M17 17 19 19 M5 19 7 17 M17 7 19 5')],
 };
 // Variants are readable family derivatives, never unrelated equipment or a text initial.
 const variants = {

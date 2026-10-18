@@ -15,6 +15,8 @@ const rows = [
   ['wpn_beam_laser_m', 'beam', 'Hold a continuous cutting beam on the target. Break contact to let the gun cool.'],
   ['unique_veil_cutter', 'beam-veil', 'A longer-reaching precision beam. It holds a clean cut but heats faster than the stock laser.'],
   ['wpn_heavy_beam_l', 'beam-heavy', 'A long-range sustained burn. Keep the target under the beam and watch your capacitor.'],
+  ['wpn_saucer_death_ray', 'death-ray', 'Built-in alien beam. Tracks all around the disc without steering the ship.'],
+  ['wpn_saucer_annihilator', 'annihilator', 'Built-in alien plasma battery: heavy splash rounds, independent of movement.'],
   ['unique_lighthouse_heavy_beam', 'beam-lighthouse', 'A brighter, longer heavy beam with a harder heat bill. Commit to an opening, then vent.'],
   ['wpn_railgun_m', 'rail', 'A fast armor-piercing spear with a solid kick. Lead the target; a missed shot has a long pause.'],
   ['wpn_siege_lance_l', 'siege', 'A huge spinal penetrator. Turn the whole ship to line up its devastating, slow-cycling shot.'],
