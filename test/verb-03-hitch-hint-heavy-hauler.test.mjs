@@ -75,7 +75,7 @@ function drive(entitiesById = new Map()) {
   return {
     events,
     latched(targetId) {
-      (handlers.get('tether:latched') || []).forEach((fn) => fn({ targetId }));
+      (handlers.get('tether:latched') || []).forEach((fn) => fn({ sourceId: state.playerId, targetId, type: 'tether_standard' }));
     },
     hitchHints() {
       return events.filter((e) => e.event === 'hud:firstUse' && e.payload && e.payload.verbId === 'masslineHitchhiking');
@@ -157,6 +157,7 @@ test('VERB-03: an ordinary heavy hauler also teaches the hitch', () => {
     try {
       h.latched(ordinaryHauler.id);
       assert.equal(h.hitchHints().length, 1, 'a cargo hauler on the mule frame qualifies');
+      assert.equal(h.hitchHints()[0].payload.entityId, ordinaryHauler.id, 'the hitch hint anchors to the heavy hauler, not the player source');
     } finally { h.restore(); }
   });
 });

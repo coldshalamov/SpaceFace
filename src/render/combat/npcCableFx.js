@@ -21,7 +21,7 @@ export class NpcCableFx {
     this.distances = new Float64Array(CAPACITY);
     this.frustum = new THREE.Frustum();
     this.viewProjection = new THREE.Matrix4();
-    this.point = new THREE.Vector3();
+    this.bounds = new THREE.Sphere();
     this.a = { x: 0, z: 0 };
     this.b = { x: 0, z: 0 };
     this.cool = new THREE.Color('#39d0ff');
@@ -98,8 +98,12 @@ export class NpcCableFx {
         || link.ownerId === state.playerId || link.targetId === state.playerId
         || link.controllerId === state.playerId
         || !this._endpoints(state, link, alpha)) continue;
-      if (hasCamera && !this.frustum.containsPoint(this.point.set(this.a.x, 1.5, this.a.z))
-        && !this.frustum.containsPoint(this.point.set(this.b.x, 1.5, this.b.z))) continue;
+      if (hasCamera) {
+        this.bounds.center.set((this.a.x + this.b.x) * 0.5, 1.5, (this.a.z + this.b.z) * 0.5);
+        // Enclose the whole span plus the 24-WU slack bow, shiver and cable width.
+        this.bounds.radius = Math.hypot(this.b.x - this.a.x, this.b.z - this.a.z) * 0.5 + 26;
+        if (!this.frustum.intersectsSphere(this.bounds)) continue;
+      }
       const dx = (this.a.x + this.b.x) * 0.5 - (hasCamera ? camera.position.x : 0);
       const dz = (this.a.z + this.b.z) * 0.5 - (hasCamera ? camera.position.z : 0);
       const distance = dx * dx + dz * dz;

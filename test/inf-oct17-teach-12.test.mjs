@@ -79,6 +79,7 @@ function boot() {
     latch(targetId, extra = {}) {
       bus.emit('tether:latched', {
         targetId,
+        type: 'tether_standard',
         sourceId: extra.sourceId == null ? player.id : extra.sourceId,
         actorId: extra.actorId,
         ownerId: extra.ownerId,
@@ -109,6 +110,7 @@ test('TEACH-12 seed 4242: the first latch above the authored mass-ratio threshol
     const added = h.shown.slice(before);
     assert.equal(added.length, 1, 'first latch on heavy body produces one hint');
     assert.equal(added[0].verbId, 'masslineBrace');
+    assert.equal(added[0].entityId, heavy.id, 'the brace hint anchors to the heavy body, not the player source');
     assert.match(added[0].text, /boost/i, 'hint mentions boost');
     assert.match(added[0].text, /brace/i, 'hint mentions brace');
     assert.ok(added[0].text.includes(boostLabel), 'hint names the bound boost key');

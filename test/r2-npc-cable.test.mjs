@@ -7,7 +7,8 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
-import { vfx } from '../src/render/vfx.js';
+import { vfx, resolveMasslineAccessibilityPolicy } from '../src/render/vfx.js';
+import { NpcCableFx } from '../src/render/combat/npcCableFx.js';
 
 async function fixture(t) {
   const worker = createSimHost();
@@ -191,3 +192,39 @@ test('real worker batch: cap six, nearest first, cull both offscreen, preserve p
   f.system.destroy();
   assert.equal(pool.parent, null, 'teardown removes all pooled meshes');
 });
+
+for (const [label, x, expected] of [
+  ['crosses the view with both endpoints offscreen', 0, 1],
+  ['stays entirely outside the view', 10000, 0],
+]) {
+  test(`NPC cable frustum: a 300-WU line ${label}`, t => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.5, 4000);
+    camera.position.set(0, 300, 0);
+    camera.up.set(0, 0, -1);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const state = createGameState(4242);
+    state.playerId = 1;
+    state.render = { scene, camera, interpolationAlpha: 1 };
+    state.entities.set(2, { id: 2, alive: true, pos: { x, z: -150 } });
+    state.entities.set(3, { id: 3, alive: true, pos: { x, z: 150 } });
+    state.combat = { attachments: { byId: {
+      line: { id: 'line', defId: 'tether_standard', state: 'active',
+        ownerId: 2, targetId: 3, restLength: 300, load: 0.6 },
+    } } };
+    const fx = new NpcCableFx(scene, (worldX, worldZ, out) => {
+      out.x = worldX; out.z = worldZ;
+    }, resolveMasslineAccessibilityPolicy);
+    t.after(() => fx.dispose());
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(
+      new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse),
+    );
+    assert.equal(frustum.containsPoint(new THREE.Vector3(x, 1.5, -150)), false);
+    assert.equal(frustum.containsPoint(new THREE.Vector3(x, 1.5, 150)), false);
+    assert.equal(frustum.containsPoint(new THREE.Vector3(x, 1.5, 0)), expected === 1);
+    fx.update(state);
+    assert.equal(fx.group.children.filter(cable => cable.visible).length, expected,
+      'visibility follows the cable span, including when neither endpoint is on screen');
+  });
+}

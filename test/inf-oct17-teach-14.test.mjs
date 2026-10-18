@@ -275,3 +275,41 @@ test('TEACH-14 seed 4242: nearBreak event during a swing produces the release hi
     assert.equal(h.state.player.hints.masslineReleaseWindow, true);
   } finally { h.restore(); }
 });
+
+for (const [label, event] of [
+  ['an NPC actor', (h, target, other) => ({ actorId: other.id, targetId: other.id, attachmentId: 'npc-line' })],
+  ['an NPC owner', (h, target, other) => ({ ownerId: other.id, targetId: target.id, attachmentId: 'player-line' })],
+  ['an unidentified owner', (h, target) => ({ targetId: target.id, attachmentId: 'player-line' })],
+  ['another target', (h, target, other) => ({ actorId: h.player.id, targetId: other.id, attachmentId: 'player-line' })],
+  ['another attachment', (h, target) => ({ actorId: h.player.id, targetId: target.id, attachmentId: 'old-line' })],
+]) {
+  test(`TEACH-14 seed 4242: near-break from ${label} never spends the player lesson`, () => {
+    const h = boot();
+    try {
+      const target = h.spawnTarget();
+      const other = h.spawnTarget();
+      h.setTether(target.id, { attachmentId: 'player-line' });
+      h.bus.emit('tether:nearBreak', { ...event(h, target, other), ratio: 0.9 });
+      assert.equal(h.releaseHints().length, 0, 'an unrelated near-break must stay quiet');
+      assert.equal(h.state.player.hints?.masslineReleaseWindow, undefined, 'the lesson remains available');
+
+      const ownEvent = { actorId: h.player.id, targetId: target.id, attachmentId: 'player-line', ratio: 0.9 };
+      h.bus.emit('tether:nearBreak', ownEvent);
+      h.bus.emit('tether:nearBreak', ownEvent);
+      assert.equal(h.releaseHints().length, 1, 'the current player line still teaches exactly once');
+      assert.equal(h.releaseHints()[0].entityId, target.id, 'the lesson follows the actual tether target');
+      assert.equal(h.state.player.hints.masslineReleaseWindow, true);
+    } finally { h.restore(); }
+  });
+}
+
+test('TEACH-14 seed 4242: the player-only strain event still teaches the live swing', () => {
+  const h = boot();
+  try {
+    const target = h.spawnTarget();
+    h.setTether(target.id, { attachmentId: 'player-line' });
+    h.bus.emit('tether:strain', { ratio: 0.9 });
+    assert.equal(h.releaseHints().length, 1);
+    assert.equal(h.releaseHints()[0].entityId, target.id);
+  } finally { h.restore(); }
+});

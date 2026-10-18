@@ -755,7 +755,7 @@ export const onboarding = {
       if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
       const target = this.state.entities && this.state.entities.get(payload.targetId);
       if (!isHitchHintTarget(target)) return;
-      this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), payload);
+      this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), { ...payload, entityId: payload.targetId });
     });
     // SF-291 — the same rope, two careers. The fitting screen already grades the fit's tow
     // class and swing rating (shipCapabilities); these beats connect a MEASURED strain to that
@@ -788,7 +788,7 @@ export const onboarding = {
     bus.on('tether:latched', (payload) => this._onTetherLatchedBrace(payload || {}));
     // TEACH-14 — the first swing that loads the rope toward its limit names the release window once per profile.
     bus.on('tether:nearBreak', (payload) => this._teachReleaseWindow(payload || {}));
-    bus.on('tether:strain', (payload) => this._teachReleaseWindow(payload || {}));
+    bus.on('tether:strain', (payload) => this._teachReleaseWindow({ ...payload, actorId: this.state.playerId }));
     bus.on('tether:whipImpact', (payload) => {
       if (!massline2Flag('throw')) return;
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -1030,7 +1030,7 @@ export const onboarding = {
         ? `Heavy body — boost and brace — ${label}`
         : `Heavy body — boost and brace — ${label}.`)
       : 'Heavy body — boost and brace.';
-    this._showHint('masslineBrace', text, payload);
+    this._showHint('masslineBrace', text, { ...payload, entityId: payload.targetId });
   },
 
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
@@ -3557,8 +3557,14 @@ export const onboarding = {
     if (st.player.hints && st.player.hints.masslineReleaseWindow) return;
     const tether = st.player.tether;
     if (!tether || tether.active !== true || tether.targetId == null) return;
+    if (payload) {
+      if ((payload.actorId ?? payload.ownerId) !== st.playerId) return;
+      if (payload.ownerId != null && payload.ownerId !== st.playerId) return;
+      if (payload.targetId != null && payload.targetId !== tether.targetId) return;
+      if (payload.attachmentId != null && payload.attachmentId !== tether.attachmentId) return;
+    }
     const owner = st.entities && st.entities.get(st.playerId);
-    const targetId = (payload && payload.targetId != null) ? payload.targetId : tether.targetId;
+    const targetId = tether.targetId;
     const target = st.entities && st.entities.get(targetId);
     if (!owner || !target || target.alive === false) return;
     const pair = readCadencePair(owner, target, Number(tether.restLength) || 0);
