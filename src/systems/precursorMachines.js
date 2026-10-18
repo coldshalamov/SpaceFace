@@ -613,6 +613,7 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'mason': {
+        const wasWorking = Boolean(m.working);
         const onSite = tickMasonWork(world, e, dt);
         if (!onSite) {
           // AE-234 (I07): orbits its workpiece when no foundry job owns the frame.
@@ -624,10 +625,10 @@ export function tickMachineLayer(world, dt) {
           e.pos.x += Math.cos(e.rot) * kind.speed * dt;
           e.pos.z += Math.sin(e.rot) * kind.speed * dt;
         }
-        // Weld cadence only while a block is actually being placed.
+        // Placement may finish before one full cadence: weld on onset, then periodically.
         if (Boolean(m.working)) {
           m.sweepT = (m.sweepT || 0) + dt;
-          if (m.sweepT >= kind.weldPeriodS) {
+          if (!wasWorking || m.sweepT >= kind.weldPeriodS) {
             m.sweepT = 0;
             world.bus.emit('audio:cue', { id: 'scan_resolve' });
           }

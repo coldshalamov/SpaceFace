@@ -101,7 +101,10 @@ test('B150 foundry construction arms the mason, files access, and announces the 
   body.vel = { x: 0, z: 0 };
   f.seconds(4);
   assert.equal(handleFoundryProtocolAction(f.world, { siteId: site.siteId, verb: 'choose' }).ok, true);
-  mason.data.machine.sweepT = 39.9;
+  assert.equal(mason.data.machine.sweepT, 0, 'production materialization leaves an untouched weld clock');
+  const weldCount = () => f.events.filter((e) => e.name === 'audio:cue'
+    && e.payload?.id === 'scan_resolve' && e.payload.position == null).length;
+  assert.equal(weldCount(), 0, 'no weld is heard before placement begins');
   let sawWorking = false;
   let welded = false;
   for (let i = 0; i < 15; i++) {
@@ -111,7 +114,9 @@ test('B150 foundry construction arms the mason, files access, and announces the 
   }
   assert.equal(sawWorking, true, 'mason works while the ballast is being placed');
   assert.equal(welded, true, 'mason weld cadence plays while placement is in progress');
+  assert.equal(weldCount(), 1, 'placement starts with exactly one weld cue');
   f.seconds(6);
+  assert.equal(weldCount(), 1, 'finishing and then idling do not repeat the weld cue');
   const rec = foundryRec(f.state);
   assert.equal(mason.data.machine.working, false);
   assert.equal(rec.workCycle.status, 'complete');
