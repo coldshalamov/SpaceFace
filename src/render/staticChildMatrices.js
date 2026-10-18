@@ -309,45 +309,73 @@ export function* unfreezeHiddenSubtreeMatricesSteps(root) {
   if (!root) return 0;
   let restored = 0;
   const order = [];
-  if (typeof root.traverse === 'function') {
-    const stack = [root];
-    while (stack.length > 0) {
-      const object = stack.pop();
-      order.push(object);
-      const userData = object.userData;
-      if (userData && userData.sfCullFrozen === true) {
-        object.matrixAutoUpdate = true;
-        delete userData.sfCullFrozen;
-        if (userData.sfMatrixFrozen) userData.sfMatrixFrozen = false;
-        restored += 1;
+  let completed = false;
+  try {
+    if (typeof root.traverse === 'function') {
+      const stack = [root];
+      while (stack.length > 0) {
+        const object = stack.pop();
+        order.push(object);
+        const userData = object.userData;
+        if (userData && userData.sfCullFrozen === true) {
+          object.matrixAutoUpdate = true;
+          delete userData.sfCullFrozen;
+          if (userData.sfMatrixFrozen) userData.sfMatrixFrozen = false;
+          // The node is live the moment its stamp clears, but an ancestor's
+          // sfMatrixFrozen mark (a mount-frozen intermediate, or one minted by
+          // this freeze) still reads "fully frozen" until the re-mark phase
+          // runs — under a held root there is no force, so the vendored prune
+          // would keep the restored node unreachable for the whole parked
+          // window. Marks above a live descendant are already dishonest; mints
+          // only mark contiguous fully-frozen chains, so the first unmarked
+          // ancestor ends the walk.
+          for (let walk = object.parent; walk; walk = walk.parent) {
+            const data = walk.userData;
+            if (!data || data.sfMatrixFrozen !== true) break;
+            data.sfMatrixFrozen = false;
+          }
+          restored += 1;
+        }
+        const children = object.children || [];
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+        if ((order.length % 1024) === 0) yield;
       }
-      const children = object.children || [];
-      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
-      if ((order.length % 1024) === 0) yield;
     }
-  }
-  for (let node = root.parent; node; node = node.parent) {
-    const userData = node.userData;
-    if (userData && userData.sfMatrixFrozen === true) userData.sfMatrixFrozen = false;
-  }
-  // Same self-healing interior re-mark as the sync unfreeze — a mount-frozen
-  // node (no sfCullFrozen stamp) over now-live children re-evaluates here.
-  for (let i = order.length - 1; i >= 0; i -= 1) {
-    const node = order[i];
-    let frozenSubtree = node.matrixAutoUpdate === false;
-    const children = node.children || [];
-    for (let j = 0; j < children.length; j++) {
-      const ud = children[j].userData;
-      if (!(ud && ud.sfMatrixFrozen === true)) { frozenSubtree = false; break; }
+    for (let node = root.parent; node; node = node.parent) {
+      const userData = node.userData;
+      if (userData && userData.sfMatrixFrozen === true) userData.sfMatrixFrozen = false;
     }
-    if (node.userData) {
-      if (frozenSubtree) node.userData.sfMatrixFrozen = true;
-      else if (node.userData.sfMatrixFrozen) node.userData.sfMatrixFrozen = false;
+    // Same self-healing interior re-mark as the sync unfreeze — a mount-frozen
+    // node (no sfCullFrozen stamp) over now-live children re-evaluates here.
+    for (let i = order.length - 1; i >= 0; i -= 1) {
+      const node = order[i];
+      let frozenSubtree = node.matrixAutoUpdate === false;
+      const children = node.children || [];
+      for (let j = 0; j < children.length; j++) {
+        const ud = children[j].userData;
+        if (!(ud && ud.sfMatrixFrozen === true)) { frozenSubtree = false; break; }
+      }
+      if (node.userData) {
+        if (frozenSubtree) node.userData.sfMatrixFrozen = true;
+        else if (node.userData.sfMatrixFrozen) node.userData.sfMatrixFrozen = false;
+      }
+      if ((i % 1024) === 0) yield;
     }
-    if ((i % 1024) === 0) yield;
+    root.matrixWorldNeedsUpdate = true;
+    completed = true;
+    return restored;
+  } finally {
+    // The drain kills a parked mint with iter.return() on re-cull,
+    // hide-in-place, detach, or external refreeze — and sfHiddenFrozen was
+    // already consumed at mint start. Stamps not yet visited are unreachable
+    // through `order`, so an early exit re-arms unconditionally: the flag means
+    // "this subtree may still carry unrestored stamps", which is every
+    // consumer's contract (the visible-loop queue gate and the unbind restore
+    // both key on it). A mint abandoned after all stamps consumed re-arms on a
+    // clean subtree and costs one no-op restore pass — cheap next to a
+    // permanently frozen interior.
+    if (!completed && root.userData) root.userData.sfHiddenFrozen = true;
   }
-  root.matrixWorldNeedsUpdate = true;
-  return restored;
 }
 
 // Explicit dirty() for the rare move of a node inside a frozen subtree: release the stale
