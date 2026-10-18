@@ -514,3 +514,4 @@ Every commit of the 2026-10-17 admission push, in order. Review fixes follow the
 - 756cdcfb0c3 INF-022: a wing target shows its real callsign instead of a chopped tail
 - 680f0ebbf60 arsenal: the saucer's two built-in guns get their own marks and explanations
 - 9725c8851a1 SFQ-I061 review fix: the Star Marker's visible ring is drawn at the velocity plane's real edge
+- 49fce05 Revert of the SFQ-B138 review fix (it raised the Ceres boot census from 41 to 53 entities; see build_map row 388)

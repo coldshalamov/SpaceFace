@@ -567,7 +567,7 @@ finished plan — the board is finished only when every number in this table is 
 | Surface | Remaining |
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **10 open defects** — D130, D188, D191, D198, D199, D202b, D211, D212, D213, D214 — plus standing import guard D175 |
-| Numbered board rows (§A–§M tables below) | **7 open** — quiet-host session 284; residual rows 381–386 (minted 2026-10-17: earned-momentum tagging, the ore-crusher battlefield, two render-animation briefs, two mission scenes). Plus 10 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F), 387 (adhesive law needs an owner decision) |
+| Numbered board rows (§A–§M tables below) | **8 open** — quiet-host session 284; residual rows 381–386 and 388 (minted 2026-10-17: earned-momentum tagging, the ore-crusher battlefield, two render-animation briefs, two mission scenes, approach-materialized calcite props). Plus 10 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F), 387 (adhesive law needs an owner decision) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 381–387 and the INFERENCE lines |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
 | Inference catalog (`INFERENCE_IDEAS.md`) | **15 OPEN lines** — gated: only under `--lane=inference` with an owner INFERENCE instruction |
@@ -616,7 +616,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | - |
 | hand | free | flight, tether, massline, onboarding | 381 |
 | missions | free | missions | 382, 385, 386, 387 |
-| world | done | sectors, traffic, factions, news | - |
+| world | free | sectors, traffic, factions, news | 388 |
 | story | done (devin-oct2-batch) | story | - |
 | input | done (devin-oct2-batch) | gamepad, input, settings behavior | - |
 | ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | - |
@@ -845,7 +845,7 @@ the stall). These are implemented production outcomes, not full acceptance or FP
 families — D210 plus SFQ-B024/B030/B036/B042/B050/B055/B058/B069/B072/B080/B097/B099/B100/B123/B134/B135/B138/B150/B155/B158/B169 and M03, and the inference candidates
 SFQ-I013/I016/I017/I049/I059/I060/I061/I068 — and 10 catalog INFERENCE lines (VERB-37, PIC-33, PRO-21, FIGHT-11, TEACH-11, WORLD-46, TEACH-13, WORLD-47, PIC-34, PRO-20), each with a
 focused regression on seed 4242. The three reviews found 14 real defects in those commits (a salvage duplication exploit, a stun-chain cap reset, features that passed their tests but were
-unreachable on the default worker route); all were fixed in follow-up commits except SFQ-I008, which was reverted (ledger D214). 13 catalog lines that earlier sittings had shipped were found
+unreachable on the default worker route); all were fixed in follow-up commits except SFQ-I008, which was reverted (ledger D214), and the B138 calcite-props fix, which was reverted because it raised the Ceres boot census from 41 to 53 entities (row 388). 13 catalog lines that earlier sittings had shipped were found
 still marked OPEN and are now SHIPPED, and 30 stale tests were re-pinned to the real contracts (the five real behavior reds that remain are ledger D213). Not landed: FIGHT-14 and WORLD-48
 (attempts rejected, lines stay OPEN with the reason), M17 (needs two missing capabilities, row 382), SFQ-B208 (routed to ORRERY).
 
@@ -874,6 +874,7 @@ recorded in the lane's NOW row before minting.
 | 385 | M07 | Cargo in the wake: a covert physical handoff alongside a moving hauler (`smuggling_run` in `src/systems/missions.js`, `src/data/heistMission.js`) | BUILD | OPEN |
 | 386 | M12 | Quiet passage: a heat-sensitive passenger transport (`src/data/heatLure.js`, `heatProximityTrial.js`, `passenger_transport`) | BUILD | OPEN |
 | 387 | ADHESIVE-LAW | The spray/coating/bridge/sever law that briefs M23 and M32 are blocked on; no such law exists in `reactiveMatter`, `alienEcology`, `precursorMachines` or `modules` | BUILD | PARKED needs the owner to decide whether the adhesive toy exists |
+| 388 | CALCITE-APPROACH | The Closed Refinery's calcified collars and mineral roots (SFQ-B138 follow-up) should be breakable bodies that materialize on approach, like the Cathedral's approach-dormant sections. The 2026-10-17 attempt made them eager bodies and raised the Ceres boot census from 41 entities / 17 colliders to 53 / 29 (the pq020 structural-cost digest), so it was reverted; today only asteroids stamped calcite crack | BUILD | OPEN |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
 
