@@ -151,10 +151,13 @@ export function createPresentationPublisher(world, state, options = {}) {
       let collectStep = null;
       for (;;) {
         // A spent pass parks mid-walk — the private 4 ms clock is no longer
-        // the only meter on these drives.
-        if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+        // the only meter on these drives. Step first: a parked walk must
+        // advance >=1 leg per consume even on a wallet an earlier paced lane
+        // emptied — a zero-step check here freezes the mirror for as long as
+        // the storm lasts while the renderer keeps presenting.
         collectStep = pendingCollectIter.next();
         if (collectStep.done) break;
+        if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
         if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now()) - collectStart >= 4) break;
       }
@@ -181,7 +184,12 @@ export function createPresentationPublisher(world, state, options = {}) {
           ? presentationFrame.rebuildCollectPrefix : null);
       let sample = atomic ? aliveEntities(state) : sharedCollect || collectPrefix || null;
       if (!sample) {
-        if (!pendingCollectIter && typeof collectJournalPresentationEntitiesChunked === 'function') {
+        // No fresh collect while a completed sample still waits on its apply —
+        // a resume-completed walk that immediately mints another would hold the
+        // finished sample (and the parked apply behind it) hostage for a whole
+        // extra walk every cycle.
+        if (!pendingCollectIter && !pendingCollectSample
+          && typeof collectJournalPresentationEntitiesChunked === 'function') {
           pendingCollectOut = [];
           pendingCollectIter = collectJournalPresentationEntitiesChunked(state, pendingCollectOut);
         }
@@ -190,9 +198,9 @@ export function createPresentationPublisher(world, state, options = {}) {
             && typeof performance.now === 'function' ? performance.now() : Date.now();
           let collectStep = null;
           for (;;) {
-            if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
             collectStep = pendingCollectIter.next();
             if (collectStep.done) break;
+            if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
             if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
               ? performance.now() : Date.now()) - collectStart >= 4) break;
           }
@@ -246,9 +254,9 @@ export function createPresentationPublisher(world, state, options = {}) {
           ? performance.now() : Date.now();
         let applyStep = null;
         for (;;) {
-          if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
           applyStep = applyIter.next();
           if (applyStep.done) break;
+          if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
           if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now() : Date.now()) - applyStart >= 4) break;
         }
