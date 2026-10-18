@@ -26,6 +26,7 @@ import {
   helmControlScaleFromCombat,
   scaleHelmCommandForCryoLock,
 } from '../combat/cryoLock.js';
+import { COLLISION_CONSEQUENCE_LIMITS, readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
@@ -92,6 +93,17 @@ const MASSLINE_SLING_TAG_S = 1.0;
 const TRAVEL_DASH_TAG_S = 1.0;
 const MASSLINE_SLING_DECAY_TAU_S = 6.0;
 const MASSLINE_EARNED_ASSIST_SCALE = 0.24;
+// Launches whose speed is already baked into velocity before this adapter runs. The kernel
+// cannot tell them from ordinary overspeed, so they reuse the sling window. A concussion is
+// recorded on the hull (the player is never handed hitstun). A well pull records field_well.
+// The other two arrive as the events that already announce them. Hard contact uses the
+// collision law's slam line — below that, a scrape stays ordinary flight.
+const LAUNCH_PROVENANCE_TAGS = new Set([
+  'concussion_slug',
+  'concussion_slug_s',
+  'field_well',
+  'gravity_well_pull',
+]);
 const CLOAK_COAST_ASSIST_SCALE = 0.28;
 // Travel Burn deliberately reuses the fitted boost drain rate. The pool is authored on the ship's
 // boost block, so this keeps engine/booster upgrades and the DRIVE gauge on one source of truth
@@ -161,6 +173,9 @@ export const flightV3 = {
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
+    // Same window for a well fling, concussion shove, aft-drop blast, or hard bounce.
+    this._launchEarnedUntil = 0;
+    this._launchProvenanceKey = null;
     this._swingCommit = null;
     // Swept-hull advisory face latch (SF-012): which advisory state the bus last saw. Derived
     // publication state only — never saved, never sim-authoritative.
@@ -198,13 +213,34 @@ export const flightV3 = {
         this._clearAngularIntent();
         this._masslineSlingUntil = 0;
         this._dashEarnedUntil = 0;
+        this._launchEarnedUntil = 0;
+        this._launchProvenanceKey = null;
         this._clearSwingCommit();
         this._resetSweptHullLatch();
         this._sanitizeAllRuntime();
         this._cancelPlayerBoostOnRestore();
         this._setFlightMode('manual', 'load');
       });
-      this.bus.on('game:started', () => { this._clearAngularIntent(); this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._clearSwingCommit(); this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('game:started', () => { this._clearAngularIntent(); this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._launchEarnedUntil = 0; this._launchProvenanceKey = null; this._clearSwingCommit(); this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('well:fling', (payload) => {
+        const id = this.state && this.state.playerId;
+        if (id == null || !payload) return;
+        if (payload.targetId !== id && payload.victimId !== id) return;
+        this._armLaunchEarned(this.state);
+      });
+      // The blast that shoves the owner — an aft drop, or the same deliberate self-launch.
+      this.bus.on('charge:detonated', (payload) => {
+        const id = this.state && this.state.playerId;
+        if (id == null || !payload || payload.ownerId !== id) return;
+        const hits = payload.hits;
+        if (!hits || typeof hits.includes !== 'function' || !hits.includes(id)) return;
+        this._armLaunchEarned(this.state);
+      });
+      this.bus.on('physics:impact', (payload) => {
+        if (!payload || payload.playerInvolved !== true) return;
+        if (!(payload.preSolveClosingSpeed >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV)) return;
+        this._armLaunchEarned(this.state);
+      });
       this.bus.on('player:death', () => { this._clearAngularIntent(); this._clearSwingCommit(); });
       this.bus.on('player:respawn', () => { this._clearAngularIntent(); this._clearSwingCommit(); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
@@ -244,6 +280,7 @@ export const flightV3 = {
 
     const player = state.entities && state.entities.get(state.playerId);
     if (player && playerFlightSimActive(state, player)) {
+      this._notePlayerLaunchProvenance(player, state);
       const active = playerFlightControlsActive(state, player);
       if (!active) {
         this._cancelPlayerBoost(player);
@@ -372,7 +409,7 @@ export const flightV3 = {
       if (boosting && burnerTopSpeedPct > 0) {
         profile = { ...profile, boostSpeedMult: positive(profile.boostSpeedMult, 1) * (1 + burnerTopSpeedPct) };
       }
-      applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
+      applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil, this._launchEarnedUntil);
       // Velocity-vectoring assist (design/FEEL_CONTRACT.md §C; docs/TUNING_JOBS.md job 1). A
       // player-only shaping seam like the feel envelope: NPC intents never carry the key, so their
       // kernel results are unchanged. Off while a rope is live (the rope owns the swing and the
@@ -588,6 +625,22 @@ export const flightV3 = {
     const result = stepPursuitSlotAssist({ dt, host: body, target: usableTarget, slot, profile });
     if (!result.active) delete entity._pursuitSlot;
     return result;
+  },
+
+  _armLaunchEarned(state) {
+    const now = finite(state && state.simTime, 0);
+    this._launchEarnedUntil = Math.max(finite(this._launchEarnedUntil, 0), now + MASSLINE_SLING_TAG_S);
+  },
+
+  // Flight steps before weapons and fields, so a hit recorded this tick is visible next step.
+  // One record arms the window once; a well that keeps pulling (a new applied tick) renews it.
+  _notePlayerLaunchProvenance(player, state) {
+    const rec = readRecentImpulseProvenance(player, state && state.tick);
+    if (!rec || !(rec.magnitude > 0) || !LAUNCH_PROVENANCE_TAGS.has(rec.tag)) return;
+    const key = `${rec.tag}:${rec.appliedTick}`;
+    if (key === this._launchProvenanceKey) return;
+    this._launchProvenanceKey = key;
+    this._armLaunchEarned(state);
   },
 
   // Player boost/dash state machine. Returns the resource-gated boosting flag to feed back into
@@ -1014,7 +1067,7 @@ export const flight = flightV3;
 /** Annotate the already-allocated player input packet with optional MASSLINE flight modifiers.
  * The kernel stays state-agnostic; feature flags and player-only reachability stay at this adapter.
  * Mutating the packet avoids adding a new allocation to the 60 Hz craft update. */
-export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, dashEarnedUntil = 0) {
+export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, dashEarnedUntil = 0, launchEarnedUntil = 0) {
   if (!input || typeof input !== 'object') return input;
   const now = finite(state && state.simTime, 0);
   const tether = state && state.player && state.player.tether;
@@ -1023,9 +1076,13 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
   // tether sling. Read the flag at CALL TIME — under node it is false, so this OR-term vanishes
   // and the expression is identical to its pre-Travel-Burn form, keeping the v3 golden still.
   const dashEarned = travelFlag('dashMomentum') && finite(dashEarnedUntil, 0) > now;
+  // Well fling, concussion, aft-drop, hard bounce. The window is 0 unless one just happened,
+  // so this term does not need the dash/throw flags that keep those goldens parked.
+  const launchEarned = finite(launchEarnedUntil, 0) > now;
   input.physicsEarnedMomentum = (massline2Flag('throw')
     && (tetherTagged || finite(eventSlingUntil, 0) > now))
-    || dashEarned;
+    || dashEarned
+    || launchEarned;
   input.earnedMomentumDecayTauS = MASSLINE_SLING_DECAY_TAU_S;
   input.earnedMomentumAssistScale = input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
 

@@ -867,7 +867,6 @@ recorded in the lane's NOW row before minting.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 381 | SFQ-B013 | Protect earned speed across every launch cause (gravity-well fling, concussion shove, aft-dropped charge, hard bounce): tag the launch as earned momentum so assist blend and boost do not brake it; owner `src/systems/flightV3.js`. Touches the feel contract ([AGENTS §12](./AGENTS.md)): tag only, no retune, prove with fixed-seed numbers | BUILD | OPEN |
 | 382 | M17 | The working battlefield (ore crusher keeps hammering while its guards fight; time the swing onto the marked tower, or shut it down first). Needs two missing capabilities first: a shutdown/death input for kill machines (`src/systems/environmentalMachinery.js`) and wreck-body damage in the collision owner (`src/systems/collisionConsequences.js`) | BUILD | OPEN - prerequisites named; no new mission engine |
 | 383 | SFQ-B175 | A creature's body expresses charging, fleeing or drifting before it touches you (`src/render/faunaVisuals.js`, `src/data/faunaMotionRead.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 | 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
