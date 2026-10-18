@@ -74,6 +74,26 @@ const CORE_SECTORS = [
       {
         id: 'f_helios_starter', type: 'ast_common_rock', countWeight: 1.0,
         center: { x: 720, z: -260 }, clusterRadius: 380, count: 42,
+        // WF-06 starter-seam loop-lock (GDD_2_0 §5.5 "mining teaches the tether; the tether
+        // feeds mining"): the scattered claim rock stays common (its yield table tops under the
+        // bulk-haul core threshold, so nothing in the scatter is ever too big to scoop), and the
+        // tether verb is taught AT the seam by three authored heavy boulders pinned into the
+        // claim. Each is an ast_metallic mass with authored hp/yield inside that type's own
+        // tables — fracturing one leaves a core chunk only the Massline can move, and the tag
+        // routes it to Ceres Refinery (no Helios station pays refine). Positions are
+        // sector-local, inside the cluster, clear of the Claim Cracker mouth (720,-420) and the
+        // claim-mark/locker props. `material: 'rock'` pins the surface tag: environmentMaterials
+        // stamps a metal surface as optic-tagged and the mining beam refuses optic-tagged bodies
+        // (systems/mining.js applyMining opticMaterial guard) — see the demo defect ledger row
+        // for that surface-tag/lattice-guard collision; ore comes from the type, not the surface.
+        boulders: [
+          { id: 'helios_boulder_mass', type: 'ast_metallic', material: 'rock',
+            pos: { x: 600, z: -300 }, radius: 20, oreHP: 860, yieldU: 30 },
+          { id: 'helios_boulder_mid', type: 'ast_metallic', material: 'rock',
+            pos: { x: 830, z: -180 }, radius: 17, oreHP: 700, yieldU: 27 },
+          { id: 'helios_boulder_rim', type: 'ast_metallic', material: 'rock',
+            pos: { x: 640, z: -120 }, radius: 15, oreHP: 600, yieldU: 25 },
+        ],
       },
       {
         id: 'f_helios_outer', type: 'ast_metallic', countWeight: 0.7,
@@ -199,9 +219,13 @@ const CORE_SECTORS = [
     factionId: 'faction_dmc', position: { x: -3, y: 2 }, worldRadius: 4200,
     industries: { mining: true, refinery: true },
     palette: SECTOR_PALETTE_CLASSES.belt,
-    // First-hop starter pocket: ordinary ambient danger stays readable while the player is still
-    // learning the corridor. Tier-2 sectors restore the full combat band and authored elites.
-    trafficPerMin: 10, enemyDensity: 0.18, enemyLevel: [1, 2],
+    // First-hop starter pocket: the ambient pool funds the authored Belt-Shadow ambush pack
+    // (zone_ceres_ambush fields 3-4 Reach incl. a detonator dart) — planZoneSpawns splits the
+    // grant round-robin across every zoned want, so a starved pool re-derives the old 1-2-ship
+    // duet no matter how the zone presence is authored. Readability stays owned by the [1,2]
+    // level band and the clustered named zones, not by a thin spawn pool. Tier-2 sectors
+    // restore the full combat band and authored elites.
+    trafficPerMin: 10, enemyDensity: 0.73, enemyLevel: [1, 2],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
     stations: [
       { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine','missions'],

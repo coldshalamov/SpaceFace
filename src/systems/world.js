@@ -2641,6 +2641,20 @@ export const world = {
           astIds.push(a.id);
         }
       }
+      // Authored heavy boulders (WF-06 starter-seam loop-lock): pinned sector-local bodies the
+      // field def names beside its scatter. No rng draws — the shared content stream (and every
+      // existing field layout) is untouched. They ride the same field-record shelf as the scatter
+      // rocks, so promotion, mining and durability all reuse the live owners.
+      if (Array.isArray(fdef.boulders)) {
+        for (const b of fdef.boulders) {
+          if (!b || !b.id || !b.pos) continue;
+          const ent = this._spawnAuthoredBoulder(sector, fdef, params, b);
+          if (ent) {
+            this._stampHomeSector(ent, sector.id);
+            astIds.push(ent.id);
+          }
+        }
+      }
       active.fields.push({ id: fdef.id, type: fdef.type, center: { x: center.x, z: center.z }, asteroidIds: astIds });
     }
   },
@@ -2748,6 +2762,47 @@ export const world = {
     if (arrangement && ent.pos && (ent.pos.x !== generatedX || ent.pos.z !== generatedZ || ent.radius !== size)) {
       arrangement.reserveRestored(ent.pos, ent.radius);
     }
+    return ent;
+  },
+
+  // An authored heavy boulder named by a field def's `boulders` row: pinned sector-local pos,
+  // authored radius/oreHP/yieldU inside its type's own tables, zero rng consumption so the
+  // sector's content stream never shifts. Shelf record (not live): the approach/promote path the
+  // scatter rocks use owns it the moment a pilot flies at it. The `boulder:<id>` slot id gives
+  // the body a durable resourceBody identity, so a mined boulder stays mined across saves.
+  _spawnAuthoredBoulder(sector, fdef, params, b) {
+    const def = AST_BY_ID.get(b.type || fdef.type) || AST_BY_ID.get('ast_common_rock');
+    const radius = Math.max(1, Number(b.radius) || (def.sizeRange || [6, 14])[1]);
+    const oreHP = Math.max(4, Math.round(Number(b.oreHP) || (def.hp || [120, 520])[1]));
+    const yieldU = Math.max(1, Math.round(Number(b.yieldU) || (def.yieldU || [8, 22])[1]));
+    const tierCap = Math.min(def.tierCap, params.tierCap != null ? params.tierCap : def.tierCap);
+    const pos = this._toGlobal({ x: Number(b.pos.x) || 0, z: Number(b.pos.z) || 0 }, sector.id);
+    const data = environmentSurfaceData(b.material || adventureMaterialFor(def.id, this.state.meta.seed, fdef.id, b.id), {
+      typeId: def.id, tier: def.tierCap, tierCap,
+      oreHP, oreHPMax: oreHP, yieldU,
+      ecologyFingerprint: params && params._ecologyFingerprint || null,
+      size: radius, pctEjected: 0, respawnSec: params.respawnSec || 120,
+      fieldId: fdef.id,
+      asteroidSlotId: `boulder:${b.id}`,
+      authoredBoulderId: b.id,
+    });
+    const ent = insertAsteroidFieldRock(this.state, {
+      pos,
+      rot: 0,
+      angVel: 0, // pinned seam bedrock — authored bodies do not tumble
+      radius,
+      mass: asteroidMass(params && params._homeSectorId, radius),
+      hull: oreHP,
+      hullMax: oreHP,
+      data,
+      homeSectorId: params && params._homeSectorId,
+    });
+    if (!ent) return null;
+    ent.data.seams = deriveAsteroidSeams(this.state.meta.seed, ent.id, ent.radius, {
+      hash32: this.helpers.hash32,
+      mulberry32: this.helpers.mulberry32,
+    });
+    this._restoreResourceBody(ent);
     return ent;
   },
 
