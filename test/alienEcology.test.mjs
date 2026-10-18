@@ -305,3 +305,67 @@ test('nursery manifest passes the world-site validator end to end', () => {
   for (const id of Object.keys(NURSERY.faunaCast)) assert.ok(FAUNA_SPECIES[id], id);
   assert.ok(faunaSpeciesById('blind_shepherd').relay);
 });
+
+// MACH recovery-intent seam: the recorder pod's collection used to call the ecology handler
+// privately, leaving the declared `alienEcology:blackBoxRecovered` listener dead — the one
+// consequence in the init block that never arrived as an event. The pickup now emits the
+// intent like every site-manifest consequence, the declared listener resolves it, and any
+// observer can subscribe the same recovery.
+test('the recorder pod collection emits the declared intent and the listener resolves it', async (t) => {
+  const { createSimulation } = await import('../src/core/sim.js');
+  const { world: worldSystem } = await import('../src/systems/world.js');
+  const sim = createSimulation({ seed: 4242, systems: [worldSystem] });
+  t.after(() => sim.dispose());
+  const state = sim.state;
+  state.playerId = 'player-1';
+  const heard = [];
+  sim.bus.on('alienEcology:blackBoxRecovered', (p) => heard.push(p));
+
+  // A foreign pod — right commodity, wrong site/payload — must not fire the objective.
+  sim.bus.emit('pickup:collected', {
+    commodityId: 'cmdty_dmc_black_box',
+    collectorId: 'player-1',
+    worldSiteId: 'world_site_other',
+    worldSitePayloadId: 'some_other_pod',
+    amount: 1,
+  });
+  assert.equal(heard.length, 0, 'foreign pod never files the nursery objective');
+
+  // The nursery's own pod, actually accepted, emits the declared intent once.
+  sim.bus.emit('pickup:collected', {
+    commodityId: 'cmdty_dmc_black_box',
+    collectorId: 'player-1',
+    worldSiteId: 'world_site_charon_cinder_nursery',
+    worldSitePayloadId: 'dmc_black_box',
+    amount: 1,
+  });
+  assert.deepEqual(heard, [{ siteId: 'cinder_nursery', worldSiteId: 'world_site_charon_cinder_nursery' }]);
+
+  // The declared listener resolved the consequences: objective, revelation, taxonomy.
+  const ae = ensureAlienEcologyState(state);
+  assert.equal(ae.sites.cinder_nursery.objectiveDone, true);
+  assert.equal(ae.revelation, 3);
+  assert.equal(ae.taxonomy.filamentousContamination, true);
+  assert.equal(ae.machineProtocol, 'observed');
+});
+
+test('a refused or zero-acceptance pickup never files the objective', async (t) => {
+  const { createSimulation } = await import('../src/core/sim.js');
+  const { world: worldSystem } = await import('../src/systems/world.js');
+  const sim = createSimulation({ seed: 4242, systems: [worldSystem] });
+  t.after(() => sim.dispose());
+  const state = sim.state;
+  state.playerId = 'player-1';
+  const heard = [];
+  sim.bus.on('alienEcology:blackBoxRecovered', (p) => heard.push(p));
+  sim.bus.emit('pickup:collected', {
+    commodityId: 'cmdty_dmc_black_box',
+    collectorId: 'player-1',
+    worldSiteId: 'world_site_charon_cinder_nursery',
+    worldSitePayloadId: 'dmc_black_box',
+    amount: 1,
+    acceptedAmount: 0, // cargo refused the whole pod — no committed acceptance, no objective
+  });
+  assert.equal(heard.length, 0);
+  assert.equal(ensureAlienEcologyState(state).sites.cinder_nursery?.objectiveDone !== true, true);
+});

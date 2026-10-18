@@ -749,7 +749,13 @@ export const world = {
           && p.worldSiteId === 'world_site_charon_cinder_nursery'
           && p.worldSitePayloadId === 'dmc_black_box'
           && successfulPickupAmount(p) > 0) {
-        handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', { siteId: 'cinder_nursery' });
+        // The consequence is a real intent, like every site-manifest consequence: the declared
+        // listener above resolves it, and the recovery is observable to anything else that
+        // subscribes. Calling the handler privately left the listener dead.
+        bus.emit('alienEcology:blackBoxRecovered', {
+          siteId: 'cinder_nursery',
+          worldSiteId: p.worldSiteId,
+        });
       }
     });
   },
