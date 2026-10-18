@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-17",
+  "updated": "2026-10-18",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,34 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "NXI-071",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "rows carry replacesName via exported fittingName; swarm armory renders the displaced def name",
-      "fingerprint": "verb=offer,subject=draft,domain=econ,layer=honesty",
-      "references": [],
-      "integration": "live",
-      "commit": "3e8f6f898",
-      "verification": "focused_green",
-      "evidence": "test/nxb-018-draft-offers.test.mjs"
-    },
-    {
-      "id": "NXI-072",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "rerollState refuses pool_exhausted before charging; seen cards pushed to back by drawRound",
-      "fingerprint": "verb=offer,subject=draft,domain=econ,layer=honesty",
-      "references": [],
-      "integration": "live",
-      "commit": "3e8f6f898",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-018-draft-offers.test.mjs"
-    },
     {
       "id": "NXI-099",
       "date": "2026-10-01",
@@ -1686,6 +1658,32 @@
       "references": [],
       "integration": "live",
       "commit": "0f61a207aa3",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ceres-ambush-pack-dart",
+      "date": "2026-10-18",
+      "wf": "WF-02",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "The first fight a new pilot goes looking for, the Ceres belt-shadow ambush on the first trade-contract route, now springs a 3-4 ship Reach pack with a detonator dart in it instead of a 1-2 generic-pirate duet.",
+      "fingerprint": "verb=fight,subject=ambush-pack-dart,sector=ceres,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "f209449d132",
+      "verification": "focused_green"
+    },
+    {
+      "id": "starter-seam-haulable-core",
+      "date": "2026-10-18",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A new pilot mining the Helios starter claim now finds three oversized metallic boulders pinned in the seam; cutting one fractures a 26u iron core too big to scoop, the TETHER TO HAUL tag arms, and the route hint points at Ceres Refinery.",
+      "fingerprint": "verb=haul,subject=metallic-boulder-core,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "f209449d132",
       "verification": "focused_green"
     }
   ],
