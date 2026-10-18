@@ -680,10 +680,12 @@ export const gameOverScreen = {
     // Each figure is a station round the ring (a dt/dd pair in its own group, so the list still reads
     // as the career record); counts and credits roll up to their value like mechanical counters.
     const rolls = typeof requestAnimationFrame === 'function';
+    const isBlank = !(playtimeS > 0);
     items.forEach(([label, value], order) => {
       const bearing = RING_STATIONS[label];
       const station = el('div', 'sf-go-st' + (bearing == null ? ' sf-go-st--hub' : '')
         + (label === 'This hull lasted' ? ' sf-go-st--lost' : ''));
+      if (isBlank && bearing != null) station.hidden = true;
       if (station.style && typeof station.style.setProperty === 'function') station.style.setProperty('--i', String(order));
       if (bearing != null && station.style && typeof station.style.setProperty === 'function') {
         const rad = (bearing * Math.PI) / 180;

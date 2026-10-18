@@ -453,7 +453,7 @@ ${GO} .sf-go-st--lost .sf-go-recap__k { color:var(--dp-danger-hot, #ff7a5c) !imp
 ${GO} .sf-go-st--lost .sf-go-recap__v { color:rgb(246 241 230) !important; }
 ${GO} .sf-go-st--hub { left:50%; top:50%; transform:translate(-50%, -50%); flex-direction:column-reverse; align-items:center; text-align:center; gap:calc(8px * var(--sv)); }
 ${GO} .sf-go-st--hub .sf-go-recap__v { font-variation-settings:"wght" 250, "wdth" 100 !important; font-weight:250 !important; font-size:calc(46px * var(--sv)) !important; }
-${GO} > .sf-go-recap.is-blank .sf-go-st:not(.sf-go-st--hub) { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; }
+${GO} > .sf-go-recap.is-blank .sf-go-st:not(.sf-go-st--hub) { display:none !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__v { ${LABEL} font-size:max(12px, calc(13px * var(--sv))) !important; letter-spacing:.3em !important; color:rgb(${BONE} / .7) !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__k { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; }
 

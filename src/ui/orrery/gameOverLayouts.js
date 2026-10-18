@@ -8,6 +8,7 @@ import { injectOrrery } from './tokens.js';
 const STYLE_ID = 'sf-orrery-gameover-layouts';
 const BONE = '236 230 216';
 const GO = 'html body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover.orr-gameover';
+const GON = 'html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover.orr-gameover';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
 const HALO = 'text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9), 0 0 18px rgb(4 6 9 / .75) !important;';
 
@@ -37,6 +38,12 @@ ${GO} .sf-go-foot .k-word.sf-go-verb[aria-disabled="true"], ${GO} .sf-go-foot .k
   background:linear-gradient(0deg, rgb(${BONE} / .1) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb[aria-disabled="true"]::before { color:rgb(${BONE} / .3) !important; }
 
+/* expanded/pseudo locale: wrap foot actions and verb text so words never clip or crowd the dial */
+${GON} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(8px * var(--sv)) !important; max-width:100% !important; }
+${GON} .sf-go-foot > .k-words > li { max-width:100% !important; min-width:0 !important; }
+${GON} .sf-go-foot .k-word.sf-go-verb { white-space:normal !important; overflow-wrap:anywhere !important; height:auto !important; max-width:100% !important; min-width:0 !important; }
+${GON} .sf-go-foot .k-word.orr-lampkey { white-space:normal !important; overflow-wrap:anywhere !important; height:auto !important; max-width:100% !important; min-width:0 !important; }
+
 /* career ring: a titled instrument, legible stations, and a shaded hub over the hull plan view */
 ${GO} .sf-go-recap__title { display:flex !important; align-items:center; justify-content:center; gap:14px;
   font-size:max(12px, calc(11.5px * var(--sv))) !important; color:rgb(${BONE} / .9) !important; ${HALO} }
@@ -50,6 +57,7 @@ ${GO} .sf-go-st .sf-go-recap__v { ${HALO} }
 ${GO} .sf-go-st--hub { padding:calc(18px * var(--sv)) calc(26px * var(--sv)) !important; border-radius:50%;
   background:radial-gradient(closest-side, rgb(4 6 9 / .82), rgb(4 6 9 / .55) 60%, rgb(4 6 9 / 0)) !important; }
 ${GO} .sf-go-st--hub .sf-go-recap__k { color:rgb(${BONE} / .9) !important; }
+${GO} > .sf-go-recap.is-blank .sf-go-st:not(.sf-go-st--hub) { display:none !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-ring__hull { opacity:.2 !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__v { color:rgb(${BONE} / .9) !important; }
 
