@@ -166,7 +166,7 @@ const APP_SOURCE_BUILD_RECEIPT = 'build/web/spaceface-release-build.json';
 const APP_SOURCE_BUILD_COOKIE = 'sf-build';
 const SOURCE_OVERLAY_SCHEMA = 'spaceface.sourceBaseline.v1';
 // Probe-only source overlays may pin the complete runtime map (index + src/**/*.js and JSON,
-// plus worker mirror modules). Keep the validator bounded while leaving room for the current
+// plus worker mirror modules and explicit asset snapshots). Keep the validator bounded while leaving room for the current
 // checkout's measured ~68 MiB map; ordinary launches never use this path.
 const SOURCE_OVERLAY_MAX_FILES = 4096;
 const SOURCE_OVERLAY_MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -198,10 +198,12 @@ function requestCookieValue(cookieHeader, name) {
 function normalizeSourceOverlayPath(value) {
   const raw = String(value || '').replace(/\\/g, '/');
   if (!raw || raw.includes('\0') || raw.startsWith('/') || /^[a-zA-Z]:/.test(raw)) return null;
+  if (raw.split('/').includes('..')) return null;
   const normalized = path.posix.normalize(raw);
   if (normalized === '.' || normalized === '..' || normalized.startsWith('../') || normalized.includes('/../')) return null;
   if (normalized === 'index.html' || normalized === 'vendor/three.module.js'
-    || normalized.startsWith('src/') || normalized.startsWith('scripts/lib/') || normalized.startsWith('styles/')) {
+    || normalized.startsWith('src/') || normalized.startsWith('scripts/lib/') || normalized.startsWith('styles/')
+    || normalized.startsWith('assets/')) {
     return normalized;
   }
   return null;
@@ -343,7 +345,7 @@ function isAllowedStateChangingRequest(req) {
  *                                      Omitted → the game boots with no mods mounted.
  * @param {string|object} [opts.sourceOverlay] Optional probe-only immutable source manifest. Only
  *                                      index.html, vendor/three.module.js, src/**, scripts/lib/**
- *                                      and styles/** entries are eligible.
+ *                                      styles/** and assets/** entries are eligible.
  * @returns {http.Server}               An http.Server (not yet listening).
  */
 function createGameServer(opts) {

@@ -19,7 +19,10 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
+
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('../lib/gameServer.cjs');
 
 export const ENVIRONMENT_EXIT = 4;
 export const STALE_BANNER = 'HARNESS ENVIRONMENT: assets stale vs HEAD';
@@ -107,7 +110,7 @@ export function gitHashFile(file) {
  * `stat(absPath)` returns `{ size }` or null when the path is missing.
  * `hash(absPath)` returns the git blob oid. Both default to the real filesystem.
  */
-export function assessTree(entries, { root, stat = null, hash = null } = {}) {
+export function assessTree(entries, { root, stat = null, hash = null, overlayEntries = null } = {}) {
   const problems = [];
   let hashed = 0;
   const doStat = stat || ((abs) => {
@@ -121,7 +124,8 @@ export function assessTree(entries, { root, stat = null, hash = null } = {}) {
   const doHash = hash || gitHashFile;
   for (const entry of entries) {
     const abs = path.join(root, entry.path);
-    const st = doStat(abs);
+    const overlay = overlayEntries?.get(entry.path);
+    const st = overlay ? { size: overlay.bytes } : doStat(abs);
     if (!st) {
       problems.push({ path: entry.path, kind: 'missing', expected: `${entry.size} ${entry.oid}`, served: 'absent' });
       continue;
@@ -134,10 +138,12 @@ export function assessTree(entries, { root, stat = null, hash = null } = {}) {
       problems.push({ path: entry.path, kind: 'size', expected: String(entry.size), served: String(st.size) });
       continue;
     }
-    if (!needsHash(entry.path, entry.size)) continue;
+    // Every pinned asset is fully checked against the requested Git tree, even when a
+    // large ordinary disk asset would receive only the existing bounded size check.
+    if (!overlay && !needsHash(entry.path, entry.size)) continue;
     hashed++;
     let oid;
-    try { oid = doHash(abs); } catch (err) {
+    try { oid = overlay ? gitBlobOid(overlay.body) : doHash(abs); } catch (err) {
       problems.push({ path: entry.path, kind: 'hash', expected: entry.oid, served: String(err && err.message || err) });
       continue;
     }
@@ -187,11 +193,16 @@ export async function checkServedSample(baseUrl, entries, samplePath = 'assets/s
   return { ok: true, problems: [] };
 }
 
-export async function verifyHarnessEnvironment({ root, rev = 'HEAD', baseUrl = null }) {
+export async function verifyHarnessEnvironment({ root, rev = 'HEAD', baseUrl = null, sourceOverlay = null }) {
   const entries = readHeadTree(root, rev).filter((entry) => isRouteServed(entry.path) && !isHarnessOutput(entry.path));
-  const disk = assessTree(entries, { root });
+  const overlay = loadSourceOverlayManifest(sourceOverlay);
+  const disk = assessTree(entries, { root, overlayEntries: overlay?.entries });
+  const headPaths = new Set(entries.map((entry) => entry.path));
+  const extraOverlay = [...(overlay?.entries.values() || [])]
+    .filter((entry) => isRouteServed(entry.path) && !headPaths.has(entry.path))
+    .map((entry) => ({ path: entry.path, kind: 'hash', expected: `listed in ${rev}`, served: 'overlay asset absent from Git tree' }));
   const served = baseUrl ? await checkServedSample(baseUrl, entries) : { ok: true, problems: [] };
-  const problems = [...disk.problems, ...served.problems];
+  const problems = [...disk.problems, ...extraOverlay, ...served.problems];
   return { ok: problems.length === 0, problems, hashed: disk.hashed, checked: entries.length, banner: problems.length ? STALE_BANNER : null };
 }
 

@@ -88,9 +88,23 @@ test('source overlay fails closed on a tampered entry', () => {
   const bad = manifest([['src/pinned.js', 'frozen-runtime']]);
   bad.files[0].contentBase64 = Buffer.from('frozen-runtimx').toString('base64');
   assert.throws(() => loadSourceOverlayManifest(bad), /hash mismatch/i);
-  assert.throws(() => loadSourceOverlayManifest({
-    ...manifest([['assets/live.bin', 'must stay canonical']]),
-  }), /allowlist/i);
+  assert.throws(() => loadSourceOverlayManifest(manifest([['secrets/live.bin', 'forbidden']])), /allowlist/i);
+});
+
+test('explicit asset overlays serve frozen bytes and reject traversal into allowed roots', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-asset-overlay-'));
+  await mkdir(path.join(root, 'assets'), { recursive: true });
+  await writeFile(path.join(root, 'assets', 'frozen.glb'), 'dirty-art-work');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const bytes = Buffer.from([0x67, 0x6c, 0x54, 0x46, 0, 1, 2, 255]);
+  const pinned = manifest([['assets/frozen.glb', bytes]]);
+  const baseUrl = await listen(t, root, pinned);
+  const response = await fetch(`${baseUrl}/assets/frozen.glb`);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+  assert.equal(response.headers.get('x-spaceface-source-file-sha256'), pinned.files[0].sha256);
+  for (const filePath of ['../assets/frozen.glb', 'assets/../src/pinned.js', 'assets/../../secret', 'assets\\..\\src\\pinned.js']) {
+    assert.throws(() => loadSourceOverlayManifest(manifest([[filePath, 'forbidden']])), /allowlist/i, filePath);
+  }
 });
 
 test('only the exact Three vendor module can be pinned and served with verified frozen bytes', async (t) => {

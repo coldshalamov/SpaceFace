@@ -1055,7 +1055,7 @@ async function assertHarnessEnvironment(baselineSource = null) {
   const server = await startBenchServer({ sourceOverlay: baselineSource?.path || null });
   let code = null;
   try {
-    const env = await verifyHarnessEnvironment({ root: ROOT, baseUrl: server.baseUrl });
+    const env = await verifyHarnessEnvironment({ root: ROOT, baseUrl: server.baseUrl, sourceOverlay: baselineSource?.path || null });
     if (!env.ok) {
       const commit = (() => { try { return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch { return 'HEAD'; } })();
       const dir = path.join(ROOT, 'scratch/player-truth/environment');
