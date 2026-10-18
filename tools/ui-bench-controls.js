@@ -12,8 +12,8 @@ const PRIMARY_CONTROLS = {
     ['.sxb-help', 'HELP'],
     ['.sx-receipt', 'TRADE CLEARED'],
   ],
-  pause: [['.orr-pause [data-action]', 'Pause menu']],
-  mainMenu: [['.orr-title [data-action]', 'Title menu']],
+  pause: [['.orr-pause [data-action], .orr-pause--phone [data-action]', 'Pause menu']],
+  mainMenu: [['.orr-title [data-action], .orr-title--phone [data-action]', 'Title menu']],
 };
 
 export function measureControlReachability(doc, surface) {
@@ -23,6 +23,12 @@ export function measureControlReachability(doc, surface) {
     for (const el of doc.querySelectorAll(selector)) {
       // The status region exists before a trade, but is deliberately absent from the picture.
       if (name === 'TRADE CLEARED' && el.hidden) continue;
+      // The product removed this action on purpose (Quit in a browser, Continue with no save): the
+      // `hidden` property on it or a containing row is intent. CSS that hides an applicable action
+      // is still a finding below.
+      let omitted = false;
+      for (let node = el; node && node.nodeType !== 9; node = node.parentElement || node.parentNode) if (node.hidden === true) { omitted = true; break; }
+      if (omitted) continue;
       const label = (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 48);
       const prefix = `"${name}${label ? ` ${label}` : ''}" at ${viewport}`;
       const style = view.getComputedStyle(el);

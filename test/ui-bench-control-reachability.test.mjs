@@ -85,9 +85,33 @@ test('absent and not-yet-present receipts do not create findings; visible receip
 });
 
 test('title and pause menu primaries use the same reachability rules', () => {
-  for (const [surface, selector] of [['mainMenu', '.orr-title [data-action]'], ['pause', '.orr-pause [data-action]']]) {
+  for (const [surface, selector] of [['mainMenu', '.orr-title [data-action], .orr-title--phone [data-action]'], ['pause', '.orr-pause [data-action], .orr-pause--phone [data-action]']]) {
     const { doc, add } = fixture();
     add(selector, 'Resume', [520, 450, 100, 26]);
     assert.match(measureControlReachability(doc, surface)[0], /Resume.*700×460.*viewport/);
   }
+});
+
+test('an action the product removed on purpose (hidden row) is not a fault, but CSS-hiding an applicable action is', () => {
+  const { doc, add } = fixture();
+  const quit = add('.orr-title [data-action], .orr-title--phone [data-action]', 'Quit');
+  quit.hidden = true;
+  assert.deepEqual(measureControlReachability(doc, 'mainMenu'), []);
+  const row = { nodeType: 1, hidden: true };
+  const inRow = fixture();
+  const cont = inRow.add('.orr-title [data-action], .orr-title--phone [data-action]', 'Continue');
+  cont.parentElement = row;
+  assert.deepEqual(measureControlReachability(inRow.doc, 'mainMenu'), [], 'a hidden containing row is the same intent');
+  const css = fixture();
+  css.add('.orr-title [data-action], .orr-title--phone [data-action]', 'New Game').style.display = 'none';
+  assert.match(measureControlReachability(css.doc, 'mainMenu')[0], /Title menu New Game.*style prevents reachability/);
+});
+
+test('phone title and pause menus are measured: an off-frame phone Resume is a finding', () => {
+  const pause = fixture();
+  pause.add('.orr-pause [data-action], .orr-pause--phone [data-action]', 'Resume', [20, 470, 120, 40]);
+  assert.match(measureControlReachability(pause.doc, 'pause')[0], /Pause menu Resume.*viewport/);
+  const title = fixture();
+  title.add('.orr-title [data-action], .orr-title--phone [data-action]', 'New Game', [20, 455, 120, 40]);
+  assert.match(measureControlReachability(title.doc, 'mainMenu')[0], /Title menu New Game.*viewport/);
 });
