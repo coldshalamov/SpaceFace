@@ -159,7 +159,7 @@ test('C4-SEM-06 computeRoute respects discovery; full chart yields 24-reachable 
     const route = world.computeRoute(s.id, 'hops');
     if (route && route.legs && route.legs.length) routed += 1;
   }
-  assert.equal(routed, 23, 'from Helios with full discovery, every other region must be routable');
+  assert.equal(routed, 24, 'from Helios with full discovery, every other region must be routable');
 });
 
 test('C4-SEM-07 continuous enter does not increment visitedCount; intentional does', () => {
