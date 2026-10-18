@@ -335,6 +335,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     staleShellCommandCount: 0,
     duplicateShellCommandCount: 0,
     invalidShellCommandCount: 0,
+    nativeFocusInputReleaseCount: 0,
     timestampResetCount: 0,
     restoreFrameCount: 0,
     postRestoreFrameCount: 0,
@@ -750,6 +751,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       return;
     }
 
+    const previousShellState = shellState;
     shellSequence = command.sequence;
     shellState = command.state;
     diagnostics.shellSequence = shellSequence;
@@ -761,6 +763,20 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       try {
         syncFocusLossHold(state, command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED);
       } catch (_) { /* resume is idempotent */ }
+    }
+    // Native Electron focus loss can omit the DOM blur/focus pair, so the input
+    // owner's own blur release may never fire — and foreground-occluded still
+    // presents, so the suspend boundary never runs either. A key released
+    // while the window was unfocused would read held again on resume. The
+    // accepted occluded edge is the blur release, once per transition into it;
+    // hidden/suspended release at the non-presenting boundary as before, and a
+    // re-reported occluded state or a rejected command never reaches this.
+    if (command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
+      && previousShellState !== LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED) {
+      diagnostics.nativeFocusInputReleaseCount++;
+      releaseHeldControls(typeof command.reason === 'string' && command.reason
+        ? command.reason
+        : 'shell-focus-loss');
     }
     synchronizeLifecycle(typeof command.reason === 'string' && command.reason
       ? command.reason
