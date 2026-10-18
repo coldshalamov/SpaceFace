@@ -13,6 +13,11 @@ import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrc
 // candidate and validates (fmt → version ≤ CURRENT → checksum → migrate) BEFORE any destructive
 // restore, so a bad save aborts with save:error and leaves live state untouched.
 import { fnv1a } from './checksum.js';
+import { DEFAULT_CONFIG as CHRONICLER_CONFIG, MAX_RETAINED_FACTS } from '../chronicler/schema.js';
+import {
+  PROVENANCE_CHAIN_CAP, PROVENANCE_NODE_CAP, PROVENANCE_OPEN_INCIDENT_CAP,
+} from '../systems/provenanceLedger.js';
+import { FENCES } from '../data/fences.js';
 // Three already ships fflate (MIT). The existing gzip save wrapper lets the exit lane
 // compress synchronously when localStorage is full; unload cannot await a worker.
 import { gzipSaveEnvelopeSync, decodeSaveEnvelopeForWriter } from './saveSyncGzip.js';
@@ -193,6 +198,20 @@ const AUTOSAVE_SLOT = 'auto';
 // ample room for player-owned persistent actors without allowing a save to manufacture an
 // unbounded live entity population during restore.
 export const SAVE_IMPORT_MAX_BYTES = 12 * 1024 * 1024;
+// UTF-8 allowances per retained record, including its JSON keys and graph references.
+// Reserve 1 MiB for the focused soak's non-memory state; this is not a cap on possessions
+// or the physics snapshot. The independent import/write ceiling still covers the full save.
+const SAVE_MEMORY_MAX_BYTES = Object.freeze({
+  chronicler: (MAX_RETAINED_FACTS + CHRONICLER_CONFIG.maxPending) * 1024
+    + CHRONICLER_CONFIG.maxSeen * 128 + CHRONICLER_CONFIG.maxProfiles * 1024
+    + CHRONICLER_CONFIG.maxLegends * 1024,
+  provenance: PROVENANCE_CHAIN_CAP * (PROVENANCE_NODE_CAP * 1024 + 512)
+    + PROVENANCE_OPEN_INCIDENT_CAP * 256,
+  fences: FENCES.length * 1024,
+});
+const SAVE_MEMORY_TEXT_ENCODER = new TextEncoder();
+export const SAVE_MEMORY_SOAK_MAX_BYTES = 1024 * 1024
+  + SAVE_MEMORY_MAX_BYTES.chronicler + SAVE_MEMORY_MAX_BYTES.provenance + SAVE_MEMORY_MAX_BYTES.fences;
 export const SAVE_IMPORT_MAX_DEPTH = 64;
 export const SAVE_IMPORT_MAX_NODES = 200_000;
 export const SAVE_IMPORT_MAX_COLLECTION_ITEMS = 50_000;
@@ -925,7 +944,7 @@ export const save = {
       ['nemesisDeployment', () => this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null)],
       ['enemyMind', () => clonePlain(state.enemyMind || null)],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
-      ['provenance', () => this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {})],
+      ['provenance', () => this._serializeBoundedMemory('provenance')],
       ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
       ['bandRadio', () => this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {})],
       ['v2Flavor', () => this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {})],
@@ -938,7 +957,7 @@ export const save = {
       ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
       ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
       // Genie 01: world memory + inbox (inbox is part of the save; serialize() does not drain it).
-      ['chronicler', () => this._callSerialize('chronicler') || clonePlain(state.chronicler || {})],
+      ['chronicler', () => this._serializeBoundedMemory('chronicler')],
       // The chart's own memory: wreck fields you witnessed, couriers still missing, and the
       // world-beat dedupe keys (starved shelves, claim legs, day snapshot, chronicler-legend
       // day). Without this section every save/load wipes the marks the galaxy map draws and
@@ -1101,7 +1120,7 @@ export const save = {
     yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     yield 'serialize:lossLedger';
-    data.provenance = this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {});
+    data.provenance = this._serializeBoundedMemory('provenance');
     yield 'serialize:provenance';
     data.factionPresence = this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {});
     yield 'serialize:factionPresence';
@@ -1121,7 +1140,7 @@ export const save = {
     yield 'serialize:signalInvestigation';
     data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
     yield 'serialize:recoveryEncounters';
-    data.chronicler = this._callSerialize('chronicler') || clonePlain(state.chronicler || {});
+    data.chronicler = this._serializeBoundedMemory('chronicler');
     yield 'serialize:chronicler';
     data.tensionDirector = clonePlain(state.tensionDirector || null);
     yield 'serialize:tensionDirector';
@@ -1411,16 +1430,49 @@ export const save = {
     return sanitizeNavState(navWithStableEntityIdentity(this.state));
   },
 
+  _serializeBoundedMemory(key) {
+    const owner = key === 'provenance' ? 'provenanceLedger' : key;
+    const snapshot = this._callSerialize(owner) || clonePlain(this.state[key] || {});
+    if (this._rollbackCaptureActive) return snapshot;
+    // Owners return detached snapshots. Never invoke the live archive's pruning policy here.
+    const fields = key === 'chronicler'
+      ? [['stories', 'updatedAt'], ['seen'], ['recallKeys'], ['profiles', 'lastAt'],
+        ['legends', 'formedAt'], ['pending', 't']]
+      : [['chains', 't', -1]]; // Provenance stores newest first, including same-tick chains.
+    trimSaveMemory(snapshot, SAVE_MEMORY_MAX_BYTES[key], fields, () => {
+      if (key === 'chronicler') {
+        if (!snapshot.stories?.some(s => s.id === snapshot.activeWanted)) snapshot.activeWanted = null;
+      } else {
+        const ids = new Set((snapshot.chains || []).map(c => c.id));
+        for (const [id, info] of Object.entries(snapshot.openIncidents || {})) {
+          if (!ids.has(info.chainId)) delete snapshot.openIncidents[id];
+        }
+      }
+    });
+    return snapshot;
+  },
+
   /** Campaign-director durable subset. Never live encounters/squads/entity ids (§ownership). */
   _serializeEncounterDirector() {
     const d = this.state.encounterDirector;
     if (!d || typeof d !== 'object') return {};
-    return clonePlain({
+    const snapshot = clonePlain({
       named: d.named || {},
       receipts: Array.isArray(d.receipts) ? d.receipts.slice(-12) : [],
       cooldowns: d.cooldowns || {},
       stats: d.stats || {},
     });
+    const fences = snapshot.stats.fences;
+    if (fences?.byId && !this._rollbackCaptureActive) {
+      const rows = Object.entries(fences.byId).sort((a, b) =>
+        (a[1]?.lastChangeEpoch || 0) - (b[1]?.lastChangeEpoch || 0)
+        || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+      for (const [id] of rows) {
+        if (SAVE_MEMORY_TEXT_ENCODER.encode(JSON.stringify(fences)).byteLength <= SAVE_MEMORY_MAX_BYTES.fences) break;
+        delete fences.byId[id];
+      }
+    }
+    return snapshot;
   },
 
   _serializeFlight() {
@@ -8637,6 +8689,29 @@ function buildPlayerChunkedSaveWorkerSource(source) {
     throw new Error('save worker encode protocol insertion point is missing');
   }
   return String(source).replace(encodePartNeedle, playerProtocol + encodePartNeedle);
+}
+
+// Drop whole records, oldest first within each collection (history before the current inbox).
+// Measure each removed row once; re-stringifying a full archive for every eviction is quadratic.
+function trimSaveMemory(snapshot, maxBytes, fields, repair) {
+  let size = SAVE_MEMORY_TEXT_ENCODER.encode(JSON.stringify(snapshot)).byteLength;
+  if (size <= maxBytes) return;
+  for (const [key, timeKey, tieOrder = 1] of fields) {
+    const rows = snapshot[key];
+    if (!Array.isArray(rows)) continue;
+    const oldest = rows.map((row, index) => ({ row, index }))
+      .sort((a, b) => (timeKey ? (a.row[timeKey] || 0) - (b.row[timeKey] || 0) : 0)
+        || tieOrder * (a.index - b.index));
+    const dropped = new Set();
+    for (const { row, index } of oldest) {
+      if (size <= maxBytes) break;
+      dropped.add(index);
+      size -= SAVE_MEMORY_TEXT_ENCODER.encode(JSON.stringify(row)).byteLength + (rows.length > dropped.size ? 1 : 0);
+    }
+    snapshot[key] = rows.filter((_, index) => !dropped.has(index));
+    repair();
+    if (size <= maxBytes) break;
+  }
 }
 
 // Deep-clone to plain JSON, stripping functions / Maps / Sets / THREE objects and sanitizing
