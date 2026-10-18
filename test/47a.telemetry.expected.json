@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "fdb01c20285e067941fc8064569fee2e06c1728a22644143c7866661855ea6c1",
+    "authoritativeHash": "ad18c68bb6c24f0fbd9d76f9ec607737b21e6daca3dd2d3bcfe82d5c733afaa5",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -232,6 +232,9 @@
     "2026-10-16 native-save version-only migration: exact public base b602ddeb reproduces the prior authoritative hash; PR424 merge00a627b8 reproduces the CI-observed hash.",
     "Full paired base/head snapshots differ only at $.meta.version (15 to16). Every entity, native-physics and economy/gameplay field is unchanged; metrics and trace counts match.",
     "Changing only meta.version in either direction reproduces the exact old/new canonical hash. Seed47/tick720 runs retain the stock canonical-baseline/reload equivalence assertions.",
-    "Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact canonical hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged."
+    "Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact canonical hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged.",
+    "2026-10-18 native-save version-only migration: AIR-01 raised the save version 17 to 18. Bisect over 37d1af00f27..HEAD pins the drift to bd013cbc0f2; every earlier commit reproduces the prior hash.",
+    "Full paired base/head snapshots (inspect --tick 720 --reload-at 600) differ only at $.meta.version (17 to 18); metrics, trace counts and event families are identical for both controllers and reload points 60 and 600.",
+    "The prior authoritativeHash was fdb01c20285e067941fc8064569fee2e06c1728a22644143c7866661855ea6c1."
   ]
 }
