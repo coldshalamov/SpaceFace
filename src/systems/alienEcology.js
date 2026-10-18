@@ -1111,16 +1111,26 @@ function ruptureCarrier(world, e, rec, species, pos) {
 }
 
 // Reveal labels follow knowledge, not distance (doc 03 scanner language).
+// A fitted bio-scan head counts on the same ladder as earned revelation.
 export function refreshAlienLabels(world) {
   const state = world && world.state;
   if (!state || !state.entityList) return;
   const ae = ensureAlienEcologyState(state);
+  const tier = effectiveRevelation(state);
   for (const e of indexedTypeScan(state, 'fauna')) {
     if (!e || !e.data || !e.data.ecology) continue;
+    // A sector scan refreshes the whole cast. A sail still edge-on stays debris
+    // until a scan completes on that body — this pass must not peel it.
+    if (e.data.ecology.disguised === true) continue;
     const species = faunaSpeciesById(e.data.ecology.speciesId);
     if (!species) continue;
-    e.data.scanLabel = scannerBiologyLabel(effectiveRevelation(state), species.signature);
-    e.data.name = ae.revelation >= 2 ? species.name : e.data.name;
+    const label = scannerBiologyLabel(tier, species.signature);
+    e.data.scanLabel = label;
+    // Species names open at effective R2 only. R0/R1 stay on the scanner term.
+    // Hatchlings keep their marker so a field refresh does not age them.
+    if (tier >= 2) e.data.name = species.name;
+    else if (e.data.ecology.juvenile === true) e.data.name = `${label} (juvenile)`;
+    else e.data.name = label;
     // AE-127 (G12): a fitted Relay Needle resolves coherent emitters — relay organisms
     // report their broadcast status instead of a bare contact tier.
     if (species.relay && fittedFlag(state, 'relayNeedle')) {
