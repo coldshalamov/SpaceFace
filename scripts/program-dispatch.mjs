@@ -34,12 +34,14 @@ function usage() {
   node scripts/program-dispatch.mjs --list [--root PATH]
 
 --next is the plan front door. It walks a fixed precedence chain — §6 demo defect ledger, stale
-NOW.md rows (adoption), ready dispatch units, ready legacy packets, free §1C board seams, §M
-reservoir-admission rows, finished vm-drop jobs, and finally the inference catalog (gated: it
-dispatches only with --lane=inference under an explicit owner INFERENCE instruction). It returns
-one real, actionable unit, or an honest all-closed. It never errors and never dead-ends while any
-surface is open; a surface that fails to parse is skipped with its error recorded in "skipped".
---status prints every surface's count on one screen.
+NOW.md rows (adoption), landed reviews (design/program/LANDED_REVIEW.md), ready dispatch units,
+ready legacy packets, ledger change-loops, free §1C board seams, §M reservoir-admission rows,
+finished vm-drop jobs, and finally the inference catalog (gated: it dispatches only with
+--lane=inference under an explicit owner INFERENCE instruction). Eight or more open landed
+reviews jump ahead of the defect ledger. It returns one real, actionable unit, or an honest
+all-closed. It never errors and never dead-ends while any surface is open; a surface that fails
+to parse is skipped with its error recorded in "skipped". --status prints every surface's count
+on one screen.
 
 --ready lists every ready dispatch unit of the queue surface alone. --id and --list are explicit
 queue queries. A drained queue is not an empty plan: the chain moves to the next surface. Never

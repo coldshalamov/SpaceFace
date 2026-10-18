@@ -151,6 +151,7 @@ test('the precedence chain names every leg in dispatch order', () => {
   assert.deepEqual([...PLAN_CHAIN], [
     'defect-ledger',
     'now-adoption',
+    'landed-review',
     'queue-unit',
     'legacy-packet',
     'ledger-change-loop',
@@ -386,4 +387,97 @@ test('planStatus is honest when every ungated surface is closed', () => {
   assert.equal(status.surfaces.inference.open, 0);
   assert.equal(status.surfaces.inference.claimed, 1);
   assert.equal(status.surfaces.board.openRowCount, 0);
+  assert.deepEqual(status.surfaces.review.open, []);
+});
+
+function writeReviews(root, rows) {
+  fs.writeFileSync(path.join(root, 'design', 'program', 'LANDED_REVIEW.md'), [
+    '# Landed review',
+    '',
+    '## Open reviews',
+    '',
+    '| Id | Commit | Task | What to re-check | Status |',
+    '|---|---|---|---|---|',
+    ...rows,
+    '',
+  ].join('\n'));
+}
+
+test('one open review is the next task after defects and stale rows, ahead of new features', () => {
+  const root = makeRoot();
+  writeLedger(root, [
+    '| D903 | route Z | diagnosed | Menu | DIAGNOSTIC only |',
+    '| D902 | route Y | a standing perf loop | Fly | open as a change-loop: pick a site |',
+  ]);
+  writeBoard(root);
+  writeReviews(root, [
+    '| R-aaa1111 | aaa1111 | seam hand row 12 | tether snap stays taught | OPEN |',
+    '| R-bbb2222 | bbb2222 | already looked at | nothing | CLOSED |',
+  ]);
+
+  const { unit } = nextPlanUnit(root, {});
+  assert.equal(unit.source, 'landed-review');
+  assert.equal(unit.id, 'R-aaa1111');
+  assert.equal(unit.commit, 'aaa1111');
+  assert.match(unit.instruction, /Do not add another review row/);
+  assert.match(unit.instruction, /push origin master/);
+
+  writeLedger(root, [
+    '| D901 | route X | a broken thing a player hits | Open the game | OPEN 2026-10-18. Fix the thing. |',
+  ]);
+  const defectFirst = nextPlanUnit(root, {});
+  assert.equal(defectFirst.unit.source, 'defect-ledger');
+  assert.equal(defectFirst.unit.id, 'D901');
+  assert.match(defectFirst.unit.instruction, /LANDED_REVIEW\.md/);
+});
+
+test('eight open reviews jump ahead of a player-facing defect', () => {
+  const root = makeRoot();
+  writeLedger(root, [
+    '| D901 | route X | a broken thing a player hits | Open the game | OPEN 2026-10-18. Fix the thing. |',
+  ]);
+  writeBoard(root);
+  const rows = [];
+  for (let i = 0; i < 8; i += 1) {
+    const hex = i.toString(16).padStart(7, 'a');
+    rows.push(`| R-${hex} | ${hex} | task ${i} | re-check ${i} | OPEN |`);
+  }
+  writeReviews(root, rows);
+
+  const { unit } = nextPlanUnit(root, {});
+  assert.equal(unit.source, 'landed-review');
+  assert.equal(unit.id, 'R-aaaaaa0');
+
+  const status = planStatus(root, {});
+  assert.equal(status.plan, 'ready');
+  assert.equal(status.surfaces.review.open.length, 8);
+  assert.equal(status.next.source, 'landed-review');
+});
+
+test('a missing review file is an empty list, and a file without the section is a skip', () => {
+  const root = makeRoot();
+  writeLedger(root, [
+    '| D903 | route Z | diagnosed | Menu | DIAGNOSTIC only |',
+  ]);
+  writeBoard(root);
+  const missing = nextPlanUnit(root, {});
+  assert.equal(missing.unit.source, 'board-seam');
+  assert.ok(missing.skipped.some((entry) => entry.leg === 'landed-review' && entry.reason === 'empty'));
+
+  fs.writeFileSync(path.join(root, 'design', 'program', 'LANDED_REVIEW.md'), '# no section\n');
+  const broken = nextPlanUnit(root, {});
+  assert.equal(broken.unit.source, 'board-seam');
+  assert.ok(broken.skipped.some((entry) => entry.leg === 'landed-review' && entry.reason.startsWith('error:')));
+});
+
+test('a board seam tells the agent to push and file the second look', () => {
+  const root = makeRoot();
+  writeLedger(root, [
+    '| D903 | route Z | diagnosed | Menu | DIAGNOSTIC only |',
+  ]);
+  writeBoard(root);
+  const { unit } = nextPlanUnit(root, {});
+  assert.equal(unit.source, 'board-seam');
+  assert.match(unit.instruction, /push origin master/);
+  assert.match(unit.instruction, /LANDED_REVIEW\.md/);
 });

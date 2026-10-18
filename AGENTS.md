@@ -16,7 +16,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 
 | Task | Start here |
 |---|---|
-| **No instruction, "next", "go", or "make it better"** | **`node scripts/program-dispatch.mjs --next`** — the plan front door. It always returns one real unit (defect ledger → stale `NOW.md` rows → queue → ledger change-loops → free §1C seam → §M admission → vm-drop; the inference catalog only with `--lane=inference`) or an honest all-closed, and never errors while any surface is open; `--status` shows every surface on one screen. Claim what it names on the board (`build_map.md` §1C) and finish it — a drained queue advances the chain, it is never an empty plan |
+| **No instruction, "next", "go", or "make it better"** | **`node scripts/program-dispatch.mjs --next`** — the plan front door. It always returns one real unit (defect ledger → stale `NOW.md` rows → landed reviews → queue → ledger change-loops → free §1C seam → §M admission → vm-drop; the inference catalog only with `--lane=inference`; eight or more open landed reviews jump ahead of the defect ledger) or an honest all-closed, and never errors while any surface is open; `--status` shows every surface on one screen. Claim what it names on the board (`build_map.md` §1C) and finish it — a drained queue advances the chain, it is never an empty plan |
 | Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
 | Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
 | Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
@@ -64,8 +64,8 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   turn one exact-path collision into ownership of a subsystem, packet, or plan.
 - Never run destructive tree-wide `reset`, `restore`, `checkout`, `clean`, or `stash`. Preserve
   unrelated edits. `git add -N` new files immediately. Stay on the current branch unless the user
-  asked to switch. Push only the owned branch by explicit name. Commit finished owned files as you
-  go - do not wait for blanket authorization.
+  asked to switch. Commit finished owned files as you go, then push them in the same sitting.
+  The ship rule below is the requirement. Do not wait for a review or for blanket authorization.
 - **No worktrees - keep one checkout.** Isolate lanes by file and by pathspec commit, never by a
   second checkout: leftover worktrees and temp copies took 117 GB of this disk on 2026-08-23, and
   zombie checkouts keep resurfacing (two more on 2026-10-04). If a side checkout is truly
@@ -127,6 +127,28 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   paths it claims, and never delete a cloud lane's artifacts because it looks idle.
   Full contract: [`design/program/VM_LANES.md`](./design/program/VM_LANES.md).
 
+**Ship the commit, then list the second look (owner, 2026-10-18).** Cloud agents read
+`origin/master`. A commit that stays on this machine is invisible to them, so it is not finished.
+
+- When a unit is finished, commit the exact paths and push `origin master` by name in the same
+  sitting. Fetch first. If the remote moved, merge (`pull.rebase` is false — never rebase or
+  reset this checkout), then push. If the push is rejected, fetch and merge again, then push.
+  Never `--force`. Never push someone else's branch or an open pull-request branch.
+- Push the finished local master commits, not only the one you just made. Leave other agents'
+  uncommitted files unstaged. Do not wait for a clean tree, a review, or a later sitting.
+- If the unit came from the build map or from `program-dispatch --next`, add one row to
+  [`design/program/LANDED_REVIEW.md`](design/program/LANDED_REVIEW.md) in that same push. The row
+  names the commit, the task, and the one claim a second agent should re-check. You do not do
+  that review in this sitting. The push does not wait for it. A change-loop leg, a merge commit,
+  and the review itself do not add a row.
+- The next agent takes the oldest open review before starting a new feature. A player-facing
+  defect still comes first, then a stale `NOW.md` row, then the review, so the game keeps getting
+  fixed. When eight or more reviews are waiting, the oldest one jumps ahead of everything,
+  including defects — clear one. That cap is what keeps the list from becoming a second backlog.
+- The reviewer reads the named commit and deletes the row in the commit that finishes the look.
+  A small miss is fixed and pushed in that sitting. A bigger player-facing break gets one
+  demo-ledger row. A review does not file another review.
+
 Detail: [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md).
 
 ## 4. Authority and current work
@@ -147,7 +169,7 @@ for those artifacts.
 needs a file, system, or asset that does not exist yet — and that is work: build the missing thing.
 Nothing else blocks: not a lane or NOW row naming different files, not a queue state, not a parked
 acceptance leaf, not the absence of a quiet machine, not a capture plan, not a review that has not
-run yet, not "the frontend lane owns that area" (see §1: task-needed frontend edits are allowed). A
+run yet (the landed-review row in §3 is that later look, and it never holds the push), not "the frontend lane owns that area" (see §1: task-needed frontend edits are allowed). A
 "blocked" report that cannot name the exact missing file is a misreport — fix the report or take the
 next unit. Ceremony never outranks the game: skip the ritual, keep the build moving.
 

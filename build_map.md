@@ -538,11 +538,12 @@ work: admitting the next slice of reservoir scope into real numbered rows.
 A row is already a chunk: a planbank batch, a next-wave build, a fable batch, or one admission
 slice. Do not split it into captions, and do not count a catalog line as one of the ten.
 
-**The front door (2026-10-12):** `node scripts/program-dispatch.mjs --next` is the one command an
+**The front door (2026-10-18):** `node scripts/program-dispatch.mjs --next` is the one command an
 agent runs to know its job. It walks a fixed precedence chain — §6 demo defect ledger → stale
-`NOW.md` rows (adoption) → ready queue units → ready legacy packets → ledger change-loops → free
-§1C seams → §M reservoir-admission rows → finished vm-drop jobs → the inference catalog (gated:
-only with `--lane=inference` under an owner INFERENCE instruction) — and returns one real,
+`NOW.md` rows (adoption) → landed reviews → ready queue units → ready legacy packets → ledger
+change-loops → free §1C seams → §M reservoir-admission rows → finished vm-drop jobs → the
+inference catalog (gated: only with `--lane=inference` under an owner INFERENCE instruction).
+Eight or more open landed reviews jump ahead of the defect ledger. It returns one real,
 actionable unit. It never errors and never dead-ends while any surface is open: a drained queue
 advances the chain instead of reporting emptiness, and an unreadable surface is skipped with its
 error recorded. `--status` prints every surface's count on one screen — the honest answer to
@@ -550,7 +551,8 @@ error recorded. `--status` prints every surface's count on one screen — the ho
 
 - **A plan is real only as a row on a sanctioned surface**: this board (§1C rows + §M admission
   rows), the packet queue (`design/program/roadmap/program-queue.json`), the §6 demo defect
-  ledger, `NOW.md` mutation rows, and the reservoir catalogs the §M rows admit from. Anything
+  ledger, the landed-review list ([`design/program/LANDED_REVIEW.md`](./design/program/LANDED_REVIEW.md)),
+  `NOW.md` mutation rows, and the reservoir catalogs the §M rows admit from. Anything
   else is a note, not a plan.
 - **Plans move between surfaces only by admission.** A catalog candidate becomes a numbered row —
   or closes with evidence — through its §M row. A plan list is retired only by migrating its open
@@ -559,7 +561,7 @@ error recorded. `--status` prints every surface's count on one screen — the ho
   shows open surfaces, that is a defect: fix it in the same sitting (total-fix mode).
   `check:plan-integrity` in the fast gate fails the build when the front door cannot answer.
 
-### The whole remaining count — read this first (refreshed 2026-10-17)
+### The whole remaining count — read this first (refreshed 2026-10-18)
 
 Everything unfinished, on one screen. A drained queue or a column of `done` seams is **not** a
 finished plan — the board is finished only when every number in this table is zero.
@@ -567,6 +569,7 @@ finished plan — the board is finished only when every number in this table is 
 | Surface | Remaining |
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **13 open defects** — D188, D191, D199, D198, D130, D213, D215, D216, D217, D218, D219, D220, D221 — plus standing import guard D175 |
+| Landed review (`design/program/LANDED_REVIEW.md`) | **0 open** — a second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
 | Numbered board rows (§A–§M tables below) | **3 open** — quiet-host session 284; the two render-animation briefs 383 and 384 (creature body language, precursor machine deployment; claimed by devin-graphics). Rows 381, 382 and 385–389 landed 2026-10-18. Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
@@ -648,6 +651,12 @@ How to finish a row:
 3. A defect row also deletes its ledger row in the fixing commit (ledger law, AGENTS §7).
 4. New dispatchable work is appended at the bottom of its kind-group with the next number,
    and its number is added to the seam that owns its files.
+5. Commit the exact paths and push `origin master` by name in the same sitting (AGENTS.md §3).
+   A review does not delay the push. Cloud agents are reading the remote.
+6. Add one OPEN row to [`design/program/LANDED_REVIEW.md`](./design/program/LANDED_REVIEW.md)
+   in that same push: `R-` plus the commit's first 7 characters, the task, and the claim a
+   later agent should re-check. Do not review it yourself. The next agent deletes the row by
+   doing the second look. Closing a review does not add another row.
 
 Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-drop package batch ·
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·

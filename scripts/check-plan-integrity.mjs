@@ -9,8 +9,9 @@
 //   1. The queue control plane loads. Expired evidence (a committed claim whose proof object was
 //      lost to history maintenance) is allowed and counted; a LIVE contradiction (commit resolves
 //      but is not an ancestor of HEAD) is not.
-//   2. Every sanctioned plan surface parses: §6 defect ledger, NOW.md liveness, the §1C board,
-//      the §M admission rows, the inference catalog. vm-drop is optional (fresh clones lack it).
+//   2. Every sanctioned plan surface parses: §6 defect ledger, NOW.md liveness, the landed-review
+//      list, the §1C board, the §M admission rows, the inference catalog. vm-drop is optional
+//      (fresh clones lack it).
 //   3. The §1C board has no drift (orphans, missing seam rows, duplicated rows).
 //   4. The front door answers: while any ungated surface is open, `--next` must return a real
 //      unit, and it must never return the gated inference surface without the lane flag.
@@ -28,6 +29,7 @@ import {
   nextPlanUnit,
   readDefectLedger,
   readInference,
+  readLandedReview,
   readStaleAdoptions,
   readVmDrop,
 } from './lib/planFrontDoor.mjs';
@@ -105,7 +107,21 @@ try {
   problems.push(`§1C board unreadable: ${error.message}`);
 }
 
-// 2d. Inference catalog parses.
+// 2d. Landed-review list parses. A missing file is a broken front door; an empty table is fine.
+let reviews = { open: [] };
+const reviewFile = path.join(ROOT, 'design', 'program', 'LANDED_REVIEW.md');
+if (!fs.existsSync(reviewFile)) {
+  problems.push('landed review ledger is missing: design/program/LANDED_REVIEW.md');
+} else {
+  try {
+    reviews = readLandedReview(ROOT);
+    notes.push(`landed review: ${reviews.open.length} open`);
+  } catch (error) {
+    problems.push(`landed review unreadable: ${error.message}`);
+  }
+}
+
+// 2e. Inference catalog parses.
 try {
   const inference = readInference(ROOT);
   notes.push(`inference catalog: ${inference.open} OPEN, ${inference.claimed} CLAIMED (gated surface)`);
@@ -113,7 +129,7 @@ try {
   problems.push(`inference catalog unreadable: ${error.message}`);
 }
 
-// 2e. vm-drop is optional.
+// 2f. vm-drop is optional.
 const vmDrop = readVmDrop(ROOT);
 if (vmDrop.jobs.length) notes.push(`vm-drop: ${vmDrop.jobs.length} finished job folder(s)`);
 
@@ -132,7 +148,7 @@ try {
     const queueReady = control ? control.dispatchUnits.some((unit2) => unit2.state === 'ready') : false;
     const boardOpen = board.open.some((row) => !/^ADMIT/i.test(row.id));
     const reservoirOpen = board.open.some((row) => /^ADMIT/i.test(row.id));
-    if (ledger.open.length || ledger.loop.length || queueReady || boardOpen || reservoirOpen) {
+    if (ledger.open.length || ledger.loop.length || reviews.open.length || queueReady || boardOpen || reservoirOpen) {
       problems.push('front door returned no unit while open surfaces exist — the plan board is dead');
     } else {
       notes.push('front door: all-closed is honest (no ungated surface is open)');

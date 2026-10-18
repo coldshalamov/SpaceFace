@@ -31,8 +31,10 @@ theater. The improved work is the proof. If you learned something non-obvious, w
 where the next engineer will find it. That is the only reason to write prose.
 
 A teammate looking at the work for unfinished bits, bugs, and cheap first tries is part of
-finishing. That look is a conversation, then you fix what is real. It is not a second queue, not a
-grade file, and not two adversarial waves.
+finishing, before you push. That look is a conversation, then you fix what is real. It is not a
+grade file and not two adversarial waves. The one later second look is a row in
+`design/program/LANDED_REVIEW.md`: file it when you push a build-map or dispatched unit, and a
+different sitting takes it. It does not gate the push.
 
 Context is the shared budget. Every file you add is a tax on every agent who comes after you.
 Write less. Delete the document you proved wrong. Fix the rule next to the code you are editing
@@ -46,6 +48,22 @@ broken forever.
 Finish the **named outcome** of the job you were given, end to end — editing, building, reviewing,
 revising, committing, and pushing are part of the work, not permission gates. Then stop; do not
 start the next job.
+
+**Push `origin master` before you stop.** Cloud agents read the remote. A commit left only on this
+machine is not finished. Fetch first, merge if the remote moved (never rebase or reset this
+checkout), commit the exact paths, read `git show --stat HEAD`, then `git push origin master`.
+If the push is rejected, fetch and merge again, then push. Never `--force`, and never push
+someone else's branch or an open pull-request branch. Push the finished local master commits,
+not only yours, and leave other agents' uncommitted files unstaged.
+
+If the unit came from the build map or from `program-dispatch --next`, add one OPEN row to
+`design/program/LANDED_REVIEW.md` in that same push: id `R-` plus the commit's first 7
+characters, the task, and the one claim a later agent should re-check. Do not review it
+yourself in this sitting. A change-loop leg, a merge commit, and the review itself do not add
+a row. The next sitting takes the oldest open review before a new feature. A player-facing
+defect still comes first, then a stale `NOW.md` row. Eight or more waiting reviews jump ahead
+of everything else — clear one. The reviewer deletes the row in the commit that finishes the
+look, fixes a small miss and pushes it, or files one demo-ledger row for a bigger break.
 
 Not finished, even if committed, even if a check is green: a placeholder on the player route, a
 defect you found and left on camera, ending your turn to wait or ask, jargon instead of the thing
