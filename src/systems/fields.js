@@ -283,6 +283,8 @@ function defaultRuntime() {
     // PQ-147.03 — last rated cluster-and-detonate moment (receipts, not a scripted explode).
     cluster: { fieldId: null, primedId: null, actionTick: null, count: 0, kinds: [], rated: false },
     telemetry: { fields: 0, queries: 0, affected: 0, appliedAccelSum: 0, orbitNodes: 0 },
+    count: 0,
+    liveCount: 0,
   };
 }
 
@@ -2521,6 +2523,9 @@ export const fields = {
     const tel = rt.telemetry;
     tel.fields = fieldsList.length; tel.queries = queries; tel.affected = affected; tel.appliedAccelSum = accelSum;
     tel.orbitNodes = rt.orbit && Number.isInteger(rt.orbit.count) ? rt.orbit.count : 0;
+    rt.count = fieldsList.length;
+    rt.liveCount = fieldsList.length;
+    if (state && state.player) state.player.fieldCount = fieldsList.length;
   },
 
   // Mass Seed is a Rapier lock, not a gravity well. Publish a RING volume so the rail/drills/VFX

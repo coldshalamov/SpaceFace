@@ -210,6 +210,9 @@ function copySample(dst, src) {
   dst.worldSpawnLimited = src.worldSpawnLimited;
   dst.worldSpawnCriticalDeferred = src.worldSpawnCriticalDeferred;
   dst.geometryPending = src.geometryPending;
+  dst.fieldCount = src.fieldCount;
+  dst.tetherCount = src.tetherCount;
+  dst.trafficCount = src.trafficCount;
   dst.hitch = src.hitch;
   return dst;
 }
@@ -253,8 +256,61 @@ function emptySample() {
     worldSpawnLimited: 0,
     worldSpawnCriticalDeferred: 0,
     geometryPending: 0,
+    fieldCount: 0,
+    tetherCount: 0,
+    trafficCount: 0,
     hitch: false,
   };
+}
+
+function readLiveFieldCount(state) {
+  if (state?.fields) {
+    if (Number.isFinite(state.fields.count)) return Math.max(0, state.fields.count);
+    if (Number.isFinite(state.fields.liveCount)) return Math.max(0, state.fields.liveCount);
+    if (Number.isFinite(state.fields.telemetry?.fields)) return Math.max(0, state.fields.telemetry.fields);
+    if (Array.isArray(state.fields.snapshot)) return state.fields.snapshot.length;
+    if (Array.isArray(state.fields.active)) return state.fields.active.length;
+  }
+  if (state?.fieldsRuntime && Number.isFinite(state.fieldsRuntime.count)) {
+    return Math.max(0, state.fieldsRuntime.count);
+  }
+  if (Number.isFinite(state?.player?.fieldCount)) return Math.max(0, state.player.fieldCount);
+  if (Number.isFinite(state?.fieldCount)) return Math.max(0, state.fieldCount);
+  if (Number.isFinite(state?.fieldsCount)) return Math.max(0, state.fieldsCount);
+  return 0;
+}
+
+function readLiveTetherCount(state) {
+  if (state?.tether) {
+    if (Number.isFinite(state.tether.count)) return Math.max(0, state.tether.count);
+    if (Number.isFinite(state.tether.activeCount)) return Math.max(0, state.tether.activeCount);
+  }
+  if (Number.isFinite(state?.player?.tetherCount)) return Math.max(0, state.player.tetherCount);
+  if (Number.isFinite(state?.player?.tether?.count)) return Math.max(0, state.player.tether.count);
+  if (Number.isFinite(state?.tetherCount)) return Math.max(0, state.tetherCount);
+  const byId = state?.combat?.attachments?.byId;
+  if (byId && typeof byId === 'object') {
+    let count = 0;
+    for (const id in byId) {
+      if (Object.prototype.hasOwnProperty.call(byId, id) && byId[id]?.state === 'active') {
+        count++;
+      }
+    }
+    return count;
+  }
+  if (state?.player?.tether?.active === true) return 1;
+  return 0;
+}
+
+function readLiveTrafficCount(state) {
+  if (state?.traffic) {
+    if (Number.isFinite(state.traffic.count)) return Math.max(0, state.traffic.count);
+    if (Number.isFinite(state.traffic.liveCount)) return Math.max(0, state.traffic.liveCount);
+    if (Array.isArray(state.traffic.freighters)) return state.traffic.freighters.length;
+  }
+  if (Number.isFinite(state?.player?.trafficCount)) return Math.max(0, state.player.trafficCount);
+  if (Number.isFinite(state?.trafficCount)) return Math.max(0, state.trafficCount);
+  return 0;
 }
 
 /**
@@ -324,6 +380,10 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   // queue stats). The witness prints it so an arrival drain is a number falling to 0, not a
   // per-mesh flag an agent has to hunt for.
   sample.geometryPending = finite(state?.render?.geometryPending);
+  // MACH-10: live counts for fields, tethers, and traffic.
+  sample.fieldCount = readLiveFieldCount(state);
+  sample.tetherCount = readLiveTetherCount(state);
+  sample.trafficCount = readLiveTrafficCount(state);
   sample.hitch = Math.max(callbackMs, sample.callbackIntervalMs) >= 33.4;
   sample.costs = costs;
   return sample;
@@ -580,6 +640,17 @@ function formatGeometryPendingLine(samples) {
   return `- geometry roots pending ${pending} (${signed} in window)`;
 }
 
+/**
+ * One line: live field, tether, and traffic counts from the latest runtime sample (MACH-10).
+ */
+function formatLiveCountsLine(samples) {
+  const last = Array.isArray(samples) ? samples[samples.length - 1] : null;
+  const fields = finite(last?.fieldCount);
+  const tethers = finite(last?.tetherCount);
+  const traffic = finite(last?.trafficCount);
+  return `- live field, tether and traffic counts: fields ${fields} | tethers ${tethers} | traffic ${traffic}`;
+}
+
 export function formatRuntimeWitnessReport({
   verdict,
   samples = [],
@@ -616,6 +687,7 @@ export function formatRuntimeWitnessReport({
     formatFenceBytesLine(samples),
     formatSpawnWitnessLine(samples),
     formatGeometryPendingLine(samples),
+    formatLiveCountsLine(samples),
     '',
     '## Where the last frames went (ms)',
   ];

@@ -323,6 +323,7 @@ export const tetherGameplay = {
         ]
       : [];
     this._resetPhaseMirror();
+    if (this.state) this._publishTetherCount(this.state);
   },
 
   update(dt, state) {
@@ -331,6 +332,31 @@ export const tetherGameplay = {
     finally { this._insideTetherUpdate = false; }
     // The line's own phase was just mirrored. Hull climbs only while that line is taut.
     if (state && state.mode === 'flight') stepLatchRepair(state, dt, this.bus);
+    this._publishTetherCount(state);
+  },
+
+  _publishTetherCount(state) {
+    if (!state) return;
+    let count = 0;
+    const byId = state.combat?.attachments?.byId;
+    if (byId && typeof byId === 'object') {
+      for (const id in byId) {
+        if (Object.prototype.hasOwnProperty.call(byId, id) && byId[id]?.state === 'active') {
+          count++;
+        }
+      }
+    } else if (this._active) {
+      count = 1 + (this._bridleActive ? 1 : 0);
+    } else if (state.player?.tether?.active) {
+      count = 1;
+    }
+    const t = state.tether || (state.tether = {});
+    t.count = count;
+    t.activeCount = count;
+    if (state.player) {
+      state.player.tetherCount = count;
+      if (state.player.tether) state.player.tether.count = count;
+    }
   },
 
   _updateTetherGameplay(dt, state) {
