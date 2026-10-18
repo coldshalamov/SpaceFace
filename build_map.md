@@ -867,7 +867,7 @@ recorded in the lane's NOW row before minting.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 383 | SFQ-B175 | A creature's body expresses charging, fleeing or drifting before it touches you (`src/render/faunaVisuals.js`, `src/data/faunaMotionRead.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
+| 383 | SFQ-B175 | A creature's body expresses charging, fleeing or drifting before it touches you (`src/render/faunaVisuals.js`, `src/data/faunaMotionRead.js`); judged at the gameplay camera | ART | SHIPPED — installFaunaMotion wires updateAuthoredMotion across fauna species to express charging forward pitch and flared quills, fleeing tuck and thrash, and drifting calm respiration from readFaunaMotion with reducedMotion support (test/sfq-b175-fauna-body-expression.test.mjs) |
 | 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)

@@ -9,6 +9,7 @@ import { alienStrainById } from '../data/alienEcology.js';
 import { creatureSkin } from './creatureSkinLibrary.js';
 import { buildNurseryRay, buildNurseryFlock } from './veilRayNurseryVisuals.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
+import { readFaunaMotion } from '../data/faunaMotionRead.js';
 
 const TISSUE = 0x9aa08e;
 const FILAMENT = 0xc94f3d;
@@ -287,6 +288,7 @@ function buildBristleRam(colors) {
   const quillMat = tissueMat(colors.filament);
   for (let i = 0; i < 9; i += 1) {
     const q = new THREE.Mesh(quill, quillMat);
+    q.name = 'br_quill';
     const a = -0.8 + (i / 8) * 1.6;
     q.position.set(Math.sin(a) * 8, 4.2, -Math.cos(a) * 6);
     q.rotation.z = a * 0.6;
@@ -402,6 +404,7 @@ function buildGlassback(colors) {
   for (let i = 0; i < 4; i += 1) {
     const a = Math.PI / 4 + (i / 4) * Math.PI * 2;
     const l = new THREE.Mesh(leg, tissueMat(colors.tissue));
+    l.name = 'gb_leg';
     l.position.set(Math.cos(a) * 7, -3.5, Math.sin(a) * 7);
     l.rotation.z = Math.cos(a) * 0.5;
     l.rotation.x = -Math.sin(a) * 0.5;
@@ -708,6 +711,122 @@ for (const speciesId of Object.keys(FAUNA_SPECIES)) {
   }
 }
 
+export function installFaunaMotion(root, initialEntity, species, colors) {
+  if (!root) return;
+  const childBases = [];
+  for (let i = 0; i < root.children.length; i++) {
+    const c = root.children[i];
+    childBases.push({
+      mesh: c,
+      name: c.name || '',
+      basePos: c.position.clone(),
+      baseRot: c.rotation.clone(),
+      baseScale: c.scale.clone(),
+    });
+  }
+  const rootBaseScale = root.scale.clone();
+
+  const emissiveEntries = [];
+  root.traverse((obj) => {
+    if (obj.isMesh && obj.material && obj.material.emissive) {
+      emissiveEntries.push({
+        mat: obj.material,
+        baseIntensity: Number.isFinite(obj.material.emissiveIntensity) ? obj.material.emissiveIntensity : 1.0,
+      });
+    }
+  });
+
+  root.userData.updateAuthoredMotion = function updateFaunaMotion(currentEntity, now = 0, a11y = {}, state = null) {
+    const live = (currentEntity && typeof currentEntity === 'object') ? currentEntity : initialEntity;
+    const driveState = live?.data?.ecology?.driveState || 'drift';
+    const motion = readFaunaMotion(driveState) || (driveState === 'charge' ? 'defense' : driveState === 'flee' ? 'retreat' : 'quiet');
+    const reduced = Boolean(a11y?.reducedMotion);
+    const reducedFlash = Boolean(a11y?.reducedFlash);
+
+    root.userData.faunaMotionRead = motion;
+    root.userData.faunaDriveState = driveState;
+
+    if (motion === 'defense' || driveState === 'charge') {
+      // CHARGING: Aggressive lowered forward pitch, flared quills/appendages, surge forward, rapid warning glow pulse
+      const flare = reduced ? 0.35 : 0.35 + Math.sin(now * 5) * 0.08;
+      const heave = reduced ? 0 : Math.sin(now * 5) * 0.1;
+      const surge = reduced ? 0.3 : 0.3 + Math.sin(now * 5) * 0.15;
+      root.rotation.x = -0.16 + (reduced ? 0 : Math.sin(now * 5) * 0.03);
+      root.scale.set(rootBaseScale.x * 0.94, rootBaseScale.y * (reduced ? 1.05 : 1.05 + Math.sin(now * 5) * 0.04), rootBaseScale.z * 1.12);
+
+      for (const cb of childBases) {
+        cb.mesh.position.y = cb.basePos.y + heave;
+        cb.mesh.position.z = cb.basePos.z + surge;
+        cb.mesh.position.x = cb.basePos.x;
+        cb.mesh.rotation.y = cb.baseRot.y;
+
+        if (cb.name === 'br_quill' || cb.name === 'gb_leg' || cb.mesh !== root.children[0]) {
+          cb.mesh.rotation.x = cb.baseRot.x - flare;
+          cb.mesh.scale.set(cb.baseScale.x * 1.25, cb.baseScale.y * 1.25, cb.baseScale.z * 1.25);
+        } else {
+          cb.mesh.rotation.x = cb.baseRot.x;
+          cb.mesh.scale.copy(cb.baseScale);
+        }
+      }
+
+      const glowFactor = reducedFlash ? 1.8 : 1.6 + Math.sin(now * 6) * 0.5;
+      for (const entry of emissiveEntries) {
+        entry.mat.emissiveIntensity = entry.baseIntensity * glowFactor;
+      }
+    } else if (motion === 'retreat' || driveState === 'flee') {
+      // FLEEING: Sleek flattened tuck, quills pinned back, lateral thrashing propulsion, lowered glow
+      const tuck = 0.35;
+      const heave = reduced ? -0.2 : -0.2 + Math.sin(now * 10) * 0.08;
+      const thrashYaw = reduced ? 0 : Math.sin(now * 10) * 0.12;
+      const thrashX = reduced ? 0 : Math.cos(now * 10) * 0.18;
+      root.rotation.x = 0.08;
+      root.scale.set(rootBaseScale.x * 0.88, rootBaseScale.y * 0.82, rootBaseScale.z * 1.05);
+
+      for (const cb of childBases) {
+        cb.mesh.position.y = cb.basePos.y + heave;
+        cb.mesh.position.z = cb.basePos.z;
+        cb.mesh.position.x = cb.basePos.x + thrashX;
+        cb.mesh.rotation.y = cb.baseRot.y + thrashYaw;
+
+        if (cb.name === 'br_quill' || cb.name === 'gb_leg' || cb.mesh !== root.children[0]) {
+          cb.mesh.rotation.x = cb.baseRot.x + tuck;
+          cb.mesh.scale.set(cb.baseScale.x * 0.85, cb.baseScale.y * 0.85, cb.baseScale.z * 0.85);
+        } else {
+          cb.mesh.rotation.x = cb.baseRot.x;
+          cb.mesh.scale.copy(cb.baseScale);
+        }
+      }
+
+      const glowFactor = reducedFlash ? 0.6 : 0.5 + Math.sin(now * 12) * 0.2;
+      for (const entry of emissiveEntries) {
+        entry.mat.emissiveIntensity = entry.baseIntensity * glowFactor;
+      }
+    } else {
+      // DRIFTING / QUIET: Calm resting posture, gentle breathing heave, quills at rest
+      const heave = reduced ? 0 : Math.sin(now * 1.2) * 0.18;
+      const breath = reduced ? 1.0 : 1.0 + Math.sin(now * 1.2) * 0.03;
+      root.rotation.x = reduced ? 0 : Math.sin(now * 1.2) * 0.02;
+      root.scale.set(rootBaseScale.x * breath, rootBaseScale.y * breath, rootBaseScale.z * breath);
+
+      for (const cb of childBases) {
+        cb.mesh.position.y = cb.basePos.y + heave;
+        cb.mesh.position.z = cb.basePos.z;
+        cb.mesh.position.x = cb.basePos.x;
+        cb.mesh.rotation.y = cb.baseRot.y;
+        cb.mesh.rotation.x = cb.baseRot.x;
+        cb.mesh.scale.copy(cb.baseScale);
+      }
+
+      const glowFactor = reducedFlash ? 1.0 : 0.9 + Math.sin(now * 1.2) * 0.2;
+      for (const entry of emissiveEntries) {
+        entry.mat.emissiveIntensity = entry.baseIntensity * glowFactor;
+      }
+    }
+  };
+
+  root.userData.updateAuthoredMotion(initialEntity, 0, {}, null);
+}
+
 export function buildFaunaMesh(entity) {
   const eco = entity && entity.data && entity.data.ecology;
   const species = faunaSpeciesById(eco && eco.speciesId);
@@ -720,6 +839,7 @@ export function buildFaunaMesh(entity) {
   if (root) {
     root.userData.kind = 'fauna';
     root.userData.speciesId = species.id;
+    installFaunaMotion(root, entity, species, colors);
   }
   return root;
 }

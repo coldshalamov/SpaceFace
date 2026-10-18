@@ -29,6 +29,7 @@ import {
 import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
+import { isPirateDisengaged } from '../systems/pirateDisengage.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
@@ -2088,6 +2089,7 @@ function isScannerHostileLock(player, state, entity) {
   if (!verbAcceptsType('target', entity.type)) return false; // PQ-015: shared target membership
   if (!isHostileToPlayer(entity, player.team, state)) return false;
   if (!presentationAllowsTargetLock(entity, state)) return false;
+  if (isPirateDisengaged(entity)) return false;
   const dx = entity.pos.x - player.pos.x;
   const dz = entity.pos.z - player.pos.z;
   return (dx * dx + dz * dz) <= SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
@@ -2219,6 +2221,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     if (e.type !== 'ship' && e.type !== 'drone') continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
     if (!presentationAllowsTargetLock(e, state)) continue;
+    if (isPirateDisengaged(e)) continue;
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;

@@ -595,3 +595,63 @@ export function returnCrewForAce(ace, returnTier = 1, style = null) {
 function normalizeName(name) {
   return String(name || '').trim().toLowerCase();
 }
+
+// WORLD-48: Authored per-ace route schedules.
+// An ace routed through a sector is bar talk in local station lounges before you ever meet.
+// Each route has an authored sector, window start, window duration, and repeating interval.
+export const AUTHORED_ACE_ROUTES = Object.freeze([
+  Object.freeze({
+    aceId: 'ace_yara_no_cut',
+    sectorId: 'sector_tethys_junction',
+    windowStartS: 0,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: "Dock hands say Yara No-Cut is routed through the junction — Red Latch cutters looking for loose cargo.",
+  }),
+  Object.freeze({
+    aceId: 'ace_toll_saint_venn',
+    sectorId: 'sector_vesta_forge',
+    windowStartS: 600,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: "Smelter runners swear Toll Saint Venn's Sker Hooks are holding the forge lane, naming fees on every hauler.",
+  }),
+  Object.freeze({
+    aceId: 'ace_mako_broken_ring',
+    sectorId: 'sector_pallas_drift',
+    windowStartS: 0,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: "Scrap cutters talk about Mako of the Broken Ring screening the drift channels out in Pallas.",
+  }),
+  Object.freeze({
+    aceId: 'ace_voss_shaft_seven',
+    sectorId: 'sector_helios_prime',
+    windowStartS: 0,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: "Lounge pilots whisper that Voss of Shaft Seven has a flight route cutting right through Helios Prime.",
+  }),
+]);
+
+export function isAceRouteActive(route, simTime = 0) {
+  if (!route) return false;
+  const time = Number(simTime) || 0;
+  const start = Number(route.windowStartS) || 0;
+  const duration = Number(route.windowDurationS) || 0;
+  const interval = Number(route.intervalS) || 0;
+  if (time < start) return false;
+  if (interval <= 0) return time < start + duration;
+  const cyclePhase = (time - start) % interval;
+  return cyclePhase < duration;
+}
+
+export function getActiveAceRouteForSector(sectorId, simTime = 0) {
+  if (!sectorId) return null;
+  for (const route of AUTHORED_ACE_ROUTES) {
+    if (route.sectorId === sectorId && isAceRouteActive(route, simTime)) {
+      return route;
+    }
+  }
+  return null;
+}

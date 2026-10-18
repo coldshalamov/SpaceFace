@@ -48,6 +48,7 @@ import { hash32 } from '../../core/rng.js';
 import { deedLine } from '../../data/deedPhrases.js';
 import { mostCitedShipDeed } from '../../systems/shipLedger.js';
 import { deedToneFor, markTold, peekDeedRecord, pickDeedToTell } from '../../systems/deedRecord.js'; // U-E: the bar gossips
+import { getActiveAceRouteForSector } from '../../data/namedAces.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -603,6 +604,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDerelictRumor(listed, stationId, state);
   stampChoirReliefMemory(listed, stationId, state);
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
+  stampAceRouteRumor(listed, stationId, state);
   return listed;
 }
 
@@ -688,6 +690,23 @@ function stampChoirReliefMemory(contacts, stationId, state) {
     host.line = 'Something Choir-flagged is crawling Mercy toward the medical pad.';
     host.choirReliefMemory = 'returning';
   }
+}
+
+function stampAceRouteRumor(contacts, stationId, state) {
+  const info = STATION_INDEX.get(stationId);
+  const sector = info ? info.sector : null;
+  const sectorId = sector ? sector.id : null;
+  if (!sectorId) return;
+  const simTime = Number(state?.simTime) || 0;
+  const activeRoute = getActiveAceRouteForSector(sectorId, simTime);
+  if (!activeRoute) return;
+  const free = contacts.filter((contact) => contact && !contact.canonicalKey
+    && !contact.rumorSourceRef && !contact.bay7Rumor && !contact.derelictRumorRef
+    && !contact.choirReliefMemory && !contact.deedId && !contact.aceRouteRumorRef);
+  const host = free.find((contact) => contact.role === 'barkeep') || free[0];
+  if (!host) return;
+  host.line = activeRoute.rumorLine;
+  host.aceRouteRumorRef = activeRoute.aceId;
 }
 
 /* ── dialog option builders (per role) ────────────────────────────── */
@@ -1116,6 +1135,15 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   if (oreLot && ghost) return { text: `${oreLot.text} ${ghost.text}` };
   if (oreLot) return { text: oreLot.text };
   if (ghost) return { text: ghost.text };
+
+  const aceRoute = role === 'barkeep' && choiceId === 'rumors'
+    ? (() => {
+        const info = STATION_INDEX.get(stationId);
+        const sectorId = info && info.sector ? info.sector.id : null;
+        return getActiveAceRouteForSector(sectorId, Number(state?.simTime) || 0);
+      })()
+    : null;
+  if (aceRoute) return { text: aceRoute.rumorLine, aceRouteRumor: aceRoute };
 
   const wreckRumor = role === 'barkeep'
     ? uniqueWreckBarRumor(state, stationId, choiceId)

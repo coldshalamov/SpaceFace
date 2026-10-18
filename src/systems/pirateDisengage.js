@@ -662,4 +662,13 @@ function decisionBark(rec, entity, seed) {
   return barkFor(factionId, 'flee', hash32(seed == null ? 0 : seed, rec.squadId, 'pirateDisengageFlee'));
 }
 
+export function isPirateDisengaged(entity) {
+  if (!entity || !entity.data) return false;
+  const ai = entity.data.ai;
+  if (ai && (ai.pirateDisengaged === true || ai.fsm === 'flee' || ai.fsm === 'surrender')) return true;
+  const pd = entity.data.pirateDisengage;
+  if (pd && (pd.phase === 'flee' || pd.phase === 'surrender')) return true;
+  return false;
+}
+
 export default pirateDisengage;
