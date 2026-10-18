@@ -56,8 +56,16 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // Re-pinned 2026-10-12 (D186): far residency shelves the Cathedral's fourteen static wrecks
 // at boot (core 52→38 entities, colliders 291→284); additive census v2 proves approach
 // materialization. Prior digest f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333.
+// Re-pinned 2026-10-18 (D215): this file's duplicated pin went stale when the first-session
+// lane (7b89490b7f0, 2026-10-13) deliberately added two authored Ceres arrival-leg POIs
+// (poi_ceres_flare_rack, poi_ceres_weigh_pin — plain beacon rows) and re-derived the library
+// pin in scripts/lib/pq020CeresTopology.mjs (prior digest recorded there). The live receipt
+// reads back the re-pinned digest, authored pois 14 / zones 7, and the one-tick core census
+// 41 entities { asteroid 6, fauna 12, fx 14, ship 3, station 6 } / 17 collidable / 306 colliders
+// with the Cathedral at 15/15 materialized (14 shelved); entity/type/collider pins below move
+// to that measured truth. Prior digest 8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  '8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e';
+  'd0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -170,18 +178,21 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
   // Far residency (b7a4f2494, d51aba898) shelves dormant site wrecks onto the far table until
   // the player approaches, so the Cathedral's fourteen wrecks (seven solids) no longer sit in
-  // the one-tick live core: 52 → 38 entities, collidable 23 → 16, colliders 291 → 284, and
-  // worldSite.shelvedEntities reads 14. The four ghost activity slots (7f6f048ef) stay free of
+  // the one-tick live core; the four ghost activity slots (7f6f048ef) stay free of
   // physics; two new Ceres POIs shift the ordinary seeded patrol into live range. Additive
-  // Second Measure is counted separately.
+  // Second Measure is counted separately. Re-pinned 2026-10-18 (D215) to the first-session
+  // lane's deliberate arrival-leg POIs (7b89490b7f0): core 38 → 41 entities
+  // (fx 12 → 14 for the two beacon rows, ship 2 → 3 as the shifted spawn stream lands a
+  // patrol ship inside the live range), collidable 16 → 17, colliders 284 → 306;
+  // worldSite.shelvedEntities still reads 14.
   assert.deepEqual(first.structuralCost.entities, {
-    total: 38,
-    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 2, station: 6 },
-    collidable: 16,
+    total: 41,
+    byType: { asteroid: 6, fauna: 12, fx: 14, ship: 3, station: 6 },
+    collidable: 17,
   });
   // Latest core260 + one 24-primitive patrol skin; the seven canonical Cathedral solids are
   // shelved at boot and return on approach.
-  assert.equal(first.structuralCost.colliders, 284);
+  assert.equal(first.structuralCost.colliders, 306);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);

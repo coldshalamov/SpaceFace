@@ -166,7 +166,9 @@ test('PQ-020 static content materializes exactly once across re-entry and save -
     assert.equal(snapshot.beaconEntities, 1, 'the beacon must materialize exactly once');
     assert.equal(snapshot.beaconEntityIds.length, 1);
     assert.equal(snapshot.cathedralEntities, 15);
-    assert.equal(snapshot.zoneCount, 5);
+    // 4 core zones + throughline + Prism Gallery + Closed Refinery (360ebb40b6d, af734e085b5).
+    // Re-pinned 2026-10-18 (D215): the proof pinned 5 from before those deliberate additions.
+    assert.equal(snapshot.zoneCount, 7);
   }
   assert.equal(report.staticContentMaterializesExactlyOnce, true);
 
