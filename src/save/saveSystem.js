@@ -5294,7 +5294,64 @@ export const save = {
     let backupRaw = null;
     try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
     catch (err) { /* primary failure below remains the player-facing reason */ }
-    const backup = await this._prepareEnvelopeStringAsync(backupRaw);
+    let backup = await this._prepareEnvelopeStringAsync(backupRaw);
+    // The recovery worker is another asynchronous window. A save or shared-store reconcile can
+    // replace either copy while it decodes; promoting that older backup could overwrite a newer
+    // playable primary. Re-read both keys after validation and, if either changed, prepare a
+    // stable pair before choosing a restore source. The bounded retries keep a continuously
+    // changing shared store from holding Continue open indefinitely.
+    const readStoredSave = (key) => {
+      if (typeof localStorage === 'undefined') return { ok: true, raw: null };
+      try { return { ok: true, raw: localStorage.getItem(key) }; }
+      catch (err) { return { ok: false, raw: null }; }
+    };
+    let observedPrimary = readStoredSave(LS_PREFIX + slot);
+    let observedBackup = readStoredSave(RECOVERY_PREFIX + slot);
+    if (!observedPrimary.ok || !observedBackup.ok
+      || observedPrimary.raw !== raw || observedBackup.raw !== backupRaw) {
+      let stablePair = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (!observedPrimary.ok || !observedBackup.ok) break;
+        const candidatePrimaryRaw = observedPrimary.raw;
+        const candidateBackupRaw = observedBackup.raw;
+        const candidatePrimary = candidatePrimaryRaw === raw
+          ? primary : await this._prepareEnvelopeStringAsync(candidatePrimaryRaw);
+        const candidateBackup = candidateBackupRaw === backupRaw
+          ? backup : await this._prepareEnvelopeStringAsync(candidateBackupRaw);
+        const confirmedPrimary = readStoredSave(LS_PREFIX + slot);
+        const confirmedBackup = readStoredSave(RECOVERY_PREFIX + slot);
+        if (confirmedPrimary.ok && confirmedBackup.ok
+          && confirmedPrimary.raw === candidatePrimaryRaw
+          && confirmedBackup.raw === candidateBackupRaw) {
+          primary = candidatePrimary;
+          backup = candidateBackup;
+          backupRaw = candidateBackupRaw;
+          stablePair = true;
+          break;
+        }
+        observedPrimary = confirmedPrimary;
+        observedBackup = confirmedBackup;
+      }
+      if (!stablePair) {
+        this.bus.emit('save:error', {
+          slot,
+          reason: 'load_failed',
+          error: 'The save changed while recovery was being checked. Try Continue again.',
+        });
+        return false;
+      }
+      if (primary.ok) {
+        if (this.bus && this.bus.emit) {
+          this.bus.emit('save:envelopePrepared', { slot, data: primary.data });
+        }
+        return this._restorePreparedEnvelopeAsync(primary, slot, {
+          ...(skippedNewer ? { skippedNewer } : null),
+          acceptSeq,
+          rollbackSnapshot,
+          rollbackSnapshotError,
+        });
+      }
+    }
     if (backup.ok) {
       if (this.bus && this.bus.emit) {
         this.bus.emit('save:envelopePrepared', { slot, data: backup.data });

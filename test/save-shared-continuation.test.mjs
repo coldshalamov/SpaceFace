@@ -295,6 +295,98 @@ test('a stale local copy loses to the shared drawer so a failed earlier mirror c
   }
 });
 
+test('Continue does not promote a stale recovery copy over a primary written during recovery decode', async () => {
+  resetSharedPlayerStoreMemoForTests();
+  const storage = memoryStorage();
+  const restoreEnv = installEnv({
+    storage,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ keys: {} }) }),
+  });
+  try {
+    const shell = makeShell({ seed: 99, marker: 'local-world' });
+    const recoveryWriter = makeShell({ seed: 73, marker: 'older-recovery' });
+    const backupRaw = JSON.stringify(recoveryWriter.save.serialize('quick'));
+    const recheckWriter = makeShell({ seed: 88, marker: 'recheck-primary' });
+    recheckWriter.state.meta.playtimeS = 240;
+    const recheckPrimaryRaw = JSON.stringify(recheckWriter.save.serialize('quick'));
+    const latestWriter = makeShell({ seed: 97, marker: 'newest-primary' });
+    latestWriter.state.meta.playtimeS = 480;
+    const newestPrimaryRaw = JSON.stringify(latestWriter.save.serialize('quick'));
+    storage.setItem('sf.save.quick', '{ corrupt primary');
+    storage.setItem('sf.recovery.quick', backupRaw);
+    shell.save._queueSharedStoreMirror = () => {};
+
+    const prepare = shell.save._prepareEnvelopeStringAsync.bind(shell.save);
+    let primaryUpdatedDuringRecovery = false;
+    let primaryUpdatedDuringRecheck = false;
+    shell.save._prepareEnvelopeStringAsync = async (raw) => {
+      if (raw === backupRaw && !primaryUpdatedDuringRecovery) {
+        primaryUpdatedDuringRecovery = true;
+        storage.setItem('sf.save.quick', recheckPrimaryRaw);
+      } else if (raw === recheckPrimaryRaw && !primaryUpdatedDuringRecheck) {
+        primaryUpdatedDuringRecheck = true;
+        storage.setItem('sf.save.quick', newestPrimaryRaw);
+      }
+      return prepare(raw);
+    };
+
+    assert.equal(await shell.save.loadAsync('quick'), true, 'the recovery path still completes');
+    assert.equal(primaryUpdatedDuringRecovery, true, 'the race occurs during backup validation');
+    assert.equal(primaryUpdatedDuringRecheck, true, 'the second race occurs during primary revalidation');
+    assert.equal(shell.state.economy.marker, 'newest-primary',
+      'Continue must restore the primary that arrived while the recovery candidate was revalidated');
+    assert.equal(storage.getItem('sf.save.quick'), newestPrimaryRaw,
+      'recovery promotion must not overwrite the newest primary bytes');
+  } finally {
+    restoreEnv();
+  }
+});
+
+test('Continue rechecks a recovery copy replaced during its revalidation', async () => {
+  resetSharedPlayerStoreMemoForTests();
+  const storage = memoryStorage();
+  const restoreEnv = installEnv({
+    storage,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ keys: {} }) }),
+  });
+  try {
+    const shell = makeShell({ seed: 99, marker: 'local-world' });
+    const oldRecovery = makeShell({ seed: 73, marker: 'old-recovery' });
+    const oldRecoveryRaw = JSON.stringify(oldRecovery.save.serialize('quick'));
+    const recheckRecovery = makeShell({ seed: 88, marker: 'recheck-recovery' });
+    const recheckRecoveryRaw = JSON.stringify(recheckRecovery.save.serialize('quick'));
+    const latestRecovery = makeShell({ seed: 97, marker: 'latest-recovery' });
+    const latestRecoveryRaw = JSON.stringify(latestRecovery.save.serialize('quick'));
+    storage.setItem('sf.save.quick', '{ corrupt primary');
+    storage.setItem('sf.recovery.quick', oldRecoveryRaw);
+    shell.save._queueSharedStoreMirror = () => {};
+
+    const prepare = shell.save._prepareEnvelopeStringAsync.bind(shell.save);
+    let recoveryChangedDuringDecode = false;
+    let recoveryChangedDuringRecheck = false;
+    shell.save._prepareEnvelopeStringAsync = async (raw) => {
+      if (raw === oldRecoveryRaw && !recoveryChangedDuringDecode) {
+        recoveryChangedDuringDecode = true;
+        storage.setItem('sf.recovery.quick', recheckRecoveryRaw);
+      } else if (raw === recheckRecoveryRaw && !recoveryChangedDuringRecheck) {
+        recoveryChangedDuringRecheck = true;
+        storage.setItem('sf.recovery.quick', latestRecoveryRaw);
+      }
+      return prepare(raw);
+    };
+
+    assert.equal(await shell.save.loadAsync('quick'), true, 'recovery still completes');
+    assert.equal(recoveryChangedDuringDecode, true);
+    assert.equal(recoveryChangedDuringRecheck, true);
+    assert.equal(shell.state.economy.marker, 'latest-recovery',
+      'Continue must restore the newest recovery copy after its bytes change during validation');
+    assert.equal(storage.getItem('sf.save.quick'), latestRecoveryRaw,
+      'recovery promotion must use the newest validated bytes');
+  } finally {
+    restoreEnv();
+  }
+});
+
 test('a failed mirror still leaves the local save durable and the mirror health truthful', async () => {
   const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-shared-store-'));
   try {

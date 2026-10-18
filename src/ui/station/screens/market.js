@@ -212,8 +212,9 @@ export function marketGoDecision({ lastQuotedTerms = null, selectedId = null, qt
  * value until the normal market mirror catches up. The economy's strict
  * expectedTotal check remains the final authority.
  */
-export function marketPriceChangedQuote(failure, { selectedId = null, side = null, qty = 0 } = {}) {
+export function marketPriceChangedQuote(failure, { stationId: currentStationId = null, selectedId = null, side = null, qty = 0 } = {}) {
   if (!failure || failure.reason !== 'price_changed') return null;
+  if (currentStationId != null && failure.stationId !== currentStationId) return null;
   const namedQty = Math.floor(Number(qty));
   const failedQty = Math.floor(Number(failure.qty));
   if (!selectedId || failure.commodityId !== selectedId || failure.side !== side
@@ -1967,6 +1968,7 @@ export function createMarketScreen(ctx) {
   const onTradeFailed = (failure = {}) => {
     if (disposed || !visible || failure.reason !== 'price_changed') return;
     const retained = marketPriceChangedQuote(failure, {
+      stationId: stationId(ctx.state || {}),
       selectedId,
       side: mode,
       qty,

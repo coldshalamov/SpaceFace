@@ -9,6 +9,29 @@ import { EventBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { audio, TRADE_REFUSAL_WORD } from '../src/audio/audioSystem.js';
 import { economy } from '../src/systems/economy.js';
+import { marketPriceChangedQuote } from '../src/ui/station/screens/market.js';
+
+test('a delayed price refusal from another berth cannot replace the current quote', () => {
+  const failure = {
+    stationId: 'station_helios',
+    commodityId: 'cmdty_ore_iron',
+    side: 'sell',
+    qty: 2,
+    reason: 'price_changed',
+    liveTotal: 123,
+  };
+  const currentTerms = {
+    stationId: 'station_ceres',
+    selectedId: 'cmdty_ore_iron',
+    side: 'sell',
+    qty: 2,
+  };
+
+  assert.equal(marketPriceChangedQuote(failure, currentTerms), null,
+    'the old berth total must not be shown or reused at the current berth');
+  assert.equal(marketPriceChangedQuote({ ...failure, stationId: currentTerms.stationId }, currentTerms).total, 123,
+    'a refusal for the current berth remains usable');
+});
 
 test('ECON-03: the refusal word table maps known failure reasons to spoken words', () => {
   assert.equal(TRADE_REFUSAL_WORD.credits, 'insufficient credits');

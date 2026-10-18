@@ -77,6 +77,24 @@ test('a key released inside a modal cannot remain held when flight resumes', () 
   } finally { f.cleanup(); }
 });
 
+test('destroy discards a released one-shot edge before the input owner is reinitialized', () => {
+  const f = fixture();
+  try {
+    // A fast tap can be queued between fixed ticks. Focus loss deliberately preserves that tap
+    // for the next tick, but teardown has no old-owner tick left to consume it.
+    f.win.dispatch('keydown', { code: 'KeyV' });
+    f.win.dispatch('keyup', { code: 'KeyV' });
+    assert.equal(f.host._keyEdgeQueue.length, 1, 'cruise press waits for the next input sample');
+
+    f.host.destroy();
+    f.host.init({ state: f.state, bus: createBus(), helpers: { raycastToPlane: () => ({ x: 0, z: 0 }) } });
+    f.tick();
+
+    assert.equal(f.state.input.actions.cruise, false,
+      'a tap from the destroyed input owner must not engage cruise in the new owner');
+  } finally { f.cleanup(); }
+});
+
 test('a mouse released inside a modal cannot keep the gun firing on resume', () => {
   const f = fixture();
   try {

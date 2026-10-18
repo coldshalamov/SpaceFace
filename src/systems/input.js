@@ -1281,6 +1281,10 @@ export const input = {
     }
 
     this.releaseHeldControls('destroy');
+    // A tap already released before teardown is preserved by the lifecycle release path so a
+    // focus blur cannot eat an input between fixed ticks. Destroy has no old-owner tick left to
+    // consume it, so never carry that pending edge into a later init of this input instance.
+    if (this._keyEdgeQueue) this._keyEdgeQueue.length = 0;
     this._m2UsesUiClock = false;
     this._m2TimerTarget = null;
     const touch = this.touch;
