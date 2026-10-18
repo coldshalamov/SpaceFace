@@ -84,10 +84,11 @@ test('scanner vocabulary is revelation-gated, not distance-gated', () => {
 
 test('cinder nursery sits in charon expanse on a derelict-field contamination lean', () => {
   const sites = alienSitesForSector('sector_charon_expanse');
-  // Wave A/B sites share the sector (AE-065/085); the nursery is the anchor.
-  assert.ok(sites.length >= 1);
-  assert.equal(sites[0].siteId, 'cinder_nursery');
-  assert.equal(sites[0].worldSiteId, 'world_site_charon_cinder_nursery');
+  // Wave A/B sites share the sector (AE-065/085). The Veil-Ray nursery is a satellite
+  // listed ahead of the anchor; the Cinder Nursery is still the site this claim names.
+  const nursery = sites.find((site) => site.siteId === 'cinder_nursery');
+  assert.ok(nursery, 'cinder nursery sits in charon expanse');
+  assert.equal(nursery.worldSiteId, 'world_site_charon_cinder_nursery');
   const zone = zonesForSector('sector_charon_expanse').find((z) => z.id === NURSERY.zoneId);
   assert.ok(zone, 'nursery zone exists');
   assert.equal(zone.type, 'derelict_field');

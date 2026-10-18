@@ -35,6 +35,7 @@ test('a throw press inside the arming gap names the gap instead of going quiet',
 test('a throw with no charges in cargo names the shortage', () => {
   const { bus, seen } = toastRecorder();
   const state = {
+    tick: 1,
     input: { actions: { chargeThrow: true } },
     player: { activeShipIndex: 0, ownedShips: [{ fittings: [] }], cargo: { items: {} } },
   };
@@ -55,6 +56,7 @@ test('a detonate press with neither the charge net nor the bomb net armed says s
   const system = Object.create(bombs);
   system.state = state;
   system.bus = bus;
+  system._sweeps = [];
   system._collect = () => {};
   system._tickBombs = () => {};
   system.update(1 / 60, state);

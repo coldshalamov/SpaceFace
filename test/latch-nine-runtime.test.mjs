@@ -223,7 +223,13 @@ test('sector lifecycle and teardown discard active/stale observers without dupli
 
 test('production order, reset, browser and Node lookup and docked keepalive seams are wired', () => {
   assert.ok(PRODUCTION_INIT_ORDER.includes('latchNine'));
-  assert.equal(PRODUCTION_UPDATE_ORDER.indexOf('latchNine'), PRODUCTION_UPDATE_ORDER.indexOf('physics') + 1);
+  // Reactive matter reads this tick's physics impacts, so it sits in the slot
+  // immediately after physics. Latch Nine is the next seam.
+  const physicsAt = PRODUCTION_UPDATE_ORDER.indexOf('physics');
+  const matterAt = PRODUCTION_UPDATE_ORDER.indexOf('reactiveMatter');
+  const latchAt = PRODUCTION_UPDATE_ORDER.indexOf('latchNine');
+  assert.equal(matterAt, physicsAt + 1);
+  assert.equal(latchAt, matterAt + 1);
   assert.ok(TABLE_CLOCK_IDS.includes('latchNine'));
   assert.deepEqual(validateSystemClockDeclarations(), []);
   for (const path of ['core/registry.js', 'runtime/nodeSystemFactoryTable.js']) {

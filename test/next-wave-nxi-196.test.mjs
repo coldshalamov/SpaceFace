@@ -26,14 +26,15 @@ function run(scene, event, payload, reduced, ticks, dt = 0.05) {
 }
 
 test('NXI-196: reduced motion keeps the collision flourish as a static semantic shape for its authored interval', () => {
-  const life = ACTION_VFX_RECIPES['bombs:detonated'].life; // the parent's heavy-impact flourish
+  // Bomb payloads belong to BombDetonationVfx. The shove flourish ActionVfx still owns is the mine.
+  const life = ACTION_VFX_RECIPES['weapons:mineDetonated'].life;
   const dt = 0.05, span = Math.ceil(life / dt);
   // A slot is alive for since < life; the update whose `since` first reaches life retires it.
   const aliveFrames = Math.floor(life / dt - 1e-9);
   // Normal motion — measure the authored interval and per-frame composition.
-  const normal = run(new THREE.Scene(), 'bombs:detonated', detonation, false, span + 2, dt);
+  const normal = run(new THREE.Scene(), 'weapons:mineDetonated', detonation, false, span + 2, dt);
   // Reduced motion — same receipt, same clock.
-  const reduced = run(new THREE.Scene(), 'bombs:detonated', detonation, true, span + 2, dt);
+  const reduced = run(new THREE.Scene(), 'weapons:mineDetonated', detonation, true, span + 2, dt);
   try {
     const normalFrames = normal.counts.filter(c => c > 0).length;
     const reducedFrames = reduced.counts.filter(c => c > 0).length;
@@ -50,14 +51,14 @@ test('NXI-196: reduced motion keeps the collision flourish as a static semantic 
     assert.equal(reduced.out.batch.material.uniforms.uMotion.value, 0);
     assert.equal(normal.out.batch.material.uniforms.uMotion.value, 1);
     // The semantic slot still carries its spatial meaning under reduced motion.
-    const slot = reduced.out.slots.find(sl => sl.event === 'bombs:detonated');
+    const slot = reduced.out.slots.find(sl => sl.event === 'weapons:mineDetonated');
     assert.ok(slot.alive === false || slot.recipe.life === life);
     const inst = reduced.out.inspect().instances;
-    assert.ok(inst.length === 0 || inst[0].event === 'bombs:detonated');
+    assert.ok(inst.length === 0 || inst[0].event === 'weapons:mineDetonated');
     // Spatial anchor: after the owning body leaves, the static shape stays at the receipted point.
     const s2 = fixture(true), out2 = new ActionVfx(new THREE.Scene());
     try {
-      out2.emit('bombs:detonated', detonation, s2);
+      out2.emit('weapons:mineDetonated', detonation, s2);
       s2.entities.get(1).pos.x = 500; s2.simTime += 0.2; out2.update(s2);
       const live = out2.slots.find(sl => sl.recipe?.verb === 'shove');
       assert.equal(live.x, 20); assert.equal(live.z, 30);

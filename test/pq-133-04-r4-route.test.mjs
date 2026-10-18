@@ -167,7 +167,7 @@ test('the block ruleset is a bounded public ruleset on the ordinary launch route
   assert.equal(BLOCK_RULESET, 'block');
   assert.ok(isBlockRuleset('block'));
   assert.ok(!isBlockRuleset('scored'));
-  assert.deepEqual([...CRUCIBLE_RULESETS], [SWARM_RULESET, 'scored', 'boss_circuit', 'block']);
+  assert.deepEqual([...CRUCIBLE_RULESETS], [SWARM_RULESET, 'scored', 'boss_circuit', 'block', 'trial_powered_conveyor']);
   assert.equal(CRUCIBLE_DEFAULT_RULESET, SWARM_RULESET, 'the default the button plays is unchanged');
   assert.equal(normalizeCrucibleRuleset('block'), 'block');
   assert.equal(normalizeCrucibleRuleset('scored'), 'scored');
@@ -187,6 +187,7 @@ test('mirror_demonstrator carries the three-spec Pulse demonstration and validat
   assert.equal(MIRROR_DEMONSTRATOR.hullId, 'ship_drifter');
   assert.deepEqual(MIRROR_DEMONSTRATOR.loadout, [
     { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+    { slotIndex: 3, defId: 'mod_engine_fusion_m' },
     { slotIndex: 7, defId: 'mod_bank_shot' },
     { slotIndex: 8, defId: 'mod_smart_bank' },
   ]);

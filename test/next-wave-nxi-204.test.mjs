@@ -103,7 +103,7 @@ test('a load (sim time moving back) clears the completed flash without replaying
   const actionVfx = new ActionVfx(scene);
   try {
     // A transient action receipt (the hit-family flash on the same body) plus the durable scar.
-    assert.equal(actionVfx.emit('bombs:detonated', { targetId: 7, pos: { x: 26, z: -5 } }, actionState), true);
+    assert.equal(actionVfx.emit('weapons:mineDetonated', { targetId: 7, pos: { x: 26, z: -5 } }, actionState), true);
     actionVfx.update(actionState);
     assert.equal(actionVfx.inspect().active, 1, 'the flash is live before expiry');
     const scarIndex = h.presenter.retainHullMark(7, 31, 0.35, -5, 1, 0, 0, 'slam:2:bow');

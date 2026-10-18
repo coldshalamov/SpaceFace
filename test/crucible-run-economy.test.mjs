@@ -13,6 +13,7 @@ import {
 } from '../src/core/runState.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { runSession } from '../src/systems/runSession.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import {
   killScoreFor,
   killXpFor,
@@ -118,12 +119,20 @@ test('extreme finite XP does not enter a non-progressing correction loop', () =>
 
   assert.equal(child.error, undefined, child.error && child.error.message);
   assert.equal(child.status, 0, child.stderr);
-  assert.ok(Number.isFinite(Number(child.stdout.trim())));
+  // A colored console wraps the digits; the level itself is the number.
+  const printed = String(child.stdout).replace(/\u001b\[[0-9;]*m/g, '').trim();
+  const level = Number(printed);
+  assert.ok(Number.isFinite(level) && level > 1, printed);
 });
 
 test('an award lands in the run wallet, recomputes the level, and emits a receipt', () => {
   const harness = boot();
   beginSurvival(harness);
+  // Score waits until this wave's pilot acts. Credits and XP do not.
+  harness.bus.emit('run:awardRequested', { score: 300, reason: 'test' });
+  assert.equal(harness.state.run.score, 0);
+  assert.equal(named(harness.emitted, 'run:awarded').length, 0);
+  noteSwarmPilotAction(harness.state);
   harness.bus.emit('run:awardRequested', { credits: 40, xp: 120, score: 300, reason: 'test' });
   const run = harness.state.run;
   assert.equal(run.credits, 40);
@@ -174,6 +183,7 @@ test('spending refuses to go negative and says so', () => {
 test('a cohort kill pays run XP and score; a bystander kill inside the arena pays nothing', () => {
   const harness = boot();
   beginSurvival(harness);
+  noteSwarmPilotAction(harness.state);
 
   const wasp = spawnCohortEnemy(harness, { level: 2, wave: 4 });
   killIt(harness, wasp);
