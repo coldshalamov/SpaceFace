@@ -271,6 +271,14 @@ function countermeasureEffectId(effect) {
   return countermeasureEffectIds.get(effect);
 }
 
+// Hull history records are immutable event reductions; encode each replacement once.
+const livingHullWireRecords = new WeakMap();
+function livingHullWireRecord(record) {
+  if (!record) return null;
+  if (!livingHullWireRecords.has(record)) livingHullWireRecords.set(record, JSON.stringify(record));
+  return livingHullWireRecords.get(record);
+}
+
 export function entityVitalsOf(e) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
@@ -290,6 +298,14 @@ export function entityVitalsOf(e) {
     fields.machineWorking = Boolean(machine.working);
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  const ecology = e.data && e.data.ecology;
+  if (ecology) {
+    fields.ecologyName = e.data.name ?? null;
+    fields.ecologyScanLabel = e.data.scanLabel ?? null;
+    fields.ecologySignalKind = e.data.scannerSignalKind ?? null;
+    fields.ecologyDisguised = ecology.disguised === true;
+  }
+  if (e.data?.nemesis) fields.nemesisLivingHullJson = livingHullWireRecord(e.data.livingHull);
   const cm = e.data && e.data.cm;
   if (cm) {
     fields.cmEffectId = cm.effect ? countermeasureEffectId(cm.effect) : null;
@@ -334,6 +350,12 @@ function vitalShadowMatches(e, shadow) {
   if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const ecology = e.data && e.data.ecology;
+  if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const cm = e.data && e.data.cm;
   if ((cm ? cm.effect || null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
@@ -356,6 +378,12 @@ function writeVitalShadow(e, shadow) {
   shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
+  const ecology = e.data && e.data.ecology;
+  shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING;
   const cm = e.data && e.data.cm;
   shadow[i++] = cm ? cm.effect || null : VITAL_SHADOW_MISSING;
   shadow[i++] = cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING;

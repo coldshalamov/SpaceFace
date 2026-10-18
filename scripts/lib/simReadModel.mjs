@@ -79,6 +79,24 @@ function foldMineVitals(row, fields) {
   row.data.armed = fields.mineArmed;
 }
 
+// Revelation changes labels and the sail's silhouette after its spawn.
+function foldEcologyVitals(row, fields) {
+  if (fields.ecologyDisguised === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.name = fields.ecologyName;
+  row.data.scanLabel = fields.ecologyScanLabel;
+  row.data.scannerSignalKind = fields.ecologySignalKind;
+  if (!row.data.ecology || typeof row.data.ecology !== 'object') row.data.ecology = {};
+  row.data.ecology.disguised = fields.ecologyDisguised;
+}
+
+// Decode only changed history, keeping scar arrays stable when other vitals change.
+function foldNemesisHullVitals(row, fields) {
+  if (fields.nemesisLivingHullJson === undefined || fields.nemesisLivingHullJson === row.nemesisLivingHullJson) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.livingHull = fields.nemesisLivingHullJson === null ? null : JSON.parse(fields.nemesisLivingHullJson);
+}
+
 // Retain one small presentation object per deployment so VFX can follow later replies.
 function foldCountermeasureVitals(row, fields) {
   if (fields.cmEffectId === undefined) return;
@@ -172,10 +190,12 @@ export function applySpawnInfos(readModel, spawnInfos) {
     // entity (hull, shield, fuel, and friends). Shipped on spawn and refreshed by
     // the vitals diff channel; absent fields stay undefined rather than 0.
     if (info.vitals && typeof info.vitals === 'object') {
+      foldNemesisHullVitals(row, info.vitals);
       Object.assign(row, canonicalClone(info.vitals));
       foldBoostVitals(row, info.vitals);
       foldMachineVitals(row, info.vitals);
       foldMineVitals(row, info.vitals);
+      foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
@@ -245,6 +265,7 @@ export function applyEntityVitals(readModel, vitals) {
     if (!Number.isSafeInteger(id) || !fields || typeof fields !== 'object') continue;
     const row = readModel.entities.get(id);
     if (!row) continue;
+    foldNemesisHullVitals(row, fields);
     for (const key of Object.keys(fields)) {
       const v = fields[key];
       if (v === undefined) delete row[key];
@@ -253,6 +274,7 @@ export function applyEntityVitals(readModel, vitals) {
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
     foldMineVitals(row, fields);
+    foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
