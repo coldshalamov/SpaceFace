@@ -16,6 +16,7 @@ import {
   hunterTrickById,
   hunterTrickForContract,
 } from '../data/hunterTricks.js';
+import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { mineLayerWakePoint } from '../ai/mineLayerVerb.js';
 import { chaffDecoyPoint } from './countermeasures.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
@@ -57,6 +58,10 @@ export {
 } from '../data/hunterTricks.js';
 
 const STATE_VERSION = 1;
+const TOW_CONTEST_RANGE = 900;
+const TOW_LATCH_RANGE = 120;
+const TOW_RESPONSE_S = 2;
+
 
 export const bountyHunt = {
   name: 'bountyHunt',
@@ -171,8 +176,10 @@ export const bountyHunt = {
     for (const entity of indexedShipLikeScan(state)) {
       if (isBountyHunter(entity)) {
         anyHunter = true;
-        normalizeHunter(entity, state);
-        tickHunterTrick(entity, state, this);
+        if (!this._tickTowContest(entity, state)) {
+          normalizeHunter(entity, state);
+          tickHunterTrick(entity, state, this);
+        }
         const targetId = entity.data && entity.data.contractTargetId;
         if (targetId != null && !hunterByTarget.has(targetId)) hunterByTarget.set(targetId, entity);
       } else if (isBountyQuarry(entity)) {
@@ -200,6 +207,81 @@ export const bountyHunt = {
         publishBountyHuntQuiet(state, false);
       }
     }
+  },
+
+  // One opportunity per secured contract, not per tick. The coin flip only admits
+  // the encounter; the ordinary joint, motors and cable cuts decide who keeps it.
+  _tickTowContest(hunter, state) {
+    const data = hunter.data;
+    const hunt = data.bountyHunt;
+    const ai = data.ai || (data.ai = {});
+    const target = state.entities.get(data.contractTargetId);
+    const record = target && Object.values(state.surrenderRecovery?.records || {})
+      .find((r) => r.entityId === target.id && !r.resolved && r.recoveryKind === 'surrendered');
+    const lines = this.registry?.get('combat')?.kernel?.attachments;
+    const player = state.entities.get(state.playerId);
+    let tow = hunt.towContest;
+    const line = tow?.attachmentId != null && lines?.get(tow.attachmentId);
+    const held = target && lines?.listForEntity(target.id)
+      .some((a) => a.ownerId === state.playerId && a.targetId === target.id);
+    if (tow?.phase === 'approach' || tow?.phase === 'tow') {
+      const invalid = !record || !target?.alive || !player?.alive || hunter.alive === false
+        || state.ui?.docked || player.flags?.docked || data.jobId
+        || (tow.phase === 'tow' ? !line || line.state !== 'active' : !held
+          || record.phase !== 'secured' || distance2(hunter.pos, target.pos) > TOW_CONTEST_RANGE ** 2
+          || protectedStationAt(state, player) || protectedStationAt(state, target) || protectedStationAt(state, hunter));
+      if (invalid || tow.recoveryId !== record?.id) {
+        if (line?.state === 'active') lines.cut(line.id, hunter.id, 'contest_withdrawn');
+        tow.phase = 'done';
+        ai.passive = tow.wasPassive;
+        data.intent = { ...data.intent, moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null };
+        return false;
+      }
+    } else {
+      if (!record || record.phase !== 'secured' || !held || !lines || !player?.alive
+        || !hunter.alive || hunt.done || !hunt.contractId || data.contractTargetId === state.playerId
+        || tow?.recoveryId === record.id || record.contest
+        || data.jobId || data.npcTowAttachmentId || hunt.trickState?.phase === 'telegraphing'
+        || ai.fsm === 'surrender' || ai.fsm === 'flee'
+        || lines.listForEntity(hunter.id).length || state.ui?.docked || player.flags?.docked
+        || distance2(hunter.pos, target.pos) > TOW_CONTEST_RANGE ** 2
+        || protectedStationAt(state, player) || protectedStationAt(state, target) || protectedStationAt(state, hunter)) return false;
+      tow = hunt.towContest = { recoveryId: record.id, phase: 'declined',
+        readyAt: finite(state.simTime, 0) + TOW_RESPONSE_S, wasPassive: ai.passive === true };
+      if (typeof state.rng !== 'function' || state.rng() < 0.5) return false;
+      tow.phase = 'approach';
+      emit(this.bus, 'toast', { kind: 'warn', ttl: 4,
+        text: `${data.name || 'A rival hunter'} is closing on your prize. Keep clear of their Massline.` });
+    }
+    // Flight V3 consumes these navigation axes. Passive excludes this temporarily
+    // owned hull from the tactical motor planner, so two pilots never fight its helm.
+    ai.passive = true;
+    hunt.pursuing = false;
+    let dx = target.pos.x - hunter.pos.x;
+    let dz = target.pos.z - hunter.pos.z;
+    if (tow.phase === 'approach' && finite(state.simTime, 0) >= tow.readyAt
+      && dx * dx + dz * dz <= TOW_LATCH_RANGE ** 2) {
+      const created = lines.create({ defId: 'tether_standard', ownerId: hunter.id,
+        targetId: target.id, controlMode: 'bounty_contest',
+        sourceWorld: { x: hunter.pos.x, y: 0, z: hunter.pos.z },
+        targetWorld: { x: target.pos.x, y: 0, z: target.pos.z } });
+      if (created?.ok) {
+        tow.attachmentId = created.attachment.id;
+        tow.phase = 'tow';
+      }
+    }
+    if (tow.phase === 'tow') {
+      // Pull against the player's line. Once they abandon it, take the hull to
+      // lawful custody; surrenderRecovery remains the only custody/payout writer.
+      const refuge = !held && lawfulTowRefuge(state, target);
+      dx = refuge ? refuge.pos.x - hunter.pos.x : target.pos.x - player.pos.x;
+      dz = refuge ? refuge.pos.z - hunter.pos.z : target.pos.z - player.pos.z;
+      if (Math.hypot(dx, dz) < 1) { dx = hunter.pos.x - target.pos.x; dz = hunter.pos.z - target.pos.z; }
+    }
+    data.intent = { ...data.intent, mode: 'bounty_tow', targetId: target.id,
+      moveX: 0, moveZ: tow.phase === 'tow' || Math.hypot(dx, dz) > TOW_LATCH_RANGE ? 1 : 0,
+      aimAngle: Math.atan2(dz, dx), boost: false, fire: false, fireGroup: null };
+    return true;
   },
 
   // Stage one hunter-vs-quarry chase crossing the player's view. Free flight only:
@@ -285,6 +367,8 @@ export const bountyHunt = {
     const data = quarry.data || (quarry.data = {});
     const hunt = data.bountyHunt || (data.bountyHunt = { role: 'quarry' });
     if (hunt.done) return false;
+    if (data.surrenderRecovery && (['tethered', 'secured'].includes(data.surrenderRecovery.phase)
+      || hunterByTarget.get(quarry.id)?.data?.bountyHunt?.towContest?.phase === 'tow')) return true;
     const contractId = hunt.contractId || data.contractId || `bounty:${quarry.id}`;
     hunt.contractId = contractId;
     const seed = (state.meta && state.meta.seed) || 1;
@@ -703,6 +787,16 @@ function steerQuarryFromHunter(quarry, hunter, refuge) {
   intent.aimAngle = Math.atan2(dz / len, dx / len);
   intent.mode = 'bounty_quarry_flee';
   intent.boost = hunterDist < QT.dumpRange;
+}
+
+function lawfulTowRefuge(state, target) {
+  const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+  let best = null;
+  for (const station of stations) {
+    if (!station?.alive || station.type !== 'station' || !station.pos || !protectedStationAt(state, station)) continue;
+    if (!best || distance2(target.pos, station.pos) < distance2(target.pos, best.pos)) best = station;
+  }
+  return best;
 }
 
 function nearestRefugeStation(state, pos, range) {

@@ -1020,7 +1020,8 @@ export function createAttachmentService(context) {
       // Warning is an ordered, player-visible receipt, not post-break decoration. Detect it before
       // stepping the cut authority; the bounded warning lease below then keeps the line recoverable
       // for presentation and pilot counterplay before `tether:broken` may be emitted.
-      const automaticBreak = automaticMasslineBreakAllowed(def, owner, target);
+      const automaticBreak = attachment.controlMode === 'bounty_contest'
+        || automaticMasslineBreakAllowed(def, owner, target);
       if (state.tick - attachment.createdTick >= grace && breakPolicy && automaticBreak) {
         const tensionRatio = breakPolicy.maxTension > 0 ? attachment.lastTension / breakPolicy.maxTension : 0;
         const impulseRatio = breakPolicy.maxImpulse > 0 ? attachment.lastImpulse / breakPolicy.maxImpulse : 0;

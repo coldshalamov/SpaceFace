@@ -56,6 +56,8 @@ export const surrenderRecovery = {
     this._onDriveDisabled = (payload) => this._registerDriveDisabled(payload || {});
     this._onDriveEnabled = (payload) => this._driveEnabled(payload || {});
     this._onLatched = (payload) => this._latched(payload || {});
+    this._onAttached = (payload) => this._rivalAttached(payload || {});
+    this._onLineBroken = (payload) => this._lineBroken(payload || {});
     this._onReel = (payload) => this._reel(payload || {});
     this._onReleased = (payload) => this._release(payload || {});
     this._onBroke = (payload) => this._release({ ...(payload || {}), reason: 'broke' });
@@ -76,6 +78,8 @@ export const surrenderRecovery = {
       this.bus.on('combat:subsystemDisabled', this._onDriveDisabled);
       this.bus.on('combat:subsystemEnabled', this._onDriveEnabled);
       this.bus.on('tether:latched', this._onLatched);
+      this.bus.on('tether:attached', this._onAttached);
+      this.bus.on('tether:broken', this._onLineBroken);
       this.bus.on('tether:reel', this._onReel);
       this.bus.on('tether:released', this._onReleased);
       this.bus.on('tether:broke', this._onBroke);
@@ -167,7 +171,7 @@ export const surrenderRecovery = {
           continue;
         }
       }
-      if (record.phase === 'secured') {
+      if (record.phase === 'secured' || contestLineLive(state, record)) {
         const jurisdiction = protectedStationAt(state, entity);
         if (jurisdiction) this._custody(record, entity, jurisdiction, now);
       }
@@ -357,6 +361,68 @@ export const surrenderRecovery = {
     return true;
   },
 
+  // The kernel owns contest joints and their cuts/snaps. This owner only tracks
+  // the holders and settles custody once one pilot delivers the prize alone.
+  _rivalAttached(payload) {
+    const state = this.state;
+    const targetId = payload.targetId;
+    if (targetId == null) return false;
+    const record = recordForEntity(ensureState(state), targetId);
+    if (!record || record.resolved || record.phase !== 'secured'
+      || !canonicalPlayerAttachment(state, targetId)) return false;
+    const actorId = payload.actorId != null ? payload.actorId : payload.ownerId;
+    if (actorId == null || actorId === state.playerId) return false;
+    if (!rivalAttachmentLive(state, payload.attachmentId, actorId, targetId)) return false;
+    if (record.contest && record.contest.attachmentId === String(payload.attachmentId)
+      && contestLineLive(state, record)) return false;
+    const entity = entityFor(state, targetId);
+    if (!entity || entity.alive === false) return false;
+    record.contest = {
+      attachmentId: String(payload.attachmentId),
+      rivalId: actorId,
+      contestedAt: Number(state.simTime) || 0,
+    };
+    const rivalName = displayNameFor(state, entityFor(state, actorId));
+    annotate(entity, record, `Tow contested — ${rivalName} holds the far end. Break their line to take the prize.`);
+    this._emit('surrender:contested', {
+      ...publicRecord(record, entity),
+      rivalId: actorId,
+      rivalName,
+      text: `TOW CONTESTED - ${rivalName} latched the far end of the prize.`,
+    });
+    this._emit('toast', { kind: 'warn', ttl: 5,
+      text: `TOW CONTESTED - ${rivalName} latched the far end of the prize. Break their line or release yours.` });
+    return true;
+  },
+
+  _lineBroken(payload) {
+    const attachmentId = payload.attachmentId != null ? String(payload.attachmentId) : null;
+    if (attachmentId == null) return false;
+    const state = this.state;
+    const own = ensureState(state);
+    if (payload.ownerId === state.playerId && !canonicalPlayerAttachment(state, payload.targetId)) {
+      this._release({ targetId: payload.targetId, reason: 'broke' });
+    }
+    for (const record of Object.values(own.records)) {
+      if (!record || record.resolved || !record.contest) continue;
+      if (String(record.contest.attachmentId) !== attachmentId) continue;
+      const entity = entityFor(state, record.entityId);
+      clearContest(record);
+      if (record.phase === 'awaiting_tether' && record.recoveryKind === RECOVERY_SURRENDERED) {
+        record.escapeAt = (Number(state.simTime) || 0) + SURRENDER_ESCAPE_S;
+      }
+      if (entity && entity.alive !== false) {
+        annotate(entity, record, contestClearedInstruction(record));
+      }
+      this._emit('surrender:contestResolved', {
+        ...publicRecord(record, entity),
+        reason: payload.reason || 'broken',
+      });
+      return true;
+    }
+    return false;
+  },
+
   _release(payload) {
     const entityId = payload.targetId;
     const record = recordForEntity(ensureState(this.state), entityId);
@@ -373,10 +439,14 @@ export const surrenderRecovery = {
     }
     record.phase = 'awaiting_tether';
     record.securedAt = null;
-    record.escapeAt = record.recoveryKind === RECOVERY_SURRENDERED
+    const rivalHolding = contestLineLive(this.state, record);
+    if (!rivalHolding) clearContest(record);
+    record.escapeAt = !rivalHolding && record.recoveryKind === RECOVERY_SURRENDERED
       ? (Number(this.state.simTime) || 0) + SURRENDER_ESCAPE_S
       : null;
-    annotate(entity, record, record.recoveryKind === RECOVERY_SURRENDERED
+    annotate(entity, record, rivalHolding
+      ? 'Prize released. The rival holds the tow; relatch to contest it.'
+      : record.recoveryKind === RECOVERY_SURRENDERED
       ? 'Custody lock lost. Relatch before this ship escapes.'
       : 'Custody lock lost. Relatch while the drive remains disabled.');
     this._emit('surrender:recoveryLost', publicRecord(record, entity));
@@ -385,6 +455,15 @@ export const surrenderRecovery = {
 
   _custody(record, entity, jurisdiction, now) {
     if (record.resolved) return false;
+    const playerHolding = canonicalPlayerAttachment(this.state, entity.id);
+    const rivalHolding = contestLineLive(this.state, record);
+    if (rivalHolding && playerHolding) return false;
+    if (rivalHolding) {
+      const rival = entityFor(this.state, record.contest.rivalId);
+      if (protectedStationAt(this.state, rival)?.stationId !== jurisdiction.stationId) return false;
+    } else if (record.phase !== 'secured') return false;
+    const holderId = rivalHolding ? record.contest.rivalId : this.state.playerId;
+    if (record.contest) clearContest(record);
     if (record.recoveryKind === RECOVERY_CIVILIAN_DISABLED) {
       return this._recoverCivilian(record, entity, jurisdiction, now);
     }
@@ -408,11 +487,14 @@ export const surrenderRecovery = {
       factionId: record.factionId,
       authorityFactionId: record.authorityFactionId,
       stationId: record.stationId,
-      credits: record.rewardCr,
+      credits: rivalHolding ? 0 : record.rewardCr,
+      ...(rivalHolding ? { holderId } : {}),
       t: now,
       recoveryKind: record.recoveryKind,
       settledDebtId: (settledDebt && settledDebt.id) || null,
-      text: (record.recoveryKind === RECOVERY_DRIVE_DISABLED
+      text: (rivalHolding
+        ? 'CUSTODY TRANSFERRED - the rival delivered the prize; no bounty paid to you.'
+        : record.recoveryKind === RECOVERY_DRIVE_DISABLED
         ? 'CUSTODY TRANSFERRED - disabled hull secured without a kill.'
         : 'CUSTODY TRANSFERRED - surrendered hull secured without a kill.')
         + (settledDebt ? ` ${settledDebt.name} is in chains; the ledger closes.` : ''),
@@ -420,18 +502,23 @@ export const surrenderRecovery = {
     const own = ensureState(this.state);
     own.receipts.push(receipt);
     if (own.receipts.length > RECEIPT_CAP) own.receipts.splice(0, own.receipts.length - RECEIPT_CAP);
-    this._emit('economy:grantCredits', {
+    if (!rivalHolding) this._emit('economy:grantCredits', {
       amount: record.rewardCr,
       reason: `surrender_custody:${entity.id}`,
       entityId: entity.id,
     });
-    if (record.authorityFactionId) {
+    if (!rivalHolding && record.authorityFactionId) {
       this._emit('faction:repDelta', {
         factionId: record.authorityFactionId,
         delta: 2,
         reason: 'surrender_custody',
         entityId: entity.id,
       });
+    }
+    if (rivalHolding) {
+      this._emit('surrender:contestResolved', { ...receipt, holderId, reason: 'rival_custody' });
+      this._emit('toast', { text: receipt.text, kind: 'info', ttl: 4 });
+      return true;
     }
     this._emit('law:custodyTransfer', { ...receipt });
     this._emit('combat:nonlethalResolution', { ...receipt });
@@ -746,6 +833,8 @@ export const surrenderRecovery = {
       if (this._onDriveDisabled) this.bus.off('combat:subsystemDisabled', this._onDriveDisabled);
       if (this._onDriveEnabled) this.bus.off('combat:subsystemEnabled', this._onDriveEnabled);
       if (this._onLatched) this.bus.off('tether:latched', this._onLatched);
+      if (this._onAttached) this.bus.off('tether:attached', this._onAttached);
+      if (this._onLineBroken) this.bus.off('tether:broken', this._onLineBroken);
       if (this._onReel) this.bus.off('tether:reel', this._onReel);
       if (this._onReleased) this.bus.off('tether:released', this._onReleased);
       if (this._onBroke) this.bus.off('tether:broke', this._onBroke);
@@ -758,7 +847,8 @@ export const surrenderRecovery = {
       if (this._onGameStarted) this.bus.off('game:started', this._onGameStarted);
     }
     this._onSurrendered = this._onDriveDisabled = this._onDriveEnabled = null;
-    this._onLatched = this._onReel = this._onReleased = this._onBroke = null;
+    this._onLatched = this._onAttached = this._onLineBroken = null;
+    this._onReel = this._onReleased = this._onBroke = null;
     this._onEntityKilled = this._onManifestRemaining = this._onSectorExit = this._onPlayerDeath = null;
     this._onSaveRestoring = null;
     this._onGameNew = this._onGameStarted = null;
@@ -1056,6 +1146,43 @@ function restoredCivilianPhase(state, targetId) {
   return Number.isFinite(restLength) && restLength <= SURRENDER_SECURE_REEL_WU
     ? 'secured'
     : 'tethered';
+}
+
+// CRT-02: the far end of the prize. A rival line is live while the kernel still holds
+// it active between the rival hull and the prize — the same record the physics break
+// authority reads, so the contest ends exactly when the line does (overload or cut).
+function rivalAttachmentLive(state, attachmentId, rivalId, targetId) {
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const attachment = attachmentId != null && byId && typeof byId === 'object'
+    ? byId[String(attachmentId)]
+    : null;
+  return !!(attachment && attachment.state === 'active'
+    && attachment.ownerId === rivalId && attachment.targetId === targetId
+    && rivalId !== state.playerId);
+}
+
+function contestLineLive(state, record) {
+  if (!record || !record.contest) return false;
+  return rivalAttachmentLive(state, record.contest.attachmentId, record.contest.rivalId, record.entityId);
+}
+
+function clearContest(record) {
+  if (record) record.contest = null;
+}
+
+// Player words never carry a raw id: the public recovery record already prefers the
+// hull's data name, and the rival is named the same way.
+function displayNameFor(state, rival) {
+  const data = rival && rival.data;
+  const name = data && (data.name || data.shipName || data.callsign || (data.ai && data.ai.name));
+  if (typeof name === 'string' && name.trim()) return name.trim().slice(0, 80);
+  return 'A rival hunter';
+}
+
+function contestClearedInstruction(record) {
+  return record.phase === 'secured'
+    ? 'Custody lock secure. Tow this hull into a lawful station ring.'
+    : 'Hold massline reel until the custody lock engages.';
 }
 
 function canonicalPlayerAttachment(state, targetId, attachmentId = null) {
