@@ -472,7 +472,10 @@ test('hitch compile waits for leftover sim and sleeping islands skip extra WASM'
   // imported with a stricter shape than the originally pinned patch text: it additionally
   // demands `!continuation`, so a reeled/continuing body never skips). Pin the semantics,
   // not the patch's exact bytes.
-  assert.match(owner, /if \(!command &&[^;]*this\._sleepingRecordSkipsCpu\(rec, false\)\) continue/);
+  // 242c19afdf0d (2026-10-14) kept that skip and closed the pre-step spin caches before
+  // continue, so a skipped sleeper cannot leave a stale torque sample. The old one-line
+  // `) continue` pin is the shape that commit replaced.
+  assert.match(owner, /if \(!command && !continuation && this\._sleepingRecordSkipsCpu\(rec, false\)\) \{\s*closePreStepAngular\(rec\);\s*invalidatePreStepYaw\(rec\);\s*closePreStepYaw\(rec\);\s*continue;/);
   assert.match(owner, /rec\._sleepAllowed !== allow/);
   // The post-step verdict is cached once per record per step: a sleeping island skips the
   // WASM kinematics readback and the give pass (a no-op on a body that did not move), and the
