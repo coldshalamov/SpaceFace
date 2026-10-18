@@ -659,10 +659,24 @@ export function tickMachineLayer(world, dt) {
         m.awakened = true;
         if (!incident.warned) {
           incident.warned = true;
-          world.bus.emit('comms:log', { from: 'Verge lattice', kind: 'machine',
-            text: 'INCIDENT ' + incident.id + '. BIOLOGICAL MANIFEST SUBJECT TO PURGE AFTER '
-              + kind.pulsePeriodS + ' SECONDS INSIDE ' + kind.quarantinePulseR
-              + '. JETTISON BIOLOGICAL CARGO TO ISOLATE IT, CLEAR THE RADIUS, OR BRING THIS HULL TO THE EXCEPTION CHAMBER FOR A WITNESSED CLEAN COMPARISON. NONBIOLOGICAL CARGO IS OUTSIDE SCOPE.' });
+          const flaggedLots = Object.keys(incident.manifest || {});
+          const flaggedUnits = flaggedLots.reduce((n, id) => n + (Number(incident.manifest[id]) || 0), 0);
+          // The quarantined lots are named from the incident manifest so the player
+          // knows what to jettison; display names plus ids survive unknown ids.
+          // No biological lots (mineral/metal hold) means no warning at all.
+          if (flaggedLots.length) {
+            const flaggedWords = flaggedLots
+              .map((id) => `${commodityNames.get(id) || id} (${id}) ×${incident.manifest[id]}`)
+              .join(', ');
+            world.bus.emit('comms:log', { from: 'Verge lattice', kind: 'machine',
+              text: 'INCIDENT ' + incident.id + '. BIOLOGICAL MANIFEST SUBJECT TO PURGE AFTER '
+                + kind.pulsePeriodS + ' SECONDS INSIDE ' + kind.quarantinePulseR
+                + `. FLAGGED LOTS: ${flaggedUnits} UNIT(S) — ${flaggedWords}`
+                + '. JETTISON BIOLOGICAL CARGO TO ISOLATE IT, CLEAR THE RADIUS, OR BRING THIS HULL TO THE EXCEPTION CHAMBER FOR A WITNESSED CLEAN COMPARISON. NONBIOLOGICAL CARGO IS OUTSIDE SCOPE.' });
+            emitComms(world, 'Verge lattice',
+              `Quarantine warning: BIOLOGICAL MANIFEST SUBJECT TO PURGE after ${kind.pulsePeriodS} `
+              + `seconds inside ${kind.quarantinePulseR}. Flagged lots: ${flaggedUnits} unit(s) — ${flaggedWords}.`);
+          }
         }
         const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
         const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
