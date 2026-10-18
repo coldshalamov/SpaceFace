@@ -566,9 +566,9 @@ finished plan — the board is finished only when every number in this table is 
 
 | Surface | Remaining |
 |---|---|
-| Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **10 open defects** — D130, D188, D191, D198, D199, D202b, D211, D212, D213, D214 — plus standing import guard D175 |
-| Numbered board rows (§A–§M tables below) | **11 open** — quiet-host session 284; residual rows 381–389 (minted 2026-10-17: earned-momentum tagging, the ore-crusher battlefield, two render-animation briefs, two mission scenes, the honest-shortcut delivery, approach-materialized calcite props, the adhesive law). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F) |
-| Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 381–387 and the INFERENCE lines |
+| Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **13 open defects** — D188, D191, D199, D198, D130, D213, D215, D216, D217, D218, D219, D220, D221 — plus standing import guard D175 |
+| Numbered board rows (§A–§M tables below) | **3 open** — quiet-host session 284; the two render-animation briefs 383 and 384 (creature body language, precursor machine deployment; claimed by devin-graphics). Rows 381, 382 and 385–389 landed 2026-10-18. Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F) |
+| Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
 | Inference catalog (`INFERENCE_IDEAS.md`) | **19 OPEN lines** — gated: only under `--lane=inference` with an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
@@ -614,9 +614,9 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | industry | done | world sites, machinery, mining commitment | - |
 | people | done (devin-sweep-oct2) | jobs, aftermath, convoys | - |
 | ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | - |
-| hand | free | flight, tether, massline, onboarding | 381 |
-| missions | free | missions | 382, 385, 386, 387, 389 |
-| world | free | sectors, traffic, factions, news | 388 |
+| hand | done (claude-oct18) | flight, tether, massline, onboarding | - |
+| missions | done (claude-oct18) | missions | - |
+| world | done (claude-oct18) | sectors, traffic, factions, news | - |
 | story | done (devin-oct2-batch) | story | - |
 | input | done (devin-oct2-batch) | gamepad, input, settings behavior | - |
 | ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | - |
