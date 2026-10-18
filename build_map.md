@@ -5438,3 +5438,9 @@ owners are free; the row lives or dies on the existing fits staying honest.
 Every row refuses the same things §23.3 refuses, plus: a mission that says "hold E near the thing,"
 a modal where a physical verb was named, a meter that runs out, and a second writer of heat, cargo,
 or standing.
+
+### 30.8 Landed first slices (2026-10-15 and 2026-10-18)
+
+Every §30 plan row now has a landed first slice on `master`: RW-01, RW-04 and VIG-02 (2026-10-15); RW-02 (hot towed payload steals homing missiles; pursuers are still follow-up), RW-03, BORE-01, BORE-02, BORE-03,
+VIG-01, VIG-03, CRT-01, CRT-02, CRT-03, FLT-01, FLT-02, AIR-01 (the death record rides the share code into a ghost wreck; the black-box replay is the second slice) and AIR-02 (2026-10-18). The plans stay above as the
+design record; what remains is each row's "second slice", not the row. Visible cables for non-player Masslines (CRT-02's hunter line, FLT-02's brace) shipped with NPC cables the same day.
