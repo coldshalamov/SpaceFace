@@ -34,6 +34,17 @@ export const AMBUSH_SIGNATURES = Object.freeze({
     label: 'False distress ping',
     hint: 'False distress ping: verify before committing to the rescue vector.',
   }),
+  // RW-02 first slice: the towed choir-bell lure reads on the glass as a scannable
+  // signature. The targeting weights below are the authored threshold contract: a hot
+  // lure above threshold outweighs the cold hull, so seekers re-acquire the lure.
+  towed_lure: Object.freeze({
+    id: 'towed_bell_note',
+    label: 'Towed bell note',
+    hint: 'Towed bell lure: a hot towed payload is singing on the lane. Cut the line or steer the pursuit into a rock before it sings for you.',
+    targeting: Object.freeze({ threshold: 0.6, lure: 1.0, hull: 0.15 }),
+    severable: true,
+    consumable: true,
+  }),
 });
 
 export function ambushSignatureForShape(shapeId) {

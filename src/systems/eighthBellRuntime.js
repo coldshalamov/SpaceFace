@@ -17,6 +17,12 @@ const TOLL_REARM = 0.45;          // must fall below TOLL_SPEED * this before th
 const TOLL_MIN_GAP_S = 4;
 const BERTH_RADIUS = 170;         // the Cathedral arch is ~110 WU of spires; grace around it
 const TOW_GRACE_S = 420;          // after this the procession gives up on this lane
+// RW-02 towed lure: the signature seekers steer by. A peal makes her hot (1.0) and she
+// cools below the authored threshold (0.6 on the towed_lure row) LURE_HOT_S later —
+// simTime only, so a fixed seed reproduces the exact hot window.
+const LURE_HOT_SIGNATURE = 1.0;
+const LURE_COLD_SIGNATURE = 0.0;
+const LURE_HOT_S = 12;
 const HIRE_COST = 260;
 const TOLL_DANGER = 0.012;        // noise on the lane, via the ordinary danger pool
 const CATHEDRAL_POI = 'poi_vesta_resonant_cathedral';
@@ -60,6 +66,16 @@ function bellEntity(state, live) {
   return entity && entity.alive !== false ? entity : null;
 }
 
+// RW-02: the lure signature seekers steer by lives on the towed body's own data — the
+// smallest honest source the packet allows. Cold at launch, hot on every peal, cooling
+// below threshold LURE_HOT_S later. weapons.js reads it; this runtime is the one writer.
+function stampLureSignature(state, live, value) {
+  const bell = bellEntity(state, live);
+  if (!bell) return;
+  bell.data = bell.data || {};
+  bell.data.lureSignature = value;
+}
+
 function finish(d, live, state, outcome, flags = {}) {
   const story = state.story || (state.story = { flags: {} });
   if (!story.flags || typeof story.flags !== 'object') story.flags = {};
@@ -100,6 +116,7 @@ function toll(d, live, state, now) {
   vars.tolls = (vars.tolls || 0) + 1;
   vars.lastTollAt = now;
   vars.tollArmed = false;
+  stampLureSignature(state, live, LURE_HOT_SIGNATURE);
   d.say(live, 'info', TOLL_LINES[(vars.tolls - 1) % TOLL_LINES.length], null, { literal: true });
   d.emit('audio:cue', { id: 'sfx_eighth_bell_toll', gain: 0.95 });
   // The bell is loud in the pool that matters: every peal is real sector noise.
@@ -207,6 +224,7 @@ export const EIGHTH_BELL_RUNTIME = Object.freeze({
     bell.hull = 160;
     bell.hullMax = 160;
     bell.data.masslineTetherable = true;
+    bell.data.lureSignature = LURE_COLD_SIGNATURE;   // RW-02: cold until she first tolls
     live.vars.bellId = bell.id;
     live.ids.push(bell.id);
     live.roles[bell.id] = 'bell';
@@ -233,6 +251,11 @@ export const EIGHTH_BELL_RUNTIME = Object.freeze({
     const speed = speedOf(bell, live, now);
     vars.lastBellPos = bell.pos ? { x: bell.pos.x, z: bell.pos.z } : vars.lastBellPos;
     vars.lastBellT = now;
+    // RW-02: the peal's heat fades. Past the hot window the signature cools below the
+    // seeker threshold, so a quiet tow stops singing for the hull.
+    if ((vars.tolls || 0) > 0 && now - (vars.lastTollAt || 0) >= LURE_HOT_S) {
+      stampLureSignature(state, live, LURE_COLD_SIGNATURE);
+    }
     if (vars.tollArmed !== true && speed < TOLL_SPEED * TOLL_REARM) vars.tollArmed = true;
     if (speed >= TOLL_SPEED && vars.tollArmed === true && now - vars.lastTollAt >= TOLL_MIN_GAP_S) {
       toll(d, live, state, now);

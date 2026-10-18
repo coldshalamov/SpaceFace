@@ -29,6 +29,7 @@ import {
 } from '../combat/impulseKernel.js';
 import { isHostileToPlayer } from './scanner.js';
 import { cloakHidesEntityFrom } from './cloak.js';
+import { ambushSignatureForShape } from '../data/ambushSignatures.js';
 import { lockLineageSuppressed } from './countermeasures.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
@@ -1026,7 +1027,14 @@ export const weapons = {
         else { delete d._jammedTurnRate; delete d._jammedBy; }
       }
       const decoy = missileDecoyAim(d);
-      let tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
+      // RW-02 towed lure: a hot payload on the player's Massline re-acquires seekers that
+      // are homing on the cold hull. Refresh the lure claim BEFORE the decoy read so the
+      // aim below follows the live lure while the claim holds, and the hull once released.
+      refreshTowedLureDivert(this.helpers, state, d);
+      const lureDecoy = missileDecoyAim(d);
+      let tgt = (decoy || lureDecoy)
+        ? null
+        : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
       // A recycled entity id is not yesterday's target. The round stays a physical body.
       if (tgt && !guidanceAcceptsTarget(d, tgt)) tgt = null;
       // Cloak interplay (flag massline2.cloak): a target dark to THIS seeker bleeds its tracking
@@ -1035,7 +1043,7 @@ export const weapons = {
       // snapshot of the last fix, residual turn authority only. No snap-off, no instant re-lock —
       // coming back into the emitter's ring restores the authored turnRate mid-bleed. A missile
       // that already ate a decoy keeps flying that decoy line.
-      if (!decoy && tgt && cloakHidesEntityFrom(state, p, tgt)) {
+      if (!lureDecoy && !decoy && tgt && cloakHidesEntityFrom(state, p, tgt)) {
         if (d._cloakTurnRate == null) d._cloakTurnRate = d.turnRate || 0;
         d._cloakSeekerLoss = (d._cloakSeekerLoss || 0) + dt;
         const fade = Math.min(1, d._cloakSeekerLoss / CLOAK_SEEKER_DROP_S);
@@ -1045,14 +1053,14 @@ export const weapons = {
           d.divertPos = { x: tgt.pos.x, z: tgt.pos.z };
           d.turnRate = (d._cloakTurnRate || 0) * CLOAK_SEEKER_RESIDUAL;
         }
-      } else if (!decoy && d._cloakSeekerLoss > 0) {
+      } else if (!lureDecoy && !decoy && d._cloakSeekerLoss > 0) {
         // The emitter came back (entered the ring, cloak dropped, or a scan burn opened it).
         if (d._cloakTurnRate != null) d.turnRate = d._cloakTurnRate;
         d._cloakSeekerLoss = 0;
         d._cloakTurnRate = null;
       }
       if (jammer) d.turnRate *= Math.max(0, Math.min(1, jammer.turnRateMult ?? 0));
-      const aim = decoy || (tgt && tgt.pos);
+      const aim = lureDecoy || decoy || (tgt && tgt.pos);
       const turnRate = d.turnRate || 0;
       const speedMax = d.projSpeed || Math.hypot(p.vel.x, p.vel.z) || 1;
       let cur = Math.atan2(p.vel.z, p.vel.x);
@@ -1060,7 +1068,7 @@ export const weapons = {
       // Base guidance: a live target, or a chaff decoy point written by countermeasures. The decoy
       // is not a real entity — looking it up used to drop guidance and fly the round straight into
       // the ship it was already tracking.
-      let guiding = !!(aim && turnRate > 0 && (decoy || (tgt && tgt.alive)));
+      let guiding = !!(aim && turnRate > 0 && (lureDecoy || decoy || (tgt && tgt.alive)));
       let motorOn = true;
       if (missileV2) {
         // Fuel: burn for MISSILE_FUEL_S, then the motor dies and the missile coasts (no guidance).
@@ -1090,7 +1098,7 @@ export const weapons = {
       // juke-and-cloak counterplay the solver authors wrote is readable to the shooter.
       if (!d._guidanceLostEmitted && d.ownerId != null && state && d.ownerId === state.playerId) {
         let lostReason = null;
-        if (decoy) lostReason = (d._cloakSeekerLoss > 0) ? 'cloak' : 'decoy';
+        if (lureDecoy || decoy) lostReason = (d._cloakSeekerLoss > 0) ? 'cloak' : 'decoy';
         else if (d.diverted) lostReason = 'cloak';
         else if (missileV2 && !motorOn) lostReason = 'burnout';
         else if (missileV2 && !guiding && aim) lostReason = 'cone';
@@ -2280,6 +2288,71 @@ function missileDecoyAim(d) {
   const z = d.divertPos.z;
   if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
   return d.divertPos;
+}
+
+// RW-02 towed lure (choir-bell decoy). A hot payload riding the player's Massline steals
+// seekers that are homing on the cold hull — through the SAME diverted/divertPos
+// vocabulary countermeasures owns, never a parallel steering path. The lure's heat/noise
+// signature lives on the towed body's own data (the Eighth Bell's runtime stamps it when
+// she tolls); the threshold is the authored contract on the towed_lure signature row.
+// The claim is revocable: a severed line, a consumed payload, or a cooled lure clears
+// ONLY a lure-owned divert (chaff and cloak breaks keep their authority), so acquisition
+// returns to the hull. No active player tether, or no signature at all, means this
+// function returns before touching the round — the no-lure seeker path is byte-identical.
+function refreshTowedLureDivert(helpers, state, d) {
+  if (!d || d.kind !== 'missile') return;
+  // Another owner already holds this round (chaff, decoy buoy, cloak break): the lure
+  // never fights it. Our own claim is the one exception — it needs its per-tick refresh.
+  if (d.diverted === true && d.lureDiverted !== true) return;
+  const tether = state && state.player && state.player.tether;
+  const towedId = tether && tether.active === true ? tether.targetId : null;
+  const towed = towedId != null && helpers && typeof helpers.getEntity === 'function'
+    ? helpers.getEntity(towedId)
+    : null;
+  const lure = towedLureSignature(towed);
+  // Release: the line is gone, the payload is consumed, it cooled below the authored
+  // threshold, or the round is no longer answering the hull it stole. Clear only the
+  // lure's own divert so a chaff steal or a finished cloak break survives the release.
+  if (d.lureDiverted === true) {
+    const hullId = d.lureHullId;
+    const holds = lure && lure.hot === true && d.targetId === hullId
+      && towed && towed.alive !== false && towed.id === d.lureTowedId;
+    if (!holds) {
+      const owned = d.diverted === true && d.targetId === hullId && d._cloakTurnRate == null;
+      d.lureDiverted = false;
+      d.lureHullId = null;
+      d.lureTowedId = null;
+      if (owned) {
+        d.diverted = false;
+        d.divertPos = null;
+      }
+      return;
+    }
+    // Still held: ride the live lure — a towed payload keeps moving under the tow.
+    if (towed.pos) d.divertPos = { x: towed.pos.x, z: towed.pos.z };
+    return;
+  }
+  // Acquire: only a round still homing on the towing hull answers a newly hot lure.
+  if (!lure || lure.hot !== true) return;
+  if (d.targetId !== (state && state.playerId)) return;
+  if (!towed.pos) return;
+  d.lureDiverted = true;
+  d.lureHullId = d.targetId;
+  d.lureTowedId = towed.id;
+  d.diverted = true;
+  d.divertPos = { x: towed.pos.x, z: towed.pos.z };
+}
+
+// Pure read of the towed lure's standing against the authored threshold contract.
+// Returns { hot, signature } or null when no lure is towed.
+function towedLureSignature(towed) {
+  if (!towed || towed.alive === false || !towed.pos) return null;
+  const signature = Number(towed.data && towed.data.lureSignature);
+  if (!Number.isFinite(signature)) return null;
+  const contract = ambushSignatureForShape('towed_lure');
+  const weights = (contract && contract.targeting) || {};
+  const threshold = Number.isFinite(weights.threshold) ? weights.threshold : 0.6;
+  return { hot: signature >= threshold, signature };
 }
 
 function npcWeaponsNeedTick(e, state) {
