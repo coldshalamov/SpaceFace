@@ -965,9 +965,24 @@ export function handleAlienEcologyEvent(world, type, payload) {
       const ae = ensureAlienEcologyState(state);
       if (!fittedFlag(state, 'hullPurgeRing')) break;
       for (const entity of indexedTypeScan(state, 'fauna')) {
-        if (entity?.data?.ecology?.speciesId === 'hull_leech'
-          && entity.data.ecology.attachTargetId === state.playerId) {
-          detachHullLeech(world, entity, 'purge');
+        const eco = entity?.data?.ecology;
+        if (eco?.speciesId === 'hull_leech' && eco.attachTargetId === state.playerId) {
+          // A heat-killed crust is mineral. The ring cracks it into a shell instead of
+          // flinging a live animal off the plate.
+          if (eco.calcified === true) {
+            addCargo(state, 'cmdty_sterile_shell', 1, 'hull_purge');
+            entity.alive = false;
+            eco.attachTargetId = null;
+            const rec = eco.siteId && siteRecord(state, eco.siteId);
+            if (rec && eco.faunaKey) rec.deadFauna[eco.faunaKey] = true;
+            // A dead flag alone stays in the fauna cache and can latch again next tick.
+            if (world.helpers && typeof world.helpers.removeEntity === 'function') {
+              world.helpers.removeEntity(entity.id, { immediate: true });
+            }
+            toast('Purge ring cracks the calcified crust — 1 sterile shell recovered.', 'good', 5);
+          } else {
+            detachHullLeech(world, entity, 'purge');
+          }
         }
       }
       if ((ae.exposure || 0) <= 0.02) break;
@@ -1725,17 +1740,33 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       || target.id !== state.playerId || target.homeSectorId && target.homeSectorId !== sectorId) {
       detachHullLeech(world, e, 'target_lost');
     } else {
-      const quiet = Math.hypot(target.vel?.x || 0, target.vel?.z || 0) < 8;
+      // A burning hull, a venting gun, or a hot plate kills the leech in place.
+      // status_burning is the live burn id; status_burn is accepted beside it.
+      const statuses = state.combat?.entities?.[target.id]?.statuses;
+      const hostBurn = !!(statuses?.status_burn || statuses?.status_burning)
+        || (Number(target.data?.weaponVentUntil) || 0) > now
+        || (Number(target.heat) || 0) >= 36;
+      if (hostBurn && !eco.calcified) {
+        eco.calcified = true;
+        e.data.material = 'calcite';
+        world.bus.emit('toast', {
+          text: 'Thermal surge — attached hull leech calcifies into a brittle sterile crust.',
+          kind: 'info', ttl: 5,
+        });
+      }
+      const quiet = eco.calcified !== true && Math.hypot(target.vel?.x || 0, target.vel?.z || 0) < 8;
       eco.quietT = quiet ? (eco.quietT || 0) + dt : 0;
-      if (eco.quietT >= 8) detachHullLeech(world, e, 'quiet');
+      if (eco.calcified !== true && eco.quietT >= 8) detachHullLeech(world, e, 'quiet');
       else {
         const angle = (target.rot || 0) + (eco.attachAngle ?? Math.PI / 2);
         const radius = (target.radius || 10) + species.radius * 0.5;
         e.pos.x = target.pos.x + Math.cos(angle) * radius;
         e.pos.z = target.pos.z + Math.sin(angle) * radius;
         e.rot = angle;
-        const ae = ensureAlienEcologyState(state);
-        ae.exposure = Math.min(1, (ae.exposure || 0) + dt * 0.015);
+        if (eco.calcified !== true) {
+          const ae = ensureAlienEcologyState(state);
+          ae.exposure = Math.min(1, (ae.exposure || 0) + dt * 0.015);
+        }
         return;
       }
     }
