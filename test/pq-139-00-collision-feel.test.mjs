@@ -32,6 +32,9 @@ function physicsImpact(deltaV, overrides = {}) {
     bId: 3,
     dp: deltaV * 20,
     playerInvolved: false,
+    // These coalescing cases pair with the player-caused remote consequence above.
+    // Unrelated NPC contacts are deliberately silent under the shipped feel policy.
+    causalActorId: 1,
     pos: { x: 1200, z: 0 },
     ...overrides,
   };
@@ -131,7 +134,7 @@ test('receipt deltaV stays authoritative when live mass differs; zero momentum i
   assert.equal(host._armedCollisionDeltaV, 8);
 });
 
-test('receipt provenance recognizes a player-caused collision; unrelated distant contacts retain falloff', () => {
+test('receipt provenance recognizes a player-caused collision and silences unrelated NPC contacts', () => {
   for (const actorId of [1, 9]) {
     const { bus, traumas, frame } = fixture();
     const contact = receipt(60, {
@@ -139,6 +142,10 @@ test('receipt provenance recognizes a player-caused collision; unrelated distant
     });
     bus.emit('combat:collisionConsequence', contact);
     frame();
+    if (actorId !== 1) {
+      assert.deepEqual(traumas, [], 'unrelated NPC collisions cannot slow or shake the player world');
+      continue;
+    }
     assert.equal(traumas[0], resolveCollisionFeel(contact, {
       mode: 'flight', deltaV: 60, playerDistance: actorId === 1 ? 0 : 1200,
     }).trauma);

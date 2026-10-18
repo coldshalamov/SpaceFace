@@ -593,7 +593,12 @@ test('instance far cull follows the table, not a 9000 WU horizon', async () => {
   assert.match(source, /tableInstanceFarCullWu/);
   assert.match(source, /instanceFarCullWuFromOpts/);
   assert.doesNotMatch(source, /INSTANCE_FAR_CULL_RADIUS = 9000/);
-  assert.doesNotMatch(source, /camera\.position/);
+  // This contract concerns live instance culling. The standalone camera-dirty microbench
+  // deliberately moves its private camera and does not take part in gameplay culling.
+  const cullStart = source.indexOf('function instanceFarCullWuFromOpts(');
+  const cullEnd = source.indexOf('function createInstanceCullContext(', cullStart);
+  assert.ok(cullStart >= 0 && cullEnd > cullStart, 'inspect the actual live culling functions');
+  assert.doesNotMatch(source.slice(cullStart, cullEnd), /camera\.position/);
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(renderer, /authoredSyncOptions\.liveZoom/);
 });
