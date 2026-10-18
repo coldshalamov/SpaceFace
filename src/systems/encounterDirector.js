@@ -129,6 +129,7 @@ import {
   tickLootSweeps,
 } from '../ai/lootSweep.js';
 import { tickTowedLurePursuits } from '../ai/towedLure.js';
+import { tickImpoundGrudge } from '../ai/impoundGrudge.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
@@ -440,9 +441,16 @@ export const encounterDirector = {
     // cooled/severed/consumed one hands them back to the hull. Seeker-round re-acquisition
     // stays on the per-tick weapons path — this is the ship-side twin of the same signature.
     try {
-      tickTowedLurePursuits(state);
+      tickTowedLurePursuits(state, state.player && state.player.tether);
     } catch (err) {
       dedupWarn('encounterDirector/towed-lure-pursuit', '[encounterDirector] towed lure pursuit tick failed', err);
+    }
+    // CRT-03 second slice: the bought lot hull's nemesis — one cadenced find/track
+    // pass per director clock, spawns through the same helpers/budget the scripts use.
+    try {
+      tickImpoundGrudge(state, this._impoundGrudgeCtx());
+    } catch (err) {
+      dedupWarn('encounterDirector/impound-grudge', '[encounterDirector] impound grudge tick failed', err);
     }
     this._springCeresActivityAmbushOnPrey();
   },
@@ -489,6 +497,16 @@ export const encounterDirector = {
       bus: this.bus,
       helpers: this.helpers,
       disarm: () => clearIneligibleAIFiringIntents(state, this.helpers),
+    };
+  },
+
+  /** CRT-03 — supplies the grudge rule's spawn/spec/emit surface so the library in
+   *  src/ai/impoundGrudge.js never imports the combat spawn owner directly. */
+  _impoundGrudgeCtx() {
+    return {
+      helpers: this.helpers,
+      emit: (name, payload) => this.emit(name, payload),
+      makeEnemySpec: (archetype, level, pos, opts) => makeEnemySpawnSpec(archetype, level, pos, opts),
     };
   },
 

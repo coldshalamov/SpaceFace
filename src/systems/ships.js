@@ -44,6 +44,7 @@ import {
   sameLivingHull,
 } from '../core/livingHull.js';
 import { derivedWithOverbore } from './impoundLot.js';
+import { mintImpoundShadow } from '../ai/impoundGrudge.js';
 import {
   scarFromPlayerContact,
   scarFromPlayerDamage,
@@ -2307,6 +2308,8 @@ export const ships = {
       impoundLossId: current.lossId || null,
     };
     if (quirk) owned.impoundQuirk = quirk;
+    const shadow = mintImpoundShadow(current, this.state.simTime || 0);
+    if (shadow) owned.impoundShadow = shadow;
     p.ownedShips.push(owned);
     delete this.state.lossLedger.impound;
     this.bus.emit('ship:purchased', {

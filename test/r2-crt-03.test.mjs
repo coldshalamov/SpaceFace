@@ -7,7 +7,7 @@ import test from 'node:test';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-import { combat as combatPrototype } from '../src/systems/combat.js';
+import { combat as combatPrototype, makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { livingHullWithRenown, livingHullWithScar } from '../src/core/livingHull.js';
@@ -727,4 +727,124 @@ test('a catalog intent never substitutes a used hull, and a stale listing never 
   assert.equal(h.state.player.ownedShips.length, before + 1);
   assert.equal(h.charges.length, paid);
   h.ledger.destroy();
+});
+
+// CRT-03 second slice: the bought lot hull keeps a nemesis. While the player flies
+// the marked hull the grudge finds it again — hailing the dead owner's callsign
+// before it opens fire — and the papers remember how often it has died to this hull.
+import { activeImpoundShadow, mintImpoundShadow, tickImpoundGrudge } from '../src/ai/impoundGrudge.js';
+
+function grudgeCtx(state, captures) {
+  let nextId = 9000;
+  return {
+    helpers: {
+      spawnEntity: (spec) => {
+        const id = nextId++;
+        const ent = { ...spec, id, alive: true };
+        state.entities.set(id, ent);
+        return ent;
+      },
+      voice: { say: (p) => { captures.voices.push(p); return true; } },
+      spawnBudget: null,
+    },
+    emit: (name, payload) => captures.emits.push({ name, payload }),
+    makeEnemySpec: (archetype, level, pos, opts) => makeEnemySpawnSpec(archetype, level, pos, opts),
+  };
+}
+
+function buyMarkedLotHull(h) {
+  spawnVictim(h.state, {
+    id: 7, defId: 'ship_wasp', name: 'Marrow', callsign: 'Marrow', livingHull: markedHull(true),
+  });
+  combatPrototype.kill.call({ state: h.state, bus: h.bus }, h.state.entities.get(7), 1);
+  const listing = h.state.lossLedger.impound;
+  h.state.player.credits = 20000;
+  h.bus.emit('ui:buyShip', { defId: 'ship_wasp', listingId: listing.listingId });
+  return h.state.player.ownedShips.at(-1);
+}
+
+test('the lot hull keeps a nemesis that hails the dead owner, and the papers remember each killing', () => {
+  const h = boot();
+  const owned = buyMarkedLotHull(h);
+  const shadow = owned.impoundShadow;
+  assert.ok(shadow, 'a hull whose papers name the dead owner carries its grudge');
+  assert.equal(shadow.priorCallsign, 'Marrow');
+  assert.ok(shadow.grudgeName);
+  assert.ok(shadow.nextAt > h.state.simTime, 'the first find is a window out, not immediate');
+
+  // Save-safe: the shadow is plain data riding the owned hull.
+  const blob = JSON.parse(JSON.stringify(owned));
+  assert.equal(blob.impoundShadow.priorCallsign, 'Marrow');
+
+  // Flying a different hull: no active shadow.
+  h.state.player.activeShipIndex = 0;
+  assert.equal(activeImpoundShadow(h.state), null);
+
+  // Fly the marked hull, undock, let the find window pass.
+  const impoundIndex = h.state.player.ownedShips.length - 1;
+  h.state.player.activeShipIndex = impoundIndex;
+  h.state.ui.docked = false;
+  h.state.entities.get(1).pos = { x: 0, z: 0 };
+  const captures = { voices: [], emits: [] };
+  const ctx = grudgeCtx(h.state, captures);
+
+  h.state.simTime = shadow.nextAt - 10;
+  tickImpoundGrudge(h.state, ctx);
+  assert.equal(shadow.liveId, null, 'the grudge waits out its window');
+
+  h.state.simTime = shadow.nextAt + 1;
+  tickImpoundGrudge(h.state, ctx);
+  const grudgeId = shadow.liveId;
+  assert.ok(grudgeId != null, 'the grudge found the marked hull');
+  const hunter = h.state.entities.get(grudgeId);
+  assert.ok(hunter);
+  assert.equal(hunter.alive, true);
+  assert.equal(hunter.data.name, shadow.grudgeName);
+  assert.equal(hunter.data.impoundGrudge.priorCallsign, 'Marrow');
+  assert.equal(hunter.data.ai.activity.kind, 'attack_run');
+  assert.equal(hunter.data.ai.activity.targetId, 1);
+  assert.equal(hunter.data.combat.targetId, 1);
+  assert.equal(hunter.data.ai.roe, 'weapons_free');
+  assert.equal(shadow.visits, 1);
+
+  // The hail names the dead owner — the grudge thinks the old hands still fly it.
+  const hail = captures.emits.find((e) => e.name === 'comms:popup');
+  assert.ok(hail, 'the nemesis announces itself on comms');
+  assert.equal(hail.payload.sender, shadow.grudgeName);
+  assert.match(hail.payload.text, /Marrow/);
+  assert.equal(RAW_ID.test(hail.payload.text), false, hail.payload.text);
+  assert.ok(captures.voices.length >= 1);
+
+  // Distance check: it comes in on approach, not on top of the hull.
+  const d = Math.hypot(hunter.pos.x - 0, hunter.pos.z - 0);
+  assert.ok(d >= 1200 && d <= 1700, `approach distance ${d}`);
+
+  // While the grudge hull lives, the tick holds — no doubling.
+  h.state.simTime += 600;
+  tickImpoundGrudge(h.state, ctx);
+  assert.equal(shadow.liveId, grudgeId);
+
+  // Kill the nemesis: the papers remember, and the refind window is scheduled.
+  hunter.alive = false;
+  h.state.simTime += 1;
+  tickImpoundGrudge(h.state, ctx);
+  assert.equal(shadow.deaths, 1);
+  assert.equal(shadow.liveId, null);
+  assert.ok(shadow.nextAt > h.state.simTime);
+
+  // Docked in a station the grudge cannot land — it waits, it does not fire.
+  h.state.ui.docked = true;
+  h.state.simTime = shadow.nextAt + 500;
+  tickImpoundGrudge(h.state, ctx);
+  assert.equal(shadow.liveId, null);
+  h.ledger.destroy();
+});
+
+test('a hull with no named owner carries no grudge', () => {
+  assert.equal(mintImpoundShadow({ lossId: 'loss_x', callsign: null }, 0), null);
+  assert.equal(mintImpoundShadow({ lossId: 'loss_x' }, 0), null);
+  const shadow = mintImpoundShadow({ lossId: 'loss_x', callsign: 'Marrow' }, 50);
+  assert.ok(shadow);
+  const again = mintImpoundShadow({ lossId: 'loss_x', callsign: 'Marrow' }, 50);
+  assert.deepEqual(shadow, again, 'the same papers mint the same nemesis');
 });
