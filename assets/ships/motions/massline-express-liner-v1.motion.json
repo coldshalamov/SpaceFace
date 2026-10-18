@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hull",
  "sourceAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
- "sourceGlbSha256": "a38b4335cfdb4b91c95c26f8e60c66a8ee0a617d600318412b62b6fb93054071",
+ "sourceGlbSha256": "01fcbbf32311f908abf508eed4c558096856deb374be1ccc0a2dc1a64255ab12",
  "fps": 60,
  "bindings": [
   {

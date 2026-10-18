@@ -213,8 +213,13 @@ def build():
     F.beams(s, 'ServiceHatchBolts', [((x, 8.80, z), (x, 8.92, z)) for x in (hx - 0.95, hx + 0.95) for z in (hz - 0.7, hz + 0.7)],
             0.14, material='gunmetal')
     s.detail = 0
-    F.light(s, 'NavPort', (-17.2, 8.2, 0.9), 'glow_red', size=0.3)
-    F.light(s, 'NavStarboard', (-17.2, -8.2, 0.9), 'glow_green', size=0.3)
+    # running lights mark the hull's max beam on short outrigger stubs — feet sunk in the drum
+    # skin, lamps proud of the silhouette (FORGE.md: nothing floats; masts stand on feet).
+    for sy, lamp, finish in ((1, 'NavPort', 'glow_red'), (-1, 'NavStarboard', 'glow_green')):
+        skin = _flank('Drum', -17.2, 0.9, sy) or (sy * 6.5)
+        F.cylinder(s, f'{lamp}Stub', (-17.2, skin - sy * 0.08, 0.9), (-17.2, sy * 8.16, 0.9),
+                   0.09, 0.05, material='gunmetal', segments=10, bevel=0.0)
+        F.light(s, lamp, (-17.2, sy * 8.2, 0.9), finish, size=0.3)
     F.beacon(s, 'Beacon', (-17.8, 0.0, 5.3), size=0.35)
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s

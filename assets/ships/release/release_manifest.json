@@ -3446,34 +3446,6 @@
       "contractNodeCount": 5
     },
     {
-      "id": "wholeship_massline_express_liner_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
-      "sourceSha256": "e2602e25631b5cda4f6ee22c9165d78bf8b74090cbc623d13a443ce444e29100",
-      "releaseSha256": "c3fac502cc7bdd267e7836913cdf7d4fe2dfe7c596eb1e892758b17eaf28f21c",
-      "sourceBytes": 1030172,
-      "releaseBytes": 548244,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 52,
-      "contractNodeCount": 28
-    },
-    {
-      "id": "wholeship_massline_express_liner_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
-      "sourceSha256": "494de8c5f61ae55ee414cff7d405cb185547aa017094e159146428cab19bbf31",
-      "releaseSha256": "930cf7767d3843cc50716246b9a01c68a3eab21a44285770913139937d7aa8bf",
-      "sourceBytes": 591100,
-      "releaseBytes": 431856,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 27
-    },
-    {
       "id": "wholeship_pelican_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/pelican_production_v1_lod1.glb",
@@ -4835,20 +4807,6 @@
       "contractNodeCount": 29
     },
     {
-      "id": "wholeship_massline_express_liner_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
-      "sourceSha256": "a38b4335cfdb4b91c95c26f8e60c66a8ee0a617d600318412b62b6fb93054071",
-      "releaseSha256": "4812642b8275540856393c74691dcc87c8e1ff7da1352f1989dfec473e3e4b3a",
-      "sourceBytes": 2192860,
-      "releaseBytes": 824072,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 52,
-      "contractNodeCount": 28
-    },
-    {
       "id": "wholeship_mule_production_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/mule_production_v1.glb",
@@ -5781,6 +5739,48 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
+      "sourceSha256": "01fcbbf32311f908abf508eed4c558096856deb374be1ccc0a2dc1a64255ab12",
+      "releaseSha256": "0cb7b807693d6c993e543a582b9516059a58a7aaefaa885bddc0f3195ccf5ca5",
+      "sourceBytes": 2197900,
+      "releaseBytes": 825296,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 52,
+      "contractNodeCount": 28
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "sourceSha256": "059484b72a7cd4d360ce252867b90e9530048cfdc0b363a0d1efe8db4a9e2a78",
+      "releaseSha256": "cf20087c73e4c353b6500209ae271e769c462740954cdb90293620bff6b91de4",
+      "sourceBytes": 1033940,
+      "releaseBytes": 549268,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 52,
+      "contractNodeCount": 28
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "sourceSha256": "025bb3401d45a6ae0559d7c5dc4616fafcb3409fe40faa8e01d1b6c21afd3867",
+      "releaseSha256": "da2347b1aa263d67d9fef3db9975edcd21fa78cb0c458587552c5a210e51e576",
+      "sourceBytes": 592912,
+      "releaseBytes": 432452,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 27
     }
   ]
 }

@@ -3631,8 +3631,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
-      "releaseSha256": "4812642b8275540856393c74691dcc87c8e1ff7da1352f1989dfec473e3e4b3a",
-      "releaseBytes": 824072,
+      "releaseSha256": "0cb7b807693d6c993e543a582b9516059a58a7aaefaa885bddc0f3195ccf5ca5",
+      "releaseBytes": 825296,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3652,8 +3652,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
-      "releaseSha256": "c3fac502cc7bdd267e7836913cdf7d4fe2dfe7c596eb1e892758b17eaf28f21c",
-      "releaseBytes": 548244,
+      "releaseSha256": "cf20087c73e4c353b6500209ae271e769c462740954cdb90293620bff6b91de4",
+      "releaseBytes": 549268,
       "sceneRoot": true,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -3673,8 +3673,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_massline_express_liner_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
-      "releaseSha256": "930cf7767d3843cc50716246b9a01c68a3eab21a44285770913139937d7aa8bf",
-      "releaseBytes": 431856,
+      "releaseSha256": "da2347b1aa263d67d9fef3db9975edcd21fa78cb0c458587552c5a210e51e576",
+      "releaseBytes": 432452,
       "sceneRoot": true,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7cc54af63a3e84bd5e04959447f9c653a1eb05712536ca6c72c53698f567a696",
+  "contentHash": "327beaac016731f963705ac7469355cf6c68dd1dd1b8047b68d96e46746c9af0",
   "dynamicGroups": [
     {
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -736,7 +736,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "969715159e0e194dfc7cd4b2381af1582f9a8121cf9e7f122a9de2141af201bc",
+      "geometryHash": "0aec4624f033018d5e9424c5d803526a92e8b1174b536d61fba9b67ef6d56e8c",
       "id": "sf.render.massline-express-liner-v1-lod2.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -761,32 +761,32 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3c901fad1f35d8e927939b9b0ab7ae827154b53e307d06a7f9ae4602bc942f7",
+      "geometryHash": "33313365fc6f0f0d33cbf2247f3aed701239fd8d0f197263645552883d5b6ad1",
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-armor-frame.primitive.0",
-      "indexCount": 5817,
+      "indexCount": 5802,
       "indexed": true,
       "materialHash": "aaffe6ecd667f675fba9acd50861bbfe4acc50deac6eb3f559e4025176f77352",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Armor_frame.002",
       "nodeId": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-armor-frame",
       "primitiveIndex": 0,
-      "vertexCount": 2090
+      "vertexCount": 2085
     },
     {
       "bounds": {
         "max": [
-          9.592082977294922,
-          5.669149875640869,
-          8.51955509185791
+          9.592044830322266,
+          5.669135093688965,
+          8.51953125
         ],
         "min": [
-          -16.992074966430664,
-          -4.852714538574219,
-          -8.519553184509277
+          -16.992036819458008,
+          -4.8526997566223145,
+          -8.519529342651367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "323db571968db42a4c7aa75e1d109392b2861405200ae64497849aacf12efb51",
+      "geometryHash": "a5690928ef56b6c78b59cd461e85bf44ca985aa541054df9ed0fe556425bbc47",
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 1026,
       "indexed": true,
@@ -936,16 +936,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbf8cf95c2233ad2295d5f4907f1c7abcd8aac1722366a47381c57be769c8e19",
+      "geometryHash": "59783d340da8d53e507266662c0c5fd414918113ff1c203cd3eb0f50f0530d01",
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 3372,
+      "indexCount": 3369,
       "indexed": true,
       "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull.002",
       "nodeId": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1043
+      "vertexCount": 1042
     },
     {
       "bounds": {
@@ -977,25 +977,25 @@
         "max": [
           4.64634895324707,
           5.4208197593688965,
-          9.498509407043457
+          9.497138977050781
         ],
         "min": [
           -21.221126556396484,
           -5.45209264755249,
-          -6.238122940063477
+          -8.159403800964355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2c8cab6a16d2dbb8bc8e332930da85d87d3397fbc884816fa8690db07964df7",
+      "geometryHash": "cfff0ef146d6b3fca55ef52dc0bbf02af4178bfddae4f663e9e28ad0d6c97778",
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 1950,
+      "indexCount": 2010,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical.002",
       "nodeId": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 615
+      "vertexCount": 657
     },
     {
       "bounds": {
@@ -1011,7 +1011,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03e55c4cad041a28a6257ca14aaedfb32dfc0e72f912e3588e9bddf1d7c8e1a2",
+      "geometryHash": "6caace27394a9a7d9a51ff199fc652152769cc6dd99563c2c57f8de372d2c6c4",
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -1036,7 +1036,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3578dabb7a94ecefd76479f312d4632a8046b1dbea85a3c6203bc5e4e9301ef5",
+      "geometryHash": "83d0775f9dc9cbcf36b71efd78f5c230f8a504de4778d1db49abd00138d7bd4d",
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -1045,7 +1045,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Warning.002",
       "nodeId": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-warning",
       "primitiveIndex": 0,
-      "vertexCount": 235
+      "vertexCount": 236
     }
   ],
   "hlods": [],
@@ -2775,19 +2775,19 @@
       "sha256": "aa79de7082b79c27a56026395526b85e2c7cee130d933694ffae0b6ad959b24b"
     },
     "sourceGlb": {
-      "bytes": 431856,
-      "sha256": "930cf7767d3843cc50716246b9a01c68a3eab21a44285770913139937d7aa8bf",
+      "bytes": 432452,
+      "sha256": "da2347b1aa263d67d9fef3db9975edcd21fa78cb0c458587552c5a210e51e576",
       "uri": "massline_express_liner_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 560552,
-    "sha256": "566bdd764443fb9ce7a0d61bcd218e49601053c2414b7aceb460cc240e1bcdbe",
+    "bytes": 561916,
+    "sha256": "03d666bf6bd9d89b09f71367d978046224348c4866ab5fc55810c542545a2db7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3742,7 +3742,7 @@
     "motionBank": {
       "bytes": 7219,
       "rigId": "hull",
-      "sha256": "f940618c56dfea4ea76720c4cb208d0724402eeae27bcd81a6ae79737a656102",
+      "sha256": "17dbde017b3413f080a51fd70e58ebf0b44654f5b4cca7f092e9d4ccf44b1b4a",
       "uri": "assets/ships/motions/massline-express-liner-v1.motion.json"
     },
     "nodeCount": 31,
@@ -4109,7 +4109,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb"
   },
-  "runtimeHash": "96c27f79baa25d7d0b8f3ad8666e97a0ab0b7fd2cc789a5d50a807337ce8205e",
+  "runtimeHash": "e1b117cf5bbb7439b13180eea553c6e713bfc2fad27a255b0bf84768e4ac8ce7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
