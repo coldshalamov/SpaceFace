@@ -231,6 +231,23 @@ const FACE_LABEL_SETS = Object.freeze({ ds: GAMEPAD_DS_FACE_LABELS, fh: GAMEPAD_
 export function normalizeGamepadGlyphSet(set) {
   return set === 'ds' || set === 'fh' ? set : 'xb';
 }
+
+// PRO-22 — which prompt register the connected pad's family speaks, from the browser
+// Gamepad.id the frame already carries. 'ds' for the PlayStation family, 'xb' for the
+// Xbox family (also the stock default, so an Xbox pad never needs a swap), null for
+// anything else: Nintendo, generic and unknown pads must never re-label the prompts,
+// and 'fh' is the player's explicit fictional-register choice with no hardware family.
+// Pure and dependency-free — both realms call it on the same id string with no allocation
+// beyond the lowercased copy. Checked PlayStation-first: an id naming both vendors still
+// reads as the more specific DualShock/DualSense register.
+export function detectGamepadGlyphFamily(id) {
+  if (typeof id !== 'string' || !id) return null;
+  const s = id.toLowerCase();
+  if (s.includes('dualshock') || s.includes('dualsense')
+    || s.includes('playstation') || s.includes('sony') || s.includes('054c')) return 'ds';
+  if (s.includes('xbox') || s.includes('xinput') || s.includes('045e')) return 'xb';
+  return null;
+}
 /** The face-button label under the player's glyph set; non-face names keep the stock register. */
 export function gamepadFaceButtonLabel(name, glyphSet) {
   const set = FACE_LABEL_SETS[normalizeGamepadGlyphSet(glyphSet)];
@@ -1090,6 +1107,42 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       if (pad && !wasConnected) {
         this.connected = true;
         this.id = pad.id || 'gamepad';
+        // PRO-22: reconnecting as a DIFFERENT pad family swaps the prompt glyphs live.
+        // The swap lands on the settings address every glyph reader already follows
+        // (gamepadGlyphSetFor on the sim side, _padGlyphSet on the main side), so the
+        // dock prompt, verb speech, Help and Settings re-label on the same state object —
+        // no restart, no transport change. Only a genuine detected family CHANGE re-labels:
+        // the first known-family connect anchors the runtime (never clobbering a manual
+        // 'xb'/'ds'/'fh' choice at boot), an unknown pad is silent, 'fh' is the player's
+        // explicit register and never a hardware verdict, and nothing but the existing
+        // glyph register is written — no hardware id is persisted (NXI-004), no binding
+        // is touched. Boot arbitration runs on the worker lane (settings there are the
+        // sim-owned copy), reconnect arbitration on the main lane (settings there feed
+        // the prompt chips); the same helper runs both sides off the same id string.
+        // Connecting itself is not a helm gesture and does not touch the source rules.
+        const family = detectGamepadGlyphFamily(pad.id || '');
+        if (live && live.settings && family) {
+          if (live.settings.controls == null || typeof live.settings.controls !== 'object') {
+            live.settings.controls = {};
+          }
+          const ctl = live.settings.controls;
+          if (ctl.gamepad == null || typeof ctl.gamepad !== 'object') ctl.gamepad = {};
+          const gpSettingsForGlyph = ctl.gamepad;
+          const priorFamily = detectGamepadGlyphFamily(this._lastFamilyId || '');
+          if (!this._sawFamilyAnchor) {
+            // First known-family connect: anchor the runtime without clobbering. A stock
+            // or unset register takes the family's spelling (stock 'xb' IS the Xbox
+            // register); a differing choice is the player's and is kept until a genuinely
+            // different family appears.
+            if (gpSettingsForGlyph.glyphSet == null || gpSettingsForGlyph.glyphSet === family) {
+              gpSettingsForGlyph.glyphSet = family;
+            }
+            this._sawFamilyAnchor = true;
+          } else if (family !== priorFamily && gpSettingsForGlyph.glyphSet !== family && gpSettingsForGlyph.glyphSet !== 'fh') {
+            gpSettingsForGlyph.glyphSet = family;
+          }
+          this._lastFamilyId = pad.id || '';
+        }
         // Connecting is not a helm gesture and does not bump lastActiveTick. A deliberate
         // reacquire publishes only its new edge; buttons already held stay silent.
         if (connectionEvents && bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
