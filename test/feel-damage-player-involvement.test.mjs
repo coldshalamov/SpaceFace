@@ -28,6 +28,12 @@ function feelHost(playerId = 1) {
   return { state, bus, effects, host, traumas };
 }
 
+// The authored beat window a fired beat leaves armed, whichever internal field carries it —
+// evidence that a beat landed, never a clock contract. Beats are presentation only.
+function beatWindow(host) {
+  return host._beatTimer ?? host._hsTimer ?? 0;
+}
+
 const receipts = [
   { brokeShield: true, amount: 60 },
   { amount: 60 },
@@ -46,13 +52,13 @@ for (const receipt of receipts) {
       assert.deepEqual(effects.describeRequests(), {});
       host.frame(1 / 60, state);
     }
-    assert.equal(host._hsTimer, 0);
+    assert.equal(beatWindow(host), 0);
     assert.equal(host._fovPunch, 0);
     assert.deepEqual(traumas, []);
   });
 }
 
-test('player shield damage and player-fired shield breaks keep their feedback and release', () => {
+test('player shield damage and player-fired shield breaks keep their feedback — clock untouched', () => {
   for (const participants of [
     { attackerId: 8, targetId: 1 },
     { attackerId: 1, targetId: 8 },
@@ -60,17 +66,17 @@ test('player shield damage and player-fired shield breaks keep their feedback an
   ]) {
     const { state, bus, effects, host, traumas } = feelHost();
     bus.emit('combat:damage', { ...participants, brokeShield: true, amount: 60 });
-    assert.equal(state.timeScale, 0.12);
+    assert.equal(state.timeScale, 1, 'the shield-break beat is presentation only');
     assert.ok(host._fovPunch > 0);
     assert.deepEqual(traumas, [0.3]);
-    assert.deepEqual(effects.describeRequests(), { 'feel:hit-stop': { scale: 0.12 } });
+    assert.deepEqual(effects.describeRequests(), {});
     host.frame(0.05, state);
     assert.equal(state.timeScale, 1);
     assert.deepEqual(effects.describeRequests(), {});
   }
 });
 
-test('large player hits retain a time dip, ordinary hull and armor hits stay rhythmic', () => {
+test('large player hits keep their beat window, ordinary hull and armor hits stay rhythmic', () => {
   for (const receipt of receipts.slice(1)) {
     for (const participants of [
       { attackerId: 8, targetId: 1 },
@@ -79,8 +85,13 @@ test('large player hits retain a time dip, ordinary hull and armor hits stay rhy
       const { state, bus, host } = feelHost();
       bus.emit('combat:damage', { ...participants, ...receipt });
       const rhythmic = receipt.hullHit || receipt.armorHit;
-      assert.equal(state.timeScale, rhythmic ? 1 : 0.12);
+      assert.equal(state.timeScale, 1, 'no damage beat may ever write the clock');
       assert.ok(host._fovPunch > 0);
+      if (rhythmic) {
+        assert.equal(beatWindow(host), 0, 'ordinary hits stay rhythmic — no held window');
+      } else {
+        assert.ok(beatWindow(host) > 0, 'a big hit still arms its authored beat window');
+      }
       host.frame(0.1, state);
       assert.equal(state.timeScale, 1);
     }
@@ -105,7 +116,7 @@ test('far NPC kills leave the camera alone while nearby action keeps its light f
   });
   assert.equal(far.state.timeScale, 1);
   assert.deepEqual(far.effects.describeRequests(), {});
-  assert.equal(far.host._hsTimer, 0);
+  assert.equal(beatWindow(far.host), 0);
   assert.equal(far.host._fovPunch, 0);
 
   const nearby = feelHost();
@@ -119,7 +130,7 @@ test('far NPC kills leave the camera alone while nearby action keeps its light f
   assert.ok(nearby.host._fovPunch > 0, 'nearby NPC action keeps its authored light punch');
 });
 
-test('player kills keep the full kill beat after the remote-kill gate', () => {
+test('player kills keep the full kill beat — presentation only, clock untouched', () => {
   const { state, bus, effects, host } = feelHost();
   bus.emit('entity:killed', {
     id: 9,
@@ -127,17 +138,17 @@ test('player kills keep the full kill beat after the remote-kill gate', () => {
     pos: { x: 10000, z: 10000 },
     victimClass: 'interceptor',
   });
-  assert.equal(state.timeScale, 0.12);
-  assert.ok(host._hsTimer > 0);
+  assert.equal(state.timeScale, 1, 'the kill beat never writes the clock');
+  assert.ok(beatWindow(host) > 0);
   assert.ok(host._fovPunch > 0);
-  assert.deepEqual(effects.describeRequests(), { 'feel:hit-stop': { scale: 0.12 } });
+  assert.deepEqual(effects.describeRequests(), {});
 });
 
-test('player death keeps its independent death punch', () => {
+test('player death keeps its independent death punch — presentation only', () => {
   const { state, bus, host } = feelHost();
   bus.emit('player:death');
-  assert.ok(host._hsTimer > 0);
+  assert.ok(beatWindow(host) > 0);
   assert.ok(host._fovPunch >= 7);
   host.frame(0.3, state);
-  assert.ok(state.timeScale < 1, 'death beat still eases into its independent slow-motion dip');
+  assert.equal(state.timeScale, 1, 'the death beat is presentation only — the clock stays put');
 });

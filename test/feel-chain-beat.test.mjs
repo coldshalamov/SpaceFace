@@ -8,8 +8,9 @@ import {
 } from '../src/render/feel.js';
 
 // F9 — "a chain holds a beat": a player shove/throw whose contact chain reaches a third
-// body earns exactly one extra hit-stop dip. Two-body contacts, NPC-only chains, and
-// contacts past the window earn nothing; a second chain later earns its own.
+// body earns exactly one extra camera beat. Beats are presentation only — the world clock
+// never moves. Two-body contacts, NPC-only chains, and contacts past the window earn
+// nothing; a second chain later earns its own.
 
 const VISION = 'the best moment is three bodies agreeing — time should acknowledge it once';
 
@@ -26,17 +27,20 @@ function makeHost() {
     render: { cameraCtrl: { addTrauma() {}, impactKick() {} } },
   };
   host._modalClear = () => true;
-  host._trigger = (hsDur) => triggers.push(hsDur);
+  // Record each fired beat, then run the real trigger so the beat window it paces (whichever
+  // internal field carries it) arms exactly as production does. The stubbed timeEffects
+  // service must never see a write — beats are presentation only.
+  const realTrigger = feel._trigger.bind(host);
+  host._trigger = (...args) => { triggers.push(args[0]); realTrigger(...args); };
   host._ensureVignette = () => null;
   host._ensureHullCrit = () => null;
   host._updateSpeedLines = () => {};
   host._mountSpeedLines = () => {};
-  host.timeEffects = { set() {}, clear() {} };
+  host.timeEffects = { set() { throw new Error('feel must never write the world clock'); }, clear() {} };
   host._hsTimer = 0;
-  host._hsRampIn = 0;
-  host._hsFreezeTimer = 0;
-  host._hsRequest = { scale: 0.12 };
+  host._beatTimer = 0;
   host._collisionHitstopCooldown = 0;
+  host._collisionBeatCooldown = 0;
   host._armedCollisionDeltaV = 0;
   host._armedCollisionTick = null;
   host._armedCollisionAId = null;
@@ -72,40 +76,40 @@ function runFrames(host, count, frameDt = 1 / 60) {
   for (let i = 0; i < count; i++) host.frame(frameDt, host.state);
 }
 
-test('a three-body chain from one player release earns exactly one extra dip', () => {
+test('a three-body chain from one player release earns exactly one extra beat', () => {
   const { host, triggers } = makeHost();
 
-  // Player throws X into A — a two-body contact: its own dip, nothing extra.
+  // Player throws X into A — a two-body contact: its own beat, nothing extra.
   host._onCollisionConsequence(consequence('r1', 'x', 'a', 10));
   runFrames(host, 20);
-  assert.equal(triggers.length, 1, `${VISION}: first contact is its own dip only`);
+  assert.equal(triggers.length, 1, `${VISION}: first contact is its own beat only`);
 
-  // The same release's chain reaches B — the third body. Its contact dips, then once
-  // that dip clears the chain beat lands: exactly one extra hit-stop.
+  // The same release's chain reaches B — the third body. Its contact beats, then once
+  // that window clears the chain beat lands: exactly one extra.
   host._onCollisionConsequence(consequence('r1', 'x', 'b', 20));
   runFrames(host, 20);
   assert.equal(triggers.length, 3,
-    `${VISION}: third-body contact dips once more (got ${triggers.length} triggers)`);
+    `${VISION}: third-body contact beats once more (got ${triggers.length} triggers)`);
   assert.equal(triggers[2], CHAIN_BEAT_DIP_S,
-    `${VISION}: the extra beat is the chain dip, not another contact curve`);
+    `${VISION}: the extra beat is the chain window, not another contact curve`);
 
   // A later contact on the same root is just a contact — the beat fired once per chain.
   host._onCollisionConsequence(consequence('r1', 'x', 'c', 40));
   runFrames(host, 20);
   assert.equal(triggers.length, 4,
-    `${VISION}: subsequent contacts on a spent chain do not stack dips`);
+    `${VISION}: subsequent contacts on a spent chain do not stack beats`);
 });
 
 test('a two-body contact and an NPC-only chain stay silent', () => {
   const { host, triggers } = makeHost();
 
-  // Two bodies meeting twice under a player root: never a third body, never an extra dip.
+  // Two bodies meeting twice under a player root: never a third body, never an extra beat.
   host._onCollisionConsequence(consequence('r2', 'x', 'a', 10));
   runFrames(host, 20);
   host._onCollisionConsequence(consequence('r2', 'x', 'a', 30));
   runFrames(host, 20);
   assert.equal(triggers.length, 2,
-    `${VISION}: a two-body hit does not get the extra dip`);
+    `${VISION}: a two-body hit does not get the extra beat`);
 
   // An NPC-caused chain earns nothing — the joke belongs to the player, and ordinary
   // non-player contacts never stall the camera at all (eb1869826's deliberate gate).
@@ -114,7 +118,7 @@ test('a two-body contact and an NPC-only chain stay silent', () => {
   host._onCollisionConsequence(consequence('r3', 'x', 'b', 60, 'npc-7'));
   runFrames(host, 20);
   assert.equal(triggers.length, 2,
-    `${VISION}: NPC-only collisions stay silent — no chain beat, no contact dip`);
+    `${VISION}: NPC-only collisions stay silent — no chain beat, no contact beat`);
 });
 
 test('a second chain later earns its own beat; a stale chain earns nothing', () => {
@@ -126,7 +130,7 @@ test('a second chain later earns its own beat; a stale chain earns nothing', () 
   runFrames(host, 20);
   assert.equal(triggers.length, 3, `${VISION}: first chain beats once`);
 
-  // A different player release later — a new causal root — earns its own extra dip.
+  // A different player release later — a new causal root — earns its own extra beat.
   host._onCollisionConsequence(consequence('r5', 'y', 'c', 80));
   runFrames(host, 20);
   host._onCollisionConsequence(consequence('r5', 'y', 'd', 90));

@@ -1,8 +1,9 @@
 // feel re-init contract: a second init() must finish through the OLD references before
-// rebinding — the live 'feel:hit-stop' time-effects request and every bus listener the
-// previous init installed. A leaked request pins state.timeScale at the dip floor forever
-// (init zeroes _hsTimer, and frame() only clears the request while _hsTimer > 0), and stacked
-// listeners double every punch. flybyFocus and bulletTime already honor this lease; feel did not.
+// rebinding — every bus listener the previous init installed, and any stale 'feel:hit-stop'
+// lease parked under the retired source name. Beats are presentation only now: nothing in
+// feel sets that request, but a lease left behind by an older generation would still pin
+// state.timeScale — so init/reset/destroy keep clearing it, and stacked listeners must never
+// double a punch. flybyFocus and bulletTime already honor this lease; feel does too.
 import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
@@ -30,41 +31,47 @@ function initFeel(fx, feel) {
   return host;
 }
 
-// --- same-state re-init mid-dip must not orphan the live request --------------------------
+// --- same-state re-init must not orphan a stale lease --------------------------------------
 {
   const fx = makeFixture(11);
   const feel = initFeel(fx);
-  fx.bus.emit('combat:damage', { ...SHIELD_BREAK });
-  feel.frame(0, fx.state);
-  assert.equal(fx.state.timeScale, 0.12, 'fixture must begin with the hit-stop floor held');
-  assert.equal(fx.effects.describeRequests()['feel:hit-stop'].scale, 0.12);
+  fx.effects.set('feel:hit-stop', { scale: 0.12 });
+  assert.equal(fx.state.timeScale, 0.12, 'fixture must begin with the stale lease held');
 
   feel.init({ state: fx.state, bus: fx.bus, helpers: {}, timeEffects: fx.effects });
   assert.equal(fx.effects.describeRequests()['feel:hit-stop'], undefined,
-    're-init must release the previous hit-stop request');
+    're-init must release a stale feel:hit-stop lease');
   assert.equal(fx.state.timeScale, 1, 're-init must not leave world time dipped');
   feel.frame(1, fx.state);
   assert.equal(fx.state.timeScale, 1, 'no late frame may resurrect the dip');
+
+  // Automatic beats no longer write the clock at all — a fresh shield break lands its
+  // punch and leaves every time-effects owner untouched.
+  fx.bus.emit('combat:damage', { ...SHIELD_BREAK });
+  feel.frame(0, fx.state);
+  assert.equal(fx.state.timeScale, 1, 'the shield-break beat is presentation only');
+  assert.deepEqual(fx.effects.describeRequests(), {}, 'feel must never arm a request');
 }
 
 // --- cross-state re-init must finish through the OLD service and bus ----------------------
 {
   const old = makeFixture(12);
   const feel = initFeel(old);
-  old.bus.emit('combat:damage', { ...SHIELD_BREAK });
-  feel.frame(0, old.state);
+  old.effects.set('feel:hit-stop', { scale: 0.12 });
   assert.equal(old.state.timeScale, 0.12);
 
   const next = makeFixture(13);
   feel.init({ state: next.state, bus: next.bus, helpers: {}, timeEffects: next.effects });
   assert.equal(old.effects.describeRequests()['feel:hit-stop'], undefined,
-    're-init on a new state must clear the request on the OLD time-effects service');
+    're-init on a new state must clear a stale lease on the OLD time-effects service');
   assert.equal(old.state.timeScale, 1, 'the abandoned state must not stay dipped');
 
   old.bus.emit('combat:damage', { ...SHIELD_BREAK });
   feel.frame(0, next.state);
   assert.equal(next.state.timeScale, 1,
     'listeners left on the abandoned bus must not punch the new run');
+  assert.deepEqual(next.effects.describeRequests(), {},
+    'and nothing on either bus may arm a feel request');
 }
 
 // --- re-init must not stack duplicate listeners -------------------------------------------
@@ -82,7 +89,7 @@ function initFeel(fx, feel) {
     'one emit after re-init must land one punch, not one per stacked subscription');
 }
 
-// --- destroy() releases the request and every listener ------------------------------------
+// --- destroy() releases a stale lease and every listener -------------------------------------
 {
   const fx = makeFixture(16);
   const feel = initFeel(fx);
@@ -90,16 +97,18 @@ function initFeel(fx, feel) {
     'feel must expose destroy() for registry teardown');
   fx.bus.emit('combat:damage', { ...SHIELD_BREAK });
   feel.frame(0, fx.state);
-  assert.equal(fx.state.timeScale, 0.12);
+  assert.equal(fx.state.timeScale, 1, 'the shield-break beat never writes the clock');
+  assert.deepEqual(fx.effects.describeRequests(), {}, 'no request is armed by a beat');
   const punchBefore = feel._fovPunch;
 
+  fx.effects.set('feel:hit-stop', { scale: 0.12 }); // a stale lease, as an older generation parked it
   feel.destroy();
   assert.equal(fx.effects.describeRequests()['feel:hit-stop'], undefined,
-    'destroy must clear the live hit-stop request');
+    'destroy must clear a stale feel:hit-stop lease');
   assert.equal(fx.state.timeScale, 1, 'destroy must release the dip');
   fx.bus.emit('combat:damage', { ...SHIELD_BREAK });
   feel.frame(0, fx.state);
-  assert.equal(fx.state.timeScale, 1, 'removed listeners must not re-arm a dip');
+  assert.equal(fx.state.timeScale, 1, 'removed listeners must not re-arm anything');
   assert.equal(feel._fovPunch, punchBefore, 'removed listeners must not punch again');
 }
 

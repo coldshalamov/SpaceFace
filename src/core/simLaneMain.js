@@ -1,6 +1,6 @@
 // S1 Phase-B stage 8 — main-thread twin of the whole-sim worker lane.
 //
-// When ?simLane=worker flips the runtime, this module owns the sim half of
+// When the ?simLane=worker diagnostic opt-in flips the runtime, this module owns the sim half of
 // PresentationRunner's contract: the completedTick ring, the input-snapshot
 // queue, the accumulator arithmetic and the journal consumption path keep the
 // SAME shapes createSimulationRunner maintains — the worker is a transport,
@@ -143,9 +143,19 @@ function applyLaneSaveStorageOps(ops) {
 
 /**
  * Resolve the sim-lane runtime flags once at boot.
- *   (default)        — the whole-sim Worker IS the runtime (Stage-E flip).
- *   ?simLane=main    — escape hatch: run the authoritative sim in-process.
- *   ?simLane=worker  — explicit worker lane (same as the default).
+ *   (default)        — the in-process main-thread sim IS the runtime.
+ *                      Reliability cut: the worker lane's message/journal
+ *                      copy and clock handoff are off the production route —
+ *                      Browser and Electron run the same main 60 Hz
+ *                      authority. The worker lane stays as an explicit
+ *                      diagnostic below.
+ *   ?simLane=worker  — diagnostic opt-in: run the whole authoritative sim in
+ *                      a Worker. localStorage 'sf.simLane'='worker' selects
+ *                      the same lane where the canonical root forbids query
+ *                      strings (release-soak; Electron preload maps
+ *                      SPACEFACE_SIM_LANE onto it and clears the key on a
+ *                      normal launch, so this source default decides there).
+ *   ?simLane=main    — explicit main lane (same as the default).
  *   ?simSab=1        — opt into the SAB journal lane; requires
  *                      crossOriginIsolated (COOP/COEP). Without headers this
  *                      warns and the fallback transfer channel serves.
@@ -161,23 +171,23 @@ export function resolveSimLaneFlags(search) {
       : (typeof location !== 'undefined' ? location.search : '');
     params = new URLSearchParams(raw || '');
   } catch (_) { params = null; }
-  // Stage-E default: the worker lane is the runtime; ?simLane=main is the
-  // escape hatch back to the in-process sim. An unrecognized value warns and
-  // still takes the default. Harnesses whose canonical root forbids query
-  // strings (release-soak browser/electron) select via localStorage
-  // 'sf.simLane' instead — the query param wins when both are present.
+  // Reliability default: the in-process main lane is the runtime; the worker
+  // lane is a diagnostic opt-in via ?simLane=worker (or localStorage
+  // 'sf.simLane' where the canonical root forbids query strings — release-soak
+  // browser/electron). An unrecognized value warns and still takes the
+  // default. The query param wins when both are present.
   let requested = params && params.get('simLane');
   if (requested == null && typeof localStorage !== 'undefined') {
     try { requested = localStorage.getItem('sf.simLane'); } catch (_) { /* storage gated */ }
   }
   const warnings = [];
   let lane;
-  if (requested === SIM_LANE.MAIN) lane = SIM_LANE.MAIN;
+  if (requested === SIM_LANE.WORKER) lane = SIM_LANE.WORKER;
   else {
-    if (requested && requested !== SIM_LANE.WORKER) {
-      warnings.push(`unrecognized simLane='${requested}' — worker lane serves by default`);
+    if (requested && requested !== SIM_LANE.MAIN) {
+      warnings.push(`unrecognized simLane='${requested}' — main lane serves by default`);
     }
-    lane = SIM_LANE.WORKER;
+    lane = SIM_LANE.MAIN;
   }
   let sab = !!(params && (params.get('simSab') === '1' || params.get('simSab') === 'true'));
   if (sab) {
@@ -260,7 +270,7 @@ export function createSimLaneRuntime({
 
   // Worker channel first: a host without Worker support (or a construction-
   // time throw) degrades to the in-process sim while state is still untouched
-  // — boot-time main fallback with the default lane flipped.
+  // — boot-time main fallback for the explicit diagnostic lane.
   let channel;
   try {
     channel = (typeof channelFactory === 'function' ? channelFactory : createBrowserChannel)();

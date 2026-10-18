@@ -69,6 +69,12 @@ function fixture() {
   return { state, bus, effects, host, traumas, frame: (dt = 0) => host.frame(dt, state) };
 }
 
+// The authored beat window a fired beat leaves armed, whichever internal field carries it.
+// Beats are presentation only — the window paces a queued chain beat; it never writes the clock.
+function beatWindow(host) {
+  return host._beatTimer ?? host._hsTimer ?? 0;
+}
+
 test('pure collision ramp ignores below-floor/invalid deltaV and orders scrape, knock, slam', () => {
   const contact = receipt(60);
   const context = { mode: 'flight', playerDistance: 0, motionReduce: false };
@@ -107,17 +113,17 @@ test('meaningful consequence arms only the frame flush, using receipt truth afte
   bus.emit('combat:collisionConsequence', contact);
   assert.equal(JSON.stringify(state), before, 'headless event dispatch must not mutate simulation state');
   assert.equal(host._pendingCollisionFeel?.deltaV, contact.deltaV);
-  assert.equal(host._hsTimer, 0);
+  assert.equal(beatWindow(host), 0);
   assert.equal(traumas.length, 0);
   frame();
   assert.equal(host._pendingCollisionFeel, null);
-  assert.equal(state.timeScale, 0.12);
-  assert.equal(host._hsTimer, resolveCollisionFeel(contact, {
+  assert.equal(state.timeScale, 0.5, 'the beat never writes the clock — the Focus bound holds');
+  assert.equal(beatWindow(host), resolveCollisionFeel(contact, {
     mode: 'flight', deltaV: contact.deltaV,
   }).hsDur);
   assert.equal(traumas.length, 1);
   frame(HS_IMPACT_MAX + 0.001);
-  assert.equal(state.timeScale, 0.5, 'expiry must reveal the other time-effects owner');
+  assert.equal(state.timeScale, 0.5, 'the beat window expiring cannot touch another owner');
 });
 
 test('receipt deltaV stays authoritative when live mass differs; zero momentum is ignored', () => {
@@ -193,11 +199,11 @@ test('a deferred duplicate cannot re-arm an already handled contact, even after 
   assert.equal(traumas.length, 2, 'the same pair on a new tick remains a real collision');
 });
 
-test('receipt grind cooldown survives hit-stop expiry; a distinct hard collision can interrupt', () => {
+test('receipt grind cooldown survives the beat window; a distinct hard collision can interrupt', () => {
   const { bus, host, traumas, frame } = fixture();
   bus.emit('combat:collisionConsequence', receipt(10));
   frame();
-  frame(host._hsTimer + 0.001);
+  frame(beatWindow(host) + 0.001);
   for (const deltaV of [11, 12, 14]) {
     bus.emit('combat:collisionConsequence', receipt(deltaV, { tick: 120 + deltaV }));
     frame();
@@ -237,7 +243,7 @@ test('pause/save/new game clears pending contact and duplicate history without c
     effects.set('ui:pausing-screen', { scale: 0 });
     bus.emit(event);
     assert.equal(host._pendingCollisionFeel, null);
-    assert.equal(host._hsTimer, 0);
+    assert.equal(beatWindow(host), 0);
     assert.equal(state.timeScale, 0);
     effects.clear('ui:pausing-screen');
     bus.emit('combat:collisionConsequence', receipt(60));
@@ -246,14 +252,14 @@ test('pause/save/new game clears pending contact and duplicate history without c
   }
 });
 
-test('ordinary rapid gunfire and armor/hull hits still never arm hit-stop', () => {
+test('ordinary rapid gunfire and armor/hull hits still never arm a beat', () => {
   const { state, bus, host, frame } = fixture();
   for (let tick = 0; tick < 60; tick++) {
     bus.emit('combat:fire', { ownerId: 1, weaponId: 'wpn_pulse_laser_s' });
     bus.emit('combat:damage', { attackerId: 1, targetId: 2, amount: 4, armorHit: tick % 2 === 0, hullHit: tick % 2 !== 0 });
     frame(1 / 60);
     assert.equal(state.timeScale, 1);
-    assert.equal(host._hsTimer, 0);
+    assert.equal(beatWindow(host), 0);
     assert.equal(host._pendingCollisionFeel, null);
   }
 });

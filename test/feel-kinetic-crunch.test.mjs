@@ -18,7 +18,8 @@ const VISION = 'heavy combat should bite';
 // OWNER, 2026-09-20: "the main ship I fly keeps jigging back and forth like it doesn't know its own
 // location ... the ship must fly smooth and the player have complete control." The crunch used to
 // freeze every drawn pose for 1-2 frames while the sim ran on underneath; on release the whole
-// picture snapped forward. The bite is now a hit-stop — a time dip that resumes where it stopped.
+// picture snapped forward. The bite is now a camera beat — punch, trauma, a brief authored
+// window — presentation only: the world clock belongs to explicit owners and never dips.
 const SMOOTH = 'the ship must fly smooth';
 
 function crunchCtx(extra = {}) {
@@ -85,7 +86,13 @@ function feelHost() {
   };
 }
 
-test('kinetic crunch is a 1–2 frame hit-stop, never a pose hold against a running sim', () => {
+// The authored beat window a fired crunch leaves armed, whichever internal field carries it —
+// evidence a beat landed, never a clock contract. Presentation beats never write timeScale.
+function beatWindow(host) {
+  return host._beatTimer ?? host._hsTimer ?? 0;
+}
+
+test('kinetic crunch keeps a 1–2 frame authored window — never a pose hold, never the clock', () => {
   const pulse = resolveKineticCrunch(damage('wpn_pulse_laser_s', { type: 'energy', amount: 8 }), crunchCtx());
   assert.equal(pulse, null, `${VISION}: energy repeaters do not crunch`);
 
@@ -99,11 +106,11 @@ test('kinetic crunch is a 1–2 frame hit-stop, never a pose hold against a runn
   assert.equal(rail.holdsPose, false, `${SMOOTH}: a crunch never freezes the picture over a running sim`);
   assert.equal(rail.holdS, undefined, `${SMOOTH}: the presentation hold is gone, not renamed`);
   assert.ok(rail.hsDur >= CRUNCH_HOLD_MIN_S && rail.hsDur <= CRUNCH_HOLD_MAX_S,
-    `${VISION}: rail hit-stop is 1–2 frames (got ${rail.hsDur})`);
+    `${VISION}: rail keeps a 1–2 frame window (got ${rail.hsDur})`);
 
   const torpedo = resolveKineticCrunch(damage('wpn_torpedo_l', { type: 'explosive', amount: 320, hullHit: true }), crunchCtx());
   assert.ok(torpedo && torpedo.id === 'crunch.warhead');
-  assert.ok(torpedo.hsDur >= rail.hsDur, `${VISION}: a torpedo stops the world at least as long as a railgun`);
+  assert.ok(torpedo.hsDur >= rail.hsDur, `${VISION}: a torpedo's beat window is at least a railgun's`);
   assert.ok(torpedo.hsDur <= CRUNCH_HOLD_MAX_S);
   assert.ok(torpedo.fov > rail.fov && rail.fov > flak.fov,
     `${VISION}: FOV punch scales with weapon mass (flak ${flak.fov} < rail ${rail.fov} < torpedo ${torpedo.fov})`);
@@ -146,7 +153,7 @@ test('recoil FOV and trauma are mass-proportional; motionReduce suppresses them'
   assert.equal(resolveKineticRecoil('wpn_railgun_m', { mode: 'loading' }), null);
 });
 
-test('collision ramp: scrape is a tick, slam is an authoritative shock carried by hit-stop alone', () => {
+test('collision ramp: scrape is a tick, slam is an authoritative shock carried by the beat window', () => {
   const scrape = resolveCollisionFeel({ dp: 8 * 20 }, collisionCtx(8));
   const knock = resolveCollisionFeel({ dp: 60 * 20 }, collisionCtx(60));
   const slam = resolveCollisionFeel({ dp: 150 * 20 }, collisionCtx(150));
@@ -162,7 +169,7 @@ test('collision ramp: scrape is a tick, slam is an authoritative shock carried b
   assert.equal(resolveCollisionFeel({ dp: 150 * 20 }, collisionCtx(150, { motionReduce: true })), null);
 });
 
-test('live combat queue: a railgun crunch dips time for 1–2 frames and never freezes the picture', () => {
+test('live combat queue: a railgun crunch arms a 1–2 frame window and never touches the clock', () => {
   const { state, bus, host, traumas, frame } = feelHost();
   bus.emit('combat:damage', {
     attackerId: 1,
@@ -172,17 +179,17 @@ test('live combat queue: a railgun crunch dips time for 1–2 frames and never f
     armorHit: true,
     type: 'kinetic',
   });
-  assert.ok(host._hsTimer >= CRUNCH_HOLD_MIN_S && host._hsTimer <= CRUNCH_HOLD_MAX_S,
-    `${VISION}: a railgun armor hit arms a 1–2 frame hit-stop (got ${host._hsTimer})`);
-  assert.ok(state.timeScale < 1, `${VISION}: the world dips on a heavy contact`);
+  assert.ok(beatWindow(host) >= CRUNCH_HOLD_MIN_S && beatWindow(host) <= CRUNCH_HOLD_MAX_S,
+    `${VISION}: a railgun armor hit arms a 1–2 frame window (got ${beatWindow(host)})`);
+  assert.equal(state.timeScale, 1, `${VISION}: a presentation beat never writes the world clock`);
   assert.ok(!state.render.holdInterpolation,
     `${SMOOTH}: nothing asks the renderer to reuse last frame's poses`);
   assert.ok(traumas.length >= 1, `${VISION}: railgun crunch adds camera trauma`);
   assert.ok(host._fovPunch > 0, `${VISION}: railgun crunch punches FOV`);
 
   frame(CRUNCH_HOLD_MAX_S + 0.001);
-  assert.equal(host._hsTimer, 0);
-  assert.equal(state.timeScale, 1, `${SMOOTH}: the dip releases and the world resumes from where it stopped`);
+  assert.equal(beatWindow(host), 0);
+  assert.equal(state.timeScale, 1, `${SMOOTH}: the window expires and the clock never moved`);
 });
 
 test('torpedo and pulse fire/hit queues stay distinct on the live host', () => {
@@ -204,7 +211,7 @@ test('torpedo and pulse fire/hit queues stay distinct on the live host', () => {
     armorHit: true,
     type: 'energy',
   });
-  assert.equal(host._hsTimer, 0, `${VISION}: pulse armor hits stay rhythmic (no stop)`);
+  assert.equal(beatWindow(host), 0, `${VISION}: pulse armor hits stay rhythmic (no held window)`);
   assert.equal(state.timeScale, 1);
 
   bus.emit('combat:damage', {
@@ -215,11 +222,11 @@ test('torpedo and pulse fire/hit queues stay distinct on the live host', () => {
     hullHit: true,
     type: 'explosive',
   });
-  assert.ok(host._hsTimer > 0, `${VISION}: a torpedo hit stops the world for a beat`);
-  assert.ok(state.timeScale < 1);
+  assert.ok(beatWindow(host) > 0, `${VISION}: a torpedo hit keeps its authored window`);
+  assert.equal(state.timeScale, 1, `${VISION}: a presentation beat never writes the clock`);
   assert.ok(traumas.length >= 1);
   frame(1 / 60);
-  assert.ok(host._hsTimer < CRUNCH_HOLD_MAX_S);
+  assert.ok(beatWindow(host) < CRUNCH_HOLD_MAX_S);
 });
 
 test('motionReduce and modal gates suppress crunch on the live queue', () => {
@@ -239,8 +246,8 @@ test('motionReduce and modal gates suppress crunch on the live queue', () => {
       isPlayer: true,
     });
     frame();
-    assert.equal(state.timeScale, 1, `${gate} must not dip time`);
-    assert.equal(host._hsTimer, 0, `${gate} must suppress the crunch hit-stop`);
+    assert.equal(state.timeScale, 1, `${gate} must not move the clock`);
+    assert.equal(beatWindow(host), 0, `${gate} must suppress the crunch beat`);
     assert.ok(!state.render.holdInterpolation);
     if (gate === 'motionReduce') {
       assert.deepEqual(traumas, [], 'motionReduce keeps vestibular punch off');
@@ -249,7 +256,7 @@ test('motionReduce and modal gates suppress crunch on the live queue', () => {
   }
 });
 
-test('a crunch dip always releases inside two frames, whatever the settings do mid-dip', () => {
+test('a crunch window always expires inside two frames, whatever the settings do mid-beat', () => {
   const { state, host, bus, frame } = feelHost();
   bus.emit('combat:damage', {
     attackerId: 1,
@@ -260,10 +267,10 @@ test('a crunch dip always releases inside two frames, whatever the settings do m
     type: 'kinetic',
     isPlayer: true,
   });
-  assert.ok(host._hsTimer > 0);
+  assert.ok(beatWindow(host) > 0);
   state.settings.video.motionReduce = true;
   frame(1 / 60);
   frame(1 / 60);
-  assert.equal(host._hsTimer, 0);
-  assert.equal(state.timeScale, 1, `${SMOOTH}: no setting can strand the world in a dip`);
+  assert.equal(beatWindow(host), 0);
+  assert.equal(state.timeScale, 1, `${SMOOTH}: no setting can strand the world — the clock never moved`);
 });

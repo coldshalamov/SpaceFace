@@ -331,31 +331,42 @@ function testScreenManagerComposition(createEffects) {
 }
 
 function testFeelComposition(createEffects) {
+  // Presentation beats never write the world clock: 'feel:hit-stop' is a retired source name
+  // that init/reset/destroy only ever clear. Explicit owners — Focus, pauses, restore —
+  // compose exactly as before, untouched by anything a beat does.
   {
     const { state, bus, feel, effects } = makeFeelFixture(createEffects, 3);
     effects.set('flyby-focus', { scale: 0.5 });
     bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
     feel.frame(0, state);
-    assert.equal(state.timeScale, 0.12, 'ordinary hit-stop must request its authored floor');
+    assert.equal(state.timeScale, 0.5, 'a presentation beat must never dip below the Focus bound');
+    assert.deepEqual(Object.keys(effects.describeRequests()), ['flyby-focus'],
+      'the beat arms no request of its own');
     feel.frame(0.1, state);
-    assert.equal(state.timeScale, 0.5, 'hit-stop expiry must reveal, not overwrite, Focus slow-time');
+    assert.equal(state.timeScale, 0.5, 'the beat window expiring cannot touch the Focus owner');
 
     bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
     feel.frame(0, state);
     effects.set('ui:pausing-screen', { scale: 0 });
     bus.emit('sim:pause', {});
-    assert.equal(feel._hsTimer, 0, 'pause must clear the hit-stop timer');
-    assert.equal(state.timeScale, 0, 'clearing hit-stop during pause must retain the UI freeze');
+    assert.equal(state.timeScale, 0, 'the UI pause owner keeps its freeze through the reset');
     effects.clear('ui:pausing-screen');
     assert.equal(state.timeScale, 0.5);
 
-    for (const event of ['game:new', 'save:restoring', 'save:loaded']) {
+    // A stale 'feel:hit-stop' lease parked by an older generation is released on the same
+    // lifecycle resets — and nothing feel does re-arms it.
+    for (const event of ['sim:pause', 'game:new', 'save:restoring', 'save:loaded']) {
+      effects.set('feel:hit-stop', { scale: 0.12 });
+      assert.equal(state.timeScale, 0.12, `${event} fixture must begin with the stale lease held`);
+      bus.emit(event, {});
+      assert.equal(effects.describeRequests()['feel:hit-stop'], undefined,
+        `${event} must release the retired feel:hit-stop source`);
+      assert.equal(state.timeScale, 0.5, `${event} must preserve Focus while clearing the lease`);
       bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
       feel.frame(0, state);
-      assert(feel._hsTimer > 0, `${event} fixture must begin with active hit-stop`);
-      bus.emit(event, {});
-      assert.equal(feel._hsTimer, 0, `${event} must clear the hit-stop timer`);
-      assert.equal(state.timeScale, 0.5, `${event} must preserve Focus while clearing hit-stop`);
+      assert.equal(state.timeScale, 0.5, `${event}: fresh beats still never write the clock`);
+      assert.equal(effects.describeRequests()['feel:hit-stop'], undefined,
+        `${event}: beats must not re-arm the retired source`);
     }
   }
 
@@ -364,28 +375,22 @@ function testFeelComposition(createEffects) {
     state.settings.video.motionReduce = true;
     bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
     feel.frame(0, state);
-    assert.equal(feel._hsTimer, 0, 'reduced motion must suppress ordinary hit-stop');
-    assert.equal(state.timeScale, 1);
+    assert.equal(state.timeScale, 1, 'reduced motion keeps the clock untouched');
+    assert.equal(feel._fovPunch, 0, 'reduced motion keeps the vestibular punch off');
   }
 
   {
     const { state, bus, feel } = makeFeelFixture(createEffects, 5);
     bus.emit('player:death', {});
-    const samples = [];
     feel.frame(0, state);
-    samples.push(state.timeScale);
-    for (let i = 0; i < 7; i += 1) {
+    assert.ok(feel._fovPunch > 0 || feel._vig > 0, 'the death punch and wash still land');
+    const samples = [state.timeScale];
+    for (let i = 0; i < 8; i += 1) {
       feel.frame(0.05, state);
       samples.push(state.timeScale);
     }
-    for (let i = 1; i < samples.length; i += 1) {
-      assert(samples[i] <= samples[i - 1] + 1e-9,
-        `death ramp must be monotonic 1 -> .12; ${samples[i - 1]} -> ${samples[i]}`);
-    }
-    assert.equal(samples[0], 1, 'death ramp must begin at normal time');
-    assert.equal(samples.at(-1), 0.12, 'death ramp must reach the authored floor');
-    feel.frame(0.1, state);
-    assert.equal(state.timeScale, 0.12, 'death slow-time must hold its floor until the timer expires');
+    assert.ok(samples.every((s) => s === 1),
+      `the death beat is presentation only — the clock stays at 1 (got ${samples.join(', ')})`);
   }
 }
 

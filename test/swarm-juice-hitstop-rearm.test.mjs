@@ -1,14 +1,16 @@
-// Sustained-hitstop contract: kill-storm dips are BEATS, not a held floor.
+// Sustained-beat contract: kill-storm presentation must never hold the world clock.
 // Two stacked re-arm defects produced the headed-Swarm slowdown (sim ~0.09-0.2 s per wall s
 // while presentation kept animating):
 //  1. swarmJuice: 'swarm:juice-hitstop' (~0.35) re-armed on nearly every multi-kill receipt —
 //     each fresh ~60-80 ms window beats the drained sim-clock remainder, so the request pinned
 //     the floor for as long as killing continued.
 //  2. feel: 'feel:hit-stop' (HS_DEPTH 0.12) re-topped on every player-caused kill/heavy-damage
-//     receipt via _trigger — no cooldown — so a kill stream holds the 0.12 floor indefinitely.
-// Both layers now share the established real/sim-clock re-arm gates; these tests drive a
-// sustained kill storm through the production event paths and assert the floor releases
-// between beats while discrete dips still land.
+//     receipt via _trigger — no cooldown — so a kill stream held the 0.12 floor indefinitely.
+// swarmJuice keeps its real/sim-clock re-arm gate; feel's automatic writer is gone entirely —
+// kill/heavy-damage beats are presentation only (punch, trauma, vignette) and 'feel:hit-stop'
+// is a retired source name that init/reset/destroy only ever clear. These tests drive a
+// sustained kill storm through the production event paths: the swarm floor must release
+// between beats, and the feel layer must never move the clock at all.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -121,10 +123,11 @@ test('the re-arm gate still respects reduced/off effects', () => {
   }
 });
 
-// --- feel:hit-stop (presentation layer, real-frame clock) ------------------------------------
-// The 0.12 signature from the headed witness: every player-caused kill calls _trigger(HS_KILL)
-// and every heavy combat:damage calls _trigger(HS_HEAVY); with no cooldown each receipt
-// re-topped _hsTimer, holding 'feel:hit-stop' at HS_DEPTH continuously.
+// --- feel beats (presentation layer, real-frame cadence) --------------------------------------
+// The 0.12 signature from the headed witness: every player-caused kill called _trigger(HS_KILL)
+// and every heavy combat:damage called _trigger(HS_HEAVY); with no cooldown each receipt
+// re-topped the window, holding 'feel:hit-stop' at HS_DEPTH continuously. The writer is gone:
+// the beats still land their punch/window/vignette, but nothing in feel touches timeEffects.
 
 installDomFixture();
 
@@ -146,58 +149,64 @@ function initFeel(fx, feel) {
   return host;
 }
 
+// The authored beat window a fired beat leaves armed, whichever internal field carries it —
+// evidence that a beat landed, never a clock contract.
+function beatWindow(host) {
+  return host._beatTimer ?? host._hsTimer ?? 0;
+}
+
 function killReceipt(fx, i) {
   fx.bus.emit('entity:killed', {
     id: 100 + i, killerId: fx.state.playerId, type: 'ship', pos: { x: 10, z: 10 },
   });
 }
 
-test('a kill stream cannot hold feel:hit-stop at the dip floor continuously', () => {
+test('a kill stream lands its beats as presentation and never writes the clock', () => {
   const fx = makeFeelFixture(21);
   const feel = initFeel(fx);
   const FRAME = 0.05;                        // 20 fps wall cadence — the low-FPS witness regime
-  let dips = 0;
-  let held = 0;
-  let measured = 0;
+  let sawPunch = false;
   for (let i = 0; i < 60; i += 1) {          // 3 wall-seconds of kills every 50 ms
-    const before = fx.state.timeScale;
     killReceipt(fx, i);
     feel.frame(FRAME, fx.state);
-    if (before === 1 && fx.state.timeScale < 1) dips += 1;
-    if (i >= 10) { measured += 1; if (fx.state.timeScale < 1) held += 1; }
+    assert.equal(fx.state.timeScale, 1, `frame ${i}: an automatic beat wrote the clock`);
+    if (feel._fovPunch > 0 || feel._fovPunchApplied > 0) sawPunch = true;
   }
-  assert.ok(dips >= 2, `kill beats must still dip (got ${dips})`);
-  assert.ok(held / measured < 0.75,
-    `the dip must release between beats — held ${held}/${measured} frames dipped`);
-
-  // The floor always recovers once the stream stops; a later lone kill still dips.
+  assert.ok(sawPunch, 'kill beats must still land their FOV punch');
+  assert.deepEqual(fx.effects.describeRequests(), {}, 'feel must never arm a request');
   for (let i = 0; i < 10; i += 1) feel.frame(FRAME, fx.state);
-  assert.equal(fx.state.timeScale, 1, 'the floor releases after the stream');
-  for (let i = 0; i < 40; i += 1) feel.frame(FRAME, fx.state); // let the cooldown fully pass
+  assert.equal(fx.state.timeScale, 1);
   killReceipt(fx, 999);
-  assert.equal(fx.state.timeScale, 0.12, 'a lone kill after the storm still dips');
+  assert.equal(fx.state.timeScale, 1, 'a lone kill after the storm stays presentation only');
   feel.destroy();
 });
 
-test('big beats still land inside the small-beat cooldown', () => {
+test('kill, capital, and death beats keep their authored windows — clock untouched', () => {
   const fx = makeFeelFixture(22);
   const feel = initFeel(fx);
-  killReceipt(fx, 0);                        // arm a small dip + its cooldown
-  assert.equal(fx.state.timeScale, 0.12);
+  killReceipt(fx, 0);
+  assert.equal(fx.state.timeScale, 1, 'the kill beat never writes the clock');
+  const killWindow = beatWindow(feel);
+  assert.ok(killWindow > 0, 'the kill beat still arms its window');
   fx.bus.emit('entity:killed', {
     id: 200, killerId: fx.state.playerId, type: 'ship', capital: true, pos: { x: 10, z: 10 },
   });
-  assert.equal(feel._hsTimer, 0.8, 'the capital kill beat overrides a cooling small dip');
+  const capitalWindow = beatWindow(feel);
+  assert.ok(capitalWindow > killWindow, 'the capital kill keeps the larger authored window');
+  assert.equal(fx.state.timeScale, 1);
   fx.bus.emit('player:death', {});
-  assert.equal(feel._hsTimer, 0.9, 'the death beat always lands');
+  assert.ok(beatWindow(feel) >= capitalWindow, 'the death beat always lands its own window');
+  assert.equal(fx.state.timeScale, 1);
+  assert.deepEqual(fx.effects.describeRequests(), {});
   feel.destroy();
 });
 
-test('motionReduce still suppresses every dip tier', () => {
+test('motionReduce keeps every beat silent and the clock untouched', () => {
   const fx = makeFeelFixture(23, { motionReduce: true });
   const feel = initFeel(fx);
   for (let i = 0; i < 20; i += 1) { killReceipt(fx, i); feel.frame(0.05, fx.state); }
-  assert.equal(fx.state.timeScale, 1, 'motionReduce keeps the floor at 1');
+  assert.equal(fx.state.timeScale, 1, 'motionReduce keeps the clock at 1');
+  assert.equal(beatWindow(feel), 0, 'motionReduce keeps the beat window at zero');
   assert.equal(fx.effects.describeRequests()['feel:hit-stop'], undefined);
   feel.destroy();
 });

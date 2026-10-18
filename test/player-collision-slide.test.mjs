@@ -225,11 +225,13 @@ function feelHost() {
     ui: {},
   };
   host.timeEffects = { set: (...a) => timeScaleWrites.push(a), clear: () => {} };
+  // Internal beat-window pacing fields — whichever names the implementation uses, they
+  // start at zero; the real _trigger arms them. Beats are presentation only: the spy above
+  // must never record a write.
   host._hsTimer = 0;
-  host._hsRampIn = 0;
-  host._hsFreezeTimer = 0;
-  host._hsRequest = { scale: 0.12 };
+  host._beatTimer = 0;
   host._collisionHitstopCooldown = 0;
+  host._collisionBeatCooldown = 0;
   host._armedCollisionDeltaV = 0;
   host._pendingCollisionFeel = null;
   host._collisionFeelScratch = {};
@@ -240,7 +242,7 @@ function feelHost() {
   host._chainBeats = new Map();
   host._chainBeatQueued = 0;
   host._fovPunch = 0;
-  host._trigger = (hsDur, fovAdd, vigPeak, vigCls) => triggers.push({ hsDur, fovAdd, vigPeak, vigCls });
+  host._trigger = (...args) => triggers.push({ hsDur: args[0], fovAdd: args[1], vigPeak: args[2], vigCls: args[3] });
   host._subscribe();
   return { host, bus, triggers, traumas, kicks, timeScaleWrites };
 }

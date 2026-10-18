@@ -8,10 +8,10 @@
 // projectile:hit (physics) and combat:damage (router) — inside one synchronous emit. "Within
 // 100 ms" is proven structurally: every channel answers in the same tick because each handler is
 // a synchronous bus subscriber:
-//   hit-stop   — feel's combat:damage handler -> _applyKineticCrunch -> _trigger ->
-//                timeEffects.set('feel:hit-stop') (a 4/s repeater's authored answer is the
-//                rhythmic tick: FOV punch, no hold; the concussion cannon's mass earns the
-//                1–2 frame hold).
+//   beat       — feel's combat:damage handler -> _applyKineticCrunch -> _trigger -> the
+//                camera punch/window (a 4/s repeater's authored answer is the rhythmic
+//                tick: FOV punch; the concussion cannon's mass earns the 1–2 frame window).
+//                Presentation only — the beat channel never writes the world clock.
 //   light      — vfx's projectile:hit handler -> _onProjectileHit -> WeaponVfxPresenter.handleHit
 //                -> WeaponLightPool.spawn.
 //   mass       — routeDamage -> helpers.combatPhysics.applyImpulse + combat:hitstunImpulse.
@@ -35,8 +35,14 @@ import { audio, AUDIO_RECIPE_BY_ID } from '../src/audio/audioSystem.js';
 
 const DEFAULT_KIT = [
   { id: 'wpn_autocannon_m', expectHold: false },        // rof 4 — rhythmic tick by authored design
-  { id: 'wpn_concussion_cannon_m', expectHold: true },  // rof 1, impulse 920 — real hit-stop hold
+  { id: 'wpn_concussion_cannon_m', expectHold: true },  // rof 1, impulse 920 — real beat window
 ];
+
+// The authored beat window a fired beat leaves armed, whichever internal field carries it —
+// evidence a beat landed, never a clock contract. Presentation beats never write timeScale.
+function beatWindow(host) {
+  return host._beatTimer ?? host._hsTimer ?? 0;
+}
 
 const MAX_ANSWER_TICKS = Math.ceil(0.1 * 60); // 100 ms at the 60 Hz fixed step
 
@@ -160,7 +166,7 @@ test('default-kit packets carry the mass channel under the production profile', 
 });
 
 for (const { id, expectHold } of DEFAULT_KIT) {
-  test(`${id}: one contact answers hit-stop + light + mass + sound on the same tick`, () => {
+  test(`${id}: one contact answers beat + light + mass + sound on the same tick`, () => {
     const { state, bus, router, player, target, impulses } = boot();
     const { damage, hitstun } = { damage: [], hitstun: [] };
     bus.on('combat:damage', (p) => damage.push(p));
@@ -208,18 +214,18 @@ for (const { id, expectHold } of DEFAULT_KIT) {
       assert.ok(contactTick - stun.tick <= MAX_ANSWER_TICKS,
         `${id}: hitstun receipt ${contactTick - stun.tick} ticks after contact`);
 
-      // Hit-stop: feel's own combat:damage subscription ran the crunch through the modal/motion
-      // gates and armed the channel — the concussion cannon writes a real timeEffects dip, the
-      // repeater answers with its authored FOV tick.
+      // Beat: feel's own combat:damage subscription ran the crunch through the modal/motion
+      // gates and landed the channel — the concussion cannon arms its authored 1–2 frame
+      // window, the repeater answers with its authored FOV tick. Either way the channel is
+      // presentation only: no automatic beat may ever write a time-effects request.
+      assert.ok(!live.hitStopWrites.includes('feel:hit-stop'),
+        `${id}: feel must never write the retired 'feel:hit-stop' request`);
       if (expectHold) {
-        assert.ok(live.hitStopWrites.includes('feel:hit-stop'),
-          `${id}: a heavy single-shot must write feel:hit-stop into timeEffects`);
-        assert.ok(feel._hsTimer > 0, `${id}: the hit-stop dip must be armed`);
+        assert.ok(feel._fovPunch > 0, `${id}: a heavy single-shot must punch the FOV envelope`);
+        assert.ok(beatWindow(feel) > 0, `${id}: a heavy single-shot arms its authored window`);
       } else {
-        assert.ok(feel._fovPunch > 0 || feel._hsTimer > 0 || live.hitStopWrites.length > 0,
-          `${id}: a repeater's authored tick still punches the hit-stop channel`);
-        assert.ok(!live.hitStopWrites.includes('feel:hit-stop'),
-          `${id}: a 4/s repeater must tick, not hold — no hit-stop dip is authored for it`);
+        assert.ok(feel._fovPunch > 0 || beatWindow(feel) > 0,
+          `${id}: a repeater's authored tick still punches the beat channel`);
       }
 
       // Light: vfx's own projectile:hit subscription admitted an event light.

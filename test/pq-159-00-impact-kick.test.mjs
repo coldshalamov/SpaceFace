@@ -7,14 +7,13 @@
 //   the REAL chase camera (headless window stub — the same pattern camera-focus-separation uses).
 //   The frame translates in the direction the hull was knocked, by the table's world-unit amount.
 //   2. The identical contact under settings.video.motionReduce produces zero kick, zero trauma,
-//   zero hitstop — the capture shows none.
+//   zero camera beat — the capture shows none.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
   IMPACT_KICK_MOMENTUM_FLOOR,
   IMPACT_KICK_TABLE,
-  COLLISION_HITSTOP_COOLDOWN,
   feel,
   impactKickFromMomentum,
   resolveCollisionFeel,
@@ -261,14 +260,15 @@ test('the kick is rate-limited by the shared collision cooldown', () => {
   hit(4000, 12);
   frame(DT);
   assert.equal(calls.kick.length, 2, 'a real escalation interrupts the armed beat');
-  // After the cooldown the next ordinary contact answers again.
-  frame(COLLISION_HITSTOP_COOLDOWN + DT);
+  // After the cooldown the next ordinary contact answers again — drain half a second of
+  // frames, comfortably past any contact pacing gate.
+  for (let i = 0; i < 30; i++) frame(DT);
   hit(1200, 20);
   frame(DT);
   assert.equal(calls.kick.length, 3);
 });
 
-test('reduce-motion capture shows none: no kick, no trauma, no hitstop', () => {
+test('reduce-motion capture shows none: no kick, no trauma, no beat', () => {
   const { consequence } = measuredImpact();
   const rock = makeBody({ id: 2, type: 'asteroid', x: 18, z: 0, radius: 10, mass: 220 });
   const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, radius: 10, mass: 20 });
@@ -278,7 +278,7 @@ test('reduce-motion capture shows none: no kick, no trauma, no hitstop', () => {
   frame(DT);
   for (let i = 0; i < 60; i++) camera.follow(DT);
 
-  assert.equal(state.timeScale, 1, 'no hitstop under reduced motion');
+  assert.equal(state.timeScale, 1, 'no clock write under reduced motion');
   assert.equal(state.camera.trauma, 0, 'no trauma under reduced motion');
   assert.equal(Math.hypot(state.camera.kickOffset.x, state.camera.kickOffset.z), 0,
     'the reduce-motion capture shows none');

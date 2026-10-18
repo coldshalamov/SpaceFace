@@ -1,16 +1,15 @@
-// Game-feel "punch" system (V2 plan §9). The single highest-leverage feel layer for an action
-// space game: micro hit-stop (brief timeScale dip) on heavy hits, plus a synchronized FOV punch
-// and a red damage vignette. None of this adds gameplay — it makes every impact *land*.
+// Presentation feedback: impact FOV punch, camera trauma, and damage vignette.
+// Automatic feedback never owns simulation time. Contact/fragment storms must not
+// slow flight, and simulation progress must not depend on this render timer draining.
 //
 // DESIGN (cooperates with the rest of the engine, never fights it):
-//   - Hit-stop is a render-phase request to the core time-effects owner. The lowest active request
-//     wins, so expiry reveals any remaining pause/Focus request instead of restoring over it.
+//   - Explicit pause and player Focus remain owned by their gameplay/lifecycle systems.
 //   - The FOV punch is a transient additive offset on the chase camera's fov, eased back. We reach
 //     the camera via state.render.camera (a PerspectiveCamera) and restore its projection matrix.
 //   - The damage vignette is a pooled DOM radial gradient that flashes on heavy player hits and
 //     snaps off — the directional-hit indicator work is a separate concern; this is pure *punch*.
 //   - Everything is gated on state.settings.video.motionReduce (new): vestibular-sensitive players
-//     get the audio/number feedback with the shake/zoom/time-freeze suppressed. Accessibility is
+//     get the audio/number feedback with the shake/zoom suppressed. Accessibility is
 //     table stakes (V2 §9, §12). Default OFF (motionReduce=false) so the punch is felt by default.
 //
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
@@ -53,14 +52,9 @@ export function screenShakeScale(settings) {
 // Fully data-driven: new weapons in WEAPONS[] get scaled automatically, no hardcoded IDs.
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 
-// Kinetic crunch. A 1–2 frame hit-stop on heavy kinetic / explosive contacts: the world dips to
-// the hit-stop floor, then resumes FROM WHERE IT STOPPED. It used to be a presentation hold — the
-// render poses froze while the 60 Hz sim kept stepping — and that is a manufactured dropped
-// frame: when the hold released, every hull (the player's own included) snapped forward by the
-// time the sim had run underneath, 2.5–5 WU at fighting speed, once per concussion-cannon hit.
-// The owner read it as the ship "jigging back and forth like it doesn't know its own location".
-// A time dip carries the same weight and is continuous. Fast repeaters stay rhythmic (hsDur = 0)
-// so they read as ticks, not stops.
+// Kinetic crunch maps heavy contacts onto camera FOV and trauma. Duration fields
+// remain in the pure cue descriptions for existing consumers; this presentation
+// owner applies neither a pose hold nor a simulation time dip.
 export const CRUNCH_FRAME_S = 1 / 60;
 export const CRUNCH_HOLD_MIN_S = CRUNCH_FRAME_S;
 export const CRUNCH_HOLD_MAX_S = CRUNCH_FRAME_S * 2;
@@ -136,7 +130,7 @@ function kineticBody(weapon, payload = {}) {
 
 /**
  * Crunch for a combat:damage receipt. Pure: no DOM, no timeScale write, no RNG.
- * Heavy kinetic / explosive contacts return a 1–2 frame hit-stop plus mass-scaled FOV/trauma.
+ * Heavy kinetic / explosive contacts return legacy duration metadata plus mass-scaled FOV/trauma.
  * Light repeaters return a rhythmic tick (hsDur = 0). motionReduce / photo / non-flight
  * / uninvolved NPC furballs return null.
  */
@@ -185,7 +179,7 @@ export function resolveKineticCrunch(payload, context = {}) {
     trauma,
     mass: kin.mass,
     body: kin.body,
-    // The picture is never held against a running sim; a heavy crunch is a continuous time dip.
+    // Cue metadata never permits holding the picture against a running simulation.
     holdsPose: false,
   });
 }
@@ -309,7 +303,7 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (deltaV < IMPACT_KNOCK_DV) id = 'impact.scrape';
   else if (deltaV < IMPACT_SLAM_DV) id = 'impact.knock';
 
-  // The slam's weight is its hit-stop above: a time dip that resumes from where it stopped. It
+  // The slam's weight comes from the camera kick and trauma below. It
   // never holds poses against a running sim (that snap read as the ship losing its place).
   if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma, kickWu, kickX, kickZ });
   out.id = id;
@@ -414,24 +408,18 @@ function killCameraIsMeaningfullyNearby(state, position) {
 
 const STYLE_ID = 'sf-feel-style';
 
-// Tunables — spec2/02 §3 exact numbers. Hit-stop is short so it reads as "weight," not "lag.
-// No hit-stop on ordinary hits; shield-break = 40 ms, player kill = 60 ms. Capital kills carry
-// longer trauma but no extended freeze by default. Death is the only long cinematic dip.
-const HS_HEAVY = 0.055;       // s — timeScale dip duration for a heavy hit (big damage)
-const HS_SHIELD_BREAK = 0.04; // s — shield-break hit-stop (spec2/02 §3)
+// Cue durations sequence camera accents only. Automatic presentation cues
+// never request simulation time.
+const HS_HEAVY = 0.055;       // s — camera beat duration for a heavy hit (big damage)
+const HS_SHIELD_BREAK = 0.04; // s — shield-break camera beat (spec2/02 §3)
 const HS_ARMOR_HIT = 0.0;     // s — armor hits do NOT freeze (spec2/02 §3)
 const HS_HULL_HIT = 0.0;      // s — hull hits do NOT freeze (spec2/02 §3)
-const HS_KILL = 0.06;         // s — small-kill hit-stop (spec2/02 §3)
-const HS_CAPITAL_KILL = 0.80; // s — capital-kill hit-stop window (≤ 800 ms, spec2/02 §3)
-const HS_DEATH = 0.90;        // s — dip duration for the player dying (the biggest beat)
-const HS_RAMP_TIME = 0.25;    // s — cinematic ease-IN for the death dip (1 -> floor over this window)
-const HS_DEPTH = 0.12;        // timeScale floor during a normal dip
-const SMALL_BEAT_MAX_S = 0.1; // dips at/below this share a retrigger cooldown (kill/heavy/impact tier)
-const SMALL_BEAT_HITSTOP_COOLDOWN = 0.18; // s of real frame time between small-tier dips
+const HS_KILL = 0.06;         // s — small-kill camera beat (spec2/02 §3)
+const HS_CAPITAL_KILL = 0.80; // s — capital-kill camera window (≤ 800 ms, spec2/02 §3)
+const HS_DEATH = 0.90;        // s — camera beat duration for the player dying
 // Rated-moment feel (PQ-146.03 + PQ-159.02). A `moment:holyShit` bus event is the moment
-// detector's output (bulletTime rates `stunt:trickDetected`). The beat is a 150 ms time dip,
-// a camera hold, and a stinger — never a raw collision. Min-wins with bulletTime's longer
-// `moment:slow-mo` pulse via timeEffects. Never score text: adventure HUD stays quiet.
+// detector's output (bulletTime rates `stunt:trickDetected`). This owner applies
+// a camera accent and stinger; gameplay owns any separate deliberate time effect.
 export const BEAT_SEED = 15902;
 export const BEAT_DIP_MS = 150;
 export const BEAT_DIP_S = BEAT_DIP_MS / 1000;
@@ -472,19 +460,6 @@ export function resolveMomentBeat(eventName, payload = {}, context = {}) {
 
 export function applyMomentBeat(host, beat) {
   if (!host || !beat) return false;
-  const timeEffects = host.timeEffects;
-  if (beat.dipS>0 && timeEffects && typeof timeEffects.set === 'function') {
-    if (!host._hsRequest) host._hsRequest = { scale: beat.scale };
-    else host._hsRequest.scale = beat.scale;
-    timeEffects.set(beat.source || BEAT_TIME_SOURCE, host._hsRequest);
-  }
-  if (typeof host._hsTimer === 'number' || host._hsTimer === 0) {
-    if (!(host._hsTimer > beat.dipS)) {
-      host._hsTimer = beat.dipS;
-      host._hsRampIn = 0;
-      host._hsFreezeTimer = 0;
-    }
-  }
   const ctrl = host.state && host.state.render && host.state.render.cameraCtrl;
   if (ctrl && typeof ctrl.hold === 'function') ctrl.hold(beat.holdS);
   const bus = host.bus;
@@ -718,23 +693,15 @@ export const feel = {
   name: 'feel',
 
   init(ctx) {
-    // A re-init (registry destroy → init on the same runtime, or a test re-seating this
-    // singleton) must finish through the OLD references before they are replaced: an in-flight
-    // hit-stop is a live 'feel:hit-stop' request on the previous time-effects service, and the
-    // previous bus still owns every listener _subscribe installed. The fields below are all
-    // re-zeroed, so without this pass the request would leak (frame() only clears it while
-    // _hsTimer > 0) and every event would fire one duplicate listener per init.
+    // Release old subscriptions and any legacy feedback lease before replacing owners.
     this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.timeEffects = ctx.timeEffects || createTimeEffects(this.state);
+    this.timeEffects.clear(BEAT_TIME_SOURCE); // release a legacy lease on hot re-init
     // live state
-    this._hsTimer = 0;        // remaining hit-stop seconds (0 = no active dip)
-    this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
-    this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
-    this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
+    this._beatTimer = 0; // presentation sequencing only; never controls simulation time
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
-    this._smallHitstopCooldown = 0;     // same gate for the small kill/damage dip tier
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
     this._collisionFeelScratch = {};
@@ -763,20 +730,15 @@ export const feel = {
     this._subscribe();
   },
 
-  // Registry teardown / re-init boundary. _resetHitStop releases the request through whatever
-  // service this instance currently owns and zeroes every dip field (including a queued-but-
-  // unflushed contact and the chain-beat queue) so a later frame() cannot resurrect a request;
-  // the guard keeps it idempotent before first init. Then drop every tracked bus listener.
+  // Teardown releases a legacy lease and all tracked listeners. Pending visual beats
+  // are reset so an old session cannot leak feedback into the next one.
   destroy() {
     if (this._chainBeats) {
       this._resetHitStop();
     } else {
       if (this.timeEffects && typeof this.timeEffects.clear === 'function') {
-        this.timeEffects.clear('feel:hit-stop');
+        this.timeEffects.clear(BEAT_TIME_SOURCE);
       }
-      this._hsTimer = 0;
-      this._hsRampIn = 0;
-      this._hsFreezeTimer = 0;
     }
     if (Array.isArray(this._unsubs)) {
       for (const off of this._unsubs) {
@@ -1818,36 +1780,17 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
   },
 
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).
-  _trigger(hsDur, fovAdd, vigPeak, vigCls) {
-    // Cooperative gate: never punch during a deliberate freeze or outside flight. If a modal just
-    // opened, the sim is already frozen — adding hit-stop on top would just delay its release.
+  _trigger(beatDuration, fovAdd, vigPeak, vigCls) {
+    // Keep camera feedback out of modal screens and non-flight routes.
     if (this.state.mode !== 'flight') return;
     if (!this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
     // Motion-reduce keeps the information (it's still a big hit) but drops the vestibular effects.
     if (mr) return;
 
-    // Hit-stop: take the longer of the current remaining dip and the new one (don't truncate a
-    // death punch with a late small hit). Floor the timeScale for the dip duration.
-    if (hsDur > this._hsTimer) {
-      const smallBeat = hsDur <= SMALL_BEAT_MAX_S;
-      // A kill/damage storm re-arms a small dip on nearly every receipt — the floor never
-      // releases and the world stays dipped at HS_DEPTH for as long as killing continues.
-      // Small beats share the collision grind's real-time cooldown: while cooling, the
-      // punch/vignette still land but the time floor stays released. Bigger beats — moments,
-      // capital kills, death — are discrete and always land.
-      if (!smallBeat || this._smallHitstopCooldown <= 0) {
-        this._hsTimer = hsDur;
-        this._hsFreezeTimer = 0;
-        // Death gets a cinematic RAMP-IN (timeScale eases 1 -> floor over ~0.25s) instead of the
-        // snappy snap-to-floor normal hits use. Reads as slow-motion rather than a stutter. Only
-        // set when this is the death beat (vigCls === 'death').
-        this._hsRampIn = (vigCls === 'death') ? HS_RAMP_TIME : 0;
-        this._hsRequest.scale = this._hsRampIn > 0 ? 1 : HS_DEPTH;
-        this.timeEffects.set('feel:hit-stop', this._hsRequest);
-        if (smallBeat) this._smallHitstopCooldown = SMALL_BEAT_HITSTOP_COOLDOWN;
-      }
-    }
+    // Sequence the chain's second camera accent after this visual beat. A delayed
+    // render can delay that accent, but has no effect on simulation progress.
+    this._beatTimer = Math.max(this._beatTimer || 0, beatDuration || 0);
     // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
     this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
 
@@ -1860,8 +1803,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     }
   },
 
-  // Kill-cam "kiss": camera push-zoom only. The actual hit-stop is now a short 60 ms dip in the
-  // entity:killed handler; this helper exists for callers that want to trigger the kiss explicitly.
+  // Kill-cam "kiss": camera push-zoom only, with no simulation slowdown.
   // FB-084: the beat is weight-keyed, so an explicit trigger without a victim mass resolves
   // through the unknown-mass law (the conservative medium beat) on the camera controller itself.
   _triggerKillCam() {
@@ -1880,12 +1822,9 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
   },
 
   _resetHitStop() {
-    this._hsTimer = 0;
-    this._hsRampIn = 0;
-    this._hsFreezeTimer = 0;
+    this._beatTimer = 0;
     this.timeEffects.clear('feel:hit-stop');
     this._collisionHitstopCooldown = 0;
-    this._smallHitstopCooldown = 0;
     this._armedCollisionDeltaV = 0;
     this._pendingCollisionFeel = null;
     this._armedCollisionTick = null;
@@ -1899,45 +1838,15 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // We keep using the ctx-cached state reference; the registry passes the live state too.
     void state;
 
-    // ---- hit-stop timer updates only its time-effects request ----
+    // ---- rate-limit collision camera feedback on presentation time ----
+    this._beatTimer = Math.max(0, this._beatTimer - frameDt);
     if (this._collisionHitstopCooldown > 0) {
       this._collisionHitstopCooldown = Math.max(0, this._collisionHitstopCooldown - frameDt);
     }
-    if (this._smallHitstopCooldown > 0) {
-      this._smallHitstopCooldown = Math.max(0, this._smallHitstopCooldown - frameDt);
-    }
-    if (this._hsTimer > 0) {
-      this._hsTimer -= frameDt;
-      if (this._hsFreezeTimer > 0) this._hsFreezeTimer -= frameDt;
-      if (this._hsTimer <= 0) {
-        // Clear the dip without resetting the collision cooldown. A scrape's ~16 ms beat must
-        // not unlock the next grind tick — stacking hitstop on a sliding contact is worse than silence.
-        this._hsTimer = 0;
-        this._hsRampIn = 0;
-        this._hsFreezeTimer = 0;
-        this.timeEffects.clear('feel:hit-stop');
-      } else if (this.state.mode === 'flight' && this._modalClear()) {
-        if (this._hsFreezeTimer > 0) {
-          // Kill-cam hard freeze: the world stops completely.
-          this._hsRequest.scale = 0;
-        } else if (this._hsRampIn > 0) {
-          // Cinematic death ease-in: ramp timeScale 1 -> HS_DEPTH over the ramp window. The ramp
-          // progresses monotonically from 0 -> 1. Once complete, the floor holds until expiry.
-          this._hsRampIn = Math.max(0, this._hsRampIn - frameDt);
-          const progress = 1 - (this._hsRampIn / HS_RAMP_TIME);
-          const eased = progress * progress;
-          this._hsRequest.scale = 1 - (1 - HS_DEPTH) * eased;
-        } else {
-          // Normal hit: snap to the floor (reads as "weight", not "lag").
-          this._hsRequest.scale = HS_DEPTH;
-        }
-        this.timeEffects.set('feel:hit-stop', this._hsRequest);
-      }
-    }
     this._flushPendingCollision();
 
-    // F9 — the chain's extra beat lands once the contact's own dip has cleared: dip, resume, dip.
-    if (this._chainBeatQueued > 0 && this._hsTimer <= 0) {
+    // F9 — the chain's extra camera beat is presentation-only.
+    if (this._chainBeatQueued > 0 && this._beatTimer <= 0) {
       const dipS = this._chainBeatQueued;
       this._chainBeatQueued = 0;
       this._trigger(dipS, CHAIN_BEAT_FOV, 0, null);

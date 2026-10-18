@@ -1,5 +1,7 @@
-// PQ-159.02 — The beat: rated moments get a 150 ms time dip, a camera hold, and a stinger;
-// death gets a cam. Fires on the moment detector only; headless sims unchanged. Seed 15902.
+// PQ-159.02 — The beat: rated moments get a camera hold and a stinger; death gets a cam.
+// Fires on the moment detector only; headless sims unchanged. Seed 15902.
+// Beats are presentation only: the 150 ms window lives on the camera hold — the world clock
+// belongs to explicit owners and automatic feedback never writes it.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -102,14 +104,14 @@ test('the beat is 150 ms and fires only on the moment detector', () => {
   console.log(`SEED=${SEED} dipMs=${beat.dipMs} stinger=${beat.stinger} nonMoment=null`);
 });
 
-test('live feel+director: a rated moment dips time, holds the camera, and plays the stinger', () => {
+test('live feel+director: a rated moment holds the camera and plays the stinger — clock untouched', () => {
   const { state, bus, camera, player, cues, frame } = feelFixture();
   camera.follow(DT);
   const focusBefore = { x: state.camera.focus.x, z: state.camera.focus.z };
   bus.emit('moment:holyShit', { score: 8, trickId: 'wrecking_ball' });
   frame(DT);
 
-  assert.ok(state.timeScale < 1, `timeScale ${state.timeScale} must dip on the beat`);
+  assert.equal(state.timeScale, 1, 'a presentation beat must never write the world clock');
   assert.ok(camera.holdRemaining() > 0, 'camera hold must arm for 150 ms');
   assert.ok(cues.some((c) => c && c.id === BEAT_STINGER), 'stinger must fire');
 
@@ -122,7 +124,7 @@ test('live feel+director: a rated moment dips time, holds the camera, and plays 
   );
 
   for (let i = 0; i < 20; i++) frame(DT);
-  assert.equal(state.timeScale, 1, 'the 150 ms dip expires and timeScale returns');
+  assert.equal(state.timeScale, 1, 'the world clock never moves for a presentation beat');
 });
 
 test('collisions do not fire the rated-moment beat', () => {
@@ -170,5 +172,6 @@ test('headless sim hash is unchanged by the presentation beat', () => {
   frame(DT);
   assert.equal(entityHash(state), before, 'the beat must not move sim bodies');
   assert.equal(state.simTime, timeBefore, 'the beat must not advance simTime');
+  assert.equal(state.timeScale, 1, 'the beat is presentation only — the clock stays put');
   console.log(`SEED=${SEED} headlessHash=${before} unchanged=1 timeScale=${state.timeScale}`);
 });

@@ -76,6 +76,12 @@ function feelHost() {
   return { state, bus, host, traumas, frame: (dt = 0) => host.frame(dt, state) };
 }
 
+// The authored beat window a fired beat leaves armed, whichever internal field carries it —
+// evidence a beat landed, never a clock contract. Presentation beats never write timeScale.
+function beatWindow(host) {
+  return host._beatTimer ?? host._hsTimer ?? 0;
+}
+
 function physicsImpact(closingSpeed, overrides = {}) {
   return {
     consequenceKernelVersion: 1,
@@ -105,7 +111,7 @@ function collisionCue(closingSpeed) {
 }
 
 for (const seed of SEEDS) {
-  test(`seed ${seed}: hit-stop and camera trauma strictly increase across closing speeds (pre-solve channel)`, () => {
+  test(`seed ${seed}: beat window and camera trauma strictly increase across closing speeds (pre-solve channel)`, () => {
     const rows = CLOSING_SPEEDS.map((speed) => resolveCollisionFeel(contact(), {
       mode: 'flight',
       playerDistance: 0,
@@ -123,7 +129,7 @@ for (const seed of SEEDS) {
     assert.deepEqual(rows.map((r) => r.id), ['impact.scrape', 'impact.knock', 'impact.slam']);
     for (let i = 1; i < rows.length; i++) {
       assert.ok(rows[i].hsDur > rows[i - 1].hsDur,
-        `hit-stop must strictly increase (${rows[i - 1].hsDur} -> ${rows[i].hsDur})`);
+        `the beat window must strictly increase (${rows[i - 1].hsDur} -> ${rows[i].hsDur})`);
       assert.ok(rows[i].trauma > rows[i - 1].trauma,
         `trauma must strictly increase (${rows[i - 1].trauma} -> ${rows[i].trauma})`);
     }
@@ -144,7 +150,7 @@ for (const seed of SEEDS) {
       bus.emit('physics:impact', physicsImpact(speed));
       frame();
       assert.equal(traumas[0], undefined, `a ${speed} WU/s player contact must not beat on this channel`);
-      assert.equal(host._hsTimer, 0, 'a player contact must not hit-stop the camera');
+      assert.equal(beatWindow(host), 0, 'a player contact must not arm a camera beat');
     }
     const answers = CLOSING_SPEEDS.map((speed) => {
       const { bus, host, traumas, frame } = feelHost();
@@ -155,15 +161,15 @@ for (const seed of SEEDS) {
         provenance: { actorId: 1, rootId: 900, tick: 120 },
       }));
       frame();
-      return { trauma: traumas[0], hsDur: host._hsTimer };
+      return { trauma: traumas[0], hsDur: beatWindow(host) };
     });
     console.log(`[B5 live receipt] seed=${seed}`);
     answers.forEach((a, i) => console.log(
-      `closing ${String(CLOSING_SPEEDS[i]).padStart(3)} WU/s -> trauma ${a.trauma.toFixed(3)}, hit-stop ${(a.hsDur * 1000).toFixed(1)} ms`,
+      `closing ${String(CLOSING_SPEEDS[i]).padStart(3)} WU/s -> trauma ${a.trauma.toFixed(3)}, beat window ${(a.hsDur * 1000).toFixed(1)} ms`,
     ));
     for (let i = 1; i < answers.length; i++) {
       assert.ok(answers[i].hsDur > answers[i - 1].hsDur,
-        'hit-stop must strictly increase through the remote player-caused receipt');
+        'the beat window must strictly increase through the remote player-caused receipt');
       assert.ok(answers[i].trauma > answers[i - 1].trauma,
         'camera trauma must strictly increase through the remote player-caused receipt');
     }
@@ -180,7 +186,7 @@ for (const seed of SEEDS) {
     const clamped = resolveCollisionFeel(contact(), {
       mode: 'flight', playerDistance: 0, deltaV: SOLVER_CLAMP_DV,
     });
-    assert.equal(host._hsTimer, clamped.hsDur, 'no pre-solve speed -> the solver-clamped answer');
+    assert.equal(beatWindow(host), clamped.hsDur, 'no pre-solve speed -> the solver-clamped answer');
     assert.equal(traumas[0], clamped.trauma);
   });
 

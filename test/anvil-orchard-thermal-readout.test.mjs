@@ -41,7 +41,7 @@ test('genuine planet exposure crosses the bounded leaf transport and existing ta
   const h = await exposedPod();
   try {
     configureDomainMirroring({});
-    assert.equal(resolveSimLaneFlags('').lane, 'worker');
+    assert.equal(resolveSimLaneFlags('?simLane=worker').lane, 'worker');
     const differ = createDomainDiffer();
     const update = shipProjection(differ, h.sim.state);
     assert.ok(update, 'the default read model publishes pod exposure');

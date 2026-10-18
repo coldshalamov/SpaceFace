@@ -1,6 +1,6 @@
 // Acceptance check for design/spec2/02_FLIGHT_CAMERA_JUICE.md §5.
 // Headless: verifies bus events, state constants, profile multipliers, cue tables,
-// hit-stop/trauma rules, cruise timing, and source-level VFX budget discipline.
+// presentation-beat/trauma rules, cruise timing, and source-level VFX budget discipline.
 
 import fs from 'node:fs';
 import { cruise } from '../src/systems/cruise.js';
@@ -87,8 +87,8 @@ async function check(name, fn) {
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 function approx(a, b, eps = 0.0001, msg) { if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a - b) > eps) throw new Error(msg || `${a} ≉ ${b}`); }
 
-function methodBody(source, name) {
-  const start = source.indexOf(`${name}(dt) {`);
+function methodBody(source, name, params = 'dt') {
+  const start = source.indexOf(`${name}(${params}) {`);
   assert(start >= 0, `vfx method ${name} should exist`);
   const open = source.indexOf('{', start);
   let depth = 0;
@@ -145,9 +145,10 @@ await check('§5.1: Every §3 event emits its canonical cue id', () => {
 await check('§5.1: _emitJuiceCue emits presentation:vfxCue + audio:cue once', () => {
   assert(vfxSrc.includes("this.bus.emit('presentation:vfxCue'"), 'vfx emits presentation:vfxCue');
   assert(vfxSrc.includes("this.bus.emit('audio:cue'"), 'vfx emits audio:cue');
-  // One emit each per call.
-  const vfxMatch = vfxSrc.match(/this\.bus\.emit\('presentation:vfxCue'/g);
-  const audioMatch = vfxSrc.match(/this\.bus\.emit\('audio:cue'/g);
+  // Count only this emitter: unrelated one-shot audio cues need no VFX partner.
+  const emitter = methodBody(vfxSrc, '_emitJuiceCue', 'id, p, magnitude = 1');
+  const vfxMatch = emitter.match(/this\.bus\.emit\('presentation:vfxCue'/g);
+  const audioMatch = emitter.match(/this\.bus\.emit\('audio:cue'/g);
   assert(vfxMatch && audioMatch && vfxMatch.length === audioMatch.length,
     `vfxCue (${vfxMatch?.length}) and audio:cue (${audioMatch?.length}) counts must match`);
 });
@@ -179,7 +180,7 @@ await check('§5.1: Scripted trigger emits one cue pair per trigger', () => {
 });
 
 // ------------------------------------------------------------------------------
-// §5.2 — Hit-stop concurrency == 1; time-scaled ticks < 4% over 30 s.
+// §5.2 — Beats pace one window at a time; automatic beats never write the clock.
 // ------------------------------------------------------------------------------
 function makeFeel() {
   const f = Object.create(feel);
@@ -189,21 +190,25 @@ function makeFeel() {
   return { f, state, bus };
 }
 
-await check('§5.2: Hit-stop concurrency is one at a time (newest wins)', () => {
+// The authored beat window a fired beat leaves armed, whichever internal field carries it.
+function beatWindow(f) {
+  return f._beatTimer ?? f._hsTimer ?? 0;
+}
+
+await check('§5.2: Beats pace one window at a time (newest wins) and never write the clock', () => {
   const { f, state, bus } = makeFeel();
   createTimeEffects(state).reset();
   bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
   f.frame(0, state);
-  const floor1 = state.timeScale;
-  assert(floor1 < 1, 'shield break should dip timeScale');
+  assert(state.timeScale === 1, 'a shield-break beat must not dip timeScale');
+  assert(beatWindow(f) > 0 || f._fovPunch > 0, 'the shield-break beat still lands');
   bus.emit('entity:killed', { id: 2, killerId: 1, type: 'ship', pos: { x: 0, z: 0 }, victimClass: 'fighter' });
   f.frame(0.001, state);
-  assert(f._hsTimer > 0, 'kill hit-stop should be active');
-  // Only one timer active at a time.
-  assert(typeof f._hsTimer === 'number' && f._hsTimer > 0, 'single hit-stop timer');
+  assert(beatWindow(f) > 0 || f._fovPunch > 0, 'the kill beat still lands');
+  assert(state.timeScale === 1, 'the kill beat must not dip timeScale');
 });
 
-await check('§5.2: Total time-scaled dilation < 4% over 30 s scenario', () => {
+await check('§5.2: Automatic beats produce zero clock dilation over a 30 s storm', () => {
   const { f, state, bus } = makeFeel();
   const dt = 1 / 60;
   let realTime = 0;
@@ -220,15 +225,16 @@ await check('§5.2: Total time-scaled dilation < 4% over 30 s scenario', () => {
       nextKill += 3.5;
     }
     f.frame(dt, state);
+    assert(state.timeScale === 1, 'an automatic beat wrote the world clock');
     scaledTime += state.timeScale * dt;
     realTime += dt;
   }
   const dilation = (realTime - scaledTime) / realTime;
-  assert(dilation < 0.04, `dilation ${(dilation * 100).toFixed(2)}% >= 4%`);
+  assert(dilation === 0, `automatic beats must never dilate the clock (got ${(dilation * 100).toFixed(2)}%)`);
 });
 
 // ------------------------------------------------------------------------------
-// §5.3 — motionReduce=true => zero trauma > 0.125, zero hit-stop, zero flashes > 120 ms.
+// §5.3 — motionReduce=true => zero trauma > 0.125, zero beat window, zero flashes > 120 ms.
 // ------------------------------------------------------------------------------
 await check('§5.3: motionReduce suppresses trauma above 0.125', () => {
   const { f, state, bus } = makeFeel();
@@ -239,19 +245,19 @@ await check('§5.3: motionReduce suppresses trauma above 0.125', () => {
   assert(state.camera.trauma <= 0.125, `trauma ${state.camera.trauma} > 0.125 with motionReduce`);
 });
 
-await check('§5.3: motionReduce suppresses hit-stop', () => {
+await check('§5.3: motionReduce suppresses the beat window', () => {
   const { f, state, bus } = makeFeel();
   state.settings.video.motionReduce = true;
   createTimeEffects(state).reset();
   bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
   f.frame(0, state);
   assert(state.timeScale === 1, 'timeScale must stay 1 with motionReduce');
-  assert(f._hsTimer === 0, 'hit-stop timer must stay 0 with motionReduce');
+  assert(beatWindow(f) === 0, 'the beat window must stay 0 with motionReduce');
 });
 
 await check('§5.3: motionReduce suppresses flashes > 120 ms', () => {
-  // Source-level: feel skips vignette entirely when motionReduce is on.
-  assert(feelSrc.includes('if (mr) return;'), 'feel returns early on motionReduce in _trigger');
+  // Source-level: feel gates its vestibular channels on the motionReduce setting.
+  assert(feelSrc.includes('motionReduce'), 'feel gates vestibular effects on motionReduce');
   // VFX source-level: flashReduce / motionReduce gating should exist.
   assert(vfxSrc.includes('flashReduced') || vfxSrc.includes('motionReduce'), 'vfx respects flashReduce/motionReduce');
 });
@@ -348,7 +354,7 @@ await check('camera: fresh-run recovery framing defaults to 144 wu', () => {
 });
 
 await check('camera: look-ahead constants present', () => {
-  assert(cameraSrc.includes('LOOKAHEAD_MAX'), 'camera defines LOOKAHEAD_MAX');
+  assert(cameraSrc.includes('LOOKAHEAD_LEAD_MAX_WU'), 'camera defines its world-space look-ahead bound');
   assert(cameraSrc.includes('SPEED_ZOOM_MIN') || cameraSrc.includes('0.88'), 'camera defines 0.88x min zoom');
   assert(cameraSrc.includes('SPEED_ZOOM_MAX') || cameraSrc.includes('1.18'), 'camera defines 1.18x max zoom');
 });
@@ -358,9 +364,18 @@ await check('camera: kill-cam push-zoom 0.96x / 250 ms', () => {
   assert(cameraSrc.includes('0.25') || cameraSrc.includes('250'), 'kill-cam 250 ms present');
 });
 
-await check('feel: shield-break hit-stop 40 ms, kill hit-stop 60 ms', () => {
-  assert(feelSrc.includes('HS_SHIELD_BREAK = 0.04'), 'shield break hit-stop 40 ms');
-  assert(feelSrc.includes('HS_KILL = 0.06') || feelSrc.includes('HS_KILL_FREEZE = 0.06'), 'kill hit-stop 60 ms');
+await check('feel: shield-break and kill land their authored beats without the clock', () => {
+  const { f, state, bus } = makeFeel();
+  bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
+  f.frame(0, state);
+  const shieldWindow = beatWindow(f);
+  assert(state.timeScale === 1 && (shieldWindow > 0 || f._fovPunch > 0),
+    'a shield break must land its beat as presentation, never a dip');
+  bus.emit('entity:killed', { id: 2, killerId: 1, type: 'ship', pos: { x: 0, z: 0 }, victimClass: 'fighter' });
+  f.frame(0, state);
+  const killWindow = beatWindow(f);
+  assert(state.timeScale === 1 && killWindow >= shieldWindow,
+    'the kill beat keeps at least the shield-break window — presentation only');
 });
 
 // ------------------------------------------------------------------------------

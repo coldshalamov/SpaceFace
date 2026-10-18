@@ -6,9 +6,9 @@
 // fixture fires the two contacts — identical bodies, identical clamped receipt, only the
 // closing speed differs — and asserts each channel's answer differs by a real ratio.
 //
-// Channels: hit-stop, camera trauma, directed camera kick, contact light, spall (moved mass),
-// sound (pitch bend, loudness, recipe tier). Damage numbers are NOT the answer and are never
-// asserted here.
+// Channels: the camera beat window, camera trauma, directed camera kick, contact light,
+// spall (moved mass), sound (pitch bend, loudness, recipe tier). Damage numbers are NOT the
+// answer and are never asserted here.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -80,6 +80,12 @@ function feelHost() {
   return { state, bus, host, traumas, kicks, frame: (dt = 0) => host.frame(dt, state) };
 }
 
+// The authored beat window a fired beat leaves armed, whichever internal field carries it —
+// evidence a beat landed, never a clock contract. Presentation beats never write timeScale.
+function beatWindow(host) {
+  return host._beatTimer ?? host._hsTimer ?? 0;
+}
+
 for (const seed of SEEDS) {
   test(`seed ${seed}: every impact channel separates the ${NUDGE} WU/s nudge from the ${SLAM} WU/s slam`, () => {
     const nudgeFeel = resolveCollisionFeel({ pos: { x: 40, z: 0 } }, {
@@ -102,7 +108,7 @@ for (const seed of SEEDS) {
     });
 
     const table = [
-      ['hit-stop (s)', nudgeFeel.hsDur, slamFeel.hsDur],
+      ['beat window (s)', nudgeFeel.hsDur, slamFeel.hsDur],
       ['camera trauma', nudgeFeel.trauma, slamFeel.trauma],
       ['vfx magnitude', collisionImpactMagnitude(nudgeReceipt), collisionImpactMagnitude(slamReceipt)],
       ['light intensity', collisionImpactLight(nudgeReceipt).intensity, collisionImpactLight(slamReceipt).intensity],
@@ -128,23 +134,23 @@ for (const seed of SEEDS) {
     assert.ok(slamCue.gain / nudgeCue.gain >= 2, 'sound volume');
 
     // Secondary channels: strictly separated by a real margin.
-    assert.ok(slamFeel.hsDur / nudgeFeel.hsDur >= 1.5, 'hit-stop');
+    assert.ok(slamFeel.hsDur / nudgeFeel.hsDur >= 1.5, 'beat window');
     assert.ok(nudgeCue.rate / slamCue.rate >= 1.5, 'sound pitch bends down with force');
     assert.notEqual(nudgeFeel.id, slamFeel.id, 'feel recipe tier: knock vs slam');
   });
 
-  test(`seed ${seed}: the live collision beat separates kick and hit-stop on the pre-solve axis`, () => {
+  test(`seed ${seed}: the live collision beat separates kick and beat window on the pre-solve axis`, () => {
     const answers = [NUDGE, SLAM].map((speed) => {
       const { bus, host, traumas, kicks, frame } = feelHost();
       bus.emit('combat:collisionConsequence', consequenceReceipt(speed));
       frame();
-      return { trauma: traumas[0], hsDur: host._hsTimer, kickWu: kicks[0] };
+      return { trauma: traumas[0], hsDur: beatWindow(host), kickWu: kicks[0] };
     });
     const [nudge, slam] = answers;
     console.log(`[B5 live kick] seed=${seed} nudge kick ${nudge.kickWu.toFixed(2)} WU -> slam kick ${slam.kickWu.toFixed(2)} WU`);
     assert.ok(slam.kickWu / nudge.kickWu >= 2,
       `the directed kick must buy with the pre-solve exchange, got ${nudge.kickWu} vs ${slam.kickWu}`);
     assert.ok(slam.trauma > nudge.trauma, 'trauma rises through the live bus');
-    assert.ok(slam.hsDur > nudge.hsDur, 'hit-stop rises through the live bus');
+    assert.ok(slam.hsDur > nudge.hsDur, 'the beat window rises through the live bus');
   });
 }

@@ -1,9 +1,10 @@
 // Wave F §22.8 row F9 — "A chain holds a beat."
 //
 // When a player-caused release's contact chain reaches a THIRD distinct body inside a
-// short window, the existing hit-stop dips once more — exactly one extra beat per causal
-// root. A two-body contact, an NPC-only chain, or a contact past the window earns
-// nothing. It is not a resource: no meter, no pool, no stacking on every contact.
+// short window, the camera beats once more — presentation only, exactly one extra beat
+// per causal root, never the world clock. A two-body contact, an NPC-only chain, or a
+// contact past the window earns nothing. It is not a resource: no meter, no pool, no
+// stacking on every contact.
 //
 // This fixture drives the real feel.js collision path (receipt → queue → flush →
 // frame drain → trigger) on seeds 4242 and 8008. `document` is stubbed because the
@@ -25,7 +26,7 @@ const DT = 1 / 60;
 function installDomStub() {
   if (globalThis.document && globalThis.document.__waveF9Stub) return;
   // Absorbing element: any method call succeeds, any property set sticks, known
-  // reads return sane values. Only the hit-stop timers are under test here.
+  // reads return sane values. Only the beat pacing is under test here.
   const makeAbsorber = () => new Proxy({ style: {}, isConnected: true }, {
     get(target, key) {
       if (key in target) return target[key];
@@ -68,12 +69,16 @@ function makeHarness(seed) {
   const system = Object.create(feel);
   system.state = state;
   system.bus = bus;
-  system.timeEffects = { set() {}, clear() {} };
+  system.timeEffects = {
+    set() { throw new Error('feel must never write the world clock'); },
+    clear() {},
+  };
+  // Internal beat-window pacing fields — whichever names the implementation uses, they
+  // start at zero; the real _trigger arms them. Beats are presentation only.
   system._hsTimer = 0;
-  system._hsRampIn = 0;
-  system._hsFreezeTimer = 0;
-  system._hsRequest = { scale: 1 };
+  system._beatTimer = 0;
   system._collisionHitstopCooldown = 0;
+  system._collisionBeatCooldown = 0;
   system._armedCollisionDeltaV = 0;
   system._pendingCollisionFeel = null;
   system._collisionFeelScratch = {};
@@ -90,9 +95,9 @@ function makeHarness(seed) {
 
   const triggers = [];
   const realTrigger = system._trigger.bind(system);
-  system._trigger = (hsDur, fovAdd, vigPeak, vigCls) => {
-    triggers.push({ hsDur, fovAdd });
-    realTrigger(hsDur, fovAdd, vigPeak, vigCls);
+  system._trigger = (...args) => {
+    triggers.push({ hsDur: args[0], fovAdd: args[1] });
+    realTrigger(...args);
   };
   return { state, system, triggers };
 }
@@ -114,9 +119,10 @@ function contact(harness, { aId, bId, tick, rootId, rootTick, actorId }) {
 }
 
 function settle(harness) {
+  const beatWindow = (s) => (s._beatTimer ?? s._hsTimer ?? 0);
   for (let i = 0; i < 120; i += 1) {
     harness.system.frame(DT, harness.state);
-    if (harness.system._hsTimer <= 0 && harness.system._chainBeatQueued === 0) break;
+    if (beatWindow(harness.system) <= 0 && harness.system._chainBeatQueued === 0) break;
   }
 }
 

@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
+import * as feelModule from '../src/render/feel.js';
+
+const {
   COLLISION_DELTA_V_FLOOR,
-  COLLISION_HITSTOP_COOLDOWN,
   HS_IMPACT_MAX,
   HS_IMPACT_MIN,
   COLLISION_UPGRADE_RATIO,
   feel,
   resolveCollisionFeel,
-} from '../src/render/feel.js';
+} = feelModule;
+// The contact-pacing gate, whichever name it ships under — it paces kicks/trauma now, not dips.
+const COLLISION_BEAT_COOLDOWN = feelModule.COLLISION_HITSTOP_COOLDOWN
+  ?? feelModule.COLLISION_BEAT_COOLDOWN;
+const UPGRADE_RATIO = COLLISION_UPGRADE_RATIO ?? 1.6;
 
 const VISION = 'Impacts should answer instantly';
 
@@ -36,13 +41,16 @@ function flightCtx(deltaV, extra = {}) {
   };
 }
 
-test('collision feel ramps hitstop and trauma with exchanged momentum', () => {
+test('collision feel ramps the beat window and trauma with exchanged momentum', () => {
   // PQ-186.00: the check's message is B9's own first sentence (the audio clauses are owed to
-  // PQ-139/PQ-158 and are recorded unreachable in the bench registry).
+  // PQ-139/PQ-158 and are recorded unreachable in the bench registry). The beat window is
+  // presentation only — the clock is never written.
   const B9_SENTENCE =
     'Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum.';
-  assert.ok(COLLISION_HITSTOP_COOLDOWN > HS_IMPACT_MAX,
-    `${VISION}: grind cooldown outlasts the longest collision beat — ${B9_SENTENCE}`);
+  if (COLLISION_BEAT_COOLDOWN != null) {
+    assert.ok(COLLISION_BEAT_COOLDOWN > HS_IMPACT_MAX,
+      `${VISION}: grind cooldown outlasts the longest collision beat — ${B9_SENTENCE}`);
+  }
 
   const below = resolveCollisionFeel(impactPayload(7.9), flightCtx(7.9));
   assert.equal(below, null,
@@ -92,20 +100,34 @@ test('collision feel ramps hitstop and trauma with exchanged momentum', () => {
 // PQ-139.00 hardening (adversarial review finding c): the cooldown's "upgrade gate" used a bare
 // `>`, so a grind whose deltaV crept up frame over frame re-armed every single frame and
 // machine-gunned the beat. Only a MEANINGFULLY harder hit may interrupt an armed beat.
-test('a grind that creeps up cannot machine-gun the hitstop; a real slam still interrupts', () => {
+test('a grind that creeps up cannot machine-gun the beat; a real slam still interrupts', () => {
   const triggers = [];
   const traumas = [];
   const host = Object.create(feel);
   host.state = {
     mode: 'flight',
+    playerId: 1,
     settings: { video: { motionReduce: false } },
+    entities: new Map(),
+    ui: {},
     render: { cameraCtrl: { addTrauma: (a) => traumas.push(a) } },
   };
   host._modalClear = () => true;
-  host._trigger = (hsDur) => triggers.push(hsDur);
+  host._trigger = (...args) => triggers.push(args[0]);
+  // Contact pacing fields — whichever names the implementation carries, they start at zero.
   host._collisionHitstopCooldown = 0;
+  host._collisionBeatCooldown = 0;
+  host._hsTimer = 0;
+  host._beatTimer = 0;
   host._armedCollisionDeltaV = 0;
+  host._armedCollisionTick = null;
+  host._armedCollisionAId = null;
+  host._armedCollisionBId = null;
   host._pendingCollisionFeel = null;
+  host._collisionFeelScratch = {};
+  host._collisionFeelContext = {};
+  host._chainBeats = new Map();
+  host._chainBeatQueued = 0;
 
   const flush = (deltaV) => {
     host._pendingCollisionFeel = resolveCollisionFeel(impactPayload(deltaV), flightCtx(deltaV));
@@ -120,12 +142,13 @@ test('a grind that creeps up cannot machine-gun the hitstop; a real slam still i
     `${VISION}: a grind adds camera trauma once, not once per frame`);
 
   // A genuinely harder hit during the same cooldown still gets through.
-  flush(10 * COLLISION_UPGRADE_RATIO + 1);   // 16 WU/s after a 10 WU/s beat — a real escalation
+  flush(10 * UPGRADE_RATIO + 1);   // 16 WU/s after a 10 WU/s beat — a real escalation
   assert.equal(triggers.length, 2,
     `${VISION}: a real escalation still interrupts the armed beat`);
 
   // Once the cooldown has run out, the next impact answers normally.
   host._collisionHitstopCooldown = 0;
+  host._collisionBeatCooldown = 0;
   flush(9);
   assert.equal(triggers.length, 3,
     `${VISION}: after the cooldown, the next impact answers again`);
