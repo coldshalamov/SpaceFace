@@ -50,6 +50,14 @@ export function ordnanceChargeDebit(stock, request) {
   return have - 1;
 }
 const STICK_TYPES = new Set(['ship', 'drone', 'asteroid']);
+
+// A plate sticks to hulls and rocks. The body on your line is often a wreck or a
+// crate, which that list misses, so the live tow is the one extra surface a dart
+// may grab — and only when the dart actually reaches it. Nothing aims the throw.
+function playerLatchedBody(state, host) {
+  const tether = state && state.player && state.player.tether;
+  return !!(host && tether && tether.active && tether.targetId != null && host.id === tether.targetId);
+}
 const BLAST_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
 const CHARGE_BY_ID = new Map(Object.entries(IMPULSE_CHARGES));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
@@ -1106,7 +1114,7 @@ export const impulseCharges = {
     let best = null, bestDist = Infinity;
     for (const host of candidates) {
       if (!host.alive || host.id === charge.id) continue;
-      if (!STICK_TYPES.has(host.type)) continue;
+      if (!STICK_TYPES.has(host.type) && !playerLatchedBody(state, host)) continue;
       const dx = charge.pos.x - host.pos.x, dz = charge.pos.z - host.pos.z;
       // Nose-launched charges spawn on the owner's hull — brief owner-stick lockout so the lob
       // clears the thrower; rear-plate self-stick still works once the charge returns aft.

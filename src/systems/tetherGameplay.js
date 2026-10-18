@@ -204,6 +204,7 @@ export const tetherGameplay = {
     this._pendingCut = null;
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
+    this._pendingLatchThrow = false;
     this._reelStrength = 0;
     this._resetCadenceRuntime(this.state);
     this._lastLineControlDenial = null;
@@ -240,6 +241,7 @@ export const tetherGameplay = {
       this._pendingCut = null;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
+      this._pendingLatchThrow = false;
       // SFQ-B026: the display smoother is per-run state, never persisted. A re-adopted live line
       // must warm-start its estimate from 0 exactly like a cold-restarted load, or the uninterrupted
       // run and the reload disagree on tether.tensionEstimate for ~1 s (the release tau).
@@ -268,12 +270,14 @@ export const tetherGameplay = {
       this._tensionEstimate = 0;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
+      this._pendingLatchThrow = false;
       this._releaseSnagLatch(this.state, this._snag, 'ended');
       this._snag = null;
     };
     const endForSectorBoundary = (reason) => {
       this._resetCadenceRuntime(this.state);
       this._cancelDrillApproach(reason);
+      this._pendingLatchThrow = false;
       this._resetAcquisitionRuntime(this.state);
       this._endTwinBridleForBoundary(this.state, reason);
       this._releaseSnagLatch(this.state, this._snag, 'ended');
@@ -311,6 +315,11 @@ export const tetherGameplay = {
           this.bus.on('run:wavePlanned', (payload) => this._onSwarmRoundBoundary(payload)),
         ]
       : [];
+          // The plate's kick is already in the impulse authority. Drop the line on the
+          // next tether tick so the tow is thrown instead of hauled back onto the rope.
+          this.bus.on('charge:combo', (payload) => {
+            if (payload && payload.combo === 'anchorKick') this._pendingLatchThrow = true;
+          }),
     this._resetPhaseMirror();
   },
 
@@ -380,6 +389,16 @@ export const tetherGameplay = {
 
     // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
     // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
+    // A plate stuck to the body on the line throws that body. The shove already went
+    // through the impulse authority; a line that stays up would haul the tow back.
+    if (this._pendingLatchThrow) {
+      this._pendingLatchThrow = false;
+      if (this._active) {
+        this._cutActive(attachments, state, player, now);
+        return;
+      }
+    }
+
     if (!this._active) this._roundBoundaryCut = false;
     if (this._active && !this._drillApproach && ((masslineCommand && masslineCommand.cut) || this._roundBoundaryCut)) {
       this._roundBoundaryCut = false;
