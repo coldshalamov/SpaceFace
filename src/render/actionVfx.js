@@ -8,6 +8,7 @@ import { ADDITIONAL_ACTION_VFX_RECIPES, resolveAdditionalActionVfxReceipt } from
 import { presentedAnchorXZ, presentedAnchorRot } from './presentedAnchor.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { modelTruthNozzleOrigin, modelTruthPlumeSocketName, modelTruthSocketWorld } from '../data/modelTruth.js';
+import { isTumbling } from '../combat/tumbleStatus.js';
 
 const recipe=(verb,color,life=.65,extra={})=>Object.freeze({verb,life,
   primitive:actionPrimitiveForVerb(verb),continuous:verb==='repair'||verb==='transfer',...extra,
@@ -63,13 +64,22 @@ export const ACTION_VFX_EVENTS=Object.freeze(Object.keys(ACTION_VFX_RECIPES));
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
 // attackRun / alphaStrike are the legacy attack tactic's aim line. The tactic deletes
 // _attackTelegraph when it aborts (target gone, retreat, state change). Recipe life would
-// keep that line after the intent is gone. Other tells are not this tactic's.
+// keep that line after the intent is gone. A live-path startup tell has no such record:
+// death, or a tumble that started with the tell, is the abort, or the picture stays up
+// for as long as four seconds on a hull that can no longer fire it.
 const TACTIC_AIM_TELL=new Set(['attackRun','alphaStrike']);
 function salt(id) {let h=2166136261;const s=String(id);for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return (h>>>0)/4294967296;}
 function entity(state,id){return id==null?null:state.entities?.get?.(id);}
+function tellOwnerDown(state,owner,slot){
+  const at=owner.data&&owner.data.tumbledAt;
+  if(Number.isFinite(at)&&at>=slot.born)return true;
+  return isTumbling(state,owner);
+}
 function attackTellReleased(state,slot){
-  if(slot.event!=='ai:telegraph'||!TACTIC_AIM_TELL.has(slot.kind))return false;
+  if(slot.event!=='ai:telegraph')return false;
   const owner=entity(state,slot.sourceId??slot.id);
+  if(owner&&(owner.alive===false||tellOwnerDown(state,owner,slot)))return true;
+  if(!TACTIC_AIM_TELL.has(slot.kind))return false;
   const pending=owner&&owner.alive!==false&&owner.data&&owner.data.ai&&owner.data.ai._attackTelegraph;
   return !pending||pending.kind!==slot.kind;
 }
