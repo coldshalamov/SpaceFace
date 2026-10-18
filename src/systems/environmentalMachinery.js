@@ -21,6 +21,7 @@ import {
   KILL_MACHINES,
   STARTER_FIELD_MACHINE,
   ALL_KILL_MACHINES,
+  ALL_KILL_MACHINE_BY_ID,
   PALLAS_REEF_FIELD,
   PALLAS_REEF_SECTOR_ID,
   PALLAS_REEF_SITE_ID,
@@ -90,6 +91,12 @@ const APERTURE_MOUTH_QUERY = (() => {
 const APERTURE_OCCUPANT_SCRATCH = [];
 const KILL_COLLATERAL_SCRATCH = [];
 const EMPTY_LIST = [];
+const KILL_MACHINE_SHUTDOWN_WORDS = Object.freeze({
+  operator_died: 'stopped; its operator is down.',
+  player_shutdown: 'switched off.',
+  tower_destroyed: 'stopped; its control tower was destroyed.',
+  machine_destroyed: 'stopped; its breaking plate was destroyed.',
+});
 // Verdict-flap embargo (L-2): a load dancing on the lip can re-derive a refusal sentence
 // every few ticks. Warnings throttle to this sim-time gap; a committed delivery's success
 // line is a booked fact and always speaks.
@@ -243,6 +250,8 @@ export const environmentalMachinery = {
       const clear = (why) => this._clear(why);
       this._unsubs = [
         this.bus.on('entity:destroyed', (receipt) => this._onOrchardPodDestroyed(receipt)),
+        this.bus.on('entity:killed', (receipt) => this._onKillMachineDeath(receipt)),
+        this.bus.on('asteroid:destroyed', (receipt) => this._onKillMachineDeath(receipt)),
         this.bus.on('sector:exit', () => clear('sector_exit')),
         this.bus.on('game:new', () => clear('new_game')),
         this.bus.on('save:restoring', () => clear('save_restoring')),
@@ -555,7 +564,7 @@ export const environmentalMachinery = {
       && state.sites.worldById[CINDER_SLUICE_SITE_ID];
     const simTime = simTimeOf(state);
     const machines = ALL_KILL_MACHINES.map((machine) => {
-      const phase = killMachinePhase(machine, simTime);
+      const phase = this._killMachinePhase(machine, state);
       const collateral = this._killCollateral && this._killCollateral.get(machine.id);
       return Object.freeze({
         id: machine.id,
@@ -669,19 +678,73 @@ export const environmentalMachinery = {
     this._publishPhaseTransition(phase);
   },
 
+  _killMachineShutdown(machine, state = this.state) {
+    const record = state?.world?.discovery?.[machine.sectorId]?.machineShutdowns?.[machine.id];
+    return record && Object.hasOwn(KILL_MACHINE_SHUTDOWN_WORDS, record.cause) ? record : null;
+  },
+
+  _killMachinePhase(machine, state, out = null) {
+    const phase = killMachinePhase(machine, simTimeOf(state), out);
+    if (this._killMachineShutdown(machine, state)) {
+      phase.phase = 'shutdown';
+      phase.fieldActive = false;
+      phase.fieldStrengthScale = 0;
+      phase.remainingS = 0;
+    }
+    return phase;
+  },
+
+  // The world discovery overlay already survives sector retirement and Continue. Keep the
+  // stop there, rather than in visit-local field bookkeeping that clear() deliberately drops.
+  shutdownKillMachine(machineId, cause) {
+    const state = this.state;
+    if (!Object.hasOwn(ALL_KILL_MACHINE_BY_ID, machineId)
+      || !Object.hasOwn(KILL_MACHINE_SHUTDOWN_WORDS, cause) || state?.mode !== 'flight') return false;
+    const machine = ALL_KILL_MACHINE_BY_ID[machineId];
+    if (state.world?.currentSectorId !== machine.sectorId || this._killMachineShutdown(machine)) return false;
+    const previous = killMachinePhase(machine, simTimeOf(state)).phase;
+    const discovery = state.world.discovery || (state.world.discovery = {});
+    const sector = discovery[machine.sectorId] || (discovery[machine.sectorId] = {
+      discovered: false, visitedCount: 0, pois: {}, fieldsDepleted: {},
+    });
+    const shutdowns = sector.machineShutdowns || (sector.machineShutdowns = {});
+    shutdowns[machine.id] = { cause, atS: simTimeOf(state) };
+    this._removeKillMachineFields(machine);
+    this._updateKillMachinePlayerBoundary(state, machine, null, false);
+    this._killCollateral.delete(machine.id);
+    this._emitPhaseChanged({ siteId: machine.id, kind: 'killMachine', previous,
+      phase: 'shutdown', remainingS: 0, cause });
+    this.bus?.emit('toast', {
+      text: `${machine.mouth?.name || 'Industrial machine'} ${KILL_MACHINE_SHUTDOWN_WORDS[cause]}`,
+      kind: 'success', ttl: 4,
+    });
+    return true;
+  },
+
+  _onKillMachineDeath(receipt) {
+    const entity = this.state?.entities?.get(receipt?.id);
+    const machine = ALL_KILL_MACHINE_BY_ID[entity?.data?.killMachineId];
+    // Mining publishes before setting alive=false; depleted HP is the shared death fact.
+    // An unrelated death or a sector unload must never be interpreted as a power cut.
+    if (!machine || entity?.type !== 'asteroid' || !Number.isFinite(entity.hull) || entity.hull > 0
+      || entity.data.killMachineAnvilId !== machine.anvil.id) return false;
+    return this.shutdownKillMachine(machine.id, 'machine_destroyed');
+  },
+
   _updateKillMachines(state, machines) {
-    const simTime = simTimeOf(state);
     const player = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
     const live = machines || KILL_MACHINES;
     this._retireKillMachinesOutside(live);
     for (const machine of live) {
-      const phase = killMachinePhase(machine, simTime, this._killPhaseOut);
+      const phase = this._killMachinePhase(machine, state, this._killPhaseOut);
       if (phase.fieldActive) this._upsertKillMachineFields(machine, phase);
       else this._removeKillMachineFields(machine);
-      this._ensureAnvil(machine);
-      this._ensureMachineMouth(machine);
+      if (phase.phase !== 'shutdown') {
+        this._ensureAnvil(machine);
+        this._ensureMachineMouth(machine);
+      }
       this._updateKillMachinePlayerBoundary(state, machine, player, phase.fieldActive);
       this._noteKillCollateral(state, machine, player, phase);
     }
