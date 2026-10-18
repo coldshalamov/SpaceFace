@@ -25,6 +25,7 @@ import { IS_DEMO } from '../core/demoMode.js';
 import { isFullHoldRefusal, successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
+import { getPromptDevice } from '../ui/bindings.js';
 import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { continueRecap } from '../ui/screens/missionLog.js';
@@ -431,6 +432,7 @@ export const onboarding = {
     this._kickerLabelEl = null;
     this._modalAriaHidden = null;
     this._accum = 0;
+    this._syncCombatStickWatch();
     this._lastTextAtS = -Infinity;
     this._holdGrewBeforeFull = false;
     this._holdGrewClearQueued = false;
@@ -480,6 +482,7 @@ export const onboarding = {
     // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
     // state, then bring up the story panel.
     bus.on('save:loaded', (p) => {
+      this._syncCombatStickWatch();
       this._teardown();
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
@@ -1173,6 +1176,7 @@ export const onboarding = {
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
 
   _begin(payload) {
+    this._syncCombatStickWatch();
     const st = this.state;
     this._resumeMainTutorial = false;
     // Temporary physics challenges share New Game, but own their actors and instructions.
@@ -1850,6 +1854,7 @@ export const onboarding = {
     if (isRacingCorridorSession(state)) return;
     // Modal UI hides the objective via CSS; mirror that in assistive state without focus side-effects.
     try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
+    try { this._speakCombatStickHint(state); } catch (_) { /* never let onboarding break the loop */ }
 
     // ── First-hour pacing (only while active) ────────────────────────────────────────────
     const ob = state.onboarding;
@@ -3499,6 +3504,47 @@ export const onboarding = {
     const rated = rateCadenceTechnique(pair, { phase: tether.phase });
     if (rated.technique !== 'swing') return;
     this._showHint('masslineCadenceWinch', firstUseLine('masslineCadenceWinch'), { entityId: tether.targetId });
+  },
+
+  // A loaded save, or a new game, is not the pilot pressing the key. Sample the
+  // stick where it already is so only a later off-to-on counts as a toggle.
+  _syncCombatStickWatch() {
+    const inp = this.state && this.state.input;
+    this._autoFireWasOn = !!(inp && inp.autoFire);
+    this._combatStickHintOwed = false;
+  },
+
+  // SFQ-I008 — on a keyboard, G is a stick whose center is the cursor. One hint
+  // names the live key and that relative deflection. A pad or a touch screen has
+  // no cursor origin, so they stay quiet. The staged rail keeps the voice; the
+  // hint waits and speaks once the rail lets go, if the stick is still on.
+  _speakCombatStickHint(state) {
+    const st = state || this.state;
+    if (!st || !st.input) return;
+    const on = st.input.autoFire === true;
+    const was = this._autoFireWasOn === true;
+    if (this._autoFireWasOn == null) {
+      this._autoFireWasOn = on;
+      return;
+    }
+    this._autoFireWasOn = on;
+    if (!on) return;
+    const hintsOff = !!(st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false);
+    const inFlight = st.mode === 'flight' && !(st.ui && st.ui.docked);
+    const survival = !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'inactive');
+    const kbm = getPromptDevice() === 'kbm';
+    if (!was && inFlight && kbm && !hintsOff && !survival) this._combatStickHintOwed = true;
+    if (!this._combatStickHintOwed) return;
+    if (st.player && st.player.hints && st.player.hints.combatStickOrigin) {
+      this._combatStickHintOwed = false;
+      return;
+    }
+    if (!inFlight || !kbm || hintsOff || survival || this._tutorialRailOwnsVoice()) return;
+    const label = resolveActionLabel(st, 'autoFire');
+    if (!label) return;
+    const text = `${label} — the cursor is the stick's center. Deflect from that center to fly.`;
+    this._showHint('combatStickOrigin', text, { shipId: st.playerId });
+    if (st.player && st.player.hints && st.player.hints.combatStickOrigin) this._combatStickHintOwed = false;
   },
 
   _noteMissingThreeUses() {
