@@ -41,6 +41,7 @@ import {
   quoteImpoundBill,
 } from './custodyConsequences.js';
 import { heatLevelFor, isPlayerWanted, wantedTierFor, WANTED_TIER } from './heat.js';
+import { acceptHullPapers } from './impoundLot.js';
 import { createWarrantHunterWaves } from './warrantHunterWaves.js';
 import {
   BOUNTY_HUNTER_PLAYER_CONTEXT,
@@ -295,6 +296,7 @@ export const lawSecurity = {
       this._resetScanDumpWatch();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
+      this._noteOwnedHullPapers();
     };
     this._onInspectionChoice = (payload) => this._chooseInspection(payload);
     this._onInspectionScanned = (payload) => this._observeInspectionScan(payload);
@@ -324,6 +326,7 @@ export const lawSecurity = {
     };
     this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
     this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
+    this._onShipPurchased = (payload) => this._fileHullPapers(payload);
     this._scanDumpWatch = null;
     this._customsWaivedPatrols = new Map();
     this._onScannedByPatrol = (payload) => {
@@ -358,6 +361,7 @@ export const lawSecurity = {
       this.bus.on('heat:changed', this._onHeatChanged);
       this.bus.on('law:impoundPay', this._onImpoundPay);
       this.bus.on('customs:submit', this._onCustomsSubmit);
+      this.bus.on('ship:purchased', this._onShipPurchased);
       this.bus.on('player:scannedByPatrol', this._onScannedByPatrol);
       this.bus.on('cargo:jettisoned', this._onScanDumpJettison);
       this.bus.on('contraband:scanned', this._onScanDumpResolved);
@@ -2986,9 +2990,31 @@ export const lawSecurity = {
   // Escaping consequences is possible but never free: the fine is real credits, charged
   // through `economy:chargeCredits`, and a pilot who cannot pay keeps the heat.
 
+  _fileHullPapers(payload) {
+    const papers = acceptHullPapers(payload && payload.rapSheet, payload && payload.rapSheetLine);
+    if (!papers || !papers.id) return;
+    const own = ensureState(this.state);
+    if (own.hullPapers && own.hullPapers.id === papers.id) return;
+    own.hullPapers = papers;
+    this._emit('law:hullPapers', { id: papers.id, line: papers.line });
+  },
+
+  // The owned hull is the durable copy. Law re-reads it on a sale and on Continue
+  // so the note does not need its own save key, and a clean hull files nothing.
+  _noteOwnedHullPapers() {
+    const player = this.state && this.state.player;
+    const ships = player && player.ownedShips;
+    if (!Array.isArray(ships)) return;
+    const active = ships[player.activeShipIndex];
+    const carrier = active && active.rapSheet ? active : ships.find((row) => row && row.rapSheet);
+    if (!carrier) return;
+    this._fileHullPapers({ rapSheet: carrier.rapSheet, rapSheetLine: carrier.rapSheetLine });
+  },
+
   _handleDockedLawfulClearance(payload) {
     const state = this.state;
     if (!state || !payload || state.playerId == null) return;
+    this._noteOwnedHullPapers();
     if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
     const player = state.player;
     const heatValue = player && Number(player.heat) || 0;
@@ -3145,6 +3171,10 @@ export const lawSecurity = {
     const factionId = (payload && payload.factionId) || 'faction_scn';
     this._say('bark', 'PATROL: submission acknowledged — manifest read proceeds.',
       `law:customsSubmit:${factionId}:${state.tick | 0}`, factionId);
+    const papers = ensureState(state).hullPapers;
+    if (papers && papers.line) {
+      this._say('bark', papers.line, `law:hullPapers:${state.tick | 0}`, factionId);
+    }
     // No incidentId: the direct-receipt lane paints this row on the law card for RECEIPT_TTL_S.
     this._recordReceipt({
       cause: 'customs_scan', outcome: 'customs_complied',
@@ -5318,6 +5348,7 @@ export const lawSecurity = {
       if (this._onHeatChanged) this.bus.off('heat:changed', this._onHeatChanged);
       if (this._onImpoundPay) this.bus.off('law:impoundPay', this._onImpoundPay);
       if (this._onCustomsSubmit) this.bus.off('customs:submit', this._onCustomsSubmit);
+      if (this._onShipPurchased) this.bus.off('ship:purchased', this._onShipPurchased);
       if (this._onScannedByPatrol) this.bus.off('player:scannedByPatrol', this._onScannedByPatrol);
       if (this._onScanDumpJettison) this.bus.off('cargo:jettisoned', this._onScanDumpJettison);
       if (this._onScanDumpResolved) this.bus.off('contraband:scanned', this._onScanDumpResolved);
@@ -5346,6 +5377,7 @@ export const lawSecurity = {
     this._onHeatChanged = null;
     this._onImpoundPay = null;
     this._onCustomsSubmit = null;
+    this._onShipPurchased = null;
     this._onScannedByPatrol = null;
     this._onScanDumpJettison = null;
     this._onScanDumpResolved = null;

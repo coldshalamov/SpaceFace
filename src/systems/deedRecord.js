@@ -137,6 +137,36 @@ export function recordDeed(state, payload = {}) {
   return deed;
 }
 
+/**
+ * A rap sheet that rides on a hull, not on the player's record. Same shape as a
+ * deed, and only an existing kind, so nothing here frames the pilot or adds a
+ * kind the world-remembers producers have to sign. Does not write state.
+ */
+export function hullPaperDeed(payload = {}) {
+  const kind = String(payload.kind || '');
+  const spec = DEED_KINDS[kind];
+  if (!spec) return null;
+  const tick = Number.isInteger(payload.tick) ? payload.tick : 0;
+  const t = Number.isFinite(Number(payload.t)) ? Number(payload.t) : 0;
+  const id = payload.id != null ? String(payload.id) : `${kind}:${tick}:hull`;
+  const label = typeof payload.label === 'string' && payload.label.trim()
+    ? payload.label.trim()
+    : spec.label;
+  return Object.freeze({
+    id,
+    kind,
+    t,
+    tick,
+    sectorId: payload.sectorId || null,
+    factionId: payload.factionId || null,
+    stationId: null,
+    weight: spec.weight,
+    subject: payload.subject != null ? String(payload.subject) : null,
+    label,
+    told: 0,
+  });
+}
+
 // Keep the loud and the untold; drop the quiet deed that has already been repeated.
 function compact(record) {
   while (record.deeds.length > DEED_CAP) {

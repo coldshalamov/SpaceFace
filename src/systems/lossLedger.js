@@ -58,6 +58,7 @@ import { wreckMissionById } from '../data/wreckMissions.js';
 import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
 import { effectiveDangerTierFor, sectorSignalFor } from './sectorSim.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { postImpoundListing } from './impoundLot.js';
 
 const MAX_PER_SECTOR = 8;           // ring-buffer cap — bounded growth (failureMode guard)
 const MAX_TOTAL = 64;               // global backstop across all sectors (rare; trims oldest)
@@ -425,6 +426,7 @@ export const lossLedger = {
     this._onPlayerDeath = (p) => this._handlePlayerDeath(p);
     this._onMissionCompleted = (p) => this._handleMissionCompleted(p);
     this._onNewGame = () => this._reset();
+    this._onCustodyTransfer = (p) => this._handleCustodyTransfer(p);
     // ECON-08 — lossIds whose player-caused shipment already moved the destination price and
     // published its one cited headline. Transient (replay/re-entry guard); the ledger entries
     // themselves stay the durable dedupe across save/load.
@@ -438,6 +440,7 @@ export const lossLedger = {
       this._bus.on('player:death', this._onPlayerDeath);
       this._bus.on('mission:completed', this._onMissionCompleted);
       this._bus.on('game:newGame', this._onNewGame);
+      this._bus.on('law:custodyTransfer', this._onCustodyTransfer);
     }
   },
 
@@ -515,7 +518,7 @@ export const lossLedger = {
     const shipment = lostShipmentPressure(data.cargoManifest);
     const lossId = makeLossId(L.seed, sectorId, kind, state.simTime || 0, p.id);
     const alreadyRecorded = L.entries.some((x) => x && x.lossId === lossId);
-    record(state, this._bus, this._helpers, {
+    const stored = record(state, this._bus, this._helpers, {
       lossId,
       sectorId,
       assetId: p.id,
@@ -535,7 +538,35 @@ export const lossLedger = {
         : {}),
       source: 'entity:killed',
     });
-    if (!alreadyRecorded) this._maybeApplyLossPrice(lossId, killedByPlayer, shipment);
+    if (!alreadyRecorded) {
+      this._maybeApplyLossPrice(lossId, killedByPlayer, shipment);
+      // One open lot. The player's own death is a different handler and never posts.
+      postImpoundListing(state, this._bus, { entity, entry: stored });
+    }
+  },
+
+  // A surrendered hull the law already holds can fill the same single lot.
+  // No listing is replaced, and a hull with no shipyard in reach is not invented.
+  _handleCustodyTransfer(p) {
+    const state = this._state;
+    if (!state || !p || p.entityId == null || p.entityId === state.playerId) return;
+    const entity = state.entities && state.entities.get ? state.entities.get(p.entityId) : null;
+    if (!entity || entity.alive === false) return;
+    const sectorId = (entity.data && entity.data.sectorId)
+      || (state.world && state.world.currentSectorId);
+    if (!sectorId) return;
+    const L = ensureState(state);
+    postImpoundListing(state, this._bus, {
+      entity,
+      entry: {
+        sectorId,
+        lossId: 'custody-' + hash32(L.seed, p.entityId, p.stationId || '', state.simTime || 0).toString(36),
+        factionId: p.factionId || entity.factionId || null,
+        victimName: entity.data && entity.data.name,
+        victimCallsign: entity.data && entity.data.callsign,
+      },
+      recovery: { stationId: p.stationId || null },
+    });
   },
 
   // ECON-08 — a loss YOU caused on a shipped commodity moves the destination price and names
@@ -716,6 +747,7 @@ export const lossLedger = {
       if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
       if (this._onMissionCompleted) this._bus.off('mission:completed', this._onMissionCompleted);
       if (this._onNewGame) this._bus.off('game:newGame', this._onNewGame);
+      if (this._onCustodyTransfer) this._bus.off('law:custodyTransfer', this._onCustodyTransfer);
     }
     this._onAssetLost = null;
     this._onOutpostRaided = null;
@@ -724,6 +756,7 @@ export const lossLedger = {
     this._onPlayerDeath = null;
     this._onMissionCompleted = null;
     this._onNewGame = null;
+    this._onCustodyTransfer = null;
     if (this._pricedLossIds instanceof Set) this._pricedLossIds.clear();
   },
 
@@ -732,11 +765,14 @@ export const lossLedger = {
     const L = ensureState(this._state);
     if (!L) return { bySector: {}, entries: [], seed: 1, ghostConvoy: { fired: {} } };
     // Entries only — bySector is derivable from entries (rebuilt on deserialize).
-    return {
+    const out = {
       entries: L.entries.slice(-MAX_TOTAL),
       seed: L.seed,
       ghostConvoy: { fired: { ...(L.ghostConvoy && L.ghostConvoy.fired || {}) } },
     };
+    // Absent until a hull is actually on the lot, so a quiet ledger keeps its old shape.
+    if (L.impound && typeof L.impound === 'object') out.impound = L.impound;
+    return out;
   },
 
   deserialize(data) {
@@ -756,6 +792,11 @@ export const lossLedger = {
         ...(data && data.ghostConvoy && data.ghostConvoy.fired || {}),
       },
     };
+    if (data && data.impound && typeof data.impound === 'object' && !Array.isArray(data.impound)) {
+      L.impound = data.impound;
+    } else {
+      delete L.impound;
+    }
     L.bySector = {};
     for (const e of L.entries) {
       if (!e || !e.sectorId) continue;

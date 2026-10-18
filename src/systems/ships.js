@@ -43,6 +43,7 @@ import {
   normalizeLivingHull,
   sameLivingHull,
 } from '../core/livingHull.js';
+import { derivedWithOverbore } from './impoundLot.js';
 import {
   scarFromPlayerContact,
   scarFromPlayerDamage,
@@ -159,6 +160,22 @@ function shopStationName(stationId) {
 function dockedShopStationId(state) {
   const ui = state && state.ui;
   return ui && ui.docked === true ? ui.dockedStationId : null;
+}
+
+/** The one open impound listing, when it is this hull at the dock the player is standing in. */
+function impoundOfferFor(state, defId) {
+  const lot = state && state.lossLedger && state.lossLedger.impound;
+  if (!lot || !defId || lot.defId !== defId) return null;
+  const stationId = dockedShopStationId(state);
+  if (!stationId || lot.stationId !== stationId) return null;
+  return lot;
+}
+
+function derivedForOwned(defId, fittings, player, owned) {
+  const derived = getDerivedStats(defId, fittings || [], player);
+  const quirk = owned && owned.impoundQuirk;
+  if (!quirk || quirk.kind !== 'overbored') return derived;
+  return derivedWithOverbore(derived, quirk.accelMult);
 }
 
 /** Resolve the two distinct station capabilities exposed by Shipworks. Hull acquisition/switching
@@ -1689,6 +1706,9 @@ export const ships = {
       // station click can only name a real, priced catalog hull. Do not forward control flags from
       // an untrusted DOM/event payload.
       const defId = p && p.defId;
+      // A pre-owned hull is this station's one lot listing, not a discounted catalog row.
+      const listing = impoundOfferFor(this.state, defId);
+      if (listing) return this.buyImpound(listing);
       const def = SHIP_BY_ID.get(defId);
       const stationId = dockedShopStationId(this.state);
       const offer = stationShopOffer(def, stationId);
@@ -1995,7 +2015,8 @@ export const ships = {
     }
     const player = isPlayer ? this.state.player : null;
     const prev = e.data.derived || {};
-    const derived = getDerivedStats(defId, fit, player);
+    const ownedForQuirk = isPlayer ? this.ownedShip() : null;
+    const derived = derivedForOwned(defId, fit, player, ownedForQuirk);
 
     // preserve current hull/shield/cap fractions so a refit doesn't fully heal a damaged ship,
     // but lift caps that grew. (Fresh spawn already starts full via getDerivedStats.)
@@ -2230,7 +2251,7 @@ export const ships = {
     const cargoMass = Math.max(0, Number(this.state.player && this.state.player.cargo && this.state.player.cargo.usedMass) || 0);
     if (previous.cargoMass === cargoMass) return previous;
     const owned = this.ownedShip();
-    const next = getDerivedStats(e.data.defId, (owned && owned.fittings) || [], this.state.player);
+    const next = derivedForOwned(e.data.defId, (owned && owned.fittings) || [], this.state.player, owned);
     e.data.derived = next;
     copyOperationalMassOntoEntity(e, next);
     this.bus.emit('ship:massChanged', {
@@ -2243,6 +2264,47 @@ export const ships = {
   },
 
   // ---- shipyard: buy / sell ship ----------------------------------------------------------
+
+  /** Buy the open lot hull: its scars, papers, and bored thrusters, at the listing price. */
+  buyImpound(listing) {
+    const current = this.state.lossLedger && this.state.lossLedger.impound;
+    if (!current || current.listingId !== listing.listingId) return false;
+    const def = SHIP_BY_ID.get(current.defId);
+    const p = this.state.player;
+    const price = Number(current.price);
+    if (!def || !p || !Number.isFinite(price) || price <= 0) return false;
+    if (p.credits < price) {
+      this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
+      return false;
+    }
+    const quirk = current.quirk && current.quirk.kind === 'overbored'
+      && Number.isFinite(Number(current.quirk.accelMult)) && Number(current.quirk.accelMult) > 1
+      ? { kind: 'overbored', accelMult: Number(current.quirk.accelMult) }
+      : null;
+    this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + def.id });
+    const slots = buildSlotList(def);
+    const owned = {
+      defId: def.id,
+      fittings: new Array(slots.length).fill(null),
+      fittedInstances: {},
+      appearance: defaultShipAppearance(def.id),
+      livingHull: normalizeLivingHull(current.livingHull, this.state.simTime || 0),
+      rapSheet: current.deed || null,
+      rapSheetLine: current.deedLine || null,
+      impoundLossId: current.lossId || null,
+    };
+    if (quirk) owned.impoundQuirk = quirk;
+    p.ownedShips.push(owned);
+    delete this.state.lossLedger.impound;
+    this.bus.emit('ship:purchased', {
+      defId: def.id,
+      price,
+      rapSheet: owned.rapSheet,
+      rapSheetLine: owned.rapSheetLine,
+      history: current.historyLine || null,
+    });
+    return true;
+  },
 
   buyShip({ defId, setActive = false, grant = false }) {
     const def = SHIP_BY_ID.get(defId);
