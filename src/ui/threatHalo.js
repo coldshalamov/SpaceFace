@@ -537,6 +537,16 @@ export function createThreatHalo(root, busOrOpts) {
     arc.className = 'sf-threat-halo__arc';
     slot.appendChild(arc);
     slot._sfArc = arc;
+    const mineCount = document.createElement('span');
+    mineCount.className = 'orr-value sf-threat-halo__minecount';
+    mineCount.setAttribute('aria-hidden', 'true');
+    Object.assign(mineCount.style, {
+      position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
+      display: 'none', fontSize: '12px', lineHeight: '12px', fontVariationSettings: "'wdth' 82",
+      color: 'var(--k-red)',
+    });
+    slot.appendChild(mineCount);
+    slot._sfMineCount = mineCount;
     layer.appendChild(slot);
     hostileSlots[i] = slot;
   }
@@ -1029,6 +1039,9 @@ export function createThreatHalo(root, busOrOpts) {
     setAttr(slot, 'data-telegraph-kind', null);
     setAttr(slot, 'data-entity-id', null);
     setAttr(slot, 'data-armed-mines', null);
+    setDisplay(slot._sfMineCount, false);
+    setAttr(slot, 'aria-hidden', 'true');
+    setAttr(slot, 'role', null);
     setAttr(slot, 'data-placement-read', null);
     slot._sfPlacementRead = null;
     if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
@@ -1474,10 +1487,16 @@ export function createThreatHalo(root, busOrOpts) {
       const latch = tetherCutLatches.get(hostileId[i]);
       const cutLabel = latch && latch._tetherCutLatch ? latch._tetherCutLabel : null;
       const identityLabel = hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue, hostileMines[i]);
-      setAttr(slot, 'aria-label', cutLabel || identityLabel);
-      // The counted screen also rides a machine-readable attribute (same number as the
-      // label suffix; absent when zero) so the count is countable, not just words.
-      setAttr(slot, 'data-armed-mines', hostileMines[i] > 0 ? hostileMines[i] : null);
+      const mines = hostileMines[i];
+      const mineLabel = mines > 0 ? ` · ${mines} ${mines === 1 ? 'MINE' : 'MINES'}` : '';
+      setAttr(slot, 'aria-label', cutLabel ? cutLabel + mineLabel : identityLabel);
+      // Keep the numeral inside the arc's existing footprint and expose the whole named
+      // marker as one image; the decorative glyph and numeral need no duplicate reading.
+      setDisplay(slot._sfMineCount, mines > 0);
+      if (mines > 0 && slot._sfMineCount.textContent !== String(mines)) slot._sfMineCount.textContent = String(mines);
+      setAttr(slot, 'aria-hidden', mines > 0 ? 'false' : 'true');
+      setAttr(slot, 'role', mines > 0 ? 'img' : null);
+      setAttr(slot, 'data-armed-mines', mines > 0 ? mines : null);
       shown++;
     }
 

@@ -138,3 +138,48 @@ test('halo stays quiet: unarmed mine-layer screen and non-layer hulls carry no c
     assert.doesNotMatch(raiderLabel, /\d+ MINES?/, `non-layer hull must stay quiet, got: ${raiderLabel}`);
   } finally { globalThis.document = old; }
 });
+
+test('mine-layer marker renders an exposed count that follows laying and detonation', () => {
+  const mock = mockDocument();
+  const old = globalThis.document;
+  globalThis.document = mock.document;
+  try {
+    const root = mock.document.createElement('div');
+    const halo = createThreatHalo(root, busOf());
+    const { player, layer, state } = worldWithLayer();
+    const first = layArmedMine(state, layer.id, 31, true);
+    const second = layArmedMine(state, layer.id, 32, true);
+    halo.update(player, state, projector);
+    const slot = shownArcs(mock).find((s) => s.attributes['data-entity-id'] === layer.id);
+    const count = slot.children.find((el) => el.textContent === '2' && el.style.display !== 'none');
+    assert.ok(count, 'the rendered marker must contain a visible numeral for its two armed mines');
+    for (let el = count; el; el = el.parentNode) {
+      assert.notEqual(el.style.display, 'none', 'the count must have no hidden display ancestor');
+    }
+    for (let el = slot; el; el = el.parentNode) {
+      assert.notEqual(el.getAttribute('aria-hidden'), 'true', 'the marker name must reach accessibility clients');
+    }
+    assert.equal(slot.getAttribute('role'), 'img', 'the named marker must expose an accessible image');
+    assert.match(slot.getAttribute('aria-label'), /2 MINES/);
+
+    first.alive = false;
+    first.data.triggered = true;
+    halo.update(player, state, projector);
+    assert.equal(count.textContent, '1', 'detonation immediately reduces the drawn count');
+    assert.notEqual(count.style.display, 'none');
+    assert.match(slot.getAttribute('aria-label'), /1 MINE/);
+
+    second.alive = false;
+    second.data.triggered = true;
+    halo.update(player, state, projector);
+    assert.equal(count.style.display, 'none', 'zero armed mines draw no count');
+    assert.doesNotMatch(slot.getAttribute('aria-label'), /\d+ MINES?/);
+
+    layArmedMine(state, layer.id, 33, true);
+    halo.update(player, state, projector);
+    assert.equal(count.textContent, '1');
+    assert.notEqual(count.style.display, 'none', 'a newly armed mine restores the visible count');
+    assert.notEqual(slot.getAttribute('aria-hidden'), 'true');
+    halo.destroy();
+  } finally { globalThis.document = old; }
+});
