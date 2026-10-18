@@ -168,18 +168,70 @@ export function modelTruthProxyRowForEntity(entity) {
   return stationRow(entity) || modelTruthRowForEntity(entity);
 }
 
+// SFQ-I072 — hoop props whose measured skin seals a visibly passable middle. These
+// rows are drawn as open hoops (the aft dock collar is a dock mouth ring, the
+// freighter span and the transponder gate read as archways): the flight-plane
+// outline holds solid arcs on opposite sides with wide empty wedges between them,
+// but the skin builder grows one radial arm per solid ray from the origin, so every
+// arm covers the middle and a flight pass through the visible opening registers a
+// hit. The middle is opened by trimming each arm back to half the longest arm —
+// the outer half still covers the arcs by construction, and stubs fully inside the
+// middle (slice noise) drop out. Capsule/circle compounds only: never mesh colliders.
+function hoopOpeningPrimitives(primitives) {
+  let half = 0;
+  for (const primitive of primitives || []) {
+    if (primitive.kind === 'capsule') {
+      half = Math.max(half, Math.hypot(primitive.bx - primitive.ax, primitive.bz - primitive.az) / 2);
+    }
+  }
+  if (!(half > 0)) return primitives;
+  const out = [];
+  for (const primitive of primitives || []) {
+    if (primitive.kind !== 'capsule') {
+      out.push(primitive);
+      continue;
+    }
+    const dx = primitive.bx - primitive.ax;
+    const dz = primitive.bz - primitive.az;
+    const len = Math.hypot(dx, dz);
+    if (!(len > half)) continue;
+    const ux = dx / len;
+    const uz = dz / len;
+    const push = Math.max(0, half - (primitive.ax * ux + primitive.az * uz));
+    if (push <= 0) {
+      out.push(primitive);
+      continue;
+    }
+    out.push({ ...primitive, ax: primitive.ax + ux * push, az: primitive.az + uz * push });
+  }
+  return out;
+}
+
+const HOOP_OPENING_ROW_IDS = new Set([
+  'place_aftermath_aft_dock_collar',
+  'place_aftermath_deb_ore_freighter_ring_span',
+  'place_transponder_gate',
+]);
+
+function openingPrimitivesForRow(row) {
+  const skin = row && row.proposedSkin;
+  const primitives = skin && skin.primitives;
+  if (!primitives || !primitives.length) return primitives;
+  if (row.opening || !HOOP_OPENING_ROW_IDS.has(row.id)) return primitives;
+  return hoopOpeningPrimitives(primitives);
+}
+
 /** World-space primitives for the measured skin, or null when the row has no skin yet. */
 export function modelTruthSkinPrimitives(entity) {
   const row = modelTruthRowForEntity(entity);
   const skin = row && row.proposedSkin;
   if (!skin || !skin.primitives || !skin.primitives.length) return null;
-  const data = entity && entity.data || {};
-  // Primitives are stored in units of the census reference (1 = dockRadius or entity.radius).
+  const data = entity && entity.data || {};  // Primitives are stored in units of the census reference (1 = dockRadius or entity.radius).
   // World size is that fraction times the live reference, not the fraction itself.
   const reference = row.gameplay && row.gameplay.dockRadius
     ? Number(data.dockRadius) || row.gameplay.dockRadius
     : Number(entity && entity.radius) || (row.gameplay && row.gameplay.entityRadius) || skinReference(row);
-  const local = scaleProxyPrimitives(skin.primitives, Math.max(1e-6, reference));
+  const local = scaleProxyPrimitives(openingPrimitivesForRow(row), Math.max(1e-6, reference));
   const rot = Number(entity && entity.rot) || 0;
   const c = Math.cos(rot);
   const s = Math.sin(rot);
@@ -230,7 +282,7 @@ export function modelTruthProxyManifest(entity) {
     stationIds: row.id === 'place_station_trade_hub' ? ['station_helios'] : [],
     flags: { collides: true, renderable: false, targetable: false, radarVisible: false },
     referenceRadius: dock ? 'dockRadius' : 'radius',
-    primitives: skin.primitives,
+    primitives: openingPrimitivesForRow(row),
     opening: row.opening || null,
     mouthBearingDeg: skin.mouthBearingDeg,
     sourceRow: row.id,
