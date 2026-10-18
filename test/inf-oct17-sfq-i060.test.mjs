@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { materializeMachineLayer, tickMachineLayer } from '../src/systems/precursorMachines.js';
 import { addCargo } from '../src/systems/cargo.js';
+import { COMMODITIES } from '../src/data/commodities.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 
 function fixture(sectorId) {
@@ -62,8 +63,10 @@ test('executor warning names the flagged biological lots from the incident manif
   const warnings = executorWarningTexts(f.events);
   assert.equal(warnings.length, 1, 'one quarantine warning on executor approach with biological cargo');
   assert.ok(warnings[0].includes('2'), 'warning contains the flagged lot count');
-  assert.ok(warnings[0].includes('cmdty_spore_catalyst'),
-    'warning contains the flagged commodity id from incident.manifest');
+  const spore = COMMODITIES.find((c) => c.id === 'cmdty_spore_catalyst');
+  assert.ok(spore && warnings[0].includes(spore.name),
+    'warning names the flagged commodity by its display name');
+  assert.ok(!warnings[0].includes('cmdty_'), 'no raw commodity id reaches the player');
 });
 
 test('entering with only mineral/metal cargo emits no warning', () => {

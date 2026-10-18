@@ -666,7 +666,7 @@ export function tickMachineLayer(world, dt) {
           // No biological lots (mineral/metal hold) means no warning at all.
           if (flaggedLots.length) {
             const flaggedWords = flaggedLots
-              .map((id) => `${commodityNames.get(id) || id} (${id}) ×${incident.manifest[id]}`)
+              .map((id) => `${commodityNames.get(id) || 'unidentified lot'} ×${incident.manifest[id]}`)
               .join(', ');
             world.bus.emit('comms:log', { from: 'Verge lattice', kind: 'machine',
               text: 'INCIDENT ' + incident.id + '. BIOLOGICAL MANIFEST SUBJECT TO PURGE AFTER '
