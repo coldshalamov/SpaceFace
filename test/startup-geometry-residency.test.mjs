@@ -755,10 +755,15 @@ test('residency batches skip the program compile unit once the shared raw proxy 
   });
   harness.renderer.properties = { get: (material) => materialProperties.get(material) || {} };
   harness.renderer.compileAsync = async () => { units.push('compile'); };
+  // The skip is the serial route's (no KHR_parallel_shader_compile); see startup-residency-khr-link-wait.
+  const serialGl = { finish() {}, isContextLost: () => false, getExtension: () => null };
+  harness.renderer.getContext = () => serialGl;
+  harness.renderer.extensions = { get: () => null };
 
   const result = await prepareStartupGeometryResidency(harness.renderer, subjects, {
     geometryBatchDrawables: 2,
     geometryBatchBytes: Number.MAX_SAFE_INTEGER,
+    paceQueue: async () => {},
     yieldToMain: async () => {},
   });
 

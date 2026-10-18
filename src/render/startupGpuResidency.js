@@ -807,7 +807,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
           // in every batch shares one program. Once that program is linked on this renderer the
           // compile unit is a pure serial-route round trip (a presented-frame wait + gl.finish per
           // batch on SwiftShader); skip it. A miss is still safe: the draw links synchronously.
-          if (typeof renderer.compileAsync === 'function' && !residencyProgramLinked(renderer, material)) {
+          // Serial route only: with KHR_parallel_shader_compile a populated program cache means the
+          // link was only issued, not finished, and an urgent batch would draw into the stall.
+          if (typeof renderer.compileAsync === 'function' && !(submitSerial && residencyProgramLinked(renderer, material))) {
             const { compilePipelinesContextSafe } = await import('./bloom.js');
             const compile = () => {
               if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
