@@ -402,10 +402,11 @@ export function clearImpulseProvenance(entity) {
 export function resolveCollisionConsequence(input = {}) {
   const target = input.target;
   const other = input.other;
-  // The caller may request damage-only calculation for a physically admitted payload.
+  // The caller may request damage-only calculation for a physically admitted payload or wreck.
   // This pure opt-in grants no damage authority; the owning consumer validates custody.
   const payloadDamageOnly = input.payloadDamageOnly === true && target?.type === 'payload';
-  if (!target || !other || (!isConsequenceTarget(target) && !payloadDamageOnly)) return null;
+  const wreckDamageOnly = input.wreckDamageOnly === true && target?.type === 'wreck';
+  if (!target || !other || (!isConsequenceTarget(target) && !payloadDamageOnly && !wreckDamageOnly)) return null;
   const exchangedMomentum = nonNegative(input.exchangedMomentum);
   if (exchangedMomentum < COLLISION_CONSEQUENCE_LIMITS.minMomentum) return null;
 

@@ -318,6 +318,18 @@ export const collisionConsequences = {
 
   _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false) {
     const state = this.state;
+    if (target.type === 'wreck') {
+      // Wrecks share the contact damage law and combat's hull/death writer, but never
+      // enter ship helm-loss or fracture paths. The pair cooldown already admitted this hit.
+      const receipt = resolveCollisionConsequence({
+        target, other, exchangedMomentum, tick, provenance: causalProvenance,
+        pos: payload.pos, normal: payload.normal,
+        preSolveClosingSpeed: payload.preSolveClosingSpeed, wreckDamageOnly: true,
+      });
+      const damage = receipt ? scaledImpactForHotDebris(receipt, other, state) : 0;
+      if (damage > 0) this._routeImpactDamage(target, other, receipt, damage);
+      return;
+    }
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const player = entityById(state, state.playerId);
     const targetHostile = isHostileForAI(state, target, player);
@@ -565,7 +577,8 @@ export const collisionConsequences = {
         collisionPresentation,
       },
     });
-    packet.flags = { allowAnyTarget: true };
+    // A physical blow breaks wreckage regardless of the dead body's former team.
+    packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: target.type === 'wreck' };
     return kernel.routeDamage({
       attackerId: receipt.provenance.actorId,
       targetId: target.id,
