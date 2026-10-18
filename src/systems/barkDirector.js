@@ -663,6 +663,8 @@ export const barkDirector = {
     this._bodyNearMisses = new Map();
     this._barkQuiet = null;
     this._barkWakeSeq = 0;
+    this._npcCounterplayCensusTick = null;
+    this._npcCounterplayPressing = false;
     this._onEntitySpawnedBark = (payload) => {
       const entity = payload && payload.entity;
       // core recycles entity ids; a new occupant must not inherit the previous actor's
@@ -916,6 +918,8 @@ export const barkDirector = {
     this._npcCounterplayAt = null;
     this._npcCounterplayEngagement = 0;
     this._npcCounterplaySpokenAt = -1;
+    this._npcCounterplayCensusTick = null;
+    this._npcCounterplayPressing = false;
     if (Array.isArray(this._npcCounterplayBarks)) this._npcCounterplayBarks.length = 0;
     if (Array.isArray(this._harasserDepartures)) this._harasserDepartures.length = 0;
     this._spillNoticeKeys = null;
@@ -939,6 +943,20 @@ export const barkDirector = {
     this._orchardEncounter?.update(state);
     if (state.mode && state.mode !== 'flight') return;
     this.state = state;
+    // Outcomes are deduplicated per hull, so only the current fight can re-arm
+    // counterplay. Sample before the quiet latch, at its existing rescan cadence.
+    const tick = state.tick | 0;
+    const censusTick = this._npcCounterplayCensusTick;
+    if (censusTick == null || tick < censusTick
+      || tick - censusTick >= BARK_DIRECTOR_QUIET_RESCAN_TICKS) {
+      const pressing = this._hostilesStillPressing() > 0;
+      if (this._npcCounterplayPressing && !pressing
+        && this._npcCounterplaySpokenAt === (this._npcCounterplayEngagement | 0)) {
+        this._npcCounterplayEngagement = (this._npcCounterplayEngagement | 0) + 1;
+      }
+      this._npcCounterplayPressing = pressing;
+      this._npcCounterplayCensusTick = tick;
+    }
     // Quiet open flight: no eligible bark/hail/near-miss/stunt work still paid
     // ensureActivityClassified + living-actor census every tick. Latch when the
     // census stays quiet; wake on membership, ship/drone spawn, combat/stunt/
@@ -1771,11 +1789,6 @@ export const barkDirector = {
     ambient.quietSince = now;
     ambient.nextAt = Math.max(Number(ambient.nextAt) || -Infinity, until);
     if (this._hostilesStillPressing(outcome && outcome.entityId) > 0) return true;
-    // Per-ship outcomes only close the spent engagement at the actual aftermath
-    // boundary; later quiet receipts cannot advance it again.
-    if (this._npcCounterplaySpokenAt === (this._npcCounterplayEngagement | 0)) {
-      this._npcCounterplayEngagement = (this._npcCounterplayEngagement | 0) + 1;
-    }
     this._emit('barkDirector:silence', { sectorId, until, t: now, reason: 'combat:outcome' });
     return true;
   },
