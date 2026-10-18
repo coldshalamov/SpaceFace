@@ -82,6 +82,7 @@ const escapeXml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 
 const STYLE_ID = 'sf-orrery-shipworks';
 const W = 'html body #screens > .sx-berth.orr-station .sx-sw';
+const D = W.replace('html body', 'html:root:not([data-sf-mobile="1"]) body');
 const BONE = '236 230 216';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
@@ -1183,6 +1184,42 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
 @media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
   ${W}.orr-sw--jig > .sx-sw__side { max-width:130px !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:wrap !important; white-space:normal !important; }
+}
+/* 1024×768–1366×768 desktop: the hull caption belongs above the jig's shade pool. */
+@media (min-width:901px) and (max-width:1366px) and (max-height:800px) {
+  ${D} .sx-sw__stage > .sx-sw__fleetcap { z-index:4; }
+}
+/* 1024×768 desktop: keep the stage in its first grid row. Absolutely filling both
+   rows put Starter / systems fitted and the operation dial underneath the hull pool. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:641px) and (max-height:800px) {
+  ${D}.orr-sw--jig { grid-template-rows:minmax(300px, 1fr) minmax(0, 1fr) !important; row-gap:12px !important; }
+  ${D}.orr-sw--jig .sx-sw__main { position:relative !important; }
+  ${D}.orr-sw--jig .sx-sw__nameplate .sx-sw__crestLine { flex-wrap:nowrap !important; gap:0 10px !important; }
+}
+/* 960×540 / 1024×768 desktop: the local foot also applies before the first ring
+   measurement, when the rack has not yet received its unseated class. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:800px) {
+  ${D}.orr-sw--jig .sx-sw-verbs {
+    position:absolute !important; left:8px !important; right:8px !important; top:auto !important; bottom:4px !important;
+    width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
+    flex-wrap:wrap !important; gap:2px 12px !important; z-index:6;
+  }
+}
+/* 960×540 desktop: the old 260px grid-row floor pushed Inspect Hitch below the
+   clipped berth; let the fleet's own scroll column shrink with this shorter stage. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
+  ${D}.orr-sw--jig { grid-template-rows:minmax(0, 1fr) !important; }
+}
+/* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
+   column, leaving the schematic its own height above it instead of pinning to the viewport. */
+@media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
+  ${D}.orr-sw--jig .sx-sw__main { padding-bottom:40px !important; }
+  ${D}.orr-sw--jig .sx-sw-verbs.sx-sw-verbs--unseated {
+    position:absolute !important; left:258px !important; right:313px !important;
+    top:auto !important; bottom:4px !important; width:auto !important; max-width:none !important;
+    margin:0 !important; padding:2px 4px !important; justify-content:center !important;
+    flex-wrap:wrap !important; gap:2px 12px !important; z-index:6;
+  }
 }
 `;
 

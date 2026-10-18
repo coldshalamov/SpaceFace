@@ -1732,3 +1732,22 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 **Checked:** all 7 station tabs x the requested 8 viewports were measured against frozen original layouts, using real BENCH.goto resets in one warm page after cold-context timeouts. Fonts settle and the screenshot precedes measurement, as in the standard CLI. The standard Market CLI also completed all 8 baseline sizes. Focused tests: control reachability 8/8, station-field-hardware 7/7, market-driver-presenter 4/4. The 700x460 walk reached 21 of 101 controls before the explicit 180-second cell cap closed its context; every one of its 20 produced PNGs was opened. Complete interaction acceptance is **not done**.
 
 **Known limits / remaining work:** the original text audit still flags Shipworks at 700x460, 760x420, 844x390, 960x540, 1024x768, 1280x720 and 1366x768; Missions at 700x460 and 760x420; Factions at 700x460; Ledger at 700x460 and 760x420. These composition issues are not repaired here. Filtered Market screenshots also show the register count crossing the find field at 700x460. The short header and secondary quote details require scrolling. Real TRADE CLEARED states, all remaining walk controls and full walks on the other tabs remain unverified; arrival does not contain a trade receipt. No claim is made that every existing layout finding is fixed. Exact tables and commands are in the ignored build-b receipt.
+
+## Shipworks on ordinary laptops — the verbs under the hull, the operation panel clear (build-e, 2026-10-18)
+
+**Before:** the hull caption sat below the schematic's shade pool. At 1024x768 the absolutely filled main area also covered the lower operation panel, shading STARTER and the fit count; at 1280x720 the viewport-fixed Range / Record / Paint row crossed its panel's foot, and at 1366x768 avoiding a callout moved that row onto the hull.
+
+**After (`src/ui/orrery/shipworksLayouts.js`, `src/ui/station/screens/shipworks.js`):** desktop berths 901–1366 wide and at most 800 tall hand the verb row to the existing local-layout fallback. The 1101–1366 main column reserves its foot for those verbs, the 901–1100 verb row also works before the first ring measurement, and at 901–1100 by 641–800 the main area stays in its own grid row above the scrollable operation panel. At 901–1100 by <=640 the legacy 260px grid-row floor is removed so the fleet can shrink and scroll instead of clipping Inspect below the berth. The hull caption sits above its shade. New selectors and the controller branch exclude `data-sf-mobile="1"`; 1920x1080 and the <=900 layouts retain their existing composition. No controls were removed.
+
+| Shipworks viewport | Before | After |
+|---|---:|---:|
+| 960x540 | 0 on cold arrival; warm route reproduced 2 cut / 2 off-frame | 0 |
+| 1024x768 | 6 buried | 0 |
+| 1280x720 | 2 buried / 6 cut / 3 off-frame | 0 |
+| 1366x768 | 2 buried; verb row visibly across hull | 0 |
+| 1920x1080 | 0 | 0 |
+| 700x460 | 6 tangled / 6 cut | 6 tangled / 6 cut |
+
+**Checked:** standard six-size bench plus the complete final warm matrix after the Inspect repair; all final arrival PNGs opened. Control reachability 8/8, station-field-hardware 7/7, market-driver-presenter 4/4. The 1280x720 walk reached 13 labeled controls before its 240-second cell cap; a continuation within the packet's twelve-minute allowance reached 16 more, including Range / Record / Paint. The remaining 14 index attempts returned empty labels after Undock left the persistent fixture faded, so full interaction acceptance is **not done**. All 31 walk PNGs were opened. Evidence and commands stay in `.devshots/delegates/oct17/build-e/RECEIPT.md`.
+
+**Leftovers:** the fleet at 960x540 and lower operation panel at 1024x768 scroll. Expanded readout prose can be clipped horizontally, and Record rows require scrolling in the left apron. Shipworks at <=844 and the <=760 Missions, Factions and Ledger findings remain open; this is a scoped laptop repair, not a redesign of those tabs. Bench actions exercise fixture UI and do not certify live simulation transactions or performance.
