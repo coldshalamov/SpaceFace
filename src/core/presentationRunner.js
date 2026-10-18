@@ -16,7 +16,7 @@ import { resolveFrameCap } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
-import { createTimeEffects } from './timeEffects.js';
+import { createTimeEffects, readTimeEffectsRequests } from './timeEffects.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -400,14 +400,51 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   if (typeof globalThis.window !== 'undefined') {
     globalThis.window.__SF_WITNESS__ = witness;
   }
+  let previousMotionSample = null;
+  let lastMotionHoldReportMs = -Infinity;
+  let motionHoldReports = 0;
   function captureWitness() {
     try {
-      witness.observe(state, {
+      const sample = witness.observe(state, {
         diagnostics,
         lifecycleState,
         suspended,
         wallMs: nowMs(),
       });
+      if (!sample) return;
+      const previous = previousMotionSample;
+      previousMotionSample = sample;
+      // Observe the existing 1 Hz recorder, not every drawn frame. A coasting
+      // body whose authoritative pose holds while the renderer keeps drawing
+      // is the reported symptom, including intentional pauses. Record its
+      // actual clock owner rather than classifying it as a generic slow frame.
+      if (!previous || sample.mode !== 'flight' || previous.mode !== 'flight'
+        || sample.suspended || sample.documentHidden || !sample.hasPos || !previous.hasPos
+        || sample.speed < 5 || previous.speed < 5
+        || sample.executedFrames <= previous.executedFrames
+        || !sample.worldSubmissionsObserved || !previous.worldSubmissionsObserved
+        || sample.worldSubmittedFrames <= previous.worldSubmittedFrames
+        || Math.hypot(sample.posX - previous.posX, sample.posZ - previous.posZ) > 0.05
+        || sample.wallMs - previous.wallMs < 900
+        || state.ui?.docked || state.ui?.screenStack?.length
+        || motionHoldReports >= 8 || sample.wallMs - lastMotionHoldReportMs < 10000) return;
+      const sim = simulationRunner.getDiagnostics?.() || {};
+      motionHoldReports++;
+      lastMotionHoldReportMs = sample.wallMs;
+      console.info('[world-motion-hold]', JSON.stringify({
+        schema: 'spaceface.worldMotionHold.v1',
+        wallMs: sample.wallMs, durationMs: sample.wallMs - previous.wallMs,
+        simTime: sample.simTime, previousSimTime: previous.simTime,
+        tick: sample.tick, previousTick: previous.tick, speed: sample.speed,
+        pos: { x: sample.posX, z: sample.posZ }, clockScale: sample.clockScale,
+        shellState, lifecycle: lifecycleState, frames: sample.executedFrames - previous.executedFrames,
+        worldSubmissions: sample.worldSubmittedFrames - previous.worldSubmittedFrames,
+        pauseRequests: readTimeEffectsRequests(state),
+        tether: { active: state.player?.tether?.active === true, targetId: state.player?.tether?.targetId ?? null },
+        worker: sim.workerClockLastDiagnostics || null,
+        workerWork: sim.workerLastReplyWork || null,
+        replyCount: sim.replyCount ?? null,
+      }));
     } catch (_) { /* witness must never abort the loop */ }
   }
 
@@ -673,6 +710,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
   function onWindowBlur() {
     if (destroyed) return;
+    // Once the desktop shell has reported native focus, DOM focus events are
+    // only a fallback: their independent delivery order must not re-pause a
+    // window the shell has already confirmed focused.
+    if (shellSequence > 0) return;
     try { syncFocusLossHold(state, true); } catch (_) { /* the clock owner reports its own errors */ }
   }
 
@@ -713,6 +754,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     shellState = command.state;
     diagnostics.shellSequence = shellSequence;
     diagnostics.shellState = shellState;
+    if (command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE
+      || command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED) {
+      // The accepted native state owns both focus edges, including a missing
+      // DOM blur/focus. Other pause sources retain their independent requests.
+      try {
+        syncFocusLossHold(state, command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED);
+      } catch (_) { /* resume is idempotent */ }
+    }
     synchronizeLifecycle(typeof command.reason === 'string' && command.reason
       ? command.reason
       : 'shell');

@@ -1429,7 +1429,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const flight = registry.get('flight') || registry.get('flightSlot') || null;
         const physics = registry.get('physics') || null;
         const nativeRecord = e && physics?._sg02?.records?.get(e.id);
-        const nativeBody = nativeRecord?.entity === e ? nativeRecord.body : null;
+        const nativeBody = nativeRecord && nativeRecord.entity === e ? nativeRecord.body : null;
         const telemetry = e ? readPhysicsTelemetry(e) : null;
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {

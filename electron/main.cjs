@@ -857,8 +857,14 @@ async function createWindow() {
     )) return;
     receipt('navigation-failed', { code, message, url });
   });
+  let motionHoldReceipts = 0;
   win.webContents.on('console-message', (details) => {
     const message = details && details.message;
+    if (typeof message === 'string' && message.startsWith('[world-motion-hold] ')
+      && motionHoldReceipts < 8) {
+      motionHoldReceipts++;
+      receipt('world-motion-hold', { message: message.slice(0, 8192) });
+    }
     if (isAssetPreloadFailureMessage(message)) {
       receipt('asset-preload-failed', { message: receiptText(message) });
     }

@@ -77,7 +77,9 @@ const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
 const CPU_PROFILE = process.argv.includes('--cpu-profile');
 // Exercise the reported failure using the normal nearest-latch, turn, winch and cut controls.
 // This is a diagnostic input route; it never spawns or teleports bodies or edits simulation state.
-const TETHER_STRESS = process.argv.includes('--tether-stress');
+const TETHER_BOOST_STRESS = process.argv.includes('--tether-boost-stress');
+const TETHER_STRESS = process.argv.includes('--tether-stress') || TETHER_BOOST_STRESS;
+const FOCUS_RECOVERY_STRESS = process.argv.includes('--focus-recovery-stress');
 const COMBAT_STRESS = process.argv.includes('--combat-stress');
 // The CPU profile charges browser-native work (style, layout, paint, GPU command flush) to one
 // opaque "(program)" bucket. A devtools.timeline trace over the same window names it.
@@ -3230,7 +3232,7 @@ try {
     timeout: 180_000,
     baseEnv: {
       ...process.env,
-      SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1',
+      SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: FOCUS_RECOVERY_STRESS ? '0' : '1',
     },
   });
   log('launching isolated Electron');
@@ -3257,7 +3259,7 @@ try {
     const text = msg.text();
     if (
       msg.type() === 'error'
-      || /\[loop\]|context lost|frame error|WebGL|GPU/i.test(text)
+      || /\[loop\]|world-motion-hold|context lost|frame error|WebGL|GPU/i.test(text)
     ) {
       consoleHits.push(`[console.${msg.type()}] ${text}`);
     }
@@ -3468,6 +3470,85 @@ try {
     routeInfo.productionRoutePreparation = productionRoutePreparation;
     log(`production route unavailable: ${productionRoutePreparation?.reason || 'public route driver unavailable'}`);
   }
+  if (FOCUS_RECOVERY_STRESS) {
+    // Model Electron returning native focus while Chromium loses the DOM focus event.
+    // The native window and the real worker own the transition; the observer only drops
+    // that one DOM notification, never writes game state or fabricates shell commands.
+    const gameWindowId = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].id);
+    await app.evaluate(({ app, BrowserWindow }, id) => {
+      app.focus();
+      const win = BrowserWindow.fromId(id);
+      win.show();
+      win.focus();
+      win.webContents.focus();
+    }, gameWindowId);
+    await page.evaluate(() => {
+      const trace = { interceptedFocus: 0, blur: 0 };
+      trace.dropFocus = (event) => { trace.interceptedFocus++; event.stopImmediatePropagation(); };
+      trace.onBlur = () => { trace.blur++; };
+      window.addEventListener('focus', trace.dropFocus, true);
+      window.addEventListener('blur', trace.onBlur);
+      window.__SF_FOCUS_RECOVERY_PROBE__ = trace;
+    });
+    const motionStart = await page.evaluate(() => window.SF.state.simTime);
+    await page.keyboard.down('KeyW');
+    await page.waitForFunction((start) => {
+      const state = window.SF.state;
+      const player = state.entities.get(state.playerId);
+      return state.simTime > start + 0.3 && Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0) > 5;
+    }, motionStart, { polling: 50, timeout: 8000 });
+    const before = await page.evaluate(() => ({ simTime: window.SF.state.simTime, scale: window.SF.state.timeScale }));
+    const nativeBefore = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
+    log(`focus-recovery: before blur nativeFocused=${nativeBefore}, scale=${before.scale}`);
+    // On Windows win.blur() can leave the window focused. Give focus to a
+    // second, owned blank window so this actually exercises a native edge.
+    await app.evaluate(({ BrowserWindow }) => {
+      const helper = new BrowserWindow({ width: 180, height: 100, show: true, skipTaskbar: true });
+      globalThis.__SF_FOCUS_RECOVERY_HELPER__ = helper;
+      helper.focus();
+    });
+    await page.waitForFunction(() => window.SF.state.timeScale === 0, null, { polling: 50, timeout: 8000 });
+    const paused = await page.evaluate(() => ({
+      simTime: window.SF.state.simTime, scale: window.SF.state.timeScale,
+      lifecycle: window.SF.loop.getDiagnostics().shellState,
+    }));
+    const nativePaused = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
+    await page.waitForTimeout(2500);
+    await app.evaluate(({ BrowserWindow }, id) => {
+      const win = BrowserWindow.fromId(id);
+      win.focus();
+      win.webContents.focus();
+      globalThis.__SF_FOCUS_RECOVERY_HELPER__?.destroy();
+      delete globalThis.__SF_FOCUS_RECOVERY_HELPER__;
+    }, gameWindowId);
+    try {
+      await page.waitForFunction((baseline) => (
+        window.SF.state.timeScale === 1 && window.SF.state.simTime > baseline.simTime + 0.05
+      ), paused, { polling: 50, timeout: 8000 });
+      const result = await page.evaluate(() => ({
+        simTime: window.SF.state.simTime, scale: window.SF.state.timeScale,
+        interceptedFocus: window.__SF_FOCUS_RECOVERY_PROBE__.interceptedFocus,
+        blur: window.__SF_FOCUS_RECOVERY_PROBE__.blur,
+        lifecycle: window.SF.loop.getDiagnostics().shellState,
+        worker: window.SF.simLaneDiag?.().workerClockLastDiagnostics,
+      }));
+      const nativeFocused = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
+      const receipt = { before, nativeBefore, paused, nativePaused, resumed: result, nativeFocused };
+      await writeFile(path.join(OUT, 'focus-recovery.json'), JSON.stringify(receipt, null, 2));
+      if (!nativeBefore || nativePaused || !nativeFocused || paused.lifecycle !== 'foreground-occluded') {
+        throw new Error('focus-recovery stress did not exercise the native focused -> occluded -> focused transition');
+      }
+      log(`focus-recovery: native focus resumed simulation ${paused.simTime} -> ${result.simTime} despite dropped DOM focus`);
+    } finally {
+      await page.keyboard.up('KeyW');
+      await page.evaluate(() => {
+        const trace = window.__SF_FOCUS_RECOVERY_PROBE__;
+        window.removeEventListener('focus', trace.dropFocus, true);
+        window.removeEventListener('blur', trace.onBlur);
+        delete window.__SF_FOCUS_RECOVERY_PROBE__;
+      });
+    }
+  }
   let openingInputBaseline = null;
   if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC || OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
     await page.bringToFront();
@@ -3486,6 +3567,7 @@ try {
     });
   }
   await page.keyboard.down('KeyW');
+  if (TETHER_BOOST_STRESS) await page.keyboard.down('ShiftLeft');
   if (COMBAT_STRESS) {
     const viewport = page.viewportSize() || { width: 1280, height: 720 };
     await page.mouse.move(viewport.width * 0.5, viewport.height * 0.25);
@@ -3609,6 +3691,7 @@ try {
     if (TETHER_STRESS) {
       row.tetherMotion = await page.evaluate(async () => {
         const { readTimeEffectsRequests } = await import('/src/core/timeEffects.js');
+        const { laneRpc } = await import('/src/core/simLaneCommands.js');
         const state = window.SF?.state;
         const player = state?.entities?.get?.(state.playerId);
         const tether = state?.player?.tether;
@@ -3619,10 +3702,15 @@ try {
           mesh: entity.mesh ? { x: entity.mesh.position?.x, z: entity.mesh.position?.z } : null,
         } : null;
         const diag = window.SF?.simLaneDiag?.() || null;
+        const native = await Promise.race([
+          laneRpc('probeState').then((value) => ({ value }), (error) => ({ error: String(error?.message || error) })),
+          new Promise((resolve) => setTimeout(() => resolve({ timedOut: true }), 300)),
+        ]);
         return {
           tick: state?.tick, scale: state?.timeScale,
           timeEffects: state ? readTimeEffectsRequests(state) : null,
           active: tether?.active === true, targetId: tether?.targetId ?? null,
+          native,
           player: pose(player), target: pose(target),
           bodies: state?.entityList?.filter((entity) => entity.alive !== false && entity.collides !== false).length,
           fragments: state?.entityList?.filter((entity) => entity.alive !== false
