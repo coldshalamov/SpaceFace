@@ -140,6 +140,20 @@ export const ALIEN_MACHINE_PROTOCOLS = Object.freeze([
   'unknown', 'observed', 'compliant', 'witnessed', 'exception', 'violation', 'revoked',
 ]);
 
+// Reaction slot unlock gate (FLT-01 / V2 §4 / build_map §30).
+// The alphabet reaction slot is earned in the world through precursor machine protocol standing,
+// not a settings toggle. Any non-unknown, non-fault protocol standing grants the unlock.
+export function hasMachineProtocol(state) {
+  if (!state) return false;
+  const ae = (state.world && state.world.alienEcology) || state.alienEcology;
+  const proto = ae ? ae.machineProtocol : null;
+  return Boolean(proto && proto !== 'unknown' && proto !== 'violation' && proto !== 'revoked');
+}
+
+export function isReactionSlotUnlocked(state) {
+  return hasMachineProtocol(state);
+}
+
 // ── Revelation axis (doc 01 §C-vs-R) ─────────────────────────────────────────────────────────
 // R is what the player KNOWS, independent of what IS on the hull. Tiers gate scanner language.
 export const REVELATION_TIERS = Object.freeze([

@@ -30,7 +30,8 @@ import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { queryNearbyEntities, hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
-import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
+import { hasMachineProtocol } from '../data/alienEcology.js';
+import { tickProgram, assignTemplate, clearTemplate, assignReaction, clearReaction, resolveStationDisplayName, TEMPLATES } from './alphabet.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ASTEROIDS } from '../data/mining.js';
 import {
@@ -741,6 +742,7 @@ export const automation = {
     ctx.def = def;
     ctx.curSector = curSector;
     ctx.diagnostics = this._diag;
+    ctx.bus = this.bus;
     tickProgram(g, ctx, dt);
     this._syncProgrammedOperation(g, def, curSector);
   },
@@ -790,6 +792,48 @@ export const automation = {
     if (!lead) return false;
     const dx = lead.pos.x - target.x, dz = lead.pos.z - target.z;
     return (dx * dx + dz * dz) < arriveR * arriveR;
+  },
+
+  // Cheap spatial threat check for a drone group (reaction slot FLT-01).
+  _isDroneThreatNear(g) {
+    if (!g || !this.state) return false;
+    const curSector = (this.state.world && this.state.world.currentSectorId) || null;
+    if (g.sectorId && curSector && g.sectorId !== curSector) return false;
+    let pos = g.originPos;
+    if (g.entityIds && g.entityIds.length) {
+      const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities && this.state.entities.get(id));
+      const lead = getEnt(g.entityIds[0]);
+      if (lead && lead.pos) pos = lead.pos;
+    }
+    if (!pos && this.state.entities) {
+      const p = this.state.entities.get(this.state.playerId);
+      pos = p ? p.pos : null;
+    }
+    if (!pos) return false;
+    const radius = 600;
+    const r2 = radius * radius;
+    const scratch = this._threatScratch || (this._threatScratch = []);
+    const fallback = (this.state.entityIndex && (this.state.entityIndex.shipLike || this.state.entityIndex.ships))
+      || this.state.entityList
+      || (this.state.entities && typeof this.state.entities.values === 'function' ? this.state.entities.values() : null);
+    const candidates = queryNearbyEntities(this.state, pos, radius, scratch, fallback);
+    for (const e of candidates) {
+      if (!e || e.alive === false) continue;
+      if (e.id === this.state.playerId) continue;
+      if (g.entityIds && g.entityIds.includes(e.id)) continue;
+      const isHostile = Boolean(
+        e.isHostile ||
+        e.factionId === 'pirate' ||
+        e.factionId === 'hostile' ||
+        (e.data && (e.data.isHostile || e.data.hostile))
+      );
+      if (!isHostile) continue;
+      if (!e.pos) continue;
+      const dx = e.pos.x - pos.x;
+      const dz = e.pos.z - pos.z;
+      if (dx * dx + dz * dz <= r2) return true;
+    }
+    return false;
   },
 
   // Mine into the OPERATION shipment at the authored rate (capped by the group's buffer).
@@ -2105,7 +2149,8 @@ export const automation = {
       case 'orderGuard': return this.setFleetOrder(p.shipId, 'guard', p.targetRef);
       // V2 §4 / cut-list #28: assign an alphabet template to a drone group (program it). targetRef
       // is the templateId ('mine_to_depot' | 'patrol_guard' | 'scout_report'); null/'' clears it.
-      case 'assignProgram': return this.assignProgram(p.shipId, p.targetRef);
+      case 'assignProgram': return this.assignProgram(p.shipId, p.targetRef, p.reaction);
+      case 'assignReaction': return this.assignReaction(p.shipId, p.targetRef);
       default: return false;
     }
   },
@@ -2193,18 +2238,41 @@ export const automation = {
 
   // Assign (or clear) an alphabet program on a drone group. The drone then runs the template
   // instead of the legacy mine-to-buffer loop — mining into real cargo + selling at a depot.
-  assignProgram(droneId, templateId) {
+  assignProgram(droneId, templateId, reaction = null) {
     const g = this.state.automation.drones.find((x) => x.id === droneId);
     if (!g) return false;
     if (!templateId) { clearTemplate(g); this.toast('Drone program cleared — the drone returns to default mining', 'info'); return true; }
     if (!TEMPLATES[templateId]) { this.toast('That drone program is not available at this deck', 'error'); return false; }
-    assignTemplate(g, templateId);
+    assignTemplate(g, templateId, reaction);
     this.bus.emit('automation:programAssigned', {
       kind: 'drone', id: g.id, defId: g.defId, templateId,
+      reaction: g.program && g.program.reaction ? g.program.reaction.id : null,
       sectorId: g.sectorId || null,
     });
     this.toast('Drone program: ' + TEMPLATES[templateId].name, 'success');
     return true;
+  },
+
+  // Assign a reaction token to an active drone program (FLT-01).
+  assignReaction(droneId, reactionToken) {
+    const g = this.state.automation.drones.find((x) => x.id === droneId);
+    if (!g || !g.program) return false;
+    const ok = assignReaction(g, reactionToken, this.state);
+    if (!ok) return false;
+    this.bus.emit('automation:reactionAssigned', {
+      kind: 'drone', id: g.id, reaction: g.program.reaction ? g.program.reaction.id : null,
+    });
+    return true;
+  },
+
+  // Clear a drone group's reaction slot.
+  clearReaction(droneId) {
+    const g = this.state.automation.drones.find((x) => x.id === droneId);
+    if (!g || !g.program) return;
+    clearReaction(g);
+    this.bus.emit('automation:reactionCleared', {
+      kind: 'drone', id: g.id,
+    });
   },
 
   // ---- DRONES ----
@@ -3340,6 +3408,7 @@ function makeProgramContext(host) {
     def: null,
     curSector: null,
     diagnostics: null,
+    bus: null,
     steerTo(beacon, ddt) {
       return host._steerGroupTo(this.group, this.def, beacon, ddt, this.curSector);
     },
@@ -3349,14 +3418,67 @@ function makeProgramContext(host) {
     sellMinedCargo(stationId) {
       return host._programSellCargo(this.group, stationId);
     },
+    dropBeacon() {
+      const g = this.group;
+      const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state && this.state.entities && this.state.entities.get(id));
+      let pos = g ? g.originPos : null;
+      if (g && g.entityIds && g.entityIds.length) {
+        const lead = getEnt(g.entityIds[0]);
+        if (lead && lead.pos) pos = { x: lead.pos.x, z: lead.pos.z };
+      }
+      if (!pos && this.state && this.state.entities) {
+        const p = this.state.entities.get(this.state.playerId);
+        pos = p && p.pos ? { x: p.pos.x, z: p.pos.z } : { x: 0, z: 0 };
+      }
+      const b = this.bus || host.bus;
+      if (b && typeof b.emit === 'function') {
+        b.emit('automation:droneBeacon', {
+          id: `drone_beacon_${g ? g.id : 'unknown'}`,
+          pos: pos || { x: 0, z: 0 },
+          source: 'drone',
+        });
+      }
+    },
+    hailStation(stationId) {
+      const stName = resolveStationDisplayName(this.state, stationId);
+      const b = this.bus || host.bus;
+      if (b && typeof b.emit === 'function') {
+        b.emit('comms:log', {
+          from: 'Drone transport',
+          text: `Drone group hails ${stName}: holding for beacon custody transfer.`,
+          kind: 'machine',
+        });
+        b.emit('toast', {
+          text: `Drone group hails ${stName}`,
+          kind: 'info',
+          ttl: 3,
+        });
+      }
+    },
+    onInteract(step, beacon) {
+      const b = this.bus || host.bus;
+      if (b && typeof b.emit === 'function') {
+        b.emit('automation:interact', {
+          groupId: this.group ? this.group.id : null,
+          verb: step && step.verb,
+          stationId: beacon && beacon.stationId,
+        });
+      }
+    },
+    isThreatNear() {
+      return host._isDroneThreatNear(this.group);
+    },
     operationUsed() {
-      return shipmentUsed(this.group);
+      const s = shipmentUsed(this.group);
+      return s > 0 ? s : (Number(this.group?.buffer) || 0);
     },
     operationFull() {
       const g = this.group;
       const def = this.def || {};
       const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0) || 40;
-      return shipmentUsed(g) >= cap - 1e-9;
+      const s = shipmentUsed(g);
+      const total = s > 0 ? s : (Number(g?.buffer) || 0);
+      return total >= cap - 1e-9;
     },
   };
 }
