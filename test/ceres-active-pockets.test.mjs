@@ -562,16 +562,18 @@ test('R5B materializes six inert object slots and two existing-budget collision 
 //   to the authored [3,4] pack (detonator dart weighted 2-of-4) and Ceres enemyDensity
 //   0.18 → 0.73 funds it, so seed 47's belt shadow fields one patrol plus a four-ship
 //   Reach pack (drone/pirate/dart/drone) instead of two ambush raiders: +2 bodies,
-//   +49 measured-skin primitives. The derelict scavenger plan row still lands inside the
-//   Belt Outpost bubble and is skipped, exactly as before this change.
+//   +49 measured-skin primitives.
+// Census re-pinned 2026-10-18 (D229) — the driller and its zone move west of Belt Outpost's
+// 1100 WU protection bubble, so seed 47 now materializes one Reach derelict contact: +1 body,
+// +23 measured-skin primitives, total 46 → 47. The six activity slots still reuse existing bodies.
 assert.deepEqual(first.census, {
-  total: 46,
-  byType: { asteroid: 6, fauna: 12, fx: 16, ship: 5, station: 6, wreck: 1 },
-  collidable: 20,
-  colliders: 379,
+  total: 47,
+  byType: { asteroid: 6, fauna: 12, fx: 16, ship: 6, station: 6, wreck: 1 },
+  collidable: 21,
+  colliders: 402,
   opticCells: 0,
   opticResidentCells: 42,
-}, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
+}, 'six inert activity slots coexist with the materialized Ceres derelict contact');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
   assert.equal(new Set(first.activity.map((row) => row.slotId)).size, EXPECTED_OBJECT_SLOTS.length);

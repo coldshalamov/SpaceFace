@@ -119,6 +119,13 @@ test('a focused sim entering Ceres on seed 4242 materializes the squad and the t
     assert.ok(cohort.length >= 3, `the authored throughline ambush cohort counts ${cohort.length}`);
     assert.deepEqual(cohort.map((entity) => entity.id).sort(), squad.map((entity) => entity.id).sort(),
       'the cohort is exactly the materialized squad');
+
+    const derelictScavengers = [...state.entities.values()].filter((entity) => entity
+      && entity.alive !== false
+      && entity.data?.ai?.zoneId === 'zone_ceres_derelict');
+    assert.ok(derelictScavengers.length > 0,
+      `the Belt Outpost derelict field materializes its scavengers (${derelictScavengers.length})`);
+
     for (const entity of squad) {
       assert.equal(entity.data.ai.passive, true, 'adopted members wait armed, not firing');
       assert.equal(entity.data.ai.roe, 'hold_fire');

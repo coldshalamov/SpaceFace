@@ -136,7 +136,8 @@ const CORE_SECTOR_ZONES = {
       } },
     { id: 'zone_ceres_derelict', name: 'The Abandoned Driller', type: 'derelict_field', factionId: 'faction_reach',
       reason: 'A refinery hauler gutted in a raid; scavengers still pick at the hull.',
-      center: { x: 240, z: -1180 }, radius: 420, presence: P.scavengers([1, 2]) },
+      // The site and its residents sit west of Belt Outpost's ambient-spawn protection bubble.
+      center: { x: -840, z: -1180 }, radius: 420, presence: P.scavengers([1, 2]) },
   ],
 
   // ── S2–S3 Tethys Junction — Meridian exchange, Concord customs, a Quiet cache ──

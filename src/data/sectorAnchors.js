@@ -103,7 +103,7 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'f_ceres_3', center: { x: 920, z: 860 }, clusterRadius: 380 },
     ],
     pois: [
-      { id: 'poi_driller', pos: { x: 240, z: -1180 }, landmarkGlb: 'place_dead_hulk', landmark: true },
+      { id: 'poi_driller', pos: { x: -840, z: -1180 }, landmarkGlb: 'place_dead_hulk', landmark: true },
       { id: 'poi_survey', pos: { x: -1240, z: -320 }, landmarkGlb: 'place_debris_chunk' },
       {
         // Refinery Flare Rack — first light on the ~4,700 wu inbound leg from the Helios

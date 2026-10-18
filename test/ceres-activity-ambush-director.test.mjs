@@ -170,8 +170,8 @@ test('Ceres durable ambush presence is clustered in the Throughline interaction 
     'zone_ceres_ambush|detonator_dart|3|3305.926691|-969.969113',
     'zone_ceres_ambush|wasp_swarmer|4|3288.583880|-941.200282',
     'zone_ceres_ambush|reaver_pirate|4|3300.000000|-938.800000',
-    'zone_ceres_derelict|reaver_pirate|3|240.000000|-1336.000000',
-    'zone_ceres_derelict|reaver_pirate|3|134.827791|-1256.412083',
+    'zone_ceres_derelict|reaver_pirate|3|-840.000000|-1336.000000',
+    'zone_ceres_derelict|reaver_pirate|3|-945.172209|-1256.412083',
   ], 'full Ceres presence ordering/archetype/level sequence stays pinned (ceres-ambush-pack-dart: the ambush carries the 3-4 pack incl. the weighted detonator_dart)');
 
   const presence = zonesForSector(CERES).filter((zone) => zone.presence).map((zone) => ({
