@@ -2,7 +2,7 @@
   "schema": "spaceface.rigidMotionBank.v1",
   "rigId": "towline_kit_controls",
   "sourceAssetId": "SF_SHIP_TOWLINE_KIT",
-  "sourceGlbSha256": "fcd9a7894deb5b6b8199fca6f15dffb3afbb24c67f1764a52b9a6dae470a1846",
+  "sourceGlbSha256": "ab883669645dbf75c8e2c768ae071e44cb15d73a0d6ff06dea92c926401f2cb9",
   "fps": 60,
   "bindings": [
     {
@@ -17,7 +17,7 @@
       "restPose": {
         "translation": [
           -1.7999999523162842,
-          2.380000114440918,
+          2.4800000190734863,
           0
         ],
         "rotation": [

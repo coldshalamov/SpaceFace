@@ -1869,7 +1869,7 @@
     "motionBank": {
       "bytes": 1230,
       "rigId": "towline_kit_controls",
-      "sha256": "12f6f6cb5ec023ede14cff47f5c693004fe9f2fb9d5616e4d715a3c15061e3d4",
+      "sha256": "765ce712f9e0b2da977e43b9ccafcaf8666d771a54713e350ee41d7a12f9b771",
       "uri": "assets/ships/motions/towline-kit.motion.json"
     },
     "nodeCount": 18,
@@ -2147,7 +2147,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_kit.glb"
   },
-  "runtimeHash": "359bb8d68129e97649283792a74de67b25841e792237a6863fdddb962d9972be",
+  "runtimeHash": "fee2fbe6276fc4077ca93607ee738d1415059789d16d1e4ca32cd62729d344b9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
