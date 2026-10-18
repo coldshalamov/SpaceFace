@@ -69,6 +69,8 @@ const HEAD_FIRST_USE_KEYS = Object.freeze({
 // fixed seed reproduces it exactly.
 export const RIDE_SPEED_MARGIN_WU_S = 6;
 export const RIDE_ENTER_S = 0.5;
+// TEACH-12 / INF-013: authored threshold where a latched body qualifies as a far heavier anchor
+export const MASS_ANCHOR_RATIO = 3;
 // One taut cut spends the winch's own integrity. Slack never reaches this spend.
 export const MONOFILAMENT_CUT_INTEGRITY_COST = 0.2;
 // Full reduced-mass coupling: the blade dumps its transverse momentum into what it cuts.
@@ -202,9 +204,9 @@ export const tetherGameplay = {
     this._noRelatchUntil = -Infinity;
     this._noRelatchTargetId = null;
     this._pendingCut = null;
+    this._pendingLatchThrow = false;
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
-    this._pendingLatchThrow = false;
     this._reelStrength = 0;
     this._resetCadenceRuntime(this.state);
     this._lastLineControlDenial = null;
@@ -239,9 +241,9 @@ export const tetherGameplay = {
       // otherwise an id-stable attachment can keep steering/mirroring the stale target id.
       this._active = null;
       this._pendingCut = null;
+      this._pendingLatchThrow = false;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
-      this._pendingLatchThrow = false;
       // SFQ-B026: the display smoother is per-run state, never persisted. A re-adopted live line
       // must warm-start its estimate from 0 exactly like a cold-restarted load, or the uninterrupted
       // run and the reload disagree on tether.tensionEstimate for ~1 s (the release tau).
@@ -268,16 +270,16 @@ export const tetherGameplay = {
       this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
       this._tensionEstimate = 0;
+      this._pendingLatchThrow = false;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
-      this._pendingLatchThrow = false;
       this._releaseSnagLatch(this.state, this._snag, 'ended');
       this._snag = null;
     };
     const endForSectorBoundary = (reason) => {
+      this._pendingLatchThrow = false;
       this._resetCadenceRuntime(this.state);
       this._cancelDrillApproach(reason);
-      this._pendingLatchThrow = false;
       this._resetAcquisitionRuntime(this.state);
       this._endTwinBridleForBoundary(this.state, reason);
       this._releaseSnagLatch(this.state, this._snag, 'ended');
@@ -313,13 +315,13 @@ export const tetherGameplay = {
           this.bus.on('ai:doctrinePhase', (payload) => this._handleNPCBridleCounterplay(payload)),
           this.bus.on('pickup:collected', (payload) => this._onLatchedPayloadAcceptance(payload)),
           this.bus.on('run:wavePlanned', (payload) => this._onSwarmRoundBoundary(payload)),
-        ]
-      : [];
           // The plate's kick is already in the impulse authority. Drop the line on the
           // next tether tick so the tow is thrown instead of hauled back onto the rope.
           this.bus.on('charge:combo', (payload) => {
             if (payload && payload.combo === 'anchorKick') this._pendingLatchThrow = true;
           }),
+        ]
+      : [];
     this._resetPhaseMirror();
   },
 
@@ -387,8 +389,6 @@ export const tetherGameplay = {
     const cadence = this._ensureCadenceRuntime(state, this._active && this._active.attachmentId);
     if (lineLengthCommand === 0) { cadence.winch.velocity = 0; cadence.winch.lastDelta = 0; cadence.phase = 'coast'; }
 
-    // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
-    // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
     // A plate stuck to the body on the line throws that body. The shove already went
     // through the impulse authority; a line that stays up would haul the tow back.
     if (this._pendingLatchThrow) {
@@ -399,6 +399,8 @@ export const tetherGameplay = {
       }
     }
 
+    // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
+    // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
     if (!this._active) this._roundBoundaryCut = false;
     if (this._active && !this._drillApproach && ((masslineCommand && masslineCommand.cut) || this._roundBoundaryCut)) {
       this._roundBoundaryCut = false;
@@ -657,8 +659,13 @@ export const tetherGameplay = {
     // between what the player saw and what they got is observable rather than a bug report.
     const selectionReceipt = nearestOnly ? null : state.masslineAcquisition;
     const selectedEntry = selectionReceipt && selectionReceipt.selected;
+    const pMass = bodyMassOf(player);
+    const tMass = bodyMassOf(target);
+    const massRatio = pMass > 0 ? tMass / pMass : 1;
     this.bus.emit('tether:latched', {
+      sourceId: player.id,
       targetId: target.id,
+      massRatio,
       type: TETHER_DEF_ID,
       selectionReceiptId: (selectionReceipt && selectionReceipt.id) || null,
       context: (selectedEntry && selectedEntry.context)

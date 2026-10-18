@@ -45,6 +45,9 @@ import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { MASS_ANCHOR_RATIO } from './tetherGameplay.js';
+
+export { MASS_ANCHOR_RATIO };
 
 // U5 — the planetary bands' first-contact lines. Instrument register, one line each: what
 // the band is, and the law that governs it. Spoken once per band per body per save.
@@ -781,6 +784,8 @@ export const onboarding = {
         'That load is past your drive\'s tow rating — it will haul, just slowly. A stronger drive raises the class.',
         { entityId: payload.targetId });
     });
+    // TEACH-12 — the first latch on a far heavier body teaches the brace once per profile.
+    bus.on('tether:latched', (payload) => this._onTetherLatchedBrace(payload || {}));
     bus.on('tether:whipImpact', (payload) => {
       if (!massline2Flag('throw')) return;
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -994,6 +999,35 @@ export const onboarding = {
       ? `Missile locked — drop a decoy — ${label}`
       : `Missile locked — drop a decoy — ${label}.`;
     this._showHint('firstDecoyLock', text, payload);
+  },
+
+  // TEACH-12 — the first latch on a far heavier body teaches the brace once per profile.
+  _onTetherLatchedBrace(payload) {
+    if (!payload || payload.targetId == null) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.player.hints && st.player.hints.masslineBrace) return;
+    const playerId = st.playerId;
+    if (payload.sourceId != null && playerId != null && payload.sourceId !== playerId) return;
+    if (payload.actorId != null && playerId != null && payload.actorId !== playerId) return;
+    if (payload.ownerId != null && playerId != null && payload.ownerId !== playerId) return;
+    const target = st.entities && st.entities.get && st.entities.get(payload.targetId);
+    const player = st.entities && st.entities.get && st.entities.get(playerId);
+    if (!target || !player) return;
+    if (target.id === player.id) return;
+    const targetMass = ropeLoadMassT(target);
+    const playerMass = ropeLoadMassT(player);
+    const massRatio = Number.isFinite(payload.massRatio)
+      ? payload.massRatio
+      : (playerMass > 0 ? targetMass / playerMass : 0);
+    if (massRatio < MASS_ANCHOR_RATIO) return;
+    const label = verbBindingLabel(st, 'boost') || resolveActionLabel(st, 'boost', { empty: 'BOOST' });
+    const text = label
+      ? (/[.!?]$/.test(label)
+        ? `Heavy body — boost and brace — ${label}`
+        : `Heavy body — boost and brace — ${label}.`)
+      : 'Heavy body — boost and brace.';
+    this._showHint('masslineBrace', text, payload);
   },
 
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
