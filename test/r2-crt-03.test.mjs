@@ -732,7 +732,7 @@ test('a catalog intent never substitutes a used hull, and a stale listing never 
 // CRT-03 second slice: the bought lot hull keeps a nemesis. While the player flies
 // the marked hull the grudge finds it again — hailing the dead owner's callsign
 // before it opens fire — and the papers remember how often it has died to this hull.
-import { activeImpoundShadow, mintImpoundShadow, tickImpoundGrudge } from '../src/ai/impoundGrudge.js';
+import { activeImpoundShadow, mintImpoundShadow, tickImpoundGrudge } from '../src/systems/impoundGrudge.js';
 
 function grudgeCtx(state, captures) {
   let nextId = 9000;

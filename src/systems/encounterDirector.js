@@ -129,7 +129,7 @@ import {
   tickLootSweeps,
 } from '../ai/lootSweep.js';
 import { tickTowedLurePursuits } from '../ai/towedLure.js';
-import { tickImpoundGrudge } from '../ai/impoundGrudge.js';
+import { tickImpoundGrudge } from './impoundGrudge.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
@@ -501,7 +501,7 @@ export const encounterDirector = {
   },
 
   /** CRT-03 — supplies the grudge rule's spawn/spec/emit surface so the library in
-   *  src/ai/impoundGrudge.js never imports the combat spawn owner directly. */
+   *  src/systems/impoundGrudge.js never imports the combat spawn owner directly. */
   _impoundGrudgeCtx() {
     return {
       helpers: this.helpers,

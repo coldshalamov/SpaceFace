@@ -11,7 +11,7 @@
 // stamps its own shadow fields; combat/AI outcomes stay with their owners.
 
 import { hash32 } from '../core/rng.js';
-import { ActivityKind, normalizeActivity } from './doctrine.js';
+import { ActivityKind, normalizeActivity } from '../ai/doctrine.js';
 
 export const IMPOUND_GRUDGE_SCHEMA = 1;
 

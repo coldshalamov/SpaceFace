@@ -44,7 +44,7 @@ import {
   sameLivingHull,
 } from '../core/livingHull.js';
 import { derivedWithOverbore } from './impoundLot.js';
-import { mintImpoundShadow } from '../ai/impoundGrudge.js';
+import { mintImpoundShadow } from './impoundGrudge.js';
 import {
   scarFromPlayerContact,
   scarFromPlayerDamage,
