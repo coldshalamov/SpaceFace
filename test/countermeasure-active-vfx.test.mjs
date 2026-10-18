@@ -103,3 +103,30 @@ test('paused sim preserves the retained effect and a clock rewind clears it', ()
     assert.equal(out.live, 0);
   } finally { out.dispose(); }
 });
+
+test('a thrown decoy marker and its drawn surfaces track the active seeker bait point', () => {
+  const { state, ship, effect, out } = fixture('decoy', 8);
+  try {
+    const startX = effect.originX;
+    const startZ = effect.originZ;
+    for (const seconds of [1, 2]) {
+      effect.originX = startX + 120 * seconds;
+      effect.originZ = startZ - 40 * seconds;
+      ship.pos.x = -90 * seconds;
+      ship.pos.z = 30 * seconds;
+      ship.data.cm.effectT = 8 - seconds;
+      state.simTime = 10 + seconds;
+      out.update(state);
+      const slot = out.slots.find((s) => s.alive && s.cmEffect === effect);
+      assert.ok(slot, 'the active buoy keeps its retained presentation');
+      assert.deepEqual([slot.x, slot.z], [effect.originX, effect.originZ],
+        'the retained decoy marker must meet the live bait point rather than its deployment point');
+    }
+    assert.equal(out.batch.count, 5, 'the steady buoy mechanism is drawn after ignition');
+    const origins = out.batch.attributes[0];
+    for (let i = 0; i < out.batch.count; i++) {
+      assert.deepEqual([origins.getX(i), origins.getZ(i)], [222, -80],
+        'every active buoy surface must be drawn at the moving bait point');
+    }
+  } finally { out.dispose(); }
+});

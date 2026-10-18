@@ -78,7 +78,7 @@ function tellOwnerDown(state,owner,slot){
 function attackTellReleased(state,slot){
   if(slot.event!=='ai:telegraph')return false;
   const owner=entity(state,slot.sourceId??slot.id);
-  if(owner&&(owner.alive===false||tellOwnerDown(state,owner,slot)))return true;
+  if(!owner||owner!==slot.source||owner.alive===false||tellOwnerDown(state,owner,slot))return true;
   if(!TACTIC_AIM_TELL.has(slot.kind))return false;
   const pending=owner&&owner.alive!==false&&owner.data&&owner.data.ai&&owner.data.ai._attackTelegraph;
   return !pending||pending.kind!==slot.kind;
@@ -239,6 +239,10 @@ export class ActionVfx {
         s.socket.updateWorldMatrix(true,false);s.socket.getWorldPosition(this.socketWorld);
         s.x=this.socketWorld.x+this.origin.x;s.z=this.socketWorld.z+this.origin.z;s.y=this.socketWorld.y;
       }
+    }
+    // A thrown buoy's live bait point moves independently of its deploying hull.
+    if(s.cmEffect&&s.kind==='decoy'){
+      s.x=finite(s.cmEffect.originX,s.x);s.z=finite(s.cmEffect.originZ,s.z);
     }
     const source=entity(state,s.sourceId);
     if(source===s.source&&source?.alive!==false&&valid(source?.pos)&&s.sourceProvenance!=='field'){
