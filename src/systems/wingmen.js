@@ -22,7 +22,9 @@ import {
   wingOrderActivity,
 } from '../data/wingOrders.js';
 import { BEAMS } from '../data/mining.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { setEntityDoctrine } from '../ai/doctrine.js';
+import { BRACE_LATCH_WU, BRACE_MAX_WU, braceCallsignFor, braceEligibleTarget } from '../data/wingBrace.js';
 
 // ── Mining wingmen (fleet order 'mine') ──────────────────────────────────────────────
 // A wingman on mine order is a working extractor, not a follower: it prospects the
@@ -113,6 +115,7 @@ export const wingmen = {
     this._fleetSourceIds = [];
     this._orderedFleet = [];
     this._orderRuntime = new Map();
+    this._braceRuntime = new Map();
 
     this._wingmenQuiet = null; // FB-090 quiet latch
     // Spawn wingmen when the player enters a sector (world emits sector:enter on entry).
@@ -142,6 +145,9 @@ export const wingmen = {
     // is earlier in UPDATE_ORDER, so it has already applied the change by the time we tick).
     this.bus.on('ui:fleetOrder', (p) => { this._wingmenQuiet = null; if (p) this._onFleetOrder(p); });
     this.bus.on('wingOrder:accepted', (p) => { this._wingmenQuiet = null; if (p) this._onWingOrderAccepted(p); });
+    // FLT-02: a stunt the braced wingman witnesses spikes morale + earns a callsign.
+    this.bus.on('stunt:trickDetected', (p) => { if (p) this._onBraceSharedStunt(p); });
+    this.bus.on('stunt:trickAmended', (p) => { if (p) this._onBraceSharedStunt(p); });
     this.bus.on('save:loaded', () => { this._wingmenQuiet = null; });
     this.bus.on('game:started', () => { this._wingmenQuiet = null; });
   },
@@ -153,6 +159,7 @@ export const wingmen = {
     this._fleetSourceIds.length = 0;
     this._orderedFleet.length = 0;
     this._orderRuntime.clear();
+    this._braceRuntime.clear();
     if (this._mineToastT) this._mineToastT.clear();
   },
 
@@ -198,6 +205,7 @@ export const wingmen = {
       if (!fs._liveId) continue;
       const e = state.entities.get(fs._liveId);
       if (!e || !e.alive) {
+        this._clearBrace(fs, e);
         // Wingman died in combat. Route through the existing onHitAsset path so the ledger stays
         // consistent + the LOST/asset-lost flow fires (same as the pre-P1-8 passive path).
         fs.hp = 0; fs.hullPct = 0;
@@ -209,8 +217,10 @@ export const wingmen = {
         continue;
       }
       if (player) {
-        if (fs.order === 'mine') this._applyMiningOrder(fs, e, player, dt, state);
-        else this._applyWingOrder(fs, e, player, index, orderedFleet.length);
+        if (fs.order === 'mine') {
+          this._clearBrace(fs, e);
+          this._applyMiningOrder(fs, e, player, dt, state);
+        } else this._applyWingOrder(fs, e, player, index, orderedFleet.length);
       }
       // Sync hull% so the AutomationPanel health bar reflects live combat damage.
       fs.hullPct = e.hullMax > 0 ? Math.max(0, e.hull / e.hullMax) : 0;
@@ -258,6 +268,7 @@ export const wingmen = {
     if (!fleet) return;
     for (const fs of fleet) {
       if (fs._liveId && state.entities) {
+        this._clearBrace(fs, state.entities.get(fs._liveId));
         const e = state.entities.get(fs._liveId);
         // Capture the last hit even when a hard transition lands before our next update.
         // This is the same persisted fraction used by the normal live synchronization.
@@ -305,6 +316,7 @@ export const wingmen = {
     // the hull's default fittings). They don't use the player's module inventory.
     spec.data = spec.data || {};
     spec.data.isWingman = true;
+    if (fs.callsign) spec.data.callsign = fs.callsign;
     spec.data.wingmanOrder = fs.order || 'escort';
     spec.data.bountyCr = 0;    // no bounty for killing a wingman (player-owned)
     spec.data.lootTableId = null;
@@ -375,6 +387,7 @@ export const wingmen = {
     const commandChanged = !runtime || runtime.orderRef !== fs.wingOrder || runtime.entityId !== entity.id;
 
     if (ai.forceFlee === true || ai.fsm === 'flee') {
+      this._clearBrace(fs, entity);
       intent.fire = false;
       intent.fireGroup = null;
       combat.targetId = null;
@@ -451,13 +464,139 @@ export const wingmen = {
     entity.data.wingmanGuardId = guard ? guard.id : null;
     if (kind === WING_ORDER.ATTACK) {
       combat.targetId = fs.wingOrder.targetId;
+      this._applyBrace(fs, entity, player);
     } else if (intercept) {
+      this._clearBrace(fs, entity);
       combat.targetId = interceptId;
     } else {
+      this._clearBrace(fs, entity);
       combat.targetId = null;
       if (commandChanged || kind === WING_ORDER.HOLD || kind === WING_ORDER.REGROUP) {
         intent.fire = false;
         intent.fireGroup = null;
+      }
+    }
+  },
+
+  // The kernel owns the visible line and all tension/break impulses. This pilot only
+  // approaches the heavy, then burns toward the player through the normal Flight V3 helm.
+  _applyBrace(fs, entity, player) {
+    const state = this.state;
+    const target = state.entities.get(fs.wingOrder.targetId);
+    const lines = this.registry?.get('combat')?.kernel?.attachments;
+    if (fs.order !== 'attack' || !lines || !braceEligibleTarget(state, target, entity)
+      || !isHostileForAI(state, player, target) || !entity.pos || !player.pos
+      || player.alive === false
+      || Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) > BRACE_MAX_WU) {
+      this._clearBrace(fs, entity);
+      return;
+    }
+    let brace = this._braceRuntime.get(fs.id);
+    if (brace && (brace.order !== fs.wingOrder || brace.entityId !== entity.id || brace.targetId !== target.id)) {
+      this._clearBrace(fs, entity);
+      brace = null;
+    }
+    const ai = entity.data.ai;
+    if (!brace) {
+      // Never take another subsystem's line or helm. One attempt belongs to this command.
+      if (ai.passive || lines.listForEntity(entity.id).length) return;
+      brace = { order: fs.wingOrder, entityId: entity.id, targetId: target.id,
+        wasPassive: ai.passive, phase: 'approach', attachmentId: null };
+      this._braceRuntime.set(fs.id, brace);
+    }
+    if (brace.phase === 'done') return;
+    if (brace.phase === 'latched' && lines.get(brace.attachmentId)?.state !== 'active') {
+      this._clearBrace(fs, entity);
+      // A snapped cable is a failed attempt, not a free replacement on the next tick.
+      brace.phase = 'done';
+      this._braceRuntime.set(fs.id, brace);
+      return;
+    }
+    ai.passive = true;
+    let dx = target.pos.x - entity.pos.x;
+    let dz = target.pos.z - entity.pos.z;
+    if (brace.phase === 'approach' && Math.hypot(dx, dz) <= BRACE_LATCH_WU) {
+      const result = lines.create({ defId: 'tether_standard', ownerId: entity.id,
+        targetId: target.id, controlMode: 'wingman_brace',
+        sourceWorld: { x: entity.pos.x, y: 0, z: entity.pos.z },
+        targetWorld: { x: target.pos.x, y: 0, z: target.pos.z } });
+      if (result?.ok) {
+        brace.attachmentId = result.attachment.id;
+        brace.phase = 'latched';
+        fs.braceTargetId = target.id;
+        entity.data.wingmanBrace = target.id;
+      }
+    }
+    if (brace.phase === 'latched') {
+      dx = player.pos.x - target.pos.x;
+      dz = player.pos.z - target.pos.z;
+      if (Math.hypot(dx, dz) < 1) {
+        dx = entity.pos.x - target.pos.x;
+        dz = entity.pos.z - target.pos.z;
+      }
+    }
+    entity.data.intent = { ...entity.data.intent, mode: 'wingman_brace', targetId: target.id,
+      moveX: 0, moveZ: 1, aimAngle: Math.atan2(dz, dx), boost: false,
+      fire: false, fireGroup: null };
+  },
+
+  _clearBrace(fs, entity) {
+    const brace = this._braceRuntime.get(fs.id);
+    if (brace) {
+      const lines = this.registry?.get('combat')?.kernel?.attachments;
+      if (lines?.get(brace.attachmentId)?.state === 'active') {
+        lines.cut(brace.attachmentId, brace.entityId, 'brace_released');
+      }
+      const hull = entity?.id === brace.entityId ? entity : this.state.entities.get(brace.entityId);
+      if (hull?.data && brace.phase !== 'done') {
+        hull.data.ai.passive = brace.wasPassive;
+        hull.data.intent = { ...hull.data.intent, moveX: 0, moveZ: 0, boost: false,
+          fire: false, fireGroup: null };
+      }
+      this._braceRuntime.delete(fs.id);
+    }
+    fs.braceTargetId = null;
+    if (entity?.data) entity.data.wingmanBrace = null;
+  },
+
+  // A witnessed shared stunt spikes the bracing wingman's morale and earns a
+  // callsign. Witness = the live wingman id is named in the stunt receipt's witness
+  // list (or is the actor beside the player). The morale write lands on the live
+  // wingman's ai.wingMorale (reason 'brace_shared_stunt') so the whole AI stack can
+  // read it; the callsign writes to the fleet ledger row (fs.callsign, mirrored to
+  // the live hull's data.callsign) — persistent identity, plain words, never an id.
+  _onBraceSharedStunt(p) {
+    const state = this.state;
+    const fleet = state.automation && state.automation.fleet;
+    if (!fleet || !fleet.length || !state.entities) return;
+    const witnessIds = new Set(
+      []
+        .concat(p.witnessIds || [], p.witnesses || [], p.actorId != null ? [p.actorId] : [])
+        .map((id) => (id != null ? String(id) : null)),
+    );
+    for (const fs of fleet) {
+      if (fs == null || fs.braceTargetId == null || fs._liveId == null) continue;
+      const entity = state.entities.get(fs._liveId);
+      if (!entity || entity.alive === false || !entity.data) continue;
+      const brace = this._braceRuntime.get(fs.id);
+      const line = this.registry?.get('combat')?.kernel?.attachments?.get(brace?.attachmentId);
+      if (line?.state !== 'active') continue;
+      if (!witnessIds.has(String(entity.id))) continue;
+      const ai = entity.data.ai || (entity.data.ai = {});
+      ai.wingMorale = {
+        reason: 'brace_shared_stunt',
+        trickId: p.trickId != null ? String(p.trickId) : null,
+        episodeId: p.episodeId != null ? String(p.episodeId) : null,
+        until: (Number(state.simTime) || 0) + 30,
+      };
+      entity.data.morale = 'steady';
+      if (typeof fs.callsign !== 'string' || !fs.callsign) {
+        fs.callsign = braceCallsignFor(fs.id);
+        entity.data.callsign = fs.callsign;
+        const name = (fs.customName || fs.name) || 'Wingman';
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('toast', { text: name + ' earned the callsign ' + fs.callsign, kind: 'good', ttl: 4 });
+        }
       }
     }
   },

@@ -1021,6 +1021,7 @@ export function createAttachmentService(context) {
       // stepping the cut authority; the bounded warning lease below then keeps the line recoverable
       // for presentation and pilot counterplay before `tether:broken` may be emitted.
       const automaticBreak = attachment.controlMode === 'bounty_contest'
+        || attachment.controlMode === 'wingman_brace'
         || automaticMasslineBreakAllowed(def, owner, target);
       if (state.tick - attachment.createdTick >= grace && breakPolicy && automaticBreak) {
         const tensionRatio = breakPolicy.maxTension > 0 ? attachment.lastTension / breakPolicy.maxTension : 0;
