@@ -1,0 +1,343 @@
+{
+  "generatedFrom": "fb3e015d4e6^1:src/world/farActorTable.js",
+  "seed": 4242,
+  "simTime": 0,
+  "farActors": {
+    "schema": "spaceface.farActors.v1",
+    "version": 2,
+    "rows": [
+      {
+        "id": 80000,
+        "type": "ship",
+        "alive": true,
+        "farResident": true,
+        "pos": {
+          "x": 14700,
+          "z": 6000
+        },
+        "vel": {
+          "x": 0,
+          "z": 0
+        },
+        "rot": 3.141592653589793,
+        "angVel": 0,
+        "radius": 18,
+        "mass": 55,
+        "hull": 200,
+        "hullMax": 200,
+        "shield": 70,
+        "shieldMax": 70,
+        "team": 2,
+        "factionId": "faction_mts",
+        "homeSectorId": "sector_tethys_junction",
+        "hullDefId": "ship_mule",
+        "intent": null,
+        "route": {
+          "kind": "anvil_work",
+          "role": "collector",
+          "phase": "return",
+          "sequence": 2,
+          "center": {
+            "x": 12000,
+            "z": 6000
+          },
+          "deliveredQty": 0
+        },
+        "lastExactT": 0,
+        "nextEventAtT": -1,
+        "collides": true,
+        "data": {
+          "hullDefId": "ship_mule",
+          "defId": "ship_mule",
+          "trafficRole": "stormshift_collector",
+          "homeSectorId": "sector_tethys_junction",
+          "sectorId": "sector_tethys_junction",
+          "worldRecordId": "wr_convoy_ff3d98c6",
+          "role": "stormshift_collector",
+          "ai": {
+            "passive": true,
+            "archetype": "passive",
+            "spawnContext": "convoy_civilian"
+          }
+        },
+        "jobId": null,
+        "trafficRole": "stormshift_collector",
+        "virtualizedAt": 0
+      },
+      {
+        "id": 80001,
+        "type": "ship",
+        "alive": true,
+        "farResident": true,
+        "pos": {
+          "x": 14800,
+          "z": 6000
+        },
+        "vel": {
+          "x": 0,
+          "z": 0
+        },
+        "rot": 0,
+        "angVel": 0,
+        "radius": 18,
+        "mass": 55,
+        "hull": 200,
+        "hullMax": 200,
+        "shield": 70,
+        "shieldMax": 70,
+        "team": 2,
+        "factionId": "faction_mts",
+        "homeSectorId": "sector_tethys_junction",
+        "hullDefId": "ship_mule",
+        "intent": null,
+        "route": {
+          "kind": "anvil_work",
+          "role": "receiver",
+          "phase": "receiving",
+          "sequence": 0,
+          "center": {
+            "x": 12000,
+            "z": 6000
+          },
+          "deliveredQty": 0
+        },
+        "lastExactT": 0,
+        "nextEventAtT": -1,
+        "collides": true,
+        "data": {
+          "hullDefId": "ship_mule",
+          "defId": "ship_mule",
+          "trafficRole": "hauler",
+          "homeSectorId": "sector_tethys_junction",
+          "sectorId": "sector_tethys_junction",
+          "worldRecordId": "wr_convoy_55ef0786",
+          "role": "hauler",
+          "ai": {
+            "passive": true,
+            "archetype": "passive",
+            "spawnContext": "convoy_civilian"
+          }
+        },
+        "jobId": null,
+        "trafficRole": "hauler",
+        "virtualizedAt": 0
+      }
+    ]
+  },
+  "records": {
+    "schemaId": "spaceface.worldRecords.v1",
+    "schemaVersion": 3,
+    "byId": {
+      "wr_convoy_55ef0786": {
+        "recordId": "wr_convoy_55ef0786",
+        "kind": "convoy",
+        "sectorId": "sector_tethys_junction",
+        "homeSectorId": "sector_tethys_junction",
+        "pos": {
+          "x": 14800,
+          "z": 6000
+        },
+        "vel": {
+          "x": 0,
+          "z": 0
+        },
+        "rot": 0,
+        "angVel": 0,
+        "type": "ship",
+        "enemyTypeId": null,
+        "shipDefId": "ship_mule",
+        "factionId": "faction_mts",
+        "team": 2,
+        "level": 1,
+        "hull": 200,
+        "hullMax": 200,
+        "shield": 70,
+        "shieldMax": 70,
+        "armorHp": 0,
+        "armorMax": 0,
+        "alive": true,
+        "outcome": "active",
+        "missionId": null,
+        "missionTag": null,
+        "jobId": null,
+        "playerOwned": false,
+        "playerCreated": false,
+        "named": true,
+        "name": "Stormshift Receiving Tender",
+        "retentionClass": "permanent",
+        "trafficRole": "hauler",
+        "trafficLabel": "Stormshift Receiving Tender",
+        "itinerary": {
+          "kind": "anvil_work",
+          "role": "receiver",
+          "phase": "receiving",
+          "sequence": 0,
+          "center": {
+            "x": 12000,
+            "z": 6000
+          },
+          "deliveredQty": 0
+        },
+        "cargoManifest": {
+          "schemaId": "spaceface.freightCausality.v1",
+          "schemaVersion": 1,
+          "manifestId": "fm_6af1861d",
+          "freighterKey": "wr_convoy_55ef0786:work:0",
+          "role": "miner",
+          "lines": [],
+          "totalQty": 0,
+          "lotId": "lot:wr_convoy_55ef0786:0",
+          "custody": {
+            "holderKind": "traffic",
+            "holderId": "wr_convoy_55ef0786",
+            "acquiredBy": "planet:npcHarvest"
+          }
+        },
+        "freightDockSeq": null,
+        "wreckClass": null,
+        "markerId": null,
+        "victimClass": null,
+        "ai": {
+          "passive": true,
+          "archetype": "passive",
+          "spawnContext": "convoy_civilian"
+        },
+        "isBoss": false,
+        "bossPoiId": null,
+        "bossSectorId": null,
+        "epoch": 0,
+        "createdTick": 0,
+        "lastSeenTick": 0,
+        "durableReason": "convoy",
+        "identityKey": "wr_convoy_55ef0786",
+        "recordSource": null,
+        "recipeKey": null,
+        "lastExactT": 0,
+        "lastObservedT": 0,
+        "abstractTier": "S0_EXACT",
+        "intent": null,
+        "nextEventAtT": null,
+        "scheduledEventIds": [],
+        "regeneration": {
+          "hullRate": 0,
+          "shieldRate": 0,
+          "repairAtT": null
+        },
+        "deactivation": {
+          "reason": null,
+          "exactSnapshotHash": null,
+          "generation": 0
+        },
+        "extra": {}
+      },
+      "wr_convoy_ff3d98c6": {
+        "recordId": "wr_convoy_ff3d98c6",
+        "kind": "convoy",
+        "sectorId": "sector_tethys_junction",
+        "homeSectorId": "sector_tethys_junction",
+        "pos": {
+          "x": 14700,
+          "z": 6000
+        },
+        "vel": {
+          "x": 0,
+          "z": 0
+        },
+        "rot": 3.141592653589793,
+        "angVel": 0,
+        "type": "ship",
+        "enemyTypeId": null,
+        "shipDefId": "ship_mule",
+        "factionId": "faction_mts",
+        "team": 2,
+        "level": 1,
+        "hull": 200,
+        "hullMax": 200,
+        "shield": 70,
+        "shieldMax": 70,
+        "armorHp": 0,
+        "armorMax": 0,
+        "alive": true,
+        "outcome": "active",
+        "missionId": null,
+        "missionTag": null,
+        "jobId": null,
+        "playerOwned": false,
+        "playerCreated": false,
+        "named": true,
+        "name": "Stormshift Collector",
+        "retentionClass": "permanent",
+        "trafficRole": "stormshift_collector",
+        "trafficLabel": "Stormshift Collector",
+        "itinerary": {
+          "kind": "anvil_work",
+          "role": "collector",
+          "phase": "return",
+          "sequence": 2,
+          "center": {
+            "x": 12000,
+            "z": 6000
+          },
+          "deliveredQty": 0
+        },
+        "cargoManifest": {
+          "schemaId": "spaceface.freightCausality.v1",
+          "schemaVersion": 1,
+          "manifestId": "fm_c52088a",
+          "freighterKey": "wr_convoy_ff3d98c6:work:0",
+          "role": "miner",
+          "lines": [
+            {
+              "commodityId": "cmdty_gas_hydrogen",
+              "qty": 4
+            }
+          ],
+          "totalQty": 4,
+          "lotId": "lot:wr_convoy_ff3d98c6:0",
+          "custody": {
+            "holderKind": "traffic",
+            "holderId": "wr_convoy_ff3d98c6",
+            "acquiredBy": "planet:npcHarvest"
+          }
+        },
+        "freightDockSeq": null,
+        "wreckClass": null,
+        "markerId": null,
+        "victimClass": null,
+        "ai": {
+          "passive": true,
+          "archetype": "passive",
+          "spawnContext": "convoy_civilian"
+        },
+        "isBoss": false,
+        "bossPoiId": null,
+        "bossSectorId": null,
+        "epoch": 0,
+        "createdTick": 0,
+        "lastSeenTick": 0,
+        "durableReason": "convoy",
+        "identityKey": "wr_convoy_ff3d98c6",
+        "recordSource": null,
+        "recipeKey": null,
+        "lastExactT": 0,
+        "lastObservedT": 0,
+        "abstractTier": "S0_EXACT",
+        "intent": null,
+        "nextEventAtT": null,
+        "scheduledEventIds": [],
+        "regeneration": {
+          "hullRate": 0,
+          "shieldRate": 0,
+          "repairAtT": null
+        },
+        "deactivation": {
+          "reason": null,
+          "exactSnapshotHash": null,
+          "generation": 0
+        },
+        "extra": {}
+      }
+    },
+    "hullLosses": []
+  }
+}

@@ -19,6 +19,7 @@ import { entityIndexLaneVersion } from './livingWorldViews.js';
 import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
+import { normalizeRecord, recordShouldRematerialize, RECORD_KIND } from './worldRecords.js';
 import { resolveFarEncounters } from './farEncounterOutcomes.js';
 import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
@@ -364,6 +365,44 @@ function isAnvilWorker(entity) {
   return entity?.type === 'ship' && pickHullDefId(d) === 'ship_mule' && !!d.worldRecordId
     && (entity.homeSectorId || d.homeSectorId || d.sectorId) === PLANET_SITE.sectorId
     && route?.kind === 'anvil_work' && (route.role === 'collector' || route.role === 'receiver');
+}
+
+function hydrateLegacyAnvilData(state, row, data) {
+  if (data.itinerary != null && data.cargoManifest != null) return;
+  const route = row.route;
+  if (!isAnvilWorker({ ...row, data: { ...data, itinerary: route } })) return;
+  if (data.itinerary != null && (data.itinerary.kind !== route.kind || data.itinerary.role !== route.role)) return;
+  const byId = state.world?.records?.byId;
+  let candidate = null;
+  for (const key in byId) {
+    const record = byId[key];
+    if (key !== data.worldRecordId && record?.recordId !== data.worldRecordId) continue;
+    // Never guess between duplicate/mis-keyed identities, including an otherwise valid twin.
+    if (candidate || key !== data.worldRecordId || record?.recordId !== key) return;
+    candidate = record;
+  }
+  const record = normalizeRecord(candidate);
+  if (!record || !recordShouldRematerialize(record, 'FULL') || !(record.hull > 0)
+    || record.kind !== RECORD_KIND.CONVOY || record.type !== 'ship' || record.shipDefId !== 'ship_mule'
+    || record.sectorId !== PLANET_SITE.sectorId || record.homeSectorId !== PLANET_SITE.sectorId
+    || record.itinerary?.kind !== route.kind || record.itinerary.role !== route.role
+    || !Number.isFinite(record.itinerary.center?.x) || !Number.isFinite(record.itinerary.center?.z)) return;
+  // Apply the traffic owner's finite-load contract before copying either missing field.
+  const manifest = record.cargoManifest, capacity = route.role === 'collector' ? 12 : 48;
+  if (!manifest || !Number.isSafeInteger(manifest.totalQty) || manifest.totalQty < 0
+    || manifest.totalQty > capacity || !Array.isArray(manifest.lines)) return;
+  let total = 0;
+  for (const line of manifest.lines) {
+    if (!line || typeof line !== 'object' || Array.isArray(line)
+      || line.commodityId !== PLANET_SITE.harvest.commodityShallow
+      || !Number.isSafeInteger(line.qty) || line.qty <= 0) return;
+    total += line.qty;
+  }
+  if (total !== manifest.totalQty) return;
+  // Continue restores the shelf before records. Hydrate only this spawn's data, once both
+  // owners are available, so a refused spawn or a newer shelf never rewrites saved custody.
+  if (data.itinerary == null) data.itinerary = record.itinerary;
+  if (data.cargoManifest == null) data.cargoManifest = manifest;
 }
 
 function leanIdentityData(entity) {
@@ -806,6 +845,7 @@ export function promoteFarActor(state, id, helpers) {
   if (rec.trafficRole != null) data.trafficRole = rec.trafficRole;
   if (Number.isFinite(rec.nextEventAtT)) data.nextEventAtT = rec.nextEventAtT;
   if (rec.homeSectorId) data.homeSectorId = rec.homeSectorId;
+  hydrateLegacyAnvilData(state, rec, data);
   const spec = {
     id: reserved || undefined,
     type: rec.type,
@@ -824,7 +864,7 @@ export function promoteFarActor(state, id, helpers) {
     collides: rec.collides,
     data,
   };
-  if (isAnvilWorker(rec)) {
+  if (isAnvilWorker({ ...rec, data })) {
     const hardware = makeShipEntitySpec('ship_mule', {
       team: spec.team, factionId: spec.factionId, pos: spec.pos, rot: spec.rot,
     });
