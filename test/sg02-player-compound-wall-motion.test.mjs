@@ -229,6 +229,41 @@ test('a glancing fixed-wall stop keeps a small finite rebound when the pose rewr
   }
 });
 
+test('a partial fixed-surface deflection stays inside the ordinary graze budget', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: 1 / 60 });
+  try {
+    const player = makeContactFixtureEntity(1, { isPlayer: true, vx: 195 });
+    const rock = makeContactFixtureEntity(2, { dynamic: false, x: 1000 });
+    owner.syncFromEntities([player, rock]);
+    owner.step(1 / 60);
+    owner.drainContactImpacts();
+    const rec = owner.records.get(player.id);
+    // Seed 8008's native graze: the surface removes only part of the incoming normal
+    // velocity. It deflects the moving hull; it has not stopped it against a wall.
+    rec.body.setLinvel({ x: rec.expected.vx - 8.6659, y: 0, z: 30.1344 }, true);
+    rec.postStep.vDirty = true;
+    owner._stepContactReceipts = [{
+      aId: player.id, bId: rock.id,
+      normal: { x: 0.2763726, z: -0.9610506 },
+      preSolveClosingNormal: { x: 0.2763726, z: -0.9610506 },
+      preSolveClosingSpeed: rec.expected.vx * 0.2763726,
+    }];
+    rec._playerContactCumulativeDeltaV = 0;
+    const applied = owner._applyPlayerStructuralGive(rec);
+    const velocity = rec.body.linvel();
+    const measured = Math.hypot(velocity.x - rec.expected.vx, velocity.z - rec.expected.vz);
+    assert.ok(applied <= 5 + 1e-5,
+      `a grazing deflection must stay inside the ordinary 5 WU/s budget (${applied})`);
+    assert.ok(Math.abs(measured - 5) < 1e-5,
+      `the hull receives the budgeted deflection instead of the full native shove (${measured})`);
+    assert.ok(Math.abs(rec._playerContactCumulativeDeltaV - 5) < 1e-5,
+      'the whole grazing deflection draws on the episode budget');
+  } finally {
+    owner._stepContactReceipts = null;
+    owner.dispose();
+  }
+});
+
 function makeContactFixtureEntity(id, options = {}) {
   const dynamic = options.dynamic !== false;
   const radius = 6;

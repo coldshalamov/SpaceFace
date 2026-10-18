@@ -2218,7 +2218,11 @@ export class Sg02DynamicBodyOwner {
       const expectedNormal = finite(e && e.vx) * nx + finite(e && e.vz) * nz;
       const incoming = -expectedNormal;
       if (!(incoming > PLAYER_CONTACT_ACTIVITY_EPSILON)) continue;
-      const nativeBraking = postVx * nx + postVz * nz - expectedNormal;
+      const postNormal = postVx * nx + postVz * nz;
+      // A partial normal deflection is still a graze, not a wall stop. Exempt only
+      // a stopped/rebounding normal component; otherwise its shove spends the give budget.
+      if (postNormal < -PLAYER_CONTACT_ACTIVITY_EPSILON) continue;
+      const nativeBraking = postNormal - expectedNormal;
       const cancellation = Math.min(Math.max(nativeBraking, 0), incoming);
       if (!(cancellation > PLAYER_CONTACT_ACTIVITY_EPSILON)) continue;
       allowance.x += cancellation * nx;
