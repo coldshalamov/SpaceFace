@@ -26,6 +26,12 @@ const RECEIPT_CAP = 32;
 const RETIRED_RECOVERY_CAP = 1024;
 const CIVILIAN_MANIFEST_LINE_CAP = 16;
 const CIVILIAN_MANIFEST_QTY_CAP = 512;
+// CRT-02 second cast — the prisoner's wingmates. Squad loyalty, not a dice roll: a still-free
+// ship of the surrendered hull's own squad flies in, latches, and pulls. Ranges mirror the
+// rival-hunter contest's own approach/latch vocabulary.
+const SQUAD_RESCUE_WAKE_WU = 1800;
+const SQUAD_RESCUE_LATCH_WU = 120;
+const SQUAD_RESCUE_FREE_S = 6;
 const RECOVERY_SURRENDERED = 'surrendered';
 const RECOVERY_DRIVE_DISABLED = 'drive_disabled';
 const RECOVERY_CIVILIAN_DISABLED = 'civilian_disabled';
@@ -50,6 +56,7 @@ export const surrenderRecovery = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
     this._freshRunPending = false;
     ensureState(this.state);
     this._onSurrendered = (payload) => this._register(payload || {}, RECOVERY_SURRENDERED);
@@ -174,6 +181,9 @@ export const surrenderRecovery = {
       if (record.phase === 'secured' || contestLineLive(state, record)) {
         const jurisdiction = protectedStationAt(state, entity);
         if (jurisdiction) this._custody(record, entity, jurisdiction, now);
+      }
+      if (record.recoveryKind === RECOVERY_SURRENDERED) {
+        this._tickSquadRescue(record, entity, now);
       }
       if (!record.resolved && record.recoveryKind === RECOVERY_CIVILIAN_DISABLED
         && Number.isFinite(record.deadlineAt) && now >= record.deadlineAt) {
@@ -643,6 +653,117 @@ export const surrenderRecovery = {
     }
     this._emit('surrender:escaped', { ...publicRecord(record, entity), escapeeDebtId: (debt && debt.id) || null });
     return true;
+  },
+
+  /**
+   * CRT-02 second cast — the prisoner's wingmates. While the player holds a surrendered
+   * hull on the line, a surviving squadmate peels off, latches the far end, and hauls it
+   * away. The same attachment kernel, the same contest record, the same physics verdicts:
+   * cut their line and the rescue fails; lose yours and after a few seconds of their pull
+   * the prisoner slips your custody and runs free with the squad.
+   */
+  _tickSquadRescue(record, prisoner, now) {
+    if (record.resolved || !prisoner || prisoner.alive === false || !prisoner.pos) return;
+    const state = this.state;
+    const lines = this.registry?.get('combat')?.kernel?.attachments;
+    const playerHolding = record.phase === 'secured' && !!canonicalPlayerAttachment(state, prisoner.id);
+    const rescue = record.squadRescue;
+
+    if (rescue) {
+      const rescuer = entityFor(state, rescue.rescuerId);
+      const rai = rescuer && rescuer.data && rescuer.data.ai || {};
+      const line = rescue.attachmentId != null && lines ? lines.get(rescue.attachmentId) : null;
+      const lineLive = line && line.state === 'active';
+      const rescuerOk = rescuer && rescuer.alive !== false && rescuer.pos
+        && rai.fsm !== 'surrender' && rai.fsm !== 'flee';
+      if (!rescuerOk || (rescue.phase === 'tow' && !lineLive) || (playerHolding === false && !lineLive && rescue.phase === 'tow')) {
+        // Rescue broken — hand the helm back and never re-roll for this prize.
+        if (rescuer && rescuer.data) {
+          const intent = rescuer.data.intent || (rescuer.data.intent = {});
+          intent.moveX = 0; intent.moveZ = 0; intent.boost = false; intent.fire = false; intent.fireGroup = null;
+          rai.passive = rescue.wasPassive === true;
+        }
+        record.squadRescue = null;
+        record.squadRescueDone = true;
+        return;
+      }
+      const intent = rescuer.data.intent || (rescuer.data.intent = {});
+      rai.passive = true; // its helm, not the tactical planner's — one pilot at a time
+      if (rescue.phase === 'approach') {
+        const dx = prisoner.pos.x - rescuer.pos.x;
+        const dz = prisoner.pos.z - rescuer.pos.z;
+        const d2 = dx * dx + dz * dz;
+        const len = Math.hypot(dx, dz) || 1;
+        intent.moveX = dx / len; intent.moveZ = dz / len; intent.boost = true;
+        intent.fire = false; intent.fireGroup = null;
+        if (d2 <= SQUAD_RESCUE_LATCH_WU * SQUAD_RESCUE_LATCH_WU
+            && lines && typeof lines.create === 'function') {
+          const created = lines.create({
+            defId: 'tether_standard', ownerId: rescuer.id, targetId: prisoner.id,
+            controlMode: 'squad_rescue',
+            sourceWorld: { x: rescuer.pos.x, y: 0, z: rescuer.pos.z },
+            targetWorld: { x: prisoner.pos.x, y: 0, z: prisoner.pos.z },
+          });
+          if (created && created.ok) {
+            rescue.attachmentId = created.attachment.id;
+            rescue.phase = 'tow';
+            // tether:attached already staged the generic contest; mark whose line this is
+            // so custody math can tell a squad rescue from a bounty delivery.
+            if (record.contest && record.contest.rivalId === rescuer.id) record.contest.kind = 'squad_rescue';
+          }
+        }
+      } else {
+        // Tow phase: haul the prize away from the player.
+        const player = entityFor(state, state.playerId);
+        const away = awayFrom(rescuer, player || prisoner);
+        intent.moveX = away.x; intent.moveZ = away.z; intent.boost = true;
+        intent.fire = false; intent.fireGroup = null;
+        if (!playerHolding) {
+          // Your line is off and theirs is on — a few seconds of their pull and it is gone.
+          if (!Number.isFinite(rescue.freeAt)) rescue.freeAt = now + SQUAD_RESCUE_FREE_S;
+          if (now >= rescue.freeAt) {
+            const rescueLine = rescue.attachmentId;
+            const rescuerName = displayNameFor(state, rescuer);
+            this._escape(record, prisoner, now);
+            annotate(prisoner, record, `Hauled out of your line by ${rescuerName} — it runs with the squad.`);
+            // They pulled their friend out; they run together.
+            if (rescuer.data && rescuer.data.ai) {
+              rescuer.data.ai.forceFlee = true;
+              rescuer.data.ai.passive = rescue.wasPassive === true;
+            }
+            if (lineLive && lines && typeof lines.cut === 'function') lines.cut(rescueLine, rescuer.id, 'rescue_complete');
+            this._emit('toast', { kind: 'warn', ttl: 5,
+              text: `SQUAD RESCUE - ${rescuerName} hauled their wingmate out of your line.` });
+            record.squadRescue = null;
+            record.squadRescueDone = true;
+          }
+        } else {
+          rescue.freeAt = null;
+        }
+      }
+      return;
+    }
+
+    // No live rescue: pick the squadmate who comes — deterministic lowest id among the
+    // still-fighting ships of the prisoner's own squad.
+    if (!playerHolding || record.squadRescueDone || !record.squadId || !lines) return;
+    if (state.ui && state.ui.docked || (state.player && state.player.flags && state.player.flags.docked)) return;
+    if (protectedStationAt(state, prisoner)) return; // lawful rings keep the contest off
+    const rescuer = pickSquadRescuer(state, prisoner, record.squadId, lines);
+    if (!rescuer) return;
+    record.squadRescue = {
+      rescuerId: rescuer.id,
+      phase: 'approach',
+      wasPassive: rescuer.data && rescuer.data.ai && rescuer.data.ai.passive === true,
+      attachmentId: null,
+      freeAt: null,
+    };
+    const rai = rescuer.data.ai || (rescuer.data.ai = {});
+    rai.passive = true;
+    const intent = rescuer.data.intent || (rescuer.data.intent = {});
+    intent.moveX = 0; intent.moveZ = 0; intent.boost = false; intent.fire = false; intent.fireGroup = null;
+    this._emit('toast', { kind: 'warn', ttl: 5,
+      text: `Its wingmates are coming for the tow — keep clear of their Massline.` });
   },
 
   _threatenEscapee(record, entity, debt) {
@@ -1461,6 +1582,30 @@ function lawfulRecoveryDestination(state, entity, {
 
   candidates.sort((a, b) => a.travelWU - b.travelWU || a.stationId.localeCompare(b.stationId));
   return candidates[0] || null;
+}
+
+/** The squadmate that comes for the tow: a still-free ship of the prisoner's own squad,
+ *  deterministic lowest id. A surrendered, fleeing, towing, or job-bound mate stays home. */
+function pickSquadRescuer(state, prisoner, squadId, lines) {
+  if (!state || !prisoner || !squadId) return null;
+  let best = null;
+  const list = state.entityList || (state.entities ? Array.from(state.entities.values()) : []);
+  for (const entity of list) {
+    if (!entity || entity.id === prisoner.id || entity.alive === false) continue;
+    if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+    if (!entity.pos) continue;
+    const data = entity.data || {};
+    const ai = data.ai || {};
+    if (ai.squadId !== squadId) continue;
+    if (ai.fsm === 'surrender' || ai.fsm === 'flee') continue;
+    if (data.squadRescue || data.jobId || data.npcTowAttachmentId) continue;
+    if (lines && typeof lines.listForEntity === 'function' && lines.listForEntity(entity.id).length) continue;
+    const dx = entity.pos.x - prisoner.pos.x;
+    const dz = entity.pos.z - prisoner.pos.z;
+    if (dx * dx + dz * dz > SQUAD_RESCUE_WAKE_WU * SQUAD_RESCUE_WAKE_WU) continue;
+    if (!best || entity.id < best.id) best = entity;
+  }
+  return best;
 }
 
 function awayFrom(entity, player) {

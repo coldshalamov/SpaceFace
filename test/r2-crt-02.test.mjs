@@ -454,3 +454,110 @@ test('seed 4242: the real player Monofilament sweep severs the hunter cable and 
   assert.equal(t.events.custody.length, 1);
   assert.equal(t.events.grants.length, 1);
 });
+
+// CRT-02 second cast: the prisoner's wingmates. While the player holds a surrendered
+// hull, a surviving ship of its own squad peels off, latches the far end through the
+// same kernel, and hauls it out. Same physics verdicts: cut their line and the rescue
+// fails; lose yours and their pull frees the prisoner.
+
+function wingmate(t, { pos } = {}) {
+  return t.sim.spawn({
+    type: 'ship',
+    team: 1,
+    factionId: 'faction_reach',
+    pos: pos || { x: 1500, z: 0 },
+    hull: 120,
+    hullMax: 120,
+    mass: 90,
+    data: {
+      name: 'Reach Wingmate',
+      ai: { squadId: 'sq_towline_contest', archetype: 'pirate_raider', fsm: 'attack', passive: false },
+      intent: { fire: false, fireGroup: null, moveX: 0, moveZ: 0 },
+      combat: { targetId: null, lockTarget: null },
+    },
+  });
+}
+
+test('seed 4242: a surviving squadmate latches the far end and hauls its friend out', { skip: !surrenderRecovery }, () => {
+  const t = boot({ withHunters: true });
+  const mate = wingmate(t);
+  const playerLine = secureKernelLine(t);
+  const record = Object.values(t.state.surrenderRecovery.records)[0];
+
+  t.sim.step();
+  assert.ok(record.squadRescue, 'a still-fighting squadmate commits to the rescue');
+  assert.equal(record.squadRescue.rescuerId, mate.id);
+  assert.equal(record.squadRescue.phase, 'approach');
+  assert.equal(mate.data.ai.passive, true, 'the wingmate flies its own helm, not the tactical planner\'s');
+
+  mate.pos = { x: t.hostile.pos.x + 300, z: t.hostile.pos.z };
+  t.sim.step();
+  assert.equal(mate.data.intent.boost, true, 'it burns to reach the prize');
+  assert.ok(Math.abs(mate.data.intent.moveX) > 0.5 || Math.abs(mate.data.intent.moveZ) > 0.5,
+    'its helm holds a bearing on the prize');
+
+  mate.pos = { x: t.hostile.pos.x + 90, z: t.hostile.pos.z };
+  t.sim.step();
+  const squadLine = t.kernel.attachments.listForEntity(mate.id)
+    .find((line) => line.ownerId === mate.id && line.targetId === t.hostile.id);
+  assert.ok(squadLine, 'the wingmate latches a real Massline on the prize');
+  assert.equal(squadLine.controlMode, 'squad_rescue');
+  assert.equal(record.contest.rivalId, mate.id, 'the contest names the wingmate');
+  assert.equal(record.contest.kind, 'squad_rescue', 'a squad line is not a bounty delivery');
+  assert.equal(record.squadRescue.phase, 'tow');
+  assert.equal(mate.data.intent.boost, true, 'it hauls away under boost');
+
+  // Your line comes off; theirs stays on. Six seconds of their pull and it is gone.
+  t.kernel.attachments.cut(playerLine.id, t.player.id, 'player_cut');
+  t.sim.runTicks(Math.ceil(6.5 / SIM_DT));
+  assert.equal(record.resolved, true);
+  assert.equal(record.phase, 'escaped', 'an uncontested squad tow frees the prisoner');
+  assert.equal(t.hostile.data.ai.fsm, 'flee');
+  assert.equal(wingmate.data, wingmate.data); // shape guard
+  assert.equal(mate.data.ai.forceFlee, true, 'the wingmate runs out with its friend');
+  assert.match(t.hostile.data.surrenderRecovery.instruction, /wingmate|squad/i);
+  assert.ok(t.events.toasts.some((p) => /wingmate/i.test(p.text || '')),
+    'the rescue is announced on the wire');
+});
+
+test('cutting the wingmate\'s line breaks the rescue and the prize stays yours', { skip: !surrenderRecovery }, () => {
+  const t = boot({ withHunters: true });
+  const mate = wingmate(t);
+  secureKernelLine(t);
+  const record = Object.values(t.state.surrenderRecovery.records)[0];
+  t.sim.step();
+  mate.pos = { x: t.hostile.pos.x + 90, z: t.hostile.pos.z };
+  t.sim.step();
+  const squadLine = t.kernel.attachments.listForEntity(mate.id)
+    .find((line) => line.ownerId === mate.id && line.targetId === t.hostile.id);
+  assert.ok(squadLine);
+
+  t.kernel.attachments.breakAttachment(squadLine, 'cut', t.player.id);
+  t.sim.step();
+  assert.equal(record.squadRescue, null, 'a cut rescue line ends the attempt');
+  assert.equal(record.squadRescueDone, true, 'the squad does not re-roll for the same prize');
+  assert.equal(mate.data.ai.passive, false, 'the wingmate\'s own doctrine gets its helm back');
+  assert.equal(record.resolved, false);
+  assert.equal(record.phase, 'secured', 'the prize is still yours');
+
+  // An intact second attempt never comes: tow it into the ring as usual.
+  t.sim.runTicks(30);
+  assert.equal(Object.values(t.state.surrenderRecovery.records)[0].squadRescue, null);
+  towIntoRing(t);
+  t.sim.runTicks(30);
+  assert.equal(t.events.custody.length, 1);
+});
+
+test('a squadmate already surrendered or fled stays home', { skip: !surrenderRecovery }, () => {
+  const t = boot({ withHunters: true });
+  t.sim.spawn({
+    type: 'ship', team: 1, factionId: 'faction_reach',
+    pos: { x: 1500, z: 0 }, hull: 120, hullMax: 120, mass: 90,
+    data: { name: 'Coward', ai: { squadId: 'sq_towline_contest', fsm: 'flee', passive: false },
+      intent: { fire: false, moveX: 0, moveZ: 0 }, combat: {} },
+  });
+  secureKernelLine(t);
+  const record = Object.values(t.state.surrenderRecovery.records)[0];
+  t.sim.runTicks(30);
+  assert.equal(record.squadRescue, undefined, 'a fleeing squadmate never takes the tow');
+});
