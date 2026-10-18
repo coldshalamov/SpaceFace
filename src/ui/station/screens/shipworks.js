@@ -59,7 +59,7 @@ import {
   mountRefusal,
   outfitBudgetBlocker,
   shipworksStationAccess,
-  shipyardHullInfo,
+  shipyardPurchaseQuote,
   sizeFits,
   stationShopOffer,
 } from '../../../systems/ships.js';
@@ -3645,18 +3645,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     } else {
       // FB-062 — the rail is this yard's ledger, not the whole catalog: a hull another yard
       // builds exclusively is absent here, and a yard offer price is the price on the row.
-      const yardStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
       railListEl.innerHTML = SHIPS.filter((s) => (s.price || 0) >= 0).map((s) => {
-        const yard = shipyardHullInfo(s.id, yardStationId);
+        const yard = shipyardPurchaseQuote(ctx.state, s.id);
         if (!yard.listed) return '';
         const on = s.id === buyId ? ' is-active' : '';
         const roleLabel = describeHullRole(s.id)?.roleLabel || s.role || 'ship';
+        const hullLabel = yard.usedHull ? `Used ${s.name}${yard.usedHull.callsign ? ' \u00b7 ' + yard.usedHull.callsign : ''}` : s.name;
         const price = yard.price;
         const priceWord = price > 0 ? fmt(price) + ' credits' : 'owned';
         return (
-          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
-            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
-              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${s.tier}${yard.offer ? ' · yard offer' : ''}</span></span>` +
+          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(hullLabel)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
+            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(hullLabel)}</span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${s.tier}${yard.usedHull ? ' · used hull' : yard.offer ? ' · yard offer' : ''}</span></span>` +
             `<span class="k-row__num sx-sw-row__price">${price > 0 ? fmt(price) : 'Owned'}</span>` +
           `</button>`
         );
@@ -3726,18 +3726,20 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const facts = railCompare.candidate || catalogHullFacts(def.id);
       // FB-062 — the chit reads this yard's price, and a hull another yard builds exclusively
       // is not buyable here at all.
-      const yardStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
-      const yard = shipyardHullInfo(def.id, yardStationId);
+      const yard = shipyardPurchaseQuote(ctx.state, def.id);
+      const usedHull = yard.usedHull;
+      const hullLabel = usedHull ? `Used ${def.name}${usedHull.callsign ? ' \u00b7 ' + usedHull.callsign : ''}` : def.name;
+      const buyLabel = usedHull ? 'Buy used hull' : 'Buy ship';
       const price = yard.price;
       const afford = price <= credits;
-      const isOwned = owned().some((s) => s.defId === def.id);
+      const isOwned = !usedHull && owned().some((s) => s.defId === def.id);
       const availability = shipworksActionAvailability(ctx.state);
       const canBuy = afford && availability.hullEnabled && yard.listed;
       // a key that cannot be pressed still says what it would do; why it cannot stands under it as a label
       const whyNot = !yard.listed
         ? 'Not built at this yard'
         : !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(price - credits)} cr short`);
-      const buyAria = canBuy ? 'Buy ship' : `Buy ship, ${whyNot}`;
+      const buyAria = canBuy ? buyLabel : `${buyLabel}, ${whyNot}`;
       // The stage-right column: the hull's name and class, its price as the hero number, then the hull as
       // readings against the one you fly (each carries your hull's value as its ghost: ice where this hull
       // gains, dim bone where it costs), and Buy as the one primary key. The sockets stand on the disc.
@@ -3754,9 +3756,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         return `<li class="sx-sw-read__cell"><span class="sx-sw-read__v"><b>${fmt(v)}${unit ? `<small>${unit}</small>` : ''}</b>${ghost}</span><span class="sx-sw-read__k">${label}</span></li>`;
       };
       sideEl.innerHTML =
-        `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(def.name))}</h3>` +
+        `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(hullLabel))}</h3>` +
         `<p class="sx-sw-side__class">${escapeHtml(def.role || 'ship')} \u00b7 T${def.tier}</p>` +
-        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${price > 0 ? fmt(price) : 'Starter'}</span><span class="k-hero__w">${price > 0 ? (yard.offer ? 'credits · yard offer' : 'credits') : 'hull'}</span></div>` +
+        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${price > 0 ? fmt(price) : 'Starter'}</span><span class="k-hero__w">${price > 0 ? (usedHull ? 'credits · used hull' : yard.offer ? 'credits · yard offer' : 'credits') : 'hull'}</span></div>` +
+        (usedHull ? `<p class="k-sentence sx-muted">${escapeHtml(usedHull.scarSentence)} ${escapeHtml(usedHull.deedLine)} Thrusters bored out; pulls harder than stock.</p>` : '') +
         `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
           reading('Hull', facts.hull, mineFacts && mineFacts.hull, '') + reading('Shield', facts.shield, mineFacts && mineFacts.shield, '') +
           reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
@@ -3769,7 +3772,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(price)} cr</small>` : ''}</button></li>` +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${usedHull ? `data-listing-id="${escapeHtml(usedHull.listingId)}"` : ''} ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">${buyLabel}${canBuy ? ` <small>${fmt(price)} cr</small>` : ''}</button></li>` +
               (canBuy ? '' : `<li class="sx-buybar__why" aria-hidden="true">${escapeHtml(whyNot)}</li>`)) +
         `</ul>`;
       dressSide();
@@ -4937,7 +4940,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const buy = ev.target.closest('[data-buyship]');
     if (buy && !buy.disabled && shipworksActionAvailability(ctx.state).hullEnabled) {
       buy.disabled = true;
-      if (ctx.bus) { ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); }
+      if (ctx.bus) {
+        const listingId = buy.getAttribute('data-listing-id');
+        ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship'), ...(listingId ? { listingId } : {}) });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      }
       setTimeout(refresh, 60);
     }
     const activate = ev.target.closest('[data-activate-ship]');

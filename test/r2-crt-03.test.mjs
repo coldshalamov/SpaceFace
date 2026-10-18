@@ -4,7 +4,10 @@
 // before the purchase. A quiet loss does not open a second offer.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
+import { combat as combatPrototype } from '../src/systems/combat.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { livingHullWithRenown, livingHullWithScar } from '../src/core/livingHull.js';
@@ -118,6 +121,8 @@ function spawnVictim(state, { id, defId, name, callsign, livingHull, factionId =
     id,
     alive: true,
     type: 'ship',
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
     factionId,
     data: {
       defId,
@@ -139,7 +144,10 @@ test('a killed hull is listed with its scars and papers, then bought as that sam
     livingHull: markedHull(true),
   });
   const beforeScars = scarPrint(h.state.entities.get(7).data.livingHull);
-  h.bus.emit('entity:killed', { id: 7, type: 'ship', killerId: 1, factionId: 'faction_reach' });
+  let deadAtReceipt = false;
+  h.bus.on('entity:killed', () => { deadAtReceipt = h.state.entities.get(7).alive === false; });
+  combatPrototype.kill.call({ state: h.state, bus: h.bus }, h.state.entities.get(7), 1);
+  assert.equal(deadAtReceipt, true, 'combat marks the victim dead before lossLedger receives the kill');
 
   const listing = h.state.lossLedger.impound;
   assert.ok(listing, 'a killed hull is on the station lot before anyone buys it');
@@ -166,7 +174,7 @@ test('a killed hull is listed with its scars and papers, then bought as that sam
   law.init({ state: h.state, bus: h.bus, helpers: {} });
   h.state.player.credits = 15000;
   const fleetBefore = h.state.player.ownedShips.length;
-  h.bus.emit('ui:buyShip', { defId: 'ship_wasp' });
+  h.bus.emit('ui:buyShip', { defId: 'ship_wasp', listingId: listing.listingId });
 
   assert.equal(h.state.player.ownedShips.length, fleetBefore + 1);
   const owned = h.state.player.ownedShips.at(-1);
@@ -220,7 +228,7 @@ test('a killed hull is listed with its scars and papers, then bought as that sam
   assert.deepEqual(purchases, [{ defId: 'ship_pelican', price: 12000 }]);
 
   const afterWasp = h.state.player.ownedShips.length;
-  h.bus.emit('ui:buyShip', { defId: 'ship_wasp' });
+  h.bus.emit('ui:buyShip', { defId: 'ship_wasp', listingId: listing.listingId });
   assert.equal(h.state.player.ownedShips.length, afterWasp);
 
   const blob = JSON.parse(JSON.stringify(owned));
@@ -344,13 +352,13 @@ test('quiet losses, the wrong yard, and a thin wallet do not move the lot', () =
 
   h.state.ui.dockedStationId = 'station_forge';
   const countAtForge = h.state.player.ownedShips.length;
-  h.bus.emit('ui:buyShip', { defId: 'ship_wasp' });
+  h.bus.emit('ui:buyShip', { defId: 'ship_wasp', listingId: listing.listingId });
   assert.equal(h.state.player.ownedShips.length, countAtForge);
   assert.equal(h.state.lossLedger.impound.lossId, lossId);
 
   h.state.ui.dockedStationId = 'station_helios';
   h.state.player.credits = 100;
-  h.bus.emit('ui:buyShip', { defId: 'ship_wasp' });
+  h.bus.emit('ui:buyShip', { defId: 'ship_wasp', listingId: listing.listingId });
   assert.equal(h.state.player.ownedShips.length, countAtForge);
   assert.equal(h.state.lossLedger.impound.lossId, lossId);
   assert.equal(h.state.player.credits, 100);
@@ -453,5 +461,135 @@ test('a surrendered hull keeps the scar it arrived with and opens one lot', () =
   quietBus.emit('save:loaded');
   assert.equal(quiet.lawSecurity.hullPapers, undefined);
   quietLaw.destroy();
+  h.ledger.destroy();
+});
+
+test('custody transfer cannot list a dead hull', () => {
+  const h = boot();
+  spawnVictim(h.state, {
+    id: 11, defId: 'ship_wasp', name: 'Marrow', callsign: 'Marrow', livingHull: markedHull(true),
+  });
+  h.state.entities.get(11).alive = false;
+  h.bus.emit('law:custodyTransfer', {
+    entityId: 11, stationId: 'station_helios', factionId: 'faction_reach',
+  });
+  assert.equal(h.state.lossLedger.impound, undefined);
+  assert.equal(h.news.length, 0);
+  h.ledger.destroy();
+});
+
+
+test('Shipworks quotes the actual used hull and its purchase button buys that listing', { timeout: 60000 }, async () => {
+  const require = createRequire(import.meta.url);
+  const { createGameServer } = require('../scripts/lib/gameServer.cjs');
+  const { loadPlaywright } = await import('../scripts/lib/load-playwright.mjs');
+  const { chromium } = await loadPlaywright();
+  const server = createGameServer({ root: fileURLToPath(new URL('../', import.meta.url)), playerStoreDir: '' });
+  let browser;
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+    await page.goto(`http://127.0.0.1:${server.address().port}/tools/ui-bench.html?screen=station-shipworks&chrome=0`);
+    await page.waitForFunction(() => window.__BENCH_READY === true);
+    const hull = markedHull(true);
+    const listing = await page.evaluate(async (livingHull) => {
+      const [{ createBus }, { createGameState }, { lossLedger }, { ships, buildSlotList }, { combat }, ui] = await Promise.all([
+        import('/src/core/eventBus.js'), import('/src/core/gameState.js'), import('/src/systems/lossLedger.js'),
+        import('/src/systems/ships.js'), import('/src/systems/combat.js'), import('/src/ui/station/screens/shipworks.js'),
+      ]);
+      const previousStage = ui.getSharedShipStage({});
+      previousStage.onHide();
+      const state = createGameState(4242);
+      state.mode = 'flight'; state.simTime = 120; state.tick = 7200;
+      state.world.currentSectorId = 'sector_helios_prime';
+      state.ui.docked = true; state.ui.dockedStationId = 'station_helios';
+      state.playerId = 1; state.player.credits = 15000;
+      state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: new Array(buildSlotList('ship_kestrel').length).fill(null) }];
+      state.entities.set(1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: { defId: 'ship_kestrel' } });
+      state.entities.set(7, {
+        id: 7, type: 'ship', alive: true, factionId: 'faction_reach', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+        data: { defId: 'ship_wasp', name: 'Marrow', callsign: 'Marrow', sectorId: 'sector_helios_prime', livingHull },
+      });
+      const bus = createBus();
+      const ledger = Object.create(lossLedger); ledger.init({ state, bus, helpers: {} });
+      const owner = Object.assign({}, ships, { _instSeq: 0 }); owner.init({ state, bus, helpers: {} });
+      const intents = [], charges = [];
+      bus.on('ui:buyShip', (p) => intents.push(p));
+      bus.on('economy:chargeCredits', (p) => { charges.push(p); state.player.credits -= p.amount; });
+      combat.kill.call({ state, bus }, state.entities.get(7), 1);
+      const stage = ui.createShipStage({ state, bus });
+      previousStage.el.replaceWith(stage.el);
+      stage.onShow();
+      stage.el.querySelector('[data-mode="buy"]').click();
+      stage.el.querySelector('[data-buy="ship_wasp"]').click();
+      window.__CRT03 = { state, stage, intents, charges };
+      return state.lossLedger.impound;
+    }, hull);
+    const row = page.locator('.sx-sw__list [data-buy="ship_wasp"]');
+    assert.match(await row.innerText(), /11,200/, 'the actual purchase rail quotes the used price');
+    assert.match(await row.innerText(), /used/i);
+    const side = page.locator('.sx-sw__side');
+    assert.match(await side.innerText(), /Marrow/);
+    await page.waitForFunction(() => document.querySelector('.sx-sw-side__hero .k-hero__n')?.getAttribute('aria-label') === '11,200');
+    assert.equal(await side.locator('.k-hero__n').getAttribute('aria-label'), '11,200');
+    assert.ok((await side.innerText()).includes(listing.scarSentence));
+    assert.ok((await side.innerText()).includes(listing.deedLine));
+    assert.equal(RAW_ID.test(await side.innerText()), false);
+    const buy = side.locator('[data-buyship="ship_wasp"]');
+    assert.equal(await buy.isDisabled(), false, '15,000 credits can buy the 11,200-credit lot');
+    assert.equal(await buy.getAttribute('data-listing-id'), listing.listingId);
+    await page.evaluate(() => { const h = window.__CRT03; h.state.player.credits = 100; h.stage.refresh(); });
+    assert.equal(await buy.isDisabled(), true);
+    assert.match(await side.innerText(), /11,100 cr short/i, 'the disabled reason uses the lot price');
+    await page.evaluate(async () => {
+      const h = window.__CRT03; h.state.player.credits = 15000; h.stage.refresh();
+      await document.fonts.ready;
+      for (const animation of document.getAnimations()) {
+        if (animation.effect?.getTiming?.().iterations !== Infinity) { try { animation.finish(); } catch {} }
+      }
+    });
+    await page.screenshot({ path: '.devshots/delegates/oct17/fix-r3b-3/used-hull.png' });
+    await buy.click();
+    const bought = await page.evaluate(() => {
+      const h = window.__CRT03;
+      return { owned: h.state.player.ownedShips.at(-1), credits: h.state.player.credits,
+        listing: h.state.lossLedger.impound || null, intents: h.intents, charges: h.charges };
+    });
+    assert.deepEqual(bought.intents, [{ defId: 'ship_wasp', listingId: listing.listingId }]);
+    assert.equal(bought.charges[0].amount, 11200);
+    assert.equal(bought.credits, 3800);
+    assert.equal(bought.listing, null);
+    assert.deepEqual(scarPrint(bought.owned.livingHull), scarPrint(hull));
+    assert.equal(bought.owned.rapSheetLine, listing.deedLine);
+    await page.evaluate(() => window.__CRT03.stage.dispose());
+  } finally {
+    if (browser) await browser.close();
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+
+test('a catalog intent never substitutes a used hull, and a stale listing never buys stock', () => {
+  const h = boot({ credits: 100000 });
+  h.state.player.researchedNodes.push(WASP.requiresTech);
+  spawnVictim(h.state, {
+    id: 7, defId: 'ship_wasp', name: 'Marrow', callsign: 'Marrow', livingHull: markedHull(true),
+  });
+  combatPrototype.kill.call({ state: h.state, bus: h.bus }, h.state.entities.get(7), 1);
+  const listing = h.state.lossLedger.impound;
+  const before = h.state.player.ownedShips.length;
+  h.bus.emit('ui:buyShip', { defId: 'ship_wasp' });
+  assert.equal(h.state.player.ownedShips.length, before + 1);
+  assert.equal(h.charges.at(-1).amount, WASP.price);
+  assert.equal(h.state.player.ownedShips.at(-1).rapSheet, undefined);
+  assert.equal(h.state.lossLedger.impound.listingId, listing.listingId);
+
+  delete h.state.lossLedger.impound;
+  const paid = h.charges.length;
+  h.bus.emit('ui:buyShip', { defId: 'ship_wasp', listingId: listing.listingId });
+  assert.equal(h.state.player.ownedShips.length, before + 1);
+  assert.equal(h.charges.length, paid);
   h.ledger.destroy();
 });

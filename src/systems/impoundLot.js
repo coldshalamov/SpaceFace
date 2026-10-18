@@ -161,7 +161,7 @@ function papersForHull(hull, entry, entity, sectorId, simTime, tick) {
  */
 export function postImpoundListing(state, bus, { entity, entry, recovery } = {}) {
   if (!state || !state.lossLedger || !entity || entity.id === state.playerId) return null;
-  if (entity.alive === false) return null;
+  if (recovery && entity.alive === false) return null;
   if (state.lossLedger.impound && typeof state.lossLedger.impound === 'object') return null;
   const data = entity.data || {};
   if (data.factionPresence && data.factionPresence.factionId === 'faction_understory') return null;

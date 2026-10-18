@@ -171,6 +171,15 @@ function impoundOfferFor(state, defId) {
   return lot;
 }
 
+/** The purchase screen and its intent quote the same concrete hull at the current dock. */
+export function shipyardPurchaseQuote(state, defId) {
+  const yard = shipyardHullInfo(defId, dockedShopStationId(state));
+  const usedHull = impoundOfferFor(state, defId);
+  return usedHull
+    ? { ...yard, listed: true, price: usedHull.price, offer: false, usedHull }
+    : { ...yard, usedHull: null };
+}
+
 function derivedForOwned(defId, fittings, player, owned) {
   const derived = getDerivedStats(defId, fittings || [], player);
   const quirk = owned && owned.impoundQuirk;
@@ -1706,9 +1715,13 @@ export const ships = {
       // station click can only name a real, priced catalog hull. Do not forward control flags from
       // an untrusted DOM/event payload.
       const defId = p && p.defId;
-      // A pre-owned hull is this station's one lot listing, not a discounted catalog row.
-      const listing = impoundOfferFor(this.state, defId);
-      if (listing) return this.buyImpound(listing);
+      // A used purchase names the quoted lot. A stale lot must never become a stock purchase.
+      if (p.listingId != null) {
+        const listing = shipyardPurchaseQuote(this.state, defId).usedHull;
+        if (listing && listing.listingId === p.listingId) return this.buyImpound(listing);
+        this.bus.emit('toast', { text: 'That used hull is no longer on this lot.', kind: 'error', ttl: 3 });
+        return false;
+      }
       const def = SHIP_BY_ID.get(defId);
       const stationId = dockedShopStationId(this.state);
       const offer = stationShopOffer(def, stationId);
