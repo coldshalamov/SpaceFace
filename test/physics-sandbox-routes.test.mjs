@@ -220,7 +220,7 @@ function blastBeside(state, helpers, center, radius, impulse, evidence = {}) {
 
 // ─── Crucible route ────────────────────────────────────────────────────────────────
 
-test('crucible route: the generated arena debris field covers all five material families', async () => {
+test('crucible route: the generated arena debris field covers all six material families', async () => {
   const t = await bootArena(4242);
   try {
     const rocks = arenaDebris(t.state);
@@ -558,8 +558,9 @@ test('adventure route: the generated starting sector carries all five material f
     for (const e of state.entityList) {
       if (e.alive !== false && (e.type === 'wreck' || e.type === 'asteroid')) mats.add(environmentMaterialOf(e));
     }
-    assert.deepEqual([...mats].sort(), [...ENVIRONMENT_FAMILIES].sort(),
-      `${SECTOR} field records + generated wrecks cover every material family`);
+    // Helios has common-rock fields; cryo ice belongs to authored icy fields.
+    assert.deepEqual([...mats].sort(), ['crystal', 'debris', 'metal', 'rock', 'volatile'],
+      `${SECTOR} field records + generated wrecks cover all five starter material families`);
   } finally { t.sim.dispose(); }
 });
 

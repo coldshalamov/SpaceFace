@@ -235,7 +235,7 @@ test('player rich ore keeps lot provenance through save, remove, and jettison', 
   };
   const bus = createBus();
   const cargo = { ...cargoBase };
-  cargo.init({ state, bus, helpers: { spawnEntity() {} } });
+  cargo.init({ state, bus, helpers: { spawnEntity(spec) { return { ...spec, alive: true }; } } });
   assert.equal(Object.hasOwn(state.player.cargo, 'richLots'), false, 'old/default cargo shape stays unchanged');
   addCargo(state, 'cmdty_ore_iron', 8);
   const source = {
@@ -341,7 +341,7 @@ test('direct rich release preserves provenance across zero, partial, and full ho
   assert.equal(full.spawned.length, 0);
 });
 
-test('multi-lot jettison spawns separate provenance-bearing pickups and recollects each lot', () => {
+test('multi-lot jettison spawns separate provenance-bearing pods and recollects each lot', () => {
   const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 6, vel: { x: 0, z: 0 }, rot: 0 };
   const state = {
     ...opportunityState(10),
@@ -352,11 +352,21 @@ test('multi-lot jettison spawns separate provenance-bearing pickups and recollec
   const bus = createBus();
   const spawned = [];
   const cargo = { ...cargoBase };
-  cargo.init({ state, bus, helpers: { spawnEntity(spec) { spawned.push(spec); } } });
+  cargo.init({ state, bus, helpers: { spawnEntity(spec) {
+    const pod = { ...spec, alive: true };
+    spawned.push(pod);
+    return pod;
+  } } });
   addCargo(state, 'cmdty_ore_iron', 3, { richOpportunityId: 'rich-one', richBonusU: 8, richQty: 3, richResolution: 'exploit' });
   addCargo(state, 'cmdty_ore_iron', 4, { richOpportunityId: 'rich-two', richBonusU: 8, richQty: 4, richResolution: 'help' });
   assert.equal(cargo.jettison('cmdty_ore_iron', 7), 7);
   assert.equal(spawned.length, 2);
+  for (const pod of spawned) {
+    assert.equal(pod.type, 'payload');
+    assert.equal(pod.flags.persistent, true);
+    assert.equal(pod.collides, true);
+    assert.deepEqual(pod.data.salvagePool, { cmdty_ore_iron: pod.data.amount });
+  }
   assert.deepEqual(spawned.map((entry) => [entry.data.richLotSource.richOpportunityId, entry.data.amount]), [
     ['rich-one', 3], ['rich-two', 4],
   ]);

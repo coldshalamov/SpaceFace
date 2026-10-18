@@ -58,7 +58,8 @@ test('real field rocks gather, grow and bowl through several hulls with damage, 
     let topSpeed = 0;
     for (let i = 0; i < 150; i++) {
       step(); topSpeed = Math.max(topSpeed, Math.hypot(ball.vel.x, ball.vel.z));
-      if (victims.every(v => hit.some(p => p.targetId === v.id))) break;
+      // Damage arrives on first contact; the following native step realizes tumble knockback.
+      if (victims.every(v => hit.some(p => p.targetId === v.id) && Math.hypot(v.vel.x, v.vel.z) > 40)) break;
     }
     assert.ok(topSpeed > D.launchSpeed * 0.7, `bowled at ${topSpeed}`);
     assert.equal(ball.alive, true, 'the energized aggregate survives its first strikes to keep bowling');

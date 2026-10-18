@@ -30,7 +30,7 @@ function makeBus() {
   };
 }
 
-function harness() {
+function harness({ near = true } = {}) {
   const bus = makeBus();
   const entities = new Map();
   const entityList = [];
@@ -61,7 +61,7 @@ function harness() {
     alive: true,
     team: 0,
     factionId: 'faction_player',
-    pos: { x: 740, z: -620 },
+    pos: near ? { ...manifest.mapAnnotation.coursePos } : { x: 740, z: -620 },
     vel: { x: 0, z: 0 },
     radius: 10,
     flags: { docked: false },
@@ -126,6 +126,15 @@ function aabbs(entity) {
 }
 test('Ceres normal producer owns three finite matched masses without disturbing Cathedral', () => {
   assert.equal(worldSiteManifestById(SITE_ID), manifest);
+  const distant = harness({ near: false });
+  assert.equal(siteBodies(distant).length, 5, 'distant attached sections stay dormant');
+  for (const payload of manifest.payloads) {
+    assert.equal(component(distant, payload.componentId), undefined);
+    assert.equal(distant.siteSystem.getWorldSite(SITE_ID).payloads[payload.id].status, 'stowed');
+  }
+  distant.player.pos = { ...manifest.mapAnnotation.coursePos };
+  distant.siteSystem._syncWorldSites();
+  assert.equal(siteBodies(distant).length, 8, 'approach materializes all three finite sections');
   const h=harness();
   assert.equal(siteBodies(h).length,8, 'five shell bodies plus three finite sections');
   assert.ok(h.siteSystem.getWorldSite('world_site_wreck_cathedral'));

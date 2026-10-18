@@ -676,14 +676,20 @@ test('ambient admission cannot evict hero residents and owner cleanup is selecti
   selective.system._updateCeresJobActionVfx(0.01);
   selective.state.simTime=.1;selective.system._updateStationOperationVfx();
   assert.ok(selective.system._stationOperationVfx.batch.count>0);
-  selective.bus.emit('sector:exit');
+  selective.system._clearCeresJobActionVfx();
   assert.equal(selective.system._stationOperationVfx.batch.count,0);
   assert.equal(unrelatedStreak.alive, true);
   assert.equal(unrelatedSprite.alive, true);
   assert.equal(selective.system._ts.some((entry) => entry.alive && entry.ceresJobActionOwner), false);
   assert.equal(selective.system._spr.some((entry) => entry.alive && entry.ceresJobActionOwner), false);
   assert.equal(selective.system._onCeresJobActionReceipt(receipt), true,
-    'boundary reset clears dedupe as well as only its owned residents');
+    'owner cleanup clears dedupe as well as only its owned residents');
+  selective.bus.emit('sector:enter');
+  assert.equal(unrelatedStreak.alive, false, 'world boundary retires old-world trails');
+  assert.equal(unrelatedSprite.alive, false, 'world boundary retires old-world sprites');
+  assert.equal(selective.system.inspect().ceresJobActions.active, 0);
+  saturated.system.destroy();
+  selective.system.destroy();
 });
 
 test('all four declared boundaries reset active cadence/dedupe; save allows the same receipt again', () => {

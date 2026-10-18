@@ -6,7 +6,7 @@ import { core } from '../src/core/coreSystem.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { environmentMaterials, addEnvironmentHeat, queueEnvironmentImpact } from '../src/systems/environmentMaterials.js';
 import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
-import { ENVIRONMENT_FAMILIES, adventureMaterialFor, environmentMaterialOf, environmentSurfaceData } from '../src/data/environmentMaterials.js';
+import { adventureMaterialFor, environmentMaterialOf, environmentSurfaceData } from '../src/data/environmentMaterials.js';
 import { swarmArena, SWARM_DEBRIS_TAG } from '../src/systems/swarmArena.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
@@ -91,7 +91,10 @@ test('every ordinary Crucible arena gets all five material opportunities on its 
     h.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: 42, arenaId: arena.id });
     h.bus.emit('run:wavePlanned', { wave: 1, plan: {} });
     const materials = new Set(h.state.entityList.filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]).map(environmentMaterialOf));
-    for (const material of ENVIRONMENT_FAMILIES) assert.ok(materials.has(material), `${arena.id} carries ${material}`);
+    // Cryo ice is an additional geological family, outside the five sandbox opportunities.
+    for (const material of ['rock', 'metal', 'crystal', 'volatile', 'debris']) {
+      assert.ok(materials.has(material), `${arena.id} carries ${material}`);
+    }
     swarmArena.destroy();
   }
 });
