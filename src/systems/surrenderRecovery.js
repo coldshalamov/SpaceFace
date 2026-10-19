@@ -148,7 +148,13 @@ export const surrenderRecovery = {
     }
 
     const now = Number(state.simTime) || 0;
-    for (const record of Object.values(own.records)) {
+    // Scratch refill instead of Object.values: this ran every flight tick. The fill keeps the
+    // snapshot semantics — records resolved/deleted mid-loop were still visited by the old
+    // snapshot, and records added mid-loop still wait for next tick.
+    const records = this._recordsScratch || (this._recordsScratch = []);
+    records.length = 0;
+    for (const recordKey in own.records) records.push(own.records[recordKey]);
+    for (const record of records) {
       if (!record || record.resolved) continue;
       const entity = entityFor(state, record.entityId);
       if (!entity || entity.alive === false) {
@@ -983,7 +989,10 @@ function freshState() {
 function ensureState(state) {
   if (!state.surrenderRecovery || typeof state.surrenderRecovery !== 'object') state.surrenderRecovery = freshState();
   if (!state.surrenderRecovery.records || typeof state.surrenderRecovery.records !== 'object') state.surrenderRecovery.records = {};
-  for (const record of Object.values(state.surrenderRecovery.records)) {
+  // for..in, not Object.values: ensureState runs inside update(), so the values snapshot was
+  // a per-tick allocation on the sim thread.
+  for (const recordKey in state.surrenderRecovery.records) {
+    const record = state.surrenderRecovery.records[recordKey];
     if (record && !record.recoveryKind) record.recoveryKind = RECOVERY_SURRENDERED;
   }
   if (!Array.isArray(state.surrenderRecovery.receipts)) state.surrenderRecovery.receipts = [];

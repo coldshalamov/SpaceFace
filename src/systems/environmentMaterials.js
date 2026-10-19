@@ -203,11 +203,17 @@ export const environmentMaterials = {
     this.state = state;
     if (state.mode !== 'flight') return;
     this._drainBlasts();
-    const waiting = [];
+    // Scratch `waiting` + in-place drain: the old shape allocated a fresh live queue and a
+    // spill array every flight tick. Reactions queued mid-drain (queueMaterialReaction inside
+    // _fracture/_detonate) appended to the replacement array before — now they append past
+    // `drained`, so the copyWithin shift leaves them ahead of the leftovers either way.
+    const waiting = this._reactionWaiting || (this._reactionWaiting = []);
+    waiting.length = 0;
     let jobs = 0;
-    const queue = state.materialReactions || [];
-    state.materialReactions = [];
-    for (const job of queue) {
+    const queue = state.materialReactions || (state.materialReactions = []);
+    const drained = queue.length;
+    for (let i = 0; i < drained; i++) {
+      const job = queue[i];
       if (jobs >= 8) { waiting.push(job); continue; }
       const body = this._resolve(job, true);
       if (!body) { if (this._resolve(job)) waiting.push(job); continue; }
@@ -225,7 +231,9 @@ export const environmentMaterials = {
       if (job.material === 'crystal' || job.material === 'rock' || job.material === 'calcite') this._fracture(body);
       else this._detonate(body, job.origin);
     }
-    state.materialReactions.push(...waiting);
+    queue.copyWithin(0, drained);
+    queue.length -= drained;
+    for (let i = 0; i < waiting.length; i++) queue.push(waiting[i]);
     this._drainBlasts();
   },
   serialize() {

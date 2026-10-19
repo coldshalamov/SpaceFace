@@ -33,6 +33,8 @@ const REEL_SPEED = DEFAULT_MASSLINE_DEF.reelInSpeed;
 const REST_MIN = DEFAULT_MASSLINE_DEF.minLength;
 const REST_MAX = DEFAULT_MASSLINE_DEF.maxLength;
 const THRUST_ACCEL = 40;
+// Shared empty for the no-cue publish — the field is only ever assigned, never pushed into.
+const EMPTY_CUES = Object.freeze([]);
 
 function clamp(value, lo, hi) {
   if (value < lo) return lo;
@@ -235,7 +237,10 @@ function syncHitches(world, state) {
 
 function syncFields(world, fieldsPort) {
   const list = fieldsPort?.kernelList?.() || fieldsPort?.list?.() || [];
-  const fields = [];
+  // Reuse the world's own array — applyHeat only reads it during the step, and the save
+  // snapshot copies row-by-row, so a fresh array per tick was pure GC churn.
+  const fields = world.fields || (world.fields = []);
+  fields.length = 0;
   for (let i = 0; i < list.length; i++) {
     const field = list[i];
     const thermal = field && field.thermal;
@@ -249,7 +254,6 @@ function syncFields(world, fieldsPort) {
       heatPerSec: thermal.heatPerSecond || 0,
     });
   }
-  world.fields = fields;
 }
 
 function applyDemo(state, world, dt, owner) {
@@ -514,6 +518,13 @@ export const reactiveMatter = {
     this._sceneSector = null;
     this.pending = [];
     this.cues = [];
+    // Per-tick step scratch (the scratch-buffer idiom the other registered systems use):
+    // contacts/deposits/seen are refilled every update, and stepInput is the reused options
+    // object stepReactiveMatter reads synchronously.
+    this._contacts = [];
+    this._deposits = [];
+    this._contactSeen = new Set();
+    this._stepInput = { dt: 0, contacts: this._contacts };
     this._off = [];
     if (ctx.bus && typeof ctx.bus.on === 'function') {
       this._off.push(ctx.bus.on('physics:impact', (payload) => {
@@ -563,8 +574,11 @@ export const reactiveMatter = {
     if (this.helpers.reactiveMatterLab) applyDemo(state, world, stepDt, owner);
     const player = state.entities.get(state.playerId);
     if (player) ensureCounterpart(world, player);
-    const contacts = [], deposits = [], seen = new Set();
-    for (const row of this.pending.splice(0)) {
+    const contacts = this._contacts, deposits = this._deposits, seen = this._contactSeen;
+    contacts.length = 0; deposits.length = 0; seen.clear();
+    const pending = this.pending, pendingCount = pending.length;
+    for (let i = 0; i < pendingCount; i++) {
+      const row = pending[i];
       const a = state.entities.get(row.aId), b = state.entities.get(row.bId);
       if (!a?.data?.reactiveMatter && !b?.data?.reactiveMatter) continue;
       const key = `${row.tick}:${String(row.aId)}:${String(row.bId)}`;
@@ -574,7 +588,13 @@ export const reactiveMatter = {
       const pair = adhesivePair(state, a, b);
       if (pair) deposits.push({ player: pair.player, target: pair.target, closing: row.closingSpeed });
     }
-    const result = stepReactiveMatter(world, { dt: stepDt, contacts });
+    // splice(0) allocated a drained array every tick even with nothing pending; rows pushed
+    // mid-drain (none today — the loop never emits) would stay queued via the fallback splice.
+    if (pending.length === pendingCount) pending.length = 0;
+    else pending.splice(0, pendingCount);
+    const stepInput = this._stepInput;
+    stepInput.dt = stepDt; stepInput.contacts = contacts;
+    const result = stepReactiveMatter(world, stepInput);
     const adhesive = commitAdhesive(state, world, deposits, result.dt);
     for (let i = 0; i < adhesive.impulses.length; i++) result.impulses.push(adhesive.impulses[i]);
     for (let i = 0; i < adhesive.notices.length; i++) {
@@ -596,7 +616,7 @@ export const reactiveMatter = {
       state.reactiveMatterCues = result.cues;
       this.bus?.emit?.('reactiveMatter:cues', result.cues);
     } else {
-      state.reactiveMatterCues = [];
+      state.reactiveMatterCues = EMPTY_CUES;
     }
     state.reactiveMatterLast = result;
     return result;

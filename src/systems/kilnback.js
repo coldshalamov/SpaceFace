@@ -6,8 +6,25 @@ import { authorizeAIEngagement } from '../ai/engagementAuthority.js';
 import { witnessLineOfSight } from '../combat/lineOfSight.js';
 import { hasExplicitPickupAcceptance, resolvePickupAcceptance } from '../core/pickupAcceptance.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 const owners = new WeakMap();
+
+// Bench A/B: production default ON. The per-tick bind scan walked the whole entity list even
+// in a save where the furnace never spawned; it now latches on ship/wreck membership and
+// rescans on a 0.5 s cadence instead (the salvageActions quiet-latch shape).
+let KILNBACK_BIND_SCAN_LATCH = true;
+export function setKilnbackBindScanLatchForBench(enabled) {
+  KILNBACK_BIND_SCAN_LATCH = enabled !== false;
+}
+export function getKilnbackBindScanLatchForBench() {
+  return KILNBACK_BIND_SCAN_LATCH !== false;
+}
+const BIND_SCAN_RESCAN_TICKS = 30;
+// data.lootTableId is a spawn-spec stamp (never post-spawn on a live entity), so an unbound
+// carrier can only appear via an indexed append/remove or a ship->wreck retype — the retype
+// bumps both of these lanes through remove+appendTypedLaneMembership.
+const BIND_SCAN_LANES = ['shipLike', 'wrecks'];
 const dist = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
 const keyFor = (key, id) => `${key}:${id}`;
 const pose = e => ({ x: e.pos.x, z: e.pos.z, vx: e.vel.x, vz: e.vel.z, rot: e.rot || 0, spin: e.angVel || 0 });
@@ -41,6 +58,7 @@ export const kilnback = {
     this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     this._actors = new Map(); this._bodyCache = new WeakMap(); this._bindings = new Map(); this._pendingCollections = new Map(); this._subs = []; this._restoring = false;
     this._introduced = false; this._nextRequest = 0; this._lastTick = -1;
+    this._bindScan = null;
     owners.set(ctx.state, this);
     const on = (event, fn) => this._subs.push(ctx.bus.on(event, fn));
     on('pickup:collected', p => {
@@ -302,11 +320,24 @@ export const kilnback = {
       anchor: { x: player.pos.x + 360, z: player.pos.z + 120 }, respectPacing: true });
     // The accepted live actor in fire(), rather than a nominal request, owns the one-time receipt.
   },
+  _scanBind(state) {
+    if (KILNBACK_BIND_SCAN_LATCH !== false) {
+      const laneVersion = entityIndexLaneVersion(state, BIND_SCAN_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+      const tick = state.tick | 0;
+      const quiet = this._bindScan;
+      if (quiet && membership != null && quiet.membership === membership
+        && tick - (quiet.armedTick | 0) >= 0
+        && tick - (quiet.armedTick | 0) < BIND_SCAN_RESCAN_TICKS) return;
+      this._bindScan = membership != null ? { membership, armedTick: tick } : null;
+    }
+    for (const e of state.entityList) if (e.alive && e.data?.lootTableId === C.enemyId && !e.data.kilnbackCaskId) this.bind(e);
+  },
   update(_dt, state) {
     if (this._restoring || state.mode !== 'flight' || state.tick === this._lastTick
       || (state.run?.kind === 'survival' && state.run.phase !== 'inactive')) return;
     this._lastTick = state.tick; this._settleCollections();
-    for (const e of state.entityList) if (e.alive && e.data?.lootTableId === C.enemyId && !e.data.kilnbackCaskId) this.bind(e);
+    this._scanBind(state);
     for (const row of this._actors.values()) {
       for (const id of KILNBACK_CASK_IDS) if (row.casks[id].status === 'drifting' && !this._find(row.key, id)) {
         row.casks[id].status = 'destroyed'; row.casks[id].coolant = 0;
@@ -330,10 +361,10 @@ export const kilnback = {
       row.targetLife = this.state.entities.get(row.targetId)?.occupantGeneration ?? null;
       this._actors.set(row.key, row);
     }
-    this._nextRequest = 0; this._lastTick = -1;
+    this._nextRequest = 0; this._lastTick = -1; this._bindScan = null;
   },
   afterContinue() {
-    this._restoring = false; this._bindings.clear(); this._lastTick = -1;
+    this._restoring = false; this._bindings.clear(); this._lastTick = -1; this._bindScan = null;
     for (const row of this._actors.values()) { const e = this._find(row.key);
       if (e) { e.data.kilnback = row; this._syncBody(e, row); }
       else if (row.phase !== 'lost') {

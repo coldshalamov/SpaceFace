@@ -8,8 +8,25 @@ import { witnessLineOfSight } from '../combat/lineOfSight.js';
 import { physicsBodyNativeReady, queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { drawSeeded, wrapAngle } from '../core/rng.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 const owners = new WeakMap();
+
+// Bench A/B: production default ON. The per-tick bind scan walked the whole entity list even
+// in a save where the tender never spawned; it now latches on ship/wreck membership and
+// rescans on a 0.5 s cadence instead (the salvageActions quiet-latch shape).
+let MOTHLIGHT_BIND_SCAN_LATCH = true;
+export function setMothlightBindScanLatchForBench(enabled) {
+  MOTHLIGHT_BIND_SCAN_LATCH = enabled !== false;
+}
+export function getMothlightBindScanLatchForBench() {
+  return MOTHLIGHT_BIND_SCAN_LATCH !== false;
+}
+const BIND_SCAN_RESCAN_TICKS = 30;
+// data.lootTableId is a spawn-spec stamp (never post-spawn on a live entity), so an unbound
+// carrier can only appear via an indexed append/remove or a ship->wreck retype — the retype
+// bumps both of these lanes through remove+appendTypedLaneMembership.
+const BIND_SCAN_LANES = ['shipLike', 'wrecks'];
 const token = (key, id = 'tender') => `${key}:${id}`;
 const dist = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
 const pose = e => ({ x: e.pos.x, z: e.pos.z, vx: e.vel.x, vz: e.vel.z, rot: e.rot || 0, spin: e.angVel || 0 });
@@ -39,6 +56,7 @@ export const mothlight = { name: 'mothlight', init(ctx) {
   this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
   this._actors = new Map(); this._bindings = new Map(); this._bodyCache = new WeakMap(); this._subs = [];
   this._introduced = false; this._restoring = false; this._nextRequest = 0; this._lastTick = -1; this._scanSeq = 0;
+  this._bindScan = null;
   owners.set(ctx.state, this); registerMothlightOwner(ctx.state, this);
   const on = (event, fn) => this._subs.push(this.bus.on(event, fn));
   on('combat:fire', p => this._acceptedFire(p));
@@ -245,11 +263,23 @@ _phase(e, row, phase) {
   this.ctx.registry?.get('encounterDirector')?.requestAuthoredEncounter({ shapeId: C.encounterId,
     encounterId: 'mothlight:first-lights', sectorId: C.sectorId,
     anchor: { x: player.pos.x + 360, z: player.pos.z + 120 }, respectPacing: true });
+}, _scanBind(state) {
+  if (MOTHLIGHT_BIND_SCAN_LATCH !== false) {
+    const laneVersion = entityIndexLaneVersion(state, BIND_SCAN_LANES);
+    const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+    const tick = state.tick | 0;
+    const quiet = this._bindScan;
+    if (quiet && membership != null && quiet.membership === membership
+      && tick - (quiet.armedTick | 0) >= 0
+      && tick - (quiet.armedTick | 0) < BIND_SCAN_RESCAN_TICKS) return;
+    this._bindScan = membership != null ? { membership, armedTick: tick } : null;
+  }
+  for (const e of state.entityList) if (e.alive && e.data?.lootTableId === C.enemyId) this.bind(e);
 }, update(_dt, state) {
   if (this._restoring || state.mode !== 'flight' || state.tick === this._lastTick
     || state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
   this._lastTick = state.tick;
-  for (const e of state.entityList) if (e.alive && e.data?.lootTableId === C.enemyId) this.bind(e);
+  this._scanBind(state);
   for (const row of this._actors.values()) {
     for (const id of mothlightActiveLampIds(row)) { const e = this._find(row.key, id), lamp = row.lamps[id];
       if (lamp.status === 'drifting' && !e) { lamp.status = 'destroyed'; lamp.hull = 0; }
@@ -272,9 +302,9 @@ _phase(e, row, phase) {
     const row = normalizeMothlightActor(saved, saved.key, this.state.tick);
     row.targetId = remap.get(String(row.targetId)) ?? row.targetId; this._actors.set(row.key, row);
   }
-  this._nextRequest = 0; this._lastTick = -1; this._scanSeq = 0;
+  this._nextRequest = 0; this._lastTick = -1; this._scanSeq = 0; this._bindScan = null;
 }, afterContinue() {
-  this._restoring = false; this._bindings.clear(); this._lastTick = -1; this._scanSeq = 0;
+  this._restoring = false; this._bindings.clear(); this._lastTick = -1; this._scanSeq = 0; this._bindScan = null;
   for (const row of this._actors.values()) { const e = this._find(row.key);
     row.nextAttackTick = null; row.acceptedAttack = null; row.targetLife = this.state.entities.get(row.targetId)?.occupantGeneration ?? null;
     if (e) { this._syncBody(e, row); if (row.phase !== 'retreat') this._phase(e, row, 'reload'); }

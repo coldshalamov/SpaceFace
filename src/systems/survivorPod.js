@@ -677,7 +677,11 @@ export const survivorPod = {
     if (!own) return;
     const currentSectorId = state.world && state.world.currentSectorId;
     let visible = null;
-    for (const rec of Object.values(own.promotedByPoint)) {
+    // Scratch refill instead of Object.values — this ran every update tick even with no pods.
+    const promoted = this._promotedScratch || (this._promotedScratch = []);
+    promoted.length = 0;
+    for (const key in own.promotedByPoint) promoted.push(own.promotedByPoint[key]);
+    for (const rec of promoted) {
       if (!rec || rec.stripped) continue;
       const point = pointForRec(state, rec);
       const ent = entityForPoint(state, point || rec);

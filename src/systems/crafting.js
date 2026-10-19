@@ -184,7 +184,9 @@ export const crafting = {
   // timeScale/pause, so a paused game doesn't progress production and a save-load catch-up works).
   update(dt, state) {
     const queues = (state.crafting && state.crafting.queues) || {};
-    const completedIds = [];
+    // Reused scratch — the array was allocated every tick but only ever filled on a completion.
+    const completedIds = this._completedScratch || (this._completedScratch = []);
+    completedIds.length = 0;
     const simNow = Number(state && state.simTime) || 0;
     for (const stationId in queues) {
       const job = queues[stationId];

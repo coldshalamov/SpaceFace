@@ -77,7 +77,11 @@ export const pirateRumor = {
     if (!state || (state.mode && state.mode !== 'flight')) return;
     this.state = state;
     const own = ensureRumorState(state);
-    for (const rec of Object.values(own.zones)) {
+    // Scratch refill instead of Object.values — this ran every flight tick.
+    const zones = this._zonesScratch || (this._zonesScratch = []);
+    zones.length = 0;
+    for (const key in own.zones) zones.push(own.zones[key]);
+    for (const rec of zones) {
       if (!rec) continue;
       if (Number.isFinite(rec.heat) && rec.heat > 0) {
         rec.heat = Math.max(0, rec.heat - PIRATE_RUMOR_DECAY_PER_S * Math.max(0, dt || 0));

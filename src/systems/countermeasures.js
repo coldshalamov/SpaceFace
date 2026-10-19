@@ -418,22 +418,23 @@ export const countermeasures = {
       if (gun && (pds.weaponCooldownT || 0) > 0) {
         pds.weaponCooldownT = Math.max(0, pds.weaponCooldownT - dt);
       }
-      const channels = [];
+      // Scratch channel records — the array, both channel objects, and their commit closures
+      // were reallocated per equipped ship per tick. The channels are consumed inside this
+      // same iteration, so cached records + an inline commit are identical.
+      const channels = this._pdChannelScratch || (this._pdChannelScratch = []);
+      channels.length = 0;
       if (eq && pds.cooldownT <= 0) {
-        channels.push({
-          radius: Math.max(1, Number(eq.cfg.radius) || 0),
-          chance: 1, arcRad: Math.PI * 2, energyCost: 0,
-          commit: () => { pds.cooldownT = Math.max(0.1, Number(eq.cfg.cooldownS) || 1); },
-          source: 'servo',
-        });
+        const ch = this._pdServoChannel || (this._pdServoChannel = {
+          radius: 0, chance: 1, arcRad: Math.PI * 2, energyCost: 0, source: 'servo', weaponId: null });
+        ch.radius = Math.max(1, Number(eq.cfg.radius) || 0);
+        channels.push(ch);
       }
       if (gun && !(pds.weaponCooldownT > 0)) {
-        channels.push({
-          radius: gun.radius,
-          chance: gun.chance, arcRad: gun.arcRad, energyCost: gun.energyCost,
-          commit: () => { pds.weaponCooldownT = gun.cooldownS; },
-          source: 'weapon', weaponId: gun.weaponId,
-        });
+        const ch = this._pdGunChannel || (this._pdGunChannel = {
+          radius: 0, chance: 0, arcRad: 0, energyCost: 0, source: 'weapon', weaponId: null });
+        ch.radius = gun.radius; ch.chance = gun.chance; ch.arcRad = gun.arcRad;
+        ch.energyCost = gun.energyCost; ch.weaponId = gun.weaponId;
+        channels.push(ch);
       }
       if (!channels.length) continue;
       // A real screen can be saturated, not perfect: PD-role actors spend from the recovery
@@ -451,7 +452,9 @@ export const countermeasures = {
         if (ch.energyCost > 0 && (e.cap || 0) < ch.energyCost) continue;
         const target = nearestInterceptableProjectile(projectiles, e, ch.radius, ch.arcRad);
         if (!target) continue;
-        ch.commit();
+        // Inline the old per-channel commit closures — servo and gun each cool their own slot.
+        if (ch.source === 'servo') pds.cooldownT = Math.max(0.1, Number(eq.cfg.cooldownS) || 1);
+        else pds.weaponCooldownT = gun.cooldownS;
         if (ch.energyCost > 0) e.cap = Math.max(0, (e.cap || 0) - ch.energyCost);
         if (ch.chance < 1 && !(state.rng && state.rng() < ch.chance)) continue;
         if (sat) {

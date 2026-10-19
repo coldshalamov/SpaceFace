@@ -211,7 +211,12 @@ export const wingMorale = {
   update(_dt, state) {
     const own = ensureState(state);
     const now = state && state.simTime || 0;
-    for (const entityId of Object.keys(own.scatter)) {
+    // Scratch key list instead of Object.keys — ran every flight tick. The fill still
+    // snapshots keys up front, so delete-in-loop keeps the exact old semantics.
+    const scatterIds = this._scatterKeysScratch || (this._scatterKeysScratch = []);
+    scatterIds.length = 0;
+    for (const key in own.scatter) scatterIds.push(key);
+    for (const entityId of scatterIds) {
       const rec = own.scatter[entityId];
       if (!rec || now < rec.until) continue;
       const entity = entityFor(state, Number(entityId));
