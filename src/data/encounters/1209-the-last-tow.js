@@ -453,8 +453,8 @@ export const runtime = Object.freeze({
           best.fate = 'robbed';
           pod.alive = false;
           w.scavTaken += 1;
-          const cargo = robber.data.cargo || (robber.data.cargo = { items: {} });
-          cargo.items[best.cid] = (Math.floor(Number(cargo.items[best.cid]) || 0)) + best.amount;
+          const loot = robber.data.cargo || (robber.data.cargo = { items: {} });
+          loot.items[best.cid] = (Math.floor(Number(loot.items[best.cid]) || 0)) + best.amount;
         }
         w.robberBolted[id] = now;
         boltAway(robber, live, now, playerPos, 'the_last_tow:robber_laden');
