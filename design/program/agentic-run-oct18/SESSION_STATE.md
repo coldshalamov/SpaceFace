@@ -105,3 +105,18 @@ pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention �
 - Landed SWP-MENUS (galaxy Tab trap+3) 782b2a5e6ee-era · SWP-HITCH alloc batch (10 sys files). ~57 units.
 - In-flight: fdcd4813 SWP-CLAIM · 58eba5ea INF-16 crew · fab71150 REV-J(2 oldest)
 - Open reviews ~9. Remaining work: keep cycles until 3-successive-consensus; D222 re-mint, D224 shard, D225 pkg, D229, D234 parked.
+
+## DELTA 15 (post eafa5422537)
+- Landed SWP-DOCKQUEUE berth-latch-load (economy deserialize clears latches). ~60 units — target range met.
+- In-flight: 487b8caa INF-17 law/piracy · 760e6919 REV-K · 20598792 REV-L
+- Reviews ~11 open, clearing. Remaining: review-drain + 3-successive-consensus waves; parked D222/D224/D225/D229/D234.
+
+## DELTA 16 (post eec616933f9)
+- ~61 units landed. Review ledger DRAINED TO ZERO (REV-O confirmed last 5).
+- Consensus gate: W1 clean · W2 found 1 material (_deferredLineEcho boundary leak) → FIXED eec616933f9 · W3 in-flight 90934e7a
+- Counter currently 0-of-3 successive (W2 reset it). Need 3 clean waves to close.
+
+## DELTA 17 (post fe82e52a981)
+- Landed leftover uncommitted fixes: m2-map-cutover script-scan regex (3da572b710e, bookkeeping) + siege-ark bind sector re-key (fe82e52a981 + R-fe82e52). Caught + fixed a missing syncEntitySectorMembership import the prior session's static-only verification missed.
+- Consensus gate: W1 clean · W2 defect->fixed · W3 clean (row R-8521e56 = its second-look, OPEN). Counter 1-of-3. W4 needs dispatch (prior dispatch 9a4adac7 lost with session).
+- Open reviews: R-8521e56 + R-fe82e52. Foreign lanes untouched: render/*, massline/orbitAssist/flightV3 cluster, towline glbs, mining/npcJobs/wingmen dirty sets.
