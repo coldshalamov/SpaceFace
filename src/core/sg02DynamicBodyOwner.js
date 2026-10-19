@@ -53,7 +53,17 @@ export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_WORLD_SNAPSHOT_SCHEMA_VERSION = 3;
 // Independent of envelope schema: NEXT schema 2 also carried shallow geometry.
 // Missing/mismatched revisions require authoritative entity-state reconstruction.
+// A bump must keep the outgoing literal in SG02_RETAINED_CONTACT_REVISIONS unless the
+// serialized scalar body record itself changed (it has not since the fields shipped).
 export const SG02_NATIVE_GEOMETRY_REVISION = 'xz-convex-prism-obb-v4';
+// Geometry stamps under which the snapshot's scalar body record — identity, sourceLife,
+// kinematics, contract, contactEpisode — uses the current format. The revision guards
+// opaque solver bytes and native collider layout (v4 merged exact convex fan unions);
+// the retained contact budget never reads either, so every shipped revision may donate
+// it. Unknown stamps still fail closed. Extend on a scalar-format change only.
+const SG02_RETAINED_CONTACT_REVISIONS = new Set([
+  'xz-support-prism-v2', 'xz-support-prism-obb-v3', SG02_NATIVE_GEOMETRY_REVISION,
+]);
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 // Contact-force receipts are gameplay signals, not solver inputs. A zero threshold makes every
@@ -5575,7 +5585,7 @@ function retainPlayerContactRestore(options) {
   const tick = options.contactEpisodeTick, sourceMap = options.entityIdRemap;
   if (!payload || !validateNativeAttestationTables(payload, true).ok
     || payload.schema !== 3 || payload.backend !== 'rapier-dynamic'
-    || payload.nativeGeometryRevision !== SG02_NATIVE_GEOMETRY_REVISION
+    || !SG02_RETAINED_CONTACT_REVISIONS.has(payload.nativeGeometryRevision)
     || !payload.bodies || Array.isArray(payload.bodies) || !sameNativeKeys(payload.bodyOrder, payload.bodies)
     || !Number.isSafeInteger(tick) || tick < 0
     || (sourceMap != null && !(sourceMap instanceof Map))) return null;
