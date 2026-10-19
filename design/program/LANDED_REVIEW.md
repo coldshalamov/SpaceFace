@@ -25,6 +25,7 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-0105c1b | 0105c1bafccd1a969019657d574a09d405a1ca93 | SWP-MENUS audit fixes | OPEN | Verify Tab/Shift+Tab traverse galaxy-map DOM controls end-to-end on the live route (tests prove onKey declines; browser _trapKeydown walk untested). |
 | R-271dcf6 | 271dcf6571ac57e840d649e5e68179075032c321 | INF-12 the deadweight | OPEN | Verify a real player tow can physically arrive inside ringWu at handoffSpeed 14 in live flight — winch reels continuously; cut-and-coast sling is an accepted honest path. |
 | R-2136ff6 | 2136ff69312ee507f874b4ef38aec1b4aeb80f4b | INF-15 fabrication scrap-run | OPEN | Verify cancel forfeit matches build() committed-inputs comment and no caller relied on instant builds being blocked while a timed job occupies the line. |
 | R-ca0d710 | ca0d7104a8664d3b8f46952e816137e1e7e98e4e | D235 deferred tether echo | OPEN | Verify no consumer needed same-dispatch tether:broke/released/releaseRated — all listeners now get it on the first update after break (max 1 tick late), incl dead/docked ticks. |
