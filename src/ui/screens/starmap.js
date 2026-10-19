@@ -1219,6 +1219,13 @@ export const starmapScreen = {
 
   _drawNodes(g, nodes, currentId, roles) {
     const z = this._cam.zoom;
+    // Price memory is keyed by STATION id (economy.recordMarketMemory), never by sector — so the
+    // node tag reads the same station→sector overlay table the sidebar does, one best-sell
+    // quote per sector (the overlay sort is sector, then sell descending).
+    const quoteBySector = new Map();
+    for (const overlay of marketMemoryStationOverlays(this._ctx && this._ctx.state, this._commodityId)) {
+      if (!quoteBySector.has(overlay.sectorId)) quoteBySector.set(overlay.sectorId, overlay);
+    }
     for (const n of nodes) {
       const s = n.sector;
       const known = this._isDiscovered(s.id);
@@ -1277,9 +1284,7 @@ export const starmapScreen = {
       g.font = canvasFontScaled(current ? '700' : '500', 13, z, 'body');
       g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(s.name, n.x, labelY);
 
-      const memory = this._ctx.state.player && this._ctx.state.player.marketMemory;
-      const sectMemory = memory && memory[s.id];
-      const commQuote = sectMemory && sectMemory[this._commodityId];
+      const commQuote = quoteBySector.get(s.id);
       if (commQuote) {
         g.save();
         g.fillStyle = roles.goal;

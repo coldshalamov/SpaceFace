@@ -167,6 +167,34 @@ async function main() {
     uiInput.dispose();
   }
 
+  // ── F-MENUS-01: Tab belongs to focus traversal, never to a chart lens ────────────────────
+  // The screen used to preventDefault every Tab to cycle a lens, so a keyboard-only pilot could
+  // never reach the lens rail, the search field, or the plot/engage controls. The screen must
+  // decline the key — native traversal plus the ScreenManager trap own it.
+  {
+    const layersBefore = { ...galaxyMapScreen._layers };
+    const tab = {
+      key: 'Tab',
+      target: null,
+      defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; },
+    };
+    assert.equal(galaxyMapScreen.onKey(tab, ctx), false,
+      'the chart declines Tab so focus traversal owns it');
+    assert.equal(tab.defaultPrevented, false, 'the chart never prevents Tab traversal');
+    assert.deepEqual(galaxyMapScreen._layers, layersBefore, 'Tab toggles no lens');
+    const shiftTab = {
+      key: 'Tab',
+      shiftKey: true,
+      target: null,
+      defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; },
+    };
+    assert.equal(galaxyMapScreen.onKey(shiftTab, ctx), false, 'Shift+Tab traverses backwards too');
+    assert.equal(shiftTab.defaultPrevented, false);
+    assert.deepEqual(galaxyMapScreen._layers, layersBefore, 'Shift+Tab toggles no lens either');
+  }
+
   console.log('map-intent-j1-j6: OK');
 }
 

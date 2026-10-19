@@ -22,7 +22,7 @@ import { crucibleFittingDescription } from '../../crucibleCombatReadout.js';
 // hulls (no modal). One reused preview mount (createShipPreviewMount) serves both hosts.
 // Field Hardware chrome (kit plates, keys, quiet type) is pinned from this module; Buy / Fit /
 // Make active stay the same verbs.
-// Emits ui:buyShip / ui:setActiveShip / ui:sellShip / ui:buyModule / ui:fitModule / ui:unfitModule
+// Emits ui:buyShip / ui:setActiveShip / ui:buyModule / ui:fitModule / ui:unfitModule
 // plus the PQ-205.03 rack intents: ui:buyPayload / ui:fitPayload / ui:unfitPayload /
 // ui:sellPayload / ui:restockBombRack / ui:upgradeBombRack (the bombs system owns the writes)
 // and the paint-rack intent ui:setShipAppearance (the ships system owns the appearance record).
@@ -3035,9 +3035,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // a narrow stage keeps its nodes clean: the labels carry the numerals
       numeralsMinWidth: 1100,
       onPick: (index) => {
-        const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
+        // The spatial-slot anchors are rebuilt on the next projection frame, so the anchor can be
+        // momentarily absent — openChooser re-resolves it itself; the pick must never be swallowed.
         jigLit = index;
-        if (anchor) openChooser(index, anchor);
+        openChooser(index, slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`));
       },
     });
     // the stage ring and the Fleet caption follow the jig's dial wherever it lays out
@@ -3046,9 +3047,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const node = ev.target.closest && ev.target.closest('.orr-sw-node[data-slot]');
       if (!node) return;
       const index = Number(node.getAttribute('data-slot'));
-      const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
       jigLit = index;
-      if (anchor) openChooser(index, anchor);
+      openChooser(index, slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`));
     });
     jigHost.addEventListener('pointerover', (ev) => {
       const node = ev.target.closest && ev.target.closest('.orr-sw-node[data-slot]');
@@ -4107,7 +4107,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       setSelectedPresetIdForHull(def.id, null, { remember: true });
       restoreCurrentPreview();
     }
-    const slots = buildSlotList(def); const slot = slots[slotIndex]; if (!slot) return;
+    const slots = buildSlotList(def); const slot = slots[slotIndex];
+    if (!slot) { if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
     if (!opts.silent) emitUiCue(UI_SWITCH_DETENT_CUE);
     explodeOut(slotIndex);
     const fittings = s.fittings || [];

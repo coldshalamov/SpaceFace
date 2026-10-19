@@ -2913,7 +2913,7 @@ const HINT_ROWS = Object.freeze([
   ['Inspect a mark', 'Click'],
   ['Lay a course', 'Dbl-click'],
   ['Lay the line (preview, release to set)', 'Drag from you'],
-  ['Cycle overlays', 'Tab'],
+  ['Toggle overlays', 'Click a lens'],
   ['Inspector tabs', '← →'],
   ['Search · palette', '/ · Ctrl K'],
   ['Menu for a mark', 'Right-click'],
@@ -4151,7 +4151,6 @@ export const galaxyMapScreen = {
   // still answers the CURRENT visible query — a blank field, a no-match repaint, or a selection
   // consumed by Enter/click clears both, so stale hits can never be committed blind (J1).
   _searchResultsQuery: null,
-  _currentLayerFocus: 'route',
   _lastRouteDest: null,
   _routeAnimTime: 0,
   _animT: 0,
@@ -5323,28 +5322,11 @@ _stepAnimation(now) {
       return true;
     }
 
-    // Cycle layers
-    if (key === 'tab') {
-      event.preventDefault();
-      const keys = Object.keys(this._layers);
-      const nextIdx = (keys.indexOf(this._currentLayerFocus) + 1) % keys.length;
-      this._currentLayerFocus = keys[nextIdx];
-
-      this._layers[this._currentLayerFocus] = !this._layers[this._currentLayerFocus];
-
-      const btn = this._root.querySelector(`.gm-layer-btn[data-layer="${this._currentLayerFocus}"]`);
-      if (btn) {
-        if (this._layers[this._currentLayerFocus]) btn.classList.add('active');
-        else btn.classList.remove('active');
-      }
-
-      const w = this._canvas.width / this._dpr;
-      const h = this._canvas.height / this._dpr;
-      this.triggerScanRing(w / 2, h / 2, INK.teal);
-
-      this.refresh();
-      return true;
-    }
+    // Tab is NOT claimed here: the screen's own controls (the lens rail buttons, the search
+    // field, the plot/engage rail) are ordinary focusable elements, so native traversal plus
+    // the ScreenManager focus trap own the key — the same contract every other modal screen
+    // keeps. Lens toggling stays on the .gm-layer-btn row and the context menu's Lenses group.
+    if (key === 'tab') return false;
 
     // Esc lets a line being laid go before it closes the chart.
     if (key === 'escape' && this._cancelChartGesture(event)) return true;

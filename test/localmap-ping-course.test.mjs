@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   PING_COURSE_LABEL,
   labelPriority,
+  localmapScreen,
   pickClickTarget,
   placeMapLabels,
   pingOverlayMarks,
@@ -125,4 +126,28 @@ test('degenerate state fails closed: no bucket, empty bucket, headless ping', ()
     [],
     'a ping without a position draws and routes nothing',
   );
+});
+
+// F-MENUS-04 (audit): the local map's _close only probed ctx.screenManager.popScreen — a host
+// that mounts screens by bus intent got a dead Close button and a dead M key. The sibling star
+// chart falls back to the ui:popScreen intent; the local map now mirrors that contract.
+test('close falls back to the ui:popScreen bus intent when no screen manager is mounted', () => {
+  const def = Object.create(localmapScreen);
+  const emitted = [];
+  def._ctx = { bus: { emit: (name, payload) => emitted.push([name, payload]) } };
+  def._close();
+  assert.deepEqual(emitted, [['ui:popScreen', {}]], 'a bus-mounted host still hears the close');
+});
+
+test('close prefers the screen manager and never double-signals the bus', () => {
+  const def = Object.create(localmapScreen);
+  let pops = 0;
+  const emitted = [];
+  def._ctx = {
+    screenManager: { popScreen() { pops += 1; } },
+    bus: { emit: (name, payload) => emitted.push([name, payload]) },
+  };
+  def._close();
+  assert.equal(pops, 1, 'the mounted screen manager owns the pop');
+  assert.equal(emitted.length, 0, 'no duplicate ui:popScreen intent escapes');
 });

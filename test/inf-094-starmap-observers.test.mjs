@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { starmapScreen } from '../src/ui/screens/starmap.js';
+import { starmapScreen, canvasRoles } from '../src/ui/screens/starmap.js';
 
 // INF-094: the star map's live observers must return to baseline across repeated mount
 // cycles. Before the fix the ResizeObserver had no teardown path (and the screen no
@@ -103,4 +103,40 @@ test('INF-094 the screen re-opens cleanly after a dispose', () => {
     assert.equal(liveObservers, 0);
     assert.equal(bus.subs('sectorsim:fieldAdvanced'), 0);
   } finally { restore(); }
+});
+
+// F-MENUS-02 (audit): the per-sector price tag on the canvas read marketMemory by SECTOR id,
+// but the single writer (economy.recordMarketMemory) keys it by STATION id — the lookup was
+// always undefined and the tag never drew. The node now reads the same station→sector overlay
+// the sidebar uses, one best-sell quote per sector.
+test('station-keyed price memory paints the sector node tag', () => {
+  const def = Object.create(starmapScreen);
+  def._ctx = {
+    state: {
+      simTime: 500,
+      player: {
+        marketMemory: {
+          station_helios: { cmdty_ore_iron: { buy: 41, sell: 57, seenAt: 480 } },
+        },
+      },
+      world: { currentSectorId: 'sector_helios_prime' },
+    },
+  };
+  def._cam = { zoom: 1 };
+  def._commodityId = 'cmdty_ore_iron';
+  def._selectedId = null;
+  def._hoverId = null;
+  const texts = [];
+  const g = new Proxy({}, {
+    get(target, key) {
+      if (key === 'fillText') return (text) => texts.push(String(text));
+      if (key in target) return target[key];
+      return () => {};
+    },
+    set(target, key, value) { target[key] = value; return true; },
+  });
+  const sector = { id: 'sector_helios_prime', name: 'Helios Prime', factionId: 'faction_scn' };
+  def._drawNodes(g, [{ x: 100, y: 100, r: 10, sector }], 'sector_helios_prime', canvasRoles());
+  assert.ok(texts.some((t) => t === '41/57'),
+    'the visited station quote paints its buy/sell beside the sector node');
 });

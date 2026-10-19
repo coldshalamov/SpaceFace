@@ -844,8 +844,13 @@ export const localmapScreen = {
   },
 
   _close() {
-    const sm = this._ctx && this._ctx.screenManager;
-    if (sm && typeof sm.popScreen === 'function') sm.popScreen();
+    // Same contract as starmap's closeScreen: take the screen manager when the host mounts one,
+    // else fall back to the bus intent so a bus-mounted host still hears the close.
+    const ctx = this._ctx;
+    const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+    const mgr = (ctx && (ctx.screenManager || ctx.screens)) || (ui && (ui.screenManager || ui.manager));
+    if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
+    else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
   },
 
   _resize() {

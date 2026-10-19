@@ -114,6 +114,22 @@ test('the chooser emits ui:fitModule for hold rows — shipIndex, slot, and inst
     'rows without a usable instanceId never become a dead Fit button');
 });
 
+// F-MENUS-03 (audit): the hull-dial pick handlers used to gate openChooser on the spatial-slot
+// anchor existing — but renderSpatialSlots rebuilds those anchors on the next projection frame,
+// so a click in the gap lit the node and opened nothing: a control that did nothing. The pick
+// now reaches openChooser unconditionally (it re-resolves the anchor itself), and an index with
+// no slot denies aloud instead of returning silently.
+test('jig hardpoint picks are never swallowed by a missing slot anchor', () => {
+  const src = readFileSync(join(HERE, '../src/ui/station/screens/shipworks.js'), 'utf8');
+  assert.ok(!/if \(anchor\) openChooser/.test(src),
+    'no anchor guard may swallow a jig pick — openChooser re-resolves a missing anchor itself');
+  assert.ok(
+    /openChooser\(index, slotfieldEl\.querySelector\(`\[data-spatial-slot="\$\{index\}"]`\)\)/.test(src),
+    'the jig pick hands its (possibly absent) anchor to openChooser directly');
+  assert.ok(/if \(!slot\) \{[\s\S]{0,140}ui_deny[\s\S]{0,40}return; \}/.test(src),
+    'an out-of-range slot index emits the deny cue instead of a silent return');
+});
+
 test('a refused unfit (hold filled between render and intent) keeps the fit and names the reason', () => {
   const { state, bus } = boot();
   // Kestrel slot order: weapon, shield, engine, cargo, mining, utility, thruster.
