@@ -231,6 +231,14 @@ export const RANK_GATED_CONTRACTS = Object.freeze(RANK_CONTRACT_FACTIONS.map(([f
   rankGated: true,
 })));
 
+// The board row's dedupe/settle identity — one stable source tag for the whole catalog so
+// ensureBoard's sync can tell a faction's rank row from an ordinary procedural roll.
+export const RANK_CONTRACT_SOURCE = 'rankContract';
+
+export const RANK_CONTRACT_BY_FACTION = new Map(
+  RANK_GATED_CONTRACTS.map((def) => [def.factionId, def]),
+);
+
 export const STORY_BRANCH_INTRO_TAG = 'story.branch_intro';
 export const STORY_BRANCH_INTRO_MIN_REP = -29;
 

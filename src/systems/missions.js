@@ -80,6 +80,8 @@ import {
   offerHistoryTierFor,
   offerHistoryMultiplier,
   withBountyHeadMoney,
+  RANK_CONTRACT_BY_FACTION,
+  RANK_CONTRACT_SOURCE,
 } from '../data/missions.js';
 import {
   SET_PIECE_FOLLOW_ON_SOURCE,
@@ -136,6 +138,7 @@ import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
+import { rankFromRep, rankTitleForStep } from './factions.js';
 import { isFragileCommodity } from './fragileCargo.js';
 import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
 import { attachTrap, seedHeliosOfferTrap, referenceTrapRefusal } from './moralTrap.js';
@@ -2144,8 +2147,9 @@ export const missions = {
       const speedChanged = this._syncAdventureSpeedOffers(info, board);
       const shortageChanged = this._syncShortageOffers(board);
       const starterChanged = this._syncStarterJobOffer(info, board);
+      const rankContractChanged = this._syncRankContractOffer(info, board, epoch);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
+        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2297,6 +2301,7 @@ export const missions = {
     this._syncMegaHeistOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
     this._syncAdventureSpeedOffers(info, board);
+    this._syncRankContractOffer(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
   },
@@ -3301,6 +3306,44 @@ export const missions = {
     const before = board.slots.length;
     this._injectStarterJob(info, board.slots, before + 1);
     return board.slots.length !== before;
+  },
+
+  /**
+   * FB-044 — a faction's rank contract is a real board row, not a dossier label. It posts at every
+   * desk the faction owns once the pilot holds the authored rank step (rep floor AND named rank —
+   * `missionAvailable`'s two gates, kept state-relative so headless boards resolve identically),
+   * and rides the ordinary rolled-offer shape so accept/settle/save need no special case. The row
+   * is APPENDED like every other standing row, deduped by its stable contract id on the board and
+   * in the active list — an accepted run lives in missions.active, a settled one may re-post next
+   * epoch like any standing contract.
+   */
+  _syncRankContractOffer(info, board, epoch = this._epoch()) {
+    if (!info || !board || !Array.isArray(board.slots) || !hasContractsDesk(info.services)) return false;
+    const def = info.factionId ? RANK_CONTRACT_BY_FACTION.get(info.factionId) : null;
+    if (!def) return false;
+    const rep = this._repOf(def.factionId);
+    if (rep < def.minRep || rankFromRep(rep, def.factionId).step < def.minRankStep) return false;
+    const already = board.slots.some((offer) => offer && offer.params
+      && offer.params.rankContractId === def.id)
+      || (this.state.missions.active || []).some((m) => m && m.status === 'active'
+        && m.params && m.params.rankContractId === def.id);
+    if (already) return false;
+    const seed = hash32(this.state.meta.seed, info.id, epoch, 'rankContract');
+    const rng = (this.helpers && this.helpers.mulberry32)
+      ? this.helpers.mulberry32(seed) : mulberryLocal(seed);
+    // Authored identity on a rolled body: no procedural fine print (the moral-trap ledger forbids
+    // traps on contract-sourced rows; the starter-job roll uses the same attachConditions opt-out).
+    const offer = this._rollOffer(def.type, info, rng, epoch, 'rank', { attachConditions: false });
+    if (!offer) return false;
+    offer.source = RANK_CONTRACT_SOURCE;
+    offer.rankGated = true;
+    offer.title = def.title;
+    offer.minRep = def.minRep;
+    offer.minRankStep = def.minRankStep;
+    offer.params = offer.params || {};
+    offer.params.rankContractId = def.id;
+    board.slots.push(offer);
+    return true;
   },
 
   /** Real-calendar day bucket for the featured mark — the only wall-clock read on the missions
@@ -4403,6 +4446,15 @@ export const missions = {
         return {
           ok: false,
           reason: `${factionShortName(offer.factionId)} standing ${signedRep(minRep)} required`,
+        };
+      }
+      // FB-044: a rank-gated row names its required step, not just a rep floor — a pilot whose
+      // standing fell below the named rank between posting and accepting is refused in words.
+      if (Number.isInteger(offer.minRankStep)
+        && rankFromRep(rep, offer.factionId).step < offer.minRankStep) {
+        return {
+          ok: false,
+          reason: `${factionShortName(offer.factionId)} rank '${rankTitleForStep(offer.factionId, offer.minRankStep)}' required`,
         };
       }
     }

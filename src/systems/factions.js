@@ -176,6 +176,13 @@ export function rankForState(state, factionId) {
   return rankFromRep(rep, factionId);
 }
 
+/** Title of a rank step for gate wording ("Concord rank 'Cleared' required"). Pure. */
+export function rankTitleForStep(factionId, step) {
+  const idx = Number.isInteger(step) ? step : 0;
+  const titles = RANK_TITLES[factionId] || DEFAULT_RANK_TITLES;
+  return titles[idx] || DEFAULT_RANK_TITLES[idx] || DEFAULT_RANK_TITLES[0];
+}
+
 /** Repair and refuel discount. Zero below the second step, ten percent at and above it. */
 export function rankServiceDiscount(state, factionId) {
   const rank = rankForState(state, factionId);
