@@ -77,6 +77,9 @@ export const pirateDisengage = {
     this._listen('pirateParley:resolved', () => this.noteCombatantWake());
     // The surrendered crew's offered yield: the deck answers here.
     this._listen('pirateDisengage:verdict', (p) => this._onYieldVerdict(p || {}));
+    // Killing a yielding crew is itself the answer — close the open offer at the
+    // kill, not at the deck's stale-card grace.
+    this._listen('entity:killed', (p) => this._onYieldCrewKilled(p));
   },
 
   /** External wake when a combatant role is stamped without a fresh spawn index bump. */
@@ -135,6 +138,15 @@ export const pirateDisengage = {
     const now = state.simTime || 0;
     const patrols = lawfulPatrols(state);
     const squads = combatantSquads(state);
+    // The yield window is producer-owned: the deck display-expires a stale card,
+    // but this system's own deterministic resolution stays authoritative. An open
+    // offer resolves on neglect (neglect reads as "let them go"), and a crew that
+    // died waiting closes on the corpses — even once it no longer scans as a
+    // combatant squad.
+    for (const squadId of Object.keys(own.squads)) {
+      const yieldRec = own.squads[squadId];
+      if (yieldRec && yieldRec.yieldState === 'offered') this._tickOpenYield(yieldRec, now, state);
+    }
     if (PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false) {
       if (squads.size === 0) {
         const laneVersion = entityIndexLaneVersion(state, PIRATE_DISENGAGE_QUIET_LANES);
@@ -256,14 +268,76 @@ export const pirateDisengage = {
     const own = ensureState(state);
     const rec = own.squads[payload.squadId];
     if (!rec || rec.outcome !== 'surrendered' || rec.yieldState !== 'offered') return;
+    if (this._liveYieldMembers(rec, state).length === 0) {
+      // A verdict landing on a corpse: the kill was the answer, not the button.
+      this._closeYieldKilled(rec, state);
+      return;
+    }
     if (payload.accept !== true) {
-      rec.yieldState = 'refused';
-      this._emit('pirateDisengage:yieldResolved', {
-        squadId: rec.squadId, accepted: false, pods: 0, t: state.simTime || 0,
-      });
+      this._refuseYield(rec, state, 'refused');
       return;
     }
     this._acceptYield(rec, state);
+  },
+
+  _onYieldCrewKilled(payload) {
+    const state = this.state;
+    const id = payload && payload.id;
+    if (!state || id == null) return;
+    const own = ensureState(state);
+    for (const squadId of Object.keys(own.squads)) {
+      const rec = own.squads[squadId];
+      if (!rec || rec.yieldState !== 'offered') continue;
+      if (!Array.isArray(rec.memberIds) || rec.memberIds.indexOf(id) === -1) continue;
+      this._tickOpenYield(rec, state.simTime || 0, state);
+    }
+  },
+
+  _liveYieldMembers(rec, state) {
+    return (Array.isArray(rec && rec.memberIds) ? rec.memberIds : [])
+      .map((id) => entityFor(state, id))
+      .filter((entity) => entity && entity.alive !== false && entity.pos);
+  },
+
+  _tickOpenYield(rec, now, state) {
+    const members = (Array.isArray(rec && rec.memberIds) ? rec.memberIds : [])
+      .map((id) => entityFor(state, id));
+    let corpses = 0;
+    let live = 0;
+    for (const entity of members) {
+      if (!entity) continue;
+      if (entity.alive === false) corpses += 1;
+      else if (entity.pos) live += 1;
+    }
+    if (live === 0) {
+      // Every yielding body is gone. A corpse the player left is the receipt —
+      // close the deck now, not at the stale-card grace. Bodies that simply left
+      // the sim close quietly; there is no dead crew to toast about.
+      if (corpses > 0) this._closeYieldKilled(rec, state);
+      else rec.yieldState = 'void';
+      return;
+    }
+    // Neglect reads as "let them go": the deck display-expires the card on the
+    // window, and the producer's own deterministic timeout stays authoritative.
+    if (Number.isFinite(rec.offerUntil) && now >= rec.offerUntil) {
+      this._refuseYield(rec, state, 'expired');
+    }
+  },
+
+  _refuseYield(rec, state, reason) {
+    rec.yieldState = 'refused';
+    this._emit('pirateDisengage:yieldResolved', {
+      squadId: rec.squadId, accepted: false, pods: 0, reason: reason || 'refused',
+      t: (state && state.simTime) || 0,
+    });
+  },
+
+  _closeYieldKilled(rec, state) {
+    rec.yieldState = 'killed';
+    this._emit('pirateDisengage:yieldResolved', {
+      squadId: rec.squadId, accepted: false, pods: 0, reason: 'killed',
+      t: (state && state.simTime) || 0,
+    });
   },
 
   // The generous verb: the squad dumps its take as ordinary jettisoned-cargo pods, then runs

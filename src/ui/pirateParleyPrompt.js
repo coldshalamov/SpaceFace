@@ -98,6 +98,7 @@ export function shouldSurfaceYield(payload, state) {
 }
 
 export function yieldReceiptText(payload) {
+  if (payload && payload.reason === 'killed') return 'YIELD VOID · the yielding crew is dead';
   if (payload && payload.accepted === true) {
     const pods = numberText(payload.pods != null ? payload.pods : 1);
     return `YIELD TAKEN · ${pods} pod${payload.pods === 1 ? '' : 's'} in the drift · they ran clean`;
