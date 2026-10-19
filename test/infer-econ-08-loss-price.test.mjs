@@ -52,12 +52,22 @@ function boot() {
   const events = { pressure: [], moves: [], headlines: [] };
   bus.on('economy:applyTradePressure', (payload) => events.pressure.push(payload));
   bus.on('lossLedger:priceMove', (payload) => events.moves.push(payload));
-  bus.on('news:headline', (payload) => events.headlines.push(payload));
+  // ECON-08 pins only its own cited line. The shared ticker may carry other legitimate cited
+  // lines for the same kill — the impound lot's used-hull ad (CRT-03) is one — so the counter
+  // scopes to the loss-priceMove seam under test instead of every headline on the bus.
+  bus.on('news:headline', (payload) => {
+    if (payload && payload.source === 'lossLedger:priceMove') events.headlines.push(payload);
+  });
   const marketNews = createMarketNews({ bus, state, helpers });
   return {
     sim, state, bus, player, events, voices, marketNews,
     econ: sim.registry.get('economy'),
   };
+}
+
+// Ticker-log rows attributable to the ECON-08 seam (each carries source 'lossLedger:priceMove').
+function lossPriceLines(marketNews) {
+  return marketNews.getLog().filter((rec) => rec && rec.source === 'lossLedger:priceMove');
 }
 
 function spawnLadenHauler(sim, tag, index = 0) {
@@ -139,9 +149,9 @@ test('ECON-08: a player-caused loss on a shipped commodity shifts the destinatio
 
   // 3. Exactly one CITED headline names the cause. Uncited publishing is forbidden.
   assert.equal(h.events.headlines.length, 1, 'one news headline');
-  const log = h.marketNews.getLog();
-  assert.equal(log.length, 1, 'one committed ticker line');
-  const rec = log[0];
+  const cited = lossPriceLines(h.marketNews);
+  assert.equal(cited.length, 1, 'one committed ticker line');
+  const rec = cited[0];
   assert.equal(rec.eventId, entry.lossId, 'the line cites the loss id');
   assert.equal(rec.sourceRef, entry.lossId, 'the citation is traceable');
   assert.ok(tickerEventRef(rec), 'tickerEventRef resolves — the line is cited, never uncited');
@@ -154,7 +164,7 @@ test('ECON-08: a player-caused loss on a shipped commodity shifts the destinatio
   assert.equal(h.events.pressure.length, 1, 'no second price move on replay');
   assert.equal(h.events.moves.length, 1, 'no second price-move event on replay');
   assert.equal(h.events.headlines.length, 1, 'no second headline on replay');
-  assert.equal(h.marketNews.getLog().length, 1, 'the ticker still holds one cited line');
+  assert.equal(lossPriceLines(h.marketNews).length, 1, 'the ticker still holds one cited line');
 
   // 5. Determinism: a fresh seed-4242 run mints the same loss, price, and line.
   const again = boot();
@@ -168,7 +178,11 @@ test('ECON-08: a player-caused loss on a shipped commodity shifts the destinatio
     midAfter,
     'same seed, same destination price',
   );
-  assert.equal(again.marketNews.getLog()[0].text, rec.text, 'same seed, same cited line');
+  assert.equal(
+    lossPriceLines(again.marketNews)[0].text,
+    rec.text,
+    'same seed, same cited line',
+  );
 });
 
 test('ECON-08: kills you did not cause, and hulls carrying nothing, stay ledger-only', () => {
@@ -194,7 +208,7 @@ test('ECON-08: kills you did not cause, and hulls carrying nothing, stay ledger-
   assert.equal(h.events.pressure.length, 0, 'no price intent without your shipped loss');
   assert.equal(h.events.moves.length, 0, 'no price-move event');
   assert.equal(h.events.headlines.length, 0, 'no headline');
-  assert.equal(h.marketNews.getLog().length, 0, 'the ticker stays silent');
+  assert.equal(lossPriceLines(h.marketNews).length, 0, 'the loss-price channel stays silent');
   assert.equal(
     h.state.economy.markets[DEST_STATION][COMMODITY].lastMid,
     midBefore,

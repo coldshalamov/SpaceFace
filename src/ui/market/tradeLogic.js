@@ -13,6 +13,7 @@ import { stationSurchargeWaiverActive } from '../../systems/factions.js';
 import { confirm } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
 import { summarizeDemandDrivers } from '../demandDriverSummary.js';
+import { quoteProvenance } from '../marketIntelligence.js';
 import { laneSetNavWaypoint } from '../../core/simLaneCommands.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -664,8 +665,12 @@ function knownMarketSnapshots(state) {
   if (memory && typeof memory === 'object' && !Array.isArray(memory)) {
     for (const [sid, station] of Object.entries(memory)) {
       for (const [cid, q] of Object.entries(station || {})) {
-        if (!q || (q.source != null && !['survey', 'uplink'].includes(q.source))) continue;
-        const source = q.source || 'memory';
+        // quoteProvenance owns the tag contract: a remembered dock visit may be untagged or
+        // carry 'dock'/'visit'/'market'; unknown tags fail closed so a live-feed row can
+        // never masquerade as price memory.
+        const prov = q ? quoteProvenance(q) : null;
+        if (!prov) continue;
+        const source = prov.source === 'dock' ? 'memory' : prov.source;
         add(sid, cid, q, q.seenAt, source, source === 'memory' ? 3 : source === 'uplink' ? 2 : 1);
       }
     }

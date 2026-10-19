@@ -58,3 +58,39 @@ test('an unknown local buy is not ranked as a risk-free source, and a real sprea
   assert.ok(trades[0].loadProfit > 0);
   assert.ok(trades[0].sellThere > 0);
 });
+
+test('visit-grade memory tags (visit/market) are remembered intel, not dropped', () => {
+  for (const source of ['visit', 'market']) {
+    const state = {
+      simTime: 20,
+      player: {
+        credits: 5000,
+        cargo: { capVolume: 40, usedVolume: 0 },
+        marketMemory: {
+          station_real: { [ORE.id]: { buy: 30, sell: 80, seenAt: 1, source } },
+        },
+      },
+      economy: {
+        markets: { station_here: { [ORE.id]: { lastBuy: 25, lastSell: 5 } } },
+      },
+    };
+    const trades = computeBestTrades(state, 'station_here');
+    assert.equal(trades.length, 1, `source '${source}' should still surface the lane`);
+    assert.equal(trades[0].destStation, 'station_real');
+  }
+  // An unknown tag still fails closed — a row the provenance contract cannot name is not intel.
+  const state = {
+    simTime: 20,
+    player: {
+      credits: 5000,
+      cargo: { capVolume: 40, usedVolume: 0 },
+      marketMemory: {
+        station_real: { [ORE.id]: { buy: 30, sell: 80, seenAt: 1, source: 'oracle' } },
+      },
+    },
+    economy: {
+      markets: { station_here: { [ORE.id]: { lastBuy: 25, lastSell: 5 } } },
+    },
+  };
+  assert.deepEqual(computeBestTrades(state, 'station_here'), []);
+});
