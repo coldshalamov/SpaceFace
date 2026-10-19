@@ -25,6 +25,8 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-8764f824a2 | 2c3b9f33aac | INF-14 swarm star asks | OPEN | Verify chain-star-banked zones name the spotless ask not a chain (stars=2 bestChain>=target), and never-entered zones show no ask. |
+| R-4065252 | 40652524541 | SWP-SPAWN claim release + welldrag cleanup | OPEN | Verify _onEntityDestroyed releasing source-ledger claims on hard exit is correct vs intended persist-across-leave design; virtualize skip is the boundary. |
 | R-8764f824 | 8764f824186 | SWP-COMM comms lifecycle | OPEN | Verify clearing _contactHailHeaveTo on sector:enter cannot refuse a legitimate continuous hail across the boundary (offer availability-poll at 5Hz is the safety) and that gone-squad resolution cannot fire spuriously while a member is temporarily invisible (membersFor = exists+alive). |
 | R-cc46e17 | cc46e17abcf8e4691a80d69c02aca21d1e45e4af | §1.8 demo sweep: save, input, and trade recovery | Continue rechecks the primary and recovery bytes after async validation before choosing a restore source | CLOSED 2026-10-18 (row deleted by review commit): SMALL-MISS-FIXED — `raw = freshRaw` after generation-bump re-prepare; regression test added |
 
