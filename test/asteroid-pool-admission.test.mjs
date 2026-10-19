@@ -185,6 +185,113 @@ test('adopting into a still-pending bucket re-kicks its admission once', () => {
   assert.equal(rekicks.length, 1, 'a settled bucket admits without another kick');
 });
 
+// 2026-10-19 probe: a bucket minted mid-flight sits behind the admission latch while its
+// instanced program links — hiding adopted leaves for that window is the first-of-family
+// blink (rescue rock, 106 ms). While no retiring batch covers them, the records must draw
+// through their source leaves until the same sync that submits the instance hides them.
+test('records in a latch-pending bucket draw through their leaves until it clears', () => {
+  const scene = new THREE.Scene();
+  const pool = createAsteroidInstancePool(scene, {
+    onMeshCreated: (mesh) => { mesh.userData.pipelinesPending = true; },
+  });
+  const geometry = new THREE.IcosahedronGeometry(1, 2);
+  const material = new THREE.MeshStandardMaterial();
+
+  const rock = makeCommonRock(41, 3, geometry, material);
+  scene.add(rock.root);
+  assert.equal(registerAsteroidBaseLeaf(pool, rock.entity, rock.root), true);
+  const bucket = pool.variants[3];
+  const leaf = rock.root.userData.asteroidInstanceBody;
+  assert.equal(bucket.mesh.userData.pipelinesPending, true, 'fixture: fresh bucket is latched');
+
+  let stats = syncAsteroidInstancePool(pool);
+  assert.equal(stats.submitted, 0, 'a latched batch submits nothing yet');
+  assert.equal(bucket.mesh.visible, false, 'the pending batch stays hidden');
+  assert.equal(leaf.visible, true, 'the source leaf keeps drawing across the latch window');
+  assert.equal(leaf.userData.asteroidInstanceAdopted, true,
+    'the record still belongs to the pool — pending draw is a borrow, not a release');
+
+  bucket.mesh.userData.pipelinesPending = false; // the latch clears
+  stats = syncAsteroidInstancePool(pool);
+  assert.equal(stats.submitted, 1);
+  assert.equal(leaf.visible, false, 'the submitting sync hides the leaf — same-pass handoff');
+  assert.equal(bucket.mesh.visible, true);
+  assert.equal(bucket.mesh.count, 1);
+});
+
+// Same window, LOD-owned detail leaf: poolLeafVisible is the would-draw proxy — a hidden
+// detail must stay hidden while pending, and adoption must keep its flag so the next
+// submission pass still reads it (the retired-bucket draw path clears it and must NOT run here).
+test('a pending bucket respects detail leaves parked by hlod', () => {
+  const scene = new THREE.Scene();
+  const pool = createAsteroidInstancePool(scene, {
+    onMeshCreated: (mesh) => { mesh.userData.pipelinesPending = true; },
+  });
+  const geometry = new THREE.IcosahedronGeometry(1, 2);
+  const material = new THREE.MeshStandardMaterial();
+  const detailMaterial = new THREE.MeshStandardMaterial();
+
+  const rock = makeCommonRock(42, 3, geometry, material);
+  // A stamped detail child adopts into a keyed bucket — the hlod path's record kind.
+  const detailLeaf = new THREE.Mesh(geometry, detailMaterial);
+  detailLeaf.userData.asteroidInstanceDetail = true;
+  rock.root.add(detailLeaf);
+  scene.add(rock.root);
+  assert.equal(registerAsteroidBaseLeaf(pool, rock.entity, rock.root), true);
+  assert.equal(detailLeaf.userData.asteroidInstanceAdopted, true, 'fixture: detail adopted');
+  const keyedBucket = [...pool.keyed.values()].find((b) => b.records.some((r) => r.leaf === detailLeaf));
+  assert.ok(keyedBucket && keyedBucket.mesh, 'fixture: detail record landed in a keyed bucket');
+  assert.equal(keyedBucket.mesh.userData.pipelinesPending, true);
+  detailLeaf.userData.poolLeafVisible = false; // hlod parks it before the sync runs
+
+  syncAsteroidInstancePool(pool);
+  assert.equal(detailLeaf.visible, false, 'a hlod-parked detail stays parked through the pending window');
+  assert.equal(detailLeaf.userData.asteroidInstanceAdopted, true,
+    'adoption survives — hlod keeps writing poolLeafVisible');
+  assert.equal(detailLeaf.userData.poolLeafVisible, false, 'the proxy is preserved, not consumed');
+
+  detailLeaf.userData.poolLeafVisible = true; // hlod would draw it now
+  syncAsteroidInstancePool(pool);
+  assert.equal(detailLeaf.visible, true, 'an un-parked detail draws through the pending window');
+
+  keyedBucket.mesh.userData.pipelinesPending = false;
+  syncAsteroidInstancePool(pool);
+  assert.equal(detailLeaf.visible, false, 'the submitting sync re-hides detail leaves as usual');
+});
+
+// A pending batch WITH a retiring bridge: the outgoing committed batch already covers the
+// records — the direct-draw fallback must not double-draw them while the bridge runs.
+test('a retiring bridge covers the records — no direct-draw double-up', () => {
+  const scene = new THREE.Scene();
+  const pool = createAsteroidInstancePool(scene, {
+    onMeshCreated: (mesh) => { mesh.userData.pipelinesPending = true; },
+  });
+  const geometry = new THREE.IcosahedronGeometry(1, 2);
+  const material = new THREE.MeshStandardMaterial();
+
+  const first = makeCommonRock(43, 4, geometry, material);
+  scene.add(first.root);
+  registerAsteroidBaseLeaf(pool, first.entity, first.root);
+  const original = pool.variants[4].mesh;
+  original.userData.pipelinesPending = false;
+  syncAsteroidInstancePool(pool);
+  const firstLeaf = first.root.userData.asteroidInstanceBody;
+  assert.equal(firstLeaf.visible, false);
+
+  // Growth: replacement pending, original bridges. Records must stay submitted-state hidden.
+  pool.variants[4].capacity = 1;
+  const second = makeCommonRock(44, 4, geometry, material);
+  scene.add(second.root);
+  registerAsteroidBaseLeaf(pool, second.entity, second.root);
+  const replacement = pool.variants[4].mesh;
+  assert.equal(replacement.userData.pipelinesPending, true);
+  assert.equal(pool.variants[4].retiring.mesh, original);
+
+  const stats = syncAsteroidInstancePool(pool);
+  assert.equal(stats.submitted, 2, 'records still submit into the pending replacement');
+  assert.equal(firstLeaf.visible, false, 'the bridged record keeps its leaf hidden — no double draw');
+});
+
 test('the renderer routes created pool meshes through the admission latch', () => {
   const poolStart = RENDERER_SOURCE.indexOf('createAsteroidInstancePool(scene, {');
   assert.ok(poolStart >= 0, 'the renderer must pass an admission hook to the pool');

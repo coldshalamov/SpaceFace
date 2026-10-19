@@ -604,6 +604,22 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
   variantStats.reuses = 0;
   if (!bucket.mesh) return;
 
+  // A batch still behind the admission latch cannot draw its records — the
+  // instanced variant is linking. With no retiring batch bridging them either,
+  // keep the source leaves drawing directly: hiding an adopted leaf for a chunk
+  // that issues no GL call is the first-of-family cold-bucket blink (the rescue
+  // rock's 106 ms programUnready window, 2026-10-19 probe). Submission and the
+  // leaf hide stay one pass — the first sync after the latch clears writes
+  // matrices and re-hides every leaf, so the handoff stays blinkless. A leaf
+  // whose own program is still cold is hidden by the unready walk exactly as an
+  // unadopted leaf would be, so this never widens a miss.
+  if (!bucket.retiring
+      && bucket.mesh.userData && bucket.mesh.userData.pipelinesPending === true) {
+    drawPendingBucketLeaves(bucket);
+    bucket.mesh.visible = false;
+    return;
+  }
+
   let submitted = 0;
   let matrixDirty = false;
   let shadowDirty = false;
@@ -845,6 +861,22 @@ function recoverRetiredBucket(pool, bucket, variantStats) {
   }
   ensureCapacity(pool, bucket, Math.max(bucket.capacity | 0, bucket.records.length, 1), true);
   return !!bucket.mesh && !(bucket.dynamicBufferOwner && bucket.dynamicBufferOwner.invalid);
+}
+
+// The pending-batch counterpart of drawBucketLeavesDirectly: restores each record's
+// would-draw leaf state for the latch window WITHOUT surrendering adoption — the
+// detail path keeps asteroidInstanceAdopted so hlod keeps writing poolLeafVisible
+// (the would-draw proxy) instead of stomping visible back, and the submit pass that
+// clears the latch re-hides every leaf by the ordinary record loop.
+function drawPendingBucketLeaves(bucket) {
+  for (let index = 0; index < bucket.records.length; index++) {
+    const record = bucket.records[index];
+    const leaf = record && record.leaf;
+    if (!leaf || !leaf.userData) continue;
+    leaf.visible = record.detail === true
+      ? leaf.userData.poolLeafVisible !== false
+      : true;
+  }
 }
 
 function drawBucketLeavesDirectly(bucket) {

@@ -1216,6 +1216,49 @@ function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
   return true;
 }
 
+// Rotating-slice bound for the swept-on-glass discovery below: a few hundred rows
+// per call keeps the pass under the caller's slice clock while still covering a
+// several-thousand-row list inside a handful of frames.
+const GLASS_DISCOVERY_SLICE_ROWS = 256;
+
+/**
+ * Swept-on-glass discovery: an entity that slid onto the readable band since the
+ * last residency poll is visibly late by construction — it cannot wait the ~0.25 s
+ * poll cadence (the camera-slew noMesh tail, 2026-10-19 asteroid-appear probe).
+ * One bounded slice of entityList per call, rotated by owner._glassDiscoveryCursor,
+ * covers the whole list in a few frames at ~zero cost. Callers hand the scan
+ * context they already minted (the drain's per-call one, or a pump-local mint), so
+ * the per-row work is the cheap gates plus one band classify. enqueue dedupes
+ * poll/queue races; the return count lets the caller react (drain hoists, pump
+ * drains). Flight-only like the rest of the urgency machinery — the shell census
+ * owns loading, and the live camera terms only exist once flight is presenting.
+ */
+function runGlassSweptMeshDiscovery(owner, scan) {
+  const state = owner && owner.state;
+  if (!state || state.mode !== 'flight'
+      || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+      || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue
+      || !scan) return 0;
+  const list = state.entityList || [];
+  const len = list.length;
+  if (len === 0) return 0;
+  const cursor = (owner._glassDiscoveryCursor | 0) % len;
+  const end = cursor + Math.min(GLASS_DISCOVERY_SLICE_ROWS, len);
+  let sweptEnqueued = 0;
+  for (let i = cursor; i < end; i++) {
+    const swept = list[i % len];
+    if (!swept || swept.alive === false || swept._noMesh) continue;
+    if (owner._meshes.has(swept.id) || owner._meshBuildQueuedIds.has(swept.id)) continue;
+    if (entityIsOnReadableGlassScan(swept, state, scan)
+        && enqueueMeshBuildCandidate(
+          swept, owner._meshes, owner._meshBuildQueuedIds, owner._meshBuildQueue)) {
+      sweptEnqueued += 1;
+    }
+  }
+  owner._glassDiscoveryCursor = end % len;
+  return sweptEnqueued;
+}
+
 // Producers stamp _noMesh for intentionally mesh-less entities, so a renderer build-failure
 // latch carries its own marker. A new world context (sector enter, save load) clears renderer
 // latches only — a live entity must not stay permanently invisible because three transient
@@ -3827,6 +3870,20 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     }
     if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
     return 'poll';
+  }
+  // The quiet-queue half of swept-on-glass discovery: when neither the reconcile
+  // nor the poll ran this frame the drain above never minted its scan context, so
+  // an empty queue would leave a swept entity poll-bound (~0.25 s). One bounded
+  // slice per idle-ish frame keeps discovery at frame cadence — the scan context
+  // is minted fresh each call (stale camera terms would lie about the glass) —
+  // and anything it enqueues sits at the head of the (empty) queue below.
+  const discoveryStart = now();
+  const sweptDiscovered = runGlassSweptMeshDiscovery(
+    owner, makeHoldExemptScanContext(owner.state));
+  notePacedFrameSpend(now() - discoveryStart);
+  if (sweptDiscovered > 0) {
+    owner._drainPendingMeshBuilds();
+    return 'drain';
   }
   if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) {
     owner._drainPendingMeshBuilds();
