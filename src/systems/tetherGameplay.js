@@ -288,6 +288,7 @@ export const tetherGameplay = {
       this._endTwinBridleForBoundary(this.state, reason);
       this._releaseSnagLatch(this.state, this._snag, 'ended');
       this._snag = null;
+      this._deferredLineEcho = null;
     };
     this._insideTetherUpdate = false;
     const onAuthorityBroken = (payload) => {
@@ -2280,6 +2281,7 @@ export const tetherGameplay = {
     if (!state) return 0;
     this._active = null;
     this._pendingCut = null;
+    this._deferredLineEcho = null;
     this._ignoreReleaseCutUntilReelIdle = false;
     const playerId = state.playerId;
     const kernel = combatKernel(this);

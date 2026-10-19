@@ -306,3 +306,39 @@ test('invalid particle buffers fail closed instead of throwing every frame', () 
   assert.doesNotThrow(() => fixture._integrateParticles(DT));
   assert.equal(fixture._shardMesh.count, 0);
 });
+
+// W2 finding: a break receipt captured out-of-update must not outlive the run boundary —
+// the held echo belongs to the pre-exit / pre-death run and would otherwise emit into a
+// foreign context (recycled targetId, crack-then-snap past the dedupe window).
+test('a deferred break echo held across sector:exit never emits into the next sector', () => {
+  const h = buildLatchHarness();
+  fireLatch(h);
+  assert.ok(activeAttachmentId(h), 'latched');
+
+  // Out-of-update authority break: the reconcile captures the echo for the next update.
+  h.attachments.breakAttachment(activeAttachmentId(h), 'entity_destroyed', 'test_break');
+  assert.ok(h.system._deferredLineEcho, 'the receipt is deferred, not dropped or doubled');
+
+  h.bus.emit('sector:exit', { sectorId: 'fixture_out' });
+  h.system.update(DT, h.state);
+  assert.equal(h.events.broke.length, 0, 'a held echo cannot bleed into the next sector');
+});
+
+test('a deferred break echo held across player:death never emits into the recovery run', () => {
+  const h = buildLatchHarness();
+  fireLatch(h);
+  h.attachments.breakAttachment(activeAttachmentId(h), 'entity_destroyed', 'test_break');
+  assert.ok(h.system._deferredLineEcho);
+
+  h.bus.emit('player:death', { killerId: null, recoverable: true });
+  h.system.update(DT, h.state);
+  assert.equal(h.events.broke.length, 0, 'a held echo cannot bleed into the recovery run');
+});
+
+test('control: without a boundary the same deferred echo flushes on the next update', () => {
+  const h = buildLatchHarness();
+  fireLatch(h);
+  h.attachments.breakAttachment(activeAttachmentId(h), 'entity_destroyed', 'test_break');
+  h.system.update(DT, h.state);
+  assert.equal(h.events.broke.length, 1, 'in-run echoes still deliver one tick late');
+});
