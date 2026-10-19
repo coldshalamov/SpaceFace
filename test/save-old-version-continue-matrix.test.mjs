@@ -12,6 +12,7 @@ import { isThrowArmPayload } from '../src/systems/input.js';
 import { save, preflightSaveImport } from '../src/save/saveSystem.js';
 import { encodeSavePayloadFinal, restorePrepareSaveJsonAsync } from '../src/save/saveWorker.js';
 import { expandNativeAttestationTables } from '../src/save/nativeAttestationTables.js';
+import { SG02_NATIVE_GEOMETRY_REVISION } from '../src/core/sg02DynamicBodyOwner.js';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
@@ -145,11 +146,17 @@ for (const version of versions) for (const attached of [false, true]) {
           assert.equal(record._playerContactLastTick ?? null, null);
           assert.equal(record._playerContactCumulativeDeltaV ?? 0, 0, 'absent legacy debt stays absent');
         } else {
-          const saved = expandNativeAttestationTables(captured.data.physics).bodies[captured.data.entities.player.id];
+          const physicsPayload = expandNativeAttestationTables(captured.data.physics);
+          const saved = physicsPayload.bodies[captured.data.entities.player.id];
           assert.equal(record._playerContactLastTick, saved.contactEpisode.lastTick);
           assert.equal(record._playerContactCumulativeDeltaV, 4, 'Continue cannot refill the recent contact budget');
-          assert.equal(h.state.physicsRuntime.nativeRestore.mode, kind);
-          assert.equal(h.state.physicsRuntime.nativeRestore.exact, kind === 'native');
+          // 'native' adoption is only possible when the fixture's solver bytes match the
+          // current geometry revision — a pre-v4 fixture honestly rebuilds as scalar while
+          // still donating its contact budget (the assertions above).
+          const expectMode = kind === 'native'
+            && physicsPayload.nativeGeometryRevision === SG02_NATIVE_GEOMETRY_REVISION ? 'native' : 'scalar';
+          assert.equal(h.state.physicsRuntime.nativeRestore.mode, expectMode);
+          assert.equal(h.state.physicsRuntime.nativeRestore.exact, expectMode === 'native');
         }
         mirror();
         assert.equal(domains.get('player').cargo.usedMass, h.state.player.cargo.usedMass);
