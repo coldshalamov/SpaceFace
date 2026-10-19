@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  createInputCommandHistory,
   createInputCommandSnapshotQueue,
   createInputCommandSnapshotRecord,
+  projectInputCommandRecord,
 } from '../src/core/inputCommandSnapshot.js';
 import { createSimulationRunner, LOOP_FIXED_DT } from '../src/core/simulationRunner.js';
 
@@ -425,6 +427,35 @@ test('worldObjectTargetId captures as an optional primitive with absent/null/id 
     assert.equal(record.worldObjectTargetId, null,
       'a non-primitive capture rejects to blank, never an object graph');
   });
+});
+
+test('a captured reel axis reaches the projected tape frame instead of silently zeroing', () => {
+  const queue = createInputCommandSnapshotQueue(1);
+  const record = createInputCommandSnapshotRecord();
+  // commandInput() carries actions.reelDelta = -0.5 (reel-in) with no massline-group reelDelta —
+  // the shape input.js publishes every tick (acts.reelDelta from lineLength or the dedicated axis).
+  queue.publish(1, 3, 0, commandInput());
+  queue.consume(1, (reader, token) => reader.copyTo(token, record));
+
+  const frame = projectInputCommandRecord(record);
+  assert.equal(frame.reelDelta, -0.5,
+    'the winch axis the lab tape writes back onto actions.reelDelta must survive projection');
+});
+
+test('an input history tape preserves reelDelta through record and toFrames', () => {
+  const history = createInputCommandHistory({ tickRate: 60, seconds: 1 });
+  history.record(7, commandInput(), { sequence: 1 });
+  const reelOut = commandInput();
+  reelOut.actions.reelDelta = 0.8;
+  reelOut.actions.massline.lineControl = true;
+  reelOut.actions.massline.lineLength = 0.8;
+  history.record(8, reelOut, { sequence: 2 });
+
+  const frames = history.toFrames();
+  assert.equal(frames.length, 2);
+  assert.equal(frames[0].tick, 7);
+  assert.equal(frames[0].input.reelDelta, -0.5, 'reel-in survives the tape');
+  assert.equal(frames[1].input.reelDelta, 0.8, 'pay-out survives the tape');
 });
 
 test('a reused snapshot slot with no gesture deletes the stale capture', () => {

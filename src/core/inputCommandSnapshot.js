@@ -285,7 +285,13 @@ export function projectInputCommandRecord(data, keys = null, authored = null) {
     turnIntent: finite(axes.turnIntent),
     boost: data.boost === true,
     fire: data.fire === true,
-    reelDelta: finite(massline.reelDelta, finite(actions.reelDelta, 0)),
+    // The winch axis lives on the action group (input.js writes actions.reelDelta every tick);
+    // a massline-group value wins if a future command schema publishes one. finite() takes one
+    // argument — the previous nested call silently discarded the action-group fallback and
+    // replayed every captured reel as 0.
+    reelDelta: Number.isFinite(massline.reelDelta)
+      ? massline.reelDelta
+      : finite(actions.reelDelta),
     // The held lash round-trips like masslineHeld — a captured gyreSnare:true
     // must not replay beam-silent.
     gyreSnare: actions.gyreSnare === true,
