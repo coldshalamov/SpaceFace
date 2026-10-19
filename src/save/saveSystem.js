@@ -910,18 +910,6 @@ export const save = {
       ['charges', () => this._callSerialize('impulseCharges')],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
-      ['latchNine', () => this._callSerialize('latchNine')],
-      ['scissorwake', () => this._callSerialize('scissorwake')],
-      ['lastShift', () => this._callSerialize('lastShift')],
-      ['redKite', () => this._callSerialize('redKite')],
-      ['sableVenn', () => this._callSerialize('sableVenn')],
-      ['ilexArk', () => this._callSerialize('ilexArk')],
-      ['kilnback', () => this._callSerialize('kilnback')],
-      ['mothlight', () => this._callSerialize('mothlight')],
-      ['palletJack', () => this._callSerialize('palletJack')],
-      ['secondRinse', () => this._callSerialize('secondRinse')],
-      ['towlineTable', () => this._callSerialize('towlineTable')],
-      ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
@@ -943,6 +931,23 @@ export const save = {
       ['nemesis', () => this._callSerialize('nemesis') || clonePlain(state.nemesis || null)],
       ['nemesisDeployment', () => this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null)],
       ['enemyMind', () => clonePlain(state.enemyMind || null)],
+      // The plan must walk keys in exactly _serializeDataSteps order — the chunked/worker
+      // lane assembles `data` in this order and the envelope checksum is insertion-order
+      // sensitive, so a plan that drifts from serializeData yields a different byte layout
+      // than the synchronous lane. The latchNine..borrowedVoice machinery block sits between
+      // enemyMind and lossLedger there, and worldNews after encounterDirector — keep both.
+      ['latchNine', () => this._callSerialize('latchNine')],
+      ['scissorwake', () => this._callSerialize('scissorwake')],
+      ['lastShift', () => this._callSerialize('lastShift')],
+      ['redKite', () => this._callSerialize('redKite')],
+      ['sableVenn', () => this._callSerialize('sableVenn')],
+      ['ilexArk', () => this._callSerialize('ilexArk')],
+      ['kilnback', () => this._callSerialize('kilnback')],
+      ['mothlight', () => this._callSerialize('mothlight')],
+      ['palletJack', () => this._callSerialize('palletJack')],
+      ['secondRinse', () => this._callSerialize('secondRinse')],
+      ['towlineTable', () => this._callSerialize('towlineTable')],
+      ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
       ['provenance', () => this._serializeBoundedMemory('provenance')],
       ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
@@ -958,12 +963,6 @@ export const save = {
       ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
       // Genie 01: world memory + inbox (inbox is part of the save; serialize() does not drain it).
       ['chronicler', () => this._serializeBoundedMemory('chronicler')],
-      // The chart's own memory: wreck fields you witnessed, couriers still missing, and the
-      // world-beat dedupe keys (starved shelves, claim legs, day snapshot, chronicler-legend
-      // day). Without this section every save/load wipes the marks the galaxy map draws and
-      // replays the headlines it just read. Bounded on write; absent key (old saves) restores
-      // nothing — the bag starts fresh exactly as it does today.
-      ['worldNews', () => this._serializeWorldNews()],
       // Genie 02: session-drama arc state (engine state subtree; schema-validated on restore).
       ['tensionDirector', () => clonePlain(state.tensionDirector || null)],
       ['regionalEcology', () => this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {})],
@@ -972,6 +971,12 @@ export const save = {
       // rail step N resumes at step N instead of dropping to the returning-pilot path.
       ['onboarding', () => this._callSerialize('onboarding')],
       ['encounterDirector', () => this._serializeEncounterDirector()],
+      // The chart's own memory: wreck fields you witnessed, couriers still missing, and the
+      // world-beat dedupe keys (starved shelves, claim legs, day snapshot, chronicler-legend
+      // day). Without this section every save/load wipes the marks the galaxy map draws and
+      // replays the headlines it just read. Bounded on write; absent key (old saves) restores
+      // nothing — the bag starts fresh exactly as it does today.
+      ['worldNews', () => this._serializeWorldNews()],
       ['flight', () => this._serializeFlight()],
       ['nav', () => this._serializeNav()],
       ['settings', () => this._serializeSettings()],
@@ -1838,6 +1843,14 @@ export const save = {
     const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch };
     if (this._activePacedSave) this._activePacedSave.superseded = true;
     this._activePacedSave = job;
+    // An explicit paced write to the autosave slot (exit-to-menu, or a UI save that names
+    // 'auto') is newer than any autosave still working through its capture/validate hops —
+    // the same "queued autosave is strictly older" rule requestAutosave's pending drop already
+    // applies. Without the cancel both writers race the same key: whichever lands second
+    // would otherwise concede on _writeSlot's drift check, which could leave the older
+    // autosave as the final generation over an exit save. The cancel gives the in-flight
+    // transaction its terminal 'superseded' receipt instead of an abandoned pendingWrite.
+    if (slot === AUTOSAVE_SLOT) this._cancelActiveAutosave('superseded', { immediate: true });
     this.bus.emit('save:started', { slot, reason, autosave });
     this._noteWritePending(slot, reason, autosave);
     beginFocusLossSaveWrite(this.state);
@@ -2081,7 +2094,21 @@ export const save = {
     let previousRaw = null;
     let previousPrepared = null;
     if (options.previousRaw !== undefined) {
-      // Caller already read (and optionally verified) the previous generation on a paced lane.
+      // Caller already read (and optionally verified) the previous generation on a paced lane —
+      // but the chain yields between that read and this leg, and the slot can have moved under
+      // it (a synchronous save, a delete, an autosave transaction, or a shared-store apply all
+      // write the same key). Re-read immediately before rotating: if the stored bytes are no
+      // longer the ones the caller proved, this write is the stale generation — rotating its
+      // old previousRaw would drop the interleaved save from both primary and recovery. The
+      // writer that already landed owns the slot; concede rather than clobber. This is the
+      // write-side twin of the load path's stable-pair re-read (754b7e3a2f0) and the same
+      // rule _compactPrimariesForQuotaPressure applies to its own replacements.
+      let currentRaw = null;
+      try { currentRaw = localStorage.getItem(primaryKey); }
+      catch (err) { return { ok: false, reason: 'read_failed', bytes: json.length, stringifyMs, storageMs, indexMs }; }
+      if (currentRaw !== options.previousRaw) {
+        return { ok: false, reason: 'superseded', bytes: json.length, stringifyMs, storageMs, indexMs };
+      }
       previousRaw = options.previousRaw;
       previousPrepared = options.previousPrepared || null;
     } else {
@@ -4080,7 +4107,7 @@ export const save = {
     return this._restoreSequence;
   },
 
-  _cancelActiveAutosave(reason = 'superseded') {
+  _cancelActiveAutosave(reason = 'superseded', options = {}) {
     const active = this._activeAutosaveTransaction;
     const job = active && active.job || this._activeAutosaveJob || this._autosavePending;
     this._autosavePending = null;
@@ -4088,6 +4115,14 @@ export const save = {
     if (active && !active.tx.finished) {
       active.tx.cancelReason = reason;
       if (active.tx.primaryWritten && !active.tx.rollbackDone) {
+        // An explicit write supersedes synchronously: restoring on a later hop would let the
+        // superseding paced chain read the dead transaction's bytes as its previous
+        // generation — and then either concede against the mid-flight restore or rotate a
+        // stale pair. Run the single bounded restore now so the slot is final before the
+        // new writer looks at it.
+        if (options.immediate === true) {
+          return this._runAutosaveRollback(active.job, active.snapshot, active.tx, reason);
+        }
         return this._scheduleAutosaveRollback(active.job, active.snapshot, active.tx, reason);
       }
       return this._finishAutosaveTransaction(active.job, active.snapshot, active.tx, {
@@ -4772,6 +4807,18 @@ export const save = {
   _autosaveWriteBackup(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
+    // The previous generation was read and validated across paced hops — a foreign write
+    // (a synchronous save, a paced exit save, a delete, or a shared-store apply) that landed
+    // since owns the slot now. Re-read before the first storage mutation: on drift this
+    // transaction is the stale writer, and rotating its old previousRaw over the interleaved
+    // save would erase that generation from both primary and recovery. Concede instead; the
+    // next autosave trigger retries against whatever the newer writer left.
+    let currentRaw = null;
+    try { currentRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); }
+    catch (error) { return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'read_failed' }); }
+    if (currentRaw !== tx.previousRaw) {
+      return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
+    }
     if (tx.previousRaw && tx.previousValid) {
       const recoveryKey = RECOVERY_PREFIX + AUTOSAVE_SLOT;
       try {
@@ -4801,6 +4848,27 @@ export const save = {
   _autosaveWritePrimary(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
+    // Same stable-generation guard as the backup leg, covering the single hop between them:
+    // a foreign write or delete that landed in between owns the slot, and this transaction
+    // must not overwrite it.
+    let currentRaw = null;
+    try { currentRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); }
+    catch (error) { return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'read_failed' }); }
+    if (currentRaw !== tx.previousRaw) {
+      // The interleaver emptied the slot (a delete or a tombstone sweep): the recovery copy
+      // this transaction just rotated in must go too — a delete must not resurrect the slot
+      // as a recovery-only card in the next scan. Only remove bytes that are still this
+      // transaction's own rotation; a foreign recovery write keeps what it put there.
+      if (currentRaw == null && tx.previousRaw && tx.previousValid) {
+        const recoveryKey = RECOVERY_PREFIX + AUTOSAVE_SLOT;
+        let recoveryRaw = null;
+        try { recoveryRaw = localStorage.getItem(recoveryKey); } catch (_) { /* best effort */ }
+        if (recoveryRaw === tx.previousRaw) {
+          try { localStorage.removeItem(recoveryKey); } catch (_) { /* best effort */ }
+        }
+      }
+      return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
+    }
     try { localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, snapshot.json); }
     catch (error) {
       // Under quota, recovery backups are the cheapest thing to free — but an autosave is itself
@@ -4917,22 +4985,57 @@ export const save = {
     this._scheduleAutosaveWork(() => {
       tx.rollbackScheduled = false;
       if (tx.finished) return;
-      const started = workNowMs();
-      let rollbackOk = true;
-      try {
-        if (tx.previousRaw == null) localStorage.removeItem(LS_PREFIX + AUTOSAVE_SLOT);
-        else localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, tx.previousRaw);
-      } catch (error) { rollbackOk = false; }
-      const rollbackMs = workNowMs() - started;
-      tx.storageMs += rollbackMs;
-      this._pushAutosaveSlice(tx, 'storage_rollback', rollbackMs);
-      // The cleanup owner gets one authoritative rollback attempt and one terminal receipt. A
-      // storage exception is reported as rollback_failed; it must not enqueue an infinite retry.
+      this._runAutosaveRollback(job, snapshot, tx, reason);
+    });
+    return true;
+  },
+
+  // One rollback attempt against live storage. Scheduled by _scheduleAutosaveRollback and run
+  // immediately by _cancelActiveAutosave when an explicit write supersedes a transaction that
+  // already landed its primary — in that case the restore cannot wait a hop: the superseding
+  // paced chain re-reads the slot next, and a still-pending restore would hand it a stale
+  // previous generation to concede against.
+  _runAutosaveRollback(job, snapshot, tx, reason) {
+    const started = workNowMs();
+    // Re-read before undoing: this runs after the failure that scheduled it, and a generation
+    // that landed in between (a synchronous save, a paced write, a shared-store apply — or a
+    // delete that emptied the slot) owns the slot now. Restoring previousRaw over valid
+    // foreign bytes would destroy another writer's save, and restoring over an emptied slot
+    // would resurrect a delete. Concede in both cases; roll back only when the slot still
+    // holds this transaction's own write, the still-present previous generation, or corrupt
+    // bytes the verify actually condemned.
+    let currentRaw = null;
+    try { currentRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); } catch (error) { /* treated as corrupt */ }
+    if (currentRaw == null) {
       tx.rollbackDone = true;
-      this._finishAutosaveTransaction(job, snapshot, tx, {
-        ok: false,
-        reason: rollbackOk ? reason : 'rollback_failed',
-      });
+      this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
+      return true;
+    }
+    if (currentRaw !== snapshot.json && currentRaw !== tx.previousRaw) {
+      const foreign = this._prepareEnvelopeForWriter(currentRaw);
+      if (foreign && foreign.ok) {
+        tx.rollbackDone = true;
+        const concededMs = workNowMs() - started;
+        tx.storageMs += concededMs;
+        this._pushAutosaveSlice(tx, 'storage_rollback_conceded', concededMs);
+        this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
+        return true;
+      }
+    }
+    let rollbackOk = true;
+    try {
+      if (tx.previousRaw == null) localStorage.removeItem(LS_PREFIX + AUTOSAVE_SLOT);
+      else localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, tx.previousRaw);
+    } catch (error) { rollbackOk = false; }
+    const rollbackMs = workNowMs() - started;
+    tx.storageMs += rollbackMs;
+    this._pushAutosaveSlice(tx, 'storage_rollback', rollbackMs);
+    // The cleanup owner gets one authoritative rollback attempt and one terminal receipt. A
+    // storage exception is reported as rollback_failed; it must not enqueue an infinite retry.
+    tx.rollbackDone = true;
+    this._finishAutosaveTransaction(job, snapshot, tx, {
+      ok: false,
+      reason: rollbackOk ? reason : 'rollback_failed',
     });
     return true;
   },
@@ -4940,6 +5043,20 @@ export const save = {
   _autosaveWriteIndex(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
+    // Final stable-generation check before stamping the index card and the success receipt:
+    // a foreign write or delete that landed between the readback verify and this leg owns the
+    // slot — publishing completion here would stamp this transaction's card over their bytes
+    // and report a save that is not the one on disk. Nothing of ours needs undoing, so mark
+    // the rollback done and concede.
+    let currentRaw = null;
+    try { currentRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); } catch (error) { currentRaw = null; }
+    if (currentRaw !== snapshot.json) {
+      tx.rollbackDone = true;
+      const concedeMs = workNowMs() - started;
+      tx.storageMs += concedeMs;
+      this._pushAutosaveSlice(tx, 'storage_write_index_conceded', concedeMs);
+      return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
+    }
     this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope, snapshot.json);
     const sliceMs = workNowMs() - started;
     tx.indexMs += sliceMs;
