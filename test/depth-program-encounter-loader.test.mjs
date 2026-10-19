@@ -180,6 +180,14 @@ const MIGRATION_ZONE_OVERRIDES = Object.freeze({
     center: Object.freeze({ x: 300, z: -300 }),
     radius: 1100,
   }),
+  // 6926e5d09c9 (2026-10-18) moved the Abandoned Driller's center west out of Belt Outpost's
+  // ambient-spawn protection bubble — live world evolution of the same class as the belt
+  // reshape above. The migration-era geometry is (240, -1180), radius 420.
+  zone_ceres_derelict: Object.freeze({
+    sectorId: 'sector_ceres_belt',
+    center: Object.freeze({ x: 240, z: -1180 }),
+    radius: 420,
+  }),
 });
 
 const MIGRATION_ERA_SHIP_DOCTRINE = Object.freeze({

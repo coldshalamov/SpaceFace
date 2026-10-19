@@ -58,8 +58,28 @@ export const FIRE_SALE = Object.freeze({
   repSqueeze: -2,             // the desk files a squeeze
   repRob: -6,                 // a lane kill on a selling hull
   repShotAfterSale: -4,       // paid for the lot, then fired on the hauler anyway
+  repBurned: -2,              // shot at a wary wire that kept the lot bolted and ran
+  knownDiscount: 0.9,         // a clean prior buys the desk's better figure
   priceFloor: 8, priceCeil: 240, // the lot is a haulable commodity, not a gem lotto
 });
+
+// THE WIRE REMEMBERS — every CR sibling already reads priorOutcome into the refire; this wire
+// filed the record and ignored it. The last answer on this same wire classes the next hail:
+//   'hostile' — you robbed it or put fire on it: the desk holds your registry, no haggle, and
+//               the lot stays bolted under fire (a kill still spills it — a dead hull can't
+//               hold custody, but a wounded one stops feeding you the drop);
+//   'marked'  — you beat the desk down last time: the ask stands, no second squeeze;
+//   'clean'   — you wired straight: the desk remembers a clean hand and prices you better.
+// Neutral endings (hauled_off, went_quiet, paid_loose, lot_loose) leave the wire a stranger.
+function priorKindOf(rec) {
+  if (!rec) return null;
+  const facts = rec.facts || {};
+  if (rec.outcome === 'robbed' || rec.outcome === 'burned_off'
+    || facts.haulerShot === true || facts.podMarked === true) return 'hostile';
+  if (rec.outcome === 'squeezed' || facts.via === 'squeeze') return 'marked';
+  if (rec.outcome === 'bought') return 'clean';
+  return null;
+}
 
 const dist2 = (ax, az, bx, bz) => {
   const dx = ax - bx, dz = az - bz;
@@ -74,6 +94,15 @@ export const runtime = Object.freeze({
     if (!pick) return d.abort(live, 'no_market');
 
     const prior = priorOutcome(state, live.shapeId);
+    const priorKind = priorKindOf(prior);
+    // The desk haggles with strangers and clean hands — never with a name it filed.
+    const squeezeOffered = priorKind !== 'hostile' && priorKind !== 'marked';
+    let ask = pick.ask;
+    let squeezeAsk = pick.squeezeAsk;
+    if (priorKind === 'clean') {
+      ask = Math.max(1, Math.round(ask * FIRE_SALE.knownDiscount));
+      squeezeAsk = Math.max(1, Math.round(squeezeAsk * FIRE_SALE.knownDiscount));
+    }
     const rng = d.stream(live, 'fire_sale_layout');
     const a = rng() * Math.PI * 2;
     const u = { x: Math.cos(a), z: Math.sin(a) };
@@ -109,11 +138,14 @@ export const runtime = Object.freeze({
       commodityId: pick.commodityId,
       commodityName: pick.commodityName,
       qty: pick.qty,
-      ask: pick.ask,
-      squeezeAsk: pick.squeezeAsk,
+      ask,
+      squeezeAsk,
       gluttedAlready: pick.gluttedAlready,
       marketEventId: eventId,
       prior: prior ? prior.outcome : null,
+      priorKind,
+      // A wary wire keeps the lot bolted under fire — the only way to it is through the hull.
+      lotSealed: priorKind === 'hostile',
       settled: false,
       haulerShot: false,
       haulerDead: false,
@@ -123,7 +155,7 @@ export const runtime = Object.freeze({
 
     live.vars = {
       ...(live.vars || {}),
-      amount: pick.ask,
+      amount: ask,
       crew: 'line hauler',
       stationName: pick.stationName,
     };
@@ -134,11 +166,21 @@ export const runtime = Object.freeze({
       contacts: 1,
       t: d.now(),
     };
-    d.say(live, 'alert',
-      `MTS LANE WIRE: hauler holds a dead manifest — ${pick.stationName} glutted on ${pick.commodityName} mid-burn and the yard voided the paper. `
-      + `The lot goes out the hatch for ${pick.ask} cr on the wire — under every honest mid — or it burns home as a loss. Check the ${pick.stationName} board if you doubt it.`,
-      null, { primary: true, literal: true });
-    d.offerChoices(live, live.shape.choices.map((c) => c.id), 'pass', live.data.fireSale.offerEndsAt);
+    const hail = priorKind === 'hostile'
+      ? `MTS LANE WIRE: the desk holds your registry. Another dead manifest — ${pick.stationName} glutted on ${pick.commodityName} mid-burn. `
+        + `${ask} cr cash on the wire, no haggle — and the lot stays bolted if you come with fire.`
+      : priorKind === 'marked'
+        ? `MTS LANE WIRE: the desk still carries your squeeze. Another dead manifest — ${pick.commodityName} lot, `
+          + `${ask} cr on the wire. The ask is the ask this time — check the ${pick.stationName} board if you doubt it.`
+        : priorKind === 'clean'
+          ? `MTS LANE WIRE: the desk remembers a clean hand. Another dead manifest — ${pick.stationName} glutted on ${pick.commodityName} mid-burn. `
+            + `${ask} cr for the hull that pays straight — under every honest mid, and priced for you.`
+          : `MTS LANE WIRE: hauler holds a dead manifest — ${pick.stationName} glutted on ${pick.commodityName} mid-burn and the yard voided the paper. `
+            + `The lot goes out the hatch for ${ask} cr on the wire — under every honest mid — or it burns home as a loss. Check the ${pick.stationName} board if you doubt it.`;
+    d.say(live, 'alert', hail, null, { primary: true, literal: true });
+    const choiceIds = live.shape.choices.map((c) => c.id)
+      .filter((id) => id !== 'squeeze' || squeezeOffered);
+    d.offerChoices(live, choiceIds, 'pass', live.data.fireSale.offerEndsAt);
   },
 
   event(d, live, state, name, payload) {
@@ -147,6 +189,21 @@ export const runtime = Object.freeze({
     if (name === 'playerHitSquad' && payload && payload.targetId === w.haulerId) {
       w.haulerShot = true;
       this._fleeHauler(d, live, 'fire_sale:shot_at');
+      // A wary wire was told who you are: under fire the lot stays bolted and the hull burns —
+      // wounding it feeds you nothing. The only way to the freight now is through the hull:
+      // a kill still spills the pod marked, because a dead hull cannot hold custody.
+      if (w.lotSealed && w.lotState === 'held') {
+        if (live.phase !== 'burning') {
+          live.phase = 'burning';
+          d.say(live, 'bark',
+            'LINE HAULER: the desk holds your registry — the lot stays bolted. You don\u2019t eat twice off this wire.',
+            null, { literal: true });
+          d.rep('faction_mts', FIRE_SALE.repBurned, 'the_fire_sale_burned_off');
+          publishSituationNews(d, live,
+            `FLAGGED HULL FIRED ON A WARY WIRE: an MTS freighter held a dead-manifest ${w.commodityName} lot bolted and burned off the lane. The desk knew the shooter's registry.`);
+        }
+        return;
+      }
       // A selling hull under fire kicks the lot loose to run light — now it is marked freight,
       // not a deal: the pod reads stolen no matter who walks it away. A pod that already went
       // out paid stays paid; only the squeeze on its seller changes.
@@ -181,13 +238,22 @@ export const runtime = Object.freeze({
     const w = live.data && live.data.fireSale;
     if (!w || w.settled || live.phase === 'done') return;
     if (live.phase !== 'offer') return;
-    if (choiceId === 'buy' || choiceId === 'squeeze') {
-      const price = choiceId === 'squeeze' ? w.squeezeAsk : w.ask;
+    // The desk doesn't haggle with a name it filed: a haggle the wire never offered reads as
+    // a straight answer at the ask — the wire, not the click, decides what moves.
+    const asked = (choiceId === 'squeeze' && (w.priorKind === 'hostile' || w.priorKind === 'marked'))
+      ? 'buy' : choiceId;
+    if (asked !== choiceId) {
+      d.say(live, 'bark',
+        'LINE HAULER: the desk doesn\u2019t haggle with you. The ask stands — wire it or fly on.',
+        null, { literal: true });
+    }
+    if (asked === 'buy' || asked === 'squeeze') {
+      const price = asked === 'squeeze' ? w.squeezeAsk : w.ask;
       const credits = state.player && Math.round(Number(state.player.credits) || 0) || 0;
       // Exact-payment request through the sole credits writer — a stale balance between the offer
       // and the answer settles nothing and moves no freight.
       const req = {
-        amount: price, reason: `the_fire_sale:${choiceId}`, requireFull: true,
+        amount: price, reason: `the_fire_sale:${asked}`, requireFull: true,
         expectedCredits: credits, commit: () => true, result: false,
       };
       d.emit('economy:chargeCredits', req);
@@ -196,10 +262,10 @@ export const runtime = Object.freeze({
         this._sendOff(d, live);
         return this._settle(d, live, state, 'hauled_off');
       }
-      w.paidBy = choiceId;
+      w.paidBy = asked;
       w.paidCr = price;
       this._dropLot(d, live, state, { marked: false });
-      if (choiceId === 'squeeze') {
+      if (asked === 'squeeze') {
         d.rep('faction_mts', FIRE_SALE.repSqueeze, 'the_fire_sale_squeezed');
         d.say(live, 'bark',
           `LINE HAULER: ${w.squeezeAsk} and my desk files your name for the squeeze. The pod is loose — it's yours, take it.`,
@@ -227,6 +293,15 @@ export const runtime = Object.freeze({
     if (live.phase === 'offer') {
       if (now >= w.offerEndsAt) return this.choose(d, live, state, 'pass');
       if (now >= live.deadlineAt) return this.choose(d, live, state, 'pass');
+      return;
+    }
+
+    // burning — a wary wire fled with the lot bolted. Nothing decides but the hull dying
+    // (squadKill settles 'robbed' itself), the player walking, or the window closing.
+    if (live.phase === 'burning') {
+      if (now >= live.deadlineAt || !d.playerNearZone(live, FIRE_SALE.leaveSlackWu)) {
+        return this._settle(d, live, state, 'burned_off');
+      }
       return;
     }
 
@@ -391,6 +466,8 @@ export const runtime = Object.freeze({
     live.vars = { ...(live.vars || {}), via: w.paidBy || (w.haulerShot ? 'fire' : 'wire') };
     return settleSituation(d, live, state, outcome, {
       via: w.paidBy || (w.haulerShot ? 'fire' : 'wire'),
+      priorKind: w.priorKind,
+      lotSealed: w.lotSealed === true,
       commodityId: w.commodityId,
       qty: w.qty,
       paidCr: w.paidCr,
@@ -432,6 +509,7 @@ export default defineEncounter(trigger, {
     robbed: 'ROBBED ON THE WIRE — the hauler is dead and its marked lot floats. The Syndicate keeps the manifest.',
     lot_loose: 'LOT LOOSE — the freight left the field with no clean custody. The lane has it now.',
     hauled_off: 'HAULED OFF — the lot rode home as dead freight. The board still shows the glut that killed it.',
+    burned_off: 'BURNED OFF — the desk knew your registry and kept the lot bolted. You don\u2019t eat twice off this wire.',
     went_quiet: 'The wire went quiet. Somewhere a hauler is still burning with freight nobody priced.',
   },
 });

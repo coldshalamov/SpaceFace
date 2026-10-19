@@ -19,6 +19,7 @@ import { combat } from '../src/systems/combat.js';
 import { lootShards } from '../src/systems/lootShards.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { FIRE_SALE } from '../src/data/encounters/1206-the-fire-sale.js';
+import { situationMemory } from '../src/systems/crSituationKit.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 
@@ -35,7 +36,7 @@ function sectorStations(sectorId) {
   }));
 }
 
-async function boot(extraSystems = []) {
+async function boot(extraSystems = [], opts = {}) {
   const host = await bootRealPath({
     seed: SEED,
     systems: [spawnBudget, encounterDirector, economy, cargo, factions, lootShards, 'collisionConsequences', 'physics', combat, ...extraSystems],
@@ -54,6 +55,13 @@ async function boot(extraSystems = []) {
     'faction:repDelta', 'news:publish', 'pickup:collected', 'credits:changed',
   ]) {
     bus.on(name, (p) => events.push({ name, p: { ...p } }));
+  }
+  if (opts.prior) {
+    // A completed prior answer on this same wire — the record settleSituation would have left.
+    situationMemory(state).completed[SHAPE] = {
+      outcome: opts.prior, at: 10, tick: 600, encounterId: 'prior_fire_sale',
+      sectorId: SECTOR, facts: opts.priorFacts || {}, visits: 1,
+    };
   }
   const director = host.runtime.getSystem('encounterDirector');
   const res = director.requestAuthoredEncounter({
@@ -237,6 +245,115 @@ test('shoot the seller without killing it: the lot kicks loose marked and the hu
     standOnPod(h);
     runUntilResolved(h, 4 * 60);
     assert.deepEqual(outcomes(h), ['robbed'], 'walking off marked freight reads as robbery');
+  } finally { h.host.dispose(); }
+});
+
+test('the wire remembers a robbery: wary hail, no haggle, and the lot stays bolted under fire', async () => {
+  const h = await boot([], { prior: 'robbed', priorFacts: { via: 'fire', haulerShot: true, podMarked: true } });
+  try {
+    const w = h.w;
+    assert.equal(w.priorKind, 'hostile');
+    assert.equal(w.lotSealed, true);
+    const hail = h.events.filter((e) => e.name === 'encounter:voice').map((e) => e.p.text).join(' ');
+    assert.match(hail, /desk holds your registry/i, 'the hail names the flagged registry');
+    const offered = h.events.find((e) => e.name === 'encounter:choiceOffered');
+    const ids = offered.p.options.map((o) => o.id);
+    assert.ok(ids.includes('buy') && ids.includes('pass') && !ids.includes('squeeze'),
+      `the desk does not haggle with a name it filed: ${ids}`);
+
+    const hauler = h.ent(w.haulerId);
+    h.host.withFeatures(() => h.bus.emit('combat:damage', { attackerId: h.state.playerId, targetId: hauler.id, applied: 40 }));
+    h.host.step(4);
+    assert.equal(h.live.phase, 'burning');
+    assert.equal(w.podId, null, 'the wary wire kept the lot bolted — wounding it feeds you nothing');
+    assert.equal(w.haulerFled, true);
+    assert.ok(reps(h).some((r) => r.factionId === 'faction_mts' && r.delta === FIRE_SALE.repBurned
+      && r.reason === 'the_fire_sale_burned_off'), 'the desk files the second burn');
+    assert.ok(h.events.some((e) => e.name === 'news:publish'), 'the lane keeps the story');
+
+    const p = h.ent(h.state.playerId);
+    p.pos.x += FIRE_SALE.leaveSlackWu * 2;
+    runUntilResolved(h, 120);
+    assert.deepEqual(outcomes(h), ['burned_off']);
+    assert.equal(memory(h).outcome, 'burned_off');
+    assert.equal(memory(h).facts.priorKind, 'hostile');
+    assert.equal(memory(h).facts.lotSealed, true);
+  } finally { h.host.dispose(); }
+});
+
+test('a wary wire still spills the lot to a kill — a dead hull cannot hold custody', async () => {
+  const h = await boot([], { prior: 'robbed', priorFacts: { haulerShot: true } });
+  try {
+    const hauler = h.ent(h.w.haulerId);
+    h.host.withFeatures(() => h.bus.emit('combat:damage', { attackerId: h.state.playerId, targetId: hauler.id, applied: 40 }));
+    h.host.step(4);
+    assert.equal(h.live.phase, 'burning');
+    assert.equal(h.w.podId, null, 'no free drop for the flagged hull');
+
+    hauler.alive = false;
+    h.host.withFeatures(() => h.bus.emit('entity:killed', { id: hauler.id, killerId: h.state.playerId, type: 'ship', pos: { ...hauler.pos } }));
+    runUntilResolved(h, 4 * 60);
+    assert.deepEqual(outcomes(h), ['robbed']);
+    const pod = h.ent(h.w.podId);
+    assert.ok(pod && pod.alive !== false, 'the dead hull spilled the lot');
+    assert.match(pod.data.freightCustodyPod.ownerName, /VOID-MANIFEST/);
+    assert.ok(reps(h).some((r) => r.factionId === 'faction_mts' && r.delta === FIRE_SALE.repRob), 'the kill is filed');
+  } finally { h.host.dispose(); }
+});
+
+test('the wire remembers a squeeze: the desk does not haggle twice, and a stale haggle pays the ask', async () => {
+  const h = await boot([], { prior: 'squeezed', priorFacts: { via: 'squeeze' } });
+  try {
+    assert.equal(h.w.priorKind, 'marked');
+    assert.equal(h.w.lotSealed, false, 'a squeezer is not a shooter');
+    const hail = h.events.filter((e) => e.name === 'encounter:voice').map((e) => e.p.text).join(' ');
+    assert.match(hail, /carries your squeeze/i);
+    const offered = h.events.find((e) => e.name === 'encounter:choiceOffered');
+    const ids = offered.p.options.map((o) => o.id);
+    assert.ok(!ids.includes('squeeze'), `no second squeeze: ${ids}`);
+
+    const before = h.state.player.credits;
+    choose(h, 'squeeze');
+    h.host.step(6);
+    assert.deepEqual(charges(h), [h.w.ask], 'the ask stands — the desk does not haggle with a filed name');
+    assert.equal(h.state.player.credits, before - h.w.ask);
+    assert.equal(h.w.paidBy, 'buy', 'the wire, not the click, decides what moved');
+    assert.ok(reps(h).some((r) => r.reason === 'the_fire_sale_bought'), 'a paid ask files as bought, not squeezed');
+  } finally { h.host.dispose(); }
+});
+
+test('the wire remembers a clean hand: the desk prices you better and still haggles', async () => {
+  const h = await boot([], { prior: 'bought', priorFacts: { via: 'buy' } });
+  try {
+    assert.equal(h.w.priorKind, 'clean');
+    const def = CMDTY_BY_ID.get(h.w.commodityId);
+    const undiscounted = Math.max(1, Math.round(h.w.qty * def.basePrice * FIRE_SALE.askDiscount));
+    assert.equal(h.w.ask, Math.max(1, Math.round(undiscounted * FIRE_SALE.knownDiscount)),
+      'the clean-hand ask carries the desk discount');
+    assert.equal(h.live.vars.amount, h.w.ask, 'the credit gate is the discounted ask');
+    const hail = h.events.filter((e) => e.name === 'encounter:voice').map((e) => e.p.text).join(' ');
+    assert.match(hail, /remembers a clean hand/i);
+    const offered = h.events.find((e) => e.name === 'encounter:choiceOffered');
+    assert.ok(offered.p.options.some((o) => o.id === 'squeeze'), 'a clean hand still haggles');
+
+    const before = h.state.player.credits;
+    choose(h, 'buy');
+    h.host.step(6);
+    assert.deepEqual(charges(h), [h.w.ask], 'the discounted figure moved');
+    assert.equal(h.state.player.credits, before - h.w.ask);
+    assert.equal(h.w.paidBy, 'buy');
+  } finally { h.host.dispose(); }
+});
+
+test('a neutral ending leaves the wire a stranger', async () => {
+  const h = await boot([], { prior: 'hauled_off' });
+  try {
+    assert.equal(h.w.priorKind, null);
+    assert.equal(h.w.lotSealed, false);
+    const offered = h.events.find((e) => e.name === 'encounter:choiceOffered');
+    assert.ok(offered.p.options.some((o) => o.id === 'squeeze'), 'the stranger still haggles');
+    const hail = h.events.filter((e) => e.name === 'encounter:voice').map((e) => e.p.text).join(' ');
+    assert.match(hail, /hauler holds a dead manifest/i, 'the fresh hail, not a remembered one');
   } finally { h.host.dispose(); }
 });
 
