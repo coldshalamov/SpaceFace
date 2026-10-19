@@ -5165,6 +5165,14 @@ export const economy = {
   // same order as the sync lane, so the run stays bit-identical.
   *deserializeChunked(data) {
     if (!data) return;
+    // Session berth latches are run-scoped — the same contract newGame() documents. A restore
+    // is always an undocked session (the save layer clears ui.docked/ui.dockedStationId and the
+    // entity dock flag), so a latch left over from the pre-load session would let
+    // dockedStationId()/_stationServicesDocked() resolve a station the pilot is not at: trade
+    // and service gates, ration pricing, and the per-tick docked intel feed would fail open
+    // against the wrong berth.
+    this._lastDockedStation = null;
+    this._stationServiceBerth = null;
     const econ = this.state.economy;
     econ.resourceWork = restoreResourceWork(data.resourceWork, SECTORS.map((s) => s.id));
     const restoredChains = Array.isArray(data.cargoKillChains)
