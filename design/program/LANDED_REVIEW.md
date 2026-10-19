@@ -25,6 +25,7 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-87d92b0 | 87d92b0ac8bfc6f276656d69716d12fd6f2a2379 | INF-16 forecastle vote | OPEN | Verify reboltGrace + faded range check behave at real 60Hz play cadence — test crosses director ~1Hz boundary by stepping periods; live feel of crew escaping mid-fiddle unproven. |
 | R-9c4fb29 | 9c4fb29e909da14a6b81f517a77f03cef7396811 | SWP-CLAIM salvage identity | OPEN | Verify _entityForPoint guard accepts every legit bound carrier (spawned points, rematerialized Tally crate, marker-bound player wreck) while rejecting recycled occupants. |
 | R-09cfdee | 09cfdee6b032f954b44e4f4668526f95b6af59f0 | SWP-HITCH per-tick alloc batch | OPEN | Verify mothlight/kilnback latch assumption: no lootTableId carrier can spawn without a shipLike/wrecks lane bump or save-boundary reset (30-tick rescan is the hedge). |
 | R-0105c1b | 0105c1bafccd1a969019657d574a09d405a1ca93 | SWP-MENUS audit fixes | OPEN | Verify Tab/Shift+Tab traverse galaxy-map DOM controls end-to-end on the live route (tests prove onKey declines; browser _trapKeydown walk untested). |

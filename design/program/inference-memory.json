@@ -114,20 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-153",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "window clamps at zero and the chip drops after expiry",
-      "fingerprint": "verb=clamp,subject=deadline-display,domain=missions,layer=ui",
-      "references": [],
-      "integration": "live",
-      "commit": "963e11a1c",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-039-deadline-pacing.test.mjs"
-    },
-    {
       "id": "NXI-154",
       "date": "2026-10-01",
       "wf": "WF-11",
@@ -1678,6 +1664,19 @@
       "references": [],
       "integration": "live",
       "commit": "2136ff69312ee507f874b4ef38aec1b4aeb80f4b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-forecastle-vote",
+      "date": "2026-10-19",
+      "wf": "WF-18",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "crew existed only as cargo flavor; mutiny arbitration puts the break physically before the pilot",
+      "fingerprint": "verb=arbitrate,subject=forecastle_vote,sector=dmc_ground,domain=crew",
+      "references": [],
+      "integration": "live",
+      "commit": "87d92b0ac8bfc6f276656d69716d12fd6f2a2379",
       "verification": "focused_green"
     }
   ],
