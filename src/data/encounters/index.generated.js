@@ -315,13 +315,14 @@ import * as encounter311 from './1203-the-declaration.js';
 import * as encounter312 from './1204-the-mine-garden.js';
 import * as encounter313 from './1205-the-second-bite.js';
 import * as encounter314 from './1206-the-fire-sale.js';
-import * as encounter315 from './1300-scene-fare-dodger-chase.js';
-import * as encounter316 from './1301-the-runaway-kiln.js';
-import * as encounter317 from './1302-the-working-battlefield.js';
-import * as encounter318 from './1303-glue-meet-mass.js';
-import * as encounter319 from './1304-two-ships-one-mistake.js';
-import * as encounter320 from './1305-the-blind-welder.js';
-import * as encounter321 from './1306-the-drift-auction.js';
+import * as encounter315 from './1207-the-witnessed-price.js';
+import * as encounter317 from './1300-scene-fare-dodger-chase.js';
+import * as encounter318 from './1301-the-runaway-kiln.js';
+import * as encounter319 from './1302-the-working-battlefield.js';
+import * as encounter320 from './1303-glue-meet-mass.js';
+import * as encounter321 from './1304-two-ships-one-mistake.js';
+import * as encounter322 from './1305-the-blind-welder.js';
+import * as encounter323 from './1306-the-drift-auction.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -639,11 +640,12 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter313,
   encounter314,
   encounter315,
-  encounter316,
   encounter317,
   encounter318,
   encounter319,
   encounter320,
   encounter321,
+  encounter322,
+  encounter323,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
