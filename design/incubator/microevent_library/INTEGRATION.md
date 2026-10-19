@@ -4,9 +4,10 @@
 Additive design data for the low-interference world-depth brief: **58 ambient events**
 (10 s – 2 min) that make the existing role/job/world systems produce visible situations.
 
-The catalog is still data-only (no runtime module imports this tree), but **twenty catalog ids are
-wired** into live causal stories, each a choreography timer bound to a cast that already flies. That
-is runtime wiring, not ordinary-route acceptance. The other 38 catalog entries remain unwired and
+The catalog is still data-only (no runtime module imports this tree), but **twenty-four catalog
+ids are wired** into live causal stories, each a choreography timer bound to a cast that already
+flies. That is runtime wiring, not ordinary-route acceptance. The other 34 catalog entries remain
+unwired and
 need a named live owner plus route proof before they leave integration debt.
 
 The causal-chain timer is a per-sector table (`traffic.SECTOR_CAUSAL_CHAINS`): every sector row runs
@@ -29,6 +30,13 @@ links. The wired list:
   (law), `ev_observation_stop` (civilian). The swap and the jettison drop real contraband pickups
   through the standard pipeline. The cycle closes with one `news:publish` line
   (`tethys_quiet_handoff`). Proof: `test/traffic-sector-causal-chain.test.mjs`.
+- **Vesta Forge, "the feedstock day"** (`src/data/sectorCausalChains.js`, four catalog ids
+  across the foundry's eight authored hulls, none shared with another sector): `ev_haulers_rendezvous`
+  (logistics), `ev_hazmat_escort` (law), `ev_yard_break` (civilian),
+  `ev_scavengers_at_fresh_wreck` (crime — the catalog's ambush-encounter note stands; this chain
+  stages the scatter-when-law-approaches beat that note defers). The swarm gates on both middles'
+  seeds, and its interruptSeeds stay empty so a pile-on that never lands stays off the news line
+  (`vesta_feedstock_day`). Proof: `test/traffic-sector-causal-chain.test.mjs`.
 - **Standalone**: `ev_meteor_passage` (`traffic._stepPocketMeteorPass`).
 
 To give another sector a story, add a row to `SECTOR_CAUSAL_CHAIN_DEFS` with links whose

@@ -138,6 +138,19 @@ const CAUSAL_PHASE_LABEL = Object.freeze({
   groan: 'SEAM GROANING',
   calve: 'ROCK CALVING',
   drift: 'DRIFTING CLEAR',
+  // Vesta Forge "feedstock day" phases.
+  converge: 'CONVERGING',
+  park: 'HELD FOR TRADE',
+  swap: 'TRADING LOADS',
+  join: 'ESCORT JOINING',
+  transit: 'UNDER ESCORT',
+  handoff: 'HANDING OFF',
+  down_tools: 'TOOLS DOWN',
+  huddle: 'ON BREAK',
+  back_to_it: 'BACK ON TOOLS',
+  swoop: 'SWOOPING',
+  strip: 'STRIPPING',
+  scatter: 'SCATTERING',
 });
 const CAUSAL_CUE_LABEL = Object.freeze({
   reading_the_dark: 'READING THE DARK',
@@ -1366,6 +1379,15 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
   'ev_smuggler_breaks:jettison': 'SHEDDING LOAD · EVIDENCE ADRIFT',
   'ev_smuggler_breaks:resolve': 'SECURING DRIFT · RESUMING BEAT',
   'ev_observation_stop:linger': 'ON LOOKOUT · STATION-KEEPING',
+  // Vesta feedstock-day chain: the catalog pins the law-lock lamp on a trade hold, an escort
+  // flank, and a lunch huddle; the drive-failure lamp on a voluntary scatter; the tender-callout
+  // lamp on a relight where the tender was already there — same lamps, different truth.
+  'ev_haulers_rendezvous:park': 'HELD FOR THE TRADE · RUNNING LIGHTS ONLY',
+  'ev_hazmat_escort:join': 'ESCORT JOINING · PIN ON THE FLANK',
+  'ev_hazmat_escort:transit': 'UNDER ESCORT · GIVE ROOM',
+  'ev_yard_break:huddle': 'TOOLS DOWN · SHIFT BREAK AT THE YARD',
+  'ev_yard_break:back_to_it': 'BACK ON TOOLS · WORK RESUMING',
+  'ev_scavengers_at_fresh_wreck:scatter': 'LAW CONTACT · SCATTERING OFF THE FACE',
 });
 
 function workerStatusText(target, state = null) {

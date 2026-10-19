@@ -6,14 +6,15 @@
 // A link here is one catalog microevent (design/incubator/microevent_library/catalog/*.json): the
 // phase names, durations and visible-signal cues are the catalog's own, so the existing target
 // panel, hail STATUS and signature-VFX cue readers show it with no new presentation code. Ceres
-// owns eleven catalog ids; a second sector's chain borrows none of them, so the wired list in
-// INTEGRATION.md stays an honest count and no id means two different stories.
+// owns eleven catalog ids; every sector's chain here borrows none of them and none of each
+// other's, so the wired list in INTEGRATION.md stays an honest count and no id means two
+// different stories.
 //
 // Link shape (same as the Ceres chain): { id, actorSlots, requires, seedAtPhase, seeds,
 // interruptSeeds, jobHints, phases }. A seed is planted when its link enters `seedAtPhase`, and on
 // every terminal outcome too (`interruptSeeds` when the story diverges), so a lost hull degrades
 // the chain instead of stalling it.
-import { HELIOS_ACTIVITY_SECTOR_ID, TETHYS_ACTIVITY_SECTOR_ID } from './sectorActivityPockets.js';
+import { HELIOS_ACTIVITY_SECTOR_ID, TETHYS_ACTIVITY_SECTOR_ID, VESTA_ACTIVITY_SECTOR_ID } from './sectorActivityPockets.js';
 
 // ── Helios Prime: "claim day" ───────────────────────────────────────────────────────────────────
 // The starter harbour already flies four authored hulls (sectorActivityPockets.js): a seam miner
@@ -365,6 +366,223 @@ function tethysCycleNewsText(seeds) {
     : 'A runner bolted the Tethys lane and dumped its load; the Quiet Cache keeps its own hours.';
 }
 
+// ── Vesta Forge: "the feedstock day" ────────────────────────────────────────────────────────────
+// The foundry already flies eight authored hulls (sectorActivityPockets.js): a seam miner and
+// surveyor on the Feedstock Belt, the ore hauler and lawful patrol on the foundry approach, two
+// salvor cutters on the dead freighter's drift, and the relay tender with the slag runner out by
+// the outlying yard. The zone copy already promised this day — "ore haulers shuttle from these
+// seams to the foundry lines around the clock" — and until the chain the promise was wallpaper:
+// the same eight hulls flew the same loops forever and nothing ever happened to the work.
+// The chain strings four catalog events across all eight hulls so one afternoon reads as the
+// catalog's own composability — ore in, slag out, five off, and the drift getting stripped while
+// nobody watches:
+//
+//   logistics  ev_haulers_rendezvous        the two runs cross at the forge junction; strobes trade (slag runner, ore hauler)
+//   law        ev_hazmat_escort             the patrol takes the molten half of the crossing (patrol, slag runner)
+//   civilian   ev_yard_break                while the law walks the slag out the seam takes five (miner, surveyor, tender)
+//   crime      ev_scavengers_at_fresh_wreck the drift cutters pile on the dead freighter's face (both cutters)
+//
+// The junction crossing opens the cycle and seeds both middles at once — the escort and the break
+// run overlapped under the shared cap, which is the point: the break happens because the law is
+// somewhere else. The swarm waits on BOTH halves of the day (escort_out from the handoff,
+// tools_down from the huddle): the pile-on lands in the gap between the law coming back to its
+// lane and the yard relighting, and the scatter is the lookout reading the patrol's restored
+// beat. The patrol stays out of the swarm's cast — an optional catalog participant the fiction
+// uses by its absence, so no law hull ever wears a salvage lamp.
+//
+// Catalog boundaries recorded here, same discipline as the other chains: the rendezvous's real
+// manifest transfer stays unwired (the swap is the lamp trade — "one dims as the other warms",
+// nobody's hold changes — the catalog's own demotion note for want of an ownership helper); the
+// break's cold-locker prop stays unwired, so the huddle takes the catalog's written fallback
+// ("the huddle forms around the largest worker instead") and the seam crew gathers on its own
+// ground. The swarm's catalog note records the ambush encounter already wired in derelict fields;
+// what this chain stages is the half that note itself defers — the scatter-when-the-law-approaches
+// beat, with the patrol's returning nose as its cause and the standing authored hulk as the face.
+// No phase mints cargo or pickups: choreography only, like Helios.
+//
+// Cue honesty: the catalog pins the patrol lamp on four phases that are not law locks (the swap
+// hold, the two escort flank legs, the break huddle), a drive-failure lamp on the scatter, and a
+// tender-callout lamp on the relight. The catalog's cues are kept for the signature VFX;
+// contactHail.js carries phase-scoped means for those six phases so no hull claims a lock, a
+// failure, or a call-out it does not have.
+const VESTA_SLAG_RUNNER = 'vesta_slag_runner';
+const VESTA_FORGE_HAULER = 'vesta_forge_hauler';
+const VESTA_FORGE_PATROL = 'vesta_forge_patrol';
+const VESTA_SEAM_MINER = 'vesta_seam_miner';
+const VESTA_SEAM_SURVEYOR = 'vesta_seam_surveyor';
+const VESTA_RELAY_TENDER = 'vesta_relay_tender';
+const VESTA_DRIFT_CUTTER = 'vesta_drift_cutter';
+const VESTA_DRIFT_PROWLER = 'vesta_drift_prowler';
+
+export const VESTA_CAUSAL_CHAIN = Object.freeze([
+  Object.freeze({
+    // logistics, next20: "the strobes visibly TRADE - one dims as the other warms". The slag
+    // runner burns over to the loaded ore hauler on the junction bearing and holds the transfer
+    // window; the hauler keeps its run — the runner comes alongside the moving load, which is
+    // the honest mid-lane read (the catalog's parked geometry rides the redirect seam).
+    id: 'ev_haulers_rendezvous',
+    actorSlots: Object.freeze([VESTA_SLAG_RUNNER, VESTA_FORGE_HAULER]),
+    requires: Object.freeze([]),
+    seedAtPhase: 'swap',
+    seeds: Object.freeze(['junction_crossed']),
+    // A runner lost mid-meet still crossed the junction — downstream links keep their subject.
+    interruptSeeds: Object.freeze(['junction_crossed']),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: VESTA_SLAG_RUNNER,
+        subjectSlotId: VESTA_FORGE_HAULER,
+        phases: Object.freeze(['converge', 'park', 'swap']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_SLAG_RUNNER,
+        reaffirm: true,
+        phases: Object.freeze(['split']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_FORGE_HAULER,
+        reaffirm: true,
+        phases: Object.freeze(['converge', 'park', 'swap', 'split']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'converge', durationS: 25, cue: 'heavy_burn' }),
+      Object.freeze({ name: 'park', durationS: 10, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'swap', durationS: 25, cue: 'mouth_open' }),
+      Object.freeze({ name: 'split', durationS: 15, cue: 'clean_burn' }),
+    ]),
+  }),
+  Object.freeze({
+    // law, next20: "patrol slides into the flank slot; other traffic yields TWO widths" — the
+    // slag run is the hazardous half of the crossing, the load the escort exists for. The patrol
+    // leaves its foundry beat, holds the runner's flank through the dump leg, and hands off back
+    // to its ring at the boundary. The slag runner reaffirms its authored run: the escort is the
+    // patrol's behavior, not the freight's.
+    id: 'ev_hazmat_escort',
+    actorSlots: Object.freeze([VESTA_FORGE_PATROL, VESTA_SLAG_RUNNER]),
+    requires: Object.freeze(['junction_crossed']),
+    seedAtPhase: 'handoff',
+    seeds: Object.freeze(['escort_out']),
+    // Escort lost or skipped: the law still went off the foundry beat for the leg — the break
+    // and the swarm keep their alibi either way.
+    interruptSeeds: Object.freeze(['escort_out']),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: VESTA_FORGE_PATROL,
+        subjectSlotId: VESTA_SLAG_RUNNER,
+        phases: Object.freeze(['join', 'transit']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_FORGE_PATROL,
+        reaffirm: true,
+        phases: Object.freeze(['handoff']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_SLAG_RUNNER,
+        reaffirm: true,
+        phases: Object.freeze(['join', 'transit', 'handoff']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'join', durationS: 15, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'transit', durationS: 60, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'handoff', durationS: 15, cue: 'clean_burn' }),
+    ]),
+  }),
+  Object.freeze({
+    // civilian, standard: "cones, welds and floods die in near-sync; hulls park nose-in like
+    // boots around a fire". The catalog's own fallback covers a missing cold-locker prop — "the
+    // huddle forms around the largest worker instead" — and the seam pocket has no locker, so the
+    // crew gathers on its own ground: both hulls leave their marks and close on each other's
+    // position, the loose mid-field drift the catalog calls boots around a fire. The tender
+    // takes the same five on its relay leg — the locker's clock is the yard's, so the lights
+    // die across two pockets at once. Runs overlapped with the escort under the shared cap:
+    // the same junction_crossed seed opens both middles.
+    id: 'ev_yard_break',
+    actorSlots: Object.freeze([VESTA_SEAM_MINER, VESTA_SEAM_SURVEYOR, VESTA_RELAY_TENDER]),
+    requires: Object.freeze(['junction_crossed']),
+    seedAtPhase: 'huddle',
+    seeds: Object.freeze(['tools_down']),
+    // A break cut short still happened — the yard's eyes were down either way.
+    interruptSeeds: Object.freeze(['tools_down']),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: VESTA_SEAM_MINER,
+        subjectSlotId: VESTA_SEAM_SURVEYOR,
+        phases: Object.freeze(['huddle']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_SEAM_MINER,
+        reaffirm: true,
+        phases: Object.freeze(['down_tools', 'back_to_it']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_SEAM_SURVEYOR,
+        subjectSlotId: VESTA_SEAM_MINER,
+        phases: Object.freeze(['huddle']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_SEAM_SURVEYOR,
+        reaffirm: true,
+        phases: Object.freeze(['down_tools', 'back_to_it']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_RELAY_TENDER,
+        reaffirm: true,
+        phases: Object.freeze(['down_tools', 'huddle', 'back_to_it']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'down_tools', durationS: 15, cue: null }),
+      Object.freeze({ name: 'huddle', durationS: 45, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'back_to_it', durationS: 20, cue: 'spine_wake' }),
+    ]),
+  }),
+  Object.freeze({
+    // crime, first15: "guilt has a geometry - at a timer or a patrol contact both bolt in
+    // DIFFERENT directions". The two drift cutters pile onto the standing hulk face in the gap
+    // the gating seeds mark: the huddle has opened (the yard's eyes are down until the relight)
+    // and the escort has just handed off, so the law's nose is coming back down the lane — the
+    // scatter is the lookout reading it. The patrol is the catalog's optional participant and
+    // plays its part by gate, not by stamp: it stays on its authored beat so no law hull wears
+    // a salvage lamp, and the bolt on breaking_the_pattern is the catalog's timer/contact read.
+    id: 'ev_scavengers_at_fresh_wreck',
+    actorSlots: Object.freeze([VESTA_DRIFT_CUTTER, VESTA_DRIFT_PROWLER]),
+    requires: Object.freeze(['escort_out', 'tools_down']),
+    seedAtPhase: 'strip',
+    seeds: Object.freeze(['drift_swarmed']),
+    // Nothing downstream gates on this seed and the pile-on only counts when the cutters really
+    // reach the face: a link lost in the swoop plants nothing, so the cycle news reads the
+    // honest branch instead of claiming a swarm that never landed.
+    interruptSeeds: Object.freeze([]),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: VESTA_DRIFT_CUTTER,
+        reaffirm: true,
+        phases: Object.freeze(['swoop', 'strip', 'scatter']),
+      }),
+      Object.freeze({
+        actorSlotId: VESTA_DRIFT_PROWLER,
+        reaffirm: true,
+        phases: Object.freeze(['swoop', 'strip', 'scatter']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'swoop', durationS: 12, cue: 'stacking' }),
+      Object.freeze({ name: 'strip', durationS: 40, cue: 'picking_the_bones' }),
+      Object.freeze({ name: 'scatter', durationS: 15, cue: 'breaking_the_pattern' }),
+    ]),
+  }),
+]);
+
+function vestaCycleNewsText(seeds) {
+  // The drift pile-on is the one beat a lost hull can erase from the afternoon; the day still
+  // runs without it. escort_out plants on every outcome, so the escort leg is the day's frame,
+  // not a discriminating branch.
+  return seeds && seeds.drift_swarmed === true
+    ? 'Vesta haulers swapped the junction and the slag ran out under escort; cutters swarmed the dead freighter while the yard broke.'
+    : 'Vesta haulers swapped the junction and the slag ran out under escort; the yard took its break on schedule.';
+}
+
 /**
  * Every non-Ceres sector that runs a staged ambient chain, keyed by sector id. `traffic.js` turns
  * each row into a `SECTOR_CAUSAL_CHAINS` entry (shared cap, shared cycle gap).
@@ -383,5 +601,12 @@ export const SECTOR_CAUSAL_CHAIN_DEFS = Object.freeze({
     stationId: 'station_customs',
     newsKind: 'tethys_quiet_handoff',
     cycleNewsText: tethysCycleNewsText,
+  }),
+  [VESTA_ACTIVITY_SECTOR_ID]: Object.freeze({
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+    chain: VESTA_CAUSAL_CHAIN,
+    stationId: 'station_forge',
+    newsKind: 'vesta_feedstock_day',
+    cycleNewsText: vestaCycleNewsText,
   }),
 });
