@@ -114,20 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-027",
-      "date": "2026-10-01",
-      "wf": "WF-03",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "charge kind keys off physical cause; outcome line names the move; killerId retained",
-      "fingerprint": "verb=name,subject=kill-cause,domain=law,layer=receipt",
-      "references": [],
-      "integration": "live",
-      "commit": "0d7b86a39",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-007-one-kill-one-aftermath.test.mjs"
-    },
-    {
       "id": "NXI-028",
       "date": "2026-10-01",
       "wf": "WF-03",
@@ -1683,6 +1669,19 @@
       "references": [],
       "integration": "live",
       "commit": "4c0814398f5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "vesta-feedstock-day",
+      "date": "2026-10-19",
+      "wf": "WF-01",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Vesta's eight authored hulls now play one feedstock day — junction swap, slag escort, yard break, drift swarm — visible without accepting anything",
+      "fingerprint": "verb=watch,subject=feedstock-day,sector=vesta-forge,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "463d4ecc47",
       "verification": "focused_green"
     }
   ],
