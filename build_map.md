@@ -568,12 +568,12 @@ finished plan — the board is finished only when every number in this table is 
 
 | Surface | Remaining |
 |---|---|
-| Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **13 open defects** — D188, D191, D199, D198, D130, D213, D215, D216, D217, D218, D219, D220, D221 — plus standing import guard D175 |
-| Landed review (`design/program/LANDED_REVIEW.md`) | **0 open** — a second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
-| Numbered board rows (§A–§M tables below) | **3 open** — quiet-host session 284; the two render-animation briefs 383 and 384 (creature body language, precursor machine deployment; claimed by devin-graphics). Rows 381, 382 and 385–389 landed 2026-10-18. Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F) |
+| Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **12 open defects** — D188, D191, D199, D226, D198, D130, D213, D222, D224, D225, D227, D228 — plus standing import guard D175 and watch-only D229 (live count: `program-dispatch --status`) |
+| Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
+| Numbered board rows (§A–§M tables below) | **2 open** — quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 270–273 (Swarm phases C–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
-| Inference catalog (`INFERENCE_IDEAS.md`) | **19 OPEN lines** — gated: only under `--lane=inference` with an owner INFERENCE instruction |
+| Inference catalog (`INFERENCE_IDEAS.md`) | **0 OPEN lines** — all catalog lines SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
 
 ### Seams — what is free, and what another agent has
@@ -876,7 +876,6 @@ recorded in the lane's NOW row before minting.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 383 | SFQ-B175 | A creature's body expresses charging, fleeing or drifting before it touches you (`src/render/faunaVisuals.js`, `src/data/faunaMotionRead.js`); judged at the gameplay camera | ART | SHIPPED — installFaunaMotion wires updateAuthoredMotion across fauna species to express charging forward pitch and flared quills, fleeing tuck and thrash, and drifting calm respiration from readFaunaMotion with reducedMotion support (test/sfq-b175-fauna-body-expression.test.mjs) |
 | 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | OPEN - L-PICTURE render animation (devin-graphics claim) |
 
 (The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
