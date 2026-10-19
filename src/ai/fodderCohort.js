@@ -1260,14 +1260,31 @@ function desiredForMember(
   let nearest = Infinity;
   let nx = 0;
   let nz = 0;
-  let nearestIncoming = Infinity;
-  let nearestIncomingT = Infinity;
-  let nearestIncomingId = null;
-  let inx = 0;
-  let inz = 0;
-  let incomingClosing = 0;
-  let incomingVx = 0;
-  let incomingVz = 0;
+  // Incoming threats are tracked in two lanes. A coasting thrown body is ballistic —
+  // it cannot yield and its line never moves — while a dodging flow-mate is steered
+  // and will move again on its own avoidance. The escape basis keys on the ballistic
+  // lane whenever one is inbound: keying on the raw soonest impact lets the tracked
+  // threat rotate onto a dodging mate at the scrape, which spins the candidate frame
+  // and the escape line chases the swing instead of opening the miss (M11 s5↔s6 —
+  // the dodge pick flipped to the thrown body's own heading at the closest pass).
+  // The mate lane applies only when no ballistic body is inbound, so the one-hop
+  // lane-opening hop ahead of a thrown body still propagates.
+  let coastT = Infinity;
+  let coastDist = Infinity;
+  let coastId = null;
+  let coastEx = 0;
+  let coastEz = 0;
+  let coastClosing = 0;
+  let coastVx = 0;
+  let coastVz = 0;
+  let dodgeT = Infinity;
+  let dodgeDist = Infinity;
+  let dodgeId = null;
+  let dodgeEx = 0;
+  let dodgeEz = 0;
+  let dodgeClosing = 0;
+  let dodgeVx = 0;
+  let dodgeVz = 0;
   const svx = finite(rec.vel && rec.vel.x);
   const svz = finite(rec.vel && rec.vel.z);
   for (let i = 0; i < neighbors.length; i++) {
@@ -1297,15 +1314,26 @@ function desiredForMember(
       if (closing > 0) {
         let tImp = dist / closing;
         if (rec.incomingId != null && n.id === rec.incomingId) tImp *= 0.7;
-        if (tImp < nearestIncomingT) {
-          nearestIncomingT = tImp;
-          nearestIncoming = dist;
-          nearestIncomingId = n.id;
-          inx = ex;
-          inz = ez;
-          incomingClosing = closing;
-          incomingVx = n.vx;
-          incomingVz = n.vz;
+        if (n.coast) {
+          if (tImp < coastT) {
+            coastT = tImp;
+            coastDist = dist;
+            coastId = n.id;
+            coastEx = ex;
+            coastEz = ez;
+            coastClosing = closing;
+            coastVx = n.vx;
+            coastVz = n.vz;
+          }
+        } else if (tImp < dodgeT) {
+          dodgeT = tImp;
+          dodgeDist = dist;
+          dodgeId = n.id;
+          dodgeEx = ex;
+          dodgeEz = ez;
+          dodgeClosing = closing;
+          dodgeVx = n.vx;
+          dodgeVz = n.vz;
         }
       }
     }
@@ -1317,31 +1345,47 @@ function desiredForMember(
   // 72 WU/s shove crossing the river (M11 5↔6/6↔10 grinding pairs). The static nearest
   // neighbor and the incoming thrown body are tracked separately: the nearest ship in a
   // flowing river is usually a harmless flow-mate, not the threat on the collision line.
+  let hullPushX = 0;
+  let hullPushZ = 0;
   if (!noSep && nearest < hullFloor) {
     const extra = ((hullFloor - nearest) / hullFloor) * speedCap * 0.7;
-    composed.x += nx * extra;
-    composed.z += nz * extra;
+    hullPushX = nx * extra;
+    hullPushZ = nz * extra;
+    composed.x += hullPushX;
+    composed.z += hullPushZ;
   }
   // A full second of warning: the desired-state chain builds lateral velocity slowly, so
   // the dodge must open while the thrown body is still a lane away, not at the scrape.
-  const incomingFloor = hullFloor + incomingClosing * 1.0;
-  if (!noSep && nearestIncoming < incomingFloor) {
+  // Each lane's floor opens in proportion to its own closing speed and either one can
+  // start the dodge; once a ballistic body is in-floor it owns the escape basis — a
+  // steered mate will move again on its own avoidance, the thrown line never moves.
+  const coastFloor = hullFloor + coastClosing * 1.0;
+  const dodgeFloor = hullFloor + dodgeClosing * 1.0;
+  const coastActive = coastId != null && coastDist < coastFloor;
+  const dodgeActive = !coastActive && dodgeId != null && dodgeDist < dodgeFloor;
+  if (!noSep && (coastActive || dodgeActive)) {
+    const nearestIncomingId = coastActive ? coastId : dodgeId;
+    const inx = coastActive ? coastEx : dodgeEx;
+    const inz = coastActive ? coastEz : dodgeEz;
+    const incomingVx = coastActive ? coastVx : dodgeVx;
+    const incomingVz = coastActive ? coastVz : dodgeVz;
     // Dodge direction is chosen, not just "away": a raw away-vector can steer the member
     // onto the next thrown body or flow-mate (M11 6↔7). Evaluate a small deterministic
-    // candidate set and keep the one with the best predicted clearance in 0.45 s.
+    // candidate set and keep the one with the best predicted clearance in 0.6 s.
     const dodge = pickBallisticDodge(rec, neighbors, inx, inz, incomingVx, incomingVz, speedCap);
-    const extra = ((incomingFloor - nearestIncoming) / incomingFloor) * speedCap * 0.7
-      + Math.min(speedCap * 0.6, incomingClosing * 0.45);
-    composed.x += dodge.x * extra;
-    composed.z += dodge.z * extra;
+    // The escape line commits the whole hull — it replaces the cruise blend rather than
+    // adding to it. Folding the dodge into flow+slot demand bent the desired velocity
+    // back along the river's +x axis while the shoved body crossed lanes on its own
+    // +x drift, so the runner's x-tracked the threat and the pair ground hull-to-hull
+    // (M11 5↔6/6↔10). The near-hull push stays additive: inside the ring it is the
+    // push off the contact itself.
+    composed.x = dodge.x * speedCap + hullPushX;
+    composed.z = dodge.z * speedCap + hullPushZ;
     composed.dodge = true;
     rec.dodging = true;
     rec.incomingId = nearestIncomingId;
   } else if (rec.incomingId != null) {
     rec.incomingId = null;
-  }
-  if (typeof process !== 'undefined' && process.env?.M11_TRACE && (rec.id === 6 || rec.id === '6' || rec.id === 7 || rec.id === '7')) {
-    console.log(`[dodge] tick=${tick} nIn=${Number.isFinite(nearestIncoming) ? nearestIncoming.toFixed(1) : 'inf'} floor=${Number.isFinite(incomingFloor) ? incomingFloor.toFixed(1) : 'inf'} closing=${incomingClosing.toFixed(1)} dodge=${!!composed.dodge} comp=[${composed.x.toFixed(1)},${composed.z.toFixed(1)}] vel=[${svx.toFixed(1)},${svz.toFixed(1)}] pos=[${rec.pos.x.toFixed(1)},${rec.pos.z.toFixed(1)}]`);
   }
   const mag = Math.hypot(composed.x, composed.z);
   if (mag > speedCap && mag > EPS) {
@@ -1354,7 +1398,11 @@ function desiredForMember(
 }
 
 const DODGE_HORIZON_S = 0.6;
-const DODGE_DIVE_S = 0.6;
+// The hull slews into the dive over the horizon; it never teleports to cruise speed.
+// Scoring each candidate at the mean ramp velocity — not the end state — keeps
+// flee-ahead headings from claiming a clearance the actuation cannot deliver
+// (M11 5↔6: the +x+z diagonal read 30 WU clear while the hull was still building it).
+const DODGE_RAMP_FRACTION = 0.6;
 // Clearance a dodge candidate must keep against the thrown body itself to be eligible —
 // below this the candidate is a last resort, ranked by threat clearance alone.
 const THREAT_DODGE_FLOOR = 26;
@@ -1365,6 +1413,8 @@ const THREAT_DODGE_FLOOR = 26;
  * cross). Thrown bodies ride their full ballistic velocity; steered flow mates ride half
  * (their own avoidance bends them too). Ties keep the earlier candidate. */
 function pickBallisticDodge(rec, neighbors, inx, inz, incomingVx, incomingVz, speedCap) {
+  const svx = finite(rec.vel && rec.vel.x);
+  const svz = finite(rec.vel && rec.vel.z);
   const rvx = inx ? -inx : 1;
   const rvz = inz ? -inz : 0;
   const rmag = Math.hypot(rvx, rvz) || 1;
@@ -1394,8 +1444,11 @@ function pickBallisticDodge(rec, neighbors, inx, inz, incomingVx, incomingVz, sp
     if (cmag < EPS) continue;
     const cx = cand.x / cmag;
     const cz = cand.z / cmag;
-    const diveVx = (cx * speedCap * DODGE_DIVE_S) / DODGE_HORIZON_S;
-    const diveVz = (cz * speedCap * DODGE_DIVE_S) / DODGE_HORIZON_S;
+    // Ramp blend toward the dive: the delivered hull takes most of the horizon to
+    // trade its current velocity for the escape line, so the clearance model flies
+    // the mean, not the endpoint.
+    const diveVx = svx + (cx * speedCap - svx) * DODGE_RAMP_FRACTION;
+    const diveVz = svz + (cz * speedCap - svz) * DODGE_RAMP_FRACTION;
     let score = Infinity;
     let threatClearance = Infinity;
     for (let i = 0; i < neighbors.length; i++) {
@@ -1460,6 +1513,7 @@ function publishPlans(director, cohort, recipe, tick) {
         coast: rec.coast,
         disrupted: rec.disrupted,
         ammunition: rec.ammunition,
+        dodge: false,
         breakFormation: rec.breakFormation,
         targetId: cohort.targetId,
         slotError: rec.slotError,
@@ -1487,6 +1541,7 @@ function publishPlans(director, cohort, recipe, tick) {
     plan.coast = rec.coast;
     plan.disrupted = rec.disrupted;
     plan.ammunition = rec.ammunition;
+    plan.dodge = !!rec.dodging;
     plan.breakFormation = rec.breakFormation;
     plan.targetId = cohort.targetId;
     plan.slotError = rec.slotError;

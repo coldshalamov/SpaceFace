@@ -229,6 +229,14 @@ const DEFAULTS = Object.freeze({
   // authority. At the kind's own authority (0.24 intercept) and with the x0.35 closing-brake cut a
   // jink moved the hull ~3 WU, so a dodge never made a shot miss.
   reflexStrafeAuthority: 0.7,
+  // A committed cohort dodge is emergency egress, not station-keeping: the desired-state
+  // PD gains are tuned for gentle slot tracking, so on their own the normalized channel
+  // demands sit near 0.4–0.6 and the hull only ever delivers a fraction of its
+  // reverse/strafe envelope inside the ~0.5 s escape window (M11 s5↔s6 graze — the pick
+  // was right but the burn never arrived). The gain drives the channels to saturation
+  // while the error is large, and the slew commits the input in a few ticks.
+  dodgeChannelGain: 2.6,
+  dodgeInputSlewPerTick: 0.42,
   maxApproachClosingSpeed: 34,
   friendlySeparationRadius: 118,
   friendlySeparationWeight: 0.82,
@@ -628,7 +636,11 @@ export class ManeuverPlanner {
     const tracked = desired.control === 'track' && desired.desiredPos && kind !== ManeuverKind.CLEAR_DEADLOCK;
     let rawForward;
     let rawRight;
-    const lateralBurst = isLateralBurst(reflex);
+    // A cohort ballistic dodge is the same class of emergency as a reflex jink: the
+    // thrown body is ballistic and cannot yield, so formation strafe authority and the
+    // gentle input slew would deliver the escape line too late (M11 5↔6 graze).
+    const choreoDodge = !!(choreo && choreo.dodge);
+    const lateralBurst = isLateralBurst(reflex) || choreoDodge;
     const strafeAuthority = lateralBurst
       ? Math.max(strafeAuthorityForKind(kind), this.config.reflexStrafeAuthority)
       : strafeAuthorityForKind(kind);
@@ -636,7 +648,15 @@ export class ManeuverPlanner {
       const axes = desiredAxes(selfPose, desired, desiredUnit, hullScale, this.config);
       rawForward = allowReverse ? axes.forward : Math.max(0, axes.forward);
       rawRight = axes.right * strafeAuthority;
-      if (Math.abs(angleError) > turnGate) rawForward *= 0.35;
+      if (choreoDodge) {
+        // The dodge line typically sits well off the nose — the escape needs the hull's
+        // reverse and strafe thrusters at full deflection, so the turn-before-burn cut
+        // and the gentle PD demand must not starve the channels mid-escape (M11 5↔6).
+        rawForward = clamp(rawForward * this.config.dodgeChannelGain, -1, 1);
+        rawRight = clamp(rawRight * this.config.dodgeChannelGain, -1, 1);
+      } else if (Math.abs(angleError) > turnGate) {
+        rawForward *= 0.35;
+      }
       if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) rawForward *= throttle;
     } else {
       rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
@@ -667,7 +687,7 @@ export class ManeuverPlanner {
       forward: rawForward,
       right: rawRight,
       torqueYaw: rawTorqueYaw,
-    }, this.config, { emergency: emergencyManeuver || lateralBurst, slew: hullScale.slew * poiseSlew });
+    }, this.config, { emergency: emergencyManeuver || lateralBurst, dodge: choreoDodge, slew: hullScale.slew * poiseSlew });
 
     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
@@ -1479,7 +1499,9 @@ function yawLimitForKind(kind) {
 function smoothControls(runtime, tick, raw, config, options = {}) {
   const ticks = Math.max(1, Number.isInteger(runtime.lastTick) ? tick - runtime.lastTick : 1);
   const slew = options.slew > 0 ? options.slew : 1;
-  const inputStep = (options.emergency ? config.emergencyInputSlewPerTick : config.inputSlewPerTick) * ticks * slew;
+  const inputStep = (options.dodge ? config.dodgeInputSlewPerTick
+    : options.emergency ? config.emergencyInputSlewPerTick
+      : config.inputSlewPerTick) * ticks * slew;
   const torqueStep = (options.emergency ? config.emergencyTorqueSlewPerTick : config.torqueSlewPerTick) * ticks * slew;
   const forward = approach(runtime.smoothedForward || 0, raw.forward, inputStep);
   const right = approach(runtime.smoothedRight || 0, raw.right, inputStep);
