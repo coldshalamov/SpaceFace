@@ -300,30 +300,32 @@ import * as encounter296 from './582-scene-rescue-drill.js';
 import * as encounter297 from './583-scene-archive-record-tail.js';
 import * as encounter298 from './584-scene-fissure-haul-out.js';
 import * as encounter299 from './585-candle-relighting.js';
-import * as encounter300 from './901-last-argument.js';
-import * as encounter301 from './1100-breakaway-freight.js';
-import * as encounter302 from './1101-salvage-dispute.js';
-import * as encounter303 from './1102-missing-piece.js';
-import * as encounter304 from './1103-harvest-owned.js';
-import * as encounter305 from './1104-dead-letter.js';
-import * as encounter306 from './1105-mason-cover.js';
-import * as encounter307 from './1106-edge-of-order.js';
-import * as encounter308 from './1200-the-wedge.js';
-import * as encounter309 from './1201-the-cold-shoulder.js';
-import * as encounter310 from './1202-the-kick-start.js';
-import * as encounter311 from './1203-the-declaration.js';
-import * as encounter312 from './1204-the-mine-garden.js';
-import * as encounter313 from './1205-the-second-bite.js';
-import * as encounter314 from './1206-the-fire-sale.js';
-import * as encounter315 from './1207-the-witnessed-price.js';
-import * as encounter317 from './1209-the-last-tow.js';
-import * as encounter318 from './1300-scene-fare-dodger-chase.js';
-import * as encounter319 from './1301-the-runaway-kiln.js';
-import * as encounter320 from './1302-the-working-battlefield.js';
-import * as encounter321 from './1303-glue-meet-mass.js';
-import * as encounter322 from './1304-two-ships-one-mistake.js';
-import * as encounter323 from './1305-the-blind-welder.js';
-import * as encounter324 from './1306-the-drift-auction.js';
+import * as encounter300 from './586-the-blank-page.js';
+import * as encounter301 from './901-last-argument.js';
+import * as encounter302 from './1100-breakaway-freight.js';
+import * as encounter303 from './1101-salvage-dispute.js';
+import * as encounter304 from './1102-missing-piece.js';
+import * as encounter305 from './1103-harvest-owned.js';
+import * as encounter306 from './1104-dead-letter.js';
+import * as encounter307 from './1105-mason-cover.js';
+import * as encounter308 from './1106-edge-of-order.js';
+import * as encounter309 from './1200-the-wedge.js';
+import * as encounter310 from './1201-the-cold-shoulder.js';
+import * as encounter311 from './1202-the-kick-start.js';
+import * as encounter312 from './1203-the-declaration.js';
+import * as encounter313 from './1204-the-mine-garden.js';
+import * as encounter314 from './1205-the-second-bite.js';
+import * as encounter315 from './1206-the-fire-sale.js';
+import * as encounter316 from './1207-the-witnessed-price.js';
+import * as encounter317 from './1208-the-vetting.js';
+import * as encounter318 from './1209-the-last-tow.js';
+import * as encounter320 from './1300-scene-fare-dodger-chase.js';
+import * as encounter321 from './1301-the-runaway-kiln.js';
+import * as encounter322 from './1302-the-working-battlefield.js';
+import * as encounter323 from './1303-glue-meet-mass.js';
+import * as encounter324 from './1304-two-ships-one-mistake.js';
+import * as encounter325 from './1305-the-blind-welder.js';
+import * as encounter326 from './1306-the-drift-auction.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -641,13 +643,15 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter313,
   encounter314,
   encounter315,
+  encounter316,
   encounter317,
   encounter318,
-  encounter319,
   encounter320,
   encounter321,
   encounter322,
   encounter323,
   encounter324,
+  encounter325,
+  encounter326,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
