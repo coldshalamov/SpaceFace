@@ -687,9 +687,9 @@ test('C4-META-01 reject phantom map-authority / map-cutover scripts; validate li
     if (!/map-authority|map-cutover|m2:map|m2-map/i.test(name) && !/map-authority|map-cutover|m2-map-cutover/i.test(String(cmd))) {
       continue;
     }
-    const m = String(cmd).match(/node\s+([^\s&|;]+)/);
+    const m = String(cmd).match(/node\s+((?:--?\S+\s+)*)([^\s&|;]+)/);
     if (!m) continue;
-    const rel = m[1].replace(/^\.\//, '');
+    const rel = m[2].replace(/^\.\//, '');
     assert.ok(
       existsSync(join(ROOT, rel)),
       `phantom npm script ${name} → missing ${rel}`,
