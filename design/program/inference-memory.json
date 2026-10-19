@@ -114,32 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-124",
-      "date": "2026-10-01",
-      "wf": "WF-10",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "every scan pulse re-classifies from live fittings; pinned",
-      "fingerprint": "verb=invalidate,subject=stale-badge,domain=buildIdentity,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "c95124416",
-      "verification": "focused_green"
-    },
-    {
-      "id": "NXI-155",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "pacing chip flags est and names the uncharted route or missing ship speed",
-      "fingerprint": "verb=state,subject=estimate-uncertainty,domain=missions,layer=ui",
-      "references": [],
-      "integration": "live",
-      "commit": "963e11a1c",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-153",
       "date": "2026-10-01",
       "wf": "WF-11",
@@ -1678,6 +1652,32 @@
       "references": [],
       "integration": "live",
       "commit": "be594dcd08df5adfeb45c8e23f4065e2a4c8bc3a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-deadweight",
+      "date": "2026-10-19",
+      "wf": "WF-16",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "player-as-contracted-tug employer missing; grapple-ring dead-slow handoff vs Reach line-cutter prize crew",
+      "fingerprint": "verb=tow,subject=deadweight_contract,sector=multi,domain=hauling",
+      "references": [],
+      "integration": "live",
+      "commit": "271dcf6571a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "fabrication-scrap-run",
+      "date": "2026-10-19",
+      "wf": "WF-17",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "committed fab job uncancellable for up to 120s; instant refines wrongly blocked",
+      "fingerprint": "verb=scrap,subject=fabrication_line,sector=station,domain=industry",
+      "references": [],
+      "integration": "live",
+      "commit": "2136ff69312ee507f874b4ef38aec1b4aeb80f4b",
       "verification": "focused_green"
     }
   ],
