@@ -114,34 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-151",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "successor is an ordinary serialized missions.active row; dock/return cannot revert it",
-      "fingerprint": "verb=keep,subject=continuation,domain=missions,layer=save",
-      "references": [],
-      "integration": "live",
-      "commit": "12cbcdf84",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-038-failed-job-continuation.test.mjs"
-    },
-    {
-      "id": "NXI-152",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "MUTATION_MAX_DEPTH=1 closes the chain; pinned",
-      "fingerprint": "verb=close,subject=retry-chain,domain=missions,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "12cbcdf84",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-038-failed-job-continuation.test.mjs"
-    },
-    {
       "id": "NXI-122",
       "date": "2026-10-01",
       "wf": "WF-10",
@@ -1681,6 +1653,32 @@
       "references": [],
       "integration": "live",
       "commit": "9b0ec3cb6c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-vetting",
+      "date": "2026-10-19",
+      "wf": "WF-03",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Sker Haven's vetting door existed only as a dock-denial string; the chord now physically vets pilots on the bearing",
+      "fingerprint": "verb=vouch,subject=reach-vetting-chord,sector=sker_haven,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "03d240d026",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-last-tow",
+      "date": "2026-10-19",
+      "wf": "WF-09",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "a recorded death produced no consequence — now a retrieval detail tows the estate home while robbers race the filing",
+      "fingerprint": "verb=tow,subject=dead_estate,sector=any,domain=aftermath",
+      "references": [],
+      "integration": "live",
+      "commit": "03d240d026",
       "verification": "focused_green"
     }
   ],
