@@ -5275,6 +5275,12 @@ export const save = {
       try { freshRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { /* null — the prepare reports its own read reason */ }
       primary = await this._prepareEnvelopeStringAsync(freshRaw);
+      // raw must keep naming the bytes primary was validated against: the recovery recheck
+      // below compares the stored bytes to raw and reuses primary's verdict when a candidate
+      // matches it. Leaving raw at the superseded first read would let a store that drifts
+      // BACK to those original bytes skip the recheck — and let an older recovery copy be
+      // promoted over a newer playable primary, the race this recheck exists to prevent.
+      raw = freshRaw;
     }
     if (primary.ok) {
       // The envelope tells us exactly which ships/stations/places the saved sector will

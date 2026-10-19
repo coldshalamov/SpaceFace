@@ -387,6 +387,56 @@ test('Continue rechecks a recovery copy replaced during its revalidation', async
   }
 });
 
+test('Continue restores a primary that reverts during recovery validation instead of promoting the older copy', async () => {
+  resetSharedPlayerStoreMemoForTests();
+  const storage = memoryStorage();
+  const restoreEnv = installEnv({
+    storage,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ keys: {} }) }),
+  });
+  try {
+    const shell = makeShell({ seed: 99, marker: 'local-world' });
+    const newestWriter = makeShell({ seed: 97, marker: 'newest-primary' });
+    newestWriter.state.meta.playtimeS = 480;
+    const newestPrimaryRaw = JSON.stringify(newestWriter.save.serialize('quick'));
+    const recoveryWriter = makeShell({ seed: 73, marker: 'older-recovery' });
+    const backupRaw = JSON.stringify(recoveryWriter.save.serialize('quick'));
+    const corruptPrimaryRaw = '{ corrupt mid-decode primary';
+    storage.setItem('sf.save.quick', newestPrimaryRaw);
+    storage.setItem('sf.recovery.quick', backupRaw);
+    shell.save._queueSharedStoreMirror = () => {};
+
+    const prepare = shell.save._prepareEnvelopeStringAsync.bind(shell.save);
+    let primaryCorruptedDuringDecode = false;
+    let primaryRevertedDuringRecovery = false;
+    shell.save._prepareEnvelopeStringAsync = async (raw) => {
+      if (raw === newestPrimaryRaw && !primaryCorruptedDuringDecode) {
+        // A reconcile corrupts the primary mid-validation; the generation-bump re-prepare
+        // then re-validates the corrupt bytes and falls through to the recovery branch.
+        primaryCorruptedDuringDecode = true;
+        storage.setItem('sf.save.quick', corruptPrimaryRaw);
+      } else if (raw === backupRaw && !primaryRevertedDuringRecovery) {
+        // The writer restores the playable primary while the recovery copy decodes. The
+        // stored bytes now equal the FIRST read again — the recheck must compare against
+        // the bytes primary was actually revalidated against, not that stale first read.
+        primaryRevertedDuringRecovery = true;
+        storage.setItem('sf.save.quick', newestPrimaryRaw);
+      }
+      return prepare(raw);
+    };
+
+    assert.equal(await shell.save.loadAsync('quick'), true, 'the recovery path still completes');
+    assert.equal(primaryCorruptedDuringDecode, true, 'the first race bumps the store generation');
+    assert.equal(primaryRevertedDuringRecovery, true, 'the revert races the recovery decode');
+    assert.equal(shell.state.economy.marker, 'newest-primary',
+      'Continue must restore the reverted primary, not the older recovery copy');
+    assert.equal(storage.getItem('sf.save.quick'), newestPrimaryRaw,
+      'recovery promotion must not overwrite the playable primary bytes');
+  } finally {
+    restoreEnv();
+  }
+});
+
 test('a failed mirror still leaves the local save durable and the mirror health truthful', async () => {
   const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-shared-store-'));
   try {
