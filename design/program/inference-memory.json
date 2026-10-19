@@ -114,20 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-121",
-      "date": "2026-10-01",
-      "wf": "WF-10",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "Set basis already dedupes; now pinned",
-      "fingerprint": "verb=dedupe,subject=fitting-ids,domain=buildIdentity,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "c95124416",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-031-scanned-build-basis.test.mjs"
-    },
-    {
       "id": "NXI-124",
       "date": "2026-10-01",
       "wf": "WF-10",
@@ -1679,6 +1665,19 @@
       "references": [],
       "integration": "live",
       "commit": "2c3b9f33aac",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-blank-page",
+      "date": "2026-10-19",
+      "wf": "WF-15",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Quiet blank-ledger identity never playable; scan pulse seam routes kept_blank/read/burned outcomes",
+      "fingerprint": "verb=keep_blank,subject=unmarked_shadow_wire,sector=pallas_drift+io_reach,domain=faction-culture",
+      "references": [],
+      "integration": "live",
+      "commit": "be594dcd08df5adfeb45c8e23f4065e2a4c8bc3a",
       "verification": "focused_green"
     }
   ],
