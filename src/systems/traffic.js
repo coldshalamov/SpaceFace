@@ -1963,6 +1963,9 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    // Despawn is not a kill. A cutter removed by sector exit, residency demotion, or TTL holds
+    // its wreck/payload reservation forever unless the destroy receipt releases it too.
+    this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // A living barge can lose the counted hold without dying: the opening raid's robbed
     // outcome is the raider leaving with the ore. Destruction closes the same row when the
     // kill path never saw this manifest id.
@@ -5448,6 +5451,11 @@ export const traffic = {
     }
     this._active = [];
     this.state.traffic.freighters = [];
+    // Well-drag convoy state is keyed by live entity ids. A hard wipe orphans it, and an id
+    // recycled in the next sector would inherit the dead hauler as its regroup target (or a
+    // dead dedupe key) — sector-scoped transient state, cleared with the roster.
+    if (this._wellDragRegroup) this._wellDragRegroup.clear();
+    if (this._wellDragSeen) this._wellDragSeen.clear();
   },
 
   /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */
@@ -13252,6 +13260,37 @@ export const traffic = {
     if (lostClaimTravelRoute) {
       this._applyClaimTravelHooks(this.state.world && this.state.world.currentSectorId);
     }
+  },
+
+  /**
+   * Despawn-side twin of the kill-time claim release in _onEntityKilled: a salvor removed by
+   * sector exit, residency demotion, or a despawnAt sweep leaves no corpse, but the
+   * `salvorClaimedBy` / source `claimId` it stamped outlives it on persistent bodies. Release
+   * both so a later cutter (or the player) can take the body. `p.entity` is the destroyed
+   * object itself — ids recycle, so a queued receipt must never resolve its claimant through
+   * the live map against a new occupant. Far-row shelving keeps its durable identity for
+   * promote-resume, so 'virtualize' receipts do not release.
+   */
+  _onEntityDestroyed(p) {
+    if (!p || p.id == null || this._restoreEpochPending === true) return;
+    if (p.reason === 'virtualize') return;
+    const ent = (p.entity && typeof p.entity === 'object') ? p.entity
+      : (this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(p.id) : null);
+    const data = ent && ent.data;
+    const worldRecordId = data && typeof data.worldRecordId === 'string' && data.worldRecordId
+      ? data.worldRecordId
+      : null;
+    if (!worldRecordId) return;
+    const sourceKey = typeof data.salvageSource === 'string' && data.salvageSource
+      ? data.salvageSource
+      : null;
+    if (sourceKey) this._releaseSalvageSourceClaim({ sourceKey }, worldRecordId);
+    forEachJobInteractable(this.state, (body) => {
+      if (body && body.data && body.data.salvorClaimedBy === worldRecordId) {
+        this._clearSalvorClaim(body, worldRecordId);
+      }
+    });
   },
 
   _leftoverDisruptedStationIds() {

@@ -430,6 +430,74 @@ test('player kill mid-extraction drops the taken value as a cargo body', () => {
   }
 });
 
+test('non-kill despawn of a salvor releases its claim so the body stays takeable', () => {
+  const { sim, trafficSys, dispose } = boot(909);
+  try {
+    const wreck = spawnWreck(sim, {
+      pool: { cmdty_scrap_metal: 4 },
+    });
+    forceNoticeReady(wreck, 0);
+    trafficSys.update(0.25, sim.state);
+    const salvor = generalSalvors(sim)[0];
+    assert.ok(salvor);
+    const claimantId = salvor.data.worldRecordId;
+    assert.equal(wreck.data.salvorClaimedBy, claimantId);
+
+    // Sector-exit / residency teardown is a removal, not a kill — entity:killed never fires.
+    sim.helpers.removeEntity(salvor.id, { immediate: true, reason: 'sector_residency' });
+    sim.bus.flush();
+    assert.equal(sim.state.entities.get(salvor.id), undefined, 'salvor hull is gone');
+    assert.equal(
+      wreck.data.salvorClaimedBy,
+      undefined,
+      'a despawned claimant must not hold the wreck reservation',
+    );
+
+    // The freed body is takeable again: the next dispatch cycle re-claims it. The replacement
+    // cutter re-mints the same deterministic worldRecordId, so assert the claim is held by a
+    // LIVE hull — not that the id changed.
+    trafficSys.update(0.25, sim.state);
+    const next = generalSalvors(sim)[0];
+    assert.ok(next, 'a new cutter re-dispatches to the freed wreck');
+    assert.notEqual(next, salvor, 'the recycled-id slot is a new live hull');
+    assert.equal(wreck.data.salvorClaimedBy, next.data.worldRecordId);
+  } finally {
+    dispose();
+  }
+});
+
+test('despawned source-bound salvor releases its durable source claim', () => {
+  const { sim, dispose } = boot(910);
+  try {
+    const released = [];
+    const salvageApi = sim.helpers.salvage;
+    sim.helpers.salvage = {
+      ...salvageApi,
+      releaseSourceClaim: (req) => { released.push(req); return { ok: true }; },
+    };
+    const salvor = sim.spawn({
+      type: 'ship',
+      pos: { x: 40, z: 40 },
+      vel: { x: 0, z: 0 },
+      radius: 8,
+      hull: 100,
+      hullMax: 100,
+      data: {
+        trafficRole: 'salvor',
+        worldRecordId: 'wr:test-despawned-salvor',
+        salvageSource: 'vesta_tally_three',
+      },
+    });
+    sim.helpers.removeEntity(salvor.id, { immediate: true, reason: 'sector_residency' });
+    sim.bus.flush();
+    assert.deepEqual(released, [
+      { sourceKey: 'vesta_tally_three', claimantId: 'wr:test-despawned-salvor' },
+    ], 'destroy receipt must free the source reservation exactly like a kill');
+  } finally {
+    dispose();
+  }
+});
+
 test('beating the salvor to the payload leaves it empty (no minted scrap)', () => {
   const { sim, trafficSys, dispose } = boot(306);
   try {

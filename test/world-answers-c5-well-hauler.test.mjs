@@ -281,6 +281,36 @@ for (const seed of SEEDS) {
     assert.equal(h.seen.impulses.filter((p) => p.kind === 'lane_disruption').length, 2);
   });
 
+  test(`C5 [${seed}]: a hard sector exit drops well-drag convoy state — no stale id re-binding`, (t) => {
+    const h = boot(seed);
+    t.after(() => dispose(h));
+    plantWell(h, 'well_x', h.player.id);
+    pull(h, h.hauler, 150, 30);
+    assert.equal(h.seen.regroups.length, 1);
+    assert.ok(h.trafficSys._wellDragRegroup.size > 0, 'escort regroup armed');
+    assert.ok(h.trafficSys._wellDragSeen.size > 0, 'drag dedupe armed');
+
+    // Hard sector exit wipes the roster. Both tables are keyed by live entity ids — ids that
+    // recycle in the next sector must not inherit this sector's regroup target or dedupe keys.
+    h.bus.emit('sector:exit', { sectorId: 'sector_helios_prime' });
+    assert.equal(h.trafficSys._wellDragRegroup.size, 0, 'regroup clears with the roster');
+    assert.equal(h.trafficSys._wellDragSeen.size, 0, 'dedupe clears with the roster');
+    assert.equal(h.state.traffic.freighters.length, 0, 'hard exit still wipes the ledger');
+
+    // The same hauler dragged in the next sector is a fresh act, not a deduped stale key.
+    h.bus.emit('well:haulerDragged', {
+      schemaVersion: 1, wellId: 'well_x', actorId: h.player.id, haulerId: h.hauler.id,
+      factionId: 'faction_free', destStationId: 'station_beltout', sectorId: 'sector_helios_prime',
+      deflectionWu: 50, tick: h.state.tick,
+    });
+    assert.equal(h.seen.drags.length, 2);
+    assert.equal(
+      h.seen.regroups.length,
+      2,
+      'the re-fired drag is processed fresh — a stale dedupe key would have swallowed it',
+    );
+  });
+
   test(`C5 [${seed}]: a manifest-less destination falls back to the drag sector; unknown hull is inert`, (t) => {
     const h = boot(seed);
     t.after(() => dispose(h));
