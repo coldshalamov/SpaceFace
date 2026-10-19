@@ -97,6 +97,17 @@ export const PILOT_GRUDGES = Object.freeze({
       '{name}: last lane, you watched me run. Watch closer this time.',
     ]),
   }),
+  // The killer's mark: this pilot put the player's hull in the drift. Not a grudge the
+  // player's guns wrote — the pilot's own win, carried as a boast and a second hunt.
+  downed_you: Object.freeze({
+    label: 'put you in the drift',
+    violent: false,
+    returns: Object.freeze([
+      '{name}: I already put your hull on the tide once. The {crew} flies heavy off your scrap.',
+      '{name}: the drift remembers me even if the dock forgot you. The {crew} collects again.',
+      '{name}: you woke at a recovery berth because of me. The {crew} wants the second take.',
+    ]),
+  }),
 });
 
 // Spared pilots (surrendered, never fled) carry mercy, not a grudge — their return line
@@ -179,7 +190,7 @@ function isKillStyle(value) {
 }
 
 export const FIGHT_OUTCOMES = Object.freeze([
-  'you_fled', 'they_fled', 'netted', 'rammed', 'wingman_died', 'killed',
+  'you_fled', 'they_fled', 'netted', 'rammed', 'wingman_died', 'killed', 'downed',
 ]);
 const FIGHT_OUTCOME_SET = new Set(FIGHT_OUTCOMES);
 
@@ -204,6 +215,7 @@ export const FIGHT_OUTCOME_LABELS = Object.freeze({
   rammed: 'YOU RAMMED THEM',
   wingman_died: 'YOU DROPPED THEIR WING',
   killed: 'YOU KILLED THEIR CAPTAIN',
+  downed: 'THEY PUT YOU DOWN',
 });
 
 /** The outcome, from the signals one fight leaves behind. Priority is the most personal first. */
@@ -268,6 +280,10 @@ const LAST_FIGHT_LINES = Object.freeze({
       'you chalked my wing at {sector}. Your {how} is itemized.',
       'one of mine went to your {how} at {sector}. I have the name.',
     ]),
+    downed: Object.freeze([
+      'I put you down at {sector}. Your {how} is itemized under salvage.',
+      'at {sector} I closed your account myself. Your {how} never posted.',
+    ]),
   }),
   blade: Object.freeze({
     you_fled: Object.freeze([
@@ -289,6 +305,10 @@ const LAST_FIGHT_LINES = Object.freeze({
     wingman_died: Object.freeze([
       'at {sector} you cut my wing down. Your {how} took a name I liked.',
       'my second died at {sector}. Your {how} owes a blade.',
+    ]),
+    downed: Object.freeze([
+      'I left you drifting at {sector}. Your {how} was not enough blade.',
+      'your hull went quiet over {sector}. I kept the killing stroke.',
     ]),
   }),
   flat: Object.freeze({
@@ -312,6 +332,10 @@ const LAST_FIGHT_LINES = Object.freeze({
       'one of ours went down at {sector}. Your {how}. Filed.',
       'you removed a wing hull at {sector}. Your {how} has a file now.',
     ]),
+    downed: Object.freeze([
+      'we put you down at {sector}. Your {how}. Filed.',
+      'you drifted at {sector}. Your {how} did not answer.',
+    ]),
   }),
   creed: Object.freeze({
     you_fled: Object.freeze([
@@ -334,6 +358,10 @@ const LAST_FIGHT_LINES = Object.freeze({
       'at {sector} you silenced one voice of ours. Your {how} is entered.',
       'a voice fell at {sector} to your {how}. The verse names you.',
     ]),
+    downed: Object.freeze([
+      'the Pattern silenced your hull at {sector}. Your {how} is entered as answered.',
+      'at {sector} your {how} broke against the verse. The clause is closed.',
+    ]),
   }),
   yard: Object.freeze({
     you_fled: Object.freeze([
@@ -355,6 +383,10 @@ const LAST_FIGHT_LINES = Object.freeze({
     wingman_died: Object.freeze([
       'at {sector} you killed one of ours. Your {how} cost the yard a hand.',
       'one of ours burned at {sector}. Your {how} - we owe you for it.',
+    ]),
+    downed: Object.freeze([
+      'I put your hull on the hook at {sector}. Your {how} bent like cheap plate.',
+      'at {sector} you went slack in the drift. The yard scrapped what was left.',
     ]),
   }),
 });
@@ -430,6 +462,10 @@ const RAIDER_FIGHT_LINES = Object.freeze({
     'you chalked my wing at {sector}. Your {how} is why I came back.',
     'my mates popped on your scopes at {sector}. Your {how} - I never forgot the sound.',
   ]),
+  downed: Object.freeze([
+    'I put you in the drift at {sector}. Your {how} came apart first.',
+    'you were slack tonnage over {sector}. Your {how} is why I came back for the rest.',
+  ]),
 });
 
 /** The outcome a pirateDisengage escape reads as, from the grudge it wrote. They ran, so they
@@ -438,6 +474,7 @@ export function fightOutcomeForGrudge(grudgeKey) {
   switch (String(grudgeKey || '')) {
     case 'wing_loss': return 'wingman_died';
     case 'flung_wing': return 'netted';
+    case 'downed_you': return 'downed';
     default: return 'they_fled';
   }
 }

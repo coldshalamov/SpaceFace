@@ -3,7 +3,7 @@ import { finite, id, text, ref, refKey, FACT_EVENTS } from './schema.js';
 const EVENTS = new Set(FACT_EVENTS);
 const CAUSES = new Set(['generic', 'kinetic', 'explosive', 'terrain_collision', 'ship_collision']);
 const SURFACES = new Set(['terrain', 'craft', 'structure']);
-const ACE_TRANSITIONS = new Set(['encountered', 'fled', 'defeated', 'flung', 'returned']);
+const ACE_TRANSITIONS = new Set(['encountered', 'fled', 'defeated', 'flung', 'returned', 'downed']);
 const PROOF_STAGES = new Set(['recovered', 'sold', 'law']);
 const MAX_QTY = 1e12;
 

@@ -151,6 +151,10 @@ export const aceMemory = {
     this._listen('combat:kill', (p) => this._returnBossKilled(p));
     this._listen('pirateDisengage:triggered', (p) => this._pirateDisengageTriggered(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
+    // The killer's mark: the hostile that puts the player's hull in the drift is the one
+    // the ledger should never lose — a named boast and a hunting return, not an anonymous
+    // hull class on the after-action receipt. Recovery-less defeats (ironman) mint nothing.
+    this._listen('player:death', (p) => this._playerDowned(p));
     // FB-139 — a moral-memory return (the spared pilot coming back angry) is announced
     // through the ace voice and a cited news line, not only felt through the spawn.
     this._listen('moralMemory:vengefulReturn', (p) => this._vengefulReturn(p));
@@ -1131,6 +1135,198 @@ export const aceMemory = {
       t: now,
       source: 'pirateDisengage:spared',
     });
+  },
+
+  // ── The Killer's Mark ───────────────────────────────────────────────────────────
+  // A fled pirate gets a name and a grudge; the one who actually put the player's hull in
+  // the drift used to leave as an anonymous hull class on the after-action receipt. This
+  // seam reverses that: the killer wears the mark, carries the `downed_you` boast, and
+  // comes back hunting through the same promoted-return queue. Environment, self-kills,
+  // lawful and scripted hulls mint nothing; ironman never mints (no recovery, no return).
+
+  _playerDowned(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.recoverable === false) return;
+    const killerId = payload.killerId;
+    if (killerId == null || killerId === state.playerId) return;
+    const entities = state.entities && typeof state.entities.get === 'function' ? state.entities : null;
+    if (!entities) return;
+    let entity = entities.get(killerId) || null;
+    if (!entity && Number.isFinite(Number(killerId))) entity = entities.get(Number(killerId)) || null;
+    if (!entity || entity.alive === false || entity.type !== 'ship') return;
+    const now = nowOf(state, payload);
+    const sectorId = sectorOf(state, payload);
+    const memory = ensureMemory(state);
+    const data = entity.data || {};
+
+    // 1) The win lands on whoever's name is on the hull: a minted pilot's own stamp, or a
+    // return crew's ace tag (escorts credit their captain; a stale tag falls through to the
+    // ordinary hull checks instead of reviving a settled name).
+    const tag = data.aceMemory && typeof data.aceMemory === 'object' ? data.aceMemory : null;
+    const refId = (data.promotedPilot && data.promotedPilot.id) || (tag && tag.aceId) || null;
+    if (refId) {
+      const rec = memory[refId];
+      if (rec && rec.promoted === true) {
+        if (rec.defeated === true) return;
+        this._markDownedPilot(rec, now, sectorId);
+        this._emitTransition('downed', promotedAceForRecord(rec), rec);
+        return;
+      }
+      const taggedAce = aceById(refId);
+      if (taggedAce) {
+        this._markDownedAce(taggedAce, memory, now, sectorId);
+        return;
+      }
+    }
+
+    // 2) A named ace — or one of its squad hulls — puts the player down: the captain's
+    // record takes the win so its next return speaks the downed register line. The
+    // nemesis keeps its own defeat arc; an ace that is still physically present does
+    // not need a return scheduled to be heard from again.
+    const actor = this._fightActorOf(entity);
+    if (actor && actor.ace && actor.ace.lifecycleOwner !== 'nemesis') {
+      this._markDownedAce(actor.ace, memory, now, sectorId);
+      return;
+    }
+
+    // 3) An anonymous hostile gets the mark outright.
+    if (!promotablePilot(entity, state)) return;
+    const pilotId = promotedPilotIdFor(entity.id);
+    const prior = memory[pilotId];
+    if (prior && prior.promoted === true) {
+      if (prior.defeated === true) return;
+      this._markDownedPilot(prior, now, sectorId);
+      this._emitTransition('downed', promotedAceForRecord(prior), prior);
+      return;
+    }
+    this._mintDownedPilot(entity, memory, now, sectorId);
+  },
+
+  /** The win a marked pilot already carries, refreshed: the boast stays, the tier climbs,
+   *  and the live window re-arms from the kill. fledAt anchors only the expiry clock —
+   *  a winner never fled, so `fled` and `fleeCount` are left alone. */
+  _markDownedPilot(rec, now, sectorId) {
+    const memory = ensureMemory(this.state);
+    const ace = promotedAceForRecord(rec);
+    rec.grudgeKey = 'downed_you';
+    rec.grudgeLabel = PILOT_GRUDGES.downed_you.label;
+    rec.lastOutcome = 'downed';
+    rec.lastStyle = habitStyleOf(memory);
+    if (sectorId) rec.lastSectorId = sectorId;
+    rec.lastSeenAt = now;
+    rec.fledAt = now;
+    rec.downedCount = (rec.downedCount | 0) + 1;
+    rec.grudge = Math.max(rec.grudge | 0, ACE_GRUDGE_HUNT_AT);
+    rec.loyalty = 0;
+    rec.expired = false;
+    rec.expiredAt = null;
+    resetSpentReturn(rec);
+    rec.returnTier = Math.min(PIRATE_PROMOTION_MAX_TIER, Math.max(1, (rec.returnTier | 0) + 1));
+    rec.returnsBigger = true;
+    rec.returnScheduled = true;
+    if (ace) Object.assign(rec, returnPlanForAce(ace, seedOf(this.state), now));
+    const stance = stanceForRecord(rec);
+    rec.stance = stance.stance;
+    if (stance.stance === 'hunts') {
+      rec.returnAt = now + huntsReturnDelayS(rec.returnAfterS, rec.grudge | 0);
+    }
+  },
+
+  /** A named captain's record of the win. No return is armed — the ace's own fled/defeated
+   *  transitions keep scheduling its appearances; this only writes what it will boast of. */
+  _markDownedAce(ace, memory, now, sectorId) {
+    if (!ace || ace.lifecycleOwner === 'nemesis') return;
+    const rec = recordFor(memory, ace);
+    rec.encountered = true;
+    rec.encounterCount = (rec.encounterCount | 0) + 1;
+    rec.lastSeenAt = now;
+    if (sectorId) rec.lastSectorId = sectorId;
+    rec.lastOutcome = 'downed';
+    if (!isStyleValue(rec.lastStyle)) rec.lastStyle = habitStyleOf(memory);
+    rec.downedCount = (rec.downedCount | 0) + 1;
+    this._emitTransition('downed', ace, rec);
+  },
+
+  _mintDownedPilot(entity, memory, now, sectorId) {
+    const state = this.state;
+    evictOldestPromoted(memory, now);
+    const seed = seedOf(state);
+    const pilotId = promotedPilotIdFor(entity.id);
+    const identity = promotedPilotIdentity(seed, entity.id);
+    const factionId = entity.factionId
+      || (entity.data && entity.data.factionId)
+      || 'faction_reach';
+    const archetype = promotedArchetypeFor(entity);
+    // The generic "got away" signature bark would lie about a pilot who won — the mark
+    // carries a boast instead.
+    const signatureBark = `${identity.name}: I already put your hull on the tide once.`;
+    const pseudoAce = promotedAceShape(pilotId, { ...identity, signatureBark }, {
+      factionId,
+      returnArchetype: archetype,
+      escortArchetype: 'wasp_swarmer',
+      baseReturnLevel: promotedBaseLevelFor(entity),
+    });
+    const rec = recordFor(memory, pseudoAce);
+    rec.promoted = true;
+    rec.sourceEntityId = entity.id;
+    rec.promotedAt = now;
+    rec.factionId = factionId;
+    rec.returnArchetype = archetype;
+    rec.escortArchetype = pseudoAce.escortArchetype;
+    rec.baseReturnLevel = pseudoAce.baseReturnLevel;
+    rec.signatureBark = signatureBark;
+    rec.epithet = identity.epithet;
+    rec.grudgeKey = 'downed_you';
+    rec.grudgeLabel = PILOT_GRUDGES.downed_you.label;
+    rec.encountered = true;
+    rec.encounterCount = 1;
+    rec.fledAt = now;
+    rec.returnsBigger = true;
+    rec.returnScheduled = true;
+    rec.returnTier = 1;
+    rec.lastSeenAt = now;
+    rec.lastSectorId = sectorId || sectorOf(state);
+    rec.lastOutcome = 'downed';
+    rec.lastStyle = habitStyleOf(memory);
+    rec.downedCount = 1;
+    // A winning killer always hunts the second take — never an offer-of-work roll.
+    rec.grudge = ACE_GRUDGE_HUNT_AT;
+    Object.assign(rec, returnPlanForAce(pseudoAce, seed, now));
+    if (stanceForRecord(rec).stance === 'hunts') {
+      rec.returnAt = now + huntsReturnDelayS(rec.returnAfterS, rec.grudge | 0);
+    }
+    // The hull wears the minted name immediately — the after-action receipt's label is
+    // already written, but the target panel, the wreck's killer tag and the durable
+    // ledger all read a pilot now, not an anonymous raider.
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.name = identity.name;
+    data.callsign = identity.name;
+    data.name = identity.name;
+    data.promotedPilot = { id: pilotId, name: identity.name, grudgeKey: 'downed_you', promotedAt: now };
+    emit(this.bus, 'aceMemory:pilotPromoted', {
+      aceId: pilotId,
+      aceName: identity.name,
+      crew: identity.crew,
+      factionId,
+      entityId: entity.id,
+      squadId: (entity.data && entity.data.ai && entity.data.ai.squadId) || null,
+      reason: 'player_downed',
+      grudgeKey: 'downed_you',
+      grudgeLabel: rec.grudgeLabel,
+      disposition: 'vengeful',
+      returnAt: rec.returnAt,
+      returnTier: rec.returnTier,
+      sectorId: rec.lastSectorId || null,
+      t: now,
+    });
+    this._emitTransition('downed', pseudoAce, rec);
+    emit(this.bus, 'toast', {
+      text: `${identity.name} put you in the drift — that transponder is marked.`,
+      kind: 'warn',
+      ttl: 5,
+    });
+    return rec;
   },
 
   /** Any kill of a promoted hull — player or world — settles the record. Despawn/sector
@@ -2198,6 +2394,7 @@ function normalizeRecord(id, input, ace = null) {
   rec.encounterCount = rec.encounterCount | 0;
   rec.fleeCount = rec.fleeCount | 0;
   rec.flungCount = rec.flungCount | 0;
+  rec.downedCount = rec.downedCount | 0;
   rec.returnTier = rec.returnTier | 0;
   rec.grudge = Math.min(ACE_GRUDGE_MAX, Math.max(0, rec.grudge | 0));
   rec.loyalty = Math.min(ACE_LOYALTY_MAX, Math.max(0, rec.loyalty | 0));

@@ -234,6 +234,9 @@ test('a promoted pilot returns through aceMemory with name, grudge and a spoken 
   const rec = t.state.aceMemory[pilotId];
   const identity = promotedPilotIdentity(SEED, pirate.id);
 
+  // A return is a later meeting: it defers while the stamped hull is still physically
+  // present. In flight the fled hull despawns out of the fight; retire it here the same way.
+  pirate.alive = false;
   advanceTo(t, rec.returnAt + 1);
 
   // fled_fire is a violent grudge — the pilot comes back hunting, not offering work.
@@ -322,6 +325,7 @@ test('killing a return escort does not settle the pilot; the pilot hull does', (
   const pilotId = promotedPilotIdFor(pirate.id);
   const rec = t.state.aceMemory[pilotId];
 
+  pirate.alive = false; // the fled hull left the field before the return window opened
   advanceTo(t, rec.returnAt + 1);
   const spawned = t.events.find((row) => row.name === 'aceMemory:returnSpawned'
     && row.payload.aceId === pilotId);
@@ -352,6 +356,7 @@ test('after save/load, a recycled entity id cannot settle a promoted pilot', () 
   emitFled(t, pirate);
   const pilotId = promotedPilotIdFor(pirate.id);
   const rec = t.state.aceMemory[pilotId];
+  pirate.alive = false; // fled hull gone before the return fires
   advanceTo(t, rec.returnAt + 1);
   const spawned = t.events.find((row) => row.name === 'aceMemory:returnSpawned'
     && row.payload.aceId === pilotId);
@@ -395,12 +400,17 @@ test('a pilot who returned and fled again can time-expire', () => {
   const pilotId = promotedPilotIdFor(pirate.id);
   const rec = t.state.aceMemory[pilotId];
 
+  // The return defers while the stamped hull is physically present — the fled hull must
+  // leave the live entity map (not just die: a dead hull sweeps out and cannot be
+  // re-resolved for the second flee below).
+  t.state.entities.delete(pirate.id);
   advanceTo(t, rec.returnAt + 1);
   assert.equal(rec.returned, true, 'the first return spawned');
   const firstSpawns = t.events.filter((row) => row.name === 'aceMemory:returnSpawned'
     && row.payload.aceId === pilotId).length;
 
-  // The same hull breaks off again — the re-armed record is a live window, not a settled one.
+  // The same hull breaks off again — the pilot's ship comes back into the lane and runs.
+  t.state.entities.set(pirate.id, pirate);
   emitFled(t, pirate);
   assert.equal(rec.returned, false, 're-arm clears the settled return flag');
   assert.equal(rec.returnedAt, null);
@@ -428,6 +438,7 @@ test('a work-offer return without a spawn helper retries instead of resolving', 
   // Force the loyal wing stance deterministically rather than fishing for an ally seed.
   rec.loyalty = ACE_LOYALTY_WORK_AT;
   rec.grudge = 0;
+  pirate.alive = false; // fled hull gone before the offer window opens
 
   // No spawn helper on aceMemory's helper copy: the offer must stay owed, not resolve.
   const helpers = t.aceSystem.helpers;
@@ -473,6 +484,9 @@ test('a live h7 spared-return window defers the promoted return of the same pilo
     },
   };
 
+  // The fled hull left the field — the h7 choice window alone owns the deferral here,
+  // not the live-presence guard on the stamped hull.
+  pirate.alive = false;
   advanceTo(t, rec.returnAt + 1);
   assert.ok(!t.events.some((row) => row.name === 'aceMemory:returnSpawned'
     && row.payload.aceId === pilotId), 'no second crew fields inside the choice window');
