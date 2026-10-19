@@ -25,6 +25,8 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-271dcf6 | 271dcf6571ac57e840d649e5e68179075032c321 | INF-12 the deadweight | OPEN | Verify a real player tow can physically arrive inside ringWu at handoffSpeed 14 in live flight — winch reels continuously; cut-and-coast sling is an accepted honest path. |
+| R-2136ff6 | 2136ff69312ee507f874b4ef38aec1b4aeb80f4b | INF-15 fabrication scrap-run | OPEN | Verify cancel forfeit matches build() committed-inputs comment and no caller relied on instant builds being blocked while a timed job occupies the line. |
 | R-ca0d710 | ca0d7104a8664d3b8f46952e816137e1e7e98e4e | D235 deferred tether echo | OPEN | Verify no consumer needed same-dispatch tether:broke/released/releaseRated — all listeners now get it on the first update after break (max 1 tick late), incl dead/docked ticks. |
 | R-be594dc | be594dcd08df5adfeb45c8e23f4065e2a4c8bc3a | INF-13 the blank page | OPEN | Verify scan-as-offense: a pulse covering the passive ghost settles read/broke_terms via runtime.event(scanPulse) while a short radius writes nothing; and no outcome emits news:publish. |
 | R-8764f824a2 | 2c3b9f33aac | INF-14 swarm star asks | OPEN | Verify chain-star-banked zones name the spotless ask not a chain (stars=2 bestChain>=target), and never-entered zones show no ask. |
@@ -32,6 +34,4 @@ The oldest OPEN row is the next second look.
 | R-8764f824 | 8764f824186 | SWP-COMM comms lifecycle | OPEN | Verify clearing _contactHailHeaveTo on sector:enter cannot refuse a legitimate continuous hail across the boundary (offer availability-poll at 5Hz is the safety) and that gone-squad resolution cannot fire spuriously while a member is temporarily invisible (membersFor = exists+alive). |
 | R-cc46e17 | cc46e17abcf8e4691a80d69c02aca21d1e45e4af | §1.8 demo sweep: save, input, and trade recovery | Continue rechecks the primary and recovery bytes after async validation before choosing a restore source | CLOSED 2026-10-18 (row deleted by review commit): SMALL-MISS-FIXED — `raw = freshRaw` after generation-bump re-prepare; regression test added |
 
-| R-6935dcc7 | 6935dcc740 | SWP-NAV fuel-refund exploit + route revalidation | Verify legsMatchRoute uses the same identity semantics as restoredRouteIssue and that no lawful path needs abort to refund (tow/combat-lock aborts included). | OPEN |
-| R-558e3355 | 558e3355e8 | SWP-DOCK delivered-units settle + undock gap latch | Verify _settleUndelivered pro-rata rounding cannot over-release note debt when cost+debtCr coexist; and _departedLatch cannot strand a same-station re-dock in the production 400ms fade order. | OPEN |
 | R-5420e6d2 | 5420e6d213 | SWP-ECON quote-provenance admission | Verify bestKnownBuy/bestKnownMarginLane agree on the same admission set and unknown tags still drop the row. | OPEN |
