@@ -86,10 +86,12 @@ export const TELEGRAPH_CUE_TICKS = 30;
 export const TELEGRAPH_PAIR_MIN_TICKS = 30;
 export const TELEGRAPH_PAIR_MAX_TICKS = 60;
 
-// Continuous hazards (mines, snares) stay lit from placement to trigger instead of pulsing once.
-// Their event rows may declare durationTicks so death correlation can tell "still lit" from a stale
-// placement row no one can see anymore.
-export const CONTINUOUS_TELEGRAPH_KINDS = new Set(['wake_mines', 'attach_spool']);
+// Continuous hazards (mines, snares, a lit fuse) stay lit from announcement to resolution
+// instead of pulsing once. Their event rows may declare durationTicks so death correlation
+// can tell "still lit" from a stale row no one can see anymore. The detonator's fuse announces
+// its whole armed window (cue + commit), so a dart that kills anywhere inside its own declared
+// run pairs instead of falling outside the one-shot window.
+export const CONTINUOUS_TELEGRAPH_KINDS = new Set(['wake_mines', 'attach_spool', 'detonator_fuse']);
 
 const TELEGRAPH_KIND_SET = new Set(LEFTOVER_TELEGRAPH_KINDS);
 const HARVEST_HEARTBEAT_S = 0.2;
@@ -97,6 +99,10 @@ const COMPAT_ATTACK_KINDS = new Set(['attackRun', 'alphaStrike']);
 const SLOT_TELEGRAPH_CLASS = 'sf-threat-halo__slot--telegraph';
 const TETHER_CUT_DOCTRINE = 'tether_control_raider';
 const TETHER_CUT_PHASES = new Set(['spool_cue', 'attach_window']);
+// The kamikaze dart's fuse announce stays live through its armed phases; every other phase
+// (egress, reform, re-approach) retires the cue now instead of coasting on the declared window.
+const DETONATOR_RUN_DOCTRINE = 'detonator_run';
+const DETONATOR_ARMED_PHASES = new Set(['fuse_cue', 'commit']);
 const tetherPlan = specialistPlanById('tether_cutter');
 const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitTicks)
   ? tetherPlan.commitTicks
@@ -367,6 +373,23 @@ export function offscreenShooterMarker({
     ? (dx < 0 ? EDGE_LEFT : EDGE_RIGHT)
     : (dy < 0 ? EDGE_TOP : EDGE_BOTTOM);
   return { side };
+}
+
+/**
+ * A kamikaze hull mounts no guns — the hull IS the shot. It earns the same edge-mark
+ * admission a shooter gets while either (a) its fuse announce is live (the doctrine lit a
+ * run at the player) or (b) it is simply a fused hull inside its own danger band — trigger
+ * range plus blast radius off the authored spec — because inside that ring it can hurt the
+ * player the moment anything trips it, announced or not.
+ */
+export function detonatorFuseThreat(entity, cue, distSq) {
+  if (cue && cue.kind === 'detonator_fuse') return true;
+  const spec = entity && entity.data && entity.data.detonator;
+  if (!spec || typeof spec !== 'object') return false;
+  const trigger = Number.isFinite(spec.triggerRange) ? spec.triggerRange : 56;
+  const blast = Number.isFinite(spec.blastRadius) ? spec.blastRadius : 96;
+  const band = Math.max(0, trigger + blast);
+  return Number.isFinite(distSq) && distSq <= band * band;
 }
 
 function clamp(value, min, max) {
@@ -734,6 +757,22 @@ export function createThreatHalo(root, busOrOpts) {
     return row.phase;
   }
 
+  // A dart that egresses, reforms, or re-acquires is done announcing: the fuse cue retires
+  // with the phase change rather than lingering to the end of its declared window. (A fused
+  // hull still inside its own blast ring keeps its mark through detonatorFuseThreat's
+  // proximity band — that part is a physics fact, not an announce.)
+  function dropDetonatorCueOnDisarm(payload) {
+    if (!payload || payload.entityId == null || payload.doctrineId !== DETONATOR_RUN_DOCTRINE) return;
+    if (DETONATOR_ARMED_PHASES.has(payload.phase)) return;
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (cue && cue.entityId === payload.entityId && cue.kind === 'detonator_fuse') {
+        telegraphCues.splice(i, 1);
+        return;
+      }
+    }
+  }
+
   // Tokens come from the hull and the live window only — never from a plan id.
   function tetherCutReadFor(entity, cue) {
     const data = (entity && entity.data) || {};
@@ -845,6 +884,7 @@ export function createThreatHalo(root, busOrOpts) {
     phaseUnsub = bus.on('ai:doctrinePhase', (payload) => {
       const tick = payload && Number.isInteger(payload.tick) ? payload.tick : haloTick;
       noteTetherPhase(payload, tick);
+      dropDetonatorCueOnDisarm(payload);
     });
   }
 
@@ -1299,10 +1339,12 @@ export function createThreatHalo(root, busOrOpts) {
       const sx = projected.behind === true ? frameW - projected.x : projected.x;
       const sy = projected.behind === true ? frameH - projected.y : projected.y;
       // G4: an in-frame attacker gets no edge mark, even when it is telegraphing.
-      // One mark per shooter, never one per projectile.
+      // One mark per shooter, never one per projectile. The detonator dart mounts no
+      // weapons, so the shooter's contract alone would refuse it — a lit fuse, or a
+      // fused hull inside its own blast ring, counts as its shot.
       const marker = offscreenShooterMarker({
         alive: entity.alive !== false,
-        canShoot: hostileCanShoot(entity),
+        canShoot: hostileCanShoot(entity) || detonatorFuseThreat(entity, cue, distSq),
         onScreen: projected.onScreen === true,
         screenX: sx,
         screenY: sy,
@@ -1489,7 +1531,11 @@ export function createThreatHalo(root, busOrOpts) {
       setAttr(slot, 'data-closing', !cue && hostileBucket[i] >= 2 ? 'boost' : null);
       const latch = tetherCutLatches.get(hostileId[i]);
       const cutLabel = latch && latch._tetherCutLatch ? latch._tetherCutLabel : null;
-      const identityLabel = hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue, hostileMines[i]);
+      // The lit fuse names what the mark means — a dart resolves no occupational role, so the
+      // generic label would only say "UNKNOWN — ATTACKING" and hide that this hull is the bomb.
+      const identityLabel = cue && cue.kind === 'detonator_fuse'
+        ? 'DETONATOR — FUSE LIT'
+        : hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue, hostileMines[i]);
       const mines = hostileMines[i];
       const mineLabel = mines > 0 ? ` · ${mines} ${mines === 1 ? 'MINE' : 'MINES'}` : '';
       setAttr(slot, 'aria-label', cutLabel ? cutLabel + mineLabel : identityLabel);

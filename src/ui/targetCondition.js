@@ -75,8 +75,9 @@ function fireGate(runtime, entity, tick) {
 
 /**
  * The delivered-condition facts for one target, or null when the target carries no combat
- * runtime (rocks, wrecks, clean hulls before first damage) — except a heavy hull, whose
- * mass response is a standing fact of the hull, not of any delivered payload.
+ * runtime (rocks, wrecks, clean hulls before first damage) — except two standing hull
+ * facts: a heavy hull's mass response, and a kamikaze hull's fused warhead, which are facts
+ * of the hull itself rather than of any delivered payload.
  */
 export function targetConditionReadout(state, target) {
   if (!state || !target || target.alive === false) return null;
@@ -87,16 +88,27 @@ export function targetConditionReadout(state, target) {
   const heavyMass = (target.type === 'ship' || target.type === 'drone')
     && Number.isFinite(target.mass) && target.mass >= HEAVY_AS_TERRAIN_MASS
     ? true : null;
+  // A detonator spec on the hull is the same class of standing fact as mass: this hull is a
+  // live bomb — it pops on proximity and pops again wherever it dies — so targeting it must
+  // name the payload before any delivered status. The sim writes the spec at spawn
+  // (src/systems/combat.js makeEnemySpawnSpec); the fuse itself lives in impulseCharges.
+  const warhead = (target.type === 'ship' || target.type === 'drone')
+    && target.data && typeof target.data.detonator === 'object' && target.data.detonator !== null
+    ? true : null;
   const table = state.combat && state.combat.entities;
   const runtime = table ? table[String(target.id)] : null;
   if (!runtime) {
-    if (!heavyMass) return null;
+    if (!heavyMass && !warhead) return null;
+    const parts = [];
+    if (warhead) parts.push('WARHEAD · PROXIMITY FUSED');
+    if (heavyMass) parts.push('HEAVY MASS · SHOVE RESISTANT');
     return Object.freeze({
       steer: null,
       fire: null,
       burn: null,
       heavyMass,
-      text: 'HEAVY MASS · SHOVE RESISTANT',
+      warhead,
+      text: parts.join(' · '),
     });
   }
   const tick = state.tick | 0;
@@ -123,6 +135,7 @@ export function targetConditionReadout(state, target) {
     : null;
 
   const parts = [];
+  if (warhead) parts.push('WARHEAD · PROXIMITY FUSED');
   if (heavyMass) parts.push('HEAVY MASS · SHOVE RESISTANT');
   if (steer) {
     // A tumble IS the helm-out fact; a wrecked drive spells it (its lock has no clock).
@@ -140,6 +153,7 @@ export function targetConditionReadout(state, target) {
     fire: fire ? Object.freeze(fire) : null,
     burn: burn ? Object.freeze(burn) : null,
     heavyMass: heavyMass || null,
+    warhead: warhead || null,
     text: parts.join(' · '),
   });
 }

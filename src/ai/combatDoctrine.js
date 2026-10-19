@@ -178,6 +178,11 @@ const DETONATOR_COMMIT_MIN_TICKS = 20;
 const DETONATOR_COMMIT_MAX_TICKS = 150;
 const DETONATOR_BREAKAWAY_TICKS = 50;
 const DETONATOR_REFORM_TICKS = 50;
+// The fuse announce covers the whole armed window — the cue beat plus the longest commit —
+// because the dart is a live bomb for ALL of it: the halo keeps the edge mark lit through the
+// terminal run, the hull's fuse-burn vfx inherits the same duration, and a pop anywhere inside
+// the window still death-pairs its own cue. Egress without contact retires the announce early.
+export const DETONATOR_TELEGRAPH_TICKS = DETONATOR_FUSE_TICKS + DETONATOR_COMMIT_MAX_TICKS;
 // Identity doctrines own their engagement band: factionBehavior.preferredRange would otherwise
 // re-flatten every identity onto its faction's sampled range and re-collapse the vocabulary.
 // The boss choreographies are staged the same way — the act table owns the standoff.
@@ -553,7 +558,7 @@ function updateBrawler(record, tick, self, target, distance) {
 function updateDetonator(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'ingress' && distance <= DETONATOR_FUSE_RANGE_WU) {
-    enter(record, 'fuse_cue', tick, 'detonator_fuse');
+    enter(record, 'fuse_cue', tick, 'detonator_fuse', DETONATOR_TELEGRAPH_TICKS);
   } else if (record.phase === 'fuse_cue' && age >= DETONATOR_FUSE_TICKS) {
     record.closestDistance = distance;
     enter(record, 'commit', tick, null);
@@ -1239,13 +1244,18 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
   return record;
 }
 
-function enter(record, phase, tick, telegraphKind) {
+function enter(record, phase, tick, telegraphKind, telegraphTicks) {
   if (record.phase === phase && !telegraphKind) return;
   record.phase = phase;
   record.phaseStartedTick = tick;
   record.phaseChangedTick = tick;
+  // telegraphTicks defaults to the cue beat alone; a doctrine whose announce IS the whole
+  // armed window (the kamikaze fuse) declares the honest duration instead.
+  const durationTicks = Number.isFinite(telegraphTicks)
+    ? Math.max(1, Math.floor(telegraphTicks))
+    : DOCTRINE_TELEGRAPH_TICKS;
   record.telegraph = telegraphKind
-    ? Object.freeze({ kind: telegraphKind, durationTicks: DOCTRINE_TELEGRAPH_TICKS, startedTick: tick })
+    ? Object.freeze({ kind: telegraphKind, durationTicks, startedTick: tick })
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
     record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
