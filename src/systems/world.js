@@ -327,7 +327,6 @@ const UNFILED_JUMP_ORIGIN = 'sector_ashfall_reach';
 const UNFILED_JUMP_RETURN = 'sector_helios_prime';
 const SCAN_RANGE = 400;         // wu POI auto-detect radius
 const SECTOR_SCAN_TIME = 2.0;   // s to complete a sector scan
-const FUEL_REFUND_FRAC = 0.5;   // refunded on aborted charge
 const DAY_SECONDS = 600;        // core time contract (mirrors sectorSim)
 const WIRE_REPORT_COOLDOWN_S = 300; // min simTime gap between wire reports for one sector
 
@@ -5804,10 +5803,10 @@ export const world = {
   _abortCharge(reason) {
     const jump = this.state.jump;
     if (jump.state !== 'CHARGING') return;
-    // Fuel isn't spent until completion; refund half as goodwill to the tank (capped at max).
-    if (jump.via === 'drive' && jump._fuelCost && jump._unfiled !== true) {
-      this._addFuel((jump._fuelCost * FUEL_REFUND_FRAC) | 0);
-    }
+    // Fuel is only spent when a charge COMPLETES (_tickCharging calls _spendFuel on the
+    // completion tick; the request path merely validated affordability). Aborting before that
+    // point has nothing to refund — the half-cost "refund" that used to live here minted free
+    // fuel on every abort, repeatable without bound.
     jump.state = 'IDLE';
     jump.targetSectorId = null; jump.via = null;
     jump.chargeT = 0; jump.chargeNeeded = 0; jump._fuelCost = 0;

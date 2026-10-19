@@ -183,6 +183,28 @@ function decomposeRoute(route, atlas) {
   return legs;
 }
 
+/**
+ * Do the executor's stored legs still describe the plotted route? The executor snapshots
+ * `nav.route.legs` at engage time and flies THAT copy, but `nav.route` is replotted underneath
+ * it — the chart's "Set Course", `world:requestRoute`, a mission retarget through
+ * `ui:setCourse`, or a hop consumed by the unengaged-arrival path all replace the legs array.
+ * This is the same identity `restoredRouteIssue` enforces across a save boundary, applied to
+ * live mutation: every leg names the same from/to pair in the same order, or the stored
+ * itinerary is the abandoned course and must not be flown.
+ */
+function legsMatchRoute(routeLegs, executorLegs) {
+  if (!Array.isArray(routeLegs) || !Array.isArray(executorLegs)) return false;
+  if (routeLegs.length !== executorLegs.length) return false;
+  for (let i = 0; i < routeLegs.length; i++) {
+    const planned = routeLegs[i];
+    const stored = executorLegs[i];
+    if (!planned || !stored
+        || planned.from !== stored.fromSectorId
+        || planned.to !== stored.toSectorId) return false;
+  }
+  return true;
+}
+
 function makeExecutor(legs, destinationSectorId) {
   return {
     schema: ROUTE_EXECUTOR_SCHEMA,
@@ -418,7 +440,12 @@ export const routeFollower = {
       && Array.isArray(existing.legs)
       && existing.legs.length
       && existing.status !== ROUTE_EXECUTOR_STATUS.ARRIVED
-      && payload.restart !== true;
+      && payload.restart !== true
+      // Resume only picks up THIS plot. A replot (map chart, world:requestRoute, a mission
+      // retarget via ui:setCourse) or a hop consumed while unengaged leaves the stored legs
+      // describing an itinerary the player has already abandoned — resuming it would fly the
+      // old destination while map/HUD shows the new route. Diverged legs decompose fresh.
+      && legsMatchRoute(route.legs, existing.legs);
 
     if (resumable) {
       existing.engaged = true;
@@ -492,6 +519,19 @@ export const routeFollower = {
     // ── everything past this line runs only for an explicitly engaged route ──
 
     const legs = Array.isArray(executor.legs) ? executor.legs : [];
+
+    // A replot replaces `nav.route` underneath an engaged executor — without this check the
+    // ship keeps sequencing the abandoned itinerary (the gate-handoff latch below would hide
+    // the divergence for the entire charge window, and a `world:requestRoute` replot never
+    // disarms the autopilot at all). Interrupting is resumable: the next engage decomposes the
+    // live route, matching the plot-vs-engage separation — flying a route nobody engaged is
+    // not this system's call to make. Checked before leg resolution so a stale executor
+    // walking off the end of its old itinerary cannot `_complete()` the NEW plot.
+    if (!legsMatchRoute(route.legs, legs)) {
+      this.interrupt('route-changed');
+      return;
+    }
+
     const leg = legs[executor.legIndex];
     if (!leg) {
       this._complete();
@@ -782,7 +822,14 @@ export const routeFollower = {
     //
     // A longer unengaged plot advances one leg without arming any assist. Engaged itineraries keep
     // using the executor path below, which owns their waypoint, autopilot, and transition receipts.
-    if (!executor) {
+    //
+    // "Unengaged" must mean NOT FLYING, not merely "no executor object": a completed or interrupted
+    // executor stays on nav.executor until the next engage/save cycle, and it owns nothing the ship
+    // is doing. Letting its mere presence suppress this path strands a one-hop "Set Course & Jump"
+    // plotted after a finished route — the jump lands, the plot survives, and the next Continue
+    // reports it as a stale saved route. A non-flying executor's legs are checkpoint state; they
+    // may be sliced here and re-validated against the live route on the next engage.
+    if (!executor || executor.engaged !== true) {
       const route = nav.route;
       const legs = route && Array.isArray(route.legs) ? route.legs : [];
       const completed = legs[0];
@@ -807,7 +854,6 @@ export const routeFollower = {
       return;
     }
 
-    if (executor.engaged !== true) return;
     const leg = (executor.legs || [])[executor.legIndex];
     if (!leg || leg.toSectorId !== sectorId) return;
     this._advanceLeg('gate-handoff');

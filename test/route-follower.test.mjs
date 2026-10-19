@@ -71,6 +71,20 @@ function findMultiHopSectorChain(minHops = 2) {
 
 const CHAIN = findMultiHopSectorChain(2);
 
+/** A different itinerary out of the same origin, for replot-under-an-executor scenarios. */
+function findAltChain() {
+  if (!CHAIN) return null;
+  const start = CHAIN[0];
+  for (const neighbor of ATLAS.sectorNeighbors(start)) {
+    if (neighbor === CHAIN[1]) continue;
+    // Two hops if the graph offers one, else a single hop is still a divergent itinerary.
+    const onward = ATLAS.sectorNeighbors(neighbor).filter((n) => n !== start && !CHAIN.includes(n));
+    return onward.length ? [start, neighbor, onward[0]] : [start, neighbor];
+  }
+  return null;
+}
+const ALT_CHAIN = findAltChain();
+
 function routeFromChain(chain) {
   const legs = [];
   for (let i = 0; i < chain.length - 1; i++) {
@@ -656,6 +670,91 @@ test('a leg with no resolvable endpoint interrupts rather than steering at a fab
   assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.INTERRUPTED);
   assert.equal(h.state.nav.executor.interruptReason, 'lost-leg');
   assert.equal(h.state.nav.autopilot.active, false);
+});
+
+// ── replot under a live executor (stale itinerary) ─────────────────────────────────────────────
+
+test('a replot makes the abandoned itinerary non-resumable — engage decomposes the NEW route', () => {
+  assert.ok(ALT_CHAIN, 'the authored graph must offer a divergent itinerary from the same origin');
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+  h.sys.update(1 / 60, h.state);
+  h.bus.emit('nav:abortRoute', { reason: 'manual' });
+  assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.INTERRUPTED);
+  const staleLegs = h.state.nav.executor.legs;
+
+  // The chart's Set Course, world:requestRoute and mission ui:setCourse retargets all reach the
+  // same end state: nav.route replaced while nav.executor still holds the old snapshot.
+  const replotted = routeFromChain(ALT_CHAIN);
+  h.state.nav.route = replotted;
+
+  const executor = h.sys.engage({});
+  assert.equal(executor.status, ROUTE_EXECUTOR_STATUS.ACQUIRING, 'the replot engages fresh');
+  assert.notEqual(executor.legs, staleLegs, 'the abandoned itinerary is decomposed, not resumed');
+  assert.equal(executor.destinationSectorId, ALT_CHAIN[ALT_CHAIN.length - 1],
+    'the ship must fly the route the map shows, not the one it was flying');
+  assert.equal(executor.legs.length, ALT_CHAIN.length - 1);
+  assert.equal(executor.legs[0].toSectorId, ALT_CHAIN[1]);
+  assert.equal(executor.legIndex, 0, 'a diverged route is a new trip, not resumed progress');
+});
+
+test('a replot mid gate-handoff interrupts the abandoned itinerary instead of flying it', () => {
+  assert.ok(ALT_CHAIN);
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+  h.sys.update(1 / 60, h.state);
+  assert.equal(h.state.nav.executor.armedLegIndex, 0, 'leg 0 must be armed for this test');
+
+  // Local autopilot reaches the gate: the executor latches the handoff and asks world to charge.
+  h.bus.emit('nav:autopilot', { status: 'arrived' });
+  assert.equal(h.state.nav.executor.handoffRequestedLegIndex, 0);
+  assert.equal(h.bus.of('world:requestJump').length, 1);
+
+  // Mid-charge replot. The latch used to hide this for the whole charge window: update()
+  // early-returned before noticing nav.route no longer described the legs being sequenced.
+  h.state.nav.route = routeFromChain(ALT_CHAIN);
+  h.sys.update(1 / 60, h.state);
+
+  assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.INTERRUPTED,
+    'the abandoned itinerary must not keep sequencing');
+  assert.equal(h.state.nav.executor.interruptReason, 'route-changed');
+  assert.equal(h.state.nav.executor.engaged, false);
+  assert.equal(h.state.nav.autopilot.active, false);
+  assert.equal(h.bus.of('world:requestJump').length, 1, 'no second handoff request for stale legs');
+
+  // And the interruption is resumable — the next engage flies the live route.
+  const resumed = h.sys.engage({});
+  assert.equal(resumed.destinationSectorId, ALT_CHAIN[ALT_CHAIN.length - 1]);
+});
+
+test('a completed executor does not strand the next unengaged plot on arrival', () => {
+  assert.ok(ALT_CHAIN);
+  const route = routeFromChain([CHAIN[0], CHAIN[1]]);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+  h.sys.update(1 / 60, h.state);
+
+  // Complete the route through the real sector:enter path — the executor ARRIVES and stays
+  // on nav.executor as a receipt.
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
+  assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.ARRIVED);
+  assert.equal(h.state.nav.route, null, 'the finished route retires with its executor');
+
+  // Now the player plots a fresh one-hop "Set Course & Jump" — route set, no new executor —
+  // and jumps. The arrived executor used to shadow this consume path, so the plot survived
+  // its own landing and the next Continue rejected it as a stale saved route.
+  const hop = routeFromChain([CHAIN[1], ALT_CHAIN[1]]);
+  h.state.nav.route = hop;
+  h.state.nav.autoTravel = true;
+  h.bus.clear();
+  h.bus.emit('sector:enter', { sectorId: hop.legs[0].to });
+
+  assert.equal(h.state.nav.route, null, 'the one-hop plot must be consumed by its own arrival');
+  assert.equal(h.state.nav.autoTravel, false, 'finished travel intent retires');
+  assert.equal(h.bus.of('nav:routeExecutor').at(-1).payload.transition, 'arrived');
 });
 
 // ── auto-brake handoff ────────────────────────────────────────────────────────────────────────────

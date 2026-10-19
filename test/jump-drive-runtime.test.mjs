@@ -120,6 +120,31 @@ test('Jump Drive resolution resets to T1 on unfit or malformed/incompatible data
     'derived resolution never mutates the module catalog');
 });
 
+test('an aborted drive charge mints no fuel — the tank never grew', () => {
+  const h = buildHarness();
+  const before = h.state.fuel.current;
+  const { fuel } = startDriveJump(h);
+  assert.ok(fuel > 0, 'the charge carries a real fuel cost');
+
+  // Fuel is spent only when the charge COMPLETES (the completion tick of _tickCharging calls
+  // _spendFuel; the request path merely validated affordability). An abort therefore has
+  // nothing to refund — and the half-cost "refund" it used to add was free fuel, repeatable
+  // without bound.
+  h.bus.emit('world:abortJumpCharge', { reason: 'manual' });
+  assert.equal(h.state.jump.state, 'IDLE', 'the charge really aborted');
+  assert.equal(h.state.fuel.current, before,
+    'aborting a charge that never spent fuel must not refund fuel');
+
+  // The exploit loop this used to enable: request -> abort -> request -> abort grew the tank
+  // by half the fuel cost each cycle. Run it twice; the tank must stay flat.
+  for (let i = 0; i < 2; i++) {
+    h.bus.emit('world:requestJump', { targetSectorId: 'sector_ceres_belt', via: 'drive' });
+    assert.equal(h.state.jump.state, 'CHARGING');
+    h.bus.emit('world:abortJumpCharge', { reason: 'manual' });
+  }
+  assert.equal(h.state.fuel.current, before, 'repeated abort cycles mint no fuel');
+});
+
 test('Advanced Navigation reduces only valid drive-jump cooldowns', () => {
   const baseline = buildHarness();
   assert.equal(completeJump(baseline, 'drive'), 6.0);

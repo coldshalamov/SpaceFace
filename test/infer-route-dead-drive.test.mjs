@@ -58,7 +58,9 @@ test('a live drive still resumes the plotted trip', () => {
     executor: {
       engaged: false,
       status: 'interrupted',
-      legs: [{ toSectorId: 'beta' }],
+      // fromSectorId/toSectorId are the durable identity resume validates against nav.route —
+      // real decomposeRoute legs always carry both.
+      legs: [{ fromSectorId: 'alpha', toSectorId: 'beta' }],
       legIndex: 0,
     },
   }, false);
