@@ -28,6 +28,8 @@ import { playerBearingLetter } from '../core/playerCompass.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
+import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
 import { stationMinRepFor } from '../data/dockDeny.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
@@ -1014,6 +1016,7 @@ export const world = {
       killerId: p.killerId || null,
       poiName: (poi && poi.name) || rec.name || null,
     });
+    this._fileSectorChart(sectorId);
   },
 
   // =========================================================================================
@@ -4489,6 +4492,50 @@ export const world = {
     }
   },
 
+  // The sell side of the survey deal (buy side: _onPurchaseSurveyData). When the authored-site
+  // census for a sector closes — every curated site investigated, identified, or defeated — the
+  // finished chart is filed with the cartography office exactly once. The stamp rides the
+  // serialized discovery overlay, the bounty goes through the canonical credit writer, and the
+  // Concord logs the filing as standing. Safe to call at every found-transition: the durable
+  // stamp makes the second call a no-op. Transitions: _tickPOIScan proximity identify,
+  // signal:investigated, boss defeat, landmark artifact return.
+  _fileSectorChart(sectorId) {
+    const state = this.state;
+    if (!state || !state.world || !sectorId) return false;
+    const disc = state.world.discovery && state.world.discovery[sectorId];
+    if (!disc || disc.chartFiled) return false;
+    const sector = (state.world.sectors && state.world.sectors[sectorId]) || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return false;
+    const progress = sectorExplorationProgress(state, sector);
+    if (!(progress.total > 0) || progress.found < progress.total) return false;
+    const at = Math.max(0, Number(state.simTime) || 0);
+    const bounty = chartFilingBounty(sector, progress.total);
+    disc.chartFiled = { at, sites: progress.total, paid: bounty };
+    this.bus.emit('economy:grantCredits', {
+      amount: bounty, reason: CHART_FILING.reasonId,
+      sectorId, sites: progress.total, at,
+    });
+    this.bus.emit('faction:repDelta', {
+      factionId: CHART_FILING.repFactionId, delta: CHART_FILING.repDelta,
+      reason: `chart_filing:${sectorId}`,
+    });
+    this.bus.emit('discovery:chartFiled', {
+      sectorId, found: progress.found, total: progress.total, bounty, at,
+    });
+    this.bus.emit('toast', {
+      text: `${sector.name} chart filed — every site on the record. Cartography office pays ${bounty.toLocaleString('en-US')} cr.`,
+      kind: 'good', ttl: 5,
+    });
+    this.bus.emit('news:publish', {
+      id: `chart-filed:${sectorId}`,
+      text: `Chart filed: ${sector.name}. Every authored site in the sector is on the survey record; the cartography office paid ${bounty.toLocaleString('en-US')} cr for the completed chart.`,
+      kind: 'exploration',
+      sectorId,
+      source: 'cartography-office',
+    });
+    return true;
+  },
+
   _onPurchaseSurveyData({ sectorId, stationId }) {
     const sector = SECTOR_BY_ID.get(sectorId);
     if (!sector || sector.charted === true) return false;
@@ -6013,6 +6060,7 @@ export const world = {
               poiId: p.poiId,
               type: p.type,
             });
+            this._fileSectorChart(sectorId);
           }
           // Never show a raw internal id ('poi_kettle_stern') — name the landmark as rec.name
           // records it (carrier name, then the projected chart name), and humanize the slug only
@@ -6461,6 +6509,7 @@ export const world = {
     this._onKettleLineSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onCachePayoffsSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
+    this._fileSectorChart(sectorId);
     return true;
   },
 
@@ -7082,6 +7131,7 @@ export const world = {
       type: poi.type || rec.type || null,
       artifactId: rec.landmarkArtifact.id,
     });
+    this._fileSectorChart(sectorId);
     return true;
   },
 

@@ -76,6 +76,7 @@ import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pall
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { orrinWitnessMapTarget } from '../data/orrinWitnessCase.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
+import { chartFilingBounty, normalizeChartFiling } from '../data/surveyCharts.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
@@ -6576,6 +6577,11 @@ _stepAnimation(now) {
         <div class="gm-ins-row"><span>Confidence</span><span class="gm-ins-row-val">${pct == null ? 'Unknown' : `${pct}%`}${confidence && confidence.band ? ` · ${escapeMapHtml(String(confidence.band))}` : ''}</span></div>
         <div class="gm-ins-row"><span>Scanned</span><span class="gm-ins-row-val">${disc && disc.scanned ? 'Yes' : 'No'}</span></div>
         <div class="gm-ins-row"><span>Exploration</span><span class="gm-ins-row-val">${exploration.percent == null ? 'No authored sites' : `${exploration.percent}% · ${exploration.found}/${exploration.total} sites`}</span></div>
+        ${disc && disc.chartFiled
+          ? `<div class="gm-ins-row"><span>Chart filed</span><span class="gm-ins-row-val">${(() => { const filed = normalizeChartFiling(disc.chartFiled); return filed ? `${filed.paid.toLocaleString('en-US')} cr` : 'Yes'; })()}</span></div>`
+          : (exploration.total > 0 && exploration.remaining > 0 && record
+            ? `<div class="gm-ins-row"><span>Chart fee</span><span class="gm-ins-row-val">${chartFilingBounty(record, exploration.total).toLocaleString('en-US')} cr on completion</span></div>`
+            : '')}
         ${knownLine ? `<div class="gm-ins-note">${escapeMapHtml(knownLine)}</div>` : ''}
       </div>
       <div class="gm-ins-section">

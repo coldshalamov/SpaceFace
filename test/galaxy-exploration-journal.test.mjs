@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { SECTORS } from '../src/data/sectors.js';
 import {
   galaxyExplorationSummary,
+  isAuthoredExplorationSite,
   sectorExplorationProgress,
   explorationDiscoveryPlates,
 } from '../src/world/explorationJournal.js';
@@ -51,10 +52,15 @@ test('galaxyExplorationSummary reflects discovered POIs, explored sectors, and r
 
   const summary = galaxyExplorationSummary(state);
   assert.equal(summary.exploredSectors, 1, 'Sector with all POIs discovered should be fully explored');
-  assert.equal(summary.foundPois, pois.length);
+  // The census and the plate journal count authored find-sites only — navigation markers and
+  // repeatable scanner sources (e.g. Helios' memorial beacon) sit on sector.pois but stay out.
+  const authoredCount = pois.filter(isAuthoredExplorationSite).length;
+  assert.equal(summary.foundPois, authoredCount);
   assert.equal(summary.trophies, 1, 'One artifact should be counted');
   assert.ok(summary.overallPercent > 0);
 
+  // The plate journal is wider than the census — it records a story for every row the player
+  // touched, including repeatable signal sources the census deliberately excludes.
   const plates = explorationDiscoveryPlates(state);
   assert.equal(plates.length, pois.length);
 });
