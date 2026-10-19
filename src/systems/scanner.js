@@ -1054,6 +1054,11 @@ export const scanner = {
     this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
     this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
     this._onContactHailReset = () => this._resetContactHail('lifecycle');
+    // The heave-to latch is entity- and clock-bound; a sector boundary leaves the stamped
+    // target unreachable and the cooldown comparable only to the old roster's clock. The open
+    // offer itself stays availability-polled at 5 Hz (a continuous enter may keep the target),
+    // so only the latch clears here.
+    this._onContactHailSectorEnter = () => { this._contactHailHeaveTo = null; };
     this._onOrchardTowComplete = payload => this._guideOrchardPickup(payload);
     this._onOrchardTowLost = payload => {
       if(payload?.jobId === this._orchardTowGuidance?.jobId)this._orchardTowGuidance=null;
@@ -1071,6 +1076,7 @@ export const scanner = {
       this.bus.on('game:load', this._onContactHailReset);
       this.bus.on('dock:docked', this._onContactHailReset);
       this.bus.on('mode:changed', this._onContactHailReset);
+      this.bus.on('sector:enter', this._onContactHailSectorEnter);
       // E1/H8 payoff: a shattered echo scatters sensor ghosts. The scanner owns ghost
       // semantics (mark/reveal/escape), so it owns the spawn too — passive, revealStage-0
       // contacts that drift outward and decay on their own despawn clock.
@@ -1908,6 +1914,10 @@ export const scanner = {
   _resetContactHail(reason) {
     if(reason==='load' || reason==='new_game' || !['flight','paused','pause'].includes(this.state?.mode))
       this._orchardTowGuidance = null;
+    // The heave-to latch's deadlines are simTime stamps: a fresh run restarts the clock at 0 and
+    // a load restores whatever the save held (same law as _cooldownUntil in newGame), so a latch
+    // must not ride across lifecycle resets and lock heave-to out for the whole old timestamp.
+    this._contactHailHeaveTo = null;
     this._clearContactHail(reason);
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
@@ -2019,6 +2029,7 @@ export const scanner = {
         this.bus.off('game:load', this._onContactHailReset);
         this.bus.off('dock:docked', this._onContactHailReset);
         this.bus.off('mode:changed', this._onContactHailReset);
+        this.bus.off('sector:enter', this._onContactHailSectorEnter);
       }
       if (this._onSensorGhostSwarm) this.bus.off('sensorGhost:swarm', this._onSensorGhostSwarm);
     }
@@ -2031,6 +2042,7 @@ export const scanner = {
     this._onContactHailRequest = null;
     this._onContactHailChoice = null;
     this._onContactHailReset = null;
+    this._onContactHailSectorEnter = null;
     this._onOrchardTowComplete = null;
     this._onOrchardTowLost = null;
     this._orchardTowGuidance = null;

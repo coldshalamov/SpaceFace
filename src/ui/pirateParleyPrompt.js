@@ -80,6 +80,7 @@ export function parleyReceiptText(payload) {
   if (outcome === 'player_attack') return 'ESCALATED · you fired during parley · raiders weapons free';
   if (outcome === 'refused') return 'ESCALATED · you refused the toll · raiders weapons free';
   if (outcome === 'timeout') return 'ESCALATED · response window expired · raiders weapons free';
+  if (outcome === 'gone') return 'HAIL LOST · the hailing crew is gone · channel closed';
   return `PARLEY CLOSED · ${outcome.replace(/_/g, ' ')}`;
 }
 

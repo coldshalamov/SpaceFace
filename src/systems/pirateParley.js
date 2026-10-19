@@ -182,6 +182,17 @@ export const pirateParley = {
       if (!members.length) {
         rec.resolved = true;
         rec.phase = 'gone';
+        rec.outcome = 'gone';
+        // A live demand card on the decision deck only closes on pirateParley:resolved or its
+        // own deadline+grace — a squad that died or left the roster would otherwise leave
+        // COMPLY/REFUSE/RUN verbs dead-ending on a resolved record for up to ~10 s.
+        this._emit('pirateParley:resolved', {
+          ...publicRecord(rec),
+          outcome: 'gone',
+          next: 'gone',
+          payment: null,
+          tithe: rec.tithe ? { ...rec.tithe } : null,
+        });
         continue;
       }
       if (rec.phase === 'scan' && now >= rec.demandAt) {
