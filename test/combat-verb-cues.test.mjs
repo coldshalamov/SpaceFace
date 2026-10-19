@@ -57,7 +57,8 @@ const VERB_EMIT = Object.freeze({
     dp: 120, preSolveClosingSpeed: 12, tick: h.state.tick,
   }),
   // src/combat/damage.js emits shieldDown when a hit breaks the layer; the player branch
-  // plays the blowout pop (NPC shield breaks take the sfx.shieldBreak signature instead).
+  // stacks the bare blowout discharge under the universal sfx.shieldBreak signature (the
+  // pop recipe's embedded crack layer would double the signature's own crack).
   shield: (h) => h.bus.emit('shieldDown', { combatantId: h.player.id, pos: { x: 0, z: 0 } }),
   // src/systems/salvageActions.js emits salvage:reactorVented; the verb-table dispatch
   // (installCombatVerbCueDispatch inside audio.init) answers with the stress groan.

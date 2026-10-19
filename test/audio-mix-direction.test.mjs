@@ -288,7 +288,7 @@ test('tether layer reads the real physics mirror: strain hum, winch spool, attac
 
   // Release and break are different sounds — a rated release is not a snap. (A 'messy'
   // release is owned by the 158.06 snap cue on purpose; a rated one is the release chord.)
-  h.bus.emit('tether:releaseRated', { classification: 'clean', pos: { x: 30, z: 0 } });
+  h.bus.emit('tether:releaseRated', { classification: 'clean', deliberate: true, pos: { x: 30, z: 0 } });
   assert.ok(plays.includes('sfx_massline_release'), 'release cue fires for a rated release');
   assert.ok(!plays.includes('sfx.tetherSnap'), 'a rated release must not play the break snap');
   plays.length = 0;

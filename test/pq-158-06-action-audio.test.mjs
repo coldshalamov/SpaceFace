@@ -13,7 +13,7 @@ import { RECIPES } from '../src/data/audioRecipes.js';
 const PAYLOAD = {
   attachment: { player: true, targetId: 'rock-1' },
   loadedLine: { phase: 'loaded', load: 0.62 },
-  release: { classification: 'messy', targetId: 'rock-1' },
+  release: { classification: 'messy', targetId: 'rock-1', deliberate: true },
   drillValid: { bite: true, depth: 0.4 },
   drillInvalid: { reason: 'dry' },
   shieldBreak: { entityId: 'player' },
@@ -128,7 +128,7 @@ test('PQ-158.06 default-route receipts request a voice on the same tick', () => 
 
   bus.emit('tether:attached', PAYLOAD.attachment);
   bus.emit('tether:strain', { ratio: 1e-4 });
-  bus.emit('tether:releaseRated', { classification: 'messy', targetId: 'rock-1' });
+  bus.emit('tether:releaseRated', { classification: 'messy', targetId: 'rock-1', deliberate: true });
   bus.emit('drill:spark', { bite: true });
   bus.emit('drill:warn', { reason: 'dry' });
   bus.emit('shieldDown', { combatantId: 'player' });

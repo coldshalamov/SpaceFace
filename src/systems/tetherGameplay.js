@@ -480,7 +480,7 @@ export const tetherGameplay = {
           || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) {
         this._cancelDrillApproach('target_lost');
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
-        this.bus.emit('tether:broke', { targetId: this._active.targetId });
+        this.bus.emit('tether:broke', { targetId: this._active.targetId, reason: 'target_lost' });
         this.bus.emit('tether:releaseRated', rateRelease(state, this._active.targetId));
         this._active = null;
         this._pendingCut = null;
@@ -1391,7 +1391,9 @@ export const tetherGameplay = {
       // player's deliberate release — the apex read applies to it.
       this.bus.emit('tether:releaseRated', rateRelease(state, targetId, { deliberate: true }));
     } else {
-      this.bus.emit('tether:broke', { targetId });
+      // The reason travels with the receipt so presentation can honor the same quiet law
+      // tether:broken already follows (accepted handoffs and boundary breaks stay silent).
+      this.bus.emit('tether:broke', { targetId, reason });
       this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
     }
     this._lastStrainT = -Infinity;

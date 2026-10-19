@@ -50,7 +50,9 @@ const REFUSAL_ROW = Object.freeze({
 export const COMBAT_VERB_CUES = Object.freeze({
   fire: 'sfx_wpn_pulse_laser',
   hit: 'sfx_hull_scrape',
-  shield: 'sfx_shield_blowout_pop',
+  // The player's collapse layer is the bare discharge — the pop recipe embeds
+  // sfx_shield_break_crack, which the universal signature (sfx.shieldBreak) already played.
+  shield: 'sfx_shield_blowout_discharge',
   hull: 'sfx_hull_stress_groan',
   shove: 'sfx_bomb_concussion_shove',
   throwRelease: 'sfx_tether_twang',

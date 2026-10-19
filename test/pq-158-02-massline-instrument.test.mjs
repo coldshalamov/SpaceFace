@@ -132,7 +132,7 @@ test('_onMasslineInstrument plays all six events and captions them', () => {
   host._onMasslineInstrument('attach', {});
   host._onMasslineInstrument('strain', {});
   host._onMasslineInstrument('reel', { before: 50, after: 30 });
-  host._onMasslineInstrument('release', { classification: 'clean' });
+  host._onMasslineInstrument('release', { classification: 'clean', deliberate: true });
   host._onMasslineInstrument('bridle', { headId: 'twin_bridle' });
   host._onMasslineInstrument('break', {});
   const recipes = plays.map((p) => p.recipeId);

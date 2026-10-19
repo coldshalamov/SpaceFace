@@ -77,7 +77,10 @@ export const MINIMAL_ACTION_AUDIO = Object.freeze([
       if (Number.isFinite(cut) && Number.isFinite(tick) && tick - cut >= 0 && tick - cut <= 4) {
         return false;
       }
-      return !klass || klass === 'messy';
+      // The snap is the messy RELEASE's voice. Breaks and lost targets emit the same rating
+      // with deliberate:false — the instrument's break snap already owns their ear, and a
+      // quiet boundary (sector change, accepted handoff) wants silence, not a snap.
+      return payload && payload.deliberate === true && (!klass || klass === 'messy');
     },
   }),
   Object.freeze({

@@ -2591,7 +2591,10 @@ export const audio = {
       // envelope.
       this.play(signature.recipeId, { position, gain: 0.64, critical: true });
       if (isPlayer) {
-        this.play('sfx_shield_blowout_pop', { position, gain: 0.9, critical: true });
+        // The personal layer is the bare discharge: the pop recipe already carries
+        // sfx_shield_break_crack, which the universal signature above just played —
+        // one collapse, one crack.
+        this.play('sfx_shield_blowout_discharge', { position, gain: 0.9, critical: true });
         this.play('sfx_shield_blowout_alarm', { gain: 0.8, critical: true, duck: true });
       }
     });
@@ -2916,7 +2919,21 @@ export const audio = {
     });
     bus.on('tether:broke', (p) => {
       const id = combatVerbRecipe('tether:broke');
-      if (id) this.play(id, { gain: 0.8 });
+      if (!id) return;
+      // tether:broken is the line-death authority: its instrument snap already carries this
+      // crack as a layer, and its quiet law is this receipt's silence too — an accepted
+      // handoff, a chosen cut, or the line left behind (dock, flight exit, sector) is not a
+      // failure crack. A bare tether:broke whose break never snapped still earns the voice.
+      const reason = String((p && p.reason) || '').toLowerCase();
+      const deliberate = reason === 'tether_cut' || reason === 'cut' || reason === 'release';
+      if (deliberate || (reason && !tetherBreakCueForReason(reason))) return;
+      // Reconcile can surface a break a tick or two after the attachment authority spoke —
+      // the same lag the cut stamp covers on the release side.
+      const nowTick = Number(this.state && this.state.tick);
+      const spokeTick = this.rt && this.rt._masslineBreakSpokeTick;
+      if (Number.isFinite(nowTick) && Number.isFinite(spokeTick)
+          && nowTick - spokeTick >= 0 && nowTick - spokeTick <= 4) return;
+      this.play(id, { gain: 0.8 });
     });
     bus.on('tether:cut', (p) => {
       const id = combatVerbRecipe('tether:cut');
@@ -6378,6 +6395,11 @@ export const audio = {
   },
 
   _onMasslineInstrument(event, payload) {
+    // The release voice is the chosen let-go. A break or a lost target still emits the rated
+    // receipt for the grade readout with deliberate:false — the break snap already owns that
+    // ear, so a failed line must not also sing the successful-release whoosh, hush the world
+    // as a stunt, or caption "release".
+    if (event === 'release' && !(payload && payload.deliberate === true)) return;
     const tether = this.state && this.state.player && this.state.player.tether;
     const voice = resolveMasslineInstrument({
       event,
@@ -6429,6 +6451,15 @@ export const audio = {
       if (started && event === 'attach' && this.rt) {
         const spokeTick = Number(this.state && this.state.tick);
         if (Number.isFinite(spokeTick)) this.rt._masslineAttachSpokeTick = spokeTick;
+      }
+      // Break dedupe, same shape as the latch stamp: gameplay emits tether:broke on the same
+      // tick as this snap (or a tick or two later on the reconcile path), and sfx.tetherSnap
+      // already carries the crack layer — the verb voice stands down on the stamp instead of
+      // doubling its own transient. A blocked play leaves no stamp, so the verb voice can
+      // still try its own gate.
+      if (started && event === 'break' && this.rt) {
+        const spokeTick = Number(this.state && this.state.tick);
+        if (Number.isFinite(spokeTick)) this.rt._masslineBreakSpokeTick = spokeTick;
       }
       if (started && event === 'strain' && this.rt && Number.isFinite(strainNowS)) {
         this.rt._masslineStrainLastS = strainNowS;
