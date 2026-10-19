@@ -637,6 +637,21 @@ export const onboarding = {
       });
     });
 
+    // First hull bite: the shield regrows in front of the player; the hull never does.
+    // The first hit that reaches plate teaches the survival rule once — plate stays hurt
+    // until a repair berth welds it — so the hull bar is never silently persistent.
+    // A killing hit stays quiet: the defeat screen owns that moment, lesson unspent.
+    bus.on('combat:damage', (p) => {
+      if (!p || !(Number(p.hullDamage) > 0)) return;
+      const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
+      if (!hitPlayer) return;
+      if (p.after && Number(p.after.hull) <= 0) return;
+      this._showHint('firstHullBite', firstUseLine('firstHullBite'), {
+        ...p,
+        entityId: p.attackerId != null ? p.attackerId : p.sourceId,
+      });
+    });
+
     // TEACH-13 — the first inbound lock with a decoy aboard names the bound key
     // once. An empty magazine stays silent. The MISSILE LOCK warning is not this line.
     bus.on('combat:lockChanged', (p) => this._onInboundMissileLock(p || {}));

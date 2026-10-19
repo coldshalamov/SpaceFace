@@ -206,6 +206,9 @@ export function markFirstUseHint(hints, verbId) {
 export const FIRST_USE_LINE = Object.freeze({
   firstCombat: 'Return fire.',
   firstShieldDrop: 'Break contact.',
+  // The shield visibly regrows; the hull does not. The first bite that reaches the hull
+  // names the survival rule once — plate stays hurt until a repair berth welds it.
+  firstHullBite: 'The shield grows back. Hull does not — a berth repairs it.',
   firstStation: 'Dock.',
   firstGate: 'Plot a jump.',
   firstCargoFull: 'Sell cargo.',
