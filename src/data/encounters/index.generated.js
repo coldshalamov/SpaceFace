@@ -319,6 +319,7 @@ import * as encounter315 from './1206-the-fire-sale.js';
 import * as encounter316 from './1207-the-witnessed-price.js';
 import * as encounter317 from './1208-the-vetting.js';
 import * as encounter318 from './1209-the-last-tow.js';
+import * as encounter319 from './1210-the-deadweight.js';
 import * as encounter320 from './1300-scene-fare-dodger-chase.js';
 import * as encounter321 from './1301-the-runaway-kiln.js';
 import * as encounter322 from './1302-the-working-battlefield.js';
@@ -646,6 +647,7 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter316,
   encounter317,
   encounter318,
+  encounter319,
   encounter320,
   encounter321,
   encounter322,
