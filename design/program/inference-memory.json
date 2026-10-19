@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-149",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "plain failure toast names the failed condition",
-      "fingerprint": "verb=name,subject=failure-reason,domain=missions,layer=toast",
-      "references": [],
-      "integration": "live",
-      "commit": "12cbcdf84",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-150",
       "date": "2026-10-01",
       "wf": "WF-11",
@@ -1681,6 +1668,19 @@
       "references": [],
       "integration": "live",
       "commit": "c5994f4439a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-killers-mark",
+      "date": "2026-10-19",
+      "wf": "WF-09",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the pirate who downs you now gets a name, a boast, and a hunting return — the nemesis hook ran backwards",
+      "fingerprint": "verb=named,subject=killer,sector=any,domain=death",
+      "references": [],
+      "integration": "live",
+      "commit": "75dab5a5896",
       "verification": "focused_green"
     }
   ],
