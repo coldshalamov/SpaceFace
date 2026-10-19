@@ -294,3 +294,124 @@ test('harness docks without the production latch keep the instant apply', () => 
   assert.equal(eventsOf(h, 'service:queued').length, 0);
   h.yard.destroy();
 });
+
+// ── paid-work delivery accounting ────────────────────────────────────────────────────────────
+// `applied` is the yard's work meter; it advances at ratePerS whether or not the destination
+// pool still had room. The money settles against DELIVERED units, or a pool that fills (self-
+// serve decant) or shrinks (a tank/armor refit) mid-job eats paid work nobody received.
+
+test('decant cannot burn cells into tank space a paid pump job already owns', () => {
+  const h = makeHarness({ fuelCurrent: 20, fuelMax: 100, simTime: 0 });
+  h.state.player.cargo = { items: { cmdty_fuel_cells: 8 }, usedVolume: 6.4, usedMass: 4.8, capVolume: 50 };
+  dock(h);
+  step(h, 2);
+  h.econ.handleService({ type: 'refuel' });            // books the whole 80u gap
+  assert.equal(eventsOf(h, 'service:queued').length, 1, 'the pump job was sold');
+  const res = h.yard.decantFuelCells();
+  assert.equal(res.ok, false, `decant must refuse (${JSON.stringify(res)})`);
+  assert.equal(res.cells, 0, 'no cell spent into space the paid job was sold to fill');
+  assert.equal(h.state.player.cargo.items.cmdty_fuel_cells, 8, 'hold untouched by the refusal');
+  h.yard.destroy();
+});
+
+test('a refuel job that outlives its tank space refunds the undelivered share at completion', () => {
+  const h = makeHarness({ fuelCurrent: 20, fuelMax: 100, credits: 100000, simTime: 0 });
+  const grants = [];
+  h.bus.on('economy:grantCredits', (p) => {
+    grants.push(Number(p && p.amount) || 0);
+    h.econ.grantCredits(p && p.amount, p && p.reason);
+  });
+  dock(h);
+  step(h, 2);
+  const before = h.state.player.credits;
+  h.econ.handleService({ type: 'refuel' });
+  const charged = before - h.state.player.credits;
+  assert.ok(charged > 0, 'the pump was paid up front');
+  runUntil(h, () => h.state.fuel.current > 30);
+  const job = h.state.stationServices.player.jobs[0];
+  const delivered = job.deliveredFuel;
+  assert.ok(delivered > 0 && delivered < job.total, `fixture needs a partial delivery (${delivered})`);
+  // Another hand tops the tank mid-job (decant before the booked-space guard, a refit shrink —
+  // any writer the yard does not own). The rest of the paid pump has nowhere to land.
+  h.state.fuel.current = h.state.fuel.max;
+  runUntil(h, () => eventsOf(h, 'service:completed').length > 0);
+  const receipt = eventsOf(h, 'service:completed')[0].p;
+  assert.ok(Math.abs(receipt.units - delivered) < 1e-9,
+    `the receipt reports units actually delivered (${receipt.units} vs ${delivered})`);
+  const refund = grants.reduce((a, b) => a + b, 0);
+  assert.equal(refund, Math.round(charged * (job.total - delivered) / job.total),
+    'the paid-but-undelivered share returns through the sole writer');
+  assert.equal(h.state.player.credits, before - charged + refund);
+  h.yard.destroy();
+});
+
+test('an undock abort refunds by delivered units, not by the work meter', () => {
+  const h = makeHarness({ fuelCurrent: 20, fuelMax: 100, credits: 100000, simTime: 0 });
+  const grants = [];
+  h.bus.on('economy:grantCredits', (p) => {
+    grants.push(Number(p && p.amount) || 0);
+    h.econ.grantCredits(p && p.amount, p && p.reason);
+  });
+  dock(h);
+  step(h, 2);
+  const before = h.state.player.credits;
+  h.econ.handleService({ type: 'refuel' });
+  const charged = before - h.state.player.credits;
+  runUntil(h, () => h.state.fuel.current > 40);
+  const job = h.state.stationServices.player.jobs[0];
+  const delivered = job.deliveredFuel;
+  h.state.fuel.current = h.state.fuel.max;             // the tank fills behind the yard's back
+  step(h, 3);                                        // the meter keeps billing into a full tank
+  assert.ok(job.applied > delivered + 5,
+    `fixture needs the meter (${job.applied}) clear of delivered (${delivered})`);
+  undock(h);
+  const refund = grants.reduce((a, b) => a + b, 0);
+  assert.equal(refund, Math.round(charged * (job.total - delivered) / job.total),
+    'the refund covers every paid unit that never landed');
+  assert.ok(refund > Math.round(charged * (job.total - job.applied) / job.total),
+    'delivered-based accounting must refund more than the old work-meter accounting here');
+  h.yard.destroy();
+});
+
+test('a mid-job save keeps the delivered-fuel counter for honest settle after restore', () => {
+  const h = makeHarness({ fuelCurrent: 20, fuelMax: 100, simTime: 0 });
+  dock(h);
+  step(h, 2);
+  h.econ.handleService({ type: 'refuel' });
+  runUntil(h, () => h.state.fuel.current > 30);
+  const job = h.state.stationServices.player.jobs[0];
+  assert.ok(job.deliveredFuel > 0);
+  const snap = h.yard.serialize();
+  assert.ok(snap.player.jobs[0].deliveredFuel > 0, 'the delivered counter serializes');
+  h.yard.deserialize(snap);
+  const restored = h.state.stationServices.player.jobs[0];
+  assert.equal(restored.deliveredFuel, job.deliveredFuel,
+    'restore keeps delivered-unit accounting rather than re-deriving from the meter');
+  h.yard.destroy();
+});
+
+// ── the undock-commit gap ────────────────────────────────────────────────────────────────────
+// Production order: dock:undocked fires while uiRoot's fade still leaves ui.docked true (~400ms
+// later the latch clears). A service verb landing in that window must not book a paid job that
+// then parks at a yard the pilot already left.
+
+test('a service request in the undock fade cannot book a parked paid job', () => {
+  const h = makeHarness({ fuelCurrent: 20, fuelMax: 100, credits: 100000, simTime: 0 });
+  dock(h);
+  step(h, 2);
+  h.bus.emit('dock:undocked', { committed: true });   // the latch still reads docked (the fade)
+  assert.equal(h.state.ui.docked, true, 'the gap window keeps the production latch set');
+  assert.equal(h.state.stationServices.player, null, 'the yard already released the berth');
+  const fuelBefore = h.state.fuel.current;
+  h.econ.handleService({ type: 'refuel' });
+  assert.equal(eventsOf(h, 'service:queued').length, 0, 'no job queues at a departed berth');
+  assert.equal(h.state.stationServices.player, null, 'no parked berth record lingers');
+  assert.ok(h.state.fuel.current > fuelBefore,
+    "the caller's instant path settles the sale honestly instead of parking it");
+  // A real re-dock reopens the booking window.
+  dock(h);
+  h.state.fuel.current = 40;
+  h.econ.handleService({ type: 'refuel' });
+  assert.equal(eventsOf(h, 'service:queued').length, 1, 'booking reopens on the next dock');
+  h.yard.destroy();
+});

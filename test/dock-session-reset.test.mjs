@@ -10,33 +10,19 @@
 // The fix declares both fields in the createGameState ui defaults, so the same Object.assign
 // that resets `docked` clears them too — no special-case in the reset path.
 //
-// Harness note: `resetRunState` is module-private in src/main.js (boot-only imports make the
-// module unimportable under node), so the real function body is sliced and driven here — the
-// same seam crucible-run-state.test.mjs uses to pin its shape.
+// Harness note: `resetRunState` lives in src/core/newGameBoot.js and imports cleanly under
+// node — the old src/main.js source-slice seam is obsolete, so the real export is driven here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 
 import { createGameState } from '../src/core/gameState.js';
-import { createTimeEffects } from '../src/core/timeEffects.js';
+import { resetRunState } from '../src/core/newGameBoot.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { createProductionCapitalBossEncounters } from '../src/systems/capitalBossRuntime.js';
 import { economy } from '../src/systems/economy.js';
 
 const DT = 1 / 60;
-
-function loadResetRunState() {
-  const source = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  const start = source.indexOf('function resetRunState');
-  assert.ok(start >= 0, 'resetRunState is declared in src/main.js');
-  const nextFn = source.indexOf('\nfunction ', start + 1);
-  const body = source.slice(start, nextFn === -1 ? undefined : nextFn);
-  // eslint-disable-next-line no-new-func
-  return new Function('createGameState', 'createTimeEffects', `${body}\nreturn resetRunState;`)(
-    createGameState, createTimeEffects,
-  );
-}
 
 test('a fresh GameState declares the dock session fields', () => {
   const ui = createGameState(1).ui;
@@ -46,7 +32,6 @@ test('a fresh GameState declares the dock session fields', () => {
 });
 
 test('resetRunState clears the quit-while-docked session flags', () => {
-  const resetRunState = loadResetRunState();
   const state = createGameState(1234);
   // The menu-exit edge: docked at a berth, every dock session field live.
   state.ui.docked = true;

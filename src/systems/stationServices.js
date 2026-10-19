@@ -186,6 +186,30 @@ function isProductionDocked(state) {
     && typeof state.ui.dockedStationId === 'string' && state.ui.dockedStationId);
 }
 
+/**
+ * Units the job actually put aboard — the number the money settles against. `applied` is the
+ * WORK meter: it advances at ratePerS whether or not the destination pool had room (a tank
+ * topped off by self-serve decant, a hull/armor max shrunk by a refit). Paying work that never
+ * landed is a silent credit leak, so refunds and the completion receipt read this, not applied.
+ * Jobs that predate the counter (old saves, harness-injected rows) fall back to `applied`, the
+ * proxy they were billed under.
+ */
+function jobDeliveredUnits(job) {
+  const total = Number(job && job.total) || 0;
+  if (!(total > 0)) return 0;
+  if (job.type === 'refuel') {
+    const fuel = Number(job.deliveredFuel);
+    return Math.min(total, Number.isFinite(fuel) ? fuel : Math.max(0, Number(job.applied) || 0));
+  }
+  const hull = Number(job.deliveredHull);
+  const armor = Number(job.deliveredArmor);
+  if (Number.isFinite(hull) || Number.isFinite(armor)) {
+    return Math.min(total, Math.max(0, Number.isFinite(hull) ? hull : 0)
+      + Math.max(0, Number.isFinite(armor) ? armor : 0));
+  }
+  return Math.min(total, Math.max(0, Number(job.applied) || 0));
+}
+
 // The yard's clock: simTime plus the wall seconds spent frozen-docked (see update()). Job
 // timestamps and occupancy gates all read this so a docked session is one continuous schedule.
 function yardNow(state) {
@@ -248,6 +272,7 @@ export const stationServices = {
     const stationId = p && p.stationId;
     if (!stationId) return;
     const s = ensureStationServicesState(this.state);
+    s._departedLatch = false;      // a real dock reopens the yard's booking window
     const now = yardNow(this.state);
     if (s.player && s.player.stationId === stationId) {
       // Re-dock at the same yard (harnesses re-emit): keep jobs, keep the pad.
@@ -265,6 +290,12 @@ export const stationServices = {
 
   _onPlayerUndocked() {
     const s = ensureStationServicesState(this.state);
+    // The UI clears ui.docked only after the undock fade (~a fade beat AFTER this event), so a
+    // service click landing in the gap would charge for a job that then parks at a yard the
+    // pilot already left — queued behind a latch nobody is waiting on. Latch the berth departed
+    // for exactly that window; the next dock:docked clears it. Only meaningful while the latch
+    // still reads docked, so arm it only then.
+    if (isProductionDocked(this.state)) s._departedLatch = true;
     if (s.player) {
       this._abortJobs(s.player, 'undock');
       s.player = null;
@@ -289,33 +320,14 @@ export const stationServices = {
     // The price was charged in full at booking, so paid work the yard never delivers comes
     // straight back — an abort that kept the credits would be a silent money leak. The same
     // pro-rata share releases undelivered note debt (FB-101 hardship fuel filed on the note).
+    // DELIVERED units are the measure, not applied: work the meter counted but the pool could
+    // not hold is money the player never received.
     let refundCr = 0;
     let releaseCr = 0;
     for (const job of jobs) {
-      const total = Number(job.total) || 0;
-      const undelivered = total > 0 ? Math.max(0, total - Math.min(Number(job.applied) || 0, total)) : 0;
-      if (undelivered > 0) {
-        const paidCr = Number(job.meta && job.meta.cost) || 0;
-        const debtCr = Number(job.meta && job.meta.debtCr) || 0;
-        if (paidCr > 0 && this.bus) {
-          const refund = Math.round(paidCr * (undelivered / total));
-          if (refund > 0) {
-            refundCr += refund;
-            this.bus.emit('economy:grantCredits', {
-              amount: refund, reason: `service:refund:${job.type}:${job.stationId}`,
-            });
-          }
-        }
-        if (debtCr > 0 && this.bus) {
-          const release = Math.round(debtCr * (undelivered / total));
-          if (release > 0) {
-            releaseCr += release;
-            this.bus.emit('economy:releaseDebt', {
-              amount: release, reason: `service:undelivered:${job.type}:${job.stationId}`,
-            });
-          }
-        }
-      }
+      const settled = this._settleUndelivered(job);
+      refundCr += settled.refundCr;
+      releaseCr += settled.releaseCr;
     }
     const money = refundCr > 0 && releaseCr > 0
       ? ` ${refundCr} cr refunded; the ${releaseCr} cr note was released.`
@@ -332,7 +344,7 @@ export const stationServices = {
           source: 'stationServices',
           ...(job.meta?.emergencyRepairDay != null ? {
             emergencyRepairDay: job.meta.emergencyRepairDay,
-            undeliveredEmergencyHull: Math.max(0, job.total - job.applied),
+            undeliveredEmergencyHull: Math.max(0, job.total - jobDeliveredUnits(job)),
           } : {}),
         });
         // The completion toast's mirror: the service was paid up front, so an abort destroyed
@@ -363,6 +375,41 @@ export const stationServices = {
     player.jobs = retained;
   },
 
+  /**
+   * Return the paid share the yard never put aboard — the single money law behind both the
+   * abort refund and the completion settle. cost releases pro-rata through
+   * economy:grantCredits; a note-filed job releases through economy:releaseDebt instead.
+   * delivered (not applied) is the measure, so work the pool could not hold is never kept.
+   */
+  _settleUndelivered(job) {
+    const out = { refundCr: 0, releaseCr: 0 };
+    const total = Number(job && job.total) || 0;
+    if (!(total > 0) || !this.bus) return out;
+    const undelivered = Math.max(0, total - jobDeliveredUnits(job));
+    if (!(undelivered > 0)) return out;
+    const paidCr = Number(job.meta && job.meta.cost) || 0;
+    const debtCr = Number(job.meta && job.meta.debtCr) || 0;
+    if (paidCr > 0) {
+      const refund = Math.round(paidCr * (undelivered / total));
+      if (refund > 0) {
+        out.refundCr = refund;
+        this.bus.emit('economy:grantCredits', {
+          amount: refund, reason: `service:refund:${job.type}:${job.stationId}`,
+        });
+      }
+    }
+    if (debtCr > 0) {
+      const release = Math.round(debtCr * (undelivered / total));
+      if (release > 0) {
+        out.releaseCr = release;
+        this.bus.emit('economy:releaseDebt', {
+          amount: release, reason: `service:undelivered:${job.type}:${job.stationId}`,
+        });
+      }
+    }
+    return out;
+  },
+
   // ── the seam economy.handleService calls (registryGet('stationServices')) ──────────────────
   /**
    * Queue a player service job. Returns false when there is no live production dock — callers
@@ -380,6 +427,10 @@ export const stationServices = {
     if (!type || !Number.isFinite(units) || !(units > 0)) return false;
 
     const s = ensureStationServicesState(state);
+    // The undock commit gap: dock:undocked already ran but the UI latch still reads docked for
+    // the fade. A job taken now would sit paid-and-parked at a yard the pilot already left —
+    // refuse so the caller's instant path settles the service honestly instead.
+    if (s._departedLatch === true) return false;
     if (s.player && s.player.stationId && s.player.stationId !== stationId) {
       this._abortJobs(s.player, 'station_changed');
       s.player = null;
@@ -408,6 +459,7 @@ export const stationServices = {
       hullDefId: activeOwnedHull(state)?.defId || playerEntity(state)?.data?.defId || null,
       _ownedHull: activeOwnedHull(state),
       ...(type === 'repair' ? { deliveredHull: 0, deliveredArmor: 0 } : {}),
+      ...(type === 'refuel' ? { deliveredFuel: 0 } : {}),
     };
     s.player.jobs.push(job);
     if (this.bus) {
@@ -449,7 +501,12 @@ export const stationServices = {
     const cargo = state.player && state.player.cargo;
     const fuel = state.fuel;
     if (!cargo || !fuel) return { ok: false, reason: 'unavailable', cells: 0, units: 0 };
-    const room = Math.max(0, (fuel.max || 0) - (fuel.current || 0));
+    // The pump's booked-but-undelivered units own their space: decanting into it would burn
+    // cells for fuel a paid job was already sold to deliver (and the job's tail would then pump
+    // into a full tank — paid units nobody receives). Same booked-unit subtraction
+    // economy.handleService applies before pricing another refuel.
+    const bookedFuel = this.pendingPlayerService('refuel').units;
+    const room = Math.max(0, (fuel.max || 0) - (fuel.current || 0) - bookedFuel);
     const held = cargo.items ? Math.floor(Number(cargo.items.cmdty_fuel_cells) || 0) : 0;
     if (held <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
     if (room < FUEL_UNITS_PER_CELL) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
@@ -568,7 +625,23 @@ export const stationServices = {
       }
       if (active.applied >= active.total - 1e-9) {
         player.jobs.shift();
+        // The work meter ran to the order, but the pool may have stopped taking it (the tank
+        // topped off by another hand, a refit that shrank the pool). Paid units that never
+        // landed come back — charged-but-undelivered is a leak whether the job ends or aborts.
+        const settled = this._settleUndelivered(active);
         this._emitJobCompleted(state, active, now);
+        if ((settled.refundCr > 0 || settled.releaseCr > 0) && this.bus) {
+          const label = active.type === 'refuel' ? 'refuel' : 'repair';
+          const money = settled.refundCr > 0 && settled.releaseCr > 0
+            ? `${settled.refundCr} cr refunded and ${settled.releaseCr} cr of the note released`
+            : settled.refundCr > 0
+              ? `${settled.refundCr} cr refunded`
+              : `${settled.releaseCr} cr of the note released`;
+          this.bus.emit('toast', {
+            text: `The ${label} took less than the paid job — ${money}.`,
+            kind: 'info', ttl: 4, audio: false,
+          });
+        }
       }
     }
 
@@ -594,7 +667,11 @@ export const stationServices = {
     if (!(delta > 0)) return;
     if (job.type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
-      fuel.current = Math.min(fuel.max, (fuel.current || 0) + delta);
+      const before = Number(fuel.current) || 0;
+      fuel.current = Math.min(fuel.max, before + delta);
+      // applied counts pumped work; deliveredFuel counts what the tank actually took. The gap
+      // between them is paid work nobody received — _settleUndelivered hands it back.
+      job.deliveredFuel = (Number(job.deliveredFuel) || 0) + Math.max(0, fuel.current - before);
       return;
     }
     const e = playerEntity(state);
@@ -642,7 +719,7 @@ export const stationServices = {
         jobId: job.id,
         type: 'refuel',
         cost: job.meta && job.meta.cost,
-        units: job.applied,
+        units: jobDeliveredUnits(job),
         stationId: job.stationId,
         atT: now,
       });
@@ -725,6 +802,7 @@ export const stationServices = {
             ? this.state.player.ownedShips.indexOf(j._ownedHull) : j.hullIndex,
           hullDefId: j.hullDefId || null,
           ...(j.type === 'repair' ? { deliveredHull: j.deliveredHull || 0, deliveredArmor: j.deliveredArmor || 0 } : {}),
+          ...(j.type === 'refuel' ? { deliveredFuel: Number(j.deliveredFuel) || 0 } : {}),
         })),
       },
     };
@@ -738,6 +816,7 @@ export const stationServices = {
     if (!data || typeof data !== 'object' || !data.player) {
       s.player = null;
       s.stations = {};
+      s._departedLatch = false;
       return;
     }
     const p = data.player;
@@ -766,12 +845,18 @@ export const stationServices = {
           deliveredHull: Math.max(0, Number(j.deliveredHull ?? ((Number(j.applied) || 0) * (j.meta?.shares?.hull ?? 1))) || 0),
           deliveredArmor: Math.max(0, Number(j.deliveredArmor ?? ((Number(j.applied) || 0) * (j.meta?.shares?.armor ?? 0))) || 0),
         } : {}),
+        // A pre-counter save holds no deliveredFuel: read applied (the proxy the job was billed
+        // under) so a mid-job restore neither double-refunds nor evaporates delivered fuel.
+        ...(j.type === 'refuel' ? {
+          deliveredFuel: Math.max(0, Number(j.deliveredFuel ?? j.applied) || 0),
+        } : {}),
       })) : [],
       _lastHoldingEmit: -Infinity,
     };
     if (!s.player.stationId) s.player = null;
     s.stations = {};
     s._viewStamp = null;
+    s._departedLatch = false;      // a restore opens a fresh berth session, not an undock fade
   },
 
   destroy() {
