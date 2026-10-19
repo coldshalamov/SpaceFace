@@ -1273,8 +1273,30 @@ export const combat = {
     let needsService = false;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
+      // Fitted module energyDraw — summed by getDerivedStats into derived.continuousDrain — is a
+      // continuous tax on the same capacitor the guns spend. The outfitting forecast ("Continuous
+      // module draw exceeds capacitor regeneration", the trigger-time readout) is enforced here:
+      // a power-hungry fit bleeds charge even while nothing fires, and an honest one recharges
+      // slower by exactly the advertised amount. Reactor damage scales only the regen half — the
+      // modules still draw. A negative draw is a generator feeding the same line. NPC hulls
+      // mount no powered fittings (drain 0), so their path is unchanged; hulls without a
+      // derived block read as zero draw.
+      const capDrain = e.capMax > 0
+        ? Number(e.data && e.data.derived && e.data.derived.continuousDrain) || 0
+        : 0;
+      const capNetRate = e.capMax > 0
+        ? (e.capRegen || 0)
+            * (this.kernel ? this.kernel.capRegenMultiplier(e.id) : 1)
+            * (e.id === state.playerId ? WEAPON_CAP_REGEN_MULT : 1)
+            - capDrain
+        : 0;
+      // A starving fit still counts as needing service while it bleeds — the quiet latch must not
+      // freeze a capacitor mid-discharge. A capacitor that can no longer move (empty or full at
+      // its equilibrium) stops being work, the same honesty the old cap<capMax check had.
+      const capWorking = e.capMax > 0
+        && ((capNetRate > 0 && e.cap < e.capMax) || (capNetRate < 0 && e.cap > 0));
       const regenerating = (e.shieldMax > 0 && e.shield < e.shieldMax)
-        || (e.capMax > 0 && e.cap < e.capMax)
+        || capWorking
         || !!(e.flags && e.flags.invuln);
       if (regenerating) needsService = true;
       if (!regenerating && !isDirty(state, e.id, DIRTY.COMBAT | DIRTY.POSE)) continue;
@@ -1288,10 +1310,8 @@ export const combat = {
           this.bus.emit('shieldRestored', { combatantId: e.id, pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null });
         }
       }
-      if (e.capMax > 0 && e.cap < e.capMax) {
-        const regenMult = this.kernel ? this.kernel.capRegenMultiplier(e.id) : 1;
-        const playerCapMult = e.id === state.playerId ? WEAPON_CAP_REGEN_MULT : 1;
-        e.cap = Math.min(e.capMax, e.cap + (e.capRegen || 0) * regenMult * playerCapMult * dt);
+      if (capWorking) {
+        e.cap = Math.min(e.capMax, Math.max(0, e.cap + capNetRate * dt));
       }
     }
     this._applyBeamDamage(state);
