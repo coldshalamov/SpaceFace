@@ -96,7 +96,13 @@ export function fittedVerbSpec(state, key) {
   return null;
 }
 
-/** Sum only the positive continuous-power surcharge of fitted unique variants over their bases. */
+/**
+ * Sum only the positive continuous-power surcharge of fitted unique variants over their bases.
+ * Informational: a unique's LISTED energyDraw already includes this premium, and getDerivedStats
+ * sums the listed draw into derived.continuousDrain — which the combat capacitor service pass
+ * nets once per tick. No system may subtract the premium again; that was a pre-tax workaround
+ * and would double-charge the delta.
+ */
 export function fittedUniqueEnergyPremium(state) {
   let total = 0;
   for (const definition of fittedModuleDefs(state)) {
@@ -182,7 +188,6 @@ export const uniqueLootAbilities = {
 
     if (state.mode === 'flight') {
       this._updateTideline(dt, state, player);
-      this._drainUniqueEnergyPremium(dt, state, player);
     }
     this._updateKnitbots(dt, state, player);
   },
@@ -435,12 +440,6 @@ export const uniqueLootAbilities = {
     if (player.hull >= player.hullMax) ability.knitbotsTold = false;
     // Docked-drone repair (FB-054) lives in automation._parkDroneEntities — the group's
     // durability record is the repairable thing, owned by that system, not by this hull path.
-  },
-
-  _drainUniqueEnergyPremium(dt, state, player) {
-    const premium = fittedUniqueEnergyPremium(state);
-    if (!(premium > 0) || !Number.isFinite(player.cap)) return;
-    player.cap = Math.max(0, player.cap - premium * dt);
   },
 
   serialize() {

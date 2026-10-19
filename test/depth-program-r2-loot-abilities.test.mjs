@@ -536,7 +536,11 @@ test('Repair Nanobots fail closed for malformed authored repair values', () => {
   }
 });
 
-test('only fitted unique variant premiums drain capacitor at exact per-second rates', () => {
+test('unique premiums ride inside continuousDrain — the abilities layer never double-drains', () => {
+  // C1 made combat.js net derived.continuousDrain once per tick, and a unique's LISTED
+  // energyDraw already contains its over-base premium. A second drain here would charge the
+  // delta twice. This harness boots only uniqueLootAbilities, so a moving capacitor can only
+  // come from this system — it must stay put.
   const t = bootAbilities([
     'unique_choir_bell_aegis',
     'unique_tideline_tractor',
@@ -544,13 +548,21 @@ test('only fitted unique variant premiums drain capacitor at exact per-second ra
   ]);
   try {
     assert.equal(fittedUniqueEnergyPremium(t.state), 9, '4.5 + 3 + 1.5 unique premiums');
+    // The same fit's advertised draw carries each unique's full listed draw (13.5 + 6 + 4.5),
+    // so the combat service pass already charges the premium through continuousDrain.
+    const derived = getDerivedStats('ship_kestrel', [
+      'unique_choir_bell_aegis',
+      'unique_tideline_tractor',
+      'unique_deepsurvey_suite',
+    ]);
+    assert.equal(derived.continuousDrain, 24, 'listed draws (incl. premiums) are the whole tax');
     t.player.cap = 100;
     t.sim.step(2);
-    assert.equal(t.player.cap, 82);
+    assert.equal(t.player.cap, 100, 'no second owner subtracts fitted draw');
 
     t.player.cap = 2;
     t.sim.step(1);
-    assert.equal(t.player.cap, 0, 'premium drain never makes capacitor negative');
+    assert.equal(t.player.cap, 2, 'capacitor untouched by this layer even near empty');
   } finally {
     t.dispose();
   }
