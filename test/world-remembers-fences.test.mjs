@@ -341,6 +341,47 @@ for (const seed of SEEDS) {
     assert.equal(row.jobsLost, 1);
     assert.equal(receipts(h, 'fence:trustChanged').pop().cause, 'route_lost');
   });
+
+  test(`an expired leg settles the route as a loss, once, and the berth lives on (seed ${seed})`, () => {
+    const h = makeHarness({ seed });
+    trustTo(h, SMUGGLER, 2);
+    dock(h, SMUGGLER.stationId);
+    const offer = jobRows(h, SMUGGLER.stationId)[0];
+    assert.equal(offer.cause.tag, FENCE_ROUTE_CAUSE_TAG);
+    assert.ok(Number.isFinite(offer.time_limit_s), 'a route leg carries a real deadline');
+    const inst = accept(h, offer.id);
+    assert.equal(fenceRowOf(h.state, SMUGGLER.id).route.status, 'running');
+
+    // missions._expireMission emits mission:expired with reason 'deadline' — the desk must
+    // settle it like any other lost leg, or the route wedges 'running' forever.
+    h.state.missions.active = h.state.missions.active.filter((m) => m.id !== inst.id);
+    h.bus.emit('mission:expired', { missionId: inst.id, reason: 'deadline', source: inst.source });
+    let row = fenceRowOf(h.state, SMUGGLER.id);
+    assert.equal(row.route, null, 'an expired leg does not wedge the route in running');
+    assert.equal(row.routeDone, false, 'the route was never finished');
+    assert.equal(row.jobsLost, 1, 'a late crate is a lost job');
+    assert.equal(row.lastOutcome, 'lost');
+    assert.equal(row.trust, 1, 'the routeLost trust delta lands');
+    assert.equal(receipts(h, 'fence:trustChanged').pop().cause, 'route_lost');
+
+    // A second expiry receipt for the same mission cannot settle twice.
+    h.bus.emit('mission:expired', { missionId: inst.id, reason: 'deadline', source: inst.source });
+    assert.equal(fenceRowOf(h.state, SMUGGLER.id).jobsLost, 1);
+
+    // The berth is alive: trust 1 still posts the bigger-haul deniable job, and the route can be
+    // re-earned — the fence was never told the run ended, so before the fix it posted nothing.
+    h.state.missions.active = [];
+    toEpoch(h, deniableBoardEpoch(h.state) + 1);
+    dock(h, SMUGGLER.stationId);
+    const next = jobRows(h, SMUGGLER.stationId).filter((o) => o.id.includes(`_${deniableBoardEpoch(h.state)}_`));
+    assert.equal(next.length, 1, 'the fence keeps posting after the expiry');
+    assert.equal(next[0].cause.tag, DENIABLE_CAUSE_TAG);
+    thank(h, SMUGGLER);
+    toEpoch(h, deniableBoardEpoch(h.state) + 1);
+    dock(h, SMUGGLER.stationId);
+    const reoffered = jobRows(h, SMUGGLER.stationId).find((o) => o.id === `fenceroute_${SMUGGLER.id}_1`);
+    assert.ok(reoffered, 'trust rebuilt, leg 1 posts again');
+  });
 }
 
 test('every quirk shapes the job its fence posts', () => {

@@ -53,6 +53,11 @@ export class FenceDesk {
     bus.on('mission:accepted', (p) => this.onAccepted(p));
     bus.on('mission:completed', (p) => this.onSettled(p, 'completed'));
     bus.on('mission:failed', (p) => this.onSettled(p, 'failed'));
+    // A leg that runs out its deadline settles as a loss like any other: reason 'deadline'
+    // never reads as an abandon, so the trust cost lands and the route record clears.
+    // Without this the route wedges 'running' forever — no next leg, no deniable job,
+    // and no word from the fence about the run that died.
+    bus.on('mission:expired', (p) => this.onSettled(p, 'failed'));
     bus.on('ui:talkContact', (p) => this.onTalk(p));
     bus.on('fence:scrubAsk', (p) => this.scrubFor(p && p.fenceId, p && p.stationId));
     bus.on('survivorPod:ransomed', (p) => this.onRansomed(p));

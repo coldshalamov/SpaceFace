@@ -700,7 +700,10 @@ function stampAceRouteRumor(contacts, stationId, state) {
   const simTime = Number(state?.simTime) || 0;
   const activeRoute = getActiveAceRouteForSector(sectorId, simTime);
   if (!activeRoute) return;
-  const free = contacts.filter((contact) => contact && !contact.canonicalKey
+  // A route rumor belongs to a generated regular, never a face with an authored voice — the
+  // fence's situational line is not a host for stamped rumors (same rule derelict's stamp
+  // documents for authored contacts). If every regular already speaks, the rumor waits.
+  const free = contacts.filter((contact) => contact && !contact.canonicalKey && !contact.fenceId
     && !contact.rumorSourceRef && !contact.bay7Rumor && !contact.derelictRumorRef
     && !contact.choirReliefMemory && !contact.deedId && !contact.aceRouteRumorRef);
   const host = free.find((contact) => contact.role === 'barkeep') || free[0];

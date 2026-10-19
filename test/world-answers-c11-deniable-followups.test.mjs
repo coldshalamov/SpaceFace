@@ -278,6 +278,35 @@ for (const seed of SEEDS) {
   });
 }
 
+test('an expired job after the snare fired is the ambush succeeding, once', () => {
+  const h = makeHarness({ seed: 4242 });
+  const e0 = deniableBoardEpoch(h.state);
+  const { inst } = takeJob(h, { hit: true, fired: true });
+  // missions._expireMission emits mission:expired with reason 'deadline'. The delivery never
+  // landed, so the sprung trap counts as the ambush succeeding — the same as a failure.
+  h.state.missions.active = h.state.missions.active.filter((m) => m.id !== inst.id);
+  h.bus.emit('mission:expired', { missionId: inst.id, reason: 'deadline', source: inst.source });
+  h.bus.emit('mission:expired', { missionId: inst.id, reason: 'deadline', source: inst.source });
+  const bold = receipts(h, 'deniable:fenceEmboldened');
+  assert.equal(bold.length, 1, 'exactly one fenceEmboldened receipt for the expired sprung job');
+  assert.deepEqual(bold[0], { schemaVersion: 1, stationId: FENCE, sectorId: FENCE_SECTOR, tick: h.state.tick | 0 });
+  assert.equal(receipts(h, 'deniable:fenceBurned').length, 0);
+  const [s] = deniableSeedsOf(h.state);
+  assert.equal(s.beat, 'emboldened');
+  assert.equal(s.untilEpoch, e0 + DENIABLE_EMBOLDEN_EPOCHS);
+});
+
+test('an expired job whose clause never fired retires the row with no aftermath', () => {
+  const h = makeHarness({ seed: 4242 });
+  const { inst } = takeJob(h, { hit: false, fired: false });
+  h.state.missions.active = h.state.missions.active.filter((m) => m.id !== inst.id);
+  h.bus.emit('mission:expired', { missionId: inst.id, reason: 'deadline', source: inst.source });
+  assert.equal(receipts(h, 'deniable:fenceEmboldened').length, 0);
+  assert.equal(receipts(h, 'deniable:fenceBurned').length, 0);
+  assert.equal(receipts(h, 'deniable:fenceThanked').length, 0);
+  assert.equal(deniableSeedsOf(h.state).length, 0);
+});
+
 test('an abandoned job after the snare fired is not the ambush succeeding', () => {
   const h = makeHarness({ seed: 4242 });
   const { inst } = takeJob(h, { hit: true, fired: true });

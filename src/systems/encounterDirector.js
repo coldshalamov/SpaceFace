@@ -374,6 +374,10 @@ export const encounterDirector = {
       this.bus.on('encounter:resolved', (p) => endDistressLamp(this.state, p || {}));
       this.bus.on('mission:completed', (p) => this._onDeniableMissionSettled(p, 'completed'));
       this.bus.on('mission:failed', (p) => this._onDeniableMissionSettled(p, 'failed'));
+      // A deadline is a failed delivery, not an abandon: when the snare had sprung the trap
+      // landed, so expiry settles the same 'succeeded' beat a failure does. Without this the
+      // clause row retired silently on the next tick and a sprung ambush cost the pilot nothing.
+      this.bus.on('mission:expired', (p) => this._onDeniableMissionSettled(p, 'failed'));
       this.bus.on('player:death', () => this._onDeniablePlayerDown());
       this.bus.on('dock:docked', (p) => this._onDeniableDock(p));
       // U-B: six authored fences remember what the pilot did with their jobs (trust, route, scrub).
