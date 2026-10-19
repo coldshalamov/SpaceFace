@@ -168,8 +168,15 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // solids (fx 4→6, colliders 38→68) plus the two live squad ships. Causality-proved by
 // neutralization: HEAD data passes, the authored data fails, the re-pin passes. Prior digest
 // was d0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd.
+// 2026-10-18 (6926e5d09c9, Ceres derelict scavenger fix): zone_ceres_derelict and poi_driller
+// moved west ({240,-1180} → {-840,-1180}) out of Belt Outpost's ambient-spawn protection
+// bubble, so the zone's authored scavenger presence materializes one live reaver hull in the
+// one-tick core — 44 entities { ship 5 → 6 } / 20 collidable / 378 colliders (+23 for the
+// hull's measured skin). Causality-proved by entity inspection: the sixth live ship is
+// data.ai.zoneId 'zone_ceres_derelict'. Prior digest was
+// 2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed';
+  'cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc';
 
 // PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
 // wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres

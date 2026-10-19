@@ -183,7 +183,10 @@ test('PQ-020 static content materializes exactly once across re-entry and save -
   assert.equal(report.offscreenProjectionPersistence.claimed, false);
   assert.equal(report.offscreenProjectionPersistence.invariance, 'by-construction');
   assert.match(report.offscreenProjectionPersistence.owner, /check:m2:sector-embodiment/);
-  assert.equal(report.afterContinue.offscreenProjectionRecomputedDigest, 2416862514);
+  // Re-pinned 2026-10-18: ceres-ambush-pack-dart (enemyDensity 0.18 → 0.73, the [3,4] throughline
+  // squad) shifted the deterministic offscreen-embodiment stream; matches the live pin in
+  // pq020-ceres-topology.test.mjs. Prior digest 2416862514.
+  assert.equal(report.afterContinue.offscreenProjectionRecomputedDigest, 3217214187);
   assert.equal(report.afterContinue.offscreenIntentCount, 3);
 });
 

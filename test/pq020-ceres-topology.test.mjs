@@ -70,8 +70,12 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // adds two solids: 43 entities { ship 3 → 5 } / 19 collidable / 355 colliders. Causality-proved
 // by neutralization (HEAD data passes, authored data fails). Prior digest
 // d0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd.
+// Re-pinned 2026-10-18 (6926e5d09c9, Ceres derelict scavenger fix): the derelict field and its
+// driller POI moved west out of Belt Outpost's ambient-spawn protection bubble, so the authored
+// scavenger materializes — 44 entities { ship 5 → 6 } / 20 collidable / 378 colliders. Prior
+// digest 2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  '2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed';
+  'cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -192,15 +196,18 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // (fx 12 → 14 for the two beacon rows, ship 2 → 3 as the shifted spawn stream lands a
   // patrol ship inside the live range), collidable 16 → 17, colliders 284 → 306;
   // worldSite.shelvedEntities still reads 14.
+  // 6926e5d09c9 (2026-10-18): the derelict field moved out of Belt Outpost's spawn-protection
+  // bubble, so its authored scavenger joins the one-tick live core (ship 5 → 6, total 43 → 44,
+  // collidable 19 → 20).
   assert.deepEqual(first.structuralCost.entities, {
-    total: 43,
-    byType: { asteroid: 6, fauna: 12, fx: 14, ship: 5, station: 6 },
-    collidable: 19,
+    total: 44,
+    byType: { asteroid: 6, fauna: 12, fx: 14, ship: 6, station: 6 },
+    collidable: 20,
   });
   // Latest core260 + the patrol skin + the belt-shadow squad's two extra hulls and the two
-  // density-fed aftermath solids; the seven canonical Cathedral solids are
-  // shelved at boot and return on approach.
-  assert.equal(first.structuralCost.colliders, 355);
+  // density-fed aftermath solids + the derelict scavenger's measured hull (6926e5d09c9, +23);
+  // the seven canonical Cathedral solids are shelved at boot and return on approach.
+  assert.equal(first.structuralCost.colliders, 378);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
