@@ -114,20 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-028",
-      "date": "2026-10-01",
-      "wf": "WF-03",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "pruneEvidence expires dead roots at the 480 horizon and bounds lives/contacts",
-      "fingerprint": "verb=expire,subject=attribution-roots,domain=combat,layer=evidence",
-      "references": [],
-      "integration": "live",
-      "commit": "0d7b86a39",
-      "verification": "route_accepted",
-      "evidence": "test/pq-210-01-stunt-evidence-cadence.test.mjs"
-    },
-    {
       "id": "NXI-046",
       "date": "2026-10-01",
       "wf": "WF-03",
@@ -1682,6 +1668,19 @@
       "references": [],
       "integration": "live",
       "commit": "463d4ecc47",
+      "verification": "focused_green"
+    },
+    {
+      "id": "chart-filing-payoff",
+      "date": "2026-10-19",
+      "wf": "WF-10",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Completing a sector authored-site census now files the chart and pays the cartography bounty — survey had a buy side but no sell side",
+      "fingerprint": "verb=filed,subject=sector chart census payoff,sector=galaxy-wide,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "f274a75063",
       "verification": "focused_green"
     }
   ],
