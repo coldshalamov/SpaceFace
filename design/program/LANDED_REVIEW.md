@@ -25,6 +25,7 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-ca0d710 | ca0d7104a8664d3b8f46952e816137e1e7e98e4e | D235 deferred tether echo | OPEN | Verify no consumer needed same-dispatch tether:broke/released/releaseRated — all listeners now get it on the first update after break (max 1 tick late), incl dead/docked ticks. |
 | R-be594dc | be594dcd08df5adfeb45c8e23f4065e2a4c8bc3a | INF-13 the blank page | OPEN | Verify scan-as-offense: a pulse covering the passive ghost settles read/broke_terms via runtime.event(scanPulse) while a short radius writes nothing; and no outcome emits news:publish. |
 | R-8764f824a2 | 2c3b9f33aac | INF-14 swarm star asks | OPEN | Verify chain-star-banked zones name the spotless ask not a chain (stars=2 bestChain>=target), and never-entered zones show no ask. |
 | R-4065252 | 40652524541 | SWP-SPAWN claim release + welldrag cleanup | OPEN | Verify _onEntityDestroyed releasing source-ledger claims on hard exit is correct vs intended persist-across-leave design; virtualize skip is the boundary. |
