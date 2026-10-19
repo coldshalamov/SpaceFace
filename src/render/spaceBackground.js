@@ -56,6 +56,7 @@ import {
   SECTOR_VISUAL_TRANSITION_SECONDS,
 } from './sectorVisualTransition.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { bootShellPacingActive, bootOverlayRetired } from '../core/bootShellPacing.js';
 import { PaintedPlanets } from './paintedPlanets.js';
 
 // The sky uses authored colour images rather than lit hull materials. Shape their value response
@@ -1763,11 +1764,16 @@ export class SpaceBackground {
     // lens samples L1 only. Promoting both for a wormhole would hand back the larger half of the
     // saving for a tile nothing reads.
     const nebulaVisible = this.nebulaOpacity > 0;
-    this._nebulaBakePending = { L1: !nebulaVisible, L2: !nebulaVisible };
-    this.l1Target = nebulaVisible
+    // While the boot shell's movie is the picture, never bake the full-res nebula tiles
+    // inline: one tile is a monster-shader first-use link plus a 2048² draw that froze the
+    // intro for seconds. Keep the stubs pending; the per-frame pump promotes them (one
+    // tile per admitted frame) once the shell is gone.
+    const deferNebulaToPump = nebulaVisible && bootShellPacingActive();
+    this._nebulaBakePending = { L1: !nebulaVisible || deferNebulaToPump, L2: !nebulaVisible || deferNebulaToPump };
+    this.l1Target = (nebulaVisible && !deferNebulaToPump)
       ? this._bakeNebulaTarget(p, bakeSeed, 'L1', sizes.L1_nebula)
       : this._makeStubRT();
-    this.l2Target = nebulaVisible
+    this.l2Target = (nebulaVisible && !deferNebulaToPump)
       ? this._bakeNebulaTarget(p, bakeSeed, 'L2', sizes.L2_wisps)
       : this._makeStubRT();
 
@@ -1885,6 +1891,10 @@ export class SpaceBackground {
   _ensureNebulaBake(only) {
     const pending = this._nebulaBakePending;
     if (!pending) return;
+    // The boot shell's movie outranks this bake (see bakeAll): a forced promotion while the
+    // shell is live is exactly the inline full-res stall the pump exists to avoid. The
+    // pending flags stay set; the pump promotes after the shell is gone.
+    if (bootShellPacingActive()) return;
     const wantL1 = pending.L1 && only !== 'L2';
     const wantL2 = pending.L2 && only !== 'L1';
     if (!wantL1 && !wantL2) return;
@@ -1925,6 +1935,11 @@ export class SpaceBackground {
   _pumpDeferredNebulaBake() {
     const pending = this._nebulaBakePending;
     if (!pending || (!pending.L1 && !pending.L2)) return;
+    // The boot shell's movie is the picture: promotion waits for the overlay to fully retire
+    // (see bakeAll's deferred-stub branch) — not merely to start fading, or the ~0.7 s tile
+    // bake lands on the freshly revealed menu. The pump re-runs every admitted frame, so the
+    // tiles promote on the first quiet frames after the shell is gone.
+    if (!bootOverlayRetired()) return;
     const opacityLive = this.nebulaOpacity > 0;
     const wormholeCapable = this.wormhole != null || this._deferredWormhole != null
       || !!(this.backgroundComposition && this.backgroundComposition.wormholeChance > 0);

@@ -472,6 +472,7 @@ import {
   yieldToNextPresent,
 } from './startupGpuResidency.js';
 import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
+import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPacing.js';
 import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
@@ -11677,7 +11678,9 @@ export const render = {
       // Bake once on foundry-settle-or-deadline. The 120ms floor still covers a starfield
       // background that decodes slower than the IBL fetch; a foundry that lands inside it is
       // the PMREM source for the ONLY convolve — baking blind at 120ms and again on arrival
-      // paid two synchronous convolve stalls before the menu ever painted.
+      // paid two synchronous convolve stalls before the menu ever painted. _bakeEnv itself
+      // defers the convolve until the boot overlay retires: its first-use program links
+      // (~0.5 s) froze the intro movie mid-playback when they ran inside the boot window.
       const bakeEnv = () => {
         if (this._openingEnvFrozen === true) return;
         this._bakeEnv();
@@ -12478,11 +12481,13 @@ export const render = {
         const paceBootQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
         // Bake only when the IBL source moved since the last bake — the 120 ms starfield bake
         // already covers the common cold-boot case, and a same-source re-bake is pure GL churn.
+        // The FIRST bake is owned by the init-time trigger above (which waits for the boot
+        // shell to lift): baking here at boot re-introduced the mid-movie convolve stall.
         if (typeof this._bakeEnv === 'function'
-            && (this._envMap == null || resolveIblSource({
+            && this._envMap != null && resolveIblSource({
               foundryTexture: this._foundryEnvTexture,
               background: scene.background,
-            }) !== this._envMapSource)) this._bakeEnv();
+            }) !== this._envMapSource) this._bakeEnv();
         if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
         if (typeof syncVisiblePointLightBudgetSteps === 'function') {
@@ -27115,6 +27120,21 @@ export const render = {
 
   _bakeEnv(options = {}) {
     if (this._openingEnvFrozen === true && options.force !== true) return;
+    // The boot shell's movie outranks the convolve: a PMREM first-use costs ~0.6–0.9 s of
+    // main thread and froze the intro mid-playback from every boot-era entry (init deadline,
+    // foundry arrival, opening admission). Every entry — force included (context restore
+    // only ever fires long after boot) — waits for the overlay to fully retire; the scheduled
+    // retry then pays it once, off the movie.
+    if (!bootOverlayRetired()) {
+      if (this._envBakeAfterShell !== true) {
+        this._envBakeAfterShell = true;
+        whenBootOverlayRetired().then(() => {
+          this._envBakeAfterShell = false;
+          if (!this._rendererLifecycle || this._rendererLifecycle.isActive()) this._bakeEnv();
+        }).catch(() => { this._envBakeAfterShell = false; });
+      }
+      return;
+    }
     try {
       const renderer = this.renderer, scene = this.scene, state = this.state;
       const previousEnvMap = Object.prototype.hasOwnProperty.call(options, 'previousEnvMap')

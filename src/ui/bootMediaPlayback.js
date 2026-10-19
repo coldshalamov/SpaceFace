@@ -108,16 +108,30 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
   }
   function selectSource(source) {
     const previous = Number(video.currentTime) || 0;
-    pause(); selected = source; resumeTime = previous;
+    // The entry markup already streams the normal clip (preload=auto, fetchpriority=high) and
+    // the parse-time kick may already be presenting it. Re-selecting the SAME movie must not
+    // reload or pause it: a restart re-buffered a clip that was already playing and cost the
+    // intro its first visible seconds.
+    const currentSrc = String(video.currentSrc || video.src || '');
+    const adoptPlaying = currentSrc.endsWith('/' + source) && video.readyState >= 1 && !video.error;
+    if (!adoptPlaying) pause();
+    selected = source;
+    resumeTime = adoptPlaying ? 0 : previous;
     lastFrame = null; proofFrames = 0;
-    // The only source switch/seek is a real asset or preference change. Neither
-    // start(), progress reporting nor a new loading stage resets the movie.
-    video.src = source;
     video.preload = 'auto'; video.muted = true; video.loop = true;
     video.playsInline = true;
-    notify('probing');
-    try { video.load(); } catch (error) { fail(error?.name || 'load-failed'); return; }
-    // load() resets the rate to defaultPlaybackRate; the 15% faster pace is set after it.
+    if (adoptPlaying) {
+      // No probing state here: the drift keyframe would pop an already-playing picture. The
+      // first presented frames complete the proof and set the live state directly.
+    } else {
+      // The only source switch/seek is a real asset or preference change. Neither
+      // start(), progress reporting nor a new loading stage resets the movie.
+      video.src = source;
+      notify('probing');
+      try { video.load(); } catch (error) { fail(error?.name || 'load-failed'); return; }
+    }
+    // load() resets the rate to defaultPlaybackRate; without a load the pace must still be
+    // (re)applied — the parse-time kick plays at the authored 1.0 rate until here.
     try { video.playbackRate = source === sources.original ? 1 : BOOT_PLAYBACK_RATE; } catch {}
     play();
   }

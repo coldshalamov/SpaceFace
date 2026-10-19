@@ -20,6 +20,13 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     if (!entry.video.isConnected || document.hidden || root.hidden || root.classList.contains('hidden')
         || root.classList.contains('is-closing')) return false;
     try { const s = env.getComputedStyle?.(root); if (s && (s.display === 'none' || s.visibility === 'hidden')) return false; } catch {}
+    // The boot shell covers the whole screen while it is up: nothing under it is visible to
+    // the player, and attaching the remix there builds a second WebGL context whose shader
+    // links froze the intro movie mid-playback. The overlay watcher below re-reconciles the
+    // moment the shell lifts.
+    const bootOverlay = document.getElementById?.('boot-overlay');
+    if (bootOverlay && bootOverlay !== root && !bootOverlay.classList.contains('hidden')
+        && bootOverlay.style.display !== 'none' && !bootOverlay.contains(entry.video)) return false;
     return true;
   }
   function cancelInit(entry) {
@@ -91,6 +98,12 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     const source = video.querySelector('source'); if (source) listen(source, 'error', failed);
     entry.watcher = new env.MutationObserver(update);
     entry.watcher.observe(root, { attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+    // The boot overlay hiding is what makes an underlying splash visible (see visible()) —
+    // without watching it the deferred attach would never fire.
+    const bootOverlay = document.getElementById?.('boot-overlay');
+    if (bootOverlay && bootOverlay !== root) {
+      entry.watcher.observe(bootOverlay, { attributes: true, attributeFilter: ['class', 'style'] });
+    }
     reconcile(entry);
   }
   const scan = () => {

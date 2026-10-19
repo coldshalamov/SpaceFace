@@ -2348,6 +2348,26 @@
              preload="auto" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
         <source src="assets/cinematics/boot-visualizer.mp4" type="video/mp4" />
       </video>
+      <!-- Parse-time movie kick: the boot controller lands seconds later (module graph fetch +
+           eval); start the muted clip the moment its element exists so the intro's first visible
+           seconds are the movie, not a paused poster frame. The controller ADOPTS the
+           already-playing element (same clip: no reload, no restart). Reduced-motion/flash
+           users keep the authored poster — variant choice and pausing are the controller's
+           call, never a flash risk. -->
+      <script>
+        (function () {
+          try {
+            var video = document.getElementById('boot-intro-video');
+            if (!video || video.paused === false) return;
+            var root = document.documentElement;
+            if (root.classList.contains('sf-reduce-motion')
+              || root.classList.contains('sf-reduce-flash')
+              || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+            var kick = video.play();
+            if (kick && kick.catch) kick.catch(function () { /* the boot controller retries */ });
+          } catch (error) { /* decoration never blocks boot */ }
+        })();
+      </script>
       <div class="boot-scrim" aria-hidden="true"></div>
       <header class="boot-meta" aria-hidden="true">
         <span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span>

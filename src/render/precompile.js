@@ -18,6 +18,7 @@ import {
 import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { pacedBootShellYield } from '../core/bootShellPacing.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
 import { GAS_VOLUME_PAYLOAD_READY } from './combat/gas/gasVolumeData.js';
@@ -705,10 +706,14 @@ function retainedPipelineOwner(object, root) {
 }
 
 function yieldToBrowser() {
-  if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
-    return globalThis.scheduler.yield();
-  }
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  // Boot-shell pacing (see bootShellPacing.js): compositor-frame handoffs while the intro
+  // visualizer is the picture; plain task-queue yield everywhere else.
+  return pacedBootShellYield(() => {
+    if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+      return globalThis.scheduler.yield();
+    }
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 function allShipSpecsForPrecompile() {

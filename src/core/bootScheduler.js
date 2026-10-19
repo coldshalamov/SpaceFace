@@ -1,4 +1,6 @@
 /** Presentation-only cooperative startup scheduling. Does not change fixed-tick simulation. */
+import { pacedBootShellYield } from './bootShellPacing.js';
+
 const clock = () => globalThis.performance?.now?.() ?? Date.now();
 
 /** Resume in a task AFTER a paint opportunity; a bounded fallback also works in hidden tabs. */
@@ -24,7 +26,13 @@ export function yieldForBootPaint({ host = globalThis, boundMs = 50 } = {}) {
   });
 }
 
-export function createBootScheduler({ budgetMs = 4, now = clock, yieldToMain = yieldForBootPaint,
+// Between systems the boot shell's movie needs compositor frames: bare rAF+task hops let the
+// init chain run the main thread (and the GPU uploads each system kicks) at ~100% duty, which
+// froze the intro for the whole systems phase. Wrapped in boot-shell pacing the same hops hand
+// a presented frame back between slices; off-shell the yield is exactly what it was.
+const pacedYieldForBootPaint = (options) => pacedBootShellYield(() => yieldForBootPaint(options));
+
+export function createBootScheduler({ budgetMs = 4, now = clock, yieldToMain = pacedYieldForBootPaint,
   isInputPending = () => globalThis.navigator?.scheduling?.isInputPending?.() === true } = {}) {
   const budget = Math.max(1, Math.min(12, Number(budgetMs) || 4));
   let began = now(), tasks = 0, yields = 0, longestTaskMs = 0;

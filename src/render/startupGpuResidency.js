@@ -10,6 +10,7 @@ import {
   packageTextureDetachCovers,
 } from './packageCpuDetach.js';
 import { releaseSharedImageSource } from './imageSourceDedupe.js';
+import { pacedBootShellYield } from '../core/bootShellPacing.js';
 import { compileShadowDepthPipelines } from './shadowDepthAdmission.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
@@ -1187,10 +1188,15 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
 }
 
 export function yieldToBrowser() {
-  if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
-    return globalThis.scheduler.yield();
-  }
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  // Boot-shell pacing: while the intro visualizer is the picture, the cook's yields hand
+  // compositor frames back before the next slice (see bootShellPacing.js). After boot the
+  // wrapper is a pass-through to the plain task-queue yield below.
+  return pacedBootShellYield(() => {
+    if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+      return globalThis.scheduler.yield();
+    }
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 /**
