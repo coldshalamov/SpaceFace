@@ -5,6 +5,7 @@ import { isLastArgument } from '../data/lastArgumentBody.js';
 import { observeCapitalBody, capitalBossInRange } from './capitalBossEncounters.js';
 import { authorizeAIEngagement } from '../ai/engagementAuthority.js';
 import { witnessLineOfSight } from '../combat/lineOfSight.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 
 const hosts = new WeakMap();
 const seedOf = s => s.meta?.seed ?? 1;
@@ -112,6 +113,7 @@ export function withLastArgument(system) {
       if (!a) return false;
       root().lastArgument = own(); pending = null;
       e.data.lastArgumentKey = a.key; e.data.homeSectorId = a.sectorId;
+      syncEntitySectorMembership(s.entityIndex, e);
       e.data.persistenceOwner = 'capitalBossEncounters';
       e.data.identityKey = a.key;
       // It stays an encounter-local actor, not a duplicate entry in the distant world ledger.

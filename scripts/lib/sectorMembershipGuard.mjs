@@ -46,6 +46,7 @@ export const ALLOWED_SECTOR_RESTAMP_FILES = new Map([
   ['src/world/farActorTable.js', 'promoted far actor gets record homeSectorId post-spawn'],
   ['src/systems/npcJobsRuntime.js', 'occupational scavenger/target adoption stamps ceres sector'],
   ['src/world/worldRecords.js', 'bindEntityToRecord restamps record sector — callers funnel'],
+  ['src/systems/lastArgument.js', 'siege-ark bind stamps boss home sector on live entity'],
 ]);
 
 // Files whose restamps are funneled by their CALLER rather than in-file — exempt from the
