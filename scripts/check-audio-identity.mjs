@@ -410,6 +410,9 @@ const EMITTED_CUES = {
   sfx_bomb_concussion_shove: { distinct: true },
   sfx_tether_latch_lock: { distinct: true },
   sfx_massline_release: { distinct: true },
+  // survivalArena.js Foundry conveyor surge emits the cone field's deploy voice by literal
+  // recipe id on each surge phase — the same authored recipe field deploys use.
+  sfx_field_deploy_cone: { distinct: true },
   sfx_hull_scrape: { distinct: true },
   sfx_eighth_bell_toll: { distinct: true },
   // Existing encounter, phase-rift, Ruud and vent emitters must remain audible.

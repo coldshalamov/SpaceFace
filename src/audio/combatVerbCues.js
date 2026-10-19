@@ -57,7 +57,10 @@ export const COMBAT_VERB_CUES = Object.freeze({
   latch: 'sfx_tether_latch_lock',
   break: 'sfx_tether_crack',
   slam: 'sfx_hull_decompress',
-  kill: 'sfx_kill_confirm',
+  // The kill verb's own voice is the layered first-hour signature (blended body + rising
+  // confirm in one recipe). Light/heavy/capital kills still add the bare confirm layer on
+  // their mass-graded bodies — see _onKilled.
+  kill: 'sfx.killConfirmed',
   dock: 'sfx_dock_clunk',
   undock: 'sfx_undock_release',
 });

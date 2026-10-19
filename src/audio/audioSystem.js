@@ -2583,14 +2583,16 @@ export const audio = {
       const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
       const signature = FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak;
       this._applyPriorityCue({ id: 'shield.collapse', importance: signature.priority, playerRelevance: isPlayer ? 1 : 0.4 });
+      // A shield collapse sounds like a shield collapse whoever owns it — the crystalline
+      // signature is the register the ear learns, so it plays under every break. The
+      // player's own failure stacks the personal layer on top: distinct electrical pop +
+      // audible alarm cue. The alarm reserves the ear (INF-048): the world mix bows for
+      // its phrase so the terse failure reads through combat, then returns on the duck
+      // envelope.
+      this.play(signature.recipeId, { position, gain: 0.64, critical: true });
       if (isPlayer) {
-        // Player shield blowout: distinct electrical pop + audible alarm cue. The alarm
-        // reserves the ear (INF-048): the world mix bows for its phrase so the terse
-        // failure reads through combat, then returns on the duck envelope.
         this.play('sfx_shield_blowout_pop', { position, gain: 0.9, critical: true });
         this.play('sfx_shield_blowout_alarm', { gain: 0.8, critical: true, duck: true });
-      } else {
-        this.play(signature.recipeId, { position, gain: 0.64, critical: true });
       }
     });
     bus.on('shieldRestored', (p) => {
@@ -2902,7 +2904,15 @@ export const audio = {
     // Yield and seam reward stay off this route: presentation already plays them.
     bus.on('tether:latched', (p) => {
       const id = combatVerbRecipe('tether:latched');
-      if (id) this.play(id, { gain: 0.65 });
+      if (!id) return;
+      // The attachment service emits tether:attached first on this same tick, and the
+      // instrument's layered signature (sfx.tetherLatch) already contains the lock recipe
+      // as a layer — a second play stacks the latch's own transient on itself. A bare
+      // tether:latched with no same-tick attach still earns the verb voice.
+      const spokeTick = this.rt && this.rt._masslineAttachSpokeTick;
+      const nowTick = Number(this.state && this.state.tick);
+      if (Number.isFinite(nowTick) && spokeTick === nowTick) return;
+      this.play(id, { gain: 0.65 });
     });
     bus.on('tether:broke', (p) => {
       const id = combatVerbRecipe('tether:broke');
@@ -4652,15 +4662,22 @@ export const audio = {
       const body = resolveKillMassVoice({
         mass, type: p.type, victimClass: p.victimClass, killedByPlayer,
       });
-      this.play(body.recipeId, {
+      // The mid-band player kill is exactly the first-hour signature: sfx.killConfirmed's
+      // layers ARE sfx.killSmall's blended body plus the rising confirm. Schedule it as
+      // the single authored composite — at its authored tuning, lifted only by the swarm
+      // chain ladder — instead of two coincident recipes. Light and heavy bodies keep the
+      // graded split (the composite's fixed sine+noise body would mis-voice their mass),
+      // and capital keeps its own delayed beat above.
+      const signatureBundle = killedByPlayer && body.recipeId === 'sfx.killSmall';
+      this.play(signatureBundle ? signature.recipeId : body.recipeId, {
         position: p.pos,
         startTime: ctx ? ctx.currentTime + overloadDelayS : undefined,
         gain: body.gain,
-        rate: body.rate,
+        rate: signatureBundle ? swarmKillPitch(rt && rt._swarmChain) : body.rate,
         critical: killedByPlayer,
         primary: killedByPlayer,
       });
-      if (body.confirmRecipeId) {
+      if (body.confirmRecipeId && !signatureBundle) {
         this.play(body.confirmRecipeId, {
           position: p.pos,
           startTime: ctx ? ctx.currentTime + overloadDelayS + 0.02 : undefined,
@@ -6126,6 +6143,11 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running' || !rt.loops) return;
     if (rt.loops.stationHum) return;
+    // Docking into a saturated mix must not mute the room for the whole stay: the hum
+    // only starts on the dock edge and the boundary reconcile, so claim the worst
+    // disposable slot (the same admission play() gets) rather than letting a crowd of
+    // finished one-shot tails silence the station.
+    if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
     // INST-13: the authored room tone (`station_hum_loop`, bound to `sfx_station_hum`) is the body
     // of the docked bed. `_startLoopVoice` plays that resident sample plus the recipe's live synth
     // layer, routes the pair onto the ambient bus, and releases both together — no bespoke build.
@@ -6378,12 +6400,39 @@ export const audio = {
       this._maybeStuntHush({ classification: payload && payload.classification });
     }
     if (voice.play) {
-      this.play(voice.recipeId, {
+      // Strain fatigue guard: real near-break receipts can arrive every upstream dedupe
+      // window. The warning keeps the first-hour signature's authored cadence so a held
+      // overload cannot machine-gun the creak; the stamp lands only when a voice starts,
+      // so a squelched play never spends the slot.
+      let strainNowS = NaN;
+      if (event === 'strain' && this.rt) {
+        strainNowS = this.rt.ctx && Number.isFinite(this.rt.ctx.currentTime)
+          ? this.rt.ctx.currentTime
+          : Math.max(0, Number(this.state && this.state.simTime) || 0);
+        const lastStrainS = this.rt._masslineStrainLastS;
+        if (Number.isFinite(lastStrainS)
+            && strainNowS - lastStrainS < FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.cooldownS) {
+          return;
+        }
+      }
+      const started = this.play(voice.recipeId, {
         gain: voice.gain,
         rate: voice.rate,
         critical: voice.critical,
         position: payload && payload.pos,
       });
+      // Latch dedupe: the player's tether:latched receipt lands the same tick as this
+      // attach, and its verb-table lock (sfx_tether_latch_lock) is already a layer inside
+      // sfx.tetherLatch. Record the tick the signature actually spoke so the verb voice
+      // stands down instead of doubling its own layer. A blocked play leaves no stamp,
+      // so the verb voice can still try its own gate.
+      if (started && event === 'attach' && this.rt) {
+        const spokeTick = Number(this.state && this.state.tick);
+        if (Number.isFinite(spokeTick)) this.rt._masslineAttachSpokeTick = spokeTick;
+      }
+      if (started && event === 'strain' && this.rt && Number.isFinite(strainNowS)) {
+        this.rt._masslineStrainLastS = strainNowS;
+      }
     }
     if (voice.caption) {
       this._emitPresentationCaption(voice.caption, { assertive: voice.warning, shape: 'arc' });
