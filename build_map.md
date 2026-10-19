@@ -626,7 +626,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | physics | done (devin-oct2-batch) | physics clocks, manifest | - |
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
-| art | free | one visible asset defect; skip if the graphics lane is live | 383, 384 |
+| art | free | one visible asset defect; skip if the graphics lane is live | 384 |
 | admit-systems | done (claude-oct17) | admit SFQ-P01–P08 family candidates (truth/hand/massline/weapons/adversaries/crucible/adventure/mission-craft) — ~80 build + ~32 inference | - |
 | admit-world | done (claude-oct17) | admit SFQ-P10–P17 family candidates (mining/regions/people/alien/xenotech/machines/precursor/discovery) — ~80 build + ~32 inference | - |
 | admit-craft | done (claude-oct17) | admit SFQ-P18/P19/P21–P24 family candidates (models/VFX/ORRERY/perf/save/finish) — ~60 build + ~24 inference | - |
