@@ -5308,8 +5308,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_towline_kit",
       "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit.glb",
-      "releaseSha256": "ab883669645dbf75c8e2c768ae071e44cb15d73a0d6ff06dea92c926401f2cb9",
-      "releaseBytes": 396968,
+      "releaseSha256": "202555f7eca9488bc8bb1481963d5270f7e3dc59903725047da486fede850d32",
+      "releaseBytes": 397348,
       "dynamicNameIncludes": [
         "MOTION_TOWLINE_ACKNOWLEDGE"
       ],
@@ -5325,8 +5325,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_towline_kit_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb",
-      "releaseSha256": "0322debc02a1d21a99243b856787ca89e993dcab41dbb72f8c5fb77537c88454",
-      "releaseBytes": 363760,
+      "releaseSha256": "3478e1bc9fe651ae19792040d51d52065c8bc94bab80f12cd14e3868b5532147",
+      "releaseBytes": 363932,
       "dynamicNameIncludes": [
         "MOTION_TOWLINE_ACKNOWLEDGE"
       ],
@@ -5342,8 +5342,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_towline_kit_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod2.glb",
-      "releaseSha256": "1e1637bd6b6d0d9266a338a8a853ca0b5c0f2999285d9f11e9c8d7e032857ed4",
-      "releaseBytes": 349472,
+      "releaseSha256": "8838f9250bdc8965f1a023d264587d43112ace6666a32e20157f82ebbc10b266",
+      "releaseBytes": 349600,
       "dynamicNameIncludes": [
         "MOTION_TOWLINE_ACKNOWLEDGE"
       ],
@@ -5359,8 +5359,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_towline_mara",
       "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara.glb",
-      "releaseSha256": "b72c8af5d7e1450a6455f40524e04ba4b34652d64a2084af7d40bcaed4fa772e",
-      "releaseBytes": 396616,
+      "releaseSha256": "fdb26630e4c01e03a15314aacc95cc042dfa6ccf9015658f037810d7f13db782",
+      "releaseBytes": 397884,
       "dynamicNameIncludes": [
         "MOTION_TOWLINE_JAW_PORT",
         "MOTION_TOWLINE_JAW_STARBOARD"
@@ -5377,8 +5377,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_towline_mara_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara_lod1.glb",
-      "releaseSha256": "193e7606bcd466cef962cd4bc65fbfcf769db0826a1f5757eebd8634d7822c48",
-      "releaseBytes": 366904,
+      "releaseSha256": "11818741cc17229b145b32cb6f4cc31f0b1ad2071e984bb3469019226452d704",
+      "releaseBytes": 367816,
       "dynamicNameIncludes": [
         "MOTION_TOWLINE_JAW_PORT",
         "MOTION_TOWLINE_JAW_STARBOARD"
@@ -5395,8 +5395,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_towline_mara_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara_lod2.glb",
-      "releaseSha256": "89a1e624508d5edbcfdc69c87f67804e3d563a953c9e735e590b42389a21c97c",
-      "releaseBytes": 353588,
+      "releaseSha256": "d836fe63a9c36a8266e3aa56aaf1780023274ecc5c460407a0197e4727b1a69b",
+      "releaseBytes": 354116,
       "dynamicNameIncludes": [
         "MOTION_TOWLINE_JAW_PORT",
         "MOTION_TOWLINE_JAW_STARBOARD"
