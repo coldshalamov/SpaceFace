@@ -46,7 +46,9 @@ test('Tab cycles enemies, then releases to free aim until Tab reacquires', () =>
   assert.equal(state.input.targetAssistDisabled, true);
   targetNearestHostileToPlayer(state, bus, { quiet: true });
   tickAutoTarget(state, 1 / 60, bus, createAutoTargetRuntime());
-  assert.equal(state.input.autoAim, undefined);
+  // clearCombatTarget normalizes autoAim to null via an unconditional lane write; "released"
+  // is the null seat, not an absent key.
+  assert.equal(state.input.autoAim, null);
   cycleTarget(state, 1, bus);
   assert.equal(state.player.targetId, near.id);
   assert.equal(state.input.targetAssistDisabled, false);

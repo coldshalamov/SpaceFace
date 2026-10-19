@@ -447,6 +447,9 @@ export function createUiInput(ctx, screenManager) {
     }
     if (matchesBinding(ev, BINDINGS.band)) {
       ev.preventDefault();
+      // Consumed UI key: stopPropagation is the only suppression the window-level flight
+      // adapter honors (defaultPrevented is never inspected — see the dock case below).
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('band:cycle', { source: 'keyboard' });
       return;
     }
@@ -462,6 +465,7 @@ export function createUiInput(ctx, screenManager) {
     // carries the .screen marker so the dossier drawer still has a host.
     if (matchesBinding(ev, BINDINGS.find)) {
       ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('ui:globalFind', {});
       return;
     }
@@ -470,6 +474,7 @@ export function createUiInput(ctx, screenManager) {
     // the onboarding floor are protected); the key just asks.
     if (matchesBinding(ev, BINDINGS.dismissVoice)) {
       ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('voice:dismiss', { source: 'keyboard' });
       return;
     }
@@ -478,11 +483,13 @@ export function createUiInput(ctx, screenManager) {
       case 'Escape':
         if (state.ui && state.ui.commsBacklogOpen) {
           ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
           bus.emit('ui:closeComms');
           return;
         }
         if (state.ui && state.ui.cargoPanelOpen) {
           ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
           bus.emit('ui:closeCargo');
           return;
         }
@@ -517,10 +524,12 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault(); screenManager.pushScreen('help'); return;
       case 'Tab':
         ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:cycleTarget', { dir: ev.shiftKey ? -1 : 1 });
         return;
       case 'Backspace':
         ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:clearTarget');
         return;
       // Dock / interact: default binding is `E` (spec §15.4), sourced from the live binding
@@ -566,6 +575,7 @@ export function createUiInput(ctx, screenManager) {
       case 'F7': {
         // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).
         ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         const dbg = state.render && state.render.debug;
         if (dbg) { const on = dbg.toggle(); bus.emit('audio:cue', { id: on ? 'ui_open' : 'ui_back' }); }
         return;
@@ -584,18 +594,21 @@ export function createUiInput(ctx, screenManager) {
       case BINDINGS.cargo.key:
       case BINDINGS.cargo.label:
         ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:toggleCargo');
         return;
       case 'o': case 'O':
         // Auto-repeat must not strobe the contacts-strip pin: one toggle per keypress.
         if (ev.repeat) return;
         ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:toggleOverview');
         return;
       case BINDINGS.fleetCommand.key:
       case BINDINGS.fleetCommand.label:
         // Wingman command radial (Micro-Loops): pop the quick fleet-command wheel.
         ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:wingmanRadial');
         return;
       case BINDINGS.comms.key:
@@ -603,6 +616,7 @@ export function createUiInput(ctx, screenManager) {
         // Comms log (narrative overlay): open the channel backlog. The feed itself
         // streams on the left edge continuously; this opens the full searchable history.
         ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:toggleComms');
         return;
       case BINDINGS.claimBase.key:
@@ -618,13 +632,27 @@ export function createUiInput(ctx, screenManager) {
         }
         return;
       case 'F5':
-        ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('game:save', { slot: 'quick' });
+        return;
       case 'F9':
-        ev.preventDefault(); bus.emit('game:load', { slot: 'quick' }); return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('game:load', { slot: 'quick' });
+        return;
       default:
-        // '+'/'-' zoom shortcuts (camera passthrough)
-        if (code === 'Equal' || code === 'NumpadAdd') { bus.emit('camera:zoom', { delta: -8 }); }
-        else if (code === 'Minus' || code === 'NumpadSubtract') { bus.emit('camera:zoom', { delta: 8 }); }
+        // '+'/'-' zoom shortcuts (camera passthrough). Once emitted the key is consumed like any
+        // other UI verb — a flight binding on it would otherwise keep double-firing.
+        if (code === 'Equal' || code === 'NumpadAdd') {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('camera:zoom', { delta: -8 });
+        } else if (code === 'Minus' || code === 'NumpadSubtract') {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('camera:zoom', { delta: 8 });
+        }
         return;
     }
   }

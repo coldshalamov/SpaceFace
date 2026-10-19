@@ -215,6 +215,99 @@ test('J4: a per-action reset refuses while its default code is deliberately owne
   }
 });
 
+test('F-CONTROLS-01: a flight rebind onto a reserved interface code is refused and names the verb', async () => {
+  // The conflict rule used to consult REBINDABLE only, so a flight verb could be bound onto a
+  // fixed interface key: overlay keys (Z/I/L) then double-fired the verb AND the interface
+  // action (preventDefault is not suppression — the window flight adapter ignores it), while
+  // modal openers (M/N) left the verb silently dead. The capture now refuses reserved codes.
+  const listeners = fakeWindow();
+  const ctx = fakeCtx();
+  const live = {};
+  for (const action of REBINDABLE) live[action] = [];
+  const committed = [];
+  const realCommit = settingsScreen._commitBind;
+  const realRender = settingsScreen._render;
+  settingsScreen._commitBind = function (c, action, code) { committed.push([action, code]); };
+  settingsScreen._render = function () {};
+  try {
+    // Overlay key: Z is the Fleet Command radial — the exact double-bind the audit proved.
+    const btnZ = fakeBtn();
+    settingsScreen._capture(ctx, btnZ, 'boost', live, {});
+    listeners.keydown[0](keyEvent('KeyZ'));
+    assert.match(btnZ.textContent, /in use/i);
+    assert.match(btnZ.textContent, /fleet/i, 'the refusal names the interface verb');
+    assert.deepEqual(committed, [], 'a refused bind commits nothing');
+    await sleep(950);
+    assert.equal(settingsScreen._capturing, false);
+
+    // Modal opener: M is the Local Map — a bind there would fire the map and never the verb.
+    const btnM = fakeBtn();
+    settingsScreen._capture(ctx, btnM, 'boost', live, {});
+    listeners.keydown[0](keyEvent('KeyM'));
+    assert.match(btnM.textContent, /in use/i);
+    assert.match(btnM.textContent, /map/i);
+    assert.deepEqual(committed, []);
+    await sleep(950);
+
+    // Camera zoom: Equal rides the router's passthrough default case.
+    const btnEq = fakeBtn();
+    settingsScreen._capture(ctx, btnEq, 'boost', live, {});
+    listeners.keydown[0](keyEvent('Equal'));
+    assert.match(btnEq.textContent, /in use/i);
+    assert.deepEqual(committed, []);
+    await sleep(950);
+
+    // Contextual keys stay bindable by design: E is strafe/dock (router claims it only in
+    // dock range), so the reserved set must not swallow it.
+    const btnE = fakeBtn();
+    settingsScreen._capture(ctx, btnE, 'boost', live, {});
+    listeners.keydown[0](keyEvent('KeyE'));
+    assert.deepEqual(committed, [['boost', 'KeyE']], 'the contextual dock key remains a legal flight bind');
+    assert.equal(settingsScreen._capturing, false);
+
+    // An ordinary free code still commits.
+    const btnF = fakeBtn();
+    settingsScreen._capture(ctx, btnF, 'boost', live, {});
+    listeners.keydown[0](keyEvent('F8'));
+    assert.deepEqual(committed[committed.length - 1], ['boost', 'F8']);
+  } finally {
+    settingsScreen._commitBind = realCommit;
+    settingsScreen._render = realRender;
+    delete globalThis.window;
+  }
+});
+
+test('F-CONTROLS-01: the per-action reset refuses a default that lands on an interface code', async () => {
+  // Stock travelBurn ships ['NumLock','KeyH'] while h/H opens Help — the shipped collision the
+  // audit flagged. With the reserved set live, Backspace names the interface owner instead of
+  // reinstalling the dead seat. (The shipped default itself is untouched: the full "Reset key
+  // bindings" word still restores authored stock wholesale.)
+  const listeners = fakeWindow();
+  const ctx = fakeCtx();
+  const base = INPUT_DEFAULTS.BINDINGS;
+  const live = {};
+  for (const action of REBINDABLE) live[action] = (base[action] || []).slice();
+  const committed = [];
+  const realCommit = settingsScreen._commitBind;
+  const realRender = settingsScreen._render;
+  settingsScreen._commitBind = function (c, action, code) { committed.push([action, code]); };
+  settingsScreen._render = function () {};
+  try {
+    const btn = fakeBtn();
+    settingsScreen._capture(ctx, btn, 'travelBurn', live, base);
+    listeners.keydown[0](keyEvent('Backspace'));
+    assert.match(btn.textContent, /in use/i);
+    assert.match(btn.textContent, /help/i, 'the refusal names Help as the owner of H');
+    assert.deepEqual(committed, [], 'a refused reset commits nothing');
+    await sleep(950);
+    assert.equal(settingsScreen._capturing, false);
+  } finally {
+    settingsScreen._commitBind = realCommit;
+    settingsScreen._render = realRender;
+    delete globalThis.window;
+  }
+});
+
 test('J4: the stock scheme is conflict-free, so a full reset can never collide', () => {
   // The reset-to-defaults word sets `bindings = null` in one click. That is only safe while the
   // invariant holds: no default code appears on two actions. If an alias ever ships on purpose,

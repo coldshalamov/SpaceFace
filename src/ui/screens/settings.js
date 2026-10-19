@@ -468,6 +468,70 @@ export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Pause', key: 'Esc / P', note: 'pause menu: resume, settings, save/load, map review' },
 ]);
 
+// --- Reserved interface codes (F-CONTROLS-01) ---------------------------------------------------
+// The UI key router (src/ui/input.js) owns these codes in flight whether or not a flight verb
+// wants them. The three contextual bindings stay OUT: dock (E), claim-base (U) and drill (B)
+// share their code with a stock flight verb on purpose — the router claims the key only inside
+// its context and lets it fall through to flight everywhere else. Every other interface code is
+// an exclusive claim: overlay/instant keys call preventDefault() only, and the window-level
+// flight adapter never inspects defaultPrevented (src/systems/input.js domKeyEvent), so a shared
+// code would fire BOTH verbs; modal-opener keys flip ui-modal-open before the same press reaches
+// flight, so the verb would silently never fire. A flight binding on a reserved code is always a
+// defect — refuse it and name the interface owner.
+const CONTEXTUAL_UI_CODES = new Set([BINDINGS.dock.code, BINDINGS.claimBase.code, BINDINGS.drill.code]);
+
+// Player-facing verb names for the BINDINGS entries the router claims unconditionally. Codes are
+// read live off BINDINGS so a future re-lettering cannot desync the refusal from the handler.
+const RESERVED_VERB_BY_BINDING = Object.freeze({
+  localmap: 'Local Map',
+  starmap: 'Star Map',
+  techTree: 'Tech Tree',
+  missionLog: 'Mission Log',
+  codex: 'Codex',
+  cargo: 'Cargo Hold',
+  comms: 'Comms Log',
+  band: 'Overview pin / Band',
+  fleetCommand: 'Fleet Command',
+  recallObjective: 'Recall objective',
+  find: 'Find',
+  dismissVoice: 'Dismiss voice',
+  voiceDismiss: 'Dismiss voice',
+  steeringView: 'Camera view',
+  photo: 'Pause menu',
+});
+
+// Router literals that never went through BINDINGS: pause/help/screens, save slots, the target
+// keys, and the camera-zoom passthrough (Equal/Minus are consumed in the switch's default case).
+const RESERVED_LITERAL_CODES = Object.freeze({
+  Escape: 'Pause menu',
+  KeyP: 'Pause menu',
+  F1: 'Help',
+  KeyH: 'Help',
+  Tab: 'Cycle target',
+  Backspace: 'Clear target',
+  F2: 'Ship',
+  F3: 'Footprint',
+  F4: 'Range',
+  F5: 'Quick save',
+  F7: 'Debug overlay',
+  F9: 'Quick load',
+  Equal: 'Camera zoom',
+  NumpadAdd: 'Camera zoom',
+  Minus: 'Camera zoom',
+  NumpadSubtract: 'Camera zoom',
+});
+
+/** code -> interface verb name, or absent when the code may carry a flight verb. */
+export const INTERFACE_KEY_OWNERS = (() => {
+  const owners = new Map();
+  for (const [name, verb] of Object.entries(RESERVED_VERB_BY_BINDING)) {
+    const b = BINDINGS[name];
+    if (b && b.code && !CONTEXTUAL_UI_CODES.has(b.code)) owners.set(b.code, verb);
+  }
+  for (const [code, verb] of Object.entries(RESERVED_LITERAL_CODES)) owners.set(code, verb);
+  return owners;
+})();
+
 // --- Reset this page ---------------------------------------------------------------------------
 // One word at the foot of Audio, Video, Gameplay and Access returns that page to how the game
 // shipped. The shipped values are createGameState(0).settings (the single owner of defaults); each
@@ -1373,11 +1437,18 @@ export const settingsScreen = {
       if (ev.code === 'Backspace' || ev.code === 'Delete') {
         // J4: restoring the default must pass the same conflict rule as an ordinary rebind —
         // a key the player deliberately gave another verb keeps its owner; the reset names it.
+        // F-CONTROLS-01: "another verb" includes the interface — a default that lands on a
+        // reserved code (stock travelBurn ships KeyH while Help owns h/H) is refused rather
+        // than silently reinstalling a dead or double-firing seat.
         const def = (base && base[action]) || DEFAULT_BINDINGS[action] || [];
-        const ownerOf = (code) => REBINDABLE.find((other) => other !== action && (live[other] || []).includes(code));
+        const ownerOf = (code) => INTERFACE_KEY_OWNERS.get(code)
+          || (() => {
+            const owner = REBINDABLE.find((other) => other !== action && (live[other] || []).includes(code));
+            return owner && (REBIND_LABELS[owner] || owner);
+          })();
         const clashOwner = def.map(ownerOf).find(Boolean);
         if (clashOwner) {
-          const conflict = settingsInUseLabel(REBIND_LABELS[clashOwner] || clashOwner);
+          const conflict = settingsInUseLabel(clashOwner);
           btn.textContent = conflict;
           announceBindingConflict(btn, conflict);
           cue('deny');
@@ -1391,6 +1462,19 @@ export const settingsScreen = {
       // Conflict check: the same code must not appear ANYWHERE in another action's binding —
       // checking only index 0 let a rebind collide with a secondary (e.g. binding an action to
       // ArrowUp while movement still keeps ArrowUp as its secondary), so one key fired two verbs.
+      // Interface keys first (F-CONTROLS-01): the UI router claims these codes unconditionally —
+      // overlay keys only preventDefault(), which the window-level flight adapter ignores, and
+      // modal keys flip ui-modal-open under the same press — so the interface owner is the
+      // terminal claim even when a rebindable row also holds the code.
+      const interfaceVerb = INTERFACE_KEY_OWNERS.get(ev.code);
+      if (interfaceVerb) {
+        const conflict = settingsInUseLabel(interfaceVerb);
+        btn.textContent = conflict;
+        announceBindingConflict(btn, conflict);
+        cue('deny');
+        setTimeout(() => done(false), 900);
+        return;
+      }
       for (const other of REBINDABLE) {
         if (other === action) continue;
         if ((live[other] || []).includes(ev.code)) {
