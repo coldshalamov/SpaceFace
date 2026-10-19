@@ -1157,10 +1157,12 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
       return {
         text: `${entranceLead} The separate Capsule Run remains available: law response, confiscation, heat, or a lost capsule can leave you with no payout.`,
         missionOffer: capsuleRun,
+        frontierRumorOffer: frontierRumorOffer(state, stationId) || null,
       };
     }
     return {
       text: `${entranceLead} No Capsule Run packet is live on the Tethys board.`,
+      frontierRumorOffer: frontierRumorOffer(state, stationId) || null,
     };
   }
 

@@ -185,10 +185,14 @@ test('PQ-048.11 requires a purchased approximate rumor, physical pulse, and inve
   assert.match(reply.text, /Massline the supplied parcel east past the customs cutter into the Quiet receiving barge/);
   const existingOffer = t.state.missions.boards[DISCOVERY.stationId].slots[0];
   assert.equal(reply.missionOffer, existingOffer, 'the Bar presents rather than creates or accepts the mission');
+  assert.deepEqual(reply.frontierRumorOffer ?? null, frontierRumorOffer(t.state, DISCOVERY.stationId) ?? null,
+    'the Quiet desk answer still carries the live rumor card instead of clearing it');
 
   t.state.missions.boards[DISCOVERY.stationId].slots = [];
   const absent = buildReply('barkeep', 'rumors', { state: t.state, bus: t.bus }, DISCOVERY.stationId);
   assert.equal(absent.missionOffer, undefined);
+  assert.deepEqual(absent.frontierRumorOffer ?? null, frontierRumorOffer(t.state, DISCOVERY.stationId) ?? null,
+    'the Quiet desk answer without a capsule offer still carries the live rumor card');
   assert.match(absent.text, /no Capsule Run packet is live/i, 'absence never fabricates downstream access');
   t.state.missions.boards[DISCOVERY.stationId].slots = [existingOffer];
 
