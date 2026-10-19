@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-123",
-      "date": "2026-10-01",
-      "wf": "WF-10",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "compact synergy names the fitted prerequisite pair",
-      "fingerprint": "verb=name,subject=prerequisite,domain=synergies,layer=data",
-      "references": [],
-      "integration": "live",
-      "commit": "c95124416",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-121",
       "date": "2026-10-01",
       "wf": "WF-10",
@@ -1679,6 +1666,19 @@
       "references": [],
       "integration": "live",
       "commit": "1b9cc22ed2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "swarm-star-asks",
+      "date": "2026-10-19",
+      "wf": "WF-14",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "zone-star third ask was unpriced anywhere; names spotless/chain on settle row and door picks",
+      "fingerprint": "verb=see,subject=swarm-star-ask,sector=crucible,domain=racing-swarm",
+      "references": [],
+      "integration": "live",
+      "commit": "2c3b9f33aac",
       "verification": "focused_green"
     }
   ],
