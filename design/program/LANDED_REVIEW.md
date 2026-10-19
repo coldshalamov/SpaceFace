@@ -25,6 +25,7 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-8764f824 | 8764f824186 | SWP-COMM comms lifecycle | OPEN | Verify clearing _contactHailHeaveTo on sector:enter cannot refuse a legitimate continuous hail across the boundary (offer availability-poll at 5Hz is the safety) and that gone-squad resolution cannot fire spuriously while a member is temporarily invisible (membersFor = exists+alive). |
 | R-cc46e17 | cc46e17abcf8e4691a80d69c02aca21d1e45e4af | §1.8 demo sweep: save, input, and trade recovery | Continue rechecks the primary and recovery bytes after async validation before choosing a restore source | CLOSED 2026-10-18 (row deleted by review commit): SMALL-MISS-FIXED — `raw = freshRaw` after generation-bump re-prepare; regression test added |
 
 | R-2583cb15 | 2583cb15f9 | SWP-PERSIST: stale-generation concede + capture-plan order | Verify the three-way rollback classification can never restore over a valid foreign generation, and that concede-on-drift re-reads the live primary before every destructive act. | OPEN |
