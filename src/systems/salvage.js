@@ -298,7 +298,20 @@ export const salvage = {
     const entities = this.state.entities;
     if (point && entities && typeof entities.get === 'function') {
       const entity = entities.get(point.entityId);
-      if (entity && entity.alive !== false) return entity;
+      // Entity ids recycle through freeIds, and point.entityId is not a world-ledger
+      // reference — nothing keeps it honest when the bound body dies through a path that
+      // does not retire the point (combat kill, teardown, lifetime cull). A bare id hit can
+      // therefore name a foreign body one spawn later; trust it only when the occupant's
+      // own data still carries this point's binding (marker-bound player wrecks bind by
+      // markerId instead). Anything else drops the stale binding and falls to the walk,
+      // which can still find the true rematerialized carrier.
+      const boundData = entity && entity.data;
+      const stillBound = !!(entity && entity.alive !== false && boundData
+        && (boundData.salvagePointId === wantedPointId
+          || (point.markerId != null && boundData.markerId === point.markerId))
+        && (!wantedSourceKey || boundData.salvageSourceKey === wantedSourceKey));
+      if (stillBound) return entity;
+      point.entityId = null;
     }
     // Salvage-point fallback: bound the walk to the live index buckets that can
     // carry a salvagePointId — wrecks (husk/debris/cradle), payloads (sort-pocket
@@ -350,28 +363,42 @@ export const salvage = {
     return { ok: true, source: snapshotSourceRecord(record, sourceDescriptor(sourceKey)) };
   },
 
+  // Every live body stamped for this source by this claimant loses its stamp. The ledger row
+  // can be absent (older save subtree, normalized-out record) while a persistent stamped body
+  // survives, and traffic's _clearSalvorClaim delegates source-bound release wholly to this
+  // owner — refusing to sweep when the record is gone or names another claimant leaves
+  // `salvorClaimedBy` welded on the body: custody gates, pallet jacks, sorters and towlines all
+  // keep honoring a claim nothing can ever clear. A stamp that matches claimantId but not the
+  // ledger's claimId is stale by definition — the ledger is the authority — so the sweep runs
+  // on every return path, not only the matched-claim one.
+  _clearSourceClaimStamps(sourceKey, claimantId, salvagePointId = null) {
+    const entities = this.state.entities;
+    if (!sourceKey || !claimantId || !entities || typeof entities.values !== 'function') return 0;
+    let cleared = 0;
+    for (const entity of entities.values()) {
+      const data = entity && entity.data;
+      if (!entity || !data || data.salvageSourceKey !== sourceKey
+        || data.salvorClaimedBy !== claimantId
+        || (salvagePointId != null && data.salvagePointId !== salvagePointId)) continue;
+      delete data.salvorClaimedBy;
+      cleared += 1;
+    }
+    return cleared;
+  },
+
   _releaseSourceClaim(request = {}) {
     const sourceKey = cleanIdentity(request.sourceKey);
     const claimantId = cleanIdentity(request.claimantId);
     const record = this._sourceRecord(sourceKey, false);
+    const pointId = record ? record.salvagePointId : null;
+    const clearedStamps = this._clearSourceClaimStamps(sourceKey, claimantId, pointId);
     if (!record || !claimantId || (record.claimId && record.claimId !== claimantId)) {
-      return { ok: false, source: this._sourceSnapshot(sourceKey) };
+      return { ok: false, clearedStamps, source: this._sourceSnapshot(sourceKey) };
     }
     const hadClaim = record.claimId === claimantId;
     record.claimId = null;
     if (hadClaim && !record.extracted) record.workId = null;
-    const entities = this.state.entities;
-    if (entities && typeof entities.values === 'function') {
-      for (const entity of entities.values()) {
-        const data = entity && entity.data;
-        if (entity && data && data.salvagePointId === record.salvagePointId
-          && data.salvageSourceKey === sourceKey && data.salvorClaimedBy === claimantId) {
-          delete data.salvorClaimedBy;
-          break;
-        }
-      }
-    }
-    return { ok: true, source: snapshotSourceRecord(record, sourceDescriptor(sourceKey)) };
+    return { ok: true, clearedStamps, source: snapshotSourceRecord(record, sourceDescriptor(sourceKey)) };
   },
 
   _takeSource(request = {}) {
