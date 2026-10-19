@@ -350,6 +350,32 @@ export const crafting = {
     return true;
   },
 
+  /** Scrap the committed job at a station and free its one slot. Inputs were consumed at
+   *  commit and are NOT returned — an abandoned run forfeits its materials (see build()'s
+   *  note). A job parked at completion waiting on hold space is abandoned the same way:
+   *  its finished goods are never unloaded. Returns true when a live job was dropped. */
+  cancel(stationId) {
+    const queues = this.state.crafting && this.state.crafting.queues;
+    if (!queues) return false;
+    const sid = stationId || (this.state.ui && this.state.ui.dockedStationId) || '__any__';
+    const job = queues[sid];
+    if (!job || job.done) return false;
+    const bp = BLUEPRINT_BY_ID.get(job.bpId);
+    // Same teardown as update()'s completion path: the slot reads null, the queueChanged
+    // receipt carries active:false so rigs and screens release the line, and the job can
+    // never complete later — nothing half-finished survives a scrap.
+    queues[sid] = null;
+    this.bus.emit('craft:cancelled', { bpId: job.bpId, stationId: sid });
+    this.bus.emit('craft:queueChanged', { stationId: sid, active: false });
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    this.bus.emit('toast', {
+      text: 'Fabrication scrapped: ' + ((bp && bp.name) || 'job') + ' — committed materials are not returned',
+      kind: 'warn',
+      ttl: 4,
+    });
+    return true;
+  },
+
   // Grant the product for an instant build or a completed queued job.
   // Returns false when a commodity product cannot fit — caller must not consume the job.
   _grantProduct(job) {

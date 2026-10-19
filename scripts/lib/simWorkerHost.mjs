@@ -1323,6 +1323,13 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         if (!c || typeof c.build !== 'function') return { ok: false, reason: 'crafting-system-unavailable' };
         return { ok: c.build((args && args.bpId) || null, (args && args.stationId) || null) === true };
       }],
+      // Scrap-run commit — crafting.cancel stays the single writer; the screen awaits the ack
+      // before re-reading the queue, the same envelope shape as craftingBuild.
+      ['craftingCancel', (args) => {
+        const c = registry.get('crafting');
+        if (!c || typeof c.cancel !== 'function') return { ok: false, reason: 'crafting-system-unavailable' };
+        return { ok: c.cancel((args && args.stationId) || null) === true };
+      }],
       // The machinery UI reads detached projections on main; commits remain on the native
       // site owner. Exact allowlisting prevents this RPC from exposing private system methods.
       ['asteroidSitesCall', (args) => {

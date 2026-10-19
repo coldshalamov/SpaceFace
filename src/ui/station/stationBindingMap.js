@@ -52,6 +52,7 @@ export const STATION_CONTROLS = Object.freeze({
   'source-market': { label: 'Source in market' },
   'tech-tree': { label: 'Tech tree' },
   fabricate: { label: 'Fabricate', role: 'primary' },
+  'scrap-run': { label: 'Scrap run' },
   faction: { label: 'Faction' },
   'faction-relation': { label: 'Relation' },
   'relations-toggle': { label: 'Relations' },

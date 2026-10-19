@@ -1163,6 +1163,10 @@ export function createRegistry(ctx) {
           // hold's accept cue + landing await the ack.
           build: (bpId, stationId) => Promise.resolve(laneRpc('craftingBuild', { bpId, stationId }))
             .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true)),
+          // Scrapping a committed run is the same writer hop — the Industry screen awaits the
+          // ack before it re-reads the queue.
+          cancel: (stationId) => Promise.resolve(laneRpc('craftingCancel', { stationId }))
+            .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true)),
         };
       case 'asteroidSites': {
         // Site reads run over the mirrored state.  Runtime-backed reads use an isolated clone;

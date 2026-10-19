@@ -5,8 +5,10 @@ import { industryFrameHtml } from '../../views/stationFrames.js';
 // output's name, the quantity at hero size ("per run"), the time as a hero ("seconds"), the inputs
 // as static rows (have / need at emphasis; a missing input's name in k-bad with a "Source in
 // market" word), the line's state as one sentence, and Fabricate as a word. Reuses the crafting
-// system: ctx.crafting.build(bpId, stationId). `.sx-ind`, `.sx-ind-row[data-bp]`,
-// `.sx-ind-row__name`, `.sx-ind-row__process`, `[data-source-cmdty]`, `[data-build]` are hooks.
+// system: ctx.crafting.build(bpId, stationId); a committed timed run scraps through
+// ctx.crafting.cancel(stationId) — the one-slot line only holds timed work, instant refines run
+// beside it. `.sx-ind`, `.sx-ind-row[data-bp]`, `.sx-ind-row__name`, `.sx-ind-row__process`,
+// `[data-source-cmdty]`, `[data-build]`, `[data-ind-scrap]` are hooks.
 import { BLUEPRINTS } from '../../../data/blueprints.js';
 import { COMMODITIES } from '../../../data/commodities.js';
 import { MODULES } from '../../../data/modules.js';
@@ -256,11 +258,17 @@ export function createIndustryScreen(ctx) {
       notes.push({ ok: true, text: `${niceName(bp.fromModule, 'module')} ready to augment` });
     }
 
+    // The one build line holds TIMED work only — the crafting system's busy gate never stops an
+    // instant run (refines commit without entering the queue), so this screen must not either.
+    // A queued job still blocks a timed rung, and says so; an instant rung stays live beside it.
+    const instantRung = buildDuration(bp) <= 0;
+    const lineHolds = !!queue && !instantRung;
     const statusClass = queue ? 'k-signal' : (r.state === 'ready' ? 'k-good' : (r.state === 'materials' ? 'k-signal' : 'k-bad'));
     const status = queue
       ? `Fabricator occupied — ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}, ${Math.round(progress * 100)}%, ${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))} s remaining.`
+        + (r.state === 'ready' && instantRung ? ' Instant processes are not queued — this one still runs.' : '')
       : (r.state === 'ready' ? 'One build slot, idle.' : `${escapeHtml(r.label)}.`);
-    const canBuild = r.state === 'ready' && !queue;
+    const canBuild = r.state === 'ready' && !lineHolds;
     // the reason lives on the instrument and on the ladder; the sentence stays only for a running line or a note
     const showStatus = !!queue || notes.length > 0;
 
@@ -278,10 +286,12 @@ export function createIndustryScreen(ctx) {
         (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
         (showStatus ? `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` : '') +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
-          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? ` aria-label="Fabricate: hold to run"` : ` disabled aria-disabled="true" aria-label="Fabricate: ${escapeHtml(r.label)}"`}>` +
-            `${queue ? 'Line occupied' : 'Fabricate'}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
+          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? ` aria-label="Fabricate: hold to run"` : ` disabled aria-disabled="true" aria-label="Fabricate: ${escapeHtml(lineHolds && r.state === 'ready' ? 'Line occupied' : r.label)}"`}>` +
+            `${lineHolds && r.state === 'ready' ? 'Line occupied' : 'Fabricate'}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
           `</button>` +
-        `</li></ul>` +
+        `</li>` +
+        (queue ? `<li><button type="button" ${stationControlAttrs('scrap-run')} class="k-word k-word--fine k-bad sx-fab-scrap" data-ind-scrap="1" aria-label="Scrap the running fabrication — its committed materials are not returned">${stationControlLabel('scrap-run')}</button></li>` : '') +
+        `</ul>` +
       `</div>`;
     composeStage(bp, state, r, canBuild, queue, progress);
   }
@@ -504,6 +514,27 @@ export function createIndustryScreen(ctx) {
     select(rows[next].getAttribute('data-bp'), true);
   });
   stageEl.addEventListener('click', (ev) => {
+    const scrap = ev.target.closest('[data-ind-scrap]');
+    if (scrap) {
+      // The scrap verb owns the running job, not the selected rung — it always names the line.
+      const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
+      const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
+      Promise.resolve(attemptIndustryScrap({ crafting, stationId: sid,
+        onError() {
+          if (disposed || !ctx.bus) return;
+          ctx.bus.emit('toast', {
+            text: 'Fabrication could not be confirmed. Check the queue before trying again.',
+            kind: 'warn', ttl: 4,
+          });
+        },
+      })).then((ok) => {
+        if (disposed || !visible) return;
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: ok ? 'ui_accept' : 'ui_back' });
+        // A clean refusal means the run already left the line — either way, repaint what stands.
+        renderAll(ctx.state || {});
+      });
+      return;
+    }
     const chart = ev.target.closest('[data-ind-chart]');
     if (chart) {
       openGalaxyMap(ctx, { focus: (MAP_FOCUS && (MAP_FOCUS.GALAXY || MAP_FOCUS.SYSTEM)) || undefined, source: 'station-industry:wayout' });
@@ -589,6 +620,18 @@ export function attemptIndustryBuild({ crafting, bpId, stationId, onError }) {
   try {
     const out = crafting.build(bpId, stationId);
     // worker lane: the build commits sim-side and the rpc resolves the verdict
+    if (out && typeof out.then === 'function') return Promise.resolve(out).then((done) => done === true, failed);
+    return out === true;
+  } catch (_) { return failed(); }
+}
+
+// The scrap verb's request path: same sync/async duality as attemptIndustryBuild — a worker-lane
+// cancel resolves by ack while the same-thread owner answers directly.
+export function attemptIndustryScrap({ crafting, stationId, onError }) {
+  if (!crafting || typeof crafting.cancel !== 'function') return false;
+  const failed = () => { if (typeof onError === 'function') onError(); return false; };
+  try {
+    const out = crafting.cancel(stationId);
     if (out && typeof out.then === 'function') return Promise.resolve(out).then((done) => done === true, failed);
     return out === true;
   } catch (_) { return failed(); }
