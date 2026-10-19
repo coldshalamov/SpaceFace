@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-122",
-      "date": "2026-10-01",
-      "wf": "WF-10",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "class-band scans no longer leak hidden fittings into the badge",
-      "fingerprint": "verb=gate,subject=scan-basis,domain=buildIdentity,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "c95124416",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-123",
       "date": "2026-10-01",
       "wf": "WF-10",
@@ -1679,6 +1666,19 @@
       "references": [],
       "integration": "live",
       "commit": "03d240d026",
+      "verification": "focused_green"
+    },
+    {
+      "id": "dart-fuse-telegraph",
+      "date": "2026-10-19",
+      "wf": "WF-03",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the weaponless kamikaze dart was invisible to the threat instrument; a lit dart is now marked for the whole armed run",
+      "fingerprint": "verb=warn,subject=detonator_dart,sector=any,domain=combat-readability",
+      "references": [],
+      "integration": "live",
+      "commit": "1b9cc22ed2",
       "verification": "focused_green"
     }
   ],
