@@ -445,9 +445,11 @@ export const flightV3 = {
       orbitAssist = craftOrbitAssistStep(
         state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt, swingCommit,
       );
-      // Direction latch memory lives on the entity and is written only after this steering call,
-      // so the pre-boost probe and this call read the same previous-tick latch (both stay pure).
-      entity._orbitDirectionLatch = orbitAssist.active ? (orbitAssist.telemetry.latchedDirection || 0) : 0;
+      // Engagement memory (chord dwell, grace, tracked direction) lives on the entity and is
+      // written only after this steering call, so both calls read the same previous-tick state.
+      entity._orbitAssistEngage = orbitAssist.telemetry && orbitAssist.telemetry.engage
+        ? orbitAssist.telemetry.engage
+        : null;
       if (orbitAssist.active) {
         input = orbitAssist.input;
         // A nose still swinging onto the tangent must not thrust across (or against) the orbit
@@ -1266,7 +1268,7 @@ function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, teth
       lateralFromAim: !!(rawInput && rawInput.turnIntentFromAim),
     },
     commitDirection,
-    latchedDirection: entity._orbitDirectionLatch || 0,
+    engage: entity._orbitAssistEngage || null,
     input,
     profile,
     strength: state.settings && state.settings.gameplay

@@ -22,7 +22,10 @@ for (const mode of ['latched', 'unlatched', 'phase-change', 'error']) {
     const anchor = { pos: { x: 0, z: 700 }, vel: { x: 0, z: 0 }, alive: true, mass: 16 };
     const steering = () => stepAnchorRelativeOrbitAssist({ host: player, anchor, tether, dt: 1 / 60,
       profile: { maxYawRate: 4 }, strength: 'standard', input: { throttle: 1, turn: 1, boost: true },
-      flightIntent: { forward: 1, lateral: 1 } });
+      flightIntent: { forward: 1, lateral: 1 },
+      // The chord is already dwelt: this asserts ownership of an established hold, not the
+      // 0.4 s arming edge.
+      engage: { chordT: 5, graceT: 0.6, direction: 0 } });
     if (tether.active) {
       const owned = steering();
       assert.equal(owned.active, true, 'the canonical orbit owner receives this held W/turn/boost chord');

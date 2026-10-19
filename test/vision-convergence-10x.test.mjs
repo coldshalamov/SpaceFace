@@ -130,6 +130,8 @@ test('U3: Massline close-orbit assist feeds exact angular-rate yaw (feel recover
     anchor,
     tether: { active: true, targetId: 99 },
     flightIntent: { forward: 1, lateral: 1 },
+    // An established hold: the convergence checks ownership once the chord dwell has run.
+    engage: { chordT: 5, graceT: 0.6, direction: 0 },
     input: {},
     profile: { maxYawRate: 2.5 },
     strength: 'full',
@@ -605,6 +607,8 @@ test('portfolio composition: continuous freeflight situation exercises ≥5 unit
       anchor: { pos: { ...hauler.pos }, vel: { x: 0, z: 0 }, alive: true },
       tether: { active: true, targetId: hauler.id },
       flightIntent: { forward: 1, lateral: 1 },
+      // An established hold: the convergence checks ownership once the chord dwell has run.
+      engage: { chordT: 5, graceT: 0.6, direction: 0 },
       input: {},
       profile: { maxYawRate: 2.5 },
       strength: 'full',

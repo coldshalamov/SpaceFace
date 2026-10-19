@@ -164,11 +164,15 @@ for (const version of versions) for (const attached of [false, true]) {
         assert.deepEqual(domains.get('combat').attachments, h.state.combat.attachments);
 
         // Flight consumes the restored mirror before tetherGameplay can adopt/refresh it.
+        // The orbit chord is a held-keys dwell: a restored session honestly re-arms it, so the
+        // assist engages after ~0.4 s of forward+turn rather than instantly on tick one.
         h.state.input.moveZ = 1; h.state.input.turnIntent = 1;
-        h.sim.registry.get('flight').update(1 / 60, h.state);
+        const flight = h.sim.registry.get('flight');
+        for (let i = 0; i < 36; i++) flight.update(1 / 60, h.state);
         if (attached) {
           assert.equal(player._flightFrame.orbitAssist.active, true, JSON.stringify(player._flightFrame.orbitAssist));
-          assert.ok(Math.abs(player._flightFrame.orbitAssist.radius - 60) < 1e-5);
+          assert.ok(Math.abs(player._flightFrame.orbitAssist.radius - 60) < 5,
+            `engaged on the restored line: radius=${player._flightFrame.orbitAssist.radius}`);
         }
         h.owner.update(1 / 60, h.state);
         if (attached) {

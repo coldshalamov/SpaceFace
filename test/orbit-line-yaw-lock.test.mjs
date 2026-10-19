@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import * as flightV3Module from '../src/systems/flightV3.js';
 import {
-  ORBIT_DIRECTION_LATCH,
+  ORBIT_ASSIST_ENGAGE_V1,
   ORBIT_LINE_YAW_LOCK,
   orbitHeadingThrustGate,
   orbitSwingThrottleScale,
@@ -15,9 +15,13 @@ import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.j
 
 const DT = 1 / 60;
 
+// A chord that has been held well past the engagement dwell, on a hull with no prior grace:
+// fresh engagement then depends only on the live swing test.
+const ENGAGED = { chordT: 5, graceT: 0, direction: 0 };
+
 // Ship at +x of the anchor on a line of `radius`, moving +z (counter-clockwise) at `speed`, nose
 // on the CCW tangent unless `rot` is given.
-function orbitStep({ radius = 36, speed = 200, lateral = 1, fromAim = false, latched = 0, rot = Math.PI / 2,
+function orbitStep({ radius = 36, speed = 200, lateral = 1, fromAim = false, engage = ENGAGED, rot = Math.PI / 2,
   hullYaw = 2.646, hostMass = 20, anchorMass = 2000, phase = 'loaded', restLength = radius } = {}) {
   return stepAnchorRelativeOrbitAssist({
     dt: DT,
@@ -25,7 +29,7 @@ function orbitStep({ radius = 36, speed = 200, lateral = 1, fromAim = false, lat
     anchor: { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, mass: anchorMass, alive: true },
     tether: { active: true, targetId: 'anchor', restLength, phase },
     flightIntent: { forward: 1, lateral, lateralFromAim: fromAim },
-    latchedDirection: latched,
+    engage,
     input: { throttle: 1, strafe: 0, turn: lateral, boost: false, brake: false },
     profile: { maxYawRate: hullYaw },
     strength: 'standard',
@@ -93,25 +97,50 @@ test('the heading thrust gate follows cos(heading error) and never reverses thru
   assert.equal(orbitHeadingThrustGate(null), 1);
 });
 
-test('an aim-derived turn intent keeps the latched orbit direction when it flips sign', () => {
-  const latched = orbitStep({ radius: 120, speed: 150, lateral: -1, fromAim: true, latched: 1 });
-  assert.equal(latched.telemetry.selectedDirection, 1, 'helm cursor swept behind the ship: direction holds');
-  assert.equal(latched.telemetry.latchedDirection, 1);
+test('a live swing always tracks the physical line direction — an aim sign flip cannot redirect it', () => {
+  // +z motion at +x is a +1 (counter-clockwise) swing. A helm-cursor intent reading -1 is the
+  // classic mid-orbit sweep behind the hull; the line, not the cursor, owns the tangent.
+  const aimed = orbitStep({ radius: 120, speed: 150, lateral: -1, fromAim: true });
+  assert.equal(aimed.active, true);
+  assert.equal(aimed.telemetry.direction, 1);
+  assert.equal(aimed.telemetry.selectedDirection, -1, 'the held intent is reported, never obeyed');
+  assert.ok(aimed.telemetry.desiredYawRate > 0);
 });
 
-test('keyboard and stick intent ignore the latch, so a deliberate reversal still works', () => {
-  const reversed = orbitStep({ radius: 120, speed: 150, lateral: -1, fromAim: false, latched: 1 });
-  assert.equal(reversed.telemetry.selectedDirection, -1);
-  assert.equal(reversed.telemetry.latchedDirection, 0);
+test('a held counter-key during a live swing is manual yaw, not a flipped assist', () => {
+  const reversed = orbitStep({ radius: 120, speed: 150, lateral: -1 });
+  assert.equal(reversed.active, false, 'countersteering belongs to the pilot');
+  assert.equal(reversed.telemetry.reason, 'manual-override');
+  assert.equal(reversed.input.turn, -1, 'the raw key reaches the hull untouched');
 });
 
-test('an aim-derived engagement on a line already swinging takes the swing direction', () => {
-  const omega = 150 / 120;
-  assert.ok(omega > ORBIT_DIRECTION_LATCH.engageSwingFraction * 2.646);
-  const engaged = orbitStep({ radius: 120, speed: 150, lateral: -1, fromAim: true, latched: 0 });
-  assert.equal(engaged.telemetry.selectedDirection, 1);
-  const slow = orbitStep({ radius: 120, speed: 20, lateral: -1, fromAim: true, latched: 0 });
-  assert.equal(slow.telemetry.selectedDirection, -1, 'a slow line lets the intent pick');
+test('a swing stall inside the grace window keeps the remembered direction', () => {
+  // Was engaged on a +1 swing; the line has nearly stalled (omega below the continuation floor),
+  // so the remembered direction — not the near-zero instantaneous rate — owns the tangent.
+  const stalled = orbitStep({ radius: 120, speed: 1, engage: { chordT: 5, graceT: 0.5, direction: 1 } });
+  assert.equal(stalled.active, true);
+  assert.equal(stalled.telemetry.direction, 1);
+  assert.ok(stalled.telemetry.engage.graceT < 0.5 && stalled.telemetry.engage.graceT > 0,
+    'a stalled swing drains grace instead of refilling it');
+});
+
+test('a chord held on a non-swinging line is ordinary yaw — towing never reads as an orbit', () => {
+  // Hull moving directly away from the anchor on a taut line: relative motion runs along the
+  // rope, not around it, so the line rotation test never engages no matter how long W+A is held.
+  const tow = stepAnchorRelativeOrbitAssist({
+    dt: DT,
+    host: { pos: { x: 120, z: 0 }, vel: { x: 80, z: 0 }, rot: 0, mass: 20 },
+    anchor: { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, mass: 2000, alive: true },
+    tether: { active: true, targetId: 'anchor', restLength: 120, phase: 'loaded' },
+    flightIntent: { forward: 1, lateral: 1 },
+    engage: { chordT: 60, graceT: 0, direction: 0 },
+    input: { throttle: 1, strafe: 0, turn: 1, boost: false, brake: false },
+    profile: { maxYawRate: 2.646 },
+    strength: 'standard',
+  });
+  assert.equal(tow.active, false);
+  assert.equal(tow.telemetry.reason, 'swing-absent');
+  assert.equal(tow.input.turn, 1, 'manual yaw is never adjusted on a non-orbiting tether');
 });
 
 function harness() {

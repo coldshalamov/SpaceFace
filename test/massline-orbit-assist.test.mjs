@@ -71,37 +71,37 @@ test('the requested turn rate scales with swing speed and inverse line radius', 
   assert.ok(Math.abs(fastShort.telemetry.orbitalYawRate - fastLong.telemetry.orbitalYawRate * 2) < 1e-12);
 });
 
-test('radial-facing entry remains manual, then near-tangent assist holds the orbital rate', () => {
-  // The pilot turns onto the orbit. Assistance trims a nearby tangent rather than owning
-  // a full-heading capture that can override or reverse the held keyboard direction.
+test('a radial-facing nose on a live swing trims onto the tangent the bounded, short way', () => {
+  // The pilot holds the orbit chord and the line is really swinging: heading error is a bounded
+  // correction added to the feed-forward, never a drop back to manual and never a snap capture.
   assert.equal(ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS, 0.55);
   assert.equal(ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction, 0.25);
 
-  const long = orbitStep({
-    radius: 220,
-    tangentialSpeed: 60,
-    hostRot: 0,
-    anchorAhead: true,
+  const arming = orbitStep({
+    radius: 220, tangentialSpeed: 60, hostRot: 0, anchorAhead: true,
+    engage: { chordT: 0, graceT: 0, direction: 0 },
   });
-  const short = orbitStep({
-    radius: 72,
-    tangentialSpeed: 60,
-    hostRot: 0,
-    anchorAhead: true,
-  });
+  assert.equal(arming.active, false);
+  assert.equal(arming.telemetry.reason, 'arming',
+    'a fresh chord arms first: the swing is real, the intent dwell is still counting');
+  assert.equal(arming.input.turn, 1, 'while arming the raw key is untouched');
 
+  const long = orbitStep({ radius: 220, tangentialSpeed: 60, hostRot: 0, anchorAhead: true });
+  const short = orbitStep({ radius: 72, tangentialSpeed: 60, hostRot: 0, anchorAhead: true });
   for (const result of [long, short]) {
-    assert.equal(result.active, false);
-    assert.equal(Math.abs(result.telemetry.desiredYawRate), result.telemetry.maxYawRate,
-      'a radial-facing launch preserves the pilot full-turn command');
-    assert.equal(result.input.turn, 1);
-    assert.equal(result.telemetry.headingDirectionCommitted, false,
-      'the assist never takes over the large heading change');
-    assert.ok(Math.abs(result.telemetry.headingError) <= Math.PI + 1e-12,
-      'a radial-facing launch turns at most 180 degrees, never the long 270-degree way around');
+    assert.equal(result.active, true);
+    assert.equal(Math.abs(result.telemetry.headingError), Math.PI / 2,
+      'a radial-facing nose reads a quarter-turn off the tangent');
+    assert.equal(Math.abs(result.telemetry.alignmentYawRate),
+      result.telemetry.hullMaxYawRate * ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction,
+      'the proportional bridge saturates at the takeover bound, never a snap');
+    assert.equal(Math.sign(result.telemetry.alignmentYawRate),
+      Math.sign(result.telemetry.headingError),
+      'the correction turns the shortest way onto the tangent');
+    assert.equal(result.telemetry.headingDirectionCommitted, false);
   }
   assert.ok(Math.abs(short.telemetry.orbitalYawRate) > Math.abs(long.telemetry.orbitalYawRate),
-    'radial-facing nose correction leaves the stronger 72 WU physical feed-forward intact');
+    'the 72 WU swing keeps the stronger inverse-radius feed-forward');
 
   // On-tangent the bridge contributes nothing and the request is exactly the orbital rate.
   const onTangent = orbitStep({ radius: 120, tangentialSpeed: 30, hostRot: Math.PI / 2 });
@@ -152,7 +152,7 @@ test('R2 signed heading offsets preserve feed-forward; releasing turn carries th
   assert.equal(noTurn.input.throttle, raw.throttle, 'thrust is untouched');
 });
 
-test('R2 heading recovery is symmetric across direction, strength, angle wrap, and capture boundary', () => {
+test('R2 heading recovery is symmetric across direction, strength, angle wrap, and offset', () => {
   const radialByDirection = new Map();
   for (const direction of [-1, 1]) {
     const result = orbitStep({
@@ -161,15 +161,17 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
       hostRot: 0,
       anchorAhead: true,
       lateral: direction,
+      engage: { chordT: 0, graceT: 0, direction: 0 },
     });
     radialByDirection.set(direction, result);
     assert.equal(result.telemetry.selectedDirection, direction);
     assert.equal(Math.sign(result.telemetry.orbitalYawRate), direction);
     assert.equal(result.active, false);
-    assert.equal(result.telemetry.alignmentYawRate, 0, 'radial entry remains manual');
+    assert.equal(result.telemetry.reason, 'arming', 'a fresh chord arms before it steers');
+    assert.equal(result.telemetry.alignmentYawRate, 0, 'an arming chord applies no correction');
     assert.equal(result.telemetry.headingDirectionCommitted, false);
     assert.ok(Math.abs(result.telemetry.headingError) <= Math.PI + 1e-12,
-      'radial capture turns at most 180 degrees, never the long way around');
+      'the reported error is always the wrapped short way');
   }
   assert.equal(
     Math.abs(radialByDirection.get(-1).telemetry.desiredYawRate),
@@ -217,6 +219,7 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
       lateral: direction,
       hostRot: desiredHeading + direction * 0.05,
     });
+    assert.equal(near.active, true);
     assert.equal(near.telemetry.headingDirectionCommitted, false);
     assert.equal(Math.sign(near.telemetry.headingError), -direction,
       `${direction}: a small offset trims toward the tangent`);
@@ -227,7 +230,13 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
       lateral: direction,
       hostRot: desiredHeading + Math.PI - 0.05,
     });
-    assert.equal(opposite.active, false, 'opposite-facing entry remains manual');
+    assert.equal(opposite.active, true,
+      'a near-opposite nose on a real swing keeps tracking instead of dropping to manual');
+    assert.equal(Math.abs(opposite.telemetry.alignmentYawRate),
+      opposite.telemetry.hullMaxYawRate * ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction,
+      `${direction}: the far-off correction is bounded at the takeover fraction`);
+    assert.equal(Math.sign(opposite.telemetry.alignmentYawRate), Math.sign(opposite.telemetry.headingError),
+      `${direction}: the far-off correction follows the wrapped shortest-way error`);
     assert.equal(opposite.telemetry.headingDirectionCommitted, false,
       `${direction}: a near-opposite start still never commits to a full extra revolution`);
     assert.ok(Math.abs(opposite.telemetry.headingError) <= Math.PI + 1e-12);
@@ -520,10 +529,11 @@ test('an unusable orbit geometry leaves the boost press with the normal dash', (
   }
 });
 
-test('a boost press mid-orbit keeps the line attached and preserves bounded assist or manual entry', async () => {
+test('a boost press mid-orbit keeps the line attached and keeps the swing tracked', async () => {
   // Full-production regression: real flightV3 + rapier, 30 WU line, boost pressed mid-orbit and
-  // released later. The line remains physical; a disturbed heading may return to manual entry,
-  // while assistance is limited to the near-tangent correction envelope.
+  // released later. The old ±45° capture cone dropped the whole assist on a boost-thrown nose and
+  // the ship dove inward; the law now tracks the line's measured rate through any heading error,
+  // so engagement must persist across the impulse and heading error must stay bounded by wrap.
   const run = () => masslineLab.runScenario({
     seed: 47,
     ticks: 360,
@@ -546,9 +556,13 @@ test('a boost press mid-orbit keeps the line attached and preserves bounded assi
     'the line must stay attached through the boost press and release');
   assert.ok(post.some((sample) => sample.orbitAssistActive), 'the chord still offers orbit assistance');
   assert.ok(result.trace.every((sample) => sample.orbitAssistActive
-    ? Math.abs(sample.orbitHeadingError) <= ORBIT_ASSIST_TUNING_V1.tangentCaptureAngleRad + 1e-6
-    : sample.orbitAssistReason === 'manual-override'),
-  'large heading disturbances return control to the pilot rather than forcing a full capture');
+    ? Math.abs(sample.orbitHeadingError) <= Math.PI + 1e-6
+    : ['manual-override', 'arming', 'swing-absent', 'line-slack', 'not-orbiting']
+      .includes(sample.orbitAssistReason)),
+  'a boost may disturb the heading but never drops the line tracking into a hard manual capture');
+  const postBoost = result.trace.filter((sample) => sample.tick >= 130);
+  assert.ok(postBoost.filter((sample) => sample.orbitAssistActive).length > postBoost.length * 0.8,
+    'the assist stays engaged through and past the boost, not toggling off on a heading overshoot');
 
   const repeat = await run();
   assert.equal(repeat.traceHash, result.traceHash);
@@ -636,6 +650,8 @@ test('R2 production recovery matrix covers exact R0 radii and radial/signed head
   assert.equal(repeat.digest, matrix.digest);
 });
 
+const ENGAGED = { chordT: 5, graceT: 0, direction: 0 };
+
 function orbitStep(options = {}) {
   const radius = options.radius ?? 120;
   const tangentialSpeed = options.tangentialSpeed ?? 30;
@@ -666,6 +682,7 @@ function orbitStep(options = {}) {
       forward: options.forward ?? 1,
       lateral: options.lateral ?? 1,
     },
+    engage: options.engage || ENGAGED,
     input,
     profile: { mainAccel: 50, maxYawRate: 2, yawAccel: 6 },
     strength: options.strength || 'standard',
@@ -686,6 +703,9 @@ function makeFlightHarness() {
     flags: {},
     data: {},
     physicsBody: { mass: 20, inertiaY: 100, radius: 10 },
+    // A chord already held past the engagement dwell: the harness tests assert the
+    // established-orbit behavior, not the 0.4 s arming edge.
+    _orbitAssistEngage: { chordT: 5, graceT: 0.6, direction: 1 },
   };
   const anchor = {
     id: 'anchor',

@@ -64,7 +64,7 @@
     { "tick": 12, "device": "keyboard", "code": "KeyQ", "pressed": false, "sequence": 0 }
   ],
   "frames": [
-    { "tick": 0, "input": { "moveX": 0, "moveZ": 0, "turnIntent": 1 } }
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": -1 } }
   ],
   "metrics": [
     { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } },

@@ -1065,7 +1065,9 @@ function productionOrbitMetrics(trace, contactDistance) {
 }
 
 function productionOrbitHeadingMetrics(trace, initialHeading) {
-  const first = trace[0] || {};
+  // "Initial" means the first ENGAGED sample: while the orbit chord is still dwelling the
+  // assist honestly reports the raw held-turn command, which is not an assist request.
+  const first = trace.find((sample) => sample && sample.orbitAssistActive) || trace[0] || {};
   const yawWindowIndex = Math.min(29, Math.max(0, trace.length - 1));
   const yawWindow = trace[yawWindowIndex] || first;
   const initialAbsDesiredYawRate = Math.abs(finite(first.orbitDesiredYawRate));
@@ -1110,7 +1112,13 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
       fullRateTakeoverTicks++;
     }
   }
-  const visibleYaw = initialAbsDesiredYawRate > 0.05 && actualYawDelta30Ticks > 0.01;
+  // A legitimate first-engaged request can be ~zero: when the dwell-time overshoot leaves the
+  // nose ahead of the rotating tangent, the proportional bridge correctly waits for it. The
+  // visible-yaw gate therefore asks whether the assist commanded real yaw anywhere in the run,
+  // not only on its engagement tick.
+  const visibleYaw = Number.isFinite(worstDesiredYawRateRatio)
+    && worstDesiredYawRateRatio * Math.max(maxYawRate, 1e-9) > 0.05
+    && actualYawDelta30Ticks > 0.01;
   const noFullRateTakeover = orbitAssistActiveTicks > 0
     && Number.isFinite(worstDesiredYawRateRatio)
     && fullRateTakeoverTicks === 0;

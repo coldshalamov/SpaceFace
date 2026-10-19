@@ -11,7 +11,10 @@ function fixture({ direction = 1, radius = 120, speed = 30, rot = Math.PI / 2,
   const player = { id: 'player', type: 'ship', alive: true,
     pos: { x: radius, z: 0 }, vel: { x: 0, z: speed * direction }, rot, angVel: 0,
     mass: 20, radius: 10, maxSpeed: 180, flags: {}, data: {},
-    physicsBody: { mass: 20, inertiaY: 100, radius: 10 } };
+    physicsBody: { mass: 20, inertiaY: 100, radius: 10 },
+    // An orbit chord already held past the dwell: engagement is established, so each test
+    // steps straight into the behavior it asserts rather than the 0.4 s arming edge.
+    _orbitAssistEngage: { chordT: 5, graceT: 0.6, direction } };
   const anchor = { id: 'anchor', type: 'asteroid', alive: true,
     pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, mass: 2000, radius: 40 };
   const state = { mode: 'flight', tick: 20, simTime: 1, playerId: player.id,
@@ -45,12 +48,17 @@ test('live forward-plus-turn reversal immediately obeys the held key across the 
   }
 });
 
-test('a backwards-facing tether never takes the full heading away from manual yaw', () => {
+test('a backwards-facing tethered swing trims onto the tangent, bounded and the short way', () => {
   for (const direction of [-1, 1]) {
     const run = fixture({ direction, rot: -direction * Math.PI / 2 });
     const result = run.step();
-    assert.equal(result.assist.active, false, 'a 180-degree tangent capture is not a small correction');
-    assert.equal(Math.sign(result.command.control.torque.y), direction);
+    assert.equal(result.assist.active, true,
+      'a real swing keeps tracking at any heading error — no cone can drop it');
+    assert.ok(Math.abs(result.assist.headingError) <= Math.PI + 1e-9,
+      'the wrapped error never opens past a half turn');
+    assert.ok(Math.abs(result.assist.alignmentYawRate)
+      <= result.assist.hullMaxYawRate * ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction + 1e-9,
+      'the far-off correction stays inside the bounded takeover fraction');
   }
 });
 
