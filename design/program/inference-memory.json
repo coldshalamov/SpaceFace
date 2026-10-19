@@ -114,45 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-046",
-      "date": "2026-10-01",
-      "wf": "WF-03",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "no_lock is now a distinct refusal for reactive countermeasures; decoy buoy stays proactive",
-      "fingerprint": "verb=refuse,subject=countermeasure,domain=combat,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "fc36b6fb9",
-      "verification": "focused_green"
-    },
-    {
-      "id": "NXI-047",
-      "date": "2026-10-01",
-      "wf": "WF-03",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "deploy clears only the defeated lineage; other attackers keep lock progress",
-      "fingerprint": "verb=break,subject=lock-lineage,domain=combat,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "fc36b6fb9",
-      "verification": "focused_green"
-    },
-    {
-      "id": "NXI-048",
-      "date": "2026-10-01",
-      "wf": "WF-03",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "occupant generation rides locks and missiles; recycled ids restart/divert",
-      "fingerprint": "verb=pin,subject=target-generation,domain=combat,layer=weapons",
-      "references": [],
-      "integration": "live",
-      "commit": "fc36b6fb9",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-149",
       "date": "2026-10-01",
       "wf": "WF-11",
@@ -1681,6 +1642,45 @@
       "references": [],
       "integration": "live",
       "commit": "f274a75063",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-fire-sale",
+      "date": "2026-10-19",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "No hull ever sold a lot on the lane and no encounter touched the market — a distress sale with a real injected price event",
+      "fingerprint": "verb=authored-encounter,subject=the_fire_sale,sector=sector_tethys_junction+sector_helios_prime,domain=economy",
+      "references": [],
+      "integration": "live",
+      "commit": "831285fc74",
+      "verification": "focused_green"
+    },
+    {
+      "id": "first-plate-bite",
+      "date": "2026-10-19",
+      "wf": "WF-14",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "first hull bite teaches: hull does not heal — a repair berth welds it",
+      "fingerprint": "verb=repair,subject=hull,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "31642beed82",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-wire-remembers",
+      "date": "2026-10-19",
+      "wf": "WF-09",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the fire-sale wire reads its own priorOutcome: hostile registries get no haggle and a bolted lot, squeezes don't haggle twice, clean hands get the desk's better figure",
+      "fingerprint": "verb=remember,subject=lane-wire,sector=tethys_junction,domain=world-memory",
+      "references": [],
+      "integration": "live",
+      "commit": "c5994f4439a",
       "verification": "focused_green"
     }
   ],
