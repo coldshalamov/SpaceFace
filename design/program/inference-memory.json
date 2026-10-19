@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-150",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "failed escort releases surviving convoy wings to lane life",
-      "fingerprint": "verb=release,subject=convoy-wings,domain=missions,layer=world",
-      "references": [],
-      "integration": "live",
-      "commit": "12cbcdf84",
-      "verification": "focused_green"
-    },
-    {
       "id": "NXI-151",
       "date": "2026-10-01",
       "wf": "WF-11",
@@ -1681,6 +1668,19 @@
       "references": [],
       "integration": "live",
       "commit": "75dab5a5896",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-witnessed-price",
+      "date": "2026-10-19",
+      "wf": "WF-08",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "law was a one-way mirror — a witnessed NPC kill now carries a claimable bounty",
+      "fingerprint": "verb=claim_bounty,subject=marked_npc_killer,sector=sector_helios_prime,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "9b0ec3cb6c",
       "verification": "focused_green"
     }
   ],
