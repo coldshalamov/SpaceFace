@@ -317,32 +317,43 @@ function asScreenStack(ctx) {
 
 /**
  * Successful recovery must dismiss Game Over even when another modal (for example, Load save)
- * is stacked above it. Pop ancestors until gameOver leaves the stack; fall back to a single
- * top-only pop when the shared stack is unavailable.
+ * is stacked above it — and when a modal is stacked BENEATH it. Death can land gameOver on top
+ * of an open pause/station/chart stack; respawn returns to flight, so the whole modal stack
+ * must resolve. A survivor below gameOver (pause was the real case) keeps ui:pausing-screen
+ * latched: the sim stays frozen and the flight input fence stays up — a softlock that looked
+ * like a dead recovery button. Prefer the manager's own closeAll (one bookkeeping pass: onHide,
+ * focus restore, syncPause resume edge); fall back to a bounded pop drain for harness managers,
+ * and to a single top-only pop when the shared stack is unavailable.
  */
 function popAncestorsUntilGameOverResolves(ctx, manager) {
   if (!manager) return { popped: 0, dismissed: false };
   const stack = asScreenStack(ctx);
   if (Array.isArray(stack)) {
     if (!stack.includes('gameOver')) return { popped: 0, dismissed: false };
-    let popped = 0;
-    // Bound by the initial length so a broken/no-op manager cannot spin forever.
-    const guard = stack.length;
-    for (let i = 0; i < guard && stack.length; i++) {
-      const top = stack[stack.length - 1];
-      if (typeof manager.popScreen !== 'function') break;
+    const popped = stack.length;
+    if (typeof manager.closeAll === 'function') manager.closeAll();
+    if (!stack.length) return { popped, dismissed: true };
+    if (typeof manager.popScreen !== 'function') {
+      return { popped: 0, dismissed: false };
+    }
+    // Drain whatever closeAll left (absent or inert on harness managers), bounded by the
+    // initial length so a broken/no-op manager cannot spin forever.
+    for (let i = 0; i < popped && stack.length; i++) {
       const beforeLength = stack.length;
       manager.popScreen();
       // Keep lightweight harness managers honest when they do not mutate the shared stack.
       if (stack.length === beforeLength) stack.pop();
-      popped += 1;
-      if (top === 'gameOver') return { popped, dismissed: true };
     }
     return { popped, dismissed: !stack.includes('gameOver') };
   }
 
   const isGameOverTop = typeof manager.top === 'function' && manager.top() === 'gameOver';
-  if (!isGameOverTop || typeof manager.popScreen !== 'function') {
+  if (!isGameOverTop) return { popped: 0, dismissed: false };
+  if (typeof manager.closeAll === 'function') {
+    manager.closeAll();
+    return { popped: 1, dismissed: true };
+  }
+  if (typeof manager.popScreen !== 'function') {
     return { popped: 0, dismissed: false };
   }
   manager.popScreen();

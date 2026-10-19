@@ -1003,8 +1003,9 @@ export const mainMenuScreen = {
       if (previous.timerId != null) clearTimeout(previous.timerId);
       if (previous.removeTimerId != null) clearTimeout(previous.removeTimerId);
       if (typeof previous.offModeChanged === 'function') previous.offModeChanged();
+      if (typeof previous.offSaveError === 'function') previous.offSaveError();
     }
-    const loop = { stale: false, rafId: null, timerId: null, removeTimerId: null, offModeChanged: null };
+    const loop = { stale: false, rafId: null, timerId: null, removeTimerId: null, offModeChanged: null, offSaveError: null };
     fade._sfContinueFadeLoop = loop;
     const lift = () => {
       if (loop.stale) return;
@@ -1012,6 +1013,7 @@ export const mainMenuScreen = {
       if (loop.rafId != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(loop.rafId);
       if (loop.timerId != null) clearTimeout(loop.timerId);
       if (typeof loop.offModeChanged === 'function') loop.offModeChanged();
+      if (typeof loop.offSaveError === 'function') loop.offSaveError();
       fade.classList.remove('open');
       loop.removeTimerId = setTimeout(() => {
         if (fade._sfContinueFadeLoop === loop && fade.parentNode) fade.remove();
@@ -1023,6 +1025,16 @@ export const mainMenuScreen = {
     loop.offModeChanged = ctx && ctx.bus && typeof ctx.bus.on === 'function'
       ? ctx.bus.on('mode:changed', ({ mode } = {}) => {
           if (mode && mode !== 'flight' && mode !== 'loading') lift();
+        })
+      : null;
+    // A load that fails BEFORE any mode edge (corrupt slot, preflight/read rejection —
+    // state.mode never left 'menu', so mode:changed never fires) still publishes
+    // save:error, the same receipt the title's alert line classifies. Lift with the alert
+    // instead of holding opaque black over it for the failsafe window (F-START-02).
+    // Unclassified receipts (write/quota noise during a load that may still land) keep the veil.
+    loop.offSaveError = ctx && ctx.bus && typeof ctx.bus.on === 'function'
+      ? ctx.bus.on('save:error', (payload = {}) => {
+          if (isTitleSaveReadFailure(payload)) lift();
         })
       : null;
     const check = () => {

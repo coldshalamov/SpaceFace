@@ -105,6 +105,8 @@ export function confirm(opts) {
   const token = Symbol('sf-confirm');
   let settled = false;
   root._sfConfirmToken = token;
+  // A dismissed root keeps pointer-events:none until the next dialog reclaims it.
+  root.style.pointerEvents = '';
   // capture the element that had focus before opening so we can restore it on close
   const opener = document.activeElement;
   // Screen-owned modal: leave body class alone. Confirm-owned (including supersession transfer):
@@ -259,6 +261,44 @@ export function confirm(opts) {
 /** Synchronous check whether a confirm dialog is currently open (for input routers). */
 export function isConfirmOpen() {
   return !!_openResolver;
+}
+
+/**
+ * Dismiss a live confirm from outside the dialog — the session the prompt belongs to is
+ * over (death, game over, exit to menu). Resolves the pending promise with `false`
+ * (cancel semantics, so the gated action can never fire into the next run), drops pointer
+ * capture immediately so the surface underneath is clickable while the fade runs, then
+ * takes the normal delayed teardown. Returns true when a dialog was open.
+ */
+export function dismissConfirm() {
+  const close = _openResolver;
+  if (!close) return false;
+  const root = confirmRoot();
+  if (root && root.style) root.style.pointerEvents = 'none';
+  close(false);
+  return true;
+}
+
+/**
+ * Session-lifecycle binding for the shared dialog. `#sf-confirm-root` mounts outside the
+ * screen manager at the top of the UI stack (z 5000, above every screen and alert) with a
+ * document-level focus trap — a pending prompt left over a Game Over or title screen eats
+ * the first click and every focus move underneath it (F-START-04). Any event that ends or
+ * replaces the run must release it. Returns an unsubscribe function.
+ */
+export function bindConfirmBus(bus) {
+  if (!bus || typeof bus.on !== 'function') return () => {};
+  const dismiss = () => dismissConfirm();
+  const offs = [
+    bus.on('player:death', dismiss),
+    bus.on('game:over', dismiss),
+    bus.on('game:exitToMenu', dismiss),
+  ];
+  return () => {
+    for (const off of offs) {
+      try { if (typeof off === 'function') off(); } catch (_) { /* best-effort unbind */ }
+    }
+  };
 }
 
 function confirmRoot() {

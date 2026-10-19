@@ -719,6 +719,118 @@ test('player:respawn dismisses Game Over even when another modal is stacked abov
   }
 });
 
+test('player:respawn also clears modals stacked beneath Game Over (death during pause)', () => {
+  // Regression: gameOver pushed on top of an open pause/station/chart left that modal
+  // mounted after the recovery-berth continue — ui:pausing-screen stayed latched, the
+  // sim stayed frozen, and flight input stayed fenced. Respawn must resolve to flight,
+  // so the whole modal stack leaves, not only gameOver-and-above.
+  const previousDocument = globalThis.document;
+  const document = new FakeDocument();
+  globalThis.document = document;
+  try {
+    const state = makeState();
+    state.ui = { screenStack: ['pause', 'gameOver'] };
+    state.combat = {
+      lastPlayerDefeat: buildDefeatReceipt(state, state.entities.get(1), 9, {
+        origin: { kind: 'weapon', id: 'wpn_autocannon_s' },
+        result: {
+          dominantLayer: 'hull',
+          after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 },
+        },
+      }),
+    };
+    const events = [];
+    const listeners = new Map();
+    const bus = {
+      on(event, fn) {
+        if (!listeners.has(event)) listeners.set(event, []);
+        listeners.get(event).push(fn);
+        return () => {};
+      },
+      emit(event, payload) {
+        events.push({ event, payload });
+        for (const fn of listeners.get(event) || []) fn(payload);
+      },
+    };
+    const stack = state.ui.screenStack;
+    const manager = {
+      top() { return stack.length ? stack[stack.length - 1] : null; },
+      popScreen() { return stack.length ? stack.pop() : null; },
+      pushScreen(id) { stack.push(id); },
+    };
+    const root = document.createElement('div');
+    const ctx = {
+      state, bus, screenManager: manager,
+      telemetry: { getSessionStats() { return { deathLog: [] }; } },
+    };
+
+    gameOverScreen.mount(root, ctx);
+    assert.equal(manager.top(), 'gameOver', 'death modal sits over the interrupted pause');
+    bus.emit('player:respawn', { stationId: 'station_helios' });
+    assert.equal(events.filter((entry) => entry.event === 'game:over:dismissed').length, 1);
+    assert.deepEqual(stack, [], 'no modal survives the recovery respawn — pause cannot hold the sim frozen');
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
+test('player:respawn prefers the manager closeAll pass when one is available', () => {
+  // The real screen manager owns onHide/focus/syncPause bookkeeping; the drain fallback is
+  // for harness managers only. closeAll must run once and empty the stack.
+  const previousDocument = globalThis.document;
+  const document = new FakeDocument();
+  globalThis.document = document;
+  try {
+    const state = makeState();
+    state.ui = { screenStack: ['pause', 'gameOver'] };
+    state.combat = {
+      lastPlayerDefeat: buildDefeatReceipt(state, state.entities.get(1), 9, {
+        origin: { kind: 'weapon', id: 'wpn_autocannon_s' },
+        result: {
+          dominantLayer: 'hull',
+          after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 },
+        },
+      }),
+    };
+    const events = [];
+    const listeners = new Map();
+    const bus = {
+      on(event, fn) {
+        if (!listeners.has(event)) listeners.set(event, []);
+        listeners.get(event).push(fn);
+        return () => {};
+      },
+      emit(event, payload) {
+        events.push({ event, payload });
+        for (const fn of listeners.get(event) || []) fn(payload);
+      },
+    };
+    const stack = state.ui.screenStack;
+    let closeAllCalls = 0;
+    let popCalls = 0;
+    const manager = {
+      top() { return stack.length ? stack[stack.length - 1] : null; },
+      popScreen() { popCalls += 1; return stack.length ? stack.pop() : null; },
+      pushScreen(id) { stack.push(id); },
+      closeAll() { closeAllCalls += 1; stack.length = 0; },
+    };
+    const root = document.createElement('div');
+    const ctx = {
+      state, bus, screenManager: manager,
+      telemetry: { getSessionStats() { return { deathLog: [] }; } },
+    };
+
+    gameOverScreen.mount(root, ctx);
+    bus.emit('player:respawn', { stationId: 'station_helios' });
+    assert.equal(closeAllCalls, 1, 'the manager-owned teardown ran once');
+    assert.equal(popCalls, 0, 'closeAll replaces the manual pop drain');
+    assert.deepEqual(stack, []);
+    assert.equal(events.filter((entry) => entry.event === 'game:over:dismissed').length, 1);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
 test('loading or starting a run clears the death autosave gate', () => {
   const source = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
   assert.match(source, /bus\.on\('save:loaded',\s*clearPlayerDeathGate\)/);

@@ -5,6 +5,7 @@ import {
   clearTitleContinueLoadFailure,
   clearTitleContinueLoadFailureState,
   handleTitleContinueLoadFailure,
+  mainMenuScreen,
   presentTitleContinueLoadFailure,
   reapplyTitleContinueLoadFailure,
 } from '../src/ui/screens/mainMenu.js';
@@ -142,4 +143,155 @@ test('routine title renders retain a classified Continue failure until retry or 
   status.textContent = 'Continue · Quick · saved again';
   assert.equal(reapplyTitleContinueLoadFailure(refs), false);
   assert.equal(status.textContent, 'Continue · Quick · saved again');
+});
+
+// ── The Continue veil must lift with the failure alert (F-START-02) ────────────────
+// _showContinueFade covers the title in opaque black (z 1900) while the load runs. A load
+// rejected before any mode edge (corrupt slot, preflight/read failure — state.mode stays
+// 'menu', so mode:changed never fires) used to hold the veil for the full 4s failsafe,
+// hiding the alert the same save:error produced. The veil now lifts on a classified
+// read/load failure; unclassified save receipts keep it up for a load still in flight.
+
+function installFadeDom() {
+  class FakeClassList {
+    constructor() { this.values = new Set(); }
+    add(...vs) { vs.forEach((v) => this.values.add(v)); }
+    remove(...vs) { vs.forEach((v) => this.values.delete(v)); }
+    contains(v) { return this.values.has(v); }
+  }
+  class FakeElement {
+    constructor(tagName = 'div') {
+      this.tagName = String(tagName).toUpperCase();
+      this.children = [];
+      this.parentNode = null;
+      this.classList = new FakeClassList();
+      this.textContent = '';
+      this.id = '';
+      this.offsetWidth = 0;
+      this._className = '';
+    }
+    get className() { return this._className; }
+    set className(v) {
+      this._className = String(v || '');
+      this.classList.values = new Set(this._className.split(/\s+/).filter(Boolean));
+    }
+    appendChild(child) {
+      child.parentNode = this;
+      this.children.push(child);
+      return child;
+    }
+    remove() {
+      if (this.parentNode) this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1);
+      this.parentNode = null;
+    }
+    querySelector(sel) {
+      const cls = sel.startsWith('.') ? sel.slice(1) : sel;
+      const walk = (node) => {
+        for (const child of node.children) {
+          if (child.classList && child.classList.contains(cls)) return child;
+          const deep = walk(child);
+          if (deep) return deep;
+        }
+        return null;
+      };
+      return walk(this);
+    }
+  }
+  const body = new FakeElement('body');
+  const doc = {
+    body,
+    createElement(tag) { return new FakeElement(tag); },
+    getElementById() { return null; },
+    querySelector(sel) { return body.querySelector(sel); },
+    addEventListener() {},
+    removeEventListener() {},
+    activeElement: null,
+  };
+  return { body, doc };
+}
+
+function makeFadeBus() {
+  const handlers = new Map();
+  return {
+    on(ev, fn) {
+      if (!handlers.has(ev)) handlers.set(ev, []);
+      handlers.get(ev).push(fn);
+      return () => {
+        const list = handlers.get(ev) || [];
+        const i = list.indexOf(fn);
+        if (i >= 0) list.splice(i, 1);
+      };
+    },
+    emit(ev, payload) {
+      for (const fn of (handlers.get(ev) || [])) fn(payload);
+    },
+  };
+}
+
+test('a classified save:error lifts the Continue veil immediately, without a mode edge', () => {
+  const previousDocument = globalThis.document;
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousCancelRaf = globalThis.cancelAnimationFrame;
+  const { doc } = installFadeDom();
+  globalThis.document = doc;
+  // rAF never fires in the fixture: the veil's 200ms timer channel stays the only poller,
+  // so any synchronous lift proves the event path rather than the frame/failsafe path.
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => {};
+  try {
+    const bus = makeFadeBus();
+    const ctx = { state: { mode: 'menu' }, bus };
+    mainMenuScreen._showContinueFade(ctx, 'Ceres Belt');
+    const fade = doc.querySelector('.sf-continue-fade');
+    assert.ok(fade, 'the veil mounted');
+    assert.equal(fade.classList.contains('open'), true, 'the veil is opaque over the title');
+
+    // The load is rejected while mode is still 'menu' — no mode:changed edge exists.
+    bus.emit('save:error', { reason: 'load_failed', slot: 'quick', error: 'damaged save' });
+    assert.equal(fade.classList.contains('open'), false,
+      'a classified load failure lifts the veil with the alert, not after 4s');
+    assert.equal(fade._sfContinueFadeLoop.stale, true, 'the veil loop is retired');
+  } finally {
+    globalThis.document = previousDocument;
+    globalThis.requestAnimationFrame = previousRaf;
+    globalThis.cancelAnimationFrame = previousCancelRaf;
+  }
+});
+
+test('unclassified save receipts keep the Continue veil up while a load may still land', () => {
+  const previousDocument = globalThis.document;
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousCancelRaf = globalThis.cancelAnimationFrame;
+  const { doc } = installFadeDom();
+  globalThis.document = doc;
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => {};
+  try {
+    const bus = makeFadeBus();
+    const ctx = { state: { mode: 'menu' }, bus };
+    mainMenuScreen._showContinueFade(ctx, 'Ceres Belt');
+    const fade = doc.querySelector('.sf-continue-fade');
+    assert.equal(fade.classList.contains('open'), true);
+
+    // Write-path noise and trigger-scoped receipts are not Continue failures.
+    bus.emit('save:error', { reason: 'quota', slot: 'quick' });
+    assert.equal(fade.classList.contains('open'), true, 'quota noise keeps the veil');
+    bus.emit('save:error', { reason: 'read_failed', slot: 'quick', trigger: 'autosave' });
+    assert.equal(fade.classList.contains('open'), true, 'triggered receipts keep the veil');
+    bus.emit('save:error', { reason: 'read_failed', slot: 'import' });
+    assert.equal(fade.classList.contains('open'), true, 'import read errors keep the veil');
+
+    // The real failure still lands the lift — and the mode-edge path still works too.
+    bus.emit('save:error', { reason: 'read_failed', slot: 'quick' });
+    assert.equal(fade.classList.contains('open'), false, 'the classified failure lifts it');
+
+    mainMenuScreen._showContinueFade(ctx, 'Ceres Belt');
+    assert.equal(fade.classList.contains('open'), true, 'a retry re-arms the veil');
+    bus.emit('mode:changed', { mode: 'menu' });
+    assert.equal(fade.classList.contains('open'), false, 'a bounced mode edge still lifts it');
+  } finally {
+    globalThis.document = previousDocument;
+    globalThis.requestAnimationFrame = previousRaf;
+    globalThis.cancelAnimationFrame = previousCancelRaf;
+  }
 });

@@ -15,7 +15,7 @@ import { commitDockedUiState } from './dockStateCommit.js';
 import { createEntityLinks } from './entityLinks.js';
 import { mountWhyReveal } from './whyReveal.js';
 import { createUiInput } from './input.js';
-import { isConfirmOpen } from './confirm.js';
+import { isConfirmOpen, bindConfirmBus } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
 import { injectHudCss } from './views/hudStyles.js';
@@ -657,6 +657,11 @@ export const ui = {
     if (this._kitTemperature && typeof this._kitTemperature.dispose === 'function') { try { this._kitTemperature.dispose(); } catch (_) {} }
     try { this._kitSoundDispose = bindSound(ctx.bus); } catch (e) { console.warn('[ui] kit sound bind failed', e); }
     try { this._kitTemperature = bindTemperature(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] kit temperature bind failed', e); }
+    // The shared confirm modal lives outside the screen stack: a prompt pending across
+    // death / game over / exit-to-menu must be released or its top-layer focus trap blocks
+    // the after-action sheet underneath (F-START-04). Re-init replaces the binding.
+    if (typeof this._confirmBusOff === 'function') { try { this._confirmBusOff(); } catch (_) {} }
+    this._confirmBusOff = bindConfirmBus(this.bus);
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
@@ -1976,6 +1981,8 @@ export const ui = {
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
+    if (typeof this._confirmBusOff === 'function') { try { this._confirmBusOff(); } catch (_) {} }
+    this._confirmBusOff = null;
     this._cinematicInputFence = null;
     this._cinematicActive = false;
     this._pendingMainMenu = false;

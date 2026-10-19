@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { createGameState } from '../src/core/gameState.js';
 import { createToasts } from '../src/ui/toasts.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
-import { confirm, isConfirmOpen } from '../src/ui/confirm.js';
+import { confirm, isConfirmOpen, bindConfirmBus, dismissConfirm } from '../src/ui/confirm.js';
 
 const TOASTS_SRC = readFileSync(fileURLToPath(new URL('../src/ui/toasts.js', import.meta.url)), 'utf8');
 const CONFIRM_SRC = readFileSync(fileURLToPath(new URL('../src/ui/confirm.js', import.meta.url)), 'utf8');
@@ -403,6 +403,12 @@ function makeBus() {
     on(ev, fn) {
       if (!handlers.has(ev)) handlers.set(ev, []);
       handlers.get(ev).push(fn);
+      // The production event bus returns an unsubscribe; lifecycle bindings rely on it.
+      return () => {
+        const list = handlers.get(ev) || [];
+        const i = list.indexOf(fn);
+        if (i >= 0) list.splice(i, 1);
+      };
     },
     emit(ev, payload) {
       for (const fn of (handlers.get(ev) || [])) fn(payload);
@@ -1352,6 +1358,96 @@ function mountActiveScreenButton(id = 'confirm-screen-fallback') {
   mgr.popScreen();
   assert.equal(document.activeElement, hudBtn, 'pop to empty stack restores outside opener');
   assert.equal(mgr.top(), null);
+}
+
+// ── 5. Run-ending events release a pending confirm (F-START-04) ─────────────
+// #sf-confirm-root mounts outside the screen stack at the top of the UI (z 5000, above
+// every screen) with a document-level focus trap. A prompt left pending across death /
+// game over / exit-to-menu covered the after-action sheet and ate its focus — the bound
+// bus must release the modal with cancel semantics.
+
+{
+  installDom();
+  const bus = makeBus();
+  const unbind = bindConfirmBus(bus);
+
+  const opener = document.createElement('button');
+  opener.id = 'death-opener';
+  document.body.appendChild(opener);
+  opener.focus();
+
+  let result = 'pending';
+  const pending = confirm({ title: 'Quit to menu?', danger: true });
+  pending.then((v) => { result = v; });
+  assert.equal(isConfirmOpen(), true, 'confirm open before the run ends');
+  const root = document.getElementById('sf-confirm-root');
+  assert.ok(root.querySelector('.sf-confirm'), 'dialog mounted under the veil root');
+
+  bus.emit('player:death', {});
+  assert.equal(root.style.pointerEvents, 'none',
+    'dismissal drops top-layer pointer capture immediately, before the fade ends');
+  await pending; // resolves inside the normal delayed teardown
+  assert.equal(result, false, 'a pending prompt resolves as cancel on player:death');
+  assert.equal(isConfirmOpen(), false, 'no live confirm after death dismissal');
+  assert.equal(root.children.length, 0, 'confirm root emptied — cannot cover Game Over');
+  assert.equal(
+    document.body.classList.contains('ui-modal-open'),
+    false,
+    'confirm-owned input fence released with the run',
+  );
+  unbind();
+}
+
+{
+  // game:over (ironman path) and game:exitToMenu release the modal the same way, and the
+  // returned unbind really detaches (ui re-init must not stack duplicate dismissals).
+  installDom();
+  const bus = makeBus();
+  const unbind = bindConfirmBus(bus);
+
+  let overResult = 'pending';
+  const pOver = confirm({ title: 'Load this save?', danger: true });
+  pOver.then((v) => { overResult = v; });
+  bus.emit('game:over', {});
+  await pOver;
+  assert.equal(overResult, false, 'game:over dismisses a pending prompt');
+
+  let exitResult = 'pending';
+  const pExit = confirm({ title: 'Load this save?', danger: true });
+  pExit.then((v) => { exitResult = v; });
+  bus.emit('game:exitToMenu', {});
+  await pExit;
+  assert.equal(exitResult, false, 'exit-to-menu dismisses a pending prompt');
+
+  unbind();
+  let afterResult = 'pending';
+  const pAfter = confirm({ title: 'Load this save?' });
+  pAfter.then((v) => { afterResult = v; });
+  bus.emit('player:death', {});
+  await sleep(30);
+  assert.equal(isConfirmOpen(), true, 'after unbind the prompt survives lifecycle events');
+  assert.equal(afterResult, 'pending');
+  const cancel = document.getElementById('sf-confirm-root').querySelector('.sf-confirm__cancel');
+  cancel.click();
+  await pAfter;
+  assert.equal(afterResult, false, 'cancel still resolves the surviving prompt');
+}
+
+{
+  // A fresh dialog after a dismissal must reclaim pointer capture — the dismissed root's
+  // pointer-events:none cannot leak into the next prompt.
+  installDom();
+  assert.equal(dismissConfirm(), false, 'dismiss with no dialog is a no-op');
+  const p = confirm({ title: 'First?' });
+  dismissConfirm();
+  await p;
+  const root = document.getElementById('sf-confirm-root');
+  const second = confirm({ title: 'Second?' });
+  assert.notEqual(root.style.pointerEvents, 'none',
+    'a new dialog restores pointer capture on the shared root');
+  const cancel = root.querySelector('.sf-confirm__cancel');
+  cancel.click();
+  await second;
 }
 
 console.log('toast-modal-focus-fast-follow: toast steal/strand + confirm cancel/repair/ownership + screen restore OK');
