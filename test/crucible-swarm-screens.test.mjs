@@ -27,7 +27,7 @@ import {
   saveCrucibleMeta,
 } from '../src/systems/survivalRecords.js';
 import { survivalHud } from '../src/ui/survivalHud.js';
-import { resultCelebration, seatDialAboveFoot, DIAL_FOOT_GAP_PX, DIAL_FOOT_MIN_INSET_PX } from '../src/ui/screens/crucible.js';
+import { resultCelebration, seatDialAboveFoot, swarmStarAsks, DIAL_FOOT_GAP_PX, DIAL_FOOT_MIN_INSET_PX } from '../src/ui/screens/crucible.js';
 
 const SWARM = 'swarm';
 const ARENA = 'helios_core';
@@ -410,6 +410,70 @@ test('SWARM-05: a non-swarm result earns no band at all', () => {
     const band = resultCelebration({ ruleset: SWARM, arenaId: 'helios_core', wave: 3 });
     assert.ok(band);
     assert.match(textLines(band).join(' '), /opens at 2 stars/);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
+/* ---- the stars name their price -------------------------------------------- */
+
+test('the zone star asks are read off the banked marks', () => {
+  // The common case: a clean clear banks clear+spotless, so the open ask is the chain.
+  assert.deepEqual(swarmStarAsks({ stars: 2, bestChain: 0, zoneIndex: 0 }), ['a chain of 12']);
+  assert.deepEqual(swarmStarAsks({ stars: 2, bestChain: 0, zoneIndex: 1 }), ['a chain of 18']);
+  // A banked chain star with the clean star open reads the other way.
+  assert.deepEqual(swarmStarAsks({ stars: 2, bestChain: 40, zoneIndex: 0 }), ['a spotless zone']);
+  // One banked star means both asks are open.
+  assert.deepEqual(swarmStarAsks({ stars: 1, bestChain: 0, zoneIndex: 1 }),
+    ['a spotless zone', 'a chain of 18']);
+  // The settle row's all-time chainHit is honored the same as a banked bestChain.
+  assert.deepEqual(swarmStarAsks({ stars: 2, chainHit: true, zoneIndex: 0 }), ['a spotless zone']);
+  // An explicit chainTarget (the settle row's own figure) beats the zone table.
+  assert.deepEqual(swarmStarAsks({ stars: 2, chainTarget: 30, bestChain: 0, zoneIndex: 0 }),
+    ['a chain of 30']);
+  // Three banked stars — or a zone never entered — have no open ask to name.
+  assert.deepEqual(swarmStarAsks({ stars: 3, bestChain: 0, zoneIndex: 0 }), []);
+  assert.deepEqual(swarmStarAsks({ stars: 0, bestChain: 0, zoneIndex: 0 }), []);
+  assert.deepEqual(swarmStarAsks({}), []);
+});
+
+test('the take names what the missing zone stars want', () => {
+  resetCrucibleMetaForTests();
+  const previousDocument = globalThis.document;
+  const doc = fakeDom();
+  globalThis.document = doc;
+  try {
+    const result = {
+      ruleset: SWARM,
+      arenaId: 'helios_core',
+      outcome: 'extracted',
+      wave: 20,
+      ladderDelta: {
+        zones: {
+          0: { stars: 2, gained: 2, flawless: true, chainHit: false, chainTarget: 12 },
+          1: { stars: 3, gained: 3, flawless: true, chainHit: true, chainTarget: 18 },
+        },
+        newStars: 5,
+      },
+    };
+    const lines = textLines(resultCelebration(result)).join(' | ');
+    assert.match(lines, /The Pack — ★★☆ · 2 new · still to earn: a chain of 12/,
+      'the two-star zone finally says the third star wants a chain');
+    assert.match(lines, /The Wing — ★★★ · 3 new/, 'the full house reads clean');
+    assert.doesNotMatch(lines, /The Wing — ★★★ · 3 new · still to earn/,
+      'a zone with nothing open names no ask');
+    // A spotless-miss and a clear-only zone name their own asks too.
+    const harder = resultCelebration({
+      ruleset: SWARM, arenaId: 'helios_core', outcome: 'defeat', wave: 15,
+      ladderDelta: {
+        zones: {
+          0: { stars: 1, gained: 1, flawless: false, chainHit: false, chainTarget: 12 },
+        },
+        newStars: 1,
+      },
+    });
+    const lines2 = textLines(harder).join(' | ');
+    assert.match(lines2, /The Pack — ★☆☆ · 1 new · still to earn: a spotless zone and a chain of 12/);
   } finally {
     globalThis.document = previousDocument;
   }

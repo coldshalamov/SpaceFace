@@ -42,6 +42,7 @@ import {
   swarmCheckpointPurseFor,
   swarmCheckpointStartWave,
   swarmLadderStarTotal,
+  swarmZoneChainTarget,
   swarmZoneFor,
   swarmZoneIndexFor,
 } from '../../data/swarmLadder.js';
@@ -1803,11 +1804,20 @@ export const crucibleScreen = {
         const label = z === 0 ? `Round 1 — ${zone.name}` : `${zone.name} — Round ${wave}`;
         const button = word(label, 'k-word--fine sf-crd-zone-pick');
         const mark = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
+        // The banked marks finally name their price: a zone at one or two stars says what the
+        // open asks still want — the chain target the marks never mentioned before.
+        const open = swarmStarAsks({
+          stars,
+          bestChain: zRec && Number.isInteger(zRec.bestChain) ? zRec.bestChain : 0,
+          zoneIndex: z,
+        });
+        const askText = open.length ? ` · still to earn: ${open.join(' and ')}` : '';
         button.title = z === 0
-          ? 'From the top — the whole ladder ahead.'
-          : `Checkpoint start — the armory holds a working purse. ${mark} banked`;
+          ? `From the top — the whole ladder ahead.${open.length ? ` ${mark} banked${askText}.` : ''}`
+          : `Checkpoint start — the armory holds a working purse. ${mark} banked${askText}`;
         button.setAttribute('aria-label',
-          `Zone ${zone.number}, ${zone.name}, from round ${wave}. ${stars} of 3 stars banked.`);
+          `Zone ${zone.number}, ${zone.name}, from round ${wave}. ${stars} of 3 stars banked.`
+          + `${open.length ? ` Still to earn: ${open.join(' and ')}.` : ''}`);
         button.addEventListener('click', () => {
           startWave = wave;
           cue('confirm');
@@ -1817,10 +1827,21 @@ export const crucibleScreen = {
         addWord(els.zoneWords, button);
       }
       const picked = swarmZoneFor(startWave);
-      els.zoneSentence.textContent = startWave > 1
+      // The picked zone's own open asks ride the sentence — the read line, not just the hover.
+      const pickedRec = zones[String(swarmZoneIndexFor(startWave))];
+      const pickedOpen = swarmStarAsks({
+        stars: pickedRec && Number.isInteger(pickedRec.stars) ? pickedRec.stars : 0,
+        bestChain: pickedRec && Number.isInteger(pickedRec.bestChain) ? pickedRec.bestChain : 0,
+        zoneIndex: swarmZoneIndexFor(startWave),
+      });
+      const pickedAsk = pickedOpen.length
+        ? ` The next star${pickedOpen.length > 1 ? 's' : ''} want${pickedOpen.length > 1 ? '' : 's'} ${pickedOpen.join(' and ')}.`
+        : '';
+      els.zoneSentence.textContent = (startWave > 1
         ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
           + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} cr for a mid-build.`
-        : `${picked.name} — from Round 1. Clear each zone's boss for stars and the next checkpoint.`;
+        : `${picked.name} — from Round 1. Clear each zone's boss for stars and the next checkpoint.`)
+        + pickedAsk;
       // The verb says where Play goes (§7.2): only on the ladder's own door — weekly, daily
       // and the other modes keep their own words.
       if (enterButton && ruleset === SWARM_RULESET && !daily && !weekly) {
@@ -3684,12 +3705,43 @@ export function seatDialAboveFoot(dialHost, foot, view = globalThis) {
 }
 
 /**
+ * The star asks a zone still has open, as short phrases — 'a spotless zone', 'a chain of 18'.
+ *
+ * A cleared zone pays one star for the clear, one for never going down inside it, and one for
+ * the zone's chain target. Until this existed the marks were shown and never priced: every
+ * clean clear banks ★★☆, and neither the results band nor the door's zone row could say what
+ * the third star wanted. Both surfaces now read the same list — the door's zone rec carries
+ * only {stars, bestChain}, and the settle row's chainHit is already the all-time best chain
+ * (prev.bestChain is maxed in by applySwarmLadderResult), so the clean star reads off the
+ * banked count either way: clear + chain is 2, clear + spotless is 2, all three is 3.
+ *
+ * Open asks are only named for a zone that has banked at least the clear (stars 1–2): an
+ * untouched zone already reads as the whole ladder ahead. Pure — same counts, same asks.
+ */
+export function swarmStarAsks({ stars = 0, bestChain = 0, zoneIndex = 0, chainHit = null, chainTarget = null } = {}) {
+  const total = Number.isInteger(stars) ? Math.max(0, Math.min(3, stars)) : 0;
+  if (total < 1 || total >= 3) return [];
+  const target = Number.isFinite(Number(chainTarget)) && Number(chainTarget) > 0
+    ? Math.round(Number(chainTarget))
+    : swarmZoneChainTarget(zoneIndex);
+  const chainBanked = chainHit === true
+    || (Number.isFinite(bestChain) ? bestChain : 0) >= target;
+  // A banked clean star is the middle mark: with the chain paid the count must read 3, without
+  // it 2 — anything less and the spotless star is the open one.
+  const cleanBanked = total >= (chainBanked ? 3 : 2);
+  const asks = [];
+  if (!cleanBanked) asks.push('a spotless zone');
+  if (!chainBanked && target > 0) asks.push(`a chain of ${target}`);
+  return asks;
+}
+
+/**
  * SWARM-05 §7.4 — the celebration band. Built once per plate from the settled result: the
- * stars each touched zone now carries (new marks named), the checkpoint the run banked, the
- * bounty into the hangar chest, every unlock the settlement earned, the NEW BEST stamp, and
- * the next arena's star gate as the goal ahead. Positive copy only — a quiet run still says
- * what the chest holds rather than what it missed. Null when the run settled nothing worth
- * a band; the plate then reads exactly as before.
+ * stars each touched zone now carries (new marks named, the asks still open named too), the
+ * checkpoint the run banked, the bounty into the hangar chest, every unlock the settlement
+ * earned, the NEW BEST stamp, and the next arena's star gate as the goal ahead. Positive copy
+ * only — a quiet run still says what the chest holds rather than what it missed. Null when the
+ * run settled nothing worth a band; the plate then reads exactly as before.
  */
 export function resultCelebration(result) {
   if (!result || result.ruleset !== SWARM_RULESET) return null;
@@ -3700,9 +3752,15 @@ export function resultCelebration(result) {
     const row = zones[key];
     const total = Math.max(0, Math.min(3, Number.isInteger(row && row.stars) ? row.stars : 0));
     const gained = Math.max(0, Number.isInteger(row && row.gained) ? row.gained : 0);
-    const zone = swarmZoneFor(swarmCheckpointStartWave(Number(key) || 0));
+    const zoneIndex = Number(key) || 0;
+    const zone = swarmZoneFor(swarmCheckpointStartWave(zoneIndex));
     const marks = '★'.repeat(total) + '☆'.repeat(3 - total);
-    lines.push(`${zone.name} — ${marks}${gained > 0 ? ` · ${gained} new` : ''}`);
+    // The asks still open ride the marks: the settle row's chainHit is already the all-time
+    // best chain, so a ★★☆ line can finally say the third star wants a chain of N.
+    const open = swarmStarAsks({ stars: total, zoneIndex,
+      chainHit: row && row.chainHit === true ? true : null, chainTarget: row && row.chainTarget });
+    lines.push(`${zone.name} — ${marks}${gained > 0 ? ` · ${gained} new` : ''}`
+      + `${open.length ? ` · still to earn: ${open.join(' and ')}` : ''}`);
   }
   if (delta && delta.newCheckpoint) {
     const cp = delta.newCheckpoint;
