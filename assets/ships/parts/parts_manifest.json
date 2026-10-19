@@ -3413,8 +3413,8 @@
       "budgetClass": "landmark",
       "textureSize": 512,
       "mount": "origin",
-      "tris": 253652,
-      "bytes": 18890564,
+      "tris": 258746,
+      "bytes": 19620348,
       "hooks": [],
       "sockets": [
         "SOCKET_Flythrough_Entry",
@@ -3430,12 +3430,12 @@
         "max": [
           320.6463601187267,
           148.27045586763836,
-          113.21207955796656
+          113.22222498205917
         ],
         "dimensionsM": [
           609.2739551125135,
           220.7242071575202,
-          252.41353809709318
+          252.4236835211858
         ]
       },
       "note": "PQ-018 Wreck Cathedral hero landmark; re-authored construction language (source sha256 7c2f3fcd… superseding REVISE baseline f335935f…). Explicit LOD0/1/2 roots at 166944/68684/18024 tris and 8 draw groups each; 8 semantic materials, 26 authored 512/256px PBR maps. Outer cladding plates + casemate section lips + rooted rupture members; materials separate armor/frame/alloy/propulsion/service/emissive. Semantic markers SOCKET_Flythrough_Entry/Exit, SOCKET_TheMarker, ZONE_*, SALVAGE_*, INTERACTION_HangarCavity preserved through release. Declares a 72m x 58m clear +X/-X fly-through envelope. Whole-asset G1/G2/G4 KEEP remains for cathedral-reauthor-h1/review."

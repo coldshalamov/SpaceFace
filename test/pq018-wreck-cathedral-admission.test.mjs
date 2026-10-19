@@ -30,8 +30,11 @@ const RELEASE_PATH = `assets/ships/release/parts/${PART_FILE}`;
 // source without re-freezing this pin. The release was restored to its 6de8743a… bytes (exact
 // triangle parity with this source) after the graphics-bar repair pass dropped 65,821 of its
 // triangles — only 24,444 of them provably degenerate.
-const SOURCE_SHA256 = 'da8f79004a261bcf9907b46d025528b031a1612ea1d945d2e9c501e14146f23c';
-const SOURCE_BYTES = 18890564;
+// Re-frozen 2026-10-19 (D226): the LOD1 re-author restores 69 disconnected shells that the
+// original decimation dropped outright — in-place collapse-decimated copies, no channel or
+// envelope growth (bounds unchanged to centimeter float drift). Source gains 5,094 triangles.
+const SOURCE_SHA256 = '7a7e4b02b7ed37814a402b6e7b33f900533bb10f10c074bd9f9a08574d53d05f';
+const SOURCE_BYTES = 19620348;
 
 // Every marker the later PQ-018 phases bind against. Release optimization must not rename, merge,
 // or drop any of them, and their local transforms must survive byte-for-byte.

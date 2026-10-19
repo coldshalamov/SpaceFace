@@ -16,20 +16,20 @@ const JSON_CHUNK = 0x4e4f534a;
 const SITE_ID = 'world_site_helios_relay';
 const CATHEDRAL_PART_ID = 'place_landmark_wreck_cathedral';
 const CATHEDRAL_ASSET_ID = 'SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL';
-// Refreshed 2026-08-18 to the rebuilt Cathedral. The prior pair (source f335935f/11155156,
-// release dc5510f8/6160084) described a body that no longer exists on disk, so this test was the
-// last stale authority of four: release_manifest.json, src/data/worldSiteAssetBindings.js and the
-// PQ-018 admission test all pin the values below. Recomputed from the bytes, not copied.
+// Refreshed 2026-10-19 for the D226 LOD1 shell re-author (source 7a7e4b02…, release 163ae512…).
+// The prior pair (source da8f7900/18890564, release 6de8743a/7563264) described the pre-repair
+// body. release_manifest.json, src/data/worldSiteAssetBindings.js and the PQ-018 admission test
+// all pin the values below. Recomputed from the bytes, not copied.
 const CATHEDRAL_CONTRACT = Object.freeze({
   source: Object.freeze({
     path: 'assets/ships/parts/places/place_landmark_wreck_cathedral.glb',
-    sha256: 'da8f79004a261bcf9907b46d025528b031a1612ea1d945d2e9c501e14146f23c',
-    bytes: 18890564,
+    sha256: '7a7e4b02b7ed37814a402b6e7b33f900533bb10f10c074bd9f9a08574d53d05f',
+    bytes: 19620348,
   }),
   release: Object.freeze({
     path: 'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
-    sha256: '6de8743a60209ce6ce62c12d93832956e85351b1e2fb2025aa474bff7b9e6313',
-    bytes: 7563264,
+    sha256: '163ae51227a49827511a157ef8b1bffc1867a6f3c6c17da4fba4cbfff9af2f93',
+    bytes: 5352488,
   }),
 });
 const CATHEDRAL_SEMANTIC_NODES = Object.freeze({
