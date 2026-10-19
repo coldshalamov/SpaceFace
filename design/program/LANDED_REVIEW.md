@@ -26,4 +26,5 @@ The oldest OPEN row is the next second look.
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
 | R-cc46e17 | cc46e17abcf8e4691a80d69c02aca21d1e45e4af | §1.8 demo sweep: save, input, and trade recovery | Continue rechecks the primary and recovery bytes after async validation before choosing a restore source | CLOSED 2026-10-18 (row deleted by review commit): SMALL-MISS-FIXED — `raw = freshRaw` after generation-bump re-prepare; regression test added |
+| R-8521e56 | 8521e565bd9 | Asteroid load timing wave 3: pending-bucket leaf fallback + glass-cadence swept discovery | Re-check that drawPendingBucketLeaves is only reached while bucket.mesh is pipelinesPending with no retiring bridge (a settled or bridged bucket must submit normally — no leaf can stay visible-borrowed past the latch), and that the idle-path discovery call mints a fresh makeHoldExemptScanContext per frame rather than serving stale camera terms | OPEN |
 
