@@ -8,12 +8,18 @@
 //            discharge + the alarm — not the pop recipe that embeds the same crack layer.
 //   F-AV-04  a releaseRated with deliberate:false is a break's grade receipt — it must not
 //            play the successful-release whoosh (instrument) or the messy snap (minimal cue).
+//   F-AV-05  an out-of-update authority break (physics cut, entity_destroyed): the receipted
+//            snap speaks on tether:broken and the deferred tether:broke echo dedups — never
+//            crack then snap (D235, real tetherGameplay + audio on one bus in init order).
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { createAttachmentService } from '../src/combat/attachments.js';
+import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { createBus } from '../src/core/eventBus.js';
 import { audio } from '../src/audio/audioSystem.js';
+import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 
 function host(tick = 100) {
   const plays = [];
@@ -105,4 +111,121 @@ test('F-AV-04: only a deliberate releaseRated sings the release whoosh', () => {
   assert.ok(plays.includes('sfx_massline_release'), 'a deliberate clean release whooshes');
   bus.emit('tether:releaseRated', { targetId: 'rock', classification: 'messy', deliberate: true });
   assert.ok(plays.includes('sfx.tetherSnap'), 'a deliberate messy release keeps the owned snap');
+});
+
+// A real tetherGameplay + audioSystem on one bus, initialized in production order
+// (gameplay ~40 before audio ~68) so the bus re-creates the dispatch order that used to
+// double-voice an out-of-update authority break: tetherGameplay's tether:broken listener
+// ran first, and its tether:broke echo reached the crack verb before the snap's stamp.
+function productionLineHost(tick = 200) {
+  const p = {
+    id: 'p1', type: 'ship', team: 0, alive: true,
+    pos: { x: 0, z: 0 }, vel: { x: 12, z: -4 }, rot: 0,
+    radius: 8, mass: 16, maxSpeed: 218, flags: {},
+  };
+  const rock = {
+    id: 'rock', type: 'asteroid', team: null, alive: true,
+    pos: { x: 180, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+    radius: 14, mass: 640, collides: true,
+    data: { typeId: 'ast_common_rock' },
+  };
+  const entityList = [p, rock];
+  const state = {
+    mode: 'flight',
+    simTime: tick / 60,
+    tick,
+    playerId: p.id,
+    player: {
+      heat: 0,
+      targetId: null,
+      tether: {
+        active: false, targetId: null, strain: 0, load: 0,
+        attachmentId: null, restLength: 0, phase: 'slack',
+      },
+    },
+    entities: new Map(entityList.map((e) => [e.id, e])),
+    entityList,
+    spatialHash: {
+      diagnostics: { activeBuckets: 1 },
+      queryRadius(x, z, radius, out) {
+        for (const e of entityList) {
+          if (!e || !e.pos || e.alive === false) continue;
+          const d = Math.hypot(e.pos.x - x, e.pos.z - z);
+          if (d <= radius + (e.radius || 0)) out.push(e);
+        }
+      },
+    },
+    input: {
+      aimWorld: { x: rock.pos.x, z: rock.pos.z },
+      aimAngle: 0,
+      tetherMode: null,
+      actions: { tetherFire: false, tetherCut: false, reelDelta: 0 },
+    },
+    combat: null,
+  };
+  ensureCombatState(state);
+
+  const bus = createBus();
+  const plays = [];
+  const broke = [];
+  bus.on('tether:broke', (payload) => broke.push(payload));
+
+  const catalog = createCombatCatalog();
+  const helpers = {
+    combatPhysics: {
+      createAttachment(input) {
+        return { id: input.attachmentId, attachmentId: input.attachmentId,
+          ownerId: input.ownerId, targetId: input.targetId };
+      },
+      cutAttachment() { return true; },
+      setAttachmentReel() { return true; },
+      getAttachmentTelemetry() { return null; },
+    },
+  };
+  const attachments = createAttachmentService({ state, catalog, helpers, bus });
+  const kernel = { attachments, catalog: { attachments: catalog.attachments } };
+  const registry = {
+    get: (name) => (name === 'actions' || name === 'combat' ? { kernel } : null),
+  };
+
+  const system = Object.assign({}, tetherGameplay);
+  system.init({ state, bus, helpers, registry });
+  const h = Object.create(audio);
+  h.init({ state, bus, helpers: {} });
+  h.play = (recipeId) => { plays.push(recipeId); return { id: recipeId }; };
+  return { system, h, bus, state, plays, broke, attachments, p, rock };
+}
+
+test('F-AV-05: an out-of-update authority break plays one snap — the deferred echo dedups', () => {
+  const { system, h, state, plays, broke, attachments, p, rock } = productionLineHost();
+  // Latch the player's line on the rock: press, then one more tick to paint the mirror.
+  state.input.actions.tetherFire = true;
+  system.update(1 / 60, state);
+  state.input.actions.tetherFire = false;
+  system.update(1 / 60, state);
+  assert.equal(state.player.tether.active, true, 'the line must be live before it can break');
+  plays.length = 0;
+
+  // The authority breaks the line outside the tether update (target destroyed, physics
+  // cut — every producer that emits tether:broken outside update() takes this path).
+  const attachmentId = state.player.tether.attachmentId
+    || attachments.listForEntity(p.id, true)[0]?.id;
+  attachments.breakAttachment(attachmentId, 'entity_destroyed', rock.id);
+
+  assert.equal(state.player.tether.active, false,
+    'the HUD mirror still drops inside the dispatch — no LOCKED pill behind the break');
+  assert.deepEqual(plays, ['sfx.tetherSnap'],
+    'the receipted snap owns the break voice; before D235 the echoed crack spoke first');
+  assert.equal(broke.length, 0,
+    'the tether:broke echo defers past the tether:broken dispatch, not inside it');
+
+  // The next in-update reconcile speaks the held receipt inside the snap's dedupe
+  // window — the same order an in-update break produces, one voice total.
+  system.update(1 / 60, state);
+  assert.equal(broke.length, 1, 'the deferred broke receipt still delivers on the next update');
+  assert.equal(broke[0].reason, 'entity_destroyed');
+  assert.equal(plays.filter((id) => id === 'sfx.tetherSnap').length, 1, 'one snap per break');
+  assert.equal(plays.includes('sfx_tether_crack'), false,
+    'the crack stands down on the stamp instead of doubling the snap layer');
+  assert.equal(h.rt._masslineBreakSpokeTick, state.tick, 'the snap stamped its tick');
 });

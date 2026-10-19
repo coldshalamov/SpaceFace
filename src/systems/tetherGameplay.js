@@ -204,6 +204,7 @@ export const tetherGameplay = {
     this._noRelatchUntil = -Infinity;
     this._noRelatchTargetId = null;
     this._pendingCut = null;
+    this._deferredLineEcho = null;
     this._pendingLatchThrow = false;
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
@@ -241,6 +242,8 @@ export const tetherGameplay = {
       // otherwise an id-stable attachment can keep steering/mirroring the stale target id.
       this._active = null;
       this._pendingCut = null;
+      // A held break receipt belongs to the pre-load run; the restored line speaks for itself.
+      this._deferredLineEcho = null;
       this._pendingLatchThrow = false;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
@@ -262,6 +265,7 @@ export const tetherGameplay = {
     const resetForNewGame = () => {
       this._noRelatchUntil = -Infinity;
       this._noRelatchTargetId = null;
+      this._deferredLineEcho = null;
       this._resetCadenceRuntime(this.state);
       this._cancelDrillApproach('new_game');
       this._npcBridleCutTicks.clear();
@@ -295,7 +299,12 @@ export const tetherGameplay = {
       const kernel = combatKernel(this);
       const attachments = kernel && kernel.attachments;
       if (!attachments || !state) return;
-      this._reconcileActive(attachments, state);
+      // D235 — the reconcile still runs now (mirror, latch cooldown, drill cancel all drop
+      // inside this dispatch) but its tether:broke/tether:released echo defers to the next
+      // update's _flushDeferredLineEcho: audio binds tether:broken after this system, so an
+      // echo inside this dispatch reaches the crack verb before the snap's dedupe stamp and
+      // double-voices crack THEN snap.
+      this._reconcileActive(attachments, state, { deferEcho: true });
       const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
       const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
       if (player) this._reconcileTwinBridle(attachments, state, player, now);
@@ -328,7 +337,14 @@ export const tetherGameplay = {
 
   update(dt, state) {
     this._insideTetherUpdate = true;
-    try { this._updateTetherGameplay(dt, state); }
+    try {
+      // D235 — the deferred authority-break echo goes out in this first in-update slot,
+      // ahead of _updateTetherGameplay's mode/aliveness early-outs so a docked or dead
+      // tick still delivers the receipt, and inside the flag so a nested tether:broken
+      // still meets the update's own emit protocol.
+      this._flushDeferredLineEcho(state);
+      this._updateTetherGameplay(dt, state);
+    }
     finally { this._insideTetherUpdate = false; }
     // The line's own phase was just mirrored. Hull climbs only while that line is taut.
     if (state && state.mode === 'flight') stepLatchRepair(state, dt, this.bus);
@@ -1373,7 +1389,7 @@ export const tetherGameplay = {
     }
   },
 
-  _reconcileActive(attachments, state) {
+  _reconcileActive(attachments, state, options = null) {
     if (!this._active) return;
     const attachment = attachments.get(this._active.attachmentId);
     if (attachment && attachment.state === 'active') return;
@@ -1385,7 +1401,20 @@ export const tetherGameplay = {
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
     this._noRelatchTargetId = reason === 'tether_cut' ? targetId : null;
-    if (reason === 'tether_cut') {
+    if (options && options.deferEcho) {
+      // D235 — an out-of-update authority break lands here inside the tether:broken
+      // dispatch, where this system's early binding still runs ahead of the audio
+      // snap's dedupe stamp; echoing now would double-voice crack THEN snap. The
+      // receipt is rated now, against the still-live mirror like every emitter,
+      // and held for the next in-update _flushDeferredLineEcho — after every
+      // tether:broken listener has run, the same order an in-update break produces.
+      this._deferredLineEcho = {
+        targetId,
+        reason,
+        releaseRated: rateRelease(state, targetId,
+          reason === 'tether_cut' ? { deliberate: true } : null),
+      };
+    } else if (reason === 'tether_cut') {
       this.bus.emit('tether:released', { targetId });
       // A cut that lands through reconcile (e.g. the self-sling manual cut) is still the
       // player's deliberate release — the apex read applies to it.
@@ -1400,6 +1429,23 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     this._clearAcquisitionPreview(state);
+  },
+
+  // D235 — the held authority-break receipt. Emitted by the first update() after the
+  // break: the whole tether:broken dispatch has run (the instrument snap already spoke
+  // and stamped its dedupe tick), so the verb voice stands down on the stamp instead of
+  // doubling its own layer — exactly like a break reconciled inside the update. Order
+  // matches _reconcileActive's emitters: released/broke first, the rating second.
+  _flushDeferredLineEcho(state) {
+    const echo = this._deferredLineEcho;
+    this._deferredLineEcho = null;
+    if (!echo || !this.bus || typeof this.bus.emit !== 'function') return;
+    if (echo.reason === 'tether_cut') {
+      this.bus.emit('tether:released', { targetId: echo.targetId });
+    } else {
+      this.bus.emit('tether:broke', { targetId: echo.targetId, reason: echo.reason });
+    }
+    this.bus.emit('tether:releaseRated', echo.releaseRated);
   },
 
   _requestDrillApproach(payload = {}) {

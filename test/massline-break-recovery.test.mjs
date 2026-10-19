@@ -202,10 +202,12 @@ test('destroying a latched asteroid clears the HUD Massline mirror without NaN m
   h.state.entities.delete(h.rock.id);
   h.attachments.breakAttachment(attachmentId, 'entity_destroyed', h.rock.id);
 
-  assert.equal(h.events.broke.length, 1);
-  assert.notEqual(h.events.broke[0].reason, 'tether_cut');
+  assert.equal(h.events.broke.length, 0,
+    'an out-of-update authority break defers its tether:broke echo past the tether:broken dispatch');
   assert.equal(h.state.player.tether.active, false, 'HUD mirror must drop LOCKED on the break, not the next tick');
   h.system.update(DT, h.state);
+  assert.equal(h.events.broke.length, 1, 'the next in-update reconcile still delivers the receipt');
+  assert.notEqual(h.events.broke[0].reason, 'tether_cut');
   assert.equal(Number.isFinite(h.p.pos.x) && Number.isFinite(h.p.pos.z), true);
   assert.equal(Number.isFinite(h.p.vel.x) && Number.isFinite(h.p.vel.z), true);
 });
