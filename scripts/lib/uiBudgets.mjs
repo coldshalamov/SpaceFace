@@ -7,10 +7,11 @@
 // carries a UI source digest so a stale baseline is itself a red, not a quiet pass.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync, statSync } from 'node:fs';
+import { join, posix } from 'node:path';
 
 import { MAX_UI_FRAME_MS, MAX_SURFACE_DOM_NODES } from '../ui-grammar-thresholds.mjs';
+import { AUTOMATABLE_SURFACES } from '../ui-grammar-surfaces.mjs';
 
 export const UI_BUDGETS_SCHEMA = 'spaceface.ui-budget-baseline.v2';
 export const UI_BUDGETS_FILE = 'test/ui-frame-references/budgets.json';
@@ -25,46 +26,166 @@ export const UI_KNOWN_RAF_SCOPE = 'window.requestAnimationFrame.authored-src-ui-
 export const UI_AUXILIARY_RAF_SCOPE = 'window.requestAnimationFrame.unclassified-non-game-callback';
 export const UI_DOM_LAYOUT_SCOPE = 'ui-owner-synchronous-javascript-window';
 
-/** Directories whose content the UI frame/node budget covers: the DOM sources plus the modules
- * that own the UI and its presentation context. The baseline carries separate scope tags for the
- * synchronous UI owner, authored UI rAF callbacks, the whole game rAF callback, and unknown rAF work. */
-const UI_SOURCE_ROOTS = ['src/ui', 'styles', 'src/core', 'src/render'];
+/** The UI layer the budget's staleness digest watches. The baseline measures synchronous UI-owner
+ * CPU (`registry.get("ui").frame` + authored src/ui rAF) and each rendered surface's DOM node
+ * count, so the only source that can move a measured number is the UI layer the matrix renders:
+ * the surface owner modules, the UI owner, and what they import inside `src/ui/`. Everything the
+ * old four-root walk hashed beyond that — `styles/`, all of `src/core/` and `src/render/`, data
+ * and system catalogs, and every `src/ui` file no rendered surface can reach — could not move a
+ * number yet re-drifted the digest on every unrelated commit (D222: 333 files, CI red on every
+ * UI-source landing). Narrowing to the rendered layer is the ledger's own fix. */
+export const UI_DIGEST_ROOT = 'src/ui/';
+
+/** The seeds every digest shares: the document shell the surfaces mount into, and the measured
+ * UI owner itself. Surface owner modules join through `uiDigestSeeds()`. `index.html` is hashed
+ * for its own bytes only — it is scanned for import edges like any seed, but it has none: its
+ * `<script>`/modulepreload tags are markup, not module specifiers, and following them would pull
+ * the boot path (and through it the whole game graph) back into the digest. */
+export const UI_DIGEST_SEEDS = Object.freeze(['index.html', 'src/ui/uiRoot.js']);
+
+/** The rendered-file seed list: the shell, the measured owner, and the owner file of every
+ * surface the matrix can actually open and measure (AUTOMATABLE_SURFACES — the same list the
+ * check expects baseline rows for). A surface the harness cannot open renders nothing, so its
+ * file is not a budget input. */
+export function uiDigestSeeds(surfaces = AUTOMATABLE_SURFACES) {
+  const seeds = new Set(UI_DIGEST_SEEDS);
+  for (const surface of surfaces) {
+    if (surface.ownerFile) seeds.add(surface.ownerFile);
+  }
+  return [...seeds].sort();
+}
+
+// Static module edges, matched on raw source: `import/export … from '…'`, bare `import '…'`,
+// dynamic `import('…')` (screens register through literal dynamic imports — see uiRoot's loader
+// table), and `new URL('…', import.meta.url)` (worker/asset modules). Over-matching (a specifier
+// inside a comment or a string) is harmless: a resolved file is still real rendered input.
+// Under-matching is the real risk, so the patterns stay permissive.
+const UI_MODULE_SPECIFIER = new RegExp(
+  "(?:import|export)\\b[^'\"`;]*?\\bfrom\\s*(['\"`])([^'\"`]+)\\1"
+  + "|import\\s*(['\"`])([^'\"`]+)\\3"
+  + "|import\\s*\\(\\s*(['\"`])([^'\"`]+)\\5\\)"
+  + "|new\\s+URL\\s*\\(\\s*(['\"`])([^'\"`]+)\\7\\s*,\\s*import\\.meta\\.url\\s*\\)",
+  'g',
+);
+
+function* moduleSpecifiers(sourceText) {
+  for (const match of sourceText.matchAll(UI_MODULE_SPECIFIER)) {
+    const spec = match[2] || match[4] || match[6] || match[8];
+    if (spec) yield spec;
+  }
+}
+
+/** Resolve a repo-local module specifier to a repo-relative path, or null. Bare specifiers
+ * (node_modules, import-map names) are outside the repo contract; non-existent targets are not
+ * files the matrix can render. `io.exists` answers "is a readable file" for the tree in play. */
+function resolveModuleFile(fromFile, specifier, exists) {
+  let base = null;
+  if (specifier.startsWith('./') || specifier.startsWith('../')) {
+    base = posix.normalize(posix.join(posix.dirname(fromFile), specifier));
+  } else if (specifier.startsWith('/')) {
+    base = posix.normalize(specifier.slice(1));
+  } else {
+    return null;
+  }
+  if (base.startsWith('../')) return null;
+  for (const candidate of [base, `${base}.js`, `${base}.mjs`, `${base}.json`,
+    `${base}/index.js`, `${base}/index.mjs`]) {
+    if (exists(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Sort by path components, not whole-path strings: DFS visits `a/child` before `a.js`, and ICU
+ * collation differs across host builds (the old localeCompare made one file set hash differently
+ * on Windows and Linux). */
+function comparePathComponents(a, b) {
+  const left = a.split('/'), right = b.split('/');
+  for (let i = 0; i < Math.min(left.length, right.length); i++) {
+    if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
+  }
+  return left.length - right.length;
+}
+
+/** The rendered-file set: the seeds plus every repo-local module reachable from them. Edges are
+ * followed through any directory (a UI helper imported only via a shared data module still
+ * renders), but only files under the UI layer — and the two non-layer seeds — join the digest
+ * set. `io` abstracts the tree: `{ exists(rel), readBytes(rel) }` over the working tree, a
+ * frozen overlay, or a git commit. */
+export function uiDigestFileSet({ io, seeds = uiDigestSeeds() }) {
+  const rendered = new Set();
+  const declaredSeeds = new Set(seeds);
+  const visited = new Set();
+  const queue = [...seeds];
+  while (queue.length) {
+    const file = queue.shift();
+    if (visited.has(file) || !io.exists(file)) continue;
+    visited.add(file);
+    // A declared seed is rendered by definition; anything else must live on the UI layer.
+    if (declaredSeeds.has(file) || file.startsWith(UI_DIGEST_ROOT)) rendered.add(file);
+    // Only JavaScript modules can carry import edges to follow.
+    if (!/\.(?:js|mjs|cjs)$/i.test(file)) continue;
+    const text = io.readBytes(file).toString('utf8');
+    for (const specifier of moduleSpecifiers(text)) {
+      const target = resolveModuleFile(file, specifier, io.exists);
+      if (target && !visited.has(target)) queue.push(target);
+    }
+  }
+  return rendered;
+}
+
+/** Filesystem `io` over a repo root — the working tree. Exported so tests and tools can wrap
+ * it (byte substitutions, commit readers) rather than rebuild the contract by hand. */
+export function uiFilesystemIo(repoRoot) {
+  return {
+    exists: (rel) => {
+      try { return statSync(join(repoRoot, rel)).isFile(); } catch (_) { return false; }
+    },
+    readBytes: (rel) => readFileSync(join(repoRoot, rel)),
+  };
+}
+
+/** The sorted rendered-file list the digest hashes — the check's stale diagnostic names it. */
+export function uiRenderedSourceFiles(repoRoot, { io = uiFilesystemIo(repoRoot), seeds } = {}) {
+  return [...uiDigestFileSet({ io, seeds })].sort(comparePathComponents);
+}
+
+function canonicalBytes(bytes) {
+  return bytes.includes('\r\n') ? Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n')) : bytes;
+}
 
 function hashUiFile(hash, file, bytes) {
   hash.update(file);
   hash.update('\0');
-  hash.update(bytes.includes('\r\n') ? Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n')) : bytes);
+  hash.update(canonicalBytes(bytes));
   hash.update('\0');
+}
+
+/** Per-file sha256 of the canonical bytes, in digest order — the diagnostic manifest and the
+ * baseline's own `uiSourceFiles` map, so a stale verdict can name exactly which input moved. */
+export function uiSourceFileDigests(repoRoot, { io = uiFilesystemIo(repoRoot), seeds } = {}) {
+  const out = {};
+  for (const file of [...uiDigestFileSet({ io, seeds })].sort(comparePathComponents)) {
+    out[file] = createHash('sha256').update(canonicalBytes(io.readBytes(file))).digest('hex');
+  }
+  return out;
 }
 
 /** Content digest of the UI source the budget covers — the baseline's staleness contract.
  * Line endings are canonicalised to LF before hashing: checkout eol policy (autocrlf, .gitattributes)
  * legitimately smudges text blobs to CRLF on Windows while `git status` stays clean, so hashing raw
  * working-tree bytes would make a baseline shot on one OS unmatchable on another. */
-export function uiSourceDigest(repoRoot) {
+export function uiSourceDigest(repoRoot, { io = uiFilesystemIo(repoRoot), seeds } = {}) {
   const hash = createHash('sha256');
-  const walk = (dir) => {
-    let entries = [];
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
-    // Codepoint order, not localeCompare: ICU collation differs across host builds
-    // (a Windows VM and the Ubuntu runner order 'AGENTS.md' differently), which made
-    // the same file set hash to different digests on different OSes — a baseline shot
-    // on one host could never satisfy the staleness check on another.
-    for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else {
-        hashUiFile(hash, relative(repoRoot, full).replaceAll('\\', '/'), readFileSync(full));
-      }
-    }
-  };
-  for (const root of UI_SOURCE_ROOTS) walk(join(repoRoot, root));
+  for (const file of [...uiDigestFileSet({ io, seeds })].sort(comparePathComponents)) {
+    hashUiFile(hash, file, io.readBytes(file));
+  }
   return hash.digest('hex');
 }
 
-/** Hash the validated bytes an immutable overlay serves, after checking its frozen closure.
- * --all-runtime alone omits non-JS UI files, so require every UI-root file as well. */
-export function uiSourceDigestFromOverlay(repoRoot, overlay) {
+/** `io` over a validated frozen source overlay, after checking its completeness against the
+ * pinned commit. --all-runtime alone omits non-JS UI files, so require every UI-root file too:
+ * the served game needs them even though the digest now hashes only the rendered layer. */
+function overlayIo(repoRoot, overlay) {
   const commit = overlay?.identity?.sourceCommit;
   if (!/^[a-f0-9]{40}$/i.test(commit || '') || !(overlay?.entries instanceof Map)) {
     throw new Error('UI budget source overlay requires a validated frozen manifest');
@@ -73,7 +194,8 @@ export function uiSourceDigestFromOverlay(repoRoot, overlay) {
     'index.html', 'src', 'scripts/lib', 'styles'], {
     cwd: repoRoot, encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024,
   }).split('\0').filter(Boolean);
-  const isUi = (file) => UI_SOURCE_ROOTS.some((root) => file.startsWith(`${root}/`));
+  const isUi = (file) => file.startsWith(UI_DIGEST_ROOT) || file.startsWith('styles/')
+    || file.startsWith('src/core/') || file.startsWith('src/render/');
   const uiFiles = listing.filter(isUi);
   const required = listing.filter((file) => isUi(file) || file === 'index.html'
     || (file.startsWith('src/') && file.endsWith('.js'))
@@ -84,21 +206,24 @@ export function uiSourceDigestFromOverlay(repoRoot, overlay) {
   const extra = [...overlay.entries.keys()].filter((file) => isUi(file) && !expectedUi.has(file));
   if (extra.length) throw new Error(`UI budget source overlay includes UI files absent at ${commit}: ${extra.slice(0, 8).join(', ')}`);
   if (!uiFiles.length) throw new Error('UI budget source overlay has no frozen UI files');
-  // Sort components, not whole path strings: DFS visits a/child before a.js, just like walk().
-  const compare = (a, b) => {
-    const left = a.split('/'), right = b.split('/');
-    for (let i = 0; i < Math.min(left.length, right.length); i++) {
-      if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
-    }
-    return left.length - right.length;
+  return {
+    exists: (rel) => overlay.entries.has(rel),
+    readBytes: (rel) => overlay.entries.get(rel).body,
   };
-  const hash = createHash('sha256');
-  for (const root of UI_SOURCE_ROOTS) {
-    for (const file of uiFiles.filter((name) => name.startsWith(`${root}/`)).sort(compare)) {
-      hashUiFile(hash, file, overlay.entries.get(file).body);
-    }
-  }
-  return hash.digest('hex');
+}
+
+/** Hash the validated bytes an immutable overlay serves — the rendered-layer digest computed at
+ * the frozen commit, so a baseline shot against a source overlay and the working-tree check read
+ * the same contract. The frozen import graph comes from the overlay bytes themselves: a commit
+ * whose rendered module graph differs is a different digest, not a quiet pass. */
+export function uiSourceDigestFromOverlay(repoRoot, overlay, { seeds } = {}) {
+  return uiSourceDigest(repoRoot, { io: overlayIo(repoRoot, overlay), seeds });
+}
+
+/** Per-file digests of the rendered layer inside a frozen overlay — the `uiSourceFiles` map for
+ * a baseline shot with `--baseline-source`. */
+export function uiSourceFileDigestsFromOverlay(repoRoot, overlay, { seeds } = {}) {
+  return uiSourceFileDigests(repoRoot, { io: overlayIo(repoRoot, overlay), seeds });
 }
 
 function hasStats(value, { allowEmpty = false } = {}) {
@@ -269,7 +394,7 @@ export function judgeBudgets(baseline, { sourceDigest = null, current = null, st
       + 're-shoot with --headed');
   }
   if (sourceDigest && baseline.uiSourceDigest !== sourceDigest) {
-    failures.push('baseline:stale — the UI source changed since the baseline was shot; '
+    failures.push('baseline:stale — the rendered UI source changed since the baseline was shot; '
       + 're-run capture:ui-matrix --budgets-out');
   }
   const surfaces = baseline.surfaces || {};

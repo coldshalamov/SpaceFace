@@ -20,6 +20,8 @@ import {
   explainBudgetRejection,
   uiSourceDigest,
   uiSourceDigestFromOverlay,
+  uiSourceFileDigests,
+  uiSourceFileDigestsFromOverlay,
 } from './lib/uiBudgets.mjs';
 // The pseudo-locale is the game's OWN (src/localization/runtime.js), not a string the harness
 // invents: a capture that boots a locale the game does not implement would photograph the English
@@ -809,12 +811,22 @@ export async function captureUiMatrix(options = {}) {
         + 'unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics',
       seed: UI_MATRIX_SEED,
       uiSourceDigest: frozenUiDigest || uiSourceDigest(ROOT),
+      // The per-file companion of the digest: a stale verdict can name exactly which rendered
+      // file moved without recomputing anything. The same map is written next to the baseline
+      // as source-manifest.json for baselines shot before this field existed.
+      uiSourceFiles: sourceOverlay
+        ? uiSourceFileDigestsFromOverlay(ROOT, sourceOverlay)
+        : uiSourceFileDigests(ROOT),
       ...(sourceOverlay ? { sourceOverlay: result.sourceOverlay } : {}),
       surfaces,
       missing,
     };
     mkdirSync(path.dirname(budgetsOut), { recursive: true });
     writeFileSync(budgetsOut, `${JSON.stringify(baseline, null, 2)}\n`);
+    // Keep the per-file manifest beside the baseline so check-ui-budgets' stale diagnostic
+    // names the moved inputs for every mint, not just the ones on this tree.
+    writeFileSync(path.join(path.dirname(budgetsOut), 'source-manifest.json'),
+      `${JSON.stringify(baseline.uiSourceFiles, null, 2)}\n`);
     console.log(`ui budget baseline: ${budgeted} surfaces (+${missing.length} named gaps) → ${budgetsOut}`);
   }
   return result;

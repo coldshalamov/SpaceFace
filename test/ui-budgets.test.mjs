@@ -4,7 +4,7 @@
 // takes the WORST owner sample per surface, and stale/headless/empty baselines are red.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -20,9 +20,13 @@ import {
   aggregateBudgetRows,
   isUiBudgetSample,
   judgeBudgets,
+  uiDigestSeeds,
+  uiFilesystemIo,
+  uiRenderedSourceFiles,
   uiSourceDigest,
   uiSourceDigestFromOverlay,
 } from '../scripts/lib/uiBudgets.mjs';
+import { AUTOMATABLE_SURFACES } from '../scripts/ui-grammar-surfaces.mjs';
 import { MAX_UI_FRAME_MS, MAX_SURFACE_DOM_NODES } from '../scripts/ui-grammar-thresholds.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -35,7 +39,10 @@ function frozenUiFixture(t) {
     ['src/main.js', 'export const boot = true;\n'],
     ['scripts/lib/channel.mjs', 'export const channel = true;\n'],
     ['src/ui/a/child.js', 'export const child = true;\r\n'],
-    ['src/ui/a.js', 'export const sibling = true;\n'],
+    // The rendered edge: a.js is a declared seed, so the module it imports is rendered too.
+    ['src/ui/a.js', "import { child } from './a/child.js';\nexport const sibling = child;\n"],
+    // Everything below is real UI-layer or neighbour-layer content that no seed reaches —
+    // present to prove the digest only covers what the matrix renders (D222).
     ['src/ui/AGENTS.md', 'UI ownership\r\n'],
     ['src/ui/icon.svg', '<svg/>\r\n'],
     ['styles/ui.css', 'body { color: white }\r\n'],
@@ -57,39 +64,104 @@ function frozenUiFixture(t) {
     identity: { sourceCommit: git('rev-parse', 'HEAD').trim() },
     entries: new Map([...files].map(([file, body]) => [file, { body: Buffer.from(body) }])),
   };
-  return { root, overlay };
+  // The fixture's rendered set: the document shell plus one UI module with an import edge.
+  const seeds = ['index.html', 'src/ui/a.js'];
+  return { root, overlay, seeds };
 }
 
-test('frozen UI overlay digest matches filesystem DFS/LF rules and ignores later foreign bytes', (t) => {
-  const { root, overlay } = frozenUiFixture(t);
-  const frozen = uiSourceDigest(root);
-  assert.equal(uiSourceDigestFromOverlay(root, overlay), frozen,
-    'all file types and a/child before a.js use the existing digest order');
+test('frozen UI overlay digest matches filesystem order and ignores unrendered bytes', (t) => {
+  const { root, overlay, seeds } = frozenUiFixture(t);
+  const opts = { seeds };
+  const frozen = uiSourceDigest(root, opts);
+  assert.equal(uiSourceDigestFromOverlay(root, overlay, opts), frozen,
+    'the rendered module set hashes identically from disk and from a frozen overlay');
   const lf = { ...overlay, entries: new Map([...overlay.entries].map(([file, entry]) =>
     [file, { body: Buffer.from(entry.body.toString().replaceAll('\r\n', '\n')) }])) };
-  assert.equal(uiSourceDigestFromOverlay(root, lf), frozen, 'checkout EOL changes do not alter identity');
+  assert.equal(uiSourceDigestFromOverlay(root, lf, opts), frozen, 'checkout EOL changes do not alter identity');
   writeFileSync(path.join(root, 'src/ui/a.js'), 'foreign UI work');
-  assert.notEqual(uiSourceDigest(root), frozen, 'ordinary working-tree changes stay stale');
+  assert.notEqual(uiSourceDigest(root, opts), frozen, 'a rendered file edit stays stale');
   writeFileSync(path.join(root, 'src/ui/a.js'), overlay.entries.get('src/ui/a.js').body);
+  assert.equal(uiSourceDigest(root, opts), frozen, 'restoring rendered bytes restores the digest');
+  // D222: bytes no rendered surface can reach — an untouched UI file, a stray, and a
+  // neighbour-layer module — must not move the digest. This is the treadmill fix.
+  writeFileSync(path.join(root, 'src/ui/icon.svg'), '<svg><path/></svg>');
   writeFileSync(path.join(root, 'src/ui/ignored-stray.txt'), 'local stray');
-  assert.notEqual(uiSourceDigest(root), frozen, 'ordinary digest still includes stray files');
-  assert.equal(uiSourceDigestFromOverlay(root, overlay), frozen, 'served frozen bytes keep their own identity');
+  writeFileSync(path.join(root, 'src/core/loop.js'), 'changed but not rendered');
+  assert.equal(uiSourceDigest(root, opts), frozen, 'unrendered bytes never move the digest');
+  assert.equal(uiSourceDigestFromOverlay(root, overlay, opts), frozen, 'served frozen bytes keep their own identity');
 });
 
 test('frozen UI overlay coverage requires non-JS UI files and the runtime closure', (t) => {
-  const { root, overlay } = frozenUiFixture(t);
+  const { root, overlay, seeds } = frozenUiFixture(t);
   for (const missing of ['src/ui/AGENTS.md', 'src/ui/icon.svg', 'scripts/lib/channel.mjs', 'src/main.js']) {
     const entries = new Map(overlay.entries);
     entries.delete(missing);
-    assert.throws(() => uiSourceDigestFromOverlay(root, { ...overlay, entries }), /incomplete/);
+    assert.throws(() => uiSourceDigestFromOverlay(root, { ...overlay, entries }, { seeds }), /incomplete/);
   }
   const extra = new Map(overlay.entries);
   extra.set('src/ui/foreign-stray.svg', { body: Buffer.from('<svg/>') });
-  assert.throws(() => uiSourceDigestFromOverlay(root, { ...overlay, entries: extra }), /absent at/);
-  const changedSvg = new Map(overlay.entries);
-  changedSvg.set('src/ui/icon.svg', { body: Buffer.from('<svg><path/></svg>') });
-  assert.notEqual(uiSourceDigestFromOverlay(root, { ...overlay, entries: changedSvg }), uiSourceDigestFromOverlay(root, overlay),
-    'non-JS served bytes participate in the digest');
+  assert.throws(() => uiSourceDigestFromOverlay(root, { ...overlay, entries: extra }, { seeds }), /absent at/);
+  const changedRendered = new Map(overlay.entries);
+  changedRendered.set('src/ui/a/child.js', { body: Buffer.from('export const child = 2;\n') });
+  assert.notEqual(uiSourceDigestFromOverlay(root, { ...overlay, entries: changedRendered }, { seeds }),
+    uiSourceDigestFromOverlay(root, overlay, { seeds }),
+    'a rendered file\'s served bytes participate in the digest');
+  const changedUnrendered = new Map(overlay.entries);
+  changedUnrendered.set('src/ui/icon.svg', { body: Buffer.from('<svg><path/></svg>') });
+  assert.equal(uiSourceDigestFromOverlay(root, { ...overlay, entries: changedUnrendered }, { seeds }),
+    uiSourceDigestFromOverlay(root, overlay, { seeds }),
+    'an unrendered file\'s served bytes cannot move the digest');
+});
+
+test('the digest set is the rendered UI layer, not every file under the old roots (D222)', () => {
+  const seeds = uiDigestSeeds();
+  assert.ok(seeds.includes('index.html'), 'the document shell is a seed');
+  assert.ok(seeds.includes('src/ui/uiRoot.js'), 'the measured UI owner is a seed');
+  for (const surface of AUTOMATABLE_SURFACES) {
+    assert.ok(seeds.includes(surface.ownerFile), `${surface.id} owner file is a digest seed`);
+  }
+  const files = uiRenderedSourceFiles(ROOT);
+  assert.ok(files.length > 50, 'the rendered set is non-trivial');
+  for (const file of files) {
+    assert.ok(file === 'index.html' || file.startsWith('src/ui/'),
+      `${file} is outside the rendered UI layer`);
+  }
+  assert.ok(files.includes('src/ui/hud.js'), 'the flight surface renders');
+  assert.ok(files.includes('src/ui/screenManager.js'), 'the owner\'s own imports render');
+  const io = uiFilesystemIo(ROOT);
+  const digest = uiSourceDigest(ROOT);
+  // A byte change to a file inside the rendered set moves the digest…
+  const renderedEdit = {
+    exists: io.exists,
+    readBytes: (rel) => (rel === 'src/ui/hud.js' ? Buffer.from('changed') : io.readBytes(rel)),
+  };
+  assert.notEqual(uiSourceDigest(ROOT, { io: renderedEdit }), digest,
+    'a rendered file edit still breaks the digest');
+  // …but a byte change to an unrendered src/ui file cannot, and neither can an
+  // unreferenced stray — this is why the check stopped re-drifting on unrelated commits.
+  const allUi = [];
+  const collect = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) collect(full);
+      else allUi.push(path.relative(ROOT, full).replaceAll('\\', '/'));
+    }
+  };
+  collect(path.join(ROOT, 'src/ui'));
+  const unrendered = allUi.filter((file) => !files.includes(file));
+  assert.ok(unrendered.length, 'the tree has src/ui files the matrix does not render');
+  const unrenderedEdit = {
+    exists: io.exists,
+    readBytes: (rel) => (rel === unrendered[0] ? Buffer.from('changed') : io.readBytes(rel)),
+  };
+  assert.equal(uiSourceDigest(ROOT, { io: unrenderedEdit }), digest,
+    `an unrendered file (${unrendered[0]}) cannot move the digest`);
+  const strayIo = {
+    exists: (rel) => rel === 'src/ui/__d222_stray__.js' || io.exists(rel),
+    readBytes: (rel) => (rel === 'src/ui/__d222_stray__.js' ? Buffer.from('stray') : io.readBytes(rel)),
+  };
+  assert.equal(uiSourceDigest(ROOT, { io: strayIo }), digest,
+    'an unreferenced stray file cannot move the digest');
 });
 
 function baselineRow(over = 0) {

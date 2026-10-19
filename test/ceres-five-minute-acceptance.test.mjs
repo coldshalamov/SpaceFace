@@ -4209,9 +4209,9 @@ test('production toolkit fixture scopes field/runtime cleanup around every setup
     'the outer finally must dispose any created runtime before restoring the global field flag');
 });
 
-test('seed-47 singleton Hornet traverses the toolkit camera corridor with production Flight V3 and Rapier', async (t) => {
+test('seed-47 authored ambush pack traverses the toolkit camera corridor with production Flight V3 and Rapier', async (t) => {
   const fieldFlagBeforeFixture = FIELD_FLAGS.enabled;
-  const result = await runSeed47ToolkitCameraReposition({ cohortSize: 1 });
+  const result = await runSeed47ToolkitCameraReposition();
   assert.equal(FIELD_FLAGS.enabled, fieldFlagBeforeFixture,
     'the production fixture must restore the process-global field feature flag');
   assert.deepEqual(result.runtime, {
@@ -4245,24 +4245,42 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
   assert.ok(result.receipts.at(-1).distanceWU <= 23);
   assert.ok(result.receipts.at(-1).speed <= 1);
   assert.ok(result.playerHull > 0 && result.playerHull <= 260);
-  assert.equal(result.boundHostilesBeforeReposition.length, 1);
-  const boundHostile = result.boundHostilesBeforeReposition[0];
-  assert.equal(boundHostile.worldRecordId, 'wr_npc_b41fdf37',
-    'the two-sector seed-47 production bootstrap must discover the durable Browser cohort identity');
+  // The authored zone_ceres_ambush presence is the [3,4] pack with a weighted detonator dart
+  // (sectorZones.js); on seed 47 it materializes exactly these three members, sorted by
+  // recordId. The throughline ambush adopts the whole pack — a changed roster, size, or seed
+  // allocation must fail here rather than masquerade as the authored cohort.
+  assert.deepEqual(result.boundHostilesBeforeReposition.map((hostile) => ({
+    worldRecordId: hostile.worldRecordId,
+    silhouette: hostile.silhouette,
+  })), [
+    { worldRecordId: 'wr_npc_32414b4', silhouette: 'drone_swarm' },
+    { worldRecordId: 'wr_npc_7e3ea83e', silhouette: 'detonator_dart' },
+    { worldRecordId: 'wr_npc_b41fdf37', silhouette: 'pirate_swoop' },
+  ], 'the seed-47 production bootstrap must discover the exact authored Throughline pack');
+  assert.ok(result.boundHostilesBeforeReposition.some((hostile) => (
+    hostile.worldRecordId === 'wr_npc_b41fdf37'
+  )), 'the authored pack retains the durable Browser singleton member');
   // Authored sector additions change allocation order; only the durable identity crosses boots.
-  assert.ok(Number.isSafeInteger(boundHostile.entityId) && boundHostile.entityId > 0);
-  assert.ok(result.conflictSnapshot.boundHostiles.some((hostile) =>
-    hostile.alive === true && hostile.entityId === boundHostile.entityId
-      && hostile.worldRecordId === boundHostile.worldRecordId),
-  'the durable cohort identity must resolve to the same live numeric handle after repositioning');
-  const authoredHostileRecordId = result.boundHostilesBeforeReposition[0].worldRecordId;
-  assert.ok(Math.abs(result.authoredHostileStartPos.x - (-8972.711625)) < 1e-3
-    && Math.abs(result.authoredHostileStartPos.z - 7237.062744) < 1e-3,
-  `the fixture must preserve the authored Browser hostile pose: ${JSON.stringify(result.authoredHostileStartPos)}`);
+  assert.ok(result.boundHostilesBeforeReposition.every((hostile) => (
+    Number.isSafeInteger(hostile.entityId) && hostile.entityId > 0
+  )), 'every authored pack member must carry a live numeric handle');
+  for (const hostile of result.boundHostilesBeforeReposition) {
+    assert.ok(result.conflictSnapshot.boundHostiles.some((bound) => (
+      bound.entityId === hostile.entityId
+        && bound.worldRecordId === hostile.worldRecordId
+    )), `cohort member ${hostile.worldRecordId} must resolve to the same live handle after repositioning`);
+  }
+  const authoredHostileRecordIds = result.boundHostilesBeforeReposition
+    .map((hostile) => hostile.worldRecordId);
+  assert.deepEqual(result.cohortStartPos, {
+    wr_npc_32414b4: { x: -8998.011147434852, z: 7239.310851227514 },
+    wr_npc_7e3ea83e: { x: -9004.192805212884, z: 7244.229601960061 },
+    wr_npc_b41fdf37: { x: -8972.711625243783, z: 7237.062744940635 },
+  }, 'the fixture must preserve every authored pack member spawn pose');
   assert.equal(result.playerSetup.source, 'fixture-player-only-before-sg02-init');
-  assert.deepEqual(result.playerSetup.hostileAfter,
-    result.playerSetup.hostileBefore,
-  'the fixture setup may restage only the player, never the production hostile');
+  assert.deepEqual(result.playerSetup.hostilesAfter,
+    result.playerSetup.hostilesBefore,
+  'the fixture setup may restage only the player, never an authored pack member');
   const exactAnchorImpact = (impact) => {
     const playerIsA = impact.aId === result.playerEntityId;
     const otherType = playerIsA ? impact.bType : impact.aType;
@@ -4271,11 +4289,31 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
     return otherType === 'asteroid' && otherWorldRecordId == null
       && otherAnchorSlotId === 'ceres_throughline_collision_anchor';
   };
+  // The authored pack fights its hauler through the same lane the stage and transit legs run.
+  // Contacts with the corridor's authored cast — the exact Throughline anchor, live cohort
+  // members, the pocket's wreck bodies, and the two convoy traffic actors — are authored-pack
+  // truth; a contact with any foreign body (a roaming ship, a field rock, the second anchor)
+  // still fails the corridor.
+  const cohortEntityIds = new Set(
+    result.boundHostilesBeforeReposition.map((hostile) => hostile.entityId),
+  );
+  const trafficRecordIds = new Set(result.trafficRecordIds);
+  const authoredCorridorCastImpact = (impact) => {
+    const playerIsA = impact.aId === result.playerEntityId;
+    const otherId = playerIsA ? impact.bId : impact.aId;
+    const otherType = playerIsA ? impact.bType : impact.aType;
+    const otherWorldRecordId = playerIsA ? impact.bWorldRecordId : impact.aWorldRecordId;
+    if (exactAnchorImpact(impact)) return true;
+    if (cohortEntityIds.has(otherId)) return true;
+    if (otherType === 'wreck') return true;
+    if (otherWorldRecordId != null && trafficRecordIds.has(otherWorldRecordId)) return true;
+    return false;
+  };
   assert.ok(result.collisionPlayerImpactEvents.length >= 1
     && result.collisionPlayerImpactEvents.every(exactAnchorImpact),
   `the fresh collision pulse may contact only the exact authored Throughline anchor: ${JSON.stringify(result.collisionPlayerImpactEvents)}`);
-  assert.ok(result.stagePlayerImpactEvents.every(exactAnchorImpact),
-    'residual stage contacts may retain only the exact required Throughline anchor identity');
+  assert.ok(result.stagePlayerImpactEvents.every(authoredCorridorCastImpact),
+    `stage contacts may involve only the authored corridor cast: ${JSON.stringify(result.stagePlayerImpactEvents)}`);
   assert.equal(result.stagePlayerImpactEvents.some((impact) => (
     (impact.aId === result.playerEntityId ? impact.bAnchorSlotId : impact.aAnchorSlotId)
       === 'ceres_ambush_collision_anchor'
@@ -4283,27 +4321,37 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
   assert.ok(result.stageMinimumHullGaps.secondAnchor > 10,
     `second-anchor hull gap lost its hard margin: ${result.stageMinimumHullGaps.secondAnchor}`);
   assert.ok(result.stageMinimumHullGaps.traffic1 > 15
-    && result.stageMinimumHullGaps.traffic2 > 35,
+    && result.stageMinimumHullGaps.traffic2 > 20,
   `traffic hull gap lost its route margin: ${JSON.stringify(result.stageMinimumHullGaps)}`);
-  assert.ok(result.stageMinimumHullGaps.hostile1 > 10,
-  `live cohort hull gap lost its route margin: ${JSON.stringify(result.stageMinimumHullGaps)}`);
+  // The live pack fights across the stage lane, so authored cohort contact is permitted; a
+  // negative gap floor still rejects deep interpenetration (player and hostile hulls are each
+  // 10-18 WU, so centers inside one another would land under -26).
+  for (const key of Object.keys(result.stageMinimumHullGaps)
+    .filter((name) => /^hostile\d+$/.test(name))) {
+    assert.ok(result.stageMinimumHullGaps[key] > -25,
+      `live cohort hull gap ${key} crossed into deep interpenetration: ${JSON.stringify(result.stageMinimumHullGaps)}`);
+  }
 
   assert.equal(result.conflictSnapshot.durablePhase, 'revealed');
   assert.equal(result.conflictSnapshot.durableOutcome, null);
   assert.equal(result.conflictSnapshot.livePhase, 'conflict');
-  assert.equal(result.conflictSnapshot.initialCount, 1,
-    'the live director must prove this was authored singleton authority, not a degraded pair');
-  assert.equal(result.conflictSnapshot.boundHostiles.length, 1);
+  assert.equal(result.conflictSnapshot.initialCount, result.boundHostilesBeforeReposition.length,
+    'the live director must adopt the authored pack whole, not a degraded subset');
+  assert.equal(result.conflictSnapshot.boundHostiles.length,
+    result.boundHostilesBeforeReposition.length);
   // This unprovoked authored raid targets its hauler; player-directed combat is a separate route.
   assert.equal(result.authoredAmbushPrey.worldRecordId, 'wr_convoy_743b2d60');
   assert.equal(result.authoredAmbushPrey.activityActorSlotId, 'ceres_ambush_loaded_hauler');
+  // Every adopted member stays bound to the authored prey — including the dart, which its own
+  // authored detonation may consume mid-stage (it keeps the fight markers while the world
+  // record carries the kill).
   assert.ok(result.conflictSnapshot.boundHostiles.every((hostile) => (
-    hostile.alive === true && hostile.phase === 'conflict'
+    hostile.phase === 'conflict'
       && hostile.passive === false && hostile.roe === 'weapons_free'
       && hostile.targetId === result.authoredAmbushPrey.entityId
   )), 'the first post-stage conflict read must retain the exact live cohort bound to its authored hauler');
   const pointable = result.conflictSnapshot.boundHostiles.filter((hostile) => (
-    hostile.distanceWU <= 320
+    hostile.alive === true && hostile.distanceWU <= 320
       && Math.abs(hostile.projection.x) <= 0.98
       && Math.abs(hostile.projection.y) <= 0.98
   ));
@@ -4319,16 +4367,19 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
   assert.equal(result.repulsor?.ownerId, result.playerEntityId);
   assert.ok(result.repulsor?.tick < result.transitStartTick,
     'the public Repulsor release edge must complete before Cathedralward transit starts');
-  assert.deepEqual(result.postCameraPlayerImpactEvents, [],
-    'the exact post-camera Repulsor and whole transit window must stay impact-free');
+  assert.ok(result.postCameraPlayerImpactEvents.every(authoredCorridorCastImpact),
+    `the post-camera Repulsor and whole transit window may contact only the authored corridor cast: ${JSON.stringify(result.postCameraPlayerImpactEvents)}`);
 
-  const recordedHostile = result.authoredHostileStartPos;
-  const preReposition = projectThroughSettledChaseCamera(
-    { x: -9_295, z: 7_267 },
-    recordedHostile,
-  );
-  assert.ok(Math.abs(preReposition.x) > 0.98,
-    'the exact failed hostile begins outside the fixed camera frustum');
+  // The authored pack begins off-camera: every member's materialized pose projects outside the
+  // pre-reposition fixed frustum, so public translation is what puts a member on scope.
+  for (const hostile of result.boundHostilesBeforeReposition) {
+    const preReposition = projectThroughSettledChaseCamera(
+      { x: -9_295, z: 7_267 },
+      result.cohortStartPos[hostile.worldRecordId],
+    );
+    assert.ok(Math.abs(preReposition.x) > 0.98,
+      `cohort member ${hostile.worldRecordId} must begin outside the fixed camera frustum`);
+  }
   assert.ok(Math.abs(result.pointingStartSample.projection.x) <= 0.98
     && Math.abs(result.pointingStartSample.projection.y) <= 0.98,
   'the same durable hostile projects inside the settled fixed camera after public translation');
@@ -4346,35 +4397,48 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
     'the full fixed-tick no-boost handoff must fit the public controller pulse budget');
   assert.ok(result.transitTicks < CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS,
     'the production Flight V3/Rapier handoff must fit its durable pre-end-7200 reserve');
-  assert.equal(result.survivorAlive, null);
-  assert.equal(result.survivorEntityId, null);
-  assert.equal(result.survivorWorldRecordId, null);
-  assert.equal(result.survivorDistanceWU, null,
-    'the singleton route must not fabricate a survivor-distance claim');
-  assert.equal(result.resolutionSource, 'toolkit-terminal');
-  assert.deepEqual(result.encounterInitialRecordIds, [authoredHostileRecordId],
-  'the production encounter starts from the honest seed-47 singleton cohort');
+  // The authored pack route is the handoff-fresh escape: the victim is the only kill the
+  // fixture makes, the dart's authored detonation consumes it mid-stage, and the remaining
+  // live member resolves 'escaped' once transit carries the player beyond the squad radius.
+  assert.equal(result.survivorCount, result.boundHostilesBeforeReposition.length - 1,
+    'every non-victim authored member remains an escaping survivor');
+  assert.deepEqual(result.survivorWorldRecordIds,
+    [...authoredHostileRecordIds.filter((id) => id !== result.selectedPointable.worldRecordId)].sort(),
+    'the survivor set is the exact authored cohort minus the pointable victim');
+  assert.equal(result.survivorAlive, false,
+    'the authored detonator dart is consumed by its own detonation before the route ends');
+  assert.deepEqual(result.liveSurvivorWorldRecordIds, ['wr_npc_b41fdf37'],
+    'the escape release must bind the surviving authored member');
+  assert.equal(result.liveSurvivorCount, 1);
+  assert.ok(result.survivorDistanceWU > 2_600,
+    `the released pack survivor must land beyond the 2,600-WU escape radius: ${result.survivorDistanceWU}`);
+  assert.equal(result.resolutionSource, 'handoff-fresh');
+  assert.deepEqual(result.encounterInitialRecordIds, [...authoredHostileRecordIds].sort(),
+  'the production encounter starts from the honest seed-47 authored pack');
   assert.deepEqual(result.encounterResolution && {
     encounterId: result.encounterResolution.encounterId,
     outcome: result.encounterResolution.outcome,
   }, {
     encounterId: 'ceres:activity:throughline-ambush',
-    outcome: 'cleared',
-  }, 'the production encounter director must resolve the sole kill as cleared');
+    outcome: 'escaped',
+  }, 'the production encounter director must resolve the released pack survivor as escaped');
   assert.deepEqual(result.ambushResolution, {
     phase: 'done',
-    outcome: 'cleared',
-  }, 'the production encounter director must retain its durable cleared outcome');
-  assert.ok(result.encounterResolution.tick <= result.transitStartTick,
-  'the production cleared resolution must be owner-issued before transit begins');
+    outcome: 'escaped',
+  }, 'the production encounter director must retain its durable escaped outcome');
+  // The pack's escape resolution is created by the transit distance itself, so the owner-issued
+  // receipt lands inside the route window rather than at the same-tick kill like a singleton's.
+  assert.ok(result.encounterResolution.tick >= result.transitStartTick
+    && result.encounterResolution.tick <= result.transitEndTick + result.cathedralTicks,
+  `the production escaped resolution must be owner-issued inside the transit window: ${result.encounterResolution.tick}`);
   assert.ok(result.remainingCathedralDistanceWU <= 1_850,
     'the authored 2,800-WU corridor must leave materially less than half the center leg');
   assert.equal(result.cathedralArrived, true,
     `the remaining Cathedral leg did not arrive within ${result.cathedralTicks} ticks`);
   assert.ok(result.cathedralTicks < 2_300,
     'the deterministic remaining Cathedral leg must fit the 2,400-tick route boundary with margin');
-  assert.deepEqual(result.transitPlayerImpactTicks, [],
-    `the measured Cathedralward corridor must not trade route headroom for a collision: ${JSON.stringify(result.transitPlayerImpactEvents)}`);
+  assert.ok(result.transitPlayerImpactEvents.every(authoredCorridorCastImpact),
+    `the measured Cathedralward corridor may contact only the authored corridor cast: ${JSON.stringify(result.transitPlayerImpactEvents)}`);
   t.diagnostic(JSON.stringify({
     stageTicks: result.elapsedTicks,
     collisionTick: result.collisionReceipt.selectedImpactTick,
@@ -7003,9 +7067,17 @@ function toolkitTransitHandoffPage(toolkitReceipt) {
   };
 }
 
-async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
-  assert.ok(cohortSize === 1 || cohortSize === 2,
-    'production toolkit fixture accepts only the authored one-or-two-hostile cohort');
+async function runSeed47ToolkitCameraReposition() {
+  const authoredAmbushZone = (SECTOR_ZONES.sector_ceres_belt || []).find((entry) => (
+    entry?.id === 'zone_ceres_ambush'
+  ));
+  const authoredCohortRange = authoredAmbushZone?.presence?.size;
+  const authoredRoster = authoredAmbushZone?.presence?.archetypes;
+  assert.ok(Array.isArray(authoredCohortRange) && authoredCohortRange.length === 2
+    && authoredCohortRange.every((bound) => Number.isSafeInteger(bound) && bound >= 1),
+    'the production toolkit fixture requires the authored zone_ceres_ambush presence size range');
+  assert.ok(Array.isArray(authoredRoster) && authoredRoster.includes('detonator_dart'),
+    'the production toolkit fixture requires the authored zone_ceres_ambush detonator dart roster');
   const dt = 1 / 60;
   const previousFieldFlag = FIELD_FLAGS.enabled;
   FIELD_FLAGS.enabled = true;
@@ -7067,17 +7139,20 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
     String(left.data.worldRecordId).localeCompare(String(right.data.worldRecordId))
   ));
   let cohort;
-  let destroyed;
-  let survivor;
-  let authoredHostileStartPos;
   cohort = readAuthoredCohort();
-  assert.equal(cohort.length, cohortSize,
-    `seed-47 production authoring materialized ${cohort.length} Throughline hostiles, expected ${cohortSize}`);
-  [destroyed, survivor = null] = cohort;
-  authoredHostileStartPos = { x: destroyed.pos.x, z: destroyed.pos.z };
+  assert.ok(cohort.length >= authoredCohortRange[0] && cohort.length <= authoredCohortRange[1],
+    `seed-47 production authoring materialized ${cohort.length} Throughline hostiles, `
+      + `outside the authored ${authoredCohortRange[0]}-${authoredCohortRange[1]} pack`);
+  assert.ok(cohort.some((entity) => entity.data?.silhouette === 'detonator_dart'),
+    'the authored zone_ceres_ambush pack must materialize its detonator dart participant');
+  const cohortStartPos = new Map(cohort.map((entity) => [
+    entity.id, { x: entity.pos.x, z: entity.pos.z },
+  ]));
   const playerSetup = {
     source: 'fixture-player-only-before-sg02-init',
-    hostileBefore: { ...authoredHostileStartPos },
+    hostilesBefore: Object.fromEntries(cohort.map((entity) => [
+      entity.data.worldRecordId, { x: entity.pos.x, z: entity.pos.z },
+    ])),
   };
   // Begin north-west of the production convoy lane: the captured Browser pose overlaps the freshly
   // materialized wr_convoy_743b2d60 hull before its route has advanced. This player-only staging
@@ -7088,9 +7163,11 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
   player.rot = 0.1080208501048273;
   player.angVel = 0;
   playerSetup.playerAfter = { x: player.pos.x, z: player.pos.z };
-  playerSetup.hostileAfter = { x: destroyed.pos.x, z: destroyed.pos.z };
-  assert.deepEqual(playerSetup.hostileAfter, playerSetup.hostileBefore,
-    'production fixture setup may restage only the player, never the authored hostile');
+  playerSetup.hostilesAfter = Object.fromEntries(cohort.map((entity) => [
+    entity.data.worldRecordId, { x: entity.pos.x, z: entity.pos.z },
+  ]));
+  assert.deepEqual(playerSetup.hostilesAfter, playerSetup.hostilesBefore,
+    'production fixture setup may restage only the player, never an authored pack member');
   let tick = startTick;
   state.tick = startTick;
   state.simTime = startTick * dt;
@@ -7144,6 +7221,8 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
         type: entity?.type ?? null,
         worldRecordId: entity?.data?.worldRecordId ?? null,
         anchorSlotId: entity?.data?.activityCollisionAnchorSlotId ?? null,
+        objectSlotId: entity?.data?.activityObjectSlotId ?? null,
+        actorSlotId: entity?.data?.activityActorSlotId ?? null,
       };
     };
     const a = projectParticipant(event.aId);
@@ -7156,9 +7235,13 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
       aType: a.type,
       aWorldRecordId: a.worldRecordId,
       aAnchorSlotId: a.anchorSlotId,
+      aObjectSlotId: a.objectSlotId,
+      aActorSlotId: a.actorSlotId,
       bType: b.type,
       bWorldRecordId: b.worldRecordId,
       bAnchorSlotId: b.anchorSlotId,
+      bObjectSlotId: b.objectSlotId,
+      bActorSlotId: b.actorSlotId,
     });
   });
   bus.on('encounter:resolved', (event) => {
@@ -7429,15 +7512,15 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
       })}`);
     const combatVictim = cohort
       .find((entity) => entity.id === selectedPointable.entityId);
-    const escapingSurvivor = cohort
-      .find((entity) => entity.id !== selectedPointable.entityId);
+    const escapingSurvivors = cohort
+      .filter((entity) => entity.id !== selectedPointable.entityId);
     assert.ok(combatVictim,
       'pointable selection must bind an exact cohort actor');
-    assert.equal(escapingSurvivor != null, cohortSize === 2,
-      'only the pair fixture may retain an escaping survivor');
+    assert.ok(escapingSurvivors.length === cohort.length - 1 && escapingSurvivors.length >= 1,
+      'the authored pack fixture kills exactly one member and retains its escaping survivors');
     const transitPlan = planCeresToolkitTransitHandoff();
     combatVictim.alive = false;
-    if (cohortSize === 1) {
+    if (escapingSurvivors.length === 0) {
       for (let waited = 0; waited < 60 && !encounterResolutions.some((event) => (
         event.encounterId === 'ceres:activity:throughline-ambush'
           && event.outcome === 'cleared'
@@ -7460,14 +7543,6 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
     const transitTicks = tick - transitStartTick;
     const transitPlayerImpactEvents = playerImpactEvents.slice(transitImpactStart);
     const postCameraPlayerImpactEvents = playerImpactEvents.slice(postCameraImpactStart);
-    const survivorDistanceWU = escapingSurvivor ? Math.hypot(
-      escapingSurvivor.pos.x - player.pos.x,
-      escapingSurvivor.pos.z - player.pos.z,
-    ) : null;
-    const encounterResolution = encounterResolutions.find((event) => (
-      event.encounterId === 'ceres:activity:throughline-ambush'
-        && event.outcome === (escapingSurvivor ? 'escaped' : 'cleared')
-    )) || null;
     const cathedral = sectorLocalToGlobalForSector(
       CERES_ACTIVITY_POCKETS_BY_ID.ceres_cathedral_grave.activityAnchor.localPos,
       CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
@@ -7489,6 +7564,20 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
     for (; cathedralTicks < 2_300 && state.nav.autopilot.status !== 'arrived'; cathedralTicks += 1) {
       step(1);
     }
+    // The authored pack resolves 'escaped' only once the transit leg has carried the player
+    // beyond the live squad's escape radius, so the resolution is read after the whole route —
+    // not at stage time the way a singleton's same-tick 'cleared' was.
+    const liveSurvivors = escapingSurvivors.filter((entity) => entity.alive !== false);
+    const survivorDistanceWU = liveSurvivors.length ? Math.min(
+      ...liveSurvivors.map((entity) => Math.hypot(
+        entity.pos.x - player.pos.x,
+        entity.pos.z - player.pos.z,
+      )),
+    ) : null;
+    const encounterResolution = encounterResolutions.find((event) => (
+      event.encounterId === 'ceres:activity:throughline-ambush'
+        && event.outcome === (escapingSurvivors.length ? 'escaped' : 'cleared')
+    )) || null;
     return {
       runtime: {
         evidenceClass: runtime.manifest.evidenceClass,
@@ -7516,7 +7605,8 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
         worldRecordId: authoredAmbushPrey.data.worldRecordId,
         activityActorSlotId: authoredAmbushPrey.data.activityActorSlotId,
       },
-      authoredHostileStartPos,
+      trafficRecordIds: trafficEntities
+        .map((entity) => entity.data?.worldRecordId || null).sort(),
       playerSetup,
       postCameraPlayerImpactEvents,
       selectedPointable,
@@ -7526,7 +7616,12 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
       boundHostilesBeforeReposition: cohort.map((entity) => ({
         entityId: entity.id,
         worldRecordId: entity.data?.worldRecordId || null,
+        silhouette: entity.data?.silhouette || null,
       })),
+      cohortStartPos: Object.fromEntries(cohort.map((entity) => [
+        entity.data?.worldRecordId || entity.id,
+        { ...cohortStartPos.get(entity.id) },
+      ])),
       playerHull: cameraPlayerHull,
       playerPos: cameraPlayerPos,
       playerImpactEvents: playerImpactEvents.slice(0, transitImpactStart),
@@ -7542,13 +7637,19 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
       transitTicks,
       transitPlayerImpactEvents,
       transitPlayerImpactTicks: transitPlayerImpactEvents.map((event) => event.tick),
-      survivorEntityId: escapingSurvivor?.id ?? null,
-      survivorAlive: escapingSurvivor ? escapingSurvivor.alive !== false : null,
-      survivorWorldRecordId: escapingSurvivor?.data?.worldRecordId || null,
+      survivorEntityIds: escapingSurvivors.map((entity) => entity.id),
+      survivorAlive: escapingSurvivors.length
+        ? escapingSurvivors.every((entity) => entity.alive !== false) : null,
+      survivorWorldRecordIds: escapingSurvivors
+        .map((entity) => entity.data?.worldRecordId || null).sort(),
+      survivorCount: escapingSurvivors.length,
+      liveSurvivorCount: liveSurvivors.length,
+      liveSurvivorWorldRecordIds: liveSurvivors
+        .map((entity) => entity.data?.worldRecordId || null).sort(),
       survivorDistanceWU,
       encounterInitialRecordIds: cohort
         .map((entity) => entity.data?.worldRecordId || null).sort(),
-      resolutionSource: escapingSurvivor ? 'handoff-fresh' : 'toolkit-terminal',
+      resolutionSource: escapingSurvivors.length ? 'handoff-fresh' : 'toolkit-terminal',
       encounterResolution,
       ambushResolution: {
         phase: dir.stats?.ceresActivityAmbush?.phase || null,

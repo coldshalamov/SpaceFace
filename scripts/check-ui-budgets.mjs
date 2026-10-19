@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // PQ-184.00 — check the committed per-surface UI budget baseline: every surface's measured mean
 // frame cost and DOM node count against the grammar's thresholds, plus the baseline's own
-// integrity (schema, headed renderer, current UI source digest). A stale or missing baseline is
+// integrity (schema, headed renderer, rendered-UI source digest). A stale or missing baseline is
 // red, not a quiet pass — a budget nobody measures is the same lie as a budget nobody meets.
+//
+// The digest covers only the UI layer the matrix renders (D222 — uiBudgets.mjs): the surface
+// owner modules, the measured UI owner, index.html, and their import graph inside src/ui/.
+// A commit to styles, render, core, data, or an unmounted UI file no longer re-drifts it.
 //
 // The thresholds are cited, never restated: scripts/ui-grammar-thresholds.mjs is the one home of
 // the numbers (design/frontend/INSTRUMENT_GRAMMAR.md §12.1).
@@ -10,13 +14,13 @@
 // Re-shoot the baseline after UI changes:
 //   node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 \
 //     --budgets-out=test/ui-frame-references/budgets.json
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { MAX_UI_FRAME_MS, MAX_SURFACE_DOM_NODES } from './ui-grammar-thresholds.mjs';
-import { UI_BUDGETS_FILE, judgeBudgets, uiSourceDigest } from './lib/uiBudgets.mjs';
+import { UI_BUDGETS_FILE, judgeBudgets, uiRenderedSourceFiles, uiSourceDigest } from './lib/uiBudgets.mjs';
 import { AUTOMATABLE_SURFACES } from './ui-grammar-surfaces.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -70,56 +74,47 @@ if (baseline) {
   for (const failure of verdict.failures) {
     console.error(`  FAIL ${failure}`);
     if (failure.startsWith('baseline:stale')) {
-      // A stale verdict means the digest over the working tree no longer matches the
-      // committed baseline. Name the drift rather than guessing: the digest walks the
-      // filesystem, so .gitignore'd strays (which `git status` never shows) move the hash
-      // just as surely as tracked edits. Diff the walked set against the tracked set —
-      // the strays ARE the drift.
-      const roots = ['src/ui', 'styles', 'src/core', 'src/render'];
-      const walked = new Set();
-      const collect = (dir) => {
-        let entries = [];
-        try { entries = readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
-        for (const entry of entries) {
-          const full = path.join(dir, entry.name);
-          if (entry.isDirectory()) collect(full);
-          else walked.add(path.relative(ROOT, full).replaceAll('\\', '/'));
-        }
-      };
-      for (const root of roots) collect(path.join(ROOT, root));
+      // A stale verdict means the digest over the working tree's rendered UI layer no longer
+      // matches the committed baseline. Name the drift rather than guessing: the digest walks
+      // the rendered module set, so an untracked module (which `git status` never shows) moves
+      // the hash just as surely as a tracked edit. Diff the rendered set against the tracked
+      // set, then per-file bytes against the manifest — the moved inputs ARE the drift.
+      const rendered = uiRenderedSourceFiles(ROOT);
       const tracked = new Set(
-        (spawnSync('git', ['ls-files', '--', ...roots], { cwd: ROOT, encoding: 'utf8' }).stdout || '')
+        (spawnSync('git', ['ls-files', '--', ...rendered], { cwd: ROOT, encoding: 'utf8' }).stdout || '')
           .split('\n').filter(Boolean),
       );
-      const strays = [...walked].filter((p) => !tracked.has(p)).sort();
-      const missing = [...tracked].filter((p) => !walked.has(p)).sort();
+      const strays = rendered.filter((p) => !tracked.has(p));
+      const missing = [...tracked].filter((p) => !rendered.includes(p)).sort();
       console.error(`  digest computed: ${uiSourceDigest(ROOT)} vs baseline ${baseline.uiSourceDigest}`);
-      console.error(`  digest inputs: ${walked.size} walked vs ${tracked.size} tracked`);
-      if (strays.length) console.error(`  strays hashed but not tracked: ${strays.slice(0, 12).join(', ')}`);
-      if (missing.length) console.error(`  tracked but absent: ${missing.slice(0, 12).join(', ')}`);
+      console.error(`  digest inputs: ${rendered.length} rendered files (${tracked.size} tracked)`);
+      if (strays.length) console.error(`  rendered but untracked: ${strays.slice(0, 12).join(', ')}`);
+      if (missing.length) console.error(`  tracked but absent from tree: ${missing.slice(0, 12).join(', ')}`);
       if (!strays.length && !missing.length) {
-        // Same file set — find the byte drift directly: hash every walked file and
-        // diff it against the committed per-file manifest (test/ui-frame-references/
-        // source-manifest.json), which names exactly which inputs moved the digest.
+        // Same file set — find the byte drift directly. The baseline's own uiSourceFiles map
+        // (written by every --budgets-out run) is authoritative; the committed per-file
+        // manifest at test/ui-frame-references/source-manifest.json is the fallback for
+        // baselines shot before the map existed.
         const manifestPath = path.join(ROOT, 'test/ui-frame-references/source-manifest.json');
-        if (existsSync(manifestPath)) {
-          const expected = JSON.parse(readFileSync(manifestPath, 'utf8'));
+        const expected = baseline.uiSourceFiles
+          || (existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : null);
+        if (expected) {
           const changed = [];
           const { createHash } = await import('node:crypto');
           const { readFileSync: readBytes } = await import('node:fs');
           const canon = (buf) => (buf.includes('\r\n') ? Buffer.from(buf.toString('utf8').replaceAll('\r\n', '\n')) : buf);
-          for (const rel of walked) {
+          for (const rel of rendered) {
             const digest = createHash('sha256').update(canon(readBytes(path.join(ROOT, rel)))).digest('hex');
             if (expected[rel] !== digest) changed.push(rel);
           }
           changed.sort();
           console.error(changed.length
-            ? `  bytes diverge from manifest in ${changed.length} files: ${changed.slice(0, 12).join(', ')}`
-            : '  per-file bytes identical to manifest — drift is inside the hash ordering');
+            ? `  rendered bytes moved in ${changed.length} files: ${changed.slice(0, 12).join(', ')}`
+            : '  per-file rendered bytes identical to baseline map — drift is inside the hash ordering');
         }
-        const dirty = spawnSync('git', ['status', '--porcelain', '--', ...roots],
+        const dirty = spawnSync('git', ['status', '--porcelain', '--', ...rendered],
           { cwd: ROOT, encoding: 'utf8' }).stdout || '';
-        console.error(`  tracked-byte drift vs index:\n${dirty.trim() || '    (none — content matches the index)'}`);
+        console.error(`  tracked-byte drift vs index:\n${dirty.trim() || '    (none — rendered source matches the index)'}`);
       }
     }
   }

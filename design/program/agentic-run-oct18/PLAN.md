@@ -45,17 +45,20 @@ Statuses: OPEN / CLAIMED <worker> / LANDED <commit> / REVIEWED / PARKED <why>.
 | # | Unit | Surface | Files (write set) | Status |
 |---|---|---|---|---|
 | A1 | Adopt stale rows devin-batch20 + devin-sweep-oct3 | NOW.md | NOW.md | LANDED (this session — no orphan hunks found, rows closed) |
-| A2 | Review R-cc46e17 save/input/trade recovery | LANDED_REVIEW | per finding | OPEN |
-| A3 | Review R-48e411f endgame mission choose | LANDED_REVIEW | per finding | OPEN |
-| A4 | Review R-183df8f + R-0df2ec6 asteroid latency pair | LANDED_REVIEW | per finding | OPEN |
-| A5 | D228: reconcile ceres corridor harness vs authored ambush pack | ledger §6 | test/ceres-five-minute-acceptance.test.mjs | OPEN |
-| A6 | D213: M11 swarm river contacts after shove | ledger §6 | src/ai/fodderCohort.js + focused test | OPEN |
-| A7 | D222: ui-budgets digest only matrix-rendered files | ledger §6 | scripts/check-ui-budgets.mjs, capture script | OPEN |
-| A8 | D224: serial-route wait allowance for 4 SwiftShader-timeout checks | ledger §6 | the 4 check scripts + harness config | OPEN |
+| A2 | Review R-cc46e17 save/input/trade recovery | LANDED_REVIEW | per finding | LANDED 754b7e3a2f0 SMALL-MISS-FIXED + row closed |
+| A3 | Review R-48e411f endgame mission choose | LANDED_REVIEW | per finding | LANDED 754b7e3a2f0 CONFIRMED + row closed |
+| A4 | Review R-183df8f + R-0df2ec6 asteroid latency pair | LANDED_REVIEW | per finding | CLAIMED rev-b subagent |
+| A5 | D228: reconcile ceres corridor harness vs authored ambush pack | ledger §6 | test/ceres-five-minute-acceptance.test.mjs | CLAIMED w-d228 |
+| A6 | D213: M11 swarm river contacts after shove | ledger §6 | src/ai/fodderCohort.js + focused test | CLAIMED w-d213 |
+| A7 | D222: ui-budgets digest only matrix-rendered files | ledger §6 | scripts/check-ui-budgets.mjs, capture script | CLAIMED w-d222 |
+| A8 | D224: serial-route wait allowance for 4 SwiftShader-timeout checks | ledger §6 | the 4 check scripts + harness config | CLAIMED w-d224 |
 | A9 | D191 leg: reduce Rapier solve cost by deterministic counters | ledger §6 | physics owner files (TBD by diagnosis) | OPEN |
 | A10 | D130 leg: draw-call/state-change reduction, non-render owner | ledger §6 | TBD by diagnosis | OPEN |
 | A11 | D229 diagnosis: release-to-reregister gap (renderer.js dirty → diagnose read-only, patch lands after foreign lane) | ledger §6 | findings only | OPEN |
 | A12 | D199/D226/D225/D188: blocked (no-host/Blender/foreign) — record and skip | ledger §6 | — | PARKED |
+
+| SWP-TXN | transactions/jobs find+fix — mission:expired settle gap + rumor-host filter | LANDED e82fb7a490a, review R-e82fb7a open |
+| SWP-BASE | pq020 baseline red = stale digest pin | LANDED 28f33a2cb4c repin honest |
 
 ### Group B — §1.8 workflow sweep (build-map class; each finding→fix is a unit)
 
@@ -88,7 +91,7 @@ player-facing defect fixed with a focused regression. Target 16-20 landed units.
 
 | # | Domain rotation seed | Status |
 |---|---|---|
-| INF-01 | mission/encounter variety outside Ceres | OPEN |
+| INF-01 | mission/encounter variety outside Ceres | CLAIMED w-inf1 |
 | INF-02 | NPC job life / station texture | OPEN |
 | INF-03 | combat consequence readability | OPEN |
 | INF-04 | exploration/discovery reward | OPEN |

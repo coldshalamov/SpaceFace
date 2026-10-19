@@ -1,0 +1,57 @@
+I have launched `git status --short` to verify the working tree state and will proceed once the output is ready.
+### F-START-01
+- symptom: When continuing a game saved on earlier versions (v15-v18), or when physics native body collision falls back to scalar reconstruction, the player ship's collision contact debt and impulse memory are wiped to zero/null rather than restored, breaking collision momentum continuity across loads and causing automated regression tests to fail.
+- severity: major
+- route: Title screen -> Click "Continue" with an existing v15-v18 save file or any save envelope triggering scalar geometry fallback in `sg02DynamicBodyOwner.js`.
+- owner: `src/core/sg02DynamicBodyOwner.js:retainPlayerContactRestore:5578`
+- evidence: `SG02_NATIVE_GEOMETRY_REVISION` in [`src/core/sg02DynamicBodyOwner.js:56`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/src/core/sg02DynamicBodyOwner.js#L56) is `'xz-convex-prism-obb-v4'`. In `retainPlayerContactRestore()` line 5578:
+  ```javascript
+  if (payload.nativeGeometryRevision !== SG02_NATIVE_GEOMETRY_REVISION) {
+    return null;
+  }
+  ```
+  Legacy saves carry `'xz-support-prism-obb-v3'`. Running `node --test test/save-old-version-continue-matrix.test.mjs` fails all 8 tests with `AssertionError [ERR_ASSERTION]: undefined !== 120`. `test/sg02-scalar-contact-episode.test.mjs` similarly fails because saved contact tick and delta-V are discarded rather than converted to scalar contacts.
+- suggested_fix: Update `retainPlayerContactRestore()` to accept supported legacy revisions (such as `'xz-support-prism-obb-v3'`) or project legacy contact debt into the current scalar contact model when the revision tag mismatches.
+- confidence: high
+
+### F-START-02
+- symptom: Clicking "Continue" on the main menu when a save is corrupted, unreadable, or fails preflight validation causes the screen to stay completely black with a loading location banner frozen for 4.0 seconds before abruptly vanishing to reveal the error notification.
+- severity: polish
+- route: Main Menu -> Click "Continue" when the most recent save slot is corrupted, missing required player state, or triggers an unhandled load rejection.
+- owner: `src/ui/screens/mainMenu.js:_showContinueFade:960`
+- evidence: `_showContinueFade()` creates `.sf-continue-fade` and only tears it down when `state.mode` transitions away from `'flight'` or `'loading'`. When `saveSystem.loadGame()` fails before a mode switch, `state.mode` remains `'menu'`. The fade overlay does not listen to `save:error` or `game:load-failed`, so it remains visible until the fallback `Date.now() - start > 4000` interval timer fires.
+- suggested_fix: Subscribe `_showContinueFade` to the `save:error` and `game:load-failed` event bus channels so the black overlay is immediately dismissed when a load attempt fails.
+- confidence: high
+
+### F-START-03
+- symptom: If the player dies while an in-flight modal (such as Pause, Station, Local Map, Starmap, or Drill) is active, selecting "Continue from recovery berth" respawns the ship but leaves the modal open over the cockpit; if the modal was Pause, time remains frozen at 0 speed and flight controls are completely unresponsive.
+- severity: softlock
+- route: Open Pause menu (or open Station/Starmap modal while taking hazard/missile damage) -> Ship dies while modal is open -> Click "Continue from recovery berth" on Game Over screen.
+- owner: `src/ui/screens/gameOver.js:popAncestorsUntilGameOverResolves:561`
+- evidence: In [`src/ui/screens/gameOver.js:561-566`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/gameOver.js#L561-L566):
+  ```javascript
+  function popAncestorsUntilGameOverResolves(ctx, manager) {
+    while (manager.depth > 0) {
+      const top = manager.current();
+      if (top === 'gameOver') {
+        manager.pop();
+        break;
+      }
+      manager.pop();
+    }
+  }
+  ```
+  When `gameOver` is pushed on top of `pause`, the screen stack is `['pause', 'gameOver']`. The loop sees `top === 'gameOver'`, pops `gameOver`, and executes `break`, leaving `'pause'` on the stack. `ctx.bus.emit('time:scale', 1)` is never restored and flight input remains disabled by `screenManager.isModalOpen()`.
+- suggested_fix: Replace the early break with `manager.closeAll()` or pop all screens until the stack is empty upon respawn, and restore `time:scale` to 1.
+- confidence: high
+
+### F-START-04
+- symptom: If a confirmation prompt (such as reload or quit confirmation) is on screen when the player ship is destroyed, the prompt remains permanently mounted on top of the Game Over screen, intercepting mouse and keyboard focus and blocking the player from clicking recovery berth or restart buttons.
+- severity: softlock
+- route: Trigger an async confirm modal (e.g. quickload confirmation or menu prompt) immediately prior to lethal damage or death.
+- owner: `src/ui/confirm.js:confirm:24`
+- evidence: [`src/ui/confirm.js`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/confirm.js#L24) attaches `#sf-confirm-root` directly to the document root outside of `screenManager`. It does not register listeners for `player:death`, `game:over`, or `game:exitToMenu`. When `game:over` is emitted, `uiRoot` mounts `gameOver` underneath `#sf-confirm-root`. The confirm modal's backdrop and focus trap prevent clicking any Game Over actions.
+- suggested_fix: In `src/ui/confirm.js`, listen for `player:death` and `game:exitToMenu` on the event bus to reject pending promises and remove `#sf-confirm-root` immediately.
+- confidence: high
+
+VERDICT: 4 findings

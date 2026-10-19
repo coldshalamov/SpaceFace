@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-18",
+  "updated": "2026-10-19",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,20 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "NXI-100",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "reservation is per-mission params.qty — completing or canceling one contract releases only its units; pinned",
-      "fingerprint": "verb=release,subject=reservation,domain=econ,layer=custody",
-      "references": [],
-      "integration": "live",
-      "commit": "c394430c2",
-      "verification": "route_accepted",
-      "evidence": "test/cargo-unsellable.test.mjs"
-    },
     {
       "id": "NXI-027",
       "date": "2026-10-01",
@@ -1684,6 +1670,19 @@
       "references": [],
       "integration": "live",
       "commit": "4c19cda2608046072dc650beb7d11c9bb26fd60e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-second-bite",
+      "date": "2026-10-19",
+      "wf": "WF-08",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Hyperion Cut had zero eligible majors; the seams now bury crews on a real oxygen clock — tow, hold, strip, or fly on",
+      "fingerprint": "verb=tow,subject=crew_pod,sector=hyperion_cut,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "4c0814398f5",
       "verification": "focused_green"
     }
   ],
