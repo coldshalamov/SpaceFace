@@ -113,10 +113,16 @@ pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention �
 
 ## DELTA 16 (post eec616933f9)
 - ~61 units landed. Review ledger DRAINED TO ZERO (REV-O confirmed last 5).
-- Consensus gate: W1 clean · W2 found 1 material (_deferredLineEcho boundary leak) → FIXED eec616933f9 · W3 in-flight 90934e7a
+- Consensus gate: W1 clean · W2 found 1 material (_deferredLineEcho boundary leak) → FIXED eec616933f9 · W3 clean (correction: the 90934e7a dispatch returned clean before this delta was written; "in-flight" here was stale)
 - Counter currently 0-of-3 successive (W2 reset it). Need 3 clean waves to close.
 
 ## DELTA 17 (post fe82e52a981)
 - Landed leftover uncommitted fixes: m2-map-cutover script-scan regex (3da572b710e, bookkeeping) + siege-ark bind sector re-key (fe82e52a981 + R-fe82e52). Caught + fixed a missing syncEntitySectorMembership import the prior session's static-only verification missed.
 - Consensus gate: W1 clean · W2 defect->fixed · W3 clean (row R-8521e56 = its second-look, OPEN). Counter 1-of-3. W4 needs dispatch (prior dispatch 9a4adac7 lost with session).
 - Open reviews: R-8521e56 + R-fe82e52. Foreign lanes untouched: render/*, massline/orbitAssist/flightV3 cluster, towline glbs, mining/npcJobs/wingmen dirty sets.
+
+## DELTA 18 (post c8eec27a272)
+- Landed D226 (c8eec27a272): wreck-cathedral .blend re-author — collapse-decimated every uncovered LOD0 material island into its LOD1 twin in mesh-local space (surface-bounded; fly-through channel preserved). Parts GLB re-exported with asset/scene/root-node spacefaceAsset contracts; promoted via place release builder (18.71→5.10 MiB, ktx2 26/26, meshopt 97); wreck-cathedral render package rebuilt; pins/census/binding re-frozen to recomputed bytes. R-c8eec27 OPEN.
+- Root cause note: Blender 5.1 does not evaluate matrix_world for hide_viewport objects and exports identity node transforms for them — LOD work must use matrix_basis/mesh-local space and unhide for the export duration.
+- Consensus gate: W4 returned clean → counter 2-of-3. W4 nit (non-blocking): Quiet desk replies drop frontierRumorOffer card on Tethys — fix queued. W5 targets must include foreign orbit-assist commit 54c8669c4b8.
+- Open reviews: R-8521e56 + R-fe82e52 + R-c8eec27.
