@@ -25,6 +25,7 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-9c4fb29 | 9c4fb29e909da14a6b81f517a77f03cef7396811 | SWP-CLAIM salvage identity | OPEN | Verify _entityForPoint guard accepts every legit bound carrier (spawned points, rematerialized Tally crate, marker-bound player wreck) while rejecting recycled occupants. |
 | R-09cfdee | 09cfdee6b032f954b44e4f4668526f95b6af59f0 | SWP-HITCH per-tick alloc batch | OPEN | Verify mothlight/kilnback latch assumption: no lootTableId carrier can spawn without a shipLike/wrecks lane bump or save-boundary reset (30-tick rescan is the hedge). |
 | R-0105c1b | 0105c1bafccd1a969019657d574a09d405a1ca93 | SWP-MENUS audit fixes | OPEN | Verify Tab/Shift+Tab traverse galaxy-map DOM controls end-to-end on the live route (tests prove onKey declines; browser _trapKeydown walk untested). |
 | R-271dcf6 | 271dcf6571ac57e840d649e5e68179075032c321 | INF-12 the deadweight | OPEN | Verify a real player tow can physically arrive inside ringWu at handoffSpeed 14 in live flight — winch reels continuously; cut-and-coast sling is an accepted honest path. |
@@ -33,7 +34,5 @@ The oldest OPEN row is the next second look.
 | R-be594dc | be594dcd08df5adfeb45c8e23f4065e2a4c8bc3a | INF-13 the blank page | OPEN | Verify scan-as-offense: a pulse covering the passive ghost settles read/broke_terms via runtime.event(scanPulse) while a short radius writes nothing; and no outcome emits news:publish. |
 | R-8764f824a2 | 2c3b9f33aac | INF-14 swarm star asks | OPEN | Verify chain-star-banked zones name the spotless ask not a chain (stars=2 bestChain>=target), and never-entered zones show no ask. |
 | R-4065252 | 40652524541 | SWP-SPAWN claim release + welldrag cleanup | OPEN | Verify _onEntityDestroyed releasing source-ledger claims on hard exit is correct vs intended persist-across-leave design; virtualize skip is the boundary. |
-| R-8764f824 | 8764f824186 | SWP-COMM comms lifecycle | OPEN | Verify clearing _contactHailHeaveTo on sector:enter cannot refuse a legitimate continuous hail across the boundary (offer availability-poll at 5Hz is the safety) and that gone-squad resolution cannot fire spuriously while a member is temporarily invisible (membersFor = exists+alive). |
 | R-cc46e17 | cc46e17abcf8e4691a80d69c02aca21d1e45e4af | §1.8 demo sweep: save, input, and trade recovery | Continue rechecks the primary and recovery bytes after async validation before choosing a restore source | CLOSED 2026-10-18 (row deleted by review commit): SMALL-MISS-FIXED — `raw = freshRaw` after generation-bump re-prepare; regression test added |
 
-| R-5420e6d2 | 5420e6d213 | SWP-ECON quote-provenance admission | Verify bestKnownBuy/bestKnownMarginLane agree on the same admission set and unknown tags still drop the row. | OPEN |
