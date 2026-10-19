@@ -114,20 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-154",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "deadline_s is sim-time end to end; pausing freezes it",
-      "fingerprint": "verb=freeze,subject=deadline,domain=missions,layer=core",
-      "references": [],
-      "integration": "live",
-      "commit": "963e11a1c",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-039-deadline-pacing.test.mjs"
-    },
-    {
       "id": "NXI-156",
       "date": "2026-10-01",
       "wf": "WF-11",
@@ -1677,6 +1663,19 @@
       "references": [],
       "integration": "live",
       "commit": "87d92b0ac8bfc6f276656d69716d12fd6f2a2379",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-clean-sheet",
+      "date": "2026-10-19",
+      "wf": "WF-19",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "WANTED off-ramp in open water: in-space Quiet desk sells heat scrub under owner's laws while SCN sweep converges",
+      "fingerprint": "verb=scrub,subject=wanted_heat,sector=multi_outlaw,domain=law",
+      "references": [],
+      "integration": "live",
+      "commit": "f097f341d841fef86b6b58cf1657a6379e161843",
       "verification": "focused_green"
     }
   ],

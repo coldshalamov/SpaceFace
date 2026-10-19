@@ -25,6 +25,7 @@ The oldest OPEN row is the next second look.
 
 | Id | Commit | Task | What to re-check | Status |
 |---|---|---|---|---|
+| R-f097f34 | f097f341d841fef86b6b58cf1657a6379e161843 | INF-17 the clean sheet | OPEN | Verify heat:scrubRequested with fenceId the_clean_sheet exercises only the owner path (cooldown/nets-floor/impound reachable, refunded on refusal) — no second writer path exists. |
 | R-09cfdee | 09cfdee6b032f954b44e4f4668526f95b6af59f0 | SWP-HITCH per-tick alloc batch | OPEN | Verify mothlight/kilnback latch assumption: no lootTableId carrier can spawn without a shipLike/wrecks lane bump or save-boundary reset (30-tick rescan is the hedge). |
 | R-0105c1b | 0105c1bafccd1a969019657d574a09d405a1ca93 | SWP-MENUS audit fixes | OPEN | Verify Tab/Shift+Tab traverse galaxy-map DOM controls end-to-end on the live route (tests prove onKey declines; browser _trapKeydown walk untested). |
 | R-271dcf6 | 271dcf6571ac57e840d649e5e68179075032c321 | INF-12 the deadweight | OPEN | Verify a real player tow can physically arrive inside ringWu at handoffSpeed 14 in live flight — winch reels continuously; cut-and-coast sling is an accepted honest path. |
