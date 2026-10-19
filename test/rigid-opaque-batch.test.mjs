@@ -1091,3 +1091,75 @@ test('unsupported BatchedMesh capability leaves the direct path untouched', asyn
   a.material.dispose();
   b.material.dispose();
 });
+
+test('a shadow-lane flip parks the flipper instead of churning the whole cohort', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  // A third leaf keeps a viable group after the flipper parks — groups under the
+  // minimum size are not planned at all.
+  const cMaterial = b.material.clone();
+  cMaterial.onBeforeCompile = b.material.onBeforeCompile;
+  cMaterial.customProgramCacheKey = b.material.customProgramCacheKey;
+  const c = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), cMaterial);
+  c.position.x = 4;
+  root.add(c);
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  try {
+    const first = await controller.sync(root);
+    assert.equal(first.status, 'active');
+    assert.equal(first.instances, 3);
+
+    // The shadow-policy pass flips a lane flag between syncs — the live case that used to
+    // dispose and immediately re-prepare the entire cohort on every policy touch.
+    a.castShadow = true;
+    const rolled = await controller.sync(root);
+    // The rollback lands in the same sync, but the replan waits for the shadow sweep to go
+    // quiet — a multi-part sweep collapses into one recommit instead of one per flipper.
+    assert.equal(rolled.rollbacks, 1);
+    assert.equal(rolled.status, 'settling');
+    assert.match(rolled.lastDetail || '', /^cast-shadow@/);
+    assert.equal(a.layers.mask, 1, 'the flipped source returns to its direct draw');
+    assert.equal(b.layers.mask, 1, 'rollback restores the rest of the cohort too');
+    assert.equal(c.layers.mask, 1);
+
+    // Syncs inside the quiet window keep settling without re-preparing.
+    const before = rolled.activations;
+    for (let i = 0; i < 8; i += 1) await controller.sync(root);
+    const heldEarly = await controller.sync(root);
+    assert.equal(heldEarly.status, 'settling');
+    assert.equal(heldEarly.activations, before, 'no re-prepare while flips are fresh');
+    assert.equal(heldEarly.rollbacks, 1, 'no further disposal after the one clean rollback');
+
+    // Once flips have been quiet for the replan window the cohort re-commits with the
+    // flipper parked on its authored direct draw.
+    for (let i = 0; i < 46; i += 1) await controller.sync(root);
+    const held = await controller.sync(root);
+    assert.equal(held.status, 'active');
+    assert.equal(held.instances, 2, 'only the flipper parks on the direct path');
+    assert.equal(held.rollbacks, 1);
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 0);
+    assert.equal(c.layers.mask, 0);
+
+    // A parked source is not an entry, so later lane touches on it are no longer the
+    // cohort's problem: the rest stays batched and no further rollback can fire.
+    a.castShadow = false;
+    const afterTouch = await controller.sync(root);
+    assert.equal(afterTouch.status, 'active');
+    assert.equal(afterTouch.rollbacks, 1, 'a direct-path lane touch cannot churn the cohort');
+    assert.equal(afterTouch.instances, 2);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose();
+    b.geometry.dispose();
+    c.geometry.dispose();
+    a.material.dispose();
+    b.material.dispose();
+    cMaterial.dispose();
+  }
+});

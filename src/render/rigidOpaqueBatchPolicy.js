@@ -411,7 +411,7 @@ export function planRigidOpaqueBatchGroups(roots, options = {}) {
     });
   }
 
-  const minGroupSize = Math.max(2, Math.floor(Number(options.minGroupSize) || 2));
+  const minGroupSize = Math.max(1, Math.floor(Number(options.minGroupSize) || 2));
   const groups = [];
   let potentialDrawReduction = 0;
   for (const group of groupsByKey.values()) {

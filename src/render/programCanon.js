@@ -293,7 +293,14 @@ function cloneProgramSpecimenMaterial(material) {
     clone.defines = Object.assign({}, material.defines);
   }
   clone.name = `SF_ProgramSpecimen_${material.name || material.type}`.slice(0, 96);
-  clone.userData = { spacefaceSharedAsset: true, [SPECIMEN_MARKER]: true };
+  // Keep the source's userData: the batch program key reads the illustrated-surface
+  // marker and its payload fields (role/pigment/layout/stencil) out of it. Replacing the
+  // bag wholesale would leave every illustrated specimen keyless to the batch planner.
+  clone.userData = {
+    ...(material.userData && typeof material.userData === 'object' ? material.userData : {}),
+    spacefaceSharedAsset: true,
+    [SPECIMEN_MARKER]: true,
+  };
   return clone;
 }
 

@@ -611,7 +611,8 @@ function buildCandidate(scene, plan, options) {
 }
 
 function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null,
-  materialUniformStability = null) {
+  materialUniformStability = null, noteCheck = null) {
+  const check = (name, ok) => { if (!ok && noteCheck) noteCheck(name); return ok; };
   const source = entry.source;
   const material = source && source.material;
   const directSuppressed = hidden === true;
@@ -626,37 +627,37 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     }
   }
   if (material === entry.material && !uniformsStable && noteMutableMaterial) noteMutableMaterial(material);
-  return !!source
-    && source.isMesh === true
-    && source.parent === entry.parent
+  return check('no-source', !!source)
+    && check('not-mesh', source.isMesh === true)
+    && check('reparented', source.parent === entry.parent)
     // Keep source visibility and mesh identity canonical while active. The retained path removes
     // the direct draw through the layer mask instead; semantic consumers intentionally continue to
     // traverse this source for roofs, picking, and opaque ownership.
-    && source.visible === entry.originalVisible
-    && source.geometry === entry.geometry
-    && geometrySnapshotStable(entry.geometrySnapshot, source.geometry)
-    && material === entry.material
-    && (material && material.visible !== false) === entry.materialVisible
-    && (material && material.version) === entry.materialVersion
-    && uniformsStable
+    && check('visible-flip', source.visible === entry.originalVisible)
+    && check('geometry-swap', source.geometry === entry.geometry)
+    && check('geometry-mutated', geometrySnapshotStable(entry.geometrySnapshot, source.geometry))
+    && check('material-swap', material === entry.material)
+    && check('material-visibility', (material && material.visible !== false) === entry.materialVisible)
+    && check('material-version', (material && material.version) === entry.materialVersion)
+    && check('uniforms-drift', uniformsStable)
     // Non-vertex-colored materials read their cloned material.color directly in the batch
     // shader. A live color mutation cannot be repaired with setColorAt, so invalidate the
     // retained copy and let the normal admission path rebuild the keyed group.
-    && (entry.vertexColors === true || !colorChanged(entry.color, currentColor))
-    && (!material || material.onBeforeCompile === entry.onBeforeCompile)
-    && (!material || material.customProgramCacheKey === entry.customProgramCacheKey)
-    && (!material || material.onBeforeRender === entry.materialOnBeforeRender)
-    && (!material || material.onAfterRender === entry.materialOnAfterRender)
-    && source.renderOrder === entry.renderOrder
-    && source.layers && source.layers.mask === (directSuppressed ? 0 : entry.layersMask)
-    && source.castShadow === entry.castShadow
-    && source.receiveShadow === entry.receiveShadow
-    && source.customDepthMaterial == null
-    && source.customDistanceMaterial == null
-    && source.morphTargetInfluences == null
-    && source.morphTargetDictionary == null
-    && hookSafe(source)
-    && currentTagsStable(entry.tags, source);
+    && check('color-drift', entry.vertexColors === true || !colorChanged(entry.color, currentColor))
+    && check('compile-hook-swap', !material || material.onBeforeCompile === entry.onBeforeCompile)
+    && check('cache-key-swap', !material || material.customProgramCacheKey === entry.customProgramCacheKey)
+    && check('before-render-swap', !material || material.onBeforeRender === entry.materialOnBeforeRender)
+    && check('after-render-swap', !material || material.onAfterRender === entry.materialOnAfterRender)
+    && check('render-order', source.renderOrder === entry.renderOrder)
+    && check('layer-mask', source.layers && source.layers.mask === (directSuppressed ? 0 : entry.layersMask))
+    && check('cast-shadow', source.castShadow === entry.castShadow)
+    && check('receive-shadow', source.receiveShadow === entry.receiveShadow)
+    && check('custom-depth', source.customDepthMaterial == null)
+    && check('custom-distance', source.customDistanceMaterial == null)
+    && check('morph-influences', source.morphTargetInfluences == null)
+    && check('morph-dictionary', source.morphTargetDictionary == null)
+    && check('render-hook', hookSafe(source))
+    && check('tags', currentTagsStable(entry.tags, source));
 }
 
 function restoreSources(entries) {
@@ -703,12 +704,41 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   // Re-admitting its new value every frame would replace one stale picture with a compile storm.
   const mutableMaterials = new WeakSet();
   const noteMutableMaterial = material => { if (material) mutableMaterials.add(material); };
+  // Same treatment for shadow-lane flippers as mutable materials, with one reprieve: a
+  // shadow-policy or depth-staging pass can flip a source's castShadow/receiveShadow while an
+  // async prepare is in flight — every flip used to invalidate the whole cohort at commit, so
+  // one flapping part churned every batch forever. A lane flip is a group-key change a live
+  // batch cannot absorb. The first observed flip parks the source on its authored direct draw
+  // for a long quiet window; a second parks it for the controller's life.
+  const RETAINED_BATCH_SHADOW_FLIP_QUIET_SYNCS = 600;
+  // A shadow-policy sweep flips many sources one validation at a time — each observed flip
+  // invalidated the whole cohort, so a sweep of N parts cost N dispose+prepare rounds and
+  // starved the compile lane every other admission serializes on. Defer the replan until
+  // flips have gone quiet for a short window so the sweep collapses into one recommit.
+  const RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET = 45;
+  const shadowFlipMemory = new WeakMap();
+  let syncSerial = 0;
+  let lastShadowFlipSync = Number.NEGATIVE_INFINITY;
+  const noteShadowFlip = (source) => {
+    if (!source) return;
+    const memory = shadowFlipMemory.get(source) || { strikes: 0, stamp: 0 };
+    memory.strikes += 1;
+    memory.stamp = syncSerial;
+    shadowFlipMemory.set(source, memory);
+    lastShadowFlipSync = syncSerial;
+  };
+  const shadowLaneQuiet = (source) => {
+    const memory = shadowFlipMemory.get(source);
+    return memory == null
+      || (memory.strikes < 2 && syncSerial - memory.stamp >= RETAINED_BATCH_SHADOW_FLIP_QUIET_SYNCS);
+  };
   const renderHookSafe = typeof options.isRenderHookSafe === 'function'
     ? options.isRenderHookSafe
     : defaultHookSafe;
   const isRenderHookSafe = (source) => {
     try {
       return !mutableMaterials.has(source?.material)
+        && shadowLaneQuiet(source)
         && (!selectSource || selectSource(source) === true)
         && (!isTransformOnlySource || isRigidOpaqueBatchMotionSafe(source,
           (getTags ? getTags(source) : source?.userData?.spacefaceTags) || EMPTY_ARRAY, motionOptions))
@@ -752,6 +782,14 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     activations: 0,
     lastReason: null,
     lastError: null,
+    // Diagnostic only: which per-entry stability check failed, plus a bounded subject label.
+    // Not part of any rollback decision; tests and probes read it to attribute churn.
+    lastDetail: null,
+  };
+  const noteUnstableCheck = (entry) => (name) => {
+    const source = entry && entry.source;
+    stats.lastDetail = `${name}@${source && source.name || '?'}`;
+    if (name === 'cast-shadow' || name === 'receive-shadow') noteShadowFlip(source);
   };
 
   const idFor = (root) => {
@@ -968,13 +1006,16 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
 
   const validateAndRefresh = () => {
     if (!active) return false;
-    if (!entryTopologyMatches(active.entryTopology)) return false;
+    if (!entryTopologyMatches(active.entryTopology)) {
+      stats.lastDetail = 'entry-topology';
+      return false;
+    }
     let visibleCount = 0;
     const materialUniformStability = new Map();
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
       if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial,
-        materialUniformStability)) return false;
+        materialUniformStability, noteUnstableCheck(entry))) return false;
       const source = entry.source;
       _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
       if (matrixChanged(entry.matrix, _localMatrix.elements)) {
@@ -1022,6 +1063,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   });
 
   const request = (roots, requestOptions = {}) => {
+    syncSerial += 1;
     if (disposed || !scene) return refreshDiagnostics();
     if (stats.supported !== true) {
       stats.status = 'disabled';
@@ -1033,6 +1075,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
 
     if (active) {
       if (!retainMembershipForRoots(normalized)) {
+        stats.lastDetail = 'membership-remove-failed';
         disposeActive('source-state-changed');
       } else {
         const hasNewRoots = normalized.some((root) => !rootInList(active.roots, root));
@@ -1040,7 +1083,9 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           // Keep the current cohort valid while streamed additions settle. Their direct leaves
           // remain on the authored layer until one quiet window allows a safe full replan.
           if (!noteDeferredMembership(normalized)) {
-            if (!topologyMatches(active.topology, active.roots) || !validateAndRefresh()) {
+            if (!topologyMatches(active.topology, active.roots)
+                ? (stats.lastDetail = 'root-topology', true)
+                : !validateAndRefresh()) {
               disposeActive('source-state-changed');
             } else {
               stats.status = 'active';
@@ -1052,7 +1097,9 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           }
         } else {
           clearDeferredMembership();
-          if (!topologyMatches(active.topology, active.roots) || !validateAndRefresh()) {
+          if (!topologyMatches(active.topology, active.roots)
+              ? (stats.lastDetail = 'root-topology', true)
+              : !validateAndRefresh()) {
             disposeActive('source-state-changed');
           } else {
             stats.status = 'active';
@@ -1067,6 +1114,14 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       pending.cancelled = true;
       releaseCandidate(pending.candidate, scene, true);
       pending = null;
+    }
+    if (syncSerial - lastShadowFlipSync < RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET) {
+      // Flips are still landing — re-planning now would commit against source state the next
+      // flip invalidates again. Sources stay on their authored direct draws until quiet; the
+      // signature is left unstamped so the first quiet sync plans against current roots.
+      stats.status = 'settling';
+      stats.lastReason = 'shadow-flip-quiet-window';
+      return refreshDiagnostics();
     }
     if (lastSignature === signature && rootsEqual(lastRoots, normalized)
         && topologyMatches(lastTopology, normalized)) {
@@ -1150,10 +1205,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           return refreshDiagnostics();
         }
         const topologyStable = entryTopologyMatches(record.entryTopology);
+        if (!topologyStable) stats.lastDetail = 'entry-topology-before-commit';
         const materialUniformStability = new Map();
         if (!topologyStable
             || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,
-              noteMutableMaterial, materialUniformStability))) {
+              noteMutableMaterial, materialUniformStability, noteUnstableCheck(entry)))) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
           lastSignature = null;
@@ -1249,4 +1305,169 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       return true;
     },
   };
+}
+
+/**
+ * Specimen planning for the roster-prewarm cohort warm. The retained path above only
+ * learns a group's (material, geometry, lane) combination once a real authored root
+ * arrives, so its first BatchedMesh pays a USE_BATCHING program link inside flight.
+ * Planning the same groups over the hidden roster exemplars lets the opening cook mint
+ * and link those exact programs behind the shell instead.
+ *
+ * Options mirror the live controller's makePlan minus selectSource and the mutable
+ * material ledger: every exemplar leaf is a candidate surface, so the specimen set is
+ * a slight superset of what live roots admit — a wasted specimen costs one link behind
+ * the shell while a missed one lands mid-flight.
+ */
+export function planRigidOpaqueBatchSpecimenGroups(roots, options = {}) {
+  const getTags = typeof options.getTags === 'function' ? options.getTags : undefined;
+  const isTransformOnlySource = typeof options.isTransformOnlySource === 'function'
+    ? options.isTransformOnlySource : undefined;
+  const isAttestedRigidMotionOwner = typeof options.isAttestedRigidMotionOwner === 'function'
+    ? options.isAttestedRigidMotionOwner : undefined;
+  const motionOptions = { getTags, isTransformOnlySource, isAttestedRigidMotionOwner };
+  const renderHookSafe = typeof options.isRenderHookSafe === 'function'
+    ? options.isRenderHookSafe
+    : defaultHookSafe;
+  const isRenderHookSafe = (source) => {
+    try {
+      return (!isTransformOnlySource || isRigidOpaqueBatchMotionSafe(source,
+          (getTags ? getTags(source) : source?.userData?.spacefaceTags) || EMPTY_ARRAY, motionOptions))
+        && renderHookSafe(source) === true
+        && geometryWithinBatchLimits(source && source.geometry);
+    } catch (_) { return false; }
+  };
+  return planRigidOpaqueBatchGroups(roots, {
+    getTags,
+    isTransformOnlySource,
+    isAttestedRigidMotionOwner,
+    isRenderHookSafe,
+    materialProgramKey: rigidOpaqueMaterialProgramKey,
+    shadowLane: (source) => `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
+    // A specimen group exists to warm its program, not to prove a live batch is worth
+    // forming — a singleton key still pays a mid-flight USE_BATCHING link if unwarmed.
+    minGroupSize: 1,
+  });
+}
+
+/**
+ * Mint one throwaway BatchedMesh that carries the same cloned material, merged geometry
+ * attributes, per-instance color texture, and shadow lane a live candidate batch would —
+ * the exact (material, geometry, lane) identity the program cache keys on. Compile it
+ * behind the shell and the later real candidate's prepare resolves to a cache hit.
+ * The caller owns scene membership and disposal; the source geometry is only read.
+ */
+export function mintRigidOpaqueBatchSpecimen(group) {
+  const source = group && group.surfaces && group.surfaces[0];
+  if (!source || !source.geometry || !source.material) return null;
+  const counts = geometryCounts(source.geometry);
+  if (!counts) return null;
+  const material = copyMaterialForBatch(source.material);
+  if (!material) return null;
+  let mesh;
+  try {
+    mesh = new THREE.BatchedMesh(1, Math.max(1, counts.vertices), Math.max(1, counts.indices), material);
+  } catch (_) {
+    if (material !== source.material) material.dispose?.();
+    return null;
+  }
+  mesh.name = `SF_RigidOpaqueBatchSpecimen_${group.lane}`;
+  const laneParts = String(group.lane).split('|');
+  mesh.castShadow = laneParts[0] === 'cast';
+  mesh.receiveShadow = laneParts[1] === 'receive';
+  mesh.frustumCulled = false;
+  mesh.perObjectFrustumCulled = true;
+  mesh.sortObjects = false;
+  mesh.visible = false;
+  mesh.userData.spacefaceRigidOpaqueBatchSpecimen = true;
+  try {
+    const geometryId = mesh.addGeometry(source.geometry);
+    const instanceId = mesh.addInstance(geometryId);
+    _localMatrix.identity();
+    mesh.setMatrixAt(instanceId, _localMatrix);
+    // setColorAt mints the per-instance color texture — without it the specimen's
+    // batchingColor program axis diverges from the live batch's (which always sets one).
+    if (typeof mesh.setColorAt === 'function') mesh.setColorAt(instanceId, colorFromMaterial(source.material));
+  } catch (_) {
+    try { mesh.dispose?.(); } catch (_) { /* best effort */ }
+    if (material !== source.material) material.dispose?.();
+    return null;
+  }
+  return mesh;
+}
+
+// Session-wide record of batch program keys already compiled by a specimen or twin. The
+// opening specimen warm and every per-admission twin consult it so a family's USE_BATCHING
+// variant links once per session — not once per admission (which on a busy route turned the
+// cook's compile lane into the bottleneck and missed the startup readiness deadline). A
+// WebGL context loss invalidates every linked program, so the registry clears with it.
+const warmedRigidOpaqueBatchKeys = new Set();
+export function isRigidOpaqueBatchProgramWarmed(key) {
+  return key != null && warmedRigidOpaqueBatchKeys.has(key);
+}
+export function noteRigidOpaqueBatchProgramWarmed(key) {
+  if (key != null) warmedRigidOpaqueBatchKeys.add(key);
+}
+export function clearRigidOpaqueBatchWarmedKeys() {
+  warmedRigidOpaqueBatchKeys.clear();
+}
+
+/**
+ * Per-admission twin warm. A ship family that first appears mid-flight registers its
+ * canonical specimen during this same admission — after the opening cook's registry sweep
+ * has already run — so without a twin its USE_BATCHING variant links later, inside the
+ * cohort's activation compile. One throwaway BatchedMesh per (material, geometry, lane)
+ * group rides THIS admission's own compile instead: the link lands inside the paced
+ * boundary the family already pays, and the later cohort activation resolves to a
+ * program-cache hit. Mirrors the package-pool instanced-twin contract above the caller.
+ * Callers opt in per admission (the ship pipeline flags `rigidOpaqueBatchTwinCohort`);
+ * roots the cohort never claims would only pay a link for an unused program.
+ */
+export function mountRigidOpaqueBatchSpecimenTwins(root, options = {}) {
+  if (!root || typeof root.traverse !== 'function' || typeof root.add !== 'function') return null;
+  let plan;
+  try {
+    plan = planRigidOpaqueBatchSpecimenGroups([root], {
+      getTags: options.getTags,
+      // Superset coverage like the cook-time sweep: the live cohort admits transform-only
+      // motion-group leaves under attestation, so the twin plan treats every leaf as
+      // transform-only rather than risk a missed family paying its link at activation.
+      isTransformOnlySource: options.isTransformOnlySource || (() => true),
+      isAttestedRigidMotionOwner: options.isAttestedRigidMotionOwner,
+      isRenderHookSafe: options.isRenderHookSafe,
+    });
+  } catch (_) {
+    return null;
+  }
+  if (!plan || !Array.isArray(plan.groups) || plan.groups.length === 0) return null;
+  const holder = new THREE.Group();
+  holder.name = 'SF_RigidOpaqueBatchTwinHolder';
+  for (const group of plan.groups) {
+    // Only the first admission of a family pays its twin: a warmed key's USE_BATCHING
+    // program is already pinned in the session cache — re-minting would relink nothing.
+    if (!group || isRigidOpaqueBatchProgramWarmed(group.key)) continue;
+    const twin = mintRigidOpaqueBatchSpecimen(group);
+    if (twin) {
+      holder.add(twin);
+      noteRigidOpaqueBatchProgramWarmed(group.key);
+    }
+  }
+  if (holder.children.length === 0) return null;
+  root.add(holder);
+  return holder;
+}
+
+export function settleRigidOpaqueBatchSpecimenTwins(root, holder) {
+  if (!holder) return;
+  try {
+    if (holder.parent === root) root.remove(holder);
+    else if (holder.parent) holder.parent.remove(holder);
+  } catch (_) { /* a stale parent edge does not keep the pin alive */ }
+  for (const twin of holder.children) {
+    try { twin.dispose?.(); } catch (_) { /* best effort */ }
+    const material = twin.material;
+    if (material && typeof material.dispose === 'function') {
+      try { material.dispose(); } catch (_) { /* best effort */ }
+    }
+  }
 }

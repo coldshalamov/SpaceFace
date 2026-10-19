@@ -110,12 +110,18 @@ test('Ashline selector binds the six cold retro leaves to the actual live hostil
       (_candidateOwner, candidate) => { candidate.root.userData.authoredAssetState = 'procedural-fallback'; },
       (candidateOwner) => { candidateOwner.state.entities.get(41).data.authoredAssetId = 'special-body'; },
     ];
+    // Invalidations that still leave a live authored ship now fall through to the generic
+    // ship cohort — only the Ashline pins are lost; the policy battery still decides leaves.
+    const GENERIC_STILL_ADMITS = new Set([2, 4, 6]);
+    let replacementIndex = -1;
     for (const invalidate of replacements) {
+      replacementIndex += 1;
       const clean = makeRoot(41), isolated = makeOwner([clean]);
       try {
         invalidate(isolated.owner, clean);
         assert.equal(isRigidOpaqueAshlineCohortRoot(isolated.owner, clean.root), false);
-        assert.equal(isRigidOpaqueDefaultCohortSource(isolated.owner, clean.leaves[0]), false);
+        assert.equal(isRigidOpaqueDefaultCohortSource(isolated.owner, clean.leaves[0]),
+          GENERIC_STILL_ADMITS.has(replacementIndex));
       } finally { isolated.dispose(); }
     }
   } finally { fixture.dispose(); }

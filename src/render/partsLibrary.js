@@ -105,6 +105,10 @@ import {
   isRigidOpaqueBatchableSurface,
 } from './rigidOpaqueBatchPolicy.js';
 import {
+  mountRigidOpaqueBatchSpecimenTwins,
+  settleRigidOpaqueBatchSpecimenTwins,
+} from './rigidOpaqueBatch.js';
+import {
   AUTHORED_UPGRADE_OPENING_LIMIT,
   authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency,
   combatantAdmissionPriority,
@@ -9167,6 +9171,26 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   await pacePolicyWalk(() => configureRealtimeCanopyMaterials(root));
   await pacePolicyWalk(() => configureTransparentSinglePassSurfaces(root));
   await pacePolicyWalk(() => canonicalizeAuthoredProgramState(root));
+  // Ship cohort twin warm: a family that first appears mid-flight registers its canonical
+  // specimen here — after the opening cook's registry sweep has run — so without this
+  // twin its USE_BATCHING variant links inside the cohort's activation compile. One
+  // throwaway BatchedMesh per (material, geometry, lane) group rides this admission's
+  // own compile; the later batch prepare resolves to a program-cache hit. Mounts before
+  // the canonical specimens so those pins never enter the twin planner's walk.
+  const batchTwinMount = options.rigidOpaqueBatchTwinCohort === true
+    ? await pacePolicyWalk(() => mountRigidOpaqueBatchSpecimenTwins(root, options))
+    : null;
+  if (options.rigidOpaqueBatchTwinCohort === true) {
+    // Minted count is written even when zero so the live diagnostic can tell
+    // "flag never reached the admission" apart from "planner found no groups".
+    // options.renderer is the WebGLRenderer — its .state is WebGLState, not GameState.
+    const twinDiag = (options.state || authoredRuntimeState())?.render || null;
+    if (twinDiag) {
+      twinDiag.rigidOpaqueBatchTwinsMinted = (twinDiag.rigidOpaqueBatchTwinsMinted || 0)
+        + (batchTwinMount ? batchTwinMount.children.length : 0);
+      if (!batchTwinMount) twinDiag.rigidOpaqueBatchTwinEmpty = (twinDiag.rigidOpaqueBatchTwinEmpty || 0) + 1;
+    }
+  }
   // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
   // links) and keep each covered program key alive after the boundary's materials release.
   const programSpecimenMount = await pacePolicyWalk(() => mountCanonicalProgramSpecimens(root));
@@ -9195,6 +9219,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   } finally {
     settleCanonicalProgramSpecimens(root, programSpecimenMount);
     settlePackagePoolCandidateInstancedTwins(root, poolCandidateTwinMount);
+    settleRigidOpaqueBatchSpecimenTwins(root, batchTwinMount);
   }
   const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
@@ -9307,7 +9332,20 @@ async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
   const poolAdmissions = Array.isArray(authored?.packagePoolAdmissions)
     ? authored.packagePoolAdmissions
     : EMPTY_ARRAY;
-  const preparations = [prepareAuthoredVisualPipelines(authored.root, options)];
+  const preparations = [prepareAuthoredVisualPipelines(authored.root, {
+    ...options,
+    // The retained rigid-opaque cohort only claims ship roots: mint each batchable
+    // family's USE_BATCHING twin inside this compile so its activation is a cache hit.
+    // Skipped entirely where the renderer found no BatchedMesh support this session.
+    rigidOpaqueBatchTwinCohort: (() => {
+      // Cook-time ship admissions already get their USE_BATCHING keys from the roster
+      // specimen warm — minting twins inside them too only spends the scripted-hull
+      // readiness budget on links it does not need. Twins exist for mid-flight families.
+      const twinState = options.state || authoredRuntimeState();
+      return twinState?.render?.rigidOpaqueBatchTwinCohort === true
+        && twinState?.mode !== 'loading';
+    })(),
+  })];
   for (const admission of poolAdmissions) {
     preparations.push(prepareRenderPackagePoolAdmission(admission, options));
   }

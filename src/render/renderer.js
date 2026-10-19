@@ -342,7 +342,7 @@ import {
   survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
-import { createRetainedRigidOpaqueBatchController } from './rigidOpaqueBatch.js';
+import { createRetainedRigidOpaqueBatchController, mintRigidOpaqueBatchSpecimen, planRigidOpaqueBatchSpecimenGroups, isRigidOpaqueBatchProgramWarmed, noteRigidOpaqueBatchProgramWarmed, clearRigidOpaqueBatchWarmedKeys } from './rigidOpaqueBatch.js';
 import {
   scheduleRealtimeShadowRefresh,
   shouldRefreshRealtimeShadowMap,
@@ -11067,6 +11067,7 @@ function emptyRigidOpaqueBatchDiagnostics(owner, status = 'disabled', lastReason
     activations: 0,
     lastReason,
     lastError: null,
+    lastDetail: null,
   };
 }
 
@@ -11102,6 +11103,7 @@ function disableRigidOpaqueBatchProbe(owner, reason = 'bench-disabled') {
   }
   owner._rigidOpaqueBatchProbeEnabled = false;
   owner._rigidOpaqueBatchAshlineLifetimes?.clear();
+  owner._rigidOpaqueBatchShipLifetimes?.clear();
   if (owner._rigidOpaqueBatchRootsScratch) owner._rigidOpaqueBatchRootsScratch.length = 0;
   const previous = owner._rigidOpaqueBatchLastDiagnostics
     || controller?.getDiagnostics?.()
@@ -11245,6 +11247,36 @@ function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
   return !!matched && isAttestedRigidMotionOwner(matched, object, RIGID_ASHLINE_MOTION_IDENTITY);
 }
 
+// Beyond the named Kestrel/Ashline allowlists, every live authored traffic ship carries the
+// same 24-49 rigid opaque hull leaves as separate draws. The planner's shader/motion/geometry
+// battery already keeps canopies, plumes, fans, turrets, decals, morphs, transparents, custom
+// hooks and animated pivots on their authored draws; admitting the rest of the rigid leaves
+// here collapses each hull into its few material groups. Animated surfaces stay direct —
+// there is no single-owner attestation for generic hulls.
+export const RIGID_OPAQUE_SHIP_COHORT_MAX_ROOTS = 24;
+
+export function isRigidOpaqueShipCohortRoot(owner, root) {
+  const data = root?.userData, id = data?.presentationEntityId;
+  if (id == null || !root.parent || owner?._meshes?.get?.(id) !== root) return false;
+  // The Kestrel/Ashline paths own their own root lists, name allowlists, and motion attestation.
+  if (id === owner?.state?.playerId) return false;
+  if (isRigidOpaqueAshlineCohortRoot(owner, root)) return false;
+  const entity = owner?.state?.entities?.get?.(id), ship = entity?.data;
+  if (entity?.alive === false || entity?.type !== 'ship') return false;
+  return entity?.occupantGeneration != null
+    && data.presentationEntityType === 'ship'
+    && data.presentationShipDefId === ship?.defId
+    && data.presentationOccupantGeneration === entity.occupantGeneration
+    && (data.authoredAssetState === 'authored' || data.authoredAssetState === 'authored-with-cleanup-error');
+}
+
+function rigidOpaqueShipSourceRoot(owner, source) {
+  for (let node = source; node; node = node.parent) {
+    if (isRigidOpaqueShipCohortRoot(owner, node)) return node;
+  }
+  return null;
+}
+
 function isRigidOpaqueKestrelPlayerRoot(owner, root) {
   const state = owner?.state;
   const playerId = state?.playerId;
@@ -11265,27 +11297,37 @@ function isRigidOpaqueKestrelPlayerSource(owner, source) {
 export function isRigidOpaqueDefaultCohortSource(owner, source) {
   return (RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
       && isRigidOpaqueKestrelPlayerSource(owner, source))
-    || rigidOpaqueAshlineSourceRoot(owner, source) != null;
+    || rigidOpaqueAshlineSourceRoot(owner, source) != null
+    || rigidOpaqueShipSourceRoot(owner, source) != null;
 }
 
 function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
   const state = owner?.state;
   const defaultCohort = options.defaultCohort === true;
   const ashlineLifetimes = defaultCohort ? new Map() : null;
+  const shipLifetimes = defaultCohort ? new Map() : null;
   owner._rigidOpaqueBatchAshlineLifetimes = ashlineLifetimes;
+  owner._rigidOpaqueBatchShipLifetimes = shipLifetimes;
   const selectSource = defaultCohort
     ? (source) => {
       if (RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
           && isRigidOpaqueKestrelPlayerSource(owner, source)) return true;
       const root = rigidOpaqueAshlineSourceRoot(owner, source), life = root && ashlineLifetimes.get(root);
-      return !!life && life.id === root.userData.presentationEntityId
-        && life.generation === root.userData.presentationOccupantGeneration;
+      if (life) {
+        return life.id === root.userData.presentationEntityId
+          && life.generation === root.userData.presentationOccupantGeneration;
+      }
+      const shipRoot = rigidOpaqueShipSourceRoot(owner, source);
+      const shipLife = shipRoot && shipLifetimes.get(shipRoot);
+      return !!shipLife && shipLife.id === shipRoot.userData.presentationEntityId
+        && shipLife.generation === shipRoot.userData.presentationOccupantGeneration;
     }
     : undefined;
   const isTransformOnlySource = defaultCohort
     ? (source) => (isRigidOpaqueKestrelPlayerSource(owner, source)
       && RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES.has(source?.name))
       || rigidOpaqueAshlineSourceRoot(owner, source) != null
+      || rigidOpaqueShipSourceRoot(owner, source) != null
     : undefined;
   return createRetainedRigidOpaqueBatchController({
     scene,
@@ -11305,15 +11347,20 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       const restore = state.contextRestoreSeq, nativeRenderer = owner.renderer;
       const loading = state.mode === 'loading';
       // Admission-only allocation: a kept root can be rebound while pipeline preparation waits.
-      const ashlineLives = defaultCohort ? (context.roots || []).filter((root) => (
-        ashlineLifetimes.has(root)
-      )).map((root) => ({ root, ...ashlineLifetimes.get(root) })) : [];
+      const cohortLives = defaultCohort ? (context.roots || []).flatMap((root) => {
+        const ashline = ashlineLifetimes.get(root);
+        if (ashline) return [{ root, ...ashline, ship: false }];
+        const ship = shipLifetimes.get(root);
+        return ship ? [{ root, ...ship, ship: true }] : [];
+      }) : [];
       const isActive = () => owner.state === state && state.render === renderState
         && state.world === world && world?.enterSerial === serial && world?.currentSectorId === sector
         && renderState.admissionRunGeneration === generation && state.contextRestoreSeq === restore
         && owner.renderer === nativeRenderer && owner._contextLost !== true
         && owner._rendererResourcesDisposed !== true && (!loading || state.mode === 'loading')
-        && ashlineLives.every((life) => isRigidOpaqueAshlineCohortRoot(owner, life.root)
+        && cohortLives.every((life) => (life.ship
+          ? isRigidOpaqueShipCohortRoot(owner, life.root)
+          : isRigidOpaqueAshlineCohortRoot(owner, life.root))
           && life.root.userData.presentationEntityId === life.id
           && life.root.userData.presentationOccupantGeneration === life.generation)
         && (typeof context.isActive !== 'function' || context.isActive() === true);
@@ -11512,6 +11559,10 @@ export const render = {
       this._rigidOpaqueBatchProbeEnabled ? 'idle' : 'disabled',
     );
     state.render.rigidOpaqueBatch = this._rigidOpaqueBatchLastDiagnostics;
+    // Ship admissions read this to decide whether a USE_BATCHING twin is worth minting —
+    // without BatchedMesh support a twin would pay a program link for a cohort that can
+    // never form.
+    state.render.rigidOpaqueBatchTwinCohort = this._rigidOpaqueBatchProbeEnabled === true;
     state.render.setRigidOpaqueBatchForBench = (enabled) => this.setRigidOpaqueBatchForBench(enabled);
     state.render.getRigidOpaqueBatchDiagnosticsForBench = () => this.getRigidOpaqueBatchDiagnosticsForBench();
     if (this._rigidOpaqueBatchProbeEnabled) {
@@ -12269,6 +12320,19 @@ export const render = {
         }
         if (count > 0) console.info(`[render] rock surface library ready; re-skinned ${count} bare rock mesh(es)`);
       }).catch(() => {});
+    }
+    // The generated rock families (metallic/crystalline/exotic) have the same decode race
+    // without a reskin seam: the opening warm mints the leaf/pool matrix with whatever the
+    // family library has decoded by then, and a decode landing afterwards leaves every
+    // generated-family program — leaf mesh, keyed pool bucket, and shadow-depth variant —
+    // cold for the first live rock of that kind (the in-flight Asteroid_* links). Rebuild
+    // the matrix once the library lands and run the same paced color+depth compile; the
+    // specimen registry dedupes anything the opening already covered, so an early decode
+    // makes this a cheap no-op.
+    if (this.rockFamilyLibraryReady && typeof this.rockFamilyLibraryReady.then === 'function') {
+      const liveScene = scene;
+      this.rockFamilyLibraryReady.then(() => this._runRockFamilyDecodeRewarm(liveScene))
+        .catch(() => {});
     }
     this._sectorPaletteRig = createSectorPaletteRig(scene, ambient, key, rim, fill);
     this._sectorPaletteTarget = corePalette;
@@ -20032,6 +20096,16 @@ export const render = {
           await driveDepthCompile(unstagedRescanDelta, 'SF_PostOpeningRescanShadowDepth');
         }
       }
+      // Retained-cohort specimen seal: by this point the canonical specimen registry
+      // holds every material family an authored admission warmed this cook. Minting one
+      // BatchedMesh twin per eligible (material, geometry, lane) group links the
+      // USE_BATCHING variants here — the live cohort's first batch per family then
+      // resolves to a program-cache hit instead of a mid-flight link.
+      if (this._rigidOpaqueBatchProbeEnabled === true && this._opaqueBatchSupported === true) {
+        try {
+          await this._runRigidOpaqueBatchSpecimenWarm(this._rosterPrewarmRoots || []);
+        } catch (_) { /* batch specimen warm is best-effort */ }
+      }
       // A rescan request still armed at the pass cap means a joiner's cohort was
       // never swept — stamping released over it would compile that cohort cold at
       // first draw instead. Leave the latch down (the armed flag survives) so the
@@ -22674,6 +22748,34 @@ export const render = {
     if (includeGenericWarm) {
       this._rosterPrewarmCatalogAttempted = true;
       this._admitRosterPartCatalog(compilePipelines, specs);
+    }
+    // Retained-cohort specimen seal: once this drain's exemplar compiles settle, their
+    // composed leaves carry every (material, geometry, lane) group the live batch path
+    // can mint. Riding _rosterPrewarmPending keeps the cook's settle held over the
+    // specimen compiles; the self-excluding poll covers catalog compiles queued just
+    // above as well as re-drains folded in by a merged emit.
+    if (this._rigidOpaqueBatchProbeEnabled === true) {
+      let specimenWarm;
+      specimenWarm = (async () => {
+        for (let pass = 0; pass < 4; pass++) {
+          const pending = [...(this._rosterPrewarmPending || [])]
+            .filter((promise) => promise !== specimenWarm);
+          if (pending.length === 0) break;
+          await Promise.allSettled(pending);
+          if (staleRun()) return;
+          await yieldToBrowser();
+          if (staleRun()) return;
+        }
+        if (staleRun()) return;
+        await this._runRigidOpaqueBatchSpecimenWarm(this._rosterPrewarmRoots || []);
+      })();
+      specimenWarm.catch(() => {});
+      if (this._rosterPrewarmPending) {
+        this._rosterPrewarmPending.add(specimenWarm);
+        observePipelineAdmission(specimenWarm.finally(() => {
+          if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(specimenWarm);
+        }));
+      }
     }
   },
 
@@ -25528,6 +25630,7 @@ export const render = {
     if (this._rosterPrewarmIds) this._rosterPrewarmIds.clear();
     if (this._rosterPrewarmWeaponIds) this._rosterPrewarmWeaponIds.clear();
     if (this._rosterPrewarmPending) this._rosterPrewarmPending.clear();
+    clearRigidOpaqueBatchWarmedKeys();
     // Queued re-emits and the in-flight stamp die with the run: a fresh run
     // mints its own drive rather than consuming emits under the old chain.
     // The seq bump also retires a still-running async drive — the drain's
@@ -28067,6 +28170,16 @@ export const render = {
         }
       }
     }
+    // Swept-on-glass discovery, one rotating slice per drain call: this drain
+    // already runs several times per presented frame against a fresh scan
+    // context — the helper's poll-dodging walk is documented at its definition.
+    // Anything it enqueues gets hoisted to the front so the budgeted loop below
+    // builds it this call instead of next poll.
+    // Guarded: the call site landed ahead of the helper — an undefined call inside
+    // this drain generator silently kills the build queue and wedges the
+    // authored-visuals gate. No-op until the definition lands.
+    if (typeof runGlassSweptMeshDiscovery === 'function'
+        && runGlassSweptMeshDiscovery(this, drainScan) > 0) yield* driveHoist(this);
     while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
       notePacedFrameSpend(now() - segStartedAtMs);
       yield;
@@ -30063,6 +30176,37 @@ export const render = {
         ashlineCount++;
       }
       for (const root of lifetimes.keys()) if (!roots.includes(root)) lifetimes.delete(root);
+      // Generic authored traffic ships: the same retained-life contract as the Ashline
+      // fill, minus the per-asset name/package allowlists — the planner's shader, motion,
+      // and geometry battery is what keeps their animated and transparent leaves direct.
+      const shipLifetimes = this._rigidOpaqueBatchShipLifetimes
+        || (this._rigidOpaqueBatchShipLifetimes = new Map());
+      let shipCount = 0;
+      for (const [root, life] of shipLifetimes) {
+        if (!isRigidOpaqueShipCohortRoot(this, root)
+            || life.id !== root.userData.presentationEntityId
+            || life.generation !== root.userData.presentationOccupantGeneration) continue;
+        roots.push(root);
+        shipCount++;
+      }
+      for (let index = 0; ships && index < ships.length; index++) {
+        if (shipCount >= RIGID_OPAQUE_SHIP_COHORT_MAX_ROOTS) break;
+        const record = ships[index], root = record.mesh;
+        if (record.viewCulled === true || record.visible === false) continue;
+        if (lifetimes.has(root) || shipLifetimes.has(root)
+            || !isRigidOpaqueShipCohortRoot(this, root)
+            || typeof root.traverse !== 'function' || !root.parent) continue;
+        let shown = true;
+        for (let node = root; node; node = node.parent) {
+          if (node.visible === false) { shown = false; break; }
+        }
+        if (!shown) continue;
+        shipLifetimes.set(root, { id: root.userData.presentationEntityId,
+          generation: root.userData.presentationOccupantGeneration });
+        roots.push(root);
+        shipCount++;
+      }
+      for (const root of shipLifetimes.keys()) if (!roots.includes(root)) shipLifetimes.delete(root);
     } else {
       for (const root of this._meshes.values()) {
         if (!root || typeof root.traverse !== 'function') continue;
@@ -30079,6 +30223,151 @@ export const render = {
       state.render.rigidOpaqueBatch = controller.getDiagnostics();
     }
     return completion;
+  },
+
+  // One paced color+depth recompile of the whole asteroid material matrix after the rock
+  // family library lands. Mirrors the bare-rock reskin legs: the rebuilt leaf group is a
+  // compile-only pin (its materials stay interned), the keyed pool buckets rebind to the
+  // decoded (geometry, material) pairs, and the depth pass covers the shadow variants the
+  // color admission's flight-gated arm cannot reach outside flight.
+  async _runRockFamilyDecodeRewarm(liveScene) {
+    const state = this.state;
+    if (!this._meshes || this.scene !== liveScene) return;
+    const stillLive = () => !!(this._meshes && this.scene === liveScene);
+    const compile = state && state.render && state.render.compileObjectPipelines;
+    if (typeof compile !== 'function') return;
+    const warmRoot = buildAsteroidLeafWarmGroup();
+    warmRoot.visible = false;
+    liveScene.add(warmRoot);
+    this._noteShadowMeshAdded?.(warmRoot);
+    try {
+      try { compile.call(state.render, warmRoot, { explicit: true }); } catch (_) { /* best effort */ }
+      await yieldToBrowser();
+      if (!stillLive()) return;
+      // Rebind the keyed pool buckets to the decoded (geometry, material) pairs so the
+      // instanced family programs link here instead of on the first live registration.
+      try {
+        warmAsteroidInstanceKeys(this._asteroidInstancePool, asteroidPoolWarmResources());
+      } catch (_) { /* pool warm is best-effort */ }
+      let poolCompileRoots = null;
+      try { poolCompileRoots = collectInstancePoolCompileRoots(liveScene); } catch (_) { /* best effort */ }
+      for (const poolRoot of poolCompileRoots || []) {
+        try { compile.call(state.render, poolRoot, { explicit: true }); } catch (_) { /* best effort */ }
+        await yieldToBrowser();
+      }
+      if (!stillLive()) return;
+      try {
+        await driveCompileShadowDepthPipelines({
+          renderer: this.renderer,
+          light: this._keyLight,
+          camera: this.cam && this.cam.obj,
+          subjects: [warmRoot].concat(poolCompileRoots || []),
+          forceEnable: this._shadowSettingOn === true,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          lightingScene: this.scene,
+          lightSigFor: () => this._depthCollectLightSig(this.scene),
+          stagingName: 'SF_RockFamilyShadowDepth',
+        }, yieldToBrowser);
+      } catch (_) { /* depth recompile is best-effort */ }
+    } finally {
+      // The group only pins programs: materials stay interned in the shared factory
+      // cache and the specimen registry, so the meshes themselves can leave the scene.
+      try {
+        if (warmRoot.parent === liveScene) liveScene.remove(warmRoot);
+        this._noteShadowMeshRemoved?.(warmRoot);
+      } catch (_) { /* best effort */ }
+    }
+  },
+
+  // One throwaway BatchedMesh per (material, geometry, lane) group the retained cohort
+  // can form, compiled behind the shell over the hidden roster exemplars. The live
+  // retained path's first batch per family otherwise mints its USE_BATCHING program on
+  // the paced admission lane inside flight — the SF_RigidOpaqueBatch_* link events.
+  // Group keys dedupe across re-drains; a reskinned material keys differently and gets
+  // a fresh specimen on the next drain.
+  async _runRigidOpaqueBatchSpecimenWarm(roots) {
+    const state = this.state;
+    if (!this._meshes || !this.scene) return;
+    if (this._opaqueBatchSupported !== true) return;
+    const liveScene = this.scene;
+    const stillLive = () => !!(this._meshes && this.scene === liveScene);
+    const compile = state && state.render && state.render.compileObjectPipelines;
+    if (typeof compile !== 'function') return;
+    // Per-admission twins (mountRigidOpaqueBatchSpecimenTwins) cover every ship family at
+    // its own compile, so the specimen warm only needs the explicit exemplar roots a
+    // caller passes — the roster prewarm mounts that never run the ship pipeline.
+    const specimenRoots = Array.isArray(roots) ? roots.filter(Boolean) : [];
+    if (specimenRoots.length === 0) return;
+    let plan = null;
+    try {
+      plan = planRigidOpaqueBatchSpecimenGroups(specimenRoots, {
+        // Exemplar leaves have no live cohort membership; treating every candidate as
+        // transform-only widens the specimen set to a superset of the live cohort's —
+        // the structural hook/motion/geometry battery still rejects unsafe surfaces.
+        isTransformOnlySource: () => true,
+      });
+    } catch (_) { return; }
+    if (!plan || !Array.isArray(plan.groups) || plan.groups.length === 0) return;
+    const specimens = [];
+    for (const group of plan.groups) {
+      // Shared with per-admission twins: a key warmed by either path needs no second mint.
+      if (!group || isRigidOpaqueBatchProgramWarmed(group.key)) continue;
+      const mesh = mintRigidOpaqueBatchSpecimen(group);
+      if (mesh) {
+        specimens.push(mesh);
+        noteRigidOpaqueBatchProgramWarmed(group.key);
+      }
+    }
+    if (specimens.length === 0) return;
+    const warmRoot = new THREE.Group();
+    warmRoot.name = 'SF_RigidOpaqueBatchSpecimenWarm';
+    warmRoot.visible = false;
+    for (const mesh of specimens) warmRoot.add(mesh);
+    liveScene.add(warmRoot);
+    this._noteShadowMeshAdded?.(warmRoot);
+    try {
+      try {
+        await Promise.resolve(compile.call(state.render, warmRoot, {
+          explicit: true,
+          joinOutstanding: true,
+          openingRequired: state.mode === 'loading',
+          debugBy: 'rigid-opaque-batch-specimen',
+        }));
+      } catch (_) { /* batch specimen compile is best-effort */ }
+      await yieldToBrowser();
+      if (!stillLive()) return;
+      // A cast lane's batching depth variant is a different program from the color one —
+      // link it here or the first live batch's shadow draw pays it mid-flight.
+      try {
+        await driveCompileShadowDepthPipelines({
+          renderer: this.renderer,
+          light: this._keyLight,
+          camera: this.cam && this.cam.obj,
+          subjects: [warmRoot],
+          forceEnable: this._shadowSettingOn === true,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          lightingScene: this.scene,
+          lightSigFor: () => this._depthCollectLightSig(this.scene),
+          stagingName: 'SF_RigidBatchSpecimenShadowDepth',
+        }, yieldToBrowser);
+      } catch (_) { /* depth specimen compile is best-effort */ }
+    } finally {
+      try {
+        if (warmRoot.parent === liveScene) liveScene.remove(warmRoot);
+        this._noteShadowMeshRemoved?.(warmRoot);
+        for (const mesh of specimens) {
+          try { mesh.dispose?.(); } catch (_) { /* best effort */ }
+          const material = mesh.material;
+          if (material && typeof material.dispose === 'function') {
+            try { material.dispose(); } catch (_) { /* best effort */ }
+          }
+        }
+      } catch (_) { /* best effort */ }
+    }
   },
 
   _collectOpeningDerivedPoolRoots() {
