@@ -120,7 +120,10 @@ test('both probes preserve acceptance deadlines and collect failure evidence wit
   const cold = readFileSync(new URL('../scripts/check-47a-live-cold-open.mjs', import.meta.url), 'utf8');
   const assets = readFileSync(new URL('../scripts/probe-authored-assets-live.mjs', import.meta.url), 'utf8');
   assert.match(cold, /const AUTHORED_START_TIMEOUT_MS = 90000;/);
-  assert.match(assets, /SF_ASSETS_LIVE_TIMEOUT_MS\) \|\| 90000/);
+  // D224: the default must out-wait the game's own authored-visual gate (180 s + 30 s retry) on
+  // the serial-compile CI route; the contract this pins is "env-knobbed, bounded acceptance
+  // deadline", not the old 90 s figure.
+  assert.match(assets, /SF_ASSETS_LIVE_TIMEOUT_MS\) \|\| 240000/);
   for (const source of [cold, assets]) {
     assert.match(source, /captureStartupFailureDiagnostics\.toString\(\)/);
     assert.match(source, /observeStartupFailureEvents\.toString\(\)/);

@@ -41,7 +41,12 @@ const AUTHORED_BODY_PROOF = Object.freeze({
   minBodyToReadabilityDiagonalRatio: 0.35,
   minPlayerScreenRadiusPx: 18,
 });
-const DEFAULT_FLIGHT_START_TIMEOUT_MS = 90000;
+// D224 serial-route allowance: on the software-GL CI runner (no KHR_parallel_shader_compile) the
+// playable-flight gate waits behind serial shader compilation while the authored admission queue
+// drains one compile batch per presented frame — measured environment work, not the verdict. The
+// 90 s default was sized for a faster host; the stability assertions after this wait are
+// unchanged, and --flight-timeout / SF_VISUAL_STABILITY_FLIGHT_MS still override per route.
+const DEFAULT_FLIGHT_START_TIMEOUT_MS = 180000;
 const WIDTH = readIntArg('--width', 1440);
 const HEIGHT = readIntArg('--height', 900);
 const FRAME_COUNT = readIntArg('--frames', Number(process.env.SF_VISUAL_STABILITY_FRAMES) || DEFAULT_FRAMES);

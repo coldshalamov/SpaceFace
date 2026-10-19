@@ -20,6 +20,12 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_CAPTURE = process.env.SF_MARKET_CAPTURE || '';
 const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
+// D224 serial-route allowance: on the software-GL CI runner (SwiftShader — no
+// KHR_parallel_shader_compile) the page's main thread sits inside multi-second synchronous
+// shader compiles, so a station screen mount that is instant on a real GPU can outlast an 8 s
+// poll budget. Same environment-allowance class as the mission-handoff boot allowance — this
+// budgets liveness only; every assertion after the wait is unchanged.
+const MARKET_TIMEOUT_MS = 45000;
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -72,7 +78,7 @@ try {
   // Open Market so its live market initialises (onShow emits economy:marketOpened), then seed a
   // known higher-priced buyer elsewhere so the Trade Routes panel has a profitable run to show.
   await domClick(page, '[data-screen="station"] .sx-dock [data-nav="market"]');
-  await waitForVisible(page, '[data-screen="station"] .sx-mkt', 8000, 'Market instrument')
+  await waitForVisible(page, '[data-screen="station"] .sx-mkt', MARKET_TIMEOUT_MS, 'Market instrument')
     .catch((error) => reportStationHandoffFailure(page, { boundary: 'market instrument visibility', dockTarget }, issues, error));
   const seeded = await page.evaluate(() => {
     const state = window.SF.state;

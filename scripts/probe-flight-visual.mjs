@@ -23,7 +23,13 @@ const viewports = [
 ];
 const results = [];
 const MAX_VISUAL_PROBE_ATTEMPTS = 3;
-const FLIGHT_START_TIMEOUT_MS = 70000;
+// D224 serial-route allowance: on the software-GL CI runner (SwiftShader — no
+// KHR_parallel_shader_compile) every shader compiles serially on the page's main thread, so the
+// flight-ready gate polls through multi-second stalls while the authored cohort lands. The 70 s
+// budget was sized for a faster host; every check scored after this wait is unchanged.
+// --flight-timeout / SF_FLIGHT_VISUAL_FLIGHT_MS keep it per-route tunable.
+const FLIGHT_START_TIMEOUT_MS = readPositiveIntArg(['--flight-timeout'],
+  Number(process.env.SF_FLIGHT_VISUAL_FLIGHT_MS) || 180000);
 const cleanRuns = readPositiveIntArg(['--clean-runs', '--runs'], 1);
 const writeShots = !process.argv.includes('--no-write');
 const strictWarnings = process.argv.includes('--strict-warnings');
@@ -86,7 +92,11 @@ async function runViewportProbe(browser, viewport, runIndex) {
   step('goto');
   await gotoWithRetry(page, url, { waitUntil: 'domcontentloaded' });
   step('boot-ready');
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 15000 });
+  // D224 — the mission-handoff boot allowance applied to the same predicate: headless SwiftShader
+  // compiles every THREE program serially on the main thread (no KHR_parallel_shader_compile), so
+  // the SF surface takes roughly twice as long to appear as on a real GPU. Environment budget;
+  // nothing this probe asserts is loosened.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 30000 });
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Flight Probe' }));
   step('flight-ready');
   await page.waitForFunction(

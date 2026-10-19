@@ -12,7 +12,17 @@ const COMMAND_TIMEOUT_OVERRIDES_MS = {
   // 2026-10-11: five clean rounds measure ~160s each on current software-GL runners (the ~110s
   // figure below is Sep-30 vintage) — observed SIGKILL at 814s against the 720s cap, mid-proof.
   'probe-flight-visual': 1050000,
-  'probe-ship-visual-stability': 660000,
+  // D224: the probe's serial-route budgets grew (resolve 360 s + flight-ready 180 s + nav/boot
+  // 180 s worst case), so the 660 s cap could kill a healthy run mid-proof.
+  'probe-ship-visual-stability': 840000,
+  // D224: this leaf resolves to `node scripts/check-market-first-loop-runtime.mjs`, which carries
+  // no probe/capture token and was therefore running at the 180 s DEFAULT class — while its station
+  // waits now hold the same software-GL serial-route allowance as the rest of the browser group.
+  'check-market-first-loop': 420000,
+  // D224: the probe's stage budgets on the serial route sum past the 420 s LONG class (playable
+  // 240 s to clear the game's own 180 s + 30 s authored-visual gate, then admission/report/
+  // station 90 s each, Helios 150 s, boot 90 s) — a healthy software-GL run needs the headroom.
+  'probe-authored-assets-live': 840000,
   // 2026-10-02 (run 37023815314): the dock tour finished and printed its OK lines at ~195s on the
   // runner but was orphaned at the 180s DEFAULT cap — its resolved filename
   // (check-station-tab-navigation-runtime.mjs) carries no playwright/chromium token, so the

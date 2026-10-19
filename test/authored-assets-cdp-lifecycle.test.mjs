@@ -352,7 +352,9 @@ function shipReportDeadlineFixture({ entryCount = 119, passiveReply = null } = {
 test('a 170ms passive snapshot timeout retains actual completed catalog and admission replies', async () => {
   const f = shipReportDeadlineFixture();
   try {
-    await assert.rejects(waitForAuthoredShips(f.cdp, { now: f.now, sleep: ms => f.advance(ms) }), error => {
+    // Pin the pre-D224 stage budgets: the fixture's 44_830 advance leaves exactly 170 ms of the
+    // report deadline, which is the sliver arithmetic this test exercises.
+    await assert.rejects(waitForAuthoredShips(f.cdp, { now: f.now, sleep: ms => f.advance(ms), admissionTimeoutMs: 45000, reportTimeoutMs: 45000 }), error => {
       assert.equal(error, f.transportError(), 'the original CDP failure remains the rejection');
       assert.match(error.message, /authored ship report snapshot.*no CDP reply within 170 ms/);
       const diagnostic = error.authoredShipDiagnostics;
@@ -398,7 +400,8 @@ test('a retry deadline preserves the last ship/pool producer report without trea
   };
   const f = shipReportDeadlineFixture({ entryCount: 2, passiveReply });
   try {
-    await assert.rejects(waitForAuthoredShips(f.cdp, { now: f.now, sleep: ms => f.advance(ms) }), error => {
+    // Same pinned budgets as the sibling test — this fixture's timing math assumes 45 s stages.
+    await assert.rejects(waitForAuthoredShips(f.cdp, { now: f.now, sleep: ms => f.advance(ms), admissionTimeoutMs: 45000, reportTimeoutMs: 45000 }), error => {
       assert.equal(error, f.transportError());
       assert.match(error.message, /stage deadline expired/);
       const diagnostic = error.authoredShipDiagnostics;

@@ -43,18 +43,24 @@ const AUTHORED_BODY_PROOF = Object.freeze({
   minBodyToReadabilityDiagonalRatio: 0.35,
 });
 // Must exceed main.js' authored-visual startup wait so this probe observes the same no-fallback
-// default path instead of racing the loading gate.
-const PLAYABLE_TIMEOUT_MS = readPositiveIntArg('--playable-timeout', Number(process.env.SF_ASSETS_LIVE_TIMEOUT_MS) || 90000);
+// default path instead of racing the loading gate. That gate is INITIAL_AUTHORED_VISUAL_TIMEOUT_MS
+// (180 s) plus the 30 s retry window, and on the software-GL CI runner (SwiftShader — no
+// KHR_parallel_shader_compile) the serial shader compiles stretch it further. D224: the old 90 s
+// default sat BELOW the gate it is supposed to out-wait, so a poll issued near the stage edge
+// inherited only seconds of the CDP stage deadline and failed "no CDP reply" while the game was
+// still legitimately staging. 240 s clears the game's own worst case with margin; every assertion
+// after the wait is unchanged.
+const PLAYABLE_TIMEOUT_MS = readPositiveIntArg('--playable-timeout', Number(process.env.SF_ASSETS_LIVE_TIMEOUT_MS) || 240000);
 // Helios is a 79 MB source place (89.7 MB render package), the largest authored body in the tree,
-// and it streams after the control handoff rather than blocking it. It gets the same 45 s the ship
+// and it streams after the control handoff rather than blocking it. It gets the same 90 s the ship
 // gate gets, as its own budget rather than a share of one.
-const CRITICAL_STATION_TIMEOUT_MS = readPositiveIntArg('--critical-station-timeout', Number(process.env.SF_ASSETS_LIVE_STATION_TIMEOUT_MS) || 45000);
+const CRITICAL_STATION_TIMEOUT_MS = readPositiveIntArg('--critical-station-timeout', Number(process.env.SF_ASSETS_LIVE_STATION_TIMEOUT_MS) || 90000);
 // Standoff for the approach leg. Inside the opening-composition envelope (`tableOpeningCompositionWu`
 // is derived from the 144 WU chase zoom) so the residency policy genuinely owes us the authored
 // body, and outside the hub's own footprint so the pose is somewhere a player could actually sit
 // rather than inside the station's collision proxy.
 const HELIOS_APPROACH_STANDOFF_WU = readPositiveIntArg('--helios-standoff', Number(process.env.SF_ASSETS_LIVE_HELIOS_STANDOFF_WU) || 110);
-// The approach leg's own budget, and the reason it is not the ships' 45 s. Measured both ways on
+// The approach leg's own budget, and the reason it does not share the ships' gate. Measured both ways on
 // 2026-09-06: on a quiet machine Helios reached `authored` inside 45 s and rendered (see
 // APPROACH_SHOT); with four other lanes building, the same route was still `assetState: "loading"`
 // when 45 s expired. `loading` is the streamer working, not a defect -- this is 89.7 MB, four times
@@ -63,12 +69,21 @@ const HELIOS_APPROACH_STANDOFF_WU = readPositiveIntArg('--helios-standoff', Numb
 // requests stays `missing-mesh` forever and still fails here, which is the regression that matters.
 const HELIOS_APPROACH_TIMEOUT_MS = readPositiveIntArg('--helios-approach-timeout', Number(process.env.SF_ASSETS_LIVE_HELIOS_TIMEOUT_MS) || 150000);
 // How long the debug runtime itself may take to appear. This is a liveness wait on the harness --
-// "has the page booted at all" -- not one of the probe's quality gates, and it was the only timeout
-// here that could not be set from the environment. That asymmetry matters on a slow driver: this
-// machine reaches `SF` ready at 15120 ms measured, so a hardcoded 15000 ms aborted the whole
-// acceptance run 120 ms early, before a single asset had been examined. The default is unchanged,
-// so CI behaves exactly as before.
-const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 45000);
+// "has the page booted at all" -- not one of the probe's quality gates. That asymmetry matters on
+// a slow driver: this machine reaches `SF` ready at 15120 ms measured, so a hardcoded 15000 ms
+// aborted the whole acceptance run 120 ms early, before a single asset had been examined.
+// D224 widened the default 45 s -> 90 s for the same serial-route reason as the mission-handoff
+// boot allowance; the env knob still sets it per route.
+const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 90000);
+// D224 serial-route allowance: the authored-ship admission gate and the report stage both poll CDP
+// through the same serial shader-compile drain, so stage deadlines sized for a faster host surface
+// as "no CDP reply" slivers instead of the stage's own verdict. Bounded, env-overridable, and the
+// admission verdicts (authored ship counts, presentationUnknownCount) are unchanged.
+const AUTHORED_SHIP_TIMEOUT_MS = readPositiveIntArg('--ship-admission-timeout', Number(process.env.SF_ASSETS_LIVE_ADMISSION_TIMEOUT_MS) || 90000);
+const AUTHORED_REPORT_TIMEOUT_MS = readPositiveIntArg('--ship-report-timeout', Number(process.env.SF_ASSETS_LIVE_REPORT_TIMEOUT_MS) || 90000);
+// Post-flight liveness poll: the sim ticks on its own lane, but reading the counter is a
+// main-thread evaluate that queues behind the same compile stalls. D224 — was 10 s.
+const GAMEPLAY_TICKS_TIMEOUT_MS = 30000;
 const CDP_REQUEST_TIMEOUT_MS = 45000;
 // The live loader deduplicates by URL+slot and already bounds worker decode concurrency through
 // its shared budget. Probe independent optional catalog entries in small batches so the passive
@@ -227,8 +242,8 @@ try {
   if (stationSnapshot && Array.isArray(stationSnapshot.criticalStations)) {
     report.criticalStations = stationSnapshot.criticalStations;
   }
-  enterStage('advancing gameplay ticks', 10000);
-  await waitFor(cdp, () => getTick(cdp, startTick + 2), 10000, 'advancing gameplay ticks');
+  enterStage('advancing gameplay ticks', GAMEPLAY_TICKS_TIMEOUT_MS);
+  await waitFor(cdp, () => getTick(cdp, startTick + 2), GAMEPLAY_TICKS_TIMEOUT_MS, 'advancing gameplay ticks');
 
   enterStage('spawn screenshot and browser identity');
   await captureScreenshot(cdp, SHOT);
@@ -969,14 +984,20 @@ function isMainModule() {
 export async function waitForAuthoredShips(cdp, options = {}) {
   const now = typeof options.now === 'function' ? options.now : () => performance.now();
   const pause = typeof options.sleep === 'function' ? options.sleep : sleep;
+  // D224: the admission and report budgets are injectable so the deadline-mechanics tests can pin
+  // the exact sliver arithmetic at the pre-allowance figures while the probe defaults widen.
+  const admissionTimeoutMs = Number.isFinite(options.admissionTimeoutMs)
+    ? options.admissionTimeoutMs : AUTHORED_SHIP_TIMEOUT_MS;
+  const reportTimeoutMs = Number.isFinite(options.reportTimeoutMs)
+    ? options.reportTimeoutMs : AUTHORED_REPORT_TIMEOUT_MS;
   const startedAtMs = now();
   let deadline = null, report = null, lastGateReply = null;
   let reportStartedAtMs = null, lastReportCompletedAtMs = null, retryStartedAtMs = null;
   let operation = 'admission', retryAttempts = 0;
   try {
-  cdp.setStage('authored ship admission', 45000);
+  cdp.setStage('authored ship admission', admissionTimeoutMs);
   deadline = await waitForAuthoredAssetDeadline({
-    timeoutMs: 45000,
+    timeoutMs: admissionTimeoutMs,
     pollIntervalMs: 50,
     now, sleep: pause,
     onPoll: () => { operation = 'admission-render'; return forceShipRender(cdp); },
@@ -996,7 +1017,7 @@ export async function waitForAuthoredShips(cdp, options = {}) {
   });
   const diagnosticsStartedAtMs = reportStartedAtMs = now();
   console.log('[authored-assets] authored ship report');
-  cdp.setStage('authored ship report', CDP_REQUEST_TIMEOUT_MS);
+  cdp.setStage('authored ship report', reportTimeoutMs);
   operation = 'report-collection';
   report = await collectAdmittedAuthoredReport(cdp, deadline.passed, { now });
   lastReportCompletedAtMs = now();
@@ -1024,7 +1045,7 @@ export async function waitForAuthoredShips(cdp, options = {}) {
   const diagnosticsCompletedAtMs = now();
   report.authoredDeadline = {
     passed: deadline.passed,
-    timeoutMs: 45000,
+    timeoutMs: admissionTimeoutMs,
     elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
     diagnosticsStartedAtMs,
     diagnosticsCompletedAtMs,
@@ -1058,7 +1079,7 @@ export async function waitForAuthoredShips(cdp, options = {}) {
       retryElapsedMs: retryStartedAtMs === null ? null : Math.round(now() - retryStartedAtMs),
       retryAttempts,
       admission: deadline ? {
-        passed: deadline.passed, timeoutMs: 45000,
+        passed: deadline.passed, timeoutMs: admissionTimeoutMs,
         elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
         lastOnTimeSnapshot: deadline.lastOnTimeSnapshot,
         postDeadlineSnapshot: deadline.postDeadlineSnapshot || null,
