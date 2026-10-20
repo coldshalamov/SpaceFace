@@ -33,6 +33,7 @@ try {
   try {
     await page.evaluate(`(() => {
       try { window.__SF_STARTUP_FAILURE_OBSERVER__ = (${observeStartupFailureEvents.toString()})(window.SF); } catch (_) {}
+      try { window.__SF_47A_ACTOR_OBSERVER__ = (${observe47aActorLifecycle.toString()})(window.SF); } catch (_) {}
       window.SF.eventTrace.clear();
       window.SF.bus.emit('game:new', { name: '47-A Live Cold Open Check', seed: 47 });
     })()`);
@@ -138,6 +139,7 @@ try {
       unresolvedActorIds: state.scenario.unresolvedActorIds.slice(),
       enteredBeatIds: state.scenario.enteredBeatIds.slice(),
       actors,
+      actorLifecycle: window.__SF_47A_ACTOR_OBSERVER__?.events.slice() || [],
       coldOpenShips,
       traceCount: trace.length,
       byType,
@@ -167,6 +169,18 @@ try {
   assert.equal(report.active.contractPath, SCENARIO_PATH, 'active scenario should retain the canonical contract path');
   assert.equal(report.active.contractHash, report.helperContractHash, 'active scenario hash should match browser helper hash');
   assert.equal(report.active.activeBeatId, 'drop_wreck_field', 'live cold open should enter the first 47-A beat');
+  if (report.unresolvedActorIds.length > 0) {
+    // Failure-only: reuse the completed snapshot; no extra browser request, wait or retry.
+    try {
+      console.error(`[47a-cold-open] actor binding diagnostics ${JSON.stringify({
+        schema: 'spaceface.47aActorBindingFailure.v1',
+        mode: report.mode, playerId: report.playerId,
+        active: report.active, unresolvedActorIds: report.unresolvedActorIds.slice(0, 32),
+        actors: report.actors.slice(0, 32), actorLifecycle: report.actorLifecycle.slice(-48),
+        traceCount: report.traceCount, actorBindingEventCount: report.byType['scenario:actorBindings'] || 0,
+      })}`);
+    } catch (_) { console.error('[47a-cold-open] actor binding diagnostics unavailable'); }
+  }
   assert.deepEqual(report.unresolvedActorIds, [], 'live cold open should bind every required 47-A actor');
   assert(report.enteredBeatIds.includes('drop_wreck_field'), 'live cold open should record first beat entry');
   assert(report.traceCount > 0, 'event trace should capture live scenario evidence');
@@ -261,6 +275,8 @@ try {
         page.evaluate(() => {
           window.__SF_STARTUP_FAILURE_OBSERVER__?.dispose();
           delete window.__SF_STARTUP_FAILURE_OBSERVER__;
+          try { window.__SF_47A_ACTOR_OBSERVER__?.dispose(); } catch (_) {}
+          delete window.__SF_47A_ACTOR_OBSERVER__;
         }),
         new Promise(resolve => { cleanupTimer = setTimeout(resolve, 1000); }),
       ]);
@@ -269,6 +285,65 @@ try {
   }
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+}
+
+// Probe-only event observer. Self-contained for serialization into page.evaluate.
+function observe47aActorLifecycle(sf) {
+  const read = (object, key) => {
+    try { return Object.getOwnPropertyDescriptor(object || {}, key)?.value; }
+    catch (_) { return undefined; }
+  };
+  const scalar = value => typeof value === 'string' ? value.slice(0, 128)
+    : typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const ids = array => {
+    const result = [];
+    const length = read(array, 'length');
+    if (!Number.isSafeInteger(length) || length < 0) return result;
+    for (let index = 0; index < Math.min(length, 32); index++) {
+      result.push(scalar(read(array, String(index))));
+    }
+    return result;
+  };
+  const events = [], removers = [], tracked = new Map();
+  const observer = { events, dispose() {
+    for (const remove of removers.splice(0)) { try { remove(); } catch (_) {} }
+  } };
+  const bus = sf?.bus;
+  if (typeof bus?.on !== 'function') return observer;
+  for (const event of ['entity:spawned', 'entity:destroyed', 'scenario:actorBindings', 'game:started']) {
+    const listener = payload => {
+      try {
+        const id = scalar(read(payload, 'id'));
+        const entity = read(payload, 'entity');
+        const actorId = scalar(read(read(entity, 'data'), 'scenarioActorId'));
+        if (event === 'entity:spawned') {
+          if (typeof actorId !== 'string') return;
+          if (tracked.size < 32 || tracked.has(id)) tracked.set(id, actorId);
+        }
+        if (event === 'entity:destroyed' && !tracked.has(id)) return;
+        const state = read(sf, 'state');
+        const row = { event, tick: scalar(read(state, 'tick')), mode: scalar(read(state, 'mode')),
+          simTime: scalar(read(state, 'simTime')) };
+        if (event.startsWith('entity:')) Object.assign(row, {
+          id, actorId: actorId || tracked.get(id) || null,
+          type: scalar(read(payload, 'type')), reason: scalar(read(payload, 'reason')),
+        });
+        if (event === 'scenario:actorBindings') Object.assign(row, {
+          scenarioId: scalar(read(payload, 'scenarioId')),
+          boundActorIds: ids(read(payload, 'boundActorIds')),
+          unresolvedActorIds: ids(read(payload, 'unresolvedActorIds')),
+        });
+        events.push(row);
+        if (events.length > 48) events.shift();
+      } catch (_) { /* Observation must not interrupt the game's event dispatch. */ }
+    };
+    try {
+      const unsubscribe = bus.on(event, listener);
+      if (typeof unsubscribe === 'function') removers.push(unsubscribe);
+      else if (typeof bus.off === 'function') removers.push(() => bus.off(event, listener));
+    } catch (_) { /* Missing diagnostics must not prevent startup. */ }
+  }
+  return observer;
 }
 
 async function startFreshServer() {
