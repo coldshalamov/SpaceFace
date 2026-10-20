@@ -3,6 +3,27 @@ import assert from 'node:assert/strict';
 import { captureEntityRecord, spawnSpecFromRecord, RECORD_KIND } from '../src/world/worldRecords.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { PLANET_SITE } from '../src/data/planets.js';
+import { wholeShipVisualForEntity, wholeShipHullPlacement } from '../src/render/partsLibrary.js';
+
+function assertCollectorVisual(entity) {
+  const before = JSON.stringify(entity.data);
+  const selection = wholeShipVisualForEntity(entity, { requiredWholeShip: true });
+  assert.equal(selection.file, 'wholeships/ship_stormshift_collector_v01.glb');
+  assert.equal(selection.assetId, 'SF_STORMSHIFT_COLLECTOR_V01');
+  assert.equal(JSON.stringify(entity.data), before, 'visual selection never changes gameplay');
+  assert.equal(entity.data.defId, 'ship_mule', 'Mule gameplay identity remains canonical');
+  return selection;
+}
+
+test('fresh original Orchard worker selects its dedicated released collector, not Mule skin', () => {
+  const t = boot();
+  try {
+    assertCollectorVisual(t.collector);
+    const receiver = t.state.entityList.find(e => e.data?.worldRecordId === anvilWorkerRecordId(t.state, 'receiver'));
+    assert.equal(wholeShipVisualForEntity(receiver, { requiredWholeShip: true }).file, 'wholeships/helios_span_mts.glb');
+    assert.equal(wholeShipVisualForEntity(makeShipEntitySpec('ship_mule'), { requiredWholeShip: true }).file, 'wholeships/mule_production_v1.glb');
+  } finally { t.sim.dispose(); }
+});
 
 function recordedWorker(role) {
   const canonical = makeShipEntitySpec('ship_mule', {
@@ -168,6 +189,7 @@ for(const continued of [false,true])test(`native exposed collector retreats, ber
         assert.equal(saver.loadEnvelope(envelope),true);t.state.mode='flight';
         t.collector=t.state.entityList.find(e=>e.alive!==false&&e.data?.worldRecordId===recordId);
         t.observer=t.state.entities.get(t.state.playerId);assert.ok(t.collector&&t.observer);
+        assertCollectorVisual(t.collector);
         assert.deepEqual(t.state.sites.anvilOrchard,row);
         assert.equal(await facade.prepareBackend(t.state),true);restored=true;
       }
@@ -281,4 +303,74 @@ test('native safe collector holds outside the forecast corridor and departs on t
       writeFileSync(process.env.ORCHARD_WEATHER_SNAPSHOTS, JSON.stringify(snapshots, null, 2));
     }
   } finally { t.sim.registry.get('physics')._disableSg02DynamicAuthority(); t.sim.dispose(); }
+});
+
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import * as THREE from 'three';
+import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
+import { loadMotionBank, bindInstanceMotion } from '../src/render/authoredMotion.js';
+import { STORMSHIFT_SOURCE_SCALE, STORMSHIFT_SOURCE_LENGTH } from '../src/data/stormshiftCollectorCollision.js';
+
+test('selected collector release, pinned motion rig and fixed-cheek collider share the actual source frame', async () => {
+  const selection = wholeShipVisualForEntity({ type: 'ship', data: { defId: 'ship_mule', trafficRole: 'stormshift_collector' } }, { requiredWholeShip: true });
+  const pilot = renderPackagePilotForSourceUrl(`assets/ships/release/parts/${selection.file}`);
+  assert.ok(pilot, 'selected body must have a production render package');
+  const read = path => readFileSync(new URL(`../${path}`, import.meta.url));
+  const pkg = JSON.parse(read(pilot.metadataUrl));
+  assert.equal(pilot.runtimeAssetId, selection.assetId);
+  const glb = read(pkg.runtime.url);
+  assert.equal(createHash('sha256').update(glb).digest('hex'), pilot.sourceSha256);
+  const doc = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)));
+  assert.equal(doc.asset.extras.spacefaceAsset.assetId, selection.assetId);
+  const placement = wholeShipHullPlacement({ assetId: selection.assetId, bounds: pkg.runtime.bounds });
+  assert.deepEqual(placement.position, [0, 0, 0], 'no invented bounds-centre translation');
+  assert.equal(pkg.runtime.bounds.size[0], STORMSHIFT_SOURCE_LENGTH);
+  assert.equal(placement.targetLength / pkg.runtime.bounds.size[0], STORMSHIFT_SOURCE_SCALE);
+  const bytes = read(pkg.runtime.motionBank.uri);
+  const motion = await loadMotionBank(pkg.runtime.motionBank, async () => ({ ok: true, arrayBuffer: async () => bytes }));
+  assert.equal(motion.bank.sourceAssetId, selection.assetId);
+  assert.equal(motion.bank.rigId, 'stormshift_collector');
+  // Reconstruct the exact exported node hierarchy and transforms. Geometry is not
+  // rendered here; mesh presence and LOD visibility are retained because the real
+  // motion owner intentionally freezes empty/hidden pivot subtrees.
+  const root = new THREE.Group();
+  const nodes = doc.nodes.map(node => {
+    const object = node.mesh == null ? new THREE.Group() : new THREE.Mesh(new THREE.BufferGeometry());
+    object.name = node.name || '';
+    if (node.matrix) object.applyMatrix4(new THREE.Matrix4().fromArray(node.matrix));
+    else {
+      if (node.translation) object.position.fromArray(node.translation);
+      if (node.rotation) object.quaternion.fromArray(node.rotation);
+      if (node.scale) object.scale.fromArray(node.scale);
+    }
+    object.visible = !/^(LOD[12]_|COLLISION_)/.test(object.name);
+    return object;
+  });
+  doc.nodes.forEach((node, i) => { for (const child of node.children || []) nodes[i].add(nodes[child]); });
+  for (const i of doc.scenes[doc.scene || 0].nodes) root.add(nodes[i]);
+  const controller = bindInstanceMotion(root, motion, { sourceAssetId: selection.assetId });
+  assert.ok(controller, 'released rig binds instead of silently dropping its pivots');
+  const cheeks = motion.bank.bindings.filter(b => b.id.startsWith('stormshift_cheek_'));
+  const fans = motion.bank.bindings.filter(b => b.id.startsWith('stormshift_fan_'));
+  assert.equal(cheeks.length, 2); assert.equal(fans.length, 6);
+  try {
+    for (const clip of motion.bank.clips) {
+      assert.equal(controller.setState({ state: clip.name, startTimeS: 0 }), true);
+      for (const t of [0, 2, 4, 8]) {
+        controller.update(t);
+        if (clip.name === 'stormshift_stow' && t === 8) {
+          assert.ok(fans.every(binding => root.getObjectByName(binding.node).quaternion
+            .angleTo(new THREE.Quaternion(...binding.restPose.rotation)) > 0.1),
+          'all six exported radiator leaves actually respond to their bound clip');
+        }
+        for (const binding of cheeks) {
+          const pivot = root.getObjectByName(binding.node);
+          assert.deepEqual(pivot.position.toArray(), binding.restPose.translation);
+          assert.deepEqual(pivot.quaternion.toArray(), binding.restPose.rotation,
+            'solid intake cheeks never leave the fixed collision mouth');
+        }
+      }
+    }
+  } finally { controller.dispose(); }
 });
