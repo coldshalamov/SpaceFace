@@ -1085,7 +1085,7 @@ production units, and never build what they write.
 | 453 | GOLD-CABINET | The cabinet — Swarm attract, initials, daily seed up front, shareable run card; presentation only (§32.4) | BUILD | OPEN — M2; after 456 |
 | 454 | GOLD-M1 | M1 First Hour Gold — integration lane: play-capture-fix the first hour until every first-hour system is Gold or names its blocker (§32.4, §32.5) | BUILD | OPEN — M1; claims exact paths per sitting |
 | 455 | ENGINE-0 | The plan refills itself — `program-dispatch --next` returns the due PLAN_ENGINE cycle below threshold; `check-plan-integrity` reports it (§32.6) | BUILD | OPEN |
-| 456 | RC-SWARM-CLEAN | Swarm runs clean — aftermath card gated in survival, round-1 resolution diagnosed, round-10 Iron Maw script, wording fixes (§32.7) | FIX | OPEN — M2; first in the swarm seam |
+| 456 | RC-SWARM-CLEAN | Swarm runs clean — aftermath card gated in survival, round-1 resolution diagnosed, round-10 Iron Maw script, wording fixes (§32.7) | FIX | OPEN — M2; first in the swarm seam. Aftermath-card gate, round-1 diagnosis and wording landed (fleet oct20); remaining: round-10 Iron Maw script (fb-027 pins the current setup), clipped ROUND label, swarm-active player-truth gate |
 | 457 | RC-FIRST-MINUTES | The clean first two minutes — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook (§32.7) | FIX | OPEN — M1 |
 | 458 | RC-ONBOARD-PACE | A tighter first half hour — ≤8 tracker steps, Swing Clinic, "I've flown before", contract tags, player-truth budget (§32.7) | BUILD | OPEN — M1; after 457 |
 | 459 | RC-VIGNETTES | Lived vignettes worth meeting — regenerate from the generator, charge/await verbs, first-hour prop preference, trim (§32.7) | BUILD | OPEN — M1 |

@@ -4,7 +4,7 @@
 // on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
-import { SALVAGE_RIGHTS_KIND, salvageRightsItemsOf } from '../data/killRewards.js';
+import { SALVAGE_RIGHTS_KIND, salvageRightsItemsOf, isCreditChipPickup } from '../data/killRewards.js';
 import { SECTORS } from '../data/sectors.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
@@ -56,6 +56,9 @@ export function pickupFloatingTextSpec(payload) {
   if (qty <= 0) return null;
   if (payload && payload.kind === SALVAGE_RIGHTS_KIND) {
     return { qty, text: '+' + qty + ' SALVAGE RIGHTS', cls: 'sf-ft--rights' };
+  }
+  if (isCreditChipPickup(payload)) {
+    return { qty, text: '+' + qty + ' cr', cls: 'sf-ft--credits' };
   }
   const def = CMDTY_BY_ID[payload && payload.commodityId];
   const name = def ? def.name : ((payload && payload.commodityId) || 'Item');

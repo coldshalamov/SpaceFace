@@ -144,9 +144,16 @@ PASS only when there is no BLOCKING or MAJOR item.`;
 
 async function plan() {
   log(`plan: claude ${CLAUDE_MODEL}`);
-  const r = await run('claude', ['-p', '--model', CLAUDE_MODEL, '--output-format', 'text', '--permission-mode', 'bypassPermissions', '--disallowedTools', 'Edit,Write,NotebookEdit,MultiEdit'], { input: planPrompt(), logFile: join(OUT, 'plan.log'), timeoutMin: 40 });
-  const text = r.out.trim();
-  if (r.code !== 0 || text.length < 400) { log(`plan FAILED code=${r.code} len=${text.length}`); return false; }
+  const r = await run('claude', ['-p', '--model', CLAUDE_MODEL, '--output-format', 'text', '--permission-mode', 'bypassPermissions', '--disallowedTools', 'Edit,Write,NotebookEdit'], { input: planPrompt(), logFile: join(OUT, 'plan.log'), timeoutMin: 40 });
+  let text = r.out.trim();
+  if (r.code !== 0 && /session limit|usage limit|rate limit/i.test(text)) {
+    log(`claude limited — planner fallback: codex ${CODEX_MODEL}`);
+    const file = join(OUT, 'plan.codex.md');
+    await run('node', [CODEX_JS, 'exec', '-m', CODEX_MODEL, '-c', 'model_reasoning_effort=high', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check', '-o', file, '-'], { input: planPrompt(), logFile: join(OUT, 'plan.codex.log'), timeoutMin: 40 });
+    text = existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
+    if (text.length >= 400) text = `<!-- planner: codex ${CODEX_MODEL} (claude session-limited) -->\n${text}`;
+    else { log(`plan FAILED (fallback) len=${text.length}`); return false; }
+  } else if (r.code !== 0 || text.length < 400) { log(`plan FAILED code=${r.code} len=${text.length}`); return false; }
   writeFileSync(join(OUT, 'plan.md'), text + '\n');
   log('plan written');
   return true;

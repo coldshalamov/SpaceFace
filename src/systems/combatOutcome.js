@@ -7,6 +7,7 @@
 import { aftermathChoices, applyAftermathChoice } from '../combat/aftermathChoices.js';
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { occupantGenerationOf } from '../core/entity.js';
+import { validateRunState } from '../core/runState.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -34,6 +35,17 @@ function publishCombatOutcomeQuiet(state, latched) {
   if (!state) return;
   const rt = state.combatOutcomeRuntime || (state.combatOutcomeRuntime = {});
   rt.quietLatched = !!latched;
+}
+
+// The Crucible is not a sector: its arena runs with currentSectorId null and so do its kill
+// receipts, so null === null would read every arena kill as an Adventure field and mount the
+// aftermath card over the run's own keys 1–2. Same test as aftermathWrecks.liveSurvivalRunFor,
+// inlined so this observer does not load the wreck spawner.
+function liveSurvivalRun(state) {
+  const run = state && state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return false;
+  if (run.kind !== 'survival' || run.phase === 'inactive') return false;
+  return validateRunState(run).ok === true;
 }
 
 const STATE_VERSION = 2;
@@ -210,6 +222,7 @@ export const combatOutcome = {
       this._surrendered(payload || {});
     };
     this._onAftermathChoose = (payload) => {
+      if (liveSurvivalRun(this.state)) return;
       const id = payload && (payload.choiceId != null ? payload.choiceId : payload.id);
       const chosen = applyAftermathChoice(this.state, id);
       if (!chosen) return;
@@ -245,6 +258,9 @@ export const combatOutcome = {
           this._wakeCombatOutcomeQuiet();
           this._publishAftermath('sector:enter');
         }),
+        // A card mounted in Adventure before the Crucible door resolves the moment the run
+        // commits. Returning to Adventure republishes through the existing sector:enter hook.
+        this.bus.on('run:started', () => this._publishAftermath('run:started')),
         this.bus.on('combat:aftermathChoose', this._onAftermathChoose),
         this.bus.on('custody:aftermathChanged', () => this._publishAftermath('custody')),
         // Flee stamps that land without an ai:flee emit (doctrine/fsm churn, surrender
@@ -433,6 +449,14 @@ export const combatOutcome = {
     const state = this.state;
     if (!state) return null;
     const own = ensureState(state);
+    if (liveSurvivalRun(state)) {
+      own.aftermath = null;
+      if (this._choiceSig && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('combat:aftermathChoices', { sectorId: state.world && state.world.currentSectorId || null, paused: false, choices: [] });
+      }
+      this._choiceSig = '';
+      return null;
+    }
     const sectorId = state.world && state.world.currentSectorId || null;
     const wreckIds = sectorWreckIds(state, sectorId);
     const outcomes = [];
