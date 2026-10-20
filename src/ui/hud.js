@@ -27,6 +27,7 @@ import { glyphSvg, hasGlyph } from './glyphs.js';
 import { wantedAlertText, wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
 import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
+import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP } from '../systems/fuelCrack.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
@@ -3480,6 +3481,37 @@ export function createHud(ctx, alerts) {
           ctx.bus.emit('cargo:jettison', { commodityId, qty: dumpQty });
         }
       };
+    }
+
+    const crackBtn = contentEl.querySelector('.sf-btn-crack');
+    if (commodityId !== FUEL_CELL_ID) {
+      if (crackBtn) crackBtn.remove();
+    } else {
+      const actions = contentEl.querySelector('.sf-ins-actions');
+      const button = crackBtn || document.createElement('button');
+      if (!crackBtn && actions) {
+        button.type = 'button';
+        button.className = 'k-word k-word--emph sf-btn-crack';
+        button.textContent = 'Crack';
+        actions.appendChild(button);
+      }
+      if (button && actions) {
+        const plan = planFuelCrack(state);
+        const refused = !plan || plan.mode === 'refuse';
+        button.disabled = refused;
+        button.textContent = 'Crack';
+        button.title = refused
+          ? (plan && plan.reason) || 'Cannot crack a fuel cell'
+          : plan.mode === 'cook'
+            ? plan.reason
+            : `Crack one cell into the tank (${FUEL_CELL_SIP})`;
+        button.onclick = () => {
+          const now = planFuelCrack(state);
+          if (!now || now.mode === 'refuse') return;
+          ctx.bus.emit('audio:cue', { id: 'ui_click' });
+          ctx.bus.emit('fuel:crackCell', {});
+        };
+      }
     }
 
     updateSupplyTree(commodityId, !!best);
