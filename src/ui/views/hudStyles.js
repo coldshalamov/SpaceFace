@@ -2,6 +2,7 @@
 // uiRoot invokes this same one-time style owner; no copied CSS or substitute runtime.
 // The flight HUD is the first surface built on the deckplate design system (src/ui/deckplate/*);
 // injectDeckplate runs before the HUD sheet so the register's var(--dp-*) references resolve.
+import { MOBILE_FLIGHT_LAYOUT_CSS } from '../orrery/mobileFlightLayouts.js';
 import { bracketCss, INK_SHADOW } from '../hudBrackets.js';
 import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
@@ -757,21 +758,6 @@ export function injectHudCss() {
       display: none !important;
     }
 
-    /* D202b: Floor on mobile flight rightdock and radar so nested radar does not double-scale to 0.248x */
-    :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock {
-      transform: none !important;
-      right: calc(90px + var(--sf-safe-right, 0px)) !important;
-      max-height: none !important;
-      overflow: visible !important;
-    }
-    :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap {
-      position: relative !important;
-      top: auto !important;
-      right: auto !important;
-      transform: scale(0.75) !important;
-      transform-origin: top right !important;
-    }
-
     /* D202b: Ensure ring legends, compass engraving, and micro text maintain >= 9px effective rendered size */
     :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-micro text {
       font-size: 20px !important;
@@ -790,9 +776,6 @@ export function injectHudCss() {
     :root[data-sf-mobile="1"] #hud > .sf-leftcontext {
       max-height: calc(100dvh - 190px) !important;
       overflow: visible !important;
-    }
-    :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext {
-      top: calc(186px + var(--sf-safe-top, 0px)) !important;
     }
   }
   @media (max-width: 1279px), (max-height: 719px) {
@@ -3145,6 +3128,7 @@ export function injectHudCss() {
     .sf-objarrow__chev, .sf-objarrow__mark { fill:CanvasText; stroke:CanvasText; }
     .sf-objarrow__mark-bloom { display:none; }
   }
+  ${MOBILE_FLIGHT_LAYOUT_CSS}
   `;
   document.head.appendChild(s);
 }
