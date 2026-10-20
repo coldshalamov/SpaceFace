@@ -14,7 +14,7 @@ export function frontierRumorMapReadouts(state, sectorId = null) {
     if (!record || record.phase !== 'rumored') continue;
     const center = finitePoint(record.bearingCenter);
     const radius = Number(record.radius);
-    if (!center || !(radius > 0)) continue;
+    if (!center || !Number.isFinite(radius) || !(radius > 0)) continue;
     const id = String(record.id || '').trim();
     const name = String(record.kindLabel || 'Frontier Rumor').trim();
     if (!id) continue;
@@ -60,7 +60,7 @@ export function frontierRumorCorroborations(state, sectorId = null) {
     const radius = Number(record.radius);
     const targetId = String(record.targetId || '').trim();
     const id = String(record.id || '').trim();
-    if (!center || !(radius > 0) || !targetId || !id) continue;
+    if (!center || !Number.isFinite(radius) || !(radius > 0) || !targetId || !id) continue;
     const key = `${String(record.sectorId || '')}:${targetId}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push({ rumorId: id, center, radius, sectorId: record.sectorId });

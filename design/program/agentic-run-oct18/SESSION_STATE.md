@@ -161,3 +161,9 @@ pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention �
 - test/frontier-rumor-corroboration.test.mjs (5/5): grouping, lone-card silence, resolution dissolve, strict Object.keys whitelist + banned-string scan, truth-coordinate distance check, normalize survival + malformed fail-close. Adjacent suites 11/11 green.
 - Seam marked done on the board; R-b7f1bd7 filed OPEN.
 - Wave-8 re-dispatched (first dispatch lost with session transition): ee465abc — scoped to 4d6d2a4ae, 51918e656, b7f1bd7ba, 130cdbe09 + open rows R-a09f45f, R-b7f1bd7. Counter stands at 0-of-3.
+
+## DELTA 24 (post wave-8 close)
+- W8 verdict: CLEAN — counter 1-of-3. Two independent reviewers covered the tail (4d6d2a4ae fuel-crack, 51918e656 bookkeeping, b7f1bd7ba rumor-chart, 130cdbe09/9e51242398 bookkeeping) plus both open rows. R-a09f45f CLOSED (re-pin free + scoped clear verified end-to-end, 25/25 + 39/39 suites green, baseline 17/17). R-b7f1bd7 CLOSED (whitelist holds through every model/draw layer, painter null-safe, arrows confirmed on the real bench PNG).
+- W8 nit fixed: non-finite radius rejected in both frontierRumorMapLayer gates — radius:Infinity previously produced wsum=0 → NaN converge → a finite-but-wrong cross position on the warped system chart.
+- W8 finding filed: D238 (pre-existing) — signal:investigated/_onLandmarkArtifactRecovered/boss-defeat set rec.identified without clearSurveyFix; orphaned record can gate dock purchases if authored content ever pairs those paths with a contents-bearing cache POI.
+- Open reviews: ZERO again. W9 must cover the new tail (b7f1bd7ba..HEAD + this commit) — dispatch next.
