@@ -2823,7 +2823,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // The gate re-evaluates on every call — dynamic resolution can flip a frame below display
     // res without the buffer size changing class, and a stale flag is a silent miss.
     casActive = resolveCasSharpenActive(nextW, nextH, casDisplayW, casDisplayH);
-    if (nextW !== W || nextH !== H) {
+    // A settings/profile change can alter pyramid depth without changing the buffer size.
+    const newLevels = enabled === false ? 0 : levelCountForSize(nextW, nextH);
+    if (nextW !== W || nextH !== H || down.length !== newLevels) {
       W = nextW;
       H = nextH;
       halfW = Math.max(1, W >> 1);
@@ -2831,7 +2833,6 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       if (compositeMat.uniforms.uSceneTexel) {
         compositeMat.uniforms.uSceneTexel.value.set(1 / W, 1 / H);
       }
-      const newLevels = enabled === false ? 0 : levelCountForSize(W, H);
       resizeRenderTarget(rtScene, W, H, 'resize');
       // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
       while (down.length < newLevels) {
