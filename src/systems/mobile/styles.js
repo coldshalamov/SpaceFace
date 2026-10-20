@@ -345,7 +345,6 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-band-hud { display:none!important; }
  /* the right dock stacks law/intercept and contact cards up from the bottom-right corner, which is the key cluster's:
     on a phone it hangs from under the pause key instead; the radar's accessibility canvas must not eat a thumb */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(168px + var(--sf-safe-top,0px))!important; bottom:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important; width:min(236px,58vw)!important; max-height:150px; overflow:hidden; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-radar-semantic-canvas { pointer-events:none!important; }
  :root[data-sf-mobile-wheel="1"] #hud .sf-rightdock { opacity:0!important; }
  /* the Massline cadence card is a 330px instrument in the mid-left column, where a thumb lives: on a phone it keeps its
@@ -368,11 +367,9 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { position:fixed!important; top:64px!important; right:12px!important; bottom:auto!important; left:auto!important; transform:scale(.5)!important; transform-origin:top right!important; pointer-events:auto!important; }
  /* Ordinary flight's camera/Circuits keys are a narrow rail under Pause, clear of the ship scales.
     Authored races keep their map and readings in a compact central instrument. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 11px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:rgb(8 11 16 / .76); padding:6px; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(70px + var(--sf-safe-top,0px)); right:calc(12px + var(--sf-safe-right,0px)); width:min(128px,calc(100vw - 202px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions { gap:4px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions .k-word { min-height:44px; border:0; border-bottom:1px solid rgb(232 226 212 / .25); padding:4px 6px; font:inherit; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -389,11 +386,8 @@ const SCREEN_CSS = `
 }
 @media (max-height:500px) {
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { bottom:calc(max(182px,84px + var(--mf-cluster-w,196px) * .675) + var(--sf-safe-bottom,0px))!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { top:56px!important; transform:scale(.4)!important; }
  /* landscape has the width: alerts return to the top centre, the right dock sits left of the pause key */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(64px + var(--sf-safe-top,0px))!important; right:calc(104px + var(--sf-safe-right,0px))!important; width:min(236px,32vw)!important; max-height:150px; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(68px + var(--sf-safe-top,0px)); right:calc(84px + var(--sf-safe-right,0px)); width:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
 }
 @media (max-height:500px) and (orientation:landscape) {
