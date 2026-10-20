@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
-import { collectStationHandoffSnapshot, reportStationHandoffFailure, summarizeTraceIntegrity } from '../scripts/lib/stationHandoffDiagnostics.mjs';
+import { collectStationHandoffSnapshot, reportStationHandoffFailure, summarizeTraceIntegrity, summarizeMarketBuyCpuProfile, startMarketBuyCpuProfile } from '../scripts/lib/stationHandoffDiagnostics.mjs';
 
 function collector(overrides = {}) {
   return runInNewContext(`(${collectStationHandoffSnapshot.toString()})()`, {
@@ -384,9 +384,9 @@ test('BUY trace covers only its own actor boundary and retains unchanged waits',
   const actor = market.indexOf("await domClick(page, '[data-screen=\"station\"] .sx-trade__go[data-go]')");
   const wait = market.indexOf('page.waitForFunction((prev) => window.SF.state.player.credits !== prev');
   const finish = market.indexOf('await endMarketBuyObservation(buyObservation, buyTiming)');
-  const stop = market.indexOf('if (buyTrace) await buyTrace.stop()');
+  const stop = market.indexOf('await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()])');
   assert.ok(start > 0 && start < observation && observation < actor && actor < wait && wait < finish && finish < stop);
-  assert.equal(market.match(/if \(buyTrace\) await buyTrace\.stop\(\)/g)?.length, 2, 'inner and outer finally retain cleanup');
+  assert.equal(market.split('await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()])').length - 1, 2, 'inner and outer finally retain cleanup');
   assert.match(market, /const DOCK_TIMEOUT_MS = 15000/);
   assert.ok(market.includes('window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS }'));
 });
@@ -506,12 +506,14 @@ test('BUY compact categories retain causal timelines and sampling without changi
     configs.push(calls.find(([method]) => method === 'Tracing.start')[1].traceConfig);
   }
   assert.ok(configs[0].includedCategories.includes('toplevel'));
-  assert.deepEqual(configs[1].includedCategories, configs[0].includedCategories.filter(category => category !== 'toplevel'));
+  assert.deepEqual(configs[1].includedCategories, configs[0].includedCategories.filter(category => !['toplevel', 'disabled-by-default-v8.cpu_profiler'].includes(category)));
   for (const category of ['devtools.timeline', 'disabled-by-default-devtools.timeline',
-    'disabled-by-default-devtools.timeline.stack', 'disabled-by-default-v8.cpu_profiler']) {
+    'disabled-by-default-devtools.timeline.stack']) {
     assert.ok(configs[1].includedCategories.includes(category));
   }
   assert.equal(configs[1].traceBufferSizeInKb, 8192);
+  assert.equal(configs[1].enableSampling, false);
+  assert.equal(configs[0].enableSampling, true);
 });
 
 test('compact trace reports integrity after storing exclusive bytes, preserving actor result on bad gzip', async (t) => {
@@ -540,4 +542,146 @@ test('compact trace reports integrity after storing exclusive bytes, preserving 
   } finally {
     for (const row of logs.filter(row => row[0] === '[station-handoff] browser trace:')) await unlink(row[1]);
   }
+});
+
+function cpuFixture() {
+  return { startTime: 100, endTime: 8100, nodes: [
+    { id: 1, callFrame: { functionName: '(root)' }, children: [2] },
+    { id: 2, callFrame: { functionName: 'buy', url: 'http://fixture/market.js' } },
+  ], samples: [2, 2], timeDeltas: [4000, 4000] };
+}
+function cpuHarness(overrides = {}) {
+  const calls = [], logs = [], files = new Map();
+  const session = { send: async (method, args) => { calls.push([method, args]); return { profile: cpuFixture() }; },
+    detach: async () => { calls.push(['detach']); } };
+  const start = runInNewContext(`(${startMarketBuyCpuProfile.toString()})`, {
+    setTimeout, clearTimeout, Buffer, AbortController, summarizeMarketBuyCpuProfile,
+    console: { error: (...args) => logs.push(args) }, resolve: (...args) => args.join('/'),
+    Date: { now: () => 123 }, randomUUID: () => 'uuid', mkdir: async () => {},
+    writeFile: async (path, data, options) => {
+      assert.equal(options.flag, 'wx'); if (files.has(path)) throw new Error('exclusive collision'); files.set(path, data);
+    }, ...overrides,
+  });
+  return { start, session, calls, logs, files, page: { context: () => ({ newCDPSession: async () => session }) } };
+}
+async function flushCpu() { for (let i = 0; i < 25; i++) await Promise.resolve(); }
+
+test('page CPU snapshot has bounded structural coverage, not a GPU attribution verdict', () => {
+  assert.equal(summarizeMarketBuyCpuProfile(cpuFixture()).profileStatus, 'complete');
+  for (const change of [p => p.nodes[0].children.push(3), p => p.nodes[1].children = [1],
+    p => p.samples[1] = 3, p => p.timeDeltas.pop(), p => p.timeDeltas[0] = -1]) {
+    const p = cpuFixture(); change(p); assert.equal(summarizeMarketBuyCpuProfile(p).profileStatus, 'incomplete');
+  }
+  for (const change of [p => p.nodes.push(p.nodes[0]), p => p.samples = new Array(100001),
+    p => p.endTime = 80000000, p => p.nodes[0].callFrame.url = 'x'.repeat(8193),
+    p => p.nodes[0].children = new Array(100001).fill(2)]) {
+    const p = cpuFixture(); change(p); assert.throws(() => summarizeMarketBuyCpuProfile(p));
+  }
+});
+
+test('page CPU capture uses4000us, stops once, and preserves exclusive artifacts', async () => {
+  const h = cpuHarness();
+  const a = await h.start(h.page); await Promise.all([a.stop(), a.stop()]);
+  assert.equal(h.calls.filter(([m]) => m === 'Profiler.stop').length, 1);
+  assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+  assert.equal(h.calls.find(([m]) => m === 'Profiler.setSamplingInterval')[1].interval, 4000);
+  assert.equal(h.files.size, 1);
+  const bytes = [...h.files.values()][0]; const b = await h.start(h.page); await b.stop();
+  assert.equal([...h.files.values()][0], bytes);
+  assert.ok(h.logs.some(([m]) => m === '[market-buy] CPU profile unavailable:'));
+});
+
+test('late page attach or enable cannot resurrect a retired profiler', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const phase of ['attach', 'Profiler.enable', 'Profiler.start']) {
+    const h = cpuHarness(); let release;
+    const delayed = new Promise(resolve => { release = resolve; });
+    if (phase === 'attach') h.page.context = () => ({ newCDPSession: () => delayed });
+    else { const send = h.session.send; h.session.send = (method, args) => method === phase ? delayed : send(method, args); }
+    const pending = h.start(h.page); await flushCpu(); t.mock.timers.tick(2000); await flushCpu();
+    const handle = await pending; release(phase === 'attach' ? h.session : {}); await flushCpu(); await handle.stop();
+    assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+    assert.equal(h.files.size, 0);
+    assert.equal(h.calls.filter(([m]) => m === 'Profiler.stop').length, 0);
+  }
+});
+
+test('CPU stop timeout preserves actor error and ignores late profile completion', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const h = cpuHarness(); let release; const send = h.session.send;
+  h.session.send = (method, args) => method === 'Profiler.stop' ? new Promise(r => { release = r; }) : send(method, args);
+  const handle = await h.start(h.page); const original = new Error('original BUY timeout');
+  const pending = assert.rejects((async () => { try { throw original; } finally { await handle.stop(); } })(), e => e === original);
+  await flushCpu(); t.mock.timers.tick(15000); await flushCpu(); await pending;
+  release({ profile: cpuFixture() }); await flushCpu(); await handle.stop();
+  assert.equal(h.files.size, 0); assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+});
+
+test('CPU duration ceiling captures only, marks partial coverage, and waits for actor to write', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); const h = cpuHarness();
+  const handle = await h.start(h.page); t.mock.timers.tick(60000); await flushCpu();
+  assert.equal(h.files.size, 0); await handle.stop();
+  const report = JSON.parse(h.logs.find(([m]) => m === '[market-buy] CPU profile:')[1]);
+  assert.equal(report.temporalCoverage, 'capped-partial'); assert.equal(report.profileStatus, 'complete');
+  assert.equal(h.calls.filter(([m]) => m === 'Profiler.stop').length, 1);
+});
+
+
+test('CPU artifact timeout does not write after late mkdir or replace actor failure', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); let release;
+  const h = cpuHarness({ mkdir: () => new Promise(resolve => { release = resolve; }) });
+  const handle = await h.start(h.page); const original = new Error('original actor failure');
+  const pending = assert.rejects((async () => { try { throw original; } finally { await handle.stop(); } })(), e => e === original);
+  await flushCpu(); t.mock.timers.tick(2000); await flushCpu(); await pending;
+  release(); await flushCpu(); assert.equal(h.files.size, 0);
+});
+
+test('closed CPU session and malformed snapshot preserve original actor error', async () => {
+  for (const mode of ['closed', 'malformed']) {
+    const h = cpuHarness(); const send = h.session.send;
+    h.session.send = async (method, args) => {
+      if (method !== 'Profiler.stop') return send(method, args);
+      if (mode === 'closed') throw new Error('page closed');
+      return { profile: { nodes: [{}] } };
+    };
+    const handle = await h.start(h.page); const original = new Error('BUY original');
+    await assert.rejects((async () => { try { throw original; } finally { await handle.stop(); } })(), e => e === original);
+    assert.equal(h.files.size, 0); assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+  }
+});
+
+
+test('CPU numeric fields cannot bypass serialization estimate and timing stays in range', () => {
+  for (const [target, key] of [['node', 'hitCount'], ['frame', 'lineNumber'], ['frame', 'columnNumber']]) {
+    for (const value of ['x'.repeat(20000), {}, Infinity, 1.5, -2]) {
+      const p = cpuFixture(); (target === 'node' ? p.nodes[0] : p.nodes[0].callFrame)[key] = value;
+      assert.throws(() => summarizeMarketBuyCpuProfile(p), /invalid/);
+    }
+  }
+  const p = cpuFixture(); p.timeDeltas[1] = 4001;
+  assert.equal(summarizeMarketBuyCpuProfile(p).timingOutsideRange, true);
+  assert.equal(summarizeMarketBuyCpuProfile(p).profileStatus, 'incomplete');
+});
+
+test('late attached session detach is bounded even if target never responds', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); const h = cpuHarness(); let release;
+  h.page.context = () => ({ newCDPSession: () => new Promise(resolve => { release = resolve; }) });
+  h.session.detach = () => new Promise(() => {});
+  const pending = h.start(h.page); await flushCpu(); t.mock.timers.tick(2000); await flushCpu();
+  const handle = await pending; release(h.session); await flushCpu();
+  t.mock.timers.tick(2000); await flushCpu(); await handle.stop();
+  assert.ok(h.logs.some(([m]) => m === '[market-buy] CPU cleanup unavailable:'));
+  assert.equal(h.files.size, 0);
+});
+
+
+test('CPU artifact write timeout aborts and reports possibly partial bytes as unavailable', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); let signal;
+  const h = cpuHarness({ writeFile: (path, data, options) => { signal = options.signal; return new Promise(() => {}); } });
+  const handle = await h.start(h.page); const pending = handle.stop(); await flushCpu();
+  t.mock.timers.tick(2000); await flushCpu(); await pending;
+  assert.equal(signal.aborted, true);
+  const report = JSON.parse(h.logs.find(([m]) => m === '[market-buy] CPU profile unavailable:')[1]);
+  assert.equal(report.artifactMayBePartial, true); assert.ok(report.artifactFile);
+  assert.equal(h.logs.some(([m]) => m === '[market-buy] CPU profile:'), false);
 });

@@ -97,3 +97,26 @@ events, profiles, nodes and samples and reports unavailable rather than silently
 claiming integrity. Clean JSON alone is not complete evidence. The retained failing
 integrity case is reproduced locally; another exact-head capture must establish
 whether this measured reduction preserves definitions before any production fix.
+
+
+## Final targeted capture correction (2026-10-20)
+
+Head9bba686 failed the unchanged BUY gate with original Playwright TimeoutError.
+Trade/DOM updated to4965 at browser6223ms, state identity stayed stable, but host
+wait rejected after19361ms wall time. Four retained Commit spans6.17–6.44s overlap
+GPU-process work. There is no enclosing long FunctionCall or compile/residency mark.
+This is stalled responsive acceptance, not evidence of a failed transaction or paint.
+
+BUY-only category reduction still lost1417216bytes/346chunks. Main profile lost its
+start and142352/143918 sample node refs. No source cause is established. Therefore
+BUY now replaces trace CPU sampling with a main-page CDP Profiler snapshot sampled
+at4000µs; original dock profiling and bounded native task/GPU timelines remain.
+The snapshot is not worker/GPU evidence and profiling overhead is not performance
+acceptance. This is the final targeted capture correction, not an indefinite loop.
+
+Page profiler setup is bounded2s, capture ceiling60s, stop15s and detach2s. Ceiling
+capture is marked temporal partial regardless of structural completeness. Snapshot
+analysis/storage occurs only after the existing actor boundary, with100k node/sample
+caps, iterative graph validation, bounded strings and16MiB artifact cap. Artifacts
+are exclusive unique files. Closed sessions, timeouts and late replies preserve
+the original actor result; no gameplay predicate,15s wait or420s command changes.

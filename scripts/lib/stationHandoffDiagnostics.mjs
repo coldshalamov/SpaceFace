@@ -194,12 +194,12 @@ export async function startStationHandoffTrace(browser, label = 'market-dock', {
     await session.send('Tracing.start', {
       transferMode: 'ReturnAsStream', streamFormat: 'json', streamCompression: 'gzip',
       traceConfig: {
-        recordMode: 'recordContinuously', traceBufferSizeInKb: 8192, enableSampling: true,
+        recordMode: 'recordContinuously', traceBufferSizeInKb: 8192, enableSampling: !compact,
         // BUY traces showed duplicate toplevel task envelopes consuming the ring.
         // RunTask, Commit and GPUTask remain in disabled-by-default-devtools.timeline.
         includedCategories: ['devtools.timeline', 'v8.execute', ...(!compact ? ['toplevel'] : []),
           'disabled-by-default-devtools.timeline', 'disabled-by-default-devtools.timeline.stack',
-          'disabled-by-default-v8.cpu_profiler', 'disabled-by-default-devtools.screenshot'],
+          ...(!compact ? ['disabled-by-default-v8.cpu_profiler'] : []), 'disabled-by-default-devtools.screenshot'],
         excludedCategories: ['*'],
       },
     });
@@ -247,7 +247,8 @@ export async function startStationHandoffTrace(browser, label = 'market-dock', {
             try {
               const decoded = gunzipSync(data, { maxOutputLength: 16 * 1024 * 1024 });
               const integrity = summarizeTraceIntegrity(JSON.parse(decoded.toString('utf8')));
-              log('[station-handoff] trace integrity:', JSON.stringify({ file, ...integrity }));
+              log('[station-handoff] trace integrity:', JSON.stringify({ file, ...integrity,
+                cpuSampling: 'disabled here; separate main-page Profiler snapshot' }));
             } catch (error) {
               log('[station-handoff] trace integrity:', JSON.stringify({
                 file, profileStatus: 'unavailable', traceLossStatus: 'unknown',
@@ -373,4 +374,151 @@ export function summarizeTraceIntegrity(trace) {
     buffers, invalidCallsites, invalidSamples,
     note: 'No reported loss is not proof of paint, native GPU cause, or performance acceptance.',
   };
+}
+
+// Main-page CPU companion only: workers/GPU threads are outside this profile.
+export async function startMarketBuyCpuProfile(page) {
+  const log = (...args) => { try { console.error(...args); } catch (_) {} };
+  const bounded = async (work, label, ms) => {
+    let timer;
+    try { return await Promise.race([Promise.resolve().then(work), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} exceeded ${ms}ms`)), ms);
+    })]); } finally { clearTimeout(timer); }
+  };
+  let session, retired = false, captureTimer, capturePromise, stopPromise;
+  let durationLimited = false, setupError = null;
+  const cleanup = async () => {
+    retired = true;
+    clearTimeout(captureTimer);
+    const current = session;
+    if (!current) return;
+    session = null;
+    try { await bounded(() => current.detach(), 'BUY profiler detach', 2000); }
+    catch (error) { log('[market-buy] CPU cleanup unavailable:', String(error?.message || error).slice(0, 300)); }
+  };
+  const capture = () => {
+    if (!capturePromise) capturePromise = (async () => {
+      try {
+        if (!session || retired) throw new Error('BUY profiler session unavailable');
+        return (await bounded(() => session.send('Profiler.stop'), 'BUY profiler stop', 15000)).profile;
+      } finally { await cleanup(); }
+    })();
+    // The duration ceiling may initiate capture before the actor finishes. Retain failure,
+    // but do not create an unhandled rejection or analyze/write until explicit stop.
+    capturePromise.catch(() => {});
+    return capturePromise;
+  };
+  const starting = (async () => {
+    const attached = await page.context().newCDPSession(page);
+    if (retired) { session = attached; await cleanup(); return; }
+    session = attached;
+    await attached.send('Profiler.enable'); if (retired) return;
+    await attached.send('Profiler.setSamplingInterval', { interval: 4000 }); if (retired) return;
+    await attached.send('Profiler.start'); if (retired) return;
+    captureTimer = setTimeout(() => { durationLimited = true; void capture(); }, 60000);
+  })();
+  try { await bounded(() => starting, 'BUY profiler start', 2000); }
+  catch (error) { setupError = String(error?.message || error).slice(0, 300); await cleanup(); }
+  return {
+    stop() {
+      if (!stopPromise) stopPromise = (async () => {
+        let artifactFile = null, artifactWriteStarted = false;
+        try {
+          if (setupError) throw new Error(setupError);
+          const profile = await capture();
+          const summary = summarizeMarketBuyCpuProfile(profile);
+          const data = JSON.stringify(profile, ['nodes', 'id', 'callFrame', 'functionName', 'scriptId', 'url',
+            'lineNumber', 'columnNumber', 'hitCount', 'children', 'startTime', 'endTime', 'samples', 'timeDeltas']);
+          if (Buffer.byteLength(data) > 16 * 1024 * 1024) throw new Error('BUY CPU artifact exceeds 16MiB');
+          const dir = resolve('scratch/check-ci-report/station-handoff');
+          const file = resolve(dir, `${Date.now()}-${randomUUID()}-market-buy.cpuprofile`);
+          artifactFile = file;
+          let storageRetired = false;
+          const storageAbort = new AbortController();
+          try {
+            await bounded(async () => {
+              await mkdir(dir, { recursive: true });
+              if (storageRetired) return;
+              artifactWriteStarted = true;
+              await writeFile(file, data, { flag: 'wx', signal: storageAbort.signal });
+            }, 'BUY CPU artifact write', 2000);
+          } finally { storageRetired = true; storageAbort.abort(); }
+          log('[market-buy] CPU profile:', JSON.stringify({ file, samplingIntervalUs: 4000,
+            durationLimited, temporalCoverage: durationLimited ? 'capped-partial' : 'actor-boundary', ...summary, scope: 'main-page CPU only; not workers, GPU, paint or performance acceptance' }));
+        } catch (error) {
+          log('[market-buy] CPU profile unavailable:', JSON.stringify({ samplingIntervalUs: 4000,
+            durationLimited, profileStatus: 'unavailable', artifactFile, artifactMayBePartial: artifactWriteStarted, reason: String(error?.message || error).slice(0, 300) }));
+        } finally { await cleanup(); }
+      })();
+      return stopPromise;
+    },
+  };
+}
+
+export function summarizeMarketBuyCpuProfile(profile) {
+  if (!Array.isArray(profile?.nodes) || !Array.isArray(profile.samples) || !Array.isArray(profile.timeDeltas)) {
+    throw new Error('CPU profile arrays unavailable');
+  }
+  if (profile.nodes.length > 100000 || profile.samples.length > 100000 || profile.timeDeltas.length > 100000) {
+    throw new Error('CPU profile node/sample limit exceeded');
+  }
+  if (!Number.isFinite(profile.startTime) || !Number.isFinite(profile.endTime)
+    || profile.endTime < profile.startTime || profile.endTime - profile.startTime > 75000000) {
+    throw new Error('CPU profile duration invalid or exceeds 75s stop ceiling');
+  }
+  const nodes = new Map(), parents = new Map();
+  let edges = 0, estimatedBytes = profile.samples.length * 32 + profile.timeDeltas.length * 32;
+  for (const node of profile.nodes) {
+    if (!Number.isSafeInteger(node?.id) || node.id <= 0 || nodes.has(node.id)
+      || typeof node.callFrame?.functionName !== 'string' || (node.children !== undefined && !Array.isArray(node.children))) {
+      throw new Error('CPU profile node identity invalid');
+    }
+    for (const key of ['lineNumber', 'columnNumber']) {
+      const value = node.callFrame[key];
+      if (value !== undefined && (!Number.isSafeInteger(value) || value < -1)) throw new Error('CPU profile frame coordinate invalid');
+    }
+    if (node.hitCount !== undefined && (!Number.isSafeInteger(node.hitCount) || node.hitCount < 0)) {
+      throw new Error('CPU profile hitCount invalid');
+    }
+    for (const key of ['functionName', 'scriptId', 'url']) {
+      const value = node.callFrame[key];
+      if (value !== undefined && (typeof value !== 'string' || value.length > 8192)) throw new Error('CPU profile frame string limit exceeded');
+      estimatedBytes += (value?.length || 0) * 6;
+    }
+    estimatedBytes += 512 + (node.children?.length || 0) * 32;
+    if (estimatedBytes > 16 * 1024 * 1024) throw new Error('CPU profile serialized estimate exceeds 16MiB');
+    nodes.set(node.id, node);
+    for (const child of node.children || []) {
+      if (++edges > 100000) throw new Error('CPU profile edge limit exceeded');
+      if (!Number.isSafeInteger(child) || child <= 0 || parents.has(child)) throw new Error('CPU profile child identity invalid');
+      parents.set(child, node.id);
+    }
+  }
+  const converted = [];
+  let missingChildren = 0, roots = 0;
+  for (const child of parents.keys()) if (!nodes.has(child)) missingChildren++;
+  for (const node of nodes.values()) {
+    const parent = parents.get(node.id);
+    if (parent === undefined) roots++;
+    converted.push({ id: node.id, callFrame: node.callFrame,
+      parent: parent ?? (node.callFrame.functionName === '(root)' ? 0 : null) });
+  }
+  // Reuse the bounded iterative parent/sample validation, not an unbounded recursive summarizer.
+  for (const node of converted) if (node.parent === null) node.parent = 100001;
+  const result = summarizeTraceIntegrity({ traceEvents: [
+    { name: 'Profile', pid: 0, id: 'page', args: { data: { startTime: profile.startTime } } },
+    { name: 'ProfileChunk', pid: 0, id: 'page', args: { data: {
+      cpuProfile: { nodes: converted, samples: profile.samples }, timeDeltas: profile.timeDeltas,
+    } } },
+  ] });
+  const row = result.profiles[0];
+  const sampledUs = profile.timeDeltas.reduce((sum, delta) => sum + delta, 0);
+  const timingOutsideRange = !Number.isFinite(sampledUs) || sampledUs < 0
+    || sampledUs > profile.endTime - profile.startTime;
+  return { profileStatus: roots !== 1 || missingChildren || timingOutsideRange ? 'incomplete' : result.profileStatus,
+    timingOutsideRange,
+    durationMs: (profile.endTime - profile.startTime) / 1000, nodeCount: nodes.size,
+    samples: profile.samples.length, roots, missingChildren, missingNodeRefs: row.missingNodeRefs,
+    missingParentRefs: row.missingParentRefs, parentCycles: row.parentCycles,
+    timingLengthMismatches: row.timingLengthMismatches, invalidTimeDeltas: row.invalidTimeDeltas };
 }

@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { installMarketBuyObservation } from './lib/marketBuyDiagnostics.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace } from './lib/stationHandoffDiagnostics.mjs';
+import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace, startMarketBuyCpuProfile } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_CAPTURE = process.env.SF_MARKET_CAPTURE || '';
@@ -34,6 +34,7 @@ let browser = null;
 let issues = null;
 let dockTrace = null;
 let buyTrace = null;
+let buyCpuProfile = null;
 
 try {
   server = await startFreshServer();
@@ -153,6 +154,7 @@ try {
   await page.waitForTimeout(200);
   // A separate bounded span retains BUY CPU stacks rather than evicting them with dock/setup work.
   buyTrace = await startStationHandoffTrace(browser, 'market-buy', { compact: true });
+  buyCpuProfile = await startMarketBuyCpuProfile(page);
   const buyObservation = await startMarketBuyObservation(page);
   const buyHostStart = performance.now();
   const buyTiming = { baselineCredits: c0, timeoutMs: DOCK_TIMEOUT_MS, outcome: 'pending' };
@@ -174,7 +176,7 @@ try {
     buyTiming.waitEndedMs = performance.now() - buyHostStart;
     if (buyTiming.outcome === 'pending') buyTiming.outcome = 'rejected';
     try { await endMarketBuyObservation(buyObservation, buyTiming); }
-    finally { if (buyTrace) await buyTrace.stop(); }
+    finally { await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()]); }
   }
   const c1 = await page.evaluate(() => window.SF.state.player.credits);
   assert.ok(c1 < c0, 'buying should spend credits: ' + c0 + ' -> ' + c1);
@@ -252,7 +254,7 @@ try {
   if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);
   throw err;
 } finally {
-  if (buyTrace) await buyTrace.stop();
+  await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()]);
   if (dockTrace) await dockTrace.stop();
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
