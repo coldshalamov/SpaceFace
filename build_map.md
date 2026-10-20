@@ -19,7 +19,7 @@ finish lanes, with Sol research, Luna repairs, cloud PR integration and full-mat
 
 The 2026-10-19 studio audit — verdict, consolidation into parallel pods, and the A-list expansion
 campaigns — is [§31](#31-the-a-list-finish--studio-audit-consolidation-and-expansion-2026-10-19);
-its dispatchable rows are §1C §N (rows 390–431) on the seams added that day.
+its dispatchable rows are §1C §N (rows 390–443) on the seams added that day.
 
 Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
 
@@ -574,10 +574,10 @@ finished plan — the board is finished only when every number in this table is 
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D188, D191, D199, D225, D198, D130, D227, D231 — plus standing import guard D175 and watch-only D229 (D226 landed c8eec27a272 2026-10-19; live count: `program-dispatch --status`) |
 | Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
-| Numbered board rows (§A–§N tables below) | **45 open** — §N rows 390–431 (the 2026-10-19 A-list audit: 31 BUILD, 2 ART, 1 FIX, 7 SEED; §31); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
+| Numbered board rows (§A–§N tables below) | **57 open** — §N rows 390–443 (the 2026-10-19 A-list audit: 42 BUILD, 2 ART, 1 FIX, 8 SEED; §31); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
-| Inference catalog (`INFERENCE_IDEAS.md`) | **47 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
+| Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6); every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
 
 ### Seams — what is free, and what another agent has
@@ -651,12 +651,15 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
 | rope-scale | free | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423 |
 | hull-ghost | free | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425 |
-| first-look | free | camera distance review, near-field parallax/dust, hero-hull art — coordinate with L-PICTURE (§31.5) | 427, 428 |
+| first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 443, 427, 428 |
 | stranger-hud | free | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 431 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
+| pulse-voice | free | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
+| pulse-print | free | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
+| pulse-world | free | far-plane depth layers and far-actor feed, station shift/calendar data, `050-roaming-events.js` + event runtimes, memorial/graffiti-about-you, hull trinkets via `livingHull` presentation — coordinate with L-PICTURE on render layers (§31.6) | 438, 439, 440, 441 |
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
-| seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422 |
+| seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422, 442 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -980,7 +983,7 @@ Already-rowed parked work is the rest of the remainder and stays visible where i
 remote candidates), 271–273 (Swarm phases D–F on the owner's phase order; phase C row 270 is OPEN since 2026-10-19), 284 (the quiet-host
 session), and the §F lanes. A PARKED row's gate is named on the row; it is still on this map.
 
-### N. The A-list finish — studio audit rows (2026-10-19; design record §31, §31.5)
+### N. The A-list finish — studio audit rows (2026-10-19; design record §31, §31.5, §31.6)
 
 One row is one coherent player outcome, worked inside its seam (the seam table above). The
 `AL-*` lines in `INFERENCE_IDEAS.md` § A-LIST are taken *inside* the row whose files they touch.
@@ -1027,11 +1030,23 @@ production units, and never build what they write.
 | 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
 | 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424 |
 | 426 | AL-STORY-4 | Coldburn Rey, a rival with a face — a recurring rival hauler who bids on your contracts, races your deliveries, and can be robbed or rescued; he remembers (§31.5) | BUILD | OPEN — after 398 in the same seam |
-| 427 | AL-LOOK-1 | Fill the frame — stranger readability at the shipping camera: near-field parallax, visible traffic, hull scale, no frame mostly empty black (§31.5) | ART | OPEN — coordinate with L-PICTURE; take only while that lane is quiet |
+| 427 | AL-LOOK-1 | Fill the frame without filling the path — readable hull scale, passable near-field dust, depth layers above/below the flight plane, yielding traffic; no new obstacles (clean-flight-plane law §31.6; guarded by 443) (§31.5) | ART | OPEN — coordinate with L-PICTURE; take only while that lane is quiet |
 | 428 | AL-LOOK-2 | Hero hulls first — the five hulls a player meets in the first two hours raised to hero craft before any other hull (§31.5; includes D72) | ART | OPEN — coordinate with L-PICTURE (D72 is claimed there) |
 | 429 | AL-HUD-1 | A HUD a stranger can read — fix the visible leaks (internal ids such as `ZONE_CERES_DERELICT`, the Overhead/Circuits buttons overlapping the target card, overlapping shipworks list text); hand the rest to ORRERY as one list (§31.5) | FIX | OPEN |
 | 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | OPEN — clips judged through Theater after 407 |
 | 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | OPEN |
+| 432 | PULSE-RADIO | Radio that's about this galaxy — ≥2 h per channel before a repeat, live-fact segments, The Margin as a show; FILL lines after (§31.6) | BUILD | OPEN |
+| 433 | PULSE-SIGNS | Screens and signs that talk back — billboards, bay screens, news crawls, wanted posters with the player's hull (§31.6) | BUILD | OPEN |
+| 434 | PULSE-CHATTER | Every ship is somebody — name, registry, captain, cargo, destination, mood; ≥3,000 hail/chatter lines; manifests feed 423 (§31.6) | BUILD | OPEN |
+| 435 | PULSE-MAIL | Mail — event-triggered inbox: cast, offers, spam, fan/hate mail, bills, Maera's lost crew; ≥120 letters (§31.6) | BUILD | OPEN |
+| 436 | PULSE-STATION | Stations breathe — PA, berth calls, shift bells, crowd tone, scheduled bay traffic (§31.6) | BUILD | OPEN — beside 431 |
+| 437 | PULSE-CODEX | Everything has a page — codex for every commodity, hull, module, weapon, faction, sector, species and character (§31.6) | BUILD | OPEN |
+| 438 | PULSE-HORIZON | The horizon is busy — sim-driven far-plane life above/below the flight plane, zero collision (§31.6) | BUILD | OPEN — coordinate with L-PICTURE |
+| 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | OPEN |
+| 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | OPEN |
+| 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | OPEN |
+| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | OPEN |
+| 443 | PULSE-GUARD | The clean flight plane guard — deterministic unwanted-contact/obstruction measurement on the default route, before/after (§31.6) | BUILD | OPEN — land before 427/438 |
 
 ### Landed rows index (consolidated 2026-10-15)
 
@@ -5544,7 +5559,7 @@ physics-centric arcade combat that plays best in Swarm, and an Adventure mode th
 stimulating because of its customization, economy and story — with a massively polished frontend,
 everything on the newest versions, and optimized.*
 
-This section is the design record. Its dispatchable rows are §1C **§N (rows 390–431)**. Each row
+This section is the design record. Its dispatchable rows are §1C **§N (rows 390–443)**. Each row
 belongs to one seam in the §1C seam table, so `board-chunks` and `program-dispatch --next` can route
 it. Every row extends owners that already exist. §23.3's refusals and the single-writer law apply in
 full. Every done-when is measured on seed 4242 unless the row says otherwise. Counts below come from
@@ -6107,7 +6122,7 @@ the truth. This one idea joins the combat toy, the economy and the story into a 
 | 424 | **The hull ghost** | Bastion's narrator, Portal's GLaDOS and Destiny's Ghost: one voice that notices what you did | Over a 30-minute first route Maera Vols speaks ≥8 lines tied to real events (a stunt, a near-miss, a sector she remembers, a story beat); no repeats in a session; quiet at combat peaks except warnings; captioned | Random barks on a timer; a talking tutorial; lines with no event behind them |
 | 425 | **Faces on the radio** | Star Fox and Rebel Galaxy Outlaw comms windows | Every voiced in-flight transmission shows the speaker's portrait on the comms surface (allowed by `assets/portraits/AGENTS.md`); locals use their pooled faces | Portraits in the flight HUD frame; a generic face for a named character |
 | 426 | **Coldburn Rey, a rival with a face** | Shadow of Mordor's nemesis pointed at the cast; Burnout's named rivals | Rey bids on the player's contracts, races deliveries in the world, can be robbed or rescued, and remembers each outcome across reloads | A scripted rival who always loses; dialogue-only rivalry |
-| 427 | **Fill the frame** | Everspace 2 and Hades framing: the world fills the frame without hiding the action | Stills of the first five minutes at the shipping camera show the hull readable at a glance, ≥3 moving things on glass in Helios, and no frame more than ~60% empty black | Fog over everything; a closer camera that kills look-ahead; cutting the look for frame rate |
+| 427 | **Fill the frame, not the path** | Everspace 2 and Hades framing: the world fills the frame without hiding the action | Stills of the first five minutes at the shipping camera show the hull readable at a glance, ≥3 moving things on glass in Helios, and no frame more than ~60% empty black — all of it passable dust, depth layers off the flight plane, or yielding traffic; row 443 shows bumps unchanged (owner 2026-10-19: never flood the screen with things to crash into) | Fog over everything; a closer camera that kills look-ahead; cutting the look for frame rate |
 | 428 | **Hero hulls first** | Every A-list launch: the first two hours get the best art | The five hulls met in the first two hours read as hero craft at the chase camera and in shipworks before any other hull is touched | Uniform mediocre passes over all 15 hulls; procedural stand-ins |
 | 429 | **A HUD a stranger can read** | Dead Space's and Hades' restraint: information when it matters | No internal id reaches the screen; no overlapping elements on flight, target or shipworks at 1280×720 and 1920×1080; one news line at a time during the tutorial; the rest goes to ORRERY as one list | A redesign outside ORRERY; hiding information players need |
 | 430 | **Ten trailer moments** | Uncharted's set-piece discipline on top of systemic play (Breath of the Wild shrines) | Ten existing set pieces (Wreck Cathedral, Runaway Kiln, Bolus throat, Eighth Bell and others) are reachable in the first three hours, each with a camera beat and a music beat, and each reads to a stranger in a 30-second Theater clip with the UI hidden | New set pieces before these ten land; cutscenes that take the controls away |
@@ -6119,3 +6134,76 @@ graphics lane is already building (`illustratedStencils`, `illustratedSurface`),
 treated to match. Studio taste says *illustrated*: a premium stylised look is reachable, while
 photoreal hulls at this camera distance are not. The rows proceed with that assumption unless the
 owner rules otherwise.
+
+### 31.6 The pulse — a living world made of minutiae (owner direction, 2026-10-19)
+
+**The owner's correction.** The A-list gap is not a linear list of a few hero fixes. It is the
+*scope of small life*. GTA is impressive because the TV in a flat plays a show that runs for hours
+without repeating. Hundreds of details like that add up to immersion. No single one has to be great;
+the volume and the fit do the work. This is the work an agent fleet is best at. A second owner
+caution: do not flood the screen with things the player bumps into.
+
+**What the code shows.** The frameworks for small life exist, and the content inside them is a
+handful:
+
+| Framework that exists | What is in it today (2026-10-19) |
+|---|---|
+| Band radio (`data/flavor/040-band.js`, `systems/bandRadio.js`) | 8 channels, about a screen of copy each |
+| Dock ad board (`020-ad-board.js`) | 48 notices |
+| Graffiti (`030-graffiti.js`) | 54 tags |
+| Wreck rumors (`010-wreck-rumors.js`) | 12 |
+| Roaming moving stories (`050-roaming-events.js`) | 2 (the insolvent convoy is the model: one story told across hail, band, trade and news) |
+| News headlines (`data/newsTemplates.js`) | 8 headline kinds × ~5 templates; commodity flavor for 7 of 66 commodities |
+| Landmark / rim POI lore (`080`, `100`) | 19 and 8 entries |
+
+The house voice in those files ("bureaucratic horror", e.g. *CLAIMS BEGIN AFTER IMPACT. COVERAGE
+BEGINS AFTER REGISTRATION.*) is already excellent. The task is volume, variety and wiring, not a new
+voice.
+
+**The clean-flight-plane law (the owner's caution, made a rule).** Ambient life never becomes an
+obstacle. It lives in six places, and none of them is in your way:
+
+1. **Sound**: radio, chatter, station PA, room tone.
+2. **Words**: mail, news, billboards, manifests, codex, hail replies.
+3. **Depth**: layers above and below the flight plane (the game is top-down 2.5D, so the floor
+   under the play plane is free real estate). Distant lanes, fleets, battles, construction and
+   wildlife live there, and none of it has collision.
+4. **Traffic that yields**: NPC ships keep to lanes and steer around the player.
+5. **Passable near-field dust and motes**: you fly through it, and it tells you speed and direction.
+6. **Places you visit on purpose**: station bays, bars and landmarks.
+
+Anything solid in the player's path is gameplay, never decoration. Row 443 measures this, and every
+§31.6 row must leave unwanted bumps on the default route no higher than before.
+
+**The quality bar for minutiae:** *good enough, never repeats, true to this world.* Every stream
+reads live simulation facts where it can: your deeds, prices, wrecks, faction flips, the dead.
+That is the GTA trick. The radio is about *this* city, so it feels alive instead of looped.
+
+**The rows (432–443).** Each BUILD row makes its stream a lasting factory. It extends the format if
+needed, wires the stream to the sim, and seeds a first batch. It then leaves finite FILL lines in
+`INFERENCE_IDEAS.md` § PULSE so small agents can keep adding volume. FILL lines for the formats that
+already exist (PULSE-01…08) are minted now.
+
+| Row | Stream | The bar a player notices | Done when |
+|---|---|---|---|
+| 432 | **Radio that's about this galaxy** | GTA's radio and talk shows; Rebel Galaxy Outlaw's stations | Each of the 8 channels runs ≥2 hours of programming before a segment repeats: host segments, call-ins, ads, weather/hazard reports, sports from the kinetic league, and Lira Vonn's *The Margin* as a real show. ≥1 segment in 5 cites a live fact (a recent wreck, a price shock, the player's last big deed by callsign). Every line is captioned; voicing uses the existing voice pipeline where licensed, otherwise radio-filtered beds plus captions |
+| 433 | **Screens and signs that talk back** | GTA billboards; Cyberpunk's ad screens | Station billboards, bay screens and news crawls draw from the ad board, the news and faction propaganda. A wanted poster shows the player's own hull and callsign while heat is high. Feat headlines name the player. Nothing repeats within one docking session |
+| 434 | **Every ship is somebody** | Elite and X4: target anything, hail anything | Every NPC ship has a name, registry, captain, cargo, destination and mood. A hail returns a line that fits job, faction, situation and mood (≥3,000 lines across the matrix). Overheard ship-to-ship and traffic-control chatter plays near lanes and stations. A scanned manifest is the truth or a lie (feeds row 423) |
+| 435 | **Mail** | Mass Effect and Deus Ex e-mail; Cyberpunk's texts | An inbox gets cast letters, job offers, spam in the house voice, fan and hate mail after feats, bills, and letters for Maera Vols's lost crew. ≥120 letters, each triggered by a real event or a time window; nothing arrives untriggered |
+| 436 | **Stations breathe** | Mass Effect's Citadel PA; Starfield's spaceport bustle | Docking plays PA announcements, berth calls, shift-change bells and crowd tone, and a bay where ships arrive and leave on a schedule you can watch. The sound reads the station's type, faction, standing and time of shift |
+| 437 | **Everything has a page** | Mass Effect's codex; Elite's Galnet | Codex entries for all 66 commodities, 15 hulls, 124 modules, 41 weapons, 14 factions, 25 sectors, 56 species and 26 characters, unlocked by discovery and written in-world (who makes it, who smuggles it, who died for it) |
+| 438 | **The horizon is busy** | Freelancer's trade lanes; Homeworld's backgrounds; Everspace 2's capital ships passing | Depth layers below and above the flight plane carry sim-driven life: lane streams, capital fleets transiting, distant battles as flashes that match real off-screen fights, mining beams on far rocks, and megaprojects that visibly progress over days. **Zero collision.** Every capture of the default route shows ≥3 moving far-plane things with no change in bumps |
+| 439 | **The world keeps time** | Animal Crossing and Stardew calendars; GTA's day cycle | Stations run shifts (lighting, traffic rush hours, the bar fills at shift end). Weekly market days change prices. ≥6 festivals and holidays (fireworks at Helios on Founders' Day, a miners' strike at Ceres, a Choir vigil) and solar-storm seasons each change something you can see or hear |
+| 440 | **Your ship and the world wear your history** | Mass Effect's cabin trophies; Dark Souls bloodstains | Deeds add cockpit trinkets, hull decals and tallies. Memorial arrays list NPCs who actually died in the sim, including the ones you killed. Graffiti appears about your deeds in sectors where you are known |
+| 441 | **Small stories in passing** | Red Dead's random encounters; Elite's signal sources | Roaming moving stories go from 2 to ≥30, each told across hail, band, trade and news like the insolvent convoy: a wedding convoy, a drifting lifepod playing its log, a cargo pallet with a cat, a tour barge lost on purpose. Low stakes; each uses only existing verbs; none parks an obstacle in a lane |
+| 442 | **SEED — the comparison sweep** | — | Write the life-detail inventory of ten major space games (Elite Dangerous, X4, Everspace 2, No Man's Sky, Starfield, Freelancer, Rebel Galaxy Outlaw, FTL, Star Citizen, EVE). Check each detail against live code, and mint one PULSE line per real miss with owner paths |
+| 443 | **The clean flight plane guard** | — | A deterministic route measurement of unwanted contacts and path obstruction per minute on the default Helios→Ceres route, before and after; any §31.6 row that raises it is fixed before landing |
+
+**Refuse:**
+- decoration with collision;
+- clutter in lanes;
+- repeated loops passed off as programming;
+- generated text with no fact or trigger behind it;
+- a new voice that breaks the house voice;
+- any stream that writes credits, cargo, heat or standing;
+- hand-editing `en-US.generated.js` (new copy goes through the extractor).

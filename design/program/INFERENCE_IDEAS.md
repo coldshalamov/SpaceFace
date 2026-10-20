@@ -727,6 +727,27 @@ grunt line under an owner INFERENCE instruction. Seed 4242 for every done check.
 | AL-PR-15 | Captions say where the sound came from | `src/ui/captions.js` (bearing from the same position that pans the cue) | A telegraph from 8 o'clock captions as 8 o'clock | A radar widget | 0 directional words in `captions.js` | OPEN — row 409 |
 | AL-PR-16 | Game-speed assist 100/90/80/70% | `src/ui/screens/settings.js`, `src/core/timeEffects.js`, Crucible scoring | At 70%, 10 s of wall clock advances 7 s of sim; assisted Crucible runs are flagged | Change the 60 Hz step; pitch the audio | 0 game-speed hits in `settings.js` | OPEN — row 409 |
 
+## PULSE — volume fill for the living world (2026-10-19; parent `build_map.md` §31.6)
+
+Small, finite volume lines for formats that already exist. Each line adds entries in the existing
+schema and in the house voice of the file it extends (read its first 20 entries before writing).
+No duplicates. Every id is unique, and every referenced faction, sector, station, commodity, wreck
+or character id exists in its data file. Copy reaches the localization inventory through the
+extractor, never by hand-editing `en-US.generated.js`. A group of PULSE lines may run in parallel
+because each owns one file. Nothing here may add collision, change a loader schema, or write a
+gameplay outcome.
+
+| Id | Player-visible change | Paths | Done | Do not | Evidence of thinness | Status |
+|---|---|---|---|---|---|---|
+| PULSE-01 | Dock notices rarely repeat | `src/data/flavor/020-ad-board.js` | ≥300 notices; every faction and every station type has sponsors; local businesses named per sector; `depth-program-flavor-loader.test.mjs` green | Change `defineFlavorPack`; jokes outside the bureaucratic-horror voice | 48 notices | OPEN |
+| PULSE-02 | Walls say something local | `src/data/flavor/030-graffiti.js` | ≥300 tags keyed by sector and faction, some about recurring cast and landmarks; loader test green | Slurs; tags about the player (row 440 owns that) | 54 tags | OPEN |
+| PULSE-03 | Rumors point somewhere real | `src/data/flavor/010-wreck-rumors.js` | ≥80 rumors, each naming an existing wreck, one-off or landmark id (a focused test checks every reference resolves) | Rumors about places that do not exist | 12 rumors | OPEN |
+| PULSE-04 | The band has a schedule's worth of copy | `src/data/flavor/040-band.js` | Each of the 8 channels has ≥60 entries in its existing entry schema; `depth-program-a1-band-data.test.mjs` green | A ninth channel (row 432 owns format changes) | About a screen of copy per channel | OPEN |
+| PULSE-05 | Headlines vary | `src/data/newsTemplates.js` | Every `HEADLINE_TEMPLATES` kind has ≥15 templates and every `REGIME_TEMPLATES` entry ≥6; placeholder sets match the existing ones exactly | New placeholders | ~5 per kind | OPEN |
+| PULSE-06 | Every commodity has a voice in the news | `src/data/newsTemplates.js` `COMMODITY_FLAVOR` | All 66 commodity ids have a flavor entry in the existing shape; `commodity-flavor.test.mjs` green | Prices or economy numbers in copy | 7 of 66 | OPEN |
+| PULSE-07 | Landmarks and rim POIs carry lore | `src/data/flavor/080-landmark-lore.js`, `100-rim-poi-lore.js` | Every authored landmark and rim POI id has ≥3 lore lines | Lore that contradicts `data/narrative.js` | 19 and 8 entries | OPEN |
+| PULSE-08 | Faction barks vary by situation | `src/data/barks.js` faction situation sets | Every faction × situation cell has ≥12 variants | Change voice routing or cooldowns | About 4 lines per cell (`BARKS` is 13 factions × 9 situations) | OPEN |
+
 ## CLAIMED
 
 | Id | Date | Thread | Paths |
