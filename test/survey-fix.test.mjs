@@ -312,6 +312,55 @@ test('a live sold bearing survives a lost fix record and cannot be re-bought', (
   }
 });
 
+test('a cross-sector buy cannot strand a held bearing; the dock re-pins it for free', () => {
+  const restore = installDom();
+  try {
+    const hosted = boot(SEDNA, 'station_sedna');
+    placeVaultOnBurn(hosted.state);
+    const dock = mountDock(hosted);
+    clickSurvey(dock.vitals);
+    const held = hosted.state.world.surveyFix[SEDNA];
+    const before = hosted.state.player.credits;
+    // A bearing bought in the next sector evicts the single-slot chart copy.
+    hosted.state.nav.waypoint = { kind: 'local', label: 'other sector', reason: 'survey-fix', pos: { x: 9999, z: -8888 } };
+    const dock2 = mountDock(hosted);
+    clickSurvey(dock2.vitals);
+    assert.equal(hosted.state.player.credits, before, 're-pinning the held bearing is free');
+    const wp = hosted.state.nav.waypoint;
+    assert.equal(wp.reason, 'survey-fix');
+    assert.equal(wp.pos.x, held.mark.x, 'the re-pin restores the sold mark');
+    assert.equal(wp.pos.z, held.mark.z);
+    assert.ok(hosted.state.world.surveyFix[SEDNA], 'the record stays open');
+  } finally {
+    restore();
+  }
+});
+
+test('identifying the vault spends only its own bearing — another charted fix survives', () => {
+  const restore = installDom();
+  try {
+    const hosted = boot(SEDNA, 'station_sedna');
+    placeVaultOnBurn(hosted.state);
+    const dock = mountDock(hosted);
+    clickSurvey(dock.vitals);
+    const sednaMark = { ...hosted.state.world.surveyFix[SEDNA].mark };
+    // A second sector's sold bearing charted in the same session.
+    hosted.state.world.surveyFix[RHEA] = { sectorId: RHEA, poiId: CLAIM, mark: { x: 9999, z: -8888 }, searchRadius: 900, label: 'other', spoken: '' };
+    hosted.state.nav.waypoint = { kind: 'local', label: 'other', reason: 'survey-fix', pos: { x: 9999, z: -8888 } };
+    hosted.world._openSealedCache(hosted.state, SEDNA, { poiId: VAULT }, { investigated: false });
+    assert.equal(hosted.state.world.surveyFix[SEDNA], undefined, 'the Sedna record is spent');
+    assert.ok(hosted.state.nav.waypoint, 'the other sector bearing stays charted');
+    assert.equal(hosted.state.nav.waypoint.pos.x, 9999);
+    // The complement: the sector's own charted bearing dies with its record.
+    hosted.state.world.surveyFix[SEDNA] = { sectorId: SEDNA, poiId: VAULT, mark: sednaMark, searchRadius: 1, label: 'x', spoken: '' };
+    hosted.state.nav.waypoint = { kind: 'local', label: 'x', reason: 'survey-fix', pos: { ...sednaMark } };
+    hosted.world._openSealedCache(hosted.state, SEDNA, { poiId: VAULT }, { investigated: false });
+    assert.equal(hosted.state.nav.waypoint, null, 'the spent bearing clears with its record');
+  } finally {
+    restore();
+  }
+});
+
 test('a short purse still shows Buy fix and the click writes nothing', () => {
   const restore = installDom();
   try {

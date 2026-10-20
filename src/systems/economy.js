@@ -35,7 +35,7 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
-import { planSurveyFix, commitSurveyFix, openSurveyFix, soldBearingOpen, SURVEY_FIX_PRICE } from './surveyFix.js';
+import { planSurveyFix, commitSurveyFix, openSurveyFix, soldBearingOpen, bearingCharted, SURVEY_FIX_PRICE } from './surveyFix.js';
 import { FACTION_META } from '../data/factions.js';
 import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
@@ -4135,7 +4135,20 @@ export const economy = {
       this.bus.emit('toast', { text: 'The lab has nothing left to find in this sector', kind: 'info', ttl: 3 });
       return;
     }
-    if (openSurveyFix(state, plan.sectorId) || soldBearingOpen(state, plan)) {
+    const openFix = openSurveyFix(state, plan.sectorId);
+    if (openFix && openFix.mark && !bearingCharted(state, openFix.mark)) {
+      // The sold bearing fell off the single-slot chart (cross-sector buy, another course).
+      // The record still holds the mark — re-pin it for free; the lab never re-sells it.
+      this.bus.emit('ui:setCourse', {
+        pos: { x: openFix.mark.x, z: openFix.mark.z },
+        reason: 'survey-fix',
+        label: openFix.label,
+        waypointKind: 'local',
+      });
+      this.bus.emit('toast', { text: 'The held bearing is back on your chart', kind: 'info', ttl: 3 });
+      return;
+    }
+    if (openFix || soldBearingOpen(state, plan)) {
       this.bus.emit('toast', { text: 'A survey fix is already open — fly the search before buying another', kind: 'warn', ttl: 3 });
       return;
     }

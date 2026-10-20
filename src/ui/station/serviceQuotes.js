@@ -4,7 +4,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
 import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, stationConditionsFor, stationRefuelRation, AMMO_BATCH } from '../../systems/economy.js';
-import { planSurveyFix, openSurveyFix, soldBearingOpen, SURVEY_FIX_PRICE } from '../../systems/surveyFix.js';
+import { planSurveyFix, openSurveyFix, soldBearingOpen, bearingCharted, SURVEY_FIX_PRICE } from '../../systems/surveyFix.js';
 import { stationConditionChips } from '../../economy/stationConditions.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
@@ -304,7 +304,18 @@ function baseServiceQuote(type, state, entity) {
     const plan = planSurveyFix(state);
     if (!plan) return null;
     const credits = playerCredits(state);
-    if (openSurveyFix(state, plan.sectorId) || soldBearingOpen(state, plan)) {
+    const openFix = openSurveyFix(state, plan.sectorId);
+    if (openFix && openFix.mark && !bearingCharted(state, openFix.mark)) {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'The lab still holds your bearing — pin it back on the chart',
+        buttonLabel: 'Re-pin bearing',
+        disabled: false,
+        chips: [{ text: 'bearing held', kind: 'ok' }],
+      };
+    }
+    if (openFix || soldBearingOpen(state, plan)) {
       return {
         amount: 0,
         cost: SURVEY_FIX_PRICE,

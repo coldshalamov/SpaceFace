@@ -28,7 +28,8 @@ import { playerBearingLetter } from '../core/playerCompass.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
-import { clearSurveyFix } from './surveyFix.js';
+import { clearSurveyFix, bearingCharted } from './surveyFix.js';
+import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP, FUEL_CELL_COOK } from './fuelCrack.js';
 import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
@@ -655,6 +656,7 @@ export const world = {
     bus.on('world:requestRoute', (p) => this._onRequestRoute(p || {}));
     bus.on('world:requestSectorScan', () => this._beginScan());
     bus.on('ui:setCourse', (p) => this._onSetCourse(p || {}));
+    bus.on('fuel:crackCell', () => this._onCrackFuelCell());
     bus.on('combat:lockChanged', (p) => this._onLockChanged(p || {}));
     bus.on('module:equipped', () => this._resolveShipModules());
     bus.on('module:unequipped', () => this._resolveShipModules());
@@ -5991,10 +5993,8 @@ export const world = {
     rec.investigated = true;
     const active = state.world.activeSector;
     if (active) this._spawnCachePayoffs(sector, active);
-    if (clearSurveyFix(state, sectorId, projection.poiId)) {
-      const waypoint = state.nav && state.nav.waypoint;
-      if (waypoint && waypoint.reason === 'survey-fix') state.nav.waypoint = null;
-    }
+    const clearedFix = clearSurveyFix(state, sectorId, projection.poiId);
+    if (clearedFix && bearingCharted(state, clearedFix.mark)) state.nav.waypoint = null;
   },
 
   // continuous proximity reveal: detect/identify POIs the player flies near (design 05 scanReveal)
@@ -6278,6 +6278,61 @@ export const world = {
     const f = this.state.fuel;
     f.current = Math.min(f.max, f.current + amount);
     this.bus.emit('fuel:changed', { current: f.current, max: f.max });
+  },
+
+  // One free fuel cell becomes a sip, or cooks against the layer that is still up.
+  // A refuse, a missing damage route, or a packet that moves neither shield nor hull
+  // leaves the cell in the hold.
+  _onCrackFuelCell() {
+    const plan = planFuelCrack(this.state);
+    if (!plan || plan.mode === 'refuse') return;
+    if (plan.mode === 'fill') {
+      if (removeCargo(this.state, FUEL_CELL_ID, 1) !== 1) return;
+      this._addFuel(FUEL_CELL_SIP);
+      this.bus.emit('toast', { text: `Cracked one cell — ${FUEL_CELL_SIP} in the tank`, kind: 'info', ttl: 3 });
+      return;
+    }
+    if (plan.mode !== 'cook') return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player) return;
+    const shieldBefore = Number(player.shield) || 0;
+    const hullBefore = Number(player.hull) || 0;
+    const result = this._routeFuelCook(player, FUEL_CELL_COOK);
+    if (result === null || (result && result.ok === false)) return;
+    const shieldAfter = Number(player.shield) || 0;
+    const hullAfter = Number(player.hull) || 0;
+    if (!(shieldAfter < shieldBefore) && !(hullAfter < hullBefore)) return;
+    if (removeCargo(this.state, FUEL_CELL_ID, 1) !== 1) return;
+    const spent = hullAfter < hullBefore ? 'hull' : 'shield';
+    this.bus.emit('toast', { text: `The cell cooked against the ${spent}.`, kind: 'warn', ttl: 3 });
+  },
+
+  _routeFuelCook(player, damage) {
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'thermal',
+      pos: player.pos,
+      source: { kind: 'fuel_cell_cook' },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'fuel_cell_cook', id: player.id },
+    };
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    const live = this.state;
+    if (combat && combat.state === live && typeof combat.ensureKernel === 'function') {
+      return combat.ensureKernel().routeDamage(request);
+    }
+    if (combat && combat.state === live && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      return combat.kernel.routeDamage(request);
+    }
+    if (this.helpers && typeof this.helpers.routeCombatDamage === 'function' && combat && combat.state === live) {
+      return this.helpers.routeCombatDamage(request);
+    }
+    return null;
   },
 
   // --- FB-111: wedged-hull tow -----------------------------------------------------------

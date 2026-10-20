@@ -117,15 +117,20 @@ export function openSurveyFix(state, sectorId) {
 }
 
 // Continue drops the runtime-only fix record but keeps the sold bearing as the nav waypoint.
-// When the live waypoint already holds this exact mark the bearing is still open — the lab
-// cannot sell it twice.
-export function soldBearingOpen(state, plan) {
+// The single-slot chart is the bearing's only player-visible copy: when the live waypoint
+// holds this exact mark the bearing is charted — the lab cannot sell it twice — and when a
+// held record's mark falls off the chart a dock click re-pins it instead of dead-ending.
+export function bearingCharted(state, mark) {
   const nav = state && state.nav && state.nav.waypoint;
-  if (!nav || nav.reason !== 'survey-fix' || !nav.pos || !plan || !plan.mark) return null;
-  const dx = Number(nav.pos.x) - Number(plan.mark.x);
-  const dz = Number(nav.pos.z) - Number(plan.mark.z);
+  if (!nav || nav.reason !== 'survey-fix' || !nav.pos || !mark) return null;
+  const dx = Number(nav.pos.x) - Number(mark.x);
+  const dz = Number(nav.pos.z) - Number(mark.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return null;
   return (dx * dx + dz * dz) <= 1e-6 ? nav : null;
+}
+
+export function soldBearingOpen(state, plan) {
+  return bearingCharted(state, plan && plan.mark);
 }
 
 export function commitSurveyFix(state, plan) {
@@ -147,10 +152,11 @@ export function commitSurveyFix(state, plan) {
 
 export function clearSurveyFix(state, sectorId, poiId) {
   const bag = state && state.world && state.world.surveyFix;
-  if (!bag || !bag[sectorId]) return false;
-  if (poiId && bag[sectorId].poiId !== poiId) return false;
+  if (!bag || !bag[sectorId]) return null;
+  if (poiId && bag[sectorId].poiId !== poiId) return null;
+  const row = bag[sectorId];
   delete bag[sectorId];
-  return true;
+  return row;
 }
 
 /** One bearing to the shortest-id sealed cache that is still unidentified. */
