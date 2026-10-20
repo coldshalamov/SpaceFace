@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f",
+    "authoritativeHash": "3a9ea8b83a227e3afc0b154e9f795243f3cd71b45acdc98daf55dcd985d755dd",
     "authoritativeHashByReloadAt": {
-      "60": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f",
-      "600": "310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f"
+      "60": "3a9ea8b83a227e3afc0b154e9f795243f3cd71b45acdc98daf55dcd985d755dd",
+      "600": "3a9ea8b83a227e3afc0b154e9f795243f3cd71b45acdc98daf55dcd985d755dd"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -264,6 +264,10 @@
     "The convex owner produces 310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f. No other module differs in the paired comparison.",
     "At tick720 player position changes from (2915.300537,352.188141) to (2919.108643,352.274017). These are reviewed contact-response changes, not a version-only re-record.",
     "Both runs retain17 fires,10 hits,10 damage events,17 entities,5000 credits,and tether attach/cut ticks4/128. Event-family counts match; impact timing may differ with changed trajectories.",
-    "Reload60 and reload600 retain deterministic continuation. Acceptance bounds, repeat minimum, input tape and event families are unchanged."
+    "Reload60 and reload600 retain deterministic continuation. Acceptance bounds, repeat minimum, input tape and event families are unchanged.",
+    "2026-10-20 cartography custody schema-only migration: public base 27f93dd520427affef69bb7dd7e59679b4897096 reproduces the prior hash; PR458 tree e0deb05189bbdf630b54d42cab398d95a0a10f91 produces the new hash.",
+    "Paired seed47/tick720 snapshots differ only at $.meta.version (18 to 19), for both controllers with no save and reload at ticks 60 and 600. Every entity, motion, native-physics, economy and gameplay field is unchanged; metrics and trace counts match.",
+    "The version increase persists cartography reward custody through the independent public save migration. Changing only snapshot meta.version reproduces the exact old/new hashes; no physical or actor behavior is re-recorded.",
+    "Exact hash checks, event counts, repeat minimum, acceptance bounds and input tape remain unchanged. Repeat-20 and canonical-baseline/reload equivalence are verified with the new schema hash."
   ]
 }

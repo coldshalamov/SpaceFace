@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "ad18c68bb6c24f0fbd9d76f9ec607737b21e6daca3dd2d3bcfe82d5c733afaa5",
+    "authoritativeHash": "65c0096d76bcf56dddda0db4331c45d5eb98f79bf2942881b56a72aaf35f13e7",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -235,6 +235,10 @@
     "Reload600 is verified for both controllers; V3 reload60 is independently verified. Exact canonical hash checks, repeat minimum, acceptance bounds, input tape and event families remain unchanged.",
     "2026-10-18 native-save version-only migration: AIR-01 raised the save version 17 to 18. Bisect over 37d1af00f27..HEAD pins the drift to bd013cbc0f2; every earlier commit reproduces the prior hash.",
     "Full paired base/head snapshots (inspect --tick 720 --reload-at 600) differ only at $.meta.version (17 to 18); metrics, trace counts and event families are identical for both controllers and reload points 60 and 600.",
-    "The prior authoritativeHash was fdb01c20285e067941fc8064569fee2e06c1728a22644143c7866661855ea6c1."
+    "The prior authoritativeHash was fdb01c20285e067941fc8064569fee2e06c1728a22644143c7866661855ea6c1.",
+    "2026-10-20 cartography custody schema-only migration: public base 27f93dd520427affef69bb7dd7e59679b4897096 reproduces the prior hash; PR458 tree e0deb05189bbdf630b54d42cab398d95a0a10f91 produces the new hash.",
+    "Paired seed47/tick720 snapshots differ only at $.meta.version (18 to 19), for both controllers with no save and reload at ticks 60 and 600. Every entity, motion, native-physics, economy and gameplay field is unchanged; metrics and trace counts match.",
+    "The version increase persists cartography reward custody through the independent public save migration. Changing only snapshot meta.version reproduces the exact old/new hashes; no physical or actor behavior is re-recorded.",
+    "Exact hash checks, event counts, repeat minimum, acceptance bounds and input tape remain unchanged. Repeat-20 and canonical-baseline/reload equivalence are verified with the new schema hash."
   ]
 }
