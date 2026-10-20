@@ -4799,16 +4799,50 @@ export const missions = {
   _restoreNavigationAfterLoad() {
     const sectorId = this.state.world && this.state.world.currentSectorId;
     if (sectorId) this.spawnTargetsForSector(sectorId);
+    const nav = this.state.nav;
+    const existing = nav && nav.waypoint;
     if (this._trackedOrFirstActiveMission()) {
+      if (existing && existing.kind === 'local') this._retireRestoredLocalCourse();
       this._refreshNavigation({ silent: true });
       return;
     }
-    const existing = this.state.nav && this.state.nav.waypoint;
     if (existing && existing.kind === 'trade') {
       this._setNavWaypoint(existing);
       return;
     }
+    if (existing && existing.kind === 'local') {
+      const pos = existing.pos;
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+          && (!existing.sectorId || existing.sectorId === sectorId)) {
+        // An explicit local fix outranks idle story guidance, just as a saved trade course
+        // does. Save already restored its coordinates and durable identity. Do NOT call
+        // _setNavWaypoint here: its capture-at-write seam could stamp a recycled occupant
+        // of a saved transient handle. Unproven binds fall back to the recorded fix instead.
+        for (const target of [existing, nav.autopilot]) {
+          if (!target || target.stable) continue;
+          if (target === existing) delete target.targetEntityId;
+          else target.targetEntityId = null;
+          delete target.presentationEntityId;
+        }
+        return;
+      }
+      this._retireRestoredLocalCourse();
+    }
     this._refreshNavigation({ forceStory: true, silent: true });
+  },
+
+  _retireRestoredLocalCourse() {
+    const nav = this.state.nav;
+    this._setNavWaypoint(null);
+    // A rejected/superseded local marker must not leave its old burn armed behind the
+    // newly restored mission/story marker. Clear the bind and fix together.
+    if (nav.autopilot) {
+      nav.autopilot = {
+        active: false, target: null, targetEntityId: null,
+        label: '', arrivalRadius: 36, status: 'idle',
+      };
+      this.bus.emit('nav:autopilot', nav.autopilot);
+    }
   },
 
   _trackedOrFirstActiveMission() {
