@@ -529,7 +529,7 @@
     "check:progression:verbs": "node scripts/check-progression-verb-audit.mjs",
     "check:build-identities": "node scripts/check-build-identities.mjs",
     "check:market-nav": "node scripts/check-market-navigation.mjs",
-    "check:market-buy-diagnostics": "node --test test/market-buy-diagnostics.test.mjs",
+    "check:market-buy-diagnostics": "node --test test/market-buy-diagnostics.test.mjs test/station-handoff-runtime-diagnostics.test.mjs",
     "check:market-first-loop": "node scripts/check-market-first-loop-runtime.mjs",
     "check:localmap-routes": "node scripts/check-localmap-route-metrics.mjs",
     "check:claim-base": "node scripts/check-claim-base-input.mjs",

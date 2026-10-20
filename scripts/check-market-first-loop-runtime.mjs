@@ -33,6 +33,7 @@ let server = null;
 let browser = null;
 let issues = null;
 let dockTrace = null;
+let buyTrace = null;
 
 try {
   server = await startFreshServer();
@@ -150,6 +151,8 @@ try {
   const c0 = await page.evaluate(() => window.SF.state.player.credits);
   await domClick(page, '[data-screen="station"] .sx-mkt-row');
   await page.waitForTimeout(200);
+  // A separate bounded span retains BUY CPU stacks rather than evicting them with dock/setup work.
+  buyTrace = await startStationHandoffTrace(browser, 'market-buy');
   const buyObservation = await startMarketBuyObservation(page);
   const buyHostStart = performance.now();
   const buyTiming = { baselineCredits: c0, timeoutMs: DOCK_TIMEOUT_MS, outcome: 'pending' };
@@ -170,7 +173,8 @@ try {
   } finally {
     buyTiming.waitEndedMs = performance.now() - buyHostStart;
     if (buyTiming.outcome === 'pending') buyTiming.outcome = 'rejected';
-    await endMarketBuyObservation(buyObservation, buyTiming);
+    try { await endMarketBuyObservation(buyObservation, buyTiming); }
+    finally { if (buyTrace) await buyTrace.stop(); }
   }
   const c1 = await page.evaluate(() => window.SF.state.player.credits);
   assert.ok(c1 < c0, 'buying should spend credits: ' + c0 + ' -> ' + c1);
@@ -248,6 +252,7 @@ try {
   if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);
   throw err;
 } finally {
+  if (buyTrace) await buyTrace.stop();
   if (dockTrace) await dockTrace.stop();
   if (browser) await browser.close();
   if (server && server.kill) server.kill();

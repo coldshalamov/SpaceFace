@@ -49,3 +49,22 @@ No unclassified commands, workflow changes, budget rewrites or golden updates.
 Publish the reviewed source-only increment and follow exact-head CI. If BUY fails again, read
 both clock domains, original error and purse evidence before assigning cause. Do not retry until
 evidence warrants it; do not convert a settled economy transaction into visual acceptance.
+
+## Exact-head result and BUY trace follow-up (2026-10-20)
+
+PR463 head e325c80a3b59e2b0ddb745880e82460c28d722af passed the original Market
+browser check: model credits5000→4962 and visible purse5,000→4,962, same state object.
+The click returned after about4.199s and the original wait fulfilled after about12.749s.
+Six long tasks were recorded, five around4.16–4.25s. This successful run does not
+explain earlier failures or establish painted-frame timing. Overall CI remains failed.
+
+The follow-up adds a separately named bounded CPU trace immediately before BUY and
+closes it after the unchanged observer/wait. Existing dock traces end before BUY.
+Unique sanitized labels plus UUID filenames and exclusive writes preserve prior traces.
+Outer cleanup is idempotent. Trace start/stop overhead is diagnostic latency, not a
+performance improvement or hardware/FPS benchmark. Original15s acceptance and420s
+browser command allowance are unchanged. The existing static diagnostic leaf also
+runs the station-handoff trace helper tests; no new browser command is introduced.
+
+Local helper suite35/35 and independent adversarial review6/6 pass. Next: publish
+this exact follow-up and inspect actual BUY CPU stacks before choosing production fixes.

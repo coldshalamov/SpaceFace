@@ -331,3 +331,62 @@ test('post-actor trace flush can settle after two seconds without changing page 
   assert.ok(path, 'five-second browser finalization produces the trace');
   await unlink(path);
 });
+
+test('named BUY trace retains distinct artifacts even when timestamps collide', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { readFile, unlink } = await import('node:fs/promises');
+  const { basename } = await import('node:path');
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  t.mock.method(Date, 'now', () => 123);
+  for (const label of [undefined, '../market buy', 'market-buy']) {
+    const { session } = traceSession();
+    const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session }, label);
+    await trace.stop();
+  }
+  const files = logs.filter(([message]) => message === '[station-handoff] browser trace:').map(row => row[1]);
+  try {
+    assert.equal(files.length, 3); assert.equal(new Set(files).size, 3);
+    assert.match(basename(files[0]), /^123-[a-f0-9-]{36}-market-dock\.trace\.json\.gz$/);
+    for (const file of files.slice(1)) assert.match(basename(file), /^123-[a-f0-9-]{36}-market-buy\.trace\.json\.gz$/);
+    for (const file of files) assert.equal(await readFile(file, 'utf8'), 'fixture trace bytes');
+  } finally { for (const file of files) await unlink(file); }
+});
+
+test('trace output is exclusive and a filename collision preserves the earlier bytes', async () => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { resolve } = await import('node:path');
+  const files = new Map(), logs = [];
+  const start = runInNewContext(`(${startStationHandoffTrace.toString()})`, {
+    resolve, randomUUID: () => 'fixed', Date: { now: () => 1 }, Buffer, setTimeout, clearTimeout,
+    mkdir: async () => {}, console: { error: (...args) => logs.push(args) },
+    writeFile: async (path, bytes, options) => {
+      assert.equal(options.flag, 'wx');
+      if (files.has(path)) throw Object.assign(new Error('already exists'), { code: 'EEXIST' });
+      files.set(path, Buffer.from(bytes));
+    },
+  });
+  for (let i = 0; i < 2; i++) {
+    const { session, calls } = traceSession();
+    const trace = await start({ newBrowserCDPSession: async () => session }, 'market-buy');
+    await trace.stop();
+    assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+  }
+  assert.equal(files.size, 1);
+  assert.equal([...files.values()][0].toString(), 'fixture trace bytes');
+  assert.equal(logs.filter(([message]) => message === '[station-handoff] browser trace unavailable:').length, 1);
+});
+
+test('BUY trace covers only its own actor boundary and retains unchanged waits', () => {
+  const market = readFileSync(new URL('../scripts/check-market-first-loop-runtime.mjs', import.meta.url), 'utf8');
+  const start = market.indexOf("buyTrace = await startStationHandoffTrace(browser, 'market-buy')");
+  const observation = market.indexOf('const buyObservation = await startMarketBuyObservation(page)');
+  const actor = market.indexOf("await domClick(page, '[data-screen=\"station\"] .sx-trade__go[data-go]')");
+  const wait = market.indexOf('page.waitForFunction((prev) => window.SF.state.player.credits !== prev');
+  const finish = market.indexOf('await endMarketBuyObservation(buyObservation, buyTiming)');
+  const stop = market.indexOf('if (buyTrace) await buyTrace.stop()');
+  assert.ok(start > 0 && start < observation && observation < actor && actor < wait && wait < finish && finish < stop);
+  assert.equal(market.match(/if \(buyTrace\) await buyTrace\.stop\(\)/g)?.length, 2, 'inner and outer finally retain cleanup');
+  assert.match(market, /const DOCK_TIMEOUT_MS = 15000/);
+  assert.ok(market.includes('window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS }'));
+});

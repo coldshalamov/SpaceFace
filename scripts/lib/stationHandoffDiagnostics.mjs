@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 // Passive, bounded observer. No frame pump, recurring timer, actor input or game-state write.
 export function installStationHandoffTimingObserver() {
@@ -167,9 +168,11 @@ export async function reportStationHandoffFailure(page, context, issues, origina
   throw originalError;
 }
 
-// One targeted browser-process trace for the cold market dock. CDP root-session tracing can
+// One targeted browser-process trace for a named handoff. CDP root-session tracing can
 // finish without executing JavaScript in the blocked page; it is not another page snapshot.
-export async function startStationHandoffTrace(browser) {
+export async function startStationHandoffTrace(browser, label = 'market-dock') {
+  const traceLabel = String(label).replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 60) || 'market-dock';
   const log = (...args) => { try { console.error(...args); } catch (_) {} };
   const bounded = async (work, label, budgetMs = 2000) => {
     let timer;
@@ -230,10 +233,10 @@ export async function startStationHandoffTrace(browser) {
           if (retired) return;
           traceStage = 'artifact write';
           const dir = resolve('scratch/check-ci-report/station-handoff');
-          const file = resolve(dir, `${Date.now()}-market-dock.trace.json.gz`);
+          const file = resolve(dir, `${Date.now()}-${randomUUID()}-${traceLabel}.trace.json.gz`);
           await mkdir(dir, { recursive: true });
           if (retired) return;
-          await writeFile(file, Buffer.concat(chunks));
+          await writeFile(file, Buffer.concat(chunks), { flag: 'wx' });
           log('[station-handoff] browser trace:', file, `(${bytes} bytes)`);
         // Browser trace finalization is post-actor work, not part of a gameplay wait.
         }, 'station handoff trace stop/read', 15000);
