@@ -1214,6 +1214,57 @@ function collectCriticalStationSnapshot(cdp) {
   })()`);
 }
 
+// Passive, bounded evidence retained with each already-requested gate reply. Never load assets,
+// update matrices, drain queues or infer that a nonpresented body is necessarily unadmitted.
+export function createAuthoredGateEvidence(scene) {
+  const rows = [], states = Object.create(null);
+  let shipCount = 0, otherStates = 0, textTruncated = false;
+  const text = value => {
+    if (value == null) return null;
+    const result = String(value);
+    if (result.length > 160) textTruncated = true;
+    return result.slice(0, 160);
+  };
+  const number = value => Number.isFinite(value) ? value : null;
+  const pose = value => ({ x: number(value?.x), y: number(value?.y), z: number(value?.z) });
+  return {
+    add(entity, root, assetState, presented) {
+      shipCount++;
+      const key = text(assetState);
+      if (Object.hasOwn(states, key)) states[key]++;
+      else if (Object.keys(states).length < 32) states[key] = 1;
+      else otherStates++;
+      if (rows.length >= 32) return;
+      rows.push({ id: text(entity.id), assetState: key, presented,
+        exclusion: presented ? null : !root ? 'missing-root'
+          : root.visible === false ? 'root-hidden' : 'no-presented-surface',
+        rootVisible: root ? root.visible !== false : null,
+        entityPose: pose(entity.pos), rootPose: pose(root?.position),
+        presentationTier: text(entity.activity?.presentationTier),
+        preparePhase: text(root?.userData?.authoredPreparePhase),
+      });
+    },
+    snapshot() {
+      const cached = scene?.userData?.authoredUpgradeDiagnostics;
+      const jobs = Array.isArray(cached?.jobs) ? cached.jobs : [];
+      // Cached diagnostics describe started/settled jobs, NOT queued/held scheduler state.
+      const recentJobs = jobs.slice(-8).map(job => ({
+        entityId: text(job?.entityId), key: text(job?.key), status: text(job?.status),
+        startedAtMs: number(job?.startedAtMs), endedAtMs: number(job?.endedAtMs),
+        durationMs: number(job?.durationMs),
+      }));
+      return { assetStates: states, otherStateCount: otherStates, ships: rows,
+        shipRowsTruncated: shipCount > rows.length, textTruncated,
+        queue: cached ? { source: 'cached-started-job-diagnostics',
+          pendingAndHoldStateAvailable: false,
+          activeJobs: number(cached.activeJobs), activeAdmissionSlots: number(cached.activeAdmissionSlots),
+          recentJobs, jobRowsTruncated: jobs.length > recentJobs.length,
+        } : null,
+      };
+    },
+  };
+}
+
 function collectAuthoredGateSnapshot(cdp) {
   return evalJson(cdp, `(async () => {
     const state = window.SF && window.SF.state || null;
@@ -1223,6 +1274,7 @@ function collectAuthoredGateSnapshot(cdp) {
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
+    const evidence = (${createAuthoredGateEvidence.toString()})(state?.render?.scene);
     let authoredShipCount = 0;
     let presentedShipCount = 0;
     let playerState = 'missing';
@@ -1230,6 +1282,7 @@ function collectAuthoredGateSnapshot(cdp) {
       const root = entity.mesh || entity.view && entity.view.root || null;
       const assetState = root && root.userData && root.userData.authoredAssetState || 'missing-mesh';
       const presented = hasPresentedSurface(root);
+      evidence.add(entity, root, assetState, presented);
       if (presented) presentedShipCount++;
       if (presented && assetState === 'authored') authoredShipCount++;
       if (state && entity.id === state.playerId) playerState = assetState;
@@ -1244,6 +1297,7 @@ function collectAuthoredGateSnapshot(cdp) {
       presentedShipCount,
       authoredShipCount,
       playerState,
+      evidence: evidence.snapshot(),
     };
   })()`);
 }

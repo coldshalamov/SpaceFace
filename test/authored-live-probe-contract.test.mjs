@@ -12,6 +12,8 @@ import {
   assertAuthoredAdmissionSlotBound,
   collectAuthoredReport,
   createAuthoredPresentationReader,
+  createAuthoredGateEvidence,
+  waitForAuthoredShips,
   inspectLegacyPackagePoolEligibility,
 } from '../scripts/probe-authored-assets-live.mjs';
 
@@ -575,4 +577,91 @@ test('Electron presentation acceptance permits only the observed off-camera pend
     authoredAssetMode: 'release',
   }), false,
   'dead proxy records must not satisfy the live launch gate');
+});
+
+
+async function rejectedTwoShipGate({ pending = false } = {}) {
+  const f = presentationFixture();
+  f.scene.remove(f.root);
+  const ships = Array.from({ length: 25 }, (_, index) => {
+    const root = new THREE.Group();
+    root.userData.authoredAssetState = pending && index >= 2 ? 'loading' : 'authored';
+    root.userData.authoredPreparePhase = pending && index >= 2 ? 'compiling-pipelines' : null;
+    root.position.x = index < 2 ? index * 2 : 1000 + index;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    mesh.geometry.computeBoundingSphere();
+    root.add(mesh); f.scene.add(root);
+    return { id: index + 1, type: 'ship', alive: true, mesh: root,
+      pos: { x: root.position.x, z: 0 }, activity: { presentationTier: 'R1_RUNWAY' } };
+  });
+  f.scene.updateMatrixWorld(true);
+  if (pending) f.scene.userData.authoredUpgradeDiagnostics = {
+    activeJobs: 1, activeAdmissionSlots: 1,
+    jobs: [{ entityId: 3, key: 'ship:3', status: 'running', startedAtMs: 10, endedAtMs: null }],
+  };
+  const window = { SF: { state: { mode: 'flight', tick: 410, playerId: 1, entityList: ships,
+    render: { scene: f.scene, camera: f.camera, renderer: {}, warmPostProcess() {} } } } };
+  let now = 0, calls = 0;
+  const terminal = new Error('fixture final CDP reply missing');
+  const cdp = { setStage() {}, async send(_method, { expression }) {
+    calls++;
+    if (now >= 100) throw terminal;
+    const evaluate = new Function('window', 'loadProbeModule',
+      `return ${expression.replaceAll('import(', 'loadProbeModule(')}`);
+    return { result: { value: await evaluate(window, async name => {
+      assert.equal(name, 'three', 'observer adds no module loading'); return THREE;
+    }) } };
+  } };
+  await assert.rejects(waitForAuthoredShips(cdp, { now: () => now,
+    sleep: ms => { now += ms; }, admissionTimeoutMs: 100 }), error => error === terminal);
+  assert.equal(calls, 5, 'two original render/snapshot polls and terminal snapshot only');
+  const evidence = JSON.parse(JSON.stringify(terminal.authoredShipDiagnostics));
+  assert.equal(evidence.operation, 'admission-snapshot');
+  assert.equal(evidence.lastReport, null);
+  const snapshot = evidence.lastGateReply.snapshot;
+  assert.equal(snapshot.shipCount, 25);
+  assert.equal(snapshot.presentedShipCount, 2);
+  assert.equal(snapshot.authoredShipCount, 2);
+  assert.equal(snapshot.presentationUnknownCount, 0);
+  assert.equal(snapshot.playerState, 'authored');
+  return snapshot;
+}
+
+test('actual admission gate retains fully authored offscreen evidence without relaxing three-presented gate', async () => {
+  const snapshot = await rejectedTwoShipGate();
+  assert.deepEqual(snapshot.evidence.assetStates, { authored: 25 });
+  assert.equal(snapshot.evidence.ships[2].presented, false);
+  assert.equal(snapshot.evidence.ships[2].exclusion, 'no-presented-surface');
+  assert.equal(snapshot.evidence.ships[2].rootPose.x, 1002);
+  assert.equal(snapshot.evidence.queue, null);
+});
+
+test('same two-presented signature retains distinct real pending states and cached running-job evidence', async () => {
+  const snapshot = await rejectedTwoShipGate({ pending: true });
+  assert.deepEqual(snapshot.evidence.assetStates, { authored: 2, loading: 23 });
+  assert.equal(snapshot.evidence.ships[2].preparePhase, 'compiling-pipelines');
+  assert.equal(snapshot.evidence.queue.activeAdmissionSlots, 1);
+  assert.equal(snapshot.evidence.queue.recentJobs[0].entityId, '3');
+  assert.equal(snapshot.evidence.queue.pendingAndHoldStateAvailable, false);
+});
+
+test('gate evidence caps ship/state/job/text records and labels missing roots without mutating cached diagnostics', () => {
+  const scene = { userData: { authoredUpgradeDiagnostics: { activeJobs: 99,
+    jobs: Array.from({ length: 99 }, (_, i) => ({ key: 'x'.repeat(200), entityId: i, status: 'running' })) } } };
+  const before = JSON.stringify(scene);
+  const evidence = createAuthoredGateEvidence(scene);
+  for (let i = 0; i < 40; i++) evidence.add({ id: 'y'.repeat(200), pos: { x: NaN } }, null, `state-${i}`, false);
+  const result = evidence.snapshot();
+  assert.equal(result.ships.length, 32);
+  assert.equal(Object.keys(result.assetStates).length, 32);
+  assert.equal(result.otherStateCount, 8);
+  assert.equal(result.shipRowsTruncated, true);
+  assert.equal(result.textTruncated, true);
+  assert.equal(result.queue.recentJobs.length, 8);
+  assert.equal(result.queue.jobRowsTruncated, true);
+  assert.equal(result.queue.recentJobs[0].key.length, 160);
+  assert.equal(result.ships[0].id.length, 160);
+  assert.equal(result.ships[0].exclusion, 'missing-root');
+  assert.equal(result.ships[0].entityPose.x, null);
+  assert.equal(JSON.stringify(scene), before);
 });
