@@ -50,4 +50,37 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
   }
   ${FLIGHT} #hud > .sf-leftcontext { max-width:min(250px,64vw)!important; }
 }
+/* Portrait receipts share the objective's left lane, not the radar caption's right lane.
+   Keep the existing bottom/cluster reservation and information semantics; critical receipts
+   can still wrap, while informational receipts retain their existing full-text announcement. */
+@media (orientation:portrait) and (max-width:959px) {
+  /* The same Powers button joins Pause in the top navigation lane. Its old 110px side
+     handle could not fit between the radar caption and the action cluster on short phones.
+     Use the actual scaled Pause width, not a fixed assumption; both hands share this row. */
+  ${FLIGHT} #sf-touch-overlay .mf-edge {
+    top:calc(14px + var(--sf-safe-top,0px)); bottom:auto; left:auto;
+    right:calc(20px + max(44px,52px * var(--mf-scale)) + var(--sf-safe-right,0px));
+    width:56px; height:44px; min-width:44px; min-height:44px;
+    box-sizing:border-box; border-bottom:1px solid rgb(var(--mf-bone) / .36);
+  }
+  ${FLIGHT} #sf-touch-overlay .mf-edge::before { content:none; }
+  ${FLIGHT} #sf-touch-overlay .mf-edge-art { display:none; }
+  ${FLIGHT} #sf-touch-overlay .mf-edge-word {
+    position:static; writing-mode:horizontal-tb; transform:none;
+    left:auto; right:auto; top:auto; letter-spacing:.08em;
+  }
+  ${FLIGHT} #sf-touch-overlay .mf-edge[aria-expanded="true"] {
+    border-bottom-color:var(--mf-hand);
+  }
+  ${FLIGHT} #sf-touch-overlay .mf-status {
+    width:min(176px,calc(100vw - 102px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+    min-width:0;
+  }
+  ${FLIGHT} #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
+  ${FLIGHT} #toasts,
+  ${FLIGHT}[data-sf-mobile-lefty="1"] #toasts {
+    left:calc(14px + var(--sf-safe-left,0px))!important; right:auto!important;
+    width:min(320px,calc(100vw - 26px - max(166px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+  }
+}
 `;

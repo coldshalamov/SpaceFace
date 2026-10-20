@@ -221,7 +221,7 @@ import { MOBILE_FLIGHT_LAYOUT_CSS as css } from '../src/ui/orrery/mobileFlightLa
 
 const hud = readFileSync(new URL('../src/ui/views/hudStyles.js', import.meta.url), 'utf8');
 const portrait = css.slice(0, css.indexOf('@media (max-height:500px)'));
-const landscape = css.slice(portrait.length);
+const landscape = css.slice(portrait.length, css.indexOf('@media (orientation:portrait)'));
 const rule = (sheet, selector) => sheet.slice(sheet.indexOf(selector) + selector.length).match(/^\s*\{([^}]+)\}/)?.[1] || '';
 const dock = rule(portrait, '#hud .sf-rightdock');
 const radar = rule(portrait, '#hud .sf-radar-wrap');
@@ -256,7 +256,7 @@ test('the entire radar retains its readability scale without scaling its parent 
   assert.match(radar, /position:relative!important/);
   assert.match(radar, /transform-origin:top right!important/);
   assert.match(radar, /flex-shrink:0/);
-  assert.doesNotMatch(css, /display:none|visibility:hidden|opacity:0|overflow:hidden/);
+  assert.doesNotMatch(css.replace(/[^{}]*\.mf-edge-art \{ display:none; \}/, ''), /display:none|visibility:hidden|opacity:0|overflow:hidden/);
 });
 
 for (const [width, height, safeLeft, safeRight] of [[390,664,0,0],[390,844,0,0],[320,568,0,0],[360,640,0,0],[390,844,16,16]]) {
@@ -314,4 +314,64 @@ test('law/contact cards retain natural flow above radar at their existing usable
   assert.match(rule(landscape, '#hud .sf-rightdock'), /width:min\(236px,32vw\)!important/);
   assert.match(dock, /max-height:none!important; overflow:visible!important/);
   assert.doesNotMatch(css, /#sf-sector-law|\.sf-overview|\.sf-target/);
+});
+
+
+test('portrait receipts reserve the actual radar caption lane for both handedness settings', () => {
+  const receiptCss = css.slice(css.indexOf('@media (orientation:portrait)')).split('#toasts,')[1];
+  assert.match(receiptCss, /\[data-sf-mobile-lefty="1"\] #toasts/);
+  assert.match(receiptCss, /left:calc\(14px \+ var\(--sf-safe-left,0px\)\)!important; right:auto!important/);
+  assert.match(receiptCss, /max\(166px,var\(--mf-cluster-w,196px\) \* \.25\)/);
+  assert.doesNotMatch(receiptCss, /overflow|white-space|text-overflow|display:none|opacity/);
+  for (const width of [320,360,390]) for (const cluster of [196,240,320]) {
+    const left=14, receiptWidth=width-26-Math.max(166,cluster*.25);
+    const radarLeft=width-12-radarWidth*radarScale;
+    assert.ok(receiptWidth>=128, 'retain a wrapping text lane at the narrow supported floor');
+    assert.ok(radarLeft-(left+receiptWidth)>=13, 'receipt cannot cross the radar caption');
+  }
+  assert.match(MOBILE_CSS, /#toasts,#toasts \*/);
+});
+
+
+test('portrait Powers keeps its 44px target and horizontal label beside actual scaled Pause', () => {
+  const sheet = css.slice(css.indexOf('@media (orientation:portrait)'));
+  const edge = rule(sheet, '#sf-touch-overlay .mf-edge');
+  const word = rule(sheet, '#sf-touch-overlay .mf-edge-word');
+  assert.match(edge, /top:calc\(14px \+ var\(--sf-safe-top,0px\)\); bottom:auto; left:auto/);
+  assert.match(edge, /20px \+ max\(44px,52px \* var\(--mf-scale\)\)/);
+  assert.match(edge, /width:56px; height:44px; min-width:44px; min-height:44px/);
+  assert.match(word, /writing-mode:horizontal-tb; transform:none/);
+  assert.match(sheet, /\.mf-edge::before \{ content:none; \}/);
+  assert.match(sheet, /\.mf-edge-art \{ display:none; \}/);
+  assert.match(sheet, /\.mf-speed \{ flex-wrap:wrap; row-gap:2px/);
+  assert.doesNotMatch(landscape, /mf-edge|mf-status|mf-speed/);
+  // Source geometry only: real frame review is still required. A left-hand override has lower
+  // specificity than these root-qualified rules, so handedness cannot return the side handle.
+  for (const [w,h,inset] of [[320,568,0],[320,568,16],[390,664,0],[390,844,16]]) {
+    for (const scale of [.8,1,1.6]) for (const lefty of [false,true]) {
+      const pauseWidth = Math.max(44,52*scale);
+      const pauseLeft = w-12-inset-pauseWidth;
+      const powersRight = w-20-inset-pauseWidth, powersLeft=powersRight-56;
+      const statusWidth=Math.min(176,w-102-pauseWidth-2*inset);
+      assert.ok(pauseLeft-powersRight>=7.99, `${w}/${h}/${scale}/${lefty}: Pause gap`);
+      assert.ok(powersLeft-(14+inset+statusWidth)>=11.99, 'status gap');
+      assert.ok(statusWidth-62-8>=32, 'existing labels retain flexible visible meter bars');
+      assert.ok(14+44+12<=70, 'Powers clears the camera row, therefore lower radar and actions');
+    }
+  }
+  assert.match(MOBILE_CSS, /button:focus-visible \{ outline:2px/);
+});
+
+test('portrait Powers restyling preserves its existing accessible tap, swipe, dismiss and edge gestures', () => {
+  const view=readFileSync(new URL('../src/systems/mobile/view.js',import.meta.url),'utf8');
+  assert.match(view, /class="mf-edge" aria-label="Powers: swipe inward to select, or tap to open"/);
+  assert.match(view, /<span class="mf-edge-word">Powers<\/span>/);
+  assert.match(view, /aria-hidden="true" focusable="false"/);
+  assert.match(view, /edge\.setAttribute\('aria-expanded', 'true'\)/);
+  assert.match(view, /edge\.setAttribute\('aria-expanded', 'false'\)/);
+  assert.match(view, /listen\(edge, 'click'/);
+  assert.match(view, /e\.code === 'Escape'.*closeWheel\(\)/);
+  assert.match(view, /else if \(!ended\.moved\) \{ pinned = true; openWheel\(\); \}/);
+  assert.match(view, /magnet === 'wheel' \|\| inEdgeZone\(e\.clientX, e\.clientY\)/);
+  assert.ok(view.indexOf('target.closest?.(NO_FLY_SELECTOR)')<view.indexOf("magnet === 'wheel'"), 'radar is excluded before the intentional edge gesture');
 });
