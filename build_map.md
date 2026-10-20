@@ -19,7 +19,7 @@ finish lanes, with Sol research, Luna repairs, cloud PR integration and full-mat
 
 The 2026-10-19 studio audit — verdict, consolidation into parallel pods, and the A-list expansion
 campaigns — is [§31](#31-the-a-list-finish--studio-audit-consolidation-and-expansion-2026-10-19);
-its dispatchable rows are §1C §N (rows 390–422) on the seams added that day.
+its dispatchable rows are §1C §N (rows 390–431) on the seams added that day.
 
 Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
 
@@ -574,7 +574,7 @@ finished plan — the board is finished only when every number in this table is 
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D188, D191, D199, D225, D198, D130, D227, D231 — plus standing import guard D175 and watch-only D229 (D226 landed c8eec27a272 2026-10-19; live count: `program-dispatch --status`) |
 | Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
-| Numbered board rows (§A–§N tables below) | **36 open** — §N rows 390–422 (the 2026-10-19 A-list audit: 26 BUILD, 7 SEED; §31); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
+| Numbered board rows (§A–§N tables below) | **45 open** — §N rows 390–431 (the 2026-10-19 A-list audit: 31 BUILD, 2 ART, 1 FIX, 7 SEED; §31); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
 | Inference catalog (`INFERENCE_IDEAS.md`) | **47 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
@@ -638,7 +638,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | rope-world | free | `tetherGameplay.js` obstruction/wrap seam, `combat/attachments.js`, `world/asteroidField.js`, `masslineThrow.js`, `combat/masslineTargetScoring.js`, cable render, `cameraDirector.js` throw framing (§31 THE HAND) | 390 |
 | hostile-hands | free | `src/ai/` doctrine/maneuver/reflexes/fireDiscipline/temperament/squad, `aiPorts.js`, `engagementAuthority.js`, `combat/damage.js` friendly-fire flag, weapons splash path, `lawSecurity.js` retaliation, `collisionConsequences.js`, capacitor in `combat.js` (§31 THE FIGHT) | 391, 392, 393 |
 | racing | free | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395 |
-| world-answers-2 | free | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | 396, 397, 398 |
+| world-answers-2 | free | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | 396, 397, 398, 426 |
 | run-memory | free | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
 | hull-commit | free | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401 |
 | works | free | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 403 |
@@ -649,6 +649,11 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | rumor-chart | free | `data/frontierRumors.js`, `ui/sim/discoveryKnowledge.js`, `pirateRumor.js`, chart rumor layer (§31 THE SHOW) | 411 |
 | monoliths | free | `render/renderer.js`, `systems/missions.js`, `systems/traffic.js` — behaviour-preserving splits, one file at a time, only while no claimed seam lists the file (§31 THE MACHINE) | 412, 413 |
 | toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
+| rope-scale | free | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423 |
+| hull-ghost | free | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425 |
+| first-look | free | camera distance review, near-field parallax/dust, hero-hull art — coordinate with L-PICTURE (§31.5) | 427, 428 |
+| stranger-hud | free | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 431 |
+| set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
 | seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422 |
@@ -975,7 +980,7 @@ Already-rowed parked work is the rest of the remainder and stays visible where i
 remote candidates), 271–273 (Swarm phases D–F on the owner's phase order; phase C row 270 is OPEN since 2026-10-19), 284 (the quiet-host
 session), and the §F lanes. A PARKED row's gate is named on the row; it is still on this map.
 
-### N. The A-list finish — studio audit rows (2026-10-19; design record §31)
+### N. The A-list finish — studio audit rows (2026-10-19; design record §31, §31.5)
 
 One row is one coherent player outcome, worked inside its seam (the seam table above). The
 `AL-*` lines in `INFERENCE_IDEAS.md` § A-LIST are taken *inside* the row whose files they touch.
@@ -985,7 +990,7 @@ production units, and never build what they write.
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 390 | AL-HAND-1 | The Line touches the world — obstruction provider (AL-HF-08), terrain wrap pivots, unwrap on reversal, no tunnelling (§31.3) | BUILD | OPEN |
+| 390 | AL-HAND-1 | The Line touches the world — obstruction provider (AL-HF-08), terrain wrap pivots only during a deliberate swing (owner 2026-10-19: towing never snags), unwrap on reversal, no tunnelling (§31.3) | BUILD | OPEN |
 | 391 | AL-FIGHT-1 | Crossfire — temperament-gated enemy-on-enemy damage + 12 s grudges; AL-HF-01/02/14/15 inside (§31.3) | BUILD | OPEN |
 | 392 | AL-FIGHT-2 | They have hands too — incoming-mass cue AL-HF-06 first, then telegraphed enemy body launches, catch-and-return credit; AL-HF-11/13 inside (§31.3) | BUILD | OPEN — gated on AL-HF-06 inside the row |
 | 393 | AL-FIGHT-3 | Verbs feed verbs — mass kills spill latchable charge cells; guns-only tape runs dry (§31.3) | BUILD | OPEN — after 391 + 392 |
@@ -1018,6 +1023,15 @@ production units, and never build what they write.
 | 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | OPEN |
 | 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | OPEN |
 | 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | OPEN |
+| 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | OPEN |
+| 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
+| 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424 |
+| 426 | AL-STORY-4 | Coldburn Rey, a rival with a face — a recurring rival hauler who bids on your contracts, races your deliveries, and can be robbed or rescued; he remembers (§31.5) | BUILD | OPEN — after 398 in the same seam |
+| 427 | AL-LOOK-1 | Fill the frame — stranger readability at the shipping camera: near-field parallax, visible traffic, hull scale, no frame mostly empty black (§31.5) | ART | OPEN — coordinate with L-PICTURE; take only while that lane is quiet |
+| 428 | AL-LOOK-2 | Hero hulls first — the five hulls a player meets in the first two hours raised to hero craft before any other hull (§31.5; includes D72) | ART | OPEN — coordinate with L-PICTURE (D72 is claimed there) |
+| 429 | AL-HUD-1 | A HUD a stranger can read — fix the visible leaks (internal ids such as `ZONE_CERES_DERELICT`, the Overhead/Circuits buttons overlapping the target card, overlapping shipworks list text); hand the rest to ORRERY as one list (§31.5) | FIX | OPEN |
+| 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | OPEN — clips judged through Theater after 407 |
+| 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | OPEN |
 
 ### Landed rows index (consolidated 2026-10-15)
 
@@ -5530,7 +5544,7 @@ physics-centric arcade combat that plays best in Swarm, and an Adventure mode th
 stimulating because of its customization, economy and story — with a massively polished frontend,
 everything on the newest versions, and optimized.*
 
-This section is the design record. Its dispatchable rows are §1C **§N (rows 390–422)**. Each row
+This section is the design record. Its dispatchable rows are §1C **§N (rows 390–431)**. Each row
 belongs to one seam in the §1C seam table, so `board-chunks` and `program-dispatch --next` can route
 it. Every row extends owners that already exist. §23.3's refusals and the single-writer law apply in
 full. Every done-when is measured on seed 4242 unless the row says otherwise. Counts below come from
@@ -5653,6 +5667,9 @@ continued, or SEED-minted lines.
   - The line unwraps when the swing reverses and never tunnels through the rock at 60 Hz.
   - The throw solver reports invalid while the line is wrapped.
   - Lines that are already live are never auto-cut.
+  - **Owner ruling 2026-10-19:** the line wraps only during a deliberate swing or whip. Plain
+    towing and hauling through a rock field never snag. Orbiting the body you latched is unchanged,
+    because a line that ends on a rock has nothing to wrap around.
 - *Refuse:* a cable that only looks bent in render; auto-cutting; text in place of physics.
 
 #### THE FIGHT
@@ -6038,3 +6055,67 @@ it never builds the lines it writes.
 - any new screen where a chart, a place or a sound was named;
 - any second writer of heat, cargo, standing, credits or law;
 - any content volume used to fix a feel problem.
+
+### 31.5 The stranger's first minute — what separates SpaceFace from an A-list game (2026-10-19)
+
+The owner asked whether a stranger would take this for a modern A-list game or a cheap web game,
+why, and how to close the gap. This section answers from the real frames on disk (the
+`.devshots/asteroid-appear` flight captures of 2026-10-19, `fleet-look` hull renders, `ui-bench`
+station and Crucible screens) and from the cast and asset data. It does not answer from plan prose.
+
+**The verdict.** A stranger's first minute reads as *an ambitious indie web game*. The interface
+pieces built through ORRERY (the Crucible door and the station header) already look professional.
+Four things give the rest away:
+
+1. **The frame is mostly empty black.** In the opening flight capture the hull covers roughly 7% of
+   the frame width. One low-poly rock and one nebula smudge make up the world. A-list space games
+   fill the glass with near-field dust and debris parallax, traffic and lit hulls (Everspace 2,
+   Rebel Galaxy Outlaw).
+2. **The hulls are blockout-grade next to photoreal faces.** The Towline Mara render is flat boxes
+   with a tiled panel texture, while the 24 cast portraits and 65 local portraits are photographic.
+   The two art registers fight, and the hulls lose.
+3. **The HUD leaks the workshop.** An internal zone id reaches the target card
+   (`WING ZONE_CERES_DERELICT · FLANK`), and so do `VULN E K X` and `+46 · 9 WRECKS · 37 OTHERS`.
+   The Overhead/Circuits buttons overlap the target card, the shipworks list overlaps its own rows,
+   and three news lines run during the first tutorial step.
+4. **The cast lives in menus.** A strong cast exists, but the player meets it as text and bar
+   portraits. In flight, where the game happens, nobody speaks to you.
+
+**What is genuinely great, and must be the face of the game:**
+- **The Massline.** A physical rope in an arcade shooter is the edge nobody else has.
+- **The premise.** This is blue-collar logistics noir: weight-discrepancy clerks, customs filers,
+  manifest re-routers, a bounty double-biller, a derelict administrator in Ashfall, and Director
+  Vale signing discrepancies closed. Characters such as "Dustwife" Senna (keeper of names), the
+  Latch-Child (a feral salvage automaton), The Question, and Captain Maera Vols (the previous
+  captain, a ghost in your hull) are the stuff players quote.
+- **The places.** The Wreck Cathedral; The Bolus ("a colonized carrier, one line, no answer"); the
+  Eighth Bell, the Runaway Kiln, the Blind Welder.
+- **The world simulation underneath:** haulers, miners, patrols, wreck succession, and a court that
+  reconstructs ballistics.
+
+**The thematic key nobody has turned yet.** The game's verb is *mass* and its conspiracy is *mass
+discrepancies*. The opening already contains the bridge: the 47-A evidence spindle declares 480 kg
+on its manifest and actually masses 960 kg, and the rope's overload is the clue. That is an
+isolated exception today. Generalised, **the rope becomes a scale**: towing is how a pilot weighs
+the truth. This one idea joins the combat toy, the economy and the story into a single game.
+
+**How the gap closes — rows 423–431 (§1C §N):**
+
+| Row | Plan | The thread it borrows | Done when (stranger-visible) | Refuse |
+|---|---|---|---|---|
+| 423 | **The rope is a scale** | Papers, Please (the document lies, so you inspect) plus Return of the Obra Dinn (deduce from physical evidence) | ≥3 contract kinds and one story beat in which a declared-versus-true mass gap is found only by towing; rope strain shows the gap on the glass; customs, fences and frames react to what you found | A number popup; a scanner that reveals it for free; a second cargo writer |
+| 424 | **The hull ghost** | Bastion's narrator, Portal's GLaDOS and Destiny's Ghost: one voice that notices what you did | Over a 30-minute first route Maera Vols speaks ≥8 lines tied to real events (a stunt, a near-miss, a sector she remembers, a story beat); no repeats in a session; quiet at combat peaks except warnings; captioned | Random barks on a timer; a talking tutorial; lines with no event behind them |
+| 425 | **Faces on the radio** | Star Fox and Rebel Galaxy Outlaw comms windows | Every voiced in-flight transmission shows the speaker's portrait on the comms surface (allowed by `assets/portraits/AGENTS.md`); locals use their pooled faces | Portraits in the flight HUD frame; a generic face for a named character |
+| 426 | **Coldburn Rey, a rival with a face** | Shadow of Mordor's nemesis pointed at the cast; Burnout's named rivals | Rey bids on the player's contracts, races deliveries in the world, can be robbed or rescued, and remembers each outcome across reloads | A scripted rival who always loses; dialogue-only rivalry |
+| 427 | **Fill the frame** | Everspace 2 and Hades framing: the world fills the frame without hiding the action | Stills of the first five minutes at the shipping camera show the hull readable at a glance, ≥3 moving things on glass in Helios, and no frame more than ~60% empty black | Fog over everything; a closer camera that kills look-ahead; cutting the look for frame rate |
+| 428 | **Hero hulls first** | Every A-list launch: the first two hours get the best art | The five hulls met in the first two hours read as hero craft at the chase camera and in shipworks before any other hull is touched | Uniform mediocre passes over all 15 hulls; procedural stand-ins |
+| 429 | **A HUD a stranger can read** | Dead Space's and Hades' restraint: information when it matters | No internal id reaches the screen; no overlapping elements on flight, target or shipworks at 1280×720 and 1920×1080; one news line at a time during the tutorial; the rest goes to ORRERY as one list | A redesign outside ORRERY; hiding information players need |
+| 430 | **Ten trailer moments** | Uncharted's set-piece discipline on top of systemic play (Breath of the Wild shrines) | Ten existing set pieces (Wreck Cathedral, Runaway Kiln, Bolus throat, Eighth Bell and others) are reachable in the first three hours, each with a camera beat and a music beat, and each reads to a stranger in a 30-second Theater clip with the UI hidden | New set pieces before these ten land; cutscenes that take the controls away |
+| 431 | **Arriving somewhere** | Mass Effect's Citadel and Cowboy Bebop's bars: docking is coming home | Docking shows a live bay behind the station screen, a voiced barkeep greeting by name, and regulars with faces who change with your standing | A static backdrop; a menu that only lists services |
+
+**The art-direction question (the owner's to answer).** Rows 427 and 428 need one ruling: lift the
+hulls toward the photographic portraits, or move the whole game toward the illustrated look the
+graphics lane is already building (`illustratedStencils`, `illustratedSurface`), with portraits
+treated to match. Studio taste says *illustrated*: a premium stylised look is reachable, while
+photoreal hulls at this camera distance are not. The rows proceed with that assumption unless the
+owner rules otherwise.
