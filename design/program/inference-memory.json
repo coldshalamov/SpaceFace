@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-19",
+  "updated": "2026-10-20",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,20 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "NXI-156",
-      "date": "2026-10-01",
-      "wf": "WF-11",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "expiry evaluated before delivery in the same update",
-      "fingerprint": "verb=order,subject=deadline-delivery,domain=missions,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "963e11a1c",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-039-deadline-pacing.test.mjs"
-    },
     {
       "id": "NXI-077",
       "date": "2026-10-01",
@@ -1676,6 +1662,19 @@
       "references": [],
       "integration": "live",
       "commit": "f097f341d841fef86b6b58cf1657a6379e161843",
+      "verification": "focused_green"
+    },
+    {
+      "id": "sedna-survey-fix",
+      "date": "2026-10-20",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Sedna Survey Post sells a 240-credit fix that marks a sealed vault; standing on the vault drops four phosphor crystal",
+      "fingerprint": "verb=commission,subject=sealed-cache,sector=sector_sedna_dark,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "5f94495cab33b6a6a701e27224eb81329e7b80d1",
       "verification": "focused_green"
     }
   ],
