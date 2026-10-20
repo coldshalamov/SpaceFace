@@ -39,26 +39,25 @@ export const LOOK_BASE = deepFreeze({
     bandMix: 0.20,
     // Colour of the unlit side and of the lit side (multipliers on diffuse light).
     // Raised shadow floor prevents dark hulls and unlit enemies from vanishing into pitch-black voids.
-    // Warm-neutral since look pass 3: with the scene IBL cut to sceneEnv, the old ultramarine
-    // [0.64, 0.72, 1.12] floor turned every cream hull grey/lavender (LOOK_UNIFY.md pass 3).
-    shadowTint: [0.80, 0.76, 0.82],
-    lightTint: [1.06, 1.02, 0.96],
+    // Deep slate-ultramarine shadow floor fights warm solar key for two-color contrast.
+    shadowTint: [0.76, 0.74, 0.84],
+    lightTint: [1.08, 1.03, 0.96],
     // Dark contour where the hull turns away from the camera. 0 = none.
     contour: 0.25,
     // Clear coat: a second specular lobe over smooth dielectric paint.
     // Calibrated to give a sleek aerospace finish without creating piercing armor-like glare.
     coat: 0.70,
     coatRoughness: 0.32,
-    coatEnv: 0.52,
+    coatEnv: 0.54,
     // Gain on the coat's sun glint. Kept balanced so glints glisten cleanly without flaring out into white bars.
-    coatSun: 0.28,
+    coatSun: 0.32,
     // Coat reflectance at the grazing limb (facing reflectance is a fixed lacquer 0.05).
-    coatEdge: 0.38,
+    coatEdge: 0.42,
     coatTint: [1.0, 1.0, 1.0],
     // Edge light: a coloured grazing-angle rim, strongest away from the key.
     rim: [0.20, 0.62, 1.0],
-    rimStrength: 0.48,
-    rimPower: 3.6,
+    rimStrength: 0.52,
+    rimPower: 3.5,
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
     rockFill: 0.85,
@@ -83,11 +82,11 @@ export const LOOK_BASE = deepFreeze({
     shadowTint: [0.86, 0.96, 1.14],
     highlightTint: [1.06, 1.01, 0.94],
     // Contrast around mid-grey (1 = none) and global saturation (1 = none).
-    // Dialed back to reduce harsh dynamic crushing and keep dark assets readable.
-    contrast: 1.04,
-    saturation: 1.24,
+    // Slightly lifted to give depth, clean separation against black space and pop on hull forms.
+    contrast: 1.07,
+    saturation: 1.25,
     // Extra saturation for muted colours only, so skin-of-paint pops without neon clipping.
-    vibrance: 0.30,
+    vibrance: 0.32,
     // Painted-edge ink and value steps from the retired illustration pass. 0 = clean.
     ink: 0.08,
     // Colour of bloom spill: subtle electric blue-white aura.
@@ -249,8 +248,8 @@ export const LOOK_MOODS = deepFreeze({
 // Keyed by Forge finish first, material role second. This is material physics, so it is the
 // same in every mood.
 export const LOOK_EMISSIVE_GAIN = Object.freeze({
-  finish: Object.freeze({ glow_warm: 1.2, glow_drive: 1.5 }),
-  role: Object.freeze({ signal: 2.2, drive: 1.5 }),
+  finish: Object.freeze({ glow_warm: 1.4, glow_drive: 1.6 }),
+  role: Object.freeze({ signal: 2.6, drive: 1.6 }),
 });
 
 export function resolveLookEmissiveGain(role, forgeFinish) {

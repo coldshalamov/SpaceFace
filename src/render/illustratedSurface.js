@@ -90,21 +90,21 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
       // lobe arithmetic and color multiply on that zero-contribution path; the positive path is
       // unchanged, so this is a shader-cost reduction rather than a look adjustment.
       if (sfNoL > 0.0) {
-        float sfNoH = saturate(dot(nonPerturbedNormal, normalize(sfToLight + geometryViewDir)));
+        vec3 sfHalf = normalize(sfToLight + geometryViewDir);
+        float sfNoH = saturate(dot(nonPerturbedNormal, sfHalf));
+        float sfVoH = saturate(dot(geometryViewDir, sfHalf));
+        float sfSunFresnel = 0.04 + 0.96 * pow(1.0 - sfVoH, 5.0);
         float sfLobe = sfNoH * sfNoH * (sfCoatAlpha2 - 1.0) + 1.0;
-        sfCoatLight += directionalLights[sfJ].color
+        sfCoatLight += directionalLights[sfJ].color * sfLookCoatTint * (sfCoatWeight * sfSunFresnel)
           * (sfLookCoatSun * sfNoL * 0.25 * sfCoatAlpha2 / (PI * sfLobe * sfLobe));
       }
     }
     #endif
     #ifdef USE_ENVMAP
-    sfCoatLight += getIBLRadiance(geometryViewDir, nonPerturbedNormal, sfCoatRough) * sfLookCoatEnv;
-    #endif
-    // Schlick over a lacquer F0: faint facing the camera, rising to the Look's edge
-    // reflectance at the limb (a physical coat reaches 1; a lower cap keeps pale paint
-    // from washing out where a wall turns away).
     float sfCoatFresnel = 0.05 + sfLookCoatEdge * pow(sfGrazing, 5.0);
-    sfCoatLight *= sfLookCoatTint * (sfCoatWeight * sfCoatFresnel);
+    sfCoatLight += getIBLRadiance(geometryViewDir, nonPerturbedNormal, sfCoatRough)
+      * sfLookCoatTint * (sfCoatWeight * sfCoatFresnel * sfLookCoatEnv);
+    #endif
   }
   // The limb picks up the opposing stage light, strongest away from the key. Stone has
   // no lacquer, but its grazing facets still need to separate from black space.
@@ -314,6 +314,8 @@ export function installIllustratedSurface(material) {
       `)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float sfSurfaceRelief = 0.0;
+        float sfSurfaceRoughnessDelta = 0.0;
+        float sfSurfaceMetalnessScale = 1.0;
         // Materials carrying neither pigment, layout nor a stencil sheet produce only identity
         // contributions here (mix(c, x, 0) == c), so the whole chain skips under one
         // uniform-coherent predicate — no new program key, no per-pixel branch. Layout still
@@ -327,7 +329,12 @@ export function installIllustratedSurface(material) {
             // Pigment carries its own value. Normalizing it to the source's white roof value
             // clips the coloured channels into pastel under the sector key light.
             float sfDepthTone = 1.0 - 0.10 * smoothstep(0.12, 0.60, 1.0 - sfAlbedoY);
-            vec3 sfLacquer = sfPaintPigment * ((1.65 * sfAlbedoY / (0.32 + sfAlbedoY)) * sfDepthTone);
+            vec3 sfUnderTone = sfPaintPigment * vec3(0.92, 0.95, 1.06);
+            vec3 sfOverTone = sfPaintPigment * vec3(1.05, 1.02, 0.95);
+            vec3 sfRichPigment = mix(sfUnderTone, sfOverTone, smoothstep(0.15, 0.80, sfAlbedoY));
+            vec3 sfLacquer = sfRichPigment * ((1.65 * sfAlbedoY / (0.32 + sfAlbedoY)) * sfDepthTone);
+            vec3 sfTexGrain = diffuseColor.rgb / max(sfAlbedoY, 0.04);
+            sfLacquer *= mix(vec3(1.0), sfTexGrain, 0.28);
             diffuseColor.rgb = mix(diffuseColor.rgb, sfLacquer, sfNeutralPaint * sfPaintStrength);
           }
           if (sfLayoutStrength > 0.0) { ${HULL_LAYOUT_GLSL} }
@@ -354,7 +361,9 @@ export function installIllustratedSurface(material) {
         diffuseColor.rgb = pow(max(diffuseColor.rgb, vec3(0.0)), vec3(sfLookAlbedoGamma));
         diffuseColor.rgb = max(mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))),
           diffuseColor.rgb, sfLookAlbedoSaturation), vec3(0.0));
-        metalnessFactor *= 0.80;
+        metalnessFactor = clamp(metalnessFactor * sfSurfaceMetalnessScale, 0.0, 1.0);
+        metalnessFactor = mix(metalnessFactor, metalnessFactor * 0.80, 1.0 - metalnessFactor);
+        roughnessFactor = clamp(roughnessFactor + sfSurfaceRoughnessDelta, 0.04, 0.98);
         #include <lights_physical_fragment>`)
       .replace(LIGHT_NEEDLE, LIGHT_NEEDLE + '\n' + ILLUSTRATED_SURFACE_GLSL)
       // The contour belongs to paint. The coat and the rim sit outside it, so a polished edge
@@ -390,7 +399,7 @@ export function installIllustratedSurface(material) {
           float sfRoom = sfLookPaintCeiling - sfKnee;
           sfPaint *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
         }
-        vec3 outgoingLight = sfPaint + (sfCoatLight + sfRimLight) * sfHeadroom + totalSpecular + totalEmissiveRadiance;`);
+        vec3 outgoingLight = sfPaint + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   registerGeometryPreservingShaderHook(illustratedSurfaceShader, previousHook);

@@ -1109,10 +1109,11 @@ const DOWNSAMPLE_FRAG = /* glsl */`
 
   vec3 brightPass(vec3 c) {
     c = max(c, vec3(0.0)); // guard against negative/NaN leaking into the pyramid
-    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-    // soft-knee bright extract: 0 below (threshold-knee), smooth ramp, full above threshold
-    float soft = smoothstep(uThreshold - uKnee, uThreshold + uKnee, l);
-    float contrib = max(l - uThreshold, 0.0) + soft * uKnee;
+    float l = max(dot(c, vec3(0.2126, 0.7152, 0.0722)), max(c.r, max(c.g, c.b)) * 0.82);
+    // Karis quadratic soft knee: continuous C1 transition across the threshold with zero step discontinuity
+    float rq = clamp(l - uThreshold + uKnee, 0.0, 2.0 * uKnee);
+    rq = (rq * rq) / (4.0 * uKnee + 1e-5);
+    float contrib = max(rq, l - uThreshold);
     float scale = contrib / max(l, 1e-4);
     return c * scale;
   }

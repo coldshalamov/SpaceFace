@@ -226,6 +226,7 @@ import {
   SUBMIT_LANE,
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
+import { attachShipHeadlamps } from './ships/headlamps.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
 import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
@@ -8784,6 +8785,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
     const root = item && item.mesh || (meshes && meshes.get(entity.id));
     if (!root || root.visible === false || !root.userData) continue;
+    attachShipHeadlamps(root, entity);
     const bubble = root.userData.shieldBubble;
     if (bubble) {
       bubble.visible = false;

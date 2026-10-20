@@ -40,49 +40,64 @@ function paintOver(ctx) {
 
 /** Classic stencil bridges: two thin slots punched across a word's cap band. */
 function bridgeCut(ctx, x, y, w, capPx, rng) {
+  if (capPx < 26) return; // Keep small technical stencils and labels legible
   cutThrough(ctx);
   ctx.globalAlpha = 1;
-  const slot = Math.max(2, capPx * 0.055);
+  const slot = Math.min(3, Math.max(1.5, capPx * 0.045));
   for (const at of [0.34, 0.62]) {
     ctx.fillRect(x - w * 0.02, y - capPx + capPx * at, w * 1.04, slot);
   }
   // A few seeded bites out of the letter edges so paint reads sprayed by hand, not plotted.
-  const bites = Math.max(3, Math.round(w / 90));
+  const bites = Math.max(2, Math.round(w / 110));
   for (let i = 0; i < bites; i++) {
     const bx = x + rng() * w, by = y - rng() * capPx;
     ctx.beginPath();
-    ctx.arc(bx, by, slot * (0.4 + rng() * 0.9), 0, Math.PI * 2);
+    ctx.arc(bx, by, slot * (0.35 + rng() * 0.75), 0, Math.PI * 2);
     ctx.fill();
   }
   paintOver(ctx);
 }
 
-/** Wear: seeded speck bites anywhere inside a mark's box. */
+/** Wear: seeded speck bites and micro-scratches inside a mark's box. */
 function chip(ctx, x, y, w, h, count, rng) {
   cutThrough(ctx);
   ctx.globalAlpha = 1;
   for (let i = 0; i < count; i++) {
     const cx = x + rng() * w, cy = y + rng() * h;
-    const r = 1 + rng() * (SHEET * 0.004);
+    const r = 1 + rng() * (SHEET * 0.0035);
     ctx.beginPath();
-    if (rng() < 0.5) ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    else ctx.rect(cx, cy, r * (1 + rng() * 3), r * 0.7);
+    const roll = rng();
+    if (roll < 0.45) {
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    } else if (roll < 0.8) {
+      ctx.rect(cx, cy, r * (1 + rng() * 2.5), r * 0.7);
+    } else {
+      ctx.rect(cx - r * 1.8, cy, r * 3.6, 1.2);
+    }
     ctx.fill();
   }
   paintOver(ctx);
 }
 
-/** One gravity drip from a mark's lower edge. */
-function drip(ctx, x, y, length, width, color, alpha) {
+/** Slipstream or gravity paint drip from a mark. Default flows aft along flight axis (-dx). */
+function drip(ctx, x, y, length, width, color, alpha, dirX = -1, dirY = 0.08) {
   paintOver(ctx);
   ctx.fillStyle = color;
+  ctx.strokeStyle = color;
   ctx.globalAlpha = alpha;
-  ctx.fillRect(x - width / 2, y, width, length * 0.7);
+  const len = length * 0.75;
+  const ex = x + dirX * len, ey = y + dirY * len;
+  ctx.lineWidth = width * 0.75;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.arc(x, y + length * 0.7, width * 0.72, 0, Math.PI * 2);
+  ctx.moveTo(x, y);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(ex, ey, width * 0.75, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(x, y + length, width * 0.45, 0, Math.PI * 2);
+  ctx.arc(ex + dirX * width * 0.5, ey + dirY * width * 0.5, width * 0.45, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
 }
@@ -141,15 +156,15 @@ function killTally(ctx, u, v, count, color, rng, alpha = 0.92) {
   for (let i = 0; i < count; i++) {
     const group = Math.floor(i / 5);
     const inGroup = i % 5;
-    const x = u + group * (step * 6.4) + inGroup * step;
-    const tilt = (rng() - 0.5) * 0.35;
-    handStroke(ctx, [[x, v + height], [x + tilt * 0.2, v]], SHEET * 0.006, color, alpha, rng, 2);
-  }
-  // The closing slash across each complete group of five.
-  for (let g = 0; g < Math.floor(count / 5); g++) {
-    const x0 = u + g * (step * 6.4) - step * 0.6;
-    handStroke(ctx, [[x0, v + height * 1.1], [x0 + step * 5.6, v - height * 0.1]],
-      SHEET * 0.005, color, alpha, rng, 2);
+    if (inGroup < 4) {
+      const x = u + group * (step * 5.4) + inGroup * step;
+      const tilt = (rng() - 0.5) * 0.35;
+      handStroke(ctx, [[x, v + height], [x + tilt * 0.2, v]], SHEET * 0.0055, color, alpha, rng, 2);
+    } else {
+      const x0 = u + group * (step * 5.4) - step * 0.3;
+      handStroke(ctx, [[x0, v + height * 1.1], [x0 + step * 3.8, v - height * 0.1]],
+        SHEET * 0.005, color, alpha, rng, 2);
+    }
   }
 }
 
@@ -184,6 +199,30 @@ function noStepChevrons(ctx, u, v, count, size, color, alpha = 0.9) {
   ctx.globalAlpha = 1;
 }
 
+function hazardStripes(ctx, u, v, w, h, stripeW, colorA, colorB, alpha = 0.92) {
+  paintOver(ctx);
+  const x = px(u), y = px(v), width = px(w), height = px(h), sW = px(stripeW);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, width, height);
+  ctx.clip();
+  ctx.fillStyle = colorA;
+  ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = colorB;
+  ctx.globalAlpha = alpha;
+  for (let pos = -height; pos < width + height; pos += sW * 2) {
+    ctx.beginPath();
+    ctx.moveTo(x + pos, y + height);
+    ctx.lineTo(x + pos + sW, y + height);
+    ctx.lineTo(x + pos + sW + height, y);
+    ctx.lineTo(x + pos + height, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
 // -------------------------------------------------------------------------------------------------
 // The styles. Each draws its whole sheet into one canvas in hull-space coordinates.
 // -------------------------------------------------------------------------------------------------
@@ -191,12 +230,16 @@ function noStepChevrons(ctx, u, v, count, size, color, alpha = 0.9) {
 /** The Hitch's own mark: a punk spray tag, a ghost mascot, and thirteen tally strokes. */
 function drawBorrowedTime(ctx, rng) {
   const orange = '#e06428', bone = '#e8e2d2', teal = '#53aaa3';
+  // Hero lettering: DIE LAUGHING in bone stencil across the aft deck
+  stencilText(ctx, 'DIE LAUGHING', 0.13, 0.44, SHEET * 0.038, {
+    color: bone, alpha: 0.90, spacing: 0.14, weight: '700',
+  });
   // Spray halo first, then the crisp pass — a tag that sits ON the hull, not plotted on it.
   const tag = stencilText(ctx, 'B.T.', 0.16, 0.60, SHEET * 0.115, {
     color: orange, alpha: 0.96, rotation: -0.10, halo: 0.35, spacing: 0.04,
   });
-  drip(ctx, tag.x + tag.w * 0.28, px(0.60) + SHEET * 0.008, SHEET * 0.055, SHEET * 0.009, orange, 0.8);
-  drip(ctx, tag.x + tag.w * 0.74, px(0.60) + SHEET * 0.008, SHEET * 0.034, SHEET * 0.007, orange, 0.66);
+  drip(ctx, tag.x, px(0.60) + SHEET * 0.008, SHEET * 0.048, SHEET * 0.008, orange, 0.8, -1, 0.08);
+  drip(ctx, tag.x + tag.w * 0.45, px(0.60) + SHEET * 0.008, SHEET * 0.032, SHEET * 0.007, orange, 0.66, -1, 0.12);
   // The ghost: rounded crown, waving skirt, two hollow eyes — the mascot rides toward the nose.
   const gx = px(0.585), gy = px(0.47), gw = px(0.075), gh = px(0.10);
   paintOver(ctx);
@@ -229,7 +272,7 @@ function drawBorrowedTime(ctx, rng) {
   ctx.globalAlpha = 1;
   // Thirteen tally strokes — the boat has a history. (PLAYER_NOSE_ART tally: 13.)
   killTally(ctx, 0.335, 0.445, 13, bone, rng);
-  chip(ctx, px(0.13), px(0.47), px(0.24), px(0.17), 26, rng);
+  chip(ctx, px(0.13), px(0.42), px(0.24), px(0.22), 26, rng);
 }
 
 /** Concord patrol registry: crisp white serials, an inspection roundel, no-step chevrons. */
@@ -239,8 +282,10 @@ function drawConcord(ctx, rng) {
   stencilText(ctx, 'PTRL·7', 0.245, 0.575, SHEET * 0.034, { color: slate, alpha: 0.85, spacing: 0.22, weight: '600' });
   roundel(ctx, 0.62, 0.47, 0.036, white, slate);
   noStepChevrons(ctx, 0.115, 0.53, 3, 0.028, white);
-  stencilText(ctx, 'INS 4412', 0.47, 0.615, SHEET * 0.024, { color: white, alpha: 0.72, spacing: 0.18, weight: '600' });
-  chip(ctx, px(0.22), px(0.41), px(0.2), px(0.17), 14, rng);
+  stencilText(ctx, 'NO STEP', 0.125, 0.575, SHEET * 0.018, { color: white, alpha: 0.80, spacing: 0.14, weight: '600' });
+  stencilText(ctx, 'INS 4412', 0.47, 0.615, SHEET * 0.024, { color: white, alpha: 0.75, spacing: 0.18, weight: '600' });
+  stencilText(ctx, 'ORDNANCE / ARM', 0.39, 0.415, SHEET * 0.020, { color: slate, alpha: 0.80, spacing: 0.12, weight: '600' });
+  chip(ctx, px(0.22), px(0.41), px(0.2), px(0.17), 12, rng);
   chip(ctx, px(0.56), px(0.41), px(0.13), px(0.13), 8, rng);
 }
 
@@ -248,6 +293,8 @@ function drawConcord(ctx, rng) {
 function drawIndustrial(ctx, rng) {
   const yellow = '#d8a018', ink = '#1a1c20', white = '#e8e5da';
   stencilText(ctx, 'HL-09', 0.22, 0.52, SHEET * 0.095, { color: yellow, alpha: 0.96, spacing: 0.06 });
+  // Heavy hazard stripes block on aft shoulder
+  hazardStripes(ctx, 0.14, 0.40, 0.065, 0.20, 0.012, ink, yellow, 0.94);
   // Lift points: corner brackets around a dot, the mark a crane operator looks for.
   const lift = (u, v) => {
     const x = px(u), y = px(v), s = px(0.026);
@@ -265,10 +312,11 @@ function drawIndustrial(ctx, rng) {
     ctx.fillStyle = white;
     ctx.beginPath(); ctx.arc(x, y, s * 0.22, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
-    stencilText(ctx, 'SLING', u - 0.031, v + 0.048, SHEET * 0.018, { color: white, alpha: 0.7, spacing: 0.12, weight: '600' });
+    stencilText(ctx, 'SLING', u - 0.031, v + 0.048, SHEET * 0.018, { color: white, alpha: 0.72, spacing: 0.12, weight: '600' });
   };
   lift(0.545, 0.42);
   lift(0.545, 0.58);
+  stencilText(ctx, 'LH2 FILL 120B', 0.36, 0.585, SHEET * 0.018, { color: yellow, alpha: 0.85, spacing: 0.10, weight: '600' });
   // Hazard triangle, open, so the hull reads through it.
   paintOver(ctx);
   ctx.strokeStyle = yellow;
@@ -285,7 +333,7 @@ function drawIndustrial(ctx, rng) {
   ctx.fillRect(tx - SHEET * 0.0025, ty - tr * 0.28, SHEET * 0.005, tr * 0.55);
   ctx.fillRect(tx - SHEET * 0.0025, ty + tr * 0.32, SHEET * 0.005, tr * 0.14);
   ctx.globalAlpha = 1;
-  chip(ctx, px(0.2), px(0.42), px(0.22), px(0.16), 30, rng);
+  chip(ctx, px(0.2), px(0.42), px(0.22), px(0.16), 26, rng);
   chip(ctx, px(0.5), px(0.38), px(0.25), px(0.26), 18, rng);
 }
 
@@ -313,10 +361,12 @@ function drawFrontier(ctx, rng) {
   star(sr, 0.85);
   star(sr * 0.72, 0.5);
   stencilText(ctx, 'RT-88', 0.46, 0.47, SHEET * 0.06, { color: faded, alpha: 0.78, spacing: 0.12 });
+  stencilText(ctx, 'MAX 120T', 0.20, 0.425, SHEET * 0.024, { color: faded, alpha: 0.75, spacing: 0.14, weight: '600' });
+  stencilText(ctx, 'SALVAGE CLAIM #94', 0.38, 0.58, SHEET * 0.020, { color: rust, alpha: 0.82, spacing: 0.10, weight: '600' });
   handStroke(ctx, [[0.455, 0.495], [0.575, 0.505]], SHEET * 0.005, rust, 0.7, rng, 5);
   killTally(ctx, 0.60, 0.60, 8, bleach, rng, 0.75);
-  chip(ctx, px(0.24), px(0.42), px(0.14), px(0.14), 34, rng);
-  chip(ctx, px(0.44), px(0.42), px(0.15), px(0.08), 22, rng);
+  chip(ctx, px(0.24), px(0.40), px(0.14), px(0.16), 30, rng);
+  chip(ctx, px(0.44), px(0.40), px(0.15), px(0.10), 20, rng);
 }
 
 const STYLE_DRAWERS = {
@@ -359,7 +409,7 @@ export function stencilSheetFor(decalId) {
     texture.wrapS = texture.wrapT = ClampToEdgeWrapping;
     texture.magFilter = LinearFilter;
     texture.minFilter = LinearMipmapLinearFilter;
-    texture.anisotropy = 4;
+    texture.anisotropy = 8;
     texture.generateMipmaps = true;
     sheet = { texture, strength: spec.strength, id };
     sheets.set(id, sheet);
@@ -389,11 +439,16 @@ export function stencilPayloadFor(decalId, bounds, wear = 0.2) {
 export const STENCIL_GLSL = /* glsl */`
   vec3 sfStP = (vSfHullPosition - sfStencilCenter) / max(sfStencilSize, vec3(0.001));
   vec3 sfStFace = cross(dFdx(vSfHullPosition), dFdy(vSfHullPosition));
-  float sfStDeck = smoothstep(0.16, 0.65, abs(sfStFace.y) / max(length(sfStFace), 0.00001));
+  float sfStDeck = smoothstep(0.35, 0.75, abs(sfStFace.y) / max(length(sfStFace), 0.00001));
+  float sfStDorsal = smoothstep(-0.25, 0.0, sfStP.y);
   float sfStSpan = max(sfStencilSize.x, sfStencilSize.z);
-  vec2 sfStUv = vec2(sfStP.x * sfStencilSize.x / sfStSpan + 0.5,
-    0.5 - sfStP.z * sfStencilSize.z / sfStSpan);
+  vec2 sfStUv = vec2((vSfHullPosition.x - sfStencilCenter.x) / sfStSpan + 0.5,
+    0.5 - (vSfHullPosition.z - sfStencilCenter.z) / sfStSpan);
+  float sfStInBounds = step(0.0, sfStUv.x) * step(sfStUv.x, 1.0) * step(0.0, sfStUv.y) * step(sfStUv.y, 1.0);
   vec4 sfStMark = texture2D(sfStencilMap, sfStUv);
-  float sfStInk = sfStMark.a * sfStDeck * sfStencilStrength;
+  float sfStInk = sfStMark.a * sfStDeck * sfStDorsal * sfStInBounds * sfStencilStrength;
   diffuseColor.rgb = mix(diffuseColor.rgb, sfStMark.rgb, sfStInk);
+  sfSurfaceRoughnessDelta += sfStInk * 0.18;
+  sfSurfaceMetalnessScale *= (1.0 - sfStInk * 0.88);
+  sfSurfaceRelief += sfStInk * 0.00018 * sfStSpan;
 `;

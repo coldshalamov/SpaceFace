@@ -813,7 +813,7 @@ const STAR_FRAG = /* glsl */`
     if (r2 > 1.0) discard;
     // Tight core + soft halo so magnitude steps read without lifting the whole frame.
     float core = exp(-r2 * 7.5);
-    float halo = exp(-r2 * 2.2) * 0.35;
+    float halo = exp(-r2 * 2.2) * 0.35 * clamp(1.0 - r2 * r2, 0.0, 1.0);
     float a = clamp(core + halo, 0.0, 1.0);
     gl_FragColor = vec4(vColor * (0.85 + 0.35 * core), vAlpha * a);
   }

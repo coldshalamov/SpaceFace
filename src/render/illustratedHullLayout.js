@@ -51,7 +51,7 @@ export const HULL_LAYOUT_GLSL = /* glsl */`
   // instead of sparkling; they complement the source model's normal map and real geometry.
   vec3 sfP = (vSfHullPosition - sfHullCenter) / max(sfHullSize, vec3(0.001));
   vec3 sfFace = cross(dFdx(vSfHullPosition), dFdy(vSfHullPosition));
-  float sfDeck = smoothstep(0.16, 0.65, abs(sfFace.y) / max(length(sfFace), 0.00001));
+  float sfDeck = smoothstep(0.24, 0.70, abs(sfFace.y) / max(length(sfFace), 0.00001));
   float sfSpan = abs(sfP.z);
   float sfLong = sfP.x;
   float sfSpine = (1.0 - smoothstep(0.16, 0.21, sfSpan)) * (1.0 - smoothstep(0.14, 0.26, sfLong));
@@ -62,19 +62,24 @@ export const HULL_LAYOUT_GLSL = /* glsl */`
   vec2 sfSeamAxes = 1.0 - smoothstep(vec2(0.012), vec2(0.012) + sfAA, min(sfCell, 1.0 - sfCell));
   float sfFineVisibility = 1.0 - smoothstep(0.12, 0.35, max(sfAA.x, sfAA.y));
   float sfSeam = max(sfSeamAxes.x, sfSeamAxes.y) * sfDeck * sfFineVisibility;
+  vec2 sfPanelId = floor(sfGrid);
+  float sfPanelHash = fract(sin(dot(sfPanelId, vec2(127.1, 311.7))) * 43758.5453);
+  vec3 sfPanelTemp = mix(vec3(0.97, 0.985, 1.03), vec3(1.03, 1.01, 0.97), sfPanelHash);
   // Micro-fastener relief: subtle fastener impressions spaced along panel seams.
   vec2 sfFastenerPhase = fract(sfGrid * 4.0) - 0.5;
   float sfFastenerDist = length(sfFastenerPhase);
   float sfFastener = (1.0 - smoothstep(0.14, 0.28, sfFastenerDist)) * sfSeam * sfFineVisibility;
-  sfSurfaceRelief = (-sfSeam * 0.00065 + sfFastener * 0.00030) * max(sfHullSize.x, sfHullSize.z)
+  float sfFastenerHead = (1.0 - smoothstep(0.06, 0.16, sfFastenerDist)) * sfSeam * sfFineVisibility;
+  sfSurfaceRelief = (-sfSeam * 0.00095 + sfFastener * 0.00045) * max(sfHullSize.x, sfHullSize.z)
     * sfLayoutStrength;
+  sfSurfaceRoughnessDelta += ((sfPanelHash - 0.5) * 0.14 + sfSeam * 0.38) * sfDeck * sfLayoutStrength;
   float sfPanel = mod(floor(sfGrid.x) + floor(sfGrid.y) * 3.0, 4.0) / 3.0;
   float sfLeading = (1.0 - smoothstep(0.026, 0.026 + sfAA.x, sfCell.x)) * (1.0 - sfSeamAxes.x) * sfDeck * sfFineVisibility;
   float sfNoseBand = smoothstep(0.22, 0.23, sfLong) * (1.0 - smoothstep(0.29, 0.30, sfLong));
   float sfSternBand = smoothstep(-0.36, -0.35, sfLong) * (1.0 - smoothstep(-0.27, -0.26, sfLong));
   float sfStripe = 1.0 - smoothstep(0.013, 0.013 + fwidth(sfSpan), abs(sfSpan - 0.30));
   float sfMark = sfNoseBand * (0.32 + 0.68 * sfDeck) + sfStripe * 0.5;
-  float sfUndercoat = 0.82 + sfPanel * 0.16 - sfSpine * 0.52 - sfShoulder * 0.23;
+  float sfUndercoat = 0.80 + sfPanel * 0.16 + (sfPanelHash - 0.5) * 0.06 - sfSpine * 0.52 - sfShoulder * 0.23;
   // Two recessed equipment wells inside the central service deck. A wide bevel and louvres
   // describe manufacture at useful play distances, then fade together before becoming noise.
   float sfWellX = abs(fract((sfLong + 0.38) * 5.0) - 0.5) * 0.20;
@@ -139,7 +144,8 @@ export const HULL_LAYOUT_GLSL = /* glsl */`
     sfUndercoat = 0.48 + sfGateSegment * 0.32;
     sfMark = smoothstep(0.84 - sfGateAA, 0.95 + sfGateAA, sfGateWave) * 0.7;
   }
-  vec3 sfPanelPaint = diffuseColor.rgb * max(0.12, sfUndercoat - sfSeam * 0.28);
+  vec3 sfPanelPaint = diffuseColor.rgb * sfPanelTemp * max(0.10, sfUndercoat - sfSeam * 0.55);
+  sfPanelPaint = mix(sfPanelPaint, vec3(0.09, 0.10, 0.12), sfFastenerHead * 0.85);
   if (sfLayoutKind < 3.5) sfPanelPaint = mix(sfPanelPaint,
     vec3(0.015, 0.030, 0.050) * (0.65 + sfAlbedoY * 0.45), sfSpine * 0.72);
   sfPanelPaint = mix(sfPanelPaint, vec3(0.012, 0.023, 0.033) + sfLouvre * vec3(0.075, 0.11, 0.12),
