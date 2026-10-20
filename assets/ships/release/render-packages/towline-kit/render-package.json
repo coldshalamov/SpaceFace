@@ -17,7 +17,7 @@
         1,
         0,
         0,
-        1.2450000047683716,
+        1.2200000286102295,
         0,
         1
       ],
@@ -41,7 +41,7 @@
         1,
         0,
         0,
-        1.2450000047683716,
+        1.2200000286102295,
         0,
         1
       ]
@@ -186,12 +186,23 @@
     }
   ],
   "assetId": "sf.render.towline-kit",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.towline-kit.node.collision-towline-kit-cabin.collision",
+      "nodeId": "sf.render.towline-kit.node.collision-towline-kit-cabin",
+      "reference": "COLLISION_TOWLINE_KIT_CABIN"
+    },
+    {
+      "id": "sf.render.towline-kit.node.collision-towline-kit-deck.collision",
+      "nodeId": "sf.render.towline-kit.node.collision-towline-kit-deck",
+      "reference": "COLLISION_TOWLINE_KIT_DECK"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "60c8bdc5ec2952d8d2fabd1cc68ceade052ad58c3b84deb39c6c27b70db547b0",
+  "contentHash": "b76a8ac42369058bc8a6fb168488c4781f88d935f2bf16984432652f3aad3c77",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-kit.node.lod0-motion-towline-acknowledge-armor.dynamic",
@@ -234,7 +245,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_KIT_CABIN",
       "nodeId": "sf.render.towline-kit.node.collision-towline-kit-cabin",
       "primitiveIndex": 0,
@@ -259,7 +270,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_KIT_DECK",
       "nodeId": "sf.render.towline-kit.node.collision-towline-kit-deck",
       "primitiveIndex": 0,
@@ -293,18 +304,18 @@
     {
       "bounds": {
         "max": [
-          -10.836459159851074,
-          0.7633249163627625,
-          4.063499927520752
+          -10.836481094360352,
+          0.7636187076568604,
+          3.1635000705718994
         ],
         "min": [
-          -11.14004135131836,
-          -1.1633249521255493,
-          -4.063499927520752
+          -11.140019416809082,
+          -1.1636186838150024,
+          -3.1635000705718994
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74177c121e60d7a2c05a70dcf7b1ae13204d90b5d176cd6b98c356abc2c93fc6",
+      "geometryHash": "1662d6b0ba2ec02dbbaf789e4e496358930c7fe635cff44234d4947780de942a",
       "id": "sf.render.towline-kit.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -329,7 +340,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "976f04cf54072af526cdb517ac1586bfccce73d92efae885d92d8b09f2657d7e",
+      "geometryHash": "fb62d1c77133085b20aa3b85ef3af7aa1fed316fc847a96a5d4ddd2c8424ff6a",
       "id": "sf.render.towline-kit.node.lod0-hull.primitive.0",
       "indexCount": 1212,
       "indexed": true,
@@ -344,17 +355,17 @@
       "bounds": {
         "max": [
           5.874964237213135,
-          2.549974203109741,
+          2.319974184036255,
           0.75
         ],
         "min": [
           5.325035572052002,
-          2.4800260066986084,
+          2.250025987625122,
           -0.75
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66ca92414c4aeb12d067093192c35ce4ddf1c32a729e2ca1c0b262bbce0026a8",
+      "geometryHash": "86219f7468267ed384d4a4c8dfe0070e0329cebc6f615db958a82fdb72fda8aa",
       "id": "sf.render.towline-kit.node.lod0-lights-warm.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -368,18 +379,18 @@
     {
       "bounds": {
         "max": [
-          3.6000940799713135,
-          2.5098156929016113,
-          3.804150104522705
+          4.599999904632568,
+          2.4598159790039062,
+          2.7491583824157715
         ],
         "min": [
-          -3.178562879562378,
-          2.470184326171875,
-          -4.114150524139404
+          -2.163602828979492,
+          2.4201841354370117,
+          -2.969158411026001
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f4230ee09f710a3d46e5f30d5e6c1fb24c152cd9707c7d9c89686212bc235c6d",
+      "geometryHash": "61f08b31ae6412d1ec2d74d7ba2fa5abe060874fb28294a113f640d47b6d5945",
       "id": "sf.render.towline-kit.node.lod0-livery.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -388,7 +399,7 @@
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.towline-kit.node.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 697
+      "vertexCount": 705
     },
     {
       "bounds": {
@@ -404,7 +415,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9552a113842faaf255a240d2aac5b8dcfded915f0eb48227a1aebcb001a21ebd",
+      "geometryHash": "3e24261d332b8e5e8ca2ded54fd006c4005c92932a93bdd7978bdf1c0762c1b3",
       "id": "sf.render.towline-kit.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 2637,
       "indexed": true,
@@ -469,17 +480,17 @@
       "bounds": {
         "max": [
           -0.10000000149011612,
-          3.3999709365660626,
+          3.4000170662349753,
           0.11003509416612797
         ],
         "min": [
           -1.909999966621399,
-          2.4800289394562762,
+          2.379982905154795,
           -0.11003509416612797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c0e4dd8eb8b1c7f4610e7dacab7143340e61d04a45e809a44a4611dca5e1b11c",
+      "geometryHash": "98a08628a36732135b99d55455e50c310434e79b92cb4fdcbc450dca5db95a8a",
       "id": "sf.render.towline-kit.node.lod0-motion-towline-acknowledge-mechanicaldark.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -659,7 +670,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_KIT_CABIN",
       "nodeName": "COLLISION_TOWLINE_KIT_CABIN",
       "nodePath": [
@@ -708,7 +719,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_KIT_DECK",
       "nodeName": "COLLISION_TOWLINE_KIT_DECK",
       "nodePath": [
@@ -1047,7 +1058,7 @@
         0.3499999940395355,
         0,
         1.6999999582767487,
-        0.8199999332427979,
+        0.9199998378753662,
         0,
         1
       ],
@@ -1097,7 +1108,7 @@
         0.20000000670552254,
         0,
         1.6999999471008778,
-        0.8199999332427979,
+        0.9199998378753662,
         0.36500000953674316,
         1
       ],
@@ -1147,7 +1158,7 @@
         0.9049999825656414,
         0,
         0.7949999682605267,
-        0.4599999189376831,
+        0.5099998712539673,
         0,
         1
       ],
@@ -1176,7 +1187,7 @@
         0.9049999825656414,
         0,
         -1.0049999840557575,
-        2.9399999380111694,
+        2.8899999856948853,
         0,
         1
       ]
@@ -1197,7 +1208,7 @@
         1,
         0,
         -1.7999999523162842,
-        2.4800000190734863,
+        2.380000114440918,
         0,
         1
       ],
@@ -1225,7 +1236,7 @@
         1,
         0,
         -1.7999999523162842,
-        2.4800000190734863,
+        2.380000114440918,
         0,
         1
       ]
@@ -1294,7 +1305,7 @@
         1,
         0,
         0,
-        1.2450000047683716,
+        1.2200000286102295,
         0,
         1
       ],
@@ -1322,7 +1333,7 @@
         1,
         0,
         0,
-        1.2450000047683716,
+        1.2200000286102295,
         0,
         1
       ]
@@ -1477,28 +1488,28 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "9487f1d84685228f59aad9807128181f75660f62ec1ee057b38c892ea54e19b0"
+      "sha256": "94de7d7af3b0892b845b5478ea23bcfb04751ea1a8a537fdda599226af10c1b6"
     },
     "sourceGlb": {
-      "bytes": 396968,
-      "sha256": "ab883669645dbf75c8e2c768ae071e44cb15d73a0d6ff06dea92c926401f2cb9",
+      "bytes": 397348,
+      "sha256": "202555f7eca9488bc8bb1481963d5270f7e3dc59903725047da486fede850d32",
       "uri": "towline_kit.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "5462de19d4cc85a733ee4081d4d28f7a1519caadb4fc734cc6b357e80d33bfc4",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 485224,
-    "sha256": "4f3483001b1856bd06d0b4edfd5c8800f792150f5d43bf748b85f8660126abf7",
+    "bytes": 485500,
+    "sha256": "6546379d96709464ffa265030663e47ea10f75d4a4f74d63c25a215562cf90bf",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.4299793243408203,
+        0.429990291595459,
         1.1249274830918115,
         0
       ],
@@ -1508,12 +1519,12 @@
         8.999740600585938
       ],
       "min": [
-        -11.14004135131836,
+        -11.140019416809082,
         -1.2251182794570923,
         -8.999740600585938
       ],
       "size": [
-        23.14004135131836,
+        23.140019416809082,
         4.7000915250978075,
         17.999481201171875
       ]
@@ -1539,7 +1550,7 @@
           1,
           0,
           -1.7999999523162842,
-          2.4800000190734863,
+          2.380000114440918,
           0,
           1
         ],
@@ -1569,7 +1580,7 @@
               0,
               0,
               1,
-              2.4800000190734863
+              2.380000114440918
             ],
             [
               0,
@@ -1608,7 +1619,7 @@
           1,
           0,
           0,
-          1.2450000047683716,
+          1.2200000286102295,
           0,
           1
         ],
@@ -1867,9 +1878,9 @@
       }
     ],
     "motionBank": {
-      "bytes": 1230,
+      "bytes": 1229,
       "rigId": "towline_kit_controls",
-      "sha256": "765ce712f9e0b2da977e43b9ccafcaf8666d771a54713e350ee41d7a12f9b771",
+      "sha256": "61e4745851229f868454c068b3629d599bba67913dc04efd13d009aa2ea245b8",
       "uri": "assets/ships/motions/towline-kit.motion.json"
     },
     "nodeCount": 18,
@@ -2129,7 +2140,7 @@
           0.9049999825656414,
           0,
           -1.0049999840557575,
-          2.9399999380111694,
+          2.8899999856948853,
           0,
           1
         ],
@@ -2147,7 +2158,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_kit.glb"
   },
-  "runtimeHash": "fee2fbe6276fc4077ca93607ee738d1415059789d16d1e4ca32cd62729d344b9",
+  "runtimeHash": "47d47160cb3ed66f1b636526f003e38718ea490c3ccc0f0a92fbd059b131f4d8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -2158,7 +2169,7 @@
           8.999740600585938
         ],
         "min": [
-          -11.14004135131836,
+          -11.140019416809082,
           -1.2251182794570923,
           -8.999740600585938
         ]

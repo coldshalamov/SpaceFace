@@ -2024,32 +2024,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1",
-    "expectedContentHash": "a91e9bf2aaef5e2e05b3fe1f9eea82757332cea532ff9f9e0a255cf7394cf903",
+    "expectedContentHash": "5a81ae10c49fa1be62ada8d5402b35a24f84f8605e46a1cafe9812f615012995",
     "key": "massline-express-liner-v1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
     "slot": "hull",
-    "sourceSha256": "4812642b8275540856393c74691dcc87c8e1ff7da1352f1989dfec473e3e4b3a",
+    "sourceSha256": "0cb7b807693d6c993e543a582b9516059a58a7aaefaa885bddc0f3195ccf5ca5",
     "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod1",
-    "expectedContentHash": "89e37b44170ff36d59e0d4cdfeb1e983675c5b34a8e863ce141ff55652e97748",
+    "expectedContentHash": "64ea18f775c2bf932a2e127850a29130c3d44c052fffa169a23db3523a5452bd",
     "key": "massline-express-liner-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
     "slot": "hull",
-    "sourceSha256": "c3fac502cc7bdd267e7836913cdf7d4fe2dfe7c596eb1e892758b17eaf28f21c",
+    "sourceSha256": "cf20087c73e4c353b6500209ae271e769c462740954cdb90293620bff6b91de4",
     "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod2",
-    "expectedContentHash": "7cc54af63a3e84bd5e04959447f9c653a1eb05712536ca6c72c53698f567a696",
+    "expectedContentHash": "327beaac016731f963705ac7469355cf6c68dd1dd1b8047b68d96e46746c9af0",
     "key": "massline-express-liner-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
     "slot": "hull",
-    "sourceSha256": "930cf7767d3843cc50716246b9a01c68a3eab21a44285770913139937d7aa8bf",
+    "sourceSha256": "da2347b1aa263d67d9fef3db9975edcd21fa78cb0c458587552c5a210e51e576",
     "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb"
   },
   {
@@ -2894,62 +2894,62 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.towline-kit",
-    "expectedContentHash": "60c8bdc5ec2952d8d2fabd1cc68ceade052ad58c3b84deb39c6c27b70db547b0",
+    "expectedContentHash": "b76a8ac42369058bc8a6fb168488c4781f88d935f2bf16984432652f3aad3c77",
     "key": "towline-kit",
     "metadataUrl": "assets/ships/release/render-packages/towline-kit/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
     "slot": "hull",
-    "sourceSha256": "ab883669645dbf75c8e2c768ae071e44cb15d73a0d6ff06dea92c926401f2cb9",
+    "sourceSha256": "202555f7eca9488bc8bb1481963d5270f7e3dc59903725047da486fede850d32",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit.glb"
   },
   {
     "assetId": "sf.render.towline-kit-lod1",
-    "expectedContentHash": "728dc1aa066612ba675a798f1f6a6fc8ff41b53630999b2f68319497db105b30",
+    "expectedContentHash": "c44909251e8802762a8bbc5b00245371ec46c728026cf27abb7f769774cfbd40",
     "key": "towline-kit-lod1",
     "metadataUrl": "assets/ships/release/render-packages/towline-kit-lod1/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
     "slot": "hull",
-    "sourceSha256": "0322debc02a1d21a99243b856787ca89e993dcab41dbb72f8c5fb77537c88454",
+    "sourceSha256": "3478e1bc9fe651ae19792040d51d52065c8bc94bab80f12cd14e3868b5532147",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb"
   },
   {
     "assetId": "sf.render.towline-kit-lod2",
-    "expectedContentHash": "2f94b80438f355435e10e959e1937ed6196dbe6f03b5c83a357ee0b884562cd5",
+    "expectedContentHash": "0e133b6b7e1fcc5337bde57dea144f0550a5f629f015d288bedf867a0fcf7641",
     "key": "towline-kit-lod2",
     "metadataUrl": "assets/ships/release/render-packages/towline-kit-lod2/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
     "slot": "hull",
-    "sourceSha256": "1e1637bd6b6d0d9266a338a8a853ca0b5c0f2999285d9f11e9c8d7e032857ed4",
+    "sourceSha256": "8838f9250bdc8965f1a023d264587d43112ace6666a32e20157f82ebbc10b266",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod2.glb"
   },
   {
     "assetId": "sf.render.towline-mara",
-    "expectedContentHash": "24d7478c078c15f9cdb43e87b46ebed5cc608c7e9bf81372de9bfce05559505f",
+    "expectedContentHash": "4b02203c29b32ad9d8e6f693f168c5b4cd092f145536fa4e0dcc7a447c31ca23",
     "key": "towline-mara",
     "metadataUrl": "assets/ships/release/render-packages/towline-mara/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_MARA",
     "slot": "hull",
-    "sourceSha256": "b72c8af5d7e1450a6455f40524e04ba4b34652d64a2084af7d40bcaed4fa772e",
+    "sourceSha256": "fdb26630e4c01e03a15314aacc95cc042dfa6ccf9015658f037810d7f13db782",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara.glb"
   },
   {
     "assetId": "sf.render.towline-mara-lod1",
-    "expectedContentHash": "a3855a1ec441707205423ae7daefe6d92d708777eea193337d72df18e98d3817",
+    "expectedContentHash": "8e15dd4e59ff3ce11afd23c05cdd23f766f36c9aa0c1b21ff9f43bea0fa5165c",
     "key": "towline-mara-lod1",
     "metadataUrl": "assets/ships/release/render-packages/towline-mara-lod1/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_MARA",
     "slot": "hull",
-    "sourceSha256": "193e7606bcd466cef962cd4bc65fbfcf769db0826a1f5757eebd8634d7822c48",
+    "sourceSha256": "11818741cc17229b145b32cb6f4cc31f0b1ad2071e984bb3469019226452d704",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara_lod1.glb"
   },
   {
     "assetId": "sf.render.towline-mara-lod2",
-    "expectedContentHash": "b71bd441f13105f5135d2dfcbe0162d936f7ac753cbf89787c85c25b87131adc",
+    "expectedContentHash": "df2c9de82b844935378ff862d94a2603d84785ae80777c3736bd27137d0b7063",
     "key": "towline-mara-lod2",
     "metadataUrl": "assets/ships/release/render-packages/towline-mara-lod2/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_MARA",
     "slot": "hull",
-    "sourceSha256": "89a1e624508d5edbcfdc69c87f67804e3d563a953c9e735e590b42389a21c97c",
+    "sourceSha256": "d836fe63a9c36a8266e3aa56aaf1780023274ecc5c460407a0197e4727b1a69b",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara_lod2.glb"
   },
   {

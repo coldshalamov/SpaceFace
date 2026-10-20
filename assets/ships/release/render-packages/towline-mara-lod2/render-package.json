@@ -17,7 +17,7 @@
         1,
         0,
         0,
-        1.4149999618530273,
+        1.309999942779541,
         0,
         1
       ],
@@ -41,7 +41,7 @@
         1,
         0,
         0,
-        1.4149999618530273,
+        1.309999942779541,
         0,
         1
       ]
@@ -186,12 +186,28 @@
     }
   ],
   "assetId": "sf.render.towline-mara-lod2",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.towline-mara-lod2.node.collision-towline-mara-core.collision",
+      "nodeId": "sf.render.towline-mara-lod2.node.collision-towline-mara-core",
+      "reference": "COLLISION_TOWLINE_MARA_CORE"
+    },
+    {
+      "id": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-port.collision",
+      "nodeId": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-port",
+      "reference": "COLLISION_TOWLINE_MARA_JAW_PORT"
+    },
+    {
+      "id": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-starboard.collision",
+      "nodeId": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-starboard",
+      "reference": "COLLISION_TOWLINE_MARA_JAW_STARBOARD"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b71bd441f13105f5135d2dfcbe0162d936f7ac753cbf89787c85c25b87131adc",
+  "contentHash": "df2c9de82b844935378ff862d94a2603d84785ae80777c3736bd27137d0b7063",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-mara-lod2.node.lod2-motion-towline-jaw-port-livery.dynamic",
@@ -234,7 +250,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_MARA_CORE",
       "nodeId": "sf.render.towline-mara-lod2.node.collision-towline-mara-core",
       "primitiveIndex": 0,
@@ -243,68 +259,68 @@
     {
       "bounds": {
         "max": [
-          12.489054679870605,
-          1.3499739170074463,
-          -2.796379804611206
+          12.490686416625977,
+          1.3501510620117188,
+          -2.7967135906219482
         ],
         "min": [
           0.9775615930557251,
-          -1.1499738693237305,
-          -7.998982906341553
+          -1.150151014328003,
+          -7.9986491203308105
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc8ffd8126c850f33b6b9305482becaf1c898e8de49e4e155c0ebc3f6d9a0ec3",
+      "geometryHash": "281ff20251c7fb3802001b1cc5dfbdbffefa3fc62aaeee1a669b522187fed70c",
       "id": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-port.primitive.0",
-      "indexCount": 846,
+      "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_MARA_JAW_PORT",
       "nodeId": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-port",
       "primitiveIndex": 0,
-      "vertexCount": 715
+      "vertexCount": 768
     },
     {
       "bounds": {
         "max": [
-          12.489054679870605,
-          1.3499739170074463,
-          7.998982906341553
+          12.490686416625977,
+          1.3501510620117188,
+          7.998648643493652
         ],
         "min": [
-          0.9775615930557251,
-          -1.1499738693237305,
-          2.796379566192627
+          0.9775617122650146,
+          -1.150151014328003,
+          2.796713352203369
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1aeb8f71a48958757c8a83e1e911ba1067b663e3237251faa5154fb6fc8d4b4a",
+      "geometryHash": "cb03275ef6c64ea29a125fa13a453768f3e81ee3353574e904c4f8d6a8b5a898",
       "id": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-starboard.primitive.0",
-      "indexCount": 846,
+      "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_MARA_JAW_STARBOARD",
       "nodeId": "sf.render.towline-mara-lod2.node.collision-towline-mara-jaw-starboard",
       "primitiveIndex": 0,
-      "vertexCount": 714
+      "vertexCount": 768
     },
     {
       "bounds": {
         "max": [
-          12.491157531738281,
-          1.3436659574508667,
-          7.993254661560059
+          12.49339771270752,
+          1.3394980430603027,
+          7.994026184082031
         ],
         "min": [
-          1.0102230310440063,
-          -1.1423901319503784,
-          -7.99194860458374
+          1.009052038192749,
+          -1.1390676498413086,
+          -7.993209362030029
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d4fe133b143a9c6d8064e0b6d23f856c722a6f062c078825227e4f51c5826f2",
+      "geometryHash": "cb2fc1886192d7986199be9f246e0b2a3c30e396bf07bb0e27da3043cb6639ae",
       "id": "sf.render.towline-mara-lod2.node.lod2-armor.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -354,32 +370,32 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6db44a5452c1c4dbe8294f0b8d00f0532b6a488cc51bc1fd9d8af7ee53e015e",
+      "geometryHash": "385d465c81f4fe981025be4d64fffc04a1029564fb3c79d7481b9353e6887b18",
       "id": "sf.render.towline-mara-lod2.node.lod2-hull.primitive.0",
-      "indexCount": 492,
+      "indexCount": 504,
       "indexed": true,
       "materialHash": "5792cbd80e5c98d664f1fa6f6ef9efeacf468abfccc6cf7216e898926ba1566d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.towline-mara-lod2.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 145
+      "vertexCount": 147
     },
     {
       "bounds": {
         "max": [
           3.9692840576171875,
-          2.8841612339019775,
+          2.4941611289978027,
           0.7441707253456116
         ],
         "min": [
           3.430715799331665,
-          2.8258395195007324,
-          -0.7441707253456116
+          2.4358391761779785,
+          -0.7441706657409668
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce2ed4fce633c6ce642ab9b63ee2b7695ce34cd820ca6da15bf7bdc407035d86",
+      "geometryHash": "566e2f75fd6f3e31041b279dc361353b4a451e84f16f18a54f9c666441ac06f8",
       "id": "sf.render.towline-mara-lod2.node.lod2-lights-warm.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -394,17 +410,17 @@
       "bounds": {
         "max": [
           3.5983803272247314,
-          2.848565101623535,
+          2.6385648250579834,
           2.6326308250427246
         ],
         "min": [
           -3.1607108116149902,
-          2.8114349842071533,
+          2.6014349460601807,
           -2.842590093612671
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab06644a63e9a9ed9bab94582aa34c72611f845983f3c0056b36655a26e0d59f",
+      "geometryHash": "cf0b2d90f19c16cad543ae44d486c85d3efecad4a0f78a4ceef66b40652c6769",
       "id": "sf.render.towline-mara-lod2.node.lod2-livery.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -429,16 +445,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a566729f47277e395b16bb6db3a4c19c3f121f3bf83c428fb479403b07704fa0",
+      "geometryHash": "81550a3791cc90e5e7fe34250ac03b5c73e808a7d62ff8967f1ec640046cc895",
       "id": "sf.render.towline-mara-lod2.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 972,
+      "indexCount": 1002,
       "indexed": true,
       "materialHash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.towline-mara-lod2.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 387
+      "vertexCount": 393
     },
     {
       "bounds": {
@@ -659,7 +675,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_MARA_CORE",
       "nodeName": "COLLISION_TOWLINE_MARA_CORE",
       "nodePath": [
@@ -708,7 +724,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_MARA_JAW_PORT",
       "nodeName": "COLLISION_TOWLINE_MARA_JAW_PORT",
       "nodePath": [
@@ -757,7 +773,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_MARA_JAW_STARBOARD",
       "nodeName": "COLLISION_TOWLINE_MARA_JAW_STARBOARD",
       "nodePath": [
@@ -1342,7 +1358,7 @@
         1,
         0,
         0,
-        1.4149999618530273,
+        1.309999942779541,
         0,
         1
       ],
@@ -1370,7 +1386,7 @@
         1,
         0,
         0,
-        1.4149999618530273,
+        1.309999942779541,
         0,
         1
       ]
@@ -1525,45 +1541,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "2d116036446dcd66f5ea6dea7e7f75e3c71a6b3c3ea6709ae5ded6b9721e922c"
+      "sha256": "9493d6bf8765bef8ddf7547b58bae3ce0e4be0541e66699aac360f40c05996a5"
     },
     "sourceGlb": {
-      "bytes": 353588,
-      "sha256": "89a1e624508d5edbcfdc69c87f67804e3d563a953c9e735e590b42389a21c97c",
+      "bytes": 354116,
+      "sha256": "d836fe63a9c36a8266e3aa56aaf1780023274ecc5c460407a0197e4727b1a69b",
       "uri": "towline_mara_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "5462de19d4cc85a733ee4081d4d28f7a1519caadb4fc734cc6b357e80d33bfc4",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 394172,
-    "sha256": "9f8612e3f0216abfd6f07e1f0c1279188114e62dd2245a01bfac6179d356bbf2",
+    "bytes": 395868,
+    "sha256": "b2152fe0265a56436d4f3b520f726b8b0d8d174a74389c501893f3af525f8c2f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.13477563858032227,
-        0.5920677185058594,
-        0
+        0.1358957290649414,
+        0.4692695140838623,
+        -2.384185791015625e-7
       ],
       "max": [
-        12.491157531738281,
-        2.8841612339019775,
-        7.998982906341553
+        12.49339771270752,
+        2.6385648250579834,
+        7.998648643493652
       ],
       "min": [
         -12.221606254577637,
         -1.7000257968902588,
-        -7.998982906341553
+        -7.9986491203308105
       ],
       "size": [
-        24.712763786315918,
-        4.584187030792236,
-        15.997965812683105
+        24.715003967285156,
+        4.338590621948242,
+        15.997297763824463
       ]
     },
     "hidden": [
@@ -1726,7 +1742,7 @@
           1,
           0,
           0,
-          1.4149999618530273,
+          1.309999942779541,
           0,
           1
         ],
@@ -1987,7 +2003,7 @@
     "motionBank": {
       "bytes": 2032,
       "rigId": "towline_mara_controls",
-      "sha256": "7076509850dedbd10936baf3ee21f514d7fa242f0eb2c0902a7d523dee8b452f",
+      "sha256": "1783c109bcb8ebc85c2543e7234a6ba01e61b3c9dcf4fb2e3f374c583ada0aee",
       "uri": "assets/ships/motions/towline-mara.motion.json"
     },
     "nodeCount": 19,
@@ -2236,20 +2252,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_mara_lod2.glb"
   },
-  "runtimeHash": "879c1be12805bd28d7639a0ea2f3a6a635fdb497b18f2f9a6a9ab5fbb8b9e9c8",
+  "runtimeHash": "8041753138badf660d94c5a36091554ac0b82112c3e6d0404a38655d8557c28b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          12.491157531738281,
-          2.8841612339019775,
-          7.998982906341553
+          12.49339771270752,
+          2.6385648250579834,
+          7.998648643493652
         ],
         "min": [
           -12.221606254577637,
           -1.7000257968902588,
-          -7.998982906341553
+          -7.9986491203308105
         ]
       },
       "id": "sf.render.towline-mara-lod2.body",
