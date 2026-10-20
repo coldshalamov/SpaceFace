@@ -114,20 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-077",
-      "date": "2026-10-01",
-      "wf": "WF-06",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "checksum/seed validation fails closed pre-launch",
-      "fingerprint": "verb=reject,subject=bad-seed,domain=crucible,layer=core",
-      "references": [],
-      "integration": "live",
-      "commit": "8311d4cc7",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-020-challenge-code.test.mjs"
-    },
-    {
       "id": "NXI-078",
       "date": "2026-10-01",
       "wf": "WF-06",
@@ -1675,6 +1661,19 @@
       "references": [],
       "integration": "live",
       "commit": "5f94495cab33b6a6a701e27224eb81329e7b80d1",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ceres-fuel-crack",
+      "date": "2026-10-20",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "In the Ceres belt a free fuel cell cracks into 8 tank units. A burning hull cooks it against shield or hull instead.",
+      "fingerprint": "verb=crack,subject=fuel-cell,sector=sector_ceres_belt,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "4d6d2a4aea88d1d55b2e3f45fa5488ed66d9b09c",
       "verification": "focused_green"
     }
   ],
