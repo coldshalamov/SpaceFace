@@ -286,14 +286,13 @@ try {
   if (drawErrorProbe) await context.addInitScript(installMobileDrawErrorObserver,
     { startArmed: drawErrorMode === '1' });
   const page = await context.newPage(); page.setDefaultTimeout(20000);
-  const tapControl = async selector => {
+  const tapControl = async (selector, { timeout = 20000 } = {}) => {
     const control = typeof selector === 'string' ? page.locator(selector).first() : selector;
-    await control.waitFor({ state: 'visible' });
-    await control.scrollIntoViewIfNeeded();
-    const box = await control.boundingBox();
-    if (!box) throw new Error(`Mobile control has no visible bounds: ${selector}`);
-    // Moving title/ORRERY instruments never become "stable". A player taps their current position.
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    // Keep trusted touch bound to its intended public control. A cinematic can become
+    // pointer-events:none or disappear between a bounding-box read and raw coordinate input;
+    // that stale tap could activate an unrelated menu verb underneath it. Locator.tap keeps
+    // native actionability and hit-target interception. The phone menu has no moving dial.
+    await control.tap({ timeout });
   };
   page.on('crash', () => report.lifecycle.push({ event: 'page-crash', at: new Date().toISOString() }));
   page.on('close', () => report.lifecycle.push({ event: 'page-close', at: new Date().toISOString() }));
@@ -435,13 +434,13 @@ try {
         await writeFile(join(out, 'progress.json'), JSON.stringify(report, null, 2));
         nextObservationAt = Date.now() + 10000;
       }
-      if (state.available !== false && state.cinematicBeginVisible) {
-        try { await tapControl('#cinematic-splash .cine-begin'); }
+      if (state.available !== false && state.cinematicBeginVisible && Date.now() < deadline) {
+        try { await tapControl('#cinematic-splash .cine-begin', { timeout: Math.max(1, Math.min(20000, deadline - Date.now())) }); }
         catch (error) { state.cinematicTapError = String(error?.message || error); }
       }
-      if (state.available !== false && state.motionFullVisible) {
+      if (state.available !== false && state.motionFullVisible && Date.now() < deadline) {
         const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
-        try { await tapControl(motion); }
+        try { await tapControl(motion, { timeout: Math.max(1, Math.min(20000, deadline - Date.now())) }); }
         catch (error) { state.motionAskTapError = String(error?.message || error); }
       }
       await page.waitForTimeout(Math.min(1000, Math.max(1, deadline - Date.now())));

@@ -426,3 +426,124 @@ test('observed invalid draws fail renderer health independently of console emiss
     assert.match(report.rendererErrors[0].text, /INVALID_OPERATION/);
   }
 });
+
+// Public touch identity across boot-screen transitions.
+const uiSource = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+function targetFragment(text, startMarker, endMarker) {
+  const start = text.indexOf(startMarker), end = text.indexOf(endMarker, start + startMarker.length);
+  assert.ok(start >= 0 && end > start, `missing source boundary ${startMarker}`);
+  return text.slice(start, end);
+}
+function actor(page) {
+  return runInNewContext(`${targetFragment(source, '  const tapControl = ', "\n  page.on('crash'")}\ntapControl`, { page });
+}
+
+// This is an actor/API contract replay, not a browser renderer. It models Playwright's
+// locator hit-target guarantee, while executing the probe's actual function. The old raw
+// coordinate path has no such guarantee and dispatches to whatever is now underneath.
+function touchFixture({ beforeInput = () => {}, disabled = false } = {}) {
+  let attached = true, intercepted = false, box = { x: 20, y: 40, width: 100, height: 30 };
+  const delivered = [], options = [], resolutions = [];
+  const hit = (x, y) => attached && !intercepted && x >= box.x && x <= box.x + box.width
+    && y >= box.y && y <= box.y + box.height ? 'intended' : 'archive';
+  const control = {
+    first() { return this; },
+    async waitFor() {}, async scrollIntoViewIfNeeded() {},
+    async boundingBox() { const staleBox = { ...box }; beforeInput(fixture); return staleBox; },
+    async tap(opts) {
+      options.push(opts);
+      assert.notEqual(opts?.force, true, 'never bypass the hit target or enabled checks');
+      beforeInput(fixture);
+      if (!attached || intercepted || disabled) throw new Error('intended control is not actionable');
+      delivered.push(hit(box.x + box.width / 2, box.y + box.height / 2));
+    },
+  };
+  const page = { locator(selector) { resolutions.push(selector); return control; },
+    touchscreen: { async tap(x, y) { delivered.push(hit(x, y)); } } };
+  const fixture = { page, control, delivered, options, resolutions,
+    close() { intercepted = true; }, detach() { attached = false; },
+    move() { box = { ...box, x: 300 }; } };
+  return fixture;
+}
+function closeActualCinematic(fixture) {
+  const root = {};
+  const scope = { dismissed: false, autoDismissTimer: null, fadeRemovalTimer: null,
+    requestPointerDismissal() {}, teardownCinematic() {}, clearTimeout() {},
+    setTimeout: (_fn, delay) => { assert.equal(delay, 700); return 1; },
+    sessionStorage: { setItem() {} }, CINEMATIC_SEEN_KEY: 'seen',
+    showMainMenuWhenReady: () => fixture.close(),
+    cinematic: { removeEventListener() {}, classList: { add(name) {
+      assert.equal(name, 'is-closing'); fixture.close();
+    } } } };
+  const finalize = runInNewContext(`${targetFragment(uiSource, '      const finalizeCinematic = ',
+    '\n      const requestPointerDismissal = ')}\nfinalizeCinematic`, scope);
+  finalize.call(root);
+}
+
+test('cinematic auto-dismiss between locating and touch never activates Archive underneath', async () => {
+  const fixture = touchFixture({ beforeInput: closeActualCinematic });
+  await assert.rejects(actor(fixture.page)('#cinematic-splash .cine-begin'), /not actionable/);
+  assert.deepEqual(fixture.delivered, [], 'a disappearing intro cannot authorize another menu action');
+});
+
+test('detached target never sends stale coordinates to its replacement', async () => {
+  const fixture = touchFixture({ beforeInput: f => f.detach() });
+  await assert.rejects(actor(fixture.page)(fixture.control), /not actionable/);
+  assert.deepEqual(fixture.delivered, []);
+});
+
+test('moving control is resolved at its actionable location rather than its old center', async () => {
+  const fixture = touchFixture({ beforeInput: f => f.move() });
+  await actor(fixture.page)('menu-button');
+  assert.deepEqual(fixture.delivered, ['intended']);
+  assert.deepEqual(fixture.resolutions, ['menu-button']);
+});
+
+test('disabled controls remain non-actionable and propagate failure', async () => {
+  const fixture = touchFixture({ disabled: true });
+  await assert.rejects(actor(fixture.page)(fixture.control), /not actionable/);
+  assert.deepEqual(fixture.delivered, []);
+});
+
+test('tap keeps native locator actionability and the caller timeout without force', async () => {
+  const fixture = touchFixture();
+  await actor(fixture.page)('button', { timeout: 321 });
+  assert.equal(fixture.options[0]?.timeout, 321);
+  assert.equal(fixture.options[0]?.force, undefined);
+  assert.deepEqual(fixture.delivered, ['intended']);
+});
+
+function menuFixture({ inspectionCost = 0 } = {}) {
+  let now = 0, reads = 0;
+  const tapBudgets = [], report = { menuWaitObservations: [] };
+  const DateFixture = class extends Date { constructor() { super(now); } static now() { return now; } };
+  const scope = { Date: DateFixture, report, activeRoute: 'new-game', actorStage: 'boot-menu',
+    engine: 'fixture', out: '', console: { log() {} }, join: () => '', writeFile: async () => {},
+    boundedBrowserRead: read => read(),
+    page: { evaluate: async () => {
+      now += inspectionCost;
+      return ++reads === 1 ? { available: true, cinematicBeginVisible: true }
+        : { available: true, mainMenuVisible: true, newGameButtonVisible: true };
+    }, waitForTimeout: async ms => { now += ms; } },
+    tapControl: async (_selector, options) => {
+      tapBudgets.push(options?.timeout); now += options?.timeout ?? 20000;
+      throw new Error('cinematic detached during its ordinary auto-dismiss');
+    } };
+  const wait = runInNewContext(`${targetFragment(source, '  const inspectMenuState = ',
+    '\n  const waitForFlight = ')}\nwaitForMenu`, scope);
+  return { wait, tapBudgets, get now() { return now; } };
+}
+
+test('disappearing cinematic is a normal menu transition, not a failed New Game', async () => {
+  const fixture = menuFixture();
+  await fixture.wait();
+  assert.equal(fixture.now, 21000);
+  assert.deepEqual(fixture.tapBudgets, [20000]);
+});
+
+test('boot touch cannot create an action timeout beyond the original menu deadline', async () => {
+  const fixture = menuFixture({ inspectionCost: 179990 });
+  await assert.rejects(fixture.wait(), /within 180 seconds/);
+  assert.deepEqual(fixture.tapBudgets, [10]);
+  assert.ok(fixture.now <= 180001);
+});
