@@ -35,7 +35,7 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
-import { planSurveyFix, commitSurveyFix, openSurveyFix, SURVEY_FIX_PRICE } from './surveyFix.js';
+import { planSurveyFix, commitSurveyFix, openSurveyFix, soldBearingOpen, SURVEY_FIX_PRICE } from './surveyFix.js';
 import { FACTION_META } from '../data/factions.js';
 import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
@@ -4135,7 +4135,7 @@ export const economy = {
       this.bus.emit('toast', { text: 'The lab has nothing left to find in this sector', kind: 'info', ttl: 3 });
       return;
     }
-    if (openSurveyFix(state, plan.sectorId)) {
+    if (openSurveyFix(state, plan.sectorId) || soldBearingOpen(state, plan)) {
       this.bus.emit('toast', { text: 'A survey fix is already open — fly the search before buying another', kind: 'warn', ttl: 3 });
       return;
     }

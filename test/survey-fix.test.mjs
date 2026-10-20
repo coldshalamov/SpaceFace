@@ -291,6 +291,27 @@ test('Sedna dock paints Buy fix and the click pays for a mark outside the cache'
   }
 });
 
+test('a live sold bearing survives a lost fix record and cannot be re-bought', () => {
+  const restore = installDom();
+  try {
+    const hosted = boot(SEDNA, 'station_sedna');
+    placeVaultOnBurn(hosted.state);
+    const dock = mountDock(hosted);
+    clickSurvey(dock.vitals);
+    const before = hosted.state.player.credits;
+    // Continue drops the runtime-only fix record but keeps the sold bearing on the nav chart.
+    hosted.state.world.surveyFix = {};
+    const dock2 = mountDock(hosted);
+    assert.match(dock2.html, /Buy fix/, 'the dock still paints the Survey control');
+    clickSurvey(dock2.vitals);
+    assert.equal(hosted.state.player.credits, before, 'the live bearing cannot be re-bought');
+    assert.equal(hosted.state.nav.waypoint.reason, 'survey-fix');
+    assert.equal(hosted.state.world.surveyFix[SEDNA], undefined);
+  } finally {
+    restore();
+  }
+});
+
 test('a short purse still shows Buy fix and the click writes nothing', () => {
   const restore = installDom();
   try {

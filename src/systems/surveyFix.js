@@ -116,6 +116,18 @@ export function openSurveyFix(state, sectorId) {
   return row && row.poiId ? row : null;
 }
 
+// Continue drops the runtime-only fix record but keeps the sold bearing as the nav waypoint.
+// When the live waypoint already holds this exact mark the bearing is still open — the lab
+// cannot sell it twice.
+export function soldBearingOpen(state, plan) {
+  const nav = state && state.nav && state.nav.waypoint;
+  if (!nav || nav.reason !== 'survey-fix' || !nav.pos || !plan || !plan.mark) return null;
+  const dx = Number(nav.pos.x) - Number(plan.mark.x);
+  const dz = Number(nav.pos.z) - Number(plan.mark.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return null;
+  return (dx * dx + dz * dz) <= 1e-6 ? nav : null;
+}
+
 export function commitSurveyFix(state, plan) {
   if (!state || !state.world || !plan || !plan.sectorId || !plan.poiId || !plan.mark) return false;
   if (!state.world.surveyFix || typeof state.world.surveyFix !== 'object' || Array.isArray(state.world.surveyFix)) {
