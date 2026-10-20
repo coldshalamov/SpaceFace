@@ -133,3 +133,11 @@ pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention �
 - Closed D226 ledger row + board count to 8 open (ec52f355aac). Remaining ledger rows are all blocked/parked/foreign: D188 (handset), D191/D198/D130 (quiet-host attribution), D199/D225/D231 (graphics lane), D227 (foreign mining lane).
 - check:baseline now 17/17 green at HEAD.
 - Consensus gate: W5 dispatched (independent reviewer, scoped to fe82e52a981..HEAD + orbit-assist 54c8669c4b8 + open review rows). Counter stands at 2-of-3.
+
+## DELTA 20 (post 257eecf21)
+- W5 verdict: DEFECTS-FOUND. F1 (pre-existing since 2026-10-03, not caused by the reviewed range): test/pq018-wreck-cathedral.test.mjs counted all sector world_site_collision entities — Ceres second-measure's 5 shipbreak proxies broke the exact-7 assertion. Fixed 257eecf21 by scoping the census to worldSiteId === SITE_ID (9/9 green).
+- F2 (nit): R-c8eec27's claim wording overstated coverage — the re-author restored the ~69 shells decimation dropped outright; ~255 micro-islands ≤100 verts remain uncovered as in the shipped baseline (additive-only, no regression, near-invisible at LOD1 ranges). Close text records the honest scope.
+- W5 verified clean: c8eec27a272 (all pins recomputed; fly-through clearance proven by ray scan — zero LOD1-only blockers), 38190040a08 (Quiet card; no double-offer bug), 3f79c17dc8d (honest re-pin), 54c8669c4b8 (orbit assist deterministic + save-safe), R-8521e56 + R-fe82e52 claims.
+- Review ledger drained to ZERO again: R-8521e56, R-fe82e52, R-c8eec27 all CLOSED by W5.
+- Remote moved mid-review: f12a40d72 graphics overhaul (antigravity lane adopted + landed), 5f94495ca Sedna survey fix, 29a29a8e1 NOW close, cb1175057 gold-game plan — all integrated, 0/0 sync.
+- Consensus gate: counter RESET to 0-of-3 (W5 not clean). W6 must cover the new tail f12a40d72..HEAD + the F1 fix.
