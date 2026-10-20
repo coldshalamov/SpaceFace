@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
 import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, stationConditionsFor, stationRefuelRation, AMMO_BATCH } from '../../systems/economy.js';
+import { planSurveyFix, openSurveyFix, SURVEY_FIX_PRICE } from '../../systems/surveyFix.js';
 import { stationConditionChips } from '../../economy/stationConditions.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
@@ -296,6 +297,42 @@ function baseServiceQuote(type, state, entity) {
       disabled: true,
       disabledReason: 'the yard is already on your ' + verb + ' job — watch it finish or undock to cancel',
       chips: [{ text: 'yard busy', kind: 'warn' }],
+    };
+  }
+  if (type === 'survey_fix') {
+    if (!stationOffersService(state, 'scan_tech')) return null;
+    const plan = planSurveyFix(state);
+    if (!plan) return null;
+    const credits = playerCredits(state);
+    if (openSurveyFix(state, plan.sectorId)) {
+      return {
+        amount: 0,
+        cost: SURVEY_FIX_PRICE,
+        detail: 'A fix is already open — fly the search',
+        buttonLabel: 'Buy fix',
+        disabled: true,
+        disabledReason: 'a survey fix is already open — fly that search before buying another',
+        chips: [{ text: 'fix open', kind: 'warn' }],
+      };
+    }
+    if (credits < SURVEY_FIX_PRICE) {
+      return {
+        amount: 0,
+        cost: SURVEY_FIX_PRICE,
+        detail: `Survey fix ${fmtCr(SURVEY_FIX_PRICE)} cr`,
+        buttonLabel: 'Buy fix',
+        disabled: true,
+        disabledReason: `need ${fmtCr(SURVEY_FIX_PRICE)} cr — you have ${fmtCr(credits)}`,
+        chips: [{ text: 'short', kind: 'bad' }],
+      };
+    }
+    return {
+      amount: 1,
+      cost: SURVEY_FIX_PRICE,
+      detail: plan.spoken,
+      buttonLabel: 'Buy fix',
+      disabled: false,
+      chips: [{ text: `${fmtCr(SURVEY_FIX_PRICE)} cr`, kind: 'cost' }, afterCreditsChip(credits, SURVEY_FIX_PRICE)],
     };
   }
   if (type === 'refuel') {

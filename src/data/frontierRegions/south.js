@@ -224,6 +224,7 @@ export const SOUTH_SECTORS = Object.freeze([
         type: 'cache',
         name: 'Sedna Vault',
         hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_crystal_lumin', amount: 4 }),
       }),
       Object.freeze({
         id: 'poi_sedna_cadence',

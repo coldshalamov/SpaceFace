@@ -14,6 +14,7 @@ export const STATION_CONTROLS = Object.freeze({
   'hold-row': { label: 'Sell' },
   'hold-manifest': { label: 'Cargo manifest' },
   repair: { label: 'Repair' },
+  survey: { label: 'Buy fix' },
   wash: { label: 'Wash' },
   insurance: { label: 'Insurance' },
   refuel: { label: 'Refuel' },

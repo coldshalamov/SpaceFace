@@ -28,6 +28,7 @@ import { playerBearingLetter } from '../core/playerCompass.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { clearSurveyFix } from './surveyFix.js';
 import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { FACTION_META } from '../data/factions.js';
@@ -5974,6 +5975,28 @@ export const world = {
     });
   },
 
+  // A hidden cache with an authored lot opens when proximity identify names it.
+  // The sector sweep still skips hidden sites. Standing on a sold survey mark,
+  // outside the full scan range, never reaches this.
+  _openSealedCache(state, sectorId, projection, rec) {
+    if (!projection || !rec || rec.investigated) return;
+    const sector = (state.world.sectors && state.world.sectors[sectorId]) || SECTOR_BY_ID.get(sectorId);
+    if (!sector || !Array.isArray(sector.pois)) return;
+    const authored = sector.pois.find((poi) => poi && poi.id === projection.poiId);
+    if (!authored || authored.hidden !== true) return;
+    if (authored.requiresActiveScan === true || projection.requiresActiveScan === true) return;
+    if (authored.triangulation || projection.requiresTriangulation) return;
+    const contents = authored.contents;
+    if (!contents || !contents.commodityId || !(contents.amount > 0)) return;
+    rec.investigated = true;
+    const active = state.world.activeSector;
+    if (active) this._spawnCachePayoffs(sector, active);
+    if (clearSurveyFix(state, sectorId, projection.poiId)) {
+      const waypoint = state.nav && state.nav.waypoint;
+      if (waypoint && waypoint.reason === 'survey-fix') state.nav.waypoint = null;
+    }
+  },
+
   // continuous proximity reveal: detect/identify POIs the player flies near (design 05 scanReveal)
   _poiCarrier(id) {
     if (id == null) return null;
@@ -6054,6 +6077,7 @@ export const world = {
             reward: (entData && entData.reward) || null,
           });
           if (newlyIdentified) {
+            this._openSealedCache(state, sectorId, p, rec);
             this.bus.emit('discovery:plateUnlocked', {
               sectorId: state.world.currentSectorId,
               poiId: p.poiId,

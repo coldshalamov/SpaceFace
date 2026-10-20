@@ -35,6 +35,7 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
+import { planSurveyFix, commitSurveyFix, openSurveyFix, SURVEY_FIX_PRICE } from './surveyFix.js';
 import { FACTION_META } from '../data/factions.js';
 import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
@@ -4121,6 +4122,46 @@ export const economy = {
     p.debtCr = debtCr;
   },
 
+  // A Survey Lab sells one imperfect bearing. The exact charge writes the bearing
+  // only after commit() accepts it; short money and a second buy write nothing.
+  _handleSurveyFix() {
+    const state = this.state;
+    if (!stationOffersService(state, 'scan_tech')) {
+      this.bus.emit('toast', { text: 'No survey lab at this berth', kind: 'error', ttl: 3 });
+      return;
+    }
+    const plan = planSurveyFix(state);
+    if (!plan) {
+      this.bus.emit('toast', { text: 'The lab has nothing left to find in this sector', kind: 'info', ttl: 3 });
+      return;
+    }
+    if (openSurveyFix(state, plan.sectorId)) {
+      this.bus.emit('toast', { text: 'A survey fix is already open — fly the search before buying another', kind: 'warn', ttl: 3 });
+      return;
+    }
+    const credits = normalizeCredits(state.player.credits);
+    if (credits < SURVEY_FIX_PRICE) {
+      this.bus.emit('toast', { text: 'Not enough credits for a survey fix', kind: 'error', ttl: 3 });
+      return;
+    }
+    const charge = {
+      amount: SURVEY_FIX_PRICE,
+      reason: 'service:survey_fix',
+      requireFull: true,
+      expectedCredits: credits,
+      commit: () => commitSurveyFix(state, plan),
+    };
+    this.bus.emit('economy:chargeCredits', charge);
+    if (charge.result !== true) return;
+    this.bus.emit('ui:setCourse', {
+      pos: { x: plan.mark.x, z: plan.mark.z },
+      reason: 'survey-fix',
+      label: plan.label,
+      waypointKind: 'local',
+    });
+    this.bus.emit('toast', { text: plan.spoken, kind: 'info', ttl: 5 });
+  },
+
   // -------------------------------------------------------------------------------------------
   // SERVICES — refuel / repair / ammo / hull wash (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
@@ -4130,6 +4171,10 @@ export const economy = {
     if (!type) return;
     if (!this._stationServicesDocked()) {
       this.bus.emit('toast', { text: 'Dock first', kind: 'error', ttl: 2 });
+      return;
+    }
+    if (type === 'survey_fix') {
+      this._handleSurveyFix();
       return;
     }
     if (['loan', 'settle', 'refuel', 'ammo'].includes(type) && p.amount != null

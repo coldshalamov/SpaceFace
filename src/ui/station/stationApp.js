@@ -283,6 +283,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         const cost = actionCosts()[id] || {};
         return { label, icon, detail: cost.title || cost.text || 'Station service', disabled: !!cost.disabled, run: () => runAction(id) };
       }),
+      ...(() => {
+        const survey = actionCosts().survey;
+        if (!survey) return [];
+        return [{
+          label: 'Buy fix',
+          icon: 'search',
+          detail: survey.title || survey.text || 'Survey fix',
+          disabled: !!survey.disabled,
+          keywords: 'survey scan cache lab',
+          run: () => runAction('survey'),
+        }];
+      })(),
       ...factionPresenceServiceRows(state(), stationId()).map((row) => ({
         label: row.label,
         icon: 'factions',
@@ -835,6 +847,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       refuel: 'FUEL RESTORED',
       ammo: 'MUNITIONS LOADED',
       hull_wash: 'HULL WASHED',
+      survey_fix: 'SURVEY FIX',
     }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} COMPLETE`;
     showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
@@ -880,6 +893,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         wash: washAvailable
           ? toCost(q('hull_wash'), 'hull_wash')
           : { text: 'Offline', disabled: true, title: 'Hull wash requires a repair berth' },
+        survey: (() => {
+          const row = q('survey_fix');
+          return row ? toCost(row, 'survey_fix') : null;
+        })(),
         // Redemption pays the player, so the verb reads as a gain, not a price.
         rights: rightsQuote && !rightsQuote.disabled
           ? { text: `+${fmtCr(rightsQuote.payout ?? rightsQuote.cost)} cr`, tone: 'gain', title: rightsQuote.detail }
@@ -920,7 +937,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       setTimeout(refresh, 60);
       return true;
     }
-    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights', loan: 'loan', settle: 'settle', cargoInsure: 'cargo_insurance' };
+    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights', loan: 'loan', settle: 'settle', cargoInsure: 'cargo_insurance', survey: 'survey_fix' };
     const type = typeMap[id];
     if (!type && bus) {
       const presence = runFactionPresenceDockAction(bus, state(), stationId(), id);
@@ -1185,6 +1202,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
     // A paid yard job is work the player is owed visibility on: the meter is the job itself.
     // The periodic re-render keeps progress, queue and holding live while the row exists.
+    if (costs.survey) {
+      vitals.push({
+        k: 'search',
+        label: 'Survey',
+        frac: 0,
+        tone: costs.survey.disabled ? 'warn' : 'ok',
+        track: false,
+        value: costs.survey.disabled ? 'Holding' : 'Seal unread',
+        aria: costs.survey.title || 'Buy a survey fix for the sealed cache in this sector',
+        acts: [vitalActHtml('survey', costs.survey, 'Buy fix')],
+      });
+    }
     const yard = yardJobReadout(s);
     if (yard) {
       vitals.push({
