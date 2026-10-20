@@ -70,7 +70,7 @@ import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
-import { frontierRumorMapReadouts, frontierRumorMapTarget } from './frontierRumorMapLayer.js';
+import { frontierRumorMapReadouts, frontierRumorMapTarget, frontierRumorCorroborations } from './frontierRumorMapLayer.js';
 import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCacheMapLayer.js';
 import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pallasHiddenCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
@@ -1859,6 +1859,14 @@ export function buildSystemModel(state, sectorId, options = {}) {
       ? globalToSectorLocalForSector(readout.fixedPos, sid)
       : null,
   }));
+  const rumorCorroborations = frontierRumorCorroborations(state, sid).map((group) => ({
+    ...group,
+    drawConverge: globalToSectorLocalForSector(group.converge, sid),
+    members: group.members.map((member) => ({
+      ...member,
+      drawCenter: globalToSectorLocalForSector(member.center, sid),
+    })),
+  }));
 
   // Zones (labeled, tinted, threat-ranked regions).
   const zones = zonesForSector(sid).map((z) => {
@@ -2060,7 +2068,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
 
   return {
     level: 'system', sectorId: sid, sectorName, ...confidence,
-    zones, points, ownership, bearings, wrecks, player: playerMark,
+    zones, points, ownership, bearings, rumorCorroborations, wrecks, player: playerMark,
   };
 }
 
@@ -2184,6 +2192,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     contacts,
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
+    rumorCorroborations: frontierRumorCorroborations(state, sectorId),
     wrecks: aftermathChartMarkers(state, sectorId),
   };
 }
@@ -9931,6 +9940,21 @@ _drawSystem(g, state, w, h) {
         }));
       }
 
+      // Corroboration inflow: rings that name the same reach draw arrows into the shared
+      // patch. The rows carry only what the cards already show — never the target.
+      for (const group of model.rumorCorroborations || []) {
+        if (!group.drawConverge) continue;
+        const cw = warpDisc(sx(group.drawConverge.x), sz(group.drawConverge.z), 0);
+        if (!inField(cw.x, cw.y, 2)) continue;
+        const arrows = [];
+        for (const member of group.members) {
+          if (!member.drawCenter) continue;
+          const bd = warpDisc(sx(member.drawCenter.x), sz(member.drawCenter.z), member.radius * pxPerWU);
+          arrows.push({ x: bd.x, y: bd.y });
+        }
+        drawRumorCorroborationArrows(g, arrows, cw.x, cw.y);
+      }
+
       // Scanner pings: same named course as the local map. Draw the sector-local point;
       // the click keeps the global x/z so the course arms in the nav frame.
       for (const ping of chartPingCourseTargets(state, model.sectorId)) {
@@ -10438,6 +10462,23 @@ _drawLocal(g, state, w, h) {
         }));
       }
 
+      // Corroboration inflow: cards that name the same reach draw arrows into the shared
+      // patch. Only the cards' own ring data reaches the chart — never the target.
+      for (const group of model.rumorCorroborations || []) {
+        if (!group.converge) continue;
+        const cx = sx(group.converge.x), cy = sz(group.converge.z);
+        if (offView(cx, cy)) continue;
+        const arrows = [];
+        for (const member of group.members) {
+          if (!member.center) continue;
+          arrows.push({
+            x: sx(member.center.x),
+            y: sz(member.center.z),
+          });
+        }
+        drawRumorCorroborationArrows(g, arrows, cx, cy);
+      }
+
       // Scanner pings: the sweep's unclassified mark is a named course, same as the local map.
       for (const ping of chartPingCourseTargets(state, model.sectorId)) {
         const x = sx(ping.x), y = sz(ping.z);
@@ -10896,6 +10937,57 @@ function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
     g.beginPath(); g.moveTo(x - 3.5, y); g.lineTo(x + 3.5, y); g.moveTo(x, y - 3.5); g.lineTo(x, y + 3.5); g.stroke();
     g.restore();
   }
+}
+
+/**
+ * Corroboration inflow (AL-SHOW-6): independent cards naming the same reach each draw one
+ * arrow from their own ring's center toward the shared patch — the chart shows the reasoning,
+ * not the answer. The head is a chevron tick; the convergence is an open cross. Neither glyph
+ * is a diamond: a diamond means "fixed", and nothing here is exact.
+ * `arrows`: [{x, y}] member ring centers in screen space; (cx, cy) the convergence.
+ */
+function drawRumorCorroborationArrows(g, arrows, cx, cy, alpha = 1) {
+  if (!g || !Number.isFinite(cx) || !Number.isFinite(cy)) return;
+  g.save();
+  g.strokeStyle = CHART_INK.lit(0.8 * alpha);
+  g.lineWidth = 1.5;
+  g.lineCap = 'butt';
+  for (const a of arrows) {
+    if (!a || !Number.isFinite(a.x) || !Number.isFinite(a.y)) continue;
+    const dx = cx - a.x;
+    const dy = cy - a.y;
+    const d = Math.hypot(dx, dy);
+    if (!Number.isFinite(d) || d < 10) continue;
+    const ux = dx / d;
+    const uy = dy / d;
+    // The stem starts just off the member's own center mark — the card's guess — and
+    // lands on the shared patch. Overlapping rings are the norm, so the rim is not
+    // part of the path: the arrow is the reasoning, not the circle.
+    const x0 = a.x + ux * 7;
+    const y0 = a.y + uy * 7;
+    const x1 = cx - ux * 7;
+    const y1 = cy - uy * 7;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.lineTo(x1, y1);
+    g.stroke();
+    // Chevron head, two ticks angled back along the stem.
+    const hx = -uy * 3.2;
+    const hy = ux * 3.2;
+    g.beginPath();
+    g.moveTo(x1 + ux * 5 + hx, y1 + uy * 5 + hy);
+    g.lineTo(x1, y1);
+    g.lineTo(x1 + ux * 5 - hx, y1 + uy * 5 - hy);
+    g.stroke();
+  }
+  // The shared patch: an open cross at the weighted center of the member rings.
+  g.strokeStyle = CHART_INK.lit(0.9 * alpha);
+  g.lineWidth = 1.6;
+  g.beginPath();
+  g.moveTo(cx - 4, cy); g.lineTo(cx + 4, cy);
+  g.moveTo(cx, cy - 4); g.lineTo(cx, cy + 4);
+  g.stroke();
+  g.restore();
 }
 
 // ---------------------------------------------------------------------------------------------

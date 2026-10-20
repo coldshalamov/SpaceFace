@@ -8,8 +8,11 @@
 // (src/systems/world.js computeRoute) so a previewed or plotted line is the line the ship flies.
 // Every other shot is left exactly as it was: unseedChartShot() takes all of it back out.
 
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+
 const SECTOR = 'sector_helios_prime';
 const BENCH_TAG = 'benchChart';
+const BENCH_REACH = 'poi_bench_corroborated_reach';
 
 /** Deterministic positions for the starter seam's rocks around its authored centre (720, -260). */
 function seamRocks() {
@@ -72,6 +75,7 @@ export function seedChartShot(state, shot) {
     waypointSector: state.nav.waypoint ? state.nav.waypoint.sectorId : undefined,
     route: state.nav.route,
     discovery: state.world.discovery,
+    frontierRumors: state.world.frontierRumors,
   };
   state.world.currentSectorId = SECTOR;
   if (state.nav.waypoint) state.nav.waypoint.sectorId = SECTOR;
@@ -106,6 +110,33 @@ export function seedChartShot(state, shot) {
     const route = benchWorld.computeRoute(shot.route, 'fuel');
     if (route) state.nav.route = route;
   }
+  // Three cards on one reach: the corroboration layer draws its inflow arrows into the shared
+  // patch. Centers are sector-local, converted to the chart's global frame like a sold card.
+  state.world.frontierRumors = { schemaVersion: 1, byId: {}, receipts: [] };
+  const rumorSpots = [
+    { lx: -500, lz: 240, r: 360 },
+    { lx: -320, lz: 330, r: 430 },
+    { lx: -390, lz: 170, r: 400 },
+  ];
+  rumorSpots.forEach((spot, n) => {
+    const id = `frontier-rumor:bench:${n}:cache:${BENCH_REACH}`;
+    state.world.frontierRumors.byId[id] = {
+      id,
+      schemaVersion: 1,
+      kind: 'cache',
+      kindLabel: 'Cache Tally',
+      targetId: BENCH_REACH,
+      targetName: 'unclaimed cache',
+      sectorId: SECTOR,
+      sectorName: 'Helios Prime',
+      sourceStationId: `station_bench_${n}`,
+      sourceSectorId: SECTOR,
+      bearingCenter: sectorLocalToGlobalForSector({ x: spot.lx, z: spot.lz }, SECTOR),
+      radius: spot.r,
+      phase: 'rumored',
+      text: 'bench card',
+    };
+  });
 }
 
 /** Take the chart's situation back out, so no other shot sees it. */
@@ -121,6 +152,7 @@ export function unseedChartShot(state) {
     if (state.nav.waypoint) state.nav.waypoint.sectorId = saved.waypointSector;
     state.nav.route = saved.route;
     state.world.discovery = saved.discovery;
+    state.world.frontierRumors = saved.frontierRumors;
     saved = null;
   }
 }

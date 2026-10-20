@@ -46,6 +46,50 @@ export function frontierRumorMapReadouts(state, sectorId = null) {
 }
 
 /**
+ * Corroboration groups: two or more live cards whose leadsTo link (their targetId) names the
+ * same reach. The chart draws the reasoning — inflow arrows from each member ring converging
+ * on a shared patch. A row exposes only what the cards already show: member rumor ids, ring
+ * centers and radii, and the precision-weighted convergence point. The target id and any
+ * position behind the rings never appear.
+ */
+export function frontierRumorCorroborations(state, sectorId = null) {
+  const groups = new Map();
+  for (const record of frontierRumorRecords(state, sectorId)) {
+    if (!record || record.phase !== 'rumored') continue;
+    const center = finitePoint(record.bearingCenter);
+    const radius = Number(record.radius);
+    const targetId = String(record.targetId || '').trim();
+    const id = String(record.id || '').trim();
+    if (!center || !(radius > 0) || !targetId || !id) continue;
+    const key = `${String(record.sectorId || '')}:${targetId}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ rumorId: id, center, radius, sectorId: record.sectorId });
+  }
+  const out = [];
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    members.sort((a, b) => a.rumorId.localeCompare(b.rumorId));
+    let wx = 0; let wz = 0; let wsum = 0;
+    for (const member of members) {
+      const w = 1 / member.radius;
+      wx += member.center.x * w;
+      wz += member.center.z * w;
+      wsum += w;
+    }
+    out.push({
+      // The group id is built from the member card ids — never the shared target id.
+      id: `corr:${members.map((member) => member.rumorId).join('+')}`,
+      sectorId: members[0].sectorId != null ? String(members[0].sectorId) : null,
+      memberRumorIds: members.map((member) => member.rumorId),
+      memberCount: members.length,
+      converge: { x: wx / wsum, z: wz / wsum },
+      members,
+    });
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
  * Turn a purchased uncertain readout into a selectable map target without granting a course.
  * The exact source stays hidden until physical scanner investigation resolves it.
  */
