@@ -299,8 +299,25 @@ export function observeContact(a, b, contact, state = activeState) {
       // The solver resolves one physical contact over consecutive ticks. The transfer to the
       // struck body is the whole episode's velocity change measured from its pre-contact motion,
       // never one tick's slice, so the origin of its new corridor stays at the first contact tick.
-      const carried=ongoing&&j.bodies.get(tl.id);
-      const continuing=!!(carried&&carried.rootId===root.id&&carried.contactTick===ongoing.tick);
+      const carried=j.bodies.get(tl.id);
+      // A native pair may separate for a few ticks between solver receipts. Its first
+      // player-authored push is not natural pre-existing motion on re-contact. Retain
+      // that counterfactual only for the same transfer edge and unchanged carried
+      // net motion; an unmatched independent velocity starts a fresh conservative
+      // counterfactual. This does not reconstruct a history of net-zero forces.
+      // Match the 1e-3 native motion tolerance used by restoreStuntEvidence below;
+      // 1e-8 is the journal's existing minimum observable impulse. Attached rope
+      // interception keeps its episode-local baseline and is not extended here.
+      const sameEpisode=!!(ongoing&&carried&&carried.rootId===root.id&&carried.contactTick===ongoing.tick);
+      const priorTransfer=!sameEpisode&&carried&&root.nodes.find(n=>n.kind==='contact'
+        &&n.sourceLife===sl.id&&n.targetLife===tl.id&&n.tick===carried.contactTick);
+      const retaining=!!(carried&&carried.rootId===root.id&&carried.edges===path.edges
+        &&priorTransfer&&carried.origin&&root.constraint?.attached!==true&&tick>=carried.lastTick
+        &&tick-carried.lastTick<=EVIDENCE_LIMITS.gap
+        &&Math.hypot(carried.other.x,carried.other.z)<1e-8
+        &&Math.hypot(tv.x-carried.origin.before.x-carried.useful.x,
+          tv.z-carried.origin.before.z-carried.useful.z)<=1e-3);
+      const continuing=sameEpisode||retaining;
       const before=continuing?carried.origin.before:point(tv);
       const dv = { x: transferred.x-before.x, z: transferred.z-before.z };
       const line=root.constraint,player=line&&state.entities.get(line.actorId);
