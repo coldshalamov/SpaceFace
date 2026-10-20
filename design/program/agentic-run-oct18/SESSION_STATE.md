@@ -141,3 +141,9 @@ pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention �
 - Review ledger drained to ZERO again: R-8521e56, R-fe82e52, R-c8eec27 all CLOSED by W5.
 - Remote moved mid-review: f12a40d72 graphics overhaul (antigravity lane adopted + landed), 5f94495ca Sedna survey fix, 29a29a8e1 NOW close, cb1175057 gold-game plan — all integrated, 0/0 sync.
 - Consensus gate: counter RESET to 0-of-3 (W5 not clean). W6 must cover the new tail f12a40d72..HEAD + the F1 fix.
+
+## DELTA 21 (post 281154c4d)
+- W6 verdict: CLEAN — counter 1-of-3. f12a40d72 graphics overhaul verified (headlamps fallback attaches at radius*0.62, spill band reuses boundary slot, no ambient randomness, no undefined uniforms; GPU capture unavailable so verdict rests on source+non-GL suites). 5f94495ca Sedna survey fix verified (deterministic hash mark, exact charge, dedup gates). F1 fix 257eecf21 verified (farActorTable siteId field naming consistent, not a mismatch).
+- W6 nit fixed (281154c4d): surveyFix record is runtime-only while its bearing survives as the nav waypoint — post-reload a dock click re-charged 240 cr for the identical mark. soldBearingOpen dedups quote + charge on the live survey-fix waypoint holding the planned mark; 8/8 survey-fix tests green.
+- R-f12a40d CLOSED by W6 — review ledger at ZERO again.
+- Remaining parked: D188 handset · D191/D198/D130 quiet-host attribution · D199/D225/D231 graphics lane · D227 foreign mining lane. Baseline check on contended box was still running at review time; all wave-6-relevant links verified green individually.
