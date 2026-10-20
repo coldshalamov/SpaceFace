@@ -942,6 +942,9 @@ export const world = {
     rec.discovered = true;
     rec.identified = true;
     rec.defeated = true;
+    // D238: a boss kill that identifies a sold cache spends its fix record too.
+    const clearedBossFix = clearSurveyFix(this.state, sectorId, poiId);
+    if (clearedBossFix && bearingCharted(this.state, clearedBossFix.mark)) this.state.nav.waypoint = null;
     rec.type = poi && poi.type || rec.type || 'anomaly';
     rec.name = poi && poi.name || rec.name || poiId;
     if (newlyDefeated) {
@@ -6577,6 +6580,10 @@ export const world = {
     rec.investigatedAt = Number(payload.completedAt) || Number(this.state.simTime) || 0;
     rec.type = poi.type || payload.sourceKind || rec.type || null;
     rec.name = poi.name || rec.name || poiId;
+    // D238: identifying a sold cache through the signal path must spend its fix record —
+    // an orphaned record otherwise keeps gating dock purchases and re-pins a dead mark.
+    const clearedSignalFix = clearSurveyFix(this.state, sectorId, poiId);
+    if (clearedSignalFix && bearingCharted(this.state, clearedSignalFix.mark)) this.state.nav.waypoint = null;
     if (newlyDiscovered) this.bus.emit('poi:discovered', { poiId, type: rec.type, sectorId });
     if (newlyIdentified) this.bus.emit('poi:identified', { poiId, type: rec.type, sectorId });
     if (newlyFound) {
@@ -7203,6 +7210,9 @@ export const world = {
       signalId: payload.signalId ? String(payload.signalId) : null,
       returnedAt,
     };
+    // D238: an artifact return that identifies a sold cache spends its fix record too.
+    const clearedArtifactFix = clearSurveyFix(this.state, sectorId, poiId);
+    if (clearedArtifactFix && bearingCharted(this.state, clearedArtifactFix.mark)) this.state.nav.waypoint = null;
     this.bus.emit('discovery:plateUnlocked', {
       sectorId,
       poiId,

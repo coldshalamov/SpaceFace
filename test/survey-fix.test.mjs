@@ -361,6 +361,30 @@ test('identifying the vault spends only its own bearing — another charted fix 
   }
 });
 
+test('D238: identifying through the signal path spends the sold fix too', () => {
+  const restore = installDom();
+  try {
+    const hosted = boot(SEDNA, 'station_sedna');
+    placeVaultOnBurn(hosted.state);
+    const dock = mountDock(hosted);
+    clickSurvey(dock.vitals);
+    const sold = hosted.state.world.surveyFix[SEDNA];
+    assert.ok(sold && sold.poiId, 'a bearing is on the books');
+    assert.equal(hosted.state.nav.waypoint && hosted.state.nav.waypoint.reason, 'survey-fix');
+    // The signal investigation names the same cache — it must spend the record,
+    // not leave an orphan gating the dock and re-pinning a dead mark.
+    hosted.world._onSignalInvestigated({ sectorId: SEDNA, sourceId: VAULT, completedAt: 11 });
+    assert.equal(hosted.state.world.surveyFix[SEDNA], undefined, 'the record is spent');
+    assert.equal(hosted.state.nav.waypoint, null, 'its charted bearing dies with it');
+    assert.equal(
+      hosted.state.world.discovery[SEDNA].pois[VAULT].identified, true,
+      'the identify still lands',
+    );
+  } finally {
+    restore();
+  }
+});
+
 test('a short purse still shows Buy fix and the click writes nothing', () => {
   const restore = installDom();
   try {
