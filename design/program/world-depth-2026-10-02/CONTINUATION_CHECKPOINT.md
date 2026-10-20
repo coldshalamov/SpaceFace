@@ -1,27 +1,32 @@
-# World-depth continuation checkpoint — 2026-10-20 14:00 UTC
+# World-depth continuation checkpoint — 20 October 2026, 14:26 UTC
 
-All eight larger outcomes remain open. This is the existing program handoff, not a new task queue or live-game acceptance claim.
+All eight larger outcomes remain open. Source delivery, scoped tests and offline renders are not user acceptance.
 
-## Verified repository delivery
-- PR457: station Continue identity plus its preload and failure-only cold-open diagnostics; head638586d00f2093af3b7eb958970c489679d63ce5, remote verified13:50:56UTC.
-- PR458: cartography custody plus preload; headc533864b6d24c462f151cf0d5ba23862d45ddae7, remote verified13:22:15UTC.
-- PR459: local-course/autopilot Continue consistency and automatic regression wiring; head7cdf38b876f219d6e2d40d203f054250cab78330, verified13:47:01UTC.
-- Source-only public ancestry, no merge/deploy. Current public mastera8a9500 is reconciled. Previous exact-head simulation matrices passed31/31, and PR459's11 new cases actually passed in GitHub static3. Aggregate CI is still red; current-head jobs and bounded diagnostic output are being followed. Do not equate a green subset with acceptance.
+## New verified delivery
 
-## Completed scoped local increment
-Thimble coreb08ba532 and camera d70c0413 are committed. Seventy-five core source/model/test paths preserve the original34WU throat and12 native rims, one original recorder, equal through/outside recovery, one360-credit receipt, finite loss/Continue behavior and surfaced caption dedupe. The camera follow-up passes134 owner tests plus14 independent root cases, including actual-Hitch whole-hull rays, motion, view transitions, source lifecycle and cache guards. Exact compiled-model poses match final images and240 turn frames. Sampled fast-turn step improved5.923→1.538degrees/frame; contextual animated CPU median0.212ms/p950.965ms with zero guard rebuilds. These are not live GPU/device/user acceptance. No recorded speech is included.
+- Draft PR #460: https://github.com/coldshalamov/SpaceFace/pull/460
+  Head: 00576ef3eea22950dc7308b241ccf6aa8a364111. Tree: 788a4edf0ba47721619eb20b6c5dcf219ae312bf.
+  Four paths move transient payload cleanup to the synchronous departure boundary, before destination materialization and sliced exit listeners. Existing custody exceptions are unchanged. Identical public-baseline tests fail eight of nine cases; fixed tests pass nine of nine, with 130 adjacent checks and identical golden-clean paired simulation reports. Exact-head browser CI is active.
+- Draft PR #461: https://github.com/coldshalamov/SpaceFace/pull/461
+  Head: 099b40b25560bef1eb4b8bb5c39fb773fa11162b. Tree: 27fda1c38539fc215f408bdd6c68f1893704dfad.
+  Eleven paths make salvage cutters approach, settle, cut the same finite source, preserve cargo/source identity through residency and Continue, and return to a real yard. Public-tree tests pass 37 focused and 44 adjacent checks. Stationary and drifting native routes complete without forced poses or phases. Seven units transfer from source to hold; existing Forge policy accepts five scrap, ignores two electronics, then clears the hold. End-to-end commodity conservation is not claimed. Exact-head CI is active.
 
-Current mastera8a9500 was merged into the working branch only (48fa06ea). Thirteen newer reviewer tests pass and final camera hashes remain unchanged. Canonical preload check passes35 main +2,137 registry imports; retail rewrite3/3 passes after exact sparse CSS recovery.
+Both use public parent a8a9500ab87e1bcff91c407e96f744a52202a134, with no private ancestry or model upload. Remote heads were read back before claiming delivery. Neither is merged or deployed.
 
-## Active living-world work and owners
-The next THE WORLD / P03-P07 unit repairs salvage cutters extracting a moved wreck from3,903WU away and a stale numeric target fallback that can take a different wreck's stock. Exact source owner: src/systems/traffic.js and src/systems/npcJobsRuntime.js, with focused occupation/physical/native tests and one handoff. Independent review is read-only. Cutter must physically approach/settle/follow the same finite source and return conserved cargo through existing job/economy owners. Preserve the local Mile convoy branch and use the existing public cutter asset; no gated model edit or private ancestry is needed. Current dirty paths are owned, not abandoned.
+## Existing source delivery and limits
 
-## Recovery and remaining approval boundaries
-A readable PRIVATE source/test checkpoint is now saved and restoration-verified: spaceface-source-recovery-20261020-1337.patch,6,897,044bytes, SHA2569e523d358422f8718e0de5b5229038f6535944e54fe1de8fb50f1f1596d106db. It exactly reconstructs222 non-asset paths atd70c0413 from public27f93dd; model packages are separate. The private Library identity is retained in the canonical handoff. This is not the rejected compressed public archive.
+PR457 remains at638586d00f2093af3b7eb958970c489679d63ce5; PR458 atc533864b6d24c462f151cf0d5ba23862d45ddae7; PR459 at7cdf38b876f219d6e2d40d203f054250cab78330. Station/cartography main and mobile CI are terminal red, with scoped simulation passes and browser limits retained. The station failure-only diagnostic produced the real payload_sector_transition deletion evidence that led to PR460. Deferred event rows do not establish synchronous deletion order. Navigation's eleven tests and simulation matrix pass; one justified unchanged-head browser4 retry remains active. No aggregate green claim.
 
-The extra five-part consolidated model Library batch failed helper discoveryHTTP403 at12:57UTC, with no per-file success. The compressed PUBLIC GitHub source backup was rejected13:07 because opaque contents could not be verified; explicit approval is pending, no retry/alternate public upload is authorized by silence. Only partial unattached blobs exist, no backup branch/commit. Earlier model-publication approval remains separately unresolved. Private backup success does not grant either public approval. Ordinary reviewed source PR publishing remains available.
+Thimble core b08ba532 and camera d70c0413 remain committed locally, with reviewed compiled-model images, 134 owner tests and 14 root tests. Actual live GPU/device acceptance remains open. No recorded speech was added.
 
-Live-render attempts are scoped failures: own CUA localhost refused12:49UTC; supported sandboxed Chromium aborted with socket EPERM13:27 before navigation while same-process HTTP worked. Thirty targeted immutable asset/decoder/camera requests pass, six Thimble assets match their metadata and missing Hitch LOD originals were recovered only into the isolated harness. No security weakening or fabricated screenshot.
+## Recovery and visuals
 
-## Next executable action
-Finish and independently review the active physical-salvor unit, test moving/recycled/lost/claimed sources, interrupted work and Continue, then port only its coherent source delta onto current public master for a draft PR. Continue exact-head CI attribution without weakening assertions/budgets. Keep live camera, complete world scope and final user acceptance open.
+Private readable recovery version1 reconstructs 244 non-asset paths at24dc6450 from public27f93dd. File size: 7,084,612 bytes. SHA256: 455cd6f378d652d1d79b34fce3a719363eed35ece366befdc2d6cf32b7d63a05. Restoration was checked with exact Git blob comparisons. Earlier version0 and separate model backups remain retained. The later payload repair is independently preserved in public PR460.
+
+New salvor approach/cut/Forge image uses actual compiled cutter, wreck and station geometry at unforced native route positions, uniformly scaled and explicitly labeled offline reconstruction. It is not a live screenshot and omits HUD, work VFX and surrounding sector.
+
+The optional compressed public backup and separate model-publication approval remain unanswered. Do not retry the denied opaque upload or infer permission from private backup success. Ordinary readable source PR publishing works. No credentials were created. Supported sandboxed Chromium socket startup failed with EPERM at13:27 UTC; CUA localhost refused at12:49 UTC. Neither limit was bypassed.
+
+## Active owners and next execution
+
+The physical-salvor owner follows PR461 and retains attributable-fix ownership of traffic.js, npcJobsRuntime.js and farActorTable.js. The payload-lifecycle owner follows PR460 and retains world.js and weapons.js. A separate living-world owner is inspecting current code, original scope and routing to select the next unowned player-facing increment using existing public assets. Shared package changes require explicit serialization. Preserve all reviewer changes and inspect current remote state before any further publish. Keep all larger game goals open until implemented, reviewed, polished and accepted.
