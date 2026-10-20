@@ -1245,6 +1245,7 @@ export const npcJobsRuntime = {
     const sectorId = entry && entry.sectorId;
     if (!sectorId) return;
     // The relief crew borrows the one-shot transport itinerary for patients, not ore custody.
+    if (entry.job?.payload?.pallasWorkShift === 'pallas:sker-run:v1') return;
     if (entry.job?.payload?.choirRelief === true) return;
     const lots = this._lots();
     const now = Number(this.state && this.state.simTime) || 0;
@@ -4342,7 +4343,10 @@ export const npcJobsRuntime = {
       // velocity IS arrived, even though its world-frame speed stays at belt drift.
       // A cutter's commission is paperwork at the pad, not a docking manoeuvre; the seam face and
       // the unload berth are the stops that need the hull physically there.
-      const holdingForArrival = physicalTarget
+      // Pallas keeps its ordinary job suspended during the finite paired passage.
+      // This target is authenticated by the traffic owner; it never advances a cargo timetable.
+      const pallasTarget = !claimedBeforeAdvance && this.helpers.traffic?.pallasWorkTarget?.(entry, entity);
+      const holdingForArrival = pallasTarget || physicalTarget
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
           && entry.worldRecordId === this._heliosStarterMinerRecordId)
@@ -4909,6 +4913,16 @@ export const npcJobsRuntime = {
     // PQ-045 bounded real-target consumer. Only five exact, already-live Ceres relationships can
     // reach this branch; everything else retains the authored route controller below.
     if (this._tryDriveCeresRealTarget(entry, entity)) return;
+
+    const pallasTarget = this.helpers.traffic?.pallasWorkTarget?.(entry, entity);
+    if (pallasTarget) {
+      if (pallasTarget.blocked) {
+        const profile = resolvePropulsionProfile(entity, this.state);
+        this._writeIntent(entity, 0, 0, false, entity.rot || 0,
+          profile.family !== DRIVE_FAMILIES.PULSE_PLATE);
+      } else this._driveLivingAdventureWorker(entry, entity, pallasTarget);
+      return;
+    }
 
     const physicalTarget = this._livingAdventureWorkTarget(entry, entity);
     if (physicalTarget) { this._driveLivingAdventureWorker(entry, entity, physicalTarget); return; }
