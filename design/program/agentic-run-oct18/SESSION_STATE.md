@@ -126,3 +126,10 @@ pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention �
 - Root cause note: Blender 5.1 does not evaluate matrix_world for hide_viewport objects and exports identity node transforms for them — LOD work must use matrix_basis/mesh-local space and unhide for the export duration.
 - Consensus gate: W4 returned clean → counter 2-of-3. W4 nit (non-blocking): Quiet desk replies drop frontierRumorOffer card on Tethys — fix queued. W5 targets must include foreign orbit-assist commit 54c8669c4b8.
 - Open reviews: R-8521e56 + R-fe82e52 + R-c8eec27.
+
+## DELTA 19 (post ec52f355aac)
+- Landed W4 nit fix (38190040a08): Quiet desk Rumors replies now carry frontierRumorOffer(state, stationId) || null on both branches so a live rumor card is not cleared at Tethys; PQ-048 pins post-contact card persistence on both paths. 24/24 frontier-rumor tests green.
+- Re-pinned PQ-020 structural-cost digest (3f79c17dc8d): only the embedded worldSite.releaseSha256 moved (new release GLB); entity census/colliders/cathedral census unchanged — honest re-pin per the file's comment chain.
+- Closed D226 ledger row + board count to 8 open (ec52f355aac). Remaining ledger rows are all blocked/parked/foreign: D188 (handset), D191/D198/D130 (quiet-host attribution), D199/D225/D231 (graphics lane), D227 (foreign mining lane).
+- check:baseline now 17/17 green at HEAD.
+- Consensus gate: W5 dispatched (independent reviewer, scoped to fe82e52a981..HEAD + orbit-assist 54c8669c4b8 + open review rows). Counter stands at 2-of-3.
