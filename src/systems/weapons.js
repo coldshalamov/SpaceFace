@@ -67,7 +67,6 @@ import { causalKindsFromSpec, collectAttackModifiers } from './adventureMigratio
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley } from '../combat/attackPropagation.js';
 import { resolvePayload } from '../combat/attackPayload.js';
-import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
 import {
   armAttackContinue,
   collectAttackCandidates,
@@ -478,7 +477,6 @@ export const weapons = {
   },
 
   _onSectorEnter() {
-    handlePayloadSectorTransition(this.state, this.helpers);
     clearAllMomentumSinkPlants(this.state);
     if (this._shuntCooldown) this._shuntCooldown.clear();
     if (this._opticFamilies) this._opticFamilies.clear();
@@ -491,8 +489,6 @@ export const weapons = {
   },
 
   *_onSectorEnterSteps() {
-    handlePayloadSectorTransition(this.state, this.helpers);
-    yield;
     clearAllMomentumSinkPlants(this.state);
     yield;
     if (this._shuntCooldown) this._shuntCooldown.clear();

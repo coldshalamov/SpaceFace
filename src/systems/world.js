@@ -24,6 +24,7 @@ import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
 //   gate tolls and never writes credits/cargo/rep directly. Radiation is environmental damage
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
+import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
@@ -1063,6 +1064,10 @@ export const world = {
 
     const prevSectorId = state.world.currentSectorId || null;
     if (prevSectorId && prevSectorId !== sectorId) {
+      // Retire departing payloads before residency can publish the destination cohort.
+      // Neither enter listeners (post-materialization) nor exit listeners (sliced during
+      // Continue) own this synchronous lifetime boundary. Core still owns removal.
+      handlePayloadSectorTransition(state, this.helpers);
       this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
       // Bump the epoch NOW: the deferred-enter FIFO holds entries minted under the
       // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
@@ -3416,8 +3421,8 @@ export const world = {
     }
   },
 
-  // The Candle Fleet cache is a live cargo pod, not dressing: dressing cannot be roped, and a
-  // payload without `anchored` is wiped on the same sector:enter that materializes it.
+  // The Candle Fleet cache is a live cargo pod, not dressing: dressing cannot be roped.
+  // `anchored` preserves its custody when the player departs for another sector.
   // `persistent` stays false so residency despawn still removes it and the next materialization
   // places one pod again. A dead pod on this bag is not replaced until the bag itself is new.
   _spawnHeliosRopeCache(sector, active) {
