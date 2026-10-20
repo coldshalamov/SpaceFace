@@ -451,7 +451,8 @@ test('the stabilized hull owns a reachable runtime impact and recovery path', ()
   assert.ok(hull);
   assert.equal(hull.collides, false);
   const collisionEntities = [...state.entities.values()].filter(
-    (entity) => entity.alive !== false && entity.data?.role === 'world_site_collision',
+    (entity) => entity.alive !== false && entity.data?.role === 'world_site_collision'
+      && entity.data?.worldSiteId === SITE_ID,
   );
   assert.equal(collisionEntities.length, 7);
   assert.ok(collisionEntities.every((entity) => entity._noMesh === true));
