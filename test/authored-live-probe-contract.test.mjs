@@ -14,6 +14,7 @@ import {
   createAuthoredPresentationReader,
   createAuthoredGateEvidence,
   waitForAuthoredShips,
+  establishAuthoredShipCoverageView,
   inspectLegacyPackagePoolEligibility,
 } from '../scripts/probe-authored-assets-live.mjs';
 
@@ -664,4 +665,118 @@ test('gate evidence caps ship/state/job/text records and labels missing roots wi
   assert.equal(result.ships[0].exclusion, 'missing-root');
   assert.equal(result.ships[0].entityPose.x, null);
   assert.equal(JSON.stringify(scene), before);
+});
+
+
+function coverageInputFixture({ blocked = false, unsafe = false } = {}) {
+  const f = presentationFixture();
+  f.root.userData.authoredAssetState = unsafe ? 'loading' : 'authored';
+  f.scene.updateMatrixWorld(true);
+  const state = { mode: 'flight', tick: 424, playerId: 1, camera: { zoom: 144 },
+    entityList: [{ id: 1, type: 'ship', alive: true, mesh: f.root }],
+    render: { scene: f.scene, camera: f.camera } };
+  const events = [];
+  const cdp = { async send(method, parameters) {
+    events.push(method);
+    if (method === 'Input.dispatchMouseEvent') {
+      assert.deepEqual(parameters, { type: 'mouseWheel', x: 720, y: 450, deltaX: 0, deltaY: 120 });
+      if (!blocked) state.camera.zoom += Math.max(16, Math.round(state.camera.zoom * 0.08));
+      return {};
+    }
+    assert.equal(method, 'Runtime.evaluate');
+    const evaluate = new Function('window', 'loadProbeModule',
+      `return ${parameters.expression.replaceAll('import(', 'loadProbeModule(')}`);
+    return { result: { value: await evaluate({ SF: { state } }, async name => {
+      assert.equal(name, 'three'); return THREE;
+    }) } };
+  } };
+  return { state, events, cdp, captureDefaultView: async () => events.push('default-screenshot') };
+}
+
+test('coverage actor retains untouched default safety and screenshot before five public wheel inputs', async () => {
+  const f = coverageInputFixture();
+  const result = await establishAuthoredShipCoverageView(f.cdp, f);
+  assert.equal(result.defaultView.view.requestedZoom, 144);
+  assert.equal(result.requestedCoverageView.view.requestedZoom, 225);
+  assert.equal(result.acknowledgedWheelInputs, 5);
+  assert.equal(result.defaultViewIsThreeShipAcceptance, false);
+  assert.equal(result.coverage, 'expanded-public-wheel-ship-coverage');
+  assert.deepEqual(f.events, ['Runtime.evaluate', 'default-screenshot',
+    ...Array(5).fill('Input.dispatchMouseEvent'), 'Runtime.evaluate']);
+  f.state.render.camera.projectionMatrix.elements[0] = 999;
+  assert.notEqual(result.defaultView.view.projectionMatrix[0], 999, 'original camera observation is detached');
+  assert.equal(f.state.entityList.length, 1, 'actor never injects a population');
+});
+
+test('blocked wheel input fails setup while retaining original view, rather than assuming coverage zoom', async () => {
+  const f = coverageInputFixture({ blocked: true });
+  await assert.rejects(establishAuthoredShipCoverageView(f.cdp, f), error => {
+    assert.match(error.message, /actually establish/);
+    assert.equal(error.authoredShipCoverageView.defaultView.view.requestedZoom, 144);
+    assert.equal(error.authoredShipCoverageView.requestedCoverageView.view.requestedZoom, 144);
+    return true;
+  });
+});
+
+test('unsafe default view fails before screenshot or wheel input', async () => {
+  const f = coverageInputFixture({ unsafe: true });
+  await assert.rejects(establishAuthoredShipCoverageView(f.cdp, f), /must not present unauthored/);
+  assert.deepEqual(f.events, ['Runtime.evaluate']);
+});
+
+test('coverage setup consumes the original admission allowance without resetting the CDP deadline', async () => {
+  let now = 0;
+  const stages = [];
+  const cdp = { setStage: (...args) => stages.push(args), send() { assert.fail('no post-deadline page calls'); } };
+  await assert.rejects(waitForAuthoredShips(cdp, { now: () => now, admissionTimeoutMs: 100,
+    prepareCoverageView: async () => { now = 100; } }), error => {
+    assert.match(error.message, /original admission deadline/);
+    assert.equal(error.authoredShipDiagnostics.elapsedMs, 100);
+    assert.equal(error.authoredShipDiagnostics.operation, 'coverage-view-setup');
+    return true;
+  });
+  assert.deepEqual(stages, [['authored ship admission', 100]]);
+});
+
+test('coverage setup preserves original errors and reports explicitly different screenshot views', async () => {
+  const original = new Error('public input failed');
+  await assert.rejects(waitForAuthoredShips({ setStage() {} }, {
+    prepareCoverageView: async () => { throw original; },
+  }), error => error === original);
+  assert.match(source, /defaultViewScreenshot: artifactFileEvidence\(DEFAULT_SHOT\)/);
+  assert.match(source, /screenshotView: 'expanded-public-wheel-ship-coverage'/);
+  assert.match(source, /injectedState: true/);
+});
+
+
+test('hidden pending player retains first default snapshot and becomes ready before wheel input', async () => {
+  const f = coverageInputFixture({ unsafe: true });
+  const root = f.state.entityList[0].mesh;
+  root.visible = false;
+  let now = 0;
+  const result = await establishAuthoredShipCoverageView(f.cdp, { ...f, now: () => now,
+    deadlineMs: 100, sleep: async ms => {
+      assert.ok(!f.events.includes('Input.dispatchMouseEvent'));
+      now += ms; root.userData.authoredAssetState = 'authored'; root.visible = true;
+    } });
+  assert.equal(result.firstDefaultView.playerState, 'loading');
+  assert.equal(result.firstDefaultView.presentedShipCount, 0);
+  assert.equal(result.defaultView.playerState, 'authored');
+  assert.equal(result.acknowledgedWheelInputs, 5);
+  assert.equal(result.cameraConvergenceUnmeasured, true);
+});
+
+test('hidden pending player timeout preserves default evidence and never wheels', async () => {
+  const f = coverageInputFixture({ unsafe: true });
+  f.state.entityList[0].mesh.visible = false;
+  let now = 0;
+  await assert.rejects(establishAuthoredShipCoverageView(f.cdp, { ...f, now: () => now,
+    deadlineMs: 100, sleep: async ms => { now += ms; } }), error => {
+    assert.match(error.message, /original admission deadline/);
+    assert.equal(error.authoredShipCoverageView.firstDefaultView.playerState, 'loading');
+    return true;
+  });
+  assert.equal(now, 100);
+  assert.ok(!f.events.includes('Input.dispatchMouseEvent'));
+  assert.ok(!f.events.includes('default-screenshot'));
 });
