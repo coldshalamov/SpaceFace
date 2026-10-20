@@ -74,8 +74,13 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // driller POI moved west out of Belt Outpost's ambient-spawn protection bubble, so the authored
 // scavenger materializes — 44 entities { ship 5 → 6 } / 20 collidable / 378 colliders. Prior
 // digest 2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed.
+// Re-pinned 2026-10-19 (c8eec27a272, D226): the wreck-cathedral LOD1 re-author rebuilt the
+// release GLB, moving the embedded worldSite.releaseSha256 inside the digest. Entity/type
+// census, colliders, cathedral census and residency are unchanged — the standalone check
+// passes with only the digest moved. Prior digest
+// cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc';
+  'ef111a91e4f2aceb637f368104df3e90f1db8006af77ba6f54ff05f399e6dea7';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);

@@ -175,8 +175,14 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // hull's measured skin). Causality-proved by entity inspection: the sixth live ship is
 // data.ai.zoneId 'zone_ceres_derelict'. Prior digest was
 // 2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed.
+// 2026-10-19 (c8eec27a272, D226): the wreck-cathedral LOD1 re-author rebuilt the release GLB
+// (6de8743a… → 163ae512…), which moves the embedded worldSite.releaseSha256 inside the digest.
+// Entity/type census (44/20), colliders (378), cathedral census (15/15, 14 shelved), authored
+// counts, residency tier and presentation admission are all unchanged — verified against the
+// live receipt, which passes with only this digest moved. Prior digest was
+// cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc';
+  'ef111a91e4f2aceb637f368104df3e90f1db8006af77ba6f54ff05f399e6dea7';
 
 // PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
 // wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres
