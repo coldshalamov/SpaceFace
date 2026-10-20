@@ -76,6 +76,7 @@ import {
   orrinWitnessSource,
 } from '../data/orrinWitnessCase.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
+import { spawnRestoredCatalogStation } from '../save/catalogStationRestore.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
@@ -2521,7 +2522,11 @@ export const world = {
       const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
         ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
         : null;
-      const ent = this.helpers.spawnEntity({
+      // During Continue the envelope may carry earned station recoil/attachment state.
+      // Materialize that exact carrier at the catalog's normal slot, so its bag/anchors
+      // and the later persistent pass all refer to one body rather than a fresh twin.
+      const ent = spawnRestoredCatalogStation(this.state, this.helpers, st.id, sector.id, pos)
+        || this.helpers.spawnEntity({
         type: 'station', factionId: st.factionId || sector.factionId, pos,
         radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
         data: {
@@ -2549,7 +2554,7 @@ export const world = {
         },
       });
       this._stampHomeSector(ent, sector.id);
-      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: pos.x, z: pos.z } });
+      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: ent.pos.x, z: ent.pos.z } });
     });
   },
 

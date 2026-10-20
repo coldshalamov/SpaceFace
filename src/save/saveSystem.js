@@ -44,6 +44,10 @@ import { stampSlotCard, boundSlotThumbnail } from './slotStill.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
+  createCatalogStationRestore, restoredCatalogStation,
+  isRestoredCatalogStation, bindRestoredCatalogStation,
+} from './catalogStationRestore.js';
+import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
   completedEndingChoiceFromSaveData,
@@ -6546,6 +6550,7 @@ export const save = {
       }
     }
     state.restoreEnvelopeRecordIds = envelopeRecordIds.size ? envelopeRecordIds : null;
+    state.restoreEnvelopeStations = createCatalogStationRestore(savedPersistentList);
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
@@ -6572,6 +6577,7 @@ export const save = {
       // Record-id deferral is restore-scoped (cleared in _closeRestoreSession): a publish that
       // ran before the fault must not suppress record rematerialize for the rest of the run.
       delete state.restoreEnvelopeRecordIds;
+      delete state.restoreEnvelopeStations;
       let drainedRunTransition = null;
       if (pendingRunTransition) {
         try { drainedRunTransition = pendingRunTransition(); }
@@ -7207,6 +7213,7 @@ export const save = {
     // route republishes its own set in _openRestoreSession. Clearing must precede the error
     // paths or a failed restore would suppress record rematerialize for the rest of the run.
     delete state.restoreEnvelopeRecordIds;
+    delete state.restoreEnvelopeStations;
     this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
     this._lastAutosavePlaytime = state.meta.playtimeS;
     // Release this failed session's physics barrier before a newer queued route can
@@ -7871,6 +7878,7 @@ export const save = {
         const staleIds = [];
         for (const e of state.entityList) {
           if (!e || e.id === state.playerId || e.isPlayer) continue;
+          if (isRestoredCatalogStation(state, e)) continue;
           const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
           if (persistent) staleIds.push(e.id);
         }
@@ -7888,6 +7896,11 @@ export const save = {
       if (spawnIndex > startIndex && nowMs() - sliceStart >= RESTORE_YIELD_SLICE_MS) break;
       const saved = savedList[spawnIndex];
       if (!saved || typeof saved !== 'object') continue;
+      const restoredStation = restoredCatalogStation(state, saved);
+      if (restoredStation) {
+        if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), restoredStation.id);
+        continue;
+      }
       const spec = clonePlain(saved);
       delete spec._isPlayer;
       // One live hull per worldRecordId: an envelope written by a leaking build can hold
@@ -7936,6 +7949,7 @@ export const save = {
       delete spec.activity;
       const e = this.helpers.spawnEntity(spec);
       attachSavedActivity(e, savedActivity);
+      bindRestoredCatalogStation(state, saved, e);
       state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
       if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), e.id);
     }
@@ -8444,6 +8458,10 @@ function hasRestorablePlayer(data) {
 function normalizeRestorableData(data) {
   if (!data || typeof data !== 'object') return { ok: false, reason: 'no_data' };
   if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
+  // Contradictory copies of one authored station cannot choose a body by array order.
+  // Validate on the detached candidate, before restore events, transitions or rollback capture.
+  try { createCatalogStationRestore(data.entities?.persistent); }
+  catch (_) { return { ok: false, reason: 'ambiguous_catalog_station' }; }
   // Validate the new custody section on the detached candidate, before restore side effects.
   try {
     const orchard = readOrchardSaveSection(data.sites);

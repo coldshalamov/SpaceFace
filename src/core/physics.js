@@ -38,6 +38,7 @@ import {
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec, physicsBodyNativeReady } from './physicsAuthority.js';
 import { isAnchoredPhysicalBody, anchoredRecoilKey } from './physicalResponse.js';
+import { restoredCatalogStationAnchor } from '../save/catalogStationRestore.js';
 import { rapierRuntimeBlocked, rapierRuntimeBlockedRemainingMs } from './rapierCompatRuntime.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
 // perfRuntime (perfNow) rather than touching wall time from a simulation owner.
@@ -494,7 +495,7 @@ export const physics = {
     if(!current())return false;
     // Match the synchronous restore: recoil selects the body type and saved pose
     // before native adoption or fallback rebuild claims the regenerated entities.
-    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
+    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities, state);
     this._pendingAnchoredRecoil = null;
     if(!current())return false;
     const needsOrchardInputs=restoreContext!==null && orchardRestoreInputsRequired(state,entities);
@@ -557,7 +558,7 @@ export const physics = {
     if(!current())return false;
     // Recoil must be on the body spec before adoption claims handles or a rebuild picks
     // the kinematic body type; its rest pose is the regenerated spawn, not the saved pose.
-    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
+    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities, state);
     this._pendingAnchoredRecoil = null;
     if(!current())return false;
     const needsOrchardInputs=restoreContext!==null && orchardRestoreInputsRequired(state,entities);
@@ -1695,16 +1696,20 @@ function sanitizeAnchoredRecoil(rows) {
   return out.size ? out : null;
 }
 
-function applyAnchoredRecoil(rows, entities) {
+function applyAnchoredRecoil(rows, entities, state) {
   if (!rows || !entities) return;
   for (const entity of entities) {
     if (!entity || entity.alive === false || !entity.physicsBody || typeof entity.physicsBody !== 'object') continue;
     const key = anchoredRecoilKey(entity);
     const row = key && rows.get(key);
     if (!row) continue;
+    const catalogAnchor = state && restoredCatalogStationAnchor(state, entity);
     entity.physicsBody.anchorRecoil = {
       // Rest is the regenerated spawn pose — authored data may have moved since the save.
-      rest: { x: Number.isFinite(entity.pos?.x) ? entity.pos.x : 0, z: Number.isFinite(entity.pos?.z) ? entity.pos.z : 0 },
+      // A saved catalog carrier already has its recoiled pose, not that spawn pose.
+      // Its restore-scoped catalog anchor prevents accumulating the offset every Continue.
+      rest: catalogAnchor ? { ...catalogAnchor }
+        : { x: Number.isFinite(entity.pos?.x) ? entity.pos.x : 0, z: Number.isFinite(entity.pos?.z) ? entity.pos.z : 0 },
       x: row.x, z: row.z, vx: row.vx, vz: row.vz,
       settled: false,
     };
