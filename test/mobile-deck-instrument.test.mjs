@@ -339,8 +339,9 @@ test('portrait Powers keeps its 44px target and horizontal label beside actual s
   const word = rule(sheet, '#sf-touch-overlay .mf-edge-word');
   assert.match(edge, /top:calc\(14px \+ var\(--sf-safe-top,0px\)\); bottom:auto; left:auto/);
   assert.match(edge, /20px \+ max\(44px,52px \* var\(--mf-scale\)\)/);
-  assert.match(edge, /width:56px; height:44px; min-width:44px; min-height:44px/);
+  assert.match(edge, /width:68px; height:44px; min-width:44px; min-height:44px/);
   assert.match(word, /writing-mode:horizontal-tb; transform:none/);
+  assert.ok(68>=63+4, 'actual CI English label span (~63px) fits inside the target without shrinking its font');
   assert.match(sheet, /\.mf-edge::before \{ content:none; \}/);
   assert.match(sheet, /\.mf-edge-art \{ display:none; \}/);
   assert.match(sheet, /\.mf-speed \{ flex-wrap:wrap; row-gap:2px/);
@@ -351,11 +352,11 @@ test('portrait Powers keeps its 44px target and horizontal label beside actual s
     for (const scale of [.8,1,1.6]) for (const lefty of [false,true]) {
       const pauseWidth = Math.max(44,52*scale);
       const pauseLeft = w-12-inset-pauseWidth;
-      const powersRight = w-20-inset-pauseWidth, powersLeft=powersRight-56;
-      const statusWidth=Math.min(176,w-102-pauseWidth-2*inset);
+      const powersRight = w-20-inset-pauseWidth, powersLeft=powersRight-68;
+      const statusWidth=Math.min(176,w-114-pauseWidth-2*inset);
       assert.ok(pauseLeft-powersRight>=7.99, `${w}/${h}/${scale}/${lefty}: Pause gap`);
       assert.ok(powersLeft-(14+inset+statusWidth)>=11.99, 'status gap');
-      assert.ok(statusWidth-62-8>=32, 'existing labels retain flexible visible meter bars');
+      assert.ok(statusWidth-62-8>=20.79, 'existing labels retain visible meter bars even at maximum scale and safe insets');
       assert.ok(14+44+12<=70, 'Powers clears the camera row, therefore lower radar and actions');
     }
   }

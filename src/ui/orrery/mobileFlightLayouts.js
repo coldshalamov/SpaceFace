@@ -60,7 +60,7 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
   ${FLIGHT} #sf-touch-overlay .mf-edge {
     top:calc(14px + var(--sf-safe-top,0px)); bottom:auto; left:auto;
     right:calc(20px + max(44px,52px * var(--mf-scale)) + var(--sf-safe-right,0px));
-    width:56px; height:44px; min-width:44px; min-height:44px;
+    width:68px; height:44px; min-width:44px; min-height:44px;
     box-sizing:border-box; border-bottom:1px solid rgb(var(--mf-bone) / .36);
   }
   ${FLIGHT} #sf-touch-overlay .mf-edge::before { content:none; }
@@ -73,7 +73,7 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     border-bottom-color:var(--mf-hand);
   }
   ${FLIGHT} #sf-touch-overlay .mf-status {
-    width:min(176px,calc(100vw - 102px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+    width:min(176px,calc(100vw - 114px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
     min-width:0;
   }
   ${FLIGHT} #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
