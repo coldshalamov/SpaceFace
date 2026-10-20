@@ -73,6 +73,8 @@ function boot(seed = 47047, { forge = false, worldOwner = false } = {}) {
   ]) {
     sim.bus.on(name, (payload) => events.push({ name, payload: structuredClone(payload) }));
   }
+  // Focused owner/custody fixture, not native movement acceptance.
+  sim.state.settings.gameplay.physicsBackend = 'custom';
   sim.state.mode = 'flight';
   sim.state.world.currentSectorId = forge ? FORGE_SECTOR_ID : SECTOR_ID;
   if (forge) sim.state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, sector]));
@@ -176,7 +178,9 @@ function salvorJob(sim, salvor) {
 function completeWorkOnce(sim, salvor) {
   const job = salvorJob(sim, salvor);
   assert.ok(job, 'salvor has a live job');
-  // Snap to the work face so the test does not wait on transit geometry.
+  // Stage the owner contract at its actual work face; native travel is tested separately.
+  const target = sim.registry.get('traffic')._resolveSalvorTargetFromWaypoint(job.route[1].id, job.payload);
+  if (target) { salvor.pos = { x: target.pos.x - 20, z: target.pos.z }; salvor.vel = { ...target.vel }; }
   job.phase = NPC_JOB_PHASE.WORK;
   job.routeIndex = 1;
   job.progress = 0.99;
@@ -239,7 +243,8 @@ test('real Vesta salvor unload reaches Forge once, retries safely, and survives 
     const electronicsBefore = market.cmdty_salvage_electronics.stock;
     const offerBefore = econ.quote(FORGE_ID, SCRAP_ID, 'sell', 3);
 
-    // The real cyclic route reaches the real Forge economy consumer.
+    // Stage physical arrival at the real Forge economy consumer.
+    salvor.pos = { x: yard.pos.x + 60, z: yard.pos.z }; salvor.vel = { x: 0, z: 0 };
     job.phase = NPC_JOB_PHASE.UNLOAD;
     job.routeIndex = 0;
     job.progress = 0.99;
@@ -304,6 +309,7 @@ test('real Vesta salvor unload reaches Forge once, retries safely, and survives 
       cmdty_salvage_electronics: 1,
     });
     trafficSys._setTrafficManifest(salvor, rec, rejected);
+    sim.spawn({ type: 'station', pos: { ...yard.pos }, radius: 40, data: { stationId: 'station_depot3' } });
     const rejectedIntent = {
       ...replayIntent,
       destination: 'yard:station_depot3',
@@ -364,7 +370,7 @@ test('real Vesta salvor unload reaches Forge once, retries safely, and survives 
 });
 
 test('missing intake consumer retains the exact salvor manifest', () => {
-  const { sim, events, trafficSys, dispose } = boot(105);
+  const { sim, events, trafficSys, yard, dispose } = boot(105);
   try {
     const wreck = spawnWreck(sim, { pool: { [SCRAP_ID]: 4 } });
     forceNoticeReady(wreck, 0);
@@ -373,6 +379,7 @@ test('missing intake consumer retains the exact salvor manifest', () => {
     const carried = completeWorkOnce(sim, salvor);
     const rec = sim.state.traffic.freighters.find((row) => row && row.id === salvor.id);
     assert.ok(carried && carried.totalQty === 4);
+    salvor.pos = { x: yard.pos.x + 60, z: yard.pos.z }; salvor.vel = { x: 0, z: 0 };
 
     assert.equal(trafficSys._onNpcJobUnload({
       jobId: salvor.data.jobId,
