@@ -12,8 +12,6 @@ export const PALLAS_HANDOFF_ORDER = Object.freeze([
 const LEGS_WU = Object.freeze([720, 860, 640, 540]);
 const SPEED_WU_PER_S = 36;
 const SLOT_IDS = Object.freeze([
-  'pallas_seam_miner',
-  'pallas_seam_surveyor',
   'pallas_hub_hauler',
   'pallas_hub_tender',
   'pallas_ambush_hauler',

@@ -1,3 +1,4 @@
+import { pallasSeamInfoLine } from '../data/pallasSeamWork.js';
 import { targetFrameHtml } from './views/targetFrame.js';
 // Target panel (ARCHITECTURE §5, spec "Target panel") — the selected-target readout above
 // the radar. Populated from state.player.targetId → entity lookup. Shows name, faction tag,
@@ -545,6 +546,8 @@ function orchardSocketInfoLine(target, state) {
 }
 
 export function objectInfoLine(t, state, p, dist) {
+  const pallasSeam = pallasSeamInfoLine(t, state);
+  if (pallasSeam !== null) return pallasSeam;
   if (t.type === 'ship' || t.type === 'drone') return presentationStatusWord(t) || '';
   if (t.type === 'station') {
     const services = stationContactServices(t.data && t.data.stationId);
