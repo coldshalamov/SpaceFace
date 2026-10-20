@@ -106,3 +106,43 @@ test('native custody rejects scalar spoofing, displaced bodies and invalid nativ
     workerBody.setTranslation(workerPos, true);
   } finally { h.close(); }
 });
+
+test('disabled native work bodies cannot extract, while enabled sleeping bodies may settle', { timeout: 120_000 }, async () => {
+  for (const disabled of ['source', 'worker', null]) {
+    const h = await salvorNativeFixture();
+    try {
+      let cutter = null, entry = null;
+      for (let i = 0; i < 140 * 60; i++) {
+        h.step(); cutter = h.cutter();
+        entry = cutter && h.sim.helpers.npcJobs.get(cutter.data.jobId);
+        if (entry?.job.phase === 'work'
+          && h.sim.registry.get('traffic')._salvorAtTarget(cutter, h.wreck)) break;
+      }
+      assert.equal(entry?.job.phase, 'work', 'the real route reaches its workpiece before the intervention');
+      assert.equal(h.sim.registry.get('traffic')._salvorAtTarget(cutter, h.wreck), true);
+      const workerBody = h.physics._sg02.records.get(cutter.id).body;
+      const sourceBody = h.physics._sg02.records.get(h.wreck.id).body;
+      if (disabled) (disabled === 'source' ? sourceBody : workerBody).setEnabled(false);
+      else {
+        sourceBody.sleep(); workerBody.sleep();
+        assert.equal(sourceBody.isEnabled(), true);
+        assert.equal(workerBody.isEnabled(), true);
+        assert.equal(sourceBody.isSleeping(), true);
+        assert.equal(workerBody.isSleeping(), true);
+      }
+      entry.job.phase = 'work'; entry.job.routeIndex = 1; entry.job.progress = .99; entry.job.workS = 1;
+      h.step(2);
+      if (disabled) {
+        assert.equal((disabled === 'source' ? sourceBody : workerBody).isEnabled(), false);
+        assert.equal(entry.job.progress, .99, `${disabled} disablement must suspend actual job advancement`);
+        assert.equal(h.events.extraction.length, 0);
+        assert.equal(h.wreck.data.salvagePool.cmdty_scrap_metal, 5);
+        assert.equal(cutter.data.cargoManifest.totalQty, 0);
+      } else {
+        assert.equal(h.events.extraction.length, 1, 'sleeping is not disabled or missing native authority');
+        assert.equal(cutter.data.cargoManifest.totalQty, 7);
+        assert.deepEqual(h.wreck.data.salvagePool, {});
+      }
+    } finally { h.close(); }
+  }
+});

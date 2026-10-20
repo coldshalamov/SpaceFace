@@ -198,3 +198,53 @@ test('a lost cutter releases its reservation on a still-shelved ordinary source'
   assert.equal(row.data.salvorClaimedBy, undefined);
   assert.equal(promote(h, row).data.salvagePool.cmdty_scrap_metal, 5);
 });
+
+test('dispatch paperwork does not require a new cutter to dock before pursuing its source', t => {
+  const h = fixture(t);
+  h.cutter.pos = { x: h.yard.pos.x + 500, z: h.yard.pos.z };
+  h.entry.job.phase = P.COMMISSION; h.entry.job.routeIndex = 0; h.entry.job.progress = 0;
+  assert.equal(h.sys._salvorWorkTarget(h.entry, h.cutter), null);
+  h.tickJobs();
+  assert.ok(h.entry.job.progress > 0, 'the ordinary commission clock runs outside the yard envelope');
+  assert.equal(h.events.length, 0);
+  assert.equal(h.wreck.data.salvagePool.cmdty_scrap_metal, 5);
+  h.entry.job.phase = P.WORK; h.entry.job.routeIndex = 1; h.entry.job.progress = .99;
+  h.tickJobs();
+  assert.equal(h.entry.job.progress, .99, 'the subsequent cut still waits for physical source arrival');
+  h.entry.job.phase = P.UNLOAD; h.entry.job.routeIndex = 0; h.entry.job.progress = .99;
+  h.tickJobs();
+  assert.equal(h.entry.job.progress, .99, 'yard delivery remains physically gated');
+});
+
+test('general maintenance cannot rewrite an authored salvor shift or reserve its nearby wreck', t => {
+  for (const hasWreck of [false, true]) {
+    const sim = createSimulation({ seed: 4242, systems: [npcJobsRuntime, traffic],
+      updateOrder: [npcJobsRuntime, traffic] });
+    t.after(() => sim.dispose());
+    const s = sim.state; s.mode = 'flight'; s.settings.gameplay.physicsBackend = 'custom';
+    s.world.currentSectorId = 'sector_helios_prime';
+    const actor = sim.spawn({ type: 'ship', pos: { x: 682, z: -234 }, hull: 100, radius: 12,
+      data: { worldRecordId: 'authored:fence', trafficRole: 'salvor', activityActorSlotId: 'helios_seam_fence' } });
+    const rec = { id: actor.id, role: 'salvor', worldRecordId: actor.data.worldRecordId };
+    s.traffic.freighters.push(rec);
+    const jobId = sim.helpers.npcJobs.assign(actor, { kind: 'salvor', sectorId: s.world.currentSectorId,
+      route: [
+        { id: 'helios_fence_shadow', pos: { x: 609, z: -220 }, targetRef: 'actor:helios_seam_miner' },
+        { id: 'helios_fence_offload', pos: { x: 796, z: -350 }, targetRef: 'dest:station_helios' },
+      ] });
+    assert.ok(jobId);
+    const entry = sim.helpers.npcJobs.get(jobId);
+    if (hasWreck) { entry.job.phase = P.WORK; entry.job.progress = .4; }
+    const before = structuredClone(entry.job);
+    const wreck = hasWreck && sim.spawn({ type: 'wreck', pos: { x: 700, z: -230 }, radius: 8,
+      data: { salvagePool: { cmdty_scrap_metal: 5 }, salvorNoticeAt: 0 } });
+    sim.registry.get('traffic')._maintainGeneralSalvorJobs();
+    assert.deepEqual(entry.job, before, 'the authored route, payload and work progress retain their owner');
+    assert.equal(actor.data.generalSalvor, undefined);
+    assert.equal(rec.generalSalvor, undefined);
+    if (wreck) {
+      assert.equal(wreck.data.salvorClaimedBy, undefined);
+      assert.equal(wreck.data.salvorTargetKey, undefined);
+    }
+  }
+});

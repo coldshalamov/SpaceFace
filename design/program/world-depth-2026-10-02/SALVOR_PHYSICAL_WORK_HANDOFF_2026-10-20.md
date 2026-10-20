@@ -8,7 +8,7 @@ and obtain the existing economy owner's acknowledgement before clearing the hold
 existing Towline/working-aftermath occupation, not a new mission, economy, queue or asset family.
 The live Vesta producer uses the public Ironback/PulsePlate hull for this role. No model was edited.
 
-Implemented locally; **not browser/gameplay accepted, merged, deployed, or published by this unit**.
+Implemented and published as draft PR #461; **not browser/gameplay accepted, merged, or deployed**.
 The original and expanded world program remains open. Root owns source-only public proposal/CI.
 
 ## Causal reproductions before changes
@@ -54,7 +54,8 @@ early closing-speed taper, never its BRAKE/flip-burn command for a denied worksi
 
 ## Evidence and tests
 
-- Final wired `npm run check:sim:salvor-work`: **37/37 pass**. The actual CI dispatcher
+- Initial wired `npm run check:sim:salvor-work`: **37/37 pass**, also explicitly executed by
+  GitHub CI on public head `099b40b2`. The actual CI dispatcher
   `node scripts/check-ci-report.mjs --list-groups` places it in the existing sim group.
 
 - New physical owner tests: moving source, unsafe relative drift, controller interruption,
@@ -82,6 +83,29 @@ early closing-speed taper, never its BRAKE/flip-burn command for a denied worksi
 - Public prerequisite `assets/ships/motions/salvage-cutter.motion.json` was absent from this sparse
   working tree. Materialized exact origin/master blob f3155f74e8e7da494137fa5d0bbfcce4c77662b8;
   ANI09 then passed 3/3. This is not a new or modified asset.
+
+### Post-publication causal repair
+
+The first public run exposed an attributable B10 spilled-cargo regression despite the focused
+37-case gate passing: exact public base `a8a9500` reached cargo at 9 seconds; `099b40b2` exceeded
+30 seconds. Native tracing showed new cutters spending 8–14 seconds returning to settle at their
+yard during COMMISSION. Commission is dispatch paperwork, not a delivery. Exempting only that
+phase from physical arrival restores the unchanged production clause at 13.3 seconds. Native
+cutting and yard delivery retain their gates. The full unchanged B10 suite passes 3/3, including
+deterministic replay.
+
+Review also caught generic maintenance rewriting an authored Helios fence route and, separately,
+acceptance of an explicitly disabled native body. Maintenance now leaves `activityActorSlotId`
+jobs to their authored owner; native admission rejects `isEnabled() === false` without rejecting
+enabled sleeping bodies. No ordinary salvor lifecycle path was shown to disable a body naturally:
+the disabled-body test is an adversarial native-authority guard, not a claim about normal residency.
+
+Three additional regression cases cover commission versus WORK/UNLOAD, authored route/claim
+preservation with and without nearby salvage, and disabled-source/disabled-worker versus enabled
+sleeping controls after genuine native arrival. The expanded gate passes **40/40** on the exact
+public repair source. Existing native route timings above are unchanged.
+First-head CI failures and repair evidence remain recorded; no assertion, timeout, budget,
+workflow or security setting was relaxed.
 
 Local logs/reproductions are under ignored `scratch/salvor-physical-work-20261020/`. Independent
 review evidence is in the sibling `salvor-physical-independent-review-20261020/` directory.

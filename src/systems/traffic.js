@@ -7977,6 +7977,7 @@ export const traffic = {
       || this.state.tick - owner._simTick > 2
       || (record.spec.dynamic !== false && record._postStepReadTick !== owner.tick)) return null;
     try {
+      if (record.body.isEnabled() === false) return null;
       const pos = record.body.translation(), vel = record.body.linvel();
       const rotation = record.body.rotation(), angular = record.body.angvel();
       const origin = owner._frameOrigin || { x: 0, z: 0 };
@@ -8016,6 +8017,10 @@ export const traffic = {
     const context = this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
     if (!context || context.entity !== entity || entry.entityId !== entity.id
       || this.helpers.npcJobs?.get(job.id) !== entry) return { blocked: true };
+    // Commission is the yard's dispatch paperwork, not a delivery manoeuvre. The cutter
+    // already spawned near the yard; forcing it back to the berth delays urgent spill work.
+    // Source work and the loaded return still require the native arrival gates below.
+    if (job.phase === NPC_JOB_PHASE.COMMISSION) return null;
     if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
     const stationId = job.route[0].id.slice(5);
     const home = this._sectorStations().find(station => stationIdentity(station) === stationId);
@@ -8639,7 +8644,8 @@ export const traffic = {
     for (const rec of this.state.traffic.freighters || []) {
       if (!rec || rec.role !== 'salvor') continue;
       const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
-      if (!ent || !ent.data || !ent.data.jobId || ent.data.ceresActivityCast === true) continue;
+      if (!ent || !ent.data || !ent.data.jobId || ent.data.ceresActivityCast === true
+        || ent.data.activityActorSlotId) continue;
       const entry = getJob(ent.data.jobId);
       const job = entry && entry.job;
       if (!job || job.kind !== 'salvor' || job.corrupt) continue;
