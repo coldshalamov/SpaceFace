@@ -1,3 +1,5 @@
+import { releaseTallyPause, tallyPassageTarget, isTallyPassageJob } from './tethysTallyPassage.js';
+import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTallyPassage.js';
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
@@ -2284,7 +2286,19 @@ export const traffic = {
 
     // Continuous or after adopt: only top-up toward the target count.
     const already = (this.state.traffic.freighters || []).length;
-    const need = Math.max(0, count - already);
+    // Authored pocket shifts are protected owners, not reusable ambient courier slots.
+    // Admit at most one missing priority service alongside a full authored cast; never
+    // replace a resident, and count shelved services before permitting this exception.
+    const roster = this.state.traffic.freighters || [];
+    const priorityMissing = priorityCourierServiceForSector(sectorId)
+      && roster.some(row => row.authoredActivityCast)
+      && !roster.some(row => this._isPriorityCourierServiceCandidate(row, liveEntity(this.state, row.id)))
+      && !roster.some(row => isPriorityCourierItinerary(liveEntity(this.state, row.id)?.data?.itinerary))
+      && ![...(this.state.world?.farActors?.byId?.values?.() || [])]
+        .some(row => isPriorityCourierItinerary(row.data?.itinerary || row.route))
+      && !Object.values(this.state.world?.records?.byId || {})
+        .some(row => isPriorityCourierItinerary(row.itinerary));
+    const need = Math.max(priorityMissing ? 1 : 0, count - already);
       if (need <= 0) {
         this._ensurePriorityCourierService(sectorId, stations);
         this._ensurePassengerLinerService(sectorId, stations);
@@ -2296,7 +2310,7 @@ export const traffic = {
 
     const roleWeights = trafficRoleMixForSector(sector, this.state);
     const roles = [];
-    for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
+    for (let i = 0; i < need; i++) roles.push(i === 0 && priorityMissing ? 'courier' : pickRole(roleWeights, () => this._rng()));
     // Courier reservation runs on the drawn roles before service guarantees: an appended service
     // hull is not a civilian slot the courier may rewrite, and service placement leaves the
     // reserved courier alone.
@@ -3780,6 +3794,8 @@ export const traffic = {
       const origin = this._stationForPriorityCourier(stations, priorityItinerary.originStationId);
       const destination = this._stationForPriorityCourier(stations, priorityItinerary.destinationStationId);
       if (!origin || !origin.pos || !destination || !destination.pos) return null;
+      const useTallyRoute = priorityItinerary.countRouteId === TETHYS_TALLY.id
+        && priorityItinerary.destinationStationId === TETHYS_TALLY.customsId;
       const manifest = ent && ent.data && ent.data.cargoManifest;
       if (!manifest || !Array.isArray(manifest.lines)) return null;
       return {
@@ -3788,6 +3804,7 @@ export const traffic = {
         speed: PRIORITY_COURIER_SERVICE.sprintSpeedWU,
         route: [
           { id: 'origin:' + stationIdentity(origin), pos: { x: origin.pos.x, z: origin.pos.z }, label: `${stationName(origin, 'Origin')} Berth` },
+          ...(useTallyRoute ? tallyMarks() : []),
           { id: 'dest:' + stationIdentity(destination), pos: { x: destination.pos.x, z: destination.pos.z }, label: `${stationName(destination, 'Destination')} Gate` },
         ],
         payload: {
@@ -3796,6 +3813,7 @@ export const traffic = {
             schema: PRIORITY_COURIER_JOB_SCHEMA,
             serviceId: PRIORITY_COURIER_SERVICE.id,
             legSeq: priorityItinerary.legSeq,
+            ...(useTallyRoute ? { tallyPassage: TETHYS_TALLY.id } : {}),
           },
         },
       };
@@ -3965,8 +3983,10 @@ export const traffic = {
     // its physical transit. Keep that observable work in the saved deadline rather than pretending
     // a boost removes dock work.
     const jobOverheadS = 2 + 8 + 3 + 4 + 6;
-    return departureAt + distance / PRIORITY_COURIER_SERVICE.sprintSpeedWU
-      + jobOverheadS + PRIORITY_COURIER_SERVICE.dueSlackS;
+    const travelS = destinationStationId === TETHYS_TALLY.customsId
+      ? tallyRouteDuration(origin.pos, destination.pos, PRIORITY_COURIER_SERVICE.sprintSpeedWU)
+      : distance / PRIORITY_COURIER_SERVICE.sprintSpeedWU;
+    return departureAt + travelS + jobOverheadS + PRIORITY_COURIER_SERVICE.dueSlackS;
   },
 
   _newPriorityCourierItinerary(stations, originStationId, destinationStationId, legSeq = 0) {
@@ -3977,6 +3997,7 @@ export const traffic = {
     return {
       kind: PRIORITY_COURIER_ITINERARY_KIND,
       schema: PRIORITY_COURIER_SERVICE_SCHEMA,
+      ...(destinationStationId === TETHYS_TALLY.customsId ? { countRouteId: TETHYS_TALLY.id } : {}),
       serviceId: PRIORITY_COURIER_SERVICE.id,
       contactId: PRIORITY_COURIER_SERVICE.contactId,
       sectorId: PRIORITY_COURIER_SERVICE.sectorId,
@@ -4003,6 +4024,9 @@ export const traffic = {
   _priorityCourierStatus(entity, itinerary, jobEntry = null) {
     const job = jobEntry && jobEntry.job;
     if (job && (job.phase === NPC_JOB_PHASE.FLEE || jobEntry.control)) return 'INTERRUPTED';
+    const passage = itinerary?.tallyPassage;
+    if (passage?.id === TETHYS_TALLY.id && passage.legSeq === itinerary.legSeq
+      && ['obstructed', 'unobserved'].includes(passage.reason)) return 'COUNT_HOLD';
     const escort = itinerary && itinerary.escort || {};
     const creditS = Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
     const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
@@ -4016,13 +4040,14 @@ export const traffic = {
     const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
     const destination = this._stationForPriorityCourier(stations, itinerary.destinationStationId);
     const route = `${stationName(origin, itinerary.originStationId)} → ${stationName(destination, itinerary.destinationStationId)}`;
-    const stateLabel = status === 'BERTH' ? 'BERTHED'
+    const countRoute = itinerary.countRouteId === TETHYS_TALLY.id;
+    const stateLabel = status === 'COUNT_HOLD' ? 'COUNT LANE HOLD' : status === 'BERTH' ? 'BERTHED'
       : status === 'INTERRUPTED' ? 'INTERRUPTED'
-      : status === 'LATE' ? 'LATE SPRINT'
-      : 'PRIORITY SPRINT';
+      : status === 'LATE' ? (countRoute ? 'LATE CUSTOMS RUN' : 'LATE SPRINT')
+      : countRoute ? 'CUSTOMS RUN' : 'PRIORITY SPRINT';
     entity.data.priorityCourierState = status;
     entity.data.trafficLabel = `SPAN-HOLD · ${stateLabel} · ${route}`;
-    entity.data.scanLabel = `${entity.data.trafficLabel} · OVERTAKE BURN`;
+    entity.data.scanLabel = `${entity.data.trafficLabel} · ${status === 'COUNT_HOLD' ? 'DISPUTED KEG · TITLE UNCHANGED' : countRoute ? 'SCAN AND COUNT ROUTE' : 'OVERTAKE BURN'}`;
     rec.itinerary = itinerary;
     return status;
   },
@@ -4203,11 +4228,17 @@ export const traffic = {
   },
 
   _advancePriorityCourierLeg(entity, rec, stations, itinerary) {
+    releaseTallyPause(this, entity);
     const nextOrigin = itinerary.destinationStationId;
     const nextDestination = itinerary.originStationId;
     const nextLegSeq = itinerary.legSeq + 1;
     const next = this._newPriorityCourierItinerary(stations, nextOrigin, nextDestination, nextLegSeq);
     if (!next) return false;
+    const passage = itinerary.tallyPassage;
+    if (passage?.id === TETHYS_TALLY.id) next.previousTallyPassage = {
+      legSeq: itinerary.legSeq, reason: passage.reason,
+      delayS: Number.isFinite(passage.heldS) ? Math.max(0, passage.heldS) : 0,
+    };
     entity.data.itinerary = next;
     const origin = this._stationForPriorityCourier(stations, nextOrigin);
     rec.targetId = origin ? origin.id : rec.targetId;
@@ -13004,6 +13035,12 @@ export const traffic = {
         || marker.serviceId !== PRIORITY_COURIER_SERVICE.id
         || marker.legSeq !== priorityItinerary.legSeq
         || stationId !== priorityItinerary.destinationStationId) return false;
+      const entry = this._priorityCourierJobEntry(context.entity);
+      if (isTallyPassageJob(entry?.job)) {
+        const target = tallyPassageTarget(this, entry, context.entity);
+        if (entry.job.phase !== NPC_JOB_PHASE.UNLOAD || entry.job.routeIndex !== 4
+          || !target?.reached || target.blocked || !Number.isFinite(priorityItinerary.tallyPassage?.passedAt)) return false;
+      }
     }
 
     const manifest = intent.kind === 'hauler' && intent.payload && intent.payload.manifest;

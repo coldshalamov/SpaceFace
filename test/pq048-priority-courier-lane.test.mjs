@@ -171,18 +171,25 @@ test('Kess runs one saved Tethys-to-Customs priority leg with a real sprint, rec
     schema: 'spaceface.priority-courier-job.v1',
     serviceId: 'priority-kess-span',
     legSeq: 0,
+    tallyPassage: 'tethys:tally-passage:v1',
   });
   assert.deepEqual(job.payload.manifest, entity.data.cargoManifest,
     'the scheduled job carries the visible courier manifest');
 
   const runtime = Object.create(npcJobsRuntime);
   runtime.state = h.state;
-  runtime._drive({ job }, entity);
+  runtime.helpers = {};
+  // Legacy saved direct legs retain their existing sprint driver; new count legs have
+  // native arrival gates covered by tethys-tally-passage, not this synthetic runtime.
+  const legacyJob = { ...job, payload: { ...job.payload, priorityCourierService: { ...job.payload.priorityCourierService } } };
+  delete legacyJob.payload.priorityCourierService.tallyPassage;
+  legacyJob.route = [job.route[0], job.route.at(-1)];
+  runtime._drive({ job: legacyJob }, entity);
   assert.equal(entity.data.intent.boost, true, 'the active priority leg uses the physical V3 boost intent');
-  assert.match(entity.data.scanLabel, /OVERTAKE BURN/i);
+  assert.match(entity.data.scanLabel, /SCAN AND COUNT ROUTE/i);
 
-  job.progress = 0.99;
-  runtime._drive({ job }, entity);
+  legacyJob.progress = 0.99;
+  runtime._drive({ job: legacyJob }, entity);
   assert.equal(entity.data.intent.brake, true, 'the sprint still brakes for its terminal approach');
   assert.equal(entity.data.intent.boost, false, 'the courier does not boost through its berth');
   job.progress = 0.25;
@@ -198,6 +205,7 @@ test('Kess runs one saved Tethys-to-Customs priority leg with a real sprint, rec
   assert.equal(itinerary.escort.creditS, PRIORITY_COURIER_SERVICE.escort.recoveryCreditS);
   assert.equal(entity.data.priorityCourierState, 'ON_TIME', 'the one escort credit can recover the late leg');
 
+  delete job.payload.priorityCourierService.tallyPassage; // pre-count-route saved job compatibility
   const unload = {
     jobId: entity.data.jobId,
     kind: 'hauler',
