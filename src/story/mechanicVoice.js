@@ -99,6 +99,26 @@ function leftoverCleanPlateLine(hull, name, rapFollows) {
     : `${name || 'This hull'}. Clean plate. Nothing on this hull to file.`);
 }
 
+/**
+ * RC-29 (row 465): the flying hull's current points. A plate with no scar on file can still be
+ * dented, and "Clean plate" over 86 of 100 is the mechanic contradicting the HUD. Returns null
+ * when there is no live player entity (berth fixtures, saves read off the route).
+ */
+function playerHullPoints(state) {
+  const ents = state && state.entities;
+  const ship = ents && typeof ents.get === 'function' && state.playerId != null ? ents.get(state.playerId) : null;
+  const max = Number(ship && ship.hullMax) || 0;
+  if (!(max > 0)) return null;
+  const hull = Math.max(0, Number(ship.hull) || 0);
+  // Compare the raw points (99.6 of 100 is still dented); round only what is spoken, and floor the
+  // current value so a dented plate never reads "100 of 100".
+  return { dented: hull < max, hull: Math.floor(hull), max: Math.round(max) };
+}
+
+function leftoverDentedPlateLine(name, points) {
+  return leftoverLine(`${name || 'This hull'}. No scar on file, but the plating reads ${points.hull} of ${points.max}. The yard can close that.`);
+}
+
 function leftoverCapitalised(text) {
   return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : '';
 }
@@ -167,7 +187,10 @@ export function leftoverMechanicLines(state) {
     if (repair) lines.push(repair);
     const rap = leftoverRapLine(state, hull);
     if (!classes.length) {
-      const clean = leftoverCleanPlateLine(hull, name, !!rap);
+      const points = playerHullPoints(state);
+      const clean = points && points.dented
+        ? leftoverDentedPlateLine(name, points)
+        : leftoverCleanPlateLine(hull, name, !!rap);
       if (clean) lines.push(clean);
     }
     if (rap) lines.push(rap);
