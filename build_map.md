@@ -19,7 +19,10 @@ finish lanes, with Sol research, Luna repairs, cloud PR integration and full-mat
 
 The 2026-10-19 studio audit — verdict, consolidation into parallel pods, and the A-list expansion
 campaigns — is [§31](#31-the-a-list-finish--studio-audit-consolidation-and-expansion-2026-10-19);
-its dispatchable rows are §1C §N (rows 390–443) on the seams added that day.
+its dispatchable rows are §1C §N (rows 390–481) on the seams added that day. The director's vision,
+the Bronze/Silver/Gold ladder, the whole-game report card and the self-refilling plan engine are
+[§32](#32-the-gold-game--the-directors-vision-and-the-engine-that-keeps-the-plan-full-2026-10-19)
+([`PLAN_ENGINE.md`](design/program/PLAN_ENGINE.md), [`REPORT_CARD.md`](design/program/REPORT_CARD.md)).
 
 Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
 
@@ -574,10 +577,10 @@ finished plan — the board is finished only when every number in this table is 
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D188, D191, D199, D225, D198, D130, D227, D231 — plus standing import guard D175 and watch-only D229 (D226 landed c8eec27a272 2026-10-19; live count: `program-dispatch --status`) |
 | Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
-| Numbered board rows (§A–§N tables below) | **57 open** — §N rows 390–443 (the 2026-10-19 A-list audit: 42 BUILD, 2 ART, 1 FIX, 8 SEED; §31); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
+| Numbered board rows (§A–§N tables below) | **95 open** — §N rows 390–481 (the 2026-10-19 A-list audit, vision and report card: 77 BUILD, 2 ART, 5 FIX, 8 SEED; §31, §32); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
-| Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6); every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
+| Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6) and section REPORT CARD (RC-01…50, the audited small parts of rows 456–481, §32.7) — 105 OPEN in all; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
 
 ### Seams — what is free, and what another agent has
@@ -613,7 +616,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | save | done (devin-oct2-batch) | save system | - |
 | economy | done (devin-sweep-oct2) | economy, contracts, station services | - |
 | effects | done | vfx, profiles, cues | - |
-| swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 270, 271, 272, 273 |
+| swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 456, 270, 453, 481, 271, 272, 273 |
 | fight | done | enemies, bombs, countermeasures, squads | - |
 | fields | done | fields | - |
 | law | done (devin-oct2-batch) | law, claims, custody consequences | - |
@@ -637,26 +640,45 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | admit-content | done (claude-oct17) | admit mission briefs M01–M36, model briefs A01–A36, and the Depth roll-up — mints rows for missions/models/depth | - |
 | rope-world | free | `tetherGameplay.js` obstruction/wrap seam, `combat/attachments.js`, `world/asteroidField.js`, `masslineThrow.js`, `combat/masslineTargetScoring.js`, cable render, `cameraDirector.js` throw framing (§31 THE HAND) | 390 |
 | hostile-hands | free | `src/ai/` doctrine/maneuver/reflexes/fireDiscipline/temperament/squad, `aiPorts.js`, `engagementAuthority.js`, `combat/damage.js` friendly-fire flag, weapons splash path, `lawSecurity.js` retaliation, `collisionConsequences.js`, capacitor in `combat.js` (§31 THE FIGHT) | 391, 392, 393 |
-| racing | free | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395 |
+| racing | free | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395, 472 |
 | world-answers-2 | free | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | 396, 397, 398, 426 |
 | run-memory | free | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
-| hull-commit | free | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401 |
-| works | free | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 403 |
-| chain-ear | free | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | 404, 405 |
+| hull-commit | free | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401, 469 |
+| works | free | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 466, 403 |
+| chain-ear | free | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | 404, 405, 470 |
 | theater | free | `killReplay.js`, `sim/killcamTape.js`, `killcamStage.js`, `presentation/momentMachine/`, `flightFootage.js`, `footageVideoCodec.js`, `clipExport.js`, `replay.js`, `clips.js`, `gameOver.js`; the master-bus tap hunk of `audioSystem.js` serial with `chain-ear` (§31 THE SHOW) | 406, 407 |
 | front-door | free | `src/sim/titleAttract*.js`, `render/titleAttractStage.js`, `scripts/bake-title-attract.mjs` (§31 THE SHOW) | 408 |
 | sentences | free | `ui/captions.js`, `masslineInstrument.js` captions, `src/localization/` overlays and glossary, `settings.js` game speed, `core/timeEffects.js` (§31 THE SHOW) | 409, 410 |
 | rumor-chart | free | `data/frontierRumors.js`, `ui/sim/discoveryKnowledge.js`, `pirateRumor.js`, chart rumor layer (§31 THE SHOW) | 411 |
 | monoliths | free | `render/renderer.js`, `systems/missions.js`, `systems/traffic.js` — behaviour-preserving splits, one file at a time, only while no claimed seam lists the file (§31 THE MACHINE) | 412, 413 |
 | toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
-| rope-scale | free | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423 |
-| hull-ghost | free | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425 |
+| rope-scale | free | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423, 444 |
+| hull-ghost | free | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425, 460 |
 | first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 443, 427, 428 |
-| stranger-hud | free | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 431 |
+| stranger-hud | free | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457, 458, 431 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
 | pulse-voice | free | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
 | pulse-print | free | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
 | pulse-world | free | far-plane depth layers and far-actor feed, station shift/calendar data, `050-roaming-events.js` + event runtimes, memorial/graffiti-about-you, hull trinkets via `livingHull` presentation — coordinate with L-PICTURE on render layers (§31.6) | 438, 439, 440, 441 |
+| vignettes | free | `scripts/build-lived-vignettes.mjs` and the generated lived-vignette encounter files, `vignetteInterpreter.js`, `livedWorldDirector.js` (§32.7) | 459 |
+| docket | free | `lossInvestigation.js`, `data/wreckCourt/`, `wreckCourt.js` offers, `custodyConsequences.js`, witness/sweep/sponsor hunks of `lawSecurity.js`/`heat.js`/`bountyHunt.js` (serial with `rope-scale` on customs), inspector career branch (§32.4, §32.7) | 461, 462, 452 |
+| boss-read | free | `capitalBossPresentation.js`, boss-warning adapter, the Swarm-only boss-bar gate in `swarmJuice.js` (serial with `swarm`), `ai/counterplay/adventure.js` toast, act retry hunk of `missions.js`, `encounters/capital-boss/` plates (§32.4, §32.7) | 463, 448 |
+| sector-identity | free | `data/frontierRegions/*.js`, `data/sectorVisualProfiles.js`, `environmentalMachinery` placements, interdiction hunk of `world.js`, arrival-cluster hunk of `traffic.js` (serial with `world-answers-2`), sector wonders — coordinate with L-PICTURE (§32.4, §32.7) | 464, 450 |
+| market-why | free | `ui/marketDriverPresenter.js`, `ui/market/tradeLogic.js`, `ui/station/screens/market.js`, `story/mechanicVoice.js`, bar event-tag hunk of `barContacts.js`, `stationDepartureModel.js`, then convoy shares/slips in `economy.js`/`freightCausality.js` (§32.7) | 465, 480 |
+| mission-craft | free | `data/bountyMarks.js`, `heistFacilities`, `contractClauses.js`, accept/retry/payday hunks of `missions.js` (serial with `run-memory`) (§32.7) | 467 |
+| discovery-shown | free | anatomy hunk of `ui/targetPanel.js`, `data/alienFauna.js` taxonomy, `alienEcology.js` toasts, `ui/comms.js` styling, codex species pages (serial with `pulse-print`), fauna/machine recipes in `audioRecipes.js`, Helios tease placement, `precursorMachines.js` clause decode (§32.7) | 468 |
+| records | free | `ui/screens/statistics.js`, photo Look in `pause.js`/`camera.js`, achievements screen, empty Replay/Clips copy (serial with `theater`), today's board in `survivalRecords.js`/crucible door, Range Licence in `range.js` (§32.7) | 471 |
+| front-door-speed | free | `ui/loadingPresenter.js`, `loadingTerminalArt.js`, `core/newGameBoot.js` (inside the L-MACHINE shader-admission work), first-light preset in `accessibility.js`/`mainMenu.js`, `orrery/settingsLayouts.js`, `saveLoad.js`/`saveNotices.js` (§32.7) | 473 |
+| glass | free | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | 474 |
+| feel | free | `systems/gamepad.js`, `ui/stuntCallout.js`, `combat/stuntEvidence.js`/`stuntRecognition.js`, trick book screen, `data/survivalArenas.js` signature tricks (serial with `swarm`), vent hunk of `weapons.js` (serial with `hostile-hands`), match burn in `flightV3.js` (§32.7) | 475 |
+| travel | free | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | 476 |
+| npc-read | free | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |
+| station-stage | free | `ui/station/screens/bar.js`, `barContacts.js` (serial with `market-why`), ledger appeal, codex redactions, Manifest card game screen + data, logbook from `chronicler/` (§32.4, §32.7) | 478, 447, 451 |
+| screens-true | free | `ui/screens/missionLog.js`, station shell scroll padding, `gameOver` bench fixture and fallback copy, map destination strip in `galaxyMap.js`, `orrery/settingsPreview.js`, ledger/factions empty states (§32.7) | 479 |
+| home-crew | free | the Long Berth (`worldOneOffs.js` hunk serial with `run-memory`; `claims.js` hunk serial with `works`), trophy yard persistence, crew data + perk hook through the ships derived-stat writer (serial with `hull-commit`) (§32.4) | 445, 446 |
+| weather | free | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | 449 |
+| m1-first-hour | free | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
+| engine | free | `scripts/program-dispatch.mjs`, `scripts/check-plan-integrity.mjs`, `design/program/PLAN_ENGINE.md` (§32.6) | 455 |
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
 | seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422, 442 |
@@ -983,7 +1005,11 @@ Already-rowed parked work is the rest of the remainder and stays visible where i
 remote candidates), 271–273 (Swarm phases D–F on the owner's phase order; phase C row 270 is OPEN since 2026-10-19), 284 (the quiet-host
 session), and the §F lanes. A PARKED row's gate is named on the row; it is still on this map.
 
-### N. The A-list finish — studio audit rows (2026-10-19; design record §31, §31.5, §31.6)
+### N. The A-list finish — studio audit rows (2026-10-19; design record §31, §31.5, §31.6, §32)
+
+Milestone tags (M1 First Hour Gold … M6 release candidate, §32.5) in the Status cell rank rows: a row tagged to the
+current milestone outranks an untagged row of the same kind. When open counted rows fall below the PLAN_ENGINE
+threshold, the next free agent runs the due engine cycle ([`PLAN_ENGINE.md`](./design/program/PLAN_ENGINE.md)).
 
 One row is one coherent player outcome, worked inside its seam (the seam table above). The
 `AL-*` lines in `INFERENCE_IDEAS.md` § A-LIST are taken *inside* the row whose files they touch.
@@ -1028,7 +1054,7 @@ production units, and never build what they write.
 | 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | OPEN |
 | 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | OPEN |
 | 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
-| 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424 |
+| 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424; owner ruling needed: `src/ui/AGENTS.md` bans pilot portraits in the flight HUD, so until ruled the portrait shows on the station comms screen and the in-flight line carries name, voice and caption only |
 | 426 | AL-STORY-4 | Coldburn Rey, a rival with a face — a recurring rival hauler who bids on your contracts, races your deliveries, and can be robbed or rescued; he remembers (§31.5) | BUILD | OPEN — after 398 in the same seam |
 | 427 | AL-LOOK-1 | Fill the frame without filling the path — readable hull scale, passable near-field dust, depth layers above/below the flight plane, yielding traffic; no new obstacles (clean-flight-plane law §31.6; guarded by 443) (§31.5) | ART | OPEN — coordinate with L-PICTURE; take only while that lane is quiet |
 | 428 | AL-LOOK-2 | Hero hulls first — the five hulls a player meets in the first two hours raised to hero craft before any other hull (§31.5; includes D72) | ART | OPEN — coordinate with L-PICTURE (D72 is claimed there) |
@@ -1047,6 +1073,44 @@ production units, and never build what they write.
 | 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | OPEN |
 | 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | OPEN |
 | 443 | PULSE-GUARD | The clean flight plane guard — deterministic unwanted-contact/obstruction measurement on the default route, before/after (§31.6) | BUILD | OPEN — land before 427/438 |
+| 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |
+| 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | BUILD | OPEN — M3 |
+| 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | BUILD | OPEN — M3; after 445 |
+| 447 | GOLD-MANIFEST | Manifest — the bar card game in the house voice, against regulars and cast (§32.4) | BUILD | OPEN — M3 |
+| 448 | GOLD-COLOSSI | Colossi — capital bosses get rope-detachable plates, exposed weak points and readable phase changes (§32.4) | BUILD | OPEN — after 463 in the seam |
+| 449 | GOLD-WEATHER | Weather is physics — ion storm, solar wind and meteor shower, forecast on the band, sector-seasonal (§32.4) | BUILD | OPEN |
+| 450 | GOLD-WONDERS | One wonder per sector — the first six missing signature landmarks, each a place with a verb (§32.4; list from 419) | BUILD | OPEN — after 464 in the seam; coordinate with L-PICTURE |
+| 451 | GOLD-LOGBOOK | The pilot's logbook — automatic house-voice journal with Moment Machine stills and a "previously" recap (§32.4) | BUILD | OPEN |
+| 452 | GOLD-INSPECTOR | The inspector's shift — weigh and rule on traffic at a Concord checkpoint; a fourth career branch (§32.4) | BUILD | OPEN — after 423 and 462 |
+| 453 | GOLD-CABINET | The cabinet — Swarm attract, initials, daily seed up front, shareable run card; presentation only (§32.4) | BUILD | OPEN — M2; after 456 |
+| 454 | GOLD-M1 | M1 First Hour Gold — integration lane: play-capture-fix the first hour until every first-hour system is Gold or names its blocker (§32.4, §32.5) | BUILD | OPEN — M1; claims exact paths per sitting |
+| 455 | ENGINE-0 | The plan refills itself — `program-dispatch --next` returns the due PLAN_ENGINE cycle below threshold; `check-plan-integrity` reports it (§32.6) | BUILD | OPEN |
+| 456 | RC-SWARM-CLEAN | Swarm runs clean — aftermath card gated in survival, round-1 resolution diagnosed, round-10 Iron Maw script, wording fixes (§32.7) | FIX | OPEN — M2; first in the swarm seam |
+| 457 | RC-FIRST-MINUTES | The clean first two minutes — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook (§32.7) | FIX | OPEN — M1 |
+| 458 | RC-ONBOARD-PACE | A tighter first half hour — ≤8 tracker steps, Swing Clinic, "I've flown before", contract tags, player-truth budget (§32.7) | BUILD | OPEN — M1; after 457 |
+| 459 | RC-VIGNETTES | Lived vignettes worth meeting — regenerate from the generator, charge/await verbs, first-hour prop preference, trim (§32.7) | BUILD | OPEN — M1 |
+| 460 | RC-CAST-MEMORY | A cast that remembers — wire 12 dormant contact counters, band glyphs, spoken leads, Last Call reads them (§32.7) | BUILD | OPEN — M3; after 424 in the seam |
+| 461 | RC-DOCKET | The docket opens — caseForLoss table, reachability test, settlement range, hull-scaled restitution (§32.7) | BUILD | OPEN |
+| 462 | RC-CHASE | Crime is a chase — Witness Run, the Sweep, the Sponsor (§32.7) | BUILD | OPEN — after 461 |
+| 463 | RC-BOSS-READ | Bosses you can read — move plate, name/act cards, Adventure boss bar, show-don't-toast, elite intent, retry act (§32.7) | BUILD | OPEN |
+| 464 | RC-SECTOR-LAWS | Every sector has a law — 10 name-only sectors get a physical rule; warned interdiction; arrival freighters; landmark in background (§32.7) | BUILD | OPEN — M3 |
+| 465 | RC-MARKET-WHY | The market explains itself — name the mover, lane risk, one voice per hull, local news (§32.7) | BUILD | OPEN — M1 |
+| 466 | RC-INDUSTRY-TRUE | Industry tells the truth — capped earnings on drone cards, Deed Names, next-step copy, distressed-drone rescue (§32.7) | FIX | OPEN — after 402 in the seam |
+| 467 | RC-MISSION-VOICE | Missions with a voice — bounty memory and lines, unique heist methods and casing, payday receipt, retry changes the room, Clause Gambit (§32.7) | BUILD | OPEN |
+| 468 | RC-DISCOVERY-SHOWN | Discovery you can see and hear — Field Notes, taxonomy, comms styling, discovery toasts, creature/machine sound, Helios tease, Suhl's Clauses (§32.7) | BUILD | OPEN — M3 |
+| 469 | RC-FIT-VISIBLE | The fit shows on the hull — verb modules drawn, earned livery, felt synergies, research screen fixes (§32.7) | BUILD | OPEN — after 401 in the seam |
+| 470 | RC-VOICES | Voices and space in the mix — per-line barks, threat ear, room presets, heat in the score, idents, mono, night mode (§32.7) | BUILD | OPEN — after 404/405 in the seam |
+| 471 | RC-RECORDS | Records that tell stories — Records Wall, working photo Look, empty-state copy, Today's board, Pact dial, Range Licence (§32.7) | BUILD | OPEN |
+| 472 | RC-VENUES | Toys out of the drawer — venue/race event cards, minigames from the world, Ring-Out, Toll Threading, Hot Tow, Wreck Strip, Spill Catch (§32.7) | BUILD | OPEN — after 395 in the seam |
+| 473 | RC-FRONT-DOOR | A fast, kind front door — interactive title ≤10 s, mm:ss clock, destination slate, first-light preset, settings density (§32.7) | BUILD | OPEN — M1; coordinate with L-MACHINE shader admission |
+| 474 | RC-GLASS | Glass that breathes — danger-quiet, glass presets, release read, sortie tally, bingo fuel, tether load on the ring (§32.7) | BUILD | OPEN |
+| 475 | RC-FELT | Every verb is felt — callout rarity, haptics, Around the World, Trick Book, arena bounties, Prize Run, Perfect Vent, Match Burn (§32.7) | BUILD | OPEN — M1/M2 |
+| 476 | RC-TRAVEL | Travel is a choice — Freight Spine, stale chart, Two Roads, Interdiction Wrestle, drift vector (§32.7) | BUILD | OPEN |
+| 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | OPEN |
+| 478 | RC-STATION-STAGE | The station is a stage — bar reactions, Regulars, Appeals Window, Clearance Pending, The Tab, the Fine at Helios (§32.7) | BUILD | OPEN — M3 |
+| 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
+| 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
+| 481 | RC-CRUCIBLE-DOOR | The Crucible door opens both ways — Run What Killed You, Call the Champion, Wreck Ballast, Case Files, Grudge Ledger (§32.7; phase-order check first) | BUILD | OPEN — after 456 and 270 |
 
 ### Landed rows index (consolidated 2026-10-15)
 
@@ -5559,7 +5623,7 @@ physics-centric arcade combat that plays best in Swarm, and an Adventure mode th
 stimulating because of its customization, economy and story — with a massively polished frontend,
 everything on the newest versions, and optimized.*
 
-This section is the design record. Its dispatchable rows are §1C **§N (rows 390–443)**. Each row
+This section is the design record. Its dispatchable rows are §1C **§N (rows 390–481)**. Each row
 belongs to one seam in the §1C seam table, so `board-chunks` and `program-dispatch --next` can route
 it. Every row extends owners that already exist. §23.3's refusals and the single-writer law apply in
 full. Every done-when is measured on seed 4242 unless the row says otherwise. Counts below come from
@@ -6120,7 +6184,7 @@ the truth. This one idea joins the combat toy, the economy and the story into a 
 |---|---|---|---|---|
 | 423 | **The rope is a scale** | Papers, Please (the document lies, so you inspect) plus Return of the Obra Dinn (deduce from physical evidence) | ≥3 contract kinds and one story beat in which a declared-versus-true mass gap is found only by towing; rope strain shows the gap on the glass; customs, fences and frames react to what you found | A number popup; a scanner that reveals it for free; a second cargo writer |
 | 424 | **The hull ghost** | Bastion's narrator, Portal's GLaDOS and Destiny's Ghost: one voice that notices what you did | Over a 30-minute first route Maera Vols speaks ≥8 lines tied to real events (a stunt, a near-miss, a sector she remembers, a story beat); no repeats in a session; quiet at combat peaks except warnings; captioned | Random barks on a timer; a talking tutorial; lines with no event behind them |
-| 425 | **Faces on the radio** | Star Fox and Rebel Galaxy Outlaw comms windows | Every voiced in-flight transmission shows the speaker's portrait on the comms surface (allowed by `assets/portraits/AGENTS.md`); locals use their pooled faces | Portraits in the flight HUD frame; a generic face for a named character |
+| 425 | **Faces on the radio** | Star Fox and Rebel Galaxy Outlaw comms windows | Every voiced in-flight transmission shows the speaker's portrait on the comms surface (allowed by `assets/portraits/AGENTS.md`); locals use their pooled faces. **Owner ruling needed:** `src/ui/AGENTS.md` bans pilot portraits in the flight HUD; until ruled, faces appear on the station comms screen and the flight line carries name, voice and caption | Portraits in the flight HUD frame; a generic face for a named character |
 | 426 | **Coldburn Rey, a rival with a face** | Shadow of Mordor's nemesis pointed at the cast; Burnout's named rivals | Rey bids on the player's contracts, races deliveries in the world, can be robbed or rescued, and remembers each outcome across reloads | A scripted rival who always loses; dialogue-only rivalry |
 | 427 | **Fill the frame, not the path** | Everspace 2 and Hades framing: the world fills the frame without hiding the action | Stills of the first five minutes at the shipping camera show the hull readable at a glance, ≥3 moving things on glass in Helios, and no frame more than ~60% empty black — all of it passable dust, depth layers off the flight plane, or yielding traffic; row 443 shows bumps unchanged (owner 2026-10-19: never flood the screen with things to crash into) | Fog over everything; a closer camera that kills look-ahead; cutting the look for frame rate |
 | 428 | **Hero hulls first** | Every A-list launch: the first two hours get the best art | The five hulls met in the first two hours read as hero craft at the chase camera and in shipworks before any other hull is touched | Uniform mediocre passes over all 15 hulls; procedural stand-ins |
@@ -6207,3 +6271,181 @@ already exist (PULSE-01…08) are minted now.
 - a new voice that breaks the house voice;
 - any stream that writes credits, cargo, heat or standing;
 - hand-editing `en-US.generated.js` (new copy goes through the extractor).
+
+## 32. The gold game — the director's vision, and the engine that keeps the plan full (2026-10-19)
+
+Owner direction, 2026-10-19: *inject your own opinion; plan the best game; part of the premise is
+finding out how good a game agents can build themselves, so plan the development workflows that keep
+the plans saturated for later agents.* This section is that opinion. §31 is the audit; §32 is the
+destination and the machine that gets there. The engine itself lives in
+[`design/program/PLAN_ENGINE.md`](./design/program/PLAN_ENGINE.md). The whole-game grades it
+maintains live in [`design/program/REPORT_CARD.md`](./design/program/REPORT_CARD.md).
+
+### 32.0 The game, in one breath
+
+**SpaceFace is the working stiff's space game. You are a hauler in a galaxy run on paperwork, and
+your one tool is a rope that can move anything. Everything has weight, and weight is the truth.
+The paperwork lies, the galaxy keeps working without you, and it talks about you behind your back.**
+
+The deeper threads it pulls from:
+- the curiosity of *Outer Wilds*;
+- the physics comedy of *Rocket League* and *Just Cause*;
+- the paranoia of *Papers, Please*;
+- the living radio of *GTA*;
+- the run-based arcade of *Hades* and *Vampire Survivors* (Swarm);
+- a ship that is a home and a crew that is a family, from *Mass Effect* and *FTL*.
+
+No other game is "a noir about weight with a grappling rope". That sentence is the identity: every
+system either serves it or gets cut to fit it.
+
+### 32.1 Five pillars (the test every plan passes)
+
+1. **The rope can move anything.** Combat, hauling, racing, puzzles, bosses and detection all run
+   through mass and the Massline. If a feature has no physical verb, it gets one or it waits.
+2. **Weight is the truth; paperwork lies.** The conspiracy (Director Vale signing weight
+   discrepancies closed) is solved with physical evidence: weighing, towing, witnessing, matching
+   ballistics. The bureaucracy is both the comedy and the threat.
+3. **The galaxy works without you, and talks about you.** Traffic, prices, fronts, weather, radio,
+   mail and graffiti, all true to the simulation (§31.6). It never clutters the flight plane.
+4. **Your ship is your story.** Scars, irreversible refits, trophies, a ghost captain, a crew and a
+   home berth. Nothing you did disappears.
+5. **Swarm is the arcade cabinet.** Ten-minute runs, a daily seed, a host, a crowd and initials on a
+   board. It is the same physics, distilled.
+
+### 32.2 The journey a player should have
+
+- **0–1 minute.** The title attracts with a real rope throw (row 408). One button flies.
+- **First 10 minutes (47-A).** You tow the evidence spindle and the rope strains: it weighs twice
+  its manifest. *The whole plot is in your hands in the first mission.* Maera Vols speaks for the
+  first time: "I left the engines warm."
+- **Hour 1.**
+  - your first customs check, which you pass or bluff;
+  - your first raid, ending in a rope-throw kill;
+  - your first "the paperwork lies" find, pinned to the Ledger (row 444);
+  - the radio mentions you by callsign.
+- **Hours 1–5.** Three careers (hauler, hunter, prospector) are three roads into the conspiracy.
+  You restore the Long Berth into your home (row 445), hire your first crew member (row 446), and
+  lose a card game to a barkeep (row 447).
+- **Hours 5–15.** Factions pull at you. You commit to refits that close doors. The heists (Wreck
+  Cathedral) begin. A rival with a face shows up (Coldburn Rey). Your drones run loops you wrote,
+  and you take a colossus apart plate by plate (row 448).
+- **Hours 15–25.** The reckoning is built from your run (row 400), and the ending rewrites the map
+  (row 396).
+- **Forever.** Swarm cabinet runs, the racing league, ironman runs, ghost wrecks shared by code,
+  and a galaxy that keeps time.
+
+### 32.3 My calls as director (the owner may overrule any of them)
+
+1. **First Hour Gold before breadth.** A stranger judges the first hour, so it reaches Gold
+   (§32.5) before any new region or system expands. Milestone M1 (row 454) outranks every other
+   §31/§32 BUILD row except defects and reviews.
+2. **Fewer, deeper heroes.** Five hero hulls beat fifteen average ones. Ten trailer moments beat
+   forty forgettable encounters. One wonder per sector beats three props each.
+3. **Volume where volume is cheap, craft where craft is seen.** Agents mass-produce words, sound
+   and small stories (§31.6). Humans and strong agents spend craft on hulls, the first hour, and
+   bosses.
+4. **The cast moves into flight.** Every named character must be met, heard or fought in the
+   cockpit, not only in a menu: comms faces, the hull ghost, crew banter, the rival.
+5. **The Ledger is the story UI.** No quest log of text bullets. The conspiracy is a board of
+   physical evidence you assemble.
+6. **No co-op, no live service, and no lootbox loops,** ever. Replayability comes from runs,
+   seeds, endings and the cabinet.
+7. **Illustrated art direction** (pending the owner's ruling in §31.5). It is premium, stylised,
+   and reachable by agents.
+
+### 32.4 New pieces only this vision adds (rows 444–455)
+
+| Row | Piece | Feeling | Borrowed thread | Done when (stranger-visible, seed 4242) | Refuse |
+|---|---|---|---|---|---|
+| 444 | **The Ledger** — the case board | "I pinned the weight slip next to the intercepted call, and Vale's signature lit up." | Return of the Obra Dinn; Shadows of Doubt; Disco Elysium's thought cabinet | A diegetic board where evidence pins and links: weighed cargo (row 423), contradicted manifests (`scanClues.js` already records them), witnessed crimes, intercepted band traffic, and court reconstructions. Linking a valid chain unlocks an accusation or a story beat. The B-spine's Vale thread is provably solvable here, and wrong links are refused with a reason | A text quest log; auto-solving; evidence that was never physically found |
+| 445 | **The Long Berth** — a home | "I towed my first trophy home." | Hades' House; the Normandy; Starfield's Lodge; Animal Crossing's house | The abandoned yard tug "The Long Berth" (`worldOneOffs.js`) can be towed to a claim and restored in three stages. Trophies you physically towed home (a boss plate, the spindle, a famous wreck) sit in its yard and survive reload. Docking there shows your ship, your crew and your trophies | A menu-only base; a second claims system (extend `claims.js`); decoration with collision in lanes |
+| 446 | **Crew aboard** | "Tamsin called the missile before I saw it." | Mass Effect squad; FTL crew stations; Starfield crew | Up to 4 crew hired from the station-local pool (65 portraits) and from the cast. Each mans a role (engineer, quartermaster, gunner, navigator) with one small, real derived-stat perk through the ship stats single writer. They banter on comms about real events, have one loyalty job each, and can be injured or lost. Distinct from wingmen, which are ships | Stat sticks with faces; dialogue trees; more than one perk per crew member |
+| 447 | **Manifest** — the bar card game | "One more hand before undock." | The Witcher 3's Gwent; Fallout: New Vegas's Caravan; KOTOR's Pazaak | A card game in the house voice: cargo, permits, bribes and audits. Played against regulars and cast with distinct styles; cards won from deeds; stakes in credits through the credits writer. One ORRERY-consistent screen | A gacha deck; real-money anything; pay-to-win cards |
+| 448 | **Colossi** — bosses you take apart | "I ripped the Tollman's armour off with the rope and threw it back at him." | Shadow of the Colossus; Monster Hunter part-breaks; Furi | The 8 authored capital bosses get rope-detachable plates. Weak points open only when a plate is gone, and a detached plate is a throwable body. Each boss has a physical phase change a stranger can read. SEED row 416 supplies the per-boss lines | HP-sponge phases; invulnerable timers; a new boss engine |
+| 449 | **Weather is physics** | "The ion storm blacked out my scope, so I flew by the radio." | Subnautica's depth dread; Death Stranding's timefall; FTL's hazards | Three weather kinds are forecast on the band: an ion storm (sensor and HUD blackout, so you fly by sound), solar wind (a field that pushes everything, including towed cargo), and a meteor shower (hazard plus mining bonanza). Each is deterministic and sector-seasonal (row 439) | Clutter in the flight plane; random damage ticks; weather as a filter only |
+| 450 | **One wonder per sector** | "That's the place with the cathedral." | Breath of the Wild's landmarks; No Man's Sky's vistas; Elite's tourist beacons | Every sector has one signature landmark readable at the gameplay camera, and the postcard pass (row 419) lists which are missing. This row builds the first six missing wonders as places with a verb, not props | Props without a verb; landmarks in lanes |
+| 451 | **The pilot's logbook** | "Previously, on my run…" | Hades' codex; Mass Effect's journal; Destiny's lore cards | A logbook written automatically in the house voice from the chronicler, illustrated with Moment Machine stills. A returning player gets a 20-second "previously" recap on load | Stat dumps; an empty journal screen |
+| 452 | **The inspector's shift** | "I weighed his cargo and he offered me a bribe." | Papers, Please; Contraband Police | An optional shift at a Concord checkpoint: you scan and weigh passing traffic (row 423), then wave it through, fine it or impound it. Quotas, bribes and smugglers who remember you; results feed law standing through the law writer. A fourth career branch through the careers library | A minigame detached from the sim; a second law system |
+| 453 | **The cabinet** | "Enter your initials." | Arcade attract loops; Neon White's run summary; Balatro's run cards | Presentation only, with no phase D content: a Swarm attract loop, initials on a local board, the daily seed front and centre, and a shareable run card | A pilot roster or broadcast host (those are phase D, row 271); online boards (phase F) |
+| 454 | **M1 — First Hour Gold** | "I'd show this to a friend." | Every A-list vertical slice | Integration lane for the first hour against the §32.5 ladder: play-capture, fix, recapture until every first-hour system reaches Gold or names its blocker. Claims exact paths per sitting | Calling it Gold from a test; skipping the capture |
+| 455 | **ENGINE-0 — the plan refills itself** | "The board is never empty." | — | `program-dispatch --next` returns the next PLAN_ENGINE cycle when open counted rows fall below the engine threshold, and `check-plan-integrity` reports the cycle state | A second queue; cycles that count as production units |
+
+### 32.5 The Bronze / Silver / Gold ladder (how every system is graded)
+
+| Tier | Meaning | The bar |
+|---|---|---|
+| **Bronze — works** | Reachable on the default route, no open defects, saves and loads | A stranger can use it without a guide |
+| **Silver — feels good** | Every action answers in sound, picture and timing; no cheap tells (§31.5); content does not repeat within one hour; it reads in 2 seconds | A stranger keeps using it without being asked |
+| **Gold — WOW** | It has a signature moment, it touches at least three other systems, content does not repeat within five hours, and a capture of it is something people share | A stranger shows it to someone else |
+
+Milestones, in order:
+1. **M1 — First Hour Gold** (row 454).
+2. **M2 — Swarm Cabinet Gold** (phases C–D plus row 453).
+3. **M3 — Act One Gold**: hours 1–5.
+4. **M4 — Silver Everywhere**: every system in `REPORT_CARD.md` at Silver or above.
+5. **M5 — The Long Game Gold**: hours 5–25 and the endings.
+6. **M6 — Release candidate**: the quiet-host and release lanes.
+
+A row tagged to the current milestone outranks an untagged row of the same kind.
+
+### 32.6 The engine — why this plan never runs dry
+
+The board drained once (§31.0) because only humans refilled it. From now on agents refill it on a
+rule. The full contract is [`design/program/PLAN_ENGINE.md`](./design/program/PLAN_ENGINE.md); in
+brief:
+
+- **The trigger.** When fewer than 25 counted BUILD/ART/FIX rows are open, or fewer than 30
+  INFERENCE lines are OPEN, the next agent whose dispatch is not a defect or a review runs the next
+  engine cycle in the rotation. Row 455 teaches `program-dispatch` to say so.
+- **The cycles.** Eight, in rotation:
+  - Report Card (grade, then mint);
+  - Stranger Pass (play-capture, then list the cheap tells);
+  - Reference Diff (one 2020s game per cycle);
+  - Harvest (built but unwired);
+  - Factory Tiering (raise PULSE volume targets);
+  - Dream (new campaigns for the creative director);
+  - Integration Walk (play the milestone route);
+  - Prune (merge duplicates and retire stale rows).
+- **The output law.** Every cycle ends in numbered §1C rows on seams and/or OPEN catalog lines,
+  each with owners, a player-visible done-when, a refusal and evidence. Cycles are support work:
+  they never count as production units, and they never build what they mint.
+- **The caps.** The engine keeps the plan *saturated, not bloated*: at most 120 open counted rows
+  and 200 OPEN catalog lines. Above that, the Prune cycle runs instead.
+
+### 32.7 The report card's rows — improve the worst, polish the best (rows 456–481)
+
+The first C1 pass graded 21 systems (see [`design/program/REPORT_CARD.md`](./design/program/REPORT_CARD.md)).
+Its finding is one sentence: **deep simulation, quiet surface.** These rows surface what exists,
+fix what lies, and only then attach new pieces. Each row bundles one seam's worth of fixes.
+Its small, self-contained parts are also catalog lines (`INFERENCE_IDEAS.md` § REPORT CARD) so
+small agents can take them. Evidence for every claim is in the researcher findings summarised in
+`REPORT_CARD.md`. Seed 4242 throughout.
+
+| Row | Outcome | What it bundles | Done when |
+|---|---|---|---|
+| 456 | **Swarm runs clean** (M2; before row 270) | Gate the aftermath card in a live survival run (`combatOutcome.js` never checks for one), which returns keys 1–2; diagnose why the player-truth swarm baseline never leaves round 1; give the round-10 boss its Iron Maw script (`swarmMode.js:364–371`); fix "One hostiles", "+10 Item" and the clipped ROUND label; hide the remaining Adventure instruments in a run | `npm run player-truth -- --mode=swarm-active --gate` passes round resolution and transitions; the contact sheet shows no "FIELD STILL LIVE"; the round-10 capture shows the script's moves |
+| 457 | **The clean first two minutes** (M1) | The drive fallback key H also opens Help (`systems/input.js:322` versus `ui/input.js:523`); the ticker is gated while the tutorial runs; threat markers stay off the instruments; "Kestrel" becomes "Hitch" in the tutorial and chronicle; "Training Derelict" and "trainer" get in-world names; the three `visual:false` premise and hint lines are captioned in the tracker; the Range uses WU not m/s; the key label prefers a non-lock key | A muted stranger on seed 4242 reads the hook within 60 s, presses the key the rail shows to drive, and sees no news, no "Kestrel" and no training vocabulary in the first two minutes |
+| 458 | **A tighter first half hour** (M1; after 457) | Fold thrust and brake into the tether step; make target → burst → disengage one step against a real raider; a Swing Clinic after 3 missed swings; an "I've flown before" toggle on New Game; destination tags on the first contracts; a player-truth budget (first latch ≤60 s, raid ≤3 min) | First input to docking takes ≤8 tracker steps; the budget holds; the rescue verbs and the Range fallback survive |
+| 459 | **Lived vignettes worth meeting** (M1/M3) | Regenerate from `scripts/build-lived-vignettes.mjs`: remove the two filler lines, give the toll a real cost, use a reward table by situation, capitalise place names, cut the orbit wait to ≤10 s. Add `charge` and physical `await` verbs to `vignetteInterpreter.js`. Prefer prop vignettes in the first hour. Then trim to the physically distinct ones (target ≤60 in rotation) | A seeded two-hour run repeats no line; every choice is a real trade-off; ≥30 vignettes resolve only by a physical action; IDs and phase IDs are unchanged for saves |
+| 460 | **A cast that remembers** (after 424 in the seam) | Wire the 12 dormant counters to the events they are named after (Yune ← clean Helios freight, Mara ← delivered pods, Suhl ← `machine:appealAccepted`, Senna ← `uniqueWreck:resolved`, Zell ← contraband installs…); a band glyph on contact cards; bar leads spoken by the offering contact; Last Call has the finale read the counters | Two saves differing in one deed show different contact openers and different Last Call lines for ≥6 contacts; `stationContacts` stays the only writer |
+| 461 | **The docket opens** | A pure `caseForLoss(record)` table makes the 11 lab-only Wreck Court cases reachable; a reachability test; a settlement range on the court card instead of "0 cr"; restitution scales with hull value; "work the bill" requires a physical step | A 3-hour lab run surfaces ≥5 distinct cases; the contract card shows a settlement range; a Mule and an Ironback are quoted differently |
+| 462 | **Crime is a chase** (after 461) | The Witness Run: heat posts only when the witness docks. The Sweep: visible law ships, and breaking contact clears heat, with the clock as fallback. The Sponsor: a named station sponsor behind each bounty warrant | A witness towed away before docking posts no heat; clearing the bounty tier means breaking contact with ≥2 visible sweep ships; paying the sponsor stops the hunter waves |
+| 463 | **Bosses you can read** | A move plate showing the authored title and counter ≥1 s before each attack; name and act cards; the boss bar in Adventure (remove the Swarm-only gate); teaching by showing instead of the 8 s toast; intent symbols on elites; "Retry act" | In a Tollman lab capture all 5 moves show title and counter in time; Adventure shows a boss name and bar; elite symbols appear ≥400 ms before fire |
+| 464 | **Every sector has a law** | One physical rule for each of the 10 name-only sectors, built from `environmentalMachinery`; dead visual-profile keys and the Bolus profile; interdiction warned (rolled at `jump:start`, pull and bearing shown); first freighters cluster at the arrival point; the way-of-life landmark feeds the background | Within 60 s of arrival a stranger can name each sector's rule, and it changes the line they fly; a forced interdiction shows its bearing before the first shot |
+| 465 | **The market explains itself** | "Name the mover": the last move cites a freighter, your sale or a mined-out belt before the cycle name; a lane-risk word on route cards; the mechanic's "Clean plate" contradiction; local-only bar news; the right empty-hold hint inside the market; a read-only depletion helper | Selling 20 iron at Helios names your sale; two equal-profit routes read "secure lane" versus "lawless lane"; a hull at 86/100 never hears "Clean plate" |
+| 466 | **Industry tells the truth** (after 402) | Drone cards show capped earnings (113, not 672); rocks get Deed Names instead of "AST-355"; "No output on record" names the next step; a `automation:droneDistressed` event and the Stranded Drone tow rescue; Throttle is hidden on unbought drones; the hull-plate and refined-metal conflicts are added to row 402's unification | The starter drone card reads ~113 labelled as capped; no "AST-" in the default capture; a distressed drone drops a beacon that a tow restores |
+| 467 | **Missions with a voice** | Bounty marks never resurrect killed names, take factions that fit the sector, and have ≥24 opening lines; each heist gets one unique method plus "Case File" casing; a payday receipt line; a retry changes the room; Clause Gambit (edit one contract clause) | A killed mark never returns in 500 rolls; a cased heist offers a third method; adding "cargo intact" raises pay and is enforced |
+| 468 | **Discovery you can see and hear** | Field Notes: anatomy on the target panel after the scan earns it, a real taxonomy (≥5 families), species codex pages. Machine and ecology comms styling; ecology toasts in a discovery style instead of `warn`; 8 fauna-role and per-machine-family sound recipes; a Helios tease; Suhl's Clauses decode one clause per accepted appeal; Names for the Dead | Scanning a Veil-Ray opens a behaviour page; a new save meets one unexplained machine within 20 min; creatures and machines are audible; nothing shows before the scan earns it |
+| 469 | **The fit shows on the hull** (after 401 in the seam) | Verb-granting modules always drawn, with a distinct head per verb; earned livery through an `earnedBy` field; two synergies with felt rules; research-screen fixes; the verb as the unlock headline; "fit it now" | From normal-camera stills a reviewer tells tug, rammer, miner and survey fits of one hull apart; three rescues unlock a visible rescue mark; `check:assets:live` is green |
+| 470 | **Voices and space in the mix** (after 404/405 in the seam) | Per-line bark rendering through the existing `renderBarkUtterancePcm` (with a small cache) and pitch jitter; a threat ear (distance and behind filtering, 3D for ≤6 hostiles); two room presets; heat audible in the score; wave-clear cadences; station idents; a mono toggle; night mode | Two lines from one faction sound different; 4 of 5 blind testers point within 45° to a hostile behind them; a WANTED tier change is audible within one bar |
+| 471 | **Records that tell stories** | Statistics becomes a Records Wall from chronicle facts; the photo Look works on default settings or is hidden; achievement label overlaps fixed; empty Replay and Clips say how to get footage; Today's board (local daily rank); a Pact dial (stacked mutators carried in the share code); a legacy preview; Range Licence medals | After one hour, ≥5 named records with place and time; on default settings Look changes the PNG; the Crucible door ranks today's runs |
+| 472 | **Toys out of the drawer** (racing seam; after 395) | Physics Venues and the race board become event cards drawn from the arena data; minigames start from the world (the BRACKET court); the Asteroid Works empty panel; new league sports Ring-Out and Toll Threading; the Hot Tow race mode; Wreck Strip and Spill Catch | The bench shows cards with drawn courses and one START; no confirm dialog on launch from the menu; kl-13 exists and a seeded replay wins it |
+| 473 | **A fast, kind front door** | An interactive title within 10 s on the VM profile, with first control measured separately, inside the existing shader-admission work; a mm:ss loading clock; a destination slate on loading; a first-light accessibility preset; settings density with readouts next to sliders; an empty save slot says "empty" once | Title usable ≤10 s on the VM profile; ≥6 settings rows at 1280×720 with readouts within 24 px; first launch offers the preset once |
+| 474 | **Glass that breathes** | Danger-quiet (non-critical instruments dim at low hull); glass presets Clean / Hauler / Fighter; a release-read receipt; a sortie tally on dock; a bingo-fuel line; tether load and strain on the hull ring; the release diamond drawn above markers; an SVG type-floor report | At 20% hull the tape and tracker dim and return at ≥30%; the preset survives reload; latching the derelict shows tonnage and strain on the ring |
+| 475 | **Every verb is felt** | Rarity-weighted stunt callouts; a big-moment pulse; dash, combat and weapon-family haptics (respecting the 83 ms gap and the `off` setting); Around the World (swing-angle evidence without bumping `EVIDENCE_REVISION`); a Trick Book listing the 17 tricks; arena signature tricks and Arena Law Bounties; a Prize Run round; Perfect Vent; Match Burn | A legendary callout outweighs a common one; three weapon families are distinguishable on a pad; a 360° swing prints AROUND THE WORLD; the Trick Book shows 17 entries |
+| 476 | **Travel is a choice** | The Freight Spine (a `lane:slingPass` event, receipts, planner routes); stale chart medallions that fade with age; Two Roads (a tolled route versus a dark lane, both flyable); an Interdiction Wrestle in cruise; a drift-vector tick-line in drift and newtonian modes | A clean 3-ring chain posts a receipt; a 10-day-old price shows faded; a snare during cruise opens a 1.5 s escape arc |
+| 477 | **NPCs you can read** | Job phases in the contact list ("HAULER · LOADING"); grudge hails that name the incident; factions you can tell apart by how they fly; robbing haulers bound for a station moves that station's price | Shown five unlabelled clips, a stranger names four factions; robbing 3 Tethys-bound haulers moves Tethys at the next day boundary |
+| 478 | **The station is a stage** | Bar reaction crop and memory preview; The Regulars (contacts keep shifts); Word Gets Around; the Appeals Window (a clause puzzle that voids a fine through the law owner); Clearance Pending (codex redactions lift on story flags); The Tab; The Fine at Helios | A contact is present only on her shift; after taking claimed salvage the Helios ledger offers APPEAL, and winning voids the fine |
+| 479 | **No screen admits it is unfinished** | Mission Log shows the opening contract's real terms; station scroll areas pad for the tab rail; game over gets a populated bench state and an in-world fallback line; the race-board key help moves to a chip; the map strip shows the tracked goal; Voice gets its live-mix ring; the ledger empty state and the clipped factions list | Bench shots of mission log, market, bar, industry, game over and chart-local show no fallback text, clipping or "No destination set" beside GOAL |
+| 480 | **Markets you can play** (after 465) | Convoy Shares (stake a real freighter's arrival); Forward Slip (lock a price for a delivery window); Auditor Halvard Penn (dumping raises scan odds); the Dump Chute (sling pods into an intake); Cold Chain spoilage; a visible Labor Stoppage event | A share pays only on a named freighter's real arrival; 5 slung pods pay the discounted price and move the market |
+| 481 | **The Crucible door opens both ways** (swarm seam; check phase order first) | Run What Killed You (a seeded drill of your last Adventure death); Call the Champion early; Wreck Ballast; Case Files of beaten champions; a Grudge Ledger of top causes of death; per-arena kill words | Each piece is checked against `SWARM_EXPANSION.md`: anything belonging to phase D or later waits for it. Run What Killed You offers a seeded drill with no reward carried back |
