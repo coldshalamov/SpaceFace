@@ -167,3 +167,10 @@ pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention �
 - W8 nit fixed: non-finite radius rejected in both frontierRumorMapLayer gates — radius:Infinity previously produced wsum=0 → NaN converge → a finite-but-wrong cross position on the warped system chart.
 - W8 finding filed: D238 (pre-existing) — signal:investigated/_onLandmarkArtifactRecovered/boss-defeat set rec.identified without clearSurveyFix; orphaned record can gate dock purchases if authored content ever pairs those paths with a contents-bearing cache POI.
 - Open reviews: ZERO again. W9 must cover the new tail (b7f1bd7ba..HEAD + this commit) — dispatch next.
+
+## DELTA 25 (post wave-9 close)
+- W9 verdict: CLEAN — counter 2-of-3. Independent verifier confirmed b7f1bd7ba whitelist end-to-end (no other consumer touches rumorCorroborations; drawConverge/drawCenter are the honest sector-local warp frame), the isFinite nit fix, D238's three identify-clear sites, fuel-crack skim, and zero open review rows at the time.
+- D238 landed + pushed (d9060928d): the three non-dock identify paths (signal:investigated, landmark-artifact return, boss-defeat) now spend a sold record via clearSurveyFix + bearingCharted-scoped waypoint clear, same pair the dock path uses. Regression pins the signal-investigate spend (survey-fix 11/11, adjacent discovery 29/29). R-d906092 filed OPEN. Ledger row consumed by the fix landing in the same tail.
+- W9 nits fixed: subnormal radius could mirror the Infinity path (1/r=Inf → wsum Inf → NaN converge) — weight loop now guards isFinite(w) and wsum>0; frontierRumorMapTarget radius no longer passes Infinity through; board row 411 marked DONE (seam/row consistency); whitelist test tightened honestly — the reach id may appear only inside card-id strings, asserted by stripping them rather than a vacuous decoy scan.
+- player-truth adventure re-run in .worktrees/pt-d238 at d9060928d (same sanctioned clean-checkout shape; foreign render-package dirt still blocks the shared tree).
+- W10 must cover the new tail (4496c7a60..HEAD incl. D238 fix + this package).

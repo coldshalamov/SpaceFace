@@ -72,10 +72,12 @@ export function frontierRumorCorroborations(state, sectorId = null) {
     let wx = 0; let wz = 0; let wsum = 0;
     for (const member of members) {
       const w = 1 / member.radius;
+      if (!Number.isFinite(w)) continue;
       wx += member.center.x * w;
       wz += member.center.z * w;
       wsum += w;
     }
+    if (!(wsum > 0) || !Number.isFinite(wsum)) continue;
     out.push({
       // The group id is built from the member card ids — never the shared target id.
       id: `corr:${members.map((member) => member.rumorId).join('+')}`,
@@ -107,7 +109,7 @@ export function frontierRumorMapTarget(readout) {
     x: center.x,
     z: center.z,
     center,
-    radius: Math.max(0, Number(readout.radius) || 0),
+    radius: Number.isFinite(Number(readout.radius)) ? Math.max(0, Number(readout.radius)) : 0,
     statusLabel: readout.statusLabel || 'RUMOR SEARCH',
     detail: readout.detail || '',
     objective: readout.objective || '',

@@ -100,6 +100,11 @@ test('corroboration rows are a field whitelist — no target id, no position beh
   for (const banned of ['targetId', 'targetName', 'exactPos', 'targetPos', OTHER.id]) {
     assert.ok(!json.includes(banned), `corroboration leaks ${banned}`);
   }
+  // The reach's id may appear only inside card-id strings — group.id and memberRumorIds are
+  // built from the cards' own ids, the same strings the purchased cards already show on the
+  // rumor ring rows. Outside those strings the row never names it.
+  const withoutCardIds = { ...group, id: '', memberRumorIds: [], members: group.members.map(({ rumorId, ...rest }) => rest) };
+  assert.ok(!JSON.stringify(withoutCardIds).includes(TARGET.id), 'the reach is named outside card ids');
   // The convergence is derived from the rings — it is never the true site coordinate.
   const truth = sectorLocalToGlobalForSector(TARGET.pos, SECTOR.id);
   const leak = Math.hypot(group.converge.x - truth.x, group.converge.z - truth.z);
