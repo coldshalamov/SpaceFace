@@ -32,6 +32,12 @@ looked at in `fleet-look` at chase/close zoom.
 4. `node scripts/refresh-render-package-pilots.mjs --only=<key>` then
    `node scripts/build-render-package-pilots.mjs --only=<key>` rebuild the render package the game
    actually loads (`src/render/renderPackageManifest.js` is generated).
+   **Do not skip the regeneration** — a commit that changes release GLBs/`pilots.json` without
+   the recompiled package + regenerated manifest fails every Vercel production build at the
+   manifest gate (playbook: `docs/COMMON_BUGS.md` §15, `docs/VERCEL_DEPLOYMENT.md`). Fast gate
+   before pushing: `npm run check:release-manifest-pins`. The manifest must pin the packages you
+   are committing — regenerating it against another lane's uncommitted recompiles breaks the
+   build for every pilot pinned early.
 5. `node scripts/model-truth-census.mjs` then `node scripts/lib/splice-census-rows.mjs --match=/<file>.glb`
    keeps the census change to the rows on that model (the full regeneration churns float noise).
 

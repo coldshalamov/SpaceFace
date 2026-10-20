@@ -1,22 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
-    "deploymentEnabled": {
-      "**": false,
-      "master": true,
-      "main": true,
-      "codex/iphone14-mobile": true,
-      "codex/oct15-maturity-checkpoint": true,
-      "codex/mobile-release-pinning": true,
-      "codex/mobile-startup-cause": true,
-      "devin/1791331347-gyre-snare": true,
-      "devin/1791416174-gyre-snare-polish": true,
-      "codex/phone-startup-recovery": true
-    }
+    "deploymentEnabled": false
   },
   "framework": null,
   "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
-  "installCommand": "ELECTRON_SKIP_BINARY_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci",
+  "installCommand": "node scripts/vercel-install.mjs",
   "buildCommand": "npm run build:bundle",
   "outputDirectory": "build/web",
   "rewrites": [
@@ -26,6 +15,33 @@
     }
   ],
   "headers": [
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/spaceface-release-build.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
     {
       "source": "/workers/:path*",
       "headers": [
@@ -45,6 +61,33 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/:file([A-Za-z0-9_-]+-[A-Z0-9]{8}\\.js)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/styles/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
         }
       ]
     }

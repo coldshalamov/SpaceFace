@@ -1,8 +1,15 @@
 // Vercel ignoreCommand. Exit 0 skips the deployment, exit 1 builds.
-// Agent lanes were each triggering a full retail bundle. On the Hobby plan only
-// one build runs at a time, so previews sat until Vercel killed them at 45 minutes
-// and the project hit the daily deployment cap. Production and the live gyre
-// preview branches and the iPhone repair candidate still build; everything else is skipped.
+//
+// DEPLOY POLICY (2026-10-19): git pushes no longer trigger Vercel builds at all —
+// vercel.json sets git.deploymentEnabled=false and the project's git link is
+// disconnected. Deploys are manual: `vercel build --prod && vercel deploy --prebuilt --prod`
+// (see docs/VERCEL_DEPLOYMENT.md). This script stays wired as a second gate: if
+// someone reconnects the repo or re-enables deploymentEnabled, only the allowlist
+// below may build — every other branch is skipped before consuming build minutes.
+//
+// History: agent lanes were each triggering a full retail bundle; on the Hobby
+// plan one build runs at a time, previews sat until killed at 45 minutes, and the
+// project hit the daily deployment cap.
 const ref = process.env.VERCEL_GIT_COMMIT_REF || '';
 const allow = new Set([
   'master',

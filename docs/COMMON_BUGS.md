@@ -31,6 +31,7 @@
 12. ["check:assets:live is just red" — sometimes it is not](#12-checkassetslive-is-just-red--sometimes-it-is-not)
 13. [NPC and enemy ships are empty space that targeting still locks](#13-npc-and-enemy-ships-are-empty-space-that-targeting-still-locks)
 14. [Background rocks blip out and come back in a new arrangement](#14-background-rocks-blip-out-and-come-back-in-a-new-arrangement-fixed-2026-09-08)
+15. [Vercel build fails on "content hash does not match the shipping manifest"](#15-vercel-production-build-fails-on-content-hash-does-not-match-the-shipping-manifest)
 
 ---
 
@@ -699,5 +700,36 @@ times out (the probe cannot tell that from a product defect).
 chase-camera frame membrane re-origins the scene); `scripts/probe-camera-clearance.mjs` used to
 pass sim positions and reported "no roof" for a station that was right there. Cross
 `render._frameMembrane.toLocal` first.
+
+## 15. Vercel production build fails on "content hash does not match the shipping manifest"
+
+**Symptom:** every push's Vercel deployment errors ~3 minutes in; the log ends with
+`[bundle] FAILED: assets/ships/release/render-packages/<key>/render-package.json content hash does
+not match the shipping manifest` (or a provenance/runtime-table variant).
+
+**Root cause (seen 2026-10-19, two commits at once):** a commit re-authored release GLBs and/or
+`pilots.json` but skipped the package recompile or the manifest regeneration, so the generated
+`src/render/renderPackageManifest.js` still pinned the OLD package hashes. The bundle's
+fail-closed manifest gate (`scripts/lib/releasePackaging.mjs`, `renderPackageSourceOmissions`)
+then refuses to ship. It is the release layer working as designed — the *commit* was incomplete,
+not the check.
+
+**The wrong places to look first:** `vercel.json`, `npm ci`, esbuild — install and bundling are
+not where this dies; it dies at the copy/manifest stage after esbuild succeeds.
+
+**Fix protocol** (full detail: [`docs/VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md)):
+
+1. `npm run check:release-manifest-pins` — names every stale pilot in seconds.
+2. Recompile the package and regenerate the manifest in the **same commit**
+   (`assets/ships/AGENTS.md` step 4):
+   `node scripts/refresh-render-package-pilots.mjs --only=<key>` then
+   `node scripts/build-render-package-pilots.mjs --only=<key>`.
+3. If a stale lane left correct recompiles dirty in the tree, adopt them (NOW rules) — but commit
+   package + manifest together.
+4. **Dirty-tree trap:** the manifest must pin COMMITTED packages, not disk. A manifest regenerated
+   against uncommitted foreign recompiles breaks the build for every pilot pinned early.
+
+**Also note:** git pushes no longer trigger Vercel builds (deploy policy, 2026-10-19) — deploys
+are manual (`vercel build --prod && vercel deploy --prebuilt --prod`).
 
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*

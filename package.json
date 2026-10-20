@@ -5,7 +5,7 @@
   "type": "module",
   "main": "electron/main.cjs",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.12.0 <25"
   },
   "scripts": {
     "postinstall": "node scripts/patch-playwright-electron.mjs",
@@ -577,6 +577,7 @@
     "check:asset-pipeline-contract": "node scripts/check-asset-pipeline-contract.mjs",
     "build:render-package-pilots": "node scripts/build-render-package-pilots.mjs",
     "check:render-package-pilots": "node scripts/check-render-package-pilots.mjs",
+    "check:release-manifest-pins": "node scripts/check-release-manifest-pins.mjs",
     "check:render-package-plan": "node scripts/check-render-package-instance-plan.mjs",
     "check:render-package-coverage": "node scripts/generate-render-package-pilots.mjs --check",
     "check:sector-prewarm": "node scripts/check-sector-prewarm.mjs",
