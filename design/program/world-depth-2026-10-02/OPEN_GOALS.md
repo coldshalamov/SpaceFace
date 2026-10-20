@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 20 October 2026, 16:54 UTC. All eight outcomes remain open. The original twenty-concept map,
+Updated 20 October 2026, 17:39 UTC. All eight outcomes remain open. The original twenty-concept map,
 IMPLEMENTATION and build_map remain the scope. A test pass, export or draft PR is not whole-game acceptance.
 
 ## SF-GAME
@@ -22,7 +22,7 @@ IMPLEMENTATION and build_map remain the scope. A test pass, export or draft PR i
 
 ## SF-PUBLISH
 - Outcome: tested coherent source, assets and handoffs in verified repository commits and draft PRs.
-- State: source delivery working; drafts PR460 at9532f85a, PR461 atb7bc0f7a, PR462 ated6b50d7, PR463 at9bba6863, PR464 at07658d8d, PR465 at1d9d2779 and PR466 ate62ec011. PR463's bounded main-page CPU companion remains under local review; read current heads before publishing. Aggregate CI is not green. Model/content increments remain separately unpublished.
+- State: source delivery working; drafts PR460 at9532f85a, PR461 at3515a0c4, PR462 ated6b50d7, PR463 ata6491a36, PR464 at07658d8d, PR465 at1d9d2779 and PR466 ate62ec011; PR467 ata87ccf74; PR468 ataaa7634b. PR463 final bounded capture is terminal with no CPU specimen; PR467 admission and PR468 contact-lineage evidence are under CI. Read current heads before publishing. Aggregate CI is not green. Model/content increments remain separately unpublished.
 - Owner: publication integration and per-PR owners.
 - Evidence: https://github.com/coldshalamov/SpaceFace/pulls ; exact heads and CI summary in CONTINUATION_CHECKPOINT.md.
 - Next: verify successor refs, complete active CI, and fix attributable failures without overwriting newer work.
@@ -30,9 +30,9 @@ IMPLEMENTATION and build_map remain the scope. A test pass, export or draft PR i
 
 ## SF-RECOVER
 - Outcome: source, models, tests and handoffs recoverable outside disposable storage, in addition to repository delivery.
-- State: a verified additional source checkpoint reconstructs281 non-asset paths; earlier model packages retained separately. Public source PRs preserve delivered increments independently of downloads.
+- State: a verified additional source checkpoint reconstructs293 non-asset paths; earlier model packages retained separately. Public source PRs preserve delivered increments independently of downloads.
 - Owner: source owners and integration.
-- Evidence: every source blob verified after isolated-index restoration; source checkpoint SHA25670ae881147ee0cb676f52d32a3cd28d25ea39296823923d93cadc4f4847e75a1. Recovery identities are retained outside this public register.
+- Evidence: every source blob verified after isolated-index restoration; source checkpoint SHA256a8db30ff608975c91b20ef3da7b8e7769c381ace246e2d0bb4e4212d2f833597. Recovery identities are retained outside this public register.
 - Next: preserve each coherent increment and verify restoration; do not substitute backups for publication.
 - Awaiting user: distinct compressed public archive approval remains unanswered.
 
@@ -62,8 +62,8 @@ IMPLEMENTATION and build_map remain the scope. A test pass, export or draft PR i
 
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, jobs, economy, history, characters and consequences grounded in existing assets and systems.
-- State: PR461 cutters physically work and return; source-to-hold conservation is proved, but Forge still discards unsupported electronics. PR462 original escort/hauler pair physically travels and can be interrupted. PR464 miner extracts a real finite rock and surveyor records settled readings; no invented cargo, reward or payment. PR466 adds physical Kess count-lane passage and one bounded missing-service slot, without cargo title/reward. PR460 fixes arrival payload deletion; PR463 investigates Market liveness.
-- Owner: active feature/CI owners plus salvor-intake repair and independent transaction-review owners.
-- Evidence: PR461 remote40/40 plus B10; PR462 remote14/14; PR464 exact-public12/12,18-unit finite source and mid-cut Continue. Genuine old save completes after ordinary player flight admits the dormant source, without teleport/pins/threat clearing. PR466 native19/19, Hail/freight70/70, far/roster/kernel97/97 and CI partition30/30 pass; held/berth Continue and retained exact residency are proved, not ordinary shelving.
-- Next: follow Tethys/Market CI and repair actual Forge accepted receipts/remaining custody without inventing buyers, prices or ledgers.
+- State: PR461 cutters physically work and return; Forge now accepts five scrap plus two electronics through exact-line receipts; unsupported remainder stays aboard and old receipts remain truthful. PR462 original escort/hauler pair physically travels and can be interrupted. PR464 miner extracts a real finite rock and surveyor records settled readings; no invented cargo, reward or payment. PR466 adds physical Kess count-lane passage and one bounded missing-service slot, without cargo title/reward. PR460 fixes arrival payload deletion; PR463 identifies native Commit/GPU stalls but no source cause. PR467 distinguishes presentation counts from admission; PR468 preserves guarded player contact lineage across receipt gaps.
+- Owner: exact PR461, PR467 and PR468 implementation/CI owners; other source owners retain their paths.
+- Evidence: PR461 successor exact/remote62/62, sim32/32 and feel27/27, two same-worker hauls accepting7/4 units; PR462 remote14/14; PR464 exact-public12/12,18-unit finite source and mid-cut Continue. Genuine old save completes after ordinary player flight admits the dormant source, without teleport/pins/threat clearing. PR466 native19/19, Hail/freight70/70, far/roster/kernel97/97 and CI partition30/30 pass; held/berth Continue and retained exact residency are proved, not ordinary shelving.
+- Next: finish intake/admission/contact-lineage CI and advance the next grounded world unit; preserve no-new-buyer/price/ledger limits and do not repeat exhausted Market captures.
 - Awaiting user: no routine narrative choice; whole-world acceptance remains open.
