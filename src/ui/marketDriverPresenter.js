@@ -12,6 +12,7 @@ import { summarizeDemandDrivers } from './demandDriverSummary.js';
 import { FACTION_META } from '../data/factions.js';
 import { priceModForState } from '../systems/factions.js';
 import { commodityStandingMultipliers } from '../economy/economyMath.js';
+import { ECONOMY_BALANCE } from '../data/economyDerived.js';
 
 const STATION_CONTEXT = new Map();
 for (const sector of SECTORS) {
@@ -193,11 +194,49 @@ export function presentMarketDrivers({ state, stationId, commodity, entry, cycle
   });
 }
 
+const COMMODITY_NAME_FALLBACK = (commodity, id) => (commodity && commodity.name)
+  || words(String(id || '').replace(/^cmdty_/, ''));
+
+/** RC-28: the player's own trade is a mover while its stock impact is still recovering —
+ *  one recovery half-life (catalog recoveryHalfLifeS, else market.halfLifeS). Read only. */
+function playerTradeWindowS(commodityId) {
+  const row = ECONOMY_BALANCE && ECONOMY_BALANCE.commodities && ECONOMY_BALANCE.commodities[commodityId];
+  const own = Number(row && row.recoveryHalfLifeS);
+  if (own > 0) return own;
+  const base = Number(ECONOMY_BALANCE && ECONOMY_BALANCE.market && ECONOMY_BALANCE.market.halfLifeS);
+  return base > 0 ? base : 900;
+}
+
+export function playerTradeMover(state, stationId, commodityId) {
+  const ledger = state && state.player && Array.isArray(state.player.tradeLedger) ? state.player.tradeLedger : null;
+  if (!ledger || !stationId || !commodityId) return null;
+  const now = Math.max(0, Number(state.simTime) || 0);
+  let best = null;
+  for (const r of ledger) {
+    if (!r || r.stationId !== stationId || r.commodityId !== commodityId) continue;
+    if (r.side !== 'sell' && r.side !== 'buy') continue;
+    const at = Number(r.seenAt);
+    if (!Number.isFinite(at) || at > now) continue;
+    if (!best || at > best.at) best = { at, side: r.side, qty: Math.max(0, Math.floor(Number(r.qty) || 0)), receiptId: r.receiptId || null };
+  }
+  if (!best || best.qty <= 0 || now - best.at > playerTradeWindowS(commodityId)) return null;
+  return best;
+}
+
+/** Row 465 read-only depletion helper: the economy already stamped the listing's
+ *  depletion-scarcity driver; never call sectorDepletionPressure (it creates state). */
+export function depletionMover(entry) {
+  const drivers = entry && Array.isArray(entry.demandDrivers) ? entry.demandDrivers : [];
+  return drivers.find((d) => d && d.id === 'depletion-scarcity' && d.direction === 'up') || null;
+}
+
 /**
  * LG-FORECAST-PROOF (row 279): one line tracing the last move to its cause. The listing's
  * eventMods carry the live sim eventIds; the newest one names what is moving the price right
- * now, in the same words the news ticker speaks. With no event mods the mover is the formula
- * regime — the same word the cone read prints, because that is what moved it.
+ * now, in the same words the news ticker speaks. RC-28 (row 465): a trade the pilot just made
+ * here outranks it while the stock impact recovers, and worked-out local belts outrank the
+ * formula regime. With none of those the mover is the formula regime — the same word the cone
+ * read prints, because that is what moved it.
  */
 export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
   const seed = (state && state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
@@ -205,28 +244,48 @@ export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
   for (const m of (entry && Array.isArray(entry.eventMods) ? entry.eventMods : [])) {
     if (m && m.eventId != null && !ids.includes(m.eventId)) ids.push(m.eventId);
   }
+  let newest = null;
   if (ids.length) {
     const events = (state && state.economy && state.economy.econEvents) || [];
-    let newest = null;
     for (const id of ids) {
       const ev = events.find((e) => e && e.id === id);
       if (ev && (!newest || Number(ev.startT) >= Number(newest.startT))) newest = ev;
     }
-    if (newest) {
-      // commodityId verbatim: a market-wide '*' event reads "the market" here exactly as it
-      // does on the ticker — substituting the viewed listing would pick a different template
-      // variant and mis-attribute a station-wide move to one good.
-      const headline = generateHeadline({
-        type: newest.type,
-        stationId: newest.stationId || stationId,
-        commodityId: newest.commodityId,
-        eventId: newest.id,
-      }, { seed });
-      if (headline) return Object.freeze({ text: `Last move: ${headline}`, eventId: String(newest.id) });
-    }
+  }
+  const name = COMMODITY_NAME_FALLBACK(commodity, commodity && commodity.id);
+  const mine = playerTradeMover(state, stationId, commodity && commodity.id);
+  // The pilot's own trade is the honest mover while it is at least as new as the newest event.
+  // eventId stays null: marketPresentation and lg-forecast-proof treat it as an `evt_` id.
+  if (mine && (!newest || mine.at >= Number(newest.startT))) {
+    return Object.freeze({
+      text: `Last move: your ${mine.side === 'sell' ? 'sale' : 'purchase'} of ${mine.qty} ${name} here`,
+      eventId: null,
+      kind: 'player_trade',
+      receiptId: mine.receiptId,
+    });
+  }
+  if (newest) {
+    // commodityId verbatim: a market-wide '*' event reads "the market" here exactly as it
+    // does on the ticker — substituting the viewed listing would pick a different template
+    // variant and mis-attribute a station-wide move to one good.
+    const headline = generateHeadline({
+      type: newest.type,
+      stationId: newest.stationId || stationId,
+      commodityId: newest.commodityId,
+      eventId: newest.id,
+    }, { seed });
+    if (headline) return Object.freeze({ text: `Last move: ${headline}`, eventId: String(newest.id), kind: 'event' });
+  }
+  if (depletionMover(entry)) {
+    const sectorName = (stationContext(state, stationId).sector || {}).name || 'this sector';
+    return Object.freeze({
+      text: `Last move: worked-out belts in ${sectorName} — ${name} carries a scarcity premium`,
+      eventId: null,
+      kind: 'depletion',
+    });
   }
   const liveCycle = state && state.economy && state.economy.cycles
     && state.economy.cycles[stationId] && commodity && state.economy.cycles[stationId][commodity.id];
   const regime = (liveCycle && (liveCycle.regime || liveCycle.family)) || 'stable';
-  return Object.freeze({ text: `Last move: ${regimeLabel(regime)}`, eventId: null });
+  return Object.freeze({ text: `Last move: ${regimeLabel(regime)}`, eventId: null, kind: 'cycle' });
 }

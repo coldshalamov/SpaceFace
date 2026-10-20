@@ -1094,7 +1094,7 @@ production units, and never build what they write.
 | 462 | RC-CHASE | Crime is a chase — Witness Run, the Sweep, the Sponsor (§32.7) | BUILD | OPEN — after 461 |
 | 463 | RC-BOSS-READ | Bosses you can read — move plate, name/act cards, Adventure boss bar, show-don't-toast, elite intent, retry act (§32.7) | BUILD | OPEN |
 | 464 | RC-SECTOR-LAWS | Every sector has a law — 10 name-only sectors get a physical rule; warned interdiction; arrival freighters; landmark in background (§32.7) | BUILD | OPEN — M3 |
-| 465 | RC-MARKET-WHY | The market explains itself — name the mover, lane risk, one voice per hull, local news (§32.7) | BUILD | OPEN — M1 |
+| 465 | RC-MARKET-WHY | The market explains itself — name the mover, lane risk, one voice per hull, local news (§32.7) | BUILD | OPEN — M1. Player-trade mover, lane-risk words, dented-plate mechanic line and station-local bar news landed (fleet oct20); remaining: a freighter as named mover (needs the 480 sim record), one voice per hull beyond Clean plate |
 | 466 | RC-INDUSTRY-TRUE | Industry tells the truth — capped earnings on drone cards, Deed Names, next-step copy, distressed-drone rescue (§32.7) | FIX | OPEN — after 402 in the seam |
 | 467 | RC-MISSION-VOICE | Missions with a voice — bounty memory and lines, unique heist methods and casing, payday receipt, retry changes the room, Clause Gambit (§32.7) | BUILD | OPEN |
 | 468 | RC-DISCOVERY-SHOWN | Discovery you can see and hear — Field Notes, taxonomy, comms styling, discovery toasts, creature/machine sound, Helios tease, Suhl's Clauses (§32.7) | BUILD | OPEN — M3 |

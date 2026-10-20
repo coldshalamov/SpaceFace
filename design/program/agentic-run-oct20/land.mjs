@@ -24,7 +24,8 @@ if (board === 'delete') {
   if (kept.length !== lines.length) writeFileSync(bm, kept.join('\n'));
 }
 const paths = [...files, ...extra, 'build_map.md'];
-git('add', '-N', '--', ...files.filter((f) => { try { git('ls-files', '--error-unmatch', '--', f); return false; } catch { return true; } }));
+const untracked = files.filter((f) => { try { execFileSync('git', ['ls-files', '--error-unmatch', '--', f], { cwd: REPO, stdio: 'ignore' }); return false; } catch { return true; } });
+if (untracked.length) git('add', '-N', '--', ...untracked);
 git('add', '--', ...paths);
 execFileSync('git', ['commit', '-q', '-m', opt('msg'), ...TRAILER, '--', ...paths], { cwd: REPO, stdio: 'inherit' });
 const sha = git('rev-parse', 'HEAD');

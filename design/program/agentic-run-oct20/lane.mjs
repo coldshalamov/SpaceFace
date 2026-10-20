@@ -87,7 +87,7 @@ Find the row: in build_map.md the §N table row "| ${row} |", its seam in the §
 The plan must contain, in this order:
 1. GOAL — the row's player-visible outcome in two sentences.
 2. ALREADY TRUE — what the code already does toward the done-when (cite file:function). Do not re-plan shipped work.
-3. SCOPE THIS SITTING — a coherent, shippable slice that a strong engineer could finish in ~2 hours of focused work. Prefer a complete, wired, player-reachable slice of the done-when over a thin pass at all of it. Name what is explicitly deferred.
+3. SCOPE THIS SITTING — the goal is to CLOSE the row: scope every done-when item when that is feasible in one long sitting (up to ~4 hours of strong-engineer work). Only when the row is genuinely larger, take the largest coherent, wired, player-reachable slice (never a thin pass at everything) and name the deferred remainder precisely. Items that need a browser/GPU capture are verified by deterministic node tests instead and named as such.
 4. FILES — the exact files to edit or create (repo-relative), each with the specific functions/hunks to change. Every file must be inside the seam's write boundary or be a new test file. Never list a PROTECTED file.
 5. STEPS — numbered, concrete edits (function names, data shapes, event names, constants with values), including how it is wired into the live game route (which system registers it, which event or tick drives it, which UI/audio surface the player perceives it through).
 6. TEST — one new focused test file test/<name>.test.mjs: the exact cases and assertions on seed 4242 that prove the done-when items in scope, plus the existing focused test files to run that guard the touched owners (find them with grep).
