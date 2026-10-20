@@ -10,6 +10,7 @@ import { createPhaseBlinkPresentation } from '../src/render/phaseBlinkPresentati
 import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
 import { isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
+import { createCatalogStationRestore } from '../src/save/catalogStationRestore.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
@@ -648,6 +649,7 @@ function realRestoreFixture(f) {
     _closeRestoreSession: () => ({ restored: true }),
   };
   const env = {
+    createCatalogStationRestore,
     createTimeEffects: () => ({ reset() {}, set() {} }),
     nowMs: () => 10, RESTORE_YIELD_SLICE_MS: 8,
   };
