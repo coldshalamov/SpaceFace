@@ -152,7 +152,7 @@ try {
   await domClick(page, '[data-screen="station"] .sx-mkt-row');
   await page.waitForTimeout(200);
   // A separate bounded span retains BUY CPU stacks rather than evicting them with dock/setup work.
-  buyTrace = await startStationHandoffTrace(browser, 'market-buy');
+  buyTrace = await startStationHandoffTrace(browser, 'market-buy', { compact: true });
   const buyObservation = await startMarketBuyObservation(page);
   const buyHostStart = performance.now();
   const buyTiming = { baselineCredits: c0, timeoutMs: DOCK_TIMEOUT_MS, outcome: 'pending' };

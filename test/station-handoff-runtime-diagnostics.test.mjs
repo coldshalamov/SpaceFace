@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
-import { collectStationHandoffSnapshot, reportStationHandoffFailure } from '../scripts/lib/stationHandoffDiagnostics.mjs';
+import { collectStationHandoffSnapshot, reportStationHandoffFailure, summarizeTraceIntegrity } from '../scripts/lib/stationHandoffDiagnostics.mjs';
 
 function collector(overrides = {}) {
   return runInNewContext(`(${collectStationHandoffSnapshot.toString()})()`, {
@@ -379,7 +379,7 @@ test('trace output is exclusive and a filename collision preserves the earlier b
 
 test('BUY trace covers only its own actor boundary and retains unchanged waits', () => {
   const market = readFileSync(new URL('../scripts/check-market-first-loop-runtime.mjs', import.meta.url), 'utf8');
-  const start = market.indexOf("buyTrace = await startStationHandoffTrace(browser, 'market-buy')");
+  const start = market.indexOf("buyTrace = await startStationHandoffTrace(browser, 'market-buy', { compact: true })");
   const observation = market.indexOf('const buyObservation = await startMarketBuyObservation(page)');
   const actor = market.indexOf("await domClick(page, '[data-screen=\"station\"] .sx-trade__go[data-go]')");
   const wait = market.indexOf('page.waitForFunction((prev) => window.SF.state.player.credits !== prev');
@@ -389,4 +389,155 @@ test('BUY trace covers only its own actor boundary and retains unchanged waits',
   assert.equal(market.match(/if \(buyTrace\) await buyTrace\.stop\(\)/g)?.length, 2, 'inner and outer finally retain cleanup');
   assert.match(market, /const DOCK_TIMEOUT_MS = 15000/);
   assert.ok(market.includes('window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS }'));
+});
+
+function profileTrace({ start = true, missing = false, loss = false } = {}) {
+  return { traceEvents: [
+    ...(start ? [{ name: 'Profile', pid: 1, tid: 1, id: 'a', args: { data: { startTime: 100 } } }] : []),
+    { name: 'ProfileChunk', pid: 1, tid: 99, id: 'a', args: { data: {
+      cpuProfile: { samples: [1, missing ? 2 : 1], nodes: [{ id: 1, callFrame: { functionName: '(root)' } }] },
+      timeDeltas: [100, 100],
+    } } },
+  ], metadata: { trace_processor_stats: {
+    traced_buf: [{ buffer_size: 8388608, bytes_written: 11939840,
+      bytes_overwritten: loss ? 3551232 : 0, chunks_overwritten: loss ? 867 : 0, write_wrap_count: loss ? 1 : 0 }],
+    legacy_v8_cpu_profile_invalid_callsite: 0, legacy_v8_cpu_profile_invalid_sample: 0,
+  } } };
+}
+
+test('trace integrity joins cross-thread profile chunks by process/profile identity', () => {
+  const result = summarizeTraceIntegrity(profileTrace());
+  assert.equal(result.profileStatus, 'complete');
+  assert.equal(result.traceLossStatus, 'not-reported');
+  assert.equal(result.profiles.length, 1);
+  assert.equal(result.profiles[0].samples, 2);
+  assert.equal(result.profiles[0].missingNodeRefs, 0);
+});
+
+test('valid JSON with lost profile start and node definitions is explicitly incomplete', () => {
+  const result = summarizeTraceIntegrity(profileTrace({ start: false, missing: true, loss: true }));
+  assert.equal(result.profileStatus, 'incomplete');
+  assert.equal(result.traceLossStatus, 'reported');
+  assert.equal(result.profiles[0].hasStart, false);
+  assert.equal(result.profiles[0].missingNodeRefs, 1);
+  assert.equal(result.buffers[0].bytesOverwritten, 3551232);
+});
+
+test('missing loss metadata and missing samples do not produce an integrity pass', () => {
+  const trace = profileTrace(); delete trace.metadata;
+  assert.equal(summarizeTraceIntegrity(trace).traceLossStatus, 'unknown');
+  trace.traceEvents[1].args.data.cpuProfile.samples = [];
+  assert.equal(summarizeTraceIntegrity(trace).profileStatus, 'unavailable');
+  assert.equal(summarizeTraceIntegrity({ traceEvents: [] }).profileStatus, 'unavailable');
+});
+
+test('trace integrity accounts for definitions emitted after samples and parser invalidity', () => {
+  const trace = profileTrace();
+  trace.traceEvents[1].args.data.cpuProfile.nodes = [];
+  trace.traceEvents.push({ name: 'ProfileChunk', pid: 1, id: 'a', args: { data: {
+    cpuProfile: { nodes: [{ id: 1, callFrame: { functionName: '(root)' } }] },
+  } } });
+  assert.equal(summarizeTraceIntegrity(trace).profiles[0].missingNodeRefs, 0);
+  trace.metadata.trace_processor_stats.legacy_v8_cpu_profile_invalid_sample = 2;
+  assert.equal(summarizeTraceIntegrity(trace).profileStatus, 'incomplete');
+});
+
+test('malformed profile, node and sample identities cannot claim completeness', () => {
+  const changes = [
+    trace => { delete trace.traceEvents[0].pid; delete trace.traceEvents[0].id; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.nodes = [{}]; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.samples = [undefined]; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.nodes = [{ id: 1 }]; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.nodes[0].parent = 'bad'; },
+  ];
+  for (const change of changes) {
+    const trace = profileTrace(); change(trace);
+    assert.throws(() => summarizeTraceIntegrity(trace), /invalid trace/);
+  }
+});
+
+test('present leaf IDs with missing parent frames or timing remain incomplete', () => {
+  const trace = profileTrace();
+  trace.traceEvents[1].args.data.cpuProfile.nodes = [{ id: 1, parent: 2, callFrame: { functionName: 'leaf' } }];
+  let result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete'); assert.equal(result.profiles[0].missingParentRefs, 1);
+  trace.traceEvents[1].args.data.cpuProfile.nodes[0].parent = 0;
+  delete trace.traceEvents[1].args.data.timeDeltas;
+  result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete'); assert.equal(result.profiles[0].timingLengthMismatches, 1);
+  trace.traceEvents[1].args.data.timeDeltas = [NaN, -1];
+  result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete'); assert.equal(result.profiles[0].invalidTimeDeltas, 2);
+});
+
+test('long parent chains and cycles are traversed iteratively within the node cap', { timeout: 5000 }, () => {
+  const trace = profileTrace();
+  const cpu = trace.traceEvents[1].args.data.cpuProfile;
+  cpu.nodes = Array.from({ length: 100000 }, (_, i) => ({
+    id: i + 1, parent: i === 99999 ? 0 : i + 2, callFrame: { functionName: i === 99999 ? '(root)' : 'frame' },
+  }));
+  assert.equal(summarizeTraceIntegrity(trace).profileStatus, 'complete');
+  cpu.nodes[99999].parent = 1;
+  const result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete');
+  assert.equal(result.profiles[0].parentCycles, 1);
+});
+
+test('integrity processing has explicit event, profile, node and sample limits', () => {
+  assert.throws(() => summarizeTraceIntegrity({ traceEvents: new Array(200001) }), /event limit/);
+  assert.throws(() => summarizeTraceIntegrity({ traceEvents: Array.from({ length: 17 }, (_, id) =>
+    ({ name: 'Profile', pid: 1, id })) }), /profile limit/);
+  for (const [field, count, pattern] of [['nodes', 100001, /node limit/], ['samples', 1000001, /sample limit/]]) {
+    const trace = profileTrace();
+    trace.traceEvents[1].args.data.cpuProfile[field] = Array.from({ length: count }, () => field === 'nodes'
+      ? { id: 1, callFrame: { functionName: '(root)' } } : 1);
+    assert.throws(() => summarizeTraceIntegrity(trace), pattern);
+  }
+});
+
+test('BUY compact categories retain causal timelines and sampling without changing dock defaults', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  t.mock.method(console, 'error', () => {});
+  const configs = [];
+  for (const compact of [false, true]) {
+    const { session, calls } = traceSession({ readFailure: new Error('fixture no artifact') });
+    const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session }, 'market-buy', { compact });
+    await trace.stop();
+    configs.push(calls.find(([method]) => method === 'Tracing.start')[1].traceConfig);
+  }
+  assert.ok(configs[0].includedCategories.includes('toplevel'));
+  assert.deepEqual(configs[1].includedCategories, configs[0].includedCategories.filter(category => category !== 'toplevel'));
+  for (const category of ['devtools.timeline', 'disabled-by-default-devtools.timeline',
+    'disabled-by-default-devtools.timeline.stack', 'disabled-by-default-v8.cpu_profiler']) {
+    assert.ok(configs[1].includedCategories.includes(category));
+  }
+  assert.equal(configs[1].traceBufferSizeInKb, 8192);
+});
+
+test('compact trace reports integrity after storing exclusive bytes, preserving actor result on bad gzip', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { gzipSync } = await import('node:zlib');
+  const { unlink } = await import('node:fs/promises');
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  for (const content of ['bad gzip',
+    gzipSync(JSON.stringify(profileTrace({ start: false, missing: true, loss: true }))).toString('base64'),
+    gzipSync('x'.repeat(16 * 1024 * 1024 + 1)).toString('base64')]) {
+    const { session } = traceSession();
+    const send = session.send;
+    session.send = async (method, args) => method === 'IO.read'
+      ? { data: content, base64Encoded: content !== 'bad gzip', eof: true } : send(method, args);
+    const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session }, 'market-buy', { compact: true });
+    const original = new Error('original actor failure');
+    await assert.rejects((async () => { try { throw original; } finally { await trace.stop(); } })(), error => error === original);
+  }
+  try {
+    const summaries = logs.filter(row => row[0] === '[station-handoff] trace integrity:').map(row => JSON.parse(row[1]));
+    assert.equal(summaries[0].profileStatus, 'unavailable');
+    assert.equal(summaries[1].profileStatus, 'incomplete');
+    assert.equal(summaries[1].profiles[0].missingNodeRefs, 1);
+    assert.equal(summaries[2].profileStatus, 'unavailable', 'oversized inflation is bounded, never a claimed pass');
+  } finally {
+    for (const row of logs.filter(row => row[0] === '[station-handoff] browser trace:')) await unlink(row[1]);
+  }
 });

@@ -68,3 +68,32 @@ runs the station-handoff trace helper tests; no new browser command is introduce
 
 Local helper suite35/35 and independent adversarial review6/6 pass. Next: publish
 this exact follow-up and inspect actual BUY CPU stacks before choosing production fixes.
+
+## Observed trace loss and bounded reduction (2026-10-20)
+
+Successor 22a7dba passed BUY again, but the wait consumed 14.858 s of its unchanged
+15 s allowance. This is not stable-liveness or performance acceptance. Its distinct
+BUY trace retained three roughly 4.8–5.0 s Chromium Commit spans, each overlapping a
+similarly long GPU-process task. Launch metadata identifies headless SwiftShader.
+No retained shader/compile/residency counter identifies the responsible game operation.
+
+The 8 MiB ring wrote 11,939,840 bytes and overwrote 3,551,232 bytes (867 chunks).
+The main CPU profile lost its start and 90,817 of 91,801 sample-node references.
+Surviving autosave samples must not be blamed for those native spans. The trace is
+useful native-task evidence but incomplete source-attribution evidence.
+
+Only the BUY trace now omits the redundant `toplevel` category. In that retained
+trace, `toplevel` and `toplevel,mojom` contributed 28,528 events; their serialized
+JSON was about 8.71 MB. Actual Commit, GPUTask and RunTask events belong to
+`disabled-by-default-devtools.timeline`, which remains enabled alongside function,
+stack and CPU sampling categories. Original dock trace categories are unchanged.
+
+No buffer, storage, actor, or acceptance budget increases. Compact traces report
+buffer overwrite statistics, missing profile starts, missing node/parent references,
+cycles, sample/timing coverage and parser invalidity after capture. Profile status
+reports structural completeness only, never source causality. Parent traversal is
+iterative and memoized within the node cap. Gzip inflation is capped at 16 MiB; analysis caps
+events, profiles, nodes and samples and reports unavailable rather than silently
+claiming integrity. Clean JSON alone is not complete evidence. The retained failing
+integrity case is reproduced locally; another exact-head capture must establish
+whether this measured reduction preserves definitions before any production fix.
