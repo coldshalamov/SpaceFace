@@ -1161,6 +1161,7 @@ export const npcJobsRuntime = {
         threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
         // PQ-195.04: read-only berth service projection for the flight HUD and focused tests.
         berthStatus: () => this.berthStatus(),
+        ceresTenderOwnsFlight: (entity) => this._ceresTenderOwnsFlight(entity),
         // INF-WF01: read-only crew-response projection for focused tests (detached scalars).
         crewResponse: () => {
           const r = this._crewResponse;
@@ -1495,6 +1496,7 @@ export const npcJobsRuntime = {
           waypointRef: null,
           actorRef: null,
           actorDataRef: null,
+          actorGeneration: null,
           terminalEntryRef: null,
           terminalJobRef: null,
           terminalActorRef: null,
@@ -1830,6 +1832,7 @@ export const npcJobsRuntime = {
     binding.waypointRef = waypointRef;
     binding.actorRef = entity;
     binding.actorDataRef = entity.data;
+    binding.actorGeneration = entity.occupantGeneration;
     return true;
   },
 
@@ -1959,6 +1962,7 @@ export const npcJobsRuntime = {
     binding.waypointRef = null;
     binding.actorRef = null;
     binding.actorDataRef = null;
+    binding.actorGeneration = null;
     if (clearTerminalAuthority) {
       binding.terminalEntryRef = null;
       binding.terminalJobRef = null;
@@ -4337,7 +4341,8 @@ export const npcJobsRuntime = {
       const approachingSeam = !claimedBeforeAdvance && starterRock && entity.pos
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
-      const physicalTarget = !claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity);
+      const physicalTarget = !claimedBeforeAdvance && (this._ceresTenderPhysicalTarget(entry, entity)
+        || this._livingAdventureWorkTarget(entry, entity));
       // The settle test is relative to the target: a hull riding a drifting rock at matching
       // velocity IS arrived, even though its world-frame speed stays at belt drift.
       // A cutter's commission is paperwork at the pad, not a docking manoeuvre; the seam face and
@@ -4434,6 +4439,54 @@ export const npcJobsRuntime = {
       }
     }
     return index >= 0 && index < job.route.length ? job.route[index] : null;
+  },
+
+  // The authenticated ordinary refinery service owns FlightV3, not ambient loiter AI.
+  // Reuse its existing lifecycle-bound actor/entry/route authority. External leases
+  // deliberately yield this guard to their own controllers (including crew rescue).
+  _ceresTenderOwnsFlight(entity) {
+    if (!entity || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    const binding = this._ensureCeresRealTargetAuthority().bindings.find(candidate => candidate.actorRef === entity)
+      || this._ceresRealTargetActorBinding(entity.data?.worldRecordId);
+    if (!binding || binding.spec.actorSlotId !== 'ceres_refinery_tender'
+      || binding.actorAmbiguous) return false;
+    const entry = this._byId()[binding.jobId];
+    // An unrelated impostor cannot revoke the genuine actor's retained authority.
+    if (entity !== binding.actorRef && !(entry && entity.id === entry.entityId
+      && this.state.entities?.get(entry.entityId) === entity)) return false;
+    if (!this._hasExactCeresRealTargetRetainedActor(binding, entry, entity)
+      || binding.actorGeneration !== entity.occupantGeneration) {
+      this._clearCeresRealTargetsForJob(binding.jobId, true);
+      return false;
+    }
+    if (!this._hasExactCeresRealTargetRetainedRoute(binding, entry)) {
+      this._clearCeresRealTargetsForJob(binding.jobId, false);
+      return false;
+    }
+    return !entry.control && entry.job.phase !== NPC_JOB_PHASE.COMPLETE;
+  },
+
+  // A real service stop, shared by steering and the existing physical-arrival gate.
+  // The kernel keeps its clock/progress; only arrival-dependent phases wait for the hull.
+  _ceresTenderPhysicalTarget(entry, entity) {
+    if (!this._ceresTenderOwnsFlight(entity) || this._byId()[entity.data.jobId] !== entry
+      || entry.job.phase === NPC_JOB_PHASE.FLEE) return null;
+    const waypoint = this._ceresRealTargetWaypoint(entry.job);
+    if (!waypoint?.pos) return null;
+    const binding = this._currentCeresRealTargetBinding(entry, entity);
+    if (binding) {
+      const client = binding.targetRef;
+      const dx = entity.pos.x - client.pos.x, dz = entity.pos.z - client.pos.z;
+      const distance = Math.hypot(dx, dz);
+      const standoff = Math.max(binding.spec.standoffWU,
+        Math.max(0, entity.radius || 0) + Math.max(0, client.radius || 0) + 12);
+      const ux = distance > .0001 ? dx / distance : Math.cos(entity.rot || 0);
+      const uz = distance > .0001 ? dz / distance : Math.sin(entity.rot || 0);
+      return { pos: { x: client.pos.x + ux * standoff, z: client.pos.z + uz * standoff },
+        vel: client.vel, reach: 2 };
+    }
+    // A missing client still has its authored fallback; no immortal stalled service job.
+    return { pos: waypoint.pos, reach: 2 };
   },
 
   _currentCeresRealTargetBinding(entry, entity) {
@@ -4908,6 +4961,8 @@ export const npcJobsRuntime = {
 
     // PQ-045 bounded real-target consumer. Only five exact, already-live Ceres relationships can
     // reach this branch; everything else retains the authored route controller below.
+    const tenderTarget = this._ceresTenderPhysicalTarget(entry, entity);
+    if (tenderTarget) { this._driveLivingAdventureWorker(entry, entity, tenderTarget); return; }
     if (this._tryDriveCeresRealTarget(entry, entity)) return;
 
     const physicalTarget = this._livingAdventureWorkTarget(entry, entity);

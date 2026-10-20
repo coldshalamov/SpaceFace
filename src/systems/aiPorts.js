@@ -186,6 +186,10 @@ export const aiPorts = {
         this._diag.lastDropReason = 'entity_unavailable';
         continue;
       }
+      if (this.helpers.npcJobs?.ceresTenderOwnsFlight?.(entity)) {
+        this._rejectManeuver('ceres_tender_owned');
+        continue;
+      }
       writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
       this._diag.flushedManeuvers++;
     }
@@ -206,6 +210,7 @@ export const aiPorts = {
     if (!request || request.version !== AI_CONTRACT_VERSION) return this._rejectManeuver('contract_version_mismatch');
     const entity = getEntity(state, request.entityId);
     if (!isLiveCraft(entity)) return this._rejectManeuver('entity_unavailable');
+    if (this.helpers.npcJobs?.ceresTenderOwnsFlight?.(entity)) return this._rejectManeuver('ceres_tender_owned');
     if (entity.physicsBody && entity.physicsBody.dynamic === false) return this._rejectManeuver('body_not_dynamic');
     const normalized = normalizeManeuverRequest(request, state.tick);
     this._pendingManeuvers.set(stableId(normalized.entityId), Object.freeze({
