@@ -8030,6 +8030,8 @@ export const traffic = {
       || (job.routeIndex === 0 && job.phase !== NPC_JOB_PHASE.TRANSIT);
     if (homeLeg) {
       if (!home) return { blocked: true };
+      if (manifest?.salvageIntakeHeld && this._salvorAtTarget(entity, home,
+        Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0))) return { blocked: true };
       return this._salvorTargetDescriptor(entity, home, Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0));
     }
     // Once the finite load is aboard, the short wrangle act finishes where it was cut.
@@ -8051,7 +8053,7 @@ export const traffic = {
     return { ...targetPose, workPose, reach, settled: this._salvorAtTarget(worker, target, reach) };
   },
 
-  _buildSalvorManifest(entity, seq, pool, source = null) {
+  _buildSalvorManifest(entity, seq, pool, source = null, workId = null) {
     const lines = [];
     let totalQty = 0;
     for (const commodityId of Object.keys(pool || {}).sort((a, b) => a.localeCompare(b))) {
@@ -8071,7 +8073,7 @@ export const traffic = {
     // a random market draw in place of taken salvage.
     const manifest = buildCargoManifest({
       seed,
-      freighterKey: `${freighterKey}:salvage:${Math.max(0, seq | 0)}`,
+      freighterKey: workId || `${freighterKey}:salvage:${Math.max(0, seq | 0)}`,
       role: 'hauler',
       marketKeys,
       capacity: Math.max(0, totalQty),
@@ -8114,8 +8116,12 @@ export const traffic = {
     const claimant = this._salvorClaimantOf(target);
     if (claimant && claimant !== context.worldRecordId) return false;
     const seq = Number.isSafeInteger(intent && intent.seq) && intent.seq >= 0 ? intent.seq : 0;
-    const workId = `npc-salvor-work:${context.worldRecordId}:${seq}`;
     const source = this._salvageSourceBinding(target);
+    // A released worker's next commission may restart the same job sequence. Bind new cut/lot
+    // identity to the existing durable source, not a reused entity id or the clock alone.
+    const sourceIdentity = source?.sourceKey || this._salvorTargetKey(target);
+    if (!sourceIdentity) return false;
+    const workId = `npc-salvor-work:${context.worldRecordId}:${seq}:${sourceIdentity}`;
     this._ensureState();
     if (!Array.isArray(this.state.traffic.appliedSalvorWorkIds)) {
       this.state.traffic.appliedSalvorWorkIds = [];
@@ -8140,7 +8146,7 @@ export const traffic = {
 
     if (total > 0) {
       if (!source && !this._stampSalvorClaim(target, context.worldRecordId)) return false;
-      const manifest = this._buildSalvorManifest(context.entity, seq, pool, source);
+      const manifest = this._buildSalvorManifest(context.entity, seq, pool, source, workId);
       this._setTrafficManifest(context.entity, context.rec, manifest);
       // Drain the body so the player cannot double-take what the cutter already loaded.
       if (!source && target.data) {
@@ -8650,6 +8656,17 @@ export const traffic = {
       const job = entry && entry.job;
       if (!job || job.kind !== 'salvor' || job.corrupt) continue;
 
+      const held = ent.data.cargoManifest;
+      if (held?.salvageIntakeHeld && held.totalQty > 0) {
+        const yardId = job.route?.[0]?.id?.slice(5);
+        const intakeOwner = this._registry?.get('economy');
+        // A refused remainder stays on its actual cutter at the yard. It is not another cut,
+        // delivered freight, or a second custody store. Retry when the existing receiver can
+        // genuinely take something (including a legacy scrap-only receipt's electronics).
+        job.phase = NPC_JOB_PHASE.UNLOAD; job.routeIndex = 0; job.progress = 0;
+        if (intakeOwner?.quoteNpcSalvageIntake(yardId, held.lines)?.ok) delete held.salvageIntakeHeld;
+        continue;
+      }
       const site = job.route && job.route[1];
       const source = this._salvageSourceBindingFromPayload(job.payload);
       rec.generalSalvor = true;
@@ -8663,11 +8680,12 @@ export const traffic = {
       const hasCargo = !!(ent.data.cargoManifest
         && Array.isArray(ent.data.cargoManifest.lines)
         && ent.data.cargoManifest.totalQty > 0);
-      // Player beat the cutter to the body: retarget if another takeable remains, else leave empty.
+      // Retarget only before source work. An empty home APPROACH must finish unloading/release,
+      // not restart RETURN every time the hull reaches its yard.
       const beforeClaim = !hasCargo
         && (job.phase === NPC_JOB_PHASE.COMMISSION
           || job.phase === NPC_JOB_PHASE.TRANSIT
-          || job.phase === NPC_JOB_PHASE.APPROACH
+          || (job.phase === NPC_JOB_PHASE.APPROACH && job.routeIndex === 1)
           || job.phase === NPC_JOB_PHASE.WORK);
       if (!beforeClaim) continue;
       if (target && this._isSalvageableBody(target)
@@ -13110,8 +13128,10 @@ export const traffic = {
       if (!this.bus || typeof this.bus.emit !== 'function') return false;
 
       const yardId = destination.slice(5);
+      const generation = manifest.salvageIntakeGeneration ?? 0;
+      if (!Number.isSafeInteger(generation) || generation < 0 || generation >= Number.MAX_SAFE_INTEGER) return false;
       const payload = {
-        intakeId: `salvage-intake:${context.worldRecordId}:${sourceSeq}:${manifestId}`,
+        intakeId: `salvage-intake:${context.worldRecordId}:${sourceSeq}:${manifestId}${generation ? `:remainder:${generation}` : ''}`,
         jobId: context.jobId,
         salvorId: context.entity.id,
         yardId,
@@ -13122,12 +13142,48 @@ export const traffic = {
         lotId,
         lines,
       };
+      const run = this.state.traffic;
+      const offered = JSON.stringify(manifest.lines);
+      let committed = false;
+      // Non-enumerable: this synchronous owner handshake is not save/event content.
+      // Economy calls it before publishing settlement, so even a kill or Continue listener
+      // observes the reduced hold, never both accepted stock and its old physical cargo.
+      Object.defineProperty(payload, 'commitCustody', { value: (result) => {
+        // A listener may Continue, replace the job/hull, or settle this exact lot recursively.
+        // Never clear a newer owner or newer load using a stale acknowledgement.
+        const current = this._jobTrafficContext(intent, 'salvor');
+        if (this.state.traffic !== run || !current || current.entity !== context.entity
+          || current.rec !== context.rec || context.entity.alive === false
+          || context.entity.data.cargoManifest !== manifest || context.rec.manifest !== manifest
+          || manifest.totalQty !== copiedQty || JSON.stringify(manifest.lines) !== offered) return false;
+        if (!result || result.ok !== true) return false;
+        if (result.intakeId !== payload.intakeId || result.yardId !== yardId
+          || result.manifestId !== manifestId || result.lotId !== lotId
+          || !Array.isArray(result.acceptedLines) || !result.acceptedLines.length) return false;
+        const accepted = new Map();
+        for (const line of result.acceptedLines) {
+          const available = lines.find(offeredLine => offeredLine.commodityId === line?.commodityId);
+          if (!available || accepted.has(line.commodityId) || !Number.isSafeInteger(line.qty)
+            || line.qty <= 0 || line.qty > available.qty) return false;
+          accepted.set(line.commodityId, line.qty);
+        }
+        const acceptedQty = [...accepted.values()].reduce((sum, qty) => sum + qty, 0);
+        if (acceptedQty !== result.qty) return false;
+        const remainder = manifest.lines.map(line => ({ ...line, qty: line.qty - (accepted.get(line.commodityId) || 0) }))
+          .filter(line => line.qty > 0);
+        const next = remainder.length ? { ...manifest, lines: remainder,
+          totalQty: copiedQty - acceptedQty, salvageIntakeGeneration: generation + 1, salvageIntakeHeld: true }
+          : this._emptySalvorManifest(context.entity, intent.seq | 0);
+        this._setTrafficManifest(context.entity, context.rec, next);
+        committed = true;
+        return true;
+      } });
       this.bus.emit('salvage:npcUnload', payload);
-      if (!payload.intakeResult || payload.intakeResult.ok !== true) return false;
-
-      const emptied = this._emptySalvorManifest(context.entity, intent.seq | 0);
-      this._setTrafficManifest(context.entity, context.rec, emptied);
-      return true;
+      if (!committed && this.state.traffic === run && context.entity.data.cargoManifest === manifest
+        && ['unsupported_salvage_yard', 'salvage_listing_unavailable'].includes(payload.intakeResult?.reason)) {
+        manifest.salvageIntakeHeld = true;
+      }
+      return committed;
     }
 
     if (intent.kind !== 'hauler' && intent.kind !== 'miner') return false;

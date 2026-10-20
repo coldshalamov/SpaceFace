@@ -205,7 +205,7 @@
     "check:validation-broker:massline-live": "node scripts/validation-broker-cli.mjs --manifest massline-live",
     "check:validation-broker:pq017:issue-claim": "node scripts/validation-broker-cli.mjs --manifest pq017-world-site --issue-claim-only",
     "check:npc-jobs": "node --test test/npc-jobs-kernel.test.mjs test/npc-jobs-runtime-wiring.test.mjs test/npc-jobs-natural-census.test.mjs test/npc-jobs-runtime-convergence.test.mjs",
-    "check:sim:salvor-work": "node --test test/salvor-native-route.test.mjs test/salvor-physical-work.test.mjs test/salvor-occupation.test.mjs test/pq048-salvage-cutter-loop.test.mjs test/sf-079-salvor-sever-then-wrangle.test.mjs",
+    "check:sim:salvor-work": "node --test test/salvor-intake-custody.test.mjs test/salvage-station-intake.test.mjs test/econ-04-salvage-intake-receipt.test.mjs test/salvor-native-route.test.mjs test/salvor-physical-work.test.mjs test/salvor-occupation.test.mjs test/pq048-salvage-cutter-loop.test.mjs test/sf-079-salvor-sever-then-wrangle.test.mjs",
     "capture:pq014-npc-jobs": "node scripts/capture-pq014-npc-jobs.mjs",
     "capture:pq016-beam": "node scripts/capture-pq016-beam.mjs",
     "check:impulse:authority": "node scripts/check-impulse-authority.mjs",

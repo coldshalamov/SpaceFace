@@ -264,7 +264,7 @@ test('real Vesta salvor unload reaches Forge once, retries safely, and survives 
     );
     assert.equal(firstUnload.intakeResult.ok, true);
     assert.equal(market[SCRAP_ID].stock, scrapBefore + 6);
-    assert.equal(market.cmdty_salvage_electronics.stock, electronicsBefore);
+    assert.equal(market.cmdty_salvage_electronics.stock, electronicsBefore + 1);
     assert.ok(econ.quote(FORGE_ID, SCRAP_ID, 'sell', 3).unitAvg < offerBefore.unitAvg);
     assert.equal(sim.state.player.credits, 9001, 'NPC intake never pays the player');
 
@@ -284,8 +284,8 @@ test('real Vesta salvor unload reaches Forge once, retries safely, and survives 
     assert.equal(events.filter((event) => event.name === 'salvage:npcUnload').at(-1).payload.intakeResult.duplicate, true);
     assert.equal(market[SCRAP_ID].stock, stockAfterFirst);
 
-    // The ignored line is still part of the authenticated lot. Reusing the stable IDs while
-    // changing that non-market quantity must reject and leave custody on the cutter.
+    // The electronics line is still part of the authenticated lot. Reusing the stable IDs while
+    // changing that quantity must reject and leave custody on the cutter.
     const conflictingLines = structuredClone(carried);
     const ignoredLine = conflictingLines.lines.find(
       (line) => line.commodityId === 'cmdty_salvage_electronics',
