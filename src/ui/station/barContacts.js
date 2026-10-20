@@ -956,8 +956,8 @@ function tethysCapsuleRunOffer(state, stationId) {
 }
 
 function localEconEvent(state, stationId) {
-  const events = getEconEvents(state);
-  return events.find((ev) => ev && ev.stationId === stationId) || events[0] || null;
+  // RC-30: this station's news or nothing — a Ceres event is not Helios gossip.
+  return getEconEvents(state).find((ev) => ev && ev.stationId === stationId) || null;
 }
 
 function securityLabel(sec) {

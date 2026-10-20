@@ -15,9 +15,65 @@ import { escapeHtml } from '../comms.js';
 import { summarizeDemandDrivers } from '../demandDriverSummary.js';
 import { quoteProvenance } from '../marketIntelligence.js';
 import { laneSetNavWaypoint } from '../../core/simLaneCommands.js';
+import { SECTORS } from '../../data/sectors.js';
+import { effectiveSectorFor } from '../../systems/sectorSim.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STEP_PRESETS = [1, 10, 100];
+
+const STATION_SECTOR = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    if (station && station.id) STATION_SECTOR.set(station.id, sector);
+  }
+}
+
+/** The sector a station belongs to, preferring live content over the authored table. */
+function stationSectorFor(state, stationId) {
+  if (!stationId) return null;
+  const registry = state && state.content && state.content.sectors;
+  if (registry) {
+    const sectors = Array.isArray(registry) ? registry : Object.values(registry);
+    for (const sector of sectors) {
+      const station = (sector && sector.stations || []).find((candidate) => candidate && candidate.id === stationId);
+      if (station) return sector;
+    }
+  }
+  return STATION_SECTOR.get(stationId) || null;
+}
+
+/** Live sector security when the runtime field has one, the authored value otherwise. */
+function sectorSecurityFor(state, sector) {
+  if (!sector || !sector.id) return null;
+  const live = effectiveSectorFor(state, sector.id);
+  const liveSecurity = Number(live && live.security);
+  if (Number.isFinite(liveSecurity)) return liveSecurity;
+  const authored = Number(sector.security);
+  return Number.isFinite(authored) ? authored : null;
+}
+
+/** Same bands and words as the bar's lane label (barContacts.securityLabel). */
+export function laneSecurityWord(security) {
+  const s = Number(security);
+  if (!Number.isFinite(s)) return null;
+  if (s >= 0.72) return 'secure lane';
+  if (s >= 0.45) return 'watchful lane';
+  if (s >= 0.18) return 'rough lane';
+  return 'lawless lane';
+}
+
+/** Row 465 lane-risk word on route cards: a lane is only as safe as its worst end. */
+export function routeLaneRisk(state, fromStationId, toStationId) {
+  let min = null;
+  for (const stationId of [fromStationId, toStationId]) {
+    const sector = stationSectorFor(state, stationId);
+    const security = sectorSecurityFor(state, sector);
+    if (security == null) continue;
+    if (min == null || security < min) min = security;
+  }
+  if (min == null) return null;
+  return Object.freeze({ word: laneSecurityWord(min), security: Math.round(min * 100) / 100 });
+}
 
 /** Safe hold quantity. Empty cargo / missing player is 0, never a throw. */
 export function cargoQty(state, cmdtyId) {
@@ -632,9 +688,10 @@ export function formatRouteCard(trade) {
   const cash = quoted && Number.isFinite(trade.cashAfterPurchase)
     ? ` · ${Math.floor(trade.cashAfterPurchase).toLocaleString('en-US')} cr left` : '';
   const basis = quoted ? 'local batch quoted' : 'spot estimate';
+  const lane = trade && trade.laneRisk && trade.laneRisk.word ? ` · ${trade.laneRisk.word}` : '';
   return {
     units,
-    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')} · ${intel} · ${bound}${mass}${demand} · ${basis}${cash}`,
+    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')}${lane} · ${intel} · ${bound}${mass}${demand} · ${basis}${cash}`,
     profitText: net > 0 ? `${quoted ? 'Est. ' : ''}+${net.toLocaleString('en-US')} cr` : '—',
   };
 }
@@ -803,6 +860,7 @@ export function computeBestTrades(state, hereStationId, options = {}) {
       margin,
       perVol,
       destStation: bestStation,
+      laneRisk: routeLaneRisk(state, hereStationId, bestStation),
       age: bestSeen,
       seenAtT: bestSeen,
       intelSource: bestSource,

@@ -534,7 +534,9 @@ export const survivalAnnounce = {
     const wave = payload && payload.wave;
     if (!Number.isInteger(wave) || wave < 1) return;
     const stored = payload && Number.isInteger(payload.stored) ? payload.stored : 0;
-    const countText = stored > 0 ? `${capitalize(countWord(stored))} hostiles` : 'Hostile reinforcement';
+    const countText = stored > 0
+      ? `${capitalize(countWord(stored))} ${stored === 1 ? 'hostile' : 'hostiles'}`
+      : 'Hostile reinforcement';
     this._say('objective', `survival:w${wave}:surge:${payload && payload.tick != null ? payload.tick : 0}`, `Inbound surge. ${countText} on approach.`, 4);
   },
 
