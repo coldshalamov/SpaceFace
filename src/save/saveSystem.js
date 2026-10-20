@@ -1,3 +1,4 @@
+import { normalizeSurveyMemory } from '../data/surveyCartography.js';
 import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
@@ -949,6 +950,7 @@ export const save = {
       ['towlineTable', () => this._callSerialize('towlineTable')],
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
+      ['scanReveal', () => this._callSerialize('scanReveal') || normalizeSurveyMemory(state.scanReveal)],
       ['provenance', () => this._serializeBoundedMemory('provenance')],
       ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
       ['bandRadio', () => this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {})],
@@ -1125,6 +1127,8 @@ export const save = {
     yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     yield 'serialize:lossLedger';
+    data.scanReveal = this._callSerialize('scanReveal') || normalizeSurveyMemory(state.scanReveal);
+    yield 'serialize:scanReveal';
     data.provenance = this._serializeBoundedMemory('provenance');
     yield 'serialize:provenance';
     data.factionPresence = this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {});
@@ -6623,6 +6627,10 @@ export const save = {
       this._reportRestoreProgress(0.08, 'Clearing the old sector');
       yield 'cleared';
 
+      // Spawn enrichment must read the incoming run, never the outgoing sector's losses.
+      yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
+      yield 'loss-ledger-restored';
+
       // 4. restore non-spatial subtrees (deps first).
       this._restorePlayer(data.player);
       yield 'player-restored';
@@ -6917,7 +6925,7 @@ export const save = {
       yield 'deserialized-tail';
       yield* this._callDeserializeChunked('aceMemory', data.aceMemory);
       yield 'ace-memory-restored';
-      yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
+      yield* this._callDeserializeChunked('scanReveal', data.scanReveal);
       yield* this._callDeserializeChunked('provenanceLedger', data.provenance);
       yield* this._callDeserializeChunked('aftermathWrecks', data.aftermathWrecks);
       // Pending kill cases + priced incidents must land before any post-load wreck resolution;

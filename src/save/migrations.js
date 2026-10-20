@@ -7,6 +7,7 @@
 // CURRENT_VERSION lives in src/data/saveVersion.js (the single source of truth) and is re-exported
 // here for convenience.
 // When the schema changes: bump CURRENT_VERSION in saveVersion.js and append { from:N-1, to:N, fn }.
+import { legacySurveyMemory } from '../data/surveyCartography.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { UNIQUE_WRECK_STATE_SCHEMA_VERSION } from '../data/uniqueWrecks.js';
 import { COORDINATE_SCHEMA } from '../core/coordinates.js';
@@ -350,6 +351,29 @@ export const MIGRATIONS = [
     fn(data) {
       if (data?.player?.uniqueWrecks) {
         data.player.uniqueWrecks.schemaVersion = UNIQUE_WRECK_STATE_SCHEMA_VERSION;
+      }
+    },
+  },
+  {
+    from: 18,
+    to: 19,
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      if (!Object.hasOwn(data, 'scanReveal')) {
+        data.scanReveal = legacySurveyMemory(data);
+        // Old runs never saved tier receipts. Recognition survives, but an unknown
+        // previously paid chart tier cannot be safely offered again. New loss bounties can.
+        data.scanReveal.legacyChartBonusesUnknown = true;
+      }
+      // Recover proof of already-filed reads, never credit adjustments or invented losses.
+      const entries = Array.isArray(data.lossLedger?.entries) ? data.lossLedger.entries : [];
+      for (const loss of entries) {
+        if (!loss || typeof loss !== 'object') continue;
+        const receipt = data.scanReveal?.investigated?.[loss.lossId];
+        if (receipt && !Number.isFinite(loss.surveyedAt)) loss.surveyedAt = receipt.at;
+        // No receipt survived for other old losses. Keep their stories, but do not
+        // mint possibly repeated money; losses recorded after this load remain payable.
+        else if (!Number.isFinite(loss.surveyedAt)) loss.surveyRewardUnknown = true;
       }
     },
   },
