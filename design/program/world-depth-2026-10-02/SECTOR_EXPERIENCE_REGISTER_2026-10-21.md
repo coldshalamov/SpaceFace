@@ -59,6 +59,16 @@ The existing SF20-06 crew cleanup and earned-tow interaction now has a complete 
 - The event census change contributes exactly the five Towline actions relative to its baseline. Unrelated pre-existing generated-surface drift is deliberately not absorbed. No survivor-relief expansion, shared NPC job changes, new rewards, saved schema or alternate stock is included.
 - Remaining acceptance: ordinary Ceres approach, visible prompt layout and timing, native moving-load recovery and the complete sector experience.
 
+## Connected experience recovery: Ilex voyage choices — 21 October 2026
+
+The existing six-vault voyage now has a working production-worker presentation/action path. Its deck adapter previously belonged to the worker despite a main-realm deck, and none of its four rendered actions crossed the event allowlist. This is completion of the existing Ilex-to-Ceres experience, not a new mission or alternate reward system.
+
+- Only the presentation adapter moves to main. The existing complete worker offer provides its text and choices; the authoritative Ilex owner, original vault identities, receiver/native custody gates and all listener signatures remain unchanged.
+- Accept, hand over the actual towed vault, file the arrived count and set the Ceres course are the only added player event types. The checked-in surface preserves Towline and deliberately excludes unrelated inherited generator drift.
+- Each callback is valid only for its current offered decision and a displayed choice. Restore, new game, departure, docking, destruction, replacement and repeated clicks invalidate stale callbacks. An unrendered finish cannot be invoked through the adapter.
+- Actual registry and both production bridges are exercised through acceptance, course, scalar native-line port handover and explicit partial filing. Zero, one, five and six arrived originals preserve irreversible outcomes and payments through production Save/loadEnvelope; settled prompts remain leave-only. Forged expired flags cannot select the trusted deadline path.
+- Eleven focused tests and seventeen unchanged active-readout/greenhouse regressions pass. The prompt deck DOM is stubbed, physical attachment/receiver ports are scalar, and no native simulation ticks are stepped. Ordinary flight, visible prompt quality and full connected sector acceptance remain open.
+
 ## Inventory coverage and the actual gap
 
 Public evaluation returns **25 sectors, 35 catalog stations, 153 catalog POIs, 58 authored activity pockets and 116 actor slots**. These are catalog counts, not simultaneous rendered entities, unique final models or all dynamic locations. Runtime additions such as Borrowed Sun are outside the static station count. All 25 sector IDs have way-of-life, composition and activity-pocket rows. The ten concept-image sectors are not the whole game. The Bolus is the twenty-fifth sector, not an omitted footnote. Swarm arenas are a separate mode roster under P14–P21 and are not silently counted as Adventure sectors.
