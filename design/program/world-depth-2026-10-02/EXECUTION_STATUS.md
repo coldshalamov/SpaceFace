@@ -1,6 +1,24 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 09:36 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state claims while preserving historical failures and bounded acceptance.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) has verified head [2093fe7c61f6c9ec07a347b381c17b44a1060b0e](https://github.com/coldshalamov/SpaceFace/commit/2093fe7c61f6c9ec07a347b381c17b44a1060b0e), tree `a57eaa443d695fb90ca6786fb8241a7f3a7a6f14`, sole parent `706c8e69cb98b58cffb59826e85da0b7ded92544`, with 17 changed paths. Vesta recovery source, portable opt-in diagnostics and documentation are now published.
+
+Bounded native evidence delivers the original two units while eight remain loose, through actual player input/contact and transport/preberth Continue. Final replay adds two units to stock once; four receipt retries across three Continue cycles change stock and credits by zero. Sector lifecycle revisit retains one original Tann, and WORKER STATUS facts remain reachable after stamp release. Focused checks pass 21/21. Expanded checks pass 83/85, with the same two parent failures; 1,629 modules and four direct filesystem inputs are audited. This is bounded delivery/replay proof, not ordinary fight/arrival, live-camera or full P08 acceptance.
+
+Setup limits, station-alias limits and remaining acceptance are explicit in VESTA_WINNOW_RECOVERY_2026-10-21.md and the sector register. Orchard contact tolerance is unchanged; the committed diagnostic now prints the bounded failing pair rather than weakening the gate.
+
+Successor [general CI 39577747194](https://github.com/coldshalamov/SpaceFace/actions/runs/39577747194) is running on merge 0eb59a76 into unchanged public master c289. Character CI is green; mobile retains the same 116/122 failures. Separate [PR #482](https://github.com/coldshalamov/SpaceFace/pull/482) remains at 38f66 and is terminal non-green, but actual CI verifies its intended URL fix: zero stale scene URLs and 18 unrelated missing imports. Browser2 readiness/cargo checks improve to 3/5 from 1/5; browser3 cancelled. No aggregate-green is inferred.
+
+The next active substantial unit is coordinated maintenance of existing draft [PR #457](https://github.com/coldshalamov/SpaceFace/pull/457), not a duplicate station implementation. Its current head is `638586d00f2093af3b7eb958970c489679d63ce5`, last observed mergeable. reconcile_station_restore_pr owns the existing catalogStationRestore/save/world/physics seams and station tests/probe in isolated public-source preparation; canonical files remain untouched. A clean public merge-tree with master c289 is prepared for review/testing.
+
+Fresh witnessed-native evidence reproduces station duplication 1 → 2 → 3 → 4 on 706; unchanged PR457 stays at one. A real Forge-alias save containing different gameplay-patch receipts is correctly refused, preserving the outgoing scene. Do not call that legacy data repaired or weaken the strict conflict policy.
+
+Next: review, test and reconcile the existing PR457 source against current public master while preserving newer reviewer work; no master merge or deployment. Continue actual 2093 CI to terminal and retain its scoped Vesta success separately. All original Orchard holds and nine broader goals remain open. Only the two shared handoff/goal files change here; private recovery identifiers and private local ancestry are excluded.
+
 ## Current source handoff — 21 October 2026, 08:48 UTC
 
 All nine goals remain OPEN. PR #480 stays at published `706c8e69cb98b58cffb59826e85da0b7ded92544`, tree `1119c315846015fc5eeb4ae98e8baec2b247c367`; Vesta recovery remains unpublished.
