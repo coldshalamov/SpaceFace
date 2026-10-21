@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 16:57 UTC
+
+All nine goals remain OPEN within the original scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `a899488d107f54b56ef8d0cf1194472158f0569f`, tree `b2df7f09a9798fbce9d209a9e8651e1b86e01ce9`, sole ac67 parent, open draft at 16:57:41 UTC; master bce is unchanged.
+
+Four scoped paths remove the obsolete speculative-prefetch prerequisite from ship upgrade while preserving current exact-plan authority, shared-load ownership, observed speculative errors and downstream pipeline/publication gates. The identity-change dependency class is reproduced; actual ac67 identity drift remains unproven. Root checks pass 105/105 with exact 4,812 module receipts/1,335 paths and 69 filesystem reads/67 paths; independent plan checks pass 14/14.
+
+Diagnostic allocation reserves twelve seconds for isolation and 500 ms for persistence before baseline, within the existing 90-second total and actual command deadline minus ten seconds for cleanup. Short budgets prioritize baseline; no extension or acceptance mutation. Prior ac67 outer 47-A now passes. Its 79.072-second baseline shows an awaiting-prefetch hauler, authored salvage_cutter payload, queued colony and six loose original supplies. Isolation timed out at 3,088 ms without an image; restoration is verified, but VFX attribution is not established.
+
+Prior runtime is 1,534/1,539 with the same five inherited failures; native receiver passes in 241.956 seconds. Browser3 is naturally terminal and its evidence owner is preserving details. verify_charon_delivery_ci follows the exact successor. Source/recovery receipts are preserved; final backup is underway. Next: follow actual successor CI/pixels without promoting a reproduced dependency class to proven runtime identity drift or visual acceptance. Preserve original scope, history, limitations and held Orchard operations. Optional PR-comment permission remains separate and pending; no comment retry. Only these two shared documents change here.
+
 ## Current source handoff — 21 October 2026, 16:24 UTC
 
 All nine goals remain OPEN within the original larger scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `ac67d7ff37c852f44471a4ec6f9d19cf814caf8b`, tree `68d3cad45499a0bc0449f300ffd9b7d873fd6efa`, sole 059 parent, open draft at 16:24:53 UTC; master bce remains unchanged.
