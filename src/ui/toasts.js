@@ -357,6 +357,7 @@ export function createToasts(ctx) {
   bindCombatDenialToasts(bus, () => ctx.state);
   bindJumpDenialToasts(bus, () => ctx.state);
   bindExportRecoveryToasts(bus);
+  bindSlingPassReceipts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
   bindReturningPilotSummary(bus, ctx && ctx.state);
 
@@ -527,6 +528,19 @@ export function bindStuntReceipts(bus) {
     const receipt = stuntDetectionReceipt(seen, trick);
     if (!receipt || typeof bus.emit !== 'function') return;
     bus.emit('toast', { text: receipt.text, kind: 'stunt', ttl: 3.2, channel: 'stunt' });
+  });
+}
+
+/** RC-47 — `travelLanes:slingRingPass` becomes one receipt naming the ride it gave. */
+export function bindSlingPassReceipts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('travelLanes:slingRingPass', (payload) => {
+    if (!payload || typeof bus.emit !== 'function') return;
+    const speed = Math.round(Number(payload.exitSpeedWuS) || 0);
+    const text = payload.aligned === false
+      ? `Sling ring — thrown wide at ${speed} wu/s.`
+      : `Sling ring — slung forward at ${speed} wu/s.`;
+    bus.emit('toast', { text, kind: 'info', ttl: 4 });
   });
 }
 
