@@ -955,8 +955,8 @@ function tethysCapsuleRunOffer(state, stationId) {
   return missionBoardSlots(state, stationId).find((offer) => offer && offer.type === 'heist_intercept') || null;
 }
 
-function localEconEvent(state, stationId) {
-  // RC-30: this station's news or nothing — a Ceres event is not Helios gossip.
+// RC-30: this station's news or nothing — a Ceres event is not Helios gossip.
+export function localEconEvent(state, stationId) {
   return getEconEvents(state).find((ev) => ev && ev.stationId === stationId) || null;
 }
 
