@@ -16,7 +16,7 @@ test('opt in only, failures isolated',async()=>{
 });
 test('hook follows all original acceptance and successful log, before cleanup',async()=>{
  const s=await readFile(new URL('../scripts/check-47a-live-cold-open.mjs',import.meta.url),'utf8');
- const hook=s.indexOf('await runOptionalCharonCameraDiagnostic(page)');
+ const hook=s.indexOf('await runOptionalCharonCameraDiagnostic(page, { commandDeadline })');
  assert.ok(hook>s.indexOf("assert.deepEqual(issues.errorIssues()"));assert.ok(hook>s.indexOf('console.log(`47-A live cold open OK'));
  assert.ok(hook<s.indexOf('} finally {',hook));
 });
@@ -250,4 +250,50 @@ test('existing admission lane reader distinguishes queued blanket hold and toler
  const failed=charonCameraPageOperation('read');assert.equal(failed.admissionLane,null);assert.equal(failed.admissionLaneError.length,240);
  delete state.render.sampleOpeningCookLane;assert.equal(charonCameraPageOperation('read').admissionLane,null);
  }finally{delete globalThis.window;}
+});
+
+
+test('optional capture uses only remaining command budget and skips late staging without dispatch',async()=>{
+ const logs=[];const budgets=[];const opts={argv:['--charon-camera-diagnostic'],now:()=>100000,warn:x=>logs.push(x),log:()=>{},capture:async(page,options)=>{budgets.push(options.budgetMs);return {path:'fixture',report:{status:'captured'}};}};
+ await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:180000});assert.deepEqual(budgets,[70000]);
+ await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:420000});assert.deepEqual(budgets,[70000,90000]);
+ for(const commandDeadline of [121999,110000,90000])assert.equal(await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline}),null);
+ assert.equal(budgets.length,2);assert.equal(logs.length,3);assert.match(logs[0],/skipped.*minimum useful/);
+ await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:122000});assert.equal(budgets.at(-1),12000);
+});
+
+test('selected payload metadata follows real URL arrays and slot arrays with bounded immutable snapshots',()=>{
+ try {const {state}=stateFixture();const e=state.entityList[0];e.data.trafficRole='salvage_cutter';
+ const parts=Array.from({length:20},(_,i)=>`asset-${i}-${'x'.repeat(180)}.glb`);
+ const slots=Object.fromEntries(Array.from({length:10},(_,i)=>['slot'+i,parts.slice(0,6)]));
+ e.mesh.userData={authoredParts:parts,authoredSlots:slots,renderContract:{wholeShip:true},visualBounds:{center:[1,2,3],size:[3,4,5]}};
+ const before=JSON.stringify(e.mesh.userData);const subject=charonCameraPageOperation('read').subjects[0],p=subject.selectedPayload;
+ assert.equal(subject.trafficRole,'salvage_cutter');assert.equal(p.authoredParts.length,16);assert.equal(p.authoredPartCount,20);assert.equal(p.authoredPartsTruncated,true);assert.equal(p.authoredParts[0].length,160);
+ assert.equal(p.authoredSlots.length,8);assert.equal(p.authoredSlotCount,10);assert.equal(p.authoredSlotsTruncated,true);assert.equal(p.authoredSlots[0].values.length,4);assert.equal(p.authoredSlots[0].count,6);assert.equal(p.authoredSlots[0].truncated,true);
+ assert.equal(p.wholeShip,true);assert.deepEqual(p.visualBounds.center,[1,2,3]);assert.deepEqual(p.visualBounds.size,[3,4,5]);assert.equal(JSON.stringify(e.mesh.userData),before);
+ e.mesh.userData={renderContract:{authoredParts:['actual.glb'],authoredSlots:{hull:['actual.glb']},wholeShip:false}};
+ assert.equal(charonCameraPageOperation('read').subjects[0].selectedPayload.partsSource,'userData.renderContract.authoredParts');
+ }finally{delete globalThis.window;}
+});
+
+test('VFX attribution uses leftover shared deadline only after baseline pair, persists separately and preserves verdict',async()=>{
+ let clock=1000;const baseline={path:'/tmp/fixture-charon.json',report:{status:'unresolved-assets-captured',screenshots:['a.png','b.png']}};
+ const before=JSON.stringify(baseline);const calls=[],writes=[];
+ const opts={argv:['--charon-camera-diagnostic'],now:()=>clock,log:()=>{},warn:()=>{},capture:async()=>{clock=81000;return baseline;},isolate:async(page,options)=>{calls.push(options);return {status:'skipped',reason:'fixture',visualAcceptance:false};},persistIsolation:async(path,text)=>writes.push({path,text})};
+ const result=await runOptionalCharonCameraDiagnostic({},opts);
+ assert.equal(calls[0].deadline,90500);assert.equal(writes[0].path,'/tmp/fixture-charon.vfx-isolation.json');assert.equal(result.report.status,baseline.report.status);assert.equal(JSON.stringify(baseline),before);
+ clock=1000;await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:180000});assert.equal(calls[1].deadline,169500);
+ clock=1000;await runOptionalCharonCameraDiagnostic({}, {...opts,capture:async()=>({path:'/tmp/x.json',report:{status:'timeout',screenshots:['a.png']}})});assert.equal(calls.length,2);
+});
+test('VFX attribution failure cannot replace accepted baseline diagnostic result',async()=>{
+ const baseline={path:'/tmp/fixture.json',report:{status:'baseline',screenshots:['a','b']}};const warnings=[];
+ const result=await runOptionalCharonCameraDiagnostic({}, {argv:['--charon-camera-diagnostic'],capture:async()=>baseline,isolate:async()=>{throw Error('isolation failed');},warn:x=>warnings.push(x),log:()=>{},persistIsolation:async()=>{throw Error('must not write');}});
+ assert.equal(result,baseline);assert.match(warnings[0],/isolation failed/);
+});
+
+test('VFX persistence is bounded and no write starts after shared deadline',async()=>{
+ let clock=1000,writes=0;const baseline={path:'/tmp/fixture.json',report:{status:'baseline',screenshots:['a','b']}};
+ const opts={argv:['--charon-camera-diagnostic'],now:()=>clock,log:()=>{},warn:()=>{},capture:async()=>baseline,persistIsolation:async()=>{writes++;}};
+ assert.equal(await runOptionalCharonCameraDiagnostic({}, {...opts,isolate:async()=>{clock=92000;return {status:'skipped'};}}),baseline);assert.equal(writes,0);
+ clock=1000;assert.equal(await runOptionalCharonCameraDiagnostic({}, {...opts,isolate:async()=>({large:'x'.repeat(65536)})}),baseline);assert.equal(writes,0);
 });

@@ -1,7 +1,12 @@
+import { captureCharonVfxIsolation } from './charonVfxIsolation.mjs';
+import { remainingDiagnosticBudget } from './probeCommandBudget.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
 
 export const CHARON_CAMERA_MAX_BUDGET_MS = 90000;
+// Existing capture needs a 10s image reserve plus 500ms persistence; do not stage
+// a late optional arrival when even that observation window cannot fit.
+export const CHARON_CAMERA_MIN_BUDGET_MS = 12000;
 export const CHARON_CAMERA_LABEL = 'Programmatically staged Charon game-camera diagnostic; real runtime entities; not an ordinary flown arrival or visual/gameplay acceptance.';
 export function charonCameraEnabled(argv = process.argv) { return argv.includes('--charon-camera-diagnostic'); }
 
@@ -17,6 +22,26 @@ export function charonCameraPageOperation(action) {
     ? collection.has(id) : Array.isArray(collection) ? collection.includes(id) : null;
   const activity = render.activityFrame;
   const short = value => typeof value === 'string' ? value.slice(0, 240) : null;
+  const payloadMetadata = mesh => {
+    if(!mesh?.userData)return null;
+    const u=mesh.userData, contract=u.renderContract;
+    const text=value=>typeof value==='string'?value.slice(0,160):null;
+    const parts=Array.isArray(u.authoredParts)?u.authoredParts:contract?.authoredParts;
+    const slots=u.authoredSlots && typeof u.authoredSlots==='object'?u.authoredSlots:contract?.authoredSlots;
+    const keys=slots && !Array.isArray(slots)?Object.keys(slots):[];
+    const vector=value=>Array.isArray(value)&&value.length===3?value.map(finite):null;
+    return {
+      authoredParts:Array.isArray(parts)?parts.slice(0,16).map(text):null,
+      authoredPartCount:Array.isArray(parts)?parts.length:null,
+      authoredPartsTruncated:Array.isArray(parts)&&parts.length>16,
+      partsSource:Array.isArray(u.authoredParts)?'userData.authoredParts':Array.isArray(parts)?'userData.renderContract.authoredParts':null,
+      authoredSlots:keys.slice(0,8).map(key=>({slot:text(key),values:Array.isArray(slots[key])?slots[key].slice(0,4).map(text):null,
+        count:Array.isArray(slots[key])?slots[key].length:null,truncated:Array.isArray(slots[key])&&slots[key].length>4})),
+      authoredSlotCount:keys.length,authoredSlotsTruncated:keys.length>8,
+      wholeShip:bool(contract?.wholeShip),
+      visualBounds:u.visualBounds?{center:vector(u.visualBounds.center),size:vector(u.visualBounds.size)}:null,
+    };
+  };
   const phaseTimings = value => value ? Object.fromEntries(
     ['decodeMs','composeMs','pipelineMs','commitMs','policiesMs','compileMs','residencyMs']
       .map(key => [key, finite(value[key])])) : null;
@@ -181,6 +206,8 @@ export function charonCameraPageOperation(action) {
   const subjects=targets.map((e,i)=>e?{subject:names[i],id:e.id,generation:e.occupantGeneration,
     worldRecordId:e.data?.worldRecordId??null,defId:e.data?.defId??null,placeId:e.data?.placeId??null,
     pos:{x:e.pos.x,z:e.pos.z},radius:radius(e),entityRadius:finite(e.radius),
+    trafficRole:typeof e.data?.trafficRole==='string'?e.data.trafficRole.slice(0,160):null,
+    selectedPayload:payloadMetadata(e.mesh),
     meshScale:e.mesh?.scale?{x:finite(e.mesh.scale.x),y:finite(e.mesh.scale.y),z:finite(e.mesh.scale.z)}:null,
     radiusBasis:'radius is a conservative framing envelope; entityRadius is the raw gameplay radius.',assetState:e.mesh?.userData?.authoredAssetState??'missing',
     assetId:e.mesh?.userData?.assetId??null,visible:e.mesh?.visible??false,
@@ -278,8 +305,40 @@ export async function captureCharonCameraDiagnostic(page, {
   return {path,report};
 }
 
-export async function runOptionalCharonCameraDiagnostic(page, {argv=process.argv, capture=captureCharonCameraDiagnostic, log=console.log, warn=console.warn}={}) {
+export async function runOptionalCharonCameraDiagnostic(page, {
+  argv=process.argv, capture=captureCharonCameraDiagnostic, log=console.log, warn=console.warn,
+  commandDeadline=null, now=()=>Date.now(), isolate=captureCharonVfxIsolation, persistIsolation=writeFile,
+}={}) {
   if(!charonCameraEnabled(argv))return null;
-  try {const result=await capture(page);log(`Charon programmatic game-camera diagnostic: ${result.path??'report unavailable'} (${result.report.status})`);return result;}
-  catch(error){warn(`Charon camera diagnostic unavailable: ${error?.message||error}`);return null;}
+  const started=now();
+  const budgetMs=remainingDiagnosticBudget(commandDeadline,started,CHARON_CAMERA_MAX_BUDGET_MS);
+  if(budgetMs<CHARON_CAMERA_MIN_BUDGET_MS){warn('Charon camera diagnostic skipped: command deadline leaves less than the 12s minimum useful observation budget after cleanup reserve.');return null;}
+  let result;
+  try {
+    result=await capture(page,{budgetMs});
+    log(`Charon programmatic game-camera diagnostic: ${result.path??'report unavailable'} (${result.report.status})`);
+  } catch(error){warn(`Charon camera diagnostic unavailable: ${error?.message||error}`);return null;}
+  // Attribution only after the actual baseline pair exists. Never replace its
+  // files, status or readiness verdict with temporarily isolated views.
+  if(!result.path || result.report.screenshots?.length<2 || !Array.isArray(result.report.screenshots))return result;
+  const end=Number.isFinite(commandDeadline)
+    ? started+remainingDiagnosticBudget(commandDeadline,started,Number.MAX_SAFE_INTEGER)
+    : started+budgetMs;
+  try {
+    const report=await isolate(page,{deadline:end-500,outputDir:dirname(result.path),now});
+    const path=result.path.replace(/\.json$/i,'')+'.vfx-isolation.json';
+    const serialized=JSON.stringify(report,null,2)+'\n';
+    if(Buffer.byteLength(serialized,'utf8')>65536)throw new Error('VFX isolation report exceeds bounded 64KiB persistence size');
+    const remaining=end-now();
+    if(!(remaining>0))throw new Error('VFX isolation report persistence deadline exhausted');
+    let timer;
+    try {
+      await Promise.race([
+        Promise.resolve().then(()=>{if(now()>=end)throw new Error('VFX persistence deadline exhausted');return persistIsolation(path,serialized);}),
+        new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('VFX isolation report persistence timeout')),Math.min(500,remaining));}),
+      ]);
+    } finally {clearTimeout(timer);}
+    log(`Charon VFX ownership attribution diagnostic: ${path} (${report.status}; never visual acceptance)`);
+    return {...result,vfxIsolation:{path,report}};
+  } catch(error){warn(`Charon VFX attribution unavailable: ${error?.message||error}`);return result;}
 }

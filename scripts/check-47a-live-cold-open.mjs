@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { readCommandDeadline, closeOwnedProbeResources } from './lib/probeCommandBudget.mjs';
 import { runOptionalCharonCameraDiagnostic } from './lib/charonCameraDiagnostics.mjs';
 import { captureStartupFailureDiagnostics, observeStartupFailureEvents } from './lib/startup-failure-diagnostics.mjs';
 
@@ -16,6 +17,7 @@ const SCENARIO_ID = 'scenario.47a.mass-discrepancy';
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const REMOTE_ROLES = new Set(['remote_contact']);
 const AUTHORED_START_TIMEOUT_MS = 90000;
+const commandDeadline = readCommandDeadline();
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -265,9 +267,10 @@ try {
 
   console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);
   // Optional, separately labeled staging only AFTER every original acceptance gate passed.
-  await runOptionalCharonCameraDiagnostic(page);
+  await runOptionalCharonCameraDiagnostic(page, { commandDeadline });
 } finally {
-  graphicsObserver?.dispose();
+  try { graphicsObserver?.dispose(); }
+  catch (error) { process.exitCode = 1; console.warn(`Graphics observer cleanup incomplete: ${error?.message || error}`); }
   // A wedged page cannot delay owned-browser cleanup indefinitely.
   let cleanupTimer;
   if (page) {
@@ -282,8 +285,7 @@ try {
     } catch (_) { /* Closing the owned page below also releases its listeners. */ }
     finally { clearTimeout(cleanupTimer); }
   }
-  if (browser) await browser.close();
-  if (server && server.kill) server.kill();
+  if (!await closeOwnedProbeResources({ browser, server })) process.exitCode = 1;
 }
 
 async function startFreshServer() {

@@ -417,6 +417,7 @@ async function composeWithFixtureLoader(entity) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   assert.equal(boundary.userData.authoredAssetState, 'authored');
+    assert.equal(boundary.userData.authoredPreparePhase, undefined, 'settled wait restores existing phase semantics');
 
   const demandRequests = requests.map(relativeFile).filter((file) => !BOOT_FILES.has(file));
   const result = {
@@ -564,7 +565,8 @@ test('an evicted matching authored record is reloaded before a repeated entity p
   partsLibrary.invalidatePartsLibraryCaches(renderer);
 });
 
-test('a resolved authored ship still awaits exact pipeline admission before publication', async () => {
+for (const stalePipeline of [false, true]) {
+test(`a resolved authored ship ${stalePipeline?'cannot overwrite a newer admission phase':'still awaits exact pipeline admission before publication'}`, async () => {
   const renderer = {};
   const scene = new THREE.Scene();
   const entity = {
@@ -631,7 +633,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     const boundary = partsLibrary.wrapShipWithAuthoredParts(entity, fallback, options);
     entity.mesh = boundary;
     scene.add(boundary);
-    boundary.userData.requestAuthoredUpgrade(renderer, scene);
+    const upgradeDone = boundary.userData.requestAuthoredUpgrade(renderer, scene);
 
     assert.equal(boundary.userData.authoredAssetState, 'loading');
     assert.equal(boundary.children.includes(fallback), true,
@@ -648,10 +650,24 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
 
     assert.ok(compiledRoot, 'the resolved composition must enter the exact GPU pipeline compiler');
     assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
+    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines');
     assert.equal(boundary.children.includes(fallback), true,
       'pipeline work cannot publish the authored root early');
     assert.equal(compiledRoot.parent, null, 'pipeline admission compiles the detached authored root');
 
+    if (stalePipeline) {
+      boundary.userData.admissionEpoch = (boundary.userData.admissionEpoch || 0) + 1;
+      boundary.userData.authoredPreparePhase = 'newer-owner-phase';
+      releasePipeline({ skipped:false });releaseResidency({ skipped:false });
+      let settled=false;upgradeDone.then(()=>{settled=true;});
+      for(let turn=0;turn<150&&!settled;turn++){
+        while(scheduledFrames.length)scheduledFrames.shift()();await Promise.resolve();
+      }
+      assert.equal(settled,true);await upgradeDone;
+      assert.equal(boundary.userData.authoredPreparePhase,'newer-owner-phase');
+      assert.notEqual(boundary.userData.authoredAssetState,'authored');
+      return;
+    }
     releasePipeline({ skipped: false, programCount: 1 });
     for (let turn = 0; turn < 50 && !residentRoot; turn++) {
       while (scheduledFrames.length) scheduledFrames.shift()();
@@ -661,6 +677,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     assert.equal(residentRoot, compiledRoot,
       'the exact compiled root must enter texture residency before publication');
     assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
+    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines');
     assert.equal(boundary.children.includes(fallback), true,
       'pipeline readiness alone cannot publish a root whose hidden LOD textures are not resident');
 
@@ -671,6 +688,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     }
 
     assert.equal(boundary.userData.authoredAssetState, 'authored');
+    assert.equal(boundary.userData.authoredPreparePhase, undefined, 'settled wait restores existing phase semantics');
     assert.equal(boundary.children.includes(fallback), false);
     assert.equal(boundary.children.includes(compiledRoot), true,
       'the exact compiled root is the one atomically published');
@@ -684,6 +702,8 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     partsLibrary.invalidatePartsLibraryCaches(renderer);
   }
 });
+
+}
 
 // PQ-033.02 v6 warning class "whole-ship LOD demotion failed … release mode
 // requires …": the demotion's residency owner can die while the scoped
@@ -767,3 +787,34 @@ test('an owner that dies mid-preload aborts the whole-ship demand instead of res
     partsLibrary.invalidatePartsLibraryCaches(renderer);
   }
 });
+
+for (const evicted of [false,true]) {
+ test(`a ${evicted?'nonresident':'resident'} current plan ${evicted?'joins':'does not wait behind'} unrelated serial decode`,async()=>{
+  const renderer={},loads=[];let releaseCold,startedCold;
+  const coldGate=new Promise(resolve=>{releaseCold=resolve;});
+  const started=new Promise(resolve=>{startedCold=resolve;});
+  const warm={id:'warm-mule',type:'ship',alive:true,data:{defId:'ship_mule'}};
+  const cold={id:'cold-pelican',type:'ship',alive:true,data:{defId:'ship_pelican'}};
+  const warmFile=partsLibrary.authoredPreloadPlanForEntity(warm).hull[0];
+  const coldFile=partsLibrary.authoredPreloadPlanForEntity(cold).hull[0];
+  const options={releaseMode:true,loadAuthoredPart:async url=>{
+   loads.push(url);if(url.endsWith(coldFile)){startedCold();await coldGate;}
+   const record=fixtureRecord(url);record.residency={state:'resident'};return record;
+  }};
+  let coldDemand,warmDemand;
+  try {
+   await partsLibrary.preloadAuthoredPartLibrary(renderer,options);
+   const library=await partsLibrary.preloadAuthoredAssetsForEntity(renderer,warm,options);
+   const warmRecord=library.get('hull').find(row=>row.url.endsWith(warmFile));
+   if(evicted)warmRecord.residency.state='evicted';
+   coldDemand=partsLibrary.preloadAuthoredAssetsForEntity(renderer,cold,options);await started;
+   let settled=false;
+   warmDemand=partsLibrary.preloadAuthoredAssetsForEntity(renderer,warm,{...options,admissionVisible:true}).then(value=>{settled=true;return value;});
+   for(let i=0;i<40;i++)await Promise.resolve();
+   assert.equal(settled,!evicted,'only an already-resident exact plan avoids serial decode admission');
+   assert.equal(loads.filter(url=>url.endsWith(warmFile)).length,1,'a queued reload cannot overlap the active cold decode');
+   releaseCold();assert.equal(await warmDemand,library);await coldDemand;
+   assert.equal(loads.filter(url=>url.endsWith(warmFile)).length,evicted?2:1);
+  }finally{releaseCold();await Promise.allSettled([coldDemand,warmDemand]);partsLibrary.invalidatePartsLibraryCaches(renderer);}
+ });
+}

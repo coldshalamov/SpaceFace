@@ -9434,6 +9434,20 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   let swapped = false;
   let authored = null;
   let installedPreparedDisposer = null;
+  // Raw await evidence only. A late continuation must neither stamp nor restore
+  // over a newer boundary epoch/token; existing publication/error phases survive.
+  const beginPreparePhase = (phase) => {
+    const current = () => !staleAuthoredRunVerdict(boundary, options)
+      && (typeof options.isAdmissionBoundaryCurrent !== 'function' || options.isAdmissionBoundaryCurrent());
+    const previous = boundary.userData.authoredPreparePhase;
+    if (current()) boundary.userData.authoredPreparePhase = phase;
+    return () => {
+      if (current() && boundary.userData.authoredPreparePhase === phase) {
+        if (previous === undefined) delete boundary.userData.authoredPreparePhase;
+        else boundary.userData.authoredPreparePhase = previous;
+      }
+    };
+  };
   try {
     if (!mayComposeAuthoredShipLive({
       ...options,
@@ -9479,18 +9493,25 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options)
       .then((library) => ({ ok: true, library }), (error) => ({ ok: false, error }));
     if (prefetchedLibrary) {
+      const restorePhase = beginPreparePhase('awaiting-prefetch');
       try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
       catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
+      finally { restorePhase(); }
     }
-    const deadlineResult = await deadlineLibrary;
+    const restorePlanPhase = beginPreparePhase('awaiting-current-plan');
+    let deadlineResult;
+    try { deadlineResult = await deadlineLibrary; }
+    finally { restorePlanPhase(); }
     if (!deadlineResult.ok) throw deadlineResult.error;
     const library = deadlineResult.library;
     assertQueuedAuthoredAdmissionActive(options, 'before-ship-composition');
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
+    const restoreComposePhase = beginPreparePhase('composing');
     try {
       authored = await buildComposedShipAsync(entity, library, scene, boundary, options);
     } finally {
+      restoreComposePhase();
       recordAdmissionSlice(compositionStartedAtMs, 'compose');
       endAdmissionPhase(phaseTimings, 'compose', compositionStartedAtMs);
       const tier1 = tier1CausalCounters();
@@ -9531,7 +9552,10 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('pipeline-prepare');
       }
-      const pipelineResult = await pipelineReady;
+      const restorePipelinePhase = beginPreparePhase('preparing-pipelines');
+      let pipelineResult;
+      try { pipelineResult = await pipelineReady; }
+      finally { restorePipelinePhase(); }
       // The GPU gate's full service time (material-policy walk + program compile + residency
       // upload), not just its synchronous prologue — this is the phase the lane serializes on.
       endAdmissionPhase(phaseTimings, 'pipeline', pipelineStartedAtMs);
@@ -10758,7 +10782,13 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
       throw new Error('Authored visual preparation owner became inactive during entity preload');
     }
     retainLibraryPlan(renderer, library, plan, options);
-    await waitForAuthoredAdmission(admitEntityPlan(renderer, options, library, plan), options);
+    // An exact resident plan needs no decode admission. Queuing its no-op behind
+    // an unrelated cold plan delays a ready visible body for that plan's entire
+    // fetch/decode wait. Missing or evicted records still enter the serial lane;
+    // its own recheck protects shared writes and duplicate cold requests.
+    if (!libraryHasPreloadPlan(library, plan, renderer)) {
+      await waitForAuthoredAdmission(admitEntityPlan(renderer, options, library, plan), options);
+    }
     assertQueuedAuthoredAdmissionActive(options, 'after-entity-plan');
     if (ownerInactive() && !libraryHasPreloadPlan(library, plan, renderer)) {
       throw new Error('Authored visual preparation owner became inactive during entity admission');
