@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 04:57 UTC
+
+All eight goals remain OPEN. This checkpoint supersedes older current-state claims below, while retaining their scoped failures and historical evidence.
+
+The distinct Stormshift receiver is now published as a dormant reusable asset bank in [cf327a97ee992536aa00d5277db4c238c19e49e9](https://github.com/coldshalamov/SpaceFace/commit/cf327a97ee992536aa00d5277db4c238c19e49e9), tree `fa435024c5ec7f8962c70b63445a9423278c2833`, sole parent `1e1cc513e31290bdebec9aefe4b954311885ec87`. Its eight-file increment preserves the Forge generator and fleet row, source and compressed-release GLBs, necessary source/release inventory rows, compound geometry and standalone tests. Exact-tree native/source tests pass 9/9, the real SG-04 source/release pair contract and asset-status check pass, and all existing inventory rows are preserved. This is exported, source/model-reviewed and published, not runtime-integrated or gameplay/visual-accepted. One distinct model is not multiple models because it has source, release and LOD representations.
+
+The narrow Orchard tow correction is separately published in [9cab1c4b8a6d5b91b99a2f592ef19ed042ee2fe2](https://github.com/coldshalamov/SpaceFace/commit/9cab1c4b8a6d5b91b99a2f592ef19ed042ee2fe2), tree `6316d7337f9e0343832e2ef6f78273862af8c431`, sole parent the dormant-bank commit. Its exact selection passes 49 checks with 1,499 audited source hashes. Separate baseline and composed native checks preserve real intact four-unit pickup. Real hazards remain enabled. This corrects the adjacent NPC approach regression; it does not retroactively turn the earlier composed pod-death failure into a pass, or establish ordinary-input or complete-route acceptance for the newly published composition.
+
+The compiled package remains held for coherent integration. Adding it to the shipping package directory without its renderer registration fails the existing instance-plan validator, so no alternate public package location or false census/runtime registration was introduced. The pending partsLibrary registration operation and additional upload approval card remain unresolved; source-bank publication and the tow correction do not clear them. Separate diagnostic-publication approvals are unchanged. No restricted raw diagnostic content or private recovery identifiers are included here.
+
+Current owners: resume_orchard_service_integration owns the bounded physical composition and qualification; build_orchard_receiver_asset owns remaining permitted registration/package preparation; root owns publication coordination and exact-head CI. This handoff changes only EXECUTION_STATUS.md and OPEN_GOALS.md on the separate handoff branch, not PR #480.
+
+Next: resolve the specific pending registration/upload operations through their existing approved route, preserve the dormant bank and real tow correction, then qualify and independently review the coherent activated composition. After assembling that actual candidate, run `node --test test/stormshift-receiver-asset.test.mjs test/orchard-tow-intercept.test.mjs`, the receiver integration/motion tests, `npm run check:release-manifest-pins` and `node scripts/check-render-package-instance-plan.mjs` against the exact candidate; continue bounded native route, ordinary controls and live graphical review. Do not run absent integration files on the dormant public bank or count skipped/unregistered checks as a pass. Current aggregate CI must be read at its exact head; no new aggregate-green, merge, deployment or whole-goal completion is claimed.
+
 ## Current source handoff — 21 October 2026, 04:25 UTC
 
 All eight goals remain OPEN. This source-only checkpoint supersedes prior current-state entries without changing historical evidence or reviewer acceptance fields.
