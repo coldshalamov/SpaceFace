@@ -73,6 +73,30 @@ export function temperamentFor(entityId, { seed = 1, doctrineId = null, massBand
   return out;
 }
 
+/** Pilots with fire discipline (aim) below this shoot through same-team hulls. */
+export const CROSSFIRE_AIM_CEILING = 0.5;
+// Swarm brood never infights (AL-HF-02 refuse list).
+const CROSSFIRE_EXCLUDED_DOCTRINES = new Set(['swarm_pack']);
+
+/**
+ * AL-FIGHT-1 crossfire discipline: 'reckless' pilots fire through same-team hulls that are not
+ * their own wingmates and their stray rounds hurt; 'holds' pilots keep the old law. Deterministic
+ * per pilot (temperament hash), never an rng roll. Lawful, player-side (team 0), civilian
+ * (team 2), Swarm-run cohort and doctrine-less hulls always hold.
+ */
+export function crossfireDisciplineFor(entity, seed = 1) {
+  if (!entity || entity.type !== 'ship') return 'holds';
+  const data = entity.data;
+  const ai = data && data.ai;
+  if (!ai || ai.lawful === true) return 'holds';
+  if (entity.team == null || entity.team === 0 || entity.team === 2) return 'holds';
+  if (data.runCohort != null) return 'holds';
+  const doctrineId = ai.combatDoctrineId || null;
+  if (!doctrineId || CROSSFIRE_EXCLUDED_DOCTRINES.has(doctrineId)) return 'holds';
+  const t = temperamentFor(entity.id, { seed, doctrineId });
+  return t.aim < CROSSFIRE_AIM_CEILING ? 'reckless' : 'holds';
+}
+
 /** Inspection label for the dominant trait pairing (dodger vs shooter). */
 export function temperamentLabel(t) {
   if (!t) return 'crew';

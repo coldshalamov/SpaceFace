@@ -84,6 +84,11 @@ import {
 
 export const LAW_SECURITY_VERSION = 2;
 
+// AL-FIGHT-1 / AL-HF-01: a non-lawful NPC struck by another non-lawful NPC turns on the shooter
+// for this long after the last provocation, then restores whatever it was doing before.
+export const NPC_GRUDGE_S = 12;
+export const NPC_GRUDGE_REASON = 'npc_grudge:retaliation';
+
 /** Bench A/B: production default ON. Quiet latch skips sanctuary aiShips walk when no
  * armed unlawful NPC holds a chase/fire signal. Soft-GPU fps not claimed. Fresh law
  * residual after #145 cones / #146 catch-nets (wanted/ambient stay on their own cadence). */
@@ -254,18 +259,27 @@ export const lawSecurity = {
     this._customsConesQuiet = null;
     this._nextInspectionTick = 0;
     this._inspectionRebindPasses = 0;
+    this._grudgeVictims = new Set();
+    this._grudgeIndexDirty = true;
     ensureState(this.state);
     this._onDamage = (payload) => {
       this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
       this._sanctuaryQuiet = null;
       this._handleDamage(payload);
     };
+    this._onCollisionConsequence = (payload) => this._handleCollisionGrudge(payload);
     this._onFire = (payload) => {
       this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
       this._sanctuaryQuiet = null;
       this._handleFire(payload);
     };
-    this._onSpawned = (payload) => this._stampAmbient(payload && payload.entity);
+    this._onSpawned = (payload) => {
+      const entity = payload && payload.entity;
+      this._stampAmbient(entity);
+      // A rematerialized hull carries its world record's AI, including an active grudge. The
+      // spawn listener is the only door between a promoted record and the session victim index.
+      this._registerCarriedGrudge(entity);
+    };
     this._onResponderGone = (payload) => {
       this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
       this._observeInspectionPatrolGone(payload);
@@ -338,6 +352,7 @@ export const lawSecurity = {
     this._lastCustomsSubmitTick = -1;
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
+      this.bus.on('combat:collisionConsequence', this._onCollisionConsequence);
       this.bus.on('combat:fire', this._onFire);
       this.bus.on('entity:spawned', this._onSpawned);
       this.bus.on('entity:killed', this._onResponderGone);
@@ -388,6 +403,8 @@ export const lawSecurity = {
     this._lastCustomsSubmitTick = -1;
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
+    this._grudgeIndexDirty = true;
+    if (this._grudgeVictims) this._grudgeVictims.clear();
     publishSanctuaryQuiet(this.state, false);
   },
 
@@ -453,6 +470,12 @@ export const lawSecurity = {
   // kill/incident ledgers are the heavy stretch here on a mature save. Yields sit only
   // between the ledgers; adoption order is the sync lane's, so the run stays bit-identical.
   *deserializeChunked(data) {
+    // The async restore lane drives this generator directly, so the grudge index must be
+    // invalidated HERE, not only in the synchronous wrapper. A loaded grudge (whose record
+    // rides entity data) is then re-indexed on the next flight tick and its stale clock
+    // clamped to the authored window.
+    this._grudgeIndexDirty = true;
+    if (this._grudgeVictims) this._grudgeVictims.clear();
     const own = ensureState(this.state);
     // Session-scoped weir latches never survive a load — the record/dwell rows
     // reference live entity positions and visit state, not durable truth.
@@ -497,6 +520,7 @@ export const lawSecurity = {
     this._pruneScanDumpWatch(state);
     this._updatePlayerSurrender(_dt, state);
     if (state.mode && state.mode !== 'flight') return;
+    this._expireNpcGrudges(state);
     if (this._warrantWaves) this._warrantWaves.update(_dt, state);
     this._syncWantedWarrant(state);
     this._syncHighSecWarrant(state, _dt);
@@ -977,6 +1001,12 @@ export const lawSecurity = {
       return;
     }
 
+    // AL-FIGHT-1 / AL-HF-01: NPC-on-NPC applied damage is a grudge, not a law case. A reckless
+    // stray round or a RAM turns the victim on the shooter; lawful/civilian logic below still runs.
+    if (attacker.id !== state.playerId && target.id !== state.playerId) {
+      this._startNpcGrudge(target, attacker, payload.origin && payload.origin.kind === 'collision' ? 'collision' : 'damage');
+    }
+
     const targetProtected = target.id === state.playerId || isLawful(target) || isProtectedCivilian(target);
     if (!targetProtected || isLawful(attacker)) return;
     const jurisdiction = protectedStationAt(state, target) || ceresDistressJurisdiction(state, target);
@@ -1130,6 +1160,230 @@ export const lawSecurity = {
       targetId: victim.id, stationId: null,
       text: 'PLAYER FIRED FIRST — self-defense authorized; break contact to disengage.',
     });
+  },
+
+  /**
+   * AL-FIGHT-1 / AL-HF-01: only a live, non-lawful, non-civilian NPC raider that can actually
+   * choose a fight carries a grudge. The player, lawful patrols, civilian traffic, the Swarm
+   * cohort, parley squads and authored raiders all keep their existing behaviour.
+   */
+  _isGrudgeCapable(entity) {
+    if (!entity || entity.alive === false) return false;
+    if (entity.type !== 'ship') return false;
+    const state = this.state;
+    if (entity.id === state.playerId) return false;
+    if (entity.team === 0 || entity.team === 2) return false;
+    const data = entity.data || {};
+    const ai = data.ai;
+    if (!ai || ai.lawful === true) return false;
+    if (isProtectedCivilian(entity)) return false;
+    if (ai.passive === true) return false;
+    if (data.runCohort != null) return false;
+    if (ai.parleySquadId) return false;
+    if (data.predationRole === 'raider') return false;
+    return true;
+  },
+
+  /** Resolve the hull that owns a damage packet: the ship itself, or a deployable's layer. */
+  _grudgeAttackerShip(attacker) {
+    if (!attacker) return null;
+    if (attacker.type === 'ship') return attacker;
+    const ownerId = attacker.ownerId ?? (attacker.data && attacker.data.ownerId);
+    const owner = entityById(this.state, ownerId);
+    return owner && owner.type === 'ship' && owner.alive !== false ? owner : null;
+  },
+
+  /**
+   * Turn a non-lawful NPC victim on a non-lawful NPC shooter for NPC_GRUDGE_S from the last
+   * provocation. A second hit from the same shooter refreshes the clock without re-telegraphing.
+   */
+  _startNpcGrudge(victim, attacker, cause) {
+    if (!this._isGrudgeCapable(victim)) return;
+    const attackerShip = this._grudgeAttackerShip(attacker);
+    if (!attackerShip) return;
+    const state = this.state;
+    if (attackerShip.id === state.playerId || attackerShip.id === victim.id) return;
+    if (isLawful(attackerShip)) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const ai = victim.data.ai;
+    const current = ai.npcGrudge;
+    if (current && current.targetId === attackerShip.id) {
+      current.untilT = now + NPC_GRUDGE_S;
+      return;
+    }
+    // Switching grudges keeps the ORIGINAL prior state, never the previous grudge's override.
+    const prior = current ? current.prior : {
+      retaliationTargetId: ai.retaliationTargetId ?? null,
+      activity: ai.activity || null,
+      roe: ai.roe ?? null,
+      combatTargetId: victim.data.combat?.targetId ?? null,
+    };
+    ai.npcGrudge = {
+      targetId: attackerShip.id,
+      startedT: now,
+      untilT: now + NPC_GRUDGE_S,
+      cause,
+      prior,
+    };
+    ai.retaliationTargetId = attackerShip.id;
+    ai.roe = RulesOfEngagement.WEAPONS_FREE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: NPC_GRUDGE_REASON,
+      anchor: victim.pos,
+      leashRadius: 2200,
+      startedTick: state.tick | 0,
+      targetId: attackerShip.id,
+    });
+    const combat = victim.data.combat || (victim.data.combat = {});
+    combat.targetId = attackerShip.id;
+    if (!this._grudgeVictims) this._grudgeVictims = new Set();
+    this._grudgeVictims.add(victim.id);
+    // AL-HF-14: the existing return-fire picture, drawn by the action VFX recipe. No doctrineId,
+    // so the doctrine-cycle presentation lane ignores it; no bark, receipt, or toast.
+    this._emit('ai:telegraph', {
+      entityId: victim.id,
+      targetId: attackerShip.id,
+      kind: 'return_fire_warning',
+      cause: 'npc_grudge',
+      durationTicks: 60,
+      tick: state.tick | 0,
+    });
+  },
+
+  /** Restore exactly the state the victim held before the first grudge in the chain. */
+  _endNpcGrudge(victim) {
+    const state = this.state;
+    const ai = victim && victim.data && victim.data.ai;
+    const g = ai && ai.npcGrudge;
+    if (!g) return;
+    if (ai.retaliationTargetId === g.targetId) {
+      const priorId = g.prior && g.prior.retaliationTargetId;
+      const priorEntity = entityById(state, priorId);
+      if (priorId != null && priorEntity && priorEntity.alive !== false) ai.retaliationTargetId = priorId;
+      else delete ai.retaliationTargetId;
+    }
+    if (ai.activity && ai.activity.reason === NPC_GRUDGE_REASON) {
+      ai.activity = g.prior && g.prior.activity
+        ? normalizeActivity(g.prior.activity)
+        : normalizeActivity({
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'npc_grudge_expired',
+          anchor: victim.pos,
+          leashRadius: 2200,
+          startedTick: state.tick | 0,
+          targetId: null,
+        });
+      if (g.prior && g.prior.roe != null) ai.roe = g.prior.roe;
+    }
+    const combat = victim.data.combat;
+    if (combat && combat.targetId === g.targetId) {
+      combat.targetId = g.prior && g.prior.combatTargetId === g.targetId
+        ? null
+        : (g.prior && g.prior.combatTargetId != null ? g.prior.combatTargetId : null);
+    }
+    delete ai.npcGrudge;
+    if (this._grudgeVictims) this._grudgeVictims.delete(victim.id);
+  },
+
+  /**
+   * AL-FIGHT-1 / AL-HF-01: a hull shelved into its world record and later rematerialized keeps the
+   * session grudge it was carrying, but the victim index is rebuilt only at a save boundary or New
+   * Game. The spawn listener re-registers the carried record so it still expires on the reset
+   * clock; a record whose window already closed ends here instead of lingering unindexed forever.
+   */
+  _registerCarriedGrudge(entity) {
+    if (!entity || entity.type !== 'ship') return;
+    const ai = entity.data && entity.data.ai;
+    const g = ai && ai.npcGrudge;
+    if (!g) return;
+    const state = this.state;
+    if (!state) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (Number.isFinite(g.untilT) && g.untilT > now + NPC_GRUDGE_S) g.untilT = now + NPC_GRUDGE_S;
+    if (Number.isFinite(g.untilT) && g.untilT <= now) {
+      this._endNpcGrudge(entity);
+      return;
+    }
+    if (!this._grudgeVictims) this._grudgeVictims = new Set();
+    this._grudgeVictims.add(entity.id);
+  },
+
+  /**
+   * Full-flight-tick grudge bookkeeping. The dirty rebuild is the one entity scan (save load,
+   * new game); quiet play costs nothing beyond the victim set. Iteration is sorted by String(id)
+   * so a save/load boundary cannot change the order in which expired grudges restore.
+   */
+  _expireNpcGrudges(state) {
+    if (!this._grudgeVictims) this._grudgeVictims = new Set();
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (this._grudgeIndexDirty) {
+      this._grudgeVictims.clear();
+      if (state.entities && typeof state.entities.values === 'function') {
+        for (const entity of state.entities.values()) {
+          const ai = entity && entity.data && entity.data.ai;
+          if (!ai) continue;
+          const g = ai.npcGrudge;
+          if (g) {
+            // A loaded save with a reset clock never extends a grudge past the authored window.
+            if (Number.isFinite(g.untilT) && g.untilT > now + NPC_GRUDGE_S) g.untilT = now + NPC_GRUDGE_S;
+            this._grudgeVictims.add(entity.id);
+            continue;
+          }
+          // The record can be dropped by a save (or another writer). End the orphaned order.
+          if (ai.activity && ai.activity.reason === NPC_GRUDGE_REASON) {
+            if (ai.retaliationTargetId === ai.activity.targetId) delete ai.retaliationTargetId;
+            ai.activity = normalizeActivity({
+              kind: ai.activity.kind,
+              reason: 'npc_grudge_expired',
+              anchor: ai.activity.anchor,
+              leashRadius: ai.activity.leashRadius,
+              startedTick: state.tick | 0,
+              targetId: null,
+            });
+          }
+        }
+      }
+      this._grudgeIndexDirty = false;
+    }
+    if (this._grudgeVictims.size === 0) return;
+    const ids = Array.from(this._grudgeVictims).sort((a, b) => {
+      const sa = String(a);
+      const sb = String(b);
+      return sa < sb ? -1 : sa > sb ? 1 : 0;
+    });
+    for (const id of ids) {
+      const victim = entityById(state, id);
+      if (!victim || victim.alive === false) {
+        this._grudgeVictims.delete(id);
+        continue;
+      }
+      const g = victim.data && victim.data.ai && victim.data.ai.npcGrudge;
+      if (!g) {
+        this._grudgeVictims.delete(id);
+        continue;
+      }
+      const target = entityById(state, g.targetId);
+      if (!target || target.alive === false || now >= g.untilT) this._endNpcGrudge(victim);
+    }
+  },
+
+  /**
+   * AL-HF-15: a hard hull-to-hull collision applies damage with no authoritative weapon attacker,
+   * so the pair forms mutual grudges off the existing consequence event. Each struck body emits
+   * its own consequence; a scrape (impactDamage 0) forms none.
+   */
+  _handleCollisionGrudge(p) {
+    if (!p || p.damageApplied !== true) return;
+    if (p.targetType !== 'ship' || p.otherType !== 'ship') return;
+    if (!(Number(p.impactDamage) > 0)) return;
+    const state = this.state;
+    if (!state) return;
+    const target = entityById(state, p.targetId);
+    const other = entityById(state, p.otherId);
+    if (!target || !other) return;
+    if (target.id === state.playerId || other.id === state.playerId) return;
+    this._startNpcGrudge(target, other, 'collision');
   },
 
   _openIncident(attacker, victim, jurisdiction, cause) {
@@ -5326,6 +5580,7 @@ export const lawSecurity = {
     if (this._warrantWaves) { this._warrantWaves.destroy(); this._warrantWaves = null; }
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onDamage) this.bus.off('combat:damage', this._onDamage);
+      if (this._onCollisionConsequence) this.bus.off('combat:collisionConsequence', this._onCollisionConsequence);
       if (this._onFire) this.bus.off('combat:fire', this._onFire);
       if (this._onSpawned) this.bus.off('entity:spawned', this._onSpawned);
       if (this._onResponderGone) {

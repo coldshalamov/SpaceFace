@@ -196,6 +196,10 @@ export function applyAIFiringIntent(decision, state) {
     target,
     aimAngle,
     entities: friendlyFireLaneEntities(state),
+    // Same seed the damage admission gates on (combat/damage.js npcCrossfireAdmits): the hold-fire
+    // lane and the damage router must judge recklessness identically or one permits what the other
+    // refuses.
+    seed: (state.meta && Number(state.meta.seed)) || 1,
   });
   if (!lane.clear && target.type !== 'projectile') {
     clearFire(intent, lane.reason, lane.blockerId);

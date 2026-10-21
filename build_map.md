@@ -1020,7 +1020,6 @@ production units, and never build what they write.
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 390 | AL-HAND-1 | The Line touches the world — obstruction provider (AL-HF-08), terrain wrap pivots only during a deliberate swing (owner 2026-10-19: towing never snags), unwrap on reversal, no tunnelling (§31.3) | BUILD | OPEN |
-| 391 | AL-FIGHT-1 | Crossfire — temperament-gated enemy-on-enemy damage + 12 s grudges; AL-HF-01/02/14/15 inside (§31.3) | BUILD | OPEN |
 | 392 | AL-FIGHT-2 | They have hands too — incoming-mass cue AL-HF-06 first, then telegraphed enemy body launches, catch-and-return credit; AL-HF-11/13 inside (§31.3) | BUILD | OPEN — gated on AL-HF-06 inside the row |
 | 393 | AL-FIGHT-3 | Verbs feed verbs — mass kills spill latchable charge cells; guns-only tape runs dry (§31.3) | BUILD | OPEN — after 391 + 392 |
 | 394 | AL-RACE-1 | The line is contested — RF-05 second slice: rivals take anchors, takedowns, medal times, instant restart; AL-HF-03/04/09/10/12 inside (§31.3) | BUILD | OPEN |
