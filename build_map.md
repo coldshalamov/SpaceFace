@@ -6546,3 +6546,136 @@ games' numbers.
 4. Until step 1 passes, §32.4's new genres stay behind this section: the card game (447), the
    inspector's shift (452), crew (446) and the home berth (445). A warehouse of features is the
    failure VISION names. The core loop comes first.
+
+## 34. THE WEIGHT — the expansion bible, made into rows (owner request, 2026-10-21)
+
+**Owner, 2026-10-21:** *"I need units and enemies and NPCs and objects, assets of all types …
+characters, factions, sectors, races, aliens, materials, technology … the missions and encounters
+and overall script of the game … all the game systems and polish … I need you to supply the taste
+and ideas … add the more complex tasks to the build map and the easier grunt work tasks to the
+INFERENCE board."*
+
+**The taste lives in [`design/expansion/`](./design/expansion/00_README.md)**, nine files:
+
+- tone and world;
+- the 14 factions, plus canon blocks for the six open ones;
+- the Bloom swarm ladder, peoples and machine-people;
+- the 25 sectors;
+- the asset roster;
+- the campaign script;
+- 48 encounters;
+- systems, and a 50-point polish checklist.
+
+**The work lives here.** These rows are the complex tasks. The small, exact tasks are the
+**EXP** section of `design/program/INFERENCE_IDEAS.md`.
+
+These rows sit **behind §33**: the §33 swarm core goes first, and its order holds (row 488, then
+482, 487, 490–492). §34 adds the content, identity and story that the core makes worth playing. The
+director's phase order is in `design/expansion/08_SYSTEMS_AND_POLISH.md` §13.
+
+Every row follows the bible's six laws: the Line never lies; heavy is honest; deadpan ledger, loud
+physics; connection is the catastrophe; nothing is scenery; the world keeps the receipt. Enemy
+physics weapons stay rare and authored (§22.11). Vethari stay off-frame. Story outcomes stay canon
+(`docs/worldbuilding/CREATIVE-DIRECTION.md` R1–R15). **PROPOSED CANON** in the bible is built
+against now and folded into the worldbuilding sheets by row 537.
+
+### 34.1 The Line and progression (rows 498–502)
+
+| Row | Name | Feeling | Done when (stranger-visible, fixed seed) | Bible |
+|---|---|---|---|---|
+| 498 | **Tonnage Logged and Line Class** | "I've moved enough weight that the Line got stronger." | LOG keeps lifetime true mass moved. Line Class I–VIII sets full-control mass (20 t → the Maw), opened by tonnage thresholds or trials. The winch head, cable and anchor pads visibly change per class. A save at each class shows the hull state. No damage or percentage buffs | 08 §2.1 |
+| 499 | **The honest strain** | "Almost. Not yet. NOW." | Above full-control mass the Line holds with falling reel speed, a hot glowing cable and lost turn authority. A sustained over-class tow heats the winch and can snap, which is a visible event. The strain readout sits at the ship as the hero instrument. Record holds print `N T. CORRECT.` | 08 §2.1, §7 |
+| 500 | **Provenance rarity** | "This Barb flew with the Red Wake." | Five tiers (Stock, Worked, Named, Storied, Relic) plus the Backordered flavour. Each tier above Stock changes a *behaviour*, never a stat. The rim mark shows on the module icon and the hull part. Sources: salvage, derails, Cull purses, ace drops and faction arcs | 08 §2.5 |
+| 501 | **Line heads** | "Wait, could I use the Coupler to…?" | All 14 heads in 05 §7.1 are implemented as Line attachments, each with a distinct visual on the hull. P0 first: Coupler, Breaker, Barb, Weld, Magnet, Override (reuse `tool_thruster_hijacker`, `glueMeetMassRuntime`). Each head has a fixed-seed tape showing its unique outcome | 05 §7.1 |
+| 502 | **LOG — the physics narrator** | "REAVER-2 RECLASSIFIED: PROJECTILE." | A cause-aware, one-line feed reads impact kills, throws, liens, deliveries, records and incidents in the house register. It lives in a data table (INFERENCE EXP-12 fills the copy), reads with sound off, fades in 3 s, and is silent in terminal zones. It extends or sits beside `stuntCallout`; there is no second announcer | 01 §3.2 |
+
+### 34.2 The Bloom (rows 503–504, 507–508)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 503 | **Coupling you can see** | "I killed the big one and they all flinched." | Linked swarm members draw green coupling filaments. A panic cascade (mass kill above a set energy), an aggression cascade (relay or Queen hit) and a grief loop (Mother or node death) run as group behaviour with their 03 §1.2 timings. Each stages a fixed-seed tape. This replaces per-member reflex jitter in swarm AI | 03 §1.2 |
+| 504 | **Pain, memory and host-shadow** | "That Husk flew like a Concord line." | Long bodies thrash in a fixed arc when cut. A sector's next tide routes by where the last one died (persisted). Husks (colonised hulls under the Overgrowth kit) fly their old faction's pattern, and LOG reads the old transponder | 03 §1.2 |
+| 507 | **Bloom ladder T0–T2** | "Guns ping off the glassbacks, so I smash them." | New families in `swarmBrood` data plus behaviour: Spore drift (VFX hazard), Lantern cyst (heat-seeking, throwable bomb), Glassback (reflects gunfire, only mass kills it), Wake eel (trails your wake; a whip when held), Bellows (bursts into a shove). Each has a telegraph, a counter line, a death throwable and a silhouette that reads with no marker | 03 §1.3 |
+| 508 | **Bloom ladder T3–T6** | "I dismantled a hive." | Bristle ram, Furnace maw, Husk variants, Blind shepherd (relay; killing it panics linked packs), Hive-hulk (dismantle by nodes, plates and bays), Veil ray, Anchor beast, and the Long Field (Ashfall's filament sky, thinned by breaking its shepherds). The mass bands match the 03 ladder | 03 §1.3 |
+
+### 34.3 Cast and machine-people (rows 505–506)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 505 | **The one-offs find a home** | "Every sector has someone in it." | The ~35 authored one-offs (Morrow, Vesper, Bracket, Ravel, Rubric, Ruckus, Solstice, the Blind Welder, the Eighth Bell…) each map to a sector, a Book window and a chart entry. A census test fails on any one-off with no sector, or on any sector with no resident | 03 §4.3 |
+| 506 | **The Orphaned Shift** | "TARE weighed my rock and paid me in fragments." | The twelve new machine-people (TARE, DOCKET, LAMPLIGHTER, SHEPHERD-12, QUILL, HOLDFAST, BOUNCER, RECEIPT, MOP, BELLHOP, GRAVEDIGGER, TALLYHO), each built as a single physical encounter on the Morrow/Rubric pattern with a persisted outcome. TARE, SHEPHERD-12 and HOLDFAST open Line Class trials (row 498). Ship one per sitting | 03 §4.3 |
+
+### 34.4 Matter and the world's physics (rows 509–513)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 509 | **Substances** | "Ice shatters, slag sticks, crystal rings." | Ten substance materials (metallic ore, silicate, ice, slag, crystal, reef metal, cooked rock, Vethari bone, Bloom husk, junk) layer over the body-class materials in `physicsMaterials.js`. Each has restitution, break behaviour and an impact VFX family. 24 rock bodies (three sizes × eight substances) replace today's 5. Ice loses mass in sunlight | 05 §2 |
+| 510 | **Everything breaks down a tier** | "The arena never runs out of ammunition." | A throwable above T1 that is struck above its break energy splits into next-tier pieces that are live throwables, building on `hullBurst` and `hullFracture`. A fixed-seed wave-10 run never drops below N throwables in the play radius | 05 §1 |
+| 511 | **The Katamari ladder, placed** | "There's always something I can just barely move." | Every sector and arena carries ≥ 6 bodies per tier T0–T4 from 05 §1, and T5–T6 where the bible places them. Scale cues are on every body above T3. A census tool prints tier counts per sector | 05 §1 |
+| 512 | **Faction station kits** | "That refinery is Drift's; that one is Vael's." | Fourteen dressing kits applied to the seven station archetypes, so a stranger names the owning faction from a still in 3 of 4 cases | 05 §5 |
+| 513 | **Mass-signature stealth** | "I hid the crate in the big rock's shadow." | Sensors read mass and heat inside drawn sweep rings. Large bodies cast mass shadows. Hush Head, decoy pods and cold coasting hide mass. Lantern cysts and Furnace maws use the same heat model. The Weighing (E-04) is playable three ways | 08 §5 |
+
+### 34.5 Faction identity (rows 514–519, 524–532)
+
+Each faction row delivers its 02 roster (kit first), its signature encounter, its signature toy (a
+row 501 head), its conduct entry (`factionConduct.js`, where missing), and its persistent mark.
+**One faction per sitting.**
+
+| Row | Faction | Must ship | Bible |
+|---|---|---|---|
+| 514 | **All: kits** | hull kits for Concord, Meridian, Vael, Frontier, Choir, Helix, Fulfillment, Archive and Pitborn, plus the **Overgrowth kit** (Understory and Bloom Husks) and the **junk kit** (Pitborn). Every faction's live ship roles stop showing undressed player hulls | 05 §4 |
+| 515 | **Concord** | formations with a commander (fling it and the formation locks rigid); Picket and Commander variants; Clamp Tender (grabs *cargo* only, telegraphed); Scale Barge; **The Weighing** (E-04); Bowling Pins (E-02); Clamp Tug-of-War (E-03) | 02 §1 |
+| 516 | **Meridian** | cargo spines with breakable couplers; hull tickers that scroll live cargo value; Toll Pylon; **Spine Break** (E-05); Coupler Head | 02 §2 |
+| 517 | **Understory** | Gardens in five persisted growth stages; Gardener skiff; impacts absorbed in gardens; **the Compost Run** (E-26); a garden of stage 4 or higher pushes the local tide line (row 520); Spore Head | 02 §10 |
+| 518 | **Fulfillment** | Re-router haulers on fixed routes (they never deviate and never fire first); hitchhiking (E-25); derailment spill of backordered goods (E-24); Administrative Boarding (E-19); **Order #0000001** (E-20, Sump's broom); the oldest-open-order counter | 02 §11 |
+| 519 | **Pitborn** | Cull arena dressing (crowd, banners, scoreboard, Ma Sprocket); the Yardmaster, procedurally accreted from the 43 wreck pieces and dismantled piece by piece; ballast balls in five sizes; **Ballast** against Clatter (E-41); the Cull crowd meter (E-40); Magnet Head | 02 §13 |
+| 524 | **Vael** | Override Tender; **the Lien Anchor** (a contract clamp that adds mass, telegraphed, contract jobs only, and *transferable by throwing it*: `LIEN TRANSFERRED`); **Page Nine** (E-18); script-etched hull text; Override Head | 02 §6 |
+| 525 | **Quiet** | Runners that juggle cargo between hulls; decoy pods; **The Swap** (E-07, a mid-air catch); sold routes (a Quiet route you used is patrolled next time); Hush Head | 02 §5 |
+| 526 | **Helix** | false-flag packs that fly *too perfectly* (exact geometry and matched speed) and flip to HELIX when the pattern breaks (E-10); Lien drones; Adjudicator skin; **Gate Audit platforms** (E-32); Adjudicator 44-C boss; Seal Head via the Archive | 02 §9 |
+| 527 | **Archive** | Censor frigate; **Redaction** (engines and HUD dark; escape by swinging, E-29); reading-room interior; page drones that copy your logs; Index Head (provenance scan) | 02 §12 |
+| 528 | **Choir** | Bells whose resonance shatters crystal; ribbon VFX; **The Carried Relic** (crack the casing by impact, E-22); Bell Shatter (E-23); Bell Head | 02 §8 |
+| 529 | **Verge-Layers** | bodies for Measure Engine, Gate Auditor, Surveyor Prism and Debris Sorter (then Executor, Appeals Clerk, Witness, Sleeping Jury); directives shown as one capitalised word on the glass; **The Appeal** (weighed evidence, E-30); the Sleeping Jury (E-34); the Line-site Class trial | 02 §14, 03 §3 |
+| 530 | **Drift** | claim pylons (throwable); the **Claim Jump** set piece (E-06); the Breaker Derby (E-39); Breaker Head | 02 §3 |
+| 531 | **Reach** | the **Nest Carrier** mini-boss (E-08); the Trophy Wall at Sker Haven (your kills hang there; steal them back); gate camps of chained rock (E-42); Barb Head | 02 §4 |
+| 532 | **Free Frontier** | six homestead modules plus a frame; **Barn Raising** (E-21); a raised homestead persists, gains traffic and asks for supply runs when stranded; Weld Head | 02 §7 |
+
+### 34.6 The world moves (rows 520–523)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 520 | **The Bloom tide** | "The tide line moved because I cleared that lane." | A per-sector infestation level spreads along lanes with unclaimed wrecks and falls with clears and gardens. It is drawn on the chart and persisted. Fixed-seed: a cleared lane drops its level, and a neglected one rises over N cycles | 01 §2, 03 §1.4 |
+| 521 | **The Gate Audits** | "They're welding the Io gate shut, and I can see the scaffold." | One outer gate per Book (from B3) closes over several cycles behind a wreckable Helix scaffold. Closure reroutes traffic and wakes Verge law around the gate. The player can delay a closure (E-32) but not end the policy | 01 §2 |
+| 522 | **The Slow Gray clock** | "The Pit's air index fell again." | The Meridian ticker shows the Pit's air index falling every Book. It never recovers (epilogue canon). The player's violence moves prices, never the air | 01 §2 |
+| 523 | **The chart keeps the receipt** | "That's my garden. That's my station. That's where I broke the Maw." | The chart shows the tide line, gate states, the player's structures, gardens, lit paths, trophy walls and Colossus remains. Each entry is backed by a persisted fact with a reader (§31.0 fault 1) | 01 §2, 08 §11 |
+
+### 34.7 The campaign plays (rows 533–539)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 533 | **Books 0–2 play** | "B0 taught me the Line in two minutes; B2 cut to silence." | The 06 mission lists for B0–B2 are wired on the default route: the Skim's 12.4 t strain reading, Scale 4's variance object, the Infested Hauler furnace disposal, the Compost Run, the Nest, and the Elroy beat in the terminal register. Protected lines are exact (R-rulings). Player-truth adventure passes | 06 |
+| 534 | **Books 3–4 play** | "The fourth spike is real." | VARIANCE ADJUSTMENT (a Hawser-class tug with Slate's seam failing at the fourth strain spike); Feed the Maw; the Foreman; the first Gate Audit; the three doors each running their operation (Spine Break, the Weighing plus the Too-Perfect Pack, Barn Raising); the doubled contract as a player choice, with the canon wall line only if taken | 06 |
+| 535 | **Books 5–7 play** | "I took apart the Iron Maw." | The Reunion (canon dialogue), the Ninth Toll, the Reading Room and Redaction, the Locker heist; the Empire Seed built by towed modules, its first tide, Gate 3's waived fine, and Shaft 7's Hive-hulk; the Iron Maw dismantled into the Gutted Maw, the Long Field broken by shepherds, and the Witness room as terminal register | 06 |
+| 536 | **The Five Doors, playable** | "My ending was something I did." | Each door has its one short playable act (06 table). Vale's line fires for all doors on the drive charge. The epilogue is unchanged | 06 |
+| 537 | **Interludes and canon adoption** | — | Six interludes playable as quiet scenes (Unknown Vessel, The Hand, Second Client, Ticker, Drawer, Smell Ticket). Every PROPOSED CANON item in `design/expansion/` is folded into `docs/worldbuilding/` sheets, or rejected in one sentence naming its replacement | 06, 00 |
+| 538 | **Fourteen faction arcs** | "Every faction has a story I can finish." | Three missions per faction (06 side-arc table), each arc ending in its signature toy; gated by rep, not by Book | 06 |
+| 539 | **The Cull ladder** | "Pebble League to the Gutted Maw." | Ten leagues on the 04 arenas, with Ma Sprocket's broadcast, Clatter as rival, league prizes (heads, starting rating, cosmetics), and the Gutted Maw opening after B7. It is the swarm mode's career, in fiction | 06, 04 |
+
+### 34.8 Places and people (rows 540–543)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 540 | **The thin sectors** | "Even Sedna Dark has something to do." | Hyperion, Rhea, Nereid, Kepler, Orcus, Phoebe, Triton, Eunomia, Sedna, Eris, Nyx and Proteus each have their 04 throwable, hazard, resident, wonder and set piece on the default route. No sector is "one hull is the whole schedule" | 04 |
+| 541 | **The arena ladder** | "The arenas got bigger as I did." | The ten Cull arenas in the 04 table, each with its signature throwable and law, ordered by scale step for §33 row 485 | 04 |
+| 542 | **The canon cast gets hands** | "Kessler's scale and my Line disagreed." | Each canon character in 03 §4.1 has their physical hook wired (Kessler's scale, Slate's column and fourth spike, Drift's moisture loss, Rook's tow-to-booth bounties, Hale's Weighing, Dree's waved weir, Wex's empty rack) | 03 §4.1 |
+| 543 | **Faces** | "The contact looks like she works here." | Portraits for the canon cast and the eleven new faces (03 §4.2), plus eight culture pools of eight faces each (03 §2), with generated 2D art allowed by owner ruling | 05 §6 |
+
+### 34.9 Systems and polish (rows 544–549)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 544 | **Economy re-pace** | "Every twenty minutes I could do something new." | In the M3 cohort simulation for hour one: travel share ≤ 50 % for hauler and hunter, a play-changing purchase every 15–25 minutes, and bounties and salvage paid by tonnes moved. Pitborn sling buoys and Fulfillment hitchhiking are live shortcuts | 08 §2.4 |
+| 545 | **The camera follows the weight** | "The view opened up when I grabbed the freighter." | Framing for the largest relevant body; the camera opens with rating and speed; impact kick only at T4 and above; the ship is never under the HUD | 08 §6 |
+| 546 | **Teach by situation** | "Nobody told me; the situation showed me." | The first ten minutes place one situation per power. The power preview teaches it. "I've flown before" skips everything. First Light keeps its calm-motion offer with **Play** as the primary action | 08 §8 |
+| 547 | **The Colossus roster** | "The boss bar was its parts." | The 07 §5 bosses (Nest Carrier, Casket Worm, Furnace Maw, Yardmaster, Adjudicator 44-C, Hive-hulk, the Iron Maw, plus the existing Foreman, Regent and Spindle Mother) on row 448's framework. No HP bars. Every ripped part is ammunition | 07 §5 |
+| 548 | **The fifty-point audit** | "I'd show this to a friend." | The 08 §12 checklist is run as a pass. Each false item is fixed or filed as one demo-ledger row. The pass is repeated after each phase of 08 §13 | 08 §12 |
+| 549 | **Receipts within a budget** | "The world remembers, and the save is fine." | Every persisted receipt in §34 has a cap and a reader. Trivial receipts decay oldest-first, and meaningful ones never do. Save migrations cover each new record, and the save-growth soak stays flat | 08 §11 |
