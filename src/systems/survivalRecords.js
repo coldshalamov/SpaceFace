@@ -61,6 +61,7 @@ export const CRUCIBLE_META_FMT = 'spaceface-crucible-meta';
 export const CRUCIBLE_META_SCHEMA_VERSION = 1;
 export const CRUCIBLE_META_STORAGE_KEY = 'sf.save.crucible_meta';
 export const CRUCIBLE_HISTORY_LIMIT = 40;
+export const CABINET_ENTRY_LIMIT = 40;
 export const CRUCIBLE_DAILY_LABEL = 'spaceface-crucible-daily-v1';
 export const CRUCIBLE_DAILY_BOARD_CAP = 60;
 export const CRUCIBLE_DAILY_SEED_MIN = 1;
@@ -708,6 +709,7 @@ export function emptyCrucibleProfile() {
     unlocks: {},
     records: { byKey: {}, lifetime: emptyLifetime() },
     history: [],
+    cabinet: { nextId: 1, entries: [] },
     daily: emptyDaily(),
     ghosts: emptyGhosts(),
     bestLines: [],
@@ -762,6 +764,7 @@ function migrateProfile(raw) {
     unlocks,
     records: { byKey, lifetime },
     history: history.slice(-CRUCIBLE_HISTORY_LIMIT),
+    cabinet: migrateCabinet(src.cabinet),
     daily: migrateDaily(src.daily),
     ghosts: migrateGhosts(src.ghosts),
     // Historical rows keep their absent metadata. Never promote a v1 pose tape into a causal line.
@@ -780,6 +783,7 @@ function migrateProfile(raw) {
         || key === 'unlocks'
         || key === 'records'
         || key === 'history'
+        || key === 'cabinet'
         || key === 'daily'
         || key === 'ghosts'
         || key === 'bestLines'
@@ -1207,6 +1211,15 @@ export function mergeCrucibleProfiles(primary, secondary) {
     Array.isArray(a.history) ? a.history : [],
     Array.isArray(b.history) ? b.history : [],
   );
+  const cabinetById = new Map();
+  for (const entry of [...b.cabinet.entries, ...a.cabinet.entries]) {
+    const previous = cabinetById.get(entry.id);
+    if (!previous?.initials || entry.initials) cabinetById.set(entry.id, cloneJson(entry));
+  }
+  out.cabinet = {
+    nextId: Math.max(a.cabinet.nextId, b.cabinet.nextId),
+    entries: [...cabinetById.values()].sort((x, y) => x.recordedAt.localeCompare(y.recordedAt) || x.id.localeCompare(y.id)).slice(-CABINET_ENTRY_LIMIT),
+  };
   // Daily boards: per-date merge upward; the freshest stamp keeps the displayed outcome.
   const dailyA = asObject(a.daily && a.daily.byDate) ? a.daily.byDate : {};
   const dailyB = asObject(b.daily && b.daily.byDate) ? b.daily.byDate : {};
@@ -1358,6 +1371,71 @@ export function compareRunRecords(a, b) {
   const progress = x.roundThreatResolved * y.roundThreatBudget - y.roundThreatResolved * x.roundThreatBudget;
   if (progress) return Math.sign(progress);
   return Math.sign((a.score || 0) - (b.score || 0));
+}
+
+export function normalizeCabinetInitials(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return /^[A-Za-z0-9]{3}$/.test(trimmed) ? trimmed.toUpperCase() : null;
+}
+
+function cabinetEligible(result) {
+  return !!result && result.ruleset === 'swarm' && result.recordRules?.mode === 'swarm'
+    && recordRulesFor(result).complete && !result.trialId && !result.circuit
+    && !result.recordRules.circuit && result.practice !== true
+    && ['defeat', 'victory', 'extracted'].includes(result.outcome);
+}
+
+function migrateCabinet(raw) {
+  const entries = new Map();
+  for (const entry of Array.isArray(raw?.entries) ? raw.entries : []) {
+    if (!asObject(entry) || typeof entry.id !== 'string' || !entry.id || entry.id.length > 256
+      || typeof entry.recordedAt !== 'string' || !Number.isFinite(Date.parse(entry.recordedAt))
+      || !asObject(entry.result) || !cabinetEligible(entry.result)
+      || (entry.initials != null && !normalizeCabinetInitials(entry.initials))) continue;
+    const row = { id: entry.id, recordedAt: entry.recordedAt,
+      initials: normalizeCabinetInitials(entry.initials), result: cloneJson(entry.result) };
+    if (!entries.get(row.id)?.initials || row.initials) entries.set(row.id, row);
+  }
+  return {
+    nextId: Number.isSafeInteger(raw?.nextId) && raw.nextId > 0 ? raw.nextId : entries.size + 1,
+    entries: [...entries.values()].slice(-CABINET_ENTRY_LIMIT),
+  };
+}
+
+/** Metadata only: naming a run never settles it again or touches any rewards. */
+export function submitCabinetInitials(entryId, value, storage = liveStorage()) {
+  const initials = normalizeCabinetInitials(value);
+  if (!initials) return { ok: false, reason: 'Use exactly three letters or digits (A–Z, 0–9).' };
+  const profile = loadCrucibleMeta(storage);
+  const entry = profile.cabinet.entries.find(row => row.id === entryId);
+  if (!entry) return { ok: false, reason: 'This run is no longer on the local board.' };
+  entry.initials = initials;
+  if (!saveCrucibleMeta(profile, storage)) return { ok: false, reason: 'Initials could not be saved. Please retry.' };
+  return { ok: true, initials, entry, profile };
+}
+
+/** Each configuration/date is its own board. Unknown progress has no ordinal rank. */
+export function cabinetBoardRows(profile, { recordRules, dailyDateKey } = {}) {
+  const groups = new Map();
+  for (const entry of migrateCabinet(profile?.cabinet).entries) {
+    const result = entry.result;
+    if (recordRules && recordKey(result) !== recordKey({ recordRules })) continue;
+    if (dailyDateKey !== undefined && (result.dailyDateKey || null) !== (dailyDateKey || null)) continue;
+    const group = `${recordKey(result)}:${result.dailyDateKey || ''}`;
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push({ ...entry, group, rank: null });
+  }
+  const rows = [];
+  for (const entries of groups.values()) {
+    const known = entries.filter(row => compareRunRecords(row.result, row.result) !== null);
+    known.sort((a, b) => -compareRunRecords(a.result, b.result));
+    known.forEach((row, index) => {
+      row.rank = index && compareRunRecords(row.result, known[index - 1].result) === 0
+        ? known[index - 1].rank : index + 1;
+    });
+    rows.push(...known, ...entries.filter(row => row.rank === null));
+  }
+  return rows;
 }
 
 export function normalizeBestLine(line) {
@@ -1514,6 +1592,7 @@ export function compactRunResult(result, run, newly) {
     wavesCleared: result && Number.isInteger(result.wavesCleared) ? result.wavesCleared : 0,
     kills: result && Number.isInteger(result.kills) ? result.kills : 0,
     score: result && Number.isInteger(result.score) ? result.score : 0,
+    bestChain: Number.isInteger(result?.bestChain) && result.bestChain >= 0 ? result.bestChain : 0,
     credits: result && Number.isInteger(result.credits) ? result.credits : 0,
     xp: result && Number.isInteger(result.xp) ? result.xp : 0,
     // INF-040: the estimate files with the row it describes. Score, credits, and every
@@ -1694,6 +1773,15 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     bank.hangar = { ...bank.hangar, bounty: (bank.hangar.bounty || 0) + total };
     compact.hangarBounty = bank.hangar.bounty;
   }
+  const cabinet = migrateCabinet(loaded.cabinet);
+  if (cabinetEligible(compact) && result?.practice !== true && run?.practice !== true) {
+    const identity = stableStringify({ seed: compact.seed, rules: compact.recordRules,
+      outcome: compact.outcome, endedAt: result?.endedAt ?? null, progress: roundProgress(compact), score: compact.score });
+    compact.cabinetEntryId = `${recordedAt}:${String(cabinet.nextId).padStart(16, '0')}:${hash32('swarm-cabinet', identity).toString(16)}`;
+    cabinet.nextId += 1;
+    cabinet.entries.push({ id: compact.cabinetEntryId, recordedAt, initials: null, result: cloneJson(compact) });
+    cabinet.entries = cabinet.entries.slice(-CABINET_ENTRY_LIMIT);
+  }
   const next = {
     ...loaded,
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
@@ -1706,6 +1794,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
       lifetime: applyLifetime(records.lifetime, compact),
     },
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
+    cabinet,
     // SWARM-08 B5 — a Circuit route is not an ordinary Swarm daily row: the board stays as it was.
     daily: isCircuit ? loaded.daily : applyDailyBoard(loaded.daily, compact, recordedAt),
     ghosts,

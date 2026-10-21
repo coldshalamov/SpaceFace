@@ -66,6 +66,9 @@ import {
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
+import { reducedMotion as orreryMotionReduced } from '../orrery/motion.js';
+import { cabinetDailySnapshot, createCabinetAttract, createCabinetEntryBand, renderCabinetBoard } from '../swarmCabinet.js';
+import { SWARM_CABINET_ATTRACT_TAPE } from '../swarmCabinetAttractTape.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
 import { injectCrucibleResultsLayouts } from '../orrery/crucibleResultsLayouts.js';
@@ -94,11 +97,9 @@ import { CIRCUIT_TOTAL_ROUNDS } from '../../systems/survivalCircuit.js';
 import { decorateEntityNode, entityLabel, entitySpanHtml } from '../entityResolver.js';
 import { dpIcon } from '../deckplate/icons.js';
 import {
-  dailySeedForNow,
   ghostRaceOffer,
   lastGhostRowByHash,
   loadCrucibleMeta,
-  utcDateKeyNow,
   weeklyMutatorForNow,
   bestLineRows,
   normalizeBestLine,
@@ -119,6 +120,9 @@ import {
   runShareCodeForRun,
   requestSharedCrucibleRun,
   runShareSummary,
+  runCardModel,
+  runCardSvg,
+  runCardHref,
   shareTextHref,
 } from './shareCode.js';
 import {
@@ -769,6 +773,7 @@ export const crucibleScreen = {
     let arenaId = previous?.arenaId || CRUCIBLE_ARENA_ID;
     let ruleset = previous ? lastCrucibleRuleset() : CRUCIBLE_DEFAULT_RULESET;
     let daily = !!(previous && previous.dailyDateKey);
+    let dailySnapshot = cabinetDailySnapshot();
     if (daily) ruleset = SWARM_RULESET;
     let weekly = !!(previous && previous.weeklyMutatorId);
     let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
@@ -1065,7 +1070,7 @@ export const crucibleScreen = {
     function currentGhostOffer() {
       return ghostRaceOffer(
         doorProfile,
-        normalizeSeed(seedInput ? seedInput.value : (daily ? dailySeedForNow() : 1)),
+        normalizeSeed(seedInput ? seedInput.value : (daily ? dailySnapshot.seed : 1)),
         currentGhostRules(),
       );
     }
@@ -1117,14 +1122,14 @@ export const crucibleScreen = {
         sub.textContent = DAILY_CARD.blurb;
         // INF-038: the current daily challenge names itself — UTC date key and seed — so the
         // door shows WHICH shared run today is, not just that a daily exists.
-        const challenge = `Today's challenge ${utcDateKeyNow()} · seed ${dailySeedForNow()}.`;
+        const challenge = `Today's challenge ${dailySnapshot.dateKey} · seed ${dailySnapshot.seed}.`;
         modeSentence.textContent = weekly
           ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb} ${challenge}`
           : `${DAILY_CARD.sub} ${challenge}`;
         if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
         seedInput.readOnly = true;
         seedInput.setAttribute('aria-readonly', 'true');
-        seedInput.value = String(dailySeedForNow());
+        seedInput.value = String(dailySnapshot.seed);
         reroll.disabled = true;
         reroll.setAttribute('aria-disabled', 'true');
         if (typeof reroll._fhSync === 'function') reroll._fhSync();
@@ -1687,7 +1692,7 @@ export const crucibleScreen = {
     seedInput.inputMode = 'numeric';
     seedInput.spellcheck = false; seedInput.autocomplete = 'off';
     seedInput.setAttribute('aria-label', 'Run seed');
-    seedInput.value = String(daily ? dailySeedForNow() : (previous ? previous.seed : freshSeed()));
+    seedInput.value = String(daily ? dailySnapshot.seed : (previous ? previous.seed : freshSeed()));
     paintInput(seedInput);
     seedWell.appendChild(seedInput);
     seedRow.appendChild(seedWell);
@@ -1988,7 +1993,7 @@ export const crucibleScreen = {
     paintKey(copyCode, 'small');
     copyCode.addEventListener('click', () => {
       const terms = doorChallengeTerms();
-      const dateKey = daily ? utcDateKeyNow() : terms.shareDailyKey;
+      const dateKey = daily ? dailySnapshot.dateKey : terms.shareDailyKey;
       const res = doorRunShareCode({
         starterId,
         seed: normalizeSeed(seedInput.value),
@@ -2107,6 +2112,12 @@ export const crucibleScreen = {
         paintLegend(recSum, false);
         records.appendChild(recSum);
         records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
+        let localBoard = renderCabinetBoard(rootEl.ownerDocument || document, doorProfile);
+        records.appendChild(localBoard);
+        this._refreshCabinetBoard = () => {
+          const next = renderCabinetBoard(rootEl.ownerDocument || document, loadCrucibleMeta());
+          records.removeChild(localBoard); localBoard = next; records.appendChild(localBoard);
+        };
         stage.appendChild(records);
         // r2: a short plate shortens the caption so the row stays above the fold.
         if (typeof matchMedia === 'function') {
@@ -2223,7 +2234,7 @@ export const crucibleScreen = {
       } = conveyor ? { challengeMutators: [] } : doorChallengeTerms();
       if (weeklyMutatorId) payload.weeklyMutatorId = weeklyMutatorId;
       if (!conveyor && (daily || weeklyMutatorId || challengeMutators.length || shareDailyKey)) {
-        const dateKey = daily ? utcDateKeyNow() : shareDailyKey;
+        const dateKey = daily ? dailySnapshot.dateKey : shareDailyKey;
         if (dateKey) payload.dailyDateKey = dateKey;
         queueSurvivalChallenge({
           seed: payload.seed,
@@ -2281,8 +2292,16 @@ export const crucibleScreen = {
     syncMode();
     syncHull();
     preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
-      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
+      onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible),
+      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
     this._preparation = preparation;
+    this._cabinetAttract = createCabinetAttract({ host: preparation?.attractHost,
+      tape: SWARM_CABINET_ATTRACT_TAPE, reducedMotion: () => !canAnimate() || orreryMotionReduced() });
+    this._cabinetAttract.setVisible(!!preparation?.previewVisible);
+    this._refreshDaily = () => { dailySnapshot = cabinetDailySnapshot(); syncMode(); preparation?.update(); };
+    const cabinetDoc = rootEl.ownerDocument || document;
+    this._dailyVisibility = () => { if (!cabinetDoc.hidden) this._refreshDaily?.(); };
+    this._cabinetDoc = cabinetDoc;
     // ORRERY: each tile row loses its cards and runs on a ruled line with the amber index under the
     // chosen tile (the tiles keep their art, their words, aria-pressed and their handlers).
     if (ORRERY && !preparation) this._stations = [modes, hulls, arenas].map((row) => createStationRow({ row }));
@@ -2298,6 +2317,10 @@ export const crucibleScreen = {
   },
 
   onShow() {
+    this._refreshDaily?.();
+    this._refreshCabinetBoard?.();
+    this._cabinetDoc?.addEventListener?.('visibilitychange', this._dailyVisibility);
+    this._cabinetAttract?.start();
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
@@ -2313,10 +2336,17 @@ export const crucibleScreen = {
   },
 
   onHide() {
+    this._cabinetAttract?.stop();
+    this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
     if (canAnimate()) cue('close');
   },
 
   dispose() {
+    this._cabinetAttract?.dispose();
+    this._cabinetAttract = null;
+    this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
+    this._cabinetDoc = null;
+    this._refreshDaily = this._dailyVisibility = this._refreshCabinetBoard = null;
     this._preparation?.dispose();
     this._preparation = null;
     for (const station of this._stations || []) station?.dispose?.();
@@ -3320,6 +3350,7 @@ export function buildShareBand(result) {
     seed: result && Number.isInteger(result.seed) ? result.seed : null,
   });
   const code = runShareCodeForRun(setup, result, { ghostHash: ghost ? ghost.hash : null });
+  const hasCard = result?.ruleset === SWARM_RULESET;
   if (!code && !(ghost && ghost.text)) return null;
 
   const band = el('div', 'sf-crres__band sf-crres__share');
@@ -3328,6 +3359,17 @@ export function buildShareBand(result) {
   title.setAttribute('role', 'heading');
   title.setAttribute('aria-level', '2');
   band.appendChild(title);
+
+  if (hasCard) {
+    const card = el('a', 'k-word', 'Save run card');
+    card.setAttribute('download', `spaceface-swarm-${result.seed ?? 'run'}.svg`);
+    band.refreshCard = initials => {
+      const saved = loadCrucibleMeta().cabinet.entries.find(row => row.id === result.cabinetEntryId);
+      const href = runCardHref(runCardSvg(runCardModel(result, { initials: initials || saved?.initials, code })));
+      if (href) card.setAttribute('href', href);
+    };
+    band.refreshCard(); band.appendChild(card);
+  }
 
   if (code || (ghost && ghost.text)) {
     // One explainer for the whole register — two per-item notes were what pushed the ghost row
@@ -3496,6 +3538,9 @@ export const crucibleResultsScreen = {
     // PQ-160.02: the run as a code, its ghost as a block. Sharing must never take the plate down.
     try {
       const shareBand = buildShareBand(result);
+      const cabinetBand = createCabinetEntryBand({ doc: rootEl.ownerDocument || document, result,
+        onSaved: initials => shareBand?.refreshCard?.(initials) });
+      if (cabinetBand) ledger.appendChild(cabinetBand);
       if (shareBand) ledger.appendChild(shareBand);
     } catch {
       // A share-surface failure must never take down the results plate.

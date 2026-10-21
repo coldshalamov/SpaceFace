@@ -7,6 +7,11 @@ const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-prep
 const A = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory.orr-visual-armory';
 const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit';
 const CSS = `
+${D} .orr-prep-daily { color:var(--dp-phos); font:500 14px var(--dp-face-body,'Instrument Sans'),sans-serif; margin:8px 0 16px; }
+${D} .orr-cabinet-preview { position:absolute; top:4%; right:8%; width:80%; max-width:380px; z-index:3; pointer-events:none; background:var(--dp-void); }
+${D} .orr-cabinet-preview[hidden] { display:none !important; }
+${D} .orr-cabinet-canvas { display:block; width:100%; height:auto; aspect-ratio:16/9; }
+${D} .orr-cabinet-preview .orr-label { color:var(--dp-ink); font-size:12px; margin:4px 0; }
 .orr-equipment-glyph { display:block; width:48px; height:48px; flex:none; color:var(--dp-ink); pointer-events:none; }
 ${D} { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows:auto auto minmax(0,1fr) auto !important; gap:18px 40px !important; padding:30px 48px 22px !important; width:100% !important; height:100dvh !important; max-width:none !important; max-height:none !important; margin:0 !important; overflow:hidden !important; }
 ${D} > .k-title { grid-column:1 / -1 !important; grid-row:1 !important; margin:0 !important; padding:0 !important; }

@@ -22,6 +22,7 @@ import {
   lastGhostRowByHash,
   loadCrucibleMeta,
   saveCrucibleMeta,
+  roundProgress,
 } from '../../systems/survivalRecords.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
@@ -350,4 +351,56 @@ export function shareTextHref(text) {
   } catch {
     return null;
   }
+}
+
+/** A read-only card of published facts; absent progress is never treated as zero. */
+export function runCardModel(result, { initials = null, code = null } = {}) {
+  const res = result || {};
+  const progress = roundProgress(res);
+  return {
+    identity: 'SpaceFace / Swarm', initials: initials || '—',
+    arena: arenaWordFor(res.arenaId) || 'Arena unknown', outcome: res.outcome || 'Unknown',
+    seed: Number.isInteger(res.seed) ? res.seed : null, date: res.dailyDateKey || null,
+    ...progress, score: res.score ?? 0, bestChain: res.bestChain ?? 0,
+    code: typeof code === 'string' && code ? code : null,
+  };
+}
+
+const cardEscape = value => String(value).replace(/[&<>"']/g, c => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;',
+})[c]);
+
+export function runCardSvg(model) {
+  const m = model || {};
+  const text = (x, y, size, value, extra = '') =>
+    `<text x="${x}" y="${y}" font-size="${size}" ${extra}>${cardEscape(value)}</text>`;
+  const known = m.roundThreatBudget != null && m.roundThreatResolved != null;
+  const facts = [
+    `Highest round entered: ${m.highestRoundEntered ?? 'Unknown'}`,
+    `Last round cleared: ${m.lastRoundCleared ?? 'Unknown'}`,
+    known ? `Round progress: ${m.roundThreatResolved}/${m.roundThreatBudget}` : 'Progress unknown',
+    `Points: ${m.score ?? 0}     Best chain: ${m.bestChain ?? 0}`,
+  ];
+  const chunks = m.code ? String(m.code).match(/.{1,128}/gs) || [] : [];
+  // Normal run codes fit one column. Extra columns preserve every character of longer codes.
+  const columns = Math.max(1, Math.ceil(chunks.length / 12));
+  const columnWidth = 1080 / columns;
+  const code = chunks.map((chunk, i) => text(60 + Math.floor(i / 12) * columnWidth,
+    440 + (i % 12) * 17, 12, chunk,
+    `font-family="monospace"${columns > 1 ? ` textLength="${columnWidth - 12}" lengthAdjust="spacingAndGlyphs"` : ''}`)).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="SpaceFace Swarm run card">
+<rect width="1200" height="675" fill="#05070A"/>
+<g fill="none" stroke="#B7B4A6" opacity=".3"><circle cx="1020" cy="170" r="110"/><circle cx="1020" cy="170" r="82"/><path d="M60 100H850 M60 395H1140 M1020 40V80 M1020 260V300 M890 170H930 M1110 170H1150"/></g>
+<g fill="#E8E2D4" font-family="Arial, Helvetica, sans-serif">
+${text(60, 70, 28, m.identity || 'SpaceFace / Swarm')}
+${text(60, 160, 64, m.initials || '—')}${text(270, 145, 32, m.arena || 'Arena unknown')}
+${text(270, 183, 22, `${m.outcome || 'Unknown'} · seed ${m.seed ?? 'Unknown'}${m.date ? ` · ${m.date} UTC` : ''}`)}
+${facts.map((fact, i) => text(60, 240 + i * 40, 24, fact)).join('')}
+${chunks.length ? text(60, 418, 14, 'Challenge code') + code : ''}
+</g></svg>`;
+}
+
+export function runCardHref(svg) {
+  try { return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }
+  catch { return null; }
 }

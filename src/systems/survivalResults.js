@@ -1145,6 +1145,7 @@ export const survivalResults = {
       result.unlocksEarned = settled.unlocksEarned.slice();
       const row = settled && settled.result;
       if (row) {
+        if (row.cabinetEntryId) result.cabinetEntryId = row.cabinetEntryId;
         result.bankedBounty = row.bankedBounty;
         result.hangarBounty = row.hangarBounty;
         result.cashOut = row.cashOut;

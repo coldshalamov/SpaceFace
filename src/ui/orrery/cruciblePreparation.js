@@ -55,7 +55,7 @@ export function preparationLoadout(starterId, weeklyMutatorId = null) {
   }) };
 }
 
-export function createCruciblePreparation({ root, stage, title, foot, enter, read } = {}) {
+export function createCruciblePreparation({ root, stage, title, foot, enter, read, onPreviewVisibility = () => {} } = {}) {
   const doc = root?.ownerDocument;
   // Minimal node test documents keep the pre-existing screen path rather than a half-built widget.
   if (!doc?.createElementNS || !root.querySelector || !stage?.replaceChildren) return null;
@@ -88,7 +88,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     panel.append(head, list); return { panel, list };
   });
   const challengesWrap = make('details', 'orr-prep-disclosure');
-  challengesWrap.appendChild(make('summary', '', 'Challenges — daily, weekly, ghosts'));
+  challengesWrap.appendChild(make('summary', '', 'Challenges — weekly, ghosts'));
   const extras = make('details', 'orr-prep-disclosure');
   extras.appendChild(make('summary', '', 'Seed, perks, hangar & records'));
   const extraRows = make('ul', 'sf-crd-settings orr-prep-settings');
@@ -104,13 +104,15 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   }
   // Keep challenge modes available, but out of the first decision's primary rail.
   const challenges = make('ul', 'k-words k-words--row orr-prep-challenges');
-  for (const button of panels[0].panel.querySelectorAll('.sf-crd-daily,.sf-crd-weekly,.sf-crd-ghost')) {
+  for (const button of panels[0].panel.querySelectorAll('.sf-crd-weekly,.sf-crd-ghost')) {
     challenges.appendChild(button.parentElement.tagName === 'LI' ? button.parentElement : button);
   }
   challengesWrap.appendChild(challenges);
   for (const child of [...stage.children]) if (child !== settings) extras.appendChild(child);
   stage.replaceChildren(panels[0].panel, panels[1].panel);
   panels[0].panel.append(challengesWrap, extras);
+  const dailyReading = make('p', 'k-t-fine orr-prep-daily');
+  panels[0].panel.insertBefore(dailyReading, panels[0].list);
   const bare = root.querySelector('.sf-crd-anyhull');
   if (bare) {
     const disclosure = make('details', 'orr-prep-disclosure orr-prep-bare');
@@ -140,6 +142,9 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   });
 
   const arenaHero = root.querySelector('.orr-door-hero');
+  const attractHost = make('div', 'orr-cabinet-preview');
+  attractHost.hidden = true;
+  if (arenaHero) arenaHero.appendChild(attractHost);
   const shipHero = make('section', 'orr-prep-ship');
   shipHero.setAttribute('aria-label', 'Selected ship and starting equipment');
   const shipHead = make('header', 'orr-prep-shiphead');
@@ -206,8 +211,11 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     stage.scrollTop = 0;
     if (hint) hint.textContent = step === 0 ? '01 — Choose the fight: mode, arena, ladder. Your ship comes next.' : '02 — Choose the ship. Kits come fitted; bare hulls buy their kit in the armory. Nothing here costs campaign credits.';
     update();
-  }  function update() {
+  }
+  function update() {
     const state = read();
+    if (state.dailySnapshot) dailyReading.textContent = `Today · ${state.dailySnapshot.dateKey} UTC · seed ${state.dailySnapshot.seed}`;
+    onPreviewVisibility(step === 0 && state.ruleset === 'swarm');
     const stake = swarmStakeFor(state.daily ? 'contender' : state.stake);
     const isSwarm = state.ruleset === 'swarm';
     const loadout = preparationLoadout(state.starterId, state.weeklyMutatorId);
@@ -325,5 +333,8 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     }
   }
   show(0);
-  return { update, focus() { tabs[step].focus({ preventScroll: true }); }, dispose() { jig.dispose(); ring.dispose(); for (const ro of roPool) ro.disconnect(); } };
+  return { update, attractHost: arenaHero ? attractHost : null,
+    get previewVisible() { return step === 0 && read().ruleset === 'swarm'; },
+    focus() { tabs[step].focus({ preventScroll: true }); },
+    dispose() { onPreviewVisibility(false); jig.dispose(); ring.dispose(); for (const ro of roPool) ro.disconnect(); } };
 }
