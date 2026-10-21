@@ -58,6 +58,14 @@ test('both opening seeds carry actual loose ore into the refinery exactly once',
     assert.equal(pickup.alive, false);
     assert.equal(pickup.data.amount, 0);
     assert.deepEqual(h.rec.manifest.lines, [{ commodityId, qty }]);
+    const tally = h.owner._heliosTallyPoint();
+    assert.ok(tally, 'the laden barge answers the freight-spine tally before the berth');
+    h.barge.pos = { ...tally };
+    h.barge.vel = { x: 0, z: 0 };
+    h.owner._stepHeliosOreCarrier(h.barge, h.rec, [h.refinery], h.sim.state);
+    h.sim.state.simTime += 7;
+    h.owner._stepHeliosOreCarrier(h.barge, h.rec, [h.refinery], h.sim.state);
+    assert.equal(arrivals.length, 0, 'the tally counts the load; it does not deliver it');
     h.barge.pos = { ...h.refinery.pos };
     h.owner._stepHeliosOreCarrier(h.barge, h.rec, [h.refinery], h.sim.state);
     assert.equal(arrivals.length, 1);
