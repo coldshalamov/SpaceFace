@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 10:44 UTC. All nine outcomes remain open. This register supports the
+Updated 21 October 2026, 10:50 UTC. All nine outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -11,7 +11,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: open. Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage now have independent public draft delivery. Full ordinary-route, device, performance and experience acceptance remain incomplete.
 - Owner: expansion integration and exact feature owners.
 - Evidence: IMPLEMENTATION.md, TWENTY_CONCEPT_MAP.json; local b08ba532/d70c0413; public PR461 and PR462; finite Independent Seam is public PR464; physical Tethys count-lane service is public PR466.
-- Next: Follow current PR480/PR483 successor CI while select_next_sector_experience inspects actual Io Reach/Charon code and owners for one connected unit. Preserve prior fb3 route success and pending successor/full-game acceptance distinctions; no new broad queue or completed next increment.
+- Next: Implement and qualify the reserved existing Charon finite air-pod/hauler/salvor supply chain, preserving evacuated-colony history and the crew's original cutting route. Continue separate PR480/PR483 CI; no new-unit completion or closure of any larger goal.
 - Awaiting user: final acceptance when adequate evidence exists; no optional engineering decision.
 
 ## SF-ORCHARD
@@ -51,7 +51,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: OPEN. PR378's prior 156 distinct models and 12 recipes remain historical inventory. Ceres now has a genuinely new fairlead with source, release, compiled package and shipping bindings in Git; do not count these representations as separate models. The polished volatile vessel remains an existing model. Stormshift receiver bank is still dormant, and broad coverage/consumer acceptance remains open.
 - Owner: build_orchard_receiver_asset owns the genuinely distinct receiver and selected-model pipeline; other asset-bank authors retain their existing paths.
 - Evidence: Ceres fairlead source/release/compiled/shipping preservation is in cb0657; native 17-prism correction is https://github.com/coldshalamov/SpaceFace/commit/b01eedbb75a737ad419a19a91432e332d3b273b6 . Prior RED sphere mismatch remains historical evidence, while current sampled native bounds do not claim full 3D equivalence or live acceptance. Prior PR378 and dormant-bank evidence remains in EXECUTION_STATUS.md.
-- Next: Preserve fairlead native authority and dormant receiver bank while broader coverage remains open. Old receiver blobs remain absent; no owner reaction establishes an actionable approval or denial, so do not retry cards or claim registration resolved by newer successful writes.
+- Next: review_charon_supply_assets reviews reuse of existing cargo-pod and conveyor-barge assets for Charon crew supply. Existing cmdty_volatiles represents pressurized air/Silt; no new mesh authorized or extra model count claimed. Preserve dormant receiver bank and unresolved operations separately.
 - Awaiting user: eventual integrated acceptance; specific gated publication remains separate.
 
 ## SF-ASSET-QUALITY
@@ -64,10 +64,10 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
-- State: OPEN. Published PR483 2991 outgoing-generation cutoff before materialization/yields protects ordinary new arrivals, stale events, recycled IDs and reentrant resets; 73/73 checks and 998 modules pass. Old d0 browser47-A required actor/live/neutral/no-fire assertions pass before console stale-preload 404 failure. No full or successor acceptance inferred.
-- Owner: trace_ceres_payload_departure follows PR483 successor CI; verify_orchard_ci_attribution follows PR480. select_next_sector_experience inspects Io Reach/Charon actual source read-only for one connected next unit, preserving existing ownership.
-- Evidence: PR483 https://github.com/coldshalamov/SpaceFace/commit/2991cdb7c3348b80568ab19d193ee3b097e77afc ; 73/73 and 998 pinned modules. Prior fb3 actual route finite custody/gates pass and earlier Vesta evidence remain scoped in EXECUTION_STATUS.md.
-- Next: Finish bounded Io Reach/Charon source/ownership inspection before choosing implementation; no completed next feature or new broad queue. Follow successor CI and retain ordinary/full Continue/live acceptance gaps.
+- State: OPEN. Reserved next increment activates the existing authored but inert Charon air-pod → original charon_colony_hauler → original charon_colony_salvor finite physical supply. Visiting crew pauses and resumes its existing cutting route. Implementation/native success is not yet claimed; evacuated history and claimability remain.
+- Owner: build_charon_crew_supply owns new world/charonSalvageSupply.js, Charon-only traffic/contactHail hooks, colony reason in sectorZones.js and new focused/native fixtures in isolated public db576 source. Root owns package/index/docs; review_charon_supply_assets reviews reuse, with no new mesh authorized.
+- Evidence: Actual source inspection found an authored but inert supply chain. Existing cmdty_volatiles is pressurized air/Silt; cargo-pod and conveyor-barge assets are reused. Contradictory colony zone wording will be narrowly corrected to visiting salvage crews, not residents. Earlier published route/payload evidence remains separate.
+- Next: Implement and independently prove finite original-pod custody, original-hauler delivery and original-salvor pause/resume on the existing route. No invented residents/rewards/infinite refill or substitute actors. Preserve evacuated-colony claimability and explicit Save/Continue/ordinary/native evidence limits.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
 
 ## SF-SECTOR-COHERENCE
@@ -75,5 +75,5 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: OPEN. Public sector register now records bounded Vesta original-pod delivery/replay/lifecycle facts with explicit setup, station-alias and live/full-P08 limits. Initial catalog counts remain inventory, not runtime appearance or accepted coherence. Existing PR457 station persistence reconciliation is the next connected maintenance unit.
 - Owner: Root coordinates sector review. map_sector_experience_coherence owns SECTOR_EXPERIENCE_REGISTER_2026-10-21.md; current gameplay/story/source owners retain their paths.
 - Evidence: Public register in https://github.com/coldshalamov/SpaceFace/commit/cb0657c0542e0a5bb2cbb593c092a773f0c5e504 ; initial counts remain inventory rather than runtime proof. User authorization and reminder update remain recorded in EXECUTION_STATUS.md.
-- Next: select_next_sector_experience inspects actual Io Reach/Charon source and existing owners to choose one connected experience increment. Use proven arrival/departure/persistence facts and explicit gaps; no new broad queue or implementation-success claim.
+- Next: Complete the reserved Charon connected supply experience using existing authored actors/assets and evacuated-colony history, correcting only contradictory visiting-crew wording. Require actual finite supply and cutting-route pause/resume evidence; no new broad queue or completion claim.
 - Awaiting user: no optional input pending; proceed with the authorized inventory and review.
