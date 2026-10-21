@@ -23,6 +23,7 @@ import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
+import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
 import { bindReturningPilotSummary } from './dockArrival.js';
 
 const MAX = RECEIPT_MAX;
@@ -358,6 +359,7 @@ export function createToasts(ctx) {
   bindJumpDenialToasts(bus, () => ctx.state);
   bindExportRecoveryToasts(bus);
   bindSlingPassReceipts(bus);
+  bindCounterplayReceipts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
   bindReturningPilotSummary(bus, ctx && ctx.state);
 
@@ -541,6 +543,26 @@ export function bindSlingPassReceipts(bus) {
       ? `Sling ring — thrown wide at ${speed} wu/s.`
       : `Sling ring — slung forward at ${speed} wu/s.`;
     bus.emit('toast', { text, kind: 'info', ttl: 4 });
+  });
+}
+
+export const COUNTERPLAY_RECEIPT_TTL_S = 4;
+
+/** RC-25 — `counterplay:encountered` becomes one short "title — counter" receipt.
+ *  The 8-second doctrine paragraph is dead: the receipt names the hull's plan and
+ *  the one counter move, nothing more. */
+export function counterplayReceipt(payload) {
+  const doctrine = payload && counterplayDoctrineById(payload.doctrineId);
+  if (!doctrine) return null;
+  const short = doctrine.counterShort || String(doctrine.counter || '').split('. ')[0];
+  return { text: `${doctrine.title} — ${short}`, kind: 'info', ttl: COUNTERPLAY_RECEIPT_TTL_S, channel: 'counterplay' };
+}
+
+export function bindCounterplayReceipts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('counterplay:encountered', (payload) => {
+    const receipt = counterplayReceipt(payload);
+    if (receipt && typeof bus.emit === 'function') bus.emit('toast', receipt);
   });
 }
 

@@ -79,7 +79,7 @@ export function placeCounterplayAdventure(ctx) {
       if (attachment.ok) orbit.data.counterplayOrbitLine = attachment.attachment.id;
     }
     seen[journalKey] = { status: 'encountered', doctrineId: doctrine.id };
-    ctx.bus?.emit('toast', { text: `${doctrine.title}: ${doctrine.playerPlan} ${doctrine.counter}`, kind: 'info', ttl: 8 });
+    ctx.bus?.emit('counterplay:encountered', { sectorId, doctrineId: doctrine.id, caseKey: key, entityId: opponent.id });
   }
 }
 
