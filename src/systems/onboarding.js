@@ -380,7 +380,31 @@ const RESCUE_GATE_ROUTE = Object.freeze({
 const COLD_OPEN_PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
 // Surfaced when the firing lesson first hands the player a trigger, so the starter weapon is named,
 // not just felt. Pulled from NEW_GAME's fitted starter loadout (see check:phase0-slice-contract).
-const STARTER_WEAPON_HINT = 'The Kestrel is armed: fire the Pulse Laser S, then let the heat clear.';
+// The hull is Hitch — the callsign the opening already uses; "Kestrel" is the market name.
+const STARTER_WEAPON_HINT = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
+// A captioned opening: the one-line hook and the weapon hint also live briefly in the existing
+// objective tracker, because a muted pilot must still be able to read the premise. Captions are
+// queued in simulation time and never replace the actionable objective.
+const TRACKER_CAPTION_S = 12;
+const TRACKER_CAPTION_IDS = new Set(['premise', 'weapon']);
+
+function sanitizeTrackerCaptions(raw) {
+  const out = [];
+  if (!Array.isArray(raw)) return out;
+  for (const rec of raw) {
+    if (!rec || typeof rec !== 'object') continue;
+    const id = rec.id;
+    if (!TRACKER_CAPTION_IDS.has(id)) continue;
+    const text = typeof rec.text === 'string' ? rec.text : '';
+    const startAtS = Number(rec.startAtS);
+    const endAtS = Number(rec.endAtS);
+    if (!text || !Number.isFinite(startAtS) || !Number.isFinite(endAtS) || !(endAtS > startAtS)) continue;
+    if (out.some((kept) => kept.id === id)) continue;
+    out.push({ id, text, startAtS, endAtS });
+    if (out.length >= 2) break;
+  }
+  return out;
+}
 
 const ORE_PREFIXES = [
   'cmdty_ore', 'cmdty_silicate', 'cmdty_ice', 'cmdty_volatiles',
@@ -1282,6 +1306,7 @@ export const onboarding = {
       rangeOpenedFromPromptAt: null,
       rangeFunnel: null,
       rangePromptRungId: null,
+      trackerCaptions: [],        // bounded { id, text, startAtS, endAtS } — tutorial lifetime only
       startedAt: st.simTime || 0,
     };
     // Thesis-first tableau state (raid + claimed). Only staged on the default route — see
@@ -1382,6 +1407,7 @@ export const onboarding = {
       choiceStationId: typeof ob.choiceStationId === 'string' ? ob.choiceStationId : null,
       choiceOfferIds: Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.slice() : null,
       recommendedMissionId: ob.recommendedMissionId != null ? ob.recommendedMissionId : null,
+      trackerCaptions: sanitizeTrackerCaptions(ob.trackerCaptions),
     };
   },
 
@@ -1411,6 +1437,8 @@ export const onboarding = {
     if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
     if (Array.isArray(d.choiceOfferIds)) ob.choiceOfferIds = d.choiceOfferIds.slice(); else delete ob.choiceOfferIds;
     if (d.recommendedMissionId != null) ob.recommendedMissionId = d.recommendedMissionId; else delete ob.recommendedMissionId;
+    // Absolute simulation timestamps survive: a restored caption resumes its window, never restarts it.
+    ob.trackerCaptions = sanitizeTrackerCaptions(d.trackerCaptions);
     ob.rescue = restoreRescueRecord(d.rescue);
     ob.raid = plainClone(d.raid);
     ob.claimed = plainClone(d.claimed);
@@ -1543,6 +1571,11 @@ export const onboarding = {
   // EVERY first-hour tutorial line passes through here so the check can audit text overlap at one
   // place. Emits on the 'tutorial' tier (toast kind 'info'). Updates the silence-gate clock.
   _sayTutorial(text, { visual = true } = {}) {
+    // Keep the audited public signature literal; the optional caption id rides the same options
+    // object without changing the shape the first-hour audit reads.
+    const trackerCaptionId = arguments[1] && arguments[1].trackerCaptionId != null
+      ? arguments[1].trackerCaptionId
+      : null;
     if (!text || this.state.physicsVenueSession === true || isRacingCorridorSession(this.state)) return;
     this._lastTextAtS = this.state.simTime || 0;
     // Record for the one-voice audit: { atS, text } appended to a session log on state.onboarding.
@@ -1550,6 +1583,26 @@ export const onboarding = {
     if (ob) {
       if (!Array.isArray(ob.tutorialLog)) ob.tutorialLog = [];
       ob.tutorialLog.push({ atS: this._lastTextAtS, text });
+      // Captions are a separate, muted-safe channel beside the objective. Enqueue once per ID for
+      // the rail's whole lifetime (expired records still block a replay), and start after the
+      // previous caption's window so two authored lines can never erase each other.
+      if (TRACKER_CAPTION_IDS.has(trackerCaptionId)) {
+        if (!Array.isArray(ob.trackerCaptions)) ob.trackerCaptions = [];
+        if (!ob.trackerCaptions.some((rec) => rec && rec.id === trackerCaptionId)) {
+          let lastCaptionEndAtS = 0;
+          for (const rec of ob.trackerCaptions) {
+            if (rec && Number.isFinite(rec.endAtS)) lastCaptionEndAtS = Math.max(lastCaptionEndAtS, rec.endAtS);
+          }
+          const startAtS = Math.max(this.state.simTime || 0, lastCaptionEndAtS);
+          ob.trackerCaptions.push({
+            id: trackerCaptionId,
+            text,
+            startAtS,
+            endAtS: startAtS + TRACKER_CAPTION_S,
+          });
+          if (ob.trackerCaptions.length > 2) ob.trackerCaptions.length = 2;
+        }
+      }
     }
     this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS });
     // A matching onboarding waypoint already exposes this command through the persistent,
@@ -1632,9 +1685,6 @@ export const onboarding = {
     if (!beat) return;
     if (beat.key === 'thrust') {
       this._setObjectiveWaypoint(true);
-      // Cold-open: frame the 47-A contract the instant the tutorial begins (replaces the old intro
-      // modal's headline intent, per spec2/03 B0 "no modal"). Shares the beat voice channel.
-      this._sayTutorial(COLD_OPEN_PREMISE, { visual: false });
     }
     else if (beat.key === 'brake') this._setObjectiveWaypoint(true);
     else if (beat.key === 'marker') {
@@ -1645,6 +1695,13 @@ export const onboarding = {
     else if (beat.key === 'tether') {
       this._spawnDerelict();
       this._setObjectiveWaypoint(true);
+      // Cold-open: frame the 47-A contract with the opening tether lesson (replaces the old intro
+      // modal's headline intent, per spec2/03 B0 "no modal"). The caption keeps it readable while
+      // muted; the beat voice still speaks the same line for audio.
+      this._sayTutorial(COLD_OPEN_PREMISE, {
+        visual: false,
+        trackerCaptionId: 'premise',
+      });
     }
     else if (beat.key === 'burst') {
       this._spawnTrainer('burst');
@@ -1656,7 +1713,7 @@ export const onboarding = {
       }
       this._setObjectiveWaypoint(true);
       // Name the starter weapon at the firing lesson so the loadout is surfaced, not just felt.
-      this._sayTutorial(STARTER_WEAPON_HINT, { visual: false });
+      this._sayTutorial(STARTER_WEAPON_HINT, { visual: false, trackerCaptionId: 'weapon' });
     }
     else if (beat.key === 'disengage') this._setObjectiveWaypoint(true);
     else if (beat.key === 'raid') this._enterRaidBeat();
@@ -1866,6 +1923,9 @@ export const onboarding = {
     if (ob.claimed) ob.claimed.active = false;
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
+    // Captions live only for the tutorial's lifetime. _teardown must not clear them: save:loaded
+    // tears the rail down and then resumes the restored one.
+    if (Array.isArray(ob.trackerCaptions)) ob.trackerCaptions.length = 0;
     this._clearObjectiveWaypoint();
     // Tell the story system the tutorial is over so it can release the deferred cold-start voice.
     this.bus.emit('tutorial:finished', {});

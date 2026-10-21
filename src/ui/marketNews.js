@@ -250,6 +250,13 @@ export function createMarketNews(ctx) {
     return (state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
   }
 
+  // The opening tutorial owns the pilot's attention: news still records history, but it does not
+  // speak or paint over the one lesson until the rail releases the voice.
+  function tutorialOwnsAttention() {
+    const ob = state.onboarding;
+    return !!(ob && ob.active === true && ob.finished !== true);
+  }
+
   // Commit a resolved headline to the rolling log, one-voice floor, ticker, and downstream event.
   // `metadata` is supplied by authored `news:publish` and causal freight-loss paths; generic
   // economy emissions retain their original compact payload shapes.
@@ -267,7 +274,8 @@ export function createMarketNews(ctx) {
     model.log.unshift(rec);
     if (model.log.length > MAX_LOG) model.log.length = MAX_LOG;
 
-    if (!quiet && bus) {
+    // History and news:headline are information other owners consume; only presentation waits.
+    if (!quiet && bus && !tutorialOwnsAttention()) {
       const voiceMetadata = metadata ? { ...metadata } : null;
       if (voiceMetadata) delete voiceMetadata.channel;
       const said = helpers.voice && typeof helpers.voice.say === 'function'
@@ -779,8 +787,15 @@ export function createMarketNews(ctx) {
     if (typeof document === 'undefined') return;
     const el = ensureTicker();
     if (!el) return;
-    const items = model.log.slice(0, MAX_TICKER_ITEMS);
     clearTickerTimer();
+    // The opening tutorial owns the floor: keep the recorded history, paint none of it, and
+    // schedule no rotation until the rail says it is finished.
+    if (tutorialOwnsAttention()) {
+      el.textContent = '';
+      setTickerHostVisible(false);
+      return;
+    }
+    const items = model.log.slice(0, MAX_TICKER_ITEMS);
     el.textContent = '';
     if (!items.length) {
       tickerIndex = 0;
@@ -809,6 +824,10 @@ export function createMarketNews(ctx) {
   // HUD construction can replace its BAND tape after this UI system initialized. Repaint the
   // existing cited log into the new host instead of waiting for the next market event.
   on('news:render', renderTicker);
+  // The tutorial's own voice gates the tape: hide it on the first line, then restore the retained
+  // history when the rail finishes, without waiting for another economy event.
+  on('tutorial:say', renderTicker);
+  on('tutorial:finished', renderTicker);
 
   return {
     name: 'marketNews',
