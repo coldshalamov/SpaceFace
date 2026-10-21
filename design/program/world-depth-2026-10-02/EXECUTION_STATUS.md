@@ -1,6 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 06:36 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving their scoped evidence and failures.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now has verified head [39ec9e794dd1b14bdd13d17597933bd6b7af738d](https://github.com/coldshalamov/SpaceFace/commit/39ec9e794dd1b14bdd13d17597933bd6b7af738d), tree `4e93d35e2a67bf0a64c02dfea0ac3d00bafc880c`, sole parent `c4cf86ba6fb9632eb87caa957ef1a71007f2f4b8`, with exactly seven source/test paths. Rendezvous validation passes 75 focused checks; native evidence proves the original three units through cooperation wait and intake, not moving deceleration. Final durable recovery is verified separately. No moving-deceleration, pixel/live graphical or aggregate-CI acceptance is inferred.
+
+The next active unit is Ceres Last Shift ordinary first approach, non-spoiler discovery and return guidance. build_ceres_arrival_story owns exactly src/data/lastShift.js, src/systems/lastShift.js, src/ui/lastShiftPrompt.js and test/last-shift.test.mjs. review_ceres_story_presentation is read-only reviewer. No additional user approval is pending for this unit, and implementation success is not yet claimed.
+
+map_sector_experience_coherence owns the new SECTOR_EXPERIENCE_REGISTER_2026-10-21.md. The initial inventory identifies 25 actual sectors, 35 catalog stations, 153 catalog POIs, 58 activity pockets and 116 actor slots. These are source/catalog inventory counts, not proof that those objects appear at runtime or that every sector is coherent or accepted.
+
+Next: finish and independently review the bounded Ceres first-approach/discovery/return unit; complete the inventory-backed sector register with first-arrival, recurring-life, progression/consequences, return-visit and Save/Continue evidence. Keep current CI separate and follow its exact-head outcome. Public receiver activation holds remain unchanged; the source/release model bank stays dormant. Preserve foreign NOW edits and existing owner scopes. This checkpoint changes only the two shared handoff/goal documents, not gameplay source or PR #480, and exposes no private recovery identifiers or restricted diagnostics.
+
 ## Sector-coherence authorization — 21 October 2026, 06:30 UTC
 
 Nine goals are now OPEN: the existing eight remain unchanged and SF-SECTOR-COHERENCE is newly authorized. This adds a systematic sector-by-sector review rather than replacing the original scope or closing any earlier outcome.
