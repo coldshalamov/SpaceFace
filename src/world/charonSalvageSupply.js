@@ -6,6 +6,7 @@ import { activityPocketById } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { spawnJettisonedCargoPod } from '../systems/lootShards.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { hullEnvelopeWu, resolveCollisionProxyManifest, proxyOuterRadiusWu } from '../data/collisionProxyManifests.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 const C = CHARON_SUPPLY,
@@ -342,7 +343,42 @@ function hold(e) {
     aimAngle: e.rot
   };
 }
+// One fixed local landmark separates the crew's spawn side from the stock.
+// Use the same source/model-truth envelopes as native fixed-solid clearance;
+// never relocate a hull or make the colony's actual collider smaller.
+export function charonSupplyApproachPoint(state, e, target, native = null) {
+  const active = state.world?.activeSector;
+  if (state.world?.currentSectorId !== C.sectorId || !active) return target;
+  const binding = active.pois?.find(x => x.poiId === 'poi_colony');
+  const colony = binding && state.entities.get(binding.id);
+  if (!colony || colony.alive === false || colony.collides === false || colony.data?.poiId !== 'poi_colony') return target;
+  const rec = native?.records?.get(colony.id);
+  const admitted = rec?.entity === colony && rec.body?.isValid?.() && rec.body?.isEnabled?.();
+  if (admitted && rec.body.isDynamic()) return target;
+  const raw = admitted ? rec.body.translation() : colony.pos;
+  const origin = admitted ? native.getFrameOrigin?.() || native._frameOrigin : null;
+  const center = { x: raw.x + (origin?.x || 0), z: raw.z + (origin?.z || 0) };
+  const envelope = body => {
+    const proxy = resolveCollisionProxyManifest(body);
+    return Math.max(hullEnvelopeWu(body), proxy ? proxyOuterRadiusWu(proxy, body) : 0);
+  };
+  const clearance = envelope(colony) + envelope(e) + 6;
+  const dx = target.x - e.pos.x, dz = target.z - e.pos.z, length2 = dx * dx + dz * dz;
+  const t = length2 ? Math.max(0, Math.min(1, ((center.x-e.pos.x)*dx+(center.z-e.pos.z)*dz)/length2)) : 0;
+  if (Math.hypot(e.pos.x+t*dx-center.x,e.pos.z+t*dz-center.z) >= clearance) return target;
+  const ax=e.pos.x-center.x, az=e.pos.z-center.z, distance=Math.hypot(ax,az);
+  if (!(distance>0) || Math.hypot(target.x-center.x,target.z-center.z)<clearance) return null;
+  const angle=Math.atan2(az,ax), goal=Math.atan2(target.z-center.z,target.x-center.x);
+  const delta=Math.atan2(Math.sin(goal-angle),Math.cos(goal-angle));
+  // Extra tracking room keeps each short chord outside the actual solid envelope.
+  const radius=clearance+10;
+  const next=distance<clearance+3 ? angle : angle+Math.sign(delta || 1)*Math.min(0.4,Math.abs(delta));
+  return {x:center.x+Math.cos(next)*radius,z:center.z+Math.sin(next)*radius};
+}
 function steer(o, e, target, reach, contactTarget = null, contactReach = 0) {
+  const routed = charonSupplyApproachPoint(o.state, e, target, o._registry?.get?.('physics')?._sg02);
+  if (!routed) { hold(e); return; }
+  if (routed !== target) { target = routed; reach = 1; contactTarget = null; contactReach = 0; }
   const dx = target.x - e.pos.x,
     dz = target.z - e.pos.z,
     d = Math.hypot(dx, dz),

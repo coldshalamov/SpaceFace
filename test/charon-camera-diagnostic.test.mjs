@@ -8,7 +8,7 @@ function fakePage({ready=true,missing=false}={}) {
   const calls=[];let count=0;
   return {calls, async evaluate(fn,action){calls.push(action);if(action==='read')return {...snapshot(ready,missing),presentCount:++count};return {};},async screenshot(opts){calls.push('screenshot');assert.ok(opts.timeout<=4000);assert.equal(opts.animations,undefined);}};
 }
-function fakeOptions(){let clock=0;return {now:()=>clock,sleep:async ms=>{clock+=ms;},mkdirFn:async()=>{},writeFileFn:async()=>{},outputDir:'/tmp/charon-test'};}
+function fakeOptions(){let clock=0;return {budgetMs:20000,now:()=>clock,sleep:async ms=>{clock+=ms;},mkdirFn:async()=>{},writeFileFn:async()=>{},outputDir:'/tmp/charon-test'};}
 test('opt in only, failures isolated',async()=>{
  assert.equal(charonCameraEnabled([]),false);assert.equal(charonCameraEnabled(['--charon-camera-diagnostic']),true);
  let calls=0;await runOptionalCharonCameraDiagnostic({}, {argv:[],capture:async()=>{calls++;}});assert.equal(calls,0);
@@ -176,4 +176,44 @@ test('software observation distinguishes hidden prepared boundary from absent me
  state.render.sectorBoundaryPrewarm={failures:()=>[{id:e.id,state:'disposed',error:'prior failure'}]};
  assert.equal(charonCameraPageOperation('post').boundaryFailures[0].error,'prior failure');
  }finally{delete globalThis.window;}
+});
+
+test('one longer observation stops on real readiness before its 90 second cap',async()=>{
+ const p=fakePage({ready:false}),original=p.evaluate;let clock=0;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read'){r.ready=clock>=30000;r.subjects[0].assetState=r.ready?'authored':'loading';}return r;};
+ const opts=fakeOptions();delete opts.budgetMs;
+ const r=await captureCharonCameraDiagnostic(p,{...opts,now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(r.report.budgetMs,90000);assert.ok(r.report.elapsedMs>=30000&&r.report.elapsedMs<32000);
+ assert.equal(r.report.observationStop,'original-subjects-authored');assert.equal(r.report.status,'authored-subjects-captured-not-visual-acceptance');
+ assert.equal(p.calls.filter(x=>x==='enter').length,1);assert.equal(p.calls.filter(x=>x==='frame').length,1);
+});
+test('long observation remains capped and unresolved when authored preparation never finishes',async()=>{
+ const p=fakePage({ready:false});const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),budgetMs:900000});
+ assert.equal(r.report.budgetMs,90000);assert.ok(r.report.elapsedMs<90000);
+ assert.equal(r.report.observationStop,'readiness-window-exhausted');assert.equal(r.report.status,'unresolved-assets-captured');
+ assert.equal(r.report.screenshots.length,2);assert.equal(r.report.visualAcceptance,false);
+});
+test('source consumed during longer observation is captured honestly without replacement or continued readiness wait',async()=>{
+ const p=fakePage({ready:false}),original=p.evaluate;let clock=0;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read'&&clock>=5000){r.subjects=[{subject:'original-pod',missing:true}];r.ledger={phase:'delivered',pods:[{loose:0,aboard:0,delivered:6,consumed:0}]};}return r;};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),budgetMs:90000,now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(r.report.status,'original-subject-unavailable-captured');assert.equal(r.report.observationStop,'original-subject-unavailable');
+ assert.ok(r.report.elapsedMs<7000);assert.equal(r.report.samples[0].ledger.pods[0].delivered,6);
+ assert.equal(p.calls.filter(x=>x==='enter').length,1);assert.equal(p.calls.filter(x=>x==='frame').length,1);
+});
+test('raw gameplay radius and actual mesh scale remain distinct from conservative framing envelope',()=>{
+ try {const {state}=stateFixture();const e=state.entityList[0];e.radius=2;
+ e.mesh.scale={x:3,y:4,z:5};e.mesh.userData.visualBounds={size:[10,10,10]};
+ const r=charonCameraPageOperation('read').subjects[0];
+ assert.equal(r.entityRadius,2);assert.deepEqual(r.meshScale,{x:3,y:4,z:5});assert.ok(r.radius>30);
+ delete e.mesh;const absent=charonCameraPageOperation('read').subjects[0];assert.equal(absent.entityRadius,2);assert.equal(absent.meshScale,null);
+ }finally{delete globalThis.window;}
+});
+
+test('nonadvancing presentation never manufactures the second view, even in longer window',async()=>{
+ const p=fakePage(),original=p.evaluate;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read')r.presentCount=7;return r;};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),budgetMs:90000});
+ assert.equal(r.report.status,'diagnostic-timeout');assert.equal(r.report.screenshots.length,1);
+ assert.equal(p.calls.filter(x=>x==='screenshot').length,1);assert.ok(r.report.elapsedMs<=90000);
 });

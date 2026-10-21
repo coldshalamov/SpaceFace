@@ -6428,6 +6428,27 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/last-shift-fairlead",
       "metadataUrl": "assets/ships/release/render-packages/last-shift-fairlead/render-package.json"
+    },
+    {
+      "key": "charon-colony-service-barge",
+      "assetId": "sf.render.charon-colony-service-barge",
+      "runtimeAssetId": "SF_PLACE_CHARON_COLONY_SERVICE_BARGE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_charon_colony_service_barge",
+      "sourceUrl": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb",
+      "releaseSha256": "24613d199704a08cf171cae45d5bd9999cd9e880479af97ecb584e87de3e5aaf",
+      "releaseBytes": 498992,
+      "rootNode": "SF_PLACE_CHARON_COLONY_SERVICE_BARGE_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/charon-colony-service-barge",
+      "metadataUrl": "assets/ships/release/render-packages/charon-colony-service-barge/render-package.json"
     }
   ]
 }

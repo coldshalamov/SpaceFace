@@ -9770,6 +9770,73 @@
           4.099999904632568
         ]
       }
+    },
+    {
+      "id": "place_charon_colony_service_barge",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_charon_colony_service_barge.glb",
+      "tris": 11976,
+      "bytes": 1392088,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy"
+      },
+      "note": "Charon-only intact evacuated habitat and attached service annex on conveyor barge.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Barge_Bridge",
+        "SOCKET_Container_Aft",
+        "SOCKET_Container_Fore",
+        "SOCKET_Container_Mid",
+        "SOCKET_Drive_Plume",
+        "SOCKET_Emissive",
+        "SOCKET_Status_Port",
+        "SOCKET_Status_Starboard",
+        "SOCKET_Structure_Core",
+        "SOCKET_Trail_Main"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1,
+          0,
+          -8.300000190734863
+        ],
+        "max": [
+          72.30000305175781,
+          11.100000381469727,
+          8.300000190734863
+        ],
+        "dimensionsM": [
+          73.30000305175781,
+          11.100000381469727,
+          16.600000381469727
+        ]
+      },
+      "triangleMetric": "lod0",
+      "boundsMetric": "lod0"
     }
   ],
   "runtimeSlots": {

@@ -340,18 +340,26 @@ PARTS_DIR = os.path.join(ROOT, 'assets', 'ships', 'parts')
 PLACE_DIR = os.path.join(PARTS_DIR, 'places')
 
 
-def _read_glb_json(path):
+def _read_glb_json(path, strict=False):
     with open(path, 'rb') as f:
         data = f.read()
+    if strict:
+        if len(data) < 20:
+            raise ValueError('contract_source is not a complete GLB')
+        magic, version, length, jlen, chunk = struct.unpack_from('<5I', data, 0)
+        if magic != 0x46546C67 or version != 2 or length != len(data):
+            raise ValueError('contract_source has an invalid GLB header')
+        if chunk != 0x4E4F534A or jlen % 4 or 20 + jlen > len(data):
+            raise ValueError('contract_source has an invalid JSON chunk')
     jlen = struct.unpack_from('<I', data, 12)[0]
     return json.loads(data[20:20 + jlen].decode('utf-8'))
 
 
-def live_place_contract(file, parts_dir=None):
+def live_place_contract(file, parts_dir=None, strict=False):
     """Sockets (world transform + extras), root name and identity of the live place GLB, so a forged
     place drops into the exact gameplay contract the old one held."""
     from mathutils import Matrix, Quaternion
-    doc = _read_glb_json(os.path.join(parts_dir or PLACE_DIR, f'{file}.glb'))
+    doc = _read_glb_json(os.path.join(parts_dir or PLACE_DIR, f'{file}.glb'), strict=strict)
     nodes = doc.get('nodes', [])
     parent = {}
     for i, n in enumerate(nodes):
@@ -395,6 +403,21 @@ def live_place_contract(file, parts_dir=None):
     return {'sockets': sockets, 'root': roots[0] if roots else None, 'meta': meta}
 
 
+def place_contract(spec, parts_dir, new_place):
+    # An explicit donor transfers sockets only, never the donor's identity or root.
+    # Used by new compositions which retain an existing place's interaction frame.
+    contract_source = spec.get('contract_source')
+    if contract_source is not None:
+        if not isinstance(contract_source, str) or not contract_source or any(
+                ch not in 'abcdefghijklmnopqrstuvwxyz0123456789_' for ch in contract_source):
+            raise ValueError('contract_source must be a canonical place file identifier')
+        donor = live_place_contract(contract_source, parts_dir, strict=True)
+        return {'sockets': donor['sockets'], 'root': None, 'meta': {}}
+    else:
+        return {'sockets': [], 'root': None, 'meta': {}} if new_place else live_place_contract(
+            spec['file'], parts_dir)
+
+
 def export_place(ship, spec, preview=False):
     # spec['parts_dir'] retargets a place-layout body at another parts/ subdir (e.g. 'pods') so a
     # Forge rebuild can replace a live file in place instead of moving its references.
@@ -403,8 +426,8 @@ def export_place(ship, spec, preview=False):
     os.makedirs(out_dir, exist_ok=True)
     # A brand-new place (no live body yet) carries its own sockets (s.socket / s.socket_names).
     new_place = not os.path.exists(os.path.join(parts_dir, f"{spec['file']}.glb")) or spec.get('new_place')
-    live = {'sockets': [], 'root': None, 'meta': {}} if new_place else live_place_contract(
-        spec['file'], parts_dir)
+    contract_source = spec.get('contract_source')
+    live = place_contract(spec, parts_dir, new_place)
     _rename_materials(ship)
     root = _root_empty(live['root'] or f"SF_{spec['file'].upper()}_ROOT", {})
     meshes_all = []
@@ -428,7 +451,7 @@ def export_place(ship, spec, preview=False):
         for k, v in (extras or {}).items():
             e[k] = v
         e.parent = root
-    if new_place:
+    if new_place and contract_source is None:
         _add_sockets(ship, root)
     path = os.path.join(out_dir, f"{spec['file']}.glb")
     _export([root] + list(root.children_recursive), path)
@@ -438,7 +461,7 @@ def export_place(ship, spec, preview=False):
             'previewMount', 'sourceRole')
     identity = {k: live['meta'][k] for k in keep if k in live['meta']}
     category = spec.get('parts_dir', 'places')
-    if new_place:
+    if new_place or contract_source is not None:
         identity.update({'contractVersion': 2, 'liveId': spec['file'], 'category': category})
     identity.update({'assetId': spec['asset_id'], 'partId': spec.get('part_id', spec['file']),
                      'slot': spec.get('slot', 'place'),

@@ -1,8 +1,8 @@
 {
   "counts": {
-    "green": 17,
+    "green": 18,
     "red": 202,
-    "rows": 219
+    "rows": 220
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -98469,6 +98469,469 @@
         52,
         10.902859,
         27.731946
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          35.650002,
+          5.548887,
+          0
+        ],
+        "max": [
+          72.300003,
+          11.098255,
+          8.301019
+        ],
+        "min": [
+          -1,
+          -0.00048,
+          -8.301019
+        ],
+        "size": [
+          73.300003,
+          11.098735,
+          16.602038
+        ]
+      },
+      "bytes": 498992,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:place_charon_colony_service_barge",
+        "kind": "proxy",
+        "outline": [
+          37.534543,
+          25.427458,
+          11.751899,
+          0,
+          7.261645,
+          7.13148,
+          0,
+          0,
+          9.309542,
+          0,
+          22.272218,
+          35.269323,
+          35.269323,
+          22.27317,
+          0,
+          9.309542,
+          0,
+          0,
+          7.13148,
+          7.261724,
+          0,
+          11.751899,
+          25.427458,
+          37.534543
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 4.504145,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -35.650002,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:place_charon_colony_service_barge",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 48,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_charon_colony_service_barge",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_aged",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 36,
+      "nodes": 47,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        35.650002,
+        5.548887,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 4.504145,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 16,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.771149,
+            "bz": -0.101524,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.485565,
+            "bz": -0.201128,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.173017,
+            "bz": -0.13276,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.031957
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.05233,
+            "bz": -0.126337,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.019747
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.017541,
+            "bz": -0.133239,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.019393
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.105828,
+            "bz": -0.137918,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.025315
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.424835,
+            "bz": -0.175972,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.72436,
+            "bz": -0.095364,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.72436,
+            "bz": 0.095364,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.424853,
+            "bz": 0.17598,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.105828,
+            "bz": 0.137918,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.025315
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.017541,
+            "bz": 0.133239,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.019393
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.052331,
+            "bz": 0.126338,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.019747
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.173017,
+            "bz": 0.13276,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.031957
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.485565,
+            "bz": 0.201128,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.771149,
+            "bz": 0.101524,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.009375
+          }
+        ],
+        "silhouetteRadius": 37.534543,
+        "toleranceWu": 4.504145
+      },
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 288,
+        "inwardFaceFraction": 0.266,
+        "silhouetteRadius": 37.534543,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Barge_Bridge",
+          "position": [
+            44,
+            5.5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Aft",
+          "position": [
+            32,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Fore",
+          "position": [
+            12,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Mid",
+          "position": [
+            22,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Drive_Plume",
+          "position": [
+            -2.5,
+            2.2,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Emissive",
+          "position": [
+            26,
+            6.2,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Status_Port",
+          "position": [
+            44,
+            0,
+            -7.5
+          ]
+        },
+        {
+          "name": "SOCKET_Status_Starboard",
+          "position": [
+            44,
+            0,
+            7.5
+          ]
+        },
+        {
+          "name": "SOCKET_Structure_Core",
+          "position": [
+            33.852501,
+            3.0125,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -2.5,
+            2.2,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
+      "tasteBudget": null,
+      "triangles": 18662,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb",
+      "worldSize": [
+        73.300003,
+        11.098735,
+        16.602038
       ]
     }
   ],

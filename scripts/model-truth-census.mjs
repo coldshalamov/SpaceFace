@@ -60,8 +60,15 @@ const CHECK = process.argv.includes('--check');
 const ONLY = (process.argv.find((arg) => arg.startsWith('--only=')) || '').slice('--only='.length);
 
 const UPDATE_SELECTED = process.argv.includes('--update-selected');
+const APPEND_SELECTED = process.argv.includes('--append-selected');
 const ONLY_IDS = new Set(ONLY.split(',').filter(Boolean));
 if (UPDATE_SELECTED && !ONLY_IDS.size) throw new Error('--update-selected requires explicit --only IDs or family');
+if (APPEND_SELECTED && (UPDATE_SELECTED || CHECK || ONLY_IDS.size !== 1)) throw new Error('--append-selected requires one explicit new catalog ID, without --update-selected or --check');
+if (APPEND_SELECTED && (process.argv.filter(arg => arg.startsWith('--only=')).length !== 1
+  || ONLY.split(',').length !== 1 || !ONLY.trim()
+  || process.argv.filter(arg => arg === '--append-selected').length !== 1)) {
+  throw new Error('--append-selected requires one unambiguous --only=ID and one append flag');
+}
 
 const AST_DISPLACE = {
   ast_common_rock: { detail: 2, displace: 0.20 },
@@ -800,6 +807,14 @@ async function measureRow(row) {
 
 async function buildCensus() {
   const fullCatalog = liveSolidGlbCatalog();
+  if (APPEND_SELECTED) {
+    const id = [...ONLY_IDS][0];
+    if (fullCatalog.filter(row => row.id === id).length !== 1 || fullCatalog.some(row => row.family === id)) {
+      throw new Error('--append-selected rejects unknown, ambiguous or family selection');
+    }
+    const previous = JSON.parse(readFileSync(OUT, 'utf8'));
+    if (previous.rows.some(row => row.id === id)) throw new Error('--append-selected refuses an existing census row');
+  }
   if ([...ONLY_IDS].some(id => !fullCatalog.some(row => row.id === id || row.family === id))) throw new Error('Unknown --only selection');
   const catalog = fullCatalog.filter((row) => !ONLY || ONLY_IDS.has(row.family) || ONLY_IDS.has(row.id));
   const rows = [];
@@ -843,6 +858,17 @@ async function buildCensus() {
 }
 
 let census = stable(await buildCensus());
+if (APPEND_SELECTED) {
+  const previous = JSON.parse(readFileSync(OUT, 'utf8'));
+  if (census.rows.length !== 1 || census.rows[0].status !== 'green'
+    || previous.rows.some(row => row.id === census.rows[0].id)) {
+    throw new Error('Append selected requires one passing measured new row');
+  }
+  const rows = [...previous.rows, census.rows[0]];
+  const red = rows.filter(row => row.status === 'red').length;
+  census = { ...previous, counts: { ...previous.counts, rows: rows.length, red, green: rows.length - red }, rows };
+  console.log('[model-truth] appended one passing measured row; preserved every prior row without remeasurement');
+}
 if (UPDATE_SELECTED) {
   const previous = JSON.parse(readFileSync(OUT, 'utf8'));
   const selected = new Map(census.rows.map(row => [row.id, row]));

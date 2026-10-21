@@ -928,3 +928,48 @@ test('production payload and finite pickup retarget forms keep original round id
     assert.equal(total(f),6);
   }
 });
+
+import { charonSupplyApproachPoint } from '../src/world/charonSalvageSupply.js';
+import { hullEnvelopeWu, resolveCollisionProxyManifest, proxyOuterRadiusWu } from '../src/data/collisionProxyManifests.js';
+const supplyEnvelope = e => Math.max(hullEnvelopeWu(e), resolveCollisionProxyManifest(e) ? proxyOuterRadiusWu(resolveCollisionProxyManifest(e), e) : 0);
+const supplySegmentGap = (a,b,c) => { const dx=b.x-a.x,dz=b.z-a.z,n=dx*dx+dz*dz,t=n?Math.max(0,Math.min(1,((c.x-a.x)*dx+(c.z-a.z)*dz)/n)):0;return Math.hypot(a.x+t*dx-c.x,a.z+t*dz-c.z); };
+test('original stock approach detours around actual source-derived colony envelope without actor edits', () => {
+ const f=charonSupplySaveFixture();try {
+  const facts=charonSupplyFacts(f.state),h=f.state.entities.get(facts.haulerId),r=f.state.entities.get(facts.salvorId),p=f.source();
+  const c=f.state.entities.get(f.state.world.activeSector.pois.find(x=>x.poiId==='poi_colony').id);
+  const dx=p.pos.x-r.pos.x,dz=p.pos.z-r.pos.z,len=Math.hypot(dx,dz),target={x:p.pos.x+dx/len*55,z:p.pos.z+dz/len*55};
+  const before=JSON.stringify([h.pos,h.vel,r.pos,p.pos,c.pos]);
+  const clearance=supplyEnvelope(h)+supplyEnvelope(c)+6;
+  assert.ok(supplySegmentGap(h.pos,target,c.pos)<clearance,'original straight leg intersects clearance');
+  const route=charonSupplyApproachPoint(f.state,h,target);
+  assert.notEqual(route,target);
+  assert.ok(supplySegmentGap(h.pos,route,c.pos)>=clearance,'first detour chord clears source envelope');
+  assert.equal(JSON.stringify([h.pos,h.vel,r.pos,p.pos,c.pos]),before);
+  assert.equal(charonSupplyFacts(f.state).loose,6);
+  // Pure geometrical stepping, not native motion or route acceptance.
+  let pose={...h.pos},steps=0;
+  while(steps++<40) {
+   const next=charonSupplyApproachPoint(f.state,{...h,pos:pose},target);
+   assert.ok(next);
+   assert.ok(supplySegmentGap(pose,next,c.pos)>=clearance-1e-8);
+   if(next===target)break;
+   pose=next;
+  }
+  assert.ok(steps<40,'bounded detour opens a clear stock approach');
+ }finally{f.close();}
+});
+test('colony route uses current POI binding and recomputes after real Continue', () => {
+ const f=charonSupplySaveFixture();try{
+  const before=charonSupplyFacts(f.state),h=f.state.entities.get(before.haulerId),p=f.source(),target={x:p.pos.x,z:p.pos.z};
+  assert.notEqual(charonSupplyApproachPoint(f.state,h,target),target);
+  assert.equal(f.save.loadEnvelope(f.save.serialize('colony-route-rebind')),true);
+  const now=charonSupplyFacts(f.state),actor=f.state.entities.get(now.haulerId),source=f.source();
+  const currentTarget={x:source.pos.x,z:source.pos.z};
+  assert.notEqual(charonSupplyApproachPoint(f.state,actor,currentTarget),currentTarget);
+  assert.equal(now.loose,6);
+  const binding=f.state.world.activeSector.pois.find(x=>x.poiId==='poi_colony'),real=binding.id;
+  binding.id=actor.id;
+  assert.equal(charonSupplyApproachPoint(f.state,actor,currentTarget),currentTarget,'reused id with wrong poi identity is never an obstacle authority');
+  binding.id=real;
+ }finally{f.close();}
+});

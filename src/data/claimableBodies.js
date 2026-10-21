@@ -276,7 +276,7 @@ export const CLAIMABLE_BODY_SITES = Object.freeze([
   claimSite('sector_vesta_forge', 'poi_claim_kilnside', 'Kilnside Lease', 'S', 1650, 1350, 'place_asteroid_rock_a'),
   claimSite('sector_pallas_drift', 'poi_claim_drift_nine', 'Drift Claim Nine', 'M', -2050, 1250, 'place_asteroid_seamed'),
   claimSite('sector_io_reach', 'poi_claim_pallas', 'Pallas Industrial Moon', 'M', 320, 1280, 'place_asteroid_seamed'),
-  claimSite('sector_charon_expanse', 'poi_colony', 'Abandoned Mining Colony', 'S', -620, 1420, 'place_conveyor_barge'),
+  claimSite('sector_charon_expanse', 'poi_colony', 'Abandoned Mining Colony', 'S', -620, 1420, 'place_charon_colony_service_barge'),
   claimSite('sector_sker_haven', 'poi_claim_morrow', 'Morrow Freehold', 'M', 2100, -1450, 'place_asteroid_rock_b'),
   claimSite('sector_veil_nebula', 'poi_claim_lacuna', 'Lacuna Survey Moon', 'L', -2300, 1700, 'place_asteroid_rock_c'),
   claimSite('sector_ashfall_reach', 'poi_claim_cinder_crown', 'Cinder Crown', 'L', 2500, -1900, 'place_asteroid_rock_c'),

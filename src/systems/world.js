@@ -457,6 +457,7 @@ const DRESSING_RADIUS = Object.freeze({
   place_mining_drone: 8,
   place_station_billboard: 28,
   place_conveyor_barge: 48,
+  place_charon_colony_service_barge: 48,
   place_dead_hulk: 42,
   place_debris_chunk: 26,
   place_ceres_bait_wreck: 48,

@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+export const CHARON_CAMERA_MAX_BUDGET_MS = 90000;
 export const CHARON_CAMERA_LABEL = 'Programmatically staged Charon game-camera diagnostic; real runtime entities; not an ordinary flown arrival or visual/gameplay acceptance.';
 export function charonCameraEnabled(argv = process.argv) { return argv.includes('--charon-camera-diagnostic'); }
 
@@ -140,7 +141,9 @@ export function charonCameraPageOperation(action) {
   const player=s.entities.get(s.playerId);
   const subjects=targets.map((e,i)=>e?{subject:names[i],id:e.id,generation:e.occupantGeneration,
     worldRecordId:e.data?.worldRecordId??null,defId:e.data?.defId??null,placeId:e.data?.placeId??null,
-    pos:{x:e.pos.x,z:e.pos.z},radius:radius(e),assetState:e.mesh?.userData?.authoredAssetState??'missing',
+    pos:{x:e.pos.x,z:e.pos.z},radius:radius(e),entityRadius:finite(e.radius),
+    meshScale:e.mesh?.scale?{x:finite(e.mesh.scale.x),y:finite(e.mesh.scale.y),z:finite(e.mesh.scale.z)}:null,
+    radiusBasis:'radius is a conservative framing envelope; entityRadius is the raw gameplay radius.',assetState:e.mesh?.userData?.authoredAssetState??'missing',
     assetId:e.mesh?.userData?.assetId??null,visible:e.mesh?.visible??false,
     amount:e.data?.amount??null,commodityId:e.data?.commodityId??null,
     meshPresent:!!e.mesh, meshName:e.mesh?.name??null,
@@ -162,14 +165,18 @@ export function charonCameraPageOperation(action) {
 }
 
 export async function captureCharonCameraDiagnostic(page, {
-  budgetMs = 20000, now = () => Date.now(), sleep = ms => new Promise(r=>setTimeout(r,ms)),
+  budgetMs = CHARON_CAMERA_MAX_BUDGET_MS, now = () => Date.now(), sleep = ms => new Promise(r=>setTimeout(r,ms)),
   mkdirFn = mkdir, writeFileFn = writeFile, outputDir = resolve('scratch/check-ci-report/station-handoff'),
 } = {}) {
-  const started=now(), totalBudget=Math.min(20000,Math.max(1,budgetMs));
+  // Actual SwiftShader evidence: the 15.197s diagnostic ended with boundaries
+  // still preparing; its two capture samples advanced only 0.3 sim seconds. Observe once for at most 90s;
+  // never accelerate sim time or bypass authored admission to manufacture readiness.
+  const started=now(), totalBudget=Math.min(CHARON_CAMERA_MAX_BUDGET_MS,
+    Number.isFinite(budgetMs)?Math.max(1,budgetMs):CHARON_CAMERA_MAX_BUDGET_MS);
   const deadline=started+Math.max(1,totalBudget-500);
   let closed=false;
   const report={schema:'spaceface.charonCamera.v1',label:CHARON_CAMERA_LABEL,visualAcceptance:false,
-    status:'unavailable',setup:null,transitionSamples:[],samples:[],postSamples:[],screenshots:[],errors:[]};
+    status:'unavailable',budgetMs:totalBudget,observationStop:null,initialSample:null,setup:null,transitionSamples:[],samples:[],postSamples:[],screenshots:[],errors:[]};
   const check=()=>{if(closed||now()>=deadline)throw new Error('Charon diagnostic deadline exceeded');};
   const bounded=async fn=>{check();let timer;try{return await Promise.race([
     Promise.resolve().then(()=>{check();return fn();}),new Promise((_,reject)=>{timer=setTimeout(()=>{closed=true;reject(new Error('Charon diagnostic deadline exceeded'));},Math.max(1,deadline-now()));})]);}finally{clearTimeout(timer);}};
@@ -187,22 +194,25 @@ export async function captureCharonCameraDiagnostic(page, {
     await bounded(()=>page.evaluate(charonCameraPageOperation,'enter'));
     // Enter listeners can drain over several presented frames. Do not fabricate missing cast.
     let snapshot=await read();
+    report.initialSample=snapshot;
     const subjectsDeadline=Math.min(deadline-9000,started+4000);
     while(snapshot.subjects.some(e=>e.missing)&&now()<subjectsDeadline){await bounded(()=>sleep(200));snapshot=await read();}
     if(snapshot.subjects.some(e=>e.missing)) {
-      report.samples.push(snapshot); report.status='subjects-unavailable';
+      report.samples.push(snapshot); report.status='subjects-unavailable';report.observationStop='original-subject-unavailable';
     } else {
       report.transitionSamples.push(snapshot.transition??null);
-      // Keep the original total deadline and capture reserve. If the genuine arrival
+      // Keep the capped total deadline and capture reserve. If the genuine arrival
       // is still cooking, preserve two arrival views instead of relocating mid-cook.
-      while(snapshot.transition?.pending&&now()<deadline-10000){await bounded(()=>sleep(250));snapshot=await read();}
+      while(snapshot.transition?.pending&&!snapshot.subjects.some(e=>e.missing)&&now()<deadline-10000){await bounded(()=>sleep(250));snapshot=await read();}
       report.transitionSamples.push(snapshot.transition??null);
-      if(!snapshot.transition?.pending){
+      if(!snapshot.transition?.pending&&!snapshot.subjects.some(e=>e.missing)){
         report.setup=await bounded(()=>page.evaluate(charonCameraPageOperation,'frame'));
         snapshot=await read();
       }
       // Reserve time for two bounded captures. Readiness failure is evidence, not a forced upgrade.
-      while(!snapshot.ready&&now()<deadline-10000){await bounded(()=>sleep(250));snapshot=await read();}
+      while(!snapshot.ready&&!snapshot.subjects.some(e=>e.missing)&&now()<deadline-10000){await bounded(()=>sleep(250));snapshot=await read();}
+      report.observationStop=snapshot.subjects.some(e=>e.missing)?'original-subject-unavailable'
+        :snapshot.ready?'original-subjects-authored':'readiness-window-exhausted';
       report.samples.push(snapshot);
       await capture(1);
       const firstCount=snapshot.presentCount, firstTime=now();
@@ -210,7 +220,7 @@ export async function captureCharonCameraDiagnostic(page, {
       while(now()-firstTime<500 || !(Number.isFinite(firstCount)&&snapshot.presentCount>firstCount));
       report.samples.push(snapshot);
       await capture(2);
-      report.status=!report.setup?'sector-admission-pending-unframed-captured':report.samples.every(s=>s.ready)?'authored-subjects-captured-not-visual-acceptance':'unresolved-assets-captured';
+      report.status=report.samples.some(s=>s.subjects.some(e=>e.missing))?'original-subject-unavailable-captured':!report.setup?'sector-admission-pending-unframed-captured':report.samples.every(s=>s.ready)?'authored-subjects-captured-not-visual-acceptance':'unresolved-assets-captured';
     }
   } catch(error) {report.status=/deadline/.test(String(error?.message))?'diagnostic-timeout':'diagnostic-failed';report.errors.push(String(error?.message||error).slice(0,1000));}
   closed=true;report.elapsedMs=now()-started;
