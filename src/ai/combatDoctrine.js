@@ -327,6 +327,25 @@ export class CombatDoctrineRuntime {
     record.fallbackRearmed = false;
     record.telegraphStartedTick = null;
 
+    // AL-HF-01: an npc_grudge assignment retaliates inside the law's response window. Without
+    // this hold the fresh record telegraphs and strikes before the window arms — the shot is
+    // denied and the doctrine spends a whole egress cycle before its next fire phase. Hold the
+    // cycle dormant until the armed tick so the first strike lands in the armed window.
+    const selfActivity = self && self.activity;
+    if (record.holdUntilTick == null && target
+      && String(selfActivity && selfActivity.reason || '').startsWith('npc_grudge:')
+      && selfActivity.targetId === target.id) {
+      const windowS = Number(self.noFireResponseWindowS
+        ?? (self.ai && self.ai.noFireResponseWindowS));
+      const armedTick = (Number.isFinite(selfActivity.startedTick) ? selfActivity.startedTick : tick)
+        + Math.ceil((Number.isFinite(windowS) && windowS >= 1 ? windowS : 1) * 60);
+      if (armedTick > tick) record.holdUntilTick = armedTick;
+    }
+    if (record.holdUntilTick != null && tick < record.holdUntilTick) {
+      return snapshot(record, target, directive, factionBehavior, self);
+    }
+    record.holdUntilTick = null;
+
     if (!target) {
       enter(record, initialPhase(doctrineId), tick, null);
       return snapshot(record, null, directive, factionBehavior, self);
