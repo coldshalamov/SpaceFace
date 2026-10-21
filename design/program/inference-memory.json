@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "allied-rep-exclusive-hardware",
-      "date": "2026-10-03",
-      "wf": "WF-07",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Allied standing (rep 400) now unlocks three faction-exclusive physical modules with a standing-refusal UI path",
-      "fingerprint": "verb=buy,subject=outfitting,sector=stations,domain=wf-07",
-      "references": [],
-      "integration": "live",
-      "commit": "9b25575f1",
-      "verification": "focused_green"
-    },
-    {
       "id": "chronicler-marquee-deeds",
       "date": "2026-10-03",
       "wf": "WF-09",
@@ -1668,6 +1655,19 @@
       "verdict": "implemented",
       "reason": "Distressed drone emits automation:droneDistressed with id, sectorId, pos, reason; covered by rc-industry-true suite",
       "fingerprint": "verb=emit,subject=drone-distress,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "6a8757a84",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-31-capped-drone-earnings",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Shop and owned drone cards read ~113 cr/min capped, shared ceiling, before upkeep; covered by rc-industry-true suite",
+      "fingerprint": "verb=say,subject=drone-earnings-cap,sector=all,domain=wf-14",
       "references": [],
       "integration": "live",
       "commit": "6a8757a84",
