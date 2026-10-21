@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "work-pocket-audio",
-      "date": "2026-10-13",
-      "wf": "WF-13",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "busy pockets now sound like work: the authored work register finally fires near real crews",
-      "fingerprint": "verb=hear,subject=working pocket,sector=any,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "4e85ec1aa",
-      "verification": "focused_green"
-    },
-    {
       "id": "ceres-clamp-pod-escape",
       "date": "2026-10-13",
       "wf": "WF-01",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "98ba031f8",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-24-boss-warning-receipt",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "capitalBoss:telegraph mints one 'title — counter' receipt per cast, admitted during the fight job",
+      "fingerprint": "verb=read,subject=boss-telegraph,sector=fight,domain=rc-24",
+      "references": [],
+      "integration": "live",
+      "commit": "620b7bd33",
       "verification": "focused_green"
     }
   ],
