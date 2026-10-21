@@ -37,4 +37,5 @@ The oldest OPEN row is the next second look.
 | R-d4a7436 | d4a743673d9 | Row 465: RC-MARKET-WHY mover/lane-risk/mechanic/local news | Re-check that the player-trade mover (trade time vs event start) never hides a newer market event on the live market screen | OPEN |
 | R-62eba53 | 62eba5336d2 | Row 457: RC-FIRST-MINUTES captioned hook + Hitch + ticker gate | Re-check that the caption reader returns nothing outside live flight, with hints off, after finish, and in sealed Survival, and that the ticker restores retained history on tutorial:finished without a new market event | OPEN |
 | R-8d99cfb | 8d99cfb5eea | Row 402: AL-LONG-4 one recipe book + relay receipts + save migration | Re-check that stranded-input collection only ever moves non-recipe ids, that forwarding never exceeds relay free space, and that pre-402 saves keep every stored unit | OPEN |
+| R-9b9a5f7 | 9b9a5f78ad6 | Row 391: AL-FIGHT-1 crossfire + grudges + NPC mine delivery | Re-check that _endNpcGrudge restores the original prior retaliation state (not just clears it) and that aiFireIntent's seed pass-through matches the meta.seed the damage admission reads | OPEN |
 
