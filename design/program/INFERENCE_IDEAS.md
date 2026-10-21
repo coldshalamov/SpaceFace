@@ -1,4 +1,4 @@
-| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
+| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
 # INFERENCE ideas — directed grunt catalog
 
 Law: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) §0.1. Feelings and inventions live in
@@ -871,6 +871,13 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | RC-18 | rc-18-mara-pod-count | this session | survivorPod delivered/rescued-station_delivery bumps mara.debt once per receipt, no subtract |
 | RC-19 | rc-19-suhl-senna-counters | this session | machine:appealAccepted→suhl.clauses (cap 9), uniqueWreck:resolved→senna.names (cap 8) |
 | RC-20 | rc-20-zell-contraband | this session | contraband/illegal module:purchased→zell.work (cap 20), legal/restricted ignored |
+| RC-02 | rc-02-iron-maw-score | this session | round-10 iron_maw row carries enemyId+scoreId capital_boss_hulk; stock trick dropped; script telegraphs/commits/resolves on seed 4242 |
+| RC-03 | rc-03-one-hostile | already true | singular/plural landed in 9bf40c366; rc-456 test pins it |
+| RC-04 | rc-04-pickup-float-labels | this session | run-credit pods float +N cr, module drops name the def, unknown ids float nothing; Item fallback gone |
+| RC-09 | rc-09-hitch-voice | this session | Kestrel absent from onboarding strings; firing lesson names Hitch; first-hour-voice test updated |
+| RC-10 | rc-10-chronicle-hitch | this session | ship:purchased emits name when catalog name differs from id label; chronicle reads Hitch for the starter |
+| RC-11 | rc-11-no-trainer-labels | this session | tracker labels read Derelict / Fleeing Raider / actor in-world name; trainer billing off the surface |
+| RC-12 | rc-12-range-wu-labels | this session | range screen strings read wu/s and wu; no value conversion |
 | NXI-022 | nxi-022-kinematic-proxy-not-offered | 6eca0bd9a | isAttachable applies the physicsBody:false exclusion (and world-site machine roles) to the offer: machine/fauna/route proxies denied, loose payloads beside them still offered, stations/asteroids/mines/beacons/survival wrecks keep latching; focused test pins all of it on seed 4242 |
 | VERB-32 | verb-32-mine-keeps-velocity | 6dd3b0e5ce | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |

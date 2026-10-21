@@ -342,12 +342,12 @@ export function swarmDoctrineStamp(enemyId, { swarm = false, champion = false } 
  * It was the same Dreadnought, forever. Wave 10 and wave 90 were the same fight with bigger
  * numbers, which is the exact failure the authored arc was careful to avoid inside its own ten.
  *
- * FB-024: two rows are not compositions at all — they are AUTHORED CAPITAL SCORES fielded as
- * one hull. `enemyId`+`scoreId` (instead of `packages`) materialize a single capital elite and
- * hand the fight to `capitalBossEncounters`, so wave twenty is the Foreman's committed charge
- * and wave thirty is the Regent's wider crown — the same bosses the scored arc teaches, arrived
- * at by the roster clock. They recur inside the rotation, so the comp room stays varied past
- * wave forty.
+ * FB-024: the capital rows are not compositions at all — they are AUTHORED CAPITAL SCORES
+ * fielded as one hull. `enemyId`+`scoreId` (instead of `packages`) materialize a single capital
+ * elite and hand the fight to `capitalBossEncounters`, so wave ten is the Iron Maw's own script,
+ * wave twenty is the Foreman's committed charge and wave thirty is the Regent's wider crown —
+ * the same bosses the scored arc teaches, arrived at by the roster clock. They recur inside the
+ * rotation, so the comp room stays varied past wave forty.
  *
  * A compositional row may also carry `trickId` (FB-027): each champion body materialized for
  * it is stamped as a bounty hunter of the crucible's own contract, so the champion telegraphs
@@ -357,8 +357,8 @@ export function swarmDoctrineStamp(enemyId, { swarm = false, champion = false } 
  *
  * ORDER MATTERS: the compositional rows are walked in step with the roster clock, so every
  * archetype they field is one the player has already met as ordinary chaff — nothing debuts a
- * silhouette as a champion. The two capital rows are the deliberate exception: the Foreman and
- * the Regent are the scored arc's named set-pieces, and the boss wave IS their introduction.
+ * silhouette as a champion. The capital rows are the deliberate exception: they are the scored
+ * arc's named set-pieces, and the boss wave IS their introduction.
  */
 export const SWARM_BOSS_ROTATION = Object.freeze([
   {
@@ -366,8 +366,12 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     label: "Dreadnought 'Iron Maw'",
     line: 'A capital hull is on the field. Throw the pack into the flank berm.',
     room: 'flank_berm',
-    trickId: 'pd-curtain',
-    packages: [{ enemyId: 'dreadnought_boss', count: 1, role: 'elite' }],
+    // RC-02 — the round-10 champion is the FIRST capital row: the same dreadnought_boss hull it
+    // always fielded, now handed to the authored Iron Maw score (`capital_boss_hulk`) instead of
+    // stock AI plus a hunter trick. Capital rows carry `enemyId`+`scoreId`, never `packages`
+    // or `trickId` — the score's own beats telegraph and expose the counter windows.
+    enemyId: 'dreadnought_boss',
+    scoreId: 'capital_boss_hulk',
   },
   {
     id: 'mirrorjaw_foreman',
