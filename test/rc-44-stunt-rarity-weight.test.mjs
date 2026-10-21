@@ -76,10 +76,29 @@ test('RC-44: SLINGSHOT GOLF lands heavier than ROCK DISCOVERY', () => {
   assert.equal(byName('slingshot golf').attributes['data-rarity'], 'legendary');
 
   // The sheet carries a strict weight ladder; rarity is an attribute, not a new surface.
+  // 'rare' is a real tier (stuntRecognition baseScore 140 — Bank Job, Return to Sender,
+  // Kickstart, Needle Thread, One-Two): it must sit between uncommon and legendary.
   const src = readFileSync(fileURLToPath(new URL('../src/ui/stuntCallout.js', import.meta.url)), 'utf8');
-  for (const rarity of ['common', 'uncommon', 'legendary']) {
+  for (const rarity of ['common', 'uncommon', 'rare', 'legendary']) {
     assert.match(src, new RegExp(`data-rarity="${rarity}"`), `sheet styles ${rarity}`);
   }
   const weightOf = (r) => Number(src.match(new RegExp(`data-rarity="${r}"[^}]*font-weight:(\\d+)`))[1]);
-  assert.ok(weightOf('common') < weightOf('legendary'), 'legendary reads heavier than common');
+  assert.ok(weightOf('common') < weightOf('uncommon')
+    && weightOf('uncommon') < weightOf('rare')
+    && weightOf('rare') < weightOf('legendary'), 'the ladder is a strict climb');
+});
+
+test('RC-44: a rare act lands its tier, and an off-ladder rarity degrades to common', () => {
+  const bus = fakeBus();
+  const owner = createStuntCallout({ state, bus, doc: fakeDocument() });
+  bus.emit('stunt:trickDetected', trick('return_to_sender', 'Return to Sender', 'rare', 'ep-rts'));
+  bus.emit('stunt:trickDetected', trick('odd_act', 'Odd Act', 'epic"><script>', 'ep-odd'));
+  owner.update(0);
+  const lines = lineNodes(owner.root);
+  const byName = (frag) => lines.find((l) =>
+    l.children.some((c) => typeof c.textContent === 'string' && c.textContent.toLowerCase().includes(frag)));
+  assert.equal(byName('return to sender').attributes['data-rarity'], 'rare');
+  // A payload-crafted rarity never lands verbatim: the attribute only ever holds a
+  // ladder value, and the unknown falls back to the common read.
+  assert.equal(byName('odd act').attributes['data-rarity'], 'common');
 });

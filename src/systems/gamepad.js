@@ -999,18 +999,20 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
     });
     bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
     // Player beats: a dash, a hit taken, a kill scored, a base dropped. Every payload
-    // is world-scoped, so the gate is the player's id — NPC events stay silent.
+    // is world-scoped, so the gate is the player's id — NPC events stay silent. The
+    // id must exist first: with no player spawned, an id-less payload (a wave-booked
+    // entity:killed carries no killerId) would read `undefined === undefined` true.
     bus.on('ship:dash', (p) => {
-      if (p && p.shipId === state.playerId) startPulse(HAPTIC_VERB_PULSES['ship:dash'], 'ship:dash');
+      if (state && state.playerId != null && p && p.shipId === state.playerId) startPulse(HAPTIC_VERB_PULSES['ship:dash'], 'ship:dash');
     });
     bus.on('projectile:hit', (p) => {
-      if (p && p.targetId === state.playerId) startPulse(HAPTIC_VERB_PULSES['projectile:hit'], 'projectile:hit');
+      if (state && state.playerId != null && p && p.targetId === state.playerId) startPulse(HAPTIC_VERB_PULSES['projectile:hit'], 'projectile:hit');
     });
     bus.on('entity:killed', (p) => {
-      if (p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['entity:killed'], 'entity:killed');
+      if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['entity:killed'], 'entity:killed');
     });
     bus.on('combat:baseDestroyed', (p) => {
-      if (p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['combat:baseDestroyed'], 'combat:baseDestroyed');
+      if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['combat:baseDestroyed'], 'combat:baseDestroyed');
     });
   }
 

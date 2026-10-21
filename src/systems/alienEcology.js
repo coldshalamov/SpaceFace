@@ -2768,7 +2768,7 @@ function fireClaimTorches(world, sectorId, now, target) {
   const def = setpieceById(NURSERY_CLAIM_CREW.setpieceId);
   if (def && !ae.setpieces[def.id]) {
     ae.setpieces[def.id] = true;
-    world.bus.emit('toast', { text: def.text, kind: 'warn', ttl: 7 });
+    world.bus.emit('toast', { text: def.text, kind: 'discovery', ttl: 7 });
     if (def.evidence) recordEvidence(state, def.evidence, sectorId);
     world.bus.emit('ecology:setpiece', { id: def.id, sectorId, t: now });
   }
@@ -2834,7 +2834,7 @@ function runSetpieces(world, sectorId, now, dt, sites) {
     if (!fired) continue;
     ae.setpieces[def.id] = true;
     delete ae.setpieces[`${def.id}__holdT`];
-    world.bus.emit('toast', { text: def.text, kind: 'warn', ttl: 7 });
+    world.bus.emit('toast', { text: def.text, kind: 'discovery', ttl: 7 });
     if (def.evidence) recordEvidence(state, def.evidence, sectorId);
     world.bus.emit('ecology:setpiece', { id: def.id, sectorId, t: now });
     // N12 — red-snow kin protocol: the cast reads a fouled hull as kin and holds dormant.

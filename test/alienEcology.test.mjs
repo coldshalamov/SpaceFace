@@ -255,6 +255,16 @@ test('RC-36 discovery reveals ride the discovery kind while hazards stay warning
   assert.ok(arrival.some((t) => t.kind === 'discovery'),
     'the contact reveal must wear the discovery style');
 
+  // The one-shot setpiece engine speaks the same language: N10's nursery-grief reveal
+  // is authored discovery copy, not a hazard — it fires once the sever is known and
+  // the player closes the ring.
+  state.entities.set(1, { id: 1, pos: { x: NURSERY.center.x, z: NURSERY.center.z } });
+  state.entityList.push(state.entities.get(1));
+  tickAlienEcology(world, 1 / 60);
+  const grief = toasts.find((t) => /reads empty/.test(t.text || ''));
+  assert.equal(grief && grief.kind, 'discovery',
+    'the authored setpiece reveal must not read as a warning');
+
   // Real hazards keep the warn style.
   const state3 = makeState();
   const toasts3 = [];

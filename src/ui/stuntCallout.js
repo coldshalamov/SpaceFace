@@ -49,6 +49,14 @@ export const STABLE_LOAD_CLEARANCE_PX = 12;
 
 const BONE = '236 230 216';
 
+// The four authored tiers (stuntRecognition derives rarity from baseScore; stuntCombo's
+// RARITY_MULT is the same ladder). A receipt carrying anything else degrades to common —
+// never a bespoke attribute value, never heavier than a common read.
+const STUNT_RARITY_LADDER = new Set(['common', 'uncommon', 'rare', 'legendary']);
+function calloutRarity(value) {
+  return STUNT_RARITY_LADDER.has(value) ? value : 'common';
+}
+
 const CSS = `
 .sf-stuntcall { position:fixed; left:16px; bottom:32vh; z-index:12; display:flex; flex-direction:column;
   align-items:flex-start; gap:5px; pointer-events:none; }
@@ -61,6 +69,8 @@ const CSS = `
   color:rgb(248 244 234 / .72); }
 .sf-stuntcall__line[data-rarity="uncommon"] .sf-stuntcall__name { font-weight:550;
   color:rgb(248 244 234 / .84); }
+.sf-stuntcall__line[data-rarity="rare"] .sf-stuntcall__name { font-weight:700;
+  color:rgb(248 244 234 / .95); }
 .sf-stuntcall__line[data-rarity="legendary"] .sf-stuntcall__name { font-weight:800;
   color:rgb(248 244 234 / 1); }
 .sf-stuntcall__pts { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
@@ -476,13 +486,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       existing.name.textContent = nameText;
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
-      if (rarity) existing.node.setAttribute('data-rarity', rarity);
+      if (rarity) existing.node.setAttribute('data-rarity', calloutRarity(rarity));
       return;
     }
     const node = mk(doc, 'div', 'sf-stuntcall__line' + (isBank ? ' is-bank' : ''));
     // Weight by rarity: a legendary act reads heavier than a common one — type
     // carries it (no panels, borders or filters on the flight floor).
-    if (rarity) node.setAttribute('data-rarity', rarity);
+    if (rarity) node.setAttribute('data-rarity', calloutRarity(rarity));
     if (!motionReduced(getState())) node.classList.add('sf-stuntcall__rise');
     const name = mk(doc, 'span', 'sf-stuntcall__name', nameText);
     const pts = mk(doc, 'span', 'sf-stuntcall__pts', ptsText);

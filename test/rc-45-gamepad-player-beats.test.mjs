@@ -99,6 +99,28 @@ test('RC-45: NPC dashes, hits and kills stay silent', () => {
   assert.equal(gp.haptics.pulse, null, 'a base an NPC dropped is silent');
 });
 
+test('RC-45: with no player id an id-less payload never false-positives', () => {
+  installedPad = makePad();
+  const bus = createBus();
+  const state = padState();
+  const gp = createGamepad({ bus, state });
+  gp.tick(1 / 60, state);
+
+  // A wave-booked entity:killed carries no killerId — undefined must not match an
+  // unset playerId, and an explicit null must not match null.
+  delete state.playerId;
+  bus.emit('entity:killed', { id: 7, tick: 10 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse, null, 'id-less kill with unset playerId stays silent');
+  state.playerId = null;
+  bus.emit('entity:killed', { id: 8, killerId: null, tick: 11 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse, null, 'null killer with null playerId stays silent');
+  bus.emit('ship:dash', { shipId: null });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse, null, 'null ship dash with null playerId stays silent');
+});
+
 test('RC-45: the off axis still silences every channel', () => {
   installedPad = makePad();
   const bus = createBus();

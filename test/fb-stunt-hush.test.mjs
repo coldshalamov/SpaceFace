@@ -91,7 +91,9 @@ test('the stunt hush is capital-depth with the authored attack and a steep relea
 test('a razor release hushes and stamps the camera record the same tick', () => {
   const state = stuntState();
   const { host, hushes } = audioHost(state);
-  host._onMasslineInstrument('release', { classification: 'razor', pos: { x: 0, z: 0 } });
+  // deliberate: a rated release only reaches the audio layer with the flag set — a break or
+  // lost target emits deliberate:false and is gated out before the voice resolves.
+  host._onMasslineInstrument('release', { classification: 'razor', deliberate: true, pos: { x: 0, z: 0 } });
   assert.deepEqual(hushes.map((h) => h.kind), ['stunt'], 'the razor release takes the room');
   const stamp = state.camera.stuntHushBeat;
   assert.ok(stamp, 'the same admission must stamp the camera record');
@@ -101,7 +103,7 @@ test('a razor release hushes and stamps the camera record the same tick', () => 
   assert.equal(stamp.holdS, envelope, 'the hold is the hush’s own envelope');
   // A clean release gets neither room nor stamp.
   delete state.camera.stuntHushBeat;
-  host._onMasslineInstrument('release', { classification: 'clean', pos: { x: 0, z: 0 } });
+  host._onMasslineInstrument('release', { classification: 'clean', deliberate: true, pos: { x: 0, z: 0 } });
   assert.equal(hushes.length, 1, 'a clean release adds no hush');
   assert.equal(state.camera.stuntHushBeat, undefined, 'a clean release stamps nothing');
 });
@@ -121,7 +123,7 @@ test('the slingshot apex takes the same room, and the six-second limiter holds',
   // Past the gap the room opens again — on its own tick.
   state.simTime += 4;
   state.tick = 480;
-  host._onMasslineInstrument('release', { classification: 'razor' });
+  host._onMasslineInstrument('release', { classification: 'razor', deliberate: true });
   assert.equal(hushes.length, 2, 'the room reopens after six seconds');
   assert.equal(state.camera.stuntHushBeat.tick, 480, 'the new room restamps its own tick');
 });
@@ -165,7 +167,7 @@ test('reduced motion keeps the hush and the freeze but drops the zoom', () => {
   // beat applies its hold, and no push-zoom is scheduled.
   const state = stuntState({ motionReduce: true });
   const { host, hushes } = audioHost(state);
-  host._onMasslineInstrument('release', { classification: 'razor' });
+  host._onMasslineInstrument('release', { classification: 'razor', deliberate: true });
   assert.equal(hushes.length, 1, 'the hush itself is kept under reduced motion');
   const cam = createChaseCamera(state);
   cam.snapToPlayer();
