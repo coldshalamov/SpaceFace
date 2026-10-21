@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 10:00 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical evidence and scope limits.
+
+Existing draft [PR #457](https://github.com/coldshalamov/SpaceFace/pull/457) now preserves verified head [ef05746af3bfd6498b049f1e11b9542bd507a517](https://github.com/coldshalamov/SpaceFace/commit/ef05746af3bfd6498b049f1e11b9542bd507a517), tree `23839aac48e731686e4b1febdd5314e7764f6914`, with public parents `638586d00f2093af3b7eb958970c489679d63ce5` and `bce62cfd65c72b27bdba81feacd654f9cbb218db`. Publication was verified at 09:59:08 UTC and documented in PR comment 6313237990. The exact prior 31 station tests and dependencies are unchanged; the updated renderer-fixture selection was rerun and passes 74/74. Successor CI is pending. Strict refusal of saves with differing gameplay-patch receipts remains intact; no silent legacy/conflicting-save repair is claimed.
+
+PR #480 stays at 2093fe7c61f6c9ec07a347b381c17b44a1060b0e. Actual CI passes all 21 new Vesta cases while retaining the same 12-failure set. Its late native route collision is now identified: returning collector 113, world record wr_convoy_58ecee81, hits fixed-native Customs Gate entity 3 at tick 43,454, penetration -0.412468 WU and impulse 15.884. The geometry owner identifies a return arc that bypasses fixed-solid avoidance, not station-alias behavior.
+
+fix_collector_return_clearance owns an isolated narrow correction in src/systems/anvilWork.js and one new focused test. The next action is implement/review that bounded avoidance correction and qualify it with focused checks, without a local full-route rerun. Do not change contact tolerance or assign the collision to station restoration. Latest public upstream is bce62cfd65c72b27bdba81feacd654f9cbb218db; preserve its work and existing reviewers.
+
+The old receiver asset blobs were still absent on GET at 09:39 UTC. The 09:41 message read showed no owner reactions. Those observations establish neither an actionable pending approval nor a denial, and do not authorize a card retry. Receiver activation remains unpublished/unresolved; successful newer publications do not clear that state.
+
+Next: follow PR457 successor CI and independently qualify the collector return-clearance source. Keep Vesta's bounded success, broader ordinary/live acceptance and original model activation unresolved where evidence does not establish completion. No new user action is inferred. Only the two shared handoff/goal documents change; NOW, implementation and private recovery/ancestry remain untouched.
+
 ## Current source handoff — 21 October 2026, 09:36 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state claims while preserving historical failures and bounded acceptance.
