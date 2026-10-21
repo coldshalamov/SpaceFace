@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "salvage-tail-367",
-      "date": "2026-10-03",
-      "wf": "WF-08",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the opening raid has a second chapter: the surviving captain runs the corridor again, the raiders return, and the fork plus the twice-lost grading make the world remember round one",
-      "fingerprint": "verb=choose,subject=raid-reprise,sector=helios-corridor,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "c4eecab8a",
-      "verification": "focused_green"
-    },
-    {
       "id": "stunt-witness-headlines",
       "date": "2026-10-03",
       "wf": "WF-16",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "5150c1363",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-44-stunt-callout-rarity",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Callout lines carry data-rarity and a weight ladder; legendary reads heavier than common",
+      "fingerprint": "verb=weigh,subject=stunt-callouts,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "ad4aa2106",
       "verification": "focused_green"
     }
   ],
