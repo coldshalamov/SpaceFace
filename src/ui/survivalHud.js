@@ -16,6 +16,7 @@
 import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
 import { waveOpeningLine } from '../systems/survivalAnnounce.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { circuitFor, circuitRoundFor, CIRCUIT_STAGE_COUNT, CIRCUIT_ROUNDS_PER_STAGE } from '../systems/survivalCircuit.js';
 import {
   deathCauseText,
   telegraphWord,
@@ -61,6 +62,8 @@ export const OBJECTIVE_WORDS = Object.freeze({
   resolve_hostiles: null,   // the ordinary case — the phase word already says FIGHT
   elite_hunt: 'ELITE',
   boss: 'BOSS',
+  // SWARM-08 B5 — a Circuit survive round is a timed hold, and the word is the whole rule.
+  survive: 'SURVIVE',
 });
 
 export function objectiveWord(objectiveKind) {
@@ -206,6 +209,7 @@ export const survivalHud = {
     this._earn = null;
     this._earnUntil = -1;
     this._objective = null;
+    this._objectiveKind = null;
     this._plan = null;
     this._chain = 0;
     this._chainBest = 0;
@@ -286,9 +290,17 @@ export const survivalHud = {
     this._setText(dom.label, `CRUCIBLE · ${swarm && run.arenaId === 'helios_core'
       ? 'RICOCHET FOUNDRY' : arenaLabel(run.arenaId)}`);
     // A swarm run has no denominator: there is no last wave to count toward, and printing one
-    // would be a lie about when it ends.
+    // would be a lie about when it ends. SWARM-08 B5 — a Circuit run DOES have a finite shape,
+    // so it prints the stage and the round inside it, then OVERTIME once the journey is done.
+    const circuit = swarm ? circuitFor(run) : null;
+    const circuitRound = circuit ? circuitRoundFor(run, run.wave) : null;
+    const overtime = !!(circuit && circuit.status === 'overtime');
     this._setText(dom.waveN, swarm
-      ? `ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
+      ? circuitRound
+        ? `STAGE ${circuitRound.stage}/${CIRCUIT_STAGE_COUNT} · ROUND ${circuitRound.localRound}/${CIRCUIT_ROUNDS_PER_STAGE}`
+        : overtime
+          ? `OVERTIME · ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
+          : `ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
       : `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
     this._setText(dom.phase, phase);
     // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.
@@ -319,10 +331,12 @@ export const survivalHud = {
         const clock = waveCountdownClock(remainingTicks);
         const remainingSeconds = Math.max(0, Math.ceil(remainingTicks / 60));
         const durationSeconds = Math.max(1, Math.ceil(durationTicks / 60));
-        this._setText(dom.threatWord, 'NEXT WAVE');
+        // A survive round's clock is the objective itself: the wait IS the win.
+        const surviving = this._objectiveKind === 'survive';
+        this._setText(dom.threatWord, surviving ? 'SURVIVE' : 'NEXT WAVE');
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
-        this._setAttr(dom.threat, 'aria-label', `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : `Next wave in ${clock}`);
         this._setAttr(dom.threat, 'aria-valuemin', '0');
         this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
         this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));
@@ -502,6 +516,7 @@ export const survivalHud = {
     this._plan = plan || null;
     this._roundBased = !!plan?.swarm?.killTarget;
     const kind = plan && plan.objective && plan.objective.kind;
+    this._objectiveKind = kind || null;
     this._objective = objectiveWord(kind);
   },
 
@@ -546,6 +561,7 @@ export const survivalHud = {
     this._earn = null;
     this._earnUntil = -1;
     this._objective = null;
+    this._objectiveKind = null;
     this._plan = null;
     this._chain = 0;
     this._chainBest = 0;

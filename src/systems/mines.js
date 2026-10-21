@@ -8,7 +8,7 @@
 // pack that laid it.
 //
 // Determinism: arm/trigger timers use state.simTime only; no Math.random / wall clock.
-import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { scalarHitToDamagePacket, npcCrossfireAdmits } from '../combat/damage.js';
 import { Masks } from '../core/entity.js';
 
 export const MINE_OWNER_CAP = 6;
@@ -243,7 +243,14 @@ export const mines = {
         if (grace && e.id === playerId) continue;
       } else {
         if (e.id === ownerId) continue;
-        if (team != null && e.team != null && e.team === team) continue;
+        // Pirate ordnance has IFF only as honest as its owner: a reckless owner's mine trips on a
+        // same-team hull (the crossfire admission owns the lawful/civilian/player exclusions); a
+        // disciplined owner's mine still ignores teammates.
+        if (team != null && e.team != null && e.team === team) {
+          const owner = ownerId != null && state.entities && typeof state.entities.get === 'function'
+            ? state.entities.get(ownerId) : null;
+          if (!npcCrossfireAdmits(state, owner, e, { kind: 'mine', id: mine.id })) continue;
+        }
       }
       const dx = e.pos.x - mx;
       const dz = e.pos.z - mz;

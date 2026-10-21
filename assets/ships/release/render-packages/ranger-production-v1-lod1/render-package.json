@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "90501db02eda75f688634520e7bb6a76085b3d315f789a08a5e17aa968907980",
+  "contentHash": "4f42d411fe748d0c108612691186fb2b64f3bc69e7c801055fa26bef1b119455",
   "dynamicGroups": [
     {
       "id": "sf.render.ranger-production-v1-lod1.mesh.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -2335,8 +2335,8 @@
       "uri": "ranger_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -3695,7 +3695,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb"
   },
-  "runtimeHash": "2eae4a797ab75617659bdfd37b8dbfefaf2dd2d3fba157fda6e506bd5b076a69",
+  "runtimeHash": "9181642b5f0ae80bc6aaaf30275368aff9581c97bef010f535faa57cdb7179d6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

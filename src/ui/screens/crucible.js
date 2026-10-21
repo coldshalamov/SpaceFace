@@ -90,6 +90,7 @@ import {
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT, BLOCK_RULESET } from '../../systems/survivalRun.js';
+import { CIRCUIT_TOTAL_ROUNDS } from '../../systems/survivalCircuit.js';
 import { decorateEntityNode, entityLabel, entitySpanHtml } from '../entityResolver.js';
 import { dpIcon } from '../deckplate/icons.js';
 import {
@@ -2690,6 +2691,25 @@ export function resultSectionOrder(result) {
  */
 export function resultHero(result) {
   if (!result) return null;
+  if (result.recordRules?.circuit === 'invalid') {
+    return { number: '—', word: 'Circuit data invalid' };
+  }
+  if (result.ruleset === SWARM_RULESET && result.circuit) {
+    // SWARM-08 B5 — a Circuit run's headline is the journey, not an endless round count.
+    const circuit = result.circuit;
+    const rounds = String(Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 1));
+    if (result.outcome === 'victory' && circuit.status === 'completed') {
+      return { number: String(CIRCUIT_TOTAL_ROUNDS), word: 'rounds · Circuit cleared' };
+    }
+    if (circuit.status === 'overtime') {
+      return { number: rounds, word: 'rounds · overtime' };
+    }
+    // A defeat reads the stages actually COMPLETED, not the one the pilot fell in: that is the
+    // journey progress the Circuit owns.
+    const cleared = Number.isInteger(circuit.clearedStages)
+      ? Math.max(0, Math.min(4, circuit.clearedStages)) : 0;
+    return { number: rounds, word: `${cleared} of 4 stages` };
+  }
   if (result.ruleset === SWARM_RULESET) return {
     number: String(Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 1)),
     word: 'round reached',
@@ -3289,7 +3309,10 @@ function shareCopyRow(band, { summary, ghostText, ghostField }) {
   band.appendChild(status);
 }
 
-function buildShareBand(result) {
+export function buildShareBand(result) {
+  // SWARM-08 B5 — a Circuit run's route is not carried by the current run code, so the plate
+  // makes no reproduction claim it cannot honour.
+  if (result && (result.circuit || result.recordRules?.circuit)) return null;
   const setup = lastCrucibleSetup();
   let profile = null;
   try { profile = loadCrucibleMeta(); } catch { profile = null; }
@@ -3549,14 +3572,17 @@ export const crucibleResultsScreen = {
     // r2: the Lamp rule spans the verb's own words — the verb rides in a span of its own so
     // the key beside it never inherits the rule. The live text node moves into the span; a stub
     // DOM with no child text nodes keeps the button's own textContent either way.
-    const againButton = word('Run it again — same seed', 'k-word--emph k-word--primary');
+    const againLabel = result && (result.circuit || result.recordRules?.circuit)
+      ? 'Retry seed — choose Circuit in the armory'
+      : 'Run it again — same seed';
+    const againButton = word(againLabel, 'k-word--emph k-word--primary');
     const againVerb = el('span', 'sf-crres-verb', '');
     const againFirst = againButton.firstChild;
     if (againFirst && typeof againButton.removeChild === 'function') {
       againButton.removeChild(againFirst);
       againVerb.appendChild(againFirst);
     } else {
-      againVerb.textContent = 'Run it again — same seed';
+      againVerb.textContent = againLabel;
     }
     againButton.appendChild(againVerb);
     const again = addWord(againButton);

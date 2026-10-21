@@ -79,7 +79,7 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 // one write site, and read verbatim by every surface that explains a verb (tier-2 `[data-why]` tips,
 // the ORRERY Cluster's ordnance keys, the rail's own aria/title) — no surface composes its own prose.
 export const RAIL_SLOTS = Object.freeze([
-  // FB-002 slot 0 — the travel-drive latch. It owns no digit (Num Lock/H is the verb, never a
+  // FB-002 slot 0 — the travel-drive latch. It owns no digit (Num Lock/F8 is the verb, never a
   // hotbar seat) and no prompt may borrow it; it is the rail's one state socket: the latch's
   // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
   { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
@@ -174,7 +174,16 @@ export function codeToLabel(code) {
  * rank reads as one hotbar instead of `Y R SPACE 4 5 6 7 8 9` — the number row is the row the
  * player reaches for (and the row prompts borrow via the slot-claim contract). The digit is a real
  * binding, never a decoration: unbind it and the label falls back to the action's primary code.
+ *
+ * After the digit, the label prefers the first code that is not a LOCK key (Num/Caps/Scroll Lock —
+ * real bindings, but not keys every chassis has: a laptop with no Num Lock reads "DRIVE NUM LOCK"
+ * as a key it cannot press, RC-06). A lock is named only when no non-lock code is bound, so a sole
+ * Num Lock still prints NUM LOCK. The binding arrays are never reordered — this is a display
+ * preference over the same live data, and every surface reading resolveSlotLabels/resolveSlotKeys
+ * (the rail, the Cluster's ordnance crescent, the tips) inherits it.
  */
+const LOCK_KEY_CODES = new Set(['NumLock', 'CapsLock', 'ScrollLock']);
+
 export function resolveSlotLabels(bindings) {
   const table = bindings || {};
   const out = {};
@@ -182,7 +191,8 @@ export function resolveSlotLabels(bindings) {
     if (!slot.action) { out[slot.index] = ''; continue; }
     const codes = slotCodes(table, slot.action);
     const ownDigit = codes.find((c) => c === `Digit${slot.index}`);
-    out[slot.index] = codeToLabel(ownDigit || codes[0]);
+    const usable = codes.find((c) => !LOCK_KEY_CODES.has(c));
+    out[slot.index] = codeToLabel(ownDigit || usable || codes[0]);
   }
   return out;
 }

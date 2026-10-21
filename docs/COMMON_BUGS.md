@@ -32,6 +32,7 @@
 13. [NPC and enemy ships are empty space that targeting still locks](#13-npc-and-enemy-ships-are-empty-space-that-targeting-still-locks)
 14. [Background rocks blip out and come back in a new arrangement](#14-background-rocks-blip-out-and-come-back-in-a-new-arrangement-fixed-2026-09-08)
 15. [Vercel build fails on "content hash does not match the shipping manifest"](#15-vercel-production-build-fails-on-content-hash-does-not-match-the-shipping-manifest)
+16. [Startup could not finish (Unexpected token …) — a source file cannot parse](#16-startup-could-not-finish-unexpected-token--a-source-file-cannot-parse)
 
 ---
 
@@ -731,5 +732,33 @@ not where this dies; it dies at the copy/manifest stage after esbuild succeeds.
 
 **Also note:** git pushes no longer trigger Vercel builds (deploy policy, 2026-10-19) — deploys
 are manual (`vercel build --prod && vercel deploy --prebuilt --prod`).
+
+## 16. Startup could not finish (Unexpected token …) — a source file cannot parse
+
+**Symptom:** the boot screen stalls at 1.0%, reloads once on its own, then shows
+`Startup could not finish` with `(Unexpected token 'X')` in the detail line.
+
+**Root cause (seen twice on 2026-10-20):** the game boots the raw ES-module graph, so ONE
+malformed `src/` file fails `bootEntry`'s `import('../main.js')` and bricks the whole launch.
+Both times an agent lane wrote a truncated editing-tool preview into a file tail —
+`src/render/vfx.js` ended with the literal line `... [truncated for diff preview]` and ~6,900
+lines gone. The browser's `SyntaxError` names the token, never the file — that is what makes
+it look cryptic, not the failure itself.
+
+**Fix protocol:**
+
+1. `npm run check:src-syntax` — V8-parses every `src/` module and names each file that fails
+   (the gap: `check-src-reachability` regex-scans imports but never parses, so this damage
+   passed every gate). Also runs first inside `check:contracts`.
+2. When the diff is pure corruption (tail chopped, marker/preview text pasted in), restore the
+   file's committed state — `git show HEAD:<path> > <path>` — but check `git diff` first: keep
+   real work, cut only the artifact.
+3. The dead-end screen now re-parses the warmed modules itself and shows the culprit file
+   (`findBrokenModules` in `src/ui/bootStartupFailure.js`); the console lists every offender.
+
+**The wrong places to look first:** saved games, localStorage, the importmap, vendor files —
+boot failures of this shape are almost always an in-tree source edit. A `SyntaxError` reaching
+the overlay means a file under `src/`; only `TypeError` (fetch/resolution) points at the server
+or a missing asset.
 
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*

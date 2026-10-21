@@ -1581,7 +1581,7 @@ export function createBrakeBesideLoadRung(options = {}) {
     hold: 0,
     holdArmed: false,
     bounds: { minX: -620, maxX: 560, minZ: -300, maxZ: 300 },
-    because: `The load drifts at ${loadSpeed} m/s. Match it, don't chase it.`,
+    because: `The load drifts at ${loadSpeed} wu/s. Match it, don't chase it.`,
   };
 }
 
@@ -1627,7 +1627,7 @@ export function tickBrakeBesideLoadDrill(sim, stepS, { input = {}, advanceTime =
         verdict: {
           kind: 'clear',
           text: 'RULE CLEARED',
-          because: `You held station ${sim.holdS}s beside a load doing ${Math.round(Math.hypot(sim.load.vx, sim.load.vz))} m/s.`,
+          because: `You held station ${sim.holdS}s beside a load doing ${Math.round(Math.hypot(sim.load.vx, sim.load.vz))} wu/s.`,
         },
         cue: 'confirm',
       };
@@ -1811,7 +1811,7 @@ export function createSeedParksDriftRung(options = {}) {
     parked: false,
     hitched: false,
     bounds: { minX: -560, maxX: 580, minZ: -320, maxZ: 320 },
-    because: `The drift does ${hulkSpeed} m/s and the ring only catches what it lands near. Lead it.`,
+    because: `The drift does ${hulkSpeed} wu/s and the ring only catches what it lands near. Lead it.`,
   };
 }
 
@@ -3515,7 +3515,7 @@ export const rangeScreen = {
           { x: 290, centerZ: -165, tol: 92, state: 'pending' },
           { x: 560, centerZ: 105, tol: 92, state: 'pending' },
         ],
-        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${Math.max(1, extraRoom)} m more room.`,
+        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${Math.max(1, extraRoom)} wu more room.`,
         headingHint: `Loaded mass set to ${loadedMass} t (80% cargo cap).`,
       };
     }
@@ -3555,7 +3555,7 @@ export const rangeScreen = {
         },
         stopLine,
         startX: 0,
-        because: `From flat out this hull needs ${Math.round(stopLine)} m to stop.`,
+        because: `From flat out this hull needs ${Math.round(stopLine)} wu to stop.`,
       };
     }
 
@@ -3598,7 +3598,7 @@ export const rangeScreen = {
           exitSpeed: 0,
         },
         exitGate: { z: exitGateZ, centerX: 0, half: Math.max(60, lineLength * 0.26), crossed: false },
-        because: 'You entered at 0 m/s and left at 0 m/s. The rock gave you the corner.',
+        because: 'You entered at 0 wu/s and left at 0 wu/s. The rock gave you the corner.',
       };
     }
 
@@ -4382,7 +4382,7 @@ export const rangeScreen = {
         sim,
         'fail',
         'YOU RAN LONG',
-        `From flat out this hull needs ${Math.round(sim.stopLine)} m. You used ${Math.round(Math.max(0, used))} m.`,
+        `From flat out this hull needs ${Math.round(sim.stopLine)} wu. You used ${Math.round(Math.max(0, used))} wu.`,
       );
       return;
     }
@@ -4392,7 +4392,7 @@ export const rangeScreen = {
         sim,
         'clear',
         'RULE CLEARED',
-        `From flat out this hull needs ${Math.round(sim.stopLine)} m. You used ${Math.round(Math.max(0, used))} m.`,
+        `From flat out this hull needs ${Math.round(sim.stopLine)} wu. You used ${Math.round(Math.max(0, used))} wu.`,
       );
     }
   },
@@ -5017,7 +5017,7 @@ export const rangeScreen = {
     ctx2d.fillStyle = forced ? 'CanvasText' : ink.you;
     ctx2d.textAlign = 'left';
     ctx2d.textBaseline = 'bottom';
-    ctx2d.fillText(`${Math.round(nowStop)} m`, Math.min(width - 80, now.x + 4), now.y + 15);
+    ctx2d.fillText(`${Math.round(nowStop)} wu`, Math.min(width - 80, now.x + 4), now.y + 15);
     ctx2d.restore();
   },
 

@@ -203,7 +203,7 @@ section('§4 tutorial:say plays key click, instructor voice, squelch — once pe
   h.bus.emit('tutorial:say', { text: line });
   assert.equal(h.plays.filter((p) => p.id === 'sfx_bark_radio').length, 0, 'repeat inside the window must not re-speak');
   // A different line still speaks, and it waits until the first transmission has closed.
-  h.bus.emit('tutorial:say', { text: 'The Kestrel is armed: fire the Pulse Laser S, then let the heat clear.' });
+  h.bus.emit('tutorial:say', { text: 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.' });
   const nextVoice = h.plays.filter((p) => p.id === 'sfx_bark_radio');
   const nextClick = h.plays.filter((p) => p.id === 'sfx_comms_key_click');
   assert.equal(nextVoice.length, 1, 'a new line must speak');

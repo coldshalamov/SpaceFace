@@ -1266,6 +1266,7 @@ function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, teth
       forward,
       lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
       lateralFromAim: !!(rawInput && rawInput.turnIntentFromAim),
+      aimAngle: Number.isFinite(Number(rawInput && rawInput.aimAngle)) ? Number(rawInput.aimAngle) : null,
     },
     commitDirection,
     engage: entity._orbitAssistEngage || null,

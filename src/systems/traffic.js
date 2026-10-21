@@ -118,7 +118,7 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { SECTOR_CAUSAL_CHAIN_DEFS } from '../data/sectorCausalChains.js';
 import { stepPallasWorkLoop } from './pallasWorkLoop.js';
-import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zoneAt } from '../data/sectorZones.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
@@ -2326,12 +2326,22 @@ export const traffic = {
         station = stations.find((candidate) => this._leftoverStationOpenForTopUp(candidate, leftoverDisrupted)) || null;
         if (!station) continue;
       }
-      // spawn near the station but offset so they don't overlap it
+      // Arrival greeting: the first two hulls anchor on the player's materialized position —
+      // the placed arrival point on boot/jump, the live pose on continuous handoff — so the
+      // sector opens with traffic in sensor range, not a silent sky over the gate.
+      const playerEnt = this.state.playerId != null && this.state.entities
+        ? this.state.entities.get(this.state.playerId) : null;
+      const arrivalPos = playerEnt && playerEnt.pos;
+      const anchor = (i < Math.min(2, need)
+        && arrivalPos && sectorMembershipAtGlobal(arrivalPos) === sectorId)
+        ? arrivalPos
+        : station.pos;
+      // spawn near the anchor but offset so they don't overlap it
       const ang = this._rng() * Math.PI * 2;
       const r = clustered
         ? (90 + this._rng() * (POCKET_CLUSTER_R * 0.45))
         : (140 + this._rng() * 120);
-      const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+      const pos = { x: anchor.x + Math.cos(ang) * r, z: anchor.z + Math.sin(ang) * r };
       const aiSpec = {
         archetype: def.archetype,
         passive: true, // traffic never opens fire on a clean player
@@ -8507,7 +8517,30 @@ export const traffic = {
       if (!ent || !ent.data || !ent.data.jobId || ent.data.ceresActivityCast === true) continue;
       const entry = getJob(ent.data.jobId);
       const job = entry && entry.job;
-      if (!job || job.kind !== 'salvor' || job.corrupt) continue;
+      if (!job || job.corrupt) {
+        // The job entry dropped or went corrupt under a live hull, but its claim stamps —
+        // the source record's claimId and the body's salvorClaimedBy — outlive it and would
+        // lock the body until this salvor dies. Release both exactly as the despawn path
+        // does, then drop the dead reference so the hull can take fresh work and a later
+        // cutter (or the player) can take the body.
+        const worldRecordId = typeof ent.data.worldRecordId === 'string' && ent.data.worldRecordId
+          ? ent.data.worldRecordId
+          : null;
+        if (worldRecordId) {
+          const sourceKey = typeof ent.data.salvageSource === 'string' && ent.data.salvageSource
+            ? ent.data.salvageSource
+            : null;
+          if (sourceKey) this._releaseSalvageSourceClaim({ sourceKey }, worldRecordId);
+          forEachJobInteractable(this.state, (body) => {
+            if (body && body.data && body.data.salvorClaimedBy === worldRecordId) {
+              this._clearSalvorClaim(body, worldRecordId);
+            }
+          });
+        }
+        delete ent.data.jobId;
+        continue;
+      }
+      if (job.kind !== 'salvor') continue;
 
       const site = job.route && job.route[1];
       const source = this._salvageSourceBindingFromPayload(job.payload);

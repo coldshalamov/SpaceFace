@@ -416,12 +416,48 @@
     }
   ],
   "assetId": "sf.render.ilex-ark",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.ilex-ark.node.collision-ilex-ark-core.collision",
+      "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-core",
+      "reference": "COLLISION_ILEX_ARK_CORE"
+    },
+    {
+      "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-1.collision",
+      "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-1",
+      "reference": "COLLISION_ILEX_ARK_VAULT_1"
+    },
+    {
+      "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-2.collision",
+      "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-2",
+      "reference": "COLLISION_ILEX_ARK_VAULT_2"
+    },
+    {
+      "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-3.collision",
+      "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-3",
+      "reference": "COLLISION_ILEX_ARK_VAULT_3"
+    },
+    {
+      "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-4.collision",
+      "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-4",
+      "reference": "COLLISION_ILEX_ARK_VAULT_4"
+    },
+    {
+      "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-5.collision",
+      "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-5",
+      "reference": "COLLISION_ILEX_ARK_VAULT_5"
+    },
+    {
+      "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-6.collision",
+      "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-6",
+      "reference": "COLLISION_ILEX_ARK_VAULT_6"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4bff5ba8a6216284aba38ad665944b460011840746b5a612b3b74683eb40e9f6",
+  "contentHash": "cbb4d44f424126a0327c521a4ad2dfc812a16b5bc869881992ecd056845a4a2b",
   "dynamicGroups": [
     {
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-1-armor.dynamic",
@@ -594,7 +630,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_ARK_CORE",
       "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-core",
       "primitiveIndex": 0,
@@ -619,7 +655,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_ARK_VAULT_1",
       "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-1",
       "primitiveIndex": 0,
@@ -644,7 +680,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_ARK_VAULT_2",
       "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-2",
       "primitiveIndex": 0,
@@ -669,7 +705,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_ARK_VAULT_3",
       "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-3",
       "primitiveIndex": 0,
@@ -694,7 +730,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_ARK_VAULT_4",
       "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-4",
       "primitiveIndex": 0,
@@ -719,7 +755,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_ARK_VAULT_5",
       "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-5",
       "primitiveIndex": 0,
@@ -744,7 +780,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_ARK_VAULT_6",
       "nodeId": "sf.render.ilex-ark.node.collision-ilex-ark-vault-6",
       "primitiveIndex": 0,
@@ -1644,7 +1680,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_ARK_CORE",
       "nodeName": "COLLISION_ILEX_ARK_CORE",
       "nodePath": [
@@ -1693,7 +1729,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_ARK_VAULT_1",
       "nodeName": "COLLISION_ILEX_ARK_VAULT_1",
       "nodePath": [
@@ -1742,7 +1778,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_ARK_VAULT_2",
       "nodeName": "COLLISION_ILEX_ARK_VAULT_2",
       "nodePath": [
@@ -1791,7 +1827,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_ARK_VAULT_3",
       "nodeName": "COLLISION_ILEX_ARK_VAULT_3",
       "nodePath": [
@@ -1840,7 +1876,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_ARK_VAULT_4",
       "nodeName": "COLLISION_ILEX_ARK_VAULT_4",
       "nodePath": [
@@ -1889,7 +1925,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_ARK_VAULT_5",
       "nodeName": "COLLISION_ILEX_ARK_VAULT_5",
       "nodePath": [
@@ -1938,7 +1974,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_ARK_VAULT_6",
       "nodeName": "COLLISION_ILEX_ARK_VAULT_6",
       "nodePath": [
@@ -4247,7 +4283,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "fdc0d94b6171d09b106d8a31423e1305700439194fc928492c53284c0a30e3c7"
+      "sha256": "60b4c4fa9f7e351f96c1437f11235686dbc9f21e31f4dce574f4eaa6ec8a623e"
     },
     "sourceGlb": {
       "bytes": 927744,
@@ -4255,8 +4291,8 @@
       "uri": "ilex_ark.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -6272,7 +6308,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ilex_ark.glb"
   },
-  "runtimeHash": "e0d19f80217e166b96e7a047c58756936b801f837312bd1a9b662825c4244299",
+  "runtimeHash": "ce73b6380347b9dc8a5b8258da0384deb6080ccc481039255532e5e0a4b5de79",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

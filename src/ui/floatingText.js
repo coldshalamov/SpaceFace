@@ -3,6 +3,9 @@
 // to bus events, reads entity transforms via helpers.worldToScreen, never touches sim state. Gated
 // on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
 import { COMMODITIES } from '../data/commodities.js';
+import { MODULES } from '../data/modules.js';
+import { WEAPONS } from '../data/weapons.js';
+import { BODY_MODULES } from '../data/claimableBodies.js';
 import { FACTION_META } from '../data/factions.js';
 import { SALVAGE_RIGHTS_KIND, salvageRightsItemsOf, isCreditChipPickup } from '../data/killRewards.js';
 import { SECTORS } from '../data/sectors.js';
@@ -19,6 +22,10 @@ const _ftScreen = { x: 0, y: 0, onScreen: false };
 // Lookup tables built once at module load
 const CMDTY_BY_ID = Object.create(null);
 for (const c of COMMODITIES) CMDTY_BY_ID[c.id] = c;
+// A 'module'-kind pickup carries its def id in `commodityId`, not a commodity — resolve it
+// against the same catalogues entityResolver.js:44 merges so a drop names the def, never the id.
+const MODULE_BY_ID = Object.create(null);
+for (const m of MODULES.concat(WEAPONS, BODY_MODULES)) if (m && m.id) MODULE_BY_ID[m.id] = m;
 const FACTION_BY_ID = Object.create(null);
 for (const f of FACTION_META) FACTION_BY_ID[f.id] = f;
 const STATION_BY_ID = Object.create(null);
@@ -61,13 +68,26 @@ export function pickupFloatingTextSpec(payload) {
     return { qty, text: '+' + qty + ' cr', cls: 'sf-ft--credits' };
   }
   const def = CMDTY_BY_ID[payload && payload.commodityId];
-  const name = def ? def.name : ((payload && payload.commodityId) || 'Item');
-  const cat = def ? def.category : '';
+  if (!def) {
+    // RC-04 — not a cargo commodity. The run's own pods stamp their worth into `amount` as RUN
+    // credits (the swarmEvents 'swarm_supply_pod' drop and the asteroid-mill 'mill_ore' both pay
+    // exactly it through run:awardRequested), so they read like the credit chips they are. A
+    // module drop names its real def. Anything else — the 'swarm_repair' cell, a custody body,
+    // an unrecognised id — floats nothing: its owner already writes the real receipt, and
+    // 'Item' or a leaked raw id is a receipt bug, not a label.
+    if (payload && (payload.kind === 'swarm_supply_pod' || payload.kind === 'mill_ore')) {
+      return { qty, text: '+' + qty + ' cr', cls: 'sf-ft--credits' };
+    }
+    const mod = MODULE_BY_ID[payload && payload.commodityId];
+    if (mod) return { qty, text: '+' + qty + ' ' + (mod.name || 'Module'), cls: 'sf-ft--module' };
+    return null;
+  }
+  const cat = def.category;
   const cls = cat === 'raw ore' || cat === 'crystal' ? 'sf-ft--ore'
     : cat === 'exotic' ? 'sf-ft--exotic'
     : payload && payload.kind === 'module' ? 'sf-ft--module'
     : 'sf-ft--pickup';
-  return { qty, text: '+' + qty + ' ' + name, cls };
+  return { qty, text: '+' + qty + ' ' + def.name, cls };
 }
 
 export function factionRepToastText(state, payload = {}) {
@@ -369,9 +389,12 @@ export function createFloatingText(ctx) {
       if (!n.alive) continue;
       n.age += dt;
       if (n.age >= n.life) { retire(n); continue; }
-      // follow the entity if it still exists, else stay at the world point
+      // follow the entity if it still exists, else stay at the world point. A dead or
+      // recycled entity must not carry the float — entities.get confirms it is still the
+      // live occupant for its id, and a stripped pos falls back to the recorded anchor.
       let wx = n.wx, wz = n.wz;
-      if (n.entity) { wx = n.entity.pos.x; wz = n.entity.pos.z; }
+      if (n.entity && n.entity.alive !== false && n.entity.pos
+        && state.entities.get(n.targetId) === n.entity) { wx = n.entity.pos.x; wz = n.entity.pos.z; }
       _ftWorld.x = wx; _ftWorld.z = wz;
       const s = helpers.worldToScreen(_ftWorld, _ftScreen);
       const t = n.age / n.life;

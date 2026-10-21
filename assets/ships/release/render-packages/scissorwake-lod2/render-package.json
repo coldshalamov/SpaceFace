@@ -324,12 +324,18 @@
     }
   ],
   "assetId": "sf.render.scissorwake-lod2",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.scissorwake-lod2.node.collision-scissorwake-core.collision",
+      "nodeId": "sf.render.scissorwake-lod2.node.collision-scissorwake-core",
+      "reference": "COLLISION_SCISSORWAKE_CORE"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9fa5354e49fc14cd198e022be20aa1a833d259a289fe968e136d42a2a2e4cf53",
+  "contentHash": "57ef42e01806b738374c2faa5ee58752a4bddcdcfc8ebd6acbfb3183848ea046",
   "dynamicGroups": [
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-blade-port-beacon-amber.dynamic",
@@ -422,7 +428,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_SCISSORWAKE_CORE",
       "nodeId": "sf.render.scissorwake-lod2.node.collision-scissorwake-core",
       "primitiveIndex": 0,
@@ -1100,7 +1106,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_SCISSORWAKE_CORE",
       "nodeName": "COLLISION_SCISSORWAKE_CORE",
       "nodePath": [
@@ -2563,7 +2569,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "4365f4eec2a36d8996c02e306c7169d5e557ad37bd36f76f22b3924c6bc14450"
+      "sha256": "af4e6dce75f92680829ea079159415ee69a198a7744f38d5aa6e23c919b60089"
     },
     "sourceGlb": {
       "bytes": 395156,
@@ -2571,8 +2577,8 @@
       "uri": "scissorwake_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -3828,7 +3834,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scissorwake_lod2.glb"
   },
-  "runtimeHash": "2d0dccf10b0e7acc72856f971e7713b8c99f3a36a7e9fa8519764f4a4d2c5fd6",
+  "runtimeHash": "ce94bab3b137e9233e080888098ec7698207c53baeab88c49e5d44f48dd79ae2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

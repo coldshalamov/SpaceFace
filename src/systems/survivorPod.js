@@ -117,8 +117,22 @@ function clone(obj) {
 
 function entityForPoint(state, point) {
   if (!state || !point || point.entityId == null || !state.entities) return null;
-  if (typeof state.entities.get === 'function') return state.entities.get(point.entityId) || null;
-  return state.entities[point.entityId] || null;
+  const entity = typeof state.entities.get === 'function'
+    ? state.entities.get(point.entityId) || null
+    : state.entities[point.entityId] || null;
+  // Entity ids recycle through freeIds and point.entityId is not a world-ledger pin — a bare
+  // id hit can name a foreign occupant one spawn later. Trust the hit only while the
+  // occupant's own data still carries this point's binding (marker-bound wrecks bind by
+  // markerId instead); anything else drops the stale pin so reconcile can never stamp pod
+  // records onto an unrelated body. Same verify-then-drop shape as salvage._entityForPoint,
+  // minus the liveness clause: a stripped pod's bound corpse is still its carrier.
+  if (!entity) { point.entityId = null; return null; }
+  const data = entity.data;
+  const stillBound = !!data
+    && (data.salvagePointId === point.id
+      || (point.markerId != null && data.markerId === point.markerId));
+  if (!stillBound) { point.entityId = null; return null; }
+  return entity;
 }
 
 function pointForRec(state, rec) {

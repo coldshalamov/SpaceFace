@@ -1,4 +1,4 @@
-<!-- LIFETIME: VOLATILE -->
+| SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
 # INFERENCE ideas — directed grunt catalog
 
 Law: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) §0.1. Feelings and inventions live in
@@ -783,8 +783,8 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | RC-23 | Adventure bosses get a name and a health bar | `src/systems/swarmJuice.js` (Swarm-only gate ~:435–441), `src/ui/swarmJuiceHud.js` | A Tollman capture shows a name and a filling bar | Move damage authority | `bossHp` is read only inside a Swarm run | OPEN — row 463 |
 | RC-24 | Boss warnings show "title — counter" | `src/ui/toasts.js` `admitReceipt` + an adapter on the boss warning event | The Tollman fight shows 5 receipts, each ≥1 s before its attack | Style a new card | `capitalBossPresentation.js` outputs no text | OPEN — row 463 |
 | RC-25 | Enemy behaviours are taught by a short receipt, not an 8 s toast | `src/ai/counterplay/adventure.js` (~:82) | The first encounter shows no ≥8 s toast | Change which behaviour is picked | The 8 s toast line | OPEN — row 463 |
-| RC-26 | Two visual-profile keys stop pointing at sectors that don't exist | `src/data/sectorVisualProfiles.js` (~:401–417), a new test | A test asserts every profile key is a real sector | Change family profiles | `sector_frontier_east_ridge`, `sector_anomaly_well` | OPEN — row 464 |
-| RC-27 | Freighters greet you on arrival | `src/systems/traffic.js` (`POCKET_CLUSTER_R` users ~:147) | ≥2 freighters within 600 wu of the arrival point 5 s after arriving in Helios | Raise `MAX_PER_SECTOR` | The cluster anchors on the pocket station | OPEN — row 464 |
+| RC-26 | Two visual-profile keys stop pointing at sectors that don't exist | `src/data/sectorVisualProfiles.js` (~:401–417), a new test | A test asserts every profile key is a real sector | Change family profiles | `sector_frontier_east_ridge`, `sector_anomaly_well` | SHIPPED — rc-26-profile-keys-real-sectors @ 35b76c9f8 |
+| RC-27 | Freighters greet you on arrival | `src/systems/traffic.js` (`POCKET_CLUSTER_R` users ~:147) | ≥2 freighters within 600 wu of the arrival point 5 s after arriving in Helios | Raise `MAX_PER_SECTOR` | The cluster anchors on the pocket station | SHIPPED — rc-27-arrival-freighters @ 903b1b10b |
 | RC-28 | "Last move" names your sale when it is the newest cause | `src/ui/marketDriverPresenter.js` (~:202–231) | A unit test, and selling 20 iron at Helios names it | Write economy state from the UI | It reads only `eventMods` and the cycle label | OPEN — row 465 |
 | RC-29 | The mechanic never says "Clean plate" over a damaged hull | `src/story/mechanicVoice.js` (~:93–100) | The market bench at hull 86 has no "Clean plate" | Touch repair prices | It checks scars only | OPEN — row 465 |
 | RC-30 | The bar's market tag is this station's news or nothing | `src/ui/station/barContacts.js` (~:958–961) | A test: only a Ceres event → no tag at Helios | Touch event generation | `|| events[0]` fallback | OPEN — row 465 |
@@ -793,18 +793,18 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | RC-33 | A distressed drone emits an event | `src/systems/automation.js` (~:669) | A test checks `automation:droneDistressed` with id, sector and position | Spawn a mission yet | No such event | OPEN — row 466 |
 | RC-34 | Killed bounty marks never come back | `src/data/bountyMarks.js` (~:230–247), `src/systems/missions.js` | 500 rolls after killing a mark never return the name; old saves load | Rename unaffected offers | No kill list exists | OPEN — row 467 |
 | RC-35 | The target panel shows anatomy once the scan earns it | `src/ui/targetPanel.js` | Captures at reveal 1 and 2 differ | Write entity data from the UI | Nothing reads `.anatomy` | OPEN — row 468 |
-| RC-36 | Alien first contact is styled as discovery, not warning | `src/systems/alienEcology.js` (~:200, :756, :770), `src/ui/toasts.js` | A capture shows the discovery style; real warnings unchanged | Add a token root | `warn` at those lines | OPEN — row 468 |
+| RC-36 | Alien first contact is styled as discovery, not warning | `src/systems/alienEcology.js` (~:200, :756, :770), `src/ui/toasts.js` | A capture shows the discovery style; real warnings unchanged | Add a token root | `warn` at those lines | SHIPPED — rc-36-first-contact-discovery-style @ 9fea1c550 |
 | RC-37 | Verb-granting modules always show on the hull | `src/render/partsLibrary.js` (~:13276–13300) | The part appears in preview and flight; `check:assets:live` green; no per-frame allocation | New models in this task | The 15% outfit-budget threshold | OPEN — row 469 |
 | RC-38 | Two lines from one faction don't sound identical | `src/audio/barkVoice.js` (~:264–275), `audioSystem.js` | A unit test shows different `rate` per line (hashed ±3%) | `Math.random` | `rate: 1` hardcoded | OPEN — row 470 |
-| RC-39 | Photo Look works on default settings, or is hidden | `src/ui/screens/pause.js` (~:872–878), `src/render/camera.js` (~:324–332) | On defaults, each look produces a different PNG, or the button is absent | Force the render graph on; CSS filters | Early return when the render graph is off | OPEN — row 471 |
-| RC-40 | A fresh Statistics page shows one sentence, not rows of zeros | `src/ui/screens/statistics.js` (~:26–49) | The fresh-save bench shot has no zero rows | Fake data | `statistics.png` | OPEN — row 471 |
+| RC-39 | Photo Look works on default settings, or is hidden | `src/ui/screens/pause.js` (~:872–878), `src/render/camera.js` (~:324–332) | On defaults, each look produces a different PNG, or the button is absent | Force the render graph on; CSS filters | Early return when the render graph is off | SHIPPED — rc-39-photo-look-gated-on-graph @ e1769cbed |
+| RC-40 | A fresh Statistics page shows one sentence, not rows of zeros | `src/ui/screens/statistics.js` (~:26–49) | The fresh-save bench shot has no zero rows | Fake data | `statistics.png` | SHIPPED — rc-40-statistics-fresh-sentence @ c0f37bedb |
 | RC-41 | Physics Venues lists events as rows, and launching from the menu asks nothing | `src/ui/screens/physicsVenues.js` (~:27–29, :36–39) | Bench shot plus walk; no confirm when there is no flight progress | A new stylesheet | Native dropdowns and an always-on confirm | OPEN — row 472 |
 | RC-42 | The loading clock reads mm:ss | `src/ui/loadingTerminalArt.js` (~:1855–1858, :2163–2165) | The clock shows no tenths digit | Remove the ring; fake progress | Tenths at ~:1858 | OPEN — row 473 |
 | RC-43 | An empty save slot says "empty" once | `src/ui/screens/saveLoad.js`, `src/ui/screens/saveNotices.js` | The bench shot shows one heading and one sentence | Drop the slot name | `save-load-empty.png` | OPEN — row 473 |
 | RC-44 | Stunt callouts weigh by rarity | `src/ui/stuntCallout.js` (rarity is already imported) | A bench shot shows SLINGSHOT GOLF heavier than ROCK DISCOVERY; ≤3 lines; motionReduce honoured | Panels, borders, filters | No rarity reference in the file | OPEN — row 475 |
 | RC-45 | The pad feels dash, hits, kills and big moments | `src/systems/gamepad.js` (~:453, :887–992) | A player dash, hit or kill pulses and NPC events don't; the 83 ms gap and `off` hold | Pulse on `combat:fire` | No dash, combat or moment subscriptions | OPEN — row 475 |
 | RC-46 | Overheat is announced once | `src/systems/weapons.js` (~:1390–1394) | Holding fire into the vent shows only "WEAPONS VENTING" | Touch the alert or audio | Toast and alert both fire | OPEN — row 475 |
-| RC-47 | Passing a sling ring is an event with a receipt | `src/systems/travelLanes.js`, the event catalog source, `src/ui/toasts.js` | A lab run through 2 rings posts 2 receipts | Hand-edit `docs/EVENT_ROUTING.md` | No ring-pass emit | OPEN — row 476 |
+| RC-47 | Passing a sling ring is an event with a receipt | `src/systems/travelLanes.js`, the event catalog source, `src/ui/toasts.js` | A lab run through 2 rings posts 2 receipts | Hand-edit `docs/EVENT_ROUTING.md` | No ring-pass emit | SHIPPED — rc-47-sling-ring-pass-receipt @ 8a7202dbe |
 | RC-48 | The Mission Log shows the opening contract's real terms | `src/ui/screens/missionLog.js` (~:104, :382, :887, :959–960) | The 47-A bench shot has none of the fallback strings | Change mission data | `mission-log.png` | OPEN — row 479 |
 | RC-49 | Station tabs never hide their last row behind the tab rail | the station shell in `src/ui/station/` and its stylesheet | Market, bar and industry at 1280×720 are fully visible; `npm run check:ui:layout` passes | Shrink the rail | `station-market.png`, `station-bar.png` | OPEN — row 479 |
 | RC-50 | Game over has a populated bench state | the `gameOver` ui-bench fixture | A new shot has no "Cause unrecorded"; the old one is kept as `gameOver-empty` | Edit the fallback copy in the same change | Only the fallback state was ever captured | OPEN — row 479 |
@@ -813,10 +813,89 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
+| RC-02 | 2026-10-20 | devin-inf20 | `src/data/swarmMode.js` |
+| RC-03 | 2026-10-20 | devin-inf20 | `src/systems/survivalAnnounce.js` |
+| RC-04 | 2026-10-20 | devin-inf20 | `src/ui/floatingText.js` |
+| RC-05 | 2026-10-20 | devin-inf20 | `src/systems/input.js` |
+| RC-06 | 2026-10-20 | devin-inf20 | `src/ui/powerRail.js` |
+| RC-07 | 2026-10-20 | devin-inf20 | `src/ui/marketNews.js` |
+| RC-08 | 2026-10-20 | devin-inf20 | `src/ui/threatHalo.js` |
+| RC-09 | 2026-10-20 | devin-inf20 | `src/systems/onboarding.js`, `test/first-hour-voice.test.mjs` |
+| RC-10 | 2026-10-20 | devin-inf20 | `src/systems/ships.js`, `src/chronicler/normalize.js` |
+| RC-11 | 2026-10-20 | devin-inf20 | `src/systems/onboarding.js` |
+| RC-12 | 2026-10-20 | devin-inf20 | `src/ui/screens/range.js` |
+| RC-13 | 2026-10-20 | devin-inf20 | `scripts/build-lived-vignettes.mjs`, regenerated `562-lived-*` |
+| RC-14 | 2026-10-20 | devin-inf20 | `scripts/build-lived-vignettes.mjs`, regenerated `562-lived-*` |
+| RC-15 | 2026-10-20 | devin-inf20 | `src/systems/vignetteInterpreter.js` |
+| RC-16 | 2026-10-20 | devin-inf20 | `scripts/build-lived-vignettes.mjs`, regenerated `562-lived-*` |
+| RC-17 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-18 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-19 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-20 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-21 | 2026-10-20 | devin-inf20 | `src/systems/lossInvestigation.js`, `src/data/wreckCourt/` |
+| RC-22 | 2026-10-20 | devin-inf20 | `src/systems/wreckCourt.js` |
+| AL-LG-01 | 2026-10-20 | devin-inf20 | `src/systems/scanReveal.js`, `src/systems/shipCapabilities.js` |
+| AL-LG-02 | 2026-10-20 | devin-inf20 | `src/data/worldOneOffs.js` |
+| AL-LG-03 | 2026-10-20 | devin-inf20 | `src/data/worldOneOffs.js` |
+| PULSE-03 | 2026-10-20 | devin-inf20 | `src/data/flavor/010-wreck-rumors.js` |
+| PULSE-05 | 2026-10-20 | devin-inf20 | `src/data/newsTemplates.js` |
+| PULSE-06 | 2026-10-20 | devin-inf20 | `src/data/newsTemplates.js` |
+| PULSE-07 | 2026-10-20 | devin-inf20 | `src/data/flavor/080-landmark-lore.js`, `src/data/flavor/100-rim-poi-lore.js` |
+| AL-LG-06 | 2026-10-20 | devin-inf20b | `src/systems/postEndingReplay.js` |
+| AL-LG-07 | 2026-10-20 | devin-inf20b | `src/systems/postEndingReplay.js`, `src/systems/sectorSim.js` |
+| AL-LG-08 | 2026-10-20 | devin-inf20b | `src/systems/story.js`, `src/systems/traffic.js` |
+| AL-LG-09 | 2026-10-20 | devin-inf20b | `src/systems/story.js`, `src/systems/traffic.js` |
+| AL-PR-01 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js`, `src/audio/scoreDirector.js` |
+| AL-PR-02 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js` |
+| AL-PR-03 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js`, `src/systems/stuntCombo.js` (read) |
+| AL-PR-04 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js` |
+| AL-PR-05 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js`, `src/audio/themeMatrix.js` |
+| AL-PR-06 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js` |
+| AL-PR-07 | 2026-10-20 | devin-inf20b | `src/render/titleAttractStage.js`, `src/render/killcamStage.js` |
+| AL-PR-08 | 2026-10-20 | devin-inf20b | `src/render/titleAttractStage.js`, `src/sim/titleAttractTape.js`, `scripts/bake-title-attract.mjs` |
+| AL-PR-09 | 2026-10-20 | devin-inf20b | `src/systems/killReplay.js` |
+| AL-PR-10 | 2026-10-20 | devin-inf20b | `src/sim/killcamTape.js`, `src/ui/screens/gameOver.js`, `src/render/uiStage.js` |
+| PULSE-01 | 2026-10-20 | devin-inf20b | `src/data/flavor/020-ad-board.js` |
+| PULSE-02 | 2026-10-20 | devin-inf20b | `src/data/flavor/030-graffiti.js` |
+| RC-26 | 2026-10-20 | devin-inf20b | `src/data/sectorVisualProfiles.js` |
+| RC-27 | 2026-10-20 | devin-inf20b | `src/systems/traffic.js` |
+| RC-36 | 2026-10-20 | devin-inf20b | `src/systems/alienEcology.js`, `src/ui/toasts.js` |
+| RC-39 | 2026-10-20 | devin-inf20b | `src/ui/screens/pause.js`, `src/render/camera.js` |
+| RC-40 | 2026-10-20 | devin-inf20b | `src/ui/screens/statistics.js` |
+| RC-47 | 2026-10-20 | devin-inf20b | `src/systems/travelLanes.js`, `src/ui/toasts.js` |
+| RC-42 | 2026-10-21 | devin-inf20b | `src/ui/loadingTerminalArt.js`, `src/ui/bootVisualizer.js` |
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
+| RC-17 | rc-17-yune-clean-freight | this session | clean tallied Helios freight:arrival bumps yune.trust via _applyCounterDelta, capped 3, save-persisted |
+| RC-18 | rc-18-mara-pod-count | this session | survivorPod delivered/rescued-station_delivery bumps mara.debt once per receipt, no subtract |
+| RC-19 | rc-19-suhl-senna-counters | this session | machine:appealAccepted→suhl.clauses (cap 9), uniqueWreck:resolved→senna.names (cap 8) |
+| RC-20 | rc-20-zell-contraband | this session | contraband/illegal module:purchased→zell.work (cap 20), legal/restricted ignored |
+| RC-02 | rc-02-iron-maw-score | this session | round-10 iron_maw row carries enemyId+scoreId capital_boss_hulk; stock trick dropped; script telegraphs/commits/resolves on seed 4242 |
+| RC-03 | rc-03-one-hostile | already true | singular/plural landed in 9bf40c366; rc-456 test pins it |
+| RC-04 | rc-04-pickup-float-labels | this session | run-credit pods float +N cr, module drops name the def, unknown ids float nothing; Item fallback gone |
+| RC-09 | rc-09-hitch-voice | this session | Kestrel absent from onboarding strings; firing lesson names Hitch; first-hour-voice test updated |
+| RC-10 | rc-10-chronicle-hitch | this session | ship:purchased emits name when catalog name differs from id label; chronicle reads Hitch for the starter |
+| RC-11 | rc-11-no-trainer-labels | this session | tracker labels read Derelict / Fleeing Raider / actor in-world name; trainer billing off the surface |
+| RC-12 | rc-12-range-wu-labels | this session | range screen strings read wu/s and wu; no value conversion |
+| RC-13 | rc-13-vignette-phrase-variation | this session | generator emits hashed shelves of filler lines; both stock phrases at 0 across 195 regenerated vignettes |
+| RC-14 | rc-14-toll-debits | this session | toll/inspection phases emit cost verb + grant 0; paying the count debits instead of paying |
+| RC-15 | rc-15-vignette-cost-verb | this session | new cost verb routes through economy:chargeCredits sole-writer; insufficient_funds aborts with reason |
+| RC-16 | rc-16-offer-wait-10s | this session | pre-offer orbit trimmed to <=10 s across regenerated vignettes; no phase renames |
+| PULSE-03 | pulse-03-wreck-rumors | this session | 90 rumors each subjectId-keyed to a real wreck/one-off/landmark; focused resolver test |
+| PULSE-05 | pulse-05-headline-variety | this session | all headline kinds 15 templates, regime entries 6, existing placeholder set only |
+| PULSE-06 | pulse-06-commodity-flavor | this session | all 66 commodity ids carry COMMODITY_FLAVOR nouns; stale 43-count test repaired |
+| PULSE-07 | pulse-07-poi-lore | this session | every landmark (already true) + all rim POIs carry >=3 lore lines; ids resolve |
+| AL-LG-01 | al-lg-01-revisit-door-state | this session | scanReveal resolves revisitNeed to not-yet/ready via live fit verbs; object stays visible |
+| AL-LG-02 | al-lg-02-ladle-erased-doors | this session | Runaway Ladle and Erased carry tow doors equal to their real masses |
+| AL-LG-03 | al-lg-03-tanker-capital-tow | this session | Great Tanker gets physicalBody 800t beyond non-capital tow; persists via world-record lane |
+| RC-21 | rc-21-loss-docket | this session | five loss shapes map deterministically to five of the 12 authored court cases |
+| RC-22 | rc-22-court-settlement-range | this session | offer card shows settlement min-max on summary/riskNote/params; payment still at ruling |
+| RC-05 | rc-05-travel-fallback-key | this session | travelBurn fallback NumLock/F8; F8 engages drive, Help stays closed, lesson names a key laptops have |
+| RC-06 | rc-06-nonlock-key-label | this session | rail/Cluster labels prefer the non-lock binding; NUM LOCK only when it is the sole binding |
+| RC-07 | rc-07-tutorial-ticker-gate | already true | tutorialOwnsAttention gate already hides the tape and restores history on tutorial:finished |
+| RC-08 | rc-08-threat-marker-cluster | this session | threat halo edge pinning reserves live ORRERY furniture; lower-left hostile parks beside the Cluster |
 | NXI-022 | nxi-022-kinematic-proxy-not-offered | 6eca0bd9a | isAttachable applies the physicsBody:false exclusion (and world-site machine roles) to the offer: machine/fauna/route proxies denied, loose payloads beside them still offered, stations/asteroids/mines/beacons/survival wrecks keep latching; focused test pins all of it on seed 4242 |
 | VERB-32 | verb-32-mine-keeps-velocity | 6dd3b0e5ce | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |

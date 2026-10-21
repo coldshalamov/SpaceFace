@@ -207,7 +207,7 @@ export function injectHudCss() {
   /* Focusable so the tier-2 why (data-why: Energy/Kinetic/Explosive) answers keyboard focus, not
      just hover. A thin bar glyph needs a generous focus target or it is unreachable. */
   .sf-tri:focus-visible { outline:2px solid var(--hud-paper); outline-offset:3px; }
-  .sf-tri__k { font-size:var(--k-fs-data); color:var(--hud-muted); opacity:.75; width:8px; text-align:center; }
+  .sf-tri__k { font-size:var(--k-fs-data); color:var(--hud-muted); opacity:.75; width:auto; text-align:left; }
   .sf-tri__bar { display:inline-block; width:26px; height:3px; background:var(--k-hair); overflow:hidden; }
   .sf-tri__fill { display:block; width:100%; height:100%; transform-origin:left center; transform:scaleX(0);
     background:var(--hud-muted); }
@@ -284,6 +284,8 @@ export function injectHudCss() {
   .sf-toast--error .sf-toast__icon, .sf-toast--danger .sf-toast__icon { color:var(--k-red); }
   .sf-toast--warn { border-left-color:var(--hud-amber); }
   .sf-toast--warn .sf-toast__icon { color:var(--hud-amber); }
+  .sf-toast--discovery { border-left-color:var(--dp-phos, #dfeeff); }
+  .sf-toast--discovery .sf-toast__icon { color:var(--dp-phos, #dfeeff); }
   .sf-toast--credits .sf-toast__icon, .sf-toast--rep .sf-toast__icon { color:var(--hud-cyan); }
   /* GF-10: count badge for grouped identical toasts ("Platinum x1 ×5"). Sits after the text,
      monospace + accent-colored so it reads as a multiplier, not part of the message. */
@@ -3145,6 +3147,38 @@ export function injectHudCss() {
     .sf-objarrow__chev, .sf-objarrow__mark { fill:CanvasText; stroke:CanvasText; }
     .sf-objarrow__mark-bloom { display:none; }
   }
+
+  /* AL-HUD-1: compact flight controls share the contact stack's normal flow. */
+  #hud .sf-rightdock {
+    max-height:calc(100vh - 96px); max-height:calc(100dvh - 96px);
+    min-height:0; overflow-y:auto; overflow-x:hidden;
+  }
+  #hud .sf-rightdock > * { flex:0 0 auto; min-width:0; }
+  #hud .sf-rightdock > #race-tape[data-compact="true"] {
+    position:relative; top:auto; right:auto; left:auto; bottom:auto; transform:none;
+    width:100%; min-width:0; box-sizing:border-box; grid-template-columns:minmax(0,1fr);
+  }
+  #hud .sf-rightdock > #race-tape[data-compact="true"] .race-tape-actions { flex-wrap:wrap; min-width:0; }
+  #hud .sf-rightdock .sf-target__name,
+  #hud .sf-rightdock .sf-target__identity,
+  #hud .sf-rightdock .sf-target__intent,
+  #hud .sf-rightdock .sf-target__object,
+  #hud .sf-rightdock .sf-overview-footer {
+    min-width:0; white-space:normal; overflow-wrap:anywhere;
+  }
+  #hud .sf-rightdock .sf-target__triangle {
+    display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:4px 8px;
+  }
+  #hud .sf-rightdock .sf-target__tri-label { grid-column:1; grid-row:1; }
+  #hud .sf-rightdock .sf-target__tri-layer { grid-column:2; grid-row:1; }
+  #hud .sf-rightdock .sf-tri {
+    display:grid; grid-column:1 / -1; grid-template-columns:minmax(0,1fr) 52px; min-width:0;
+  }
+  #hud .sf-rightdock .sf-tri--e { grid-row:2; }
+  #hud .sf-rightdock .sf-tri--k { grid-row:3; }
+  #hud .sf-rightdock .sf-tri--x { grid-row:4; }
+  #hud .sf-rightdock .sf-tri__k { width:auto; min-width:0; text-align:left; overflow-wrap:anywhere; }
+  #hud .sf-rightdock .sf-tri__bar { width:52px; }
   `;
   document.head.appendChild(s);
 }

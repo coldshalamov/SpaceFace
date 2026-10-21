@@ -35,11 +35,21 @@ import { swarmRoundPreview } from '../../data/swarmLadder.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
+import {
+  circuitBossFor,
+  circuitChoicesFor,
+  circuitFor,
+  circuitRoundFor,
+  circuitRouteView,
+  circuitStateError,
+  CIRCUIT_STAGE_COUNT,
+} from '../../systems/survivalCircuit.js';
 import { survivalRun } from '../../systems/survivalRun.js';
 import { el, settle, cue, attachHoldVerb } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
 import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
+import { svg, lightPath } from '../orrery/svg.js';
 import { createHullSchematic } from '../orrery/hullSchematic.js';
 import { createSlotJig } from '../orrery/slotJig.js';
 import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
@@ -627,6 +637,56 @@ export function refitFootLines(run) {
   };
 }
 
+/**
+ * SWARM-08 B5 — the Circuit panel's words. DOM-free so a check can pin the route diagram and the
+ * finale wording without mounting a screen. Ordinary Swarm exposes entry only at its opening.
+ */
+export function circuitPanelLines(run) {
+  const error = circuitStateError(run);
+  const choices = circuitChoicesFor(run);
+  const route = circuitRouteView(run);
+  if (!route) return error || choices.length ? {
+    heading: 'The Circuit',
+    status: error || 'Sixteen rounds, four stages, four champions. Choose Circuit or launch ordinary Swarm.',
+    next: null, choices, stages: [],
+  } : null;
+  const circuit = circuitFor(run);
+  const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
+  const round = circuitRoundFor(run, wave + 1);
+  const boss = round && round.bossId ? circuitBossFor(round.bossId) : null;
+  let next = null;
+  if (circuit.status === 'overtime') {
+    next = `Overtime — round ${wave + 1} and on. The Circuit is already yours.`;
+  } else if (round && circuit.status !== 'route' && circuit.status !== 'finale') {
+    next = round.kind === 'survive'
+      ? `Next — stage ${round.stage}, round ${round.localRound}: survive sixty seconds.`
+      : round.kind === 'boss'
+        ? `Next — stage ${round.stage}, round ${round.localRound}: ${boss ? boss.label : 'a champion'}.`
+        : `Next — stage ${round.stage}, round ${round.localRound}: break the pack.`;
+  }
+  const status = circuit.status === 'route'
+    ? `Stage ${circuit.clearedStages} cleared. Choose where stage ${circuit.clearedStages + 1} fights.`
+    : circuit.status === 'finale'
+      ? 'Four stages cleared. Finish the Circuit, or keep the build and fly into Overtime.'
+      : circuit.status === 'overtime'
+        ? 'Overtime — endless rounds from here.'
+        : circuit.status === 'completed'
+          ? 'Circuit complete.'
+          : `Stage ${Math.min(CIRCUIT_STAGE_COUNT, circuit.clearedStages + 1)} of ${CIRCUIT_STAGE_COUNT}. Four rounds a stage; the fourth is its champion.`;
+  return {
+    heading: 'The Circuit',
+    status,
+    next,
+    choices: choices.map((choice) => ({ id: choice.id, kind: choice.kind, label: choice.label, line: choice.line })),
+    stages: route.stages.map((stage) => ({
+      stage: stage.stage,
+      label: stage.label,
+      status: stage.status,
+      boss: stage.boss ? stage.boss.label : null,
+    })),
+  };
+}
+
 /** SWARM-04 §6.5 — the one next-round sentence the armory and the refit bench both print. */
 function swarmNextLine(next) {
   if (!next) return '';
@@ -729,6 +789,34 @@ export const crucibleDraftScreen = {
     this._note = note;
     rootEl.appendChild(stage);
 
+    // SWARM-08 B5 — the Circuit panel. It offers entry, then shows the route as four stage
+    // positions, the choice owed right now (enter, destination, finish or Overtime), and the
+    // one-line read on the round coming. Reserve space inside the shelf's flex column rather
+    // than adding a second root grid stage. Long route choices scroll within their own share
+    // of the column so the filters and shopping rail remain reachable.
+    const circuitPanel = el('section', 'sf-cru-circuit');
+    Object.assign(circuitPanel.style, { flex: '0 0 auto', maxHeight: '40%', overflow: 'auto' });
+    circuitPanel.hidden = true;
+    circuitPanel.setAttribute('aria-label', 'The Circuit');
+    const circuitHead = el('h2', 'k-t-emph sf-cru-circuit__head', 'The Circuit');
+    const circuitStatus = el('p', 'k-sentence sf-cru-circuit__status', '');
+    const circuitGraphic = el('div', 'orr-circuit-route');
+    circuitGraphic.setAttribute('aria-hidden', 'true');
+    const circuitRoute = el('p', 'k-t-fine sf-cru-circuit__route', '');
+    const circuitNext = el('p', 'k-sentence sf-cru-circuit__next', '');
+    const circuitChoices = el('ul', 'k-words k-words--row sf-cru-circuit__choices');
+    circuitChoices.setAttribute('aria-label', 'Circuit choices');
+    circuitPanel.append(circuitHead, circuitStatus, circuitGraphic, circuitRoute, circuitNext, circuitChoices);
+    stage.insertBefore(circuitPanel, filters);
+    this._circuit = {
+      el: circuitPanel,
+      status: circuitStatus,
+      graphic: circuitGraphic,
+      route: circuitRoute,
+      next: circuitNext,
+      choices: circuitChoices,
+    };
+
     // ORRERY §6 armory: the offers stand on a rail; the one under the pointer or focus is read out
     // beside it -- its words, where it goes on the ship, how it compares, what it leaves in the
     // wallet. The inspector and its explicit purchase/demo controls are fully accessible.
@@ -793,6 +881,9 @@ export const crucibleDraftScreen = {
     words.setAttribute('aria-label', 'Rearm');
     const skip = addWord(words, word('Keep current loadout', 'k-word--emph'));
     skip.addEventListener('click', () => {
+      // A Circuit that owes a destination (or the finale) refuses the launch and says why; the
+      // press is not swallowed by a dead button.
+      if (this._circuitGate(ctx)) return;
       // The render lane warms the next wave's newcomers behind this surface; launching
       // before that batch links would pay its program links inside the round. The dwell
       // is player-paced so the promise has normally already settled and this emits
@@ -904,6 +995,11 @@ export const crucibleDraftScreen = {
     });
 
     this._regions = { title: h, stage, foot };
+    // SWARM-08 B5 — the worker's acknowledgement of a Circuit choice re-publishes the draft
+    // snapshot; repaint from that receipt rather than guessing at the main thread.
+    this._offDraftOffered = ctx.bus && typeof ctx.bus.on === 'function'
+      ? ctx.bus.on('run:draftOffered', () => { if (this._ctx) this.refresh(this._ctx); })
+      : null;
     this.refresh(ctx);
     rootEl.dataset.kReady = '1';
   },
@@ -936,6 +1032,8 @@ export const crucibleDraftScreen = {
   dispose() {
     this._offCancel?.();
     this._offCancel = null;
+    this._offDraftOffered?.();
+    this._offDraftOffered = null;
     this._visualArmory?.dispose();
     this._purchaseArmed = true;
     this._purchasePending = false;
@@ -967,9 +1065,93 @@ export const crucibleDraftScreen = {
    * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
    * was spent on the warning and must not resolve the draft.
    */
+  /** Four stage positions and the paths between them, drawn with the ORRERY vector helpers. */
+  _paintCircuitRoute(stages) {
+    const host = this._circuit && this._circuit.graphic;
+    if (!host || typeof document === 'undefined' || typeof document.createElementNS !== 'function') return;
+    host.textContent = '';
+    if (!Array.isArray(stages) || stages.length === 0) return;
+    const width = 420;
+    const y = 26;
+    const pad = 42;
+    const gap = (width - pad * 2) / Math.max(1, stages.length - 1);
+    const root = svg('svg', { viewBox: `0 0 ${width} 68`, width: '100%', height: 68, class: 'orr-svg orr-circuit-route__svg', role: 'presentation' });
+    let prevX = null;
+    stages.forEach((stage, index) => {
+      const x = pad + gap * index;
+      const tone = stage.status === 'future' ? 'rest' : 'hand';
+      if (prevX != null) {
+        root.appendChild(lightPath(`M ${prevX} ${y} L ${x} ${y}`, {
+          tone, width: 1.2, bloom: 4, className: 'orr-circuit-route__path',
+        }));
+      }
+      root.appendChild(svg('circle', {
+        cx: x, cy: y, r: stage.status === 'current' ? 6 : 4.5,
+        class: `orr-core orr-${tone} orr-circuit-route__node`,
+        fill: 'none', 'stroke-width': 1.4,
+      }));
+      const label = svg('text', {
+        x, y: y + 24, 'font-size': 9, 'text-anchor': 'middle',
+        class: `orr-circuit-route__label orr-${tone}`, fill: 'currentColor',
+      });
+      label.textContent = `${stage.stage} ${stage.label}`;
+      root.appendChild(label);
+      prevX = x;
+    });
+    host.appendChild(root);
+  },
+
+  /**
+   * SWARM-08 B5 — the owed choice as native buttons (keyboard activation comes free with the
+   * button element), each followed by its destination's physical-law line. Kept separate from
+   * refresh so a focused DOM check can exercise the real control path without mounting the shelf.
+   */
+  _paintCircuitChoices(context, choices) {
+    if (!this._circuit) return;
+    const list = this._circuit.choices;
+    list.textContent = '';
+    const rows = Array.isArray(choices) ? choices : [];
+    for (const choice of rows) {
+      const button = word(choice.label, choice.kind === 'finish' || choice.kind === 'start' ? 'k-word--emph' : 'k-word--fine');
+      if (choice.line) button.title = choice.line;
+      button.dataset.circuitChoice = choice.kind;
+      button.addEventListener('click', () => context.bus.emit('run:draftPickRequested', { offerId: choice.id }));
+      const item = el('li', 'sf-cru-circuit__choice');
+      item.appendChild(button);
+      // The destination's physical law is read BEFORE commitment, not discovered after it.
+      if (choice.line) item.appendChild(el('span', 'k-t-fine sf-cru-circuit__line', choice.line));
+      list.appendChild(item);
+    }
+    list.hidden = rows.length === 0;
+  },
+
+  /**
+   * SWARM-08 B5 — a Circuit draft can owe a decision that is not a shop purchase: a destination
+   * after a stage, or Finish/Overtime after the finale. The launch press says what is owed and
+   * moves focus to the choice instead of doing nothing.
+   */
+  _circuitGate(ctx) {
+    const run = ctx && ctx.state && ctx.state.run;
+    const circuit = run ? circuitFor(run) : null;
+    const error = circuitStateError(run);
+    if (!error && (!circuit || (circuit.status !== 'route' && circuit.status !== 'finale'))) return false;
+    const text = error || (circuit.status === 'route'
+      ? 'Choose a destination before launching.'
+      : 'Finish the Circuit or enter Overtime.');
+    if (this._note) this._note.textContent = text;
+    const first = this._circuit && this._circuit.choices
+      ? this._circuit.choices.querySelector('button')
+      : null;
+    if (first && typeof first.focus === 'function') {
+      try { first.focus(); } catch { /* focus is best-effort */ }
+    }
+    return true;
+  },
+
   _guardLaunch(ctx) {
     const run = ctx && ctx.state && ctx.state.run;
     if (!run || run.ruleset !== 'swarm') return false;
+    if (this._circuitGate(ctx)) return true;
     if (this._launchWarned === true) {
       this._launchWarned = false;
       return false;
@@ -1067,7 +1249,9 @@ export const crucibleDraftScreen = {
     if (this._preview) {
       let text = '';
       const run = context.state && context.state.run;
-      if (shop && run) {
+      // SWARM-08 B5 — a Circuit round's objective comes from the journey, not the ordinary
+      // cadence; the Circuit panel's own next line is the honest preview.
+      if (shop && run && !circuitFor(run) && !circuitStateError(run)) {
         text = swarmNextLine(
           swarmRoundPreview({ arenaId: run.arenaId, wave: wave + 1, seed: run.seed }),
         );
@@ -1075,6 +1259,28 @@ export const crucibleDraftScreen = {
       this._preview.textContent = text;
       this._preview.hidden = !text;
     }
+
+    // SWARM-08 B5 — paint the journey before the shelf: the route, the choice owed and the next
+    // round. Ordinary Swarm only shows the opening invitation.
+    const runNow = context.state && context.state.run;
+    const circuitPanel = shop && runNow ? circuitPanelLines(runNow) : null;
+    if (this._circuit) {
+      this._circuit.el.hidden = !circuitPanel;
+      if (circuitPanel) {
+        this._circuit.status.textContent = circuitPanel.status;
+        this._paintCircuitRoute(circuitPanel.stages);
+        this._circuit.route.textContent = circuitPanel.stages
+          .map((stage) => `${stage.stage} ${stage.label}${stage.status === 'complete' ? ' ✓' : stage.status === 'current' ? ' ●' : ''}${stage.boss ? ` (${stage.boss})` : ''}`)
+          .join(' · ');
+        this._circuit.next.textContent = circuitPanel.next || '';
+        this._circuit.next.hidden = !circuitPanel.next;
+        this._paintCircuitChoices(context, circuitPanel.choices);
+      }
+    }
+    const circuitRun = runNow ? circuitFor(runNow) : null;
+    const circuitError = circuitStateError(runNow);
+    const circuitOwed = !!circuitError || !!(circuitPanel && circuitRun
+      && (circuitRun.status === 'route' || circuitRun.status === 'finale'));
 
     // SWARM-05 §7.3 — the hull being flown leaves the catalogue and reads on the status
     // line; the other manifest hulls stay on the shelf as Switch rows.
@@ -1175,14 +1381,17 @@ export const crucibleDraftScreen = {
 
     setKeyLabel(this._skip,
       this._warmHold === true ? 'Readying the field…'
-        : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
+        : circuitOwed
+          ? (circuitError ? 'Circuit data invalid — start a new run'
+            : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
+          : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
       'Esc', 'Escape');
     // In the armory the way forward is the one consequential key; buying happens on the cards.
-    this._skip.classList.toggle('k-word--primary', shop);
+    this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
     // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here
     // (and keep it held while a hold is actually in flight, so a repaint cannot un-gate it).
     this._skip.disabled = this._warmHold === true;
-    this._skip.setAttribute('aria-disabled', this._warmHold === true ? 'true' : 'false');
+    this._skip.setAttribute('aria-disabled', this._warmHold === true || circuitOwed ? 'true' : 'false');
 
     const reroll = this._rerollBtn;
     setKeyLabel(reroll, lines.label || 'Re-roll', 'R', 'R');

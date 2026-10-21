@@ -2259,6 +2259,54 @@ export class Sg02DynamicBodyOwner {
     return Math.hypot(allowance.x, allowance.z) > PLAYER_CONTACT_ACTIVITY_EPSILON;
   }
 
+  // D234: outward normals of every live fixed-body contact manifold, straight from the narrow
+  // phase. A sustained press on a compound hull earns no force receipts (the grind never
+  // crosses the gameplay threshold) and the merged receipt normal under-represents splayed
+  // faces — but the give pass must still never restore a velocity component that points INTO
+  // a wall the pose is held against. Manifold normals are the ground truth of that geometry.
+  // Writes {x,z} into `out`, returns the count (capped). Bounded to player colliders x live
+  // pairs, and only consulted on the give rewrite path, so the no-contact tick costs nothing.
+  _liveFixedContactNormals(rec, out, cap = 8) {
+    let count = 0;
+    const colliders = rec && rec.colliders;
+    const world = this.world;
+    if (!Array.isArray(colliders) || colliders.length === 0 || !world
+        || typeof world.contactPairsWith !== 'function'
+        || typeof world.contactPair !== 'function') return 0;
+    for (let i = 0; i < colliders.length && count < cap; i++) {
+      const collider = colliders[i];
+      if (!collider || (typeof collider.isSensor === 'function' && collider.isSensor())) continue;
+      world.contactPairsWith(collider, (other) => {
+        if (count >= cap) return;
+        const otherRec = this._colliderOwners.get(other.handle)?.rec;
+        if (!otherRec || otherRec === rec) return;
+        if (!otherRec.spec || otherRec.spec.dynamic !== false) return;
+        if (typeof otherRec.body.isFixed === 'function' && otherRec.body.isFixed() !== true) return;
+        world.contactPair(collider, other, (manifold, flipped) => {
+          if (count >= cap) return;
+          const rawNormal = manifold.normal();
+          const sign = flipped ? -1 : 1;
+          // Manifold normal points player-collider -> fixed collider; negate to the fixed
+          // body's outward normal at the player (receipt path convention).
+          let nx = -sign * finite(rawNormal && rawNormal.x);
+          let nz = -sign * finite(rawNormal && rawNormal.z);
+          const len = Math.hypot(nx, nz);
+          if (!(len > DIRECT_CONTACT_CAUSAL_EPSILON)) return;
+          nx /= len;
+          nz /= len;
+          for (let j = 0; j < count; j++) {
+            if (out[j].x * nx + out[j].z * nz > 0.9995) return;
+          }
+          const slot = out[count] || (out[count] = { x: 0, z: 0 });
+          slot.x = nx;
+          slot.z = nz;
+          count++;
+        });
+      });
+    }
+    return count;
+  }
+
   // Authoritative "is the player's hull actually touching anything" answer, straight from the
   // narrow phase. Contact-force receipts are a gameplay signal gated by a per-pair force
   // threshold; a light grind or a scrape distributed over compound colliders does contact
@@ -2365,6 +2413,8 @@ export class Sg02DynamicBodyOwner {
     }
     // Native fixed-wall stopping is admitted componentwise below. Once the ordinary branch is
     // otherwise active, only the unrelated residual solver delta draws on the give budget.
+    let clampedInwardX = 0;
+    let clampedInwardZ = 0;
     const usesNativeFixedAllowance = hasNativeFixedBraking && !preservesSolverResponse;
     const budgetDvx = usesNativeFixedAllowance ? residualDvx : rawDvx;
     const budgetDvz = usesNativeFixedAllowance ? residualDvz : rawDvz;
@@ -2410,6 +2460,23 @@ export class Sg02DynamicBodyOwner {
         acceptedVx = e.vx + (usesNativeFixedAllowance ? nativeFixedBrakingX : 0);
         acceptedVz = e.vz + (usesNativeFixedAllowance ? nativeFixedBrakingZ : 0);
       }
+      // D234: a wall the pose is held against also holds the velocity axis. A budget-capped
+      // rewrite may restore most of the expected velocity (the graze rule is about momentum,
+      // not tunneling), but it may never re-admit the inward component a live fixed contact
+      // is actively stopping — otherwise sustained thrust reads as ~30-45 WU/s of flight
+      // while the hull sits parked on the manifold. Tangential slide survives untouched.
+      const scratch = this._fixedContactNormalScratch || (this._fixedContactNormalScratch = []);
+      const normalCount = this._liveFixedContactNormals(rec, scratch);
+      for (let i = 0; i < normalCount; i++) {
+        const n = scratch[i];
+        const inward = acceptedVx * n.x + acceptedVz * n.z;
+        if (inward < 0) {
+          acceptedVx -= inward * n.x;
+          acceptedVz -= inward * n.z;
+          clampedInwardX -= inward * n.x;
+          clampedInwardZ -= inward * n.z;
+        }
+      }
       _vecWriteScratch.x = acceptedVx;
       _vecWriteScratch.y = 0;
       _vecWriteScratch.z = acceptedVz;
@@ -2447,10 +2514,13 @@ export class Sg02DynamicBodyOwner {
     // serialized entity metadata decides whether the player is physically coupled.
     const actualPlayerDeltaV = Math.hypot(acceptedVx - e.vx, acceptedVz - e.vz);
     if (isActive && !preservesSolverResponse) {
+      // Inward components the live fixed-contact clamp removed are the wall's own braking —
+      // admitted contact work like nativeFixedBraking, not knock drawing on the episode budget.
       const budgetedAppliedDeltaV = usesNativeFixedAllowance
-        ? Math.hypot(acceptedVx - e.vx - nativeFixedBrakingX,
-          acceptedVz - e.vz - nativeFixedBrakingZ)
-        : actualPlayerDeltaV;
+        ? Math.hypot(acceptedVx - e.vx - nativeFixedBrakingX - clampedInwardX,
+          acceptedVz - e.vz - nativeFixedBrakingZ - clampedInwardZ)
+        : Math.hypot(acceptedVx - e.vx - clampedInwardX,
+          acceptedVz - e.vz - clampedInwardZ);
       rec._playerContactCumulativeDeltaV = cumulative + budgetedAppliedDeltaV;
     }
 

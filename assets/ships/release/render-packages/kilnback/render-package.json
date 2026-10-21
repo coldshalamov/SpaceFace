@@ -370,12 +370,28 @@
     }
   ],
   "assetId": "sf.render.kilnback",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.kilnback.node.collision-kilnback-cask-port.collision",
+      "nodeId": "sf.render.kilnback.node.collision-kilnback-cask-port",
+      "reference": "COLLISION_KILNBACK_CASK_PORT"
+    },
+    {
+      "id": "sf.render.kilnback.node.collision-kilnback-cask-starboard.collision",
+      "nodeId": "sf.render.kilnback.node.collision-kilnback-cask-starboard",
+      "reference": "COLLISION_KILNBACK_CASK_STARBOARD"
+    },
+    {
+      "id": "sf.render.kilnback.node.collision-kilnback-core.collision",
+      "nodeId": "sf.render.kilnback.node.collision-kilnback-core",
+      "reference": "COLLISION_KILNBACK_CORE"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "175d9c1a3128652e6f63aecbfc0c43464e9cbe7f9500cdc97894c3effe91b717",
+  "contentHash": "95613c50339954185abb1cf2c2df32dfc919b8d16b0ac8e64acf0b10f9dbc211",
   "dynamicGroups": [
     {
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-port-armor.dynamic",
@@ -578,7 +594,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_KILNBACK_CASK_PORT",
       "nodeId": "sf.render.kilnback.node.collision-kilnback-cask-port",
       "primitiveIndex": 0,
@@ -603,7 +619,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_KILNBACK_CASK_STARBOARD",
       "nodeId": "sf.render.kilnback.node.collision-kilnback-cask-starboard",
       "primitiveIndex": 0,
@@ -628,7 +644,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_KILNBACK_CORE",
       "nodeId": "sf.render.kilnback.node.collision-kilnback-core",
       "primitiveIndex": 0,
@@ -1959,7 +1975,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_KILNBACK_CASK_PORT",
       "nodeName": "COLLISION_KILNBACK_CASK_PORT",
       "nodePath": [
@@ -2008,7 +2024,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_KILNBACK_CASK_STARBOARD",
       "nodeName": "COLLISION_KILNBACK_CASK_STARBOARD",
       "nodePath": [
@@ -2057,7 +2073,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_KILNBACK_CORE",
       "nodeName": "COLLISION_KILNBACK_CORE",
       "nodePath": [
@@ -4958,7 +4974,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a470cc57af61b40d534f30199e49fe2e03f915d1a5fd571f35668119d70d6ab5"
+      "sha256": "77788886b54ae42aac29840ac9e1f9b3023aac627017371484ff8715efaf75dd"
     },
     "sourceGlb": {
       "bytes": 709396,
@@ -4966,8 +4982,8 @@
       "uri": "kilnback.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -7404,7 +7420,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kilnback.glb"
   },
-  "runtimeHash": "e7128397f27fcfe196a729bb62d1df69790ff114eb05b11cb25a8090a15c86eb",
+  "runtimeHash": "6e1685f9f3203c88556316ccabad131711d88941dab42abf00cac4b5c74babbb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

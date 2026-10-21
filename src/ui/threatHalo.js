@@ -628,8 +628,9 @@ export function createThreatHalo(root, busOrOpts) {
   let viewportW = 0;
   let viewportH = 0;
   const clearRect = { x: 0, y: 0, width: 0, height: 0 };
-  // Order: left stack, right dock, one-voice floor, power rail, drive band, massline lane, and
-  // the live objective marker — re-projected every update, since it moves with the player.
+  // Order: ORRERY cluster (rail + dial), right dock, one-voice floor, left context column,
+  // top-right band HUD, a deliberately empty sixth slot, and the live objective marker —
+  // re-projected every update, since it moves with the player.
   const reservedRects = [
     { x: 0, y: 0, width: 0, height: 0 },
     { x: 0, y: 0, width: 0, height: 0 },
@@ -641,6 +642,24 @@ export function createThreatHalo(root, busOrOpts) {
   ];
   const OBJECTIVE_RECT_W = 104;
   const OBJECTIVE_RECT_H = 60;
+
+  // Live ORRERY furniture anchors, mirrored from the owners' own constants so the layout pass
+  // stays DOM-free (RC-08). The Cluster's canvas is flightCluster.js W/H; its anchor and scale
+  // steps are orrery/hudAdapter.js HOST_CSS (left:18, 8 under 1400px; bottom:24; the
+  // --orr-cluster-scale .85/.7/.6 at >1700/>1300/else viewport width) multiplied by the
+  // small-window --sf-hud-edge-fit (.85/.75/.62) that scales the whole host from its bottom-left
+  // corner (hudStyles.js :744-806). The dock is --sf-dock-w (256, 220/204 at the small
+  // breakpoints) at right/bottom:--sf-hud-edge (clamp 16px..2.4vh..32px).
+  const CLUSTER_CANVAS_W = 760;
+  const CLUSTER_CANVAS_H = 540;
+  const CLUSTER_BOTTOM_PX = 24;
+  const CLUSTER_PAD_PX = 26;   // dial bloom above, crescent-key hang below, keytag glow right
+  const DOCK_PAD_PX = 20;
+  const DOCK_PAD_TOP_PX = 40;  // the radar bezel + the key row under it; cards higher are transient text
+  const CONTEXT_W_PX = 330;    // .sf-leftcontext — comms tape + tracker cards, ~272-330 wide
+  const CONTEXT_H_PX = 190;    // the corner band it always paints; deeper entries are transient
+  const BAND_HUD_W_PX = 240;   // .sf-band-hud — the band chip (min 176px button) + bezel margin
+  const BAND_HUD_H_PX = 100;   // one control row tall; reserving more starves the right edge
 
   function updateObjectiveReservation(state, worldToScreen, width, height) {
     const rect = reservedRects[6];
@@ -898,43 +917,68 @@ export function createThreatHalo(root, busOrOpts) {
     clearRect.width = width * 0.52;
     clearRect.height = height * 0.56;
 
-    const compact = width <= 900 || height <= 650;
+    // Every constant below is the owning stylesheet's own geometry, mirrored — never measured
+    // per frame. Under ORRERY the bottom-centre band the old power-rail/drive/massline rects
+    // reserved is furniture-FREE at the marker band (receipts anchor at h-155, the travel tape
+    // at h-86 — neither reaches h-24): the rail itself moved into the bottom-left Cluster, so a
+    // stale centre rect only wedged markers against the real furniture.
+    const edge = Math.min(32, Math.max(16, height * 0.024));            // --sf-hud-edge
+    const edgeFit = (width <= 959 || height <= 599) ? 0.62
+      : (width <= 1099 || height <= 659) ? 0.75
+      : (width <= 1279 || height <= 719) ? 0.85 : 1;                    // --sf-hud-edge-fit
+    const safeInsetX = Math.max(0, (width - height * 16 / 9) / 2);      // ultrawide safe frame
 
-    const left = reservedRects[0];
-    left.width = compact ? 236 : 272;
-    left.height = 150;
-    left.x = compact ? 10 : 12;
-    left.y = height - (compact ? 72 : 12) - left.height;
+    // [0] The ORRERY Cluster — the live power rail: hull rings, the Speed Dial and the ordnance
+    // crescent all live in its 760x540 canvas, anchored left:18 (8 under 1400px), bottom:24 and
+    // scaled canvas*host from the bottom-left corner. Reserved whole, bottom edge to the frame.
+    const clusterScale = (width > 1700 ? 0.85 : (width > 1300 ? 0.7 : 0.6)) * edgeFit;
+    const clusterLeft = width <= 1400 ? 8 : 18;
+    const cluster = reservedRects[0];
+    cluster.x = 0;
+    cluster.width = clusterLeft + CLUSTER_CANVAS_W * clusterScale + CLUSTER_PAD_PX;
+    cluster.y = Math.max(0, height - CLUSTER_BOTTOM_PX - CLUSTER_CANVAS_H * clusterScale - CLUSTER_PAD_PX);
+    cluster.height = height - cluster.y;
 
+    // [1] .sf-rightdock — sector law, target, overview and the radar dial, right/bottom at the
+    // HUD edge on the --sf-dock-w column. The reservation covers the radar bezel (the dial —
+    // the box that must never carry a marker) and a card margin above it, capped so the right
+    // edge still holds the hostile cap; text cards higher in the column are transient reads a
+    // passing mark may cross, the same trade the pre-ORRERY layout made.
+    const dockW = (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256);
     const right = reservedRects[1];
-    right.width = compact ? 200 : 232;
-    right.height = 210;
-    right.x = width - (compact ? 10 : 12) - right.width;
-    right.y = height - (compact ? 72 : 12) - right.height;
+    right.width = edge + dockW * edgeFit + DOCK_PAD_PX;
+    right.height = Math.min((dockW + DOCK_PAD_TOP_PX) * edgeFit + edge, height * 0.5);
+    right.x = width - safeInsetX - right.width;
+    right.y = height - right.height;
 
+    // [2] The one-voice floor rides top-centre — unchanged.
     const voice = reservedRects[2];
     voice.width = Math.min(440, Math.max(120, width - 24));
     voice.height = 26;
     voice.x = (width - voice.width) * 0.5;
     voice.y = 18;
 
-    const rail = reservedRects[3];
-    rail.width = compact ? 494 : 516;
-    rail.height = compact ? 44 : 46;
-    rail.x = (width - rail.width) * 0.5;
-    rail.y = height - (compact ? 8 : 10) - rail.height;
+    // [3] .sf-leftcontext — the comms tape plus mission/objective column pinned top-left. The
+    // column's full reach is content-driven; the reservation covers the corner band it always
+    // paints and leaves the left edge open below it so a marker still has somewhere to go.
+    const leftCol = reservedRects[3];
+    leftCol.x = 0;
+    leftCol.y = 0;
+    leftCol.width = safeInsetX + edge + CONTEXT_W_PX * edgeFit;
+    leftCol.height = edge + CONTEXT_H_PX * edgeFit;
 
-    const drive = reservedRects[4];
-    drive.width = compact ? 320 : 360;
-    drive.height = 32;
-    drive.x = (width - drive.width) * 0.5;
-    drive.y = height - (compact ? 58 : 64) - drive.height;
+    // [4] .sf-band-hud — the band chip, top-right at the same edge. One control row; over-
+    // reserving here wedges the right edge's marker band against the dock reservation below.
+    const band = reservedRects[4];
+    band.width = safeInsetX + edge + BAND_HUD_W_PX * edgeFit;
+    band.height = edge + BAND_HUD_H_PX * edgeFit;
+    band.x = width - band.width;
+    band.y = 0;
 
-    const massline = reservedRects[5];
-    massline.width = compact ? 360 : 420;
-    massline.height = 54;
-    massline.x = (width - massline.width) * 0.5;
-    massline.y = height - (compact ? 88 : 96) - massline.height;
+    // [5] Deliberately empty: nothing the live HUD paints reaches the bottom-centre marker
+    // band, and a phantom rect there wedges markers between itself and the Cluster or dock.
+    const free = reservedRects[5];
+    free.x = 0; free.y = 0; free.width = 0; free.height = 0;
   }
 
   function resetOccupancy() {

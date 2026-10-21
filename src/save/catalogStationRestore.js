@@ -28,7 +28,36 @@ function stationKey(entity) {
   return id;
 }
 
-export function createCatalogStationRestore(savedList) {
+// Identical physical snapshots do not prove identical earned lives. The stunt restore
+// owners rekey observations and bind one life per body, so even an equivalent station
+// alias must fail closed when distinct identities participate in retained evidence.
+const referenceFields = new Set(['id', 'actorId', 'sourceId', 'targetId', 'senderId', 'receiverId',
+  'speakerId', 'entityId', 'ownerId', 'projectileId', 'projectileOwnerId', 'surfaceId', 'aId', 'bId']);
+const referenceLists = new Set(['threatIds', 'boundaryIds', 'secondaryIds', 'witnessIds', 'knownWitnesses']);
+function hasAliasEvidenceCollision(data, aliases) {
+  const stack = [data?.stunts, data?.missions?.story, data?.story, data?.barkDirector];
+  const seen = new Set();
+  const referenced = new Set();
+  const note = value => {
+    const id = typeof value === 'string' && value.startsWith('entity:') ? value.slice(7) : String(value);
+    if (aliases.has(id)) referenced.add(id);
+  };
+  while (stack.length) {
+    const row = stack.pop();
+    if (!row || typeof row !== 'object' || seen.has(row)) continue;
+    seen.add(row);
+    for (const [key, value] of Object.entries(row)) {
+      if (key.startsWith('entity:')) note(key);
+      if (referenceFields.has(key) || key === 'identity' || key === 'speakerIdentity') note(value);
+      if (referenceLists.has(key) && Array.isArray(value)) value.forEach(note);
+      if (referenced.size > 1) return true;
+      if (value && typeof value === 'object') stack.push(value);
+    }
+  }
+  return false;
+}
+
+export function createCatalogStationRestore(savedList, data = null) {
   const entries = new Map();
   for (const saved of Array.isArray(savedList) ? savedList : []) {
     const key = stationKey(saved);
@@ -39,13 +68,16 @@ export function createCatalogStationRestore(savedList) {
     const existing = entries.get(key);
     // A leaked identical alias is recoverable. Conflicting snapshots cannot be silently
     // discarded: refuse before clearing the outgoing run and leave the source save intact.
-    if (existing && existing.signature !== signature) throw new Error('ambiguous_catalog_station:' + key);
+    if (existing) existing.aliases.add(String(saved.id));
+    if (existing && (existing.signature !== signature || hasAliasEvidenceCollision(data, existing.aliases))) {
+      throw new Error('ambiguous_catalog_station:' + key);
+    }
     if (!existing) {
       // A remote station can bypass materialization and use the generic persistent lane.
       // It still needs an undisplaced rest anchor before physics consumes its recoil row.
       const rest = catalogAnchorByStation.get(key) || saved.physicsBody?.anchorRecoil?.rest;
       const anchor = Number.isFinite(rest?.x) && Number.isFinite(rest?.z) ? { x: rest.x, z: rest.z } : null;
-      entries.set(key, { saved, signature, entity: null, generation: null, anchor });
+      entries.set(key, { saved, signature, aliases: new Set([String(saved.id)]), entity: null, generation: null, anchor });
     }
   }
   return entries;

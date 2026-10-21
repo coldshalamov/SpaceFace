@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "depart",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "depart",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "depart",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "depart",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "trade lane does not get quieter if you boost.",
+      "line": "Full burn changes the distance, not how trade lane sounds.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "depart",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 4,
       "motion": "depart",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "ARCHIVIST: Holding. This does not hurry.",
+      "line": "ARCHIVIST: Holding. The count finishes when it finishes.",
       "channel": "info",
       "next": "offer"
     },

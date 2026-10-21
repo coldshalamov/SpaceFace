@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "face",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "face",
       "next": "a1"
     },
@@ -88,21 +88,21 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "face",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 6,
       "motion": "face",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CLERK: Holding. This does not hurry.",
+      "line": "CLERK: We hold. Quiet engines, patient hands.",
       "channel": "info",
       "next": "offer"
     },

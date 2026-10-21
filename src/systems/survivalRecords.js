@@ -41,6 +41,7 @@ import {
   migrateSwarmLadder,
   swarmLadderStarTotal,
 } from '../data/swarmLadder.js';
+import { CIRCUIT_STAGE_COUNT, CIRCUIT_TOTAL_ROUNDS, circuitRecordIdentity, normalizeCircuitState } from './survivalCircuit.js';
 import {
   applyCrossoverResult,
   crossoverFactsFor,
@@ -1306,10 +1307,22 @@ export function recordRulesFor(result = {}, run = {}) {
   // An explicit practice flag wins over a provided mode: practice runs must never file into a
   // main-mode comparison even when the run's rules were stamped before the flag was read.
   if (result.practice === true || run.practice === true) rules.mode = 'practice';
+  // SWARM-08 B5 — a Circuit journey is its own record mode. It must never be compared against,
+  // or climb, the ordinary Swarm ladder: the route is a different contract.
+  else if (result.circuit != null || (run.telemetry && run.telemetry.circuit != null)
+    || provided.circuit != null) rules.mode = 'swarm_circuit';
   else rules.mode ??= result.ruleset ?? run.ruleset ?? run.kind ?? null;
   rules.arenaId ??= result.arenaId ?? run.arenaId ?? null;
   rules.mutators = normalizeMutators(provided.mutators ?? result.mutators ?? run.mutators);
-  rules.complete = RECORD_RULE_FIELDS.every(key => rules[key] != null);
+  const circuitSrc = result.circuit ?? run.telemetry?.circuit;
+  if (circuitSrc != null || provided.circuit != null) {
+    // The identity is a bounded value, never an appended/wrapped string. Stamp-only records
+    // (best lines, migrated records) keep the same ordered route on every normalization.
+    rules.circuit = circuitSrc != null
+      ? (normalizeCircuitState(circuitSrc) && circuitRecordIdentity(circuitSrc)) || 'invalid'
+      : circuitRecordIdentity(provided.circuit) || 'invalid';
+  }
+  rules.complete = rules.circuit !== 'invalid' && RECORD_RULE_FIELDS.every(key => rules[key] != null);
   return rules;
 }
 
@@ -1517,6 +1530,11 @@ export function compactRunResult(result, run, newly) {
   if (typeof (result && result.kitId) === 'string' && result.kitId) compact.kitId = result.kitId;
   if (Number.isInteger(result && result.stuntScore) && result.stuntScore >= 0) compact.stuntScore = result.stuntScore;
   if (Number.isInteger(result && result.physicsKills) && result.physicsKills >= 0) compact.physicsKills = result.physicsKills;
+  // SWARM-08 B5 — the journey rides the row that records it. The result snapshot wins; the live
+  // run's telemetry is the fallback for any caller that settles straight from the run.
+  const circuitSrc = result?.circuit ?? run?.telemetry?.circuit;
+  const circuit = normalizeCircuitState(circuitSrc);
+  if (circuit) compact.circuit = circuit;
   compact.recordRules = recordRulesFor(result || {}, run || {});
   Object.assign(compact, roundProgress({ ...run, ...result }));
   compact.bestLine = normalizeBestLine({ ...result?.bestLine, seed: compact.seed, recordRules: compact.recordRules });
@@ -1576,11 +1594,20 @@ function hangarBankInput(result, run) {
   const src = result && typeof result === 'object' ? result : {};
   const runSrc = run && typeof run === 'object' ? run : {};
   const outcome = typeof src.outcome === 'string' ? src.outcome : '';
+  // SWARM-08 B5 — a completed Circuit banks its earned purse in full on a win. The completion is
+  // read from the Circuit stamp itself, never assumed from a victory label. A death is still the
+  // ordinary half, because bankFraction checks death before it checks cashOut.
+  const circuitSrc = src.circuit ?? runSrc.telemetry?.circuit;
+  const circuit = normalizeCircuitState(circuitSrc);
+  const isCircuit = circuitSrc != null || src.recordRules?.circuit != null || runSrc.recordRules?.circuit != null;
+  const circuitComplete = !!(circuit && circuit.status === 'completed'
+    && circuit.clearedStages === CIRCUIT_STAGE_COUNT && circuit.wonAtWave === CIRCUIT_TOTAL_ROUNDS
+    && outcome === 'victory');
   return {
     credits: src.credits,
     // The results plate says "defeat". The hangar banks a death.
-    outcome: outcome === 'defeat' ? 'death' : outcome,
-    cashOut: src.cashOut === true,
+    outcome: outcome === 'defeat' ? 'death' : (isCircuit && outcome === 'extracted' ? 'aborted' : outcome),
+    cashOut: isCircuit ? circuitComplete : src.cashOut === true,
     wavesCleared: src.wavesCleared != null ? src.wavesCleared : src.wave,
     wave: src.wave != null ? src.wave : runSrc.wave,
     runId: src.runId != null ? src.runId : runSrc.runId,
@@ -1594,6 +1621,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   const bank = applyBank(loaded.hangar, hangarBankInput(result, run));
   const evaluated = evaluateUnlocks(loaded, result || {});
   const compact = compactRunResult(result || {}, run || {}, evaluated.newly);
+  // Invalid Circuit data remains a Circuit for isolation even though it cannot publish a
+  // valid journey summary. It must never silently regain ordinary ladder/challenge authority.
+  const isCircuit = compact.circuit != null || compact.recordRules.circuit != null;
   const line = compact.bestLine;
   delete compact.bestLine;
   if (line) compact.bestLineId = line.id;
@@ -1604,7 +1634,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   const recordedAt = nowIso();
   const tape = takeGhostTape();
   let ghosts = loaded.ghosts && loaded.ghosts.byHash ? loaded.ghosts : emptyGhosts();
-  if (tape && tape.frames.length) {
+  // SWARM-08 B5 — a Circuit ghost would replay without its route, so the tape is consumed but
+  // never published as a reproduction of this run.
+  if (!isCircuit && tape && tape.frames.length) {
     ghosts = upsertGhost(ghosts, tape, recordedAt, compact.recordRules);
     compact.ghostHash = ghosts.lastHash;
   }
@@ -1614,7 +1646,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   // SWARM-04: settle the run onto the curated ladder — stars per cleared zone, best wave,
   // and the checkpoint a zone boss unlocks. Only the arena's own seed counts: a Daily or a
   // typed Custom seed is honest play that simply does not pay stars (isSwarmLadderRun).
-  const ladderEval = isSwarmLadderRun(compact)
+  const ladderEval = !isCircuit && isSwarmLadderRun(compact)
     ? applySwarmLadderResult(loaded.ladder, {
       arenaId: compact.arenaId,
       startWave: Number.isInteger(compact.startWave) && compact.startWave > 0 ? compact.startWave : 1,
@@ -1631,10 +1663,13 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   // SWARM-06: the crossover ledger — a Swarm run whose cleared span covers an earn wave (the
   // Zone 3 boss for the Saucer) writes the proof here. Practice runs and non-swarm rulesets
   // earn nothing; already-earned ids never re-fire (applyCrossoverResult owns both laws).
-  const crossEval = applyCrossoverResult(loaded.crossover, {
-    ...crossoverFactsFor(compact),
-    at: recordedAt,
-  });
+  // SWARM-08 B5 — a Circuit journey proves nothing on the ordinary Swarm crossover ledger.
+  const crossEval = isCircuit
+    ? { crossover: loaded.crossover, earned: [] }
+    : applyCrossoverResult(loaded.crossover, {
+      ...crossoverFactsFor(compact),
+      at: recordedAt,
+    });
   if (crossEval.earned.length) {
     compact.crossoverEarned = crossEval.earned.map((entry) => entry.id);
   }
@@ -1650,7 +1685,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     compact.hangarBounty = bank.hangar.bounty;
   }
   if (threatIds.length) compact.threats = threatIds.slice();
-  const challengeEval = challengePayoutFor(compact, loaded.challenges, recordedAt);
+  const challengeEval = isCircuit
+    ? { paid: [], challenges: loaded.challenges }
+    : challengePayoutFor(compact, loaded.challenges, recordedAt);
   if (challengeEval.paid.length) {
     compact.challengeRewards = challengeEval.paid.map((row) => ({ ...row }));
     const total = challengeEval.paid.reduce((sum, row) => sum + row.bounty, 0);
@@ -1669,7 +1706,8 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
       lifetime: applyLifetime(records.lifetime, compact),
     },
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
-    daily: applyDailyBoard(loaded.daily, compact, recordedAt),
+    // SWARM-08 B5 — a Circuit route is not an ordinary Swarm daily row: the board stays as it was.
+    daily: isCircuit ? loaded.daily : applyDailyBoard(loaded.daily, compact, recordedAt),
     ghosts,
     bestLines: retainBestLine(loaded.bestLines, line),
     hangar: bank.hangar,

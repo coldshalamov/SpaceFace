@@ -129,7 +129,7 @@ export function effectiveActivityForAI(ai) {
  * hostility (scanner), the FOCUS override + formation break, and the doctrine's target tag.
  */
 const AUTHORITATIVE_ASSIGNMENT_PREFIXES = Object.freeze([
-  'ambush_snare:', 'security_response:', 'wanted_warrant:', 'heist:pressure:',
+  'ambush_snare:', 'security_response:', 'wanted_warrant:', 'heist:pressure:', 'npc_grudge:',
 ]);
 
 export function isAuthoritativeAssignmentReason(reason) {
@@ -254,7 +254,9 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
             ? 'wanted_warrant_target'
             : reason.startsWith('heist:pressure:')
               ? 'heist_pressure_target'
-              : 'security_response_target',
+              : reason.startsWith('npc_grudge:')
+                ? 'npc_grudge_target'
+                : 'security_response_target',
       }),
     });
   }

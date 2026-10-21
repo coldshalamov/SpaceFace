@@ -229,6 +229,13 @@ export function waveOpeningLine(wave, plan) {
     const actLine = swarm.act && typeof swarm.act.question === 'string'
       ? ` ${swarm.act.question}`
       : '';
+    // SWARM-08 B5 — the finite Circuit names its place in the journey and the rule that closes
+    // the round. A survive round must never promise cohort elimination: its clock is the door.
+    const circuit = swarm.circuit && typeof swarm.circuit === 'object' ? swarm.circuit : null;
+    const stageLine = circuit
+      ? `Stage ${circuit.stage}, round ${circuit.localRound}. `
+      : '';
+    const closing = circuit && circuit.kind === 'survive' ? 'Survive sixty seconds.' : 'Break the pack.';
     // The first-run lesson names what is on the field, not the held pack: one hull, one rock
     // worth throwing, and the pack still on its way.
     if (plan.openingLesson) {
@@ -239,10 +246,10 @@ export function waveOpeningLine(wave, plan) {
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${arrival} ${label}.${line}${pressure}${wall}${actLine} Break the pack.`;
+      return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${pressure}${wall}${actLine} ${closing}`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${arrival}${namecheck}${pressure}${wall}${actLine} Break the pack.`;
+    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${pressure}${wall}${actLine} ${closing}`;
   }
 
   let bodies = 0;

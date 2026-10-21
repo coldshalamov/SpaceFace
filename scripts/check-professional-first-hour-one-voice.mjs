@@ -317,8 +317,11 @@ check('inter-beat silence gate is ≥4s and preserves the authored thesis-first 
   assert.match(onboardingSrc, /SILENCE_S\s*=\s*4/, 'SILENCE_S must be 4 seconds');
   assert.match(onboardingSrc, /_tryAdvanceBeat/, 'beat advance engine must exist');
   assert.match(onboardingSrc,
-    /now - Math\.max\(prevDoneAt, this\._lastTextAtS\) < SILENCE_S/,
-    'advance must require DONE + silence since last text');
+    /if \(prevDoneAt == null\) return/,
+    'advance must require the previous beat DONE');
+  assert.match(onboardingSrc,
+    /now - gateFromS < SILENCE_S/,
+    'advance must require ≥SILENCE_S of text silence since the gate baseline');
   // The full first-hour table is authored as literals in onboarding.js (thesis-first route,
   // 2026-09-18): the tether attach leads, raid + claimed carry the thesis spine.
   const beatsBlock = onboardingSrc.match(/const BEATS = \[([\s\S]*?)\n\];/);

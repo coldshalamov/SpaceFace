@@ -416,12 +416,28 @@
     }
   ],
   "assetId": "sf.render.pallet-jack-lod1",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-core.collision",
+      "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-core",
+      "reference": "COLLISION_PALLET_JACK_CORE"
+    },
+    {
+      "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-port.collision",
+      "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-port",
+      "reference": "COLLISION_PALLET_JACK_PORT"
+    },
+    {
+      "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-starboard.collision",
+      "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-starboard",
+      "reference": "COLLISION_PALLET_JACK_STARBOARD"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4cc6b1fd7e6e70ced7505b3ffed40cbd712d9f009f23b2ce4367a5206c463607",
+  "contentHash": "ebe7e6ca88a43824a40a221a33d5c68dbd91803615458f4714aa5f89efff02b4",
   "dynamicGroups": [
     {
       "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-armor.dynamic",
@@ -469,7 +485,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_PALLET_JACK_CORE",
       "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-core",
       "primitiveIndex": 0,
@@ -494,7 +510,7 @@
       "indexCount": 768,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_PALLET_JACK_PORT",
       "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-port",
       "primitiveIndex": 0,
@@ -519,7 +535,7 @@
       "indexCount": 768,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_PALLET_JACK_STARBOARD",
       "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-starboard",
       "primitiveIndex": 0,
@@ -1333,7 +1349,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_PALLET_JACK_CORE",
       "nodeName": "COLLISION_PALLET_JACK_CORE",
       "nodePath": [
@@ -1382,7 +1398,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_PALLET_JACK_PORT",
       "nodeName": "COLLISION_PALLET_JACK_PORT",
       "nodePath": [
@@ -1431,7 +1447,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_PALLET_JACK_STARBOARD",
       "nodeName": "COLLISION_PALLET_JACK_STARBOARD",
       "nodePath": [
@@ -3181,7 +3197,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "28b29b9304ad87c8eff7831930fbb508f02bd15d524739028e1bf22579cf2a83"
+      "sha256": "016d2bc9d6e62660b535ad8e014e3a82f7cddddda5330f36a1c4c5cd24187458"
     },
     "sourceGlb": {
       "bytes": 437108,
@@ -3189,8 +3205,8 @@
       "uri": "pallet_jack_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -4600,7 +4616,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pallet_jack_lod1.glb"
   },
-  "runtimeHash": "d83b42bc5912f11f189f515395cb7a648090fc79ae113ecef957b4292018e292",
+  "runtimeHash": "1a198e3347f96a6193609dc71cdc0a38e6bdd816c2947043ba2930aded77a998",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

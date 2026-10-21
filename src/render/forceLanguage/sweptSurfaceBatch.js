@@ -353,7 +353,7 @@ vec4 fieldVolume(){
   float facing=abs(dot(normal,normalize(cameraPosition-vSurfaceWorld)));
   float sideLight=.30+.70*abs(dot(normal,normalize(vec3(-.45,.8,.35))));
   vec3 pigment=mix(vTint.rgb*vec3(.12,.20,.32),vTint.rgb,.25+.75*mass);
-  vec3 body=pigment*sideLight*(1.0-.85*cavity);
+  vec3 body=pigment*sideLight*(1.0-.70*cavity);
   float contact=vResponse.y*(.50+.50*crest);
   hot+=contact*(.8+shoulder)+vResponse.x*fine.y*crest*.16;
   float fracture=1.0;
@@ -368,14 +368,12 @@ vec4 fieldVolume(){
     hot*=1.0-.87*vCycle.y;body*=1.0-.40*vCycle.y;
   }
   float density=1.0-exp(-thickness*(.85+.35*(1.0-facing)));
-  // Pigment stays translucent: the solid slab at the old 0.90 cap is what read as a flat
-  // blanket over large fields. Radiance, not coverage, carries the effect's brightness.
-  density=min(.70,density+min(.55,hot*.42));
+  density=min(.90,density+min(.70,hot*.42));
   // Saturated transported material with white restricted to tiny hot junctions. A large white
   // mix clips to grey aluminium in the non-bloom path and bleaches every family in HDR.
   vec3 emission=vTint.rgb*min(3.0,hot*3.2)*heat*uFlash;
-  emission+=vec3(1.0,.95,.86)*(pow(crest,5.0)*pow(clamp(shoulder*.6,0.0,1.0),3.0)*1.15+contact*.65)*heat*uFlash;
-  vec3 color=body*.28+emission;
+  emission+=vec3(1.0,.95,.86)*(pow(crest,5.0)*pow(clamp(shoulder*.6,0.0,1.0),3.0)*.85+contact*.65)*heat*uFlash;
+  vec3 color=body*.35+emission;
   float alpha=edge*tips*reveal*vTint.a*vFront*fracture*density;
   return vec4(color,alpha);
 }
@@ -422,7 +420,7 @@ void main(){
   float shadowPool=1.0-smoothstep(0.20,0.55,groove);
   vec3 pigment=mix(vTint.rgb,vTint.rgb*vec3(0.30,0.24,0.68),shadowPool*0.78);
   pigment=mix(pigment*vec3(0.46,0.50,0.60)+vec3(0.030,0.034,0.042),pigment,clamp(heat,0.0,1.0));
-  vec3 emission=vTint.rgb*hot*(boundary?2.35:1.9)+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*(boundary?0.55:0.50);
+  vec3 emission=vTint.rgb*hot*(boundary?1.5:1.9)+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*(boundary?0.40:0.50);
   float coverage=boundary?0.36+0.5*max(fold,rim):0.57+0.43*max(fold,rim);
   vec3 color=pigment*body+emission;
   float alpha=edge*tips*reveal*vTint.a*vFront*coverage;

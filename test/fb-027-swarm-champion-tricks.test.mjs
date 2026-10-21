@@ -96,7 +96,6 @@ function named(h, event) {
 
 test('every compositional rotation row names a shipped trick; capital rows name none', () => {
   const tricked = {
-    iron_maw: 'pd-curtain',
     corsair_wing: 'phase-jammer',
     the_anvil: 'shield-turtle',
     quiet_choir: 'sensor-ghost',
@@ -111,10 +110,14 @@ test('every compositional rotation row names a shipped trick; capital rows name 
     assert.ok(hunterTrickById(boss.trickId), `${boss.trickId} is a real trick id`);
   }
   // The plan carries the row's trick id so the wave owner can stamp it on each champion body.
-  for (const [wave, trickId] of [[10, 'pd-curtain'], [40, 'phase-jammer'], [50, 'shield-turtle'], [60, 'sensor-ghost']]) {
+  for (const [wave, trickId] of [[40, 'phase-jammer'], [50, 'shield-turtle'], [60, 'sensor-ghost']]) {
     const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
     assert.equal(plan.swarm.bossTrickId, trickId, `wave ${wave}`);
   }
+  // RC-02 — wave 10 is a capital row now: it fields the authored Iron Maw score, no trick.
+  const w10 = planWave({ seed: SEED, arenaId: ARENA, wave: 10, ruleset: SWARM_RULESET });
+  assert.equal(w10.swarm.bossTrickId, null, 'a capital row never carries a hunter trick');
+  assert.equal(w10.swarm.bossScoreId, 'capital_boss_hulk');
 });
 
 test('a corsair wing lands three hunters on the crucible contract and all telegraph the jam', () => {

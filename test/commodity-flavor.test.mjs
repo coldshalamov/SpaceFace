@@ -7,13 +7,13 @@ const PLACE_FACTION_RE = /\b(ceres|helios|vael|meridian|concord|reach|luna|kuipe
 
 let failures = 0;
 
-if (COMMODITIES.length !== 43) {
-  console.error(`expected 43 commodities, got ${COMMODITIES.length}`);
+if (COMMODITIES.length !== 66) {
+  console.error(`expected 66 commodities, got ${COMMODITIES.length}`);
   failures++;
 }
 
-if (Object.keys(COMMODITY_FLAVOR).length !== 43) {
-  console.error(`expected 43 flavor keys, got ${Object.keys(COMMODITY_FLAVOR).length}`);
+if (Object.keys(COMMODITY_FLAVOR).length !== 66) {
+  console.error(`expected 66 flavor keys, got ${Object.keys(COMMODITY_FLAVOR).length}`);
   failures++;
 }
 
@@ -63,5 +63,5 @@ if (failures) {
   process.exit(1);
 }
 
-console.log('commodity-flavor.test: ok (43 commodities, flavor merged)');
+console.log('commodity-flavor.test: ok (66 commodities, flavor merged)');
 process.exit(0);

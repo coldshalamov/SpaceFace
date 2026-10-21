@@ -24,6 +24,68 @@ import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { addEnvironmentHeat } from '../systems/environmentMaterials.js';
 import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
 import { swarmPilotHasActed } from '../systems/swarmSafety.js';
+import { crossfireDisciplineFor } from '../ai/temperament.js';
+
+/**
+ * AL-FIGHT-1 / AL-HF-02: a reckless NPC's weapon round (direct bolt or splash) on a same-team
+ * non-lawful NPC ship is real damage. Everything else keeps the friendly-fire law.
+ */
+export function npcCrossfireAdmits(state, attacker, target, origin) {
+  if (!state || !attacker || !target || attacker.id === target.id) return false;
+  if (attacker.id === state.playerId || target.id === state.playerId) return false;
+  if (target.type !== 'ship') return false;
+  const kind = origin && origin.kind;
+  if (kind !== 'weapon' && kind !== 'legacy' && kind !== 'mine') return false;
+  const tai = target.data && target.data.ai;
+  if (!tai || tai.lawful === true) return false;
+  if (target.team === 0 || (target.data && target.data.runCohort != null)) return false;
+  if (isProtectedCivilianShip(target)) return false;
+  const seed = (state.meta && Number(state.meta.seed)) || 1;
+  return crossfireDisciplineFor(attacker, seed) === 'reckless';
+}
+
+const PROTECTED_CIVILIAN_ROLE_WORDS = Object.freeze([
+  'hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader',
+]);
+
+/**
+ * The adjudication's protected-civilian definition, mirrored read-only so the two friendly-fire
+ * admissions below can never route a round into traffic the law protects: a team-2 hull, the
+ * authored Ceres ambush hauler, a convoy-context hull, or a role-tagged civilian.
+ */
+function isProtectedCivilianShip(target) {
+  if (!target || target.type !== 'ship') return false;
+  if (target.team === 2) return true;
+  const data = target.data || {};
+  if (data.activityActorSlotId === 'ceres_ambush_loaded_hauler') return true;
+  const ai = data.ai || {};
+  if (ai.spawnContext === 'convoy_civilian') return true;
+  const role = String(data.trafficRole || data.role || ai.role || ai.archetype || '').toLowerCase();
+  return PROTECTED_CIVILIAN_ROLE_WORDS.some((word) => role.includes(word));
+}
+
+/**
+ * AL-FIGHT-1 / AL-HF-01: a hull that explicitly holds an NPC grudge on a same-team ship may
+ * return fire even when its own fire discipline is not reckless. The grudge record written by
+ * lawSecurity is the authorization, so a disciplined victim's return shot is real damage.
+ * Lawful, player-side, civilian, Swarm-cohort and non-weapon packets keep the friendly-fire law.
+ */
+export function npcGrudgeAdmits(state, attacker, target, origin) {
+  if (!state || !attacker || !target || attacker.id === target.id) return false;
+  if (attacker.id === state.playerId || target.id === state.playerId) return false;
+  if (target.type !== 'ship') return false;
+  const kind = origin && origin.kind;
+  if (kind !== 'weapon' && kind !== 'legacy') return false;
+  const attackerAi = attacker.data && attacker.data.ai;
+  const grudge = attackerAi && attackerAi.npcGrudge;
+  if (!grudge || grudge.targetId !== target.id || attackerAi.lawful === true) return false;
+  if (attacker.team === 0 || attacker.team === 2 || (attacker.data && attacker.data.runCohort != null)) return false;
+  const tai = target.data && target.data.ai;
+  if (!tai || tai.lawful === true) return false;
+  if (target.team === 0 || (target.data && target.data.runCohort != null)) return false;
+  if (isProtectedCivilianShip(target)) return false;
+  return true;
+}
 
 /** Player id 0 is a real entity id. A truthy check treated that hull as nobody. */
 export function playerIsDamageTarget(state, target) {
@@ -122,7 +184,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     const attackerIsPlayer = state != null && attacker != null && attacker.id === state.playerId;
     const targetIsOwnDevice = (target.ownerId != null && attacker != null && target.ownerId === attacker.id)
       || target.factionId === 'faction_player';
-    if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team && !(attackerIsPlayer && !targetIsOwnDevice)) {
+    if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team && !(attackerIsPlayer && !targetIsOwnDevice) && !npcCrossfireAdmits(state, attacker, target, origin) && !npcGrudgeAdmits(state, attacker, target, origin)) {
       return rejected('friendly_fire', input, packet);
     }
     if (!(rawTotal > 0) && !(packet.heat > 0) && !packet.statuses.length && !hasImpulse(packet.impulse)) return rejected('empty_packet', input, packet);

@@ -357,6 +357,126 @@ function retentionGeometry() {
   });
 }
 
+// Shared vertex source for the flat ring shaders: vP is the post-bake geometry
+// plane (x, z). The meshes carry position + uniform scale only — never a
+// rotation — so vP's angle IS the world angle atan2(z, x) that the clump spin
+// advances at +_swirlDir, and the fragment chirality math needs no re-mapping.
+const RING_VERT = `
+varying vec2 vP;
+void main() { vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+`;
+
+// Suck/basin halo: a legible rim plus unequal angular arcs and a travelling
+// swirl, both turning with the suck lanes' chirality — the ring reads as the
+// moving energy boundary the lash promises, not a hairline that differs from
+// its sibling only by tint. Geometry is coverage only: the shader's rim sits
+// inside the band, fwidth-filtered, so no tessellation edge can silhouette.
+const HALO_FRAG = `
+uniform vec3 uCol;
+uniform float uOp;     // mirror of material.opacity — a ShaderMaterial ignores it
+uniform float uTime;
+uniform float uFlow;   // signed angular rate: + advances the world angle the mass
+                       // tumbles along at _swirlDir = +1; calm (0) freezes it
+varying vec2 vP;
+void main() {
+  float r = length(vP);
+  // One pixel in radius units, off the position gradient, clamped to the
+  // coverage margin (see SPOT_FRAG) so the rim's filtered support can never
+  // reach a geometry edge at any screen size — the rim keeps one readable
+  // weight from a pebble's well to a capped moon's (grip-wave pattern;
+  // selectionSigil.js carries the in-repo scale-invariance argument).
+  float px = min(fwidth(r) * 0.75 + 1e-5, 0.011);
+  // Stable legible rim at ~0.975 of the mesh scale — the suck radius itself.
+  float rim = 1.0 - smoothstep(0.014 - px, 0.014 + px, abs(r - 0.975));
+  // Unequal angular arcs: rigid integer-fold lobes — Re((x+iy)^3) and
+  // Re((x+iy)^5) of the frame rotated by th. No per-fragment atan in the lobe
+  // math, the arcs keep one shape while they turn, and the sum stays positive
+  // so the full circumference always draws.
+  float th = uTime * uFlow;
+  float c = cos(th), s = sin(th);
+  vec2 q = vec2(c * vP.x + s * vP.y, -s * vP.x + c * vP.y);
+  vec2 q2 = vec2(q.x * q.x - q.y * q.y, 2.0 * q.x * q.y);
+  vec2 q3 = vec2(q2.x * q.x - q2.y * q.y, q2.x * q.y + q2.y * q.x);
+  float arcs = 0.72 + 0.30 * q3.x + 0.16 * (q3.x * q2.x - q3.y * q2.y);
+  // Travelling swirl: a 3-fold wave sheared into spiral arms by the radial
+  // term; the sign fold keeps the arms' handedness matched to the travel
+  // direction uFlow carries. Both this and the arc rotation freeze at uFlow 0.
+  float sgn = uFlow >= 0.0 ? 1.0 : -1.0;
+  float swirl = 0.5 + 0.5 * sin(atan(vP.y, vP.x) * 3.0 - th * 3.0 + 9.0 * r * sgn);
+  gl_FragColor = vec4(uCol, uOp * rim * arcs * (0.82 + 0.18 * swirl));
+}
+`;
+
+// Basin pull glow on a dragged body: the marker rim (replacing the visibly
+// polygonal 24-segment annulus with a filtered one) plus one short tapered
+// streak aimed at the maw — direction on the victim without moving the marker
+// the body anchor owns. The streak dies, filtered, AT the rim (never at a
+// coverage edge) and fades out by r~0.56, so this stays rim + streak and never
+// becomes a filled disc. The mesh's rotation.y carries the aim: in mesh-local
+// space the streak is fixed along +x.
+const SPOT_FRAG = `
+uniform vec3 uCol;
+uniform float uOp;     // mirror of material.opacity
+varying vec2 vP;
+void main() {
+  float r = length(vP);
+  // Filter width, clamped to the coverage margin: fwidth grows as the marker
+  // shrinks on screen, and past the margin the geometry edge would become the
+  // visible cutoff. The cap keeps the rim's support strictly inside the band —
+  // below it the rim hardens to exactly the weight the old unfiltered
+  // geometry already showed at that size.
+  float px = min(fwidth(r) * 0.75 + 1e-5, 0.018);
+  float rim = 1.0 - smoothstep(0.022 - px, 0.022 + px, abs(r - 0.94));
+  // Streak along local +x: strongest at the rim, widening as it dims inward
+  // (0 by r~0.56); the second factor stops it dead at the rim itself.
+  float lat = abs(vP.y);
+  float axial = vP.x;
+  float t = clamp(1.0 - (0.94 - axial) * 2.6, 0.0, 1.0)
+    * (1.0 - smoothstep(0.94 - px, 0.94 + px, axial));
+  float w = 0.05 * (1.3 - t);
+  float streak = (1.0 - smoothstep(w - px, w + px, lat)) * t * t * 0.5;
+  gl_FragColor = vec4(uCol, uOp * min(rim + streak, 1.2));
+}
+`;
+
+// Coverage-only geometry for a pull glow: the rim band (annulus 0.90-1.03)
+// plus one narrow wedge along local +x (r 0.42-0.90, +-0.16 rad) for the
+// streak — ~1.2x the hairline annulus footprint, not a filled disc. Built
+// once and shared by every pool slot; the mesh's own rotation.y aims the
+// wedge at the maw each frame, so coverage never depends on the aim direction.
+// The wedge STOPS at the band's inner edge: overlapping triangles inside one
+// additive draw double-blend, which would brighten the rim inside the sector.
+function spotCoverageGeometry() {
+  const pos = [];
+  const idx = [];
+  const BAND_SEG = 48;
+  for (let i = 0; i <= BAND_SEG; i++) {
+    const a = (i / BAND_SEG) * Math.PI * 2;
+    const c = Math.cos(a), s = Math.sin(a);
+    pos.push(c * 0.9, s * 0.9, 0, c * 1.03, s * 1.03, 0);
+  }
+  for (let i = 0; i < BAND_SEG; i++) {
+    const b = i * 2;
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  const wedgeBase = pos.length / 3;
+  const WEDGE_SEG = 3, HALF = 0.16;
+  for (let i = 0; i <= WEDGE_SEG; i++) {
+    const a = -HALF + (i / WEDGE_SEG) * HALF * 2;
+    const c = Math.cos(a), s = Math.sin(a);
+    pos.push(c * 0.42, s * 0.42, 0, c * 0.9, s * 0.9, 0);
+  }
+  for (let i = 0; i < WEDGE_SEG; i++) {
+    const b = wedgeBase + i * 2;
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.rotateX(-Math.PI / 2);
+  return geo;
+}
+
 export class GyreSnarePresentation {
   constructor(scene, { toLocal = null } = {}) {
     this.scene = scene;
@@ -670,11 +790,20 @@ export class GyreSnarePresentation {
 
     // Gravity halo: a faint flat ring marking the clump's suck radius so the
     // held ball reads as the gravity source it is, not just a circling rock.
-    const haloGeo = new THREE.RingGeometry(0.96, 1.0, 72);
+    // Shader ring (grip-wave pattern above): the band is coverage only — rim,
+    // unequal arcs and swirl are drawn, filtered, inside it. Same one geometry,
+    // one mesh, one draw per ring as the annulus it replaces.
+    const haloGeo = new THREE.RingGeometry(0.95, 1.01, 72);
     haloGeo.rotateX(-Math.PI / 2);
-    this._haloMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(glass), transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    this._haloMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uCol: { value: new THREE.Color(glass) },
+        uOp: { value: 0 },
+        uTime: { value: 0 },
+        uFlow: { value: 0 }, // signed rate — _swirlDir chirality, calm-frozen
+      },
+      vertexShader: RING_VERT, fragmentShader: HALO_FRAG,
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     this._halo = new THREE.Mesh(haloGeo, this._haloMat);
     this._halo.visible = false;
@@ -684,12 +813,18 @@ export class GyreSnarePresentation {
     // Basin edge during HOLD: the pull lane keeps dragging bodies through the
     // cone while the suck annulus owns the shared halo around the clump — a
     // second, fainter ring keeps the two-zone gravity story drawn.
-    this._basinHaloMat = new THREE.MeshBasicMaterial({
-      // A hair toward the pale-blue maw tint: during HOLD the suck halo beside
-      // it is the identical glass color and the two wells otherwise differ
-      // only in opacity — the basin edge reads as its own zone at a glance.
-      color: new THREE.Color(glass).lerp(this._colMaw, 0.2), transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    this._basinHaloMat = new THREE.ShaderMaterial({
+      uniforms: {
+        // A hair toward the pale-blue maw tint: during HOLD the suck halo beside
+        // it is the identical glass color and the two wells otherwise differ
+        // only in opacity — the basin edge reads as its own zone at a glance.
+        uCol: { value: new THREE.Color(glass).lerp(this._colMaw, 0.2) },
+        uOp: { value: 0 },
+        uTime: { value: 0 },
+        uFlow: { value: 0 },
+      },
+      vertexShader: RING_VERT, fragmentShader: HALO_FRAG,
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     this._basinHalo = new THREE.Mesh(haloGeo, this._basinHaloMat);
     this._basinHalo.visible = false;
@@ -699,13 +834,20 @@ export class GyreSnarePresentation {
     // Basin pull glows: a faint flat brighten on each body the cone is actually
     // dragging this tick — "increases gravity" reads on the victim itself, not
     // just on the funnel motes. One pool slot per sim-published basinSpot.
+    // Shader rim + maw-ward streak: the 24-segment annulus read as a spinning
+    // polygon; the shader's rim is analytic and the streak adds the pull's
+    // direction. Coverage is band + wedge (see spotCoverageGeometry) — the
+    // mesh's rotation.y (below) aims the wedge, so the shader needs no aim.
     this._basinGlows = [];
-    const spotGeo = new THREE.RingGeometry(0.84, 1, 24);
-    spotGeo.rotateX(-Math.PI / 2);
+    const spotGeo = spotCoverageGeometry();
     for (let i = 0; i < GYRE_SNARE.basinSpotMax; i++) {
-      const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(glass), transparent: true, opacity: 0,
-        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          uCol: { value: new THREE.Color(glass) },
+          uOp: { value: 0 },
+        },
+        vertexShader: RING_VERT, fragmentShader: SPOT_FRAG,
+        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
       });
       const g = new THREE.Mesh(spotGeo, mat);
       g.visible = false;
@@ -714,6 +856,7 @@ export class GyreSnarePresentation {
       this._basinGlows.push(g);
     }
     this._spotPt = { x: 0, z: 0 };
+    this._spotAimPt = { x: 0, z: 0 }; // maw re-projection scratch — the streak's aim
 
     this._pt = { x: 0, z: 0 };
     this._mawPt = { x: 0, z: 0 };
@@ -1455,6 +1598,12 @@ export class GyreSnarePresentation {
           * (1 + (phase === 'beaming' ? 0.035 : 0.02) * Math.sin(this.time * 1.7 + 1.3) * calm));
         const liveA = phase === 'beaming' ? 0.06 * wakeEase : 0.03;
         this._basinHaloMat.opacity = liveA * flashCalm * (this._fuseDim || 1) * (phase === 'launching' ? windFade : 1);
+        // The shader ignores material.opacity — mirror the alpha beside the
+        // legacy write (the close-ramp ledger reads the property), plus the
+        // clock and the suck lanes' chirality (calm-frozen), every visible frame.
+        this._basinHaloMat.uniforms.uOp.value = this._basinHaloMat.opacity;
+        this._basinHaloMat.uniforms.uTime.value = this.time;
+        this._basinHaloMat.uniforms.uFlow.value = 0.55 * (this._swirlDir || 1) * calm;
         this._basinHalo.visible = true;
       } else if (this._basinHalo.visible) {
         this._basinHalo.visible = false;
@@ -1555,6 +1704,10 @@ export class GyreSnarePresentation {
         this._gripMat.uniforms.uOp.value = sd.grip * kk * flashCalm;
         this._haloMat.opacity = sd.halo * kk * flashCalm;
         this._basinHaloMat.opacity = sd.basinHalo * kk * flashCalm;
+        // Mirror the ramped alpha into the shaders (clock stays frozen through
+        // the close, like the grip wave's).
+        this._haloMat.uniforms.uOp.value = this._haloMat.opacity;
+        this._basinHaloMat.uniforms.uOp.value = this._basinHaloMat.opacity;
         this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp
         this._spiral.visible = true; // static scatter under reduced-motion too
         if (k <= 0) {
@@ -1679,6 +1832,7 @@ export class GyreSnarePresentation {
       const g = this._basinGlows[i];
       const s = spots && i < spots.length ? spots[i] : null;
       if (!this.toLocal) { g.visible = false; continue; }
+      const su = g.material.uniforms; // shader mirrors — uOp rides every opacity write below
       if (!s) {
         // A polite/strained close still fades the victim glows with every
         // sibling: the publish went empty on _drop, so the last live k + parked
@@ -1687,6 +1841,7 @@ export class GyreSnarePresentation {
         if (this._closing && g.userData.spotK != null) {
           const kk = this._closeK || 0;
           g.material.opacity = (0.06 + 0.14 * g.userData.spotK) * flashCalm * kk * this._wakeEase * (this._fuseDim || 1);
+          su.uOp.value = g.material.opacity;
           g.visible = kk > 0.02;
           continue;
         }
@@ -1696,6 +1851,7 @@ export class GyreSnarePresentation {
         if (phase === 'launching' && g.userData.spotK != null) {
           const fade0 = 1 - clamp01(finite(mirror.launchWindup01));
           g.material.opacity = (0.06 + 0.14 * g.userData.spotK) * flashCalm * this._wakeEase * (this._fuseDim || 1) * fade0;
+          su.uOp.value = g.material.opacity;
           g.visible = fade0 > 0.02;
           continue;
         }
@@ -1704,6 +1860,14 @@ export class GyreSnarePresentation {
       g.userData.spotK = finite(s.k, 0.5);
       const lp = this.toLocal(finite(s.x), finite(s.z), this._spotPt);
       g.position.set(lp.x, 0.35, lp.z);
+      // Aim the streak's wedge at the maw by rotating the MESH: the wedge is
+      // fixed along local +x, and rotation about the marker's own center moves
+      // nothing — the body anchor stays authoritative. R_y(θ) maps local +x to
+      // world (cosθ, −sinθ), so θ = atan2(−az, ax).
+      const aimL = this.toLocal(finite(mirror.maw && mirror.maw.x), finite(mirror.maw && mirror.maw.z), this._spotAimPt);
+      const ax = aimL.x - lp.x, az = aimL.z - lp.z;
+      const al = Math.hypot(ax, az) || 1;
+      g.rotation.y = Math.atan2(-az / al, ax / al);
       g.scale.setScalar(Math.max(1.5, finite(s.r, 3) * 2.6)
         * (1 + 0.08 * Math.sin(this.time * 4 + i * 1.7) * calm));
       // Opacity rides the pull strength the sim published (k = lane accel share):
@@ -1716,6 +1880,7 @@ export class GyreSnarePresentation {
       // so the residue dies with the throw instead of popping at the flip.
       const spotFade = phase === 'launching' ? 1 - clamp01(finite(mirror.launchWindup01)) : 1;
       g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * this._wakeEase * (this._fuseDim || 1) * spotFade;
+      su.uOp.value = g.material.opacity;
       // Courtesy-tugged loot (abs:false) stays in the cool maw channel — an
       // uneatable pickup dragged into the basin must not warm toward rim-hot
       // like an edible about to be grabbed (the glow lane's TOWING vs IN NET).
@@ -1726,19 +1891,20 @@ export class GyreSnarePresentation {
         // into the maw — the beam's only defensive payoff) reads warn-lean on
         // the body; a plain towed pickup keeps the cool maw channel.
         const refuse = s.heavy === true || s.hostile === true;
-        g.material.color.copy(this._colGlass).lerp(
+        su.uCol.value.copy(this._colGlass).lerp(
           refuse ? this._colWarn : this._colMaw,
           Math.min(1, finite(s.k, 0.5) * (refuse ? 0.55 : 0.8)));
       } else {
-        g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
+        su.uCol.value.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       }
       // The strongest ABSORBABLE puller burns hottest — the rock about to cross
       // snagRadius. A courtesy-tugged pickup/mine/projectile can top the k sort
       // but can never be caught; upgrading it would promise a grab that can't
       // happen (plain k-lerp for everyone when nothing edible is inside).
       if (i === hotIdx) {
-        g.material.color.lerp(this._colHot, 0.4);
+        su.uCol.value.lerp(this._colHot, 0.4);
         g.material.opacity = Math.min(0.3, g.material.opacity * 1.6);
+        su.uOp.value = g.material.opacity;
       }
       // Below ~2% the burst-collapse is invisible — same gate the basin halo uses,
       // or the burst ticks draw up to 8 zero-alpha spots a frame.
@@ -2068,6 +2234,11 @@ export class GyreSnarePresentation {
         // Same ~0.2 s hold-edge bloom as the spoke — the ~50-129 wu annulus was
         // the only element that teleported onto a fresh snag at full alpha.
         this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * (this._fuseDim || 1) * Math.min(1, capFade * 1.6) * suckFade * Math.min(1, (this._holdT || 0) / 0.2);
+        // Mirror + clock + chirality beside the legacy alpha — same mirror rule
+        // as the basin ring above.
+        this._haloMat.uniforms.uOp.value = this._haloMat.opacity;
+        this._haloMat.uniforms.uTime.value = this.time;
+        this._haloMat.uniforms.uFlow.value = 0.55 * (this._swirlDir || 1) * calm;
         this._halo.visible = true;
       } else if (!this._closing && this._halo.visible) {
         this._halo.visible = false;

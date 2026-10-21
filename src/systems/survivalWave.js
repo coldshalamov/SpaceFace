@@ -193,7 +193,10 @@ export const survivalWave = {
     // Across cleanup / introduction / auto-draft the clock is frozen, but an empty board is
     // still an emergency. Use the carried cohort and the current plan through the same
     // materializer so a sixty-second boundary cannot disable the refill.
-    if (this._swarm && !this._swarm.killTarget && this._plan && TRANSITIONAL_PHASES.has(run.phase)) {
+    // SWARM-08 B5 — once a timed round has CLEARED, the refill stops: its survivors carry into
+    // the next round and the armory between rounds must not quietly add bodies to them.
+    if (this._swarm && !this._swarm.killTarget && this._plan && !this._cleared
+      && TRANSITIONAL_PHASES.has(run.phase)) {
       this._reinforceSwarm(run, { emergencyOnly: true });
       return;
     }
@@ -228,10 +231,20 @@ export const survivalWave = {
     // A swarm wave INHERITS the survivors of the last one. They were never chased down, they still
     // hold their budget slots, and their deaths still count — so the new wave opens under the
     // pressure the old one left behind instead of in a room that was briefly empty.
-    const carried = swarm && !swarm.killTarget && this._swarm ? this._cohort : null;
-    const carriedBosses = swarm && !swarm.killTarget && this._swarm ? this._bossIds : null;
+    //
+    // SWARM-08 B5 — a Circuit survive round is timed (no quota). Its survivors must also carry
+    // INTO the following finite cohort round, which is the case a plain swarm never hit: carry
+    // when the incoming round has no quota (as before) OR when the OUTGOING round had none.
+    const incomingQuota = Number.isInteger(swarm && swarm.killTarget) && swarm.killTarget > 0;
+    const outgoingTimed = !!this._swarm && !(Number.isInteger(this._swarm.killTarget) && this._swarm.killTarget > 0);
+    const canCarry = !!swarm && !!this._swarm && (incomingQuota ? outgoingTimed : true);
+    const carried = canCarry ? this._cohort : null;
+    const carriedBosses = canCarry ? this._bossIds : null;
     this._resetWave();
     if (carried && carried.size > 0) this._cohort = carried;
+    // Carried members are already admitted and occupied when the new round starts: they count
+    // toward admission accounting exactly once, and their deaths still resolve the round.
+    this._carriedAdmitted = carried ? carried.size : 0;
     // A boss that survived its own wave is still a boss. Carrying the ids keeps a later wave from
     // treating it as ordinary chaff if it is somehow still alive.
     if (carriedBosses && carriedBosses.size > 0) this._bossIds = carriedBosses;
@@ -258,8 +271,12 @@ export const survivalWave = {
         ? swarm.rewardReferenceKills
         : (Number.isInteger(swarm.quota) && swarm.quota > 0 ? swarm.quota : 10);
       this._rewardReferenceKills = reference;
-      this._plannedBodies = Number.isInteger(swarm.killTarget) && swarm.killTarget > 0
-        ? swarm.killTarget : reference;
+      // SWARM-08 B5 — carried survivors are part of this round's planned and admitted bodies.
+      // The quota the stream owes is still exactly `killTarget` NEW arrivals; adding the carried
+      // count to BOTH sides cancels out in the stream math while keeping progress honest.
+      this._plannedBodies = (Number.isInteger(swarm.killTarget) && swarm.killTarget > 0
+        ? swarm.killTarget : reference) + (Number.isInteger(swarm.killTarget) && swarm.killTarget > 0
+        ? this._carriedAdmitted : 0);
       this._concurrent = Number.isInteger(swarm.concurrent) && swarm.concurrent > 0
         ? swarm.concurrent
         : 8;
@@ -295,7 +312,9 @@ export const survivalWave = {
     if (this._plan == null || this._wave !== wave || this._started) return;
     this._started = true;
     this._active = true;
-    this._admittedTotal = 0;
+    // Carried survivors were admitted into the room before this round began; count them once so
+    // a cohort round cannot clear while a carried body is still flying.
+    this._admittedTotal = this._carriedAdmitted > 0 ? this._carriedAdmitted : 0;
     this._requestedTotal = 0;
     this._resolved = 0;
     this._waveStartedSimTime = this.state && Number.isFinite(this.state.simTime)
@@ -1074,7 +1093,9 @@ export const survivalWave = {
       if (this._swarm.killTarget) {
         if (this._admittedTotal < this._plannedBodies || this._pending.length || this._actionableCohortCount() > 0) return;
         this._retireDisabledLeftovers();
-      } else if (this._elapsedSeconds() < durationSeconds) return;
+      } else if (this._swarm.circuit?.kind === 'survive'
+        ? this._elapsedTicks() < this._durationTicks
+        : this._elapsedSeconds() < durationSeconds) return;
       this._cleared = true;
       this._active = false;
       this._publishWaveProgress({ force: true });
@@ -1133,6 +1154,7 @@ export const survivalWave = {
     this._requestedTotal = 0;
     this._plannedBodies = 0;
     this._resolved = 0;
+    this._carriedAdmitted = 0;
     this._spawnDistance = SURVIVAL_SPAWN_DISTANCE;
     this._swarm = null;
     this._rewardReferenceKills = 0;
@@ -1221,16 +1243,25 @@ export const survivalWave = {
   },
 
   _elapsedTicks() {
+    // Circuit duration is an exact count of active 60 Hz updates. Subtracting accumulated
+    // simTime seconds can leave tick 3,600 just below sixty seconds and delay the clear.
+    // Use the same count for completion and the HUD; ordinary Swarm keeps its clock contract.
+    if (this._swarm?.circuit?.kind === 'survive') return Math.max(0, this._cursor);
     return Math.max(0, Math.floor(this._elapsedSeconds() * 60 + 1e-9));
   },
 
   _publishWaveProgress({ force = false } = {}) {
     if (!this._swarm) return;
+    // SWARM-08 B5 — the journey descriptor rides every progress receipt so a HUD can name the
+    // stage and local round while paused on the armory (the plan itself is not replayed).
+    const circuit = this._swarm.circuit && typeof this._swarm.circuit === 'object'
+      ? { stage: this._swarm.circuit.stage, localRound: this._swarm.circuit.localRound, kind: this._swarm.circuit.kind }
+      : null;
     if (this._plan?.swarm?.killTarget > 0) {
       const remaining = Math.max(0, this._plannedBodies - this._resolved);
       if (!force && remaining === this._lastProgressSecond) return;
       this._lastProgressSecond = remaining;
-      this._emit('run:waveProgress', { wave: this._wave, remaining, total: this._plannedBodies, completionKind: 'cohort' });
+      this._emit('run:waveProgress', { wave: this._wave, remaining, total: this._plannedBodies, completionKind: 'cohort', circuit });
       return;
     }
     const durationTicks = Number.isInteger(this._durationTicks) && this._durationTicks > 0
@@ -1244,6 +1275,8 @@ export const survivalWave = {
       wave: this._wave,
       remainingTicks,
       durationTicks,
+      completionKind: 'duration',
+      circuit,
     });
   },
 };

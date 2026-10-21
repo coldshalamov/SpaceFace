@@ -40,7 +40,7 @@ export const LOOK_BASE = deepFreeze({
     // Colour of the unlit side and of the lit side (multipliers on diffuse light).
     // Raised shadow floor prevents dark hulls and unlit enemies from vanishing into pitch-black voids.
     // Deep slate-ultramarine shadow floor fights warm solar key for two-color contrast.
-    shadowTint: [0.76, 0.74, 0.84],
+    shadowTint: [0.80, 0.76, 0.82],
     lightTint: [1.08, 1.03, 0.96],
     // Dark contour where the hull turns away from the camera. 0 = none.
     contour: 0.25,
@@ -60,10 +60,10 @@ export const LOOK_BASE = deepFreeze({
     rimPower: 3.5,
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
-    rockFill: 0.85,
+    rockFill: 0.24,
     // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
     // dark geological faces without changing their hue or texture strata; it is never emission.
-    rockFloor: 0.12,
+    rockFloor: 0.08,
     rockRim: 0.28,
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.
@@ -72,7 +72,7 @@ export const LOOK_BASE = deepFreeze({
     // material's authored/role envMapIntensity. three.js ignores material.envMapIntensity when
     // the env comes from scene.environment, so before this the IBL hit every hull at 1.0 and
     // blew pale paint flat (LOOK_UNIFY.md pass 2).
-    sceneEnv: 0.22,
+    sceneEnv: 0.14,
   },
   post: {
     // How hard the sector wears the grade below (0 = ungraded) and its corner darkening.
@@ -96,7 +96,33 @@ export const LOOK_BASE = deepFreeze({
   },
   rig: {
     keyHex: 0xfff0dc, rimHex: 0x4fc8ff, fillHex: 0x5c7cff, ambientHex: 0x27345c,
+    // Darkness (owner, 2026-10-20: "dark, with lonely lights piercing the darkness"). Gains on the
+    // sector's authored ambient, fill, and back-rim intensities. The key stays a hard rake and the
+    // grazing surface rim keeps silhouettes, so the side a sun does not reach is left dark for real
+    // lamps to find.
+    ambientGain: 0.35,
+    fillGain: 0.25,
+    rimGain: 0.28,
   },
+});
+
+// Ship headlights: real SpotLights from a fixed pool (src/render/headlights.js). A headlight is
+// seen only where it lands on a hull, rock or station; vacuum has nothing to scatter it, so no
+// beam geometry is ever drawn. Material-physics-like: the same lamp in every mood.
+export const LOOK_HEADLIGHT = deepFreeze({
+  colorHex: 0xffe6c4,      // warm sodium-white
+  intensity: 420,          // candela-like; physical falloff below
+  decay: 1.0,              // gentler than inverse-square so the pool still reads at mid range
+  range: 450,              // WU; hard cutoff of the light
+  angle: 0.46,             // radians, half-angle of the cone (~26°)
+  penumbra: 0.75,          // soft-edged pool, no hard disc
+  height: 20,              // WU above the play plane: a lamp high on the bow, pitched down
+  aimDistance: 105,        // WU ahead of the bow where the beam's axis meets...
+  aimHeight: 0,            // ...this height (the play plane), so the pool lands on what is ahead
+  noseFactor: 0.7,         // bow offset as a share of the entity radius
+  npcReach: 400,           // NPC hulls within this distance of the player may carry a lit lamp
+  npcIntensity: 0.78,      // NPC lamp gain relative to the player's
+  fadeSeconds: 0.35,       // a lamp hand-off fades out and back in, never pops
 });
 
 // Named moods. Only differences from LOOK_BASE.
@@ -107,7 +133,7 @@ export const LOOK_MOODS = deepFreeze({
   // Frontier / lawless space: dark, magenta against cyan. The cyberpunk end of the dial.
   neon_noir: {
     surface: {
-      rockFill: 0.65,
+      rockFill: 0.16,
       albedoSaturation: 1.28,
       bandMix: 0.26,
       shadowTint: [0.68, 0.50, 1.16],
@@ -129,12 +155,14 @@ export const LOOK_MOODS = deepFreeze({
       bloomTint: [1.06, 0.92, 1.10],
       vignetteTint: [0.05, 0.01, 0.08],
     },
-    rig: { keyHex: 0xffd9ec, rimHex: 0x19e6ff, fillHex: 0xd24bff, ambientHex: 0x2a1f52 },
+    rig: { keyHex: 0xffd9ec, rimHex: 0x19e6ff, fillHex: 0xd24bff, ambientHex: 0x2a1f52,
+      ambientGain: 0.22, fillGain: 0.15, rimGain: 0.18 },
   },
 
   // Sker Haven: a yard at night under sodium lamps. Amber against deep blue.
   sodium_yard: {
     surface: {
+      rockFill: 0.16,
       bandMix: 0.26,
       shadowTint: [0.55, 0.68, 1.18],
       lightTint: [1.14, 1.0, 0.84],
@@ -152,7 +180,8 @@ export const LOOK_MOODS = deepFreeze({
       bloomTint: [1.08, 0.98, 0.88],
       vignetteTint: [0.01, 0.02, 0.06],
     },
-    rig: { keyHex: 0xffb45e, rimHex: 0x32c8ff, fillHex: 0x3a5cff, ambientHex: 0x1c2a58 },
+    rig: { keyHex: 0xffb45e, rimHex: 0x32c8ff, fillHex: 0x3a5cff, ambientHex: 0x1c2a58,
+      ambientGain: 0.22, fillGain: 0.15, rimGain: 0.18 },
   },
 
   // Vesta Forge: furnace orange against teal. The classic hot/cold split, pushed.
@@ -216,6 +245,7 @@ export const LOOK_MOODS = deepFreeze({
   // The anomaly: wrong-coloured light. Violet key, acid-green edge.
   void_signal: {
     surface: {
+      rockFill: 0.16,
       albedoSaturation: 1.28,
       bandMix: 0.28,
       shadowTint: [0.46, 0.82, 0.80],
@@ -236,7 +266,8 @@ export const LOOK_MOODS = deepFreeze({
       bloomTint: [0.96, 1.06, 1.04],
       vignetteTint: [0.04, 0.01, 0.07],
     },
-    rig: { keyHex: 0xc8b6ff, rimHex: 0x54ffb0, fillHex: 0x4ddc92, ambientHex: 0x2c2a52 },
+    rig: { keyHex: 0xc8b6ff, rimHex: 0x54ffb0, fillHex: 0x4ddc92, ambientHex: 0x2c2a52,
+      ambientGain: 0.22, fillGain: 0.15, rimGain: 0.18 },
   },
 });
 
@@ -248,8 +279,8 @@ export const LOOK_MOODS = deepFreeze({
 // Keyed by Forge finish first, material role second. This is material physics, so it is the
 // same in every mood.
 export const LOOK_EMISSIVE_GAIN = Object.freeze({
-  finish: Object.freeze({ glow_warm: 1.4, glow_drive: 1.6 }),
-  role: Object.freeze({ signal: 2.6, drive: 1.6 }),
+  finish: Object.freeze({ glow_warm: 1.2, glow_drive: 1.5 }),
+  role: Object.freeze({ signal: 2.2, drive: 1.5 }),
 });
 
 export function resolveLookEmissiveGain(role, forgeFinish) {
@@ -325,6 +356,10 @@ export function resolveLookPost(profile) {
 }
 
 const LIGHTING_BY_PROFILE = new WeakMap();
+function gained(value, gain) {
+  return Number.isFinite(value) ? value * (Number.isFinite(gain) ? gain : 1) : value;
+}
+
 export function resolveLookLighting(profile) {
   // One frozen object per profile: the renderer's transition guard compares rigs by identity.
   const cached = profile && typeof profile === 'object' ? LIGHTING_BY_PROFILE.get(profile) : null;
@@ -333,10 +368,10 @@ export function resolveLookLighting(profile) {
   const authored = (profile && profile.lighting) || {};
   const pick = (channel, hex) => (Number.isFinite(authored[channel]) ? authored[channel] : hex);
   const lighting = Object.freeze({
-    ambient: authored.ambient,
+    ambient: gained(authored.ambient, mood.rig.ambientGain),
     key: authored.key,
-    rim: authored.rim,
-    fill: authored.fill,
+    rim: gained(authored.rim, mood.rig.rimGain),
+    fill: gained(authored.fill, mood.rig.fillGain),
     keyColor: pick('keyColor', mood.rig.keyHex),
     rimColor: pick('rimColor', mood.rig.rimHex),
     fillColor: pick('fillColor', mood.rig.fillHex),

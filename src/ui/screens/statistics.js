@@ -16,6 +16,21 @@ function statisticsTitle() {
   return title;
 }
 
+// A formatted reading that is still zero — '0', '0 wu', '0.00%', '0 h 0 m'.
+const ZERO_READING = /^0(?:\.0+)?(?:\s.*)?$/;
+
+function sheetHasReadings(sheet) {
+  for (const group of sheet.groups || []) {
+    for (const [name, value] of group.rows || []) {
+      // The law 'Status' row carries the baseline label ('Clean'), not a measurement —
+      // it cannot make an untouched ledger look lived-in on its own.
+      if (group.id === 'law' && name === 'Status') continue;
+      if (!ZERO_READING.test(String(value))) return true;
+    }
+  }
+  return false;
+}
+
 export function renderStatistics(model, { withTitle = true } = {}) {
   const sheet = model && Array.isArray(model.groups) ? model : statisticsModel();
   const root = el('div', 'sf-statistics k-hang k-stage');
@@ -23,6 +38,11 @@ export function renderStatistics(model, { withTitle = true } = {}) {
   root.tabIndex = 0;
   root.setAttribute('aria-label', 'Statistics readings');
   if (withTitle) root.appendChild(statisticsTitle());
+  if (!sheetHasReadings(sheet)) {
+    root.appendChild(el('p', 'k-sentence sf-statistics__empty',
+      'Nothing on the record yet — fly, haul, and fight, and this page starts counting.'));
+    return root;
+  }
   for (const group of sheet.groups) {
     const band = el('section', 'sf-statistics__group');
     band.dataset.group = group.id;

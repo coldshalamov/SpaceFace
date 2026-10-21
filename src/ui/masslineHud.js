@@ -2467,4 +2467,4 @@ function setClass(element, name, enabled) {
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
-function finite(v) { return Number.isFinite(v) ? v : 0; }
+function finite(v, fallback = 0) { return Number.isFinite(v) ? v : fallback; }

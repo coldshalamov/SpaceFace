@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import * as flightV3Module from '../src/systems/flightV3.js';
 import {
+  ORBIT_ASSIST_ENGAGE_V1,
   ORBIT_ASSIST_TUNING_V1,
   ORBIT_SWING_TRACK_MARGIN,
   orbitSwingThrottleScale,
@@ -230,17 +231,126 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
       lateral: direction,
       hostRot: desiredHeading + Math.PI - 0.05,
     });
-    assert.equal(opposite.active, true,
-      'a near-opposite nose on a real swing keeps tracking instead of dropping to manual');
-    assert.equal(Math.abs(opposite.telemetry.alignmentYawRate),
-      opposite.telemetry.hullMaxYawRate * ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction,
-      `${direction}: the far-off correction is bounded at the takeover fraction`);
-    assert.equal(Math.sign(opposite.telemetry.alignmentYawRate), Math.sign(opposite.telemetry.headingError),
-      `${direction}: the far-off correction follows the wrapped shortest-way error`);
-    assert.equal(opposite.telemetry.headingDirectionCommitted, false,
-      `${direction}: a near-opposite start still never commits to a full extra revolution`);
+    assert.equal(opposite.active, false,
+      'a near-opposite nose on a live swing is a heading takeover the assist must refuse: '
+      + 'the pilot noses into the forward half first, then the assist holds the spin');
+    assert.equal(opposite.telemetry.reason, 'off-tangent',
+      `${direction}: a backwards-facing hull reads as off-tangent, never a capture`);
+    assert.equal(opposite.telemetry.alignmentYawRate, 0,
+      `${direction}: a refused capture applies no correction`);
+    assert.ok(Math.abs(opposite.telemetry.headingError)
+      > ORBIT_ASSIST_ENGAGE_V1.captureHalfAngleRad,
+      `${direction}: the gate reads the wrapped shortest-way error`);
+    assert.equal(opposite.telemetry.headingDirectionCommitted, false);
     assert.ok(Math.abs(opposite.telemetry.headingError) <= Math.PI + 1e-12);
+
+    // Just inside the forward half the same swing still captures: the gate is a half-plane,
+    // not a cone that narrows as the swing speeds up.
+    const inside = orbitStep({
+      anchorAhead: true,
+      lateral: direction,
+      hostRot: desiredHeading + Math.PI / 2 - 0.05,
+    });
+    assert.equal(inside.active, true,
+      `${direction}: a nose inside the tangent's forward half still engages`);
   }
+});
+
+test('aim steering: cursor noise never arms, a pull-away yank escapes, parked opposition cannot fake it', () => {
+  // Ship at +x orbiting +z around the anchor: orbital rate 0.25 rad/s, direction +1, nose
+  // already on the tangent. flightIntent.lateralFromAim models the helm cursor's
+  // proportional intent — almost never exactly zero, so a deadband-parked cursor must not
+  // count as holding the orbit chord's turn direction.
+  const base = () => ({
+    dt: DT,
+    host: { pos: { x: 120, z: 0 }, vel: { x: 0, z: 30 }, rot: Math.PI / 2, angVel: 0, mass: 20, radius: 10 },
+    anchor: { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, mass: 2000, radius: 20 },
+    tether: { active: true, targetId: 'anchor', restLength: 120, phase: 'loaded' },
+    flightIntent: { forward: 1, lateral: 1, lateralFromAim: true, aimAngle: 0.4 },
+    engage: null,
+    input: { throttle: 1, strafe: 0, turn: 1, boost: false, brake: false },
+    profile: { mainAccel: 50, maxYawRate: 2, yawAccel: 6 },
+    strength: 'standard',
+  });
+  const aimIntent = (lateral, aimAngle) => ({ forward: 1, lateral, lateralFromAim: true, aimAngle });
+  const runTicks = (steps, initialEngage = null) => {
+    const out = [];
+    let engage = initialEngage;
+    for (const over of steps) {
+      const opts = base();
+      Object.assign(opts, over);
+      opts.engage = engage;
+      const r = flightV3Module.stepAnchorRelativeOrbitAssist(opts);
+      out.push(r);
+      engage = r.telemetry.engage;
+    }
+    return out;
+  };
+
+  // Deadband noise on a parked cursor (|lateral| below the deliberate-aim floor) can sit at a
+  // nonzero sign forever: the dwell never accrues and the assist never captures.
+  const noise = runTicks(Array.from({ length: 40 }, () => ({
+    flightIntent: aimIntent(0.1, 0.4),
+  })));
+  assert.ok(noise.every((r) => r.active === false),
+    'cursor noise near the nose must never capture yaw');
+  assert.ok(noise.every((r) => r.telemetry.engage.chordT === 0),
+    'aim noise must not accrue the orbit dwell');
+
+  // A genuine off-nose aim is the deliberate gesture: the dwell fills and the assist engages.
+  const held = runTicks(Array.from({ length: 40 }, () => ({
+    flightIntent: aimIntent(1, 0.4),
+  })));
+  assert.equal(held[0].active, false, 'even a deliberate gesture arms through the dwell first');
+  const engagedIdx = held.findIndex((r) => r.active);
+  assert.ok(engagedIdx >= 23 && engagedIdx < 40,
+    `a held off-nose aim engages after the dwell (first active at ${engagedIdx})`);
+
+  // Once engaged, a cursor SWEPT against the swing is the one unambiguous give-me-the-helm
+  // signal — the assist drops and stays out for the escape window even though the swing,
+  // the heading, and the chord all still qualify.
+  const sweep = runTicks([
+    ...Array.from({ length: 30 }, () => ({ flightIntent: aimIntent(1, 0.4) })),
+    ...Array.from({ length: 12 }, (_, i) => ({
+      flightIntent: aimIntent(1, 0.4 - 0.03 * (i + 1)),
+    })),
+    ...Array.from({ length: 100 }, () => ({
+      flightIntent: aimIntent(1, 0.4 - 0.03 * 12),
+    })),
+  ]);
+  const escapeIdx = sweep.findIndex((r) => r.telemetry.reason === 'pilot-escape');
+  assert.ok(escapeIdx >= 30 && escapeIdx < 42,
+    `a counter-swing cursor drops the assist inside the yank window (first at ${escapeIdx})`);
+  assert.ok(sweep[escapeIdx].telemetry.engage.escapeT > 0.5,
+    'the escape arms a hold-out so the ship does not re-grab the next tick');
+  assert.ok(sweep.slice(escapeIdx + 1, escapeIdx + 50).every((r) => r.active === false),
+    'the escape window keeps yaw manual with the cursor parked afterwards');
+  assert.equal(sweep.at(-1).active, true,
+    'a still-held deliberate gesture re-arms the assist after the escape and dwell pass');
+
+  // The flicker case in reverse: a cursor parked pointing the wrong way (opposing sign, zero
+  // motion) must never read as a reversal — its sign sweeps behind the hull every orbit.
+  const parked = runTicks(
+    Array.from({ length: 90 }, () => ({ flightIntent: aimIntent(-1, 0.4) })),
+    { chordT: 5, graceT: 0, direction: 0 },
+  );
+  assert.equal(parked.at(-1).active, true,
+    'a parked cursor on the wrong side cannot redirect or drop a live swing');
+  assert.ok(parked.every((r) => (r.telemetry.engage.counterT ?? 0) === 0),
+    'a motionless cursor never accrues pull-away');
+
+  // A swing-drive commit is itself the deliberate gesture: it still yaws onto the tangent
+  // from any heading, bypassing the entry half-plane a bare chord must respect.
+  const commit = flightV3Module.stepAnchorRelativeOrbitAssist({
+    ...base(),
+    host: { pos: { x: 120, z: 0 }, vel: { x: 0, z: 30 }, rot: Math.PI / 2 + Math.PI - 0.05, angVel: 0, mass: 20, radius: 10 },
+    flightIntent: { forward: 1, lateral: 0, lateralFromAim: false, aimAngle: null },
+    commitDirection: 1,
+    engage: { chordT: 0, graceT: 0, direction: 0 },
+  });
+  assert.equal(commit.active, true,
+    'a swing-drive commitment still captures from a whipped heading');
+  assert.equal(commit.telemetry.intentSource, 'swing-drive');
 });
 
 test('only Off (or a brake / blocked controls) returns raw steering on a tether', () => {
@@ -557,7 +667,8 @@ test('a boost press mid-orbit keeps the line attached and keeps the swing tracke
   assert.ok(post.some((sample) => sample.orbitAssistActive), 'the chord still offers orbit assistance');
   assert.ok(result.trace.every((sample) => sample.orbitAssistActive
     ? Math.abs(sample.orbitHeadingError) <= Math.PI + 1e-6
-    : ['manual-override', 'arming', 'swing-absent', 'line-slack', 'not-orbiting']
+    : ['manual-override', 'arming', 'swing-absent', 'line-slack', 'not-orbiting',
+      'off-tangent', 'pilot-escape']
       .includes(sample.orbitAssistReason)),
   'a boost may disturb the heading but never drops the line tracking into a hard manual capture');
   const postBoost = result.trace.filter((sample) => sample.tick >= 130);

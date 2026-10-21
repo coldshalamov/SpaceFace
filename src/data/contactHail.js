@@ -25,6 +25,7 @@ import { deedLine } from './deedPhrases.js';
 import { LAWFUL_STATION_FACTIONS } from './factions/index.js';
 import { buildSlotList, fits } from '../systems/ships.js';
 import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+import { SECTORS } from './sectors.js';
 
 // Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
 // to walk the whole entity map per call. The subset preserves entities.values() order and
@@ -1282,6 +1283,192 @@ function tenderServiceHailStatus(truth) {
     : 'STATUS · TENDER INBOUND · MINER DRIVE DISABLED';
 }
 
+// ─── Ordinary npcJobs workers (miner / hauler / patrol) ─────────────────────────────────────────
+// CLOUD-03 — a job hull that carries no Ceres causal stamps still deserves a truthful work readout.
+// The source of truth is the npcJobs record itself (state.npcJobs.byId), joined to the hull by both
+// the session entityId and the durable worldRecordId; data.jobPhase is only the runtime's mirror and
+// is read generically when no record exists. A binding that cannot prove itself (stale numeric id,
+// missing/corrupt job, externally controlled or unmaterialized body) reports STATUS UNAVAILABLE —
+// never invented progress and never a completed job that did not happen.
+
+const ORDINARY_JOB_KINDS = new Set(['miner', 'hauler', 'patrol']);
+
+// npcJobs kernel phase vocabulary (npcJobs.js NPC_JOB_PHASE), player-language. Kept separate from
+// CAUSAL_PHASE_LABEL on purpose: those keys name Ceres event phases, and looking up a bare jobPhase
+// in that map mislabels an ordinary transit as UNDER ESCORT.
+const JOB_PHASE_WORD = Object.freeze({
+  commission: 'SIGNING ON',
+  depart: 'CASTING OFF',
+  transit: 'EN ROUTE',
+  approach: 'ON APPROACH',
+  work: 'WORKING',
+  load: 'LOADING',
+  unload: 'DELIVERING',
+  return: 'RETURNING',
+  hold: 'ON STATION',
+  flee: 'INTERRUPTED',
+  complete: 'RUN COMPLETE',
+});
+
+// What each kind's `work` phase physically is.
+const KIND_WORK_WORD = Object.freeze({
+  miner: 'MINING',
+  surveyor: 'SURVEYING',
+  salvor: 'CUTTING',
+  tender: 'ON CALL',
+  hauler: 'WORKING',
+  patrol: 'ON PATROL',
+});
+
+// Waypoint labels that name no real place ('Origin'/'Destination' on generic traffic routes).
+const GENERIC_WAYPOINT_LABELS = new Set(['ORIGIN', 'DESTINATION']);
+
+const _stationCatalogName = { map: null };
+function stationCatalogName(stationId) {
+  let map = _stationCatalogName.map;
+  if (!map) {
+    map = new Map();
+    for (const sector of SECTORS) {
+      for (const station of sector.stations || []) {
+        if (station && typeof station.id === 'string' && !map.has(station.id)) {
+          map.set(station.id, typeof station.name === 'string' ? station.name : station.id);
+        }
+      }
+    }
+    _stationCatalogName.map = map;
+  }
+  return map.get(stationId) || null;
+}
+
+function jobPhaseWord(kind, phase) {
+  if (phase === 'work' && kind && KIND_WORK_WORD[kind]) return KIND_WORK_WORD[kind];
+  if (!phase) return null;
+  return JOB_PHASE_WORD[phase] || String(phase).replace(/_/g, ' ').toUpperCase();
+}
+
+/**
+ * The npcJobs entry the selected hull is bound to, with the provenance checks the readout needs.
+ * Returns { job, entry } when proven, { unavailable:true } when a jobId exists but the binding does
+ * not hold, { unproven:true } when the caller has no game state (the phase mirror may still speak,
+ * generically), or { unbound:true } when the hull simply carries no job.
+ */
+function ordinaryJobTruth(state, entity) {
+  const data = entity && entity.data || {};
+  const jobId = typeof data.jobId === 'string' && data.jobId ? data.jobId : null;
+  if (!jobId || entity.alive === false) return { unbound: true };
+  if (!state) return { unproven: true };
+  const entry = state.npcJobs && state.npcJobs.byId ? state.npcJobs.byId[jobId] : null;
+  const job = entry && entry.job;
+  if (!job || job.corrupt === true) return { unavailable: true };
+  // A job under external control (tow assist, custody pulls) is not the hull's own authority.
+  if (entry.control || entry.towAssist) return { unavailable: true };
+  // The selected hull must be the job's own materialized body: a recycled numeric id, a job with no
+  // live body, or a world-record mismatch after Continue is stale binding, not work truth.
+  if (entry.entityId == null || entry.entityId !== entity.id || job.materialized !== true) {
+    return { unavailable: true };
+  }
+  const worldRecordId = typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+  if (worldRecordId && entry.worldRecordId && entry.worldRecordId !== worldRecordId) {
+    return { unavailable: true };
+  }
+  return { job, entry };
+}
+
+/** The waypoint this phase is about: the leg target while moving, the current stop when stationary. */
+function jobPhaseWaypoint(job) {
+  const route = job && Array.isArray(job.route) ? job.route : null;
+  const n = route ? route.length : 0;
+  if (!n) return null;
+  const kind = job.kind;
+  const phase = job.phase;
+  const routeIndex = Number.isInteger(job.routeIndex) ? job.routeIndex : 0;
+  if (phase === 'commission' || phase === 'depart' || phase === 'transit' || phase === 'return') {
+    let idx;
+    if (kind === 'miner' || kind === 'salvor' || kind === 'tender') idx = routeIndex === 0 ? 1 : 0;
+    else if (kind === 'patrol' || kind === 'surveyor') idx = (routeIndex + 1) % n;
+    else idx = Math.min(routeIndex + 1, n - 1); // hauler: linear, destination is the final stop
+    return route[idx] || null;
+  }
+  return route[routeIndex] || null;
+}
+
+/** A human-readable place name for a job waypoint: authored station name, else its label. */
+function jobWaypointPlace(wp) {
+  if (!wp || typeof wp !== 'object') return null;
+  const ref = typeof wp.targetRef === 'string' ? wp.targetRef : '';
+  const m = /^(?:station|dest):(.+)$/.exec(ref);
+  if (m) {
+    const name = stationCatalogName(m[1]);
+    if (name) return String(name).replace(/_/g, ' ').trim().toUpperCase();
+  }
+  const label = typeof wp.label === 'string' ? wp.label.trim() : '';
+  if (!label || GENERIC_WAYPOINT_LABELS.has(label.toUpperCase())) return null;
+  return label.toUpperCase();
+}
+
+/** "carrying a known load" — declared cargo aboard, only while the run is underway. */
+function jobCarryPhrase(entity, job) {
+  const manifest = entity.data && entity.data.cargoManifest
+    || (job.payload && job.payload.manifest) || null;
+  const estimate = estimateManifestBaseValue(manifest);
+  if (!estimate || estimate.totalQty <= 0) return null;
+  const lines = (manifest && Array.isArray(manifest.lines) ? manifest.lines : [])
+    .filter((row) => row && Math.floor(Number(row.qty) || 0) > 0);
+  let top = null;
+  for (const row of lines) {
+    const id = row.commodityId || row.id;
+    const qty = Math.floor(Number(row.qty) || 0);
+    if (!top || qty > top.qty) top = { id, qty };
+  }
+  const what = top ? commodityLabel(top.id) : 'CARGO';
+  return `CARRYING ${estimate.totalQty}U ${what}`;
+}
+
+/**
+ * Player-language status parts for an ordinary job hull, or 'unavailable' / null.
+ * Depth 'lock' is one short work phrase; 'full' adds destination/reason when the record supplies them.
+ */
+function ordinaryJobStatusText(entity, depth, state) {
+  const data = entity && entity.data || {};
+  const truth = ordinaryJobTruth(state, entity);
+  if (truth.unavailable) return 'STATUS UNAVAILABLE';
+  if (!truth.job) {
+    // Unbound (no jobId) or unproven (caller without state): a live hull's bare phase mirror can
+    // still speak, but only in its own vocabulary — never a Ceres causal label.
+    const word = entity && entity.alive !== false ? jobPhaseWord(null, data.jobPhase) : null;
+    return word ? `WORK · ${word}` : null;
+  }
+  const job = truth.job;
+  const phase = job.phase;
+  const interrupted = phase === 'flee' || job.interrupted === true;
+  if (depth === 'lock') {
+    return interrupted ? 'WORK · INTERRUPTED' : `WORK · ${jobPhaseWord(job.kind, phase)}`;
+  }
+  const parts = ['WORK'];
+  if (interrupted) {
+    parts.push('INTERRUPTED');
+    const prior = jobPhaseWord(job.kind, job.preInterruptPhase);
+    if (prior) parts.push(`WAS ${prior}`);
+    if (phase !== 'complete' && job.preInterruptPhase) parts.push('RESUMES WHEN CLEAR');
+    return parts.join(' · ');
+  }
+  parts.push(jobPhaseWord(job.kind, phase));
+  if (phase === 'commission' || phase === 'depart' || phase === 'transit' || phase === 'return') {
+    const dest = jobWaypointPlace(jobPhaseWaypoint(job));
+    if (dest) parts.push(`FOR ${dest}`);
+  } else if (phase === 'approach' || phase === 'work' || phase === 'load' || phase === 'unload'
+    || phase === 'hold') {
+    const place = jobWaypointPlace(jobPhaseWaypoint(job));
+    if (place) parts.push(`AT ${place}`);
+  }
+  if ((phase === 'depart' || phase === 'transit' || phase === 'return' || phase === 'approach')
+    && (job.kind === 'hauler' || job.kind === 'miner')) {
+    const carry = jobCarryPhrase(entity, job);
+    if (carry) parts.push(carry);
+  }
+  return parts.join(' · ');
+}
+
 /**
  * Human-readable living-work status from Ceres causal stamps / job phase.
  * Pure; safe for hail and target panel.
@@ -1317,11 +1504,14 @@ export function livingWorkStatusText(entity, opts = {}) {
   if (data.ceresCausalEventId === 'ev_tender_services_miner') return null;
   const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
   if (handoffStatus) return `WORK · ${handoffStatus}`;
-  // Prefer explicit causal stamps; do not treat generic data.phase as work (false WORK risk).
-  const phase = data.ceresCausalPhase || data.jobPhase || null;
   const cue = data.ceresCausalCue || null;
   const eventId = data.ceresCausalEventId || null;
-  if (!phase && !cue && !eventId) return null;
+  const phase = data.ceresCausalPhase || null;
+  // Prefer explicit causal stamps; a hull with none is an ordinary npcJobs worker whose jobPhase is
+  // kernel vocabulary, never a Ceres causal label (jobPhase='transit' is not UNDER ESCORT).
+  if (!phase && !cue && !eventId) {
+    return ordinaryJobStatusText(entity, opts.depth || 'full', opts.state || null);
+  }
   const phaseLabel = phase
     ? (CAUSAL_PHASE_LABEL[phase] || String(phase).replace(/_/g, ' ').toUpperCase())
     : null;
@@ -1426,8 +1616,15 @@ function workerStatusText(target, state = null) {
     }
     return `STATUS · RICH SEAM · +${richOpportunity ? richOpportunity.bonusU : 8}u · HOT CUT · HOLD OFF`;
   }
-  const phase = data.ceresCausalPhase || data.jobPhase || null;
+  const phase = data.ceresCausalPhase || null;
   const cue = data.ceresCausalCue || null;
+  if (!phase && !cue && !data.ceresCausalEventId) {
+    // Ordinary npcJobs worker — the job record itself, never a causal label or a bare "ON TASK".
+    const ordinary = ordinaryJobStatusText(target, 'full', state);
+    if (ordinary) return ordinary.replace(/^WORK · /, 'STATUS · ');
+    const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+    return `STATUS · ${role} ON TASK`;
+  }
   const phaseLabel = phase
     ? (CAUSAL_PHASE_LABEL[phase] || String(phase).replace(/_/g, ' ').toUpperCase())
     : null;

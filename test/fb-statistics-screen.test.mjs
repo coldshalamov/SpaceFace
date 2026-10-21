@@ -68,6 +68,40 @@ test('FB-103 the statistics model prints every supplied counter and does not inv
   }
 });
 
+test('RC-40 a fresh save shows one sentence and no zero rows', () => {
+  const fresh = statisticsModel({
+    career: {},
+    playerStats: {},
+    law: { heat: 0, wanted: 'Clean', fines: 0 },
+  });
+  const previous = globalThis.document;
+  globalThis.document = fakeDom();
+  try {
+    const node = renderStatistics(fresh);
+    const rows = [];
+    const visit = (child) => {
+      if (!child || typeof child !== 'object') return;
+      if (String(child.className || '').split(/\s+/).includes('k-row')) rows.push(child);
+      for (const kid of child.children || []) visit(kid);
+    };
+    visit(node);
+    assert.equal(rows.length, 0, 'a fresh ledger must not print rows of zeros');
+    assert.match(textLines(node).join('\n'), /Nothing on the record yet/);
+  } finally {
+    globalThis.document = previous;
+  }
+
+  // One real reading anywhere brings the groups back.
+  const lived = statisticsModel({ career: { distanceFlownWu: 40 }, playerStats: {}, law: null });
+  globalThis.document = fakeDom();
+  try {
+    const node = renderStatistics(lived);
+    assert.match(textLines(node).join(' '), /Distance flown 40 wu/);
+  } finally {
+    globalThis.document = previous;
+  }
+});
+
 test('FB-103 the screen reads and the pause reference group opens it', () => {
   const screen = readFileSync(new URL('../src/ui/screens/statistics.js', import.meta.url), 'utf8');
   assert.match(screen, /careerStats\(/);

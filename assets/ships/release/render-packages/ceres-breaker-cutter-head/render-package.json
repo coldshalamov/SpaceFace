@@ -370,12 +370,28 @@
     }
   ],
   "assetId": "sf.render.ceres-breaker-cutter-head",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-motor.collision",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-motor",
+      "reference": "COLLISION_motor"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade.collision",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade",
+      "reference": "COLLISION_port_blade"
+    },
+    {
+      "id": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade.collision",
+      "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade",
+      "reference": "COLLISION_starboard_blade"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b0cd9b6a4449079da8d9d9df6bf8f3784adcacfd5eca67a259e7af7cdaf2058a",
+  "contentHash": "fe734f9997eaf9250f42ba8906d940f2f40f62bd5ea60dbbed9b1158ef7ef3ff",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive.dynamic",
@@ -488,7 +504,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_motor",
       "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-motor",
       "primitiveIndex": 0,
@@ -513,7 +529,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_port_blade",
       "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade",
       "primitiveIndex": 0,
@@ -538,7 +554,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_starboard_blade",
       "nodeId": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade",
       "primitiveIndex": 0,
@@ -1784,7 +1800,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_motor",
       "nodeName": "COLLISION_motor",
       "nodePath": [
@@ -1833,7 +1849,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_port_blade",
       "nodeName": "COLLISION_port_blade",
       "nodePath": [
@@ -1882,7 +1898,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_starboard_blade",
       "nodeName": "COLLISION_starboard_blade",
       "nodePath": [
@@ -4314,7 +4330,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "d684363fb58da2a28536baf1f9f4cd90c27a4bdfb7b86729b308b9d2b3644f5c"
+      "sha256": "3c69decb0d6dbdd021d07c2ab634bafcb30ab0c101f9c2c8d241bf92a46f86f6"
     },
     "sourceGlb": {
       "bytes": 395804,
@@ -4322,8 +4338,8 @@
       "uri": "place_ceres_breaker_cutter_head.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -6210,7 +6226,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb"
   },
-  "runtimeHash": "9066de62a66f9761a9975ce9c6a9ea9799e77e0872111e1e7731b104caae68bb",
+  "runtimeHash": "156a75b99b979934f316b32dc9e374f528ce6ddeebf280a6712f9b2290e84723",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

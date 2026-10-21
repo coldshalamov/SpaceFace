@@ -6,7 +6,7 @@
 // sit in dir.live forever (stale retirement only covers combat).
 //
 // A runtime may write live.* and intent on hulls it spawned. Credits and reputation go
-// through d.grant / d.rep. No Math.random, no wall clock.
+// through d.grant / d.charge / d.rep. No Math.random, no wall clock.
 
 const HOP_CAP = 12;
 const MOTIONS = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
@@ -206,6 +206,21 @@ function runVerb(d, live, state, spec, phase) {
   }
   if (verb === 'grant') {
     if (phase.amount > 0) d.grant(phase.amount, phase.reason || spec.id);
+    return true;
+  }
+  // A toll is a debit, not a payout: the phase asks the sole credits writer to take the
+  // amount through the same event route every other system uses (never a direct write).
+  // A hull that cannot cover the count does not get the marked lane — the scene aborts
+  // with a reason instead of silently clamping the balance at zero.
+  if (verb === 'cost') {
+    const amount = Math.round(phase.amount || 0);
+    if (amount <= 0) return true;
+    const credits = state && state.player ? (state.player.credits | 0) : 0;
+    if (credits < amount) {
+      d.abort(live, 'insufficient_funds');
+      return false;
+    }
+    d.charge(amount, phase.reason || spec.id);
     return true;
   }
   if (verb === 'rep') {

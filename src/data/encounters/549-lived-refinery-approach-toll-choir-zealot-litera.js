@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "ring",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "refinery approach does not get quieter if you boost.",
+      "line": "The noise in refinery approach was running before your drive.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 4,
       "motion": "ring",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Holding. This does not hurry.",
+      "line": "CANTOR: Holding. The work decides when it is done.",
       "channel": "info",
       "next": "offer"
     },
@@ -150,12 +150,19 @@ const spec = {
       "verb": "say",
       "line": "Count cleared. The ribbon crossed refinery approach under your name.",
       "channel": "info",
+      "next": "cost_a"
+    },
+    {
+      "id": "cost_a",
+      "verb": "cost",
+      "amount": 36,
+      "reason": "lived_refinery_approach_toll_choir_zealot_literalized",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 0,
       "reason": "lived_refinery_approach_toll_choir_zealot_literalized",
       "next": "rep_a"
     },

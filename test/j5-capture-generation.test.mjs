@@ -278,13 +278,14 @@ test('F-CONTROLS-01: a flight rebind onto a reserved interface code is refused a
 });
 
 test('F-CONTROLS-01: the per-action reset refuses a default that lands on an interface code', async () => {
-  // Stock travelBurn ships ['NumLock','KeyH'] while h/H opens Help — the shipped collision the
-  // audit flagged. With the reserved set live, Backspace names the interface owner instead of
-  // reinstalling the dead seat. (The shipped default itself is untouched: the full "Reset key
-  // bindings" word still restores authored stock wholesale.)
+  // Stock travelBurn used to ship ['NumLock','KeyH'] while h/H opens Help — the shipped collision
+  // the audit flagged; RC-05 moved the fallback to F8. The refusal path still has to reject a
+  // default that lands on a reserved code, so the fixture carries the legacy default in `base`.
+  // (The shipped default itself is untouched here: the full "Reset key bindings" word still
+  // restores authored stock wholesale.)
   const listeners = fakeWindow();
   const ctx = fakeCtx();
-  const base = INPUT_DEFAULTS.BINDINGS;
+  const base = { ...INPUT_DEFAULTS.BINDINGS, travelBurn: ['NumLock', 'KeyH'] };
   const live = {};
   for (const action of REBINDABLE) live[action] = (base[action] || []).slice();
   const committed = [];

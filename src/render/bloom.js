@@ -1733,9 +1733,13 @@ export function createUnreadyDrawableGuard(renderer) {
  * @param {THREE.WebGLRenderer} renderer - the live renderer (we drive its render targets).
  * @param {number} width  - drawing-buffer width  in px.
  * @param {number} height - drawing-buffer height in px.
- * @param {{ getPerf?: () => object|null, getGpuTimers?: () => object|null }} [instrumentation]
- *        Optional measurement hooks. CPU pass-group times use existing perfRuntime.recordRenderWork;
- *        GPU timers are capability-gated and only emit when the timer set is enabled.
+ * @param {{ getPerf?: () => object|null, getGpuTimers?: () => object|null,
+ *        getGpuOrigin?: () => object|null, sceneSamples?: number }} [instrumentation]
+ *        Optional measurement hooks plus the requested scene-target MSAA sample count. CPU
+ *        pass-group times use existing perfRuntime.recordRenderWork; GPU timers are
+ *        capability-gated and only emit when the timer set is enabled. `sceneSamples` is the
+ *        caller's ELIGIBILITY decision (hardware context, quality preset); the request is still
+ *        clamped to the context's capabilities and completeness-proved here (0 = single-sample).
  * @returns {{ render(scene,camera):void, compileScenePipelines(subject,camera,lightingScene):Promise,
  *            warmScenePipelines(subject,camera,lightingScene):Promise,
  *            setSize(w,h):void, setContentScale(s):void, setOptions(o):void, dispose():void,
@@ -1802,16 +1806,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let casDisplayW = 0;
   let casDisplayH = 0;
 
-  // The bloom path already presents through a post composite, so multisampling the full-resolution HDR
-  // scene target adds a costly resolve before the downsample/composite chain. Keep the offscreen target
-  // single-sampled; edge treatment belongs in one maintained post-AA path, not in every HDR bloom frame.
-  // Pyramid targets stay single-sampled too — they're downsampled, AA there is wasted.
-  const maxSamples = renderer.capabilities && Number.isFinite(renderer.capabilities.maxSamples)
-    ? renderer.capabilities.maxSamples
+  // Geometry AA on the scene target: the caller resolves ELIGIBILITY (hardware context, quality
+  // preset) and passes `sceneSamples` on the options object; this compositor owns CAPABILITY —
+  // the request is clamped to the context's maxSamples, refused outside WebGL2, and the
+  // HalfFloat+depth multisample framebuffer must prove complete before it is used (probe
+  // precedent: probePackedHdrCapability). Any failure collapses back to the shipped single-sample
+  // target, so every non-qualifying route allocates exactly what it did before. Pyramid targets
+  // stay single-sampled — they're downsampled, AA there is wasted.
+  let sceneSamplesRequest = instrumentation && Number.isFinite(instrumentation.sceneSamples)
+    ? Math.max(0, instrumentation.sceneSamples | 0)
     : BALANCED_BLOOM_MSAA_SAMPLES;
-  const sceneSamples = (renderer.capabilities && renderer.capabilities.isWebGL2)
-    ? Math.max(0, Math.min(BALANCED_BLOOM_MSAA_SAMPLES, maxSamples))
-    : 0;
+  let sceneSamples = resolveSceneSampleCount(sceneSamplesRequest);
   sceneRtOpts.samples = sceneSamples;
 
   function applyPackedHdrTargetOptions() {
@@ -1829,6 +1834,47 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         ? PACKED_HDR_MODE.ALL : PACKED_HDR_MODE.OFF, true),
       { samples: sceneSamples },
     );
+  }
+
+  // Sanitize an MSAA request against this context and prove the multisample framebuffer actually
+  // allocates complete. Returns 0 whenever anything is unsupported, so callers never fall back to
+  // a silently broken target. Init-only / preset-switch cost (one tiny probe target), never
+  // per-frame.
+  function resolveSceneSampleCount(request) {
+    const caps = renderer.capabilities;
+    const requested = Number.isFinite(request)
+      ? Math.max(0, request | 0)
+      : BALANCED_BLOOM_MSAA_SAMPLES;
+    if (requested <= 0) return 0;
+    if (!caps || caps.isWebGL2 !== true) return 0;
+    const maxSamples = Number.isFinite(caps.maxSamples) ? caps.maxSamples : 0;
+    const samples = Math.min(requested, maxSamples);
+    if (samples <= 0) return 0;
+    return probeMultisampleSceneTarget(samples) ? samples : 0;
+  }
+
+  function probeMultisampleSceneTarget(samples) {
+    const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    if (!gl || typeof gl.checkFramebufferStatus !== 'function'
+      || !Number.isFinite(Number(gl.FRAMEBUFFER))
+      || !Number.isFinite(Number(gl.FRAMEBUFFER_COMPLETE))) return false;
+    if (typeof renderer.initRenderTarget !== 'function'
+      || typeof renderer.setRenderTarget !== 'function'
+      || typeof renderer.getRenderTarget !== 'function') return false;
+    let target = null;
+    const previousTarget = renderer.getRenderTarget();
+    try {
+      // Same descriptor family as the real scene target (HalfFloat + depth), sample count aside.
+      target = new THREE.WebGLRenderTarget(4, 4, { ...sceneRtOpts, samples });
+      renderer.initRenderTarget(target);
+      renderer.setRenderTarget(target);
+      return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    } catch (_) {
+      return false;
+    } finally {
+      try { renderer.setRenderTarget(previousTarget || null); } catch (_) {}
+      if (target) target.dispose();
+    }
   }
 
   function selectPackedHdrMode() {
@@ -2747,7 +2793,15 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // Re-probe the opt-in packed target against the restored context before allocating replacement
     // targets; unsupported restore paths fall back to the ordinary HalfFloat descriptors.
     selectPackedHdrMode();
+    // Apply the (possibly flipped) packed-HDR descriptor FIRST: the MSAA probe below allocates
+    // its proof target from `{ ...sceneRtOpts, samples }`, so it must prove the exact color
+    // format the real scene target will use — multisample renderability is per-format, and
+    // EXT_color_buffer_float does not promise it for every packed format.
     applyPackedHdrTargetOptions();
+    // A restored context may expose different MSAA capabilities; re-clamp and re-prove against
+    // it, then re-stamp the resolved count into the descriptor before the targets allocate it.
+    sceneSamples = resolveSceneSampleCount(sceneSamplesRequest);
+    sceneRtOpts.samples = sceneSamples;
     rtScene.dispose();
     for (const rt of down) rt.dispose();
     if (rtPost) { rtPost.dispose(); rtPost = null; }
@@ -2927,6 +2981,22 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           maxLevelsCap = capped;
           setSize(W, H);
         }
+      }
+    }
+    if (typeof o.sceneSamples === 'number') {
+      // Keep the request (not just the resolved count) current — rebuild() re-resolves from it
+      // after a context restore, so a stale request would silently revert MSAA there.
+      sceneSamplesRequest = Math.max(0, o.sceneSamples | 0);
+      const next = resolveSceneSampleCount(sceneSamplesRequest);
+      if (next !== sceneSamples) {
+        sceneSamples = next;
+        sceneRtOpts.samples = next;
+        // setSize alone cannot do this: its same-size path early-outs, and only the scene
+        // target's sample count changed — rebuild rtScene alone (pyramid/rtPost are unaffected).
+        // Preset switches land here rarely (settings/quality events), never per frame: the
+        // sector-post transition options object carries no sceneSamples key.
+        rtScene.dispose();
+        rtScene = allocRenderTarget(W, H, sceneRtOpts, 'scene-samples');
       }
     }
     if (typeof o.sharpen === 'boolean') sharpenAmount = o.sharpen ? 0.35 : 0;

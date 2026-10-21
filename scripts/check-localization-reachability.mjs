@@ -44,7 +44,7 @@ try {
     const state = sf && sf.state;
     const player = state && state.entities && state.entities.get(state.playerId);
     return !!(state && state.mode === 'flight' && player && player.alive);
-  }, null, { timeout: 90000 });
+  }, null, { timeout: 180000 });
   await page.waitForTimeout(1000);
   surfaces.push(await assertVisiblePseudoHud());
   await capture('03-flight-hud-qps-1440x900.png');

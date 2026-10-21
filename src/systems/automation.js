@@ -26,6 +26,7 @@ import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { queryNearbyEntities, hasActiveSpatialHash } from '../core/spatialQuery.js';
@@ -272,6 +273,33 @@ export function passiveCapPerMinForTier(balance = AUTO_BALANCE, tier = 1) {
   const frac = bal.passiveCapFrac != null ? bal.passiveCapFrac
     : (AUTO_BALANCE.passiveCapFrac != null ? AUTO_BALANCE.passiveCapFrac : 0.45);
   return active * frac;
+}
+
+function recoveryPosition(pos) {
+  return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+    ? { x: pos.x, z: pos.z } : null;
+}
+
+function normalizeDroneRecovery(record) {
+  if (!record || record.version !== 1 || !['fuel', 'upkeep'].includes(record.reason)
+      || typeof record.sectorId !== 'string' || !record.sectorId
+      || !recoveryPosition(record.pos) || !recoveryPosition(record.beaconPos)
+      || !Number.isFinite(record.startedAt)) return null;
+  return {
+    version: 1, reason: record.reason, sectorId: record.sectorId,
+    pos: recoveryPosition(record.pos), beaconPos: recoveryPosition(record.beaconPos),
+    stationId: STATION_SECTOR.has(record.stationId) ? record.stationId : null,
+    delivered: record.delivered === true, startedAt: record.startedAt,
+  };
+}
+
+/** Same whole-credit arrears and fuel tariff as the existing manual service paths. */
+export function droneRecoveryCost(state, group) {
+  const def = DRONE_BY_ID.get(group.defId) || group;
+  const fuelCr = (Number(group.fuel) || 0) <= 0
+    ? Math.round(Math.max(0, (def.fuelMax || group.fuelMax || 0) - (Number(group.fuel) || 0)) * 0.5) : 0;
+  const upkeepCr = Math.max(0, Math.floor(Number(state.automation?.accumulators?.upkeepDebt) || 0));
+  return { fuelCr, upkeepCr, totalCr: fuelCr + upkeepCr };
 }
 
 export function creditPassiveFromBudget(grossAmount, capBudget) {
@@ -547,6 +575,17 @@ export const automation = {
 
     // Combat dealing damage to one of our assets (drone group / outpost / fleet ship).
     bus.on('combat:hitAsset', (p) => { if (p) this.onHitAsset(p); });
+    bus.on('entity:destroyed', (p) => {
+      const e = p && p.entity;
+      if (!e || e.type !== 'drone') return;
+      const g = (this.state.automation?.drones || []).find((x) => x.id === e.data?.groupId
+        && x.entityIds?.includes(e.id));
+      // A delayed receipt must not destroy a new occupant or a rematerialized group.
+      const current = this.helpers.getEntity?.(e.id) || this.state.entities?.get(e.id);
+      if (g && (!current || current === e)) {
+        this.onHitAsset({ assetKind: 'drone', assetId: g.id, damage: Infinity });
+      }
+    });
 
     // Save restore re-enters the saved sector before automation.deserialize() runs. Suppress
     // presence during that interval so structures from the previous run cannot flash into view.
@@ -618,7 +657,16 @@ export const automation = {
     const sid = p.sectorId || (this.state.world && this.state.world.currentSectorId) || null;
     if (!sid || !this.state.automation || !this.state.automation.drones) return;
     for (const g of this.state.automation.drones) {
-      if (this._hasLiveDroneEntities(g)) g.sectorId = sid;
+      if (this._hasLiveDroneEntities(g)) {
+        g.sectorId = sid;
+        if (g.recovery && g.recovery.sectorId !== sid) {
+          this._releaseDroneRecoveryBeacon(g);
+          g.recovery.sectorId = sid;
+          g.recovery.stationId = null;
+          g.recovery.delivered = false;
+          this._rememberDroneRecoveryPosition(g);
+        }
+      }
     }
   },
 
@@ -667,7 +715,7 @@ export const automation = {
       const g = a.drones[i];
       const def = DRONE_BY_ID.get(g.defId) || g;
       if (g.status === 'distressed') {
-        this._parkDroneEntities(g, dt);
+        this._syncDroneRecovery(g, def, dt);
         // A distressed drone is still billed upkeep — book it so the open cycle sees the charge.
         if (g.operation) {
           recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * dt });
@@ -676,6 +724,7 @@ export const automation = {
       } // frozen until upkeep paid
       if (isFuelStranded(g)) {
         this._strandForFuel(g, def, { toast: false, dt });
+        this._syncDroneRecovery(g, def, dt);
         continue;
       }
 
@@ -960,17 +1009,18 @@ export const automation = {
   // Spawn the visible flying drones for a freshly deployed group near the nearest asteroid field.
   // Best-effort: needs the core spawnEntity helper and the group's home sector loaded.
   // Continuous handoff must never stack a second wave on an already-live group (M2-C1).
-  _spawnDroneEntities(g, def) {
+  _spawnDroneEntities(g, def, recoveryPos = null) {
     const spawn = this.helpers && this.helpers.spawnEntity;
     if (!spawn) return;
-    if (this._hasLiveDroneEntities(g)) return;
+    if (this._hasLiveDroneEntities(g) && !recoveryPos) return;
     const count = Math.max(1, g.count || 1);
-    const origin = this._droneFieldOrigin(g, def);
+    const origin = recoveryPos || this._droneFieldOrigin(g, def);
     g.entityIds = g.entityIds || [];
-    for (let k = 0; k < count; k++) {
+    for (let k = g.entityIds.length; k < count; k++) {
       // fan the drones out around the field origin so they don't stack on one point
       const ang = (k / count) * Math.PI * 2;
-      const pos = { x: origin.x + Math.cos(ang) * DRONE_SPREAD, z: origin.z + Math.sin(ang) * DRONE_SPREAD };
+      const spread = recoveryPos && k === 0 ? 0 : DRONE_SPREAD;
+      const pos = { x: origin.x + Math.cos(ang) * spread, z: origin.z + Math.sin(ang) * spread };
       // collides:false on purpose — physics' pickup branch treats any colliding type:'drone' as a
       // collector and would silently vacuum (and destroy) the player's loose ore pickups with a
       // non-player collectorId. Flight V3 steers these bodies through Rapier to a standoff;
@@ -1179,6 +1229,8 @@ export const automation = {
   // end-of-step) and clears the id list so a later re-entry re-spawns them. Continuous free-flight
   // membership must not call this solely because sectorId lagged (M2-C1).
   _releaseDroneEntities(g) {
+    this._rememberDroneRecoveryPosition(g);
+    this._releaseDroneRecoveryBeacon(g);
     if (!g || !g.entityIds || !g.entityIds.length) return;
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
     for (const id of g.entityIds) { const e = getEnt(id); if (isGroupDrone(e, g)) e.alive = false; }
@@ -1526,9 +1578,168 @@ export const automation = {
   },
 
   // Distressed or fuel-stranded group: stop the drones in place (don't despawn — they resume
-  // when upkeep is paid or fuel returns). Parked is also the docked state a repairDockedDrones
-  // bay knits (FB-054): the group's durability record is what repairs, so the restore runs even
-  // when the group has no live hulls loaded this tick.
+  // when upkeep is paid or fuel returns).
+  _recoveryDrone(g) {
+    for (const id of g.entityIds || []) {
+      const e = this.helpers?.getEntity?.(id) || this.state.entities?.get(id);
+      if (isGroupDrone(e, g)) return e;
+    }
+    return null;
+  },
+
+  _rememberDroneRecoveryPosition(g) {
+    if (!g?.recovery) return;
+    const pos = recoveryPosition(this._recoveryDrone(g)?.pos);
+    if (pos) g.recovery.pos = pos;
+  },
+
+  _beginDroneRecovery(g, reason) {
+    if (g.recovery) return g.recovery;
+    const pos = recoveryPosition(this._recoveryDrone(g)?.pos) || recoveryPosition(g.originPos);
+    const sectorId = g.sectorId || this.state.world?.currentSectorId;
+    if (!pos || !sectorId) return null;
+    g.recovery = {
+      version: 1, reason, sectorId, pos, beaconPos: { ...pos },
+      stationId: null, delivered: false, startedAt: this.state.simTime,
+    };
+    this.bus.emit('automation:droneDistressed', { id: g.id, sectorId, pos: { ...pos }, reason });
+    return g.recovery;
+  },
+
+  _releaseDroneRecoveryBeacon(g) {
+    if (!g) return;
+    const e = this.helpers?.getEntity?.(g._recoveryBeaconId) || this.state.entities?.get(g._recoveryBeaconId);
+    if (e?.type === 'beacon' && e.data?.automationRecoveryId === g.id) e.alive = false;
+    delete g._recoveryBeaconId;
+  },
+
+  _clearDroneRecovery(g) {
+    this._releaseDroneRecoveryBeacon(g);
+    for (const id of g.entityIds || []) {
+      const e = this.helpers?.getEntity?.(id) || this.state.entities?.get(id);
+      if (!isGroupDrone(e, g) || !e.data.automationRecoveryLabel) continue;
+      const previous = e.data.automationRecoveryLabel;
+      if (previous.present) e.data.scanLabel = previous.value;
+      else delete e.data.scanLabel;
+      delete e.data.automationRecoveryLabel;
+    }
+    g.recovery = null;
+  },
+
+  _playerTowsDrone(g, drone) {
+    if (!isGroupDrone(drone, g)) return false;
+    const player = this.state.entities?.get(this.state.playerId);
+    if (!player || player.alive === false) return false;
+    const matches = (entity, generation) => entity && entity.alive !== false
+      && (generation == null || occupantGenerationOf(entity) === generation);
+    return Object.values(this.state.combat?.attachments?.byId || {}).some((line) => {
+      if (line.state !== 'active' || line.targetId !== drone.id
+          || (line.ownerId !== player.id && line.controllerId !== player.id)) return false;
+      const owner = this.state.entities.get(line.ownerId);
+      const controller = line.controllerId == null ? null : this.state.entities.get(line.controllerId);
+      return matches(owner, line.ownerGeneration) && matches(drone, line.targetGeneration)
+        && (line.controllerId == null || matches(controller, line.controllerGeneration));
+    });
+  },
+
+  _droneRecoveryStation(g, drone) {
+    let nearest = null, distance = Infinity;
+    for (const station of this.state.entities?.values() || []) {
+      const id = station.data?.stationId;
+      if (station.alive === false || station.type !== 'station' || !STATION_SECTOR.has(id)
+          || !recoveryPosition(station.pos)) continue;
+      if (id === g.recovery.stationId) return station;
+      const d = Math.hypot(station.pos.x - drone.pos.x, station.pos.z - drone.pos.z);
+      if (d < distance || (d === distance && String(id) < String(nearest?.data.stationId))) {
+        nearest = station; distance = d;
+      }
+    }
+    if (nearest && g.recovery.stationId !== nearest.data.stationId) {
+      g.recovery.stationId = nearest.data.stationId;
+      g.recovery.delivered = false;
+    }
+    return nearest;
+  },
+
+  _restoreDroneRecovery(g) {
+    const cost = droneRecoveryCost(this.state, g);
+    if ((Number(this.state.player?.credits) || 0) < cost.totalCr) return false;
+    const recovery = g.recovery;
+    const a = this.state.automation;
+    // Preflight the combined bill before either existing charge path can spend credits.
+    if ((Number(g.fuel) || 0) <= 0 && !this.refuelDrone(g.id, { recovery: true })) return false;
+    if (cost.upkeepCr > 0 && !this._charge(cost.upkeepCr, 'upkeep')) return false;
+    a.accumulators.upkeepDebt = Math.max(0, (a.accumulators.upkeepDebt || 0) - cost.upkeepCr);
+    a.meta.graceTimer = 0;
+    if (g.status === 'distressed') {
+      g.status = g._prevStatus || (g.program?.templateId ? 'program' : 'mining');
+      delete g._prevStatus;
+    }
+    if (g.status === 'stranded') g.status = g.program?.templateId ? 'program' : 'mining';
+    resumeAfterFuel(g, g.fuel, (DRONE_BY_ID.get(g.defId) || g).upkeepPerMin || 0);
+    this._clearDroneRecovery(g);
+    this.bus.emit('automation:droneRecovered', {
+      id: g.id, sectorId: recovery.sectorId, stationId: recovery.stationId, reason: recovery.reason,
+    });
+    const name = String(g.defId || 'drone').replace(/^drone_/, 'Drone ').replace(/_/g, ' ');
+    this.toast(`${name} restored at ${STATION_SECTOR.get(recovery.stationId)?.name || 'station'} (-${cost.totalCr} cr).`, 'success');
+    return true;
+  },
+
+  _syncDroneRecovery(g, def, dt) {
+    if (this._saveRestoring) return;
+    // A dead physical hull is a loss, never a reason to manufacture a replacement.
+    const destroyed = (g.entityIds || []).some((id) => {
+      const e = this.state.entities?.get(id);
+      return e?.type === 'drone' && e.data?.groupId === g.id && e.alive === false && e.hull <= 0;
+    });
+    if (destroyed) {
+      this.onHitAsset({ assetKind: 'drone', assetId: g.id, damage: Infinity });
+      return;
+    }
+    const record = this._beginDroneRecovery(g, g.status === 'distressed' ? 'upkeep' : 'fuel');
+    if (!record) { this._parkDroneEntities(g, dt); return; }
+    const sectorId = this.state.world?.currentSectorId;
+    if (record.sectorId !== sectorId) {
+      if (this._hasLiveDroneEntities(g)) {
+        this._onContinuousDroneMembership({ continuous: true, sectorId });
+      } else { this._releaseDroneRecoveryBeacon(g); return; }
+    }
+    this._spawnDroneEntities(g, def, record.pos);
+    const lead = this._recoveryDrone(g);
+    if (!lead) return;
+    this._rememberDroneRecoveryPosition(g);
+    if (!lead.data.automationRecoveryLabel) {
+      lead.data.automationRecoveryLabel = {
+        present: Object.hasOwn(lead.data, 'scanLabel'), value: lead.data.scanLabel,
+      };
+    }
+    lead.data.scanLabel = 'Stranded Drone';
+    const beacon = this.helpers?.getEntity?.(g._recoveryBeaconId) || this.state.entities?.get(g._recoveryBeaconId);
+    if (!beacon || beacon.alive === false || beacon.type !== 'beacon' || beacon.data?.automationRecoveryId !== g.id) {
+      const spawned = this.helpers?.spawnEntity?.({
+        type: 'beacon', pos: { ...record.beaconPos }, radius: 5,
+        physicsBody: false, collides: false,
+        data: { masslineTetherable: false, automationRecoveryId: g.id,
+          scanLabel: 'Stranded Drone — tow to a station' },
+      });
+      if (spawned) g._recoveryBeaconId = spawned.id;
+    }
+    this._parkDroneEntities(g, dt);
+    const station = this._droneRecoveryStation(g, lead);
+    if (!station) return;
+    const distance = Math.hypot(lead.pos.x - station.pos.x, lead.pos.z - station.pos.z);
+    if (distance > (station.data.dockRadius || station.radius) + 64) {
+      record.delivered = false;
+      return;
+    }
+    if (this._playerTowsDrone(g, lead)) record.delivered = true;
+    if (record.delivered) this._restoreDroneRecovery(g);
+  },
+
+  // Parked is also the docked state a repairDockedDrones bay knits (FB-054): the group's
+  // durability record repairs even when no live hulls are loaded this tick. An active player
+  // tow releases only the parking brake; the attachment and physics owners move the hull.
   _parkDroneEntities(g, dt = 0) {
     if (!g) return;
     const dtS = Math.max(0, Number(dt) || 0);
@@ -1542,7 +1753,7 @@ export const automation = {
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
     for (const id of g.entityIds) {
       const e = getEnt(id);
-      if (isGroupDrone(e, g)) this._driveDrone(e, e.pos, 0, true);
+      if (isGroupDrone(e, g)) this._driveDrone(e, e.pos, 0, !this._playerTowsDrone(g, e));
     }
   },
 
@@ -1573,6 +1784,7 @@ export const automation = {
   },
 
   _strandForFuel(g, def, { toast = false, dt = 0 } = {}) {
+    this._beginDroneRecovery(g, 'fuel');
     this._parkDroneEntities(g, dt);
     applyFuelShortage(g);
     g.ratePerMin = 0;
@@ -1976,14 +2188,19 @@ export const automation = {
     const credits = (this.state.player && this.state.player.credits) | 0;
     const whole = Math.floor(a.accumulators.upkeepDebt);
     if (whole >= 1) {
-      if (credits >= whole) {
+      // A delivered rescue has one combined bill. Automatic upkeep must not spend the fuel
+      // portion while that bill is unaffordable (or silently clear its waiting state).
+      const waiting = a.drones.some((g) => g.recovery?.delivered
+        && droneRecoveryCost(this.state, g).totalCr > credits);
+      if (!waiting && credits >= whole) {
         a.accumulators.upkeepDebt -= whole;
         this.bus.emit('economy:chargeCredits', { amount: whole, reason: 'automation:upkeep' });
         this._undistressAll(a); // paid → assets recover
         a.meta.graceTimer = 0;
       } else {
-        // can't pay: pay what we can, distress everything, start the grace timer.
-        if (credits > 0) {
+        // Preserve an unaffordable combined rescue bill, but keep ordinary distress
+        // and repossession enforcement running for unpaid upkeep on every asset.
+        if (!waiting && credits > 0) {
           a.accumulators.upkeepDebt -= credits;
           this.bus.emit('economy:chargeCredits', { amount: credits, reason: 'automation:upkeep' });
         }
@@ -2029,7 +2246,11 @@ export const automation = {
   _distressAll(a) {
     for (const list of [a.drones, a.traders, a.outposts]) {
       for (const x of list) {
-        if (x.status !== 'distressed') { x._prevStatus = x.status; x.status = 'distressed'; this.bus.emit('automation:assetDistressed', { kind: kindOf(list, a), id: x.id }); }
+        if (x.status !== 'distressed') {
+          x._prevStatus = x.status; x.status = 'distressed';
+          this.bus.emit('automation:assetDistressed', { kind: kindOf(list, a), id: x.id });
+          if (list === a.drones) this._beginDroneRecovery(x, 'upkeep');
+        }
       }
     }
   },
@@ -2037,7 +2258,16 @@ export const automation = {
   _undistressAll(a) {
     for (const list of [a.drones, a.traders, a.outposts]) {
       for (const x of list) {
-        if (x.status === 'distressed') { x.status = x._prevStatus || 'idle'; delete x._prevStatus; }
+        if (x.status === 'distressed') {
+          x.status = x._prevStatus || 'idle'; delete x._prevStatus;
+          if (list === a.drones) {
+            if ((Number(x.fuel) || 0) > 0) {
+              if (x.status === 'stranded') x.status = x.program?.templateId ? 'program' : 'mining';
+              resumeAfterFuel(x, x.fuel, (DRONE_BY_ID.get(x.defId) || x).upkeepPerMin || 0);
+              this._clearDroneRecovery(x);
+            } else applyFuelShortage(x);
+          }
+        }
       }
     }
   },
@@ -2053,6 +2283,10 @@ export const automation = {
     const pick = candidates[0];
     const idx = pick.list.indexOf(pick.inst);
     if (pick.kind === 'outpost') this._releaseOutpostEntity(pick.inst);
+    if (pick.kind === 'drone') {
+      this._clearDroneRecovery(pick.inst);
+      this._releaseDroneEntities(pick.inst);
+    }
     if (idx >= 0) pick.list.splice(idx, 1);
     // SF-115: a repossessed machine's loaded shipment vanishes with it — close the cycle into the
     // event payload so the ledger still reconciles what was mined, burned, paid and carried.
@@ -2328,21 +2562,26 @@ export const automation = {
     const def = DRONE_BY_ID.get(g.defId) || g;
     const refuel = Math.round(((def.fuelMax || 0) - (g.fuel || 0)) * 0.5);
     if (refuel > 0) this._charge(refuel, 'drone:refuel');
+    this._clearDroneRecovery(g);
     this._releaseDroneEntities(g); // despawn the flying drones
     a.drones.splice(idx, 1);
     this.toast(`Drone recalled (+${value} cr ore, -${refuel} cr fuel)`, 'success');
     return true;
   },
 
-  refuelDrone(id) {
+  refuelDrone(id, options = {}) {
     const g = this.state.automation.drones.find((x) => x.id === id);
     if (!g) return false;
     const def = DRONE_BY_ID.get(g.defId) || g;
     const max = def.fuelMax || g.fuelMax || 0;
     const need = Math.max(0, max - (Number(g.fuel) || 0));
-    if (need <= 0) return true;
+    if (need <= 0) {
+      if (!options.recovery && g.status !== 'distressed') this._clearDroneRecovery(g);
+      return true;
+    }
     const cost = Math.round(need * 0.5);
     if (cost > 0 && !this._charge(cost, 'drone:refuel')) return false;
+    const distressed = g.status === 'distressed';
     resumeAfterFuel(g, max, def.upkeepPerMin || 0);
     g._fuelStrandNotified = false;
     if (g.program && TEMPLATES[g.program.templateId]) {
@@ -2351,7 +2590,11 @@ export const automation = {
       g.status = (g.buffer || 0) >= (g.bufferCap || def.bufferCap || 0) - 1e-6 ? 'idle' : 'mining';
       g.ratePerMin = this._droneRatePerMin(g, def);
     }
-    this.toast(`Drone refueled (-${cost} cr). Work resumes.`, 'success');
+    if (distressed) g.status = 'distressed';
+    if (!options.recovery && !distressed) this._clearDroneRecovery(g);
+    if (!options.recovery) this.toast(distressed
+      ? `Drone refueled (-${cost} cr). Unpaid upkeep still halts work.`
+      : `Drone refueled (-${cost} cr). Work resumes.`, 'success');
     return true;
   },
 
@@ -2561,7 +2804,7 @@ export const automation = {
       if (idx < 0) return;
       const g = a.drones[idx];
       g.durability = Math.max(0, (g.durability || 0) - dmg);
-      if (g.durability <= 0) { this._releaseDroneEntities(g); this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId); a.drones.splice(idx, 1); }
+      if (g.durability <= 0) { this._clearDroneRecovery(g); this._releaseDroneEntities(g); this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId); a.drones.splice(idx, 1); }
     } else if (p.assetKind === 'fleet') {
       const fs = a.fleet.find((x) => x.id === p.assetId);
       if (!fs) return;
@@ -3130,6 +3373,8 @@ export const automation = {
     // entityIds are runtime-only; a fresh load/normalize starts with none so they re-spawn in-sector.
     for (const g of a.drones) {
       g.entityIds = [];
+      g.recovery = normalizeDroneRecovery(g.recovery);
+      delete g._recoveryBeaconId;
       migrateDroneOperation(g);
     }
     a.traders = normalizeAutomationRecordList(a.traders, 'trader');
@@ -3176,6 +3421,10 @@ export const automation = {
   // newGame / save-load (§4.5 — save key 'automation', order 9)
   // ------------------------------------------------------------------------------------------
   newGame() {
+    for (const g of this.state.automation?.drones || []) {
+      this._clearDroneRecovery(g);
+      this._releaseDroneEntities(g);
+    }
     if (this.state.automation && Array.isArray(this.state.automation.outposts)) {
       const bucket = this._presenceBucket();
       for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o, true, bucket);
@@ -3198,7 +3447,11 @@ export const automation = {
     a.meta.lastTickTime = simTimeMs(this.state);
     // entityIds are live runtime ids (don't survive save/load or sector unload) → strip them; the
     // flying drones re-spawn from the group on the next in-sector tick.
-    const drones = a.drones.map((g) => { const { entityIds, ...rest } = g; return rest; });
+    const drones = a.drones.map((g) => {
+      this._rememberDroneRecoveryPosition(g);
+      const { entityIds, _recoveryBeaconId, ...rest } = g;
+      return { ...rest, recovery: normalizeDroneRecovery(g.recovery) };
+    });
     const outposts = a.outposts.map((o) => { const { entityId, ...rest } = o; return rest; });
     // Fleet entries carry a transient _liveId (the live wingman entity id, set by systems/wingmen.js
     // on spawn). It doesn't survive save/load (entity ids are per-session) → strip it like drone
@@ -3232,6 +3485,10 @@ export const automation = {
 
   deserialize(data) {
     if (!data) return;
+    for (const g of this.state.automation?.drones || []) {
+      this._clearDroneRecovery(g);
+      this._releaseDroneEntities(g);
+    }
     if (this.state.automation && Array.isArray(this.state.automation.outposts)) {
       const bucket = this._presenceBucket();
       for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o, true, bucket);

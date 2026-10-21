@@ -140,12 +140,18 @@
     }
   ],
   "assetId": "sf.render.borrowed-voice-a",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.borrowed-voice-a.node.collision-borrowed-voice-a-housing.collision",
+      "nodeId": "sf.render.borrowed-voice-a.node.collision-borrowed-voice-a-housing",
+      "reference": "COLLISION_BORROWED_VOICE_A_HOUSING"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "afed29d47d04239f9902f9113e96af3725d143103eece23513efb0dd7898f88e",
+  "contentHash": "b22283a9e3351a149dc2afbe1490abf0f3e112e47f8a37c5bb52327a82d0dab4",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-a.node.lod0-motion-borrowed-voice-receiver-brushedmetal.dynamic",
@@ -188,7 +194,7 @@
       "indexCount": 564,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_A_HOUSING",
       "nodeId": "sf.render.borrowed-voice-a.node.collision-borrowed-voice-a-housing",
       "primitiveIndex": 0,
@@ -563,7 +569,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_A_HOUSING",
       "nodeName": "COLLISION_BORROWED_VOICE_A_HOUSING",
       "nodePath": [
@@ -1234,7 +1240,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "1e43d134b78a341234ad2622c5d11e5935d9b9f09371544135dae0861a707ddd"
+      "sha256": "1c78409491d8491b8e2ca6615c4896a999774bf656f5b7172c723906989cdaeb"
     },
     "sourceGlb": {
       "bytes": 398768,
@@ -1242,8 +1248,8 @@
       "uri": "borrowed_voice_a.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -1789,7 +1795,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_a.glb"
   },
-  "runtimeHash": "2ee8326c8e0e05930c871fe29e54a128be56336c2d2911abb8841d8cbb38f51d",
+  "runtimeHash": "53f89a28c52102ecb25cb7fce62d2a32c7f09c2eb28d1e029db895b354b18ade",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

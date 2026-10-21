@@ -317,9 +317,12 @@ const VERB_BINDINGS = {
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
   // key at all (or bury it behind Fn), so a second code ships in the SAME array — the existing
   // multi-code idiom this table already uses for WASD-and-arrows, not a parallel laptop scheme.
-  // KeyH is free repo-wide (checked against both VERB/scheme tables and ui/bindings.js) and sits
-  // under the right index finger on the home row, so it is reachable on any chassis.
-  travelBurn:     ['NumLock', 'KeyH'],   // edge: toggle the travel drive (latch owns the state machine)
+  // The fallback must not collide with an interface owner: the UI router opens Help on h/H
+  // (src/ui/input.js :523, settings.js RESERVED_LITERAL_CODES) and never suppresses flight, so
+  // a KeyH seat fired the drive AND opened Help — RC-05. F8 is the one F-key nobody owns
+  // (F1-F5/F7/F9 are claimed; checked against both scheme tables, ui/bindings.js and the router),
+  // sits in the same row on every chassis, and needs no Fn reach.
+  travelBurn:     ['NumLock', 'F8'],   // edge: toggle the travel drive (latch owns the state machine)
 };
 
 const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs

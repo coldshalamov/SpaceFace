@@ -165,7 +165,7 @@ test('worker prompt vocabulary follows transported pad, touch, and keyboard devi
   setPromptDevice('kbm');
   assert.equal(verbBindingLabel(f.state, 'travelBurn'), '', 'touch hints do not name an unavailable key');
   await f.tick();
-  assert.equal(verbBindingLabel(f.state, 'travelBurn'), 'Num Lock/H', 'keyboard vocabulary returns after keyboard activity');
+  assert.equal(verbBindingLabel(f.state, 'travelBurn'), 'Num Lock/F8', 'keyboard vocabulary returns after keyboard activity');
 });
 
 test('default autonomous worker clock receives pad frames across a separate realm', { timeout: 30000 }, async t => {

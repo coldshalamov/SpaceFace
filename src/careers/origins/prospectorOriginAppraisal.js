@@ -3,6 +3,7 @@
 // No sim writes. Deterministic from entity typeId + optional yield hints.
 
 import { ASTEROIDS, ORES, dominantOreScanGlyph } from '../../data/mining.js';
+import { COMMODITIES } from '../../data/commodities.js';
 import {
   PROSPECTOR_GRADE_ORDER,
   PROSPECTOR_MIN_APPRAISAL_GRADE,
@@ -10,6 +11,14 @@ import {
 
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const ORE_BY_ID = new Map(ORES.map((o) => [o.id, o]));
+
+// Same 'raw ore' category set the origin chain's yield/sale crediting uses
+// (ORE_COMMODITY_IDS in prospectorOrigin.js) — ore prefixes alone miss
+// cmdty_volatiles and admit gas/crystal stacks the chain cannot credit.
+const ORE_COMMODITY_IDS = new Set(
+  COMMODITIES.filter((commodity) => commodity && commodity.category === 'raw ore')
+    .map((commodity) => commodity.id),
+);
 
 const GRADE_INDEX = Object.freeze(
   Object.fromEntries(PROSPECTOR_GRADE_ORDER.map((g, i) => [g, i])),
@@ -199,26 +208,21 @@ export function cargoMassPressure(state) {
   };
 }
 
-/** True if player hold has any of the given commodity ids. */
+/** True if player hold has any of the given commodity ids — or any raw-ore stack when unfiltered. */
 export function holdHasOre(state, commodityIds) {
   const items = state && state.player && state.player.cargo && state.player.cargo.items;
   if (!items) return false;
-  const ids = Array.isArray(commodityIds) && commodityIds.length
-    ? commodityIds
-    : Object.keys(items);
-  for (const id of ids) {
-    if ((items[id] || 0) > 0) return true;
-  }
-  // Any raw ore-like stack counts if no filter.
-  if (!commodityIds || !commodityIds.length) {
-    for (const id of Object.keys(items)) {
-      if ((items[id] || 0) > 0 && (id.startsWith('cmdty_ore') || id.startsWith('cmdty_silicate')
-        || id.startsWith('cmdty_ice') || id.startsWith('cmdty_gas')
-        || id.startsWith('cmdty_crystal') || id.startsWith('cmdty_gem')
-        || id.startsWith('cmdty_exotic'))) {
-        return true;
-      }
+  const ids = Array.isArray(commodityIds) && commodityIds.length ? commodityIds : null;
+  if (ids) {
+    for (const id of ids) {
+      if ((items[id] || 0) > 0) return true;
     }
+    return false;
+  }
+  // Any raw ore stack counts if no filter — never any cargo (a hold full of
+  // munitions must not read as "still has ore" for the sell step).
+  for (const id of Object.keys(items)) {
+    if ((items[id] || 0) > 0 && ORE_COMMODITY_IDS.has(id)) return true;
   }
   return false;
 }

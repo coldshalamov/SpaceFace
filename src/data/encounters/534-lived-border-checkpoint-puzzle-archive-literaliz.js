@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "orbit",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "border checkpoint does not get quieter if you boost.",
+      "line": "The noise in border checkpoint was running before your drive.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 4,
       "motion": "orbit",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "ARCHIVIST: Holding. This does not hurry.",
+      "line": "ARCHIVIST: Holding. The work decides when it is done.",
       "channel": "info",
       "next": "offer"
     },

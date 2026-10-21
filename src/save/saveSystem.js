@@ -6550,7 +6550,7 @@ export const save = {
       }
     }
     state.restoreEnvelopeRecordIds = envelopeRecordIds.size ? envelopeRecordIds : null;
-    state.restoreEnvelopeStations = createCatalogStationRestore(savedPersistentList);
+    state.restoreEnvelopeStations = createCatalogStationRestore(savedPersistentList, data);
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
@@ -8460,7 +8460,7 @@ function normalizeRestorableData(data) {
   if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
   // Contradictory copies of one authored station cannot choose a body by array order.
   // Validate on the detached candidate, before restore events, transitions or rollback capture.
-  try { createCatalogStationRestore(data.entities?.persistent); }
+  try { createCatalogStationRestore(data.entities?.persistent, data); }
   catch (_) { return { ok: false, reason: 'ambiguous_catalog_station' }; }
   // Validate the new custody section on the detached candidate, before restore side effects.
   try {
