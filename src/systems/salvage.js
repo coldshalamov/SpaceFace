@@ -1161,7 +1161,13 @@ export const salvage = {
     const targetId = p.targetId != null ? p.targetId : (p.entityId != null ? p.entityId : null);
     if (targetId == null) return;
     for (const s of list) {
-      if (s.isCommunicator && !s.offered && s.entityId === targetId) this._offerFromPoint(s);
+      if (!s.isCommunicator || s.offered || s.entityId !== targetId) continue;
+      // A recycled entity id must not honor a foreign occupant as this point's bound
+      // carrier: _entityForPoint verifies the stamped binding (dropping a stale pin and
+      // walking to the true carrier), and the offer fires only when the verified bound
+      // entity is the one actually scanned.
+      const bound = this._entityForPoint(s.id, s.sourceKey);
+      if (bound && bound.id === targetId) this._offerFromPoint(s);
     }
   },
 
