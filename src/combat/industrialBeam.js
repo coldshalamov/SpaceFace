@@ -236,6 +236,13 @@ export function handlePayloadSectorTransition(state, helpers = null) {
     : null;
   for (const entity of Array.from(state.entities.values())) {
     if (entity.type === 'payload' && entity.data) {
+      // Respect authored durable payload lifetime markers; saved persistent bodies
+      // must not lose custody to a late sector-enter listener.
+      // Default industrial scraps remain transient; malformed truthy strings do not
+      // opt in. This does not scope delayed cleanup of newly spawned transient bodies.
+      if (entity.flags?.persistent === true || entity.flags?.missionPinned === true
+        || entity.data.persistent === true || entity.data.missionPinned === true
+        || entity.data.transientSector === false) continue;
       // Anchored or worldRecord payloads survive sector transition
       if (entity.data.anchored || entity.data.worldRecordId != null) continue;
       // Active tethered payload survives sector transition if tethered by player
