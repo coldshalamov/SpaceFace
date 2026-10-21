@@ -61,7 +61,7 @@ function actor(owner, role) {
 
 // Read-only projection for the existing Hail/target surface, using the same actor
 // identity and corridor decision as work. It grants no movement or cargo authority.
-export function anvilCollectorWorkStatus(state, entity) {
+export function anvilCollectorWorkStatus(state, entity, { detail = false } = {}) {
   if (state?.mode !== 'flight' || state.world?.currentSectorId !== PLANET_SITE.sectorId
     || entity?.data?.worldRecordId !== anvilWorkerRecordId(state, 'collector')
     || actor({ state }, 'collector') !== entity || entity?.data?.jobId) return null;
@@ -72,10 +72,17 @@ export function anvilCollectorWorkStatus(state, entity) {
     const retained = !receiver && retainedReceiver({ state });
     const away = (receiver && (!receiverAtHome(receiver) || receiver.data.jobId))
       || (retained && retained.itinerary.phase !== 'receiving');
-    const action = route.phase === 'service_hold' || route.phase === 'berthed'
-      ? (collectorDriveReady(state, entity) ? 'REPAIR HOLD · KEEP REPAIR LINE TAUT'
-        : 'REPAIR HOLD · DRIVE DISABLED · KEEP LINE TAUT TO FULL HULL') : 'INJURED · RETURNING FOR REPAIR';
-    return `STORMSHIFT ${action}${!receiver && !retained ? ' · TENDER UNAVAILABLE' : away ? ' · TENDER AWAY' : ''}`;
+    const held = route.phase === 'service_hold' || route.phase === 'berthed';
+    const driveReady = collectorDriveReady(state, entity);
+    const hullPercent = Math.floor(100 * Math.max(0, Math.min(1, entity.hull / entity.hullMax)));
+    const targetPercent = driveReady ? ANVIL_WORK.serviceReleaseHull * 100 : 100;
+    const action = held
+      ? `REPAIR HOLD · HULL ${hullPercent}% / ${targetPercent}%${driveReady ? '' : ' · DRIVE DISABLED'} · KEEP LINE TAUT`
+      : 'INJURED · RETURNING FOR REPAIR';
+    const status = `STORMSHIFT ${action}${!receiver && !retained ? ' · TENDER UNAVAILABLE' : away ? ' · TENDER AWAY' : ''}`;
+    // Action names, not hardware keys: bindings remain the input owner's authority.
+    // Only the full Hail reply teaches the sequence; target/work labels stay compact.
+    return detail && held ? `${status}. Aim at this collector and attach Massline. Brake to keep the line taut. If slack, hold Massline + Reel In gently. Release the hold to keep the line; tap Massline separately to cut.` : status;
   }
   if (route.phase === 'berthed') {
     const receiver = actor({ state }, 'receiver');

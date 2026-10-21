@@ -9,7 +9,7 @@ import { world } from '../src/systems/world.js';
 import { save } from '../src/save/saveSystem.js';
 import { ANVIL_WORK, anvilWorkerRecordId, anvilBuyerApproach, anvilBuyerIngress, anvilServicePoint, anvilReceiverWorkStatus, anvilTrafficYield } from '../src/systems/anvilWork.js';
 import { PLANET_SITE } from '../src/data/planets.js';
-import { livingWorkStatusText } from '../src/data/contactHail.js';
+import { livingWorkStatusText, createContactHailResponse } from '../src/data/contactHail.js';
 
 const commodityId = PLANET_SITE.harvest.commodityShallow;
 const stationId = ANVIL_WORK.buyerId;
@@ -1102,6 +1102,28 @@ test('service release requires actual 75 percent hull and preserves receiver-awa
     e.hull = 150; t.owner._stepAnvilWork(1 / 60, t.state);
     assert.equal(e.data.itinerary.serviceRequired, false);
     assert.equal(e.data.itinerary.phase, 'berthed');
+  } finally { t.sim.dispose(); }
+});
+
+test('repair Hail separates compact truthful progress from actionable route guidance', () => {
+  const t = boot(); try {
+    const e = t.collector; e.hull = 90; e.data.itinerary.phase = 'service_hold'; e.data.itinerary.serviceRequired = true;
+    const compact = livingWorkStatusText(e, { state: t.state });
+    assert.match(compact, /HULL 45% \/ 75%/);
+    assert.doesNotMatch(compact, /Aim at|Reel In|tap Massline/);
+    const offer = { kind: 'trader', targetId: e.id, requestId: 'repair-help' };
+    const reply = createContactHailResponse(t.state, offer, 'route');
+    assert.match(reply.lines[0], /Aim at this collector and attach Massline/);
+    assert.match(reply.lines[0], /If slack, hold Massline \+ Reel In gently/);
+    assert.match(reply.lines[0], /Release the hold to keep the line; tap Massline separately to cut/);
+    assert.doesNotMatch(reply.lines[0], /KeyF|Digit0|BracketLeft|press Q/);
+    assert.equal(e.hull, 90); assert.equal(e.data.itinerary.serviceRequired, true, 'read-only help grants no repair');
+    t.state.combat ||= {}; t.state.combat.entities ||= {};
+    t.state.combat.entities[String(e.id)] = { capabilities: { drive: false } };
+    assert.match(livingWorkStatusText(e, { state: t.state }), /HULL 45% \/ 100% · DRIVE DISABLED/);
+    e.data.itinerary.phase = 'return';
+    assert.doesNotMatch(createContactHailResponse(t.state, offer, 'route').lines[0], /Aim at/);
+    assert.match(livingWorkStatusText(e, { state: t.state }), /INJURED · RETURNING/);
   } finally { t.sim.dispose(); }
 });
 

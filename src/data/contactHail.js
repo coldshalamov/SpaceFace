@@ -1486,7 +1486,7 @@ function workerIdentifyText(target) {
 }
 
 function routeText(state, target) {
-  const orchardWork = anvilCollectorWorkStatus(state, target) || anvilReceiverWorkStatus(state, target);
+  const orchardWork = anvilCollectorWorkStatus(state, target, { detail: true }) || anvilReceiverWorkStatus(state, target);
   if (orchardWork) return `ROUTE · ${orchardWork}`;
   const record = traderRecord(state, target.id);
   const passengerItinerary = passengerLinerItinerary(state, target);
