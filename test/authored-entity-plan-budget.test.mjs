@@ -650,7 +650,7 @@ test(`a resolved authored ship ${stalePipeline?'cannot overwrite a newer admissi
 
     assert.ok(compiledRoot, 'the resolved composition must enter the exact GPU pipeline compiler');
     assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
-    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines');
+    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines:root=renderer-compile-chain;pendingPools=0');
     assert.equal(boundary.children.includes(fallback), true,
       'pipeline work cannot publish the authored root early');
     assert.equal(compiledRoot.parent, null, 'pipeline admission compiles the detached authored root');
@@ -677,7 +677,7 @@ test(`a resolved authored ship ${stalePipeline?'cannot overwrite a newer admissi
     assert.equal(residentRoot, compiledRoot,
       'the exact compiled root must enter texture residency before publication');
     assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
-    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines');
+    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines:root=gpu-residency;pendingPools=0');
     assert.equal(boundary.children.includes(fallback), true,
       'pipeline readiness alone cannot publish a root whose hidden LOD textures are not resident');
 
@@ -863,11 +863,11 @@ test(`current identity owns admission independently of speculative work: ${scena
       return;
     }
     assert.ok(compiled,'current resident plan must reach its real pipeline gate without the obsolete prefetch');
-    assert.equal(boundary.userData.authoredPreparePhase,'preparing-pipelines');
+    assert.equal(boundary.userData.authoredPreparePhase,'preparing-pipelines:root=renderer-compile-chain;pendingPools=0');
     assert.notEqual(boundary.userData.authoredAssetState,'authored','pipeline remains authoritative');
-    if(scenario==='cancelled-owner'){ownerActive=false;entity.alive=false;}
+    if(scenario==='cancelled-owner'){ownerActive=false;entity.alive=false;boundary.userData.authoredPreparePhase='retired-owner-phase';}
     releasePipeline({skipped:false});await pump(200);
-    if(scenario==='cancelled-owner'){assert.notEqual(boundary.userData.authoredAssetState,'authored');return;}
+    if(scenario==='cancelled-owner'){assert.notEqual(boundary.userData.authoredAssetState,'authored');assert.equal(boundary.userData.authoredPreparePhase,'retired-owner-phase');return;}
     assert.equal(boundary.userData.authoredAssetState,'authored');
     assert.deepEqual(flattenUnique(boundary.userData.authoredSlots),flattenUnique(partsLibrary.authoredPreloadPlanForEntity(entity)));
     if(scenario==='pending-old'){
@@ -894,3 +894,56 @@ test(`current identity owns admission independently of speculative work: ${scena
 });
 
 }
+
+test('pipeline substage observation reports actual waits and cannot change success or error', async () => {
+  for (const broken of [false, true]) {
+    const phases=[];let releaseCompile,releaseResidency;
+    const compile=new Promise(r=>{releaseCompile=r;}),residency=new Promise(r=>{releaseResidency=r;});
+    const options={prepareAuthoredPipelines:()=>compile,prepareAuthoredGpuResidency:()=>residency};
+    Object.defineProperty(options,'onAuthoredPipelinePhase',{get(){throw new Error('unrelated-option-getter');}});
+    const result=partsLibrary.prepareAuthoredVisualPipelines(new THREE.Group(),options,
+      phase=>{phases.push(phase);if(broken)throw new Error('observer-only');});
+    for(let i=0;i<50;i++)await Promise.resolve();
+    assert.equal(phases.at(-1),'renderer-compile-chain');
+    releaseCompile({skipped:false});for(let i=0;i<50;i++)await Promise.resolve();
+    assert.equal(phases.at(-1),'gpu-residency');
+    releaseResidency({skipped:false});await result;
+    assert.deepEqual(phases,['material-policies','renderer-compile-chain','present-yield','gpu-residency','complete']);
+  }
+  const original=new Error('pipeline-original-error');
+  const options={prepareAuthoredPipelines:()=>Promise.reject(original)};
+  Object.defineProperty(options,'onAuthoredPipelinePhase',{get(){throw new Error('observer-getter');}});
+  await assert.rejects(partsLibrary.prepareAuthoredVisualPipelines(new THREE.Group(),options,()=>{throw new Error('observer-only');}),e=>e===original);
+});
+
+test('ship pipeline aggregate distinguishes pending pool siblings from completed or rejected root', async () => {
+  const source=readFileSync(process.env.ENTRY_PARTS_SOURCE || new URL('../src/render/partsLibrary.js',import.meta.url),'utf8');
+  const start=source.indexOf('async function prepareAuthoredShipVisualPipelines(');
+  const end=source.indexOf('export async function retryAuthoredPartLibrary',start);
+  const reportStart=source.indexOf('function reportAuthoredPipelinePhase(');
+  const reportEnd=source.indexOf('export async function prepareAuthoredVisualPipelines',reportStart);
+  assert.ok(start>=0&&end>start&&reportStart>=0&&reportEnd>reportStart);
+  for(const failRoot of [false,true]){
+    let resolveRoot,rejectRoot,resolvePool,activated=0;
+    const root=new Promise((yes,no)=>{resolveRoot=yes;rejectRoot=no;}),pool=new Promise(r=>{resolvePool=r;});
+    const phases=[],original=new Error('root-original-error'),options={};
+    Object.defineProperty(options,'onAuthoredPipelinePhase',{get(){throw new Error('unrelated-option-getter');}});
+    const env={EMPTY_ARRAY:[],authoredRuntimeState:()=>null,
+      prepareAuthoredVisualPipelines:(_root,_options,observer)=>{observer('renderer-compile-chain');return root;},
+      prepareRenderPackagePoolAdmission:(_pool,poolOptions)=>{assert.equal(poolOptions,options,'pool retains original option identity and getters');return pool;},
+      activateRenderPackagePoolAdmission:()=>{activated++;}};
+    const prepare=new Function('env',`with(env){${source.slice(reportStart,reportEnd)}\n${source.slice(start,end)};return prepareAuthoredShipVisualPipelines;}`)(env);
+    let settled=false;
+    const result=prepare({root:{},packagePoolAdmissions:[{}]},options,phase=>{phases.push(phase);throw new Error('observer-only');});
+    result.then(()=>{settled=true;},()=>{settled=true;});
+    if(failRoot)rejectRoot(original);else resolveRoot({ok:true});
+    for(let i=0;i<20;i++)await Promise.resolve();
+    assert.equal(settled,false,'root settlement must still wait for package pool work');
+    assert.equal(phases.at(-1),`preparing-pipelines:root=${failRoot?'rejected':'complete'};pendingPools=1`);
+    resolvePool({ok:true});
+    if(failRoot)await assert.rejects(result,error=>error instanceof AggregateError&&error.errors[0]===original);
+    else assert.deepEqual(await result,{ok:true});
+    assert.equal(phases.at(-1),`preparing-pipelines:root=${failRoot?'rejected':'complete'};pendingPools=0`);
+    assert.equal(activated,failRoot?0:1);
+  }
+});

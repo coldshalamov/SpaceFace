@@ -9190,7 +9190,12 @@ export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
  * while the driver's exact HDR material programs or hidden-LOD textures are still absent; do not
  * publish that object until both preparations settle. Preview/test harnesses without live GPU
  * preparation hooks remain supported. */
-export async function prepareAuthoredVisualPipelines(root, options = {}) {
+// Observation must not acquire admission authority or change an owner's outcome.
+function reportAuthoredPipelinePhase(observer, phase) {
+  try { observer?.(phase); } catch { /* diagnostic only */ }
+}
+
+export async function prepareAuthoredVisualPipelines(root, options = {}, phaseObserver = null) {
   assertAuthoredVisualPreparationActive(options, 'before-gpu-preparation');
   const preparePipelines = options && options.prepareAuthoredPipelines;
   const prepareResidency = options && options.prepareAuthoredGpuResidency;
@@ -9204,6 +9209,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // policiesMs sums the walk spans only — the paced yield's wait is present
   // time, not work, and counting it skewed the admission-leg forensics.
   let policiesMs = 0;
+  reportAuthoredPipelinePhase(phaseObserver, 'material-policies');
   // Each policy walk is an independent whole-subtree traverse of the detached
   // root — under the stage gate they pace with a ledger debit + present yield
   // between them instead of landing as one contiguous prefix inside the commit.
@@ -9262,6 +9268,8 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
   }
   const compileStartedAtMs = monotonicNow();
+  // This renderer port includes compile, residency and exact-target work, not just driver links.
+  reportAuthoredPipelinePhase(phaseObserver, 'renderer-compile-chain');
   let pipelines;
   try {
     pipelines = typeof preparePipelines === 'function'
@@ -9274,11 +9282,13 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   }
   const compileMs = Math.max(0, monotonicNow() - compileStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
+  reportAuthoredPipelinePhase(phaseObserver, 'present-yield');
   if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
     await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
     assertAuthoredVisualPreparationActive(options, 'after-present-yield');
   }
   const residencyStartedAtMs = monotonicNow();
+  reportAuthoredPipelinePhase(phaseObserver, 'gpu-residency');
   const gpuResidency = typeof prepareResidency === 'function'
     ? await waitForAuthoredGpuSettlement(prepareResidency(root, {
         isResidencyOwnerActive: options.isResidencyOwnerActive,
@@ -9286,6 +9296,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     : { skipped: true, reason: 'GPU residency uploader unavailable' };
   const residencyMs = Math.max(0, monotonicNow() - residencyStartedAtMs);
   assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
+  reportAuthoredPipelinePhase(phaseObserver, 'complete');
   return {
     skipped: pipelines?.skipped === true && gpuResidency?.skipped === true,
     pipelines,
@@ -9379,10 +9390,14 @@ function isAuthoredAdmissionBoundaryCurrent(options) {
     || options.isAdmissionBoundaryCurrent();
 }
 
-async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
+async function prepareAuthoredShipVisualPipelines(authored, options = {}, phaseObserver = null) {
   const poolAdmissions = Array.isArray(authored?.packagePoolAdmissions)
     ? authored.packagePoolAdmissions
     : EMPTY_ARRAY;
+  let rootPhase = 'starting';
+  let pendingPools = poolAdmissions.length;
+  const publishPhase = () => reportAuthoredPipelinePhase(phaseObserver,
+    `preparing-pipelines:root=${rootPhase};pendingPools=${pendingPools}`);
   const preparations = [prepareAuthoredVisualPipelines(authored.root, {
     ...options,
     // The retained rigid-opaque cohort only claims ship roots: mint each batchable
@@ -9396,9 +9411,18 @@ async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
       return twinState?.render?.rigidOpaqueBatchTwinCohort === true
         && twinState?.mode !== 'loading';
     })(),
-  })];
+  }, (phase) => { rootPhase = phase; publishPhase(); })];
+  // These side observers do not replace the promises owned by allSettled below.
+  // A failed root remains distinct from a still-pending pool sibling.
+  preparations[0].then(() => { rootPhase = 'complete'; publishPhase(); },
+    () => { rootPhase = 'rejected'; publishPhase(); });
   for (const admission of poolAdmissions) {
-    preparations.push(prepareRenderPackagePoolAdmission(admission, options));
+    const preparation = prepareRenderPackagePoolAdmission(admission, options);
+    preparations.push(preparation);
+    Promise.resolve(preparation).then(
+      () => { pendingPools--; publishPhase(); },
+      () => { pendingPools--; publishPhase(); },
+    );
   }
   // A first rejection must not release an owner while sibling compile/upload work is still touching
   // its resources. Settle the complete admission group, then either fail/clean it as one unit or
@@ -9436,16 +9460,29 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   // Raw await evidence only. A late continuation must neither stamp nor restore
   // over a newer boundary epoch/token; existing publication/error phases survive.
   const beginPreparePhase = (phase) => {
-    const current = () => !staleAuthoredRunVerdict(boundary, options)
-      && (typeof options.isAdmissionBoundaryCurrent !== 'function' || options.isAdmissionBoundaryCurrent());
-    const previous = boundary.userData.authoredPreparePhase;
-    if (current()) boundary.userData.authoredPreparePhase = phase;
-    return () => {
-      if (current() && boundary.userData.authoredPreparePhase === phase) {
+    const current = () => {
+      try { return !staleAuthoredRunVerdict(boundary, options)
+        && (typeof options.isAdmissionBoundaryCurrent !== 'function' || options.isAdmissionBoundaryCurrent())
+        && (typeof options.isResidencyOwnerActive !== 'function' || options.isResidencyOwnerActive());
+      } catch { return false; }
+    };
+    let previous;
+    try { previous = boundary.userData.authoredPreparePhase;
+      if (current()) boundary.userData.authoredPreparePhase = phase;
+    } catch { /* diagnostic only */ }
+    const restore = () => {
+      try { if (current() && boundary.userData.authoredPreparePhase === phase) {
         if (previous === undefined) delete boundary.userData.authoredPreparePhase;
         else boundary.userData.authoredPreparePhase = previous;
-      }
+      } } catch { /* diagnostic only */ }
     };
+    restore.update = (next) => {
+      try { if (current() && boundary.userData.authoredPreparePhase === phase) {
+        boundary.userData.authoredPreparePhase = next;
+        phase = next;
+      } } catch { /* diagnostic only */ }
+    };
+    return restore;
   };
   try {
     if (!mayComposeAuthoredShipLive({
@@ -9541,14 +9578,14 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     const completeAdmission = async () => {
       let pipelineReady;
       const pipelineStartedAtMs = monotonicNow();
+      const restorePipelinePhase = beginPreparePhase('preparing-pipelines');
       try {
-        pipelineReady = prepareAuthoredShipVisualPipelines(authored, options);
+        pipelineReady = prepareAuthoredShipVisualPipelines(authored, options, restorePipelinePhase.update);
       } finally {
         recordAdmissionSlice(pipelineStartedAtMs);
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('pipeline-prepare');
       }
-      const restorePipelinePhase = beginPreparePhase('preparing-pipelines');
       let pipelineResult;
       try { pipelineResult = await pipelineReady; }
       finally { restorePipelinePhase(); }
