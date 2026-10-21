@@ -312,6 +312,13 @@ export function anvilBandExitTarget(worker, state = null, native = null) {
     const length2 = dx * dx + dz * dz;
     for (const obstacle of anvilFixedClearances(state, worker, native)) {
       const x = center.x + obstacle.x, z = center.z + obstacle.z;
+      const awayX = worker.pos.x - x, awayZ = worker.pos.z - z;
+      // Tracking room may overlap at the start of an otherwise clear weather
+      // escape. Keep that radial bearing only when both the whole straight
+      // segment and current motion separate from the solid, with hull margin.
+      if (Math.hypot(awayX, awayZ) >= obstacle.hullClearance
+        && awayX * dx + awayZ * dz >= 0
+        && awayX * worker.vel.x + awayZ * worker.vel.z >= 0) continue;
       const t = length2 > 0 ? Math.max(0, Math.min(1,
         ((x - worker.pos.x) * dx + (z - worker.pos.z) * dz) / length2)) : 0;
       if (Math.hypot(worker.pos.x + t * dx - x, worker.pos.z + t * dz - z) >= obstacle.clearance) continue;

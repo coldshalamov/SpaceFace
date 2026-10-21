@@ -129,3 +129,23 @@ test('no clear local segment returns no target instead of forcing a crossing', (
  const c=worker(), occupied={...gate,pos:{...c.pos}};
  assert.equal(anvilArcTarget(state(occupied),c,gateAngle,2800),null);
 });
+
+// Tracking room is not a reason to turn a physically clear, separating weather
+// escape sideways. These explicit inputs exercise the initial-overlap boundary.
+test('radial escape retains its bearing when safely separating from tracking-only overlap', () => {
+ const c=worker(0,1500), behind={...gate,pos:point(0,1350)};
+ assert.ok(150>clearance+12);
+ assert.deepEqual(anvilBandExitTarget(c,state(behind)),anvilBandExitTarget(c));
+ c.vel={x:25,z:0};
+ assert.deepEqual(anvilBandExitTarget(c,state(behind)),anvilBandExitTarget(c));
+});
+
+test('radial escape does not exempt approaching, crossing, or physically overlapping solids', () => {
+ const c=worker(0,1500), nominal=anvilBandExitTarget(c);
+ for(const radius of [1650,2200,1450]){
+  const obstacle={...gate,pos:point(0,radius)};
+  assert.notDeepEqual(anvilBandExitTarget(c,state(obstacle)),nominal,`obstacle radius ${radius}`);
+ }
+ const behind={...gate,pos:point(0,1350)};c.vel={x:-25,z:0};
+ assert.notDeepEqual(anvilBandExitTarget(c,state(behind)),nominal,'closing velocity still requires tracking room');
+});

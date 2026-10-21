@@ -17,3 +17,12 @@ The actual CI merge `0eb59a76a01b88c7dec50b8d891d932ca0c8a65c` recorded collecto
 An invalid first probe had an angular-wrap stop error and is excluded from success evidence. Full-registry shortcut probes did not establish passage: the later attempt yielded to a real Customs Checkpoint Hornet155. The product yield policy was not changed. That constructed traffic timing differs from the actual fullshift, so it is not the established cause of CI's gate contact.
 
 These are bounded geometry/native steering results, not ordinary arrival, fullshift, Save/Continue, visual or whole-game acceptance. The actual successor CI route remains required. No collision tolerance, actor identity, finite cargo, damage or transfer rule was weakened. No local execution of the long receiver-delivery test was used for this increment.
+
+
+## Forecast escape regression correction
+
+Successor fb3afd914fef745415ec85d9645a2acf84d8c59d CI exposed two unchanged forecast/Continue exact-bearing assertions. The constructed exposed collector starts 180 WU outward from the Orchard frame: physical combined envelope 88.566556 WU, but tracking-expanded envelope 202.316556 WU. A radial escape monotonically increases clearance; treating its initial tracking-only overlap as a blockage caused an unnecessary sideways turn/brake.
+
+The clear-band check now retains a physically safe separating radial target only when initial separation is at least physical envelope + 12 WU and both the target segment and current velocity are non-approaching. Approaching velocity, crossing segments and physical overlap remain protected. Original forecast/Continue assertions are unchanged. Additive red/green controls and 55 passing checks (16 focused, 2 original forecast/Continue, 37 adjacent) validate the correction against immutable public source. Module hashes matched each tested tree. No collision tolerance, cargo, weather or traffic-yield change.
+
+This correction does not rerun or enlarge the earlier isolated native passage claims. Actual successor full-route CI and ordinary-gameplay acceptance remain required.
