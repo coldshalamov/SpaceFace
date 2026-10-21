@@ -5778,6 +5778,7 @@ continued, or SEED-minted lines.
 - *Refuse:* a confusion status; a random infighting roll; flipping teams.
 
 **AL-FIGHT-2 They have hands too** (row 392; AL-HF-06 first, then AL-HF-13).
+*Owner ruling 2026-10-21:* body-throwing stays with rare, authored specialists (today only the Mirrorjaw Foreman and Forge Regent qualify, through their concussion mounts). Do not widen it to common enemies; that is a chaos vector (§22.11).
 - *Feeling:* "The Reaver kicked a wreck at me; I sidestepped, caught it, and sent it back."
 - *Thread:* Half-Life 2. Enemies use the same props the player does, so the sandbox teaches its
   rules by doing them to you.
@@ -6455,3 +6456,93 @@ small agents can take them. Evidence for every claim is in the researcher findin
 | 479 | **No screen admits it is unfinished** | Mission Log shows the opening contract's real terms; station scroll areas pad for the tab rail; game over gets a populated bench state and an in-world fallback line; the race-board key help moves to a chip; the map strip shows the tracked goal; Voice gets its live-mix ring; the ledger empty state and the clipped factions list | Bench shots of mission log, market, bar, industry, game over and chart-local show no fallback text, clipping or "No destination set" beside GOAL |
 | 480 | **Markets you can play** (after 465) | Convoy Shares (stake a real freighter's arrival); Forward Slip (lock a price for a delivery window); Auditor Halvard Penn (dumping raises scan odds); the Dump Chute (sling pods into an intake); Cold Chain spoilage; a visible Labor Stoppage event | A share pays only on a named freighter's real arrival; 5 slung pods pay the discounted price and move the market |
 | 481 | **The Crucible door opens both ways** (swarm seam; check phase order first) | Run What Killed You (a seeded drill of your last Adventure death); Call the Champion early; Wreck Ballast; Case Files of beaten champions; a Grudge Ledger of top causes of death; per-arena kill words | Each piece is checked against `SWARM_EXPANSION.md`: anything belonging to phase D or later waits for it. Run What Killed You offers a seeded drill with no reward carried back |
+
+## 33. The rock is the gun — swarm physics as the core, and the craft a fight needs (owner direction, 2026-10-21)
+
+**Owner, 2026-10-21:** *"I think the gameplay would be fun if it was more swarm gameplay and physics
+was the main weapon. It almost has a Katamari Damacy hook to it, where the environment is the game
+itself. I think that's a fun way to progress in this game, and have satisfying waves of enemies
+smashing on asteroids and things."* Also from the owner today: *"the difference between a breakthrough
+hit game and this game is … attention to detail, depth, breadth, and game systems that aren't buggy."*
+The owner plays with sound off. Starting a new game with every power is correct, so pacing unlocks is
+not the fix. Enemy physics weapons stay rare and authored (§22.11).
+
+### 33.0 The verdict — enough assets, not enough game made from them
+
+**The library is not the bottleneck.** The runtime model census binds 218 models: 15 player hulls,
+26 enemy hulls, 18 traffic hulls, 8 faction hulls, 7 stations, 65 places, 43 wrecks, plus rocks,
+pods and buoys. Around them are 41 weapons, 125 modules, 328 encounter entries, 21 mission types,
+17 set pieces, 3 capital bosses, 25 sectors, 14 factions and 66 commodities. Do not commission
+content to fix the feel (§23.3).
+
+**The player rarely meets it, and what they meet is thin.** Evidence from 2026-10-21:
+
+- **Travel.** The M3 cohort simulation (`test/fixtures/m3-career-cohorts/cohort-report.v2.json`)
+  has haulers and hunters spending **80–86 % of a 90-minute session travelling**, with hunters
+  fighting **6–7 %** of it. That model steps combat by adapter, so treat it as the shape of a
+  session, not a measurement of feel.
+- **First five minutes.** The adventure player-truth run (`.devshots/asset-experience-player-truth/adventure`)
+  put **1–2 enemies** on screen in its first 5 minutes.
+- **Encounter spacing.** Most encounter shapes cool down for **7–15 minutes**, and the director holds
+  combat back in its work, aftermath and quiet phases.
+- **The fight itself.** In the swarm fight (`.devshots/oct16-d199-swarm-current/swarm-active-d199-current`,
+  real GPU):
+  - Enemies averaged about **50 speed and topped out near 80**. The player averaged **117** and
+    topped out near **370**.
+  - Enemies reversed their turn about **0.8 times per second**. The scripted pilot reversed 0.36 times.
+  - Effects covered about **1 % of the screen** at the 95th percentile, on a script that only fired
+    and tethered.
+  - Enemies are read through red rings. The tether renders as a hairline at the chase camera.
+
+So the game is a sim-paced world with arcade presentation. Its best toy, mass and the Line, has too
+few things to hit, too slowly, and too faintly.
+
+**Direction.** Make the swarm loop the heart of the game. Physics is the main weapon. Progression
+works like Katamari: *what you can move grows*, and the arena grows with it. Adventure borrows the
+same loop as its standard fight. The rows below extend `swarmMode.js` rules 4–5 ("cover is the
+point"; Throw / Tag / Bind) and CV-AMMO ("lights are ammunition, heavies are terrain"). They do not
+start a new mode.
+
+### 33.1 The swarm core (rows 482–489)
+
+| Row | Name | Feeling | Done when (stranger-visible, measured on a fixed seed) |
+|---|---|---|---|
+| 482 | **The rock is the gun** | "I stopped shooting; I just throw things." | Guns become the nudge and finisher; mass impacts are the main way to kill. Across swarm waves 1–10, ≥60 % of kills come from impacts (thrown body, enemy into rock, enemy into enemy). A guns-only tape clears wave 5 at least 2× slower than a throw tape. No health inflation (swarm rule 1) |
+| 483 | **The Katamari line — you grow what you can move** | "Last round I couldn't budge that boulder; now I swing it." | An in-run **line rating** in tonnes grows with impact kills. Target curve: about 20 t at wave 1 (pebbles and light fighters), about 2,000 t by wave 10 (boulders, bruisers) and about 50,000 t by wave 20 (a hauler, a station chunk), tuned by playtest number. Each threshold lights the newly movable class in the arena with a Line-colour outline ("now you can move this"), and ≥3 new throwables appear per tier. The rating also shows on the hull: the winch head and cable visibly thicken. A flat damage buff is refused |
+| 484 | **The flail — your junk is your weapon** | "My chain of wrecks is longer than the station." | Killed hulls and captured rocks can be chained onto the Line, building on `masslineChainReadout`. The chain grows into a flail that is the endgame weapon, Katamari's ball. Every link counts toward the rating. A 5-link chain swings stable and readable at 60 fps on the play machine's integrated GPU. A link breaks only for a cause you can see |
+| 485 | **Arenas that scale with you** | "The rocks got bigger as I did." | Arena sets climb from pebble field to boulder belt to giant-rock graveyard to derelict-station yard, so the screen always holds something you can *just barely* move. The camera opens with the rating. Each scale step reuses existing bodies (rocks, the 43 wrecks, places). No new hull commissions |
+| 486 | **Waves built to be smashed** | "One rock, four kills." | Lights fly tight formations and attack runs *through* cover, so packing them together is the design (CV-AMMO). By wave 8, ≥30 % of thrown bodies hit ≥2 enemies. Formations re-form after a scatter, so the next throw has a target |
+| 487 | **Impacts that land** | "That one I felt in my hands." | Every mass kill gets: hit-stop scaled by mass; the hull crumpling into chunks that are themselves throwable; a spark burst sized to the energy; and a shove that moves neighbouring bodies. Peak effects cover ≥10 % of the screen in wave 8 (measured 1 % today) while threats stay readable (player-truth `vfx_coverage` limits still hold). All of it reads with sound off |
+| 488 | **The physics budget, measured** | — | A fixed-seed wave-15 arena holds p95 frame time ≤ 20 ms on the play machine's integrated GPU, measured on a quiet host (QUIET_HOST_PROGRAM). Distant bodies sleep or drop to cheaper simulation, and the closer the player gets, the more truthful the world. This is the main technical risk of §33; measure it before 484 and 486 scale up |
+| 489 | **Line heads worth chasing** | "I finally rolled a Magnet Head." | Meta progression between runs unlocks Line heads (multi-latch, cluster grapple, magnet line, wrecking anchor), starting rating and arenas. Loot rarity is allowed (§22.11): a rare head has its own silhouette and its own cable colour. Each head changes *what you can do*, not a percentage |
+
+### 33.2 The fight craft (rows 490–496) — any fight, swarm or adventure
+
+Each row names the acclaimed game whose mechanism it borrows. No claims are made here about other
+games' numbers.
+
+| Row | Name | Borrowed mechanism | Done when |
+|---|---|---|---|
+| 490 | **Enemies you read without rings** | GALAK-Z and Nova Drift: role is read from silhouette and colour | Each everyday enemy role has one bold silhouette and its own engine-glow colour, and the chase camera frames fighters large enough to read. Red rings appear only for off-screen threats. A stranger names the role in 3 of 4 stills |
+| 491 | **Enemies with intent** | Starsector and Hades: approach, telegraphed wind-up, committed attack, exposed recovery | Every role flies a visible cycle. Enemy cruise speed is ≥70 % of the player's (measured 50 vs 117 today), so a pass is possible. Turn reversals stay ≤0.4 per second outside one rare, telegraphed dodge (measured 0.8 today). The reflex stack in `src/ai/reflexes.js` is consolidated rather than extended |
+| 492 | **The Line you can see** | Just Cause's tether; Half-Life 2's held-object glow | At the shipping chase camera the cable thickens and glows hotter with strain, and the latched body is rim-lit in the Line colour. While the Line is held, the release arc is always drawn. The cable surface and release-arc code already exist (`masslineCableSurface.js`, `masslineReleaseArc.js`); this row makes them read at play distance, measured in shots from frames 0042 and 0379 |
+| 493 | **Fewer powers, each distinct and previewed** | Breath of the Wild runes: one colour each, a highlight of what will be affected, a different outcome each | Today about eight powers push or pull bodies: Charge, Blast, Well, Repulsor, Seed, Cone, concussion bombs and the gravity weapons. The owner picks the merge set. Each kept power gets one colour, and holding its key outlines every body it will move with its predicted path. The rail names each power individually instead of hiding five behind "FIELDS 4 5 6" and "RIG 7 8" |
+| 494 | **Glass in three tiers** | Hades: the HUD lives on the character and stays at the edges | *Always:* hull and shield as an arc at the ship, with cooldown pips on the hull. *When it matters:* one plain line about the aimed target. *Never in flight:* the colour legend, authority receipts, jurisdiction notes, and debug strings such as "Reach·Fighter·L1 … VULN E— K— X—". Closes demo-ledger D240 (rail labels drawn over the ship; the aftermath card covering the target card and taking keys 1/2) |
+| 495 | **Rocks are the hero art** | Hades and GALAK-Z: one rendering language | Asteroids are now the ammunition, so they get the first art pass, inside the existing look direction (`LOOK.md`, Lacquer & Starlight). They become the most detailed bodies on screen, with no faceted grey placeholders. One frame must not mix four styles (painted nebula, clip-art planet, placeholder rocks, glossy hulls) |
+| 496 | **Words a player understands** | Plain verbs | A pass over the flight HUD and power labels. "Light ships are ammunition. Swing a rock. Keep the speed.", "DRIVE OFF · CAP · AT CEILING · V-MAX 252" and "LINE 5.5k wu/s" become plain sentences about what a thing does |
+
+### 33.3 Adventure gets the same fight, more often (row 497)
+
+| Row | Name | Feeling | Done when |
+|---|---|---|---|
+| 497 | **Something happens every minute** | "I can't fly two minutes without trouble, or an opportunity." | The standard adventure encounter is a swarm pocket in cover: a pirate pack in a rock field, a convoy under attack in a debris lane. Encounter cooldowns and the director's quiet phases are retuned so the first hostile contact comes within 2 minutes of New Game and contact recurs every 3–5 minutes. The M3 cohort travel share for hunters drops from about 80 % to ≤50 % in hour one. Row 476 (Travel is a choice) owns the routes, and this row owns the cadence |
+
+### 33.4 Order (director's recommendation; the owner may overrule)
+
+1. 488 first (measure the physics budget), then 482, 487, 490, 491 and 492. That is the first
+   swarm round played at A-list craft.
+2. Then 483, 485 and 486, the Katamari curve, then 484 (the flail) and 489.
+3. 493–496 in parallel. 497 once 482–492 make a pocket fight worth meeting.
+4. Until step 1 passes, §32.4's new genres stay behind this section: the card game (447), the
+   inspector's shift (452), crew (446) and the home berth (445). A warehouse of features is the
+   failure VISION names. The core loop comes first.
