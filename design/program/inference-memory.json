@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "station-deed-notices",
-      "date": "2026-10-03",
-      "wf": "WF-09",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "stations keep the latest notable lane event per sector and their dock card names it while the news is fresh",
-      "fingerprint": "verb=remember,subject=station-life,sector=pocket,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "62aee8ee8",
-      "verification": "focused_green"
-    },
-    {
       "id": "salvage-tail-367",
       "date": "2026-10-03",
       "wf": "WF-08",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "848f4485a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-43-empty-slot-once",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Empty save pane reads one heading plus one sentence; berth mark and etched badge no longer repeat it",
+      "fingerprint": "verb=say,subject=empty-save-slot,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "5150c1363",
       "verification": "focused_green"
     }
   ],
