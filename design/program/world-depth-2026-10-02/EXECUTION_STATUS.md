@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 03:44 UTC
+
+This source-only checkpoint supersedes earlier current-state entries; historical evidence and reviewer acceptance fields remain unchanged. All eight goals remain OPEN.
+
+Public [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) remains at source head [11ec20d093473da72bae0f40659738ed538f7f88](https://github.com/coldshalamov/SpaceFace/commit/11ec20d093473da72bae0f40659738ed538f7f88). General [CI 39537046011](https://github.com/coldshalamov/SpaceFace/actions/runs/39537046011) ended in failure at 03:38:40 UTC; mobile CI also ended in failure. This head is not merge-ready.
+
+The clearance owner continues the collector work-lane correction in anvilWork, its new test and the approved narrow package test registration. The corrected original-pair full-route check is running; no successful route outcome is claimed. Finish that check and its independent review before publishing the coherent successor.
+
+The asset owner has prepared a distinct receiver candidate against public 11ec source. Its 19 focused checks and selected census/release-pin checks pass; the model is exported and offline reviewed, but remains unbound and unaccepted. The candidate's public-source inventory changes are parts 197 to 198, releases 354 to 355 and census 218 to 219; unrelated local additions are excluded. Root has created and SHA-verified three binary Git objects, and the asset owner is uploading the text objects. Object creation is not reachable source delivery: no asset commit is yet reachable from a published branch.
+
+Ownership and next action: fix_orchard_collection_clearance completes the physical route successor; build_orchard_receiver_asset completes asset object preparation and selected-model pipeline; review_orchard_physical_integration remains read-only reviewer. Root owns final ref publication after the route successor, remote verification and subsequent CI. Do not churn the current PR head for this separate handoff update.
+
+Separate diagnostic JSON and revised unit delivery report publication approvals remain pending and unchanged. Neither restricted payload is reproduced here. Continue permitted source and asset work; live graphical WebGL, ordinary gameplay and full experience acceptance remain open.
+
 ## Current source handoff — 21 October 2026, 03:14 UTC
 
 This source/status checkpoint supersedes older current-state headings below without changing historical evidence or reviewer acceptance fields. All eight larger goals remain OPEN. Live graphical WebGL, ordinary player comprehension and whole-world acceptance remain open.
