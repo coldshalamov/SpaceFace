@@ -239,6 +239,49 @@ function resolveEnemyWeapon(w, slotIndex) {
 // Weapon capacitor regen boost for the player — same ~15% faster recharge as weapons.js heat pacing.
 const WEAPON_CAP_REGEN_MULT = 1.15;
 
+const CHARGE_CELL_CAP_FRACTION = 0.75;
+const CHARGE_CELL_RADIUS_WU = 3;
+const CHARGE_CELL_MASS = 20;
+const CHARGE_CELL_LIFETIME_S = 30;
+const CHARGE_CELL_COLLECTION_GRACE_S = 0.25;
+const CHARGE_CELL_THROW_GRACE_S = 0.5;
+const MAX_CHARGE_CELLS = 24;
+
+function chargeCellData(entity) {
+  if (entity?.type !== 'payload' || entity.data?.payloadType !== 'charge_cell') return null;
+  const cell = entity.data.chargeCell;
+  if (cell?.version !== 1 || !Number.isFinite(cell.charge) || cell.charge <= 0
+    || !Number.isFinite(cell.collectAfter) || cell.collectAfter < 0
+    || !Number.isFinite(entity.data.despawnAt) || entity.data.despawnAt < 0) return null;
+  return cell;
+}
+
+function isChargeCellKill(payload, victim, state) {
+  const receipt = payload?.presentation;
+  return !!victim && victim.alive === false && victim.id === payload.id
+    && victim.type === payload.type && (victim.type === 'ship' || victim.type === 'drone')
+    && state.playerId != null && payload.killerId === state.playerId
+    && payload.targetHostileToPlayer === true
+    && receipt?.version === 1 && receipt.playerCaused === true
+    && (receipt.cause === 'terrain_collision' || receipt.cause === 'ship_collision'
+      || payload.cause === 'massline_whip')
+    && Number.isFinite(payload.pos?.x) && Number.isFinite(payload.pos?.z);
+}
+
+function chargeCellBodies(state) {
+  return state.entityIndex?.payloads || state.entityList || [];
+}
+
+function chargeCellAttached(state, id) {
+  const attachments = state.combat?.attachments?.byId;
+  for (const key in attachments) {
+    const attachment = attachments[key];
+    if (attachment?.state === 'active'
+      && (attachment.ownerId === id || attachment.targetId === id)) return true;
+  }
+  return false;
+}
+
 export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   let def = ENEMY.get(enemyTypeId);
   if (!def) {
@@ -693,6 +736,9 @@ function clampDirectionalMult(value) {
 export const combat = {
   name: 'combat',
   init(ctx) {
+    for (const off of this._chargeCellUnsubs || []) if (typeof off === 'function') off();
+    this._chargeCellUnsubs = [];
+    this._chargeCellVictims = new WeakSet();
     this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     this.registry = ctx.registry || null;
     this.kernel = getCombatKernel(ctx, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
@@ -748,6 +794,111 @@ export const combat = {
     ctx.bus.on('save:loaded', clearPendingDefeat);
     ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state, this.bus); });
     ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
+    const onCell = (event, listener) => this._chargeCellUnsubs.push(ctx.bus.on(event, listener));
+    onCell('entity:killed', (payload) => this._onChargeCellKill(payload));
+    onCell('massline:throw', (payload) => {
+      const cell = chargeCellData(this.state.entities.get(payload?.payloadId));
+      if (cell) cell.collectAfter = Math.max(cell.collectAfter, this.state.simTime + CHARGE_CELL_THROW_GRACE_S);
+    });
+    onCell('run:wavePlanned', (payload) => this._clearChargeCells((entity) =>
+      entity.data.runCohort === 'survival' && entity.data.runWave !== (payload?.wave ?? this.state.run?.wave)));
+    onCell('run:ended', () => this._clearChargeCells((entity) => entity.data.runCohort === 'survival'));
+    for (const event of ['game:started', 'game:new', 'game:newGame']) {
+      onCell(event, () => this.newGame());
+    }
+    // Restored bodies own their remaining charge/deadlines. Only transient identity resets.
+    onCell('save:loaded', () => { this._chargeCellVictims = new WeakSet(); });
+  },
+
+  newGame() {
+    this._chargeCellVictims = new WeakSet();
+    this._clearChargeCells(() => true);
+  },
+
+  _retireChargeCell(entity) {
+    if (!entity.alive) return;
+    if (typeof this.helpers?.removeEntity === 'function') this.helpers.removeEntity(entity.id);
+    else entity.alive = false; // Core's lifetime sweep owns removal from every index.
+    markDirty(this.state, entity.id, DIRTY.MEMBERSHIP);
+  },
+
+  _clearChargeCells(predicate) {
+    for (const entity of chargeCellBodies(this.state)) {
+      if (entity.alive && chargeCellData(entity) && predicate(entity)) this._retireChargeCell(entity);
+    }
+  },
+
+  _onChargeCellKill(payload) {
+    const state = this.state;
+    const victim = state.entities.get(payload?.id);
+    if (!isChargeCellKill(payload, victim, state) || this._chargeCellVictims.has(victim)) return;
+    const player = state.entities.get(state.playerId);
+    if (!(player?.capMax > 0) || !Number.isFinite(player.capMax)
+      || typeof this.helpers?.spawnEntity !== 'function') return;
+    // Claim before spawning: entity:spawned listeners may synchronously redeliver this death.
+    this._chargeCellVictims.add(victim);
+    let count = 0, oldest = null;
+    for (const entity of chargeCellBodies(state)) {
+      if (!entity.alive || !chargeCellData(entity)) continue;
+      count++;
+      if (chargeCellAttached(state, entity.id)) continue;
+      const birth = entity.data.chargeCell.createdTick ?? (entity.data.despawnAt - CHARGE_CELL_LIFETIME_S) * 60;
+      const previous = oldest && (oldest.data.chargeCell.createdTick
+        ?? (oldest.data.despawnAt - CHARGE_CELL_LIFETIME_S) * 60);
+      if (!oldest || birth < previous || (birth === previous && entity.id < oldest.id)) oldest = entity;
+    }
+    if (count >= MAX_CHARGE_CELLS) {
+      // A fully latched pool has no legal eviction; preserve custody and the residency bound.
+      if (!oldest) return;
+      this._retireChargeCell(oldest);
+    }
+    const run = state.run;
+    const runScoped = run?.kind === 'survival' && run.phase !== 'ended' && run.phase !== 'victory'
+      && victim.data?.runCohort === 'survival' && victim.data.runWave === run.wave;
+    this.helpers.spawnEntity({
+      type: 'payload', alive: true, collides: true,
+      radius: CHARGE_CELL_RADIUS_WU, mass: CHARGE_CELL_MASS,
+      physicsBody: { dynamic: true, mass: CHARGE_CELL_MASS },
+      pos: { x: payload.pos.x, z: payload.pos.z }, vel: { x: 0, z: 0 },
+      hull: 20, hullMax: 20,
+      data: {
+        kind: 'payload', payloadType: 'charge_cell', name: 'Charge cell',
+        masslineTetherable: true, physicalCustodyOnly: true, salvagePool: {},
+        transientSector: true, despawnAt: state.simTime + CHARGE_CELL_LIFETIME_S,
+        ...(runScoped ? { runCohort: 'survival', runWave: run.wave } : {}),
+        chargeCell: {
+          version: 1, charge: player.capMax * CHARGE_CELL_CAP_FRACTION,
+          collectAfter: state.simTime + CHARGE_CELL_COLLECTION_GRACE_S,
+          createdTick: state.tick,
+        },
+      },
+    });
+  },
+
+  _updateChargeCells(state) {
+    if (state.mode !== 'flight') return;
+    const player = state.entities.get(state.playerId);
+    if (!player?.alive || player.flags?.docked || !player.pos
+      || !Number.isFinite(player.cap) || !Number.isFinite(player.capMax) || player.cap >= player.capMax) return;
+    for (const entity of chargeCellBodies(state)) {
+      const cell = entity.alive && chargeCellData(entity);
+      if (!cell || !entity.pos || state.simTime < cell.collectAfter
+        || state.simTime >= entity.data.despawnAt || chargeCellAttached(state, entity.id)) continue;
+      const dx = player.pos.x - entity.pos.x, dz = player.pos.z - entity.pos.z;
+      const radius = player.radius + entity.radius;
+      if (!(dx * dx + dz * dz <= radius * radius)) continue;
+      const chargeRestored = Math.min(cell.charge, player.capMax - player.cap);
+      if (!(chargeRestored > 0)) break;
+      // Retire before publishing feedback, so reentrant update/event delivery cannot pay twice.
+      this._retireChargeCell(entity);
+      player.cap = Math.min(player.capMax, player.cap + chargeRestored);
+      markDirty(state, player.id, DIRTY.COMBAT);
+      this.bus.emit('pickup:collected', {
+        pickupId: entity.id, collectorId: player.id, kind: 'charge_cell',
+        amount: 1, acceptedAmount: 1, rejectedAmount: 0, chargeRestored,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+      });
+    }
   },
 
   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
@@ -1247,6 +1398,7 @@ export const combat = {
 
   update(dt, state) {
     ensureCombatRuntime(this);
+    this._updateChargeCells(state);
     resetCombatDiagnostics(this._diag);
     state.combatRuntime = state.combatRuntime || {};
     const membership = combatEntityIndexVersion(state);
