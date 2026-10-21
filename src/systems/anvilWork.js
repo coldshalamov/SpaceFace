@@ -18,13 +18,19 @@ import { resolveCollisionProxyManifest, resolveCorridorAxisWorld, proxyScaleFor,
 const BUYER_ORBIT_RADIUS_MULT = 1.3;
 
 export const ANVIL_WORK = Object.freeze({ kind: 'anvil_work', capacity: 12, receiverCapacity: 48,
-  radius: 980, berthRadius: 2800, speed: 70, transferRange: 72, transferSpeed: 8, buyerId: 'station_tethys' });
+  serviceEntryHull: 0.5, serviceReleaseHull: 0.75, radius: 980, berthRadius: 2800, speed: 70, transferRange: 72, transferSpeed: 8, buyerId: 'station_tethys' });
 const KIND = ANVIL_WORK.kind;
 const finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 const live = (state, e) => !!e && e.alive !== false && e.hull > 0 && state.entities.get(e.id) === e;
 const itinerary = (e) => e?.data?.itinerary;
 const used = (e) => Math.max(0, finite(e?.data?.cargoManifest?.totalQty));
 const finitePose = e => [e?.pos?.x, e?.pos?.z, e?.vel?.x, e?.vel?.z].every(Number.isFinite);
+function collectorDriveReady(state, e) {
+  const combat = state.combat?.entities?.[String(e.id)];
+  const drive = combat?.subsystems?.subsystem_drive;
+  return combat?.capabilities?.drive !== false && drive?.effectiveDisabled !== true && drive?.destroyed !== true;
+}
+
 
 export function anvilWorkerRecordId(state, role = 'collector') {
   return stableRecordId(state.meta?.seed || 1, PLANET_SITE.sectorId, RECORD_KIND.CONVOY, `anvil:shift:${role}`);
@@ -61,6 +67,16 @@ export function anvilCollectorWorkStatus(state, entity) {
     || actor({ state }, 'collector') !== entity || entity?.data?.jobId) return null;
   const route = itinerary(entity), center = route?.center;
   if (!center || ![center.x, center.z].every(Number.isFinite)) return null;
+  if (route.serviceRequired === true || (entity.hull > 0 && entity.hull < entity.hullMax * ANVIL_WORK.serviceEntryHull)) {
+    const receiver = actor({ state }, 'receiver');
+    const retained = !receiver && retainedReceiver({ state });
+    const away = (receiver && (!receiverAtHome(receiver) || receiver.data.jobId))
+      || (retained && retained.itinerary.phase !== 'receiving');
+    const action = route.phase === 'service_hold' || route.phase === 'berthed'
+      ? (collectorDriveReady(state, entity) ? 'REPAIR HOLD · KEEP REPAIR LINE TAUT'
+        : 'REPAIR HOLD · DRIVE DISABLED · KEEP LINE TAUT TO FULL HULL') : 'INJURED · RETURNING FOR REPAIR';
+    return `STORMSHIFT ${action}${!receiver && !retained ? ' · TENDER UNAVAILABLE' : away ? ' · TENDER AWAY' : ''}`;
+  }
   if (route.phase === 'berthed') {
     const receiver = actor({ state }, 'receiver');
     const retained = !receiver && retainedReceiver({ state });
@@ -581,11 +597,40 @@ export const anvilTrafficMethods = {
     }
     const route = itinerary(e), center = route.center;
     if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) { hold(e); return; }
+    // Existing latch repair alone changes hull. This itinerary latch only controls
+    // when the same injured worker may leave for another shift; it grants no healing.
+    if ((e.hull < e.hullMax * ANVIL_WORK.serviceEntryHull || route.phase === 'service_hold') && route.serviceRequired !== true) {
+      route.serviceRequired = true; persist(this, e);
+    }
+    if (route.serviceRequired === true && e.hull >= e.hullMax * ANVIL_WORK.serviceReleaseHull
+      && collectorDriveReady(state, e)) {
+      route.serviceRequired = false;
+      if (route.phase === 'service_hold') route.phase = 'berthed';
+      persist(this, e);
+    }
+    if (route.serviceRequired === true && route.phase === 'berthed') {
+      route.phase = 'service_hold'; persist(this, e);
+    }
+    if (route.serviceRequired === true && route.phase === 'outbound') {
+      route.phase = 'clear_band'; persist(this, e);
+    }
     const availableReceiver = receiver && receiverAtHome(receiver) && !receiver.data.jobId ? receiver : null;
     const retained = !receiver && retainedReceiver(this);
     const berth = availableReceiver || ((receiver || retained)
       ? { pos: homeBerth(route), cargoManifest: (receiver?.data || retained).cargoManifest } : null);
     if (!berth) { hold(e); return; } // retain finite cargo if berth was destroyed or removed
+    if (route.phase === 'service_hold') {
+      // The existing exterior lay-by stays clear of the receiving approach even
+      // while the tender is absent. Arrive through ordinary thrust and brakes.
+      const home = homeBerth(route);
+      // From the inner service point, first clear laterally. A direct diagonal
+      // to the outer lay-by would cross the original tender's envelope.
+      const target = e.pos.z < home.z + 120 && e.pos.x < home.x + 60
+        ? { x: Math.min(e.pos.x, home.x - 60), z: home.z + 160 }
+        : { x: home.x + 180, z: home.z + 160 };
+      steer(this, e, target, 20, 20);
+      return;
+    }
     const heat = state.planet?.ships?.[e.id]?.heat || 0;
     if (route.phase === 'berthed') {
       if (!availableReceiver) {

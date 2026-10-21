@@ -270,6 +270,56 @@ test('native contact evidence rejects an unowned non-sensor collider', () => {
   assert.throws(() => receiverContactDepth(physics, receiver), /unknown native contact owner/);
 });
 
+// Diagnostic service-level budgets, not production guarantees under weather/thermal admission.
+// Loaded return includes conservative33s radial +126s arc +50s20-speed service chord
+// +31s braking/settlement allowance. The earlier180s diagnostic failed and is preserved.
+// These clocks belong to the observation run and never reset on phase reentry or save/load.
+const RECEIVER_ROUTE_BUDGET = Object.freeze({ global: 1200, secondCollection: 240, loadedReturn: 240 });
+function observeReceiverRoute(clock, sample) {
+  if (sample.secondCycle && sample.phase === 'collect') clock.collectAt ??= sample.time;
+  if (sample.secondCycle && sample.phase === 'clear_band' && sample.collectorQty > 0) clock.loadedAt ??= sample.time;
+  const collectionElapsed = clock.collectAt == null ? null : (clock.loadedAt ?? sample.time) - clock.collectAt;
+  const loadedReturnElapsed = clock.loadedAt == null ? null : sample.time - clock.loadedAt;
+  const failure = sample.time > RECEIVER_ROUTE_BUDGET.global ? 'global route budget'
+    : collectionElapsed > RECEIVER_ROUTE_BUDGET.secondCollection ? 'second collection budget'
+    : loadedReturnElapsed > RECEIVER_ROUTE_BUDGET.loadedReturn ? 'loaded return budget' : null;
+  return { ...clock, collectionElapsed, loadedReturnElapsed, failure };
+}
+function actualRepeatHandoff(sample) {
+  return sample.secondCycle && sample.collectorAlive === true && sample.receiverAlive === true
+    && sample.collectorRecordId === sample.originalCollectorRecordId
+    && sample.receiverRecordId === sample.originalReceiverRecordId
+    && sample.receiverQty > 0 && sample.actualTransferQty > 0;
+}
+
+test('receiver route diagnostic clocks latch and fail each bounded stage without resetting', () => {
+  const clock = {}, sample = { time: 500, secondCycle: true, phase: 'collect', collectorQty: 0 };
+  assert.equal(observeReceiverRoute(clock, sample).failure, null);
+  assert.equal(observeReceiverRoute(clock, { ...sample, time: 740 }).failure, null);
+  assert.equal(observeReceiverRoute(clock, { ...sample, time: 740.001, phase: 'outbound' }).failure, 'second collection budget');
+  assert.equal(observeReceiverRoute(clock, { ...sample, time: 742 }).collectAt, 500, 'reentry cannot restart collection');
+  const loaded = {};
+  observeReceiverRoute(loaded, sample);
+  observeReceiverRoute(loaded, { ...sample, time: 700, phase: 'clear_band', collectorQty: 12 });
+  assert.equal(observeReceiverRoute(loaded, { ...sample, time: 940, phase: 'return' }).failure, null);
+  assert.equal(observeReceiverRoute(loaded, { ...sample, time: 940.001, phase: 'clear_band', collectorQty: 12 }).failure, 'loaded return budget');
+  assert.equal(loaded.loadedAt, 700, 'clear-band reentry cannot restart loaded return');
+  assert.equal(observeReceiverRoute({}, { ...sample, time: 1201, phase: 'berthed' }).failure, 'global route budget');
+  const empty = {};
+  observeReceiverRoute(empty, { ...sample, phase: 'clear_band' });
+  assert.equal(empty.loadedAt, undefined, 'zero cargo cannot start loaded-return proof');
+});
+
+test('receiver repeat handoff rejects phantom cargo, dead participants and replacement identity', () => {
+  const sample = { secondCycle: true, collectorAlive: true, receiverAlive: true,
+    collectorRecordId: 'collector', originalCollectorRecordId: 'collector',
+    receiverRecordId: 'receiver', originalReceiverRecordId: 'receiver', receiverQty: 12, actualTransferQty: 12 };
+  assert.equal(actualRepeatHandoff(sample), true);
+  for (const change of [{ secondCycle: false }, { receiverQty: 0 }, { actualTransferQty: 0 },
+    { collectorAlive: false }, { receiverAlive: false }, { collectorRecordId: 'replacement' },
+    { receiverRecordId: 'replacement' }]) assert.equal(actualRepeatHandoff({ ...sample, ...change }), false);
+});
+
 test('full production native receiver delivers the finite load through Continue and returns to the original collector', async () => {
   // An externally supplied envelope is a previously observed native route checkpoint,
   // never a hand-edited save. CI starts the ordinary work route and saves it itself.
@@ -328,7 +378,15 @@ test('full production native receiver delivers the finite load through Continue 
         JSON.stringify(f.runtime.getSystem('save').serialize('actual-accepted-receiver-return')));
       arrived = true;
     });
-    const routeDeadline = 900;
+    const routeDeadline = RECEIVER_ROUTE_BUDGET.global;
+    const routeClock = {};
+    let timing = null, repeatTransferQty = 0;
+    const originalCollectorRecordId = anvilWorkerRecordId(f.state, 'collector');
+    const originalReceiverRecordId = anvilWorkerRecordId(f.state, 'receiver');
+    f.runtime.bus.on('traffic:anvilTransfer', p => {
+      if (returned && p.sourceId === f.actor('collector')?.id && p.receiverId === f.actor('receiver')?.id
+        && p.qty > 0) repeatTransferQty += p.qty;
+    });
     for (let i = 0; f.state.simTime + 1 / 60 <= routeDeadline; i++) {
       let c = read('collector'), r = read('receiver'); assert.ok(c && r);
       const watched = route(r).phase === 'receiving' ? c : r;
@@ -479,10 +537,18 @@ test('full production native receiver delivers the finite load through Continue 
       }
       departed ||= route(r).phase === 'delivery';
       if (arrived && route(r).phase === 'receiving' && route(c).phase === 'outbound') returned = true;
-      if (returned && hold(r).totalQty > 0) { handedAgain = true; break; }
+      timing = observeReceiverRoute(routeClock, { time: f.state.simTime, secondCycle: returned,
+        phase: route(c).phase, collectorQty: hold(c).totalQty });
+      timing.collectorQty = hold(c).totalQty; timing.receiverQty = hold(r).totalQty;
+      timing.angleToHome = Math.abs(Math.atan2(c.pos.z - route(c).center.z, c.pos.x - route(c).center.x));
+      handedAgain = actualRepeatHandoff({ secondCycle: returned, collectorAlive: c.alive, receiverAlive: r.alive,
+        collectorRecordId: c.data?.worldRecordId || c.recordId, originalCollectorRecordId,
+        receiverRecordId: r.data?.worldRecordId || r.recordId, originalReceiverRecordId,
+        receiverQty: hold(r).totalQty, actualTransferQty: repeatTransferQty });
+      if (timing.failure || handedAgain) break;
     }
     const r = read('receiver');
-    const evidence = { sourceTree: process.env.PUBLIC_TREE || null, time: f.state.simTime, routeDeadline, lifecycle,
+    const evidence = { sourceTree: process.env.PUBLIC_TREE || null, time: f.state.simTime, routeDeadline, timing, routeBudgets: RECEIVER_ROUTE_BUDGET, repeatTransferQty, lifecycle,
       continued, departed, arrived, returned, handedAgain, residencyChecked, laybyReached, nativeTicks,
       minContact: Number.isFinite(minContact) ? minContact : null,
       minStaticContact: Number.isFinite(minStaticContact) ? minStaticContact : null, observerPlacements: f.observerPlacements, dynamicContacts, receipts, spills, transfers, acquiredQty, phases, frames, collectorFrames,
@@ -492,7 +558,9 @@ test('full production native receiver delivers the finite load through Continue 
       writeFileSync(process.env.ANVIL_RECEIVER_EVIDENCE_DIR + '/native-continue-route.json', JSON.stringify(evidence, null, 2));
     }
     console.log('ANVIL_RECEIVER_NATIVE', JSON.stringify({ ...evidence, frames: frames.length, dynamicContacts: dynamicContacts.length }));
-    assert.ok(continued && departed && arrived && returned && handedAgain && residencyChecked && laybyReached);
+    assert.equal(timing?.failure, null, JSON.stringify(timing));
+    assert.ok(continued && departed && arrived && returned && handedAgain && residencyChecked && laybyReached,
+      `incomplete physical route at global cap ${routeDeadline}: ${JSON.stringify(timing)}`);
     assert.ok(nativeTicks > 1000); assert.equal(receipts.length, 1);
     assert.equal(evidence.deliveredDelta, receipts[0].qty);
   } finally {
@@ -1009,4 +1077,94 @@ test('actual save/load drops transient fractional carry without granting cargo t
   planet._tickWorkerHarvest(100, state, state.planet, PLANET_SITE);
   assert.equal(restored.data.cargoManifest.totalQty, 0, 'unadmitted restored time cannot turn discarded carry into cargo');
   assert.equal(state.planet.workerHarvestCarry, null);
+});
+
+test('injured original collector requests real service instead of launching from berth', () => {
+  const t = boot(); try {
+    const e = t.collector; e.data.itinerary.phase = 'berthed'; e.hull = 90;
+    e.pos = { ...anvilServicePoint(t.receiver) }; e.vel = { x: 0, z: 0 };
+    t.owner._stepAnvilWork(1 / 60, t.state);
+    assert.equal(e.data.itinerary.phase, 'service_hold');
+    assert.equal(e.data.itinerary.serviceRequired, true);
+    assert.equal(e.hull, 90); assert.equal(e.data.cargoManifest.totalQty, 0);
+    assert.ok(Math.sin(e.data.intent.aimAngle) > 0.99, 'clear laterally before the outer layby, not through tender');
+    assert.match(livingWorkStatusText(e, { state: t.state }), /REPAIR.*TAUT/);
+  } finally { t.sim.dispose(); }
+});
+
+test('service release requires actual 75 percent hull and preserves receiver-away truth', () => {
+  const t = boot(); try {
+    const e = t.collector; e.data.itinerary.phase = 'service_hold'; e.data.itinerary.serviceRequired = true;
+    e.hull = 149; t.receiver.data.itinerary.phase = 'return_berth'; t.receiver.pos.x += 500;
+    t.owner._stepAnvilWork(1 / 60, t.state);
+    assert.equal(e.data.itinerary.phase, 'service_hold'); assert.equal(e.hull, 149);
+    assert.match(livingWorkStatusText(e, { state: t.state }), /TENDER AWAY/);
+    e.hull = 150; t.owner._stepAnvilWork(1 / 60, t.state);
+    assert.equal(e.data.itinerary.serviceRequired, false);
+    assert.equal(e.data.itinerary.phase, 'berthed');
+  } finally { t.sim.dispose(); }
+});
+
+test('injured loaded return keeps finite transfer before service hold', () => {
+  const t = boot(); try {
+    const e = t.collector; e.data.itinerary.phase = 'collect';
+    assert.equal(t.owner.acceptAnvilHarvest(e, { siteId: PLANET_SITE.id, commodityId, qty: 3 }), 3);
+    e.hull = 90; e.data.itinerary.phase = 'return';
+    e.pos = { ...anvilServicePoint(t.receiver) }; e.vel = { x: 0, z: 0 };
+    t.owner._stepAnvilWork(1 / 60, t.state);
+    assert.equal(t.receiver.data.cargoManifest.totalQty, 3); assert.equal(e.data.cargoManifest.totalQty, 0);
+    t.owner._stepAnvilWork(1 / 60, t.state);
+    assert.equal(e.data.itinerary.phase, 'service_hold'); assert.equal(e.hull, 90);
+    assert.equal(e.data.itinerary.sequence, 1);
+  } finally { t.sim.dispose(); }
+});
+
+for (const cause of ['dead', 'foreign-job', 'duplicate']) test(`repair service does not take authority over ${cause} original`, () => {
+  const t = boot(); try {
+    const e = t.collector; e.hull = 90; e.data.itinerary.phase = 'berthed';
+    if (cause === 'dead') e.alive = false;
+    if (cause === 'foreign-job') e.data.jobId = 'job:foreign';
+    if (cause === 'duplicate') t.sim.spawn({type:'ship', hull:90, data:{...e.data}});
+    t.owner._stepAnvilWork(1 / 60, t.state);
+    assert.equal(e.data.itinerary.serviceRequired, undefined);
+    assert.equal(Boolean(livingWorkStatusText(e,{state:t.state})?.includes('REPAIR')), false);
+    assert.equal(e.hull,90);
+  } finally {t.sim.dispose();}
+});
+
+test('real Continue retains original repair hold and damage without replacement or cargo grant', () => {
+  const t = boot([save]); try {
+    const e=t.collector; e.hull=90; e.data.itinerary.phase='berthed';
+    t.owner._stepAnvilWork(1/60,t.state);
+    const player=t.sim.spawn({type:'ship',team:0,hull:100,hullMax:100,radius:6,pos:{x:e.pos.x,z:e.pos.z+180},flags:{persistent:true}});
+    t.state.playerId=player.id;
+    const saver=t.sim.registry.get('save'),recordId=e.data.worldRecordId;
+    const envelope=JSON.parse(JSON.stringify(saver.serialize('original-repair-hold')));
+    assert.equal(saver.loadEnvelope(envelope),true);t.state.mode='flight';
+    const restored=t.state.entityList.find(x=>x.alive!==false&&x.data?.worldRecordId===recordId);
+    assert.ok(restored);assert.equal(restored.hull,90);assert.equal(restored.data.itinerary.serviceRequired,true);
+    assert.equal(restored.data.itinerary.phase,'service_hold');assert.equal(restored.data.cargoManifest.totalQty,0);
+    t.owner._stepAnvilWork(1/60,t.state);assert.equal(restored.data.itinerary.phase,'service_hold');
+    assert.equal(t.state.entityList.filter(x=>x.alive!==false&&x.data?.worldRecordId===recordId).length,1);
+  } finally {t.sim.dispose();}
+});
+
+test('repair hold preserves missing berth guard and safely releases an already healed old hold', () => {
+ const t=boot();try{const e=t.collector;e.hull=90;e.data.itinerary.phase='service_hold';
+  t.receiver.alive=false;t.state.world.records.byId[t.receiver.data.worldRecordId].alive=false;
+  t.owner._stepAnvilWork(1/60,t.state);assert.equal(e.data.intent.moveZ,0);assert.equal(e.data.intent.brake,true);
+  assert.match(livingWorkStatusText(e,{state:t.state}),/TENDER UNAVAILABLE/);
+  e.hull=160;e.data.itinerary.serviceRequired=false;t.owner._stepAnvilWork(1/60,t.state);
+  assert.equal(e.data.itinerary.phase,'berthed');assert.equal(e.data.itinerary.serviceRequired,false);
+ }finally{t.sim.dispose();}
+});
+
+test('service hold waits for the actual drive capability, not just healed hull', () => {
+ const t=boot();try{const e=t.collector;e.hull=160;e.data.itinerary.phase='service_hold';e.data.itinerary.serviceRequired=true;
+  t.state.combat ||= {};t.state.combat.entities ||= {};t.state.combat.entities[String(e.id)]={capabilities:{drive:false},subsystems:{subsystem_drive:{effectiveDisabled:true}}};
+  t.owner._stepAnvilWork(1/60,t.state);assert.equal(e.data.itinerary.phase,'service_hold');
+  assert.match(livingWorkStatusText(e,{state:t.state}),/REPAIR HOLD/);
+  t.state.combat.entities[String(e.id)].capabilities.drive=true;t.state.combat.entities[String(e.id)].subsystems.subsystem_drive.effectiveDisabled=false;
+  t.owner._stepAnvilWork(1/60,t.state);assert.equal(e.data.itinerary.serviceRequired,false);
+ }finally{t.sim.dispose();}
 });

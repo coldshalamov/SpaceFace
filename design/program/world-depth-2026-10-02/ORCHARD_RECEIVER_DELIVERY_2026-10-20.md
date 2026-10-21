@@ -206,3 +206,95 @@ Final bookkeeping cleanup moves fraction helpers to module scope and reuses the 
 validated carry object instead of allocating closures/arrays/replacement objects each tick.
 Exact candidate2b506a63 passes all92 focused and adjacent cases, including real save/load
 and same-object reuse. The full native recurrence test is explicitly excluded from that count.
+
+## 2026-10-21 strict public-source recurrence and next repair increment
+
+Exact published head `e654353fe68b1e7e4e5a936cb303d266ff5ca810`, tree
+`9088e3e720755dcacf702310cb87d9fdaf2af0ed`, passes the unchanged full native
+receiver test at 886.3833333328558s, before its absolute 900s deadline. All
+Continue, full 600-tick far residency, first buyer sale, physical return and next
+positive handoff gates pass. The actual next lot transfers 12u to the original
+receiver. Receiver custody balances 13u received = 1u buyer receipt + 12u held,
+with no receiver spills. Original collector survives at 86.97942854617318 hull,
+empty/berthed sequence2; receiver survives at 200 hull, receiving 12u sequence1.
+124 dynamic contacts and real damage remain; minimum fixed/original-pair gap is
++0.2810823321WU. Independent review verified all 1613 repository-module hashes
+against that exact tree. This is worker-native recurrence, not ordinary player
+flight, live-camera acceptance, or a collision-free claim. Historical failures
+remain preserved. CI's newer-master merge is a separate source and gate: its
+full receiver conjunction failed; attribution is pending, not dismissed.
+
+A bounded P02 follow-up reproduces injured berth relaunch on the previous source:
+a collector at 86.979 hull leaves `berthed` for `outbound` with no repair hint.
+The narrow replacement uses existing itinerary `serviceRequired` and
+`service_hold`, entering below 50% hull, releasing at 75% only when the actual
+existing drive capability is usable. It never writes hull or combat capability.
+Existing latch repair restores a disabled drive only at full hull; Hail states
+that requirement. Injury preserves loaded physical return and finite handoff,
+then routes to the existing exterior layby. A lateral 160WU leg precedes the
+outer leg so the home tender is not crossed. Missing/dead berth, foreign job,
+ambiguous identity and destroyed original guards remain authoritative. Hail
+retains tender-away/unavailable truth. No new charge, supply ledger or revival.
+
+Candidate `251e35d5774a2f0076200752a2a4edb83893c5f3` passes 101 focused/adjacent
+cases, explicitly skipping the already-proven full recurrence test. These include
+real save/load of injury/service state and drive-release guards. A bounded actual
+d122 damaged-world replay uses real runtime ticks and native attachment/reel/cut:
+physical layby arrival, 600-tick far shelving/rematerialization without healing
+or cargo grant, slack no repair, existing 92%-span repair eligibility heals
+93.78492239467835 to 150.18492239467759 in 4.7s, cut stops repair, and the same
+repaired worker physically departs outbound; the 400.626WU observed displacement
+includes its layby-to-berth return, not exclusively outbound travel. This eligibility may
+report zero tensile force and slack massline telemetry; it is the pre-existing
+repair-owner rule, not proof of loaded tension or ordinary player controls.
+The native clearance capture records 9652 participant ticks, zero captured contacts
+and a null minimum gap (not a numeric clearance proof). All 1472 module hashes
+match candidate251e. Independent review passes all nine new service cases.
+Source/probe recovery is libfile_475a47dc735081919ea809fdc2e3b76d; clearance
+recovery is libfile_42a05cc3ea088191ac6309e3a299d98f (byte-identical round trip,
+SHA a5fda369785a768f4fee9cdcaaaae2a9cb3eaa0771c796110de58cdfbd094114).
+Service code remains locally committed at e8d4e35f7, not yet on public PR480. An
+initial direct layby chord stalled against the home tender; that failed probe,
+and an 8s incomplete-repair probe, are preserved rather than counted as passes.
+All larger game, Orchard, visual, asset-bank, asset-quality, living-world,
+publication and recovery goals remain open. Do not rerun unchanged full routes
+instead of diagnosing the newer-master integration or finishing scoped service.
+
+## Newer-master integration timing diagnosis (2026-10-21)
+
+Public head9088 passes the original900s diagnostic at886.383s. Actual CI merge
+f02544410471e84600f77abfca5a63b1cc802459 with mastera2cfc0 misses only the next
+handoff at900s: healthy original collector returns with12u. Collection completes
+58.7s later under the changed world; at880s the existing2800WU safety arc still
+requires at least27.7s before final approach. Preserve that historical failure.
+The original P01/P02 gameplay requirements have no900s contract.
+
+The reviewed test-only service-level policy is a240s second collection budget,
+240s first positive-loaded clear-band to next actual handoff, and1200s absolute
+simulation cap. First-event clocks cannot reset on phase reentry, Continue or
+residency. These are diagnostic limits, not guarantees under all weather or
+thermal admission. No runtime speed, admission, hazard or health behavior changes.
+Negative tests require timeouts and reject zero/phantom transfer, death and
+replacement identity. The exact f025 test-only projection2262 fresh run was RED at956.7s under the
+initial180s loaded-return bound:206.4s collection,180.0167s loaded return, healthy
+original collector12u/tender0u, all six earlier gates true.1613 loaded module
+hashes match2262. Preserve this failure alongside the original900s miss.
+
+The omitted geometry was the authored20WU/s final service chord after the
+.35rad arc exit, up to roughly980WU (~49s) plus braking. Unchanged actual
+terminal-save continuation delivers12u at965.0667s,8.3667s later, same stable
+records (tender life119 becomes118 after Continue), hull200, zero captured
+contacts/yield;1472 module hashes match2262. This is a separate continued world,
+NOT a passing fresh route. The conservative revised240s bound accounts for
+33s radial +126s full-half-arc allowance +50s service chord +31s settlement.
+Independent review accepts this diagnostic policy, not a production guarantee.
+Negative cases test equality and just-over-bound failure. No speed, health,
+cargo, admission or hazard behavior is changed to make the test pass.
+
+Recovery libfile_b49bf82d8da48191b9727c8b541a4fe8 contains both failed fresh
+evidence and separate terminal continuation; SHA
+3d025818300cd973f2fae9fbf82c0f4419c7ae472d07b8f506519f402cede59d.
+Latest master1e7b59a0 adds six non-owned files, preserved in combined focused
+validation. A fresh combined service/timing route remains pending successorCI.
+The separate251e injured-service evidence and healthyf025 timing diagnosis
+do not establish ordinary-player repair input or whole P02 acceptance.
