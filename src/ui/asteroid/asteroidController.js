@@ -68,6 +68,9 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
     stopCursorHold();
     pressedDirections.clear();
     drive.cancel();
+    // The demolition verb belongs to DRIVE — a planted charge keeps cooking either way, but the
+    // aim brackets must not fight the build palette's own marks.
+    if (drillSys && typeof drillSys.disarmCharge === 'function') drillSys.disarmCharge();
     if (mode === MODES.BUILD) {
       const d = getDrillState();
       if (d && d.avatar) {
@@ -110,6 +113,13 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
   function onKeyDown(ev) {
     const code = ev.code;
     if (code === 'Escape') {
+      // One layer per press: charge aim, then BUILD, then the screen's own exit.
+      const d = getDrillState && getDrillState();
+      if (d && d.chargeArmed) {
+        if (hooks.onChargeCancel) hooks.onChargeCancel();
+        ev.preventDefault();
+        return true;
+      }
       if (state.mode === MODES.BUILD) { setMode(MODES.DRIVE); ev.preventDefault(); return true; }
       return false; // screen handles exit
     }
@@ -148,6 +158,22 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
         if (!ev.repeat && hooks.onScan) hooks.onScan();
         ev.preventDefault();
         return true;
+      }
+      // R arms the bore charge — the same key flight uses to detonate drift charges. C is the
+      // scanner pulse (claimed above); the same key (or Enter) sets it once the board shows the cut.
+      if (code === 'KeyR') {
+        if (!ev.repeat && hooks.onCharge) hooks.onCharge();
+        ev.preventDefault();
+        return true;
+      }
+      if (code === 'Enter' || code === 'Space') {
+        const d = getDrillState && getDrillState();
+        if (d && d.chargeArmed && hooks.onCharge) {
+          if (!ev.repeat) hooks.onCharge();
+          ev.preventDefault();
+          return true;
+        }
+        return false;
       }
       return false;
     }

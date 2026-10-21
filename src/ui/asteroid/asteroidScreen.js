@@ -160,7 +160,7 @@ export function helpDrawerRows(controlMap) {
   return [
     { keys: map.movementLabel || 'UNBOUND', label: 'Drive, and keep holding to bore' },
     { keys: map.scanLabel || 'UNBOUND', label: 'Survey pulse' },
-    { keys: 'C', label: 'Bore charge — C again sets it, Esc backs off' },
+    { keys: 'R', label: 'Bore charge — R again sets it, Esc backs off' },
     { keys: BINDINGS.drill.label, label: 'Build mode' },
     { keys: '1 - 9', label: 'Pick a structure' },
     { keys: 'Q / E', label: 'Cycle structures' },
@@ -785,7 +785,7 @@ export const asteroidScreen = {
           if (!d || !d.active) return;
           if (d.chargeArmed) drillSys.plantCharge();
           else if (drillSys.armCharge && drillSys.armCharge()) {
-            announce('Bore charge armed — face the cut, then C again to set it. Esc backs off.');
+            announce('Bore charge armed — face the cut, then R again to set it. Esc backs off.');
           }
           inspElapsed = 10;
           lensDirty = true;

@@ -548,7 +548,10 @@ test('Help teaches the keys once, from the resolved control map', () => {
   const rows = helpDrawerRows({ movementLabel: 'Y / Q / H / E', scanLabel: 'C' });
   assert.equal(rows[0].keys, 'Y / Q / H / E', 'movement comes from the live bindings, not a literal');
   assert.equal(rows[1].keys, 'C');
-  assert.equal(rows[2].keys, BINDINGS.drill.label, 'build mode follows the drill registry key');
+  assert.equal(rows.find((r) => r.label === 'Build mode').keys, BINDINGS.drill.label,
+    'build mode follows the drill registry key');
+  assert.ok(rows.some((r) => r.keys === 'R' && /charge/i.test(r.label)),
+    'the demolition verb is taught in the same sheet');
   const labels = rows.map((r) => r.label);
   assert.ok(labels.includes('Drawers'));
   assert.ok(labels.includes('Leave the rock'));

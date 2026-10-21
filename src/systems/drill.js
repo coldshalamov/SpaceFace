@@ -95,6 +95,21 @@ export const DRILL_GEOMETRY_RECOVERY_PER_S = 1 / 1800;
 // every later real silicate break pays 0 with no cargo change — the "I mined 10 veins, nothing"
 // report. Field richness may soft-scale the pool but must never floor a still-bearing rock to 0.
 export const DEEP_CORE_YIELD_MULT = 4;
+
+// Bore charges — controlled demolition as the rig's third verb (bore, build, blast). A charge is
+// a paid, planted, FUSED cut: the board quotes the whole 3×3 verdict before the credit leaves the
+// wallet, and the fuse buys exactly enough drill-clock time to step out of the pattern. It is
+// deliberately cruder than the bore — it banks a fraction of each vein it eats (the rubble keeps
+// the rest), cooks off every gas pocket in the pattern at once, and backblasts a rig still
+// standing in the cut. What it buys is nine cells at once: hall-carving for machine rooms, and a
+// priced answer to rock that is legal but slow.
+export const CHARGE_FUSE_S = 1.4;         // planted -> detonation, on the drill clock
+export const CHARGE_REARM_S = 1.6;        // dead time after a blast before the next can be set
+export const CHARGE_COST_CR = 180;        // per shot, through the economy:chargeCredits seam
+export const CHARGE_YIELD_FRACTION = 0.6; // crude extraction — the rubble keeps the rest
+export const CHARGE_BACKBLAST_PCT = 10;   // hull % when the rig is still in the pattern
+export const CHARGE_BLAST_RADIUS = 1;     // cells — a 3×3 cut that always quotes the rig's own square
+
 const EMPTY_TILE = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
 const clamp01 = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0; };
 
@@ -295,6 +310,61 @@ function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
   }
   if (rockEnt && rockEnt.data) writeVeinRemainder(rockEnt.data, col, row, 0);
   return 'clear';
+}
+
+/**
+ * Pay a blast-eaten vein. Cruder than the bore: the rock gives up the whole remaining cut, but
+ * only CHARGE_YIELD_FRACTION of it lands in the hold — the rubble keeps the rest. Ore the holds
+ * cannot take is lost outright: a blast has no "preserve the vein" answer because the cell is
+ * already gone. Returns the units banked.
+ */
+function settleBlastYield(host, d, rockEnt, col, row, ore, yieldU) {
+  const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
+  const wholeYield = Math.max(0, Math.floor(Number(yieldU) || 0));
+  const avail = Math.min(wholeYield, Math.floor(budget));
+  if (rockEnt && rockEnt.data) writeVeinRemainder(rockEnt.data, col, row, 0);
+  if (avail <= 0) return 0;
+  const offer = Math.max(1, Math.floor(avail * CHARGE_YIELD_FRACTION));
+  const added = offer > 0 ? addCargo(host.state, ore, offer) : 0;
+  if (Number.isFinite(d.rockBudget)) d.rockBudget = Math.max(0, budget - avail);
+  const entData = rockEnt && rockEnt.data;
+  if (entData && Number(d.rockBudgetMax) > 0 && Number.isFinite(d.rockBudget)) {
+    entData.drillDepletion = clamp01((Number(entData.drillDepletion) || 0) + avail / Number(d.rockBudgetMax));
+    entData.lastDrillT = Number(host.state.simTime) || 0;
+  }
+  if (added > 0) {
+    d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
+    host.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col, row }, via: 'blast' });
+  }
+  const spilled = Math.max(0, offer - added);
+  if (spilled > 0) {
+    host.bus.emit('drill:cargoFull', { commodityId: ore, qty: spilled, pos: { col, row }, via: 'blast' });
+    host.bus.emit('drill:warn', {
+      text: 'Blasted ore lost — the holds could not take it.',
+      reason: 'cargoFull',
+      commodityId: ore,
+      pos: { col, row },
+    });
+  }
+  if (Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0) {
+    host.bus.emit('drill:rockDepleted', {
+      asteroidId: d.asteroidId,
+      budget: 0,
+      text: 'Rock deep-core yield exhausted for this visit.',
+    });
+  }
+  return added;
+}
+
+function chargeRefusalText(reason) {
+  switch (reason) {
+    case 'armed': return 'A charge is already cooking — stand clear.';
+    case 'cooldown': return 'The boom arm is still retracting.';
+    case 'credits': return `A bore charge is ${CHARGE_COST_CR} credits — the wallet is short.`;
+    case 'empty': return 'Nothing to break there — the cut is already hollow.';
+    case 'range': return 'The boom arm only reaches the faces beside the rig.';
+    default: return 'The charge refuses to seat.';
+  }
 }
 
 /**
@@ -1014,6 +1084,7 @@ function sessionResult(d, reason) {
     rockBudgetRemaining: Number.isFinite(d.rockBudget) ? Math.max(0, Math.floor(d.rockBudget)) : null,
     rockBudgetMax: Math.max(0, Math.floor(Number(d.rockBudgetMax) || 0)),
     gasHits: Number(d.gasHits) || 0,
+    chargesSet: Number(d.chargesSet) || 0,
     tilesCleared: Number(d.tilesCleared) || 0,
     maxDepth: Number(d.maxDepth) || 0,
     elapsedS: Number((Number(d.sessionElapsed) || 0).toFixed(3)),
@@ -1150,6 +1221,11 @@ export const drill = {
         serial: 0,
         contacts: 0,
       },
+      chargeArmed: false,     // the demolition verb is being aimed (R)
+      chargeAim: null,        // pointer-named anchor cell, re-validated on every use
+      charge: null,           // { col, row, fuse } once set — cooks off on the drill clock
+      chargeCooldown: 0,      // re-arm dead time after a blast
+      chargesSet: 0,          // session count — the receipt knows how loud this visit got
       active: true,
     };
     this.bus.emit('drill:start', {
@@ -1184,6 +1260,9 @@ export const drill = {
   end({ reason = 'retracted' } = {}) {
     const d = this.state.drill;
     if (!d) return null;
+    // A paid charge is never lost to a retract: it cooks off as the rig comes home, against the
+    // field exactly as it stands. The blast owns the cells; the receipt still names the exit.
+    if (d.charge) this._detonateCharge(d);
     d.active = false;
     this._persistSessionProgress(d);
     const result = sessionResult(d, reason);
@@ -1327,6 +1406,267 @@ export const drill = {
     return true;
   },
 
+  // ---------- bore charges: the demolition verb ----------
+  //
+  // Where the charge would sit: the pointer's pick when it names a face the boom can reach,
+  // otherwise the cell the auger already faces. Either way the rig's own square is inside the
+  // quoted cut — stand in it when the fuse ends and the blast takes the rig too.
+  chargeAnchor() {
+    const d = this.state.drill;
+    if (!d || !d.avatar) return null;
+    const aim = d.chargeAim;
+    if (aim && Number.isFinite(aim.col) && Number.isFinite(aim.row)
+        && Math.abs(aim.col - d.avatar.col) <= 1 && Math.abs(aim.row - d.avatar.row) <= 1
+        && (aim.col !== d.avatar.col || aim.row !== d.avatar.row)) {
+      return { col: aim.col, row: aim.row };
+    }
+    const dv = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[d.avatar.faceDir || 'down'] || [0, 1];
+    return { col: d.avatar.col + dv[0], row: d.avatar.row + dv[1] };
+  },
+
+  // What a blasted vein would bank — the quote the board shows before the credit moves.
+  _blastYieldQuote(d, yieldU) {
+    const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
+    const avail = Math.min(Math.max(0, Math.floor(Number(yieldU) || 0)), Math.floor(budget));
+    return avail > 0 ? Math.max(1, Math.floor(avail * CHARGE_YIELD_FRACTION)) : 0;
+  },
+
+  // The 3×3 the charge would cut, clipped to the field, every cell carrying its verdict — the
+  // permanent consequence previewed at decision time (design law), not a surprise on the far
+  // side of the fuse. `ok`/`reason` is also the plant gate, so the quote can never lie.
+  chargePreview() {
+    const d = this.state.drill;
+    if (!d || !d.active) return { ok: false, reason: 'inactive', anchor: null, cells: [] };
+    const anchor = this.chargeAnchor();
+    const tier = this.getDrillTier();
+    const credits = Number(this.state.player && this.state.player.credits) || 0;
+    const cells = [];
+    const yields = {};
+    let willBreak = 0, gasCount = 0, tierBlocked = 0, structureBlocked = 0;
+    if (anchor && anchor.col >= 0 && anchor.col < COLS && anchor.row >= 0 && anchor.row < ROWS) {
+      for (let dc = -CHARGE_BLAST_RADIUS; dc <= CHARGE_BLAST_RADIUS; dc++) {
+        for (let dr = -CHARGE_BLAST_RADIUS; dr <= CHARGE_BLAST_RADIUS; dr++) {
+          const col = anchor.col + dc;
+          const row = anchor.row + dr;
+          if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
+          const tile = d.field[col] && d.field[col][row];
+          // Machine housing is stamped on HOLLOW cells — check the stamp first, or the empty
+          // test below swallows every machine in the cut.
+          if (tile && tile.structure) {
+            structureBlocked++;
+            cells.push({ col, row, type: tile.type, verdict: 'structure' });
+            continue;
+          }
+          if (!tile || tile.type === 'empty') {
+            cells.push({ col, row, type: 'empty', verdict: 'void' });
+            continue;
+          }
+          if ((tile.tierReq || 1) > tier) {
+            tierBlocked++;
+            cells.push({ col, row, type: tile.type, verdict: 'tier', ore: tile.ore || null, tierReq: tile.tierReq });
+            continue;
+          }
+          const verdict = tile.type === 'gas' ? 'gas' : 'break';
+          if (verdict === 'gas') gasCount++;
+          willBreak++;
+          cells.push({ col, row, type: tile.type, verdict, ore: tile.ore || null });
+          if (tile.type === 'vein' && tile.ore) {
+            const take = this._blastYieldQuote(d, tile.yieldU);
+            if (take > 0) yields[tile.ore] = (yields[tile.ore] || 0) + take;
+          }
+        }
+      }
+    }
+    let reason = null;
+    if (!anchor || anchor.col < 0 || anchor.col >= COLS || anchor.row < 0 || anchor.row >= ROWS) reason = 'range';
+    else if (d.charge) reason = 'armed';
+    else if (d.chargeCooldown > 0) reason = 'cooldown';
+    else if (willBreak === 0) reason = 'empty';
+    else if (credits < CHARGE_COST_CR) reason = 'credits';
+    return {
+      ok: reason === null,
+      reason,
+      anchor,
+      cost: CHARGE_COST_CR,
+      cells,
+      breakCount: willBreak,
+      gasCount,
+      tierBlocked,
+      // Housing inside the cut survives the blast — the bracket names it, the charge still seats.
+      structureSurvives: structureBlocked,
+      yields,
+      // The rig's own square sits inside every legal cut — the fuse exists so it can leave it.
+      selfDanger: !!(anchor && Math.abs(d.avatar.col - anchor.col) <= CHARGE_BLAST_RADIUS
+        && Math.abs(d.avatar.row - anchor.row) <= CHARGE_BLAST_RADIUS),
+    };
+  },
+
+  armCharge() {
+    const d = this.state.drill;
+    if (!d || !d.active) return false;
+    if (d.charge || d.chargeCooldown > 0) return false;
+    if (!d.chargeArmed) {
+      d.chargeArmed = true;
+      this.bus.emit('drill:chargeArm', { armed: true });
+    }
+    return true;
+  },
+
+  disarmCharge() {
+    const d = this.state.drill;
+    if (!d || !d.chargeArmed) return false;
+    d.chargeArmed = false;
+    d.chargeAim = null;
+    this.bus.emit('drill:chargeArm', { armed: false });
+    return true;
+  },
+
+  setChargeAim(col, row) {
+    const d = this.state.drill;
+    if (!d || !d.avatar) return;
+    const c = Math.trunc(Number(col));
+    const r = Math.trunc(Number(row));
+    const reach = Number.isFinite(c) && Number.isFinite(r)
+      && Math.abs(c - d.avatar.col) <= 1 && Math.abs(r - d.avatar.row) <= 1
+      && (c !== d.avatar.col || r !== d.avatar.row);
+    d.chargeAim = reach ? { col: c, row: r } : null;
+  },
+
+  // The commit half of the verb. Everything the blast will do is already bracketed on the board —
+  // this spends the credit and starts the fuse.
+  plantCharge() {
+    const d = this.state.drill;
+    if (!d || !d.active) return false;
+    const preview = this.chargePreview();
+    if (!preview.ok) {
+      this.bus.emit('drill:warn', {
+        reason: 'charge',
+        chargeReason: preview.reason,
+        text: chargeRefusalText(preview.reason),
+        pos: preview.anchor ? { col: preview.anchor.col, row: preview.anchor.row } : null,
+      });
+      return false;
+    }
+    const { col, row } = preview.anchor;
+    // Ordnance money moves through the economy seam like every other spend (bombs.js:
+    // 'ordnance:<id>'). Where no economy is listening the shot is simply free — a sandbox
+    // without a wallet is no reason to refuse the verb.
+    this.bus.emit('economy:chargeCredits', {
+      amount: CHARGE_COST_CR,
+      reason: 'ordnance:bore_charge',
+      sink: 'ordnance',
+      cause: 'bore_charge',
+      pos: { col, row },
+    });
+    d.charge = { col, row, fuse: CHARGE_FUSE_S };
+    d.chargeArmed = false;
+    d.chargeAim = null;
+    d.chargesSet = (Number(d.chargesSet) || 0) + 1;
+    this.bus.emit('drill:chargePlanted', { col, row, fuseS: CHARGE_FUSE_S, cost: CHARGE_COST_CR });
+    return true;
+  },
+
+  // The fuse is up. Resolve the cut against the field AS IT STANDS — anything the pilot bored
+  // during the countdown is already gone, and machine housing is never blast matter no matter
+  // what the preview once promised.
+  _detonateCharge(d) {
+    const charge = d.charge;
+    d.charge = null;
+    d.chargeCooldown = CHARGE_REARM_S;
+    if (!charge) return;
+    const anchor = { col: charge.col, row: charge.row };
+    const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+    const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
+    const tier = this.getDrillTier();
+    const broken = [];
+    const yields = {};
+    let gasCount = 0;
+    for (let dc = -CHARGE_BLAST_RADIUS; dc <= CHARGE_BLAST_RADIUS; dc++) {
+      for (let dr = -CHARGE_BLAST_RADIUS; dr <= CHARGE_BLAST_RADIUS; dr++) {
+        const col = anchor.col + dc;
+        const row = anchor.row + dr;
+        if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
+        const tile = d.field[col] && d.field[col][row];
+        if (!tile || tile.type === 'empty' || tile.structure) continue;
+        if ((tile.tierReq || 1) > tier) continue;
+        const wasGas = tile.type === 'gas';
+        const wasVein = tile.type === 'vein';
+        const ore = tile.ore || null;
+        const yieldU = tile.yieldU || 0;
+        if (wasVein && ore) {
+          const paid = settleBlastYield(this, d, rockEnt, col, row, ore, yieldU);
+          if (paid > 0) yields[ore] = (yields[ore] || 0) + paid;
+        }
+        d.field[col][row] = EMPTY_TILE();
+        if (rockEnt && rockEnt.data) recordClearedTile(rockEnt.data, col, row);
+        d.tilesCleared++;
+        d.maxDepth = Math.max(d.maxDepth, row);
+        broken.push({ col, row, type: tile.type, ore });
+        this.bus.emit('drill:break', {
+          col, row, type: tile.type, ore, wasVein, wasGas, blast: true,
+        });
+        if (wasGas) {
+          gasCount++;
+          d.gasHits++;
+          if (player && player.hullMax > 0) {
+            const dmg = Math.ceil(player.hullMax * (GAS_DAMAGE / 100));
+            const packet = scalarHitToDamagePacket({
+              damage: dmg,
+              damageType: 'explosive',
+              penetration: 1,
+              shieldBypass: 0,
+              source: { kind: 'deep_core_gas', asteroidId: d.asteroidId },
+            });
+            packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+            this._routeDamage({
+              attackerId: null,
+              targetId: this.state.playerId,
+              packet,
+              origin: { kind: 'deep_core_gas', asteroidId: d.asteroidId, col, row },
+            });
+            this.bus.emit('drill:gasHit', { dmg, pos: { col, row }, via: 'blast' });
+          }
+        }
+      }
+    }
+    // Backblast — the rig's own square was inside the quoted cut, and the fuse was the warning.
+    let backblast = 0;
+    if (player && player.hullMax > 0
+        && Math.abs(d.avatar.col - anchor.col) <= CHARGE_BLAST_RADIUS
+        && Math.abs(d.avatar.row - anchor.row) <= CHARGE_BLAST_RADIUS) {
+      backblast = Math.ceil(player.hullMax * (CHARGE_BACKBLAST_PCT / 100));
+      const packet = scalarHitToDamagePacket({
+        damage: backblast,
+        damageType: 'explosive',
+        penetration: 1,
+        shieldBypass: 0,
+        source: { kind: 'deep_core_blast', asteroidId: d.asteroidId },
+      });
+      packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+      this._routeDamage({
+        attackerId: null,
+        targetId: this.state.playerId,
+        packet,
+        origin: { kind: 'deep_core_blast', asteroidId: d.asteroidId, col: anchor.col, row: anchor.row },
+      });
+      this.bus.emit('drill:backblast', {
+        dmg: backblast,
+        pos: { col: d.avatar.col, row: d.avatar.row },
+      });
+    }
+    this.bus.emit('camera:shake', { amount: 0.85 });
+    this.bus.emit('drill:chargeBlast', {
+      col: anchor.col,
+      row: anchor.row,
+      cells: broken,
+      broken: broken.length,
+      gasCount,
+      backblast,
+      yields,
+      cost: CHARGE_COST_CR,
+    });
+  },
+
   getDrillTier() {
     const player = this.state.entities.get(this.state.playerId);
     const beam = player ? (player.data?.miningBeam || this.state.player.miningBeam) : null;
@@ -1371,10 +1711,19 @@ export const drill = {
     if (!Number.isFinite(d.boreHold)) d.boreHold = 0;
     if (!Number.isFinite(d.boreDebt)) d.boreDebt = 0;
     if (!Number.isFinite(d.boreBites)) d.boreBites = 0;
+    if (!Number.isFinite(d.chargeCooldown)) d.chargeCooldown = 0;
     d.sessionElapsed += dt;
 
     d.scan.cooldown = Math.max(0, (Number(d.scan.cooldown) || 0) - dt);
     d.scan.active = Math.max(0, (Number(d.scan.active) || 0) - dt);
+
+    // A planted charge cooks on the same drill clock as everything else — the fuse keeps burning
+    // while the player is thinking, and the re-arm dead time decays alongside it.
+    d.chargeCooldown = Math.max(0, d.chargeCooldown - dt);
+    if (d.charge) {
+      d.charge.fuse -= dt;
+      if (d.charge.fuse <= 0) this._detonateCharge(d);
+    }
 
     if (d.moveCooldown > 0) {
       d.moveCooldown -= dt;
@@ -1748,4 +2097,10 @@ export const DRILL_CONST = {
   DRILL_HEAT_COOLING,
   DRILL_HEAT_RESUME,
   GAS_TELL_RADIUS,
+  CHARGE_FUSE_S,
+  CHARGE_REARM_S,
+  CHARGE_COST_CR,
+  CHARGE_YIELD_FRACTION,
+  CHARGE_BACKBLAST_PCT,
+  CHARGE_BLAST_RADIUS,
 };

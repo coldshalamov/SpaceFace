@@ -2174,6 +2174,7 @@ export const MINE_CUES = Object.freeze({
   // hazard (alert class — one voice at a time)
   gasBreach: mineCue('hazard', 0.98, { minGapMs: 260, peak: 0.38, alert: true, holdMs: 900 }),
   heatCritical: mineCue('hazard', 0.88, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.30, alert: true, holdMs: 700 }),
+  chargeBlast: mineCue('hazard', 0.92, { minGapMs: 280, peak: 0.22, alert: true, holdMs: 800 }),
   // machine state
   boreBite: mineCue('machine', 0.38, { minGapMs: 70, peak: 0.18 }),
   rockBreak: mineCue('machine', 0.46, { minGapMs: 60, peak: 0.20 }),
@@ -2184,6 +2185,7 @@ export const MINE_CUES = Object.freeze({
   ventRelief: mineCue('machine', 0.58, { minGapMs: 400, peak: 0.22 }),
   machinePlaced: mineCue('machine', 0.55, { minGapMs: 120, peak: 0.26 }),
   machineStarved: mineCue('machine', 0.50, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.18 }),
+  chargeSet: mineCue('machine', 0.52, { minGapMs: 140, peak: 0.24 }),
   // ambience
   assayPing: mineCue('ambience', 0.30, { minGapMs: 500, peak: 0.15 }),
 });
@@ -2207,6 +2209,9 @@ export const MINE_EVENT_CUE_MAP = Object.freeze({
   'drill:warn/overheat': 'rigStall',
   'drill:warn/capacitor': 'rigStall',
   'drill:warn/resume': 'assayPing',
+  'drill:warn/charge': 'lockRefusal',
+  'drill:chargePlanted': 'chargeSet',
+  'drill:chargeBlast': 'chargeBlast',
   'heat:critical': 'heatCritical',
   'heat:vented': 'ventRelief',
   'site:machineInstalled': 'machinePlaced',
@@ -2230,6 +2235,9 @@ export const MINE_LAW_EVENT_ROWS = Object.freeze([
   Object.freeze({ row: 'Courier launch', heard: 'soft launch thump', cue: 'courierLaunch', source: 'site:courierLaunched' }),
   Object.freeze({ row: 'Survey / assay ping', heard: 'quiet sonar blip', cue: 'assayPing', source: 'drill:scanPulse' }),
   Object.freeze({ row: 'Bore refused (rig stalled)', heard: 'strained stall whine', cue: 'rigStall', source: 'drill:warn/overheat' }),
+  // Bore charges extend the vocabulary under the same rule — every sim event gets a sound.
+  Object.freeze({ row: 'Charge seated', heard: 'puck clunk, rising arm chirp', cue: 'chargeSet', source: 'drill:chargePlanted' }),
+  Object.freeze({ row: 'Charge blast', heard: 'deep boom, the whole cut at once', cue: 'chargeBlast', source: 'drill:chargeBlast' }),
 ]);
 
 // Presentation cue ids whose physical voice the mine takes over while screen `drill` is up. The
@@ -3057,6 +3065,8 @@ export const audio = {
     bus.on('drill:gasHit', (p) => this._onMineCue('gasBreach', p));
     bus.on('drill:cargoFull', (p) => this._onMineCue('hopperFull', p));
     bus.on('drill:rockDepleted', (p) => this._onMineCue('rockDepleted', p));
+    bus.on('drill:chargePlanted', (p) => this._onMineCue('chargeSet', p));
+    bus.on('drill:chargeBlast', (p) => this._onMineCue('chargeBlast', p));
     bus.on('drill:scanPulse', (p) => this._onMineCue('assayPing', p));
     bus.on('drill:warn', (p) => {
       const key = MINE_EVENT_CUE_MAP[`drill:warn/${(p && p.reason) || ''}`];
@@ -5620,6 +5630,16 @@ export const audio = {
       case 'machinePlaced': // firm mechanical seat
         this._mineTone(t, { type: 'triangle', f0: 132, f1: 96, dur: 0.16, peak: gain, attack: 0.003 });
         this._mineNoise(t + 0.075, { filter: 'bandpass', f0: 1650, Q: 4.5, dur: 0.075, peak: gain * 0.6 });
+        break;
+      case 'chargeSet': // the puck clamps on — seat clunk, then the short rising arm chirp
+        this._mineTone(t, { type: 'triangle', f0: 164, f1: 118, dur: 0.13, peak: gain, attack: 0.003 });
+        this._mineNoise(t + 0.02, { filter: 'bandpass', f0: 1500, Q: 3.5, dur: 0.055, peak: gain * 0.5 });
+        this._mineTone(t + 0.1, { type: 'sine', f0: 820, f1: 1140, dur: 0.11, peak: gain * 0.42, attack: 0.012 });
+        break;
+      case 'chargeBlast': // deeper than rockBreak, meaner than gasBreach — the cut arriving at once
+        this._mineNoise(t, { filter: 'lowpass', f0: 1350, f1: 170, Q: 0.6, dur: 0.5, peak: gain, attack: 0.004 });
+        this._mineTone(t, { type: 'sine', f0: 56, f1: 29, dur: 0.62, peak: gain * 0.6, attack: 0.005 });
+        this._mineNoise(t + 0.07, { filter: 'bandpass', f0: 430, f1: 150, Q: 0.9, dur: 0.65, peak: gain * 0.35, attack: 0.02 });
         break;
       case 'machineStarved': // single soft chime, once per transition
         this._mineTone(t, { type: 'sine', f0: 662, dur: 0.72, peak: gain, attack: 0.022 });

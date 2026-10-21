@@ -77,7 +77,7 @@ import {
   rehydrateDetachedTextures,
 } from '../../render/packageCpuDetach.js';
 
-const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
+const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S, CHARGE_FUSE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
 
 const TILE = 40;              // px-space kept for parity with the shipped particle/shake helpers
@@ -1162,6 +1162,8 @@ function injectOverlayStyle() {
   rgba(255,98,66,0) 0%, rgba(255,98,66,0) 46%, rgba(255,98,66,.34) 82%, rgba(255,98,66,.66) 100%); }
 .ast3d-flash-cargo { background:radial-gradient(ellipse 58% 58% at 50% 50%,
   rgba(255,182,72,0) 0%, rgba(255,182,72,0) 52%, rgba(255,182,72,.18) 84%, rgba(255,182,72,.38) 100%); }
+.ast3d-flash-blast { background:radial-gradient(ellipse 56% 56% at 50% 50%,
+  rgba(255,220,150,0) 0%, rgba(255,220,150,0) 44%, rgba(255,196,110,.30) 80%, rgba(255,150,80,.55) 100%); }
 /* D34: the conduit mount's bounded watchdog signal. Board weather on the renderer-owned overlay
    (never a modal wash): a hairline chip on the bottom edge while template acquisition is slow,
    louder when the retry budget is spent. Static — reduced-motion safe; §11.3/§11.4-safe sizing. */
@@ -3227,6 +3229,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     contact: new THREE.Color(0x5fae82),   // a face that would feed the machine
     hollow: new THREE.Color(0x6f6252),    // a face that is already hollow: feeds nothing, ever
     refused: new THREE.Color(0xff6242),   // --aw-coral: this cell, refused
+    blast: new THREE.Color(0xffb648),     // --aw-gold: the cut a set charge will take
   };
   let seatsUsed = 0;
   function seatGeometryForZoom() {
@@ -3257,6 +3260,62 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (seatsUsed) {
       seatBrackets.instanceMatrix.needsUpdate = true;
       if (seatBrackets.instanceColor) seatBrackets.instanceColor.needsUpdate = true;
+    }
+  }
+
+  // ---------- the demolition verb ----------
+  // ARMED: bracket every cell in the sim's own quoted cut by verdict — gold breaks, coral cooks
+  // off, bone survives (tier-gated or machine housing). Same bracket grammar as the build seats,
+  // so the preview reads as law, not decoration: the permanent consequence, previewed.
+  // PLANTED: a squat demolition puck clamped to the face whose lamp quickens as the fuse burns.
+  let chargeProp = null;
+  function makeChargeProp() {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(S * 0.17, S * 0.2, S * 0.09, 14),
+      new THREE.MeshStandardMaterial({ color: 0x2e2a24, roughness: 0.8, metalness: 0.4 }),
+    );
+    body.rotation.x = Math.PI / 2;      // axis out of the face — a puck against the wall
+    const lampMat = new THREE.MeshBasicMaterial({ color: 0xffb648 });
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(S * 0.055, 10, 8), lampMat);
+    lamp.position.set(0, 0, S * 0.09);
+    group.add(body, lamp);
+    group.visible = false;
+    fxRoot.add(group);
+    return { group, lamp, lampMat };
+  }
+  function retireChargeProp() {
+    if (!chargeProp) return;
+    fxRoot.remove(chargeProp.group);
+    chargeProp.group.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material && o.material.dispose) o.material.dispose();
+    });
+    chargeProp = null;
+  }
+  function syncCharge(d, timeS) {
+    if (d && d.chargeArmed && drillSys && typeof drillSys.chargePreview === 'function') {
+      const pv = drillSys.chargePreview();
+      if (pv && pv.anchor) {
+        for (const cell of pv.cells || []) {
+          if (cell.verdict === 'break') markSeat(cell.col, cell.row, 'blast');
+          else if (cell.verdict === 'gas') markSeat(cell.col, cell.row, 'refused');
+          else if (cell.verdict === 'tier' || cell.verdict === 'structure') markSeat(cell.col, cell.row, 'hollow');
+        }
+      }
+    }
+    const ch = d && d.charge;
+    if (ch && !chargeProp) chargeProp = makeChargeProp();
+    if (chargeProp && !ch) retireChargeProp();
+    if (chargeProp && ch) {
+      chargeProp.group.visible = true;
+      chargeProp.group.position.set(worldX(ch.col), worldY(ch.row), Z.face + 0.02);
+      // The lamp quickens as the fuse burns — the last quarter is a strobe you cannot unsee.
+      const u = Math.max(0, Math.min(1, 1 - (ch.fuse / CHARGE_FUSE_S)));
+      const rate = 5 + u * 16;
+      const phase = Math.sin(timeS * rate * Math.PI);
+      chargeProp.lamp.visible = motionReduce || phase > -0.35;
+      chargeProp.lamp.scale.setScalar(1 + Math.max(0, phase) * (0.25 + u * 0.55));
     }
   }
 
@@ -3852,7 +3911,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let digGasHot = null;         // gas entry currently screaming under the bit
   let dustTimer = 0;
   let lastRevealCell = { col: -1, row: -1 };
-  const timers = { gasFlash: 0, cargoFlash: 0 };
+  const timers = { gasFlash: 0, cargoFlash: 0, blastFlash: 0 };
   let pulseEntries = [];        // [{mat, base, amp}] — rover + derrick
 
   // ---------------------------------------------------------------- PQ-130.07 "the sim speaks"
@@ -3888,6 +3947,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // The 150ms yellow-green flash INSIDE the breached cell (not on the glass).
   const cellFlash = { t: 0, dur: 0.15, col: -1, row: -1 };
   let gasBreachT = -99;           // one eruption per breach, however many events describe it
+  let gasBreachCell = -1;         // the cell that breach belonged to — twin pockets each speak
 
   // Refusals — law §5: "identical refusals within 5s do not replay their full effect". Keyed by
   // cell + reason so aiming at a different locked seam still speaks.
@@ -3931,7 +3991,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // What the board last said, for the §11.8 headless assertion. Counters only — no text is drawn.
   const eventLog = {
     lastEvent: null, yields: 0, gasBreaches: 0, refusals: 0, refusalsSuppressed: 0,
-    cargoRefusals: 0, installs: 0, courierLaunches: 0,
+    cargoRefusals: 0, installs: 0, courierLaunches: 0, chargePlants: 0, chargeBlasts: 0,
   };
   function mark(name, col, row) {
     eventLog.lastEvent = { name, col: col == null ? -1 : col, row: row == null ? -1 : row, t: timeSNow };
@@ -4006,7 +4066,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // DOM overlay — spatial annotations only (floaters / alarm washes); rig vitals are crest +
   // rig-cluster instruments (design law §6 — the scene stays sovereign).
-  const dom = { root: null, floaters: [], flashGas: null, flashCargo: null, conduitFault: null };
+  const dom = { root: null, floaters: [], flashGas: null, flashCargo: null, flashBlast: null, conduitFault: null };
   function buildDomOverlay() {
     if (dom.root) return;
     const root = document.createElement('div');
@@ -4016,9 +4076,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     dom.flashGas.className = 'ast3d-vignette ast3d-flash-gas';
     dom.flashCargo = document.createElement('div');
     dom.flashCargo.className = 'ast3d-vignette ast3d-flash-cargo';
+    dom.flashBlast = document.createElement('div');
+    dom.flashBlast.className = 'ast3d-vignette ast3d-flash-blast';
     dom.conduitFault = document.createElement('div');
     dom.conduitFault.className = 'ast3d-conduit-fault';
-    root.append(dom.flashGas, dom.flashCargo, dom.conduitFault);
+    root.append(dom.flashGas, dom.flashCargo, dom.flashBlast, dom.conduitFault);
     // The stage (canvas' full-bleed parent) so the overlay hugs the canvas box exactly — but
     // inserted IMMEDIATELY AFTER THE CANVAS, not appended at the end. The screen mounts the rig
     // cluster and its drawers into this same stage after the canvas, and an appended overlay
@@ -7593,6 +7655,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         cargoRefusals: eventLog.cargoRefusals,
         installs: eventLog.installs,
         courierLaunches: eventLog.courierLaunches,
+        chargePlants: eventLog.chargePlants,
+        chargeBlasts: eventLog.chargeBlasts,
       };
     },
     // The camera kick THIS FRAME, back in screen pixels — nonzero for 180ms after a breach.
@@ -8235,14 +8299,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // panel the player has to dismiss.
   const VIGNETTE_GAS_S = 0.4;
   const VIGNETTE_CARGO_S = 0.22;
+  const VIGNETTE_BLAST_S = 0.32;
   function stepDom(d, dt) {
     if (!dom.root) return;
     if (timers.gasFlash > 0) timers.gasFlash = Math.max(0, timers.gasFlash - dt);
     if (timers.cargoFlash > 0) timers.cargoFlash = Math.max(0, timers.cargoFlash - dt);
+    if (timers.blastFlash > 0) timers.blastFlash = Math.max(0, timers.blastFlash - dt);
     const gasU = timers.gasFlash > 0 ? timers.gasFlash / VIGNETTE_GAS_S : 0;
     const cargoU = timers.cargoFlash > 0 ? timers.cargoFlash / VIGNETTE_CARGO_S : 0;
+    const blastU = timers.blastFlash > 0 ? timers.blastFlash / VIGNETTE_BLAST_S : 0;
     dom.flashGas.style.opacity = gasU > 0 ? (flashPresentation.vignetteScale * gasU).toFixed(3) : '0';
     dom.flashCargo.style.opacity = cargoU > 0 ? (flashPresentation.vignetteScale * cargoU).toFixed(3) : '0';
+    if (dom.flashBlast) dom.flashBlast.style.opacity = blastU > 0 ? (flashPresentation.vignetteScale * blastU).toFixed(3) : '0';
     // floaters ride the projection so they stay glued to their cell while the camera settles
     for (let i = dom.floaters.length - 1; i >= 0; i--) {
       const f = dom.floaters[i];
@@ -8338,6 +8406,35 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       return;
     }
+    if (evt === 'chargePlanted') {
+      // The seat speaks once: a gold ring at the face the puck just clamped onto.
+      firePulseRing(p.col, p.row, 0xffb648, 0.45);
+      eventLog.chargePlants++;
+      mark('chargePlanted', p.col, p.row);
+      return;
+    }
+    if (evt === 'chargeBlast') {
+      // The cut's own expression, layered over the per-cell carves the break events already
+      // drew: camera kick, the hot flash inside the anchor cell, a gold ring across the whole
+      // pattern, rubble and dust — and the pale-gold vignette that is the blast's own colour
+      // (not the gas coral, not the hopper amber).
+      const { x, y } = centerPx(p.col, p.row);
+      kick.t = KICK_DUR_S;
+      kick.elapsed = 0;
+      cellFlash.t = cellFlash.dur;
+      cellFlash.col = p.col;
+      cellFlash.row = p.row;
+      flashLight.position.set(worldX(p.col), worldY(p.row), Z.rover + 0.5);
+      flashLight.intensity = flashPresentation.flashPeak;
+      timers.blastFlash = VIGNETTE_BLAST_S;
+      firePulseRing(p.col, p.row, 0xffd08a, 0.7);
+      spawnChunks(x, y, '#d9b26a', motionReduce ? 5 : 12);
+      burst({ x, y, count: motionReduce ? 6 : 18, color: '#ffce7a', life: 0.5, size: 3.0, speed: 120, kind: 'spark', cone: Math.PI * 2 });
+      burst({ x, y, count: motionReduce ? 4 : 12, color: '#7a6650', life: 0.7, size: 4.2, speed: 70, kind: 'dust', gravity: 60, cone: Math.PI * 2 });
+      eventLog.chargeBlasts++;
+      mark('chargeBlast', p.col, p.row);
+      return;
+    }
     if (evt === 'scanPulse') {
       if (d) refreshCells(neighborhood(d.avatar.col, d.avatar.row, SCAN_RADIUS));
       return;
@@ -8396,8 +8493,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // adjacent tunnel ~1.2s · camera kicks 4px for 180ms · coral edge vignette 400ms · a scar on the
   // rover · the pocket becomes the vented texture permanently.
   function gasBreach(col, row) {
-    if (timeSNow - gasBreachT < 0.25) return;    // break + gasHit are one event, not two
+    // break + gasHit describe one breach; a blast cooking two pockets is two breaches. Dedupe
+    // per cell so the second pocket still earns its own scar, vapor and kick.
+    const gIdx = tileIndex(col, row);
+    if (timeSNow - gasBreachT < 0.25 && gasBreachCell === gIdx) return;
     gasBreachT = timeSNow;
+    gasBreachCell = gIdx;
     addVentedScar(col, row);                     // the vented texture, permanently (law D2)
     const x = col * TILE + TILE / 2;
     const y = row * TILE + TILE / 2;
@@ -8513,6 +8614,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     dom.floaters.length = 0;
     timers.gasFlash = 0;
     timers.cargoFlash = 0;
+    timers.blastFlash = 0;
+    retireChargeProp();
     // PQ-130.07 — the whole law §5 event table resets with the session.
     kick.t = 0; kick.elapsed = 0;
     oreArcs.length = 0;
@@ -8523,6 +8626,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     flashLight.intensity = 0;
     flashLight.position.set(0, 0, -900);
     gasBreachT = -99;
+    gasBreachCell = -1;
     refusalSeen.clear();
     blockedLatch = false;
     blockedCell = -1;
@@ -8542,6 +8646,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     eventLog.yields = 0; eventLog.gasBreaches = 0; eventLog.refusals = 0;
     eventLog.refusalsSuppressed = 0; eventLog.cargoRefusals = 0;
     eventLog.installs = 0; eventLog.courierLaunches = 0;
+    eventLog.chargePlants = 0; eventLog.chargeBlasts = 0;
     drillTheta = 0;
     lookInit = false;
     zoomRegister = 'work';
@@ -8843,6 +8948,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     seatGeometryForZoom();
     syncCursor(ui);
     syncFaces(d, ui, timeS);
+    syncCharge(d, timeS);
     flushSeats();
     syncGrid(ui, dt);
     syncOreRegister();
