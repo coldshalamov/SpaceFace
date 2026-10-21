@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "counting-relay-366",
-      "date": "2026-10-03",
-      "wf": "WF-10",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "a multi-hop physical signal chain: two relay buoys and a dead convoy's mail hulk with an honest take-or-leave choice",
-      "fingerprint": "verb=follow,subject=relay-signal,sector=deep-anomaly,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "c5308074f",
-      "verification": "focused_green"
-    },
-    {
       "id": "planet-band-first-voices",
       "date": "2026-10-03",
       "wf": "WF-15",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "903b1b10b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-42-loading-clock-mmss",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Loading clock reads mm:ss; shared formatter at all three sites drops the hours placeholder and tenths digit",
+      "fingerprint": "verb=read,subject=loading-clock,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "7019c1665",
       "verification": "focused_green"
     }
   ],
