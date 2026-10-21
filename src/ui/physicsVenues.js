@@ -1,6 +1,7 @@
 import { el } from './kit/index.js';
 import { normalizeLedger } from '../gallery/orbital/score.js';
 import { normalizeLeagueMemory } from '../sports/kineticLeague/memory.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 const KEY = 'sf.physicsVenues.v1';
 let pending = null;
@@ -10,6 +11,17 @@ export function readPhysicsVenueRecords() {
   try { raw = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch {}
   return { gallery: normalizeLedger(raw.gallery), league: normalizeLeagueMemory(raw.league) };
 }
+/** RC-41 — a venue launch asks only when it can lose a real flight. A menu boot,
+ *  an ephemeral venue/circuit flight, or a paused throwaway has nothing to lose. */
+export function venueLaunchNeedsConfirm(state) {
+  if (!state) return false;
+  const live = state.mode === 'flight' || state.mode === 'paused';
+  if (!live) return false;
+  if (state.physicsVenueSession === true || state.physicsVenue?.active === true) return false;
+  if (isRacingCorridorSession(state)) return false;
+  return true;
+}
+
 export function stagePhysicsVenue(bus, kind, id) {
   if (!bus || !['gallery', 'league'].includes(kind) || typeof id !== 'string') return false;
   pending = { kind, id, token: ++launchSerial, ready: false };

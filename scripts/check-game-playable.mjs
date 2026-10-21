@@ -439,10 +439,14 @@ try {
       } else if (PHYSICS_VENUE) {
         if (!['gallery', 'league'].includes(PHYSICS_VENUE)) throw new Error('unknown physics venue');
         await page.locator('[data-screen="mainMenu"] [data-action="physics"]').click({ timeout: 60000 });
-        await page.locator('[data-screen="physicsVenues"] .race-board-course button')
-          .nth(PHYSICS_VENUE === 'gallery' ? 0 : 1).click();
-        await page.getByRole('dialog', { name: 'Launch a physics challenge?', exact: true })
-          .getByRole('button', { name: 'Launch', exact: true }).click();
+        await page.locator('[data-screen="physicsVenues"] .race-board-course')
+          .nth(PHYSICS_VENUE === 'gallery' ? 0 : 1)
+          .locator('.race-board-launch').first().click();
+        // RC-41: the menu launch asks nothing; a live-flight launch still confirms.
+        try {
+          await page.getByRole('dialog', { name: 'Leave this flight for a challenge?', exact: true })
+            .getByRole('button', { name: 'Launch', exact: true }).click({ timeout: 3000 });
+        } catch {}
       } else if (CIRCUIT) {
         await page.locator('[data-screen="mainMenu"] [data-action="circuits"]').click({ timeout: 60000 });
         await page.getByRole('combobox', { name: 'Circuit ship', exact: true }).selectOption('starter_wasp');

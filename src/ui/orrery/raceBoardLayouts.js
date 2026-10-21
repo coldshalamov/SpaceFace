@@ -101,17 +101,10 @@ ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) > but
 ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) > button.race-board-launch:hover:not(:disabled) { background:var(--dp-lamp-hot, #ffd98c) !important; }
 ${R} .race-board-contract > button.k-word:disabled { opacity:.42 !important; cursor:not-allowed; }
 
-/* ---------- physics-venue board: lone Back rail, select + Launch straight in the card ---------- */
+/* ---------- physics-venue board: lone Back rail, launch rows straight in the card ---------- */
 ${R} > .race-board-tools:has(> button:only-child) { background:none !important; border-color:transparent !important; padding:0 !important; margin:0 0 12px !important; }
 ${R} > .race-board-tools:has(> button:only-child) > button.k-word { margin-left:-6px !important; }
 ${R} .race-board-course > h2.k-t-sub + p.k-sentence { margin:6px 0 4px !important; }
-${R} .race-board-course > select.k-word { margin:10px 0 0 !important; }
-${R} .race-board-course > button.k-word { align-self:flex-start; display:inline-flex !important; align-items:center !important; box-sizing:border-box !important;
-  min-height:38px !important; margin:12px 0 10px !important; padding:0 18px !important; white-space:nowrap !important;
-  ${ETCH} font-size:12.5px !important; letter-spacing:.12em !important; line-height:1 !important;
-  color:#17120a !important; background:var(--dp-lamp, #f2b950) !important; border:1px solid var(--dp-lamp, #f2b950) !important;
-  border-radius:2px !important; box-shadow:none !important; text-shadow:none !important; }
-${R} .race-board-course > button.k-word:hover { background:var(--dp-lamp-hot, #ffd98c) !important; }
 
 /* ---------- results / paint / recognition panels: two up, after the cards ---------- */
 ${R} > .race-board-result { padding:18px !important; margin:0 0 16px !important; box-sizing:border-box;
