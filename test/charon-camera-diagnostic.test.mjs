@@ -217,3 +217,25 @@ test('nonadvancing presentation never manufactures the second view, even in long
  assert.equal(r.report.status,'diagnostic-timeout');assert.equal(r.report.screenshots.length,1);
  assert.equal(p.calls.filter(x=>x==='screenshot').length,1);assert.ok(r.report.elapsedMs<=90000);
 });
+
+test('owner phase and queue observations are bounded raw snapshots without publishing',()=>{
+ try {const {state}=stateFixture();const world=window.SF.registry.get('world');
+ const timings={decodeMs:12,composeMs:Infinity,secret:'not copied'};
+ const boundary={visible:false,userData:{authoredAssetState:'loading',authoredPreparePhase:'awaiting-publication',__admissionPhaseTimings:timings}};
+ const jobs=Array.from({length:200},(_,i)=>({sequence:i,entityId:1,slot:'hull',key:'x'.repeat(500),status:i===100?'running':'ready',startedAtMs:10,endedAtMs:i===100?null:20,phases:timings,assetUrls:['not copied']}));
+ const diagnostics={activeJobs:1,activeAdmissionSlots:1,jobs,partLoads:jobs};
+ const owner={scene:{userData:{authoredUpgradeDiagnostics:diagnostics}},_sectorBoundaryPreparations:{get:id=>id===1?{boundary,state:'preparing'}:null}};
+ window.SF.registry.get=name=>name==='render'?owner:world;
+ const before=JSON.stringify(diagnostics),r=charonCameraPageOperation('read');
+ assert.equal(r.authoredQueue.partLoads[0].slot,'hull');
+ assert.equal(r.authoredQueue.jobs.length,16);assert.equal(r.authoredQueue.partLoads.length,16);
+ assert.equal(r.authoredQueue.jobs[0].sequence,100);assert.equal(r.authoredQueue.jobs[0].endedAtMs,null);
+ assert.equal(r.authoredQueue.jobs[0].key.length,240);assert.equal(r.authoredQueue.jobRecordCount,200);
+ assert.equal(r.authoredQueue.jobs[0].assetUrls,undefined);assert.equal(r.authoredQueue.jobs[0].phases.secret,undefined);
+ assert.equal(r.authoredQueue.jobs[0].phases.composeMs,null);
+ assert.equal(r.subjects[0].boundaryPreparation.preparePhase,'awaiting-publication');
+ assert.equal(r.subjects[0].boundaryPreparation.phaseTimings.decodeMs,12);
+ assert.equal(boundary.visible,false);assert.equal(JSON.stringify(diagnostics),before);
+ delete owner.scene;assert.equal(charonCameraPageOperation('read').authoredQueue,null);
+ }finally{delete globalThis.window;}
+});

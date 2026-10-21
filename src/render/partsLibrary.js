@@ -6922,13 +6922,38 @@ function armStalledHogWake(state) {
  * already decoded, and a late settle of the abandoned promise is a bookkeeping no-op —
  * the job is already out of byBoundary/byKey and its completion is settled.
  */
+// Hidden sector-prepared roots have no onBeforeRender trigger and ordinary sector
+// requests deliberately skip them. Carry the existing readable-glass scheduling class
+// into their live admission options without changing visibility or publication authority.
+function promoteReadableAdmission(job) {
+  const live = authoredRuntimeState();
+  const options = job && job.options;
+  if (!live || live.mode !== 'flight' || live.render?.sectorShellAdmission === true || live.render?.liveSectorGpuAdmission === true
+      || !options || options.admissionVisible === true || !Object.isExtensible(options)
+      || job.admission?.signal.aborted || !job.isAdmissionOwnerActive?.()) return false;
+  if (live.entities?.get?.(job.entity?.id) !== job.entity) return false;
+  const sectorId = options.sectorId || job.entity?.homeSectorId
+    || job.entity?.data?.homeSectorId || job.entity?.data?.sectorId;
+  if (sectorId && sectorId !== live.world?.currentSectorId) return false;
+  const epoch = job.boundary?.userData?.admissionEpoch;
+  if (options.admissionEpoch != null && epoch != null && options.admissionEpoch !== epoch) return false;
+  if (!entityIsOnReadableGlass(job.entity, live)) return false;
+  options.admissionVisible = true;
+  return true;
+}
+
 function abortStalledOrInactiveUpgradeJobs(state) {
   const now = monotonicNow();
   for (const job of state.byBoundary.values()) {
     if (job.lifecycle !== 'in-flight' || !job.admission || job.admission.signal.aborted) continue;
     if (!job.isAdmissionOwnerActive()) {
       job.admission.abort('Authored visual preparation owner became inactive');
-    } else if (jobIsStalledInFlight(job, now)) {
+      continue;
+    }
+    // Reuse the existing bounded owner watchdog: a staged body may approach after
+    // admission, with no live mesh available to re-request its remaining work.
+    promoteReadableAdmission(job);
+    if (jobIsStalledInFlight(job, now)) {
       // The stall verdict closes the job's 'running' diagnostic on schedule — an aborted
       // job's completion settles 'aborted-stalled' while its record keeps the watchdog
       // verdict, and a still-live job stalls only the record, never healthy in-flight work.
@@ -8104,6 +8129,7 @@ function admitNextUpgradeJob(state) {
     isAdmissionBoundaryCurrent: isBoundaryCurrent,
     isResidencyOwnerActive: () => !admission.signal.aborted && isOwnerActive(),
   };
+  promoteReadableAdmission(job);
   if (authoredRuntimeState()?.mode === 'flight') {
     // A loading request may only begin after reveal. Re-grade its scheduling phase at
     // admission, retaining its GPU lease policy while enabling the normal flight yields.

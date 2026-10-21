@@ -16,10 +16,40 @@ export function charonCameraPageOperation(action) {
   const member = (collection, id) => typeof collection?.has === 'function'
     ? collection.has(id) : Array.isArray(collection) ? collection.includes(id) : null;
   const activity = render.activityFrame;
+  const short = value => typeof value === 'string' ? value.slice(0, 240) : null;
+  const phaseTimings = value => value ? Object.fromEntries(
+    ['decodeMs','composeMs','pipelineMs','commitMs','policiesMs','compileMs','residencyMs']
+      .map(key => [key, finite(value[key])])) : null;
+  // Existing owner diagnostics only. Scan at most its bounded 128-row tail, retain
+  // at most 16 records (running first), and never copy URLs or arbitrary nested data.
+  const queueSource = owner?.scene?.userData?.authoredUpgradeDiagnostics;
+  const boundedRows = rows => {
+    const tail = Array.isArray(rows) ? rows.slice(-128) : [];
+    return [...tail.filter(row => row && row.endedAtMs == null),
+      ...tail.filter(row => row && row.endedAtMs != null).reverse()].slice(0,16);
+  };
+  const authoredQueue = queueSource ? {
+    evidenceScope:'Existing owner diagnostic sample; not complete queue membership or eligibility.',
+    sampledAtMs:finite(globalThis.performance?.now?.()),
+    activeJobs:finite(queueSource.activeJobs),activeAdmissionSlots:finite(queueSource.activeAdmissionSlots),
+    maxConcurrentDecode:finite(queueSource.maxConcurrentDecode),
+    jobRecordCount:Array.isArray(queueSource.jobs)?queueSource.jobs.length:null,
+    partLoadRecordCount:Array.isArray(queueSource.partLoads)?queueSource.partLoads.length:null,
+    jobs:boundedRows(queueSource.jobs).map(row=>({sequence:finite(row.sequence),key:short(row.key),
+      entityId:typeof row.entityId==='number'?finite(row.entityId):short(row.entityId),
+      entityType:short(row.entityType),status:short(row.status),priority:finite(row.priority),
+      startedAtMs:finite(row.startedAtMs),endedAtMs:finite(row.endedAtMs),durationMs:finite(row.durationMs),
+      phases:phaseTimings(row.phases)})),
+    partLoads:boundedRows(queueSource.partLoads).map(row=>({slot:short(row.slot),
+      cacheStatus:short(row.cacheStatus),startedAtMs:finite(row.startedAtMs),
+      endedAtMs:finite(row.endedAtMs),durationMs:finite(row.durationMs)})),
+  } : null;
   const boundary = id => {
     const record = owner?._sectorBoundaryPreparations?.get?.(id);
     if (!record) return null;
     return {state:record.state??null,active:bool(record.active),generation:finite(record.generation),
+      preparePhase:short(record.boundary?.userData?.authoredPreparePhase),
+      phaseTimings:phaseTimings(record.boundary?.userData?.__admissionPhaseTimings),
       rootPresent:!!record.boundary,assetState:record.boundary?.userData?.authoredAssetState??null,
       visible:bool(record.boundary?.visible),error:record.error?String(record.error.message||record.error).slice(0,1000):null,
       abortReason:record.abortReason??null,cleanupBlocked:record.cleanupBlocked===true};
@@ -155,7 +185,7 @@ export function charonCameraPageOperation(action) {
     inActivityGlass:member(activity?.renderGlassIds,e.id),inActivityRunway:member(activity?.renderRunwayIds,e.id),
     boundaryPreparation:boundary(e.id),
     inFirstFlight:render.liveSectorFirstFlightIds?.has?.(e.id)??null}: {subject:names[i],missing:true});
-  return {sectorId:s.world?.currentSectorId,mode:s.mode,transition,tick:s.tick,presentCount:s.render?.presentCount??null,
+  return {sectorId:s.world?.currentSectorId,mode:s.mode,transition,authoredQueue,tick:s.tick,presentCount:s.render?.presentCount??null,
     gpu:s.render?.gpu?{...s.render.gpu}:null,softwareRenderer:s.render?.softwareRenderer??null,dynResScale:Number.isFinite(s.render?.dynResScale)?s.render.dynResScale:null,
     player:player?{id:player.id,pos:{x:player.pos.x,z:player.pos.z},hull:player.hull,assetState:player.mesh?.userData?.authoredAssetState??'missing'}:null,
     subjects,ready:!transition.pending&&subjects.every(e=>!e.missing&&e.assetState==='authored')&&player?.mesh?.userData?.authoredAssetState==='authored',
