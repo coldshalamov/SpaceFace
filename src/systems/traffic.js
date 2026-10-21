@@ -6335,6 +6335,11 @@ export const traffic = {
     if (!this._civilianHaulerRole(hauler, rec)) return null;
     let current = data.cargoManifest || (rec && rec.manifest) || null;
     if (!validCausalManifest(current)) {
+      // An authoritative empty or malformed manifest is not legacy unknown cargo.
+      // Stale carrying flags must never refill a finite worker after delivery.
+      const finiteItinerary = data.itinerary || rec?.itinerary;
+      if (current != null || finiteItinerary?.kind === 'anvil_work'
+        || finiteItinerary?.kind === 'vesta_winnow_recovery') return null;
       if (data.cargo && typeof data.cargo === 'object') {
         const lines = Object.entries(data.cargo)
           .filter(([id, q]) => typeof id === 'string' && Number.isSafeInteger(q) && q > 0)
