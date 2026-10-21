@@ -1,6 +1,22 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 06:14 UTC
+
+All eight goals remain OPEN. This checkpoint supersedes older current-state entries without erasing scoped failures or implying acceptance.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) has verified head [c4cf86ba6fb9632eb87caa957ef1a71007f2f4b8](https://github.com/coldshalamov/SpaceFace/commit/c4cf86ba6fb9632eb87caa957ef1a71007f2f4b8), tree `14e75955a06dcaf9681925a50730a1be10f3313b`, sole parent `361a275a9a7909c88cc8eedc0ce0a7f0eacf06cf`. The combined exact selection passes 111/111 tests with 1,187 audited source hashes. Character CI passes 84/84 plus playtest; main/mobile CI remains pending and no aggregate-green result is claimed.
+
+Generic cleanup now deliberately defers a NEW reservation for an otherwise-unclaimed ordinary body while it is held by a live current-life playerMassline, until release. Prior claims, authored sources and theft behavior are unchanged. This is an intentional coherence policy, not a claim that the prior behavior violated established canon. Actual full-world replay confirms reservation deferral; the moving RETURN GAS route remains unproved.
+
+The existing volatile pressure-vessel model is polished with two shared draws and 1,036 triangles, preserving its shell, hazard, motion and collision. The inspected actual offline before/after was delivered at 06:01 UTC. Body/runtime source is published, but this is not an additional distinct model or live-camera acceptance. Overall asset quality remains open.
+
+The same RETURN GAS owner, build_connected_world_activity, now owns the next active bounded unit: explicit Hail rendezvous using ordinary braking and a total 30 simulation-second budget across current-timeline retries and Continue. No autotransfer or weakened physical gates is permitted. review_orchard_physical_integration is the independent reviewer. Implementation and the ordinary moving-tender outcome are not yet claimed complete.
+
+Full new receiver activation remains held and unpublished. The expected partsLibrary and census JSON blobs were not found on read-back at 06:08 UTC; generated census has never been attempted. The published source/release bank remains dormant. Vessel polish, cleanup policy and RETURN GAS source do not resolve these separate operations.
+
+Next: implement and independently qualify the explicit Hail rendezvous under the cumulative budget, then establish the actual bounded moving-tender physical handoff with ordinary controls and unchanged custody gates. Follow exact-head main/mobile CI to terminal results, keeping scoped character/test passes distinct from aggregate acceptance. Preserve original scope, earlier failures and separate source/model states. This update changes only the two documents on the separate handoff branch, not PR #480, and includes no restricted diagnostic payload or private recovery identifiers.
+
 ## Current source handoff — 21 October 2026, 05:43 UTC
 
 All eight goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical failures and acceptance distinctions.
