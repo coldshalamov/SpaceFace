@@ -1,6 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 13:43 UTC
+
+All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `ea1cc3ebe98fc58245724a53a6f1f54b141fd87e`, tree `ddfb0c0c8c922fd9c97308b1faa4d017f24adf16`, sole 483b parent, open draft at 13:43:59 UTC. Public master bce is unchanged. PR comment 6317621994 records scope; source, documentation and publication receipts are preserved.
+
+The connected Phoebe return uses the existing journal's actual one-to-four notes, Vael +150, the Shrine board, accepted physical return and filed artifact without repeat payment. Exactly one signal is protected under the normal 64-entry cap so partial one-to-three-note progress does not vanish. There are no new save fields, invented investigations or tracking. A validated legacy board covers an already-evicted four-note record; it cannot invent lost partial progress. Existing four pocket workers and Nim prose are grounded. Independent source checks pass 49; root combined checks pass 235 with 1,572 immutable module paths and seven filesystem paths audited.
+
+Final camera diagnostic delta passes 21 checks independently and on exact root code. Only two diagnostic files differ from the 235-check composition; documentation explains this boundary. Actual prior 483b CI is runtime 1,411/1,423: full Orchard native passes in 392.380 seconds and all 54 Charon cases pass. A new one-millisecond dispatch-race test safely observed zero calls against an assertion of one; scheduling tolerance plus a deterministic wedged-call case correct that test. Eleven other red cases retain their inherited categories; no aggregate-green is claimed. verify_charon_delivery_ci owns new actual successor followthrough; the older browser3 natural terminal result remains pending, not completed.
+
+Actual Charon capture produced two PNGs and JSON at 15.375 seconds: six loose original supplies; colony, hauler and pod entity meshes missing; cutter loading; soft 435 × 245 SwiftShader rendering; zoom 330 despite requested 418.77. This is not visual success. The initial hardware-cooking hypothesis is retracted because SwiftShader skips live cooking. Hidden boundary-preparation, hold and reconciliation states are now instrumented, not repaired or proved causal. repair_charon_visual_readiness completed its scoped diagnostics pending actual data; root owns visual investigation.
+
+Next: follow exact successor CI and diagnostic evidence, resolve visual readiness only from actual observations, and continue ordinary-route work within existing ownership. Preserve original nine-goal/twenty-concept scope, historical failures and exact held Orchard/receiver operations. No held-operation retry, new user action, NOW change, master merge, deployment or schedule change is introduced. Only these two shared handoff/goal files change here; no private recovery identifiers or private ancestry are published.
+
 ## Current source handoff — 21 October 2026, 13:17 UTC
 
 All nine goals remain OPEN within the original twenty-concept/IMPLEMENTATION/build-map scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `483b0988b7f57dbc4c563a03c9ba62af1b4b7e56`, tree `55b0e8f700587e96a7a57e70a78fce1846d959e7`, sole 6b42 parent, open draft at 13:17:41 UTC. Public master bce remains unchanged. UI and legacy-boundary owners have completed this independently reviewed scoped increment, not the broader goals.
