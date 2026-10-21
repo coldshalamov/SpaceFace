@@ -94,12 +94,38 @@
     }
   ],
   "assetId": "sf.render.borrowed-voice-ring-lod2",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1.collision",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2.collision",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3.collision",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4.collision",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5.collision",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e2cff499e1df8476e5d9f4c0c3a44bf6ce84814f3ae9af23ba34b52894eebbd5",
+  "contentHash": "a4064a43e7f187597f3c3cdc683d74a30e13ad88331e69210de617ac60853cb6",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone.dynamic",
@@ -182,7 +208,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1",
       "primitiveIndex": 0,
@@ -207,7 +233,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2",
       "primitiveIndex": 0,
@@ -232,7 +258,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3",
       "primitiveIndex": 0,
@@ -257,7 +283,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4",
       "primitiveIndex": 0,
@@ -282,7 +308,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5",
       "primitiveIndex": 0,
@@ -832,7 +858,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
       "nodePath": [
@@ -881,7 +907,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
       "nodePath": [
@@ -930,7 +956,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
       "nodePath": [
@@ -979,7 +1005,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
       "nodePath": [
@@ -1028,7 +1054,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
       "nodePath": [
@@ -2241,7 +2267,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "abc91e6cf673652fb070167b23c3016c3e11c8a7a0d2da379b1d7b4a6d1baf85"
+      "sha256": "19037a3c57f73439e9cc20fcdae51c939bf8bf221ca443801b918d5baeda526e"
     },
     "sourceGlb": {
       "bytes": 438820,
@@ -2249,8 +2275,8 @@
       "uri": "borrowed_voice_ring_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -3348,7 +3374,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod2.glb"
   },
-  "runtimeHash": "c209739055b1802d9144e8a38ffa32bfe70d3d300cba1d6d743597b49a95f9d5",
+  "runtimeHash": "2e78296ca9cd3d20570b3d9d9a751fcc5131274c52d096454666140cddc1fb64",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

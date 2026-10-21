@@ -278,12 +278,38 @@
     }
   ],
   "assetId": "sf.render.sable-patchwork",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.sable-patchwork.node.collision-sable-patchwork-aft-bridge.collision",
+      "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-aft-bridge",
+      "reference": "COLLISION_SABLE_PATCHWORK_AFT_BRIDGE"
+    },
+    {
+      "id": "sf.render.sable-patchwork.node.collision-sable-patchwork-central-office.collision",
+      "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-central-office",
+      "reference": "COLLISION_SABLE_PATCHWORK_CENTRAL_OFFICE"
+    },
+    {
+      "id": "sf.render.sable-patchwork.node.collision-sable-patchwork-forward-bridge.collision",
+      "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-forward-bridge",
+      "reference": "COLLISION_SABLE_PATCHWORK_FORWARD_BRIDGE"
+    },
+    {
+      "id": "sf.render.sable-patchwork.node.collision-sable-patchwork-port-store.collision",
+      "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-port-store",
+      "reference": "COLLISION_SABLE_PATCHWORK_PORT_STORE"
+    },
+    {
+      "id": "sf.render.sable-patchwork.node.collision-sable-patchwork-starboard-service.collision",
+      "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-starboard-service",
+      "reference": "COLLISION_SABLE_PATCHWORK_STARBOARD_SERVICE"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fff01020711be56977e30fc9c43edea7f563a46f4001b5710bd6c53628eb7cf7",
+  "contentHash": "ac76cd28b45138f95d33c2c23bc6f92f59ee2e31b5f7798f79af706fce482554",
   "dynamicGroups": [
     {
       "id": "sf.render.sable-patchwork.node.lod0-motion-sable-arm-base-armor.dynamic",
@@ -341,7 +367,7 @@
       "indexCount": 660,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_SABLE_PATCHWORK_AFT_BRIDGE",
       "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-aft-bridge",
       "primitiveIndex": 0,
@@ -366,7 +392,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_SABLE_PATCHWORK_CENTRAL_OFFICE",
       "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-central-office",
       "primitiveIndex": 0,
@@ -391,7 +417,7 @@
       "indexCount": 660,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_SABLE_PATCHWORK_FORWARD_BRIDGE",
       "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-forward-bridge",
       "primitiveIndex": 0,
@@ -416,7 +442,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_SABLE_PATCHWORK_PORT_STORE",
       "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-port-store",
       "primitiveIndex": 0,
@@ -441,7 +467,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_SABLE_PATCHWORK_STARBOARD_SERVICE",
       "nodeId": "sf.render.sable-patchwork.node.collision-sable-patchwork-starboard-service",
       "primitiveIndex": 0,
@@ -1069,7 +1095,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_SABLE_PATCHWORK_AFT_BRIDGE",
       "nodeName": "COLLISION_SABLE_PATCHWORK_AFT_BRIDGE",
       "nodePath": [
@@ -1118,7 +1144,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_SABLE_PATCHWORK_CENTRAL_OFFICE",
       "nodeName": "COLLISION_SABLE_PATCHWORK_CENTRAL_OFFICE",
       "nodePath": [
@@ -1167,7 +1193,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_SABLE_PATCHWORK_FORWARD_BRIDGE",
       "nodeName": "COLLISION_SABLE_PATCHWORK_FORWARD_BRIDGE",
       "nodePath": [
@@ -1216,7 +1242,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_SABLE_PATCHWORK_PORT_STORE",
       "nodeName": "COLLISION_SABLE_PATCHWORK_PORT_STORE",
       "nodePath": [
@@ -1265,7 +1291,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_SABLE_PATCHWORK_STARBOARD_SERVICE",
       "nodeName": "COLLISION_SABLE_PATCHWORK_STARBOARD_SERVICE",
       "nodePath": [
@@ -2637,7 +2663,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "17076fee2ca1eb62b34bc75081e26bee046648c2cc37aaf3edfdd98fd172e549"
+      "sha256": "a7136317c7a0a84f7748a48dbed5e6fdcfb96c27d36a51c54d7afde43c3ec9c4"
     },
     "sourceGlb": {
       "bytes": 671740,
@@ -2645,8 +2671,8 @@
       "uri": "sable_patchwork.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -3876,7 +3902,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/sable_patchwork.glb"
   },
-  "runtimeHash": "708f04a1e6d07b009918551f63fa629f272de7b8459010079c3a6e7ca12fc50c",
+  "runtimeHash": "e0c91a5eafa848ad376fd9ab306a7ebfc59433a862025c09efd7cff20a87616e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

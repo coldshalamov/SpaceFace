@@ -140,12 +140,68 @@
     }
   ],
   "assetId": "sf.render.ceres-section-cradle",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-depth-keeper-port.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-depth-keeper-port",
+      "reference": "COLLISION_depth_keeper_port"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-depth-keeper-starboard.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-depth-keeper-starboard",
+      "reference": "COLLISION_depth_keeper_starboard"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-port-rail.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-port-rail",
+      "reference": "COLLISION_port_rail"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-rear-spine.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-rear-spine",
+      "reference": "COLLISION_rear_spine"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-retention-1-2.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-1-2",
+      "reference": "COLLISION_retention_1"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-retention-1.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-1",
+      "reference": "COLLISION_retention_-1"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-2.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-2",
+      "reference": "COLLISION_retention_ram_-1_48"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-3.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-3",
+      "reference": "COLLISION_retention_ram_1_-48"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-4.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-4",
+      "reference": "COLLISION_retention_ram_1_48"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48",
+      "reference": "COLLISION_retention_ram_-1_-48"
+    },
+    {
+      "id": "sf.render.ceres-section-cradle.node.collision-starboard-rail.collision",
+      "nodeId": "sf.render.ceres-section-cradle.node.collision-starboard-rail",
+      "reference": "COLLISION_starboard_rail"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "22cb2b026084e3264f483695583e70c18626debac0694cfadb38c8216c509f17",
+  "contentHash": "5e88a049a238c75dd97afc62b1286733ee5e3b01866a5e8453fa35574db3940b",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-ceres-depth-keeper-armor.dynamic",
@@ -453,7 +509,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_depth_keeper_port",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-depth-keeper-port",
       "primitiveIndex": 0,
@@ -478,7 +534,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_depth_keeper_starboard",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-depth-keeper-starboard",
       "primitiveIndex": 0,
@@ -503,7 +559,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_port_rail",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-port-rail",
       "primitiveIndex": 0,
@@ -528,7 +584,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_rear_spine",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-rear-spine",
       "primitiveIndex": 0,
@@ -553,7 +609,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_retention_1",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-1-2",
       "primitiveIndex": 0,
@@ -578,7 +634,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_retention_-1",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-1",
       "primitiveIndex": 0,
@@ -603,7 +659,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_retention_ram_-1_48",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-2",
       "primitiveIndex": 0,
@@ -628,7 +684,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_retention_ram_1_-48",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-3",
       "primitiveIndex": 0,
@@ -653,7 +709,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_retention_ram_1_48",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-4",
       "primitiveIndex": 0,
@@ -678,7 +734,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_retention_ram_-1_-48",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48",
       "primitiveIndex": 0,
@@ -703,7 +759,7 @@
       "indexCount": 36,
       "indexed": true,
       "materialHash": "18dac3bb8d403fa526e5f6aa66826eb264b06c42a0b5e05b5557b7bb9883b8d3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_starboard_rail",
       "nodeId": "sf.render.ceres-section-cradle.node.collision-starboard-rail",
       "primitiveIndex": 0,
@@ -2899,7 +2955,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_depth_keeper_port",
       "nodeName": "COLLISION_depth_keeper_port",
       "nodePath": [
@@ -2948,7 +3004,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_depth_keeper_starboard",
       "nodeName": "COLLISION_depth_keeper_starboard",
       "nodePath": [
@@ -2997,7 +3053,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_port_rail",
       "nodeName": "COLLISION_port_rail",
       "nodePath": [
@@ -3046,7 +3102,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_rear_spine",
       "nodeName": "COLLISION_rear_spine",
       "nodePath": [
@@ -3095,7 +3151,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_retention_-1",
       "nodeName": "COLLISION_retention_-1",
       "nodePath": [
@@ -3144,7 +3200,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_retention_1",
       "nodeName": "COLLISION_retention_1",
       "nodePath": [
@@ -3193,7 +3249,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_retention_ram_-1_-48",
       "nodeName": "COLLISION_retention_ram_-1_-48",
       "nodePath": [
@@ -3242,7 +3298,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_retention_ram_-1_48",
       "nodeName": "COLLISION_retention_ram_-1_48",
       "nodePath": [
@@ -3291,7 +3347,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_retention_ram_1_-48",
       "nodeName": "COLLISION_retention_ram_1_-48",
       "nodePath": [
@@ -3340,7 +3396,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_retention_ram_1_48",
       "nodeName": "COLLISION_retention_ram_1_48",
       "nodePath": [
@@ -3389,7 +3445,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_starboard_rail",
       "nodeName": "COLLISION_starboard_rail",
       "nodePath": [
@@ -7774,7 +7830,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "3dadd6885aedfc590bc9800a379c2b24d9135d65c447851934955365d3c71bbc"
+      "sha256": "436aec11b38ab495c59af7382bf1224849e434dae87bd422ec10a10858fb7812"
     },
     "sourceGlb": {
       "bytes": 1029972,
@@ -7782,8 +7838,8 @@
       "uri": "place_ceres_section_cradle.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -11003,7 +11059,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_section_cradle.glb"
   },
-  "runtimeHash": "c2d090675d3e27674ca6f09394490bccd61cdc793c3ba0ea25a20bc9662be19e",
+  "runtimeHash": "1fa9c2c6e7e8af8e36f884dde63bca24c18785311099d51d7b7952cb12eb3060",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

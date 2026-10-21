@@ -94,12 +94,33 @@
     }
   ],
   "assetId": "sf.render.towline-debris",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.towline-debris.node.collision-towline-debris-bent-tip.collision",
+      "nodeId": "sf.render.towline-debris.node.collision-towline-debris-bent-tip",
+      "reference": "COLLISION_TOWLINE_DEBRIS_BENT-TIP"
+    },
+    {
+      "id": "sf.render.towline-debris.node.collision-towline-debris-lower.collision",
+      "nodeId": "sf.render.towline-debris.node.collision-towline-debris-lower",
+      "reference": "COLLISION_TOWLINE_DEBRIS_LOWER"
+    },
+    {
+      "id": "sf.render.towline-debris.node.collision-towline-debris-spine.collision",
+      "nodeId": "sf.render.towline-debris.node.collision-towline-debris-spine",
+      "reference": "COLLISION_TOWLINE_DEBRIS_SPINE"
+    },
+    {
+      "id": "sf.render.towline-debris.node.collision-towline-debris-upper.collision",
+      "nodeId": "sf.render.towline-debris.node.collision-towline-debris-upper",
+      "reference": "COLLISION_TOWLINE_DEBRIS_UPPER"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bbdac257d10d14411a839d370e8f7427ca72edb96370ed35de5e285ac31fe9b6",
+  "contentHash": "535062202540416f3d4994d07add60a068c967ad0449741a6088bddee086b5de",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -121,7 +142,7 @@
       "indexCount": 564,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_DEBRIS_BENT-TIP",
       "nodeId": "sf.render.towline-debris.node.collision-towline-debris-bent-tip",
       "primitiveIndex": 0,
@@ -146,7 +167,7 @@
       "indexCount": 564,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_DEBRIS_LOWER",
       "nodeId": "sf.render.towline-debris.node.collision-towline-debris-lower",
       "primitiveIndex": 0,
@@ -171,7 +192,7 @@
       "indexCount": 564,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_DEBRIS_SPINE",
       "nodeId": "sf.render.towline-debris.node.collision-towline-debris-spine",
       "primitiveIndex": 0,
@@ -196,7 +217,7 @@
       "indexCount": 564,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_TOWLINE_DEBRIS_UPPER",
       "nodeId": "sf.render.towline-debris.node.collision-towline-debris-upper",
       "primitiveIndex": 0,
@@ -343,7 +364,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_BENT-TIP",
       "nodeName": "COLLISION_TOWLINE_DEBRIS_BENT-TIP",
       "nodePath": [
@@ -392,7 +413,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_LOWER",
       "nodeName": "COLLISION_TOWLINE_DEBRIS_LOWER",
       "nodePath": [
@@ -441,7 +462,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_SPINE",
       "nodeName": "COLLISION_TOWLINE_DEBRIS_SPINE",
       "nodePath": [
@@ -490,7 +511,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_UPPER",
       "nodeName": "COLLISION_TOWLINE_DEBRIS_UPPER",
       "nodePath": [
@@ -766,7 +787,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "96a12c7a8b04cf8ab300a80e1f9a4f9364466608c1fab63e9accfc03528e9171"
+      "sha256": "f9b2728c815e9ad2a368a90b6b541c1475cdc7642b408b79849661d2494f8301"
     },
     "sourceGlb": {
       "bytes": 332908,
@@ -774,8 +795,8 @@
       "uri": "towline_debris.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -1017,7 +1038,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/towline_debris.glb"
   },
-  "runtimeHash": "3908b6a3678626d17bd1458f9561742ac629d65fcd72ca7047ceaf21076ffff9",
+  "runtimeHash": "26345ee288bd01a54be9bff6c22bb57da64bf339859de19af5d0d6951c197798",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
