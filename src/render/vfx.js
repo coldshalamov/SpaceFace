@@ -2437,10 +2437,6 @@ export const vfx = {
     // re-assert/re-commit while liveSpriteCount===0. Soft-GPU fps not claimed.
     this._spritesPublishedIdle = false;
 
-    // Dedicated soft flame material slot for gaseous thrust (fx_thruster_main.jpg prepared for future use / richer shapes).
-    // Currently the overlapping soft-glow puffs + softened point cloud provide the blend; swapping maps here is a one-line follow-up.
-    this._flameMaterial = null;
-
     // Tier-1 pool-capacity events: initial pool construction is the baseline "active capacity".
     const tier1Init = state.perfRuntime && state.perfRuntime.tier1;
     if (tier1Init && tier1Init.isEnabled()) {
@@ -9107,12 +9103,47 @@ export const vfx = {
     const volume = readWantedSearchVolume(this.state,
       this._wantedVolume || (this._wantedVolume = {}));
     if (!this._wantedRing && this._scene) {
-      const geo = new THREE.RingGeometry(0.985, 1, 64);
+      // Shader ring on the same one mesh the hairline annulus used: the quiet
+      // full circumference IS the search boundary and always draws; a brighter
+      // scanning sweep and an fwidth rim ride on top of it. The band geometry is
+      // coverage only — the shader's rim sits inside it, filter-width widened so
+      // no tessellation edge can silhouette at any mesh scale.
+      const geo = new THREE.RingGeometry(0.98, 1.005, 64);
       geo.rotateX(-Math.PI / 2);
-      const mat = new THREE.MeshBasicMaterial({
-        color: 0xff5c5c,
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          uCol: { value: new THREE.Color(0xff5c5c) },
+          uOp: { value: 0 },
+          uTime: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vP;
+          void main() { vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+        `,
+        fragmentShader: `
+          uniform vec3 uCol; uniform float uOp; uniform float uTime;
+          varying vec2 vP;
+          void main() {
+            float r = length(vP);
+            vec2 n = vP / max(r, 1e-6);
+            // Rim width rides a pixel-multiple of the radius derivative — the
+            // mesh scale carries the world radius, so the hairline keeps one
+            // readable weight from a skirmish ring to a siege-wide one. The
+            // width clamps to the coverage margin (band 0.98-1.005, rim center
+            // 0.9925): fwidth grows as the ring shrinks on screen, and past the
+            // margin the geometry edge would become the visible cutoff — below
+            // the clamp the rim hardens to the weight the old unfiltered
+            // geometry already showed at that size.
+            float px = min(fwidth(r) * 0.75 + 1e-7, 0.005);
+            float rim = 1.0 - smoothstep(0.0075 - px, 0.0075 + px, abs(r - 0.9925));
+            // One brighter sweep: a soft angular window riding a rotating
+            // direction (dot against the unit dir — no per-fragment atan).
+            vec2 d = vec2(cos(uTime * 1.35), sin(uTime * 1.35));
+            float arc = smoothstep(0.9724, 0.9956, dot(n, d));
+            gl_FragColor = vec4(uCol, uOp * rim * (0.85 + 0.9 * arc));
+          }
+        `,
         transparent: true,
-        opacity: 0,
         depthWrite: false,
         side: THREE.DoubleSide,
       });
@@ -9132,7 +9163,13 @@ export const vfx = {
     const local = this._toLocalXZ(volume.x, volume.z, this._spawnLocalXZ);
     mesh.position.set(local.x, 0.6, local.z);
     mesh.scale.set(volume.radius, 1, volume.radius);
-    mesh.material.opacity = volume.opacity;
+    // A ShaderMaterial ignores material.opacity — the volume alpha rides uOp.
+    // The sweep clock uses the established sim-time pattern, written before the
+    // ring re-shows so a reappearance never draws on a stale phase (the quartet
+    // latch only holds while every overlay here is hidden — a live heatZone
+    // keeps this reader running).
+    mesh.material.uniforms.uTime.value = this._causeNow();
+    mesh.material.uniforms.uOp.value = volume.opacity;
     mesh.visible = true;
   },
 
