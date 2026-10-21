@@ -1,3 +1,5 @@
+| R-7657b6e | 7657b6e63 | Grudge roe restore no longer disarms live foreign postures | Re-check that _endNpcGrudge's ownership proof (retaliationTargetId or activity reason === NPC_GRUDGE_REASON, non-null targetId, captured before restores, combat lock excluded) cannot mistake a grudge still owned by the record for a foreign takeover — i.e. that a grudge whose channels are still its own still restores the prior roe on expiry | OPEN |
+
 # Landed review
 
 Second look at work that is already on `origin/master`. The author commits and pushes first. A later agent reviews. The review does not hold the push, and this file is not a second plan.
