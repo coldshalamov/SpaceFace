@@ -107,6 +107,8 @@ test('dropped job entry releases the body claim and the dead jobId', () => {
     const worldRecordId = salvor.data.worldRecordId;
 
     // The job entry vanishes while the hull lives (replan, cull, corrupted save slice).
+    salvor.data.jobPhase = 'transit';
+    salvor.data.jobProgress = 0.4;
     delete sim.state.npcJobs.byId[salvor.data.jobId];
     trafficSys._maintainGeneralSalvorJobs();
 
@@ -114,6 +116,9 @@ test('dropped job entry releases the body claim and the dead jobId', () => {
       'missing job must not strand the body claim');
     assert.equal(salvor.data.jobId, undefined,
       'the dead job reference is dropped so the hull can take fresh work');
+    assert.equal(salvor.data.jobPhase, undefined,
+      'the phase mirror dies with the binding (no stale WORK readout on a jobless hull)');
+    assert.equal(salvor.data.jobProgress, undefined, 'the progress mirror dies too');
     assert.ok(worldRecordId, 'salvor had a worldRecordId before the drop');
   } finally {
     dispose();

@@ -7,7 +7,7 @@ import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 
-test('a player thrusting against the authored compound tanker publishes actual native stop/slide motion', async () => {
+test('a player thrusting against an authored fixed compound hull publishes actual native stop/slide motion', async () => {
   installRealmFs({ readFileSync, resolve });
   const sim = createSimHost();
   try {
@@ -23,15 +23,19 @@ test('a player thrusting against the authored compound tanker publishes actual n
     const owner = sim.host.registry.get('physics')._sg02;
     const player = state.entities.get(state.playerId);
     // Solid dressing is admitted independently of entityList, including this real fixed FX.
+    // The derelict freighter bow became a dynamic 800 t tow body (AL-LG-03), so the fixed
+    // compound fixture is the first Helios ore bulk container: authored proxy, many colliders.
     const tanker = [...owner.records.values()].find(rec => rec.entity.data?.placeId
-      === 'place_aftermath_wreck_ore_freighter_bow__derelict');
+      === 'place_ore_bulk_container' && !rec.spec.dynamic && rec.colliders.length > 1);
     assert.ok(tanker && tanker.entity.collides === true && !tanker.spec.dynamic);
     assert.ok(tanker.colliders.length > 1, 'exercise the authored compound hull rather than a bounding sphere');
-    player.pos.x = -221.703857421875;
-    player.pos.z = 532.8331909179688;
-    player.vel.x = -65.27440643310547;
-    player.vel.z = 41.06315994262695;
-    player.rot = 2.5800610852663133;
+    // Stand off ~40 WU on the hull's own bearing, already closing on it at ~77 WU/s.
+    const bearing = 0.7;
+    player.pos.x = tanker.entity.pos.x - Math.cos(bearing) * 40;
+    player.pos.z = tanker.entity.pos.z - Math.sin(bearing) * 40;
+    player.vel.x = Math.cos(bearing) * 77;
+    player.vel.z = Math.sin(bearing) * 77;
+    player.rot = bearing;
     player.angVel = 0;
     owner.syncFromEntities([player, tanker.entity]);
     const rec = owner.records.get(player.id);

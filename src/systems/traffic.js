@@ -8538,6 +8538,11 @@ export const traffic = {
           });
         }
         delete ent.data.jobId;
+        // The phase/progress mirrors die with the binding (the same strip
+        // _sweepJobOwnedPersistence applies): a stale jobPhase on a jobless hull would
+        // still read WORK · <phase> on the hail and target readout.
+        if (ent.data.jobPhase !== undefined) delete ent.data.jobPhase;
+        if (ent.data.jobProgress !== undefined) delete ent.data.jobProgress;
         continue;
       }
       if (job.kind !== 'salvor') continue;

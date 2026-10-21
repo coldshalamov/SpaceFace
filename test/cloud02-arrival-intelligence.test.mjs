@@ -43,6 +43,17 @@ test('CLOUD-02: explicit sectorId provenance counts; unprovenanced prose never d
   assert.equal(buildPostcard(state, HELIOS).rumor, 'A watch post burned at Helios Prime');
 });
 
+test('CLOUD-02: an explicit sectorId elsewhere is not rescued by a stationId that lives here', () => {
+  // The explicit sectorId is the stronger provenance; a stationId catalog parent never
+  // overrides it (a record that names another sector is about that sector).
+  const state = stateWithLog([
+    { text: 'Convoy lost near Ceres, last seen leaving Helios', kind: 'deed', t: 40,
+      sectorId: CERES, stationId: 'station_helios' },
+  ]);
+  assert.equal(buildPostcard(state, HELIOS).rumor, null, 'foreign sectorId wins over a local stationId');
+  assert.equal(buildPostcard(state, CERES).rumor, 'Convoy lost near Ceres, last seen leaving Helios');
+});
+
 test('CLOUD-02: a foreign-sector station and malformed records resolve to no rumor', () => {
   const state = stateWithLog([
     { text: 'Ore futures spike at Ceres Refinery', kind: 'market', t: 30, stationId: 'station_ceres' },
