@@ -1,6 +1,22 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 07:44 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical failures and scope limits.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) has verified head [b01eedbb75a737ad419a19a91432e332d3b273b6](https://github.com/coldshalamov/SpaceFace/commit/b01eedbb75a737ad419a19a91432e332d3b273b6), tree `c8f4e30368adec23a46755742c2f6df8eb2d8c31`, sole parent `cb0657c0542e0a5bb2cbb593c092a773f0c5e504`, with exactly 16 changed paths.
+
+Ceres fairlead physics now uses 17 actual convex prisms instead of the old sphere, preserving instance identity, custody and stats. The old binary snapshot was proved valid before migration and rejected afterward; actual SaveSystem scalar reconstruction safely rebuilds 17 colliders. Native comparison retains the old ball's wrong trajectory at 24 WU, while the new shape allows 7.13 WU clearance and genuine edge contacts. Nearby recorder towing remains intact.
+
+Census now measures actual native collision authority: forward distance is below 0.05 WU and sampled reverse distance is 0.3571 WU, below the 0.4 WU bound. Thirty legacy OBB query shapes remain approximate; these measurements are not a full three-dimensional equivalence claim. The source-parts triangle count is corrected to 9,665, resolving the newly found manifest CI failure in source. Successor CI still needs verification; no aggregate-green result is inferred.
+
+Vesper now uses an actually performed phrase plus real departure to earn a once-only return greeting, waiting for voice:surface. Continue does not manufacture a visit. Follow state explicitly remains unrestored; the change does not claim to restore it.
+
+Root's scoped validation passes 78 checks with 1,166 audited modules and 18 filesystem inputs. The final tree changes JSON formatting only relative to that tested source, and its final manifest regression passes one additional check. Normal-route, live-camera and broader experience acceptance remain open.
+
+Source owners have released their paths. The CI owner follows the actual b01 successor to terminal results; root is selecting the next connected-sector increment, not claiming one delivered. No new user action is needed. Original held Orchard receiver operations remain unchanged. This checkpoint changes only the two shared handoff/goal documents on their separate branch, preserves foreign NOW work, and includes no private recovery identifiers or restricted diagnostics.
+
 ## Current source handoff — 21 October 2026, 07:17 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical evidence, scoped failures and acceptance distinctions.
