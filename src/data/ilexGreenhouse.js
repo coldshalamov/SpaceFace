@@ -50,3 +50,19 @@ export function ilexGreenhouseReply(state) {
   const payment = planting.creditedCr === null ? '' : ` The filed voyage credited you ${planting.creditedCr} cr.`;
   return lines + crop + payment;
 }
+
+/** Local station PA: accepted seed lines and recorded crop only, never wallet or live stock. */
+export function ilexGreenhouseBroadcast(state, stationId) {
+  if (stationId !== ILEX_ARK.stationId) return null;
+  const planting = ilexGreenhouseFor(state);
+  if (!planting) return null;
+  const n = planting.deliveredVaultIds.length;
+  const phase = !n ? 'empty' : planting.harvested ? 'harvested' : 'waiting';
+  const lines = !n ? 'No Ilex vault arrived; no planting or first harvest from this voyage.'
+    : `${n}/6 Ilex seed lines accepted.`;
+  const crop = !n ? '' : planting.harvested
+    ? ` The recorded first harvest added ${planting.harvestQty}u Provisions to the Ceres market. Check the Market for current availability.`
+    : ' No first harvest from these lines is recorded yet.';
+  return { id: `ilex:greenhouse:${phase}:${planting.deliveredVaultIds.join(',')}`,
+    text: `Ceres greenhouse: ${lines}${crop}` };
+}
