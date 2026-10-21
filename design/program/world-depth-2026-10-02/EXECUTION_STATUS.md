@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 15:53 UTC
+
+All nine goals remain OPEN within the original larger scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `059ca2c2a244148e7d862e99c0caaac991aa73e6`, tree `47ae1dad9903b43defe0fa7667a2864699aa847f`, sole e780 parent, open draft at 15:53:40 UTC; master bce remains unchanged.
+
+Five published paths change the first-playable renderer transition from only the existing blanket opening hold to the existing selective first-flight policy, retaining ambient, graph and GPU holds. They add raw queue-hold diagnostic fields, regression checks and gate registration. Root passes 69/69 with exact audits of 5,282 module entries/1,329 paths and two filesystem reads; independent checks pass 51. Earlier local camera wall-timing failure and the pinned CommonJS opening-loading suite limitation remain disclosed, not green. Public-API baseline reproduction fails the software transition and the correction passes; this does not establish the actual e780 runtime cause or visual cure.
+
+Prior e780 CI is terminal red at 1,459/1,464. Six old mobile failures and the new append-fixture failure are cleared; five inherited failures remain. Full native receiver passes in 374.964 seconds. Browser3 reached its natural limit at 15:51:47: first fifteen, title Continue and station egress passed, last two unproven. Its 82.610-second camera still shows hidden colony/hauler and all six original supplies loose/intact. The active-job diagnostic is zero, but queued membership remains unproven; no visual acceptance.
+
+verify_charon_delivery_ci follows the exact successor. Source/review owners completed only this scoped increment; root retains integration and actual visual investigation. Candidate/source/reproduction recovery is verified and final receipt backup is underway. Next: follow actual successor CI and pixels without assuming runtime cause or cure. Preserve historical evidence, all nine goals and specifically held Orchard operations. Optional PR-comment permission remains separate and pending; no comment is posted or retried. Only these two shared documents change here.
+
 ## Current source handoff — 21 October 2026, 15:21 UTC
 
 All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `e7800aa39b6dd8a3f727690276213e6c33051618`, tree `e1be7f24ae773000dcf50ca9aeffb53cfe725eda`, with ordered parents `1c450510209633db6553effeb07c33b4f0846efb` and public PR471 `9cbb68b9eb642b699545d22643605f1963ff0ff0`. Verification at 15:21:36 UTC confirms open draft and unchanged master bce.
