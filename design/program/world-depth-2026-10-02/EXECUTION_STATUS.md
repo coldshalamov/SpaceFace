@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 15:21 UTC
+
+All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `e7800aa39b6dd8a3f727690276213e6c33051618`, tree `e1be7f24ae773000dcf50ca9aeffb53cfe725eda`, with ordered parents `1c450510209633db6553effeb07c33b4f0846efb` and public PR471 `9cbb68b9eb642b699545d22643605f1963ff0ff0`. Verification at 15:21:36 UTC confirms open draft and unchanged master bce.
+
+Eight published paths add guarded hidden readable-glass scheduling propagation and bounded read-only phase observations, fix the attributable append fixture, and preserve the existing PR471 mobile fixture. No readiness, visibility, publication, quality or concurrency override is introduced. Eleven new independent regressions reproduce two baseline failures. Scoped source checks pass with an existing timing-sensitive lifecycle case disclosed; root combined results are 195/197, followed by 31/31 targeted checks with the corrected test adapter, not a uniform 197-case pass. Mobile passes 124/124; the append fixture passes 1/1 in ordinary Node after reproducing its missing CENSUS_JSON input.
+
+Prior 1c CI is terminal red; browser3 naturally timed out at 15:15:47, not superseded. Its capped camera observation exhausted at 84.394 seconds with colony/crew still hidden after hold expiry, while the pod was visible and all six original supplies remained loose. The runtime visual correction is unproven. verify_charon_delivery_ci follows the exact successor; root retains integration, recovery and next visual-experience work. Source, models and assets are preserved in GitHub; integrated recovery preparation continues.
+
+Next: follow actual successor CI and pixels without inferring visual or aggregate acceptance. Preserve original larger scope and specifically held operations. Optional PR-comment permission remains pending separately from successful source delivery; no comment is retried here. Only these two shared documents change; no master, source or runtime changes. All nine goals remain open.
+
 ## Current source handoff — 21 October 2026, 14:45 UTC
 
 All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `1c450510209633db6553effeb07c33b4f0846efb`, tree `ae771e4a80a0275f3fb149ed4a02a800f7523a98`, sole parent `ea1cc3ebe98fc58245724a53a6f1f54b141fd87e`. Fresh commit/ref/PR reads at 14:45:45 UTC confirm open draft and unchanged master bce. An initial 14:45:25 verification mismatch resolved through fresh reads without repeating a write; no publishing action remains uncertain.
