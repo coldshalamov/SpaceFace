@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "chronicler-marquee-deeds",
-      "date": "2026-10-03",
-      "wf": "WF-09",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Ship purchases, achievements, career promotions and marquee stunt tricks become chronicler facts feeding codex/recall/news",
-      "fingerprint": "verb=remember,subject=deeds,sector=ledger,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "9d67ee246",
-      "verification": "focused_green"
-    },
-    {
       "id": "landmark-payoff-quests-c13d-c12-c11",
       "date": "2026-10-03",
       "wf": "WF-10",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "6a8757a84",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-34-dead-marks-stay-dead",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Killed board-writ names enter a save-safe ledger; 500 post-kill rolls never redeal the name; legacy saves roll bit-identical",
+      "fingerprint": "verb=kill,subject=bounty-mark-ledger,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "dbec71973",
       "verification": "focused_green"
     }
   ],
