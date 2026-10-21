@@ -6413,6 +6413,21 @@
       ],
       "outputDir": "assets/ships/release/render-packages/anvil-condensate-pod",
       "metadataUrl": "assets/ships/release/render-packages/anvil-condensate-pod/render-package.json"
+    },
+    {
+      "key": "last-shift-fairlead",
+      "assetId": "sf.render.last-shift-fairlead",
+      "runtimeAssetId": "place_last_shift_fairlead",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_last_shift_fairlead",
+      "sourceUrl": "assets/ships/release/parts/places/place_last_shift_fairlead.glb",
+      "releaseSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+      "releaseBytes": 332868,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/last-shift-fairlead",
+      "metadataUrl": "assets/ships/release/render-packages/last-shift-fairlead/render-package.json"
     }
   ]
 }

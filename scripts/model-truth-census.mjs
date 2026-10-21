@@ -678,7 +678,8 @@ async function measureRow(row) {
     const gap = radialGap(worstEval.outline, fitted, worstEval.toleranceWu, opening);
     const throatSealed = row.opening === 'gate-throat'
       && !throatOpen(fitted, Math.max(4, worstEval.silhouetteRadius * 0.2));
-    skin = { ...skin, adopted: gap.gapWu <= 2.5 && !throatSealed, gapWu: roundWu(gap.gapWu) };
+    // A declared runtime physics owner cannot be replaced by an inferred render silhouette.
+    skin = { ...skin, adopted: row.runtimeColliderFixed !== true && gap.gapWu <= 2.5 && !throatSealed, gapWu: roundWu(gap.gapWu) };
     if (skin.adopted) {
       worstEval = {
         ...worstEval,
@@ -724,6 +725,7 @@ async function measureRow(row) {
       entityRadius: worst.entityRadius,
       dockRadius: worst.dockRadius,
       colliderKind: worstCollider.kind,
+      ...(row.runtimeColliderFixed === true ? { runtimeColliderFixed: true, collisionAuthority: row.runtimeCollisionAuthority } : {}),
       colliderId: worstCollider.id,
       ballFactor: worstCollider.factor || null,
       proportions: proportions ? {
@@ -779,7 +781,9 @@ async function measureRow(row) {
     solid: row.solid === true,
     status: status.status,
     reasons: status.reasons,
-    note: status.note,
+    note: row.runtimeColliderFixed === true
+      ? `Fixed runtime collider owned by ${row.runtimeCollisionAuthority}; proposed skin is diagnostic only.`
+      : status.note,
     tasteBudget: null,
   };
   return withTaste(built, measured, status);

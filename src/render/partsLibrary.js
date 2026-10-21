@@ -1,3 +1,4 @@
+import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 import { isOrchardFrame, isOrchardPod, orchardPlaceTransform, orchardCatalogRows, ORCHARD_FRAME_FILE, ORCHARD_POD_FILE } from '../data/anvilOrchardIdentity.js';
 import { recordOrchardAuthoredSource } from './anvilOrchardVisuals.js';
 // LAST_ARGUMENT_INTEGRATION_V1
@@ -358,6 +359,7 @@ export function is19305PackagedWreckFile(file) {
   return PQ_193_05_WRECK_PACKAGED_FILES.includes(normalized);
 }
 const PLACE_FILES = Object.freeze([
+  'places/place_last_shift_fairlead.glb',
   LATCH_PLACE_FILE,
   ...Object.values(CERES_SHIPBREAK_FILES),
   'places/place_lane_beacon.glb',
@@ -2489,16 +2491,18 @@ export function liveSolidGlbCatalog() {
     if (file===LATCH_PLACE_FILE || STATION_ARCHETYPE_FILES.includes(file)) continue;
     const placeId = file.replace(/^places\//, '').replace(/\.glb$/, '');
     const family = placeFamily(placeId);
+    const lastShiftFairlead = placeId === 'place_last_shift_fairlead';
     const physicalPlace = ceresShipbreakTransform({ placeId });
     const dressingRadius = DRESSING_RADIUS_BY_PLACE[placeId] || 12;
     add({
       id: placeId,
       family,
       file,
-      fit: physicalPlace ? 'authored-place-origin' : family === 'drone' ? 'packaged-radius' : 'place-scale',
+      fit: physicalPlace ? 'authored-place-origin' : (lastShiftFairlead || family === 'drone') ? 'packaged-radius' : 'place-scale',
       placeScale: physicalPlace?.scale || 1,
-      entityRadius: family === 'drone' ? 2.4 : dressingRadius,
-      colliderKind: 'none',
+      entityRadius: lastShiftFairlead ? 26 : family === 'drone' ? 2.4 : dressingRadius,
+      colliderKind: lastShiftFairlead ? 'ball' : 'none',
+      ...(lastShiftFairlead ? { runtimeColliderFixed: true, runtimeCollisionAuthority: 'lastShift.physicsBody' } : {}),
       ...(ceresShipbreakCatalogCollision(placeId) || {}),
       solid: true,
       nonSolidReason: null,
@@ -6107,7 +6111,25 @@ function warnUnresolvedStationPlaceId(entity, id, rescue) {
   );
 }
 
+// Keep this narrow predicate in parity with visualFactory's Last Shift selector.
+// Importing visualFactory here would cycle the asset loader and prewarm graph.
+const LAST_SHIFT_PLACE_FILES = Object.freeze({
+  fairlead: 'places/place_last_shift_fairlead.glb',
+  cargo: 'places/place_aftermath_aft_cargo_module.glb',
+  recorder: 'pods/pod_47a_evidence_spindle.glb',
+});
+function lastShiftPlaceFile(entity) {
+  const data = entity?.data;
+  if (entity?.type !== 'wreck' || data?.persistenceOwner !== LAST_SHIFT.persistenceOwner
+    || data.lastShiftSiteId !== LAST_SHIFT.siteId
+    || !Object.hasOwn(LAST_SHIFT_PLACE_FILES, data.lastShiftClueId)
+    || data.lastShiftBodyKey !== lastShiftBodyKey(data.lastShiftClueId)) return null;
+  return LAST_SHIFT_PLACE_FILES[data.lastShiftClueId];
+}
+
 function placeFileForEntity(entity) {
+  const lastShiftFile = lastShiftPlaceFile(entity);
+  if (lastShiftFile) return lastShiftFile;
   if (isOrchardFrame(entity)) return ORCHARD_FRAME_FILE;
   if(isLatchActor(entity))return LATCH_PLACE_FILE;
   if(isTallyThreeAssessor(entity))return TALLY_THREE_PLACE_FILE;

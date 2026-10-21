@@ -5800,6 +5800,25 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 166,
       "contractNodeCount": 60
+    },
+    {
+      "id": "place_last_shift_fairlead",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_last_shift_fairlead.glb",
+      "release": "assets/ships/release/parts/places/place_last_shift_fairlead.glb",
+      "sourceSha256": "4bf1cdf55d587924716fd01faca905aef1ab9f59e95e12614c23a044ba626e50",
+      "releaseSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+      "sourceBytes": 800756,
+      "releaseBytes": 332868,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 107,
+      "contractNodeCount": 28,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

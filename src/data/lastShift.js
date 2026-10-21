@@ -44,7 +44,7 @@ export function lastShiftReport(knownIds, destroyedIds = []) {
   return [...facts, conclusion, ...(lost.length ? [`Unread sources lost: ${lost.map(c => c.id).join(', ')}.`] : [])].join(' ');
 }
 export function freshLastShiftRecord() {
-  return { schema: 1, siteId: LAST_SHIFT.siteId, discovered: false, rumorHeard: false,
+  return { schema: 1, siteId: LAST_SHIFT.siteId, surfaced: false, discovered: false, rumorHeard: false, recoveryActive: false, lastRevisitReceiptId: null,
     knownClueIds: [], destroyedClueIds: [], revision: 0, receipts: [], bodies: {} };
 }
 export function lastShiftArchiveEvidence(state) {

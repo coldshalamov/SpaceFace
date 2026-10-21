@@ -5,6 +5,7 @@ import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
+import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
 // libraries that were fully decoded before flight admission. Contract: createVisualFactory() ->
 // { build(entity) }
@@ -3851,7 +3852,25 @@ function hulkPackagedFileForEntity(e) {
   return selection && selection.file || null;
 }
 
+// Mission evidence has a persistent semantic identity. Runtime entity IDs are reallocated
+// on Continue and must never choose which physical source the player is investigating.
+const LAST_SHIFT_FILES = Object.freeze({
+  fairlead: 'places/place_last_shift_fairlead.glb',
+  cargo: 'places/place_aftermath_aft_cargo_module.glb',
+  recorder: 'pods/pod_47a_evidence_spindle.glb',
+});
+export function lastShiftPackagedFile(e) {
+  const data = e?.data;
+  if (e?.type !== 'wreck' || data?.persistenceOwner !== LAST_SHIFT.persistenceOwner
+    || data.lastShiftSiteId !== LAST_SHIFT.siteId
+    || !Object.hasOwn(LAST_SHIFT_FILES, data.lastShiftClueId)
+    || data.lastShiftBodyKey !== lastShiftBodyKey(data.lastShiftClueId)) return null;
+  return LAST_SHIFT_FILES[data.lastShiftClueId];
+}
+
 export function wreckPackagedFile(e) {
+  const lastShiftFile = lastShiftPackagedFile(e);
+  if (lastShiftFile) return lastShiftFile;
   if (isOrchardFrame(e)) return ORCHARD_FRAME_FILE;
   if (isCeresWorkfleetPlace(e)) return ceresWorkfleetPlaceFile(e);
   if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
@@ -5075,7 +5094,7 @@ function buildWreck(e) {
     roughness: 0.68, metalness: 0.72, emissive: 0x230900, emissiveIntensity: 0.1,
     materialRole: 'torn-exposed-metal',
   });
-  const rnd = mulberryLite(hashId(e.id));
+  const rnd = mulberryLite(hashId(lastShiftPackagedFile(e) ? e.data.lastShiftBodyKey : e.id));
 
   // A long, broken load-bearing spine gives wrecks an unmistakable manufactured axis. The old
   // five-box clump plus a broad orange halo read as a molten asteroid at flight scale.

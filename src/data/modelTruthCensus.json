@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 16,
-    "red": 202,
-    "rows": 218
+    "red": 203,
+    "rows": 219
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -97955,6 +97955,362 @@
         609.261904,
         220.746337,
         252.406402
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          -0.052246,
+          0.015958,
+          0.05
+        ],
+        "max": [
+          3.79212,
+          0.822013,
+          2.100226
+        ],
+        "min": [
+          -3.896612,
+          -0.790097,
+          -2.000226
+        ],
+        "size": [
+          7.688732,
+          1.612109,
+          4.100452
+        ]
+      },
+      "bytes": 332868,
+      "collider": {
+        "coverageWu": 0.020185,
+        "gapWu": 16.572571,
+        "id": null,
+        "kind": "ball",
+        "outline": [
+          26.002195,
+          24.195927,
+          23.732874,
+          9.260361,
+          0,
+          0,
+          0,
+          6.305007,
+          14.636939,
+          22.707011,
+          26.000518,
+          26.020185,
+          25.582105,
+          25.28847,
+          22.140905,
+          7.484007,
+          13.588524,
+          0,
+          0,
+          0,
+          6.681939,
+          23.725862,
+          24.056158,
+          0
+        ],
+        "overTolerance": true,
+        "stickWu": 16.572571,
+        "throatSealed": false,
+        "toleranceWu": 3.122422,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0.35335,
+        -0.107926,
+        -0.338157
+      ],
+      "drawScale": 6.763144,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": 1,
+        "colliderId": null,
+        "colliderKind": "ball",
+        "collisionAuthority": "lastShift.physicsBody",
+        "dockRadius": null,
+        "entityRadius": 26,
+        "proportions": null,
+        "runtimeColliderFixed": true,
+        "sizes": null
+      },
+      "id": "place_last_shift_fairlead",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 28,
+      "nodes": 30,
+      "note": "Fixed runtime collider owned by lastShift.physicsBody; proposed skin is diagnostic only.",
+      "opening": null,
+      "pivot": [
+        -0.052246,
+        0.015958,
+        0.05
+      ],
+      "proposedSkin": {
+        "adopted": false,
+        "capped": false,
+        "cellWu": 3.122422,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 17,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.983902,
+            "bz": -0.129533,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.852667,
+            "bz": -0.353186,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.718072,
+            "bz": -0.550996,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.212138,
+            "bz": -0.276464,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.084368,
+            "bz": -0.203681,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.031653
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.338025,
+            "bz": -0.440523,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.68677,
+            "bz": -0.526977,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.916791,
+            "bz": -0.379747,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.872238,
+            "bz": -0.114832,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.130628
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.967883,
+            "bz": 0.127424,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.891489,
+            "bz": 0.369267,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.669496,
+            "bz": 0.513722,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.170547,
+            "bz": 0.222261,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.177578,
+            "bz": 0.428711,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.068218
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.151767,
+            "bz": 0.197787,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.717858,
+            "bz": 0.550832,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.017308
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.847701,
+            "bz": 0.351129,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.017308
+          }
+        ],
+        "silhouetteRadius": 26.020185,
+        "toleranceWu": 3.122422
+      },
+      "reasons": [
+        "collider-gap"
+      ],
+      "shell": {
+        "boundaryEdges": 511,
+        "inwardFaceFraction": 0.2595,
+        "silhouetteRadius": 26.020185,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Inspection",
+          "position": [
+            0,
+            0.82,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": null,
+      "triangles": 9571,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_last_shift_fairlead.glb",
+      "worldSize": [
+        52,
+        10.902926,
+        27.731948
       ]
     }
   ],

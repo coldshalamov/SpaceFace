@@ -3531,6 +3531,16 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
     "sourceUrl": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb"
+  },
+  {
+    "assetId": "sf.render.last-shift-fairlead",
+    "expectedContentHash": "6009694b9e959e8eec897815aba641094833b06e3ea23744e063e1e70dc87f0b",
+    "key": "last-shift-fairlead",
+    "metadataUrl": "assets/ships/release/render-packages/last-shift-fairlead/render-package.json",
+    "runtimeAssetId": "place_last_shift_fairlead",
+    "slot": "place",
+    "sourceSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+    "sourceUrl": "assets/ships/release/parts/places/place_last_shift_fairlead.glb"
   }
 ];
 
