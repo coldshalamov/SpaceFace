@@ -114,34 +114,6 @@
   ],
   "units": [
     {
-      "id": "NXI-079",
-      "date": "2026-10-01",
-      "wf": "WF-06",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "ghostComparability labels drifted rule fields; records kept",
-      "fingerprint": "verb=label,subject=ruleset-mismatch,domain=crucible,layer=systems",
-      "references": [],
-      "integration": "live",
-      "commit": "8311d4cc7",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-020-challenge-code.test.mjs"
-    },
-    {
-      "id": "NXI-080",
-      "date": "2026-10-01",
-      "wf": "WF-06",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "envelope sorts/dedupes mutators; unknown ids kept for labeling",
-      "fingerprint": "verb=roundtrip,subject=mutators,domain=crucible,layer=core",
-      "references": [],
-      "integration": "live",
-      "commit": "8311d4cc7",
-      "verification": "route_accepted",
-      "evidence": "test/nxb-020-challenge-code.test.mjs"
-    },
-    {
       "id": "salvage-watch-362",
       "date": "2026-10-03",
       "wf": "WF-08",
@@ -1673,6 +1645,32 @@
       "references": [],
       "integration": "live",
       "commit": "35b76c9f8",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-40-statistics-fresh-sentence",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Fresh Statistics page prints one sentence instead of rows of zeros; first real reading restores the groups",
+      "fingerprint": "verb=read,subject=statistics,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "c0f37bedb",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-36-first-contact-discovery-style",
+      "date": "2026-10-21",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Alien first-contact reveals ride a new discovery receipt style; hazards keep warn",
+      "fingerprint": "verb=discover,subject=alien-ecology,sector=charon,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "9fea1c550",
       "verification": "focused_green"
     }
   ],
