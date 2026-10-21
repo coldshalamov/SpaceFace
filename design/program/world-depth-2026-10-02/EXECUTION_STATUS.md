@@ -1,6 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 17:29 UTC
+
+All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `a4df2efa02f8a00fa278a30dddcac9a3ac28278f`, tree `0760ce582f6b92150598d1b8df1614a1b0354d0b`, sole a899 parent, open draft at 17:29:35 UTC; master bce remains unchanged.
+
+Eight paths improve original-hauler/cutter guidance by actual custody, restore urgent/explicit FIFO ahead of flushed ambient pipeline work, align stale lifetime fixtures with current-plan ownership, include the existing wreck-court asset in Arcade sparse checkout, and register tests. Serial compilation, active nonpreemption, untouched first-flight holds, exact identities and finite supply remain unchanged. Root exact-tree checks pass117/117 with9,504 module receipts/1,864 paths and70 filesystem reads/66 paths. Independent pipeline23/23 and lifetime4/4 plus real queue14/14 pass. An earlier root90/94 run failed child fixture imports because loaders were not inherited; unchanged source passes with corrected harness. Original failed evidence remains preserved.
+
+Prior a899 CI is naturally terminal: runtime1,542/1,547 with five inherited failures, full native receiver passes406.832 seconds through Continue and original collector return; browser4 passes5/5. Browser3 reaches its natural cap with three leaves passed and two unproven. Separate static lifetime failures and Arcade omitted-input failure are addressed in this successor, not yet established green by its CI.
+
+Actual a899 images show hauler preparing-pipelines, queued colony and six loose originals. Baseline and isolated/restored images all lack the earlier teal wedge, so isolation is inconclusive, not a VFX cure. Restoration is verified. Reproduced pipeline ordering defect is not proven cause of the captured wait. Ordinary flight, visual quality and final acceptance remain open.
+
+Root source, meaningful failures, tests and handoff have verified recovery in addition to repository delivery. verify_charon_delivery_ci follows exact successor. Next bounded source work requalifies an inherited Ashline package hash after verifying unchanged motion assets; no guard relaxation or deployment change. Four inherited deployment assertions conflict with established manual-only policy and must not restore deployment behavior. Preserve original scope, sector register, owners and held Orchard operations. Optional PR-comment approval remains separately unanswered; no retry. Only these two shared documents change here.
+
 ## Current source handoff — 21 October 2026, 16:57 UTC
 
 All nine goals remain OPEN within the original scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `a899488d107f54b56ef8d0cf1194472158f0569f`, tree `b2df7f09a9798fbce9d209a9e8651e1b86e01ce9`, sole ac67 parent, open draft at 16:57:41 UTC; master bce is unchanged.
