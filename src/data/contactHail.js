@@ -1,4 +1,4 @@
-import { ANVIL_RETURN_GAS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
+import { ANVIL_RETURN_GAS, ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
 import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';
 import { anvilCollectorWorkStatus, anvilReceiverWorkStatus } from '../systems/anvilWork.js';
 import { isOrchardReceiver, orchardTowQuote } from '../world/anvilOrchardTowAssist.js';
@@ -1004,15 +1004,21 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
       const facts = spill.facts;
       const towQuote = orchardTowQuote(state, availability.entity);
       const returnQuote = spill.quote;
+      const service=spill.service, rendezvousQuote=spill.rendezvousQuote;
+      const serviceLine=service.active ? `BRAKING · ${Math.ceil(service.remainingS)}s remaining. Pause/Continue/cut cancels; Close keeps braking.`
+        : rendezvousQuote ? `REQUEST RENDEZVOUS · up to ${Math.ceil(service.remainingS)}s braking budget; Pause/Continue cancels; unused time remains.`
+        : service.remainingS===0 ? 'RENDEZVOUS BUDGET EXHAUSTED; tender resumes its route.' : null;
       return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-        lines: [towQuote ? `STORMSHIFT SPILL · Optional tow ${towQuote.feeCr}CR on dispatch; kept on cancellation/loss. Continue refunds. No delivery guarantee.` : 'STORMSHIFT · ORIGINAL GAS SPILL',
+        lines: [serviceLine || (towQuote ? `STORMSHIFT SPILL · Optional tow ${towQuote.feeCr}CR on dispatch; kept on cancellation/loss. Continue refunds. No delivery guarantee.` : 'STORMSHIFT · ORIGINAL GAS SPILL'),
           returnQuote ? `Return ${returnQuote.amount}u to this tender for its Tethys delivery. No payment; no change to the law record.`
             : spill.claimed ? 'Original gas is claimed by a salvage crew. Return is unavailable while that claim remains; attaching a line does not clear it.'
             : facts && !facts.amount ? 'TENDER HOLD FULL. Keep the original pod intact until there is room.'
             : 'Massline the original loose gas pod to the planet-facing service side of this tender. Match speed, then Hail to RETURN GAS. Keeping or leaving it does not restore the delivery.'],
         actions: [...(returnQuote ? [{id: ANVIL_RETURN_GAS,label: `RETURN GAS · ${returnQuote.amount}u`}] : []),
-          ...(towQuote ? [{id:CONTACT_HAIL_ACTION_TOW_ASSIST,label:`HIRE ORCHARD TOW · ${towQuote.feeCr}CR`}] : []),
-          {id:'status',label:'STATUS'}], ...(returnQuote ? {anvilReturnQuote:returnQuote} : {}),
+          ...(service.active ? [{id:ANVIL_CANCEL_RENDEZVOUS,label:'CANCEL RENDEZVOUS'}]
+            : rendezvousQuote ? [{id:ANVIL_RENDEZVOUS,label:'REQUEST RENDEZVOUS'}]
+            : towQuote ? [{id:CONTACT_HAIL_ACTION_TOW_ASSIST,label:`HIRE ORCHARD TOW · ${towQuote.feeCr}CR`}] : []),
+          {id:'status',label:'STATUS'}], ...(returnQuote ? {anvilReturnQuote:returnQuote} : {}), ...(rendezvousQuote ? {anvilRendezvousQuote:rendezvousQuote} : {}),
           ...(towQuote ? {orchardQuote:towQuote} : {}) };
     }
     const quote=orchardTowQuote(state,availability.entity);
@@ -1584,6 +1590,10 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
           && candidate.state === 'open' && !candidate.reservationId)
       : null;
     line = opportunity ? `HELP · RICH SEAM · +${opportunity.bonusU}u BONUS ON OFFER` : 'HELP · NO OPEN SEAM';
+  } else if (offer.kind === 'worker' && id === ANVIL_RENDEZVOUS) {
+    const r=authority.anvilRendezvous;line=r?.ok ? `RENDEZVOUS · BRAKING FOR UP TO ${Math.ceil(r.remainingS)}s. Tow the original gas to the service side, match speed, then Hail RETURN GAS.` : 'RENDEZVOUS UNAVAILABLE · Hail again with the original unclaimed pod on your line.';
+  } else if (offer.kind === 'worker' && id === ANVIL_CANCEL_RENDEZVOUS) {
+    const r=authority.anvilRendezvous;line=r?.ok ? `RENDEZVOUS CANCELLED · ROUTE RESUMES. ${Math.ceil(r.remainingS)}s braking budget remains.` : 'NO ACTIVE RENDEZVOUS.';
   } else if (offer.kind === 'worker' && id === ANVIL_RETURN_GAS) {
     const returned = authority.anvilReturn;
     line = returned?.ok ? `RETURN GAS · ${returned.qty}u BACK ABOARD FOR TETHYS.${returned.remaining ? ` ${returned.remaining}u STILL ON YOUR LINE.` : ''}`

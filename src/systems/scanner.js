@@ -1,4 +1,4 @@
-import { ANVIL_RETURN_GAS } from '../world/anvilSpillRecovery.js';
+import { ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, ANVIL_RETURN_GAS } from '../world/anvilSpillRecovery.js';
 // Scanner pulse system (GDD 2.0 §7.4).
 //
 // Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
@@ -1699,6 +1699,13 @@ export const scanner = {
       offer.lines=[offer.lines[0], 'Return unavailable; physical line and receiver must be ready. Hail again.'];
       delete offer.anvilReturnQuote;
     }
+    if (offer.anvilRendezvousQuote && !this.registry?.get?.('traffic')?.bindAnvilSpillRendezvousQuote?.(availability.entity,offer.anvilRendezvousQuote)) {
+      offer.actions=offer.actions.filter(a=>a.id!==ANVIL_RENDEZVOUS);delete offer.anvilRendezvousQuote;
+      offer.lines[0]='RENDEZVOUS UNAVAILABLE · native line and capable tender must be ready.';
+    }
+    for (const quote of [offer.anvilReturnQuote,offer.anvilRendezvousQuote]) {
+      if (Number.isFinite(quote?.expiresAt)) offer.expiresAt=Math.min(offer.expiresAt,quote.expiresAt);
+    }
     this._contactHail = offer;
     this.bus.emit('contactHail:offer', cloneContactHailPayload(offer));
     return true;
@@ -1737,13 +1744,18 @@ export const scanner = {
     const anvilReturn = choice === ANVIL_RETURN_GAS && active.anvilReturnQuote
       && active.actions?.some(action => action.id === ANVIL_RETURN_GAS)
       ? this.registry?.get?.('traffic')?.returnAnvilSpill?.(target, active.anvilReturnQuote) : null;
+    const anvilRendezvous = active.actions?.some(a=>a.id===choice)
+      ? choice===ANVIL_RENDEZVOUS && active.anvilRendezvousQuote
+        ? this.registry?.get?.('traffic')?.requestAnvilSpillRendezvous?.(target,active.anvilRendezvousQuote)
+        : choice===ANVIL_CANCEL_RENDEZVOUS ? this.registry?.get?.('traffic')?.cancelAnvilSpillRendezvous?.(target) : null
+      : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
       weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
       roe: ai.roe || null,
       heaveTo,
       towAssist,
-      anvilReturn,
+      anvilReturn,anvilRendezvous,
     });
     if (!response) return false;
     this._contactHail = null;

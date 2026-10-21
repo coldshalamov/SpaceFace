@@ -1,4 +1,4 @@
-import { takeAnvilSpillReturnQuote, bindAnvilSpillReturnQuote } from '../world/anvilSpillRecovery.js';
+import { takeAnvilSpillReturnQuote, bindAnvilSpillReturnQuote, bindAnvilSpillRendezvousQuote, startAnvilSpillRendezvous, advanceAnvilSpillRendezvous, cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
 import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { createCombatCatalog, ensureCombatant } from '../combat/runtime.js';
 import { hasOrchardWorkDamage, orchardDamageUnavailable, orchardSavedDriveOffline } from '../combat/orchardWorkDamage.js';
@@ -439,6 +439,20 @@ export const anvilTrafficMethods = {
     return actor(this,'receiver') === receiver && bindAnvilSpillReturnQuote(this.state,receiver,quote,this._registry?.get?.('physics'));
   },
 
+  bindAnvilSpillRendezvousQuote(receiver, quote) {
+    return actor(this,'receiver')===receiver && workerDriveReady(this.state,receiver)
+      && bindAnvilSpillRendezvousQuote(this.state,receiver,quote,this._registry?.get?.('physics'));
+  },
+  requestAnvilSpillRendezvous(receiver, quote) {
+    if(actor(this,'receiver')!==receiver || receiver.data.jobId || !workerDriveReady(this.state,receiver))return {ok:false};
+    const result=startAnvilSpillRendezvous(this.state,receiver,quote,this._registry?.get?.('physics'));
+    if(result.ok){hold(receiver);try{persist(this,receiver);}catch{/* live/save receipt retains finite budget */}}
+    return result;
+  },
+  cancelAnvilSpillRendezvous(receiver) {
+    return actor(this,'receiver')===receiver ? cancelAnvilSpillRendezvous(this.state,receiver) : {ok:false};
+  },
+
   returnAnvilSpill(receiver, quote) {
     if (actor(this, 'receiver') !== receiver || orchardDamageUnavailable(this.state, receiver)) return { ok: false };
     const f = takeAnvilSpillReturnQuote(this.state, receiver, quote, this._registry?.get?.('physics'));
@@ -648,11 +662,11 @@ export const anvilTrafficMethods = {
   },
 
   _stepAnvilReceiver(receiver) {
-    if (actor(this, 'receiver') !== receiver || !receiver || receiver.data.jobId) return;
+    if (actor(this, 'receiver') !== receiver || !receiver || receiver.data.jobId) { cancelAnvilSpillRendezvous(this.state); return; }
     if (!this.state.combat?.entities?.[receiver.id] && hasOrchardWorkDamage(this.state, receiver))
       ensureCombatant(this.state, receiver, orchardCombatCatalog ||= createCombatCatalog());
     const route = itinerary(receiver), home = homeBerth(route);
-    if (!home || !finitePose(receiver) || !validManifest(receiver.data.cargoManifest, ANVIL_WORK.receiverCapacity)) { hold(receiver); return; }
+    if (!home || !finitePose(receiver) || !validManifest(receiver.data.cargoManifest, ANVIL_WORK.receiverCapacity)) { cancelAnvilSpillRendezvous(this.state,receiver); hold(receiver); return; }
     const station = this._sectorStations().find(e => live(this.state, e)
       && e.data?.stationId === ANVIL_WORK.buyerId);
     // Loss of real propulsion pauses movement, not ownership or intake. A settled
@@ -660,10 +674,12 @@ export const anvilTrafficMethods = {
     // neither operation requires thrust. Keep the exact route for genuine repair.
     // No hull threshold, invented intake subsystem, offscreen repair or replacement.
     if (!workerDriveReady(this.state, receiver)) {
+      cancelAnvilSpillRendezvous(this.state,receiver);
       hold(receiver);
       if (!orchardDamageUnavailable(this.state, receiver) && route.phase === 'delivery' && station) this._deliverAnvilReceiver(receiver, station);
       return;
     }
+    if (advanceAnvilSpillRendezvous(this.state,this._registry?.get?.('physics'))===receiver) { hold(receiver); return; }
     const approach = station && anvilBuyerApproach(receiver, station);
     const transitRadius = approach ? Math.max(ANVIL_WORK.berthRadius,
       Math.hypot(approach.x - route.center.x, approach.z - route.center.z) + 100) : ANVIL_WORK.berthRadius;
@@ -733,6 +749,7 @@ export const anvilTrafficMethods = {
   },
 
   _stepAnvilWork(dt, state) {
+    advanceAnvilSpillRendezvous(state,this._registry?.get?.('physics'));
     if (!(dt > 0) || state.world?.currentSectorId !== PLANET_SITE.sectorId) return;
     const e = actor(this, 'collector'), receiver = actor(this, 'receiver');
     bindWorkerIdentity(this, e, 'collector'); bindWorkerIdentity(this, receiver, 'receiver');

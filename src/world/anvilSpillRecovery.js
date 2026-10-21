@@ -7,6 +7,9 @@ import { stableRecordId, RECORD_KIND } from './worldRecords.js';
 import { isOrchardReceiver } from './anvilOrchardTowAssist.js';
 
 export const ANVIL_RETURN_GAS = 'return_gas';
+export const ANVIL_RENDEZVOUS = 'spill_rendezvous', ANVIL_CANCEL_RENDEZVOUS = 'cancel_spill_rendezvous';
+const rendezvousQuotes = new WeakMap(), rendezvous = new WeakMap();
+const RENDEZVOUS_BUDGET_S = 30;
 const quotes = new WeakMap();
 const whole = n => Number.isSafeInteger(n) && n >= 0;
 const live = (s, e) => e?.alive === true && e.hull > 0 && s.entities?.get(e.id) === e;
@@ -89,11 +92,14 @@ export function takeAnvilSpillReturnQuote(state,receiver,quote,physics) {
     || b.manifestJSON !== JSON.stringify(f.manifest) || f.amount !== quote.amount
     || state.simTime < b.createdAt || state.simTime >= quote.expiresAt) return null;
   const current = nativeBinding(state,receiver,f,physics), saved=b.native;
-  if (!saved || !current || saved.physics!==physics || saved.owner!==current.owner || saved.world!==current.world
-    || saved.epoch!==current.epoch || saved.line!==current.line || saved.handle!==f.attachment.physicsHandle
-    || saved.bodies.some((r,i)=>r.record!==current.bodies[i].record || r.body!==current.bodies[i].body
-      || r.spec!==current.bodies[i].spec || r.nativeSpec!==current.bodies[i].nativeSpec || r.revision!==current.bodies[i].revision)) return null;
+  if (!sameNative(saved,current)) return null;
   return f;
+}
+function sameNative(saved,current) {
+  return !!saved && !!current && saved.physics===current.physics && saved.owner===current.owner && saved.world===current.world
+    && saved.epoch===current.epoch && saved.line===current.line && saved.handle===current.handle
+    && saved.bodies.every((r,i)=>r.record===current.bodies[i].record && r.body===current.bodies[i].body
+      && r.spec===current.bodies[i].spec && r.nativeSpec===current.bodies[i].nativeSpec && r.revision===current.bodies[i].revision);
 }
 function nativeBinding(state,receiver,f,physics) {
   const owner=physics?._sg02;
@@ -135,5 +141,100 @@ export function anvilSpillReturnOffer(state,receiver) {
   const facts = returnFacts(state,receiver,receipt);
   const original = facts?.pod || indexedTypeScan(state,'payloads').find(e => e.alive !== false && e.data?.anvilSpillReturn?.id === receipt.id);
   const claimed = typeof original?.data?.salvorClaimedBy === 'string' && !!original.data.salvorClaimedBy;
-  return original ? {facts,quote:makeQuote(state,receiver,facts),claimed} : null;
+  const service = anvilSpillRendezvousStatus(state,receiver);
+  return original ? {facts,quote:makeQuote(state,receiver,facts),claimed,service,
+    rendezvousQuote:!service.active ? rendezvousQuote(state,receiver,facts) : null} : null;
+}
+
+// One finite service budget on the existing spill receipt; native windows are transient.
+function budget(receipt) {
+  if (!Object.hasOwn(receipt || {},'rendezvousRemainingS')) return RENDEZVOUS_BUDGET_S;
+  const n=receipt.rendezvousRemainingS;
+  return Number.isFinite(n)&&n>=0&&n<=RENDEZVOUS_BUDGET_S?n:null;
+}
+function nearby(receiver,f) {
+  return f?.amount>0 && Math.hypot(f.player.pos.x-receiver.pos.x,f.player.pos.z-receiver.pos.z)<=560
+    && Math.hypot(f.pod.pos.x-receiver.pos.x,f.pod.pos.z-receiver.pos.z)<=560;
+}
+function rendezvousQuote(state,receiver,f) {
+  const remaining=budget(f?.receipt);
+  if(!f || !nearby(receiver,f) || !(remaining>0) || !Number.isFinite(state.simTime))return null;
+  const q=Object.freeze({id:f.receipt.id,remainingS:remaining,expiresAt:state.simTime+4});
+  rendezvousQuotes.set(q,{state,world:state.world,entities:state.entities,receiver,receiverLife:receiver.occupantGeneration,f,route:receiver.data.itinerary,
+    data:f.pod.data,amount:f.pod.data.amount,returned:f.receipt.returnedQty,manifest:f.manifest,
+    remaining,createdAt:state.simTime});return q;
+}
+export function bindAnvilSpillRendezvousQuote(state,receiver,q,physics) {
+  const b=rendezvousQuotes.get(q),f=anvilSpillReturnFacts(state,receiver);
+  if(!b || b.native || b.state!==state || b.receiver!==receiver || !nearby(receiver,f)
+    || f.receipt!==b.f.receipt || f.pod!==b.f.pod || f.attachment!==b.f.attachment)return false;
+  const n=nativeBinding(state,receiver,f,physics);if(!n)return false;b.native=n;return true;
+}
+export function startAnvilSpillRendezvous(state,receiver,q,physics) {
+  const b=rendezvousQuotes.get(q);rendezvousQuotes.delete(q);
+  advanceAnvilSpillRendezvous(state,physics);
+  if(rendezvous.has(state))return {ok:false};
+  const f=anvilSpillReturnFacts(state,receiver),now=state.simTime;
+  if(!b || !nearby(receiver,f) || b.state!==state || b.world!==state.world || b.entities!==state.entities || b.receiver!==receiver
+    || b.receiverLife!==receiver.occupantGeneration || b.route!==receiver.data.itinerary || b.data!==f.pod.data || b.f.receipt!==f.receipt || b.f.pod!==f.pod
+    || b.f.player!==f.player || b.f.attachment!==f.attachment || b.manifest!==f.manifest
+    || b.amount!==f.pod.data.amount || b.returned!==f.receipt.returnedQty || budget(f.receipt)!==b.remaining
+    || !Number.isFinite(now) || now<b.createdAt || now>=q.expiresAt || !sameNative(b.native,nativeBinding(state,receiver,f,physics)))return {ok:false};
+  const descriptor=Object.getOwnPropertyDescriptor(f.receipt,'rendezvousRemainingS');
+  if(Object.getPrototypeOf(f.receipt)!==Object.prototype || (descriptor? !('value'in descriptor)||!descriptor.writable : !Object.isExtensible(f.receipt)))return {ok:false};
+  f.receipt.rendezvousRemainingS=b.remaining;
+  rendezvous.set(state,{...b,f,native:b.native,lastAt:now,expiresAt:now+b.remaining});
+  return {ok:true,remainingS:b.remaining};
+}
+function settle(state,b) {
+  if(state!==b.state || state.world!==b.world || state.entities!==b.entities || state.entities?.get(b.receiver.id)!==b.receiver
+    || b.receiver.occupantGeneration!==b.receiverLife || b.receiver.data?.itinerary!==b.route || b.route.anvilSpillReturn!==b.f.receipt
+    || b.native.physics?._sg02!==b.native.owner || b.native.physics?._sg02Token!==b.native.epoch)return false;
+  const now=state.simTime,left=budget(b.f.receipt);
+  if(!Number.isFinite(now)||now<b.lastAt||left==null)return false;
+  const descriptor=Object.getOwnPropertyDescriptor(b.f.receipt,'rendezvousRemainingS');
+  if(!descriptor || !('value'in descriptor)||!descriptor.writable)return false;
+  b.f.receipt.rendezvousRemainingS=Math.max(0,Math.min(left,b.expiresAt-b.lastAt)-(now-b.lastAt));
+  b.lastAt=now;return true;
+}
+function activeValid(state,b,physics) {
+  const {receiver,f}=b;
+  if(!receiver?.data || !f?.pod?.data || receiver.occupantGeneration!==b.receiverLife
+    || !pose(receiver)||!pose(f.player)||!pose(f.pod))return false;
+  const index=state.entityIndex;
+  if(index?.ready!==true || index.byWorldRecordIdCount?.get(f.receipt.ownerRecordId)!==1
+    || index.byWorldRecordId?.get(f.receipt.ownerRecordId)!==receiver)return false;
+  const d=f.pod.data,r=f.receipt,m=receiver.data.cargoManifest;
+  const record=state.world?.records?.byId?.[r.ownerRecordId];
+  return state.world===b.world && state.entities===b.entities && state.world?.currentSectorId===PLANET_SITE.sectorId
+    && state.mode==='flight' && record && record.alive!==false && !['destroyed','defeated'].includes(record.outcome)
+    && live(state,receiver) && live(state,f.player) && live(state,f.pod) && state.playerId===f.player.id
+    && receiver.data.itinerary===b.route && b.route.anvilSpillReturn===r && !receiver.data.jobId
+    && d===b.data && d.anvilSpillReturn?.id===r.id && d.ownerRecordId===r.ownerRecordId && d.manifestId===r.manifestId
+    && whole(d.amount) && d.amount>0 && d.amount<=r.initialQty-r.returnedQty && d.commodityId===PLANET_SITE.harvest.commodityShallow
+    && d.salvagePool && Object.keys(d.salvagePool).length===1 && d.salvagePool[d.commodityId]===d.amount
+    && !d.salvorClaimedBy && !d.npcTowedByJobId && !d.caughtByNet && !d.caughtByNetId && !d.reservedBy
+    && m && whole(m.totalQty) && m.totalQty<48 && Array.isArray(m.lines)
+    && m.lines.every(l=>l.commodityId===d.commodityId&&whole(l.qty)&&l.qty>0) && m.lines.reduce((n,l)=>n+l.qty,0)===m.totalQty
+    && state.player?.tether?.active && state.player.tether.attachmentId===f.attachment.id
+    && state.combat?.attachments?.byId?.[f.attachment.id]===f.attachment && f.attachment.state==='active'
+    && nearby(receiver,{...f,amount:1}) && sameNative(b.native,nativeBinding(state,receiver,f,physics));
+}
+// Called once through the existing traffic owner before sector/receiver early returns.
+export function advanceAnvilSpillRendezvous(state,physics) {
+  const b=rendezvous.get(state);if(!b)return null;
+  if(state.world!==b.world || state.entities!==b.entities || b.receiver.data?.itinerary!==b.route
+    || b.route.anvilSpillReturn!==b.f.receipt || physics!==b.native.physics || physics?._sg02!==b.native.owner
+    || physics?._sg02Token!==b.native.epoch){rendezvous.delete(state);return null;}
+  if(!settle(state,b)||!(budget(b.f.receipt)>0)||!activeValid(state,b,physics)){rendezvous.delete(state);return null;}
+  return b.receiver;
+}
+export function cancelAnvilSpillRendezvous(state,receiver) {
+  const b=rendezvous.get(state);if(!b||(receiver&&b.receiver!==receiver))return {ok:false};
+  settle(state,b);rendezvous.delete(state);return {ok:true,remainingS:budget(b.f.receipt)||0};
+}
+export function anvilSpillRendezvousStatus(state,receiver) {
+  const b=rendezvous.get(state),receipt=receiver?.data?.itinerary?.anvilSpillReturn,left=budget(receipt);
+  const active=!!b&&b.receiver===receiver&&activeValid(state,b,b.native.physics)&&Number.isFinite(state.simTime)&&state.simTime>=b.lastAt;
+  return {active:active&&state.simTime<b.expiresAt,remainingS:active?Math.max(0,Math.min(left||0,b.expiresAt-state.simTime)):left};
 }

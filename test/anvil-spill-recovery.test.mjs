@@ -14,7 +14,7 @@ import { cargo } from '../src/systems/cargo.js';
 import { save } from '../src/save/saveSystem.js';
 import { ANVIL_WORK, anvilWorkerRecordId, anvilServicePoint, anvilBuyerApproach } from '../src/systems/anvilWork.js';
 import { PLANET_SITE } from '../src/data/planets.js';
-import { anvilSpillReturnFacts, anvilSpillReturnQuote } from '../src/world/anvilSpillRecovery.js';
+import { anvilSpillReturnFacts, anvilSpillReturnQuote, anvilSpillRendezvousStatus, advanceAnvilSpillRendezvous } from '../src/world/anvilSpillRecovery.js';
 import { createContactHailOffer, createContactHailResponse } from '../src/data/contactHail.js';
 const commodityId = PLANET_SITE.harvest.commodityShallow;
 async function boot() {
@@ -228,4 +228,127 @@ test('claimed original Hail explains salvage reservation without repeating Massl
   assert.equal(JSON.stringify({data:t.pod.data,manifest:t.receiver.data.cargoManifest}),before);
   assert.equal(t.s.player.tether.active,true);
  }finally{t.close();}
+});
+
+function rendezvousRequest(t){
+ const offer=createContactHailOffer(t.s,{enabled:true,kind:'worker',entity:t.receiver,targetId:t.receiver.id},'rendezvous',4);
+ const q=offer.anvilRendezvousQuote;assert.ok(q);assert.equal(t.owner.bindAnvilSpillRendezvousQuote(t.receiver,q),true);
+ return {q,result:t.owner.requestAnvilSpillRendezvous(t.receiver,q)};
+}
+test('rendezvous consumes exactly elapsed brake budget, duplicate same-time step and active Hail never refill',async()=>{
+ const t=await boot();try{
+  const receipt=t.receiver.data.itinerary.anvilSpillReturn,phase=t.receiver.data.itinerary.phase;
+  assert.equal(rendezvousRequest(t).result.ok,true);assert.equal(receipt.rendezvousRemainingS,30);assert.equal(t.receiver.data.intent.brake,true);
+  for(let i=0;i<60;i++){t.s.simTime+=1/60;advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));}
+  assert.ok(Math.abs(receipt.rendezvousRemainingS-29)<1e-9);assert.equal(t.receiver.data.itinerary.phase,phase);
+  const offer=createContactHailOffer(t.s,{enabled:true,kind:'worker',entity:t.receiver,targetId:t.receiver.id},'active',4);
+  assert.ok(offer.actions.some(a=>a.id==='cancel_spill_rendezvous'));assert.ok(!offer.anvilRendezvousQuote);assert.ok(offer.lines.length<=2&&offer.actions.length<=3);
+  const envelope=t.sim.registry.get('save').serialize('budget');assert.equal(t.sim.registry.get('save').loadEnvelope(envelope),true);t.s.mode='flight';
+  const restored=t.s.entityList.find(e=>e.data?.worldRecordId===anvilWorkerRecordId(t.s,'receiver'));
+  assert.ok(Math.abs(restored.data.itinerary.anvilSpillReturn.rendezvousRemainingS-29)<1e-9);assert.equal(anvilSpillRendezvousStatus(t.s,restored).active,false);
+ }finally{t.close();}
+});
+test('cancel and partial return retain only unused budget; fresh request cannot refill it',async()=>{
+ const t=await boot();try{
+  rendezvousRequest(t);t.s.simTime+=2;
+  assert.equal(t.owner.cancelAnvilSpillRendezvous(t.receiver).remainingS,28);
+  const receipt=t.receiver.data.itinerary.anvilSpillReturn;assert.equal(rendezvousRequest(t).result.remainingS,28);
+  t.owner._setTrafficManifest(t.receiver,t.rec,t.owner._buildMinerManifest(t.receiver,2,commodityId,47));
+  assert.equal(t.owner.returnAnvilSpill(t.receiver,quote(t)).qty,1);advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));
+  assert.equal(anvilSpillRendezvousStatus(t.s,t.receiver).active,false);assert.equal(receipt.rendezvousRemainingS,28);
+  t.owner._setTrafficManifest(t.receiver,t.rec,t.owner._buildMinerManifest(t.receiver,3,commodityId,0));
+  assert.equal(rendezvousRequest(t).result.remainingS,28);
+ }finally{t.close();}
+});
+for(const value of [null,-1,31,NaN,'30'])test(`malformed present rendezvous budget ${String(value)} is refused without initialization`,async()=>{
+ const t=await boot();try{
+  t.receiver.data.itinerary.anvilSpillReturn.rendezvousRemainingS=value;
+  const offer=createContactHailOffer(t.s,{enabled:true,kind:'worker',entity:t.receiver,targetId:t.receiver.id},'bad-budget',4);
+  assert.ok(!offer.anvilRendezvousQuote);assert.equal(t.receiver.data.itinerary.anvilSpillReturn.rendezvousRemainingS,value);
+ }finally{t.close();}
+});
+for(const fault of ['world','entities','route','receipt','native-epoch'])test(`old rendezvous cannot debit a replaced ${fault} timeline`,async()=>{
+ const t=await boot();try{
+  rendezvousRequest(t);const receipt=t.receiver.data.itinerary.anvilSpillReturn;t.s.simTime+=2;
+  if(fault==='world')t.s.world={...t.s.world};
+  if(fault==='entities')t.s.entities=new Map(t.s.entities);
+  if(fault==='route')t.receiver.data.itinerary={...t.receiver.data.itinerary};
+  if(fault==='receipt')t.receiver.data.itinerary.anvilSpillReturn={...receipt};
+  if(fault==='native-epoch')t.sim.registry.get('physics')._sg02Token++;
+  advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));
+  assert.equal(receipt.rendezvousRemainingS,30);assert.equal(anvilSpillRendezvousStatus(t.s,t.receiver).active,false);
+ }finally{t.close();}
+});
+test('expiry spends at most30 and route resumes; cut closes transient hold without charging later transit',async()=>{
+ const t=await boot();try{
+  rendezvousRequest(t);t.s.simTime+=3;t.a.state='cut';advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));
+  const receipt=t.receiver.data.itinerary.anvilSpillReturn;assert.equal(receipt.rendezvousRemainingS,27);t.s.simTime+=20;
+  advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));assert.equal(receipt.rendezvousRemainingS,27);
+  t.a.state='active';rendezvousRequest(t);t.s.simTime+=30;t.owner._stepAnvilReceiver(t.receiver);
+  assert.equal(receipt.rendezvousRemainingS,0);assert.equal(anvilSpillRendezvousStatus(t.s,t.receiver).active,false);
+ }finally{t.close();}
+});
+
+test('retired rendezvous actors with cleared data/poses cancel safely without debiting pooled receipts',async()=>{
+ const t=await boot();try{
+  rendezvousRequest(t);const receipt=t.receiver.data.itinerary.anvilSpillReturn;
+  t.receiver.data=null;t.receiver.pos=null;t.pod.data=null;t.pod.pos=null;t.s.simTime+=1;
+  assert.doesNotThrow(()=>advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics')));
+  assert.equal(anvilSpillRendezvousStatus(t.s,t.receiver).active,false);assert.equal(receipt.rendezvousRemainingS,30);
+ }finally{t.close();}
+});
+
+for(const mode of ['paused','menu','survival','race'])test(`traffic lifecycle cancels rendezvous on ${mode} without later transit charge`,async()=>{
+ const t=await boot();try{
+  rendezvousRequest(t);t.s.simTime+=1;
+  if(mode==='survival')t.s.run={kind:'survival',phase:'active'};else if(mode==='race')t.s.missions.active=[{status:'active',params:{racingContractId:'fixture',raceLease:true}}];else t.s.mode=mode;
+  traffic.update.call(t.owner,1/60,t.s);
+  const receipt=t.receiver.data.itinerary.anvilSpillReturn;assert.equal(receipt.rendezvousRemainingS,29);
+  traffic.update.call(t.owner,1/60,t.s);assert.equal(receipt.rendezvousRemainingS,29);
+  t.s.simTime+=10;t.s.mode='flight';t.s.run=null;t.s.missions.active=[];
+  advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));assert.equal(receipt.rendezvousRemainingS,29);
+  assert.equal(rendezvousRequest(t).result.remainingS,29);
+ }finally{t.close();}
+});
+for(const fault of ['receiver-life','duplicate-index','wrong-index'])test(`active rendezvous fails closed on ${fault}`,async()=>{
+ const t=await boot();try{
+  rendezvousRequest(t);const receipt=t.receiver.data.itinerary.anvilSpillReturn;
+  if(fault==='receiver-life')t.receiver.occupantGeneration++;
+  else if(fault==='duplicate-index')t.s.entityIndex.byWorldRecordIdCount.set(receipt.ownerRecordId,2);
+  else t.s.entityIndex.byWorldRecordId.set(receipt.ownerRecordId,{});
+  t.s.simTime+=1;advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));
+  assert.equal(anvilSpillRendezvousStatus(t.s,t.receiver).active,false);
+  if(fault==='receiver-life')assert.equal(receipt.rendezvousRemainingS,30);
+ }finally{t.close();}
+});
+
+test('ordinary native line cut cancels cooperation and preserves remaining budget',async()=>{
+ const t=await boot();try{
+  rendezvousRequest(t);t.s.simTime+=1;
+  const kernel=getCombatKernel({state:t.s,bus:t.sim.bus});assert.equal(kernel.attachments.cut(t.a.id,t.player.id,'pilot_cut').ok,true);
+  advanceAnvilSpillRendezvous(t.s,t.sim.registry.get('physics'));
+  assert.equal(anvilSpillRendezvousStatus(t.s,t.receiver).active,false);assert.equal(t.receiver.data.itinerary.anvilSpillReturn.rendezvousRemainingS,29);
+ }finally{t.close();}
+});
+for(const fault of ['expired','unsupported-native','receiver-generation','replaced-native-line'])test(`refused rendezvous ${fault} never spends or initializes a budget`,async()=>{
+ const t=await boot();try{
+  const q=createContactHailOffer(t.s,{enabled:true,kind:'worker',entity:t.receiver,targetId:t.receiver.id},'stale-rendezvous',4).anvilRendezvousQuote;
+  assert.equal(t.owner.bindAnvilSpillRendezvousQuote(t.receiver,q),true);
+  if(fault==='expired')t.s.simTime+=4;
+  if(fault==='unsupported-native')t.s.settings.gameplay.physicsBackend='custom';
+  if(fault==='receiver-generation')t.receiver.occupantGeneration++;
+  if(fault==='replaced-native-line'){const n=t.sim.registry.get('physics')._sg02;n.attachments.set(t.a.id,{...n.attachments.get(t.a.id)});}
+  assert.equal(t.owner.requestAnvilSpillRendezvous(t.receiver,q).ok,false);
+  assert.equal(Object.hasOwn(t.receiver.data.itinerary.anvilSpillReturn,'rendezvousRemainingS'),false);
+ }finally{t.close();}
+});
+
+test('native rendezvous normal Hail cooperation and gentle Massline intake preserve finite gas',()=>{
+ const run=spawnSync(process.execPath,[...process.execArgv,fileURLToPath(new URL('./fixtures/anvil-spill-rendezvous-native.mjs',import.meta.url))],{encoding:'utf8',timeout:60000,maxBuffer:2*1024*1024});
+ assert.equal(run.status,0,run.stderr||run.stdout);
+ const report=JSON.parse(run.stdout.trim().split('\n').at(-1));
+ assert.equal(report.ok,true);assert.ok(report.podTravel>12);assert.ok(report.preChoice.relativeSpeed<=8);
+ assert.equal(report.receiver.cargo,12);assert.equal(report.pod.amount,0);assert.equal(report.receipt.returnedQty,3);
+ assert.ok(report.receipt.rendezvousRemainingS>0&&report.receipt.rendezvousRemainingS<30);
+ assert.match(report.response.lines.join(' '),/3u BACK ABOARD FOR TETHYS/);
 });
