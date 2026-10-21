@@ -3532,7 +3532,8 @@ export const missions = {
 
     const bountyMark = (typeId === 'bounty_hunt' && !(params && params.ghostConvoy))
       ? rollBountyMark({ seed: this.state.meta.seed, offerId, sectorId: destSectorId,
-          riskTier, sectorDef: SECTOR_BY_ID.get(destSectorId) })
+          riskTier, sectorDef: SECTOR_BY_ID.get(destSectorId),
+          exclude: this.state.missions && this.state.missions.killedMarkNames })
       : null;
     if (bountyMark) { params.markName = bountyMark.name; params.markPlace = bountyMark.placeName; }
     // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
@@ -5736,6 +5737,21 @@ export const missions = {
   },
 
   /**
+   * RC-34: a named board_writ mark is a person, not a template — once the hull dies
+   * (player's guns, a rival hunter, or a void-for-lost-mark) the name goes on the
+   * graveyard ledger and `rollBountyMark` never deals it again. Ledger lives on
+   * `state.missions` so it saves/loads with the rest of the contract slice; absent
+   * on old saves, minted lazily.
+   */
+  _recordBountyMarkDeath(m) {
+    const name = m && m.storyTarget && m.storyTarget.role === 'board_writ' ? m.storyTarget.name : null;
+    if (!name) return;
+    const missions = this.state.missions;
+    const ledger = missions.killedMarkNames || (missions.killedMarkNames = []);
+    if (!ledger.includes(name)) ledger.push(name);
+  },
+
+  /**
    * Objective settlement for a bounty/patrol target kill. Called directly from the entity:killed
    * loop for clause-free missions, and via `contract:clauseSettledKill` for clause-observing ones
    * after contractClauses has judged the kill — a kill no clause fails must still complete.
@@ -5750,6 +5766,7 @@ export const missions = {
       this._resolveContract47aB2(m, i, 'force', p.id);
       return;
     }
+    this._recordBountyMarkDeath(m);
     const defeated = this.state.entities && this.state.entities.get(p.id);
     const defeatedSlot = missionTargetSlotOf(defeated, m.id);
     if (defeatedSlot != null) {
@@ -5781,7 +5798,7 @@ export const missions = {
           if (!e || e.alive === false) return true;
           return !!(p.entity && id === p.entityId && e !== p.entity);
         };
-        if (bountyTargetLost(m, p.entityId, gone)) this._failMission(m, i, 'target_lost');
+        if (bountyTargetLost(m, p.entityId, gone)) { this._recordBountyMarkDeath(m); this._failMission(m, i, 'target_lost'); }
         else if (externalTargetLoss(m, p.entityId, gone)) this._settleExternalTargetLoss(m, i, p);
         continue;
       }
@@ -5808,6 +5825,7 @@ export const missions = {
         return !!(p.entity && id === p.id && e !== p.entity);
       };
       if (bountyTargetLost(m, p.id, gone)) {
+        this._recordBountyMarkDeath(m);
         this._failMission(m, i, 'target_lost');
       } else if (externalTargetLoss(m, p.id, gone)) {
         this._settleExternalTargetLoss(m, i, p);
@@ -5843,6 +5861,7 @@ export const missions = {
     m.params.externalCauseFamily = killCauseFamily(causal.cause);
     m.params.externalKillerId = p && p.killerId != null ? p.killerId : null;
     m.params.externalCauseLabel = `the objective went down to ${CAUSE_LABEL[causal.cause] || CAUSE_LABEL.generic}`;
+    this._recordBountyMarkDeath(m);
     this._stampPhysicalLossSite(m, p);
     this._failMission(m, i, 'failed_external');
   },
