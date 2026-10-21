@@ -573,7 +573,7 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150,
     const lis = items();
     if (!carousel && lis.length > 1) {
       const half = (i) => Math.max(0, (lis[i] && lis[i].offsetWidth) || 0) / 2 + 10;
-      const sMax = Math.max(0.1, Math.min(1, (g.cx - half(0)) / rx, (W - g.cx - half(lis.length - 1)) / rx));
+      const sMax = Math.max(0.1, Math.min(1, (g.cx - half(0)) / g.rx, (W - g.cx - half(lis.length - 1)) / g.rx));
       const spread = Math.min(56, Math.asin(sMax) * 180 / Math.PI);
       T = Array.from({ length: lis.length }, (_, i) => -spread + (2 * spread * i) / (lis.length - 1));
     }

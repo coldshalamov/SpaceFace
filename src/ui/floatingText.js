@@ -369,9 +369,12 @@ export function createFloatingText(ctx) {
       if (!n.alive) continue;
       n.age += dt;
       if (n.age >= n.life) { retire(n); continue; }
-      // follow the entity if it still exists, else stay at the world point
+      // follow the entity if it still exists, else stay at the world point. A dead or
+      // recycled entity must not carry the float — entities.get confirms it is still the
+      // live occupant for its id, and a stripped pos falls back to the recorded anchor.
       let wx = n.wx, wz = n.wz;
-      if (n.entity) { wx = n.entity.pos.x; wz = n.entity.pos.z; }
+      if (n.entity && n.entity.alive !== false && n.entity.pos
+        && state.entities.get(n.targetId) === n.entity) { wx = n.entity.pos.x; wz = n.entity.pos.z; }
       _ftWorld.x = wx; _ftWorld.z = wz;
       const s = helpers.worldToScreen(_ftWorld, _ftScreen);
       const t = n.age / n.life;
