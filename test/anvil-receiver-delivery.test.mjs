@@ -7,7 +7,7 @@ import { economy } from '../src/systems/economy.js';
 import { traffic } from '../src/systems/traffic.js';
 import { world } from '../src/systems/world.js';
 import { save } from '../src/save/saveSystem.js';
-import { ANVIL_WORK, anvilWorkerRecordId, anvilBuyerApproach, anvilBuyerIngress, anvilServicePoint, anvilReceiverWorkStatus } from '../src/systems/anvilWork.js';
+import { ANVIL_WORK, anvilWorkerRecordId, anvilBuyerApproach, anvilBuyerIngress, anvilServicePoint, anvilReceiverWorkStatus, anvilTrafficYield } from '../src/systems/anvilWork.js';
 import { PLANET_SITE } from '../src/data/planets.js';
 import { livingWorkStatusText } from '../src/data/contactHail.js';
 
@@ -279,7 +279,7 @@ test('full production native receiver delivers the finite load through Continue 
   try {
     const receipts = [], phases = [], frames = [], collectorFrames = [], dynamicContacts = [], spills = [], transfers = [];
     const previousParticipant = new Map();
-    const participantIds = new Set(), lifecycle = [];
+    const participantIds = new Set(), lifecycle = [], nativeBeforeSteps = [];
     let continued = !!envelope, previous = '', minContact = Infinity, nativeTicks = 0;
     let departed = !!envelope, arrived = false, returned = false, handedAgain = false;
     let residencyChecked = false, laybyReached = false, minStaticContact = Infinity;
@@ -367,6 +367,16 @@ test('full production native receiver delivers the finite load through Continue 
           tick: f.state.tick, hull: e.hull, cargoQty: hold(e).totalQty, pos: { ...e.pos }, vel: { ...e.vel } });
       }
       const participantsBeforeStep = ['collector', 'receiver'].map(role => f.actor(role)).filter(Boolean);
+      if (process.env.ANVIL_RECEIVER_EVIDENCE_DIR) {
+        nativeBeforeSteps.push({ tick: f.state.tick, time: f.state.simTime,
+          ships: [...f.physics._sg02.records.values()].filter(rec => rec.entity.type === 'ship'
+            && participantsBeforeStep.some(e => Math.hypot(rec.entity.pos.x-e.pos.x,rec.entity.pos.z-e.pos.z)<400))
+            .map(rec => ({ id: rec.entity.id, pos: { ...rec.entity.pos }, vel: { ...rec.entity.vel },
+              nativeVelocity: rec.body.linvel(), rot: rec.entity.rot, hull: rec.entity.hull,
+              radius: rec.entity.radius, targetId: rec.entity.data?.ai?.targetId,
+              securityTargetId: rec.entity.data?.ai?.securityTargetId })) });
+        if (nativeBeforeSteps.length > 180) nativeBeforeSteps.shift();
+      }
       const retainedBeforeStep = ['collector', 'receiver'].map(role => {
         const record = f.state.world.records.byId[anvilWorkerRecordId(f.state, role)];
         return { role, alive: record?.alive, outcome: record?.outcome, phase: record?.itinerary?.phase,
@@ -376,7 +386,7 @@ test('full production native receiver delivers the finite load through Continue 
       if ((c?.alive !== true || r?.alive !== true) && process.env.ANVIL_RECEIVER_EVIDENCE_DIR) {
         writeFileSync(process.env.ANVIL_RECEIVER_EVIDENCE_DIR + '/survival-failure.json', JSON.stringify({
           sourceTree: process.env.PUBLIC_TREE || null, time: f.state.simTime, tick: f.state.tick,
-          previousParticipant: [...previousParticipant], retainedBeforeStep, lifecycle, collector: c, receiver: r,
+          previousParticipant: [...previousParticipant], retainedBeforeStep, lifecycle, nativeBeforeSteps, collector: c, receiver: r,
           // markRecordDestroyed mutates records silently; compare retainedBeforeStep to these actual records.
           nearbyNativeOwners: [...f.physics._sg02.records.values()].filter(rec => participantsBeforeStep.some(e =>
             Math.hypot(rec.entity.pos.x - e.pos.x, rec.entity.pos.z - e.pos.z) < 300))
@@ -806,4 +816,69 @@ test('receiver ingress preserves the existing Flight V3 docking orbit multiplier
     const distance = p => Math.hypot(p.x - t.station.pos.x, p.z - t.station.pos.z);
     assert.ok(Math.abs(distance(ingress) / distance(mouth) - DOCK_ORBIT_RADIUS_MULT) < 1e-10);
   } finally { t.sim.dispose(); }
+});
+
+for (const scenario of ['crossing', 'moving-away', 'near-miss', 'stationary-ahead', 'service-pair', 'early-envelope-entry'])
+ test(`civilian predictive yield: ${scenario}`, () => {
+  const t=boot(); try {
+   const e=t.collector; e.pos={x:16000,z:6000}; e.vel={x:-42,z:0};
+   const other=t.sim.spawn({type:'ship',hull:100,radius:18,pos:{x:15930,z:5920},vel:{x:0,z:50},data:{}});
+   if(scenario==='moving-away'){other.pos={x:16060,z:6000};other.vel={x:20,z:0};}
+   if(scenario==='near-miss'){other.pos={x:15930,z:5800};other.vel={x:0,z:50};}
+   if(scenario==='stationary-ahead'){other.pos={x:15945,z:6000};other.vel={x:0,z:0};}
+   if(scenario==='service-pair'){other.pos={x:15940,z:6000};other.vel={x:0,z:0};e.vel={x:-2,z:0};}
+   if(scenario==='early-envelope-entry'){other.pos={x:15890,z:6000};other.vel={x:0,z:0};}
+   const before=JSON.stringify([e.pos,e.vel,e.data.cargoManifest,other.pos,other.vel]);
+   const result=anvilTrafficYield(t.state,e);
+   assert.equal(!!result,['crossing','stationary-ahead','early-envelope-entry'].includes(scenario));
+   if(result)assert.equal(result.targetId,other.id);
+   assert.equal(JSON.stringify([e.pos,e.vel,e.data.cargoManifest,other.pos,other.vel]),before);
+  } finally {t.sim.dispose();}
+ });
+
+test('constructed native crossing yields through ordinary Flight V3 braking without contact or cargo mutation',async()=>{
+ const {physics}=await import('../src/core/physics.js');
+ const {flightV3}=await import('../src/systems/flightV3.js');
+ const {makeShipEntitySpec}=await import('../src/systems/ships.js');
+ const t=boot([flightV3,physics]);try{
+  t.state.settings.gameplay.physicsBackend='rapier-dynamic';
+  const e=t.collector;e.pos={x:16000,z:6000};e.vel={x:-42,z:0};e.rot=Math.PI;
+  e.data.itinerary.phase='outbound';
+  const crossing=t.sim.spawn(makeShipEntitySpec('ship_hornet',{team:1,pos:{x:15930,z:5920},rot:Math.PI/2,ai:{passive:true}}));
+  crossing.vel={x:0,z:50};
+  const observer=t.sim.spawn({type:'ship',isPlayer:true,team:0,hull:100,
+   pos:{x:15965,z:5960},maxSpeed:200,collides:false,physicsBody:false});t.state.playerId=observer.id;
+  // Controlled crossing fixture, not a reconstruction of Hornet514's unknown pre-impact motion.
+  // No world generators, combat controller or observation collider in this focused lane.
+  assert.equal(await t.sim.registry.get('physics').prepareBackend(t.state),true);
+  const f=t.sim.registry.get('physics');let yielded=0,min=Infinity;
+  const cargoBefore=JSON.stringify(e.data.cargoManifest);
+  for(let i=0;i<180;i++){
+   crossing.data.intent={moveX:0,moveZ:0.3,boost:false,fire:false,aimAngle:Math.PI/2,brake:false};
+   if(anvilTrafficYield(t.state,e))yielded++;
+   t.owner._stepAnvilWork(1/60,t.state);
+   t.sim.step(1/60);
+   const contact=receiverContactDepth(f,e);
+   assert.equal(contact.admitted,true,'worker must use an admitted native body');
+   assert.equal(receiverContactDepth(f,crossing).admitted,true,JSON.stringify({id:crossing.id,alive:crossing.alive,collides:crossing.collides,partition:crossing._physicsPartition,body:crossing.physicsBody,native:[...f._sg02.records.keys()]}));
+   assert.ok(contact.contacts.every(c=>c.distance>=-0.05&&c.impulse===0),`contact at ${i}`);
+   min=Math.min(min,Math.hypot(e.pos.x-crossing.pos.x,e.pos.z-crossing.pos.z));
+  }
+  assert.ok(yielded>0);assert.ok(e.pos.x<15999,'worker moved under physical integration');
+  assert.ok(crossing.pos.z>6020,'crossing ship physically traverses the worker lane');
+  assert.equal(e.alive,true);assert.equal(crossing.alive,true);
+  assert.equal(JSON.stringify(e.data.cargoManifest),cargoBefore);
+  console.log(JSON.stringify({constructedCrossing:true,yielded,minDistance:min,workerPos:e.pos,otherPos:crossing.pos}));
+ }finally{t.sim.dispose();}
+});
+
+test('predictive yield uses the compact ship index with identical fallback decisions',()=>{
+ const t=boot();try{
+  t.collector.pos={x:16000,z:6000};t.collector.vel={x:-42,z:0};
+  const ship=t.sim.spawn({type:'ship',hull:100,radius:18,pos:{x:15930,z:5920},vel:{x:0,z:50},data:{}});
+  const indexed={...t.state,entityIndex:{__spacefaceEntityIndexV1:true,ready:true,shipLike:[t.collector,ship]}};
+  Object.defineProperty(indexed,'entityList',{get(){throw new Error('fat population scan');}});
+  const fallback={...t.state,entityIndex:null};
+  assert.deepEqual(anvilTrafficYield(indexed,t.collector),anvilTrafficYield(fallback,t.collector));
+ }finally{t.sim.dispose();}
 });

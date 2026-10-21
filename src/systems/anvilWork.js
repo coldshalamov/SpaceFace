@@ -10,9 +10,9 @@ import { STORMSHIFT_COLLECTOR_COLLISION } from '../data/stormshiftCollectorColli
 import { PLANET_SITE } from '../data/planets.js';
 import { makeShipEntitySpec } from './ships.js';
 import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
-import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { indexedWorldRecordEntity, indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
-import { resolveCollisionProxyManifest, resolveCorridorAxisWorld, proxyScaleFor } from '../data/collisionProxyManifests.js';
+import { resolveCollisionProxyManifest, resolveCorridorAxisWorld, proxyScaleFor, proxyOuterRadiusWu, hullEnvelopeWu } from '../data/collisionProxyManifests.js';
 // Match Flight V3's authored docking orbit, without importing its runtime owner
 // into contact-hail data (which would cycle back through scanner). Parity is tested.
 const BUYER_ORBIT_RADIUS_MULT = 1.3;
@@ -255,6 +255,40 @@ function hold(e) {
   e.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null,
     aimAngle: finite(e.rot), brake: true };
 }
+// Civilian work owns its intent instead of the combat maneuver planner. Yield to a
+// physically converging ship, regardless of faction/target, using current motion.
+// This is a bounded braking decision, not collision immunity or a route planner.
+function trafficHullEnvelope(e) {
+  const proxy = resolveCollisionProxyManifest(e);
+  return Math.max(hullEnvelopeWu(e), proxy ? proxyOuterRadiusWu(proxy, e) : 0);
+}
+export function anvilTrafficYield(state, worker) {
+  if (!finitePose(worker)) return null;
+  const ownRadius = trafficHullEnvelope(worker);
+  const propulsion = resolvePropulsionProfile(worker, state);
+  const horizon = Math.min(4, 0.75 + Math.hypot(worker.vel.x, worker.vel.z)
+    / Math.max(1, finite(propulsion.reverseAccel)));
+  let nearest = null;
+  for (const other of indexedShipLikeScan(state)) {
+    if (other === worker || other.type !== 'ship' || !live(state, other)
+      || other.collides === false || !finitePose(other)) continue;
+    const dx = other.pos.x - worker.pos.x, dz = other.pos.z - worker.pos.z;
+    const vx = other.vel.x - worker.vel.x, vz = other.vel.z - worker.vel.z;
+    const closing = dx * vx + dz * vz, speed2 = vx * vx + vz * vz;
+    if (closing >= 0 || speed2 < 0.01) continue; // separating/parallel ships do not hold the lane
+    const t = -closing / speed2;
+    const clearance = ownRadius + trafficHullEnvelope(other) + 12;
+    const miss2 = (dx + vx * t) ** 2 + (dz + vz * t) ** 2;
+    if (miss2 >= clearance * clearance) continue;
+    // First envelope entry, not just closest approach: a long hull may arrive
+    // during stopping while its center's closest approach is still further away.
+    const entry = Math.max(0, t - Math.sqrt((clearance * clearance - miss2) / speed2));
+    if (entry > horizon) continue;
+    if (!nearest || entry < nearest.timeToEntry) nearest = { targetId: other.id,
+      timeToEntry: entry, timeToClosest: t, clearance };
+  }
+  return nearest;
+}
 function counterFieldThrottle(owner, e, p) {
   const accel = owner._registry?.get?.('fields')?.readAcceptedFieldAcceleration?.(e,
     owner._anvilFieldAccel ||= { ax: 0, az: 0 });
@@ -266,6 +300,7 @@ function counterFieldThrottle(owner, e, p) {
 // Uses Flight V3's civilian intent, never writes velocity/position. Arrive is speed-limited
 // with the same braking-distance contract as the existing Helios ore-carrier approach.
 function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed) {
+  if (anvilTrafficYield(owner.state, e)) { hold(e); return false; }
   const dx = target.x - e.pos.x, dz = target.z - e.pos.z;
   const distance = Math.hypot(dx, dz), aim = Math.atan2(dz, dx);
   const p = resolvePropulsionProfile(e, owner.state);
