@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 19:48 UTC. All nine outcomes remain open. This register supports the
+Updated 21 October 2026, 20:21 UTC. All nine outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -11,12 +11,12 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: open. Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage now have independent public draft delivery. Full ordinary-route, device, performance and experience acceptance remain incomplete.
 - Owner: expansion integration and exact feature owners.
 - Evidence: IMPLEMENTATION.md, TWENTY_CONCEPT_MAP.json; local b08ba532/d70c0413; public PR461 and PR462; finite Independent Seam is public PR464; physical Tethys count-lane service is public PR466.
-- Next: Follow exact e579e67 CI and actual sector pixels, then continue the original connected sector/build-map scope. Scoped source delivery is not final game acceptance.
+- Next: Follow exact ff62ac4 CI and actual sector pixels, then continue the original connected sector/build-map scope. Scoped source delivery is not final game acceptance.
 - Awaiting user: final acceptance when adequate evidence exists; no optional engineering decision.
 
 ## SF-ORCHARD
 - Outcome: finite authored three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: OPEN. Prior 7a runtime is 1,602/1,602; full native receiver passes 287.196 seconds. Ordinary/live acceptance and specifically held operations remain unresolved.
+- State: OPEN. Prior e579 runtime TAP reports 1,619/1,619 and native receiver passes 439.530 seconds, but enclosing runtime command timed out; command is not green. Ordinary/live acceptance and specifically held operations remain unresolved.
 - Owner: Root integration and original receiver/asset owners retain their scopes; verify_charon_delivery_ci follows the current published successor. Held receiver activation remains unresolved.
 - Evidence: Prior fb3 route: 379.763 wall seconds; second handoff tick 53,548 / 892.467 sim seconds; 13 acquired = buyer one + receiver 12, collector zero; seven gates true; minContact +1.988 WU, 31,104 native ticks. Static-contact minimum unmeasured/null. Successor https://github.com/coldshalamov/SpaceFace/commit/db576579a30cb9af767949dcc5125af02157b9e8 ; tree ca1452aca726801732203a9833ac001b249384d9, sole fb3 parent.
 - Next: Follow actual successor evidence, keeping native proof separate from whole experience and visual acceptance. No held-operation retry.
@@ -24,9 +24,9 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets delivered as verified public commits and draft PRs, preserving newer work.
-- State: OPEN. PR480 e579e67d1a1fdf373f8db828efd3fe0b0a257291 verified open/unmerged/mergeable at 19:47:57 UTC, tree f96eba389d2e4f843fa65c47f5f0faf6b5cdde9c. Master inspected through 889dbea7 and untouched. Optional comment permission remains separate and unanswered.
+- State: OPEN. PR480 ff62ac4261b4debaff798f46cbe56a6473f8cf2e verified open/unmerged/mergeable at 20:21:15 UTC, tree b0c8e4ae93f67fe5c32d45cb030aea5602bf5471. Four-commit fast-forward verified; current master inspected through e1f33a2 and untouched. Optional comment permission remains separate.
 - Owner: root publication integration, with per-PR exact-head CI owners.
-- Evidence: https://github.com/coldshalamov/SpaceFace/commit/e579e67d1a1fdf373f8db828efd3fe0b0a257291 . Root final 100/100; independent Towline eleven, touch thirteen, VFX seventeen. Previous runtime 1,602/1,602; aggregate CI remains non-green. New actual CI pending.
+- Evidence: https://github.com/coldshalamov/SpaceFace/commit/ff62ac4261b4debaff798f46cbe56a6473f8cf2e . Root final 160/160; independent Ilex eleven, Last Shift eight, plume twenty-six and owner fixture seventy-four. Prior runtime TAP 1,619/1,619 but command timeout; aggregate CI not green. New actual CI pending.
 - Next: Follow exact new CI through natural terminal, verify actual merged checkout and attribute later upstream changes correctly. No force, comment retry, deployment or master merge.
 - Awaiting user: No new user action inferred. Old receiver blobs were absent on GET at 09:39 UTC; the 09:41 message read showed no owner reactions. Neither establishes actionable pending approval or denial; no card retry. Receiver activation remains unresolved, with final acceptance separate.
 
@@ -40,9 +40,9 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-VISUALS
 - Outcome: frequent genuinely new inspected images of actual work, plus eventual live game-camera acceptance.
-- State: OPEN. New 7a staged game-camera images were inspected and shown: original hauler/cutter visible, six original goods intact; colony actively compiling but still hidden. Teal wedge disappears with temporary VFX-group isolation and returns restored, implicating only the group. CPU trail reproductions did not establish a defect. New bounded propulsion observations are diagnostic only. Ordinary flight and visible UI acceptance remain open.
+- State: OPEN. Latest e579 staged images still show teal wedge before/after restored VFX, absent during isolation. Sampled player trails and NPC ribbon map are empty; exact emitting family remains unknown. Colony/hauler readiness unresolved. Published visible-hull NPC plume gate fixes an independently reproduced ownership defect, not yet the captured wedge. Ordinary flight and visible UI acceptance remain open.
 - Owner: Root visual review and exact feature owners; verify_charon_delivery_ci preserves actual current-run captures.
-- Evidence: Actual 7a baseline PNG SHA256 bd6ee539f48dc6a5f1b41aa874a038d9525b6ddd13cd0e33f22675d1233984ae, isolated 39cd86559fa0152d5b542d114a7de6e01e1eb68e27c42f319b5964704f88141d, restored ecb5080a92200077fd11ee300e9f1a61f59d2c5071f404c50fb93fd1e707a299; exact restoration/readbacks verified. Earlier exported-model evidence remains historical, not live acceptance.
+- Evidence: Actual e579 baseline PNG SHA256 446dd9ebe980fcfdebd55b1d882473280fc39a3e077023c7afa5b0f6b2afade0; isolated 0a6f90ebb89b0e89d3c97e2c573bc3daaf9435bf9df3c471c027bcea303ecbc3; restored 3a35fd6172d7be2e3c355cc69b4ef373aad163f739a665aad60cb99366f5a881. Exact readbacks/restoration verified. Prior images and exported-model receipts remain historical, not acceptance.
 - Next: Inspect successor colony, hauler and pod pixels after the narrow FX-POI correction. Do not equate API tests, authored status or a staged capture with ordinary-flight or user visual acceptance.
 - Awaiting user: eventual visual acceptance; no optional per-render choice.
 
@@ -64,15 +64,15 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
-- State: OPEN. The repaired Towline main prompt and authoritative action bridge now connect existing cleanup handovers and earned labor to actual player actions, preserving finite originals and receipts through Continue. The restored production-worker station PA connects qualifying Ceres approaches to actual accepted-line and committed-harvest recaps, with actual-surface receipts and existing quiet/rate gates. Recovered Ilex greenhouse followthrough also connects accepted vault lines to a persistent Ceres barkeep report of actual credited reward and committed first crop. Historical crop is not current market availability. Existing news, stock, reward and save schema remain unchanged. Prior Ilex active guidance, Phoebe and other connected increments remain retained.
-- Owner: Root integration and exact source owners; verify_charon_delivery_ci follows e579e67 actual evidence. Greenhouse implementation/review owners completed only the scoped unit, not world acceptance.
-- Evidence: PR480 e579e67 and dated Towline/greenhouse/PA sector-register addenda. Root greenhouse integration 30/30, independent ten cases, actual production Save/loadEnvelope under scalar setup, and preserved public-consumer baseline failures. No native-flight or dialogue-layout acceptance.
+- State: OPEN. The recovered Ilex voyage and Last Shift recorder/evidence choices now have tested actual main-to-worker player paths, preserving original custody, irreversible settlement and receipt semantics. The repaired Towline main prompt and authoritative action bridge now connect existing cleanup handovers and earned labor to actual player actions, preserving finite originals and receipts through Continue. The restored production-worker station PA connects qualifying Ceres approaches to actual accepted-line and committed-harvest recaps, with actual-surface receipts and existing quiet/rate gates. Recovered Ilex greenhouse followthrough also connects accepted vault lines to a persistent Ceres barkeep report of actual credited reward and committed first crop. Historical crop is not current market availability. Existing news, stock, reward and save schema remain unchanged. Prior Ilex active guidance, Phoebe and other connected increments remain retained.
+- Owner: Root integration and exact source owners; verify_charon_delivery_ci follows ff62ac4 actual evidence. Greenhouse implementation/review owners completed only the scoped unit, not world acceptance.
+- Evidence: PR480 ff62ac4 and dated Ilex player-path, Last Shift, Towline, greenhouse and PA sector-register addenda. Root greenhouse integration 30/30, independent ten cases, actual production Save/loadEnvelope under scalar setup, and preserved public-consumer baseline failures. No native-flight or dialogue-layout acceptance.
 - Next: Finish current Charon appearance and ordinary sector experience. Continue the next evidence-backed connected sector increment without inventing stock, history or completion from a checklist.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
 
 ## SF-SECTOR-COHERENCE
 - Outcome: every actual sector becomes an intentional, coherent experience across first arrival, recurring life, time/progression/consequences, return visits and Save/Continue, grounded in actual asset/code inventory and connected story/missions.
-- State: OPEN. The sector register now includes dated Ilex active-voyage, recovered Ceres greenhouse, approach-announcement and Towline player-path evidence while preserving its frozen inventory and original scope. Current Charon captures still show unresolved colony readiness; full sector routes, visual quality and persistence acceptance remain incomplete.
+- State: OPEN. The sector register now includes dated Ilex voyage/player choices, Last Shift evidence route, Ceres greenhouse, approach announcements, Towline actions and NPC visual-ownership evidence while preserving its frozen inventory and original scope. Current Charon captures still show unresolved colony readiness; full sector routes, visual quality and persistence acceptance remain incomplete.
 - Owner: Root coordinates sector review. map_sector_experience_coherence owns SECTOR_EXPERIENCE_REGISTER_2026-10-21.md; current gameplay/story/source owners retain their paths.
 - Evidence: Public register in https://github.com/coldshalamov/SpaceFace/commit/cb0657c0542e0a5bb2cbb593c092a773f0c5e504 ; initial counts remain inventory rather than runtime proof. User authorization and reminder update remain recorded in EXECUTION_STATUS.md.
 - Next: Use actual successor pixels and CI to validate the authored POI correction, then continue systematic sector work grounded in existing source, assets, inhabitants and consequences.
