@@ -79,6 +79,16 @@ The original SF20-18 evidence, optional recorder return and Doss report route no
 - Eight focused cases exercise the real registry/production bridge, evidence cue, recover/source-toggle/cancel, partial Doss archive, original recorder return and production Save/loadEnvelope duplicate protections. Eleven unchanged scalar approach/guidance/Doss cases pass. DOM and physical attachment ports are bounded fixtures; native ticks, ordinary flight and visible layout are not accepted by these results.
 - Remaining acceptance: ordinary arrival comprehension, rendered cue/decision timing, native moving recorder recovery and the whole connected Ceres experience. No new clue, replacement recorder, reward, schema, NPC job or transport system is added.
 
+## Visual ownership correction: NPC propulsion and presented hulls — 21 October 2026
+
+A bounded production-component reproduction established that an in-table NPC with a hidden/preparing, detached, wrong-scene or missing hull could still publish five visible fleet plume slots. This is an independently reproduced visual ownership defect, not yet attribution of the teal wedge in staged Charon images.
+
+- New ordinary NPC ship/drone propulsion requires the current live entity object and a visible ancestor chain reaching the exact current render scene. Fleet retention/admission and main/reverse overflow claims share this gate, so fallback cannot recreate a hidden-body plume.
+- This is not an authored-asset whitelist. Visible procedural/fallback hulls remain valid, player policy is unchanged, and existing plume recipes, colors, dimensions, old-history retirement/fade, Ceres/Latch rules and unrelated trail tiers remain untouched.
+- The allocation-free ancestry walk is capped at 64 visited nodes; malformed cycles or deeper unproven ownership fail closed. It does not traverse siblings, inspect all scene objects or alter readiness.
+- Twenty-six component tests cover real FamilyProductionFleet/ContinuousPlumeSystem output, hidden-to-visible readmission, replaced identities, exact scene ownership, actual main/reverse overflow including drones, preserved retirement and player/procedural positives. The expanded immutable baseline has twenty failures and six passes. These are CPU/component results, not GPU visual acceptance.
+- Remaining acceptance: actual successor game-camera pixels and ordinary movement. Current staged VFX-group isolation identifies only the group; sampled player trail descriptors were empty despite a visible wedge, and no specific emitter or complete visual cure is claimed.
+
 ## Inventory coverage and the actual gap
 
 Public evaluation returns **25 sectors, 35 catalog stations, 153 catalog POIs, 58 authored activity pockets and 116 actor slots**. These are catalog counts, not simultaneous rendered entities, unique final models or all dynamic locations. Runtime additions such as Borrowed Sun are outside the static station count. All 25 sector IDs have way-of-life, composition and activity-pocket rows. The ten concept-image sectors are not the whole game. The Bolus is the twenty-fifth sector, not an omitted footnote. Swarm arenas are a separate mode roster under P14–P21 and are not silently counted as Adventure sectors.

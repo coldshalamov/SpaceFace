@@ -1,3 +1,4 @@
+import { npcPropulsionVisible } from './npcPropulsionOwnership.js';
 import { isLatchActor,latchNinePropulsionAwake,createLatchNinePlumeBatch } from './latchNineVisuals.js';
 import { createParticlePriorityIndex } from './particlePriorityIndex.js';
 // VFX system (ARCHITECTURE §2.4, §4.4; design/specs/10). A purely-cosmetic presentation layer.
@@ -12355,6 +12356,7 @@ export const vfx = {
   _admitOverflowMainJet(e, drive) {
     const pool = this._overflowJets;
     if (!pool || !e) return null;
+    if (!npcPropulsionVisible(this.state, e, this._scene)) return null;
     const slot = pool.claim(e.id, OVERFLOW_ROLE_MAIN, this._overflowDist2(e));
     if (!slot) return null;
     const anchorAlpha = this._renderInterpolationAlpha();
@@ -12401,6 +12403,7 @@ export const vfx = {
   _admitOverflowReverseJet(e, role, strength) {
     const pool = this._overflowJets;
     if (!pool || !e) return null;
+    if (!npcPropulsionVisible(this.state, e, this._scene)) return null;
     const roleId = role === 'reverse-left' ? OVERFLOW_ROLE_REVERSE_LEFT : OVERFLOW_ROLE_REVERSE_RIGHT;
     const slot = pool.claim(e.id, roleId, this._overflowDist2(e));
     if (!slot) return null;
@@ -14591,6 +14594,7 @@ export const vfx = {
       if (player && e.id === player.id) continue;
       if (e.flags && e.flags.docked) continue;
       if (!fleet.hadEntity(e.id)) continue;
+      if (!npcPropulsionVisible(this.state, e, this._scene)) continue;
       const tier = this._resolveTrailTier(e, ctx, screenChecks);
       if (tier === TRAIL_TIER.SKIP) continue;
       if (tier === TRAIL_TIER.REDUCED && !this._trailCadenceAllows(e, tier)) continue;
@@ -14644,6 +14648,7 @@ export const vfx = {
       if (e.flags && e.flags.docked) continue;
       if (fleet.hadEntity(e.id)) continue;
       if (fleet.hasEntity(e.id)) continue;
+      if (!npcPropulsionVisible(this.state, e, this._scene)) continue;
       const tier = this._resolveTrailTier(e, ctx, screenChecks);
       if (tier === TRAIL_TIER.SKIP) continue;
       if (tier === TRAIL_TIER.REDUCED && !this._trailCadenceAllows(e, tier)) continue;
