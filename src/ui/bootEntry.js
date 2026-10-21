@@ -2,7 +2,10 @@
 import { mountBootRing } from './orrery/bootRing.js';
 import { yieldForBootPaint } from '../core/bootScheduler.js';
 import { getBootVisualizer } from './bootVisualizer.js';
-import { clearStartupRetry, presentStartupFailure } from './bootStartupFailure.js';
+import {
+  annotateStartupFailure, clearStartupRetry,
+  findBrokenModules, presentStartupFailure, startupProbeHrefs, summarizeStartupError,
+} from './bootStartupFailure.js';
 
 function sessionStore() {
   try { return window.sessionStorage; } catch { return null; }
@@ -40,10 +43,18 @@ async function start() {
     ring?.stop(); artwork?.stop();
     // A failed dynamic import is cached for the document's life, so the one recovery that works
     // is a fresh load: reload once on our own, then stop and say what failed rather than loop.
-    presentStartupFailure({
+    const outcome = presentStartupFailure({
       overlay, error, storage: sessionStore(), reload: () => window.location.reload(),
     });
     console.error('[SpaceFace] game module failed to load', error);
+    // On the dead end, name the file that cannot parse — the bare "Unexpected token" message
+    // does not say. Parse failures only: a fetch or resolution error has no file to re-parse.
+    if (outcome === 'failed' && error instanceof SyntaxError) {
+      findBrokenModules({ hrefs: startupProbeHrefs(document) }).then((culprits) => {
+        if (culprits.length) console.error('[SpaceFace] module file(s) failed to parse:', culprits);
+        annotateStartupFailure({ overlay, culprits, summary: summarizeStartupError(error) });
+      }).catch(() => { /* the dead-end message already stands */ });
+    }
   }
 }
 void start();
