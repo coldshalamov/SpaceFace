@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 18:42 UTC
+
+All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `548e7f01d49a9fa96e1d337d72df63c75c62d487`, tree `f0c7dc2a993eae3cd4194a55f471fefeb11ebc87`, open draft/unmerged/mergeable at 18:42:15 UTC. Three coherent increments recover the Ilex greenhouse connection, correct a narrow authored FX-POI admission mismatch, and align stale tests with the existing manual-only deployment policy. Master was inspected and left untouched; later upstream changes are distinct.
+
+Ceres's existing barkeep now remembers accepted seed lines, verified committed first-harvest history and matching capped credit. The station receives only a bounded read-only projection; current market stock or elapsed time is not proof of a harvest. Existing news, rewards, inventory and saved schema remain unchanged. The historical unpublished proposal was recovered rather than duplicated. Actual production Save/loadEnvelope is tested under scalar setup, not ordinary flight or visual layout acceptance.
+
+The world spawns authored POIs as FX actors; the prior first-flight readable lane excluded that vocabulary. Public API reproduction left a real-shaped live mapped Charon POI pending with no scheduled frame under the selective hold. The correction permits only live, explicitly mapped, on-glass FX POIs while preserving ambient, missing-art, foreign/stale, shell/GPU, owner, sector, epoch and hidden-publication guards. It neither releases the global hold nor changes concurrency or ship runway behavior. Actual colony appearance still requires the successor camera.
+
+Root exact final-tree checks pass 28/28; earlier greenhouse integration passes 30/30 and POI integration 36/36. Independent greenhouse checks pass ten, POI eight, and policy tests ten with eight rejected negative controls. The four old deployment assertions conflicted with intentional policy commit0da33a7e: Git deployment remains globally false, fallback allowlist remains secondary, and cross-platform install contract is retained. Only tests change, with no npm execution or production config/workflow/security modification. An earlier root release-suite import failed because of a missing local dependency shim; corrected harness, unchanged source, and original failure evidence are preserved.
+
+Prior 90159 CI is terminal: runtime 1,564/1,568, Ashline cleared, four stale deployment assertions remaining; full native receiver passes 363.239 seconds. Hauler and cutter are authored and the hauler is visible, but colony readiness remains unresolved. Browser3 naturally reached its cap: three earlier checks passed; the flight probe produced ten observations, two passing and eight failing, despite its wrapper timeout; the last leaf remains unproven. Optional station-UI image was not obtained, so no layout acceptance is claimed.
+
+verify_charon_delivery_ci follows new check5732/run39655095992 and verifies its actual checkout. Its reported synthetic merge includes newer master changes, so do not assume branch-tree equality. Next: inspect actual colony/hauler/pod states and pixels, finish the connected sector experience, and keep original scope, newer owners and held Orchard operations intact. Source, tests, meaningful failures and concise handoff have verified GitHub plus external recovery. Optional PR-comment permission remains separately unanswered; no retry. No deployment, master merge, new credentials or external execution thread.
+
 ## Current source handoff — 21 October 2026, 18:09 UTC
 
 All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `90159f77757caebeb66e127ef8f1c87e3d687652`, tree `2bc2fe59bfb97a67ad63ac314e0478ef2d7b5544`, open draft/unmerged and mergeable at 18:09:27 UTC. Public ancestry preserves the reviewed Ashline qualification, connected Ilex guidance and guarded pipeline observations, plus clean upstream merges through `028bfff84b2e6b122021ebdc3dc6f65a9d625825`. Master itself was not changed.
