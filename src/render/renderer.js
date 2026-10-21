@@ -13381,7 +13381,7 @@ export const render = {
       return error;
     };
     const isOwnerInactiveTouchError = (error) => error && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE';
-    const submitExactSubjectTouch = (subject, isActive = null) => {
+    const submitExactSubjectTouch = (subject, isActive = null, urgent = false) => {
       const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
       const submit = () => {
         if (typeof isActive === 'function' && !isActive(subject)) throw ownerInactiveTouchError();
@@ -13393,7 +13393,7 @@ export const render = {
         finally { restore(); }
       };
       const pending = pace?.submit
-        ? pace.submit(submit, { isActive: () => !isActive || isActive(subject) })
+        ? pace.submit(submit, { urgent: urgent === true, isActive: () => !isActive || isActive(subject) })
         : Promise.resolve().then(submit);
       return Promise.resolve(pending).then((result) => {
         // The serial queue can reject a stale owner before running submit. Convert its tagged
@@ -14120,7 +14120,7 @@ export const render = {
           // state — the same touch the opening plan runs — so any residual variant links here,
           // behind the pending latch, instead of inside a presented bloom frame.
           try {
-            await submitExactSubjectTouch(subject, admissionOptions.isActive);
+            await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
           } catch (error) {
             if (isOwnerInactiveTouchError(error)) throw error;
             exactTargetReady = false;
