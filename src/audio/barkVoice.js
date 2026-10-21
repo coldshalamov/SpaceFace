@@ -180,7 +180,8 @@ export function resolveBarkVoice(input = {}) {
   const h = hash32(`${factionId}|${situation}|${line}`);
   const jitter = ((h % 17) - 8) / 400; // ±0.02, hashed, not Math.random
   const pitch = Math.round((register.pitch + jitter) * 1000) / 1000;
-  const rate = Math.round((register.rate + ((h >>> 8) % 9 - 4) / 500) * 1000) / 1000;
+  // RC-38: ±3% per-line rate walk — two lines from one faction never pace identically.
+  const rate = Math.round((register.rate + ((h >>> 8) % 13 - 6) / 200) * 1000) / 1000;
   // Identity pitch is the register fundamental. Pitch/rate shape cadence and the synth layer;
   // multiplying f0 by pitch made Vael (59 Hz) inaudible to the stranger and to radio HP.
   const f0 = register.f0;
