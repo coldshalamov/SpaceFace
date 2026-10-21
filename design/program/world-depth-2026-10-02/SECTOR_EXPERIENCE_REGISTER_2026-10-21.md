@@ -27,6 +27,17 @@ Scope: existing SF20-04 / P08 Tethys departure, original six-vault escort and Ce
 - Evidence: `src/data/ilexArk.js`, `src/systems/ilexArk.js`, and `test/ilex-active-voyage-readout.test.mjs` exercise actual offer-to-prompt data, scalar original-body transactions and production save/loadEnvelope restoration. Seven focused checks pass independently. Scalar world setup is not native flight, a browser layout witness or complete world-reentry acceptance.
 - Remaining acceptance: ordinary Tethys-to-Ceres voyage, readable in-game prompt layout, actual physics/performance, and full connected greenhouse consequence experience. Keep SF-LIVING-WORLD and SF-SECTOR-COHERENCE open. No new inventory or isolated subsystem is introduced.
 
+## Connected experience recovery: Ceres remembers the Ilex planting — 21 October 2026
+
+Recovered and reconciled the existing unpublished greenhouse proposal rather than creating a competing system. The ordinary Ceres barkeep now offers a greenhouse conversation only after a valid settled original-vault outcome. Existing greetings, other contacts and station-local market news remain unchanged.
+
+- Reports accepted seed lines and the filed reward only when the matching mission journal verifies the amount, including a capped credit award. A zero-arrival voyage reports no planting.
+- Distinguishes a pending first crop from an actual committed economy harvest. Elapsed time, present market stock and unrelated receipts cannot establish that the crop happened.
+- After harvest, reports the historical Provisions addition and directs the player to Market for current availability. Later trades do not erase history or imply the goods are still available.
+- Uses a bounded four-field, read-only station projection instead of copying voyage bodies or economy journals. No new stock, reward, persistence schema or economy mutation.
+- Evidence: `src/data/ilexGreenhouse.js`, station `barContacts.js`, `scripts/lib/simReadModel.mjs`, and ten focused `ilex-greenhouse-bar.test.mjs` cases. Actual settlement/mission/economy consumers and production Save/loadEnvelope are exercised under scalar setup before and after crop, with post-trade return and forged/foreign receipt negatives. The public-consumer baseline lacked the choice/reply/transport; mounting the candidate leaf alone did not satisfy those consumers.
+- Remaining acceptance: actual ordinary flight to Ceres, station layout/readability, native route/performance and the full inhabited-sector experience. This scoped connection does not close SF-LIVING-WORLD, SF-SECTOR-COHERENCE or any larger game goal.
+
 ## Inventory coverage and the actual gap
 
 Public evaluation returns **25 sectors, 35 catalog stations, 153 catalog POIs, 58 authored activity pockets and 116 actor slots**. These are catalog counts, not simultaneous rendered entities, unique final models or all dynamic locations. Runtime additions such as Borrowed Sun are outside the static station count. All 25 sector IDs have way-of-life, composition and activity-pocket rows. The ten concept-image sectors are not the whole game. The Bolus is the twenty-fifth sector, not an omitted footnote. Swarm arenas are a separate mode roster under P14–P21 and are not silently counted as Adventure sectors.
