@@ -360,6 +360,7 @@ export function createToasts(ctx) {
   bindExportRecoveryToasts(bus);
   bindSlingPassReceipts(bus);
   bindCounterplayReceipts(bus);
+  bindCapitalBossReceipts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
   bindReturningPilotSummary(bus, ctx && ctx.state);
 
@@ -563,6 +564,33 @@ export function bindCounterplayReceipts(bus) {
   bus.on('counterplay:encountered', (payload) => {
     const receipt = counterplayReceipt(payload);
     if (receipt && typeof bus.emit === 'function') bus.emit('toast', receipt);
+  });
+}
+
+export const CAPITAL_BOSS_RECEIPT_TTL_S = 4;
+
+/** RC-24 — a capital cast's first telegraph becomes one "title — counter" receipt.
+ *  `capitalBoss:telegraph` re-fires every 6 ticks while tracking and once at lock;
+ *  the receipt is minted once per castId so the warning lands tellTicks (≥1.5s by
+ *  the shipped validator floor) before capitalBoss:attack. */
+export function capitalBossWarningReceipt(payload) {
+  const title = String(payload?.title || '').trim();
+  const counter = String(payload?.counter || '').split('. ')[0].trim();
+  if (!title || !counter || payload?.castId == null) return null;
+  return { text: `${title} — ${counter}`, kind: 'warn', ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss', castId: payload.castId, fightId: payload.fightId, simTime: payload.simTime };
+}
+
+export function bindCapitalBossReceipts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  const seen = new Set();
+  bus.on('capitalBoss:telegraph', (payload) => {
+    if (!payload || seen.has(payload.castId) || typeof bus.emit !== 'function') return;
+    const receipt = capitalBossWarningReceipt(payload);
+    if (!receipt) return;
+    seen.add(payload.castId);
+    if (seen.size > 64) seen.delete(seen.values().next().value);
+    bus.emit('toast', receipt);
   });
 }
 

@@ -74,7 +74,7 @@ export function admitReceipt({
   if (k === 'stunt') return { admit: true, reason: 'stunt' };
   if (k === 'danger') return { admit: false, reason: 'danger-floor' };
   if (k === 'bark' || k === 'chatter') return { admit: false, reason: 'chatter' };
-  if (combat && k !== 'error' && channel !== 'stunt' && !COMBAT_KEEP.test(line)) {
+  if (combat && k !== 'error' && channel !== 'stunt' && channel !== 'capitalBoss' && !COMBAT_KEEP.test(line)) {
     return { admit: false, reason: 'combat-quiet' };
   }
   return { admit: true, reason: 'receipt' };
