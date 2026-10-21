@@ -9,6 +9,7 @@
 // the throw, feed a jumper to the cone, or break the claim and let the shift finish.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { VESTA_ORE_WINNOW, vestaWinnowPhase } from '../environmentalMachinery.js';
+import { beginWinnowBatch, trackWinnowThreats, registerWinnowPod, finishWinnowBatch } from '../../world/vestaWinnowRecovery.js';
 import { setEntityDoctrine } from '../../ai/doctrine.js';
 
 export const encounterOrder = 355;
@@ -113,6 +114,8 @@ export const runtime = Object.freeze({
     // The batch is already inside the gather well — real pods on the real field. The well
     // herds them; the discharge throws them; nobody scripts it.
     live.data.pods = [];
+    live.data.winnowRecoveryBatchId = beginWinnowBatch(state, String(live.id));
+    trackWinnowThreats(state, live.data.winnowRecoveryBatchId, d.entsOf(live, 'raider'));
     for (let i = 0; i < POD_COUNT; i++) {
       const a = rng() * Math.PI * 2;
       const r = 46 + rng() * 110;
@@ -124,7 +127,10 @@ export const runtime = Object.freeze({
         ownerName: 'WINNOW SHIFT',
         factionId: 'faction_dmc',
       });
-      if (pod && pod.id != null) live.data.pods.push(pod.id);
+      if (pod && pod.id != null) {
+        live.data.pods.push(pod.id);
+        registerWinnowPod(state, live.data.winnowRecoveryBatchId, pod, `${live.data.winnowRecoveryBatchId}:pod:${i}`);
+      }
     }
 
     live.data.winnow = { x: mouth.x, z: mouth.z };
@@ -170,6 +176,7 @@ export const runtime = Object.freeze({
 
     if (!loadersAlive) {
       releaseCast(live);
+      finishWinnowBatch(state, live.data.winnowRecoveryBatchId, 'crew_down');
       return d.resolve(live, 'crew_down', { speak: true });
     }
 
@@ -182,6 +189,7 @@ export const runtime = Object.freeze({
         kind: 'encounter',
       });
       releaseCast(live);
+      finishWinnowBatch(state, live.data.winnowRecoveryBatchId, 'claim_broken');
       return d.resolve(live, 'claim_broken', { speak: true });
     }
 
@@ -202,22 +210,24 @@ export const runtime = Object.freeze({
       gone += podIds.size - found.size; // despawned/collected pods are gone from the throat
       if (gone >= Math.max(1, Math.ceil(podIds.size * 0.6))) {
         releaseCast(live);
-        return d.resolve(live, 'batch_away', { speak: true });
+        finishWinnowBatch(state, live.data.winnowRecoveryBatchId, 'batch_away');
+      return d.resolve(live, 'batch_away', { speak: true });
       }
     }
 
     if (now >= live.deadlineAt) {
       releaseCast(live);
+      finishWinnowBatch(state, live.data.winnowRecoveryBatchId, 'shift_ended');
       return d.resolve(live, 'shift_ended', { speak: false });
     }
   },
 });
 
 export default defineEncounter(trigger, {
-  // Jettisoned cargo pods resolve pods/pod_cargo_container.glb at spawn — declare it so the
+  // Jettisoned cargo pods resolve places/place_cargo_pod_standard.glb at spawn — declare it so the
   // pending-item decode runway warms the pod body before telegraph resolves (the menu
   // crucible cohort only covers sessions that ran it).
-  warmAssets: ['pods/pod_cargo_container.glb'],
+  warmAssets: ['places/place_cargo_pod_standard.glb'],
   shape: {
     situation: 'claim',
     place: trigger.zoneTypes,

@@ -1,3 +1,4 @@
+import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { ANVIL_RETURN_GAS, ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
 import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';
 import { anvilCollectorWorkStatus, anvilReceiverWorkStatus } from '../systems/anvilWork.js';
@@ -1569,6 +1570,8 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     line = `${callsign(target)}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
+    const winnow = winnowRecoveryHailLines(state, target);
+    if (winnow) detailLines = [line, ...winnow];
   } else if (offer.kind === 'worker' && id === 'route' && isOrchardReceiver(state, target)) {
     const status = orchardReceiverRepairFacts(state, target)?.status;
     const guidance = orchardReceiverRepairGuidance(state, target);
@@ -1626,6 +1629,8 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       : 'ESCORT · NO RECOVERY WINDOW OPEN.';
   } else if (offer.kind === 'trader' && id === 'route') {
     line = routeText(state, target);
+    const winnow = winnowRecoveryHailLines(state, target);
+    if (winnow) detailLines = [line, ...winnow];
   } else if (offer.kind === 'trader' && id === 'manifest') {
     const offered = Array.isArray(offer.actions) && offer.actions.some((action) => action && action.id === 'manifest');
     const manifest = traderManifestForTarget(state, target);

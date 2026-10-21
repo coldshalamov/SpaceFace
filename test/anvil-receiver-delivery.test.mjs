@@ -530,8 +530,39 @@ test('full production native receiver delivers the finite load through Continue 
             if (contact.distance < -0.05 && process.env.ANVIL_RECEIVER_EVIDENCE_DIR) writeFileSync(
               process.env.ANVIL_RECEIVER_EVIDENCE_DIR + '/native-contact-failure.json',
               JSON.stringify({ contact, receiver: participant, target, phases, frames }, null, 2));
+            // Failure-only bounded identity/pose receipt. Never serialize whole entities or WASM.
+            let pairReceipt = '';
+            if (!(contact.distance >= -0.05)) {
+              const native = f.physics._sg02;
+              const text = value => typeof value === 'string' ? value.slice(0, 160) : value ?? null;
+              const vector = value => value ? { x: value.x, y: value.y, z: value.z } : null;
+              const describe = entity => {
+                const rec = native?.records.get(entity.id);
+                return { id: entity.id, type: entity.type,
+                  recordId: text(entity.data?.worldRecordId), stationId: text(entity.data?.stationId),
+                  role: text(entity.data?.itinerary?.role || entity.data?.trafficRole || entity.role),
+                  phase: text(entity.data?.itinerary?.phase), occupantGeneration: entity.occupantGeneration ?? null,
+                  pos: vector(entity.pos), vel: vector(entity.vel), rot: entity.rot,
+                  proxyKey: text(entity.data?.collisionProxy), nativeProxyId: text(rec?.proxyId),
+                  bodyRevision: entity.physicsBody?.revision ?? null, nativeRevision: rec?.revision ?? null,
+                  nativeEntityGeneration: rec?.entity?.occupantGeneration ?? null,
+                  nativeSameEntity: rec?.entity === entity, bodyHandle: rec?.body?.handle ?? null,
+                  colliderCount: rec?.colliders?.length ?? 0,
+                  colliderHandles: rec?.colliders?.slice(0, 32).map(collider => collider.handle) || [],
+                  nativeDynamic: rec?.spec?.dynamic ?? null,
+                  nativePos: rec?.body ? vector(rec.body.translation()) : null,
+                  nativeVel: rec?.body ? vector(rec.body.linvel()) : null };
+              };
+              try { pairReceipt = JSON.stringify({ tick: f.state.tick, simTime: f.state.simTime,
+                nativeTick: native?.tick ?? null, nativeFrameOrigin: vector(native?._frameOrigin),
+                distance: contact.distance, impulse: contact.impulse, normal: vector(contact.normal),
+                dynamic: contact.dynamic, originalPair,
+                participant: describe(participant), target: describe(target) });
+              } catch (error) { pairReceipt = JSON.stringify({ tick: f.state.tick, participantId: participant.id,
+                targetId: target.id, diagnosticError: String(error?.message || error).slice(0, 240) }); }
+            }
             assert.ok(contact.distance >= -0.05,
-              `authored-static/original-pair penetration ${contact.distance} into ${contact.targetId} at ${f.state.tick}`);
+              `authored-static/original-pair penetration ${contact.distance} into ${contact.targetId} at ${f.state.tick}; pair=${pairReceipt}`);
           }
         }
       }
