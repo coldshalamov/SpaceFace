@@ -1,3 +1,5 @@
+import { orchardTowIntercept } from './orchardTowIntercept.js';
+import { effectiveTetherPolicy } from '../combat/attachments.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
@@ -3522,25 +3524,11 @@ export const npcJobsRuntime = {
       }
     }
     if (assist.phase === 'approach' && entry.orchardAssist) {
-      // Acquire a quiet line from the outward side, rather than latching while
-      // crossing the pod at approach speed and turning that velocity into an orbit.
-      const ox=assist.destPos.x-target.pos.x,oz=assist.destPos.z-target.pos.z;
-      const length=Math.hypot(ox,oz)||1,outward=Math.atan2(oz,ox);
-      const dx=target.pos.x+ox/length*300-hull.pos.x;
-      const dz=target.pos.z+oz/length*300-hull.pos.z,dist=Math.hypot(dx,dz);
-      const speed=Math.hypot(hull.vel?.x||0,hull.vel?.z||0);
-      if(dist>20){
-        const closing=Math.min(180,Math.sqrt(40*Math.max(0,dist-15)));
-        const vx=(target.vel?.x||0)+dx/dist*closing-(hull.vel?.x||0);
-        const vz=(target.vel?.z||0)+dz/dist*closing-(hull.vel?.z||0);
-        const aim=Math.atan2(vz,vx),error=Math.hypot(vx,vz);
-        const brake=Math.abs(shortestAngleDelta(aim,hull.rot||0))>CERES_ESCORT_TURN_ONLY_RAD;
-        this._writeIntent(hull,0,brake?0:clamp(error/120,.05,1),!brake&&dist>1200,aim,brake);
-        return;
-      }
-      this._writeIntent(hull,0,0,false,outward,true);
-      if(speed>Math.max(5,Math.hypot(target.vel?.x||0,target.vel?.z||0)+5) || Math.hypot((hull.vel?.x||0)-(target.vel?.x||0),(hull.vel?.z||0)-(target.vel?.z||0))>8)return;
-      if(this._attachTowAssist(entry,hull,target))assist.phase='tow';
+      const def=this.registry?.get('combat')?.kernel?.catalog?.attachments?.get(NPC_TOW_ATTACHMENT_DEF_ID);
+      const reach=def && effectiveTetherPolicy(def,hull,state.runtime?.features)?.maxLength;
+      const command=orchardTowIntercept(hull,target,assist.destPos,resolvePropulsionProfile(hull,state),reach);
+      this._writeIntent(hull,command.moveX,command.moveZ,command.boost,command.aimAngle,command.brake);
+      if(command.ready && this._attachTowAssist(entry,hull,target))assist.phase='tow';
       return;
     }
     if (assist.phase === 'approach') {
