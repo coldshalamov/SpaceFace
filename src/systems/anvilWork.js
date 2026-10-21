@@ -7,7 +7,7 @@ import { validateOrchardTowQuote, ORCHARD_TOW_HOLDER } from '../world/anvilOrcha
 // cargoManifest are existing world-record fields. No private inventory or offscreen production.
 // Mule gameplay stats remain canonical; the collector role selects its authored body.
 // The receiving Mule is interim service hardware until the separate cradle integration.
-import { ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { ensurePhysicsBodySpec, substanceFor } from '../core/physicsAuthority.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { STORMSHIFT_COLLECTOR_COLLISION } from '../data/stormshiftCollectorCollision.js';
 import { PLANET_SITE } from '../data/planets.js';
@@ -294,6 +294,66 @@ function trafficHullEnvelope(e) {
   const proxy = resolveCollisionProxyManifest(e);
   return Math.max(hullEnvelopeWu(e), proxy ? proxyOuterRadiusWu(proxy, e) : 0);
 }
+// A radial exit near the receiving bearing must finish before the tender, not
+// at its occupied 2800-WU center. The existing service approach takes over from
+// this inner forecourt; far-side exits still use the ordinary outer return arc.
+export function anvilBandExitTarget(worker) {
+  const route = itinerary(worker), center = route?.center, home = homeBerth(route);
+  if (!home || !finitePose(worker)) return null;
+  const angle = Math.atan2(worker.pos.z - center.z, worker.pos.x - center.x);
+  const homeAngle = Math.atan2(home.z - center.z, home.x - center.x);
+  const delta = Math.atan2(Math.sin(angle - homeAngle), Math.cos(angle - homeAngle));
+  const radius = ANVIL_WORK.berthRadius - (Math.abs(delta) <= 0.35 ? 160 : 0);
+  return { x: center.x + Math.cos(angle) * radius, z: center.z + Math.sin(angle) * radius };
+}
+
+// Follow the shallow lane clockwise, detouring outward around fixed authored solids.
+// Off-band travel earns no gas: planetRuntime remains the sole eligibility/heat owner.
+// The envelope includes turning/tracking room, not collision immunity. Max blending
+// handles overlapping obstacles without adding their heights or reversing direction.
+export function anvilCollectionTarget(state, worker, native = null) {
+  const center = itinerary(worker)?.center;
+  if (!finitePose(worker) || !Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
+  const angle = Math.atan2(worker.pos.z - center.z, worker.pos.x - center.x) - 0.22;
+  const speed = Math.max(ANVIL_WORK.speed, Math.hypot(worker.vel.x, worker.vel.z));
+  const reverse = Math.max(1, finite(resolvePropulsionProfile(worker, state).reverseAccel));
+  // One steering lookahead plus physical reverse-thrust stopping distance. This
+  // also covers the inward chord/turn lag seen when a civilian resumes after yield.
+  const tracking = speed * 0.75 + speed * speed / (2 * reverse);
+  const ownRadius = trafficHullEnvelope(worker);
+  let radius = ANVIL_WORK.radius;
+  for (const other of state.entityList || []) {
+    if (other === worker || other.alive === false || other.collides === false
+      || !Number.isFinite(other.pos?.x) || !Number.isFinite(other.pos?.z)) continue;
+    const substance = substanceFor(other);
+    if (substance.dynamic || substance.sensor || other.physicsBody?.material === 'massline_sensor') continue;
+    const proxy = resolveCollisionProxyManifest(other);
+    const outer = proxy ? proxyOuterRadiusWu(proxy, other) : hullEnvelopeWu(other);
+    if (!(outer > 0)) continue;
+    const rec = native?.records?.get(other.id);
+    const admitted = rec?.entity === other && rec.body
+      && typeof rec.body.isDynamic === 'function' && typeof rec.body.translation === 'function'
+      && rec.body.isEnabled?.() !== false && rec.body.isValid?.() !== false;
+    // The admitted native owner wins over stale render/entity pose. Cold fixed
+    // landmarks retain the same authored proxy before native residency wakes them.
+    if (admitted && rec.body.isDynamic()) continue;
+    const nativePose = admitted ? rec.body.translation() : null;
+    const useNativePose = Number.isFinite(nativePose?.x) && Number.isFinite(nativePose?.z);
+    const p = useNativePose ? nativePose : other.pos;
+    const origin = useNativePose ? native.getFrameOrigin?.() || native._frameOrigin : null;
+    const x = p.x + finite(origin?.x) - center.x;
+    const z = p.z + finite(origin?.z) - center.z;
+    const distance = Math.hypot(x, z), clearance = outer + ownRadius + tracking;
+    if (Math.abs(distance - ANVIL_WORK.radius) > clearance) continue;
+    const width = Math.min(Math.PI, 0.55 + Math.asin(Math.min(1, clearance / Math.max(1, distance))));
+    const delta = Math.abs(Math.atan2(Math.sin(angle - Math.atan2(z, x)), Math.cos(angle - Math.atan2(z, x))));
+    if (delta >= width) continue;
+    const rise = Math.max(0, distance + clearance - ANVIL_WORK.radius);
+    radius = Math.max(radius, ANVIL_WORK.radius + rise * Math.cos(delta / width * Math.PI / 2) ** 2);
+  }
+  return { x: center.x + Math.cos(angle) * radius, z: center.z + Math.sin(angle) * radius };
+}
+
 export function anvilTrafficYield(state, worker) {
   if (!finitePose(worker)) return null;
   const ownRadius = trafficHullEnvelope(worker);
@@ -694,11 +754,9 @@ export const anvilTrafficMethods = {
       if (route.phase === 'outbound' || route.phase === 'collect') return;
     }
     if (route.phase === 'collect') {
-      // Work clockwise through the open shallow band, away from the authored Dione gate.
-      // The identical target drives both local weather lookahead and physical steering.
-      const angle = Math.atan2(e.pos.z - center.z, e.pos.x - center.x) - 0.22;
-      const target = { x: center.x + Math.cos(angle) * ANVIL_WORK.radius,
-        z: center.z + Math.sin(angle) * ANVIL_WORK.radius };
+      // One actual target owns both weather lookahead and ordinary thrust steering.
+      const target = anvilCollectionTarget(state, e, this._registry?.get?.('physics')?._sg02);
+      if (!target) { hold(e); return; }
       if (orchardWorkerWeather(state, e, target) || used(e) >= ANVIL_WORK.capacity
         || heat >= 0.58 || e.hull < e.hullMax * 0.5) {
         route.phase = 'clear_band'; persist(this, e);
@@ -708,9 +766,9 @@ export const anvilTrafficMethods = {
       }
     }
     if (route.phase === 'clear_band') {
-      const angle = Math.atan2(e.pos.z - center.z, e.pos.x - center.x);
-      if (steer(this, e, { x: center.x + Math.cos(angle) * ANVIL_WORK.berthRadius,
-        z: center.z + Math.sin(angle) * ANVIL_WORK.berthRadius }, 40)) {
+      const target = anvilBandExitTarget(e);
+      if (!target) { hold(e); return; }
+      if (steer(this, e, target, 40)) {
         route.phase = 'return'; persist(this, e);
       }
       return;
