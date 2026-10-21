@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "absent-faction-presence",
-      "date": "2026-10-03",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Choir pilgrim procession at Vesta, Free homestead watch in Io Reach, Helix directorate audit desk at Sedna — the three absent factions manifest",
-      "fingerprint": "verb=manifest,subject=factions,sector=vesta-io-sedna,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "302171248",
-      "verification": "focused_green"
-    },
-    {
       "id": "accept-the-yield-verb",
       "date": "2026-10-03",
       "wf": "WF-05",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "9a8697a3f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-28-last-move-names-sale",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Selling 20 iron at Helios names the sale as the mover while stock recovers; covered by rc-465 suite",
+      "fingerprint": "verb=see,subject=market-mover,sector=helios,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "d4a743673",
       "verification": "focused_green"
     }
   ],
