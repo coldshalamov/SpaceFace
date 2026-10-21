@@ -1,0 +1,23 @@
+{
+  "scope": "Planning artifacts and link helper only; no game tests or repository plan checks run",
+  "markdown_documents": 20,
+  "cloud_packets": 10,
+  "markdown_links": "all pack-internal links resolve",
+  "fenced_blocks": "balanced",
+  "task_contracts": "all six required sections present in every packet",
+  "helper_tests": {
+    "passed": 7,
+    "failed": 0,
+    "cases": [
+      "dry_run_no_write",
+      "apply_exact_addition_preserves_remainder",
+      "idempotent_repeat",
+      "dirty_file_refused",
+      "existing_lock_refused_not_removed",
+      "missing_pack_refused",
+      "unrecognized_anchor_refused"
+    ]
+  },
+  "runtime_tests": "not run",
+  "rendered_acceptance": "not run"
+}
