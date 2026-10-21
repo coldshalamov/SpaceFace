@@ -114,45 +114,6 @@
   ],
   "units": [
     {
-      "id": "infer-cache-contents",
-      "date": "2026-10-08",
-      "wf": "WF-10",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Sealed caches open into real latchable cargo instead of an empty discovery toast",
-      "fingerprint": "verb=open,subject=cache-pois,sector=helios-ceres-sker-rhea-eris,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "df8ced8c4",
-      "verification": "focused_green"
-    },
-    {
-      "id": "infer-mayday-caller-linkup",
-      "date": "2026-10-08",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Rescue craft chase the live mayday caller and route-held workers' distress finally dispatches help",
-      "fingerprint": "verb=respond,subject=rescue-distress,sector=civilian-lanes,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "80fb0b335",
-      "verification": "focused_green"
-    },
-    {
-      "id": "infer-site-pod-destination",
-      "date": "2026-10-08",
-      "wf": "WF-06",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Worksite pods are re-addressable to a chosen buyer, visible in flight, and named in the delivery news",
-      "fingerprint": "verb=route,subject=site-courier-pods,sector=helios-worksites,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "ccc3fe86d",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-wreck-cargo-class-line",
       "date": "2026-10-11",
       "wf": "WF-14",
@@ -1671,6 +1632,45 @@
       "references": [],
       "integration": "live",
       "commit": "7cb721017",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-05-drive-key-no-help",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "travelBurn fallback is F8, not KeyH; the drive engages without opening Help; lesson names the real key",
+      "fingerprint": "verb=press,subject=travel-burn-key,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "a2ac02403",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-06-rail-names-real-key",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Rail labels prefer a non-lock code; NUM LOCK only prints when it is the sole binding",
+      "fingerprint": "verb=see,subject=power-rail-label,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "a2ac02403",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-08-markers-off-rail",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Threat markers reserve the live bottom-left Cluster; a lower-left hostile draws beside the rail, never on BLAST 2",
+      "fingerprint": "verb=see,subject=threat-marker,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "a2ac02403",
       "verification": "focused_green"
     }
   ],
