@@ -350,9 +350,9 @@ const WORK_LINE_VARIANTS = [
 ];
 const PLACE_COLOR_VARIANTS = [
   (noun, placeLabel) => `Boost all you like; ${placeLabel} keeps its own volume.`,
-  (noun, placeLabel) => `${placeLabel} sounds the same at idle or at full burn.`,
+  (noun, placeLabel) => `The ${placeLabel} sounds the same at idle or at full burn.`,
   (noun, placeLabel) => `The noise in ${placeLabel} was running before your drive.`,
-  (noun, placeLabel) => `${placeLabel} hums at one level. Your throttle is not it.`,
+  (noun, placeLabel) => `The ${placeLabel} hums at one level. Your throttle is not it.`,
   (noun, placeLabel) => `Full burn changes the distance, not how ${placeLabel} sounds.`,
   (noun, placeLabel) => `Nobody in ${placeLabel} looks up for engine noise.`,
 ];

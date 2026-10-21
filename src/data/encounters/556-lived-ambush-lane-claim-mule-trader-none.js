@@ -101,7 +101,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "ambush lane sounds the same at idle or at full burn.",
+      "line": "The ambush lane sounds the same at idle or at full burn.",
       "channel": "info",
       "next": "p3"
     },

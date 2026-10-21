@@ -109,7 +109,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "planetary mass hums at one level. Your throttle is not it.",
+      "line": "The planetary mass hums at one level. Your throttle is not it.",
       "channel": "info",
       "next": "p3"
     },

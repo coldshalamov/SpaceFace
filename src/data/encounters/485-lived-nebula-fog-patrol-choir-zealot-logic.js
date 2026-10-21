@@ -109,7 +109,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "nebula fog sounds the same at idle or at full burn.",
+      "line": "The nebula fog sounds the same at idle or at full burn.",
       "channel": "info",
       "next": "p3"
     },
