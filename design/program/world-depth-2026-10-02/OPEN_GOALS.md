@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 07:44 UTC. All nine outcomes remain open. This register supports the
+Updated 21 October 2026, 08:03 UTC. All nine outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -11,23 +11,23 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: open. Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage now have independent public draft delivery. Full ordinary-route, device, performance and experience acceptance remain incomplete.
 - Owner: expansion integration and exact feature owners.
 - Evidence: IMPLEMENTATION.md, TWENTY_CONCEPT_MAP.json; local b08ba532/d70c0413; public PR461 and PR462; finite Independent Seam is public PR464; physical Tethys count-lane service is public PR466.
-- Next: Verify actual b01 successor CI, select the next bounded connected-sector increment and continue normal-route/live-camera acceptance. Published Ceres native-shape and Vesper return-greeting work are scoped advances, not completion of any of the nine larger goals.
+- Next: Complete the active Tann Winnow recovery unit with independent review and real movement/settlement/loss/replay evidence; separately investigate the new CI receipt failure without a whole-fixture rerun. Original published baseline remains b01; no larger goal is complete.
 - Awaiting user: final acceptance when adequate evidence exists; no optional engineering decision.
 
 ## SF-ORCHARD
 - Outcome: finite authored three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
 - State: OPEN. Rendezvous source is published in seven paths and passes 75 focused checks. Native proof preserves the original three units through cooperation wait/intake, not moving deceleration. Earlier cleanup policy and finite RETURN GAS remain published. Receiver activation holds are unchanged; the bank is dormant.
 - Owner: build_connected_world_activity owns the same RETURN GAS feature's explicit Hail rendezvous; review_orchard_physical_integration independently reviews. Asset owner retains held receiver operations; root owns current CI and publication coordination.
-- Evidence: Verified PR480 https://github.com/coldshalamov/SpaceFace/commit/39ec9e794dd1b14bdd13d17597933bd6b7af738d ; tree 4e93d35e2a67bf0a64c02dfea0ac3d00bafc880c; sole parent c4cf86ba6fb9632eb87caa957ef1a71007f2f4b8. Exactly seven source/test paths; rendezvous 75 focused checks; original three-unit native cooperation-wait/intake proof. Final durable recovery is separately verified; no private identifier published.
-- Next: Retain bounded rendezvous and original-custody evidence while keeping moving-deceleration and live graphical acceptance open. Follow exact-head CI separately; receiver registration/census approvals remain unchanged.
+- Evidence: Published rendezvous proof remains scoped to 75 focused checks and original three-unit cooperation wait/intake. Actual b01 CI now passes static1 manifest and all 44 new cases, but the native full route fails at tick 30,068 on receipt 13 versus ledger 1 under newer merge base d7af. Cause is unestablished; do not inherit earlier route success onto this merge.
+- Next: CI owner investigates the exact receipt/ledger failure without rerunning the whole fixture or assigning an unproved cause. Keep ordinary moving-deceleration and live graphical acceptance open. Original receiver registration/census holds remain unchanged.
 - Awaiting user: final gameplay/visual acceptance, not routine implementation choices.
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets delivered as verified public commits and draft PRs, preserving newer work.
-- State: OPEN. Verified PR480 b01eedbb75a737ad419a19a91432e332d3b273b6, tree c8f4e30368adec23a46755742c2f6df8eb2d8c31, sole cb0657c0542e0a5bb2cbb593c092a773f0c5e504 parent, publishes exactly 16 paths. Ceres native collider and Vesper earned-return source are delivered; successor CI is pending verification. Orchard holds remain unchanged.
+- State: OPEN. Public source remains b01eedbb75a737ad419a19a91432e332d3b273b6, tree c8f4e30368adec23a46755742c2f6df8eb2d8c31. Tann Winnow recovery is active unpublished work. Actual b01 static1 manifest and 44 new cases pass, but native full-route receipt assertion fails; no aggregate-green claim.
 - Owner: root publication integration, with per-PR exact-head CI owners.
-- Evidence: https://github.com/coldshalamov/SpaceFace/commit/b01eedbb75a737ad419a19a91432e332d3b273b6 ; 78 root checks with 1,166 audited modules and 18 filesystem inputs. Final tree differs only in JSON formatting from tested source; final manifest regression adds one pass. Source-parts tris 9,665 correct the newly found manifest CI failure, not an aggregate-CI claim.
-- Next: CI owner follows actual b01 successor results to terminal and preserves attribution. Root selects the next connected-sector unit while source owners' completed paths remain released; no new user action needed.
+- Evidence: Published baseline https://github.com/coldshalamov/SpaceFace/commit/b01eedbb75a737ad419a19a91432e332d3b273b6 . Newer merge-base d7af native route fails at tick 30,068, leading receipt 13 versus ledger 1; cause not established and CI owner investigates. Earlier 78 root checks and final manifest evidence remain historical.
+- Next: Complete targeted CI attribution, preserve reviewer defects and qualify a coherent Tann successor before publication. Current source/model and held Orchard operations remain distinct; this register changes no PR480 source.
 - Awaiting user: Specific partsLibrary and census JSON upload approvals remain held; expected blobs read absent at 06:08 UTC. Generated census has never been attempted. Separate diagnostic approvals and final acceptance remain unchanged; no repeated question or restricted payload here.
 
 ## SF-RECOVER
@@ -35,7 +35,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: OPEN. GitHub preserves Ceres's 17-prism migration and Vesper earned-return behavior at b01eedbb75a737ad419a19a91432e332d3b273b6. Old binary snapshot validity before migration and safe rejection afterward are proved; actual SaveSystem scalar reconstruction rebuilds 17 colliders. Dormant Orchard bank and held activation remain distinct.
 - Owner: exact source owners and integration.
 - Evidence: Fresh-route archive SHA256 b25a3bbd055059d22f5a4b9f9e474799439e71679de64321e40b9a9559d6dc24; failure/continuation archive 3d025818300cd973f2fae9fbf82c0f4419c7ae472d07b8f506519f402cede59d; terminal-CI archive f9aa94ece494d869145d8faf3ae396ed13888019a522a618af3c05c0eabed0bf. Roundtrip and archive checks passed. Final three source texts also survived independently and reconstructed the exact reviewed Git tree before publication. Older plans/assets/failed attempts remain retained.
-- Next: Preserve exact migration/Continue evidence and future connected-sector work with source/model/acceptance distinctions. Keep private recovery identifiers and restricted diagnostics outside the public register.
+- Next: Preserve active Tann source and identity/save-load proof alongside reviewer findings, without relabeling unproved movement/settlement/loss/replay as recovered success. Keep private identifiers/restricted diagnostics out of the public register.
 - Awaiting user: no new routine recovery decision; separately pending publication operations remain outside this checkpoint.
 
 ## SF-VISUALS
@@ -64,10 +64,10 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
-- State: OPEN. Published Ceres fairlead uses 17 native convex prisms with custody, recorder tow and Continue reconstruction preserved. Vesper requires an actually performed phrase plus real departure for a once-earned return greeting that waits for voice:surface. Continue cannot fake a visit; follow state explicitly remains unrestored. Normal-route and broader experience acceptance remain open.
-- Owner: Completed Ceres/Vesper source owners have released their paths. Root selects the next connected-sector increment; current CI owner verifies b01 successor results.
-- Evidence: PR480 b01eedbb75a737ad419a19a91432e332d3b273b6; 78 scoped root checks with 1,166 modules and 18 filesystem inputs, plus final manifest regression. Historical native/custody and prior world evidence remains in EXECUTION_STATUS.md, with acceptance scope preserved.
-- Next: Select a concrete next connected-sector unit grounded in the public register and actual owners/code, then implement and independently qualify it. Continue real approach/return and graphical acceptance without treating Continue as a fabricated visit or claiming follow restoration.
+- State: OPEN. Tann Winnow recovery is the active connected feature. First actual integration check passes 1/1: original named Tann keeps the prior authored job, original five two-unit pods preserve save/load identities, and duplicate registration creates no units. Movement, settlement, loss and replay are unproved; reviewer defects remain active.
+- Owner: build_tann_winnow_recovery owns new src/data/vestaWinnowRecovery.js, src/world/vestaWinnowRecovery.js, test/vesta-winnow-recovery.test.mjs and test/fixtures/vesta-winnow-recovery-native.mjs, narrow encounters/355-the-winnow-throw.js and traffic.js integration, and mining.js split lineage only. review_tann_finite_recovery independently reviews.
+- Evidence: One actual integration test passes identity/authored-job/save-load/duplicate-registration checks only. Public baseline remains b01/c8f; no Tann movement or finite-settlement route success is claimed. Published Ceres/Vesper evidence remains in EXECUTION_STATUS.md.
+- Next: Resolve reviewer defects; prove actual movement, finite partial settlement, real loss and replay, preserving original actors and split lineage without extra units. Continue the separate targeted CI receipt investigation; no whole-fixture rerun or premature completion.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
 
 ## SF-SECTOR-COHERENCE
@@ -75,5 +75,5 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: OPEN. SECTOR_EXPERIENCE_REGISTER_2026-10-21.md is now public in the 21-path Ceres increment. Its inventory of 25 actual sectors, 35 catalog stations, 153 catalog POIs, 58 activity pockets and 116 actor slots remains source/catalog evidence, not runtime appearance or accepted coherence.
 - Owner: Root coordinates sector review. map_sector_experience_coherence owns SECTOR_EXPERIENCE_REGISTER_2026-10-21.md; current gameplay/story/source owners retain their paths.
 - Evidence: Public register in https://github.com/coldshalamov/SpaceFace/commit/cb0657c0542e0a5bb2cbb593c092a773f0c5e504 ; initial counts remain inventory rather than runtime proof. User authorization and reminder update remain recorded in EXECUTION_STATUS.md.
-- Next: Update and use the public sector register against actual arrival, recurring life, consequences, return and Save/Continue evidence. Ceres native collision migration and Vesper earned-return behavior are published advances; root selects the next connected-sector increment. Catalog counts still do not prove runtime appearance or whole-sector acceptance.
+- Next: Use the public sector register to connect the active Tann Winnow work to real authored actors, finite pods, persistence and consequences. Preserve the first identity proof's limits while requiring movement/settlement/loss/replay evidence; retain source/catalog versus runtime appearance distinctions.
 - Awaiting user: no optional input pending; proceed with the authorized inventory and review.
