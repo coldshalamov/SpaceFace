@@ -32,7 +32,7 @@ import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/peri
 import { queryNearbyEntities, hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { hasMachineProtocol } from '../data/alienEcology.js';
-import { tickProgram, assignTemplate, clearTemplate, assignReaction, clearReaction, resolveStationDisplayName, TEMPLATES } from './alphabet.js';
+import { tickProgram, assignTemplate, clearTemplate, assignReaction, clearReaction, resolveStationDisplayName, resolveProgram, validateProgram, hasProgram, TEMPLATES } from './alphabet.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ASTEROIDS } from '../data/mining.js';
 import {
@@ -739,6 +739,8 @@ export const automation = {
         else if (g.entityIds && g.entityIds.length) g.entityIds = [];
       }
 
+      if (hasProgram(g) && g.sectorId !== curSector) g.ratePerMin = 0;
+
       // Away-sector groups are aggregated with their local outposts once per minute. Keeping them
       // out of the fixed tick preserves the observable-when-present / averaged-when-absent contract.
       if (g.sectorId !== curSector) continue;
@@ -746,7 +748,7 @@ export const automation = {
       // PROGRAM PATH (V2 §4 / cut-list #28): if the group has an assigned alphabet template,
       // run it instead of the legacy mine-to-buffer loop. PQ-177.06: ore lands in the operation
       // shipment, never the player hold. Depot sales move that shipment once, with a receipt.
-      if (g.program && TEMPLATES[g.program.templateId]) {
+      if (hasProgram(g)) {
         this._runProgrammedGroup(g, def, dt, curSector);
         if (this._burnOperatingFuel(g, def, dt)) continue;
         g.status = 'program';
@@ -792,6 +794,11 @@ export const automation = {
     ctx.curSector = curSector;
     ctx.diagnostics = this._diag;
     ctx.bus = this.bus;
+    if (g.program?.blocked) {
+      this._parkDroneEntities(g, dt);
+      g.ratePerMin = 0;
+      return;
+    }
     tickProgram(g, ctx, dt);
     this._syncProgrammedOperation(g, def, curSector);
   },
@@ -811,7 +818,7 @@ export const automation = {
         // A depot's outer spars/ring extend beyond its coarse collision radius. Hand cargo off
         // outside the authored dock envelope, leaving room for the physical braking distance.
         ? Math.max(60, Number(beacon.entity.data?.dockRadius || beacon.entity.radius) + 24)
-        : 60;
+        : beacon.bodyId ? Math.max(60, (Number(beacon.entity?.radius) || 0) + 24) : 60;
     let lead = null;
     for (const id of g.entityIds) {
       const e = getEnt(id);
@@ -916,9 +923,9 @@ export const automation = {
   // Sell the operation shipment at the depot. Never reads or writes the player hold.
   // Station price is quoted at this call. A pending intent survives save/reload so a retry
   // returns the same receipt instead of paying twice.
-  _programSellCargo(g, stationId) {
+  _programSellCargo(g, stationId, goodId = g.oreType || DRONE_ORE_ID) {
     ensureShipment(g);
-    const oreId = g.oreType || DRONE_ORE_ID;
+    const oreId = goodId;
     let pending = g.pendingSale;
     if (pending && pending.intentId && g.saleReceipts && g.saleReceipts[pending.intentId]) {
       const sealed = g.saleReceipts[pending.intentId];
@@ -1020,20 +1027,24 @@ export const automation = {
       // fan the drones out around the field origin so they don't stack on one point
       const ang = (k / count) * Math.PI * 2;
       const spread = recoveryPos && k === 0 ? 0 : DRONE_SPREAD;
-      const pos = { x: origin.x + Math.cos(ang) * spread, z: origin.z + Math.sin(ang) * spread };
+      const motion = !recoveryPos && g.program?.kind === 'custom' ? g.programMotion?.[k] : null;
+      const pos = motion?.pos || { x: origin.x + Math.cos(ang) * spread, z: origin.z + Math.sin(ang) * spread };
       // collides:false on purpose — physics' pickup branch treats any colliding type:'drone' as a
       // collector and would silently vacuum (and destroy) the player's loose ore pickups with a
       // non-player collectorId. Flight V3 steers these bodies through Rapier to a standoff;
       // this flag excludes the pickup collector path, not the physics authority.
       const ent = spawn({
         type: 'drone', team: 0, factionId: 'faction_player',
-        pos, rot: ang,
+        pos, rot: motion?.rot ?? ang, ...(motion ? { vel: motion.vel, angVel: motion.angVel } : {}),
         radius: DRONE_ENTITY_RADIUS, mass: 6, collides: false,
-        hull: def.durabilityMax || 40, hullMax: def.durabilityMax || 40,
+        hull: motion?.hull ?? (def.durabilityMax || 40), hullMax: motion?.hullMax ?? (def.durabilityMax || 40),
         maxSpeed: DRONE_SPEED, drag: 1.4,
-        data: { kind: 'mining_drone', groupId: g.id, targetAstId: null },
+        data: { kind: 'mining_drone', groupId: g.id, targetAstId: null, ...(motion ? restoreDroneFlightData(motion) : {}) },
       });
-      if (ent) g.entityIds.push(ent.id);
+      if (ent) {
+        g.entityIds.push(ent.id);
+        if (motion) g.programMotion[k] = null;
+      }
     }
   },
 
@@ -1289,7 +1300,7 @@ export const automation = {
       // Alphabet steps resolve live beacons, steer rendered entities, and may touch the current
       // player's cargo. None of those are valid proxies for a remote sector. Keep the assignment
       // intact and park it until the logistics phase provides a program-aware averaged route model.
-      if (g.program && TEMPLATES[g.program.templateId]) {
+      if (hasProgram(g)) {
         g.status = 'program';
         // Away-sector drones still pay upkeep for the settle window through the offline/upkeep
         // charge — book it into the operation cycle so a parked-out-of-sector run reconciles the
@@ -1333,7 +1344,7 @@ export const automation = {
     // Only residual ore occupies the drone's physical buffer after the coarse transfer settles.
     for (const g of a.drones) {
       if (!g || g.sectorId === currentSectorId || g.status === 'distressed' || g.status === 'stranded'
-        || (g.program && TEMPLATES[g.program.templateId])) continue;
+        || (hasProgram(g))) continue;
       const def = DRONE_BY_ID.get(g.defId) || g;
       const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0);
       g.buffer = Math.min(cap, Math.max(0, Number(g.buffer) || 0));
@@ -1672,10 +1683,10 @@ export const automation = {
     a.accumulators.upkeepDebt = Math.max(0, (a.accumulators.upkeepDebt || 0) - cost.upkeepCr);
     a.meta.graceTimer = 0;
     if (g.status === 'distressed') {
-      g.status = g._prevStatus || (g.program?.templateId ? 'program' : 'mining');
+      g.status = g._prevStatus || (hasProgram(g) ? 'program' : 'mining');
       delete g._prevStatus;
     }
-    if (g.status === 'stranded') g.status = g.program?.templateId ? 'program' : 'mining';
+    if (g.status === 'stranded') g.status = hasProgram(g) ? 'program' : 'mining';
     resumeAfterFuel(g, g.fuel, (DRONE_BY_ID.get(g.defId) || g).upkeepPerMin || 0);
     this._clearDroneRecovery(g);
     this.bus.emit('automation:droneRecovered', {
@@ -1763,7 +1774,7 @@ export const automation = {
     const dtSec = Math.max(0, Number(dt) || 0);
     // SF-115: upkeep accrues whenever this tick is charging it — _upkeepOf already scales to the
     // operation state, so idle miners and non-miner templates book what _drainUpkeep bills.
-    if (g.operation && g.program && g.program.templateId) {
+    if (g.operation && hasProgram(g)) {
       recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * dtSec });
     }
     if (g.program?.templateId === 'mine_to_depot'
@@ -1772,7 +1783,7 @@ export const automation = {
     g.fuel = Math.max(0, fuelBefore - rate * dtSec);
     // SF-115: the per-cycle ledger books actual inputs — fuel burned and upkeep accrued while the
     // machine runs — so the closed breakdown reconciles credits and inventory, not a rate guess.
-    if (g.operation && g.program && g.program.templateId) {
+    if (g.operation && hasProgram(g)) {
       recordCycleInput(g, { fuelUnits: fuelBefore - g.fuel });
     }
     if (g.fuel > 0) {
@@ -1812,6 +1823,7 @@ export const automation = {
   },
 
   _syncProgrammedOperation(g, def, curSector) {
+    if (g.program?.kind === 'custom') { g.ratePerMin = 0; return; }
     if (g.program?.templateId !== 'mine_to_depot') return;
     ensureShipment(g);
     const cap = Math.max(0, Number(g.bufferCap || (def && def.bufferCap)) || 0) || 40;
@@ -2096,7 +2108,7 @@ export const automation = {
       localFeeders: (a.drones || []).filter((g) => (
         g && g.sectorId === o.sectorId && g.status !== 'distressed'
         && g.status !== 'stranded'
-        && !(g.program && TEMPLATES[g.program.templateId])
+        && !(hasProgram(g))
       )).length,
     };
     return plan;
@@ -2109,7 +2121,7 @@ export const automation = {
         && g.sectorId === o.sectorId
         && g.status !== 'distressed'
         && g.status !== 'stranded'
-        && !(g.program && TEMPLATES[g.program.templateId])
+        && !(hasProgram(g))
         && (goodId == null || (g.oreType || DRONE_ORE_ID) === goodId)
         && (g.buffer || 0) > 0
       ))
@@ -2262,7 +2274,7 @@ export const automation = {
           x.status = x._prevStatus || 'idle'; delete x._prevStatus;
           if (list === a.drones) {
             if ((Number(x.fuel) || 0) > 0) {
-              if (x.status === 'stranded') x.status = x.program?.templateId ? 'program' : 'mining';
+              if (x.status === 'stranded') x.status = hasProgram(x) ? 'program' : 'mining';
               resumeAfterFuel(x, x.fuel, (DRONE_BY_ID.get(x.defId) || x).upkeepPerMin || 0);
               this._clearDroneRecovery(x);
             } else applyFuelShortage(x);
@@ -2467,18 +2479,54 @@ export const automation = {
 
   // Assign (or clear) an alphabet program on a drone group. The drone then runs the template
   // instead of the legacy mine-to-buffer loop — mining into real cargo + selling at a depot.
-  assignProgram(droneId, templateId, reaction = null) {
+  assignProgram(droneId, instruction, reaction = null) {
     const g = this.state.automation.drones.find((x) => x.id === droneId);
     if (!g) return false;
-    if (!templateId) { clearTemplate(g); this.toast('Drone program cleared — the drone returns to default mining', 'info'); return true; }
-    if (!TEMPLATES[templateId]) { this.toast('That drone program is not available at this deck', 'error'); return false; }
-    assignTemplate(g, templateId, reaction);
+    let custom = null;
+    if (instruction && typeof instruction === 'object') {
+      const result = validateProgram(instruction, { state: this.state, group: g });
+      if (!result.ok) {
+        const { reason, stepIndex, message } = result;
+        this.bus.emit('automation:programRejected', { id: g.id, reason, stepIndex, message });
+        this.toast(message, 'error');
+        return false;
+      }
+      custom = result.program;
+    } else if (instruction && !TEMPLATES[instruction]) {
+      const message = 'Step 1: That drone program is not available at this deck';
+      this.bus.emit('automation:programRejected', { id: g.id, reason: 'invalid_program', stepIndex: 0, message });
+      this.toast(message, 'error');
+      return false;
+    }
+    // Committed receipts stay sealed. Only a quote awaiting commit is cancelled. Warm
+    // flight records belong to the outgoing program — a reassigned or cleared group must
+    // not respawn its drones at the old loop's poses.
+    g.pendingSale = null;
+    g._lastSaleBlock = null;
+    g.programMotion = null;
+    if (!instruction) {
+      clearTemplate(g);
+      this.toast('Drone program cleared — the drone returns to default mining', 'info');
+      return true;
+    }
+    if (custom) {
+      // The reaction slot is protocol-owned, not authored: an assigned token or an
+      // explicit 'none' survives a loop edit, and an absent slot stays absent so the
+      // FLT-01 default flee still applies once the machine protocol is unlocked.
+      const priorReaction = g.program?.reaction;
+      g.program = custom;
+      if (priorReaction != null) g.program.reaction = priorReaction;
+      else delete g.program.reaction;
+      g.programState = { pc: 0, waitT: 0, cargoWasFull: false, interrupt: null,
+        reactionLatched: false, stepMoved: 0, cycles: 0, blockedReason: null };
+    } else assignTemplate(g, instruction, reaction);
+    const definition = resolveProgram(g);
     this.bus.emit('automation:programAssigned', {
-      kind: 'drone', id: g.id, defId: g.defId, templateId,
-      reaction: g.program && g.program.reaction ? g.program.reaction.id : null,
-      sectorId: g.sectorId || null,
+      kind: 'drone', id: g.id, defId: g.defId, templateId: custom ? null : instruction,
+      programKind: custom ? 'custom' : 'template', name: definition.name,
+      reaction: g.program?.reaction?.id || null, sectorId: g.sectorId || null,
     });
-    this.toast('Drone program: ' + TEMPLATES[templateId].name, 'success');
+    this.toast('Drone program: ' + definition.name, 'success');
     return true;
   },
 
@@ -2584,7 +2632,8 @@ export const automation = {
     const distressed = g.status === 'distressed';
     resumeAfterFuel(g, max, def.upkeepPerMin || 0);
     g._fuelStrandNotified = false;
-    if (g.program && TEMPLATES[g.program.templateId]) {
+    if (hasProgram(g)) {
+      if (!distressed) g.status = 'program';
       this._syncProgrammedOperation(g, def, (this.state.world && this.state.world.currentSectorId) || g.sectorId);
     } else {
       g.status = (g.buffer || 0) >= (g.bufferCap || def.bufferCap || 0) - 1e-6 ? 'idle' : 'mining';
@@ -2960,7 +3009,7 @@ export const automation = {
     for (const g of a.drones) {
       const def = DRONE_BY_ID.get(g.defId) || g;
       const isLegacyWorker = g.status !== 'distressed'
-        && !(g.program && TEMPLATES[g.program.templateId]);
+        && !(hasProgram(g));
       const fuelRate = Math.max(0, Number(def.fuelRate) || 0);
       const ownedSec = isLegacyWorker && fuelRate > 0
         ? Math.min(elapsed, Math.max(0, Number(g.fuel) || 0) / fuelRate)
@@ -2969,7 +3018,7 @@ export const automation = {
       offlineUpkeep += share;
       // SF-115: the offline window charges real upkeep — book it so the cycle that closes on the
       // next depot visit doesn't report a run that never paid to exist.
-      if (share > 0 && g.operation && g.program && g.program.templateId) {
+      if (share > 0 && g.operation && hasProgram(g)) {
         recordCycleInput(g, { upkeepCr: share });
       }
     }
@@ -2996,7 +3045,7 @@ export const automation = {
       && g.status !== 'distressed'
       && g.status !== 'stranded'
       && !isFuelStranded(g)
-      && !(g.program && TEMPLATES[g.program.templateId])
+      && !(hasProgram(g))
     ));
     const orderedOutposts = [...a.outposts].sort(compareStableId);
     const parkOfflineDrone = ({ g, def }) => {
@@ -3373,6 +3422,31 @@ export const automation = {
     // entityIds are runtime-only; a fresh load/normalize starts with none so they re-spawn in-sector.
     for (const g of a.drones) {
       g.entityIds = [];
+      if (g.program?.kind === 'custom') {
+        // Reaction tokens are owned by FLT-01, separately from loop authoring validation.
+        const reaction = g.program.reaction;
+        const result = g.program.blocked ? { ok: false, message: g.program.blocked }
+          : validateProgram({ ...g.program, reaction: 'none' }, { group: g, validateTargets: false });
+        if (result.ok) {
+          g.program = result.program;
+          // validateProgram drops/absorbs reaction ('none' is the only authorable value); a saved
+          // absent or null reaction must survive as absent so FLT-01's default flee still applies.
+          if (reaction == null) delete g.program.reaction; else g.program.reaction = reaction;
+        } else {
+          g.program = { kind: 'custom', version: 1, name: 'Blocked saved loop', steps: [], blocked: result.message,
+            ...(reaction != null ? { reaction } : {}) };
+        }
+      }
+      if (hasProgram(g)) {
+        const ps = g.programState || {};
+        const count = resolveProgram(g)?.steps?.length || 1;
+        g.programState = { pc: Number.isInteger(ps.pc) && ps.pc >= 0 && ps.pc < count ? ps.pc : 0,
+          waitT: finiteProgramNumber(ps.waitT), stepMoved: Math.floor(finiteProgramNumber(ps.stepMoved)),
+          cycles: Math.floor(finiteProgramNumber(ps.cycles)), cargoWasFull: !!ps.cargoWasFull,
+          interrupt: ps.interrupt ? JSON.parse(JSON.stringify(ps.interrupt)) : null,
+          reactionLatched: !!ps.reactionLatched, blockedReason: g.program.blocked || (typeof ps.blockedReason === 'string' ? ps.blockedReason : null) };
+      }
+      g.programMotion = normalizeProgramMotion(g.programMotion, g.count);
       g.recovery = normalizeDroneRecovery(g.recovery);
       delete g._recoveryBeaconId;
       migrateDroneOperation(g);
@@ -3450,7 +3524,12 @@ export const automation = {
     const drones = a.drones.map((g) => {
       this._rememberDroneRecoveryPosition(g);
       const { entityIds, _recoveryBeaconId, ...rest } = g;
-      return { ...rest, recovery: normalizeDroneRecovery(g.recovery) };
+      const saved = JSON.parse(JSON.stringify(rest));
+      if (g.program?.kind === 'custom') {
+        const live = (entityIds || []).map((id) => this.state.entities.get(id)).filter((e) => isGroupDrone(e, g));
+        saved.programMotion = live.length ? normalizeProgramMotion(live, g.count) : normalizeProgramMotion(g.programMotion, g.count);
+      }
+      return { ...saved, recovery: normalizeDroneRecovery(g.recovery) };
     });
     const outposts = a.outposts.map((o) => { const { entityId, ...rest } = o; return rest; });
     // Fleet entries carry a transient _liveId (the live wingman entity id, set by systems/wingmen.js
@@ -3664,11 +3743,17 @@ function makeProgramContext(host) {
     steerTo(beacon, ddt) {
       return host._steerGroupTo(this.group, this.def, beacon, ddt, this.curSector);
     },
+    park() { host._parkDroneEntities(this.group, 0); },
     mineIntoCargo(ddt, rock) {
       return host._programMineIntoCargo(this.group, this.def, ddt, rock);
     },
-    sellMinedCargo(stationId) {
-      return host._programSellCargo(this.group, stationId);
+    sellMinedCargo(stationId, goodId) {
+      return host._programSellCargo(this.group, stationId, goodId);
+    },
+    shipmentQty(goodId) { return shipmentQty(this.group, goodId); },
+    transferFreight(args) {
+      return host._registry?.get('claims')?.transferDroneFreight({ ...args, groupId: this.group.id })
+        || { ok: false, moved: 0, reason: 'Claim freight service unavailable' };
     },
     dropBeacon() {
       return host._registry?.get('beacons')?.deployDrone(this.group) || false;
@@ -3818,4 +3903,59 @@ function routeLabel(route) {
 function prettyStation(id) {
   const station = STATION_SECTOR.get(id);
   return (station && station.name) || titleCaseWords(String(id || '?').replace(/^station_/, ''));
+}
+
+// Only bounded scalar motion data crosses the save boundary. Null slots keep group order.
+function finiteProgramNumber(n) { return Number.isFinite(n) && n >= 0 ? n : 0; }
+// Deep-clone a saved warm-state channel with non-finite numbers clamped to 0 — a crafted
+// partial ledger (e.g. {energySpent: 5} missing sibling keys) must not poison applyResourceDelta.
+function finiteClone(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (Array.isArray(value)) return value.map(finiteClone);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const key of Object.keys(value)) out[key] = finiteClone(value[key]);
+    return out;
+  }
+  return value;
+}
+// Warm-start channels the record may carry: live entities publish them under data.*, saved records
+// keep them flat. A mid-flight reload must resume the drivetrain spool and the in-flight intent —
+// a cold restart re-ramped cmdThrottle from zero and lagged the MOVE by ~20 ticks (R403 review).
+function normalizeMotionIntent(i) {
+  if (!i || typeof i !== 'object') return null;
+  return {
+    moveX: Number.isFinite(i.moveX) ? i.moveX : 0,
+    moveZ: Number.isFinite(i.moveZ) ? i.moveZ : 0,
+    boost: i.boost === true, brake: i.brake === true,
+    fire: i.fire === true, fireGroup: i.fireGroup == null ? null : i.fireGroup,
+    aimAngle: Number.isFinite(i.aimAngle) ? i.aimAngle : 0,
+  };
+}
+
+function normalizeProgramMotion(records, count) {
+  if (!Array.isArray(records)) return [];
+  return records.slice(0, Math.max(1, Math.min(64, Number(count) || 1))).map((r) => {
+    if (!r || ![r.pos?.x, r.pos?.z, r.vel?.x, r.vel?.z, r.rot, r.angVel, r.hull, r.hullMax].every(Number.isFinite)
+      || r.hullMax <= 0 || r.hull < 0 || r.hull > r.hullMax) return null;
+    const out = { pos: { x: r.pos.x, z: r.pos.z }, vel: { x: r.vel.x, z: r.vel.z },
+      rot: r.rot, angVel: r.angVel, hull: r.hull, hullMax: r.hullMax };
+    const data = (r.data && typeof r.data === 'object') ? r.data : r;
+    const intent = normalizeMotionIntent(data.intent);
+    if (intent) out.intent = intent;
+    for (const key of ['propulsionRuntime', 'propulsionResources']) {
+      if (data[key] && typeof data[key] === 'object') out[key] = finiteClone(data[key]);
+    }
+    return out;
+  });
+}
+
+// Re-publish the saved flight channels onto a respawned hull. Flight V3 still owns every force and
+// velocity write; this only hands back the state it had already published before the save.
+function restoreDroneFlightData(motion) {
+  const out = {};
+  for (const key of ['intent', 'propulsionRuntime', 'propulsionResources']) {
+    if (motion[key] && typeof motion[key] === 'object') out[key] = JSON.parse(JSON.stringify(motion[key]));
+  }
+  return out;
 }

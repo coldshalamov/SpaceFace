@@ -23,6 +23,72 @@
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { hasMachineProtocol } from '../data/alienEcology.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { DRONES } from '../data/automation.js';
+
+export const MAX_PROGRAM_STEPS = 6;
+export const MAX_PROGRAM_NAME_LENGTH = 40;
+export const MAX_PROGRAM_WAIT_S = 600;
+const commodityIds = new Set(COMMODITIES.map((c) => c.id));
+
+export function resolveProgram(group) {
+  const p = group?.program;
+  return p?.kind === 'custom' ? (p.blocked ? null : p) : TEMPLATES[p?.templateId] || null;
+}
+
+// Blocked saved programs remain programs, so they can never fall through to passive miners.
+export function hasProgram(group) {
+  return group?.program?.kind === 'custom' || !!TEMPLATES[group?.program?.templateId];
+}
+
+export function validateProgram(raw, { state, group, validateTargets = true } = {}) {
+  const fail = (reason, i, message) => ({ ok: false, reason, stepIndex: i, message: `Step ${i + 1}: ${message}` });
+  if (!raw || raw.kind !== 'custom' || raw.version !== 1) return fail('invalid_program', 0, 'Use a version 1 custom loop.');
+  if (Object.keys(raw).some((k) => !['kind', 'version', 'name', 'steps', 'reaction'].includes(k))) return fail('unsupported_node', 0, 'Conditional or extra program nodes are not supported.');
+  // Reaction authoring stays in the existing protocol-gated reaction API.
+  if (raw.reaction != null && raw.reaction !== 'none') return fail('invalid_reaction', 0, 'Assign reactions separately through the machine protocol.');
+  if (typeof raw.name !== 'string' || !raw.name.trim() || raw.name.length > MAX_PROGRAM_NAME_LENGTH) return fail('invalid_name', 0, 'Name the loop in 1–40 characters.');
+  if (!Array.isArray(raw.steps) || raw.steps.length < 1 || raw.steps.length > MAX_PROGRAM_STEPS) return fail('step_count', 0, 'A loop needs 1–6 steps.');
+  const steps = [];
+  const cap = Number(group?.bufferCap || DRONES.find((d) => d.id === group?.defId)?.bufferCap) || 40;
+  for (let i = 0; i < raw.steps.length; i++) {
+    const s = raw.steps[i];
+    if (!s || typeof s !== 'object') return fail('invalid_step', i, 'Choose an instruction.');
+    if (s.op === 'guard') return fail('persistent_guard', i, 'Guard stays active indefinitely; use Guard Player.');
+    if (!['move', 'mine', 'interact', 'wait'].includes(s.op)) return fail('unknown_operation', i, 'Unknown operation.');
+    const keys = s.op === 'move' ? ['op', 'target'] : s.op === 'mine' ? ['op', 'target', 'until']
+      : s.op === 'wait' ? ['op', 'until', 'seconds'] : s.verb === 'sell' ? ['op', 'verb', 'target', 'good'] : ['op', 'verb', 'target', 'good', 'qty'];
+    if (Object.keys(s).some((k) => !keys.includes(k))) return fail('unsupported_node', i, 'Conditional or extra instruction nodes are not supported.');
+    if (s.op === 'wait') {
+      if (s.until !== 'timer' || !Number.isFinite(s.seconds) || s.seconds < 1 || s.seconds > MAX_PROGRAM_WAIT_S) return fail('invalid_timer', i, 'Wait needs a timer from 1 to 600 seconds.');
+      steps.push({ op: s.op, until: 'timer', seconds: s.seconds });
+      continue;
+    }
+    if (s.op === 'mine') {
+      if (s.target !== 'field' || s.until !== 'cargoFull') return fail('invalid_mine', i, 'Mine the field until shipment full.');
+      steps.push({ op: s.op, target: 'field', until: 'cargoFull' });
+      continue;
+    }
+    const explicit = typeof s.target === 'string' && /^(claim|station):[a-zA-Z0-9_-]+$/.test(s.target);
+    if (!explicit && !['field', 'depot', 'player'].includes(s.target)) return fail('invalid_target', i, 'Choose a field, player, claim, or station.');
+    if (s.op === 'interact') {
+      if (!['collect', 'unload', 'sell'].includes(s.verb)) return fail('unknown_verb', i, 'Choose collect, unload, or sell.');
+      if (!commodityIds.has(s.good)) return fail('unknown_commodity', i, 'Choose a registered commodity.');
+      if (s.verb === 'sell' ? !(s.target === 'depot' || s.target.startsWith('station:')) : !s.target.startsWith('claim:')) return fail('invalid_target', i, 'Choose the named destination for this handoff.');
+      if (s.verb !== 'sell' && (!Number.isInteger(s.qty) || s.qty <= 0 || s.qty > cap)) return fail('invalid_quantity', i, `Quantity must be a whole number from 1 to ${cap}.`);
+    }
+    if (validateTargets && explicit) {
+      const ctx = { state, group };
+      const b = resolveBeacon(s.target, ctx);
+      if (!b) return fail('unavailable_target', i, 'Target must be owned, active, and in the drone sector; stations must be live and not gates.');
+      if (s.op === 'interact' && s.verb === 'unload' && !['spec_refinery', 'spec_relay'].includes(b.claim?.spec?.id)) return fail('invalid_intake', i, 'Only a refinery or relay accepts freight.');
+    }
+    const step = { op: s.op, target: s.target };
+    if (s.op === 'interact') { step.verb = s.verb; step.good = s.good; if (s.verb !== 'sell') step.qty = s.qty; }
+    steps.push(step);
+  }
+  return { ok: true, program: { kind: 'custom', version: 1, name: raw.name.trim(), steps, reaction: raw.reaction === 'none' ? 'none' : undefined } };
+}
 
 // Primitive type tags.
 export const P = Object.freeze({
@@ -253,8 +319,21 @@ const BEACON_ASTEROID_QUERY_RADIUS_PAD = 64;
 // pass 'depot' resolves to the player's current position (a stand-in until beacon placement lands)
 // and 'field' to the nearest asteroid field, 'player' to the live player entity. Keeps templates
 // portable (V2 §4 beacons-not-coords).
-function resolveBeacon(name, ctx) {
+export function resolveBeacon(name, ctx) {
   const state = ctx.state;
+  if (name?.startsWith('claim:')) {
+    const body = state.claims?.bodies?.find((b) => b.id === name.slice(6));
+    if (!body || body.owned !== true || body.spec?.status !== 'active' || body.sectorId !== ctx.group?.sectorId
+      || !Number.isFinite(body.x) || !Number.isFinite(body.z)) return null;
+    const entity = Array.from(state.entities.values()).find((e) => e.alive !== false && e.data?.poiId === body.poiId);
+    return { x: body.x, z: body.z, claim: body, bodyId: body.id, entity };
+  }
+  if (name?.startsWith('station:')) {
+    if (ctx.group?.sectorId !== state.world?.currentSectorId) return null;
+    const e = Array.from(state.entities.values()).find((e) => e.alive !== false && e.type === 'station'
+      && !e.data?.isGate && e.data?.stationId === name.slice(8));
+    return e ? { x: e.pos.x, z: e.pos.z, entity: e, stationId: e.data.stationId } : null;
+  }
   if (name === 'player') {
     const e = state.entities.get(state.playerId);
     return e ? { x: e.pos.x, z: e.pos.z, entity: e } : null;
@@ -304,7 +383,7 @@ function resolveBeacon(name, ctx) {
 // steering the group's flying entities toward the resolved beacon (the existing _driveDrone helper
 // shape), reusing the automation system's entity pool.
 export function tickProgram(group, ctx, dt) {
-  const tpl = group.program && TEMPLATES[group.program.templateId];
+  const tpl = resolveProgram(group);
   if (!tpl) return false;
   const ps = group.programState || (group.programState = { pc: 0, waitT: 0, cargoWasFull: false });
 
@@ -351,6 +430,12 @@ export function tickProgram(group, ctx, dt) {
   }
 
   const beacon = step.target ? resolveBeacon(step.target, ctx) : null;
+  const custom = tpl.kind === 'custom' && !isInterrupt;
+  if (custom) {
+    if (!beacon && (step.op === P.MOVE || step.op === P.INTERACT)) return blockProgram(ps, ctx, `Step ${ps.pc + 1}: Target unavailable; restore an active local claim or station.`);
+    if (step.target === 'depot' && !beacon?.stationId && step.op === P.INTERACT) return blockProgram(ps, ctx, `Step ${ps.pc + 1}: No live depot station available.`);
+    if (step.op !== P.INTERACT) ps.blockedReason = null;
+  }
   const cargo = ctx.state && ctx.state.player && ctx.state.player.cargo;
   const holdFull = typeof ctx.operationFull === 'function'
     ? !!ctx.operationFull()
@@ -404,6 +489,22 @@ export function tickProgram(group, ctx, dt) {
       return true;
     }
     case P.INTERACT: {
+      if (custom) {
+        if (!ctx.steerTo(beacon, dt)) return false;
+        if (step.verb === 'sell') {
+          if ((ctx.shipmentQty?.(step.good) || 0) > 0) {
+            const result = ctx.sellMinedCargo(beacon.stationId, step.good);
+            if (result?.ok === false) return blockProgram(ps, ctx, `Step ${ps.pc + 1}: Sale refused — ${String(result.reason || 'refused').replace(/_/g, ' ')}.`);
+          }
+          if ((ctx.shipmentQty?.(step.good) || 0) > 0) return false;
+        } else {
+          const result = ctx.transferFreight({ bodyId: beacon.bodyId, direction: step.verb, good: step.good, qty: step.qty - (ps.stepMoved || 0) });
+          ps.stepMoved = (ps.stepMoved || 0) + (result?.moved || 0);
+          if (ps.stepMoved < step.qty) return blockProgram(ps, ctx, `Step ${ps.pc + 1}: ${result?.reason || 'Waiting for remaining freight'}.`);
+        }
+        advance(ps, tpl);
+        return true;
+      }
       // sell: realize the group's mined cargo as credits at the depot station.
       if (step.verb === 'sell') {
         const result = ctx.sellMinedCargo(beacon && beacon.stationId);
@@ -450,6 +551,16 @@ export function tickProgram(group, ctx, dt) {
 function advance(ps, tpl) {
   ps.pc = (ps.pc + 1) % tpl.steps.length;
   ps.waitT = 0;
+  ps.stepMoved = 0;
+  ps.blockedReason = null;
+  if (ps.pc === 0) ps.cycles = (ps.cycles || 0) + 1;
+}
+
+function blockProgram(ps, ctx, message) {
+  ctx.park?.();
+  if (ps.blockedReason !== message) ctx.bus?.emit('toast', { text: message, kind: 'warn', ttl: 3 });
+  ps.blockedReason = message;
+  return false;
 }
 
 function finishInterrupt(group, ps, ctx) {
@@ -562,4 +673,5 @@ export function clearReaction(group) {
 export function clearTemplate(group) {
   group.program = null;
   group.programState = null;
+  group.programMotion = null;
 }

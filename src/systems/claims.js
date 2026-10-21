@@ -53,10 +53,12 @@ import {
 import { CLAIM_REFINERY_RECIPES, CLAIM_REFINERY_INPUT_IDS } from '../data/sites.js';
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
+import { ensureShipment, shipmentQty, shipmentUsed, addToShipment, takeFromShipment } from './cargoCustody.js';
+import { COMMODITIES } from '../data/commodities.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { SECTORS, dangerIndex, stationGrowthLadderFor, aceTrophyHeadByTier, aceTrophyHeadByModuleId, trophyFromFittings } from '../data/sectors.js';
-import { OUTPOSTS } from '../data/automation.js';
+import { DRONES, OUTPOSTS } from '../data/automation.js';
 import { outpostOutputGoodId } from './automation.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { farActorTableRadius } from '../world/farActorTable.js';
@@ -660,6 +662,56 @@ export const claims = {
       this._receipt(body, 'delivered', 'Received ' + moved + 'u of freight', { goodId, qty: moved });
     }
     return moved;
+  },
+
+  // Physical operation-owned handoffs. The canonical roster and a live hull authorize custody.
+  transferDroneFreight({ groupId, bodyId, direction, good, qty } = {}) {
+    const refuse = (reason) => ({ ok: false, moved: 0, reason });
+    const g = this.state.automation?.drones?.find((g) => g.id === groupId);
+    const body = this.state.claims?.bodies?.find((b) => b.id === bodyId);
+    const def = body?.spec && BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
+    if (!g || !body || body.owned !== true) return refuse('Claim is not owned');
+    if (g.sectorId !== body.sectorId || g.sectorId !== this.state.world?.currentSectorId) return refuse('Claim is outside the active drone sector');
+    if (!def || body.spec.status !== 'active') return refuse('Claim is inactive');
+    if (!['collect', 'unload'].includes(direction)) return refuse('Unknown freight direction');
+    if (!COMMODITIES.some((c) => c.id === good)) return refuse('Unknown commodity');
+    const droneCap = Number(g.bufferCap || DRONES.find((d) => d.id === g.defId)?.bufferCap) || 40;
+    if (!Number.isInteger(qty) || qty <= 0 || qty > droneCap) return refuse('Invalid freight quantity');
+    if (def.id === 'spec_bastion') return refuse('Bastion accepts no freight');
+    if (direction === 'unload' && def.id === 'spec_refinery' && !CLAIM_INPUT_SET.has(good)) return refuse('Refinery accepts recipe feedstock only');
+    const poi = Array.from(this.state.entities.values()).find((e) => e.alive !== false && e.data?.poiId === body.poiId);
+    const radius = Math.max(60, (Number(poi?.radius) || 0) + 24);
+    const arrived = (g.entityIds || []).some((id) => {
+      const e = this.state.entities.get(id);
+      return e?.alive !== false && e?.type === 'drone' && e.data?.groupId === g.id
+        && Math.hypot(e.pos.x - body.x, e.pos.z - body.z) < radius;
+    });
+    if (!arrived) return refuse('Drone has not arrived at the claim');
+    const store = body.spec.store;
+    let moved;
+    if (direction === 'collect') {
+      const have = Math.max(0, Math.floor(Number(store.output[good]) || 0));
+      if (have === 0) return refuse('Claim output is empty');
+      ensureShipment(g);
+      if (shipmentUsed(g) >= droneCap) return refuse('Drone shipment is full');
+      moved = addToShipment(g, good, Math.min(qty, have), droneCap);
+      if (moved > 0) {
+        store.output[good] -= moved;
+        if (store.output[good] <= 0) delete store.output[good];
+        body.spec.outputFull = false;
+      }
+    } else {
+      const have = shipmentQty(g, good);
+      const cap = def.id === 'spec_refinery' ? def.inputCapU : def.storeCapU;
+      const room = Math.max(0, cap - sumStore(store.input));
+      if (!have) return refuse('Drone shipment has no selected freight');
+      if (room < 1) return refuse('Claim input is full');
+      moved = takeFromShipment(g, good, Math.min(qty, have, Math.floor(room)));
+      if (moved > 0) store.input[good] = (store.input[good] || 0) + moved;
+    }
+    if (moved > 0) this._receipt(body, direction === 'collect' ? 'drone_collected' : 'drone_delivered',
+      `${direction === 'collect' ? 'Drone collected' : 'Drone delivered'} ${moved}u of freight`, { groupId, goodId: good, qty: moved });
+    return { ok: moved > 0, moved, reason: moved > 0 ? null : 'No freight moved' };
   },
 
   // Pull unprocessed input back into the player hold. Returns units actually moved.

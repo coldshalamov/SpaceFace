@@ -20,6 +20,7 @@ import { laneInputWrite } from '../../core/simLaneCommands.js';
 import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
 import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
 import { SECTORS } from '../../data/sectors.js';
+import { MAX_PROGRAM_STEPS, MAX_PROGRAM_NAME_LENGTH, validateProgram } from '../../systems/alphabet.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
@@ -32,6 +33,8 @@ export function describeDroneEarnings(state, assetOrDef = {}) {
   const def = DRONES.find((d) => d.id === (assetOrDef.defId || assetOrDef.id)) || assetOrDef;
   const grossPerMin = (def.mineRate || 0) * 60 * DRONE_DISPLAY_ORE_VALUE * Math.max(1, assetOrDef.count || 1);
   const capPerMin = passiveCapPerMin(state);
+  if (assetOrDef.program?.kind === 'custom') return { settlement: 'throughput', grossPerMin: 0, capPerMin,
+    cappedPerMin: null, text: 'Shipment sales · settled at the actual sale receipt' };
   if (assetOrDef.program?.templateId === 'mine_to_depot') {
     return { settlement: 'throughput', grossPerMin, capPerMin, cappedPerMin: null, text: 'Depot sales · settled at the actual sale receipt' };
   }
@@ -951,10 +954,13 @@ export const automationScreen = {
     // native select was replaced by the sf-select widget the element is a div carrying the same
     // data-act/data-ref/data-kind attributes and a .value property.
     body.addEventListener('change', (e) => {
+      if (this._onLoopInput(e.target)) return;
       const sel = e.target.closest('[data-act="assignProgram"]');
       if (!sel) return;
       this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
     });
+    body.addEventListener('input', (e) => this._onLoopInput(e.target, false));
+    this._listenProgramRejections();
 
     // A finished trader cycle had no reader. The strip says what the receipt paid.
     if (this._offCycle) this._offCycle();
@@ -974,6 +980,10 @@ export const automationScreen = {
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
   dispose() {
+    if (this._offProgramRejected) this._offProgramRejected();
+    if (this._offProgramAssigned) this._offProgramAssigned();
+    this._offProgramRejected = this._offProgramAssigned = null;
+    this._loopDraft = null;
     if (this._offCycle) this._offCycle();
     this._offCycle = null;
     this._root = null;
@@ -1185,7 +1195,8 @@ export const automationScreen = {
     ];
     if (this._tab === 'drones') {
       for (const d of a.drones || []) {
-        const program = d.program && d.program.templateId;
+        const program = d.program?.kind === 'custom' ? JSON.stringify(d.program) : d.program?.templateId;
+        if (d.program?.kind === 'custom') parts.push(JSON.stringify(d.programState), JSON.stringify(d.shipment?.items), st.world?.currentSectorId);
         parts.push(d.id, d.defId, d.status, Math.round(d.buffer || 0), Math.round(d.fuel || 0), program || '',
           d.recovery?.reason, d.recovery?.sectorId, d.recovery?.stationId, d.recovery?.delivered,
           d.recovery ? droneRecoveryCost(st, d).totalCr : '',
@@ -1337,10 +1348,11 @@ export const automationScreen = {
         // Manual for the legacy mine-to-buffer loop). Switching emits assignProgram.
         const curTpl = (d.program && d.program.templateId) || '';
         const programOpts = PROGRAM_OPTIONS
-          .map((opt) => `<option value="${escapeHtml(opt.value)}" ${curTpl === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`)
+          .map((opt) => `<option value="${escapeHtml(opt.value)}" ${d.program?.kind !== 'custom' && curTpl === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`)
           .join('');
-        const programBadge = curTpl ? ` <span class="au-program-badge">${escapeHtml(programLabel(curTpl))}</span>` : '';
-        const programMeta = curTpl ? programMetaText(curTpl) : PROGRAM_OPTIONS[0].meta;
+        const custom = d.program?.kind === 'custom';
+        const programBadge = custom ? ` <span class="au-program-badge">${escapeHtml(d.program.name)}</span>` : curTpl ? ` <span class="au-program-badge">${escapeHtml(programLabel(curTpl))}</span>` : '';
+        const programMeta = custom ? 'Written loop · physical shipment handoffs and sales.' : curTpl ? programMetaText(curTpl) : PROGRAM_OPTIONS[0].meta;
         const earnings = describeDroneEarnings(this._ctx.state, d);
         const recoveryText = droneRecoveryText(this._ctx.state, d);
         const readout = curTpl === 'mine_to_depot' ? describeProgrammedMinerOperation(d, def) : null;
@@ -1373,16 +1385,19 @@ export const automationScreen = {
             </div>
             <div class="au-program-row">
               <span class="au-program-label">Program:</span>
-              <select class="au-program" data-act="assignProgram" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">${programOpts}</select>
+              <select class="au-program" aria-label="Drone program" data-act="assignProgram" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">${custom ? '<option value="custom" selected>Written loop</option>' : ''}${programOpts}</select>
+              <button class="au-order" data-act="writeLoop" data-ref="${automationRecordRefAttr(d.id)}">${custom ? 'Edit loop' : 'Write loop'}</button>
             </div>
             ${opsHtml}
-            ${!curTpl ? '<div class="au-note">Bank stored ore on Recall</div>' : ''}
+            ${custom ? `<div class="au-note" role="status">${escapeHtml(this._customProgramStatus(d))}</div>` : ''}
+            ${!curTpl && !custom ? '<div class="au-note">Bank stored ore on Recall</div>' : ''}
             ${recoveryText ? `<div class="au-note">${escapeHtml(recoveryText)}</div>` : ''}
           </div>
           ${refuelBtn}
           ${d.recovery ? `<button class="au-order" data-act="locateDrone" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Locate drone</button>` : ''}
           <button class="au-order" data-act="recall" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Recall</button>`;
         frag.appendChild(card);
+        if (this._loopDraft?.id === d.id) frag.appendChild(this._renderComposer(d));
       }
     }
 
@@ -1634,7 +1649,149 @@ export const automationScreen = {
 
   // ---- intent dispatch ----------------------------------------------------
   // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
+  _listenProgramRejections() {
+    if (this._offProgramRejected) this._offProgramRejected();
+    if (this._offProgramAssigned) this._offProgramAssigned();
+    this._offProgramRejected = this._ctx.bus.on('automation:programRejected', (p) => {
+      if (this._loopDraft?.id !== p.id) return;
+      this._loopDraft.error = p.message;
+      this.refresh(this._ctx, { forceBody: true });
+    });
+    this._offProgramAssigned = this._ctx.bus.on('automation:programAssigned', (p) => {
+      if (this._loopDraft?.id !== p.id) return;
+      this._loopDraft = null;
+      this.refresh(this._ctx, { forceBody: true });
+    });
+  },
+
+  _customProgramStatus(d) {
+    const ps = d.programState || {};
+    const freight = Object.entries(d.shipment?.items || {}).map(([id, qty]) => `${qty} ${commodityName(id)}`).join(', ') || 'empty';
+    const paused = d.sectorId !== this._ctx.state.world?.currentSectorId ? 'Paused outside active sector. ' : '';
+    return `${paused}Step ${(ps.pc || 0) + 1}/${d.program.steps.length} · ${ps.cycles || 0} completed cycles · Carried: ${freight}${ps.blockedReason ? ` · ${ps.blockedReason}` : ''}`;
+  },
+
+  _onLoopInput(target, structural = true) {
+    const field = target?.dataset?.loopField;
+    const draft = this._loopDraft;
+    if (!field || !draft) return false;
+    const i = Number(target.dataset.step);
+    if (field === 'name') draft.program.name = target.value;
+    else if (field === 'op') {
+      const op = target.value;
+      draft.program.steps[i] = op === 'mine' ? { op, target: 'field', until: 'cargoFull' }
+        : op === 'wait' ? { op, until: 'timer', seconds: 2 }
+          : op === 'interact' ? { op, verb: 'collect', target: this._loopTargets(draft.id, 'claim')[0]?.value || '', good: 'cmdty_refined_metals', qty: 2 }
+            : { op: 'move', target: 'field' };
+    } else {
+      const step = draft.program.steps[i];
+      step[field] = ['qty', 'seconds'].includes(field) ? Number(target.value) : target.value;
+      if (field === 'verb') {
+        step.target = step.verb === 'sell' ? 'depot' : this._loopTargets(draft.id, 'claim')[0]?.value || '';
+        if (step.verb === 'sell') delete step.qty;
+        else step.qty = step.qty || 2;
+      }
+    }
+    draft.error = '';
+    if (structural && ['op', 'verb'].includes(field)) this.refresh(this._ctx, { forceBody: true });
+    return true;
+  },
+
+  _loopTargets(groupId, type = 'all') {
+    const st = this._ctx.state;
+    const group = st.automation?.drones?.find((g) => g.id === groupId);
+    const options = type === 'all' ? [{ value: 'field', label: 'Field' }, { value: 'depot', label: 'Nearest depot' }, { value: 'player', label: 'Player' }] : [];
+    if (type !== 'station') for (const b of st.claims?.bodies || []) {
+      if (b.owned === true && b.spec?.status === 'active' && b.sectorId === group?.sectorId) options.push({ value: `claim:${b.id}`, label: b.name });
+    }
+    if (type !== 'claim' && group?.sectorId === st.world?.currentSectorId) for (const e of st.entities?.values() || []) {
+      if (e.alive !== false && e.type === 'station' && !e.data?.isGate && e.data?.stationId) options.push({ value: `station:${e.data.stationId}`, label: e.name || STATION_NAMES.get(e.data.stationId) || 'Station' });
+    }
+    if (type === 'station') options.unshift({ value: 'depot', label: 'Nearest depot' });
+    return options;
+  },
+
+  _renderComposer(group) {
+    const draft = this._loopDraft;
+    const root = document.createElement('div');
+    root.className = 'au-note';
+    root.setAttribute('aria-label', 'Write drone loop');
+    const control = (parent, label, field, value, index, choices = null, bounds = {}) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'au-program-row';
+      const text = document.createElement('span'); text.textContent = label; wrap.appendChild(text);
+      const input = document.createElement(choices ? 'select' : 'input');
+      input.className = 'au-program';
+      input.dataset.loopField = field;
+      input.dataset.step = String(index);
+      input.dataset.focusKey = `loop:${group.id}:${index}:${field}`;
+      input.setAttribute('aria-label', label);
+      if (choices && value && !choices.some((c) => c.value === value)) choices = [...choices, { value, label: 'Unavailable target' }];
+      if (choices) for (const choice of choices) {
+        const option = document.createElement('option'); option.value = choice.value; option.textContent = choice.label;
+        option.selected = choice.value === value; input.appendChild(option);
+      }
+      else { input.type = field === 'name' ? 'text' : 'number'; Object.assign(input, bounds); }
+      input.value = String(value ?? ''); wrap.appendChild(input); parent.appendChild(wrap);
+    };
+    const button = (parent, text, act, index, disabled = false) => {
+      const b = document.createElement('button'); b.className = 'au-order'; b.textContent = text;
+      b.dataset.act = act; b.dataset.ref = String(index); b.dataset.focusKey = `loop:${group.id}:${index}:${act}`;
+      b.disabled = disabled; b.setAttribute('aria-label', index >= 0 ? `${text} step ${index + 1}` : text); parent.appendChild(b);
+    };
+    control(root, 'Loop name', 'name', draft.program.name, -1, null, { maxLength: MAX_PROGRAM_NAME_LENGTH });
+    const ladder = document.createElement('ol'); root.appendChild(ladder);
+    draft.program.steps.forEach((s, i) => {
+      const row = document.createElement('li'); ladder.appendChild(row);
+      control(row, `Step ${i + 1} operation`, 'op', s.op, i, ['move', 'mine', 'interact', 'wait'].map((value) => ({ value, label: value.toUpperCase() })));
+      if (s.op === 'interact') control(row, 'Handoff', 'verb', s.verb, i, ['collect', 'unload', 'sell'].map((value) => ({ value, label: value })));
+      if (s.op === 'move' || s.op === 'interact') control(row, 'Target', 'target', s.target, i, this._loopTargets(group.id, s.op === 'move' ? 'all' : s.verb === 'sell' ? 'station' : 'claim'));
+      if (s.op === 'interact') {
+        control(row, 'Commodity', 'good', s.good, i, COMMODITIES.map((c) => ({ value: c.id, label: c.name })));
+        if (s.verb !== 'sell') control(row, 'Quantity', 'qty', s.qty, i, null, { min: 1, max: group.bufferCap, step: 1 });
+      }
+      if (s.op === 'mine') { const note = document.createElement('span'); note.textContent = 'Field · until shipment full'; row.appendChild(note); }
+      if (s.op === 'wait') control(row, 'Wait seconds', 'seconds', s.seconds, i, null, { min: 1, max: 600 });
+      button(row, 'Move up', 'loopUp', i, i === 0); button(row, 'Move down', 'loopDown', i, i === draft.program.steps.length - 1);
+      button(row, 'Remove', 'loopRemove', i);
+    });
+    button(root, 'Add step', 'loopAdd', -1, draft.program.steps.length >= MAX_PROGRAM_STEPS);
+    button(root, 'Apply', 'loopApply', -1); button(root, 'Cancel', 'loopCancel', -1);
+    const error = document.createElement('div'); error.className = 'au-note'; error.setAttribute('role', 'alert');
+    error.setAttribute('aria-live', 'polite'); error.textContent = draft.error || ''; root.appendChild(error);
+    return root;
+  },
+
   _onAction(act, ref, kind, extra) {
+    if (act === 'writeLoop') {
+      const d = this._auto().drones.find((d) => String(d.id) === String(ref));
+      if (!d) return;
+      this._loopDraft = { id: d.id, error: '', program: d.program?.kind === 'custom' && !d.program.blocked
+        ? JSON.parse(JSON.stringify(d.program)) : { kind: 'custom', version: 1, name: 'My loop', steps: [{ op: 'move', target: 'field' }] } };
+      // Existing reactions stay with their separate protocol controls: the draft never
+      // carries the slot (assigned tokens fail authored validation) and assignProgram
+      // re-attaches the live program's reaction on Apply.
+      delete this._loopDraft.program.reaction;
+      this.refresh(this._ctx, { forceBody: true }); return;
+    }
+    if (act.startsWith('loop')) {
+      const draft = this._loopDraft;
+      if (!draft) return;
+      const steps = draft.program.steps, i = Number(ref);
+      if (act === 'loopCancel') this._loopDraft = null;
+      else if (act === 'loopAdd' && steps.length < MAX_PROGRAM_STEPS) steps.push({ op: 'move', target: 'field' });
+      else if (act === 'loopRemove' && i >= 0 && i < steps.length) steps.splice(i, 1);
+      else if (act === 'loopUp' && i > 0 && i < steps.length) [steps[i - 1], steps[i]] = [steps[i], steps[i - 1]];
+      else if (act === 'loopDown' && i >= 0 && i < steps.length - 1) [steps[i + 1], steps[i]] = [steps[i], steps[i + 1]];
+      else if (act === 'loopApply') {
+        const group = this._auto().drones.find((g) => g.id === draft.id);
+        const result = validateProgram(draft.program, { state: this._ctx.state, group });
+        if (!result.ok) draft.error = result.message;
+        else this._onAction('assignProgram', draft.id, 'drone', result.program);
+      }
+      this.refresh(this._ctx, { forceBody: true }); return;
+    }
+    if (act === 'assignProgram' && extra === 'custom') return;
     if (act === 'locateDrone') {
       const ctx = this._ctx;
       const drone = (ctx.state.automation?.drones || []).find((d) => String(d.id) === String(ref));
@@ -1733,7 +1890,7 @@ function captureAutomationBodyFocus(body) {
   const tag = String(active.tagName || '').toUpperCase();
   const inputType = String(active.type || '').toLowerCase();
   const preservesTypedValue = tag === 'TEXTAREA'
-    || (tag === 'INPUT' && (!inputType || inputType === 'text' || inputType === 'search'));
+    || (tag === 'INPUT' && (!inputType || inputType === 'text' || inputType === 'search' || inputType === 'number'));
   return {
     key,
     typedValue: preservesTypedValue ? String(active.value || '') : null,
@@ -1762,6 +1919,9 @@ function automationFocusKey(element) {
   if (!element) return null;
   const dataset = element.dataset || {};
   if (dataset.focusKey) return `explicit:${dataset.focusKey}`;
+  // sf-select focuses its inner button; the draft identity lives on the enhanced root.
+  const loopControl = element.closest?.('[data-loop-field]');
+  if (loopControl?.dataset.focusKey) return `explicit:${loopControl.dataset.focusKey}`;
   if (element.id) return `id:${element.id}`;
 
   const tag = String(element.tagName || '').toLowerCase();
