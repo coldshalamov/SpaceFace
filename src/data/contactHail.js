@@ -1,3 +1,4 @@
+import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';
 import { anvilCollectorWorkStatus, anvilReceiverWorkStatus } from '../systems/anvilWork.js';
 import { isOrchardReceiver, orchardTowQuote } from '../world/anvilOrchardTowAssist.js';
 // Deterministic contact-hail classification and copy.
@@ -993,6 +994,10 @@ function patrolGrievanceHail(state, entity) {
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   if (isOrchardReceiver(state, availability?.entity)) {
+    const repair = orchardReceiverRepairFacts(state, availability.entity);
+    if (repair?.disabled || repair?.unavailable) return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+      lines: [repair.status, orchardReceiverRepairGuidance(state, availability.entity)],
+      actions: [{ id: 'status', label: 'STATUS' }, { id: 'route', label: 'REPAIR GUIDANCE' }] };
     const quote=orchardTowQuote(state,availability.entity);
     return {requestId,targetId:availability.targetId,kind:'worker',expiresAt,
       lines:quote
@@ -1394,6 +1399,8 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
 });
 
 function workerStatusText(target, state = null) {
+  const orchard = orchardReceiverRepairFacts(state, target)?.status;
+  if (orchard) return `STATUS · ${orchard.replace(/^STORMSHIFT · /, '').replace(/ · HULL .*/, '')}`;
   const data = target && target.data || {};
   const salvorSource = salvorSourceTruth(state, target);
   if (salvorSource && salvorSource.state === 'aboard') return 'STATUS · SALVAGE ABOARD · FORGE INBOUND';
@@ -1526,7 +1533,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   const target = entityById(state, offer.targetId);
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
-  let line = null;
+  let line = null, detailLines = null;
   if (offer.kind === 'ace' && id === 'status') {
     line = aceHailStatusText(state, target);
   } else if (offer.kind === 'ace' && id === 'identify') {
@@ -1539,6 +1546,10 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     line = `${callsign(target)}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
+  } else if (offer.kind === 'worker' && id === 'route' && isOrchardReceiver(state, target)) {
+    const status = orchardReceiverRepairFacts(state, target)?.status;
+    const guidance = orchardReceiverRepairGuidance(state, target);
+    if (status) { line = `ROUTE · ${status}`; detailLines = guidance ? [line, guidance] : [line]; }
   } else if (offer.kind === 'worker' && id === 'identify') {
     line = workerIdentifyText(target);
   } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_HELP) {
@@ -1607,7 +1618,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     kind: offer.kind,
     choice: id,
     expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S,
-    lines: [line],
+    lines: detailLines || [line],
   };
 }
 
