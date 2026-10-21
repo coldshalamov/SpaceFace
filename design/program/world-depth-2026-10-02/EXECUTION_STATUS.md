@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 07:17 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical evidence, scoped failures and acceptance distinctions.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) has verified head [cb0657c0542e0a5bb2cbb593c092a773f0c5e504](https://github.com/coldshalamov/SpaceFace/commit/cb0657c0542e0a5bb2cbb593c092a773f0c5e504), tree `d8bd885995fb7378ebaccbb44ff3e423ecbec092`, sole parent `39ec9e794dd1b14bdd13d17597933bd6b7af738d`, with exactly 21 changed paths. Root's selected 45 tests pass against 1,211 unique audited source hashes and 13 exact filesystem inputs. The sector experience register is now public.
+
+The Ceres increment publishes ordinary-approach bearing/UI admission, optional recorder recovery, actual berth guidance, compact filed facts and persistence, plus three stable visual roles. The genuinely new fairlead's source, compressed release, compiled package and shipping bindings are preserved in Git. Matched-scene offline review is complete, not live graphical acceptance.
+
+Physical geometry remains explicitly unaccepted. The current radius-26 physics ball is retained; the census is truthfully RED for a 16.57 WU collider gap through empty space, with bounded compiled visual overhang of 0.119 WU. Publishing the model and bindings does not resolve that mismatch or certify whole-geometry acceptance.
+
+align_ceres_fairlead_collision is investigating the minimal actual collision shape and the corresponding native-contact/Continue proof. Its exact-path proposal is pending; no other writer should duplicate that correction. The CI owner follows the actual cb0657 merge results to terminal status, without inheriting an earlier head's outcome.
+
+Next: agree the bounded collision write set, implement and independently qualify the real shape with native contact and Continue evidence, then rerun exact geometry/census checks and continue ordinary/live graphical review. Keep the already-published Ceres story/model/register work distinct from that unfinished physical correction. Original held Orchard receiver operations remain unchanged; successful Ceres writes do not authorize or resolve them. This checkpoint changes only the two shared handoff/goal files on their separate branch, preserves foreign NOW edits, and includes no private recovery identifiers or restricted diagnostics.
+
 ## Current source handoff — 21 October 2026, 06:36 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving their scoped evidence and failures.
