@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 10:27 UTC
+
+All nine goals remain OPEN. Separate draft [PR #483](https://github.com/coldshalamov/SpaceFace/pull/483) preserves verified head [d0b23840854086c5eede64c733fbce156907bf0a](https://github.com/coldshalamov/SpaceFace/commit/d0b23840854086c5eede64c733fbce156907bf0a), tree `5ca7f55c434f715efd1b6c62be075e588d45ffbb`, sole public-master parent `bce62cfd65c72b27bdba81feacd654f9cbb218db`; publication was verified at 10:27:06 UTC.
+
+Exactly industrialBeam.js, a new durable-payload lifetime regression test and package registration change. Existing strict durable-lifetime markers are now honored while default transient cleanup remains unchanged. An actual sliced-bus reproduction preserves the original required 47-A spindle/pod. Baseline passes 11 and fails eight cases; final validation passes 19 focused plus 12 adjacent cases, with 412 pinned modules. The serialized-entity boundary tested here is not full Continue.
+
+trace_ceres_payload_departure follows PR483 CI. scope_transient_payload_boundary is the read-only next owner investigating delayed cleanup of newly arriving ordinary transient payloads; no broad timing correction is claimed or authorized by this evidence. PR480 fb3 and PR457 ef057 CI remain separately active.
+
+Next: follow exact CI outcomes and finish the bounded transient-boundary investigation before selecting changes. Preserve the narrow durable-marker correction, ordinary transient behavior and full-route/Continue/live acceptance limits. All nine goals and unresolved model states remain open. Only the two shared handoff/goal files change; NOW, implementation, private identifiers and private ancestry remain untouched.
+
 ## Current source handoff — 21 October 2026, 10:17 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state entries without erasing their scoped failures or acceptance limits.
