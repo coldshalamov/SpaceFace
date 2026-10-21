@@ -15,6 +15,8 @@ needs from each place:
 - **Keeps:** what persists from the player's acts (law 6).
 - **Build:** the assets it still needs (05 rows).
 
+**Canon added in this file (PROPOSED CANON, for row 537):** each sector's named wonder (the Directorate Tower, Gate 3's dormant Auditor, the Cathedral as an ore-hollowed rock, the Furnace Crown, the Cut, the Shoal, the Switchyard, the Flag Station, the capsized station, the Trophy Wall, the Memorial Gardens, the Blue Throat, the Lit Veils, the Song Field, the Wake, the License Board, the Lit Path, the Hush, the Well mouth); Hale and Dree at Dione's Gate 3; the residents placed per sector; ice that loses mass in sunlight; the ten Cull arenas.
+
 The story band mapping comes from `design/world-identity/STORY_SECTOR_MAP.md` (Tycho = Tethys,
 Meridian = Ceres, Hollow = Pallas, Cinder = Charon, Skerris = Sker Haven).
 

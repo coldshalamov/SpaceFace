@@ -17,6 +17,8 @@ Protected lines are quoted exactly. Terminal zones keep the canon's airless regi
 no bright colour, no music stings. **Vethari stay off-frame.** **Vale is never shown**: only a
 signature, an authorization line and one spoken line.
 
+**Canon added in this file (PROPOSED CANON, for row 537).** Story *outcomes* are unchanged. These are added *events and objects*: the unknown vessel's black Line and the 12.4 t strain reading; the Infested Hauler; the Compost Run and Moss-Keeps-Moss in B2; the Nest in B2; VARIANCE ADJUSTMENT as a Hawser-class tug whose seam fails at the fourth strain spike; one Gate Audit closure per Book from B3 (Kepler, Io, Eris); Cade Haltred collecting for Callum in B5; the Evidence Locker heist; the Empire Seed built from towed modules; the Hive-hulk in Shaft 7; the Long Field broken by shepherds; the Iron Maw dismantled into the Gutted Maw; one playable act per door; the Cull ladder; the Orphaned Shift trials.
+
 ## The shape of the whole game
 
 | Part | Hours (main route) | Where | Line Class at end | The feeling |

@@ -175,7 +175,42 @@ and one outcome:
 While its key is held, every power **outlines each body it will move and draws its predicted
 path**.
 
-### 7.3 Line Class hardware
+### 7.3 The arsenal: keep, merge or move (the owner picks; `build_map.md` §34 row 550)
+
+`src/data/weapons.js` holds about twenty physics tools beside the guns. Most of them push, pull,
+stick or stop bodies in slightly different ways, which is a direct cause of "I don't know what my
+powers do". The recommendation below gives every tool one home: a gun that stays, one of the five
+merged powers (§7.2), or a Line head (§7.1). **Read each tool's live behaviour in `weapons.js` and its
+owner before acting**, because a name can hide a behaviour. Where the live behaviour differs from
+the guess here, the behaviour decides the home.
+
+| Tool (`weapons.js` id) | Recommendation | Why |
+|---|---|---|
+| Concussion Cannon S / M | **keep** (the shove gun) | the gun-side physics verb; already the boss body-launcher |
+| Mass Driver (`wpn_mass_driver`) | **keep** (the fling cannon) | launches mass: rock-is-the-gun in a gun slot |
+| Thermal Cooker | **keep** | heat feeds slag, spore drift, Lantern cysts and Furnace maws |
+| EMP Disruptor M | **keep** | disable; it rhymes with Archive redaction |
+| Vector Mine M | **keep** under Bomb | the mine family |
+| Snarl Webcaster | **keep** | a snare; enemy Weaver webs mirror it |
+| Gravity Marker S | **merge → Pull** (as Pull's tag mode) | tag a body so Pull takes it |
+| Gravity Wellhead M | **merge → Pull** (the launcher form) | the same outcome as the Well |
+| Momentum Sink S | **merge → Pin** | it stops a body |
+| Grav Anchor (`tool_grav_anchor`) | **merge → Pin** | it fixes a body in place |
+| Inertial Shunt S | **merge → Shove** | momentum out |
+| Polarity Inverter | **merge → Shove** or **cut** | an inverted field is a shove |
+| Viscosity Field | **merge → Bomb** (the goo charge; `bomb_goo` exists) | slow-field ordnance |
+| Sticky Detonator | **merge → Bomb** (the sticky charge) | the Charge / Blast pair |
+| Conductive Primer | **merge** into the payload modules (`mod_relay_arc` family) | it is a combo enabler, not a weapon |
+| Thruster Hijacker | **move → Override Head** | a Line head (§7.1) |
+| RCS Disruptor M | **move → Override Head** | the same outcome |
+| Seismic Gong | **move → Bell Head** | resonance |
+| Quantum Sympathy | **move → a Relic Line head, "Sympathy"** (linked bodies share momentum) | a rule-breaker belongs at Relic tier |
+| Hardlight Prism | **keep or move → Weld Head**, after reading its behaviour | if it makes cover, it is the Weld Head's cousin |
+
+The result is about six physics guns plus five powers plus fourteen heads, each with one job,
+instead of about twenty overlapping tools.
+
+### 7.4 Line Class hardware
 
 Measure Engine fragments (Verge) and winch rebuilds (Slate) raise the Line Class (08 §2). Each class
 has a visible hull state (§3).

@@ -582,7 +582,7 @@ finished plan — the board is finished only when every number in this table is 
 |---|---|
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D188, D191, D199, D225, D198, D130, D227, D231 — plus standing import guard D175 and watch-only D229 (D226 landed c8eec27a272 2026-10-19; live count: `program-dispatch --status`) |
 | Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
-| Numbered board rows (§A–§N tables below) | **95 open** — §N rows 390–481 (the 2026-10-19 A-list audit, vision and report card: 77 BUILD, 2 ART, 5 FIX, 8 SEED; §31, §32); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
+| Numbered board rows (§A–§N tables below) | **95 open, plus 69 added 2026-10-21** (§33 rows 482–497, the swarm-physics core and fight craft; §34 rows 498–550, THE WEIGHT expansion; seams `rock-core`, `fight-read`, `glass-tiers`, `line-progression`, `bloom`, `world-pressure`, `faction-art`, `faction-law-trade`, `faction-strange`, `campaign`, `places-people`, `cadence`, `audit-50`) — §N rows 390–481 (the 2026-10-19 A-list audit, vision and report card: 77 BUILD, 2 ART, 5 FIX, 8 SEED; §31, §32); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
 | Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
 | Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6) and section REPORT CARD (RC-01…50, the audited small parts of rows 456–481, §32.7) — 105 OPEN in all; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
@@ -687,6 +687,19 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
 | seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422, 442 |
+| rock-core | free | impact-kill path in `combat/damage.js`, `systems/hullBurst.js`, `systems/hullFracture.js`, `data/physicsMaterials.js` substance layer, hit-stop in `render/feel.js`, swarm wave composition and arena-scale hunk of `data/swarmMode.js` (serial with `swarm`) (§33 core, §34) | 488, 482, 487, 510, 509, 486, 483, 485, 484, 511, 541 |
+| fight-read | free | attack-cycle hunk of `ai/maneuver.js`, `ai/reflexes.js` consolidation (serial with `hostile-hands`), enemy silhouette and engine-colour reads, `render/masslineCableSurface.js`, `masslineReleaseArc.js`, `masslinePresentation.js` at chase distance (serial with `rope-world`), `render/camera.js` framing | 491, 490, 492, 545 |
+| glass-tiers | free | `ui/hud.js` tier hunks (serial with `glass` row 474), `ui/powerRail.js`, `ui/orrery/flightCluster.js`, `ui/stuntCallout.js` (LOG feed), `ui/screens/newGame.js` copy, `systems/onboarding.js` situation hunk; edits minimal and ORRERY-consistent with bench shots and `--walk` (owner 2026-09-27) | 494, 496, 502, 546, 493 |
+| line-progression | free | Line Class and strain hunk of `systems/tetherGameplay.js` (serial with `rope-world`), `masslineTelemetry.js` (serial with `rope-scale`), class hull states, Line heads in `data/modules.js` and `systems/ships.js` (serial with `hull-commit`), provenance rarity, `economy.js` pacing (§34) | 498, 499, 501, 489, 500, 550, 544 |
+| bloom | free | `data/swarmBrood.js`, `systems/swarmBrood.js`, swarm group-behaviour hunk of `systems/survivalSwarm.js`, `systems/alienEcology.js`, `regionalEcology.js`, coupling-filament VFX (§34.2) | 503, 507, 504, 508 |
+| world-pressure | free | `systems/sectorSim.js` tide and gate readers (serial with `world-answers-2`), gate-closure hunk of `travelLanes.js` and `routePlanner.js` (serial with `travel`), chart layer of `ui/galaxyMap.js`, Meridian ticker in `economyCycles.js`, receipt caps and save migrations (§34.6) | 520, 521, 522, 523, 549 |
+| faction-art | free | Forge faction hull kits, the Overgrowth and junk kits, station dressing kits, the 24-body rock family, portraits; skip a body the graphics lane L-PICTURE has claimed (§34) | 514, 512, 495, 543 |
+| faction-law-trade | free | `systems/lawSecurity.js` scans and weirs (serial with `rope-scale`), convoy and spine hunk of `systems/traffic.js` (serial with `monoliths`), `systems/aiEncounter.js`, `systems/encounterScripts.js`, Concord, Meridian, Helix, Quiet, Drift and Reach data in `data/factions/` (§34.5) | 515, 513, 516, 526, 525, 530, 531 |
+| faction-strange | free | Understory gardens, Fulfillment routes, the Pitborn Cull and Yardmaster, Vael liens, Archive redaction, Choir bells, Verge court, Frontier homesteads: each as its own system file plus its `data/factions/*.js` row; one faction per sitting (§34.5) | 517, 518, 519, 524, 527, 528, 529, 532 |
+| campaign | free | `systems/story.js`, `story/campaign47a/`, Book hunks of `systems/missions.js` (serial with `run-memory` for the B7 hunk), `data/narrative.js`, `systems/capitalBossRuntime.js` Colossus parts (§34.7) | 533, 534, 535, 536, 537, 538, 539, 547 |
+| places-people | free | one-off census tool, new Orphaned Shift encounter owners (one per sitting, on the Morrow and Rubric pattern), `data/sectorWayOfLife.js` readers, canon cast hooks in their owners (§34.3, §34.8) | 505, 540, 542, 506 |
+| cadence | free | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
+| audit-50 | free | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -1113,6 +1126,75 @@ production units, and never build what they write.
 | 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
 | 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
 | 481 | RC-CRUCIBLE-DOOR | The Crucible door opens both ways — Run What Killed You, Call the Champion, Wreck Ballast, Case Files, Grudge Ledger (§32.7; phase-order check first) | BUILD | OPEN — after 456 and 270 |
+| 482 | ROCK-GUN | The rock is the gun — impact kills ≥60 % in swarm waves 1–10; a guns-only tape is 2× slower (§33.1) | BUILD | OPEN — after 488 |
+| 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | OPEN — after 482 |
+| 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | OPEN — after 483 and 488 |
+| 485 | ROCK-ARENAS | Arenas that scale with the rating; the camera opens with it (§33.1) | BUILD | OPEN — after 483 |
+| 486 | ROCK-WAVES | Waves built to be smashed — ≥30 % of throws hit ≥2 enemies by wave 8; formations re-form (§33.1) | BUILD | OPEN |
+| 487 | ROCK-IMPACT | Impacts that land — hit-stop by mass, crumple into throwable chunks, peak effects ≥10 % of the screen, readable with sound off (§33.1) | BUILD | OPEN |
+| 488 | ROCK-BUDGET | The physics budget, measured — wave 15 at p95 ≤ 20 ms on the iGPU, quiet host (§33.1) | BUILD | OPEN — first in rock-core |
+| 489 | ROCK-HEADS | Line heads worth chasing — meta unlocks between runs; rarity allowed (§33.1) | BUILD | OPEN — after 501 |
+| 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | OPEN |
+| 491 | CRAFT-INTENT | Enemies with intent — attack cycles, cruise ≥70 % of the player's, ≤0.4 reversals/s (measured 50 vs 117, 0.8/s) (§33.2) | BUILD | OPEN |
+| 492 | CRAFT-LINE | The Line you can see — strain thickness and glow, a rim-lit latch, the release arc at the chase camera (§33.2) | BUILD | OPEN |
+| 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | OPEN — owner call on the merge set; build the preview first |
+| 494 | CRAFT-GLASS | Glass in three tiers; closes D240 (§33.2) | FIX | OPEN |
+| 495 | CRAFT-ROCKS | Rocks are the hero art (§33.2) | ART | OPEN — with 509 |
+| 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | OPEN |
+| 497 | CRAFT-CADENCE | Something happens every minute — first contact ≤2 min, then every 3–5; cohort travel ≤50 % (§33.3) | BUILD | OPEN — after 482–492 make a pocket fight worth meeting |
+| 498 | W-TONNAGE | Tonnage Logged and Line Class I–VIII, shown on the hull (§34.1) | BUILD | OPEN |
+| 499 | W-STRAIN | The honest strain — over-class towing, a hot cable, a snap event, record stamps (§34.1) | BUILD | OPEN — after 498 |
+| 500 | W-PROVENANCE | Provenance rarity — Stock, Worked, Named, Storied, Relic, plus Backordered; behaviours, not stats (§34.1) | BUILD | OPEN |
+| 501 | W-HEADS | The 14 Line heads, P0 first: Coupler, Breaker, Barb, Weld, Magnet, Override (§34.1) | BUILD | OPEN |
+| 502 | W-LOG | LOG — the physics narrator (EXP-12 fills its copy) (§34.1) | BUILD | OPEN |
+| 503 | W-COUPLING | Coupling you can see — filaments; panic, aggression and grief cascades (§34.2) | BUILD | OPEN |
+| 504 | W-PATHOLOGY | Pain loop, route-memory, host-shadow Husks (§34.2) | BUILD | OPEN — after 503 |
+| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | OPEN |
+| 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505 |
+| 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN |
+| 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
+| 509 | W-SUBSTANCE | Ten substance materials and 24 rock bodies; ice sublimates (§34.4) | BUILD | OPEN |
+| 510 | W-BREAKDOWN | Everything breaks down a tier; the arena never runs dry (§34.4) | BUILD | OPEN |
+| 511 | W-LADDER | The Katamari ladder placed — ≥6 bodies per tier per sector, with a census tool (§34.4) | BUILD | OPEN — after 509 |
+| 512 | W-STATIONS | Fourteen faction station kits (§34.4) | ART | OPEN |
+| 513 | W-STEALTH | Mass-signature stealth — sweep rings, mass shadows, cold coasting, Hush, decoys (§34.4) | BUILD | OPEN |
+| 514 | W-KITS | Faction hull kits plus the Overgrowth and junk kits (§34.5) | ART | OPEN |
+| 515 | W-CONCORD | Concord — commanders, Clamp Tender, Scale Barge, the Weighing (§34.5) | BUILD | OPEN — after 513 for the Weighing |
+| 516 | W-MERIDIAN | Meridian — cargo spines, couplers, hull tickers, Spine Break (§34.5) | BUILD | OPEN |
+| 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | OPEN |
+| 518 | W-FULFILLMENT | Fulfillment — route trains, hitchhike, derail spill, boarding, Order #0000001 (§34.5) | BUILD | OPEN |
+| 519 | W-PITBORN | Pitborn — Cull dressing, Ma Sprocket, Yardmaster, Ballast (§34.5) | BUILD | OPEN |
+| 520 | W-TIDE | The Bloom tide — per-sector infestation on the chart, persisted (§34.6) | BUILD | OPEN |
+| 521 | W-AUDITS | The Gate Audits — one gate per Book behind a wreckable scaffold; never strands a sector (§34.6) | BUILD | OPEN |
+| 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | OPEN |
+| 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | OPEN — after 520 and 521 |
+| 524 | W-VAEL | Vael — Override Tender, the transferable Lien Anchor, Page Nine (§34.5) | BUILD | OPEN |
+| 525 | W-QUIET | Quiet — juggling runners, The Swap, sold routes (§34.5) | BUILD | OPEN |
+| 526 | W-HELIX | Helix — too-perfect false flags, Lien drones, Gate Audit platforms, Adjudicator 44-C (§34.5) | BUILD | OPEN |
+| 527 | W-ARCHIVE | Archive — Redaction, reading rooms, page drones, Index Head (§34.5) | BUILD | OPEN |
+| 528 | W-CHOIR | Choir — Bells, resonance, the Carried Relic (§34.5) | BUILD | OPEN |
+| 529 | W-VERGE | Verge-Layers — machine bodies, flyable directives, the Appeal, the Sleeping Jury, the Line trial (§34.5) | BUILD | OPEN |
+| 530 | W-DRIFT | Drift — claim pylons, the Claim Jump, the Breaker Derby (§34.5) | BUILD | OPEN |
+| 531 | W-REACH | Reach — the Nest Carrier, the Trophy Wall, chained gate camps (§34.5) | BUILD | OPEN |
+| 532 | W-FRONTIER | Frontier — homestead modules, Barn Raising, Weld Head (§34.5) | BUILD | OPEN |
+| 533 | W-BOOKS-0-2 | Books 0–2 play per `design/expansion/06_CAMPAIGN_SCRIPT.md` (§34.7) | BUILD | OPEN |
+| 534 | W-BOOKS-3-4 | Books 3–4 play — VARIANCE ADJUSTMENT, the three doors, the doubled contract (§34.7) | BUILD | OPEN — after 533 |
+| 535 | W-BOOKS-5-7 | Books 5–7 play — heists, the Empire Seed, the Iron Maw dismantle, the Witness (§34.7) | BUILD | OPEN — after 534 |
+| 536 | W-DOORS | The Five Doors, each with one playable act (§34.7) | BUILD | OPEN — after 535 |
+| 537 | W-CANON | Interludes as quiet scenes; PROPOSED CANON folded into `docs/worldbuilding/` or rejected in one sentence (§34.7) | BUILD | OPEN |
+| 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
+| 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
+| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | OPEN |
+| 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | OPEN — with 485 |
+| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN |
+| 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
+| 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |
+| 545 | W-CAMERA | The camera follows the weight (§34.9) | BUILD | OPEN |
+| 546 | W-TEACH | Teach by situation; First Light keeps its offer with Play as the primary action (§34.9) | BUILD | OPEN |
+| 547 | W-COLOSSI | The Colossus roster on row 448's framework; the bar is the parts (§34.9) | BUILD | OPEN — after 448 |
+| 548 | W-AUDIT | The fifty-point A-list audit, repeated after each phase (§34.9) | FIX | OPEN |
+| 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | OPEN |
+| 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — owner call on the table; read live behaviour first |
 
 ### Landed rows index (consolidated 2026-10-15)
 
@@ -6644,7 +6726,7 @@ row 501 head), its conduct entry (`factionConduct.js`, where missing), and its p
 | Row | Name | Feeling | Done when | Bible |
 |---|---|---|---|---|
 | 520 | **The Bloom tide** | "The tide line moved because I cleared that lane." | A per-sector infestation level spreads along lanes with unclaimed wrecks and falls with clears and gardens. It is drawn on the chart and persisted. Fixed-seed: a cleared lane drops its level, and a neglected one rises over N cycles | 01 §2, 03 §1.4 |
-| 521 | **The Gate Audits** | "They're welding the Io gate shut, and I can see the scaffold." | One outer gate per Book (from B3) closes over several cycles behind a wreckable Helix scaffold. Closure reroutes traffic and wakes Verge law around the gate. The player can delay a closure (E-32) but not end the policy | 01 §2 |
+| 521 | **The Gate Audits** | "They're welding the Io gate shut, and I can see the scaffold." | One outer gate per Book (from B3) closes over several cycles behind a wreckable Helix scaffold. Closure reroutes traffic and wakes Verge law around the gate. The player can delay a closure (E-32) but not end the policy. **Invariant: a closure never makes a sector unreachable.** It lengthens routes. Every mission, ace, machine-person, save and the B7 route to Ashfall in a closed-gate sector stay reachable, and a test walks each closed gate's sector from Helios | 01 §2 |
 | 522 | **The Slow Gray clock** | "The Pit's air index fell again." | The Meridian ticker shows the Pit's air index falling every Book. It never recovers (epilogue canon). The player's violence moves prices, never the air | 01 §2 |
 | 523 | **The chart keeps the receipt** | "That's my garden. That's my station. That's where I broke the Maw." | The chart shows the tide line, gate states, the player's structures, gardens, lit paths, trophy walls and Colossus remains. Each entry is backed by a persisted fact with a reader (§31.0 fault 1) | 01 §2, 08 §11 |
 
@@ -6664,12 +6746,12 @@ row 501 head), its conduct entry (`factionConduct.js`, where missing), and its p
 
 | Row | Name | Feeling | Done when | Bible |
 |---|---|---|---|---|
-| 540 | **The thin sectors** | "Even Sedna Dark has something to do." | Hyperion, Rhea, Nereid, Kepler, Orcus, Phoebe, Triton, Eunomia, Sedna, Eris, Nyx and Proteus each have their 04 throwable, hazard, resident, wonder and set piece on the default route. No sector is "one hull is the whole schedule" | 04 |
+| 540 | **The thin sectors** | "Even Sedna Dark has something to do." | Hyperion, Rhea, Nereid, Kepler, Orcus, Phoebe, Triton, Eunomia, Sedna, Eris, Nyx and Proteus each have their 04 throwable, hazard, resident, wonder and set piece on the default route. No sector is "one hull is the whole schedule". Coordinates with row 464 (every sector has a law) and row 450 (one wonder per sector): this row owns the throwable, resident and set piece, and takes the law and wonder from those rows when they land | 04 |
 | 541 | **The arena ladder** | "The arenas got bigger as I did." | The ten Cull arenas in the 04 table, each with its signature throwable and law, ordered by scale step for §33 row 485 | 04 |
 | 542 | **The canon cast gets hands** | "Kessler's scale and my Line disagreed." | Each canon character in 03 §4.1 has their physical hook wired (Kessler's scale, Slate's column and fourth spike, Drift's moisture loss, Rook's tow-to-booth bounties, Hale's Weighing, Dree's waved weir, Wex's empty rack) | 03 §4.1 |
 | 543 | **Faces** | "The contact looks like she works here." | Portraits for the canon cast and the eleven new faces (03 §4.2), plus eight culture pools of eight faces each (03 §2), with generated 2D art allowed by owner ruling | 05 §6 |
 
-### 34.9 Systems and polish (rows 544–549)
+### 34.9 Systems and polish (rows 544–550)
 
 | Row | Name | Feeling | Done when | Bible |
 |---|---|---|---|---|
@@ -6679,3 +6761,4 @@ row 501 head), its conduct entry (`factionConduct.js`, where missing), and its p
 | 547 | **The Colossus roster** | "The boss bar was its parts." | The 07 §5 bosses (Nest Carrier, Casket Worm, Furnace Maw, Yardmaster, Adjudicator 44-C, Hive-hulk, the Iron Maw, plus the existing Foreman, Regent and Spindle Mother) on row 448's framework. No HP bars. Every ripped part is ammunition | 07 §5 |
 | 548 | **The fifty-point audit** | "I'd show this to a friend." | The 08 §12 checklist is run as a pass. Each false item is fixed or filed as one demo-ledger row. The pass is repeated after each phase of 08 §13 | 08 §12 |
 | 549 | **Receipts within a budget** | "The world remembers, and the save is fine." | Every persisted receipt in §34 has a cap and a reader. Trivial receipts decay oldest-first, and meaningful ones never do. Save migrations cover each new record, and the save-growth soak stays flat | 08 §11 |
+| 550 | **The arsenal, one job each** | "I know what every tool in my bay is for." | Each physics tool in `data/weapons.js` is kept, merged into one of the five powers, or moved to a Line head per the owner's pick of `design/expansion/05_ASSET_ROSTER.md` §7.3. Saves migrate owned tools to their new home. No tool's outcome is lost without the owner's call | 05 §7.3 |

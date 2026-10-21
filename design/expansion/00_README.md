@@ -20,7 +20,7 @@ written after measuring the live game (`build_map.md` §33.0).
 
 **Where the work goes.** Work derived from this bible lives in two places:
 
-- **The complex tasks** are rows **498–549** in [`build_map.md` §34](../../build_map.md).
+- **The complex tasks** are rows **498–550** in [`build_map.md` §34](../../build_map.md).
 - **The small, exact tasks** are the **EXP** section of
   [`design/program/INFERENCE_IDEAS.md`](../program/INFERENCE_IDEAS.md).
 

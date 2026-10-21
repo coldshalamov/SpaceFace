@@ -1,6 +1,8 @@
 <!-- LIFETIME: STABLE -->
 # 07 — Missions and encounters
 
+**Canon added in this file (PROPOSED CANON, for row 537):** the forty-eight encounters as events in the world, the Colossi roster beyond the existing bosses (Nest Carrier, Casket Worm, Furnace Maw, Yardmaster, Adjudicator 44-C, Hive-hulk, Clerk 0003), and the world events Rock Rain and Derailment cascade.
+
 ## 1. Seven laws for every mission and encounter
 
 1. **Physical first.** The objective is a physical act: move it, catch it, break it, build it, hide

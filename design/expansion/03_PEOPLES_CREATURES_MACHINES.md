@@ -7,6 +7,8 @@ biology is canon in `design/alien-ecology-program/00_CANON_SYNTHESIS.md`, and th
 come from `02_FAUNA_AND_HOST_TAXONOMY.md`. This file arranges them for play, and adds new families
 only where the Katamari ladder has a hole.
 
+**Canon added in this file (PROPOSED CANON, for row 537):** the Bloom pathologies as visible coupling filaments; the new Bloom families (Lantern cysts as throwable bombs, Glassbacks that reflect gunfire, Bellows, Husks with host-shadow, the Hive-hulk, the Long Field); the rename of "Choirless" to Lostcalls; the tide map; the eleven new faces (03 §4.2); the Orphaned Shift as a named family; the twelve new machine-people.
+
 **Vethari stay off-frame.** That is law, not preference. You may show Vethari hulls, bone,
 architecture and echoes, but never a living Vethari body.
 

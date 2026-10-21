@@ -3,7 +3,7 @@
 
 The systems an A-list version of SpaceFace runs on, and the polish bar it is held to. The
 measurements that justify each section are in `build_map.md` §33.0. The work items are §33 rows
-482–497 and §34 rows 498–549.
+482–497 and §34 rows 498–550.
 
 ## 1. The core loop at four timescales
 
@@ -259,7 +259,7 @@ files one demo-ledger row (`AGENTS.md` §7).
 | **4. The world moves** | tides, audits, the ticker, the chart | §34 508, 513, 520–523 |
 | **5. The story plays** | Books 0–7, doors, interludes, arcs, the Cull | §34 533–539, 504 |
 | **6. People** | cast, faces, machine-people | §34 505, 506, 542, 543 |
-| **7. Polish** | the 50-point checklist | §34 544–549; §33 493–497 |
+| **7. Polish** | the 50-point checklist; the power and arsenal merge (owner calls) | §34 544–550; §33 493–497 |
 
 Phases 3 and 6 can run in parallel with Phase 2, because they touch art and data rather than the
 fight code.
