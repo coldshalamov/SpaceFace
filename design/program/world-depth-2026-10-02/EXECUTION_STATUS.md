@@ -1,6 +1,32 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Play-led continuation — 21 October 2026, 23:34 UTC
+
+All ten goals remain OPEN. The user's new 23:15 direction is to actually play SpaceFace, inhabit its universe creatively and use those experiences to improve it and place assets. SF-PLAY-WORLD records this ongoing outcome alongside the nine prior markers. It is not complete after an audit, a screenshot, a plan or a local patch.
+
+### Real entry attempt and next experience
+
+The repository-declared public demo, https://spaceface-play-demo.vercel.app/, was opened through the normal browser route at 23:26 UTC. It reached the actual BOOT FAILED presentation before the main menu; one ordinary Retry reproduced it. Renderer logs identify failure to create a WebGL context in this cloud browser, with graphics reported disabled. This does not establish a game-wide failure or a defect on other devices. No flight, mission, exploration, saved-game mutation or forced test scenario occurred. The actual public-entry capture has SHA256 `e6b38c685ceb4cfe38c83bd71b31ce27cfcc7d6fa7744dc6046b6d00d64e6cd1` and was shown with that limitation.
+
+The current generic error only directs players to console details. A narrow, source-grounded improvement is active in `src/ui/runtimeFailurePresenter.js` and `test/boot-graphics-failure.test.mjs`: recognize the exact graphics-context creation failure, provide safe actionable fixed copy, retain Retry/accessibility and preserve unknown-error fallback. This is a presentation improvement, not a workaround for disabled graphics or proof of play. Its public master and pending-tree presenter blobs match. A separate scoped Ceres/Ilex landmark investigation will inspect existing assets, placement and actual settled voyage outcomes before writing unclaimed feature paths. Historical committed crop must not become invented current stock, pickups or rewards. Root retains shared-register ownership; neither worker may alter the current sealed publication paths.
+
+Next ordinary-play action is normal entry, flight and connected activities in a permitted browser with working WebGL, preserving existing saves and distinguishing the deployed build from unmerged source. Do not replace this with staged CI captures or claim the user request fulfilled by source inspection. The earlier denied optional localhost UI operation remains stopped and is not retried by another route. No browser security relaxation, deployment, master merge or external execution task was performed.
+
+### Preserved pending source delivery
+
+PR480 was freshly verified open and unmerged at `ff62ac4261b4debaff798f46cbe56a6473f8cf2e` at 23:21 UTC. The exact public pending chain survives: `ff62ac4 -> 1ce3eff -> 0dac3b6 -> 37f0281 -> 3bd5151`. It contains the missing NPC helper preload, SG08 fixture correction, Red Kite ordinary player-action bridge and earlier attributable Ilex formatter preload. The final captured-entity publication-owner correction and regression produce tested tree `0ce503ecc003fd4f6f24364425c250f4fed49988`, not yet branch-published. Four final blobs were freshly confirmed absent before the supported upload retry; a current publication request remains pending, with no denial or authentication inference. Current master `4ea92f15e03fdede9d8254a410cb0b65fd3f44fc` and private dirty ancestry remain untouched.
+
+The final composition passes 121/121, including the existing bounded Red Kite native maneuver tests and fourteen focused owner regressions. SG08 passes. The preload check still fails on nineteen pre-existing omissions after both attributable omissions were repaired; do not call the entire check green. The Charon production change binds the captured queue entity and checks existing cancellation before an existing post-first-picture publication exemption. It does not relax readiness, visibility, custody, holds or deadlines. The complete nine-file delta, meaningful failed attempts, tests and concise handoff were independently recovered and member-verified at 23:15 UTC; archive SHA256 `dca8aed9d2f92df8cd6401d1ec74298a1bc5eb5db96012663c4048230d4be361`. GitHub source delivery is still required.
+
+The pending source owner must finish only the authorized operation, inspect any uncertain result, verify the final remote tree and exact parents, recheck PR/head/master, then use expected-head fast-forward protection. If PR480 has merged, reconcile only unlanded work onto current master and use a new draft PR. Never force or publish private ancestry. Optional comment and older held receiver operations remain isolated; no repeated pending prompt.
+
+### Latest completed CI and execution gap
+
+ff62 run https://github.com/coldshalamov/SpaceFace/actions/runs/39669550380 is terminal with a failed aggregate. Runtime is genuinely green at 1,664/1,664 with enclosing command exit 0; actual checkout was merge `0a4d4a2c0de79325208578b7a3f804f6eedaa31f`, not the branch tree. Browser shard 3 was cancelled at 20:51:27 UTC, with three passing completed leaves and no aggregate/flight result; its exact cancellation cause is unproven. Other failures include the now-repaired pending SG08/preload cases and unrelated inherited drift. Latest staged images retain the teal wedge and a hidden colony awaiting publication, with the original hauler/cutter visible. No ordinary-route or visual acceptance follows.
+
+Execution was interrupted during the upload around 20:50 UTC and resumed at 23:13 UTC. No background progress is claimed across that gap. Surviving files, pending Git objects, branch state and external recovery were checked before resuming. Current-run recovery metadata/logs have independent readback SHA256 `96a48348c1cd2351f6c1bdaa473c1f601594ba82e2e711247378453655dc3d20`. Continue executable implementation, review and preservation while the scoped browser/publication blockers remain separate.
+
 ## Current source handoff — 21 October 2026, 20:21 UTC
 
 All nine goals remain OPEN. PR #480 is verified open, unmerged and mergeable at `ff62ac4261b4debaff798f46cbe56a6473f8cf2e`, tree `b0c8e4ae93f67fe5c32d45cb030aea5602bf5471`, by branch and PR readback at 20:21:15 UTC. GitHub ancestry comparison proves a four-commit fast-forward from e579e67, with zero commits behind. Current master was inspected through `e1f33a2b03f0da7f0b177da85a45beed80cf08ce`; newer owners, private checkout and master remain untouched.
