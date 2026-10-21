@@ -398,15 +398,15 @@ const PROFILE_BY_NEBULA_TINT = new Map([
   [SECTOR_PALETTE_CLASSES.anomaly.nebulaTint, SECTOR_VISUAL_PROFILES.anomaly],
 ]);
 
-const PROFILE_BY_ID = new Map([
+export const PROFILE_BY_ID = new Map([
   ['sector_helios_prime', SECTOR_VISUAL_PROFILES.helios_core],
   ['sector_tethys_junction', SECTOR_VISUAL_PROFILES.tethys],
-  ['sector_frontier_east_ridge', SECTOR_VISUAL_PROFILES.fringe],
+  ['sector_io_reach', SECTOR_VISUAL_PROFILES.fringe],
   ['sector_ceres_belt', SECTOR_VISUAL_PROFILES.ceres_belt],
   ['sector_vesta_forge', SECTOR_VISUAL_PROFILES.vesta_forge],
   ['sector_pallas_drift', SECTOR_VISUAL_PROFILES.pallas_drift],
   ['sector_sker_haven', SECTOR_VISUAL_PROFILES.sker_haven],
-  ['sector_anomaly_well', SECTOR_VISUAL_PROFILES.anomaly],
+  ['sector_veil_nebula', SECTOR_VISUAL_PROFILES.anomaly],
 ]);
 
 export function resolveSectorVisualProfile(sector) {
