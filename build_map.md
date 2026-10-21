@@ -1031,7 +1031,7 @@ production units, and never build what they write.
 | 399 | AL-LONG-1 | Seen at minute one, moved at hour fifteen — ≥8 `revisitNeed` one-offs, ≥3 in hours 10–25; AL-LG-01/02/03 inside (§31.3) | BUILD | OPEN |
 | 400 | AL-LONG-2 | The reckoning is built from your run — four one-fact-different saves give four B7 boards; AL-LG-04/05 inside (§31.3) | BUILD | OPEN |
 | 401 | AL-LONG-3 | Hulls you commit to — two irreversible refits per hull; ladder to hour 15; deed-priced resale; AL-LG-10/11/12 inside (§31.3) | BUILD | OPEN |
-| 402 | AL-LONG-4 | One works — one recipe per product, relay chain with per-hop receipts, outpost refinery retired with save migration; AL-LG-13/14 inside (§31.3) | BUILD | OPEN |
+| 402 | AL-LONG-4 | One works — one recipe per product, relay chain with per-hop receipts, outpost refinery retired with save migration; AL-LG-13/14 inside (§31.3) | BUILD | OPEN — claim refinery runs the site recipe book, forwards output to a same-sector relay with per-hop receipts, stranded pre-402 inputs collectible (fleet oct20); remaining: outpost refinery retirement |
 | 403 | AL-LONG-5 | Write the drone — ≤6-step composed loops with refusal reasons; AL-LG-15 inside (§31.3) | BUILD | OPEN — after 402 |
 | 404 | AL-EAR-1 | The chain sings — CV-EAR next slice; AL-PR-01…06 inside (§31.3) | BUILD | OPEN |
 | 405 | AL-EAR-2 | Twenty-five sectors, twenty-five beds — composed beds from the existing score identities (§31.3) | BUILD | OPEN |

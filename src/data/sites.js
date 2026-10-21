@@ -208,3 +208,20 @@ export const SITE_BALANCE = {
 
 export const SITE_MACHINE_BY_ID = new Map(SITE_MACHINES.map((m) => [m.id, m]));
 export const SITE_RECIPE_BY_ID = new Map(SITE_RECIPES.map((r) => [r.id, r]));
+
+// AL-LG-13/14 (build map row 402): the ONE refinery recipe book. A claim Industrial Refinery
+// runs the same continuous recipes a site sm_refinery runs, never its own private map. Copper is
+// metal feedstock here; circuitry needs a fabricator (sr_fab_circuitry). The copper smelt lives
+// only in this table so SITE_RECIPES (planner, census, margin checks) is unchanged.
+// Table order IS the pick order: multi-input recipes first so a partner ore is not starved.
+const CLAIM_REFINERY_SITE_IDS = ['sr_blend_alloys', 'sr_synthesize_fuel', 'sr_smelt_iron', 'sr_fuse_silica'];
+export const CLAIM_REFINERY_RECIPES = Object.freeze([
+  ...CLAIM_REFINERY_SITE_IDS.map((id) => {
+    const r = SITE_RECIPE_BY_ID.get(id);
+    return Object.freeze({ id: r.id, name: r.name, inputs: Object.freeze({ ...r.inputs }), output: Object.freeze({ ...r.output }) });
+  }),
+  Object.freeze({ id: 'claim_smelt_copper', name: 'Smelt Copper',
+    inputs: Object.freeze({ cmdty_ore_copper: 2 }), output: Object.freeze({ cmdty_refined_metals: 1 }) }),
+]);
+export const CLAIM_REFINERY_INPUT_IDS = Object.freeze(
+  [...new Set(CLAIM_REFINERY_RECIPES.flatMap((r) => Object.keys(r.inputs)))].sort());

@@ -19,10 +19,11 @@
 //     records the fuzzy rumor; scanner only consumes the post's presence for non-combat POI range.
 //
 // Specialization behavior ticks in update():
-//   - REFINERY converts delivered ore into refined goods (REFINE_MAP truth, 2:1) into an output
-//     store the player hauls out. A packed output store or missing ore parks the batch in
-//     flight — idle time is never banked into free conversions. Its risk: upkeep + stored
-//     goods draw raiders in low-sec space.
+//   - REFINERY runs the one claim recipe book (CLAIM_REFINERY_RECIPES: the site sm_refinery modes
+//     plus copper smelting) into an output store. Its output is forwarded to a same-sector active
+//     Trade Relay on a 30 s cadence, so the player's hold never has to carry it. A packed output
+//     store or missing feedstock parks the batch in flight — idle time is never banked into free
+//     conversions. Its risk: upkeep + stored goods draw raiders in low-sec space.
 //   - RELAY dispatches scheduled convoys to the linked station and sells at the destination's REAL
 //     market price less the fee (the proven outpost autosell −20%), pressing that market honestly.
 //     No economy peer / no market price → freight is held, never converted to fabricated profit.
@@ -49,6 +50,7 @@ import {
   BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE, CLAIM_COST,
   BODY_SPECIALIZATIONS, BODY_SPECIALIZATION_BY_ID,
 } from '../data/claimableBodies.js';
+import { CLAIM_REFINERY_RECIPES, CLAIM_REFINERY_INPUT_IDS } from '../data/sites.js';
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -74,14 +76,29 @@ const OUTPUT_STORE_FULL_LINE = 'Output store full — collect refined goods';
 // Same readout treatment for the input side: parked material or in-flight work that
 // cannot form a whole batch is a recoverable stall — say exactly what it takes.
 const INPUT_STARVED_LINE = 'Awaiting ore — next batch consumes ' + REFINE_RATIO + 'u of one refinable ore';
-const REFINE_MAP = { // raw ore -> refined commodity
-  cmdty_ore_iron: 'cmdty_refined_metals',
-  cmdty_ore_copper: 'cmdty_comp_circuitry',
-  cmdty_silicate: 'cmdty_polymers',
-  cmdty_ore_titanium: 'cmdty_alloys',
-  cmdty_ore_platinoid: 'cmdty_alloys',
-};
-export const REFINABLE_ORE_IDS = Object.keys(REFINE_MAP);
+// Row 402 — ONE recipe book for claim refineries (AL-LG-13 claim half, AL-LG-14). The table
+// comes straight from data/sites.js: the four live site sm_refinery modes plus copper smelting.
+// Copper never becomes circuitry here; circuitry needs a fabricator. No private REFINE_MAP.
+const CLAIM_RECIPES = CLAIM_REFINERY_RECIPES.map((r) => {
+  const [outputId, outputU] = Object.entries(r.output)[0];
+  return { id: r.id, inputs: r.inputs, outputId, outputU,
+    batchU: Object.values(r.inputs).reduce((s, q) => s + q, 0),
+    primaryInputId: Object.keys(r.inputs)[0] };
+});
+const CLAIM_INPUT_SET = new Set(CLAIM_REFINERY_INPUT_IDS);
+export const REFINABLE_ORE_IDS = CLAIM_REFINERY_INPUT_IDS.slice(); // still includes cmdty_ore_iron
+export const RELAY_FEED_EVERY_S = 30;   // refinery → same-sector relay forward cadence (s of simTime)
+export const CLAIM_RECIPE_BOOK = 1;     // spec.recipeBook stamp; absent = pre-row-402 save
+function readyClaimRecipe(stock) {
+  const have = stock || {};
+  for (const r of CLAIM_RECIPES) {
+    let ok = true;
+    for (const id in r.inputs) { if (!((Number(have[id]) || 0) >= r.inputs[id])) { ok = false; break; } }
+    if (ok) return r;
+  }
+  return null;
+}
+function claimBodyOrdinal(id) { const m = /^claim_(\d+)$/.exec(id || ''); return m ? parseInt(m[1], 10) : Infinity; }
 
 // Specialization cadences and raid contract (legacy outpost truth, claim-scoped).
 export const SPEC_UPKEEP_EVERY_S = 60;     // upkeep settles once a minute (outpost autosell cadence)
@@ -290,6 +307,17 @@ function fmtCr(value) {
 function sumStore(bucket) {
   let total = 0;
   for (const id in bucket) total += bucket[id] || 0;
+  return total;
+}
+
+// Input the unified recipe book cannot refine (a pre-row-402 save's platinoid, say). It is not
+// output, but it is still the player's: the ledger exposes it so the Base screen offers Collect
+// even when the output store is empty.
+function strandedInputUnits(bucket) {
+  let total = 0;
+  for (const id in bucket) {
+    if (!CLAIM_INPUT_SET.has(id)) total += bucket[id] || 0;
+  }
   return total;
 }
 
@@ -615,7 +643,7 @@ export const claims = {
       this.bus.emit('toast', { text: 'The bastion garrison accepts no freight', kind: 'info', ttl: 3 });
       return 0;
     }
-    if (def.id === 'spec_refinery' && !REFINE_MAP[goodId]) {
+    if (def.id === 'spec_refinery' && !CLAIM_INPUT_SET.has(goodId)) {
       this.bus.emit('toast', { text: 'Refinery takes raw ore only', kind: 'error', ttl: 3 });
       return 0;
     }
@@ -651,23 +679,43 @@ export const claims = {
   },
 
   // Move the whole output store into the player hold (partial when the hold is short on volume).
-  // Returns units actually moved.
+  // A refinery also releases input the unified recipe book cannot refine (a pre-row-402 save's
+  // platinoid, say): this is the player's one collect route, so stranded goods stay recoverable
+  // here with their identity and quantity. Returns units actually moved.
   collectFromClaim(bodyId) {
     const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
     if (!body || !body.spec) return 0;
+    const def = BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
     const output = body.spec.store.output;
     let total = 0;
+    let shippedOutput = 0;
     for (const id of Object.keys(output)) {
       const accepted = addCargo(this.state, id, output[id]);
       if (accepted > 0) {
         output[id] -= accepted;
         if (output[id] <= 0) delete output[id];
         total += accepted;
+        shippedOutput += accepted;
+      }
+    }
+    let stranded = 0;
+    if (def && def.id === 'spec_refinery') {
+      const input = (body.spec.store && body.spec.store.input) || {};
+      for (const id of Object.keys(input).sort()) {
+        if (CLAIM_INPUT_SET.has(id)) continue;
+        const accepted = addCargo(this.state, id, input[id]);
+        if (accepted > 0) {
+          input[id] -= accepted;
+          if (input[id] <= 0) delete input[id];
+          total += accepted;
+          stranded += accepted;
+        }
       }
     }
     if (total > 0) {
-      body.spec.outputFull = false;
-      this._receipt(body, 'collected', 'Shipped out ' + total + 'u of goods', { qty: total });
+      if (shippedOutput > 0) body.spec.outputFull = false;
+      this._receipt(body, 'collected', 'Shipped out ' + total + 'u of goods',
+        stranded ? { qty: total, strandedU: stranded } : { qty: total });
     }
     return total;
   },
@@ -692,6 +740,9 @@ export const claims = {
       && b.spec && b.spec.id === 'spec_bastion' && b.spec.status === 'active');
     const deterred = (spec.deterrenceUntil || 0) > t;
     const meta = this.state.claims.meta;
+    const strandedInputU = def.id === 'spec_refinery'
+      ? strandedInputUnits(spec.store && spec.store.input)
+      : 0;
     const out = {
       bodyId: body.id,
       name: body.name,
@@ -706,12 +757,15 @@ export const claims = {
         inputCapU: def.id === 'spec_refinery' ? def.inputCapU : (def.id === 'spec_relay' ? def.storeCapU : 0),
         outputU: sumStore(spec.store.output),
         outputCapU: def.id === 'spec_refinery' ? def.outputCapU : 0,
+        strandedInputU,
       },
       flows: {
         refinedTotalU: spec.totals.refinedTotalU,
         soldTotalCr: spec.totals.soldTotalCr,
         lostTotalU: spec.totals.lostU,
         upkeepPaidCr: spec.totals.upkeepPaidCr,
+        forwardedU: spec.totals.forwardedU || 0,
+        receivedU: spec.totals.receivedU || 0,
       },
       defense: { rating, coveredByBastion: covered },
       risk: {
@@ -754,7 +808,12 @@ export const claims = {
       out.throughput = {
         refineRatePerS: def.refineRatePerS,
         refineRatio: REFINE_RATIO,
-        nextBatch: { goodId: ready.nextOre, inputU: REFINE_RATIO, outputU: 1 },
+        nextBatch: {
+          goodId: ready.nextOre,
+          inputU: ready.recipe ? ready.recipe.batchU : REFINE_RATIO,
+          outputU: ready.recipe ? ready.recipe.outputU : 1,
+          recipeId: ready.recipe ? ready.recipe.id : null,
+        },
       };
       if (spec.status === 'active') {
         if (ready.outputRoomU <= 0) out.status = OUTPUT_STORE_FULL_LINE;
@@ -1231,33 +1290,31 @@ export const claims = {
       if (!store.input || typeof store.input !== 'object') store.input = {};
       if (!store.output || typeof store.output !== 'object') store.output = {};
     }
-    if (def.id === 'spec_refinery') this._tickSpecRefinery(body, def, dt);
-    else if (def.id === 'spec_relay') this._tickSpecRelay(body, def, state);
+    if (def.id === 'spec_refinery') {
+      this._tickSpecRefinery(body, def, dt);
+      this._tickRefineryFeed(body, state);
+    } else if (def.id === 'spec_relay') this._tickSpecRelay(body, def, state);
     // spec_bastion has no per-tick production — its work happens in _rollRaids + the ledger.
   },
 
-  // The one readiness read shared by the tick and the ledger: which single ore the
-  // next whole batch would draw (the most plentiful that covers REFINE_RATIO), how
-  // much output room is left, and whether the site is stalled on material or work
-  // it already holds.
+  // The one readiness read shared by the tick and the ledger: which recipe the next whole
+  // batch would draw (first ready row in the fixed table order), how much output room is
+  // left, and whether the site is stalled on material or work it already holds.
   _refineryReadiness(spec, def) {
     // Pure readout — tolerate a spec whose store has not been materialized yet and report
     // "nothing held" instead of crashing the tick.
     const input = (spec.store && spec.store.input) || {};
     const output = (spec.store && spec.store.output) || {};
-    let nextOre = null, nextQty = 0;
-    for (const ore of REFINABLE_ORE_IDS) {
-      const have = input[ore] || 0;
-      if (have >= REFINE_RATIO && have > nextQty) { nextQty = have; nextOre = ore; }
-    }
+    const recipe = readyClaimRecipe(input);
     const outputRoomU = Math.max(0, def.outputCapU - sumStore(output));
     return {
-      nextOre,
+      recipe,
+      nextOre: recipe ? recipe.primaryInputId : null,
       outputRoomU,
-      working: !!nextOre && outputRoomU > 0,
+      working: !!recipe && outputRoomU > 0,
       // Parked freight or an in-flight partial batch with no whole conversion
       // available is a stall; a never-stocked site simply idles.
-      starved: !nextOre && (sumStore(input) > 0 || (spec.acc || 0) > 0),
+      starved: !recipe && (sumStore(input) > 0 || (spec.acc || 0) > 0),
     };
   },
 
@@ -1276,20 +1333,16 @@ export const claims = {
       return;
     }
     spec.acc = (spec.acc || 0) + def.refineRatePerS * dt;
-    while (spec.acc >= REFINE_RATIO) {
-      const ready = this._refineryReadiness(spec, def);
-      if (!ready.working) {
-        // Capacity ran out inside this tick: the accrued remainder arrived after
-        // the last permitted batch — unused time is discarded, never banked.
-        spec.acc = 0;
-        break;
+    let ready = this._refineryReadiness(spec, def);
+    while (ready.working && spec.acc >= ready.recipe.batchU) {
+      const r = ready.recipe;
+      for (const id of Object.keys(r.inputs).sort()) {
+        spec.store.input[id] -= r.inputs[id];
+        if (spec.store.input[id] <= 0) delete spec.store.input[id];
       }
-      spec.store.input[ready.nextOre] -= REFINE_RATIO;
-      if (spec.store.input[ready.nextOre] <= 0) delete spec.store.input[ready.nextOre];
-      const out = REFINE_MAP[ready.nextOre];
-      spec.store.output[out] = (spec.store.output[out] || 0) + 1;
-      spec.totals.refinedTotalU += 1;
-      spec.acc -= REFINE_RATIO;
+      spec.store.output[r.outputId] = (spec.store.output[r.outputId] || 0) + r.outputU;
+      spec.totals.refinedTotalU += r.outputU;
+      spec.acc -= r.batchU;
       // The batch that lands on the cap is the stop. A later attempt only
       // repeats the note when a pickup cleared the flag and the store is still full.
       if (sumStore(spec.store.output) >= def.outputCapU && !spec.outputFull) {
@@ -1299,11 +1352,64 @@ export const claims = {
       // If that conversion exhausted the input or packed the store, the tick's
       // work is done: whatever accrual remains arrived after the stall — discard
       // it, even a sub-batch fraction.
-      if (!this._refineryReadiness(spec, def).working) {
-        spec.acc = 0;
-        break;
-      }
+      ready = this._refineryReadiness(spec, def);
+      if (!ready.working) { spec.acc = 0; break; }
     }
+  },
+
+  // Row 402: the refinery's output reaches a station through a claim relay with no player hold.
+  // Whole units, same sector, lowest-id ACTIVE relay with room; batched (≥ relay minLoadU or a full
+  // store) at most every RELAY_FEED_EVERY_S so the 8-receipt ring keeps the convoy receipts.
+  // Capacity is a hard filter: a full lowest-id relay must not shadow an empty one behind it.
+  _feedRelayFor(body) {
+    const bodies = (this.state.claims && this.state.claims.bodies) || [];
+    const relayDef = BODY_SPECIALIZATION_BY_ID.get('spec_relay');
+    return bodies
+      .filter((b) => b !== body && b.sectorId === body.sectorId && b.spec
+        && b.spec.id === 'spec_relay' && b.spec.status === 'active')
+      .filter((b) => {
+        const store = b.spec.store && typeof b.spec.store === 'object' ? b.spec.store : null;
+        const input = (store && store.input) || {};
+        return Math.floor(relayDef.storeCapU - sumStore(input)) >= 1;
+      })
+      .sort((a, b) => (claimBodyOrdinal(a.id) - claimBodyOrdinal(b.id)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0] || null;
+  },
+
+  _tickRefineryFeed(body, state) {
+    const spec = body.spec;
+    if (!spec || spec.status !== 'active') return 0;
+    const t = state.simTime || 0;
+    if (t < (Number(spec.nextForwardAt) || 0)) return 0;
+    const output = (spec.store && spec.store.output) || {};
+    const ids = Object.keys(output).filter((id) => Math.floor(Number(output[id]) || 0) > 0).sort();
+    let held = 0; for (const id of ids) held += Math.floor(Number(output[id]) || 0);
+    const relayDef = BODY_SPECIALIZATION_BY_ID.get('spec_relay');
+    if (!held || (held < relayDef.minLoadU && !spec.outputFull)) return 0;
+    const relay = this._feedRelayFor(body);
+    if (!relay) return 0;
+    const rStore = relay.spec.store && typeof relay.spec.store === 'object' ? relay.spec.store : (relay.spec.store = {});
+    if (!rStore.input || typeof rStore.input !== 'object') rStore.input = {};
+    if (!rStore.output || typeof rStore.output !== 'object') rStore.output = {};
+    let room = Math.max(0, Math.floor(relayDef.storeCapU - sumStore(rStore.input)));
+    const goods = {}; let moved = 0;
+    for (const id of ids) {
+      if (room <= 0) break;
+      const take = Math.min(Math.floor(Number(output[id]) || 0), room);
+      if (take <= 0) continue;
+      output[id] -= take; if (output[id] <= 0) delete output[id];
+      rStore.input[id] = (rStore.input[id] || 0) + take;
+      goods[id] = take; moved += take; room -= take;
+    }
+    if (moved <= 0) return 0;
+    spec.outputFull = false;
+    spec.nextForwardAt = t + RELAY_FEED_EVERY_S;
+    spec.totals.forwardedU = (spec.totals.forwardedU || 0) + moved;
+    relay.spec.totals.receivedU = (relay.spec.totals.receivedU || 0) + moved;
+    this._receipt(body, 'relay_forwarded', 'Forwarded ' + moved + 'u to ' + relay.name + ' relay',
+      { goods, qty: moved, toBodyId: relay.id });
+    this._receipt(relay, 'relay_received', 'Received ' + moved + 'u from ' + body.name + ' refinery',
+      { goods, qty: moved, fromBodyId: body.id });
+    return moved;
   },
 
   _tickSpecRelay(body, def, state) {
@@ -1919,27 +2025,21 @@ export const claims = {
     return ((this.state.claims && this.state.claims.bodies) || []).find((body) => body && body.id === bodyId) || null;
   },
 
-  // Convert raw ore in cargo into refined materials at the given rate. Picks the most plentiful ore.
+  // Convert feedstock in cargo into refined materials at the given rate — the same claim recipe
+  // book the commissioned store path runs, first ready row in table order.
   // LEGACY module behavior for unspecialized bodies — a commissioned refinery uses site stores.
   _tickRefinery(body, oreUnits) {
     const cargo = this.state.player.cargo;
     if (!cargo || !cargo.items) return;
     // accumulate fractional conversion per-body so slow rates still progress
     body._refineAcc = (body._refineAcc || 0) + oreUnits;
-    if (body._refineAcc < REFINE_RATIO) return; // not enough for one conversion yet
-    const maxOutputs = Math.floor(body._refineAcc / REFINE_RATIO);
-    // find the most plentiful refinable ore
-    let bestOre = null, bestQty = 0;
-    for (const ore of Object.keys(REFINE_MAP)) {
-      const have = cargo.items[ore] || 0;
-      if (have > bestQty) { bestQty = have; bestOre = ore; }
+    for (let guard = 0; guard < 64; guard++) {
+      const r = readyClaimRecipe(cargo.items);
+      if (!r || body._refineAcc < r.batchU) return;
+      for (const id of Object.keys(r.inputs).sort()) removeCargo(this.state, id, r.inputs[id]);
+      addCargo(this.state, r.outputId, r.outputU);
+      body._refineAcc -= r.batchU;
     }
-    const outputs = Math.min(maxOutputs, Math.floor(bestQty / REFINE_RATIO));
-    if (!bestOre || outputs <= 0) return; // nothing to refine
-    body._refineAcc -= outputs * REFINE_RATIO;
-    const out = REFINE_MAP[bestOre];
-    removeCargo(this.state, bestOre, outputs * REFINE_RATIO);
-    addCargo(this.state, out, outputs);
   },
 
   _nearestStationId(body) {
@@ -2011,13 +2111,18 @@ export const claims = {
       convoy: null,
       acc: 0,
       nextDispatchAt: def.dispatchEveryS ? t + def.dispatchEveryS : 0,
+      nextForwardAt: 0,
       destStationId: null,
       upkeepDebt: 0,
       deterrenceUntil: 0,
       outputFull: false,
       receipts: [],
       defense: null,
-      totals: { refinedTotalU: 0, soldTotalCr: 0, lostU: 0, upkeepPaidCr: 0, raidsRepelled: 0, raidsSuffered: 0 },
+      recipeBook: CLAIM_RECIPE_BOOK,
+      totals: {
+        refinedTotalU: 0, soldTotalCr: 0, lostU: 0, upkeepPaidCr: 0, raidsRepelled: 0, raidsSuffered: 0,
+        forwardedU: 0, receivedU: 0,
+      },
     };
   },
 
@@ -2087,6 +2192,20 @@ export const claims = {
     out.totals = Object.assign(fresh.totals, spec.totals || {});
     if (!['active', 'cold', 'raided'].includes(out.status)) out.status = 'active';
     return out;
+  },
+
+  // Row 402 migration: a pre-recipe-book refinery keeps EVERY stored good (output stays collectable,
+  // unaccepted input is released by collectFromClaim) and says once what changed. Normalize already
+  // stamped recipeBook.
+  _noteRecipeBook(body) {
+    const input = (body.spec.store && body.spec.store.input) || {};
+    const stranded = Object.keys(input).filter((id) => (input[id] || 0) > 0 && !CLAIM_INPUT_SET.has(id)).sort();
+    const copper = (input.cmdty_ore_copper || 0) > 0;
+    if (!stranded.length && !copper) return null;
+    const text = stranded.length
+      ? 'Recipe book unified — ' + stranded.map(materialName).join(', ') + ' no longer refines here; collect it from the site'
+      : 'Recipe book unified — copper now smelts to refined metals';
+    return this._receipt(body, 'recipe_book_unified', text, { stranded, copper });
   },
 
   _receipt(body, kind, text, data) {
@@ -3218,7 +3337,10 @@ export const claims = {
       // versioned default: bodies from older saves have no spec — they stay unspecialized
       // Presence in the claims store is the ownership proof. Older saves predate the explicit bit.
       b.owned = true;
+      const needsRecipeNote = !!(b.spec && typeof b.spec === 'object'
+        && b.spec.id === 'spec_refinery' && b.spec.recipeBook == null);
       b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;
+      if (needsRecipeNote && b.spec) this._noteRecipeBook(b);
       const infrastructure = this._normalizeTravelInfrastructure(b.infrastructure, b);
       if (infrastructure) b.infrastructure = infrastructure;
       else delete b.infrastructure;
