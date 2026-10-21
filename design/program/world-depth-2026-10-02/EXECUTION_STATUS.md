@@ -1,6 +1,22 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 04:25 UTC
+
+All eight goals remain OPEN. This source-only checkpoint supersedes prior current-state entries without changing historical evidence or reviewer acceptance fields.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now has verified source head [1e1cc513e31290bdebec9aefe4b954311885ec87](https://github.com/coldshalamov/SpaceFace/commit/1e1cc513e31290bdebec9aefe4b954311885ec87), tree `fe16e3fafce1aae5db17307155a9a583c7e48d1d`, sole parent `95100fff77a1006cfd2b678abe6a1481ead90263`. Exactly seven files changed: package.json, src/data/contactHail.js, src/world/anvilOrchardEncounter.js, src/world/anvilOrchardShiftEncounter.js, test/fixtures/orchard-shift-recovery.mjs and the two receiver-repair Hail/shift-recovery encounter tests.
+
+Ordinary Hail now truthfully describes the disabled receiver. Alin recognizes actual player drive repair and acknowledges delivery only after durable delivery by the same tender. The exact public focused selection passes 102 checks; an independent 86-check subset also passes. Read-only phone UI inspection is complete, but screenshot delivery is pending an infrastructure failure; no new live gameplay or visual acceptance is claimed.
+
+The prior 95100 CI watch is terminal failed overall, although its native receiver route passed against newer upstream. Current [general CI 39543698277](https://github.com/coldshalamov/SpaceFace/actions/runs/39543698277) and [mobile CI 39543698284](https://github.com/coldshalamov/SpaceFace/actions/runs/39543698284) are active. Keep the route success distinct from aggregate CI and acceptance.
+
+The new receiver asset and binding remain unpublished and unaccepted. The local full route passed, but its exact composed pod-hire case fails while the 95100 control passes. The physical owner is tracing existing pod/frame contacts before selecting a correction; do not infer that a passing route clears this regression or promote the candidate.
+
+Current owners: resume_orchard_service_integration owns the physical regression; build_orchard_receiver_asset owns remaining blob publication; root owns final ref coordination and CI. The Hail writer has sealed and released its changes. Next: isolate and repair the composed pod-hire regression, independently review and qualify the corrected composition, finish permitted asset registration publication, then verify the reachable source/model commit and continue ordinary and live graphical acceptance work.
+
+Asset registration upload awaits a replacement approval card. Separate diagnostic publication approvals remain unchanged; no restricted diagnostic payload or private recovery references are included here. Keep source publication, exported/offline-reviewed models, local binding and acceptance as distinct states.
+
 ## Current source handoff — 21 October 2026, 03:54 UTC
 
 All eight larger goals remain OPEN. This source-only update supersedes earlier current-state headings while retaining historical evidence and reviewer acceptance fields.
