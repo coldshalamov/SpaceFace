@@ -783,7 +783,7 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | RC-23 | Adventure bosses get a name and a health bar | `src/systems/swarmJuice.js` (Swarm-only gate ~:435–441), `src/ui/swarmJuiceHud.js` | A Tollman capture shows a name and a filling bar | Move damage authority | `bossHp` is read only inside a Swarm run | OPEN — row 463 |
 | RC-24 | Boss warnings show "title — counter" | `src/ui/toasts.js` `admitReceipt` + an adapter on the boss warning event | The Tollman fight shows 5 receipts, each ≥1 s before its attack | Style a new card | `capitalBossPresentation.js` outputs no text | OPEN — row 463 |
 | RC-25 | Enemy behaviours are taught by a short receipt, not an 8 s toast | `src/ai/counterplay/adventure.js` (~:82) | The first encounter shows no ≥8 s toast | Change which behaviour is picked | The 8 s toast line | OPEN — row 463 |
-| RC-26 | Two visual-profile keys stop pointing at sectors that don't exist | `src/data/sectorVisualProfiles.js` (~:401–417), a new test | A test asserts every profile key is a real sector | Change family profiles | `sector_frontier_east_ridge`, `sector_anomaly_well` | OPEN — row 464 |
+| RC-26 | Two visual-profile keys stop pointing at sectors that don't exist | `src/data/sectorVisualProfiles.js` (~:401–417), a new test | A test asserts every profile key is a real sector | Change family profiles | `sector_frontier_east_ridge`, `sector_anomaly_well` | SHIPPED — rc-26-profile-keys-real-sectors @ 35b76c9f8 |
 | RC-27 | Freighters greet you on arrival | `src/systems/traffic.js` (`POCKET_CLUSTER_R` users ~:147) | ≥2 freighters within 600 wu of the arrival point 5 s after arriving in Helios | Raise `MAX_PER_SECTOR` | The cluster anchors on the pocket station | OPEN — row 464 |
 | RC-28 | "Last move" names your sale when it is the newest cause | `src/ui/marketDriverPresenter.js` (~:202–231) | A unit test, and selling 20 iron at Helios names it | Write economy state from the UI | It reads only `eventMods` and the cycle label | OPEN — row 465 |
 | RC-29 | The mechanic never says "Clean plate" over a damaged hull | `src/story/mechanicVoice.js` (~:93–100) | The market bench at hull 86 has no "Clean plate" | Touch repair prices | It checks scars only | OPEN — row 465 |
@@ -813,6 +813,56 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
+| RC-02 | 2026-10-20 | devin-inf20 | `src/data/swarmMode.js` |
+| RC-03 | 2026-10-20 | devin-inf20 | `src/systems/survivalAnnounce.js` |
+| RC-04 | 2026-10-20 | devin-inf20 | `src/ui/floatingText.js` |
+| RC-05 | 2026-10-20 | devin-inf20 | `src/systems/input.js` |
+| RC-06 | 2026-10-20 | devin-inf20 | `src/ui/powerRail.js` |
+| RC-07 | 2026-10-20 | devin-inf20 | `src/ui/marketNews.js` |
+| RC-08 | 2026-10-20 | devin-inf20 | `src/ui/threatHalo.js` |
+| RC-09 | 2026-10-20 | devin-inf20 | `src/systems/onboarding.js`, `test/first-hour-voice.test.mjs` |
+| RC-10 | 2026-10-20 | devin-inf20 | `src/systems/ships.js`, `src/chronicler/normalize.js` |
+| RC-11 | 2026-10-20 | devin-inf20 | `src/systems/onboarding.js` |
+| RC-12 | 2026-10-20 | devin-inf20 | `src/ui/screens/range.js` |
+| RC-13 | 2026-10-20 | devin-inf20 | `scripts/build-lived-vignettes.mjs`, regenerated `562-lived-*` |
+| RC-14 | 2026-10-20 | devin-inf20 | `scripts/build-lived-vignettes.mjs`, regenerated `562-lived-*` |
+| RC-15 | 2026-10-20 | devin-inf20 | `src/systems/vignetteInterpreter.js` |
+| RC-16 | 2026-10-20 | devin-inf20 | `scripts/build-lived-vignettes.mjs`, regenerated `562-lived-*` |
+| RC-17 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-18 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-19 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-20 | 2026-10-20 | devin-inf20 | `src/systems/stationContacts.js` |
+| RC-21 | 2026-10-20 | devin-inf20 | `src/systems/lossInvestigation.js`, `src/data/wreckCourt/` |
+| RC-22 | 2026-10-20 | devin-inf20 | `src/systems/wreckCourt.js` |
+| AL-LG-01 | 2026-10-20 | devin-inf20 | `src/systems/scanReveal.js`, `src/systems/shipCapabilities.js` |
+| AL-LG-02 | 2026-10-20 | devin-inf20 | `src/data/worldOneOffs.js` |
+| AL-LG-03 | 2026-10-20 | devin-inf20 | `src/data/worldOneOffs.js` |
+| PULSE-03 | 2026-10-20 | devin-inf20 | `src/data/flavor/010-wreck-rumors.js` |
+| PULSE-05 | 2026-10-20 | devin-inf20 | `src/data/newsTemplates.js` |
+| PULSE-06 | 2026-10-20 | devin-inf20 | `src/data/newsTemplates.js` |
+| PULSE-07 | 2026-10-20 | devin-inf20 | `src/data/flavor/080-landmark-lore.js`, `src/data/flavor/100-rim-poi-lore.js` |
+| AL-LG-06 | 2026-10-20 | devin-inf20b | `src/systems/postEndingReplay.js` |
+| AL-LG-07 | 2026-10-20 | devin-inf20b | `src/systems/postEndingReplay.js`, `src/systems/sectorSim.js` |
+| AL-LG-08 | 2026-10-20 | devin-inf20b | `src/systems/story.js`, `src/systems/traffic.js` |
+| AL-LG-09 | 2026-10-20 | devin-inf20b | `src/systems/story.js`, `src/systems/traffic.js` |
+| AL-PR-01 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js`, `src/audio/scoreDirector.js` |
+| AL-PR-02 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js` |
+| AL-PR-03 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js`, `src/systems/stuntCombo.js` (read) |
+| AL-PR-04 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js` |
+| AL-PR-05 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js`, `src/audio/themeMatrix.js` |
+| AL-PR-06 | 2026-10-20 | devin-inf20b | `src/audio/audioSystem.js` |
+| AL-PR-07 | 2026-10-20 | devin-inf20b | `src/render/titleAttractStage.js`, `src/render/killcamStage.js` |
+| AL-PR-08 | 2026-10-20 | devin-inf20b | `src/render/titleAttractStage.js`, `src/sim/titleAttractTape.js`, `scripts/bake-title-attract.mjs` |
+| AL-PR-09 | 2026-10-20 | devin-inf20b | `src/systems/killReplay.js` |
+| AL-PR-10 | 2026-10-20 | devin-inf20b | `src/sim/killcamTape.js`, `src/ui/screens/gameOver.js`, `src/render/uiStage.js` |
+| PULSE-01 | 2026-10-20 | devin-inf20b | `src/data/flavor/020-ad-board.js` |
+| PULSE-02 | 2026-10-20 | devin-inf20b | `src/data/flavor/030-graffiti.js` |
+| RC-26 | 2026-10-20 | devin-inf20b | `src/data/sectorVisualProfiles.js` |
+| RC-27 | 2026-10-20 | devin-inf20b | `src/systems/traffic.js` |
+| RC-36 | 2026-10-20 | devin-inf20b | `src/systems/alienEcology.js`, `src/ui/toasts.js` |
+| RC-39 | 2026-10-20 | devin-inf20b | `src/ui/screens/pause.js`, `src/render/camera.js` |
+| RC-40 | 2026-10-20 | devin-inf20b | `src/ui/screens/statistics.js` |
+| RC-47 | 2026-10-20 | devin-inf20b | `src/systems/travelLanes.js`, `src/ui/toasts.js` |
 ## SHIPPED
 
 | Id | Unit | Commit | Note |

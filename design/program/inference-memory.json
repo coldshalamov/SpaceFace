@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-20",
+  "updated": "2026-10-21",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,20 +113,6 @@
     }
   ],
   "units": [
-    {
-      "id": "NXI-078",
-      "date": "2026-10-01",
-      "wf": "WF-06",
-      "mode": "recovery",
-      "verdict": "accepted",
-      "reason": "retry deep-copies setup; records never touched",
-      "fingerprint": "verb=preserve,subject=finished-record,domain=crucible,layer=ui",
-      "references": [],
-      "integration": "live",
-      "commit": "8311d4cc7",
-      "verification": "route_accepted",
-      "evidence": "src/ui/crucibleLaunch.js"
-    },
     {
       "id": "NXI-079",
       "date": "2026-10-01",
@@ -1674,6 +1660,19 @@
       "references": [],
       "integration": "live",
       "commit": "4d6d2a4aea88d1d55b2e3f45fa5488ed66d9b09c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-26-profile-keys-real-sectors",
+      "date": "2026-10-21",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Io Reach and Veil Nebula now resolve their authored visual profiles instead of falling through to family tints",
+      "fingerprint": "verb=remap,subject=sector-visual-profiles,sector=all,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "35b76c9f8",
       "verification": "focused_green"
     }
   ],
