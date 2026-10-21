@@ -487,6 +487,14 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // First fill of the net — a whisper on the basinCatchLatched edge only.
   // The +N ratchet stays audio-only or a dense belt feed would buzz the pad.
   'gyre:caught':            { strong: 0.15, weak: 0.20, ms: 40 },
+  // Player beats (FB-005 family): the dash is a short shove, a hit taken is a
+  // sharp bite on the weak actuator, a kill scored is a satisfying thud, and a
+  // base kill is the biggest beat in the flight vocabulary. Subscriptions gate
+  // on the player's id — NPC dashes, NPC-on-NPC hits and NPC kills stay silent.
+  'ship:dash':              { strong: 0.40, weak: 0.55, ms: 80 },
+  'projectile:hit':         { strong: 0.55, weak: 0.85, ms: 100 },
+  'entity:killed':          { strong: 0.70, weak: 0.45, ms: 130 },
+  'combat:baseDestroyed':   { strong: 0.95, weak: 0.80, ms: 220 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -990,6 +998,20 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       startPulse(HAPTIC_VERB_PULSES[spec], spec);
     });
     bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
+    // Player beats: a dash, a hit taken, a kill scored, a base dropped. Every payload
+    // is world-scoped, so the gate is the player's id — NPC events stay silent.
+    bus.on('ship:dash', (p) => {
+      if (p && p.shipId === state.playerId) startPulse(HAPTIC_VERB_PULSES['ship:dash'], 'ship:dash');
+    });
+    bus.on('projectile:hit', (p) => {
+      if (p && p.targetId === state.playerId) startPulse(HAPTIC_VERB_PULSES['projectile:hit'], 'projectile:hit');
+    });
+    bus.on('entity:killed', (p) => {
+      if (p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['entity:killed'], 'entity:killed');
+    });
+    bus.on('combat:baseDestroyed', (p) => {
+      if (p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['combat:baseDestroyed'], 'combat:baseDestroyed');
+    });
   }
 
   const gp = {
