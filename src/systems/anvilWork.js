@@ -299,31 +299,44 @@ function trafficHullEnvelope(e) {
 // A radial exit near the receiving bearing must finish before the tender, not
 // at its occupied 2800-WU center. The existing service approach takes over from
 // this inner forecourt; far-side exits still use the ordinary outer return arc.
-export function anvilBandExitTarget(worker) {
+export function anvilBandExitTarget(worker, state = null, native = null) {
   const route = itinerary(worker), center = route?.center, home = homeBerth(route);
   if (!home || !finitePose(worker)) return null;
   const angle = Math.atan2(worker.pos.z - center.z, worker.pos.x - center.x);
   const homeAngle = Math.atan2(home.z - center.z, home.x - center.x);
   const delta = Math.atan2(Math.sin(angle - homeAngle), Math.cos(angle - homeAngle));
   const radius = ANVIL_WORK.berthRadius - (Math.abs(delta) <= 0.35 ? 160 : 0);
-  return { x: center.x + Math.cos(angle) * radius, z: center.z + Math.sin(angle) * radius };
+  const target = { x: center.x + Math.cos(angle) * radius, z: center.z + Math.sin(angle) * radius };
+  if (state) {
+    const dx = target.x - worker.pos.x, dz = target.z - worker.pos.z;
+    const length2 = dx * dx + dz * dz;
+    for (const obstacle of anvilFixedClearances(state, worker, native)) {
+      const x = center.x + obstacle.x, z = center.z + obstacle.z;
+      const t = length2 > 0 ? Math.max(0, Math.min(1,
+        ((x - worker.pos.x) * dx + (z - worker.pos.z) * dz) / length2)) : 0;
+      if (Math.hypot(worker.pos.x + t * dx - x, worker.pos.z + t * dz - z) >= obstacle.clearance) continue;
+      // Stay on this side of the landmark and travel clockwise until a radial
+      // exit is clear. Do not push the exit target beyond a solid and fly through it.
+      const currentRadius = Math.max(ANVIL_WORK.radius,
+        Math.hypot(worker.pos.x - center.x, worker.pos.z - center.z));
+      return anvilArcTarget(state, worker, angle - 0.22, currentRadius, native);
+    }
+  }
+  return target;
 }
 
 // Follow the shallow lane clockwise, detouring outward around fixed authored solids.
 // Off-band travel earns no gas: planetRuntime remains the sole eligibility/heat owner.
 // The envelope includes turning/tracking room, not collision immunity. Max blending
 // handles overlapping obstacles without adding their heights or reversing direction.
-export function anvilCollectionTarget(state, worker, native = null) {
+// Shared fixed-solid envelope for both the shallow collection lane and outer
+// return lane. A station does not stop being an obstacle after cargo is collected.
+function* anvilFixedClearances(state, worker, native) {
   const center = itinerary(worker)?.center;
-  if (!finitePose(worker) || !Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
-  const angle = Math.atan2(worker.pos.z - center.z, worker.pos.x - center.x) - 0.22;
   const speed = Math.max(ANVIL_WORK.speed, Math.hypot(worker.vel.x, worker.vel.z));
   const reverse = Math.max(1, finite(resolvePropulsionProfile(worker, state).reverseAccel));
-  // One steering lookahead plus physical reverse-thrust stopping distance. This
-  // also covers the inward chord/turn lag seen when a civilian resumes after yield.
   const tracking = speed * 0.75 + speed * speed / (2 * reverse);
   const ownRadius = trafficHullEnvelope(worker);
-  let radius = ANVIL_WORK.radius;
   for (const other of state.entityList || []) {
     if (other === worker || other.alive === false || other.collides === false
       || !Number.isFinite(other.pos?.x) || !Number.isFinite(other.pos?.z)) continue;
@@ -345,7 +358,61 @@ export function anvilCollectionTarget(state, worker, native = null) {
     const origin = useNativePose ? native.getFrameOrigin?.() || native._frameOrigin : null;
     const x = p.x + finite(origin?.x) - center.x;
     const z = p.z + finite(origin?.z) - center.z;
-    const distance = Math.hypot(x, z), clearance = outer + ownRadius + tracking;
+    yield { x, z, hullClearance: outer + ownRadius + 12, clearance: outer + ownRadius + tracking };
+  }
+}
+
+export function anvilArcTarget(state, worker, angle, laneRadius, native = null) {
+  const center = itinerary(worker)?.center;
+  if (!finitePose(worker) || !Number.isFinite(center?.x) || !Number.isFinite(center?.z)
+    || !Number.isFinite(angle) || !Number.isFinite(laneRadius) || !(laneRadius > 0)) return null;
+  const currentRadius = Math.hypot(worker.pos.x - center.x, worker.pos.z - center.z);
+  const obstacles = [...anvilFixedClearances(state, worker, native)];
+  const currentAngle = Math.atan2(worker.pos.z - center.z, worker.pos.x - center.x);
+  const advance = Math.atan2(Math.sin(angle - currentAngle), Math.cos(angle - currentAngle));
+  // Keep the same direction, but shorten the angular lookahead when an already
+  // detoured worker's chord would cut a nearby solid. No feasible local chord:
+  // let the caller brake, retaining its actor and cargo, rather than force passage.
+  for (const fraction of [1, 0.5, 0.25, 0.125, 0]) {
+    const nextAngle = currentAngle + advance * fraction;
+    let radius = laneRadius;
+    // An outward detour can enter a second landmark's radial band. Close that
+    // bounded set before steering. Each pass can add only one of these envelopes.
+    for (let pass = 0; pass < obstacles.length; pass++) {
+      const previous = radius;
+      for (const { x, z, clearance } of obstacles) {
+        const distance = Math.hypot(x, z);
+        if (distance < Math.min(laneRadius, currentRadius) - clearance
+          || distance > Math.max(radius, currentRadius) + clearance) continue;
+        const width = Math.min(Math.PI, 0.55 + Math.asin(Math.min(1, clearance / Math.max(1, distance))));
+        const delta = Math.abs(Math.atan2(Math.sin(nextAngle - Math.atan2(z, x)), Math.cos(nextAngle - Math.atan2(z, x))));
+        if (delta >= width) continue;
+        const rise = Math.max(0, distance + clearance - laneRadius);
+        radius = Math.max(radius, laneRadius + rise * Math.cos(delta / width * Math.PI / 2) ** 2);
+      }
+      if (radius === previous) break;
+    }
+    const target = { x: center.x + Math.cos(nextAngle) * radius, z: center.z + Math.sin(nextAngle) * radius };
+    const dx = target.x - worker.pos.x, dz = target.z - worker.pos.z, length2 = dx * dx + dz * dz;
+    const blocked = obstacles.some(({ x, z, hullClearance }) => {
+      const ox = center.x + x - worker.pos.x, oz = center.z + z - worker.pos.z;
+      const t = length2 > 0 ? Math.max(0, Math.min(1, (ox * dx + oz * dz) / length2)) : 0;
+      return Math.hypot(t * dx - ox, t * dz - oz) < hullClearance;
+    });
+    if (!blocked) return target;
+  }
+  return null;
+}
+
+export function anvilCollectionTarget(state, worker, native = null) {
+  const center = itinerary(worker)?.center;
+  if (!finitePose(worker) || !Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
+  const angle = Math.atan2(worker.pos.z - center.z, worker.pos.x - center.x) - 0.22;
+  // Preserve the already-qualified shallow work circuit. Return-only chord
+  // shortening must not reinterpret a constructed collection start inside a rim.
+  let radius = ANVIL_WORK.radius;
+  for (const { x, z, clearance } of anvilFixedClearances(state, worker, native)) {
+    const distance = Math.hypot(x, z);
     if (Math.abs(distance - ANVIL_WORK.radius) > clearance) continue;
     const width = Math.min(Math.PI, 0.55 + Math.asin(Math.min(1, clearance / Math.max(1, distance))));
     const delta = Math.abs(Math.atan2(Math.sin(angle - Math.atan2(z, x)), Math.cos(angle - Math.atan2(z, x))));
@@ -842,9 +909,11 @@ export const anvilTrafficMethods = {
       }
     }
     if (route.phase === 'clear_band') {
-      const target = anvilBandExitTarget(e);
+      const target = anvilBandExitTarget(e, state, this._registry?.get?.('physics')?._sg02);
       if (!target) { hold(e); return; }
-      if (steer(this, e, target, 40)) {
+      const radialExit = anvilBandExitTarget(e);
+      if (steer(this, e, target, 40) && radialExit
+        && Math.hypot(e.pos.x - radialExit.x, e.pos.z - radialExit.z) <= 40) {
         route.phase = 'return'; persist(this, e);
       }
       return;
@@ -857,8 +926,9 @@ export const anvilTrafficMethods = {
       const delta = Math.atan2(Math.sin(targetAngle - angle), Math.cos(targetAngle - angle));
       if (Math.abs(delta) > 0.35) {
         const next = angle + Math.sign(delta) * 0.22;
-        steer(this, e, { x: center.x + Math.cos(next) * ANVIL_WORK.berthRadius,
-          z: center.z + Math.sin(next) * ANVIL_WORK.berthRadius }, 0);
+        const target = anvilArcTarget(state, e, next, ANVIL_WORK.berthRadius,
+          this._registry?.get?.('physics')?._sg02);
+        if (target) steer(this, e, target, 0); else hold(e);
       } else {
         if (availableReceiver) steerService(this, e, availableReceiver);
         else steer(this, e, berth.pos, ANVIL_WORK.transferRange * 0.65, 40);
