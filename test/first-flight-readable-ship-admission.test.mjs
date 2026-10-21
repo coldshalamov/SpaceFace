@@ -315,3 +315,120 @@ test('first-flight hold admits readable authored contacts of every kind before t
     else globalThis.window = previousWindow;
   }
 });
+
+test('first-flight hold admits the live authored FX POI on glass, not ambient or invalid owners', async () => {
+  const scheduled = [];
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldWindow = globalThis.window;
+  globalThis.requestAnimationFrame = (callback) => scheduled.push(callback);
+  const live = { mode: 'flight', simTime: 10, playerId: 1,
+    world: { currentSectorId: 'sector_charon_expanse' },
+    render: { firstPlayableFrameAt: 1, sectorShellAdmission: false },
+    camera: { liveZoom: 144 }, entities: new Map([[1, { pos: { x: 0, z: 0 } }]]) };
+  globalThis.window = { SF: { state: live } };
+  const scene = new THREE.Scene();
+  const started = [];
+  const jobs = [];
+  const add = (id, alter = () => {}) => {
+    const boundary = new THREE.Group();
+    boundary.visible = false;
+    boundary.userData.authoredAssetState = 'loading';
+    boundary.userData.admissionEpoch = 1;
+    scene.add(boundary);
+    // world.js POI spawn and dressing-table rows both use this fx vocabulary.
+    const entity = { id, type: 'fx', alive: true, mesh: boundary,
+      pos: { x: 0, z: 20 }, activity: { presentationTier: 'R0_GLASS' },
+      data: { poi: true, poiId: 'poi_colony', landmark: true,
+        landmarkGlb: 'place_charon_colony_service_barge',
+        placeId: 'place_charon_colony_service_barge',
+        sectorId: live.world.currentSectorId, homeSectorId: live.world.currentSectorId } };
+    const options = { admissionEpoch: 1 };
+    live.entities.set(id, entity);
+    alter(entity, boundary, options);
+    jobs.push(enqueueBoundaryUpgrade(scene, { boundary, entity, options,
+      run: () => {
+        assert.equal(boundary.visible, false, 'eligibility never publishes the hidden boundary');
+        assert.equal(boundary.userData.authoredAssetState, 'loading');
+        started.push(id); boundary.userData.authoredAssetState = 'authored';
+      } }));
+  };
+  try {
+    void enqueueBoundaryUpgrade(scene, { boundary: new THREE.Group() });
+    await prepareFirstQueuedAuthoredBoundaryForOpening(scene);
+    holdAuthoredUpgradeQueueForFirstFlight(scene);
+    add('colony');
+    add('ambient', (e) => { delete e.data.poi; delete e.data.landmark; });
+    add('non-poi-landmark', (e) => { delete e.data.poi; });
+    add('unanchored', (e) => { delete e.data.poiId; });
+    add('artless', (e) => { delete e.data.placeId; delete e.data.landmarkGlb; });
+    add('unknown', (e) => { e.data.placeId = e.data.landmarkGlb = 'not-a-place'; });
+    add('far', (e) => { e.pos.x = 4000; e.activity.presentationTier = 'R2_METADATA'; });
+    add('dead', (e) => { e.alive = false; });
+    add('stale', (e) => { live.entities.set(e.id, { ...e }); });
+    add('foreign', (e) => { e.data.homeSectorId = e.data.sectorId = 'sector_elsewhere'; });
+    add('retired', (_e, _b, o) => { o.isResidencyOwnerActive = () => false; });
+    add('old-epoch', (_e, _b, o) => { o.admissionEpoch = 0; });
+    add('aborted', (_e, _b, o) => { o.signal = AbortSignal.abort(); });
+    add('throwing-owner', (_e, _b, o) => { o.isResidencyOwnerActive = () => { throw new Error('retired'); }; });
+    add('detached', (_e, b) => { b.removeFromParent(); });
+    add('replaced-boundary', (e) => { e.mesh = new THREE.Group(); });
+    for (let i = 0; i < 20 && scheduled.length; i++) {
+      scheduled.shift()(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.deepEqual(started, ['colony']);
+    const queue = describeAuthoredUpgradeQueue(scene);
+    assert.equal(queue.firstFlightHeld, true, 'selective hold is not released');
+    assert.equal(queue.inFlight, 0);
+    assert.equal(queue.frameScheduled, false);
+    assert.ok(queue.pending > 0, 'unrelated FX remain parked');
+  } finally {
+    // Retire without releasing the held negative fixtures into production work.
+    const { cancelAuthoredUpgradeQueue } = await import('../src/render/partsLibrary.js');
+    cancelAuthoredUpgradeQueue(scene);
+    await Promise.all(jobs);
+    if (oldRaf === undefined) delete globalThis.requestAnimationFrame; else globalThis.requestAnimationFrame = oldRaf;
+    if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+  }
+});
+
+for (const gate of ['loading', 'shell', 'gpu']) {
+  test(`authored FX POI does not bypass ${gate} admission`, async () => {
+    const scheduled = [];
+    const oldRaf = globalThis.requestAnimationFrame;
+    const oldWindow = globalThis.window;
+    globalThis.requestAnimationFrame = (callback) => scheduled.push(callback);
+    const scene = new THREE.Scene();
+    const boundary = new THREE.Group();
+    scene.add(boundary);
+    boundary.visible = false;
+    boundary.userData.authoredAssetState = 'loading';
+    const entity = { id: 542, type: 'fx', alive: true, mesh: boundary,
+      pos: { x: 0, z: 0 }, activity: { presentationTier: 'R0_GLASS' },
+      data: { poi: true, poiId: 'poi_colony', placeId: 'place_charon_colony_service_barge' } };
+    globalThis.window = { SF: { state: {
+      mode: gate === 'loading' ? 'loading' : 'flight', playerId: 1,
+      entities: new Map([[542, entity], [1, { pos: { x: 0, z: 0 } }]]),
+      render: { firstPlayableFrameAt: 1, sectorShellAdmission: gate === 'shell',
+        liveSectorGpuAdmission: gate === 'gpu' },
+    } } };
+    let ran = false;
+    let completion;
+    try {
+      void enqueueBoundaryUpgrade(scene, { boundary: new THREE.Group() });
+      holdAuthoredUpgradeQueueForFirstFlight(scene);
+      completion = enqueueBoundaryUpgrade(scene, { boundary, entity, options: {}, run: () => { ran = true; } });
+      for (let i = 0; i < 8 && scheduled.length; i++) {
+        scheduled.shift()(0); await new Promise((resolve) => setImmediate(resolve));
+      }
+      assert.equal(ran, false);
+      assert.equal(boundary.visible, false);
+      assert.equal(describeAuthoredUpgradeQueue(scene).firstFlightHeld, true);
+    } finally {
+      const { cancelAuthoredUpgradeQueue } = await import('../src/render/partsLibrary.js');
+      cancelAuthoredUpgradeQueue(scene); await completion;
+      if (oldRaf === undefined) delete globalThis.requestAnimationFrame; else globalThis.requestAnimationFrame = oldRaf;
+      if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+    }
+  });
+}

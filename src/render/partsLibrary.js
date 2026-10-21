@@ -6681,6 +6681,30 @@ function firstFlightReadableShipJob(job) {
 // readable ship rather than waiting out the whole ~20s hold. The owner must still be a
 // recognized authored contact — an artless place has nothing to draw, so deferring it
 // costs the opening frame nothing while its decode work yields to real contacts.
+// World POIs are fx rows (including dressing-table rows), not type "place".
+// Only a live, explicitly mapped POI earns this glass-only carve-out; ambient FX
+// retain the handoff hold and POIs do not inherit the ship runway-distance pass.
+function firstFlightAuthoredPoiJob(job, live) {
+  const entity = job && job.entity;
+  const data = entity && entity.data;
+  if (entity?.type !== 'fx' || data?.poi !== true
+      || typeof data.poiId !== 'string' || !data.poiId
+      || !(data.placeId || data.landmarkGlb)
+      || !placeFileForEntity(entity)
+      || live?.entities?.get?.(entity.id) !== entity) return false;
+  const options = job.options || {};
+  const sectorId = options.sectorId || entity.homeSectorId || data.homeSectorId || data.sectorId;
+  if (sectorId && sectorId !== live.world?.currentSectorId) return false;
+  if (live.render?.liveSectorGpuAdmission === true || options.signal?.aborted) return false;
+  const epoch = job.boundary?.userData?.admissionEpoch;
+  if (options.admissionEpoch != null && epoch != null && options.admissionEpoch !== epoch) return false;
+  try {
+    if (typeof options.isResidencyOwnerActive === 'function'
+        && options.isResidencyOwnerActive() !== true) return false;
+  } catch (_) { return false; }
+  return entityIsOnReadableGlass(entity, live);
+}
+
 function firstFlightReadableGlassJob(job) {
   const live = authoredRuntimeState();
   const render = live && live.render;
@@ -6688,7 +6712,8 @@ function firstFlightReadableGlassJob(job) {
   return !!(live && live.mode === 'flight' && render
     && Number.isFinite(render.firstPlayableFrameAt)
     && render.sectorShellAdmission !== true
-    && entity && firstFlightReadableContactKind(entity) && entity.alive !== false
+    && entity && entity.alive !== false
+    && (firstFlightReadableContactKind(entity) || firstFlightAuthoredPoiJob(job, live))
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
 }
 
