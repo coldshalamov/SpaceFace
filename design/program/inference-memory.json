@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "survivor-pod-rescue-latch-mirror",
-      "date": "2026-10-12",
-      "wf": "WF-16",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "a committed survivor-pod rescue now records rescueSelected on the pod's public salvage-point mirror the same dispatch the contract lands; the D133 accept-refusal rollback and the tow gate stay intact",
-      "fingerprint": "verb=latch,subject=survivor-pod-rescue,sector=tethys,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "01a2915e3",
-      "verification": "focused_green"
-    },
-    {
       "id": "work-pocket-audio",
       "date": "2026-10-13",
       "wf": "WF-13",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "8a7d5b922",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-25-counterplay-receipt",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "counterplay:encountered maps to a 4s 'title — counter' receipt; the 8s doctrine paragraph is gone",
+      "fingerprint": "verb=read,subject=doctrine,sector=encounter,domain=rc-25",
+      "references": [],
+      "integration": "live",
+      "commit": "98ba031f8",
       "verification": "focused_green"
     }
   ],
