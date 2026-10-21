@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "landmark-payoff-quests-c13d-c12-c11",
-      "date": "2026-10-03",
-      "wf": "WF-10",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Three verb-less depth-program landmarks (Skerris Throne, Metronome, Ringworld Arc) gain paid board quests with durable artifacts through the existing machinery",
-      "fingerprint": "verb=discover,subject=landmarks,sector=frontier,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "90bb99af1",
-      "verification": "focused_green"
-    },
-    {
       "id": "sector-trade-signatures",
       "date": "2026-10-03",
       "wf": "WF-06",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "dbec71973",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-38-bark-rate-walk",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Two lines from one faction resolve different hashed rates inside ±3%; deterministic per line",
+      "fingerprint": "verb=hear,subject=faction-bark-rate,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "068d9ed2f",
       "verification": "focused_green"
     }
   ],
