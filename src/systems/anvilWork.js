@@ -1,3 +1,5 @@
+import { takeAnvilSpillReturnQuote, bindAnvilSpillReturnQuote } from '../world/anvilSpillRecovery.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { createCombatCatalog, ensureCombatant } from '../combat/runtime.js';
 import { hasOrchardWorkDamage, orchardDamageUnavailable, orchardSavedDriveOffline } from '../combat/orchardWorkDamage.js';
 let orchardCombatCatalog;
@@ -420,6 +422,63 @@ function manifest(owner, e, qty, prior = null) {
 }
 
 export const anvilTrafficMethods = {
+  _recordAnvilSpill(receiver, pod, source, qty) {
+    if (actor(this, 'receiver') !== receiver || itinerary(receiver).anvilSpillReturn
+      || !validManifest(source, ANVIL_WORK.receiverCapacity) || !Number.isSafeInteger(qty) || qty <= 0 || qty > 12
+      || used(receiver) !== source.totalQty - qty || pod?.data?.amount !== qty
+      || pod.data.ownerRecordId !== receiver.data.worldRecordId || pod.data.manifestId !== source.manifestId) return false;
+    const receipt = { version: 1, id: `anvil-spill:${receiver.data.worldRecordId}:${source.manifestId}`,
+      ownerRecordId: receiver.data.worldRecordId, manifestId: source.manifestId, initialQty: qty, returnedQty: 0 };
+    itinerary(receiver).anvilSpillReturn = receipt;
+    pod.data.anvilSpillReturn = { id: receipt.id, ownerRecordId: receipt.ownerRecordId, manifestId: receipt.manifestId };
+    try { persist(this, receiver); } catch { /* original spill already debited and stamped */ }
+    return true;
+  },
+
+  bindAnvilSpillReturnQuote(receiver, quote) {
+    return actor(this,'receiver') === receiver && bindAnvilSpillReturnQuote(this.state,receiver,quote,this._registry?.get?.('physics'));
+  },
+
+  returnAnvilSpill(receiver, quote) {
+    if (actor(this, 'receiver') !== receiver || orchardDamageUnavailable(this.state, receiver)) return { ok: false };
+    const f = takeAnvilSpillReturnQuote(this.state, receiver, quote, this._registry?.get?.('physics'));
+    if (!f) return { ok: false };
+    const d = f.pod.data, rec = recFor(this, receiver);
+    // No callback-capable or frozen data enters the synchronous custody block.
+    const writable = (object, keys) => object && Object.getPrototypeOf(object) === Object.prototype
+      && keys.every(key => { const v = Object.getOwnPropertyDescriptor(object,key); return v && 'value' in v && v.writable; });
+    if (!writable(d,['amount','salvagePool']) || !writable(f.receipt,['returnedQty'])
+      || Object.isFrozen(d.salvagePool) || !writable(d.salvagePool,[d.commodityId])
+      || Object.isSealed(d.salvagePool) || !writable(receiver.data,['cargoManifest'])
+      || (rec && !writable(rec,['manifest']))
+      || (receiver.data.cargo && Object.hasOwn(receiver.data.cargo,d.commodityId)
+        && !writable(receiver.data.cargo,[d.commodityId]))) return { ok: false };
+    const priorTracked = rec?.manifest, priorPool = {...d.salvagePool}, priorQty = d.amount;
+    const next = manifest(this, receiver, used(receiver) + f.amount, f.manifest);
+    next.custody.acquiredBy = 'traffic:anvilSpillReturn';
+    try {
+      writePickupRemainder(d, priorQty-f.amount);
+      if (d.amount !== priorQty-f.amount || this._setTrafficManifest(receiver,rec,next) !== true) throw new Error('return_refused');
+    } catch {
+      d.amount = priorQty; d.salvagePool = priorPool;
+      receiver.data.cargoManifest = f.manifest;
+      if (rec) rec.manifest = priorTracked;
+      return {ok:false};
+    }
+    f.receipt.returnedQty += f.amount;
+    // Preserve violence/spill flags. A return is neither a fresh harvest nor a
+    // new permission to dump the same lot. The original delivery sequence stays.
+    if (receiver.data.cargo && Object.hasOwn(receiver.data.cargo,d.commodityId))
+      receiver.data.cargo[d.commodityId] = next.totalQty;
+    try { persist(this,receiver); } catch { /* live capture retains committed custody */ }
+    try { if (!d.amount) this.helpers?.removeEntity?.(f.pod.id,{immediate:true,reason:'anvil_spill_return'}); }
+    catch { /* an empty physical remainder can never be accepted again */ }
+    try { this.bus.emit('traffic:anvilSpillReturned',{receiverId:receiver.id,podId:f.pod.id,qty:f.amount,
+      receiptId:f.receipt.id,remaining:priorQty-f.amount}); }
+    catch { /* observers cannot undo committed custody */ }
+    return {ok:true,qty:f.amount,remaining:priorQty-f.amount};
+  },
+
   requestOrchardTowAssist(worker, quote) {
     if (actor(this,'receiver') !== worker || worker.data.jobId
       || this.state.npcJobs?.byId?.[`job:${worker.data.worldRecordId}`]) return { granted:false, reason:'crew_busy' };

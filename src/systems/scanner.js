@@ -1,3 +1,4 @@
+import { ANVIL_RETURN_GAS } from '../world/anvilSpillRecovery.js';
 // Scanner pulse system (GDD 2.0 §7.4).
 //
 // Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
@@ -1693,6 +1694,11 @@ export const scanner = {
       this._clearContactHail('offer_invalid');
       return false;
     }
+    if (offer.anvilReturnQuote && !this.registry?.get?.('traffic')?.bindAnvilSpillReturnQuote?.(availability.entity,offer.anvilReturnQuote)) {
+      offer.actions=offer.actions.filter(a=>a.id!==ANVIL_RETURN_GAS);
+      offer.lines=[offer.lines[0], 'Return unavailable; physical line and receiver must be ready. Hail again.'];
+      delete offer.anvilReturnQuote;
+    }
     this._contactHail = offer;
     this.bus.emit('contactHail:offer', cloneContactHailPayload(offer));
     return true;
@@ -1728,12 +1734,16 @@ export const scanner = {
     const towAssist = choice === CONTACT_HAIL_ACTION_TOW_ASSIST
       ? this._requestContactTowAssist(target, active)
       : null;
+    const anvilReturn = choice === ANVIL_RETURN_GAS && active.anvilReturnQuote
+      && active.actions?.some(action => action.id === ANVIL_RETURN_GAS)
+      ? this.registry?.get?.('traffic')?.returnAnvilSpill?.(target, active.anvilReturnQuote) : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
       weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
       roe: ai.roe || null,
       heaveTo,
       towAssist,
+      anvilReturn,
     });
     if (!response) return false;
     this._contactHail = null;

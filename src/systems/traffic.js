@@ -6410,6 +6410,7 @@ export const traffic = {
     let totalQty = 0;
     for (let i = 0; i < nextLines.length; i++) totalQty += nextLines[i].qty;
     this._setTrafficManifest(hauler, rec, { ...current, lines: nextLines, totalQty });
+    this._recordAnvilSpill(hauler, pod, current, dump);
     const t = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('freight:cargoSpilled', {
