@@ -1,6 +1,22 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 08:17 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving their scoped failures and acceptance limits.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now has verified head [706c8e69cb98b58cffb59826e85da0b7ded92544](https://github.com/coldshalamov/SpaceFace/commit/706c8e69cb98b58cffb59826e85da0b7ded92544), tree `1119c315846015fc5eeb4ae98e8baec2b247c367`, sole parent `b01eedbb75a737ad419a19a91432e332d3b273b6`. Exactly three paths change: the five-line traffic manifest guard, its new regression test and one package test registration.
+
+The guard prevents authoritative empty/malformed manifests and manifestless finite workers from falling through to legacy cargo synthesis. Valid finite spills and genuinely manifestless ordinary legacy cargo behavior remain intact. Exact b01 reproduces nine finite failures while two legacy cases pass; candidate validation passes 88/88 twice, including independent review, with 1,482 unique source hashes verified. This proves the narrow refill defect is corrected, not that the original full-route event is causally established or the route now passes. Durable recovery was verified against all three public blobs and ZIP CRC/read-back; no private identifier is published.
+
+Prior b01 browser3 and final jobs were cancelled. Successor [general CI 39567695442](https://github.com/coldshalamov/SpaceFace/actions/runs/39567695442) is running; character CI is already green. No aggregate-green or successor full-route claim is made.
+
+Tann Winnow recovery remains active. Five unit/Save/split checks pass. A bounded 180-second native run shows Tann naturally completes the prior job around 80–90 seconds and admits recovery, but no transfer occurs yet. The original moving pods still need a correct relative approach; movement/settlement/loss/replay acceptance remains open.
+
+build_tann_winnow_recovery retains the previously named new data/world/test/fixture paths and narrow encounter/traffic integration, with mining.js split lineage already granted. Its scope now also includes aftermathWrecks.js solely to omit duplicate 30% residue for a strictly identified finite Winnow manifest. review_tann_finite_recovery remains independent reviewer. The warm-asset reference incorrectly names a container rather than the actual standard pod; the owner is correcting it.
+
+A fresh Vesta source export using existing assets was reviewed and delivered, with a verified 26-entry packet. It is not new artwork or live-camera acceptance. Next: fix the relative approach and warm-asset reference, qualify finite transfer/settlement/loss/replay and the narrow residue rule, and follow successor CI to its actual terminal result. All original Orchard upload holds remain unchanged. This checkpoint changes only the two shared handoff/goal documents, not implementation, NOW or PR #480, and includes no private recovery identifiers or restricted diagnostics.
+
 ## Current source handoff — 21 October 2026, 08:03 UTC
 
 All nine goals remain OPEN. Published source baseline remains `b01eedbb75a737ad419a19a91432e332d3b273b6`, tree `c8f4e30368adec23a46755742c2f6df8eb2d8c31`. The new activity below is active work, not a published or accepted successor.
