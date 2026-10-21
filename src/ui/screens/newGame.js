@@ -20,7 +20,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale } from '../orrery/stopDial.js';
+import { createStopScale, createStopArc } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
@@ -528,10 +528,8 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
-    // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
-    // column is narrower than four grown names on one line, so the ruler stacks a station per
-    // line and every word keeps the column's whole width (D136).
-    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
+    // ORRERY: difficulty is a four-stop dial with the Hand (ORRERY §6).
+    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopArc({ row: diffWords, width: 340, radius: 125, span: 130, overshoot: 4 });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -557,22 +555,16 @@ export const newGameScreen = {
         target.focus();
       }
     });
-    // The scale stands on end, so the stations take Up/Down along their own line — the roving's
-    // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
-    // off the first station climbs back to the starter words, Down off the last falls to the seed.
+    // Arrow bridges for the Tab-invisible difficulty dial: Up climbs back to the starter words,
+    // Down falls forward to the universe seed. Roving Left/Right answers between stations.
     diffWords.addEventListener('keydown', (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-      const all = [...diffWords.querySelectorAll('.k-word')];
-      const i = all.indexOf(e.target);
-      if (i < 0) return;
-      const next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
-      e.preventDefault();
-      if (next) { next.focus(); cue('move'); return; }
       if (e.key === 'ArrowUp') {
+        e.preventDefault();
         const target = liveWordIn(starterWords);
         if (target) target.focus();
-      } else {
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
         seed.focus();
       }
     });
@@ -640,7 +632,15 @@ export const newGameScreen = {
       for (const b of firstFlightWords.querySelectorAll('.k-word')) b.tabIndex = -1;
     });
     seed.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === 'ArrowUp') {
+        const target = liveWordIn(diffWords);
+        if (!target) return;
+        e.preventDefault();
+        target.focus();
+        return;
+      }
+      if (e.key !== 'ArrowDown') return;
       const target = liveWordIn(firstFlightWords);
       if (!target) return;
       e.preventDefault();

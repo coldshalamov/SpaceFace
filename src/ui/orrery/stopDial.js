@@ -22,8 +22,10 @@ const CSS = `
 .orr-stopscale > .orr-stopscale__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
 .orr-stoparc { position:relative; width:var(--orr-arc-w, 560px); height:var(--orr-arc-h, 220px); }
 .orr-stoparc > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.orr-stoparc > .orr-stoparc__row { position:absolute !important; inset:0; width:auto !important; margin:0 !important; padding:0 !important; display:block !important; }
+.orr-stoparc > .orr-stoparc__row { position:absolute !important; inset:0; width:100% !important; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-stoparc > .orr-stoparc__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
+.orr-stoparc > .orr-stoparc__row > li.orr-stoparc__station--first { transform:translateX(-10%); }
+.orr-stoparc > .orr-stoparc__row > li.orr-stoparc__station--last { transform:translateX(-90%); }
 .orr-turntable { position:absolute; inset:0; pointer-events:none; z-index:3; }
 .orr-turntable > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-turntable > .orr-turntable__row { position:absolute !important; inset:0; width:auto !important; margin:0 !important; padding:0 !important; display:block !important; }
@@ -369,6 +371,8 @@ export function createStopArc({ row, width = 560, radius = 160, span = 84, art =
   paint(angles[0]);
   const arts = [];
   items().forEach((li, i) => {
+    li.classList.toggle('orr-stoparc__station--first', i === 0);
+    li.classList.toggle('orr-stoparc__station--last', i === n - 1);
     const [sx, sy] = pt(radius, angles[i]);
     const action = li.querySelector('button').dataset.action;
     const hasArt = !!(art && art[action]);
