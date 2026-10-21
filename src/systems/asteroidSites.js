@@ -286,6 +286,14 @@ function copyDrillSessionAccounting(site, data) {
   if (data.lastDrillT != null && Number.isFinite(Number(data.lastDrillT))) {
     site.lastDrillT = Number(data.lastDrillT);
   }
+  // Layered bore flags and the ordnance rack live on the asteroid record too — and that
+  // record is disposable (a respawned rock is stamped fresh), so the claim keeps copies.
+  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble']) {
+    if (Array.isArray(data[key])) site[key] = normalizeClearedTiles(data[key]);
+  }
+  if (data.chargeStock != null && Number.isFinite(Number(data.chargeStock))) {
+    site.chargeStock = Math.max(0, Math.floor(Number(data.chargeStock)));
+  }
 }
 
 function drillAccountingStamp(site) {
@@ -306,6 +314,13 @@ function drillAccountingStamp(site) {
   }
   if (site.lastDrillT != null && Number.isFinite(Number(site.lastDrillT))) {
     stamp.lastDrillT = Number(site.lastDrillT);
+  }
+  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble']) {
+    const list = normalizeClearedTiles(site[key]);
+    if (list.length) stamp[key] = list;
+  }
+  if (Number.isFinite(Number(site.chargeStock)) && Number(site.chargeStock) > 0) {
+    stamp.chargeStock = Math.floor(Number(site.chargeStock));
   }
   return stamp;
 }
@@ -639,6 +654,10 @@ export const asteroidSites = {
       // Drilling out a fallen slab is the bore again. Leave it cleared; do not
       // drop a second slab on the next tick (fractured stays true).
       this._releaseFallenSlab(site, col, row);
+      // Blast scars + friends are recorded on the rock's data mid-session; keep the
+      // claim's mirror current so an abandoned session never strands them on the entity.
+      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
       this._markDirty(site.id, { field: true });
     });
 
@@ -652,6 +671,8 @@ export const asteroidSites = {
       if (!site || !Array.isArray(dropped)) return;
       const idxs = new Set(dropped.map((c) => tileIndex(c.col, c.row)));
       site.cleared = site.cleared.filter((i) => !idxs.has(i));
+      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
       this._markDirty(site.id, { field: true });
     });
 
@@ -662,7 +683,10 @@ export const asteroidSites = {
       const d = state.drill;
       if (!d) return;
       const site = this.siteForAsteroid(d.asteroidId);
-      if (site) this._markDirty(site.id, { field: true });
+      if (!site) return;
+      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
+      this._markDirty(site.id, { field: true });
     });
 
     this.bus.on('drill:end', ({ asteroidId }) => {
@@ -1332,14 +1356,15 @@ export const asteroidSites = {
       applySealedDeadDropCap(site, rt.field);
       // Vented seams and seismic faults live on the asteroid record, outside site.cleared —
       // paint them so contact reads (gas taps, fracture scars) stay truthful off-session.
+      // A resident rock's data is the freshest copy; an off-sector claim reads its own
+      // mirrors (kept by copyDrillSessionAccounting and re-stamped on rematerialize).
       const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
       const dd = ent && ent.data;
-      if (dd) {
-        applyFlaggedTiles(rt.field, dd.drillVented, (t) => { if (t.type === 'empty') t.vented = true; });
-        applyFlaggedTiles(rt.field, dd.drillScars, (t) => { if (t.type === 'empty') t.scar = true; });
-        applyFlaggedTiles(rt.field, dd.drillFaults, (t) => { if (t.type !== 'empty') t.fault = true; });
-        applyRubbleTiles(rt.field, dd.drillRubble);
-      }
+      const flagList = (key) => (dd && Array.isArray(dd[key]) ? dd[key] : site[key]);
+      applyFlaggedTiles(rt.field, flagList('drillVented'), (t) => { if (t.type === 'empty') t.vented = true; });
+      applyFlaggedTiles(rt.field, flagList('drillScars'), (t) => { if (t.type === 'empty') t.scar = true; });
+      applyFlaggedTiles(rt.field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
+      applyRubbleTiles(rt.field, flagList('drillRubble'));
       rt.fieldDirty = false;
       rt.geoDirty = true;
     }
@@ -2078,8 +2103,11 @@ export const asteroidSites = {
 
     // Salvage: half the non-controller kit comes back onto the machine's own lane as stock —
     // reclaiming a machine room is re-planning, not a write-off. Lane key is read BEFORE the
-    // splice because the network forgets the machine the moment it leaves the list.
-    const rtPre = this._rt.get(site.id);
+    // splice because the network forgets the machine the moment it leaves the list. Read it
+    // through _runtime(), not the raw cache: a netDirty rt still points at the PREVIOUS
+    // laneStores objects, and salvage written to a store reconcileStores already orphaned
+    // would vanish with it.
+    const rtPre = this._runtime(site);
     const salvageLaneKey = rtPre && rtPre.laneCompByMachine ? rtPre.laneCompByMachine[machine.id] : null;
     const salvageStore = salvageLaneKey != null && rtPre ? rtPre.stores[salvageLaneKey] : null;
     const salvaged = [];
@@ -2520,6 +2548,9 @@ export const asteroidSites = {
     const first = (site.productionStep || 0) % site.machines.length;
     site.productionStep = ((site.productionStep || 0) + 1) % 1_000_000_000;
     const machineOrder = [...site.machines.slice(first), ...site.machines.slice(0, first)];
+    // Units actually moved into the launch buffer this step — the signature pass reads it
+    // as the transport loudness term (a real rate, not a buffer snapshot).
+    let stagedU = 0;
     // PQ-130.10a: a per-machine status TRANSITION is the mine's machine-state event (law §5
     // "Machine starved/unpowered" — one soft chime, once). The status map is rebuilt from scratch
     // every tick, so last tick's map is kept as the only reference for "what changed". Nothing
@@ -2676,6 +2707,7 @@ export const asteroidSites = {
             staged += grant;
           }
           status.state = staged > 0 ? 'running' : (storeTotal(site.exportBuffer) > 0 ? 'staged' : 'idle');
+          stagedU += staged;
           if (!workbench) this._tryLaunch(site, state, status);
         }
       } else if (def.id === 'sm_charge_press') {
@@ -2683,9 +2715,14 @@ export const asteroidSites = {
         // (ent.data.chargeStock), not in a lane store. The recipe never asks a lane for room.
         if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
         else {
+          // The rack's home is the rock's record while it is resident; the claim's own
+          // chargeStock mirror carries it off-sector (re-stamped on rematerialize). A job
+          // committed before the rock left must still be able to land — never deref a
+          // missing entity here.
           const rockEnt = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
-          const rack = rockEnt && rockEnt.data ? Math.max(0, Math.floor(Number(rockEnt.data.chargeStock) || 0)) : 0;
-          const wantsCharge = !!(rockEnt && rockEnt.data) && rack < SITE_BALANCE.chargeRackMax;
+          const entRack = rockEnt && rockEnt.data ? Number(rockEnt.data.chargeStock) : NaN;
+          const rack = Math.max(0, Math.floor(Number.isFinite(entRack) ? entRack : (Number(site.chargeStock) || 0)));
+          const wantsCharge = rack < SITE_BALANCE.chargeRackMax;
           const res = stepFabricator({
             machine: m,
             processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
@@ -2704,22 +2741,27 @@ export const asteroidSites = {
           status.progress = res.progress || (m.job ? m.job.progressS / (recipe ? recipe.buildS : 1) : 0);
           if (!wantsCharge && !m.job) status.state = 'racked';
           if (res.completed && res.completed.outputId === 'chargePuck') {
-            rockEnt.data.chargeStock = rack + Math.max(1, Math.floor(res.completed.qty));
-            this._ledger(site, 'good', `Charge pressed — ${rockEnt.data.chargeStock} on the rack.`);
-            this.bus.emit('site:chargePressed', { siteId: site.id, stock: rockEnt.data.chargeStock });
+            const stocked = rack + Math.max(1, Math.floor(res.completed.qty));
+            if (rockEnt && rockEnt.data) rockEnt.data.chargeStock = stocked;
+            site.chargeStock = stocked;
+            this._ledger(site, 'good', `Charge pressed — ${stocked} on the rack.`);
+            this.bus.emit('site:chargePressed', { siteId: site.id, stock: stocked });
             this._emitProductionReceipt(site, m, { outputId: 'chargePuck', qty: res.completed.qty, recipeId: m.mode });
           }
         }
       } else if (def.id === 'sm_auto_drill') {
         // The head chews one matrix/basalt face per bite of served power — it never opens a
-        // vein or a pocket; judgment calls stay the pilot's.
+        // vein or a pocket; judgment calls stay the pilot's. The bite clock is a SECONDS
+        // accumulator on the machine record, not a fractional-output carry — m.carry is
+        // normalized to strictly sub-unit values on restore, so anything ≥ 1 would silently
+        // reset at every save boundary.
         if (powerRatio <= 0) { status.state = 'no-power'; status.limit = 'power'; }
         else {
-          m.carry.biteS = (Number(m.carry.biteS) || 0) + dtS * clamp01(powerRatio);
+          m.biteS = Math.max(0, finiteNumber(m.biteS, 0)) + dtS * clamp01(powerRatio);
           status.state = 'running';
-          if (m.carry.biteS >= SITE_BALANCE.autoDrillBiteS) {
+          if (m.biteS >= SITE_BALANCE.autoDrillBiteS) {
             if (this._autoDrillBite(site, m, rt, state)) {
-              m.carry.biteS = 0;
+              m.biteS = 0;
             } else {
               status.state = 'no-geology';
               status.limit = 'geology';
@@ -2774,7 +2816,7 @@ export const asteroidSites = {
         status: rt.status[m.id] || { state: 'idle' },
       })),
       transport: {
-        exportRatePerMin: storeTotal(site.exportBuffer) / Math.max(1, dtMin),
+        exportRatePerMin: stagedU / Math.max(1e-9, dtMin),
         inFlightCount: site.fleet && Number.isFinite(site.fleet.podsInFlight) ? site.fleet.podsInFlight : 0,
       },
       radiatorFins: site.radiatorFins,
@@ -2784,7 +2826,10 @@ export const asteroidSites = {
     const sigClass = rt.signature.signatureClass;
     if (site.signatureClass !== sigClass) {
       const order = { quiet: 0, faint: 1, bright: 2, blazing: 3 };
-      const rising = (order[sigClass] || 0) > (order[site.signatureClass] || 0);
+      // A FIRST observation is an initial condition, not a rise — the same law the machine
+      // status transitions just above enforce. Only a recorded previous class can climb.
+      const rising = typeof site.signatureClass === 'string'
+        && (order[sigClass] || 0) > (order[site.signatureClass] || 0);
       site.signatureClass = sigClass;
       if (rising && this.bus) {
         this.bus.emit('site:signatureBand', { siteId: site.id, class: sigClass, total: rt.signature.total });
@@ -2935,13 +2980,22 @@ export const asteroidSites = {
       field[c][r] = EMPTY_TILE();
       const idx = tileIndex(c, r);
       if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      // Boring out a fallen slab is the bore again — the drill:break listener releases it for
+      // live sessions, but off-session bites emit nothing: drop the falls record here or every
+      // field rebuild re-paints an immortal slab the head chews forever.
+      this._releaseFallenSlab(site, c, r);
+      this._accessCache = null;
       const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
       if (ent && ent.data) {
         if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
         if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
         if (Array.isArray(ent.data.drillRubble)) {
-          ent.data.drillRubble = ent.data.drillRubble.filter((i) => i !== idx);
+          ent.data.drillRubble = ent.data.drillRubble.filter((i) => Math.trunc(Number(i)) !== idx);
         }
+      }
+      // The claim's rubble mirror moves the same way — a re-cleared cell is never rubble.
+      if (Array.isArray(site.drillRubble)) {
+        site.drillRubble = site.drillRubble.filter((i) => Math.trunc(Number(i)) !== idx);
       }
       rt.geoDirty = true;
       if (live) {
@@ -3005,10 +3059,23 @@ export const asteroidSites = {
     // individual runs stay dramatic (brief §6).
     const roll = drawSeeded(state.sites.meta, 'rngSeed', hash32(state.meta && state.meta.seed || 1, site.id, fleet.launches));
     const lost = roll < podLossChance(danger);
-    // A powered relay mast tightens the courier turnaround — faster handshakes both ways.
+    // A POWERED relay mast tightens the courier turnaround — faster handshakes both ways.
+    // Status rows exist only for machines the rotation already visited this tick, so a
+    // relay queued behind this port has no row yet — an absent row must never read as
+    // live. Recompute from the same inputs the machine loop uses (served power + thermal
+    // fault) instead of assuming presence means running.
     const rt = this._rt && this._rt.get(site.id);
-    const relayUp = site.machines.some((m) => m.defId === 'sm_relay'
-      && (!(rt && rt.status[m.id]) || rt.status[m.id].state === 'running'));
+    const relayUp = !!(rt && site.machines.some((m) => {
+      if (m.defId !== 'sm_relay') return false;
+      const st = rt.status && rt.status[m.id];
+      if (st) return st.state === 'running';
+      const pk = rt.powerCompByMachine ? rt.powerCompByMachine[m.id] : null;
+      if (pk == null) return false;
+      if (!((rt.compRatio && rt.compRatio[pk]) > 0)) return false;
+      const rec = rt.thermal && Array.isArray(rt.thermal.machines)
+        ? rt.thermal.machines.find((r) => r && r.id === m.id) : null;
+      return !(rec && rec.band === 'fault');
+    }));
     const travel = podTravelS(danger) * (relayUp ? SITE_BALANCE.relayPodTravelFactor : 1);
     const intentId = `site-sale:${site.id}:${fleet.launches}`;
     ensureShipment(site);

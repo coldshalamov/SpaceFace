@@ -211,9 +211,10 @@ function recordClearedTile(data, col, row) {
   const idx = tileIndex(col, row);
   if (idx < 0 || idx >= COLS * ROWS) return;
   if (!d.drillCleared.includes(idx)) d.drillCleared.push(idx);
-  // A re-cleared cell cannot still be rubble — the two lists are mutually exclusive.
-  if (Array.isArray(d.drillRubble)) {
-    d.drillRubble = d.drillRubble.filter((i) => Math.trunc(Number(i)) !== idx);
+  // A re-cleared cell cannot still be rubble or a standing fault — the three lists are
+  // mutually exclusive and the empty tile needs no flags.
+  for (const key of ['drillRubble', 'drillFaults']) {
+    if (Array.isArray(d[key])) d[key] = d[key].filter((i) => Math.trunc(Number(i)) !== idx);
   }
 }
 
@@ -238,7 +239,7 @@ function recordRubbleTile(data, col, row) {
   const idx = tileIndex(col, row);
   if (idx < 0 || idx >= COLS * ROWS) return;
   flagTile(d, 'drillRubble', col, row);
-  for (const key of ['drillCleared', 'drillVented', 'drillScars']) {
+  for (const key of ['drillCleared', 'drillVented', 'drillScars', 'drillFaults']) {
     if (Array.isArray(d[key])) d[key] = d[key].filter((i) => Math.trunc(Number(i)) !== idx);
   }
 }
@@ -443,11 +444,11 @@ function settleBlastYield(host, d, rockEnt, col, row, ore, yieldU) {
   return added;
 }
 
-function chargeRefusalText(reason) {
+function chargeRefusalText(reason, cost = CHARGE_COST_CR) {
   switch (reason) {
     case 'armed': return 'A charge is already cooking — stand clear.';
     case 'cooldown': return 'The boom arm is still retracting.';
-    case 'credits': return `A bore charge is ${CHARGE_COST_CR} credits — the wallet is short.`;
+    case 'credits': return `A bore charge is ${cost} credits — the wallet is short.`;
     case 'empty': return 'Nothing to break there — the cut is already hollow.';
     case 'range': return 'The boom arm only reaches the faces beside the rig.';
     default: return 'The charge refuses to seat.';
@@ -1350,12 +1351,13 @@ export const drill = {
     if (data) data.drillCleared = cleared;
     // A partial bite is not a cleared hole. The seed would otherwise put the original yield back.
     applyVeinRemainders(field, data && data.drillVeinRemainders);
-    // Layered flags: vented seams and blast scars live on cleared holes, seismic faults live on
-    // standing rock, and rubble lands LAST so a stale cleared entry can never erase a collapse.
+    // Layered flags: vented seams and blast scars live on cleared holes, and rubble lands after
+    // them so a stale cleared entry can never erase a collapse. Seismic faults go last so a shot
+    // that softened standing rubble stays softened — the live order was fracture-then-bury too.
     applyFlaggedTiles(field, data && data.drillVented, (t) => { if (t.type === 'empty') t.vented = true; });
     applyFlaggedTiles(field, data && data.drillScars, (t) => { if (t.type === 'empty') t.scar = true; });
-    applyFlaggedTiles(field, data && data.drillFaults, (t) => { if (t.type !== 'empty') fractureTile(t); });
     applyRubbleTiles(field, data && data.drillRubble);
+    applyFlaggedTiles(field, data && data.drillFaults, (t) => { if (t.type !== 'empty') fractureTile(t); });
 
     const rock = this._computeRockBudget(asteroidId);
 
@@ -1734,8 +1736,7 @@ export const drill = {
     else if (payload === 'vent' ? ventCount === 0 : payload === 'seismic' ? softenCount === 0 : willBreak === 0) reason = 'empty';
     else if (stock === 0 && credits < cost) reason = 'credits';
     // Danger = the rig's square inside or beside the kill pattern. Vent/seismic never hurt.
-    const harms = payload === 'blast' || payload === 'shape';
-    const selfDanger = harms && cells.some((c) => Math.abs(c.col - d.avatar.col) <= 1
+    const selfDanger = def.harms && cells.some((c) => Math.abs(c.col - d.avatar.col) <= 1
       && Math.abs(c.row - d.avatar.row) <= 1);
     return {
       ok: reason === null,
@@ -1811,7 +1812,7 @@ export const drill = {
       this.bus.emit('drill:warn', {
         reason: 'charge',
         chargeReason: preview.reason,
-        text: chargeRefusalText(preview.reason),
+        text: chargeRefusalText(preview.reason, preview.cost),
         pos: preview.anchor ? { col: preview.anchor.col, row: preview.anchor.row } : null,
       });
       return false;
@@ -1831,7 +1832,10 @@ export const drill = {
         pos: { col, row },
       });
     }
-    d.charge = { col, row, fuse: fuseS, fuseS, payload };
+    // The footprint is fixed at seat time — a planted charge cannot re-aim itself. `_chargePattern`
+    // derives `shape`'s corridor from the avatar's offset to the anchor, and the fuse exists so the
+    // rig can move; re-deriving at detonation would let the cut land somewhere the quote never showed.
+    d.charge = { col, row, fuse: fuseS, fuseS, payload, pattern: this._chargePattern(preview.anchor, payload) };
     d.chargeArmed = false;
     d.chargeAim = null;
     d.chargesSet = (Number(d.chargesSet) || 0) + 1;
@@ -1855,7 +1859,11 @@ export const drill = {
     const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
     const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
     const tier = this.getDrillTier();
-    const pattern = this._chargePattern(anchor, payload);
+    // Resolve the cells the pilot was quoted — never a pattern re-derived from where the rig has
+    // since stepped. Tile state inside the footprint is still read live, as it stands.
+    const pattern = Array.isArray(charge.pattern) && charge.pattern.length
+      ? charge.pattern
+      : this._chargePattern(anchor, payload);
     const broken = [];
     const vented = [];
     const fractured = [];
@@ -1873,6 +1881,7 @@ export const drill = {
           recordVentedTile(rockEnt.data, col, row);
         }
         d.tilesCleared++;
+        d.maxDepth = Math.max(d.maxDepth, row);
         gasCount++;
         vented.push({ col, row });
         this.bus.emit('drill:gasVent', { col, row });

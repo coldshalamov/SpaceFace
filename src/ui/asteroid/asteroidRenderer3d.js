@@ -4806,6 +4806,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function refreshCells(cells) {
     if (!field) return;
     let touchedColor = false;
+    let needsRebuild = false;
     for (const { col, row } of cells) {
       if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
       const tile = field[col] && field[col][row];
@@ -4816,7 +4817,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         carveCell(col, row);
         continue;
       }
-      if (rec && rec.carved) {
+      if (!rec) {
+        // Rock came back on a cell the build never instanced — a cave-in can drop rubble into a
+        // hall that was already hollow on entry (restored drillCleared cells carry no cellRock
+        // seat). Instanced capacity is fixed at build; the honest restore is a rebuild. The ore
+        // and gas overlays still sync below, and the rock itself is repainted after the loop.
+        needsRebuild = true;
+      } else if (rec.carved) {
         // Rock came back — a cave-in drops rubble onto cells the field once called hollow.
         rec.carved = false;
         setRockMatrix(col, row, false);
@@ -4832,6 +4839,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       syncOreAt(col, row);
     }
+    if (needsRebuild) { buildRock(); return; }
     if (touchedColor) {
       for (const bucket of ROCK_BUCKETS) {
         for (const inst of rockInst[bucket]) {
@@ -8491,7 +8499,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       return;
     }
     if (evt === 'gasVent') {
-      // A pocket opened without detonating: mint ring, a sigh of vapor, no fire.
+      // A pocket opened without detonating: mint ring, a sigh of vapor, no fire — and the same
+      // permanent seam mark a breach leaves (the tile is vented in the sim either way, law D2).
+      addVentedScar(p.col, p.row);
       firePulseRing(p.col, p.row, 0x7cd9a2, 0.6);
       const { x, y } = centerPx(p.col, p.row);
       burst({ x, y, count: motionReduce ? 4 : 10, color: '#9fd8b4', life: 0.7, size: 3.0, speed: 30, kind: 'dust', gravity: -14, cone: Math.PI * 2 });
@@ -8753,6 +8763,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const tile = field[c][r];
         if (tile.type === 'gas') syncGasAt(c, r);
         else if (tile.type === 'vein') syncOreAt(c, r);
+        if (tile.vented) addVentedScar(c, r);   // drillVented persists — so does the seam mark
         if (tile.type !== 'empty' && tile.maxHp && tile.hp < tile.maxHp) syncCellDamage(c, r);
       }
     }
