@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "rival-scavenger-contest",
-      "date": "2026-10-03",
-      "wf": "WF-01",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the rival racing you to a fresh wreck now announces its claim, drops half its stolen cut when you press its hull, and brags about what it got away with",
-      "fingerprint": "verb=contest,subject=wreck-scavenger,sector=derelict-field,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "fec6b7322",
-      "verification": "focused_green"
-    },
-    {
       "id": "counting-relay-366",
       "date": "2026-10-03",
       "wf": "WF-10",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "8a7202dbe",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-27-arrival-freighters",
+      "date": "2026-10-21",
+      "wf": "WF-15",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "First two ambient hulls anchor on the player arrival point; the sector opens with traffic in sensor range",
+      "fingerprint": "verb=greet,subject=freighters,sector=helios,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "903b1b10b",
       "verification": "focused_green"
     }
   ],
