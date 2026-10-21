@@ -8,6 +8,9 @@ import * as THREE from 'three';
 
 import {
   describeAuthoredUpgradeQueue,
+  prepareFirstQueuedAuthoredBoundaryForOpening,
+  cancelAuthoredUpgradeQueue,
+  resumeAuthoredUpgradeQueueAfterOpening,
   enqueueBoundaryUpgrade,
   holdAuthoredUpgradeQueueForFirstFlight,
 } from '../src/render/partsLibrary.js';
@@ -49,4 +52,57 @@ test('the open route keeps the first-flight upgrade hold through the first paint
   applyFirstPlayablePaintRelease(owner(scene, null));
   assert.equal(describeAuthoredUpgradeQueue(scene).held, true,
     'leftover opening compiles stay deferred through the first-flight window');
+});
+
+for (const cooked of [false, true]) {
+ test(`first paint transfers ${cooked?'cooked':'software cook-skipped'} opening hold to selective policy`, async()=>{
+  const oldWindow=globalThis.window,oldRaf=globalThis.requestAnimationFrame;
+  const frames=[];globalThis.requestAnimationFrame=fn=>frames.push(fn);
+  const scene=new THREE.Scene(),o=owner(scene,null);
+  const player={id:1,alive:true,pos:{x:0,z:0}};
+  const glass={id:2,type:'ship',alive:true,pos:{x:10,z:0},activity:{presentationTier:'R0_GLASS'}};
+  const ambient={id:3,type:'fx',alive:true,pos:{x:50000,z:0},activity:{presentationTier:'R2_METADATA'}};
+  Object.assign(o.state,{playerId:1,entities:new Map([[1,player],[2,glass],[3,ambient]]),world:{},camera:{zoom:144}});
+  globalThis.window={SF:{state:o.state}};
+  try {
+   // The real opening cohort leaves a blanket hold, even when no queued body remains.
+   const cohort=await prepareFirstQueuedAuthoredBoundaryForOpening(scene);assert.equal(cohort.prepared,false);
+   assert.equal(describeAuthoredUpgradeQueue(scene).openingHeld,true);
+   if(cooked){o.state.render.firstPlayableFrameAt=1;holdAuthoredUpgradeQueueForFirstFlight(scene);}
+   let glassRuns=0,ambientRuns=0;
+   const enqueue=(entity,run)=>{const boundary=new THREE.Group();boundary.visible=false;scene.add(boundary);return enqueueBoundaryUpgrade(scene,{boundary,entity,run,options:{deferBoundaryPublication:true}});};
+   const glassDone=enqueue(glass,()=>{glassRuns++;return true;});
+   const ambientDone=enqueue(ambient,()=>{ambientRuns++;return true;});
+   // Production resumeDeferredPipelineAdmissions skips before sim20. First paint must
+   // still transfer queue ownership; it must not force that callback or release all FX.
+   let resumeCalls=0;o.state.render.resumeDeferredPipelineAdmissions=options=>{resumeCalls++;assert.equal(options,undefined);return {skipped:true,reason:'hold-deferred-through-first-flight'};};
+   applyFirstPlayablePaintRelease(o);
+   let q=describeAuthoredUpgradeQueue(scene);assert.equal(q.openingHeld,false);assert.equal(q.firstFlightHeld,true);
+   assert.equal(q.frameScheduled,true);assert.equal(resumeCalls,1);
+   const frameCount=frames.length;applyFirstPlayablePaintRelease(o);
+   assert.equal(frames.length,frameCount,'repeat paint must not invalidate or duplicate the pending callback');
+   for(const fn of frames.splice(0))fn();for(let i=0;i<40;i++)await Promise.resolve();
+   assert.equal(glassRuns,1);assert.equal(ambientRuns,0);await glassDone;
+   q=describeAuthoredUpgradeQueue(scene);assert.equal(q.pending,1);assert.equal(q.firstFlightHeld,true);
+   cancelAuthoredUpgradeQueue(scene,'test-reset');await ambientDone;
+   assert.equal(describeAuthoredUpgradeQueue(scene).present,false);
+  }finally{cancelAuthoredUpgradeQueue(scene);if(oldWindow===undefined)delete globalThis.window;else globalThis.window=oldWindow;if(oldRaf===undefined)delete globalThis.requestAnimationFrame;else globalThis.requestAnimationFrame=oldRaf;}
+ });
+}
+
+test('nonflight first paint never arms a first-flight queue hold',async()=>{
+ const scene=new THREE.Scene(),o=owner(scene,null);o.state.mode='menu';
+ await prepareFirstQueuedAuthoredBoundaryForOpening(scene);
+ applyFirstPlayablePaintRelease(o);
+ assert.equal(describeAuthoredUpgradeQueue(scene).firstFlightHeld,false);
+ cancelAuthoredUpgradeQueue(scene);
+});
+
+test('later paints and reset do not re-arm a released queue',async()=>{
+ const scene=new THREE.Scene(),o=owner(scene,null);
+ await prepareFirstQueuedAuthoredBoundaryForOpening(scene);applyFirstPlayablePaintRelease(o);
+ resumeAuthoredUpgradeQueueAfterOpening(scene);applyFirstPlayablePaintRelease(o);
+ assert.equal(describeAuthoredUpgradeQueue(scene).held,false);
+ cancelAuthoredUpgradeQueue(scene,'continue-reset');applyFirstPlayablePaintRelease(o);
+ assert.equal(describeAuthoredUpgradeQueue(scene).present,false);
 });

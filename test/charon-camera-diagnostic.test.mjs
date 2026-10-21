@@ -239,3 +239,15 @@ test('owner phase and queue observations are bounded raw snapshots without publi
  delete owner.scene;assert.equal(charonCameraPageOperation('read').authoredQueue,null);
  }finally{delete globalThis.window;}
 });
+
+test('existing admission lane reader distinguishes queued blanket hold and tolerates unavailable telemetry',()=>{
+ try {const {state}=stateFixture();let calls=0;
+ state.render.sampleOpeningCookLane=()=>{calls++;return {upgradeJobs:3,upgradeInFlight:0,upgradeOpeningHeld:true,upgradeFirstFlightHeld:false,upgradeFrameScheduled:false,upgradeRunning:true,secret:'not copied'};};
+ const r=charonCameraPageOperation('read');assert.equal(calls,1);
+ assert.equal(r.admissionLane.upgradeJobs,3);assert.equal(r.admissionLane.upgradeOpeningHeld,true);
+ assert.equal(r.admissionLane.upgradeFirstFlightHeld,false);assert.equal(r.admissionLane.secret,undefined);
+ state.render.sampleOpeningCookLane=()=>{throw Error('x'.repeat(500));};
+ const failed=charonCameraPageOperation('read');assert.equal(failed.admissionLane,null);assert.equal(failed.admissionLaneError.length,240);
+ delete state.render.sampleOpeningCookLane;assert.equal(charonCameraPageOperation('read').admissionLane,null);
+ }finally{delete globalThis.window;}
+});

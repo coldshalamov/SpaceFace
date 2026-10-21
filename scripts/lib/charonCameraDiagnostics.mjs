@@ -54,6 +54,15 @@ export function charonCameraPageOperation(action) {
       visible:bool(record.boundary?.visible),error:record.error?String(record.error.message||record.error).slice(0,1000):null,
       abortReason:record.abortReason??null,cleanupBlocked:record.cleanupBlocked===true};
   };
+  let admissionLane=null,admissionLaneError=null;
+  try {
+    const lane=render.sampleOpeningCookLane?.();
+    if(lane) admissionLane={...Object.fromEntries(
+      ['queued','flushed','settled','upgradeJobs','upgradeInFlight','upgradeCompiling','meshBuilds']
+        .map(key=>[key,finite(lane[key])])),...Object.fromEntries(
+      ['upgradeOpeningHeld','upgradeFirstFlightHeld','upgradeFrameScheduled','upgradeRunning']
+        .map(key=>[key,bool(lane[key])]))};
+  } catch(error) {admissionLaneError=short(error?.message||String(error));}
   const transition = {
     pending: render.sectorShellAdmission === true || render.liveSectorGpuAdmission === true,
     sectorShellAdmission: render.sectorShellAdmission === true,
@@ -185,7 +194,7 @@ export function charonCameraPageOperation(action) {
     inActivityGlass:member(activity?.renderGlassIds,e.id),inActivityRunway:member(activity?.renderRunwayIds,e.id),
     boundaryPreparation:boundary(e.id),
     inFirstFlight:render.liveSectorFirstFlightIds?.has?.(e.id)??null}: {subject:names[i],missing:true});
-  return {sectorId:s.world?.currentSectorId,mode:s.mode,transition,authoredQueue,tick:s.tick,presentCount:s.render?.presentCount??null,
+  return {sectorId:s.world?.currentSectorId,mode:s.mode,transition,authoredQueue,admissionLane,admissionLaneError,tick:s.tick,presentCount:s.render?.presentCount??null,
     gpu:s.render?.gpu?{...s.render.gpu}:null,softwareRenderer:s.render?.softwareRenderer??null,dynResScale:Number.isFinite(s.render?.dynResScale)?s.render.dynResScale:null,
     player:player?{id:player.id,pos:{x:player.pos.x,z:player.pos.z},hull:player.hull,assetState:player.mesh?.userData?.authoredAssetState??'missing'}:null,
     subjects,ready:!transition.pending&&subjects.every(e=>!e.missing&&e.assetState==='authored')&&player?.mesh?.userData?.authoredAssetState==='authored',

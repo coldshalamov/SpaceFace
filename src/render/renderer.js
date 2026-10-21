@@ -15104,6 +15104,10 @@ export const render = {
         upgradeJobs: upgrades.pending,
         upgradeInFlight: upgrades.inFlight,
         upgradeCompiling: upgrades.compiling || 0,
+        upgradeOpeningHeld: upgrades.openingHeld === true,
+        upgradeFirstFlightHeld: upgrades.firstFlightHeld === true,
+        upgradeFrameScheduled: upgrades.frameScheduled === true,
+        upgradeRunning: upgrades.running === true,
         meshBuilds: this._meshBuildQueue.length - this._meshBuildQueueHead,
       };
     };
@@ -35867,6 +35871,16 @@ export function applyFirstPlayablePaintRelease(owner) {
     releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null, {
       keepGraphFrozen: !!(owner && owner.state && owner.state.mode === 'flight'),
     });
+    // The software path can skip the cook that normally transfers the opening
+    // cohort's blanket queue hold to the selective first-flight policy. The guarded
+    // pipeline resume below intentionally waits until the hold clock expires; it
+    // must not also leave readable bodies excluded from the existing selective lane.
+    // Transfer only a still-owned blanket hold, so repeated paints/Continue cannot
+    // re-arm a released queue or invalidate an already scheduled selective callback.
+    if (owner?.scene && owner.state?.mode === 'flight'
+        && describeAuthoredUpgradeQueue(owner.scene).openingHeld === true) {
+      holdAuthoredUpgradeQueueForFirstFlight(owner.scene);
+    }
     if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
       // First-picture acceptance does not release the unrelated sector/FX backlog.
       // The existing cook and selective readable-glass first-flight lanes own that policy.
