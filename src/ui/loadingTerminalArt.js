@@ -25,6 +25,7 @@
 
 // SPACEFACE_SIGNAL_TABLEAUX_INTEGRATION_4_CONTINUUM
 import { createSignalTableaux } from './loadingSignalTableaux.js';
+import { formatLoadingClock } from './loadingClockFormat.js';
 
 /**
  * The 2D fallback engine. `host` abstracts the host thread:
@@ -1852,11 +1853,7 @@ export function createTerminalArtwork({
 
     const clockEl = overlay.querySelector('[data-loading-clock]');
     if (clockEl) {
-      const elapsed = (time - startTime) / 1000;
-      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-      const secs = String(Math.floor(elapsed % 60)).padStart(2, '0');
-      const ms = String(Math.floor((elapsed * 10) % 10));
-      clockEl.textContent = `00:${mins}:${secs}.${ms}`;
+      clockEl.textContent = formatLoadingClock((time - startTime) / 1000);
     }
 
     const pctEl = overlay.querySelector('[data-loading-pct]');
@@ -2160,11 +2157,7 @@ export function bootstrapLoadingTerminal(document = globalThis.document) {
       if (!clockStart) clockStart = ts;
       const clockEl = overlay && overlay.querySelector ? overlay.querySelector('[data-loading-clock]') : null;
       if (clockEl) {
-        const elapsed = (ts - clockStart) / 1000;
-        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        const secs = String(Math.floor(elapsed % 60)).padStart(2, '0');
-        const ms = String(Math.floor((elapsed * 10) % 10));
-        clockEl.textContent = `00:${mins}:${secs}.${ms}`;
+        clockEl.textContent = formatLoadingClock((ts - clockStart) / 1000);
       }
       clockRaf = raf ? raf(tickClock) : null;
     };

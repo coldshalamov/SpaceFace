@@ -139,6 +139,12 @@ const BEAM_REFUSAL_TEXT = Object.freeze({
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_COLLECT_PAD = 14;  // ship-radius pad for scoop contact (generous so flybys don't miss)
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
+// A crew cut rides the persistent entity list so a save/continue (or a sector regen) keeps the
+// titled chip for the working barge — which means every spilled chip is a serialized save row.
+// An unblocked shift yields every work tick while the barge ferries one lot per round trip, so
+// the live set needs a bound or the row count never plateaus (demo defect ledger D233). Past
+// the cap the ore stays parked on the rock and re-spills — with its claim — when a chip leaves.
+export const NPC_MINING_SPILL_CAP = 12;
 // Hull-burst overhaul slice A (combat.arcadeLoot, design doc section 7). Placeholders; untuned.
 const LOOT_HOMING_BEAT_S = 0.5;          // the burst reads before it starts to fall toward the hull
 // Refused combat ore pays this share of its reference value. Deliberately deep: a light kill's
@@ -1273,13 +1279,13 @@ export const mining = {
           const ordinary = qty - richQty;
           const spilledOrdinary = this._spawnPickup(ast, commodityId, ordinary, null, { tight: depleted, npcMiningSource });
           if (spilledOrdinary < ordinary) {
-            this._parkUnreleasedOre(rockData, commodityId, ordinary - spilledOrdinary, ast, false);
+            this._parkUnreleasedOre(rockData, commodityId, ordinary - spilledOrdinary, ast, false, npcMiningSource);
           }
         }
         if (richQty > 0) {
           const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty }, { tight: depleted, npcMiningSource });
           const parkedRich = Math.max(0, richQty - spawnedRich);
-          if (parkedRich > 0) this._parkUnreleasedOre(rockData, commodityId, parkedRich, ast, false);
+          if (parkedRich > 0) this._parkUnreleasedOre(rockData, commodityId, parkedRich, ast, false, npcMiningSource);
           if (rockData && (spawnedRich > 0 || parkedRich > 0)) rockData._richBonusPending -= spawnedRich + parkedRich;
         }
       }
@@ -1300,10 +1306,13 @@ export const mining = {
 
   // Units that could not enter the hold and could not become a pickup stay on the rock.
   // They are not added to _oreCarry: that carry is released as a fresh roll on the next bite.
-  _parkUnreleasedOre(rockData, commodityId, qty, srcEnt, toCargo) {
+  _parkUnreleasedOre(rockData, commodityId, qty, srcEnt, toCargo, npcMiningSource = null) {
     const left = finiteWholePickupAmount(qty);
     if (left <= 0) return 0;
     const lot = { commodityId, qty: left, toCargo: !!toCargo };
+    // A parked crew cut keeps its title: the barge's lot re-spills as the same titled chip,
+    // not as free scrap a thief could take without the law noticing.
+    if (npcMiningSource) lot.npcMiningSource = { ...npcMiningSource };
     if (rockData) {
       if (!Array.isArray(rockData.parkedOre)) rockData.parkedOre = [];
       rockData.parkedOre.push(lot);
@@ -1371,7 +1380,8 @@ export const mining = {
         }
       }
       if (left > 0 && ast) {
-        const spilled = this._spawnPickup(ast, lot.commodityId, left, null, { tight: true });
+        const spilled = this._spawnPickup(ast, lot.commodityId, left, null,
+          { tight: true, npcMiningSource: lot.npcMiningSource || null });
         left -= spilled;
       }
       if (left > 0) next.push({ ...lot, qty: left });
@@ -1398,8 +1408,57 @@ export const mining = {
   },
 
   // ---- pickups: spawn + magnet pull + collection ----------------------------
+  _npcPickupLane() {
+    const index = this.state && this.state.entityIndex;
+    return index && index.__spacefaceEntityIndexV1 === true && Array.isArray(index.pickups)
+      ? index.pickups : (this.state && this.state.entityList) || [];
+  },
+
+  _npcSpillLiveCount() {
+    const lane = this._npcPickupLane();
+    let n = 0;
+    for (let i = 0; i < lane.length; i++) {
+      const e = lane[i];
+      if (e && e.type === 'pickup' && e.alive !== false && e.data && e.data.npcMiningSource
+        && e.data.npcMiningSource.minerWorldRecordId != null) n += 1;
+    }
+    return n;
+  },
+
+  // A crew's cut accrues into one live pile per (miner record, field): the working barge's lot
+  // is a physical heap beside the face, not a fresh labeled parcel every bite. Per-bite chips
+  // each ride flags.persistent — an unblocked shift yields every work tick while the barge
+  // ferries one lot per round trip, so discrete chips mint save rows forever (D233). The pile
+  // grows in amount instead — same ore, same title, same theft/collect paths, bounded rows.
+  _mergeIntoCrewPile(commodityId, amount, npcMiningSource) {
+    const recId = npcMiningSource && npcMiningSource.minerWorldRecordId;
+    const fieldId = npcMiningSource && npcMiningSource.fieldId;
+    if (recId == null || fieldId == null) return 0;
+    const lane = this._npcPickupLane();
+    for (let i = 0; i < lane.length; i++) {
+      const e = lane[i];
+      const d = e && e.type === 'pickup' && e.alive !== false ? e.data : null;
+      const src = d && d.npcMiningSource;
+      if (!src || src.minerWorldRecordId !== recId || src.fieldId !== fieldId) continue;
+      if (d.commodityId !== commodityId || d.richLotSource) continue;
+      d.amount = (finiteWholePickupAmount(d.amount) || 0) + amount;
+      // Fresh ore on the heap renews the ordinary expiry clock where the rock set one.
+      if (d.despawnAt != null) d.despawnAt = Math.max(d.despawnAt, this.state.simTime + PICKUP_TTL);
+      return amount;
+    }
+    return 0;
+  },
+
   _spawnPickup(srcEnt, commodityId, amount, lotSource = null, opts = null) {
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function' || !(amount > 0)) return 0;
+    if (opts?.npcMiningSource) {
+      if (!lotSource && this._mergeIntoCrewPile(commodityId, amount, opts.npcMiningSource) > 0) {
+        return amount;
+      }
+      // A titled chip is a serialized persistent row; the working set stays bounded and the
+      // overflow parks on the rock instead of minting a save row the barge can never reach.
+      if (this._npcSpillLiveCount() >= NPC_MINING_SPILL_CAP) return 0;
+    }
     const rng = this.state.rng;
     const tight = !!(opts && opts.tight);
     const ang = rng() * Math.PI * 2;

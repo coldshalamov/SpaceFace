@@ -57,6 +57,12 @@ const CSS = `
 .sf-stuntcall__lines { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
 .sf-stuntcall__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
   font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
+.sf-stuntcall__line[data-rarity="common"] .sf-stuntcall__name { font-weight:450;
+  color:rgb(248 244 234 / .72); }
+.sf-stuntcall__line[data-rarity="uncommon"] .sf-stuntcall__name { font-weight:550;
+  color:rgb(248 244 234 / .84); }
+.sf-stuntcall__line[data-rarity="legendary"] .sf-stuntcall__name { font-weight:800;
+  color:rgb(248 244 234 / 1); }
 .sf-stuntcall__pts { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
   font-size:13px; font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(${BONE} / .66); }
 .sf-stuntcall__line.is-bank .sf-stuntcall__name { color:var(--dp-hand, #f2b950); }
@@ -461,15 +467,19 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     }
   }
 
-  function addLine(key, nameText, ptsText, now, ttl, isBank) {
+  function addLine(key, nameText, ptsText, now, ttl, isBank, rarity) {
     const existing = key != null ? lineNodes.get(key) : null;
     if (existing) {
       existing.name.textContent = nameText;
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
+      if (rarity) existing.node.setAttribute('data-rarity', rarity);
       return;
     }
     const node = mk(doc, 'div', 'sf-stuntcall__line' + (isBank ? ' is-bank' : ''));
+    // Weight by rarity: a legendary act reads heavier than a common one — type
+    // carries it (no panels, borders or filters on the flight floor).
+    if (rarity) node.setAttribute('data-rarity', rarity);
     if (!motionReduced(getState())) node.classList.add('sf-stuntcall__rise');
     const name = mk(doc, 'span', 'sf-stuntcall__name', nameText);
     const pts = mk(doc, 'span', 'sf-stuntcall__pts', ptsText);
@@ -524,7 +534,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const now = wallNow();
     const key = `ep:${trick.episodeId ?? trick.trickId}`;
     const mom = trickMomentumText(trick);
-    addLine(key, name, mom, now, CALLOUT_TTL_MS, false);
+    addLine(key, name, mom, now, CALLOUT_TTL_MS, false, trick.rarity);
     spoken = trickSpokenText(trick);
     if (mom) spoken = `${spoken}, ${mom}`;
     sr.textContent = spoken;

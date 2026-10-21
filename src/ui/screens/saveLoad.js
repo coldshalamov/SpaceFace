@@ -427,6 +427,17 @@ export function slotObjectiveSummary(meta) {
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 
+// An empty slot says "empty" once: one heading plus one sentence. The berth
+// mark and the etched line stay silent — no badge, no second caption.
+export function emptySlotDetailCopy(saveAllowed) {
+  return {
+    heading: 'Empty slot',
+    sentence: saveAllowed
+      ? 'Nothing is filed here — save here to file the run you are flying now.'
+      : 'Nothing is filed here yet — a new game starts a life you can save to this slot.',
+  };
+}
+
 export function slotBadges(id, meta, currentSlot, latestSlot) {
   if (!isOccupied(meta)) return [];
   const badges = [];
@@ -1022,9 +1033,8 @@ export const saveLoadScreen = {
     const vacant = el('div', 'sf-save-vacant');
     vacant.setAttribute('aria-hidden', 'true');
     vacant.innerHTML = dpMark('mark-save', { size: 'hero' });
-    // ORRERY: the unlit mark gives way to an empty berth ring, named in words.
-    const vacantWord = orr ? el('span', 'sf-save-vacant__word', 'No hull on file') : null;
-    if (vacantWord) vacant.appendChild(vacantWord);
+    // ORRERY: the unlit mark gives way to an empty berth ring. The pane says
+    // "empty" once — heading plus one sentence — so the stage stays a mark.
     stage.appendChild(vacant);
     // ORRERY: the reading is its own column beside the hull (not a caption hung off the stage's foot),
     // and the hull stands alone on its berth: no dock interior behind it, no photograph. The produced
@@ -1148,7 +1158,7 @@ export const saveLoadScreen = {
     back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
 
     refs = {
-      root: rootEl, title, heading, vacantWord, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
+      root: rootEl, title, heading, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
       caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
@@ -1360,7 +1370,7 @@ export const saveLoadScreen = {
     refs.stage.classList.toggle('is-vacant', !defId);
     refs.stage.dataset.slotState = occupied ? 'filed' : (saveAllowed ? 'open' : 'empty');
     refs.root.dataset.slotState = refs.stage.dataset.slotState;
-    if (refs.vacantWord) refs.vacantWord.textContent = saveAllowed ? 'Open berth' : 'No hull on file';
+    // No third caption on an empty slot: heading plus one sentence says "empty" once.
     // the title follows the verb: an empty slot in a live run is where you save
     if (refs.orr && refs.heading) {
       const word = !occupied && saveAllowed ? 'Save' : 'Load';
@@ -1375,12 +1385,13 @@ export const saveLoadScreen = {
     refs.fine.textContent = [
       slotLabel(id) + ' save',
       ...badges.filter((badge) => !/^v\d/.test(badge)),
-      occupied ? (flown ? 'flown ' + flown : 'filed') : 'empty',
+      occupied && (flown ? 'flown ' + flown : 'filed'),
       notice && notice.text,
     ].filter(Boolean).join(' · ');
 
+    const emptyCopy = occupied ? null : emptySlotDetailCopy(saveAllowed);
     paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,
-      occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : 'Empty slot');
+      occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : emptyCopy.heading);
     if (occupied && portrait) {
       paintSavePortrait({
         scars: refs.scars, repairs: refs.repairs, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
@@ -1392,9 +1403,7 @@ export const saveLoadScreen = {
     const objective = occupied ? slotObjectiveSummary(meta) : '';
     refs.objective.textContent = occupied
       ? (objective || 'Saved game')
-      : saveAllowed
-        ? 'Nothing is filed here. Save here to file the run you are flying now.'
-        : 'Nothing is filed here yet. A new game starts a life you can save to this slot.';
+      : emptyCopy.sentence;
 
     // The run's facts as readings. An empty slot mid-run reads the live run (what Save here files);
     // an empty slot at the title keeps the same lines, blank, so the page is designed, not missing.

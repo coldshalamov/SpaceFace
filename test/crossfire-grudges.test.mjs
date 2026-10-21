@@ -416,7 +416,79 @@ test('a grudge expires after 12 s and restores the prior posture', () => {
   assert.equal(b.data.ai.activity.kind, ActivityKind.LOITER);
   assert.equal(b.data.ai.activity.reason, 'r391_patrol');
   assert.equal(b.data.ai.npcGrudge, undefined);
+  assert.equal(b.data.ai.roe, undefined, 'an absent prior roe is restored by deleting the key, not writing null');
   assert.equal(isHostileForAI(sim.state, b, a), false);
+  sim.dispose();
+});
+
+test('a grudge still hands the prior roe back when another system replaced the activity', () => {
+  const { sim } = grudgeSim();
+  const a = spawnReaver(sim, 2, { x: 0, z: 0 });
+  const b = spawnReaver(sim, 3, { x: 200, z: 0, squadId: 'other_wing', activity: loiterActivity() });
+  b.data.ai.roe = 'hold_fire';
+
+  emitHit(sim, a.id, b.id);
+  assert.equal(b.data.ai.roe, 'weapons_free', 'the grudge escalates posture');
+  // A different writer takes the activity mid-grudge; the grudge's weapons-free roe is still
+  // its own escalation and must revert at expiry rather than pinning the hull weapons-free.
+  b.data.ai.activity = normalizeActivity({ kind: ActivityKind.LOITER, reason: 'other_writer', anchor: { x: 0, z: 0 }, leashRadius: 1800 });
+
+  sim.runTicks(Math.ceil(NPC_GRUDGE_S * 60) + 1);
+  assert.equal(b.data.ai.npcGrudge, undefined);
+  assert.equal(b.data.ai.roe, 'hold_fire', 'the interrupted posture comes back');
+  assert.equal(b.data.ai.activity.reason, 'other_writer', 'the foreign activity is left alone');
+  sim.dispose();
+});
+
+test('a live player retaliation outlives the grudge window it interrupted', () => {
+  const { sim, player } = grudgeSim();
+  const a = spawnReaver(sim, 2, { x: 0, z: 0 });
+  const b = spawnReaver(sim, 3, { x: 200, z: 0, squadId: 'other_wing', activity: loiterActivity() });
+  b.data.ai.roe = 'hold_fire';
+
+  emitHit(sim, a.id, b.id);
+  assert.equal(b.data.ai.roe, 'weapons_free', 'the grudge escalates posture');
+  // The player then shoots the same hull: _retaliate takes every posture channel over with the
+  // same weapons_free value. Expiring the grudge must not disarm that live player fight.
+  emitHit(sim, player.id, b.id);
+  assert.equal(b.data.ai.retaliationTargetId, player.id);
+  assert.equal(b.data.ai.activity.reason, 'retaliation:player_attack');
+  assert.equal(b.data.combat.targetId, player.id);
+  assert.equal(b.data.ai.roe, 'weapons_free');
+
+  sim.runTicks(Math.ceil(NPC_GRUDGE_S * 60) + 1);
+  assert.equal(b.data.ai.npcGrudge, undefined, 'the grudge window still closes');
+  assert.equal(b.data.ai.roe, 'weapons_free', 'the player retaliation keeps its posture');
+  assert.equal(b.data.ai.retaliationTargetId, player.id, 'the player target is left alone');
+  assert.equal(b.data.ai.activity.reason, 'retaliation:player_attack', 'the player fight is left alone');
+  assert.equal(b.data.combat.targetId, player.id);
+  sim.dispose();
+});
+
+test('a scripted takeover that only leaves a stale weapon lock still keeps its posture', () => {
+  const { sim, player } = grudgeSim();
+  const a = spawnReaver(sim, 2, { x: 0, z: 0 });
+  const b = spawnReaver(sim, 3, { x: 200, z: 0, squadId: 'other_wing', activity: loiterActivity() });
+  const c = spawnReaver(sim, 4, { x: 400, z: 0, squadId: 'other_wing', activity: loiterActivity() });
+  b.data.ai.roe = 'hold_fire';
+
+  emitHit(sim, a.id, b.id);
+  assert.equal(b.data.ai.roe, 'weapons_free', 'the grudge escalates posture');
+  // Scripted writers (defensive presence, fulfillment route, concord binding) repoint the
+  // retaliation and activity channels but leave the per-tick weapon lock pointing at the grudge
+  // target. The lock alone must not count as grudge ownership or the live response is disarmed.
+  b.data.ai.retaliationTargetId = c.id;
+  b.data.ai.activity = normalizeActivity({ kind: ActivityKind.LOITER, reason: 'faction_presence', anchor: { x: 0, z: 0 }, leashRadius: 1800 });
+  b.data.combat.targetId = a.id;
+  assert.notEqual(b.data.ai.retaliationTargetId, a.id);
+  assert.notEqual(b.data.ai.activity.reason, NPC_GRUDGE_REASON);
+
+  sim.runTicks(Math.ceil(NPC_GRUDGE_S * 60) + 1);
+  assert.equal(b.data.ai.npcGrudge, undefined, 'the grudge window still closes');
+  assert.equal(b.data.ai.roe, 'weapons_free', 'the scripted takeover keeps its posture');
+  assert.equal(b.data.ai.retaliationTargetId, c.id, 'the takeover target is left alone');
+  assert.equal(b.data.ai.activity.reason, 'faction_presence', 'the foreign activity survives expiry');
+  assert.equal(b.data.combat.targetId, null, 'the stale lock on the grudge target is cleared');
   sim.dispose();
 });
 

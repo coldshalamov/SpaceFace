@@ -1,4 +1,5 @@
 import { BOOT_MEDIA, createBootMediaPlayback } from './bootMediaPlayback.js';
+import { formatLoadingClock } from './loadingClockFormat.js';
 
 const owners = new WeakMap();
 const EMPTY = Object.freeze({ ready: Promise.resolve({ status: 'unavailable' }),
@@ -77,7 +78,7 @@ export function getBootVisualizer(document = globalThis.document, options = {}) 
     clockStart ??= host.performance?.now?.() ?? Date.now();
     clock = host.setInterval(() => {
       const t = Math.max(0, ((host.performance?.now?.() ?? Date.now()) - clockStart) / 1000);
-      el.textContent = `00:${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}.${Math.floor(t * 10) % 10}`;
+      el.textContent = formatLoadingClock(t);
     }, 250);
   }
   const hidePage = () => { pageHidden = true; refresh(); };
