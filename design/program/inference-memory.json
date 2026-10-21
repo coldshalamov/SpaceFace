@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "grandee-transit-365",
-      "date": "2026-10-03",
-      "wf": "WF-11",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "a famous Atlas-class ship makes a rare announced transit with escort, hails you by name-register, and her loss is remembered",
-      "fingerprint": "verb=watch,subject=famous-hauler,sector=pocket-lane,domain=wf-11",
-      "references": [],
-      "integration": "live",
-      "commit": "173d169f8",
-      "verification": "focused_green"
-    },
-    {
       "id": "rival-scavenger-contest",
       "date": "2026-10-03",
       "wf": "WF-01",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "e1769cbed",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-47-sling-ring-pass-receipt",
+      "date": "2026-10-21",
+      "wf": "WF-15",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Sling-ring traversal emits travelLanes:slingRingPass and the receipt lane voices each pass",
+      "fingerprint": "verb=pass,subject=sling-ring,sector=ceres,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "8a7202dbe",
       "verification": "focused_green"
     }
   ],
