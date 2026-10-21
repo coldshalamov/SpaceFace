@@ -17,6 +17,7 @@ import { recordRulesFor, settleCrucibleRun } from './survivalRecords.js';
 import { circuitSummaryFor } from './survivalCircuit.js';
 import { challengeFromRun } from './survivalMutators.js';
 import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
+import { normalizeGameSpeed } from '../core/timeEffects.js';
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { captureKillReplay } from './killReplay.js';
 import { thinBlackBoxTape } from '../sim/blackBoxTape.js';
@@ -629,6 +630,8 @@ export const survivalResults = {
     this._highestEntered=Math.max(this._highestEntered,wave);
     if(!this._stuntRules)this._stuntRules=currentStuntRunRules(this.state,run.ruleset===SWARM_RULESET?'swarm':run.ruleset??'arc');
     else if(this._stuntRules.simulationAssistProfile!==stuntAssistProfile(this.state))this._stuntRules.simulationAssistProfile='mixed';
+    const _gs=normalizeGameSpeed(this.state.settings?.gameplay?.gameSpeed);
+    if(this._stuntRules&&(this._stuntRules.simulationSpeedAssist??1)!==_gs)this._stuntRules.simulationSpeedAssist='mixed';
     this._waveStartSimTime = this._simNow();
     this._waveStartWave = Number.isInteger(wave) ? wave : 0;
     if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();

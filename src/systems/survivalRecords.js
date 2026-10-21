@@ -72,7 +72,7 @@ export const CRUCIBLE_GHOST_FRAME_CAP = 3600;
 export const CRUCIBLE_GHOST_RETAIN_CAP = 20;
 export const CRUCIBLE_GHOST_VERSION = 1;
 export const BEST_LINE_RETAIN_CAP = 5;
-export const RECORD_RULE_FIELDS = Object.freeze(['mode', 'arenaId', 'balanceRevision', 'physicsRevision', 'scoringRevision', 'difficulty', 'loadoutRules', 'simulationAssistProfile']);
+export const RECORD_RULE_FIELDS = Object.freeze(['mode', 'arenaId', 'balanceRevision', 'physicsRevision', 'scoringRevision', 'difficulty', 'loadoutRules', 'simulationAssistProfile', 'simulationSpeedAssist']);
 
 const memoryStore = new Map();
 
@@ -466,7 +466,7 @@ export function lastGhostForSeed(profile, seed) {
  */
 export const GHOST_RULE_FIELDS = Object.freeze([
   'mode', 'arenaId', 'balanceRevision', 'physicsRevision', 'scoringRevision',
-  'loadoutRules', 'simulationAssistProfile',
+  'loadoutRules', 'simulationAssistProfile', 'simulationSpeedAssist',
 ]);
 
 const GHOST_FIELD_WORDS = Object.freeze({
@@ -477,6 +477,7 @@ const GHOST_FIELD_WORDS = Object.freeze({
   scoringRevision: 'scoring rules',
   loadoutRules: 'build',
   simulationAssistProfile: 'assists',
+  simulationSpeedAssist: 'speed assist',
 });
 
 /** Loadout rules compared as rules, not strings: mutator order is not a different build. */
@@ -517,8 +518,10 @@ export function ghostComparability(rowRules, currentRules) {
   const mismatches = [];
   let unknown = false;
   for (const field of GHOST_RULE_FIELDS) {
-    const left = row[field];
-    const right = current[field];
+    // AL-PR-16: speed assist predates the stamp on old rows — an absent field is a full-speed
+    // run, equal on both sides; only an assisted stamp differs.
+    const left = field === 'simulationSpeedAssist' && row[field] == null ? 1 : row[field];
+    const right = field === 'simulationSpeedAssist' && current[field] == null ? 1 : current[field];
     if (left == null || right == null) {
       unknown = true;
       continue;
@@ -1335,6 +1338,9 @@ export function recordRulesFor(result = {}, run = {}) {
       ? (normalizeCircuitState(circuitSrc) && circuitRecordIdentity(circuitSrc)) || 'invalid'
       : circuitRecordIdentity(provided.circuit) || 'invalid';
   }
+  // AL-PR-16: an unstamped speed field means an unassisted (full-speed) run — 100% must
+  // normalize to a value, not an incomplete record, and must never equal an assisted stamp.
+  rules.simulationSpeedAssist ??= 1;
   rules.complete = rules.circuit !== 'invalid' && RECORD_RULE_FIELDS.every(key => rules[key] != null);
   return rules;
 }

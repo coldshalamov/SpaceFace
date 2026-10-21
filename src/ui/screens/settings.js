@@ -1018,6 +1018,7 @@ export const settingsScreen = {
       });
       rowToggle('Pause when the window loses focus', () => g.pauseOnFocusLoss !== false, (v) => this._set(ctx, 'gameplay', 'pauseOnFocusLoss', v));
       rowSelect('Stunt moments', () => g.stuntMoments || 'cinematic', [['cinematic', 'Cinematic · brief slowdown'], ['flow', 'Flow · continuous play']], (v) => this._set(ctx, 'gameplay', 'stuntMoments', v));
+      rowSelect('Game speed', () => String(g.gameSpeed ?? 1), [['1', '100% · full speed'], ['0.9', '90%'], ['0.8', '80%'], ['0.7', '70% · assisted']], (v) => this._set(ctx, 'gameplay', 'gameSpeed', Number(v)));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
         ['full', 'Full'],

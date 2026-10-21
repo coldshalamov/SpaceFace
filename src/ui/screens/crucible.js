@@ -143,6 +143,7 @@ import {
 } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunRules.js';
+import { normalizeGameSpeed } from '../../core/timeEffects.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
@@ -1064,6 +1065,9 @@ export const crucibleScreen = {
           stake: daily || ruleset !== SWARM_RULESET ? null : normalizeSwarmStake(stake),
         }),
         simulationAssistProfile: stuntAssistProfile(ctx.state),
+        ...(normalizeGameSpeed(ctx.state.settings?.gameplay?.gameSpeed) < 1
+          ? { simulationSpeedAssist: normalizeGameSpeed(ctx.state.settings?.gameplay?.gameSpeed) }
+          : {}),
       };
     }
 
@@ -3036,6 +3040,8 @@ export function bestLineReviewRows(line) {
     ['Difficulty', rules.difficulty ?? 'Not recorded'], ['Stake', stakeLabel],
     ['Loadout rules', rules.loadoutRules ?? 'Not recorded'],
     ['Simulation assist', rules.simulationAssistProfile ?? 'Not recorded'],
+    ['Game speed', rules.simulationSpeedAssist === 'mixed' ? 'assisted · mixed'
+      : (Number(rules.simulationSpeedAssist) < 1 ? `assisted · ${Math.round(Number(rules.simulationSpeedAssist) * 100)}%` : '100%')],
     ['Physics revision', rules.physicsRevision ?? 'Not recorded'], ['Balance revision', rules.balanceRevision ?? 'Not recorded'],
     ['Scoring revision', rules.scoringRevision == null ? 'Not recorded' : String(rules.scoringRevision)],
     ['Video', 'Unavailable · causal account retained'],

@@ -25,6 +25,14 @@ const BRIDGE_BY_STATE = new WeakMap();
 // extra work and would only shed backlog.
 export const LAB_SPEED_MAX = 4;
 
+// AL-PR-16: the game-speed assist is an ordinary time-effects request on its own source, so it
+// min-wins against bullet time / hit-stop / pause without stacking and never clears them.
+export const GAME_SPEED_STEPS = Object.freeze([1, 0.9, 0.8, 0.7]);
+export function normalizeGameSpeed(value) {
+  return GAME_SPEED_STEPS.includes(value) ? value : 1;
+}
+export const GAME_SPEED_TIME_SOURCE = 'settings:game-speed';
+
 export function readTimeEffectsRequests(state) {
   return SERVICE_BY_STATE.get(state)?.describeRequests() || {};
 }

@@ -36,7 +36,7 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { stationLifeSaveProjection } from '../systems/stationContactLoadBoundary.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
-import { createTimeEffects } from '../core/timeEffects.js';
+import { createTimeEffects, normalizeGameSpeed } from '../core/timeEffects.js';
 import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
 import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
 import { stampIronmanLatch } from './ironmanChoice.js';
@@ -9664,6 +9664,7 @@ function profileSettingsSnapshot(settings) {
       targetAssistStrength: s.gameplay && s.gameplay.targetAssistStrength,
       damageNumbers: s.gameplay && s.gameplay.damageNumbers,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
+      gameSpeed: normalizeGameSpeed(s.gameplay?.gameSpeed),
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
       pauseOnFocusLoss: s.gameplay?.pauseOnFocusLoss !== false,
     },

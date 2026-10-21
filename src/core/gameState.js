@@ -63,6 +63,7 @@ function defaultSettings() {
       targetAssistStrength: 'full',
       masslineReleaseAssist: 'snap',
       stuntMoments: 'cinematic',
+      gameSpeed: 1,
       // FB-019: three-state hit pips (shield ring / armor chevron / hull cross) at the impact
       // point. A control receipt independent of damage numbers — they stay on when numbers are
       // off; this key turns the pips themselves.

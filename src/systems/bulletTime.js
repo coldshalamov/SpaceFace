@@ -13,7 +13,7 @@
 // time-effects writer-contract notes). Runtime lives at state.massline2.bulletTime (unsaved,
 // outside the snapshot whitelist).
 import { massline2Flag } from '../data/featureFlags.js';
-import { createTimeEffects } from '../core/timeEffects.js';
+import { createTimeEffects, normalizeGameSpeed, GAME_SPEED_TIME_SOURCE } from '../core/timeEffects.js';
 import { stuntAssistProfile } from '../combat/stuntRunRules.js';
 
 const TIME_SOURCE = 'player:bullet-time';
@@ -111,6 +111,7 @@ export const bulletTime = {
     this.bus = ctx.bus;
     this.helpers=ctx.helpers;
     this.timeEffects = ctx.timeEffects || createTimeEffects(ctx.state);
+    this._gameSpeedApplied = null;
     // Depletion latch: once the meter runs dry the verb must be RELEASED before it can engage
     // again — otherwise a held key stutters on/off around the engage floor.
     this._requireRelease = false;
@@ -145,6 +146,21 @@ export const bulletTime = {
   },
 
   update(dt, state) {
+    // AL-PR-16: the settings game-speed assist rides its own time-effects source. Min-wins
+    // composition keeps a held bullet-time 0.35 or a pause at their scale, and clearing the
+    // setting releases only this request.
+    const gs = normalizeGameSpeed(state.settings && state.settings.gameplay && state.settings.gameplay.gameSpeed);
+    // A save restore calls timeEffects.reset(), which drops every request: while assisted the
+    // idempotent set is repeated each tick so the speed is back on the next update.
+    if (this.timeEffects) {
+      if (gs < 1) {
+        this.timeEffects.set(GAME_SPEED_TIME_SOURCE, { scale: gs });
+        this._gameSpeedApplied = gs;
+      } else if (this._gameSpeedApplied !== 1) {
+        this.timeEffects.clear(GAME_SPEED_TIME_SOURCE);
+        this._gameSpeedApplied = 1;
+      }
+    }
     const runtime = ensureBulletTime(state);
     this._updateMomentPulse(state);
     if (!massline2Flag('bulletTime', state.runtime && state.runtime.features) || state.mode !== 'flight') {
