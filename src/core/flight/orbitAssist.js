@@ -41,13 +41,29 @@ export const ORBIT_ASSIST_STRENGTH = Object.freeze({
  * `options.engage` and returned on every telemetry packet — the helper stays pure per tick.
  */
 export const ORBIT_ASSIST_ENGAGE_V1 = Object.freeze({
-  id: 'orbitAssist.engage.v1',
+  id: 'orbitAssist.engage.v2',
   chordDwellS: 0.4,
   graceS: 0.6,
   minSwingRate: 0.05,
   continuationSwingRate: 0.025,
   minTangentiality: 0.6,
   continuationTangentiality: 0.35,
+  // The assist trims and holds a swing the pilot is already flying — it must not rotate a
+  // backwards-facing hull onto a tangent unbidden. Entry requires the nose inside the
+  // swing's forward half (a radial-facing hull at exactly 90° still counts); the engaged
+  // state itself keeps riding through boosts and stalls on the grace hysteresis.
+  captureHalfAngleRad: Math.PI / 2,
+  // An aim-derived lateral is a proportional error signal, not a held key: helm deadband is
+  // under a degree, so cursor noise reads as a nonzero turn direction on every orbit. Only a
+  // genuinely off-nose aim counts as holding the orbit chord's turn direction.
+  aimChordMin: 0.3,
+  // Pull-away escape for aim steering. A parked cursor's sign flickers behind the hull every
+  // half revolution, so sign alone can never mean reversal — but a cursor that is MOVING
+  // against the swing can only be the pilot taking the helm back. Sustained past the yank
+  // window it drops the assist and holds it out for the escape window.
+  aimYankRate: 1.5,
+  aimYankS: 0.15,
+  aimEscapeS: 1.0,
 });
 
 /**
@@ -136,7 +152,11 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
 
   const forward = finite(options.flightIntent && options.flightIntent.forward);
   const fromAim = !!(options.flightIntent && options.flightIntent.lateralFromAim);
-  let selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
+  const lateral = finite(options.flightIntent && options.flightIntent.lateral);
+  const lateralMag = Math.abs(lateral);
+  const aimAngle = Number.isFinite(Number(options.flightIntent && options.flightIntent.aimAngle))
+    ? Number(options.flightIntent.aimAngle) : null;
+  let selectedDirection = Math.sign(lateral);
   // Swing Drive's commitment is a turn sign, not a force. It fills a stick that is not
   // already steering so forward thrust can be yawed onto the tangent the dash just bought,
   // even while the line is still slack and carrySwing has nothing taut to follow.
@@ -149,16 +169,22 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   }
 
   // No chord (forward + a turn direction): the pilot still gets the swing carried for them.
+  // The dwell only accrues while the turn direction is deliberate: a held key or stick
+  // deflection, a swing-drive commit, or an aim cursor pulled genuinely off the nose —
+  // deadband noise on a fixed cursor must never arm the assist.
   const chord = forward > ORBIT_ASSIST_TUNING_V1.minIntent && selectedDirection !== 0;
-  const chordT = chord ? memory.chordT + dt : 0;
-  if (!chord) return carrySwing(options, input, strength, dt, memory, inactive);
+  const deliberate = intentFromCommit
+    || (fromAim ? lateralMag >= ORBIT_ASSIST_ENGAGE_V1.aimChordMin : selectedDirection !== 0);
+  const arming = chord && deliberate && !(memory.escapeT > 0);
+  const chordT = arming ? memory.chordT + dt : 0;
+  if (!chord) return carrySwing(options, input, strength, dt, memory, inactive, aimAngle);
 
   const host = options.host;
   const anchor = options.anchor;
   const rx = finite(host.pos.x) - finite(anchor.pos.x);
   const rz = finite(host.pos.z) - finite(anchor.pos.z);
   const radius = Math.hypot(rx, rz);
-  if (!(radius > 1e-6)) return inactive('degenerate-radius', decayedEngage(memory, dt, chordT));
+  if (!(radius > 1e-6)) return inactive('degenerate-radius', decayedEngage(memory, dt, chordT, { aim: aimAngle }));
 
   const relVx = finite(host.vel.x) - finite(anchor.vel.x);
   const relVz = finite(host.vel.z) - finite(anchor.vel.z);
@@ -219,14 +245,48 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
     lentYawRate: null,
   };
 
+  // Aim pull-away: a parked cursor sweeps behind the hull every half revolution, so its sign
+  // can never mean reversal — but a cursor MOVING against the swing is unambiguously the
+  // pilot taking the helm back. Sustained past the yank window it drops the assist and holds
+  // it out for the escape window; the chord dwell cannot refill while the escape runs.
+  const prevAim = Number.isFinite(memory.aim) ? memory.aim : null;
+  const aimRate = aimAngle != null && prevAim != null
+    ? wrapAngle(aimAngle - prevAim) / dt : 0;
+  const yank = fromAim && tracked !== 0 && Math.abs(aimRate) >= ORBIT_ASSIST_ENGAGE_V1.aimYankRate
+    && Math.sign(aimRate) === -tracked;
+  const counterT = yank ? finite(memory.counterT, 0) + dt : 0;
+  const escaped = !intentFromCommit
+    && (counterT >= ORBIT_ASSIST_ENGAGE_V1.aimYankS || memory.escapeT > 0);
+  const engageMemory = (graceT, escapeT) => ({
+    chordT,
+    graceT,
+    direction: swingDirection,
+    aim: aimAngle != null ? aimAngle : memory.aim,
+    counterT,
+    escapeT,
+  });
+
+  // Entry requires the nose inside the swing's forward half: the assist trims and holds a
+  // swing the pilot is already flying, it never spins a backwards-facing hull onto a tangent
+  // unbidden. Continuation rides the grace hysteresis instead, so a boost or a stall that
+  // throws the nose past the gate mid-orbit no longer drops the line tracking.
   const freshEngage = swingLive
-    && (chordT >= ORBIT_ASSIST_ENGAGE_V1.chordDwellS || intentFromCommit);
-  if (!freshEngage && !(memory.graceT > 0)) {
-    const out = inactive(swingLive ? 'arming' : 'swing-absent', {
-      chordT,
-      graceT: Math.max(0, memory.graceT - dt),
-      direction: swingDirection,
-    });
+    && (chordT >= ORBIT_ASSIST_ENGAGE_V1.chordDwellS || intentFromCommit)
+    && (intentFromCommit
+      || Math.abs(headingError) <= ORBIT_ASSIST_ENGAGE_V1.captureHalfAngleRad)
+    && !escaped;
+  if (!freshEngage && (!(memory.graceT > 0) || escaped)) {
+    const out = inactive(
+      escaped ? 'pilot-escape'
+        : swingLive && Math.abs(headingError) > ORBIT_ASSIST_ENGAGE_V1.captureHalfAngleRad
+          ? 'off-tangent'
+          : swingLive ? 'arming' : 'swing-absent',
+      engageMemory(
+        Math.max(0, memory.graceT - dt),
+        counterT >= ORBIT_ASSIST_ENGAGE_V1.aimYankS
+          ? ORBIT_ASSIST_ENGAGE_V1.aimEscapeS
+          : Math.max(0, finite(memory.escapeT, 0) - dt),
+      ));
     Object.assign(out.telemetry, sharedTelemetry, {
       alignmentYawRate: 0,
       desiredYawRate: finite(input.turn) * hullMaxYawRate,
@@ -236,15 +296,12 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
 
   // A deliberate counter-key still owns the tick: while the swing is really turning, a held turn
   // direction opposing it means the pilot is reversing by hand, so yaw stays fully manual. Aim
-  // intent is exempt — the helm cursor sweeps behind the hull mid-orbit and its sign flickers —
-  // and a swing-drive commit fill is not a held key, so a decelerating dash cannot misfire it.
-  const heldDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
+  // intent is exempt — the helm cursor sweeps behind the hull mid-orbit and its sign flickers;
+  // its escape is the pull-away above instead. A swing-drive commit fill is not a held key.
+  const heldDirection = Math.sign(lateral);
   if (!fromAim && heldDirection !== 0 && swingDirection !== 0 && heldDirection !== swingDirection) {
-    const out = inactive('manual-override', {
-      chordT,
-      graceT: Math.max(0, memory.graceT - dt),
-      direction: swingDirection,
-    });
+    const out = inactive('manual-override',
+      engageMemory(Math.max(0, memory.graceT - dt), Math.max(0, finite(memory.escapeT, 0) - dt)));
     Object.assign(out.telemetry, sharedTelemetry, {
       alignmentYawRate: 0,
       desiredYawRate: finite(input.turn) * hullMaxYawRate,
@@ -280,6 +337,9 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
         chordT,
         graceT: swingAlive ? ORBIT_ASSIST_ENGAGE_V1.graceS : Math.max(0, memory.graceT - dt),
         direction: tracked,
+        aim: aimAngle != null ? aimAngle : memory.aim,
+        counterT,
+        escapeT: 0,
       },
       reason: lineLoaded ? 'engaged' : 'line-slack',
     },
@@ -293,8 +353,8 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
  * radius and diving the ship in. A manual turn takes ownership instead: adding the swing rate
  * to countersteering could turn the hull the opposite way to the held key on a fast line.
  */
-function carrySwing(options, input, strength, dt, memory, inactive) {
-  const decayed = { chordT: 0, graceT: Math.max(0, memory.graceT - dt), direction: memory.direction };
+function carrySwing(options, input, strength, dt, memory, inactive, aimAngle = null) {
+  const decayed = decayedEngage(memory, dt, 0, { aim: aimAngle });
   if (Math.abs(finite(input.turn)) > ORBIT_ASSIST_TUNING_V1.minIntent
       || Math.abs(finite(options.flightIntent && options.flightIntent.lateral)) > ORBIT_ASSIST_TUNING_V1.minIntent) {
     return inactive('manual-override', decayed);
@@ -352,17 +412,20 @@ function carrySwing(options, input, strength, dt, memory, inactive) {
       saturated: false,
       yawCeiling: Math.min(hullMaxYawRate, ORBIT_LINE_YAW_LOCK.absoluteYawCap),
       armShare: anchorMass > 0 ? anchorMass / (anchorMass + hostMass) : 1,
-      engage: { chordT: 0, graceT: decayed.graceT, direction },
+      engage: { ...decayed, direction },
       reason: 'swing-carry',
     },
   };
 }
 
-function decayedEngage(memory, dt, chordT = 0) {
+function decayedEngage(memory, dt, chordT = 0, extras = {}) {
   return {
     chordT,
     graceT: Math.max(0, memory.graceT - dt),
     direction: memory.direction,
+    aim: extras.aim != null ? extras.aim : memory.aim,
+    counterT: finite(extras.counterT, 0),
+    escapeT: Math.max(0, finite(extras.escapeT, memory.escapeT) - dt),
   };
 }
 
@@ -372,6 +435,9 @@ function normalizeEngageMemory(value) {
     chordT: Math.max(0, finite(m.chordT, 0)),
     graceT: Math.max(0, finite(m.graceT, 0)),
     direction: Math.sign(finite(m.direction, 0)),
+    aim: Number.isFinite(Number(m.aim)) ? Number(m.aim) : null,
+    counterT: Math.max(0, finite(m.counterT, 0)),
+    escapeT: Math.max(0, finite(m.escapeT, 0)),
   };
 }
 
