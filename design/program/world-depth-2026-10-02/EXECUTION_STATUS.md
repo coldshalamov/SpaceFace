@@ -1,6 +1,22 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 05:43 UTC
+
+All eight goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical failures and acceptance distinctions.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now has verified head [b8c896b1c0b1a9e64f01e43a0de52717c20f8b51](https://github.com/coldshalamov/SpaceFace/commit/b8c896b1c0b1a9e64f01e43a0de52717c20f8b51), tree `dc6ef43d0f2485bcbcae64ceec7f300df2ce87c8`, sole parent `3fff1e51477695f79b1cb7e7e4ea8ae6904d88ec`. The nine-path RETURN GAS increment publishes physical return of real original-spill gas, with finite partial return and fresh native-bound Hail after Continue. It introduces no payout, amnesty or extra gas.
+
+Source validation covers 81 tests with 1,177 module paths mapped to final source. A direct final-source normal-input check physically covers 20.0625 WU and hands off three units to a stationary tender. Independent exact-source review passes 48 tests with 988 audited modules. These are bounded source/native results, not a moving-tender route or pixel/live graphical acceptance.
+
+The same activity owner is preserving the final local commit and recovery, then runs one short real-traffic moving-tender proof, not a full shift. Independent review continues. Keep finite provenance, partial debit, real loss and original-tender identity intact; do not infer the moving result from the stationary proof.
+
+Actual predecessor 3fff CI confirms all 14 harvest cases, the full native route and forecast check passed. Its aggregate remains non-green with 11 unchanged runtime failures and other unrelated issues. Keep those scoped passes distinct from aggregate CI and from the new b8c head; root owns current exact-head CI.
+
+Receiver activation remains local and unpublished. The source/release bank remains dormant, 17 asset text blobs are confirmed, and the two specific partsLibrary/census JSON upload approvals remain held. Nothing in RETURN GAS publication clears those operations or claims model activation.
+
+Next: finish recovery verification and the bounded moving-tender check, report its actual terminal result and independent review, then continue ordinary gameplay and supported-launcher graphical qualification. Preserve current publication and original scope. This update touches only the two documents on the separate handoff branch, not PR #480; no restricted diagnostic payload or private recovery identifier is included.
+
 ## Current source handoff — 21 October 2026, 05:20 UTC
 
 All eight goals remain OPEN. This checkpoint supersedes older current-state entries without erasing their scoped failures or changing acceptance fields.
