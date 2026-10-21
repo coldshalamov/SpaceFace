@@ -197,7 +197,7 @@ function scatterNurseryRelocation(world, site, relocation, from) {
     };
   }
   nurseryDisturbance(world, site, 'relocation', world._toGlobal(from, site.sectorId));
-  world.bus?.emit('toast', { text: 'The nursery scatters — the rays abandon the moving shelter.', kind: 'warn', ttl: 5 });
+  world.bus?.emit('toast', { text: 'The nursery scatters — the rays abandon the moving shelter.', kind: 'discovery', ttl: 5 });
 }
 
 function tickNurseryTow(world, site, rec, fauna, dt) {
@@ -746,14 +746,14 @@ export function handleAlienEcologyEvent(world, type, payload) {
     case 'alienEcology:nurseryPowered': {
       if (rec) rec.state = 'awake';
       setRevelation(state, 1);
-      toast('Power restored to the barge — something under the hull is waking up.', 'warn', 5);
+      toast('Power restored to the barge — something under the hull is waking up.', 'discovery', 5);
       refreshAlienLabels(world);
       break;
     }
     case 'alienEcology:relaySevered': {
       if (rec) { rec.state = 'severed'; rec.relaySevered = true; }
       setRevelation(state, 2);
-      toast('The pale emitter goes dark — the swarm loses its order.', 'warn', 5);
+      toast('The pale emitter goes dark — the swarm loses its order.', 'discovery', 5);
       // AE-296 — the severed relay's dead-matter coil is the resonant massline grant.
       if (grantAlienUnique(world, 'mod_resonant_massline_m', 'relay_severed')) {
         toast('You pry the dead relay\'s field coil free — it still holds its dead-matter tune.', 'good', 5);
@@ -767,7 +767,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       if (rec && rec.state !== 'severed') rec.state = 'bloom';
       if (rec) rec.bloomAt = state.simTime || 0;
       setRevelation(state, 2);
-      toast('Cysts rupture — the colony blooms outward.', 'warn', 5);
+      toast('Cysts rupture — the colony blooms outward.', 'discovery', 5);
       refreshAlienLabels(world);
       break;
     }
@@ -817,7 +817,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
         tgt.data.name = effectiveRevelation(state) >= 2 && tspecies ? tspecies.name : label;
         world.bus.emit('toast', {
           text: 'The debris fragment turns broadside — photophore membrane, alive. It was never debris.',
-          kind: 'warn', ttl: 6,
+          kind: 'discovery', ttl: 6,
         });
         refreshAlienLabels(world);
       }
@@ -1432,7 +1432,7 @@ export function tickAlienEcology(world, dt) {
             }
             world.bus.emit('toast', {
               text: 'A pulse crosses the dead triangle — every organism in the sector flinches at once.',
-              kind: 'warn', ttl: 5,
+              kind: 'discovery', ttl: 5,
             });
           }
         }
@@ -1486,7 +1486,7 @@ export function tickAlienEcology(world, dt) {
         rec.beats.mid = true;
         world.bus.emit('toast', {
           text: (lines && lines.mid) || 'Multiple small contacts — unclassifiable. They turn together.',
-          kind: 'warn', ttl: 5,
+          kind: 'discovery', ttl: 5,
         });
         // The synchronized turn: coherent fauna pivot toward the player together. Dormant
         // species hold sleep — the turn is a coherent response; only their stimulus wakes them.
@@ -1507,7 +1507,7 @@ export function tickAlienEcology(world, dt) {
         setRevelation(state, 1);
         world.bus.emit('toast', {
           text: (lines && lines.close) || 'A pulse rolls across the hull — the organisms answer it.',
-          kind: 'warn', ttl: 5.5,
+          kind: 'discovery', ttl: 5.5,
         });
         refreshAlienLabels(world);
         recordContaminationKnowledge(state, sectorId, `${site.name}: active biological site`);

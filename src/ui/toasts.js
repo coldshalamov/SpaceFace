@@ -28,7 +28,7 @@ import { bindReturningPilotSummary } from './dockArrival.js';
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
 // font-specific glyph coverage and read as a different visual language from the HUD line set).
-const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', stunt: 'info', credits: 'credits', rep: 'rep' };
+const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', stunt: 'info', credits: 'credits', rep: 'rep', discovery: 'unknown' };
 
 export function createToasts(ctx) {
   const { bus } = ctx;

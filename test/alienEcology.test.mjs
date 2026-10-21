@@ -222,6 +222,49 @@ test('alienEcology state serializes and round-trips with validation', () => {
   assert.equal(createAlienEcologyState().schema, 'spaceface.alienEcology.v1');
 });
 
+test('RC-36 discovery reveals ride the discovery kind while hazards stay warnings', () => {
+  const state = makeState();
+  const toasts = [];
+  const world = makeWorld(state, []);
+  world.bus = { emit: (type, payload) => { if (type === 'toast') toasts.push(payload); } };
+  materializeAlienEcology(world, { id: 'sector_charon_expanse' }, { dressing: [] });
+
+  handleAlienEcologyEvent(world, 'alienEcology:nurseryPowered', { siteId: 'cinder_nursery' });
+  handleAlienEcologyEvent(world, 'alienEcology:relaySevered', { siteId: 'cinder_nursery' });
+  handleAlienEcologyEvent(world, 'alienEcology:nurseryBloom', { siteId: 'cinder_nursery' });
+  const revealKinds = toasts.map((t) => t.kind);
+  assert.ok(revealKinds.filter((k) => k === 'discovery').length >= 3,
+    `the site reveal beats should read as discovery, got ${revealKinds.join(',')}`);
+  assert.equal(revealKinds.includes('warn'), false,
+    'a first-contact reveal must not wear the warning style');
+
+  // The mid-band first-contact reveal is discovery too — not a warning.
+  const state2 = makeState();
+  const toasts2 = [];
+  const world2 = makeWorld(state2, []);
+  world2.bus = { emit: (type, payload) => { if (type === 'toast') toasts2.push(payload); } };
+  materializeAlienEcology(world2, { id: 'sector_charon_expanse' }, { dressing: [] });
+  const site = ALIEN_SITES.cinder_nursery;
+  state2.entities.set(1, { id: 1, pos: { x: site.center.x, z: site.center.z } });
+  state2.entityList.push(state2.entities.get(1));
+  for (let i = 0; i < 5; i += 1) { state2.simTime += 1 / 60; tickAlienEcology(world2, 1 / 60); }
+  const arrival = toasts2.filter((t) => t.text && /contacts|pulse|signature|organisms|barge/i.test(t.text));
+  assert.ok(arrival.length >= 2, 'arrival reveal beats should fire near the site');
+  assert.equal(arrival.filter((t) => t.kind === 'warn').length, 0,
+    'no arrival reveal may read as a warning');
+  assert.ok(arrival.some((t) => t.kind === 'discovery'),
+    'the contact reveal must wear the discovery style');
+
+  // Real hazards keep the warn style.
+  const state3 = makeState();
+  const toasts3 = [];
+  const world3 = makeWorld(state3, []);
+  world3.bus = { emit: (type, payload) => { if (type === 'toast') toasts3.push(payload); } };
+  handleAlienEcologyEvent(world3, 'ecology:quarantinePulse', { siteId: 'cinder_nursery', scrubbed: 2 });
+  assert.equal(toasts3.find((t) => t.kind === 'warn')?.text.includes('Quarantine pulse'), true,
+    'a hazard receipt still rides the warning style');
+});
+
 test('relay sever is a permanent axis: a later bloom never restores coherence', () => {
   const state = makeState();
   const world = makeWorld(state, []);

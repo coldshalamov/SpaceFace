@@ -46,6 +46,8 @@ ${S} #hud .sf-toast::after { content:""; position:absolute; left:0; top:50%; wid
   background:linear-gradient(90deg, transparent, rgb(232 226 212 / .75)); }
 ${S} #hud .sf-toast--warn::after, ${S} #hud .sf-toast--error::after, ${S} #hud .sf-toast--danger::after {
   height:1.5px; background:linear-gradient(90deg, transparent, var(--dp-danger, #ff5038)); box-shadow:0 0 6px rgb(255 80 56 / .35); }
+${S} #hud .sf-toast--discovery::after {
+  height:1.5px; background:linear-gradient(90deg, transparent, var(--dp-phos, #dfeeff)); box-shadow:0 0 6px var(--dp-phos-halo, rgb(150 210 255 / .35)); }
 ${S} #hud .sf-toast__count { font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff);
   background:none; border:0; box-shadow:none; margin-left:8px; }
 
