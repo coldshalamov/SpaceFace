@@ -8194,7 +8194,6 @@ function admitNextUpgradeJob(state) {
       job.scene,
       job.options,
       job.setActive,
-      job.prefetchPromise,
     );
   let result = null;
   let failure = null;
@@ -9430,7 +9429,7 @@ export async function retryAuthoredPartLibrary(renderer, options = {}) {
   return loadCanonicalLibrary(renderer, options);
 }
 
-async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive, prefetchedLibrary = null) {
+async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive) {
   let swapped = false;
   let authored = null;
   let installedPreparedDisposer = null;
@@ -9471,7 +9470,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       return false;
     }
     // Prefetch may have captured a plan before combat/traffic identity landed on the entity.
-    // Await any in-flight decode, then admit the *current* whole-ship selection so compose cannot
+    // Admit the *current* whole-ship selection so compose cannot
     // look up a hull that was never added to the library.
     const phaseTimings = beginAdmissionPhaseTimings(boundary);
     const decodeStartedAtMs = monotonicNow();
@@ -9483,21 +9482,18 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       enumerable: true,
       get: () => options.admissionVisible === true,
     });
-    // Post the deadline-floor decode BEFORE awaiting the ambient lookahead prefetch: the
+    // Post the current deadline-floor decode independently of ambient lookahead: the
     // shared url::slot decode tasks join at this job's class (budget.promote + compile
     // regrade), so sustained deadline traffic cannot stall the in-flight job behind its
     // own ambient prefetch chain all the way to the stall bound.
-    // Observe both outcomes immediately: this deadline load can reject while the independent
-    // prefetch below is still pending, or after that wait exits on owner cancellation. Keep its
-    // original error for the owning admission rather than leaving a temporarily unhandled promise.
+    // Observe both outcomes immediately and preserve the current-plan error for the owning
+    // admission. Speculative prefetch has its own queue-owned rejection observer.
     const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options)
       .then((library) => ({ ok: true, library }), (error) => ({ ok: false, error }));
-    if (prefetchedLibrary) {
-      const restorePhase = beginPreparePhase('awaiting-prefetch');
-      try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
-      catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
-      finally { restorePhase(); }
-    }
+    // Speculative warming is not an admission prerequisite: it may still be decoding an
+    // obsolete identity while this exact current plan is resident. The queue already observes
+    // prefetch rejection and fences its retains by job lifetime. Only the current-plan result
+    // below owns decode success/failure; shared missing files still join the serial decode lane.
     const restorePlanPhase = beginPreparePhase('awaiting-current-plan');
     let deadlineResult;
     try { deadlineResult = await deadlineLibrary; }

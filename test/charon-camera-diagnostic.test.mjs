@@ -255,8 +255,8 @@ test('existing admission lane reader distinguishes queued blanket hold and toler
 
 test('optional capture uses only remaining command budget and skips late staging without dispatch',async()=>{
  const logs=[];const budgets=[];const opts={argv:['--charon-camera-diagnostic'],now:()=>100000,warn:x=>logs.push(x),log:()=>{},capture:async(page,options)=>{budgets.push(options.budgetMs);return {path:'fixture',report:{status:'captured'}};}};
- await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:180000});assert.deepEqual(budgets,[70000]);
- await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:420000});assert.deepEqual(budgets,[70000,90000]);
+ await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:180000});assert.deepEqual(budgets,[57500]);
+ await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:420000});assert.deepEqual(budgets,[57500,77500]);
  for(const commandDeadline of [121999,110000,90000])assert.equal(await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline}),null);
  assert.equal(budgets.length,2);assert.equal(logs.length,3);assert.match(logs[0],/skipped.*minimum useful/);
  await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:122000});assert.equal(budgets.at(-1),12000);
@@ -276,13 +276,13 @@ test('selected payload metadata follows real URL arrays and slot arrays with bou
  }finally{delete globalThis.window;}
 });
 
-test('VFX attribution uses leftover shared deadline only after baseline pair, persists separately and preserves verdict',async()=>{
+test('VFX attribution uses preallocated shared deadline only after baseline pair, persists separately and preserves verdict',async()=>{
  let clock=1000;const baseline={path:'/tmp/fixture-charon.json',report:{status:'unresolved-assets-captured',screenshots:['a.png','b.png']}};
  const before=JSON.stringify(baseline);const calls=[],writes=[];
- const opts={argv:['--charon-camera-diagnostic'],now:()=>clock,log:()=>{},warn:()=>{},capture:async()=>{clock=81000;return baseline;},isolate:async(page,options)=>{calls.push(options);return {status:'skipped',reason:'fixture',visualAcceptance:false};},persistIsolation:async(path,text)=>writes.push({path,text})};
+ const opts={argv:['--charon-camera-diagnostic'],now:()=>clock,log:()=>{},warn:()=>{},capture:async()=>{clock=78000;return baseline;},isolate:async(page,options)=>{calls.push(options);return {status:'skipped',reason:'fixture',visualAcceptance:false};},persistIsolation:async(path,text)=>writes.push({path,text})};
  const result=await runOptionalCharonCameraDiagnostic({},opts);
  assert.equal(calls[0].deadline,90500);assert.equal(writes[0].path,'/tmp/fixture-charon.vfx-isolation.json');assert.equal(result.report.status,baseline.report.status);assert.equal(JSON.stringify(baseline),before);
- clock=1000;await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:180000});assert.equal(calls[1].deadline,169500);
+ clock=1000;await runOptionalCharonCameraDiagnostic({}, {...opts,commandDeadline:180000});assert.equal(calls[1].deadline,90500);
  clock=1000;await runOptionalCharonCameraDiagnostic({}, {...opts,capture:async()=>({path:'/tmp/x.json',report:{status:'timeout',screenshots:['a.png']}})});assert.equal(calls.length,2);
 });
 test('VFX attribution failure cannot replace accepted baseline diagnostic result',async()=>{
@@ -296,4 +296,31 @@ test('VFX persistence is bounded and no write starts after shared deadline',asyn
  const opts={argv:['--charon-camera-diagnostic'],now:()=>clock,log:()=>{},warn:()=>{},capture:async()=>baseline,persistIsolation:async()=>{writes++;}};
  assert.equal(await runOptionalCharonCameraDiagnostic({}, {...opts,isolate:async()=>{clock=92000;return {status:'skipped'};}}),baseline);assert.equal(writes,0);
  clock=1000;assert.equal(await runOptionalCharonCameraDiagnostic({}, {...opts,isolate:async()=>({large:'x'.repeat(65536)})}),baseline);assert.equal(writes,0);
+});
+
+
+test('baseline and full attribution window share the original optional ceiling with no fresh budget',async()=>{
+ for(const total of [24500,85140,90000]){
+  let clock=1000,baselineBudget,isolations=0;const writes=[];
+  const result=await runOptionalCharonCameraDiagnostic({}, {argv:['--charon-camera-diagnostic'],commandDeadline:1000+total+10000,now:()=>clock,log:()=>{},warn:()=>{},
+   capture:async(page,{budgetMs})=>{baselineBudget=budgetMs;clock+=budgetMs;return {path:'/tmp/allocation.json',report:{budgetMs,status:'baseline',screenshots:['a','b']}};},
+   isolate:async(page,{deadline,maxBudgetMs})=>{isolations++;assert.equal(maxBudgetMs,12000);assert.equal(deadline-clock,12000);clock=deadline;return {status:'diagnostic-pair-captured'};},
+   persistIsolation:async(path,text)=>{writes.push(path);clock+=500;},
+  });
+  assert.equal(baselineBudget,total-12500);assert.equal(result.report.budgetMs,total-12500);assert.equal(isolations,1);assert.equal(writes.length,1);assert.equal(clock,1000+total);
+ }
+});
+test('short optional budget prioritizes baseline and explicitly skips attribution even after early readiness',async()=>{
+ let budget,isolations=0;const warnings=[];
+ const result=await runOptionalCharonCameraDiagnostic({}, {argv:['--charon-camera-diagnostic'],commandDeadline:34499,now:()=>0,log:()=>{},warn:x=>warnings.push(x),
+ capture:async(page,{budgetMs})=>{budget=budgetMs;return {path:'/tmp/short.json',report:{status:'baseline',screenshots:['a','b']}};},
+ isolate:async()=>{isolations++;},persistIsolation:async()=>{throw Error('unexpected write');}});
+ assert.equal(budget,24499);assert.equal(isolations,0);assert.equal(result.report.status,'baseline');assert.match(warnings[0],/attribution skipped.*full 12s/);
+});
+test('baseline overrun cannot start attribution with a partial reserved window',async()=>{
+ let clock=0,isolations=0;const warnings=[];
+ await runOptionalCharonCameraDiagnostic({}, {argv:['--charon-camera-diagnostic'],now:()=>clock,log:()=>{},warn:x=>warnings.push(x),
+ capture:async()=>{clock=77501;return {path:'/tmp/late.json',report:{status:'baseline',screenshots:['a','b']}};},
+ isolate:async()=>{isolations++;}});
+ assert.equal(isolations,0);assert.match(warnings[0],/attribution skipped/);
 });

@@ -818,3 +818,79 @@ for (const evicted of [false,true]) {
   }finally{releaseCold();await Promise.allSettled([coldDemand,warmDemand]);partsLibrary.invalidatePartsLibraryCaches(renderer);}
  });
 }
+
+for (const scenario of ['pending-old', 'failed-old', 'late-failed-old', 'failed-current', 'cancelled-owner']) {
+test(`current identity owns admission independently of speculative work: ${scenario}`, async () => {
+  const renderer = {}, scene = new THREE.Scene(), frames = [];
+  const entity = {id:'changing-prefetch',type:'ship',alive:true,team:2,factionId:'faction_union',radius:20,
+    pos:{x:0,z:0},activity:{presentationTier:'R0_GLASS'},data:{defId:'ship_mule',sectorId:'sector_helios_prime'}};
+  let releaseOld, rejectOld, oldStarted=false, compiled=null, releasePipeline, ownerActive=true, currentFailed=false;
+  const oldGate=new Promise((resolve,reject)=>{releaseOld=resolve;rejectOld=reject;});
+  const pipelineGate=new Promise(resolve=>{releasePipeline=resolve;});
+  const oldEntity={...entity,data:{...entity.data,defId:'ship_pelican'}};
+  const oldFiles=new Set(flattenUnique(partsLibrary.authoredPreloadPlanForEntity(oldEntity)));
+  const currentFiles=new Set(flattenUnique(partsLibrary.authoredPreloadPlanForEntity(entity)));
+  const loadAuthoredPart=async url=>{if(oldFiles.has(relativeFile(url))){oldStarted=true;await oldGate;}
+    if(scenario==='failed-current'&&currentFiles.has(relativeFile(url))){currentFailed=true;throw new Error('exact-current-plan-failed');}
+    return fixtureRecord(url);};
+  const options={releaseMode:true,loadAuthoredPart,isResidencyOwnerActive:()=>ownerActive};
+  await partsLibrary.preloadAuthoredPartLibrary(renderer,options);
+  if(scenario!=='failed-current')await partsLibrary.preloadAuthoredAssetsForEntity(renderer,entity,options);
+  const previous={window:globalThis.window,raf:globalThis.requestAnimationFrame,scheduler:globalThis.scheduler};
+  globalThis.requestAnimationFrame=fn=>{frames.push(fn);return frames.length;};
+  globalThis.scheduler={postTask:fn=>{frames.push(fn);return frames.length;}};
+  globalThis.window={SF:{state:{mode:'flight',entities:new Map([[entity.id,entity]]),world:{currentSectorId:'sector_helios_prime'},render:{scene,firstPlayableFrameAt:1,
+    compileObjectPipelines(root){compiled=root;return pipelineGate;},prepareAuthoredGpuResidency(){return {skipped:false};}}}}};
+  let done;
+  const pump=async n=>{for(let i=0;i<n;i++){const pending=frames.splice(0);for(const fn of pending)fn();await Promise.resolve();}};
+  try {
+    entity.data.defId='ship_pelican';
+    const fallback=fallbackShip();fallback.userData.authoredAdmissionSubstrate=true;
+    const boundary=partsLibrary.wrapShipWithAuthoredParts(entity,fallback,options);entity.mesh=boundary;scene.add(boundary);
+    done=boundary.userData.requestAuthoredUpgrade(renderer,scene);
+    assert.equal(partsLibrary.holdAuthoredUpgradeQueueForFirstFlight(scene),true);
+    for(let i=0;i<100&&!oldStarted;i++)await Promise.resolve();
+    assert.equal(oldStarted,true,'real queued prefetch must start its old exact plan before admission');
+    if(scenario==='failed-current'){releaseOld();for(let i=0;i<150;i++)await Promise.resolve();}
+    entity.data.defId='ship_mule';
+    if(scenario==='failed-old')rejectOld(new Error('obsolete-prefetch-failed'));
+    await pump(250);
+    if(scenario==='failed-current'){
+      assert.equal(compiled,null,'successful old decode cannot replace failed current plan');
+      assert.notEqual(boundary.userData.authoredAssetState,'authored');
+      assert.equal(currentFailed,true,'the exact current plan error must be reached');
+      assert.equal(boundary.userData.authoredAssetState,'unavailable');
+      return;
+    }
+    assert.ok(compiled,'current resident plan must reach its real pipeline gate without the obsolete prefetch');
+    assert.equal(boundary.userData.authoredPreparePhase,'preparing-pipelines');
+    assert.notEqual(boundary.userData.authoredAssetState,'authored','pipeline remains authoritative');
+    if(scenario==='cancelled-owner'){ownerActive=false;entity.alive=false;}
+    releasePipeline({skipped:false});await pump(200);
+    if(scenario==='cancelled-owner'){assert.notEqual(boundary.userData.authoredAssetState,'authored');return;}
+    assert.equal(boundary.userData.authoredAssetState,'authored');
+    assert.deepEqual(flattenUnique(boundary.userData.authoredSlots),flattenUnique(partsLibrary.authoredPreloadPlanForEntity(entity)));
+    if(scenario==='pending-old'){
+      await done;
+      const children=[...boundary.children],phase=boundary.userData.authoredPreparePhase;
+      releaseOld();await pump(150);
+      assert.equal(boundary.userData.authoredAssetState,'authored');
+      assert.deepEqual(boundary.children,children,'settled admission must fence late speculative completion without queue cancellation');
+      assert.equal(boundary.userData.authoredPreparePhase,phase);
+    }
+    if(scenario==='late-failed-old'){
+      rejectOld(new Error('obsolete-prefetch-failed-after-publication'));
+      await pump(100);await new Promise(resolve=>setTimeout(resolve,0));
+      assert.equal(boundary.userData.authoredAssetState,'authored','late speculative failure cannot revoke current authored success');
+    }
+  } finally {
+    partsLibrary.cancelAuthoredUpgradeQueue(scene,'fixture-cleanup');
+    releaseOld();releasePipeline({skipped:false});await pump(500);
+    partsLibrary.invalidatePartsLibraryCaches(renderer);
+    if(previous.window===undefined)delete globalThis.window;else globalThis.window=previous.window;
+    if(previous.raf===undefined)delete globalThis.requestAnimationFrame;else globalThis.requestAnimationFrame=previous.raf;
+    if(previous.scheduler===undefined)delete globalThis.scheduler;else globalThis.scheduler=previous.scheduler;
+  }
+});
+
+}

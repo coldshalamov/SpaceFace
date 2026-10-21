@@ -7,6 +7,8 @@ export const CHARON_CAMERA_MAX_BUDGET_MS = 90000;
 // Existing capture needs a 10s image reserve plus 500ms persistence; do not stage
 // a late optional arrival when even that observation window cannot fit.
 export const CHARON_CAMERA_MIN_BUDGET_MS = 12000;
+export const CHARON_VFX_WINDOW_MS = 12000;
+export const CHARON_VFX_REPORT_ALLOWANCE_MS = 500;
 export const CHARON_CAMERA_LABEL = 'Programmatically staged Charon game-camera diagnostic; real runtime entities; not an ordinary flown arrival or visual/gameplay acceptance.';
 export function charonCameraEnabled(argv = process.argv) { return argv.includes('--charon-camera-diagnostic'); }
 
@@ -313,19 +315,26 @@ export async function runOptionalCharonCameraDiagnostic(page, {
   const started=now();
   const budgetMs=remainingDiagnosticBudget(commandDeadline,started,CHARON_CAMERA_MAX_BUDGET_MS);
   if(budgetMs<CHARON_CAMERA_MIN_BUDGET_MS){warn('Charon camera diagnostic skipped: command deadline leaves less than the 12s minimum useful observation budget after cleanup reserve.');return null;}
+  // Allocate both stages before capture, inside one capped optional deadline.
+  // Preserve a useful baseline first; never start attribution on incidental slack.
+  const end=started+budgetMs;
+  const attributionReserve=CHARON_VFX_WINDOW_MS+CHARON_VFX_REPORT_ALLOWANCE_MS;
+  const attributionAllocated=budgetMs>=CHARON_CAMERA_MIN_BUDGET_MS+attributionReserve;
+  const baselineBudgetMs=attributionAllocated?budgetMs-attributionReserve:budgetMs;
   let result;
   try {
-    result=await capture(page,{budgetMs});
+    result=await capture(page,{budgetMs:baselineBudgetMs});
     log(`Charon programmatic game-camera diagnostic: ${result.path??'report unavailable'} (${result.report.status})`);
   } catch(error){warn(`Charon camera diagnostic unavailable: ${error?.message||error}`);return null;}
   // Attribution only after the actual baseline pair exists. Never replace its
   // files, status or readiness verdict with temporarily isolated views.
   if(!result.path || result.report.screenshots?.length<2 || !Array.isArray(result.report.screenshots))return result;
-  const end=Number.isFinite(commandDeadline)
-    ? started+remainingDiagnosticBudget(commandDeadline,started,Number.MAX_SAFE_INTEGER)
-    : started+budgetMs;
+  if(!attributionAllocated || end-now()<attributionReserve){
+    warn('Charon VFX attribution skipped: full 12s isolation window plus report allowance unavailable within the original optional budget; baseline preserved.');
+    return result;
+  }
   try {
-    const report=await isolate(page,{deadline:end-500,outputDir:dirname(result.path),now});
+    const report=await isolate(page,{deadline:end-CHARON_VFX_REPORT_ALLOWANCE_MS,maxBudgetMs:CHARON_VFX_WINDOW_MS,outputDir:dirname(result.path),now});
     const path=result.path.replace(/\.json$/i,'')+'.vfx-isolation.json';
     const serialized=JSON.stringify(report,null,2)+'\n';
     if(Buffer.byteLength(serialized,'utf8')>65536)throw new Error('VFX isolation report exceeds bounded 64KiB persistence size');
@@ -335,7 +344,7 @@ export async function runOptionalCharonCameraDiagnostic(page, {
     try {
       await Promise.race([
         Promise.resolve().then(()=>{if(now()>=end)throw new Error('VFX persistence deadline exhausted');return persistIsolation(path,serialized);}),
-        new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('VFX isolation report persistence timeout')),Math.min(500,remaining));}),
+        new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('VFX isolation report persistence timeout')),Math.min(CHARON_VFX_REPORT_ALLOWANCE_MS,remaining));}),
       ]);
     } finally {clearTimeout(timer);}
     log(`Charon VFX ownership attribution diagnostic: ${path} (${report.status}; never visual acceptance)`);
