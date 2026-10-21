@@ -600,6 +600,13 @@ export const automation = {
       this._saveRestoring = false;
       this.runOfflineCatchup();
       this._syncOutpostPresence(this.state.automation);
+      // Respawn current-sector drone hulls now — deferring to the first update would drop that
+      // tick of flight/physics, leaving restored drones one step behind their uninterrupted selves.
+      const curSector = (this.state.world && this.state.world.currentSectorId) || null;
+      for (const g of this.state.automation.drones) {
+        if (g.sectorId !== curSector || (g.entityIds && g.entityIds.length)) continue;
+        this._spawnDroneEntities(g, DRONE_BY_ID.get(g.defId) || g);
+      }
     });
     bus.on('save:error', () => {
       if (!this._saveRestoring) return;

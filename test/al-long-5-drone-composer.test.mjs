@@ -390,7 +390,9 @@ function restore(saved, options) {
   h.auto.deserialize(clone(saved.automation)); h.g = h.state.automation.drones[0];
   h.refinery = h.state.claims.bodies[0]; h.relay = h.state.claims.bodies[1];
   h.rock.data.oreHP = saved.rockHP;
-  h.auto._spawnDroneEntities(h.g, DRONES[0]);
+  // Production ordering: systems deserialize, then save:loaded materializes the sector. Spawning
+  // directly here hid a lost flight tick — the first update ran before the drone existed.
+  h.bus.emit('save:loaded');
   return h;
 }
 function logical(h) {
@@ -458,6 +460,20 @@ for (const checkpoint of ['MOVE', 'WAIT', 'partial']) test(`seed 4242 ${checkpoi
     assert.deepEqual(receiptTotals(h), receiptTotals(a), 'uninterrupted and restored execution settle identical freight exactly once');
     assert.equal(h.g.programState.pc, a.g.programState.pc);
   } finally { h.close(); a?.close(); b?.close(); }
+});
+
+test('switching a flying drone to WAIT parks it instead of coasting on the stale intent', async () => {
+  const h = boot({ physical: true });
+  try {
+    await prepare(h);
+    stepAt(h, foundry()); tick(h, 20);
+    assert.ok(Math.hypot(lead(h).vel.x, lead(h).vel.z) > 0.5, 'drone is flying before the switch');
+    assert.equal(h.auto.assignProgram(h.g.id, loop([{ op: 'wait', until: 'timer', seconds: 600 }], 'Park')), true);
+    const pos = { ...lead(h).pos };
+    tick(h, 120); // two seconds of WAIT — the parked audit repro coasted ~296 units pre-fix
+    const moved = Math.hypot(lead(h).pos.x - pos.x, lead(h).pos.z - pos.z);
+    assert.ok(moved < 40, `parked drone drifted ${moved.toFixed(1)}m on the stale move intent`);
+  } finally { h.close(); }
 });
 
 test('legacy saves, malformed custom saves, repeated assignment/clear and offline classification remain safe', () => {

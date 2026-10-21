@@ -526,6 +526,9 @@ export function tickProgram(group, ctx, dt) {
       return true; // guard is a persistent state — never advances
     }
     case P.WAIT: {
+      // A moving drone switched to WAIT must publish a park intent — otherwise the last steer
+      // command (moveZ:1, brake:false) keeps driving it through the whole wait.
+      if (typeof ctx.park === 'function') ctx.park();
       if (step.until === 'timer') {
         ps.waitT += dt;
         if (ps.waitT >= (step.seconds || 10)) {

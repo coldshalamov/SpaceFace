@@ -301,6 +301,8 @@ export function entityVitalsOf(e) {
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
   if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
+  // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
+  if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
   const ecology = e.data && e.data.ecology;
   if (ecology) {
     fields.ecologyName = e.data.name ?? null;
@@ -360,6 +362,7 @@ function vitalShadowMatches(e, shadow) {
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const ecology = e.data && e.data.ecology;
   if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
@@ -396,6 +399,7 @@ function writeVitalShadow(e, shadow) {
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
   shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
   const ecology = e.data && e.data.ecology;
   shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
   shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
