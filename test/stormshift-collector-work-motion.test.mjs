@@ -7,7 +7,7 @@ import { evaluateMotionClip } from '../src/contracts/motionBank.js';
 import { createSimulation } from '../src/core/sim.js';
 import { traffic } from '../src/systems/traffic.js';
 import { world } from '../src/systems/world.js';
-import { ANVIL_WORK, anvilWorkerRecordId } from '../src/systems/anvilWork.js';
+import { ANVIL_WORK, anvilBandExitTarget, anvilWorkerRecordId } from '../src/systems/anvilWork.js';
 import { PLANET_SITE } from '../src/data/planets.js';
 import { captureEntityRecord, spawnSpecFromRecord, RECORD_KIND } from '../src/world/worldRecords.js';
 import { ANVIL_ORCHARD, createOrchardRecord } from '../src/data/anvilOrchard.js';
@@ -235,8 +235,16 @@ test('forecast retreat folds immediately through the original weather and work o
     m.angles().forEach((angle, i) => assert.ok(angle >= angles[i] - 1e-7));
     capture('forecast-retreat-folding', m, e, 3.5);
     m.update(e, 12); assertPose(m, false);
-    // Explicit physical arrival fixture, not a native flight/navigation claim.
+    // Near home, clear-band ends at the inner forecourt, not the tender's occupied
+    // berth center. Keep this an explicit arrival fixture, not a navigation proof.
+    const exit = anvilBandExitTarget(e);
+    assert.ok(exit);
+    assert.ok(Math.abs(Math.hypot(exit.x - e.data.itinerary.center.x,
+      exit.z - e.data.itinerary.center.z) - (ANVIL_WORK.berthRadius - 160)) < 1e-8);
     e.pos = { x: e.data.itinerary.center.x + ANVIL_WORK.berthRadius, z: e.data.itinerary.center.z };
+    t.owner._stepAnvilWork(1 / 60, t.sim.state);
+    assert.equal(e.data.itinerary.phase, 'clear_band', 'the occupied berth center is not forecourt arrival');
+    e.pos = { ...exit };
     t.owner._stepAnvilWork(1 / 60, t.sim.state);
     assert.equal(e.data.itinerary.phase, 'return');
     m.update(e, 13); assertPose(m, false); capture('return-stowed', m, e, 13);
