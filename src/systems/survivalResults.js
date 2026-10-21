@@ -13,7 +13,8 @@ import { validateRunState } from '../core/runState.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
 import { swarmZoneIndexFor } from '../data/swarmLadder.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
-import { settleCrucibleRun } from './survivalRecords.js';
+import { recordRulesFor, settleCrucibleRun } from './survivalRecords.js';
+import { circuitSummaryFor } from './survivalCircuit.js';
 import { challengeFromRun } from './survivalMutators.js';
 import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
@@ -1108,6 +1109,11 @@ export const survivalResults = {
     result.roundThreatResolved=run.resolvedThreat;
     result.remainingEnemies=Math.max(0,(run.threatBudget??0)-(run.resolvedThreat??0));
     result.recordRules=this._stuntRules;
+    // SWARM-08 B5 — the journey the run actually flew, snapshotted onto the result so the
+    // results plate, the record row and the hangar all read one stamp.
+    result.circuit = circuitSummaryFor(run);
+    // Keep invalid Circuit identity visible even when there is no valid summary to publish.
+    result.recordRules = recordRulesFor(result, run);
     // The stake also rides the record rules' loadoutRules JSON; surface it flat for the rows.
     result.swarmStake = run.telemetry && typeof run.telemetry.swarmStake === 'string'
       ? run.telemetry.swarmStake

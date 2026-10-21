@@ -971,7 +971,7 @@ export function swarmRewards(wave) {
  * Returns plan `packages` (the schema survivalWaves.js validates) so nothing downstream needs a
  * second shape.
  */
-export function swarmOpeningPackages(wave, rng, roster) {
+export function swarmOpeningPackages(wave, rng, roster, bossOverride) {
   const w = swarmWaveOf(wave);
   const roll = typeof rng === 'function' ? rng : () => 0.5;
   // The wave opens at its OPENING pressure, not its ceiling — see swarmPressureAt. Arriving at
@@ -980,7 +980,11 @@ export function swarmOpeningPackages(wave, rng, roster) {
   const opening = swarmPressureAt(w, 0);
   const packages = [];
 
-  const boss = swarmBossFor(w);
+  // SWARM-08 B5 — an optional boss override. `undefined` keeps the ordinary cadence; `null`
+  // suppresses the cadence champion outright (a Circuit survive round must not field the round-10
+  // Iron Maw); a boss row uses that champion. The override is applied to the package, the
+  // announcement fields and the plan block, so one round never names one boss and field another.
+  const boss = bossOverride === undefined ? swarmBossFor(w) : bossOverride;
   if (boss) {
     // Every champion body carries `champion: true` all the way into the schedule, so the wave owner
     // can owe a WING as easily as it owes one Dreadnought without knowing any enemy ids.
@@ -1069,11 +1073,14 @@ export function swarmOpeningCount(packages) {
  * The swarm block carried on the plan. survivalWave.js reads this and nothing else to run the
  * reinforcement stream, so the whole streaming ruleset is described by one serializable object.
  */
-export function swarmPlanBlock(wave) {
+export function swarmPlanBlock(wave, bossOverride) {
   const w = swarmWaveOf(wave);
   const roster = swarmRosterFor(w);
   const newcomer = swarmNewcomerFor(w);
-  const boss = swarmBossFor(w);
+  const boss = bossOverride === undefined ? swarmBossFor(w) : bossOverride;
+  // SWARM-08 B5 — boss presence follows the override when one is given, not the cadence, so a
+  // Circuit survive round suppresses the cadence champion and a Circuit boss round forces its own.
+  const bossWave = bossOverride === undefined ? isSwarmBossWave(w) : boss != null;
   return {
     schemaVersion: SWARM_SCHEMA_VERSION,
     wave: w,
@@ -1085,9 +1092,9 @@ export function swarmPlanBlock(wave) {
     openingPressure: swarmPressureAt(w, 0),
     spawnCap: SWARM_SPAWN_CAP,
     level: swarmLevel(w),
-    boss: isSwarmBossWave(w),
+    boss: bossWave,
     // A champion must be defeated before the finite round clears.
-    requireBoss: isSwarmBossWave(w),
+    requireBoss: bossWave,
     bossId: boss ? boss.id : null,
     bossLabel: boss ? boss.label : null,
     bossLine: boss ? boss.line : null,

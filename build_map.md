@@ -873,7 +873,7 @@ git history (consolidated 2026-10-15).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 270 | SWARM-08 | The journey: the Circuit route map and alternate objectives; the arcade arsenal with levels, evolutions, legendaries and abilities — SWARM_EXPANSION B5, B7 | BUILD | OPEN — phase C, unparked 2026-10-19 (phases A + B shipped as rows 263–269; §31.2 call 5) |
+| 270 | SWARM-08 | The journey: the Circuit route map and alternate objectives; the arcade arsenal with levels, evolutions, legendaries and abilities — SWARM_EXPANSION B5, B7 | BUILD | OPEN — Circuit journey landed (fleet oct20): 16-round run, 4 stages + champions, authored route gates with room/law, survival boundaries, finish/overtime choice, settlement and worker telemetry; remaining: arcade arsenal breadth (levels, evolutions, legendaries, abilities expansion) |
 | 271 | SWARM-09 | The show: the broadcast layer (host, crowd, sponsors, rivals), eight pilots, the Machine faction, the remaining biomes and bosses, Adventure incursions — SWARM_EXPANSION B8, B9, §5 | BUILD | PARKED — phase D |
 | 272 | SWARM-10 | Fortify: arena construction, the Hold the Line mode, the Engineer pilot — SWARM_EXPANSION B13 | BUILD | PARKED — phase E; deliberately last, additive once the arcade core is strong (owner) |
 | 273 | SWARM-11 | Sharing: the arena editor and global boards — SWARM_EXPANSION B12 | BUILD | PARKED — phase F |

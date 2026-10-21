@@ -50,6 +50,7 @@ import {
   EVOLUTION_OFFER_KIND,
   evolutionOffersFor,
 } from '../data/survivalEvolutions.js';
+import { CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
 import {
   runModifierRecord,
   summarizeRunBuild,
@@ -164,6 +165,9 @@ export const survivalDraft = {
     this._unsubs.push(() => unbindSwarmRoleProblems());
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:draftPickRequested', (p) => this.resolvePick(p)));
+    // SWARM-08 B5 — the run owner is the sole writer of Circuit telemetry. It answers every
+    // request; this surface refreshes on the acknowledgement and nothing optimistic is shown.
+    this._unsubs.push(this.bus.on('run:circuitChoiceApplied', (p) => this._onCircuitChoiceApplied(p)));
     this._unsubs.push(this.bus.on('run:refitCloseRequested', (p) => this.closeRefit(p)));
     this._unsubs.push(this.bus.on('run:refitFitRequested', (p) => this.refitFit(p)));
     this._unsubs.push(this.bus.on('run:refitStripRequested', (p) => this.refitStrip(p)));
@@ -814,6 +818,38 @@ export const survivalDraft = {
     if (this._preparationPending) return false;
     const offers = this._offers || [];
     const offerId = request && request.offerId;
+    // SWARM-08 B5 — Circuit controls are separate controls that travel the SAME draft-pick
+    // intent. Match only the live offered ids; a stale revision/duplicate is refused without
+    // resolving the draft, and a missing choice refuses the launch while one is owed.
+    if (isSwarmRuleset(run.ruleset)) {
+      const error = circuitStateError(run);
+      if (error) {
+        this._notice = error;
+        this._emit('run:draftPickRejected', { wave: run.wave, offerId, reason: 'circuit_invalid' });
+        this._refreshOffers(run);
+        return false;
+      }
+      const circuit = circuitFor(run);
+      const choices = circuitChoicesFor(run);
+      if (offerId != null && choices.some((entry) => entry.id === offerId)) {
+        this._emit('run:circuitChoiceRequested', { offerId });
+        return true;
+      }
+      if (parseCircuitChoiceId(offerId)) {
+        this._notice = 'That Circuit choice is no longer available.';
+        this._emit('run:draftPickRejected', { wave: run.wave, offerId, reason: 'circuit_stale' });
+        this._refreshOffers(run);
+        return false;
+      }
+      if (offerId == null && circuit && (circuit.status === 'route' || circuit.status === 'finale')) {
+        this._notice = circuit.status === 'route'
+          ? 'Choose a destination before launching.'
+          : 'Finish the Circuit or enter Overtime.';
+        this._emit('run:draftPickRejected', { wave: run.wave, offerId: null, reason: 'circuit_choice_owed' });
+        this._refreshOffers(run);
+        return false;
+      }
+    }
     if (isSwarmRuleset(run.ruleset) && offerId != null && request && request.demo === true) {
       return this._demoFit(offerId);
     }
@@ -862,6 +898,46 @@ export const survivalDraft = {
       offers,
     });
     return true;
+  },
+
+  /**
+   * SWARM-08 B5 — the run owner's answer to a Circuit request. The armory never guessed; it
+   * refreshes only here, so a rejected or stale choice cannot appear committed. Entry and route
+   * choices leave the armory OPEN (shopping continues); Overtime resolves it; Finish ends the run.
+   */
+  _onCircuitChoiceApplied(payload) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.phase !== 'draft') return;
+    const accepted = payload && payload.accepted === true;
+    const kind = payload && payload.kind;
+    if (!accepted) {
+      this._notice = payload && typeof payload.reason === 'string'
+        ? payload.reason
+        : 'That Circuit choice was refused.';
+      this._refreshOffers(run);
+      return;
+    }
+    if (kind === 'overtime') {
+      this._finish({ picked: null, applied: false, reason: 'circuit_overtime' });
+      return;
+    }
+    if (kind === 'finish') return; // run:endRequested follows; run:ended resets this surface
+    const circuit = circuitFor(run);
+    this._notice = kind === 'start'
+      ? `Circuit entered — stage 1 of ${CIRCUIT_STAGE_COUNT}. Pick a destination after each stage.`
+      : (circuit ? `Destination set — stage ${circuit.clearedStages + 1} of ${CIRCUIT_STAGE_COUNT}.` : null);
+    this._refreshOffers(run);
+  },
+
+  /** Re-emit the live stock after a Circuit answer; this is the worker's published receipt. */
+  _refreshOffers(run) {
+    const offers = Array.isArray(this._offers) ? this._offers.map((offer) => ({ ...offer })) : [];
+    this._emit('run:draftOffered', {
+      wave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+      offers,
+      rerolls: this._rerolls,
+      notice: this._notice,
+    });
   },
 
   _purchase(offerId) {
