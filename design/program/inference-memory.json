@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "accept-the-yield-verb",
-      "date": "2026-10-03",
-      "wf": "WF-05",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Surrendered pirate squads offer stolen-goods passage yields via the decision deck; accepting dumps physical pods, files nonlethal resolution, rolls a moral-memory disposition",
-      "fingerprint": "verb=spare,subject=pirate-crews,sector=combat,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "9e7202d80",
-      "verification": "focused_green"
-    },
-    {
       "id": "answerable-maydays",
       "date": "2026-10-03",
       "wf": "WF-16",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "d4a743673",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-35-scan-earns-anatomy",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Fauna field note reads authored anatomy only at revelation>=2; below the gate the note stays silent — reveal-1 vs reveal-2 reads differ; covered by cloud04 suite",
+      "fingerprint": "verb=see,subject=fauna-anatomy,sector=veil,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "b2f7bffde",
       "verification": "focused_green"
     }
   ],
