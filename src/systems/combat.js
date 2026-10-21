@@ -803,6 +803,12 @@ export const combat = {
     onCell('run:wavePlanned', (payload) => this._clearChargeCells((entity) =>
       entity.data.runCohort === 'survival' && entity.data.runWave !== (payload?.wave ?? this.state.run?.wave)));
     onCell('run:ended', () => this._clearChargeCells((entity) => entity.data.runCohort === 'survival'));
+    // Victory is a terminal phase reached by transition — no run:ended follows it.
+    onCell('run:transitioned', (payload) => {
+      if (payload && (payload.phase === 'victory' || payload.phase === 'ended')) {
+        this._clearChargeCells((entity) => entity.data.runCohort === 'survival');
+      }
+    });
     for (const event of ['game:started', 'game:new', 'game:newGame']) {
       onCell(event, () => this.newGame());
     }

@@ -440,6 +440,32 @@ test('a grudge still hands the prior roe back when another system replaced the a
   sim.dispose();
 });
 
+test('a doctrine egress stash holding the grudge activity is reconciled at expiry', () => {
+  const { sim } = grudgeSim();
+  const a = spawnReaver(sim, 2, { x: 0, z: 0 });
+  const b = spawnReaver(sim, 3, { x: 200, z: 0, squadId: 'other_wing', activity: loiterActivity() });
+  b.data.ai.roe = 'hold_fire';
+
+  emitHit(sim, a.id, b.id);
+  assert.equal(b.data.ai.roe, 'weapons_free');
+  // tacticalAI's egress phase stashes the grudge's live activity and owns the live channel with a
+  // posture-reason activity — exactly the shape applyEngagementPosture leaves mid-egress.
+  const grudgeActivity = b.data.ai.activity;
+  b.data.ai.postureBaseActivity = grudgeActivity;
+  b.data.ai.activity = normalizeActivity({
+    kind: ActivityKind.LOITER, reason: 'posture:egress', anchor: { x: 0, z: 0 }, leashRadius: 1800, targetId: a.id,
+  });
+
+  sim.runTicks(Math.ceil(NPC_GRUDGE_S * 60) + 1);
+  assert.equal(b.data.ai.npcGrudge, undefined);
+  assert.equal(b.data.ai.roe, 'hold_fire', 'the interrupted posture comes back');
+  assert.equal(b.data.ai.activity.reason, 'posture:egress', 'the live posture activity is left for the doctrine to commit');
+  assert.equal(b.data.ai.postureBaseActivity.reason, 'r391_patrol',
+    'the stash hands back the authored activity, not the expired grudge');
+  assert.notEqual(b.data.ai.postureBaseActivity.reason, NPC_GRUDGE_REASON);
+  sim.dispose();
+});
+
 test('a live player retaliation outlives the grudge window it interrupted', () => {
   const { sim, player } = grudgeSim();
   const a = spawnReaver(sim, 2, { x: 0, z: 0 });

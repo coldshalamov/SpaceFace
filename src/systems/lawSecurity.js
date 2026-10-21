@@ -1274,17 +1274,25 @@ export const lawSecurity = {
       if (priorId != null && priorEntity && priorEntity.alive !== false) ai.retaliationTargetId = priorId;
       else delete ai.retaliationTargetId;
     }
+    const restoredActivity = g.prior && g.prior.activity
+      ? normalizeActivity(g.prior.activity)
+      : normalizeActivity({
+        kind: ActivityKind.ATTACK_RUN,
+        reason: 'npc_grudge_expired',
+        anchor: victim.pos,
+        leashRadius: 2200,
+        startedTick: state.tick | 0,
+        targetId: null,
+      });
     if (ai.activity && ai.activity.reason === NPC_GRUDGE_REASON) {
-      ai.activity = g.prior && g.prior.activity
-        ? normalizeActivity(g.prior.activity)
-        : normalizeActivity({
-          kind: ActivityKind.ATTACK_RUN,
-          reason: 'npc_grudge_expired',
-          anchor: victim.pos,
-          leashRadius: 2200,
-          startedTick: state.tick | 0,
-          targetId: null,
-        });
+      ai.activity = restoredActivity;
+    }
+    // tacticalAI's egress stash may hold the grudge's activity while a posture activity owns the
+    // live channel — reconcile it too, or restoring roe below makes applyEngagementPosture
+    // early-return on `roe !== weapons_free` and the stash never gets handed back.
+    const stash = ai.postureBaseActivity;
+    if (stash && (stash.reason === NPC_GRUDGE_REASON || stash.targetId === g.targetId)) {
+      ai.postureBaseActivity = restoredActivity;
     }
     // Roe restore stands alone from the activity: another system may replace the activity while
     // the grudge is live, and the weapons-free escalation must still hand the original posture

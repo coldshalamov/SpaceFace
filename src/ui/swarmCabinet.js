@@ -132,7 +132,8 @@ export function createCabinetAttract({ host, tape, doc = host?.ownerDocument,
     resetIdle();
   };
   const visibility = () => resetIdle();
-  const events = ['keydown', 'pointerdown', 'pointermove'];
+  // Gamepad navigation surfaces as focusin + programmatic click, not key/pointer events.
+  const events = ['keydown', 'pointerdown', 'pointermove', 'focusin', 'click'];
   const stop = () => {
     armed = false; clear(); pointer = null;
     for (const name of events) doc.removeEventListener(name, input, true);
