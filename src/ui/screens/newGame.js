@@ -616,6 +616,42 @@ export const newGameScreen = {
     body.appendChild(seedField.wrap);
     body.appendChild(hairline());
 
+    const firstFlightField = field('First flight');
+    firstFlightField.label.id = 'sf-ng-first-flight-label';
+    const firstFlightWords = words([
+      { action: 'firstFlight:teach', label: 'Teach me' },
+      { action: 'firstFlight:flown', label: "I've flown before" },
+    ], {
+      row: true, size: 'body', ariaLabel: 'First flight',
+      onPick: (a) => this._setFirstFlight(a === 'firstFlight:flown'),
+    });
+    firstFlightWords.setAttribute('aria-labelledby', firstFlightField.label.id);
+    firstFlightWords.classList.add('of-pause');
+    for (const b of firstFlightWords.querySelectorAll('.k-word')) railWord(b);
+    const firstFlightDesc = el('p', 'k-sentence', '');
+    firstFlightDesc.id = 'sf-ng-first-flight-desc';
+    firstFlightWords.setAttribute('aria-describedby', firstFlightDesc.id);
+    firstFlightField.wrap.appendChild(firstFlightWords);
+    firstFlightField.wrap.appendChild(firstFlightDesc);
+    body.appendChild(firstFlightField.wrap);
+    body.appendChild(hairline());
+    firstFlightWords.addEventListener('focusout', (e) => {
+      if (e.relatedTarget && firstFlightWords.contains(e.relatedTarget)) return;
+      for (const b of firstFlightWords.querySelectorAll('.k-word')) b.tabIndex = -1;
+    });
+    seed.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const target = liveWordIn(firstFlightWords);
+      if (!target) return;
+      e.preventDefault();
+      target.focus();
+    });
+    firstFlightWords.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      e.preventDefault();
+      seed.focus();
+    });
+
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
     // selection at the transition boundary; the UI never copies a whole prior run into the event.
     let legacyOn = false;
@@ -859,6 +895,7 @@ export const newGameScreen = {
       seed.disabled = launching;
       for (const b of starterWords.querySelectorAll('.k-word')) setWord(b, launching);
       for (const b of diffWords.querySelectorAll('.k-word')) setWord(b, launching);
+      for (const b of firstFlightWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacyWords) for (const b of legacyWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacySelect) legacySelect.disabled = launching || !legacyOn;
       const launchWord = launching ? coreText('launching') : coreText('launch');
@@ -903,6 +940,7 @@ export const newGameScreen = {
     refs = {
       root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back, launchError,
       starterWords, starterDesc, hullName, hullBlurb, renderLoadout,
+      firstFlightWords, firstFlightDesc, flownBefore: false,
       starter: DEFAULT_STARTER,
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
       isLaunching: () => launching,
@@ -915,6 +953,7 @@ export const newGameScreen = {
     };
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+    this._setFirstFlight(false, { silent: true });
   },
 
   // The newGame screen used to be the only embark path with no speculation emit — every
@@ -988,6 +1027,19 @@ export const newGameScreen = {
     syncKeys(refs.diffWords);
   },
 
+  _setFirstFlight(flown) {
+    if (!refs) return;
+    refs.flownBefore = flown === true;
+    for (const b of refs.firstFlightWords.querySelectorAll('.k-word')) {
+      b.setAttribute('aria-pressed', String((b.dataset.action === 'firstFlight:flown') === refs.flownBefore));
+      b.tabIndex = -1;
+    }
+    refs.firstFlightDesc.textContent = refs.flownBefore
+      ? 'Skips the stick drills. The rope, the raid and the Range stay.'
+      : 'The full first flight: stick drills, the rope, the raid.';
+    syncKeys(refs.firstFlightWords);
+  },
+
   _launch(ctx) {
     if (!refs) return;
     const launching = refs.isLaunching();
@@ -1017,6 +1069,7 @@ export const newGameScreen = {
       shipId: refs.starter.shipId,
       starter: refs.starter.id,
       difficulty: refs.diff.value,
+      flownBefore: refs.flownBefore === true,
       ...seedOpt,
       ...newGamePlusOpt,
     });

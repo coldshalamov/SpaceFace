@@ -1345,6 +1345,43 @@ export function checkCrucibleRealm(trace) {
 
 ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkCrucibleRealm, checkSimStalled, checkPlayInterrupted, checkOffscreenMarker);
 
+export const FIRST_HOUR_BUDGET = Object.freeze({ latchS: 60, raidS: 180 });
+
+export function checkFirstHourBudget(trace) {
+  const id = 'first_hour_budget';
+  const title = 'First flight latch and raid budget';
+  const threshold = `latch ≤${FIRST_HOUR_BUDGET.latchS}s · raid ≤${FIRST_HOUR_BUDGET.raidS}s`;
+  const na = (detail) => result(id, title, 'N/A', null, threshold, detail);
+  if (trace.meta.mode !== 'adventure') return na('not Adventure');
+  const events = trace.events || [];
+  const first = events.find(isFlightInput);
+  if (!Number.isFinite(first?.sim)) return na('no flight input');
+  const attach = events.find((e) => e.ev === 'milestone' && e.milestone === 'attach');
+  const samples = trace.samples || [];
+  // A missing milestone is still late once the observed simulation has passed its deadline.
+  const lastSim = [...samples, ...events].reduce((last, entry) => Number.isFinite(entry.sim)
+    ? Math.max(last, entry.sim) : last, first.sim);
+  const elapsedS = lastSim - first.sim;
+  if (!Number.isFinite(attach?.sim)) {
+    if (trace.meta.tutorialPilot === true && elapsedS > FIRST_HOUR_BUDGET.latchS) {
+      return result(id, title, 'FAIL', { latchS: null, raidS: null }, threshold,
+        `no attach milestone after ${fmt(elapsedS)}s since first input`);
+    }
+    return na('no attach milestone');
+  }
+  const raid = events.find((e) => e.ev === 'milestone' && e.milestone === 'momentumKill');
+  const latchS = attach.sim - first.sim;
+  const raidS = Number.isFinite(raid?.sim) ? raid.sim - first.sim : null;
+  const over = latchS > FIRST_HOUR_BUDGET.latchS || (raidS != null && raidS > FIRST_HOUR_BUDGET.raidS)
+    || (raidS == null && lastSim - first.sim > FIRST_HOUR_BUDGET.raidS);
+  if (!over && raidS == null) return na('raid not reached inside this trace');
+  return result(id, title, over ? (trace.meta.tutorialPilot === true ? 'FAIL' : 'ADVISORY') : 'PASS',
+    { latchS, raidS }, threshold,
+    `latch ${fmt(latchS)}s · raid ${fmt(raidS)}s since first input${raidS == null ? ' (raid not reached)' : ''}`);
+}
+
+ALL_CHECKS.push(checkFirstHourBudget);
+
 /** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
 export const GATE_STRICT = Object.freeze(['crucible_realm', 'player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
 const GATE_STRICT_IDLE = Object.freeze(['player_ship', 'tumble']);

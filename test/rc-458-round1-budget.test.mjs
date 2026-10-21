@@ -1,0 +1,118 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
+import { getNodeSystemFactoryTable } from '../src/runtime/nodeSystemFactoryTable.js';
+import { makeShipEntitySpec, fittingsFromDefaultModules } from '../src/systems/ships.js';
+import { NEW_GAME } from '../src/data/newGameDefaults.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createStrangerPilot, createServices } from '../scripts/lib/bench/playthroughPilots.mjs';
+import { checkFirstHourBudget, overall } from '../scripts/player-truth/checks.mjs';
+
+test('a scripted pilot cannot pass an expired latch deadline without attaching', () => {
+  const trace = { meta: { mode: 'adventure', tutorialPilot: true },
+    events: [{ ev: 'input', kind: 'keydown', sim: 0 }], samples: [{ sim: 250 }] };
+  const verdict = checkFirstHourBudget(trace);
+  assert.equal(verdict.status, 'FAIL');
+  assert.equal(overall([verdict]), 'FAIL');
+  assert.deepEqual(verdict.value, { latchS: null, raidS: null });
+});
+
+test('missing latch is pending through its deadline and expires on observed simulation time', () => {
+  const trace = { meta: { mode: 'adventure', tutorialPilot: true },
+    events: [{ ev: 'input', kind: 'keydown', sim: 10 }], samples: [{ sim: 70 }] };
+  assert.equal(checkFirstHourBudget(trace).status, 'N/A');
+  trace.samples.push({ sim: 70 + 1 / 60 });
+  assert.equal(checkFirstHourBudget(trace).status, 'FAIL');
+  trace.meta.tutorialPilot = false;
+  assert.equal(checkFirstHourBudget(trace).status, 'N/A', 'ordinary Adventure need not follow the tutorial');
+  trace.meta.tutorialPilot = true;
+  trace.samples = [];
+  trace.events.push({ ev: 'milestone', milestone: 'momentumKill', sim: 200 });
+  assert.equal(checkFirstHourBudget(trace).status, 'FAIL', 'events also establish elapsed sim time');
+  trace.events.shift();
+  assert.equal(checkFirstHourBudget(trace).status, 'N/A', 'no clock before actual flight input');
+});
+
+test('stranger uses the live player line after an unrelated release or a refused cut', () => {
+  const player = { id: 1, alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
+  const raider = { id: 2, alive: true, pos: { x: 50, z: 0 }, vel: { x: 0, z: 0 } };
+  const rock = { id: 3, alive: true, type: 'asteroid', radius: 80, pos: { x: 400, z: 0 } };
+  const state = { meta: { seed: 4242 }, tick: 120, simTime: 2, playerId: 1,
+    entities: new Map([[1, player], [2, raider], [3, rock]]), entityList: [player, raider, rock],
+    player: { tether: { active: true, targetId: 2 } }, input: { actions: {}, aimWorld: {} },
+    onboarding: { raid: { active: true, ids: { raider: 2 } }, beatDoneAt: {} } };
+  const bus = createBus();
+  const pilot = createStrangerPilot({ state, bus, ledger: { recordDecision() {} }, services: {} });
+  bus.emit('tether:released', { targetId: 99 });
+  pilot.step(1 / 60, state.tick);
+  assert.equal(state.input.actions.massline.lineControl, true, 'keep towing the actual player line');
+  assert.equal(state.input.actions.massline.latch, false, 'do not attempt to relatch an active line');
+  state.player.tether.active = false;
+  bus.emit('tether:attached', { actorId: 99, targetId: 2 });
+  pilot.step(1 / 60, state.tick);
+  assert.equal(state.input.actions.massline.lineControl, false, 'an NPC attachment is not the player line');
+  assert.equal(state.input.actions.massline.latch, true);
+});
+
+// Same production boot and normalized input seam as onboarding-stranger-replay-stability.
+// After launch, only the public pilot writes inputs; the observer never writes bodies or receipts.
+test('seed 4242 production stranger earns latch and raid milestones within budget through inputs', async (t) => {
+  const lookup = getNodeSystemFactoryTable();
+  lookup.set('input', { name: 'input', init() {}, update() {}, destroy() {} });
+  const runtime = await createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true,
+    seed: 4242, systemLookup: lookup, exclusions: ['input:no-op-headless'] });
+  t.after(() => runtime.dispose());
+  const { state, bus } = runtime;
+  const events = [];
+  bus.on('firsthour:milestone', (p) => events.push({ ev: 'milestone',
+    milestone: p.milestone, sim: p.atS, cause: p.cause }));
+  state.mode = 'flight';
+  state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  state.settings.gameplay.flightBackend = 'v3';
+  state.settings.gameplay.aiBackend = 'sg06-tactical';
+  state.settings.gameplay.tutorialHints = true;
+  state.input.actions ||= {};
+  state.player.credits = NEW_GAME.credits;
+  const ships = runtime.getSystem('ships');
+  ships.newGame();
+  state.playerId = runtime.spawn(makeShipEntitySpec(NEW_GAME.shipId, {
+    team: 0, factionId: 'faction_free', isPlayer: true, player: state.player,
+    fittings: fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
+    pos: { x: 0, z: 0 }, rot: 0,
+  })).id;
+  ships.recomputeActiveShip();
+  const world = runtime.getSystem('world');
+  world.newGame();
+  const econ = runtime.getSystem('economy');
+  econ.newGame();
+  world.enterSector('sector_helios_prime', {});
+  bus.emit('game:started', {});
+  await runtime.getSystem('physics').prepareBackend(state, { reset: true });
+  const ledger = { recordTrade() {}, recordCreditsNoSale() {}, recordDecision() {}, recordNote() {}, sampleVerbs() {} };
+  const services = createServices({ state, bus, ledger, econ,
+    clock: { tick: () => state.tick, undockCooldownUntil: () => 0 } });
+  const pilot = createStrangerPilot({ state, bus, ledger, services });
+  const trace = { meta: pilot.traceMeta, events, samples: [] };
+  assert.equal(trace.meta.tutorialPilot, true, 'the real driver declares its enforcing budget metadata');
+  assert.equal(trace.meta.seed, 4242);
+  const dt = 1 / 60;
+  for (let frame = 0; frame <= 181 * 60; frame++) {
+    pilot.step(dt, state.tick);
+    const input = state.input;
+    // input.js mirrors the completed command packet into the tether press edge.
+    input.actions.tetherFire = !!input.actions.massline?.latch;
+    if (!events.some((e) => e.ev === 'input') && (input.moveX || input.moveZ || input.turnIntent
+      || input.brake || input.fire || input.boost || input.actions.massline?.latch)) {
+      events.push({ ev: 'input', kind: 'keydown', sim: state.simTime });
+    }
+    runtime.runTicks(1, dt);
+    if (events.some((e) => e.milestone === 'momentumKill')) break;
+    if (checkFirstHourBudget({ ...trace, samples: [{ sim: state.simTime }] }).status === 'FAIL') break;
+  }
+  trace.samples.push({ sim: state.simTime });
+  const verdict = checkFirstHourBudget(trace);
+  t.diagnostic(JSON.stringify({ verdict, events }));
+  assert.equal(verdict.status, 'PASS');
+  assert.ok(events.some((e) => e.milestone === 'attach'));
+  assert.ok(events.some((e) => e.milestone === 'momentumKill'));
+});

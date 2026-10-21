@@ -398,6 +398,11 @@ export function installPlayerTruthReader(win, opts = {}) {
   const lifeId = lifeTracker.observe;
   const unsubs = [];
   if (SF.bus && typeof SF.bus.on === 'function') {
+    const milestoneUnsub = SF.bus.on('firsthour:milestone', (p) => events.push({
+      ev: 'milestone', t: now(), sim: Number.isFinite(p?.atS) ? p.atS : simNow(),
+      milestone: String(p?.milestone || ''), cause: p?.cause ?? null,
+    }));
+    if (typeof milestoneUnsub === 'function') unsubs.push(milestoneUnsub);
     const u1 = SF.bus.on('entity:killed', (p) => {
       const st = SF.state; const killer = p && p.killerId != null && st.entities && st.entities.get ? st.entities.get(p.killerId) : null;
       const victim = p && p.id != null && st.entities && st.entities.get ? st.entities.get(p.id) : null;

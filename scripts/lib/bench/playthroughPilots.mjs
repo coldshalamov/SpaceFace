@@ -1125,9 +1125,17 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
 
   return {
     name: 'stranger',
+    traceMeta: Object.freeze({ mode: 'adventure', tutorialPilot: true, driver: 'stranger', seed: state.meta.seed }),
     step(dt, tick) {
       const p = player();
       if (!p || !p.alive) return;
+      // Read the same live line state as the HUD. Global line events can belong to NPCs,
+      // and a requested cut can be refused, so callbacks alone cannot own this decision.
+      const tether = state.player && state.player.tether;
+      if (tether) {
+        lineAttached = tether.active === true;
+        latchedId = lineAttached ? tether.targetId : null;
+      }
       const input = neutralInput(state);
       const cmd = neutralCommand();
       massline(input, cmd);
@@ -1581,7 +1589,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           flyTo(input, awayPoint, { arrive: 50, boost: energyFull(p) });
           return;
         }
-        if (/trainer|burst/i.test(line) && wp.pos) {
+        if (/trainer|raider|burst/i.test(line) && wp.pos) {
           const fd = flyTo(input, wp.pos, { arrive: 160 });
           if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
             console.log(`    [marker] t=${Math.round(state.simTime)} d=${Math.round(fd)} v=${Math.round(speedOf(p))} line='${line.slice(0, 30)}' burst=${/burst/i.test(line)}`);
@@ -1593,7 +1601,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           }
           return;
         }
-        if (/derelict|trainer|buoy|beacon|rock/i.test(wp.label || '') && wp.pos) {
+        if (/derelict|trainer|raider|wingman|buoy|beacon|rock/i.test(wp.label || '') && wp.pos) {
           // The attach lesson: fly to the marked body, take the offered line, winch, cut.
           if (/derelict/i.test(wp.label || '')) {
             const d = dist(p.pos, wp.pos);
