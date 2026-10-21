@@ -1271,8 +1271,8 @@ function authoredPreloadPlanForEntityUncached(entity, options = {}) {
     // integrates hardpoints, so compose never mounts kit records for them (the
     // hullIntegratesHardpoints gates below). Do not decode bolt-on records they cannot draw;
     // a non-integrated whole ship (none are live-selectable today) would keep this path.
+    const fitSeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
     if (!String(file).startsWith('wholeships/')) {
-      const fitSeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
       const fitDef = SHIP_BY_ID.get(entity.data && entity.data.defId);
       addPlanFiles(plan, 'weapon', authoredWeaponMounts(entity, fitDef, contractRecords('weapon'), fitSeed, { fittedOnly: true })
         .map((mount) => mount.record && mount.record.url));
@@ -1281,6 +1281,17 @@ function authoredPreloadPlanForEntityUncached(entity, options = {}) {
         .filter((mount) => String(mount.file).startsWith('pods/'))
         .map((mount) => mount.record && mount.record.url));
       addPlanFiles(plan, 'greeble', moduleMounts
+        .filter((mount) => !String(mount.file).startsWith('pods/'))
+        .map((mount) => mount.record && mount.record.url));
+    } else {
+      // RC-37 — Forge bodies still bolt verb modules on, so their part files must cook
+      // alongside the hull (passive kit records stay undecoded for these bodies).
+      const verbMounts = fittedModuleMounts(entity, contractRecords('pod'), contractRecords('greeble'), fitSeed)
+        .filter((mount) => mount.verb);
+      addPlanFiles(plan, 'pod', verbMounts
+        .filter((mount) => String(mount.file).startsWith('pods/'))
+        .map((mount) => mount.record && mount.record.url));
+      addPlanFiles(plan, 'greeble', verbMounts
         .filter((mount) => !String(mount.file).startsWith('pods/'))
         .map((mount) => mount.record && mount.record.url));
     }
@@ -11190,8 +11201,11 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   const greebleRecordsForFit = library.get('greeble') || [];
   const authoredJobs = wholeShip ? authoredHullJobs(hullRecord) : null;
   const integrated = wholeShip && hullIntegratesHardpoints(hullRecord);
-  const fittedMounts = integrated
-    ? [] : fittedModuleMounts(entity, podRecordsForFit, greebleRecordsForFit, assemblySeed);
+  // RC-37 — a Forge body integrates its own passive hardware, but a verb module still
+  // bolts on: the winch, the blink coil, the ram plate are the player's *do*, and
+  // they draw even where kit boxes do not.
+  const fittedMountsAll = fittedModuleMounts(entity, podRecordsForFit, greebleRecordsForFit, assemblySeed);
+  const fittedMounts = integrated ? fittedMountsAll.filter((mount) => mount.verb) : fittedMountsAll;
   const fitWeaponMounts = (wholeShip && !integrated)
     ? authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed, { fittedOnly: true })
     : [];
@@ -13281,6 +13295,26 @@ function uniqueSlotMap(slots) {
 // of adding geometry — and weapons already mount per hardpoint, so this table covers the rest.
 const VISIBLE_MODULE_BUDGET_FRACTION = 0.15;
 
+// RC-37 — a module that grants a verb always reads on the hull. The outfit-budget
+// threshold filters passive hardware; a winch, a blink coil or a ram plate is the
+// thing the player *does*, and it must show even on a hull that integrates its own
+// hardpoints. Keyed on `mods` capability keys so trophy/unique variants ride free.
+const VERB_MODULE_MOD_KEYS = new Set([
+  'masslineHeadId', 'towFlail', 'tetherReelRateMult', 'tetherSpoolMult',
+  'hullBurst', 'ramDamageDealtMult', 'swingDrive', 'boostTopSpeedPct', 'phaseBlink',
+  'droneBay', 'jumpDriveTier', 'countermeasure', 'pointDefense', 'repulsionTrap',
+  'impulseChargeCapacity', 'cloakBaseRadius', 'heatLure', 'captureSurvivalMult',
+  'lootMagnetRange', 'magnetRange', 'scannerRadiusMult',
+]);
+
+export function moduleGrantsVerb(def) {
+  if (!def) return false;
+  if (def.slotType === 'mining') return true;
+  const mods = def.mods || {};
+  for (const key of Object.keys(mods)) if (VERB_MODULE_MOD_KEYS.has(key)) return true;
+  return false;
+}
+
 const MODULE_FIT_PART_BY_SLOT = Object.freeze({
   shield:   { file: 'greebles/greeble_antennas.glb', sockets: [['SOCKET_Utility_Dorsal', [0.04, 0.40, 0.08]]], targetLength: 0.26 },
   cargo:    { file: 'pods/pod_cargo_container.glb',  sockets: [['SOCKET_Cargo_Ventral', [-0.08, -0.36, 0.12]]], targetLength: 0.34 },
@@ -13314,10 +13348,12 @@ export function visibleFittingsForEntity(entity) {
     }
     const spec = MODULE_FIT_PART_BY_SLOT[def.slotType];
     if (!spec) continue;
-    if ((Number(def.mass) || 0) < threshold) continue;
+    const verb = moduleGrantsVerb(def);
+    if (!verb && (Number(def.mass) || 0) < threshold) continue;
     modules.push({
       id: def.id,
       slotType: def.slotType,
+      verb,
       file: (def.visuals && def.visuals.part) || spec.file,
       sockets: spec.sockets.map(([name, anchor]) => ({ name, anchor })),
       targetLength: spec.targetLength,
@@ -13404,6 +13440,7 @@ function fittedModuleMounts(entity, podRecords, greebleRecords, seed) {
       socketUse.set(socket.name, ordinal + 1);
       mounts.push({
         record,
+        verb: mod.verb === true,
         file: mod.file,
         socket: socket.name,
         ordinal,
