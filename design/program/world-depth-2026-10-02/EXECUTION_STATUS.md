@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 16:24 UTC
+
+All nine goals remain OPEN within the original larger scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `ac67d7ff37c852f44471a4ec6f9d19cf814caf8b`, tree `68d3cad45499a0bc0449f300ffd9b7d873fd6efa`, sole 059 parent, open draft at 16:24:53 UTC; master bce remains unchanged.
+
+Twelve scoped paths bypass a no-op only for exact resident plans; missing/evicted plans under the existing predicate retain the serial lane. Guarded await-phase observations, selected-payload metadata and separate temporary VFX-isolation attribution with restoration remain diagnostic. Optional observation respects the actual enclosing command deadline and cleanup reserve; incomplete cleanup remains nonzero. No primary acceptance, quality, simulation, timeout or publication bypass. Root passes 133/133 with exact 4,816 module receipts/1,338 paths and 70 filesystem reads/68 paths. Independent plan checks pass nine, timing checks 72 before attribution, final camera checks 33 and separate helper checks eleven. The registry removes eviction entries, so these are not exhaustive live-eviction proofs.
+
+Actual prior 059 camera shows blanket opening hold false, authored cutter, running hauler, colony still hidden and six original supplies intact/loose. The large teal visual's owner remains unresolved. Prior runtime is 1,466/1,471 with the same five inherited failures; full native receiver passes in 359.557 seconds. Scoped 47-A success and completed camera were followed by the enclosing command timing out at 180,777 ms, not a command pass. Browser3 reached its natural limit at 16:23:50; three recorded leaves pass, two remain unproven.
+
+verify_charon_delivery_ci follows exact successor CI. Source/recovery owners completed scoped work only; root is preserving final recovery and retains actual visual/integration work. Next: follow actual successor evidence without treating plan/diagnostic passes as a runtime or visual cure. Preserve historical failures, original scope and held Orchard operations. Optional PR-comment permission remains separate and pending; no comment retry. Only these two shared documents change here; all nine larger goals remain open.
+
 ## Current source handoff — 21 October 2026, 15:53 UTC
 
 All nine goals remain OPEN within the original larger scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `059ca2c2a244148e7d862e99c0caaac991aa73e6`, tree `47ae1dad9903b43defe0fa7667a2864699aa847f`, sole e780 parent, open draft at 15:53:40 UTC; master bce remains unchanged.

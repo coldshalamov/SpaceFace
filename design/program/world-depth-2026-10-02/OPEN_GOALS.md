@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 15:53 UTC. All nine outcomes remain open. This register supports the
+Updated 21 October 2026, 16:24 UTC. All nine outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -11,31 +11,31 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: open. Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage now have independent public draft delivery. Full ordinary-route, device, performance and experience acceptance remain incomplete.
 - Owner: expansion integration and exact feature owners.
 - Evidence: IMPLEMENTATION.md, TWENTY_CONCEPT_MAP.json; local b08ba532/d70c0413; public PR461 and PR462; finite Independent Seam is public PR464; physical Tethys count-lane service is public PR466.
-- Next: Follow exact 059ca2 successor CI and actual pixels. Scoped opening-hold correction and reproduction passes do not establish actual runtime cause/cure, visual acceptance or completion of the nine original larger goals.
+- Next: Follow exact ac67d7 successor CI and actual visual evidence. Resident-plan/diagnostic checks are scoped progress, not a runtime cure or completion of any of the nine original larger goals.
 - Awaiting user: final acceptance when adequate evidence exists; no optional engineering decision.
 
 ## SF-ORCHARD
 - Outcome: finite authored three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: OPEN. Prior e780 terminal CI passes full native receiver in 374.964 seconds while runtime remains 1,459/1,464 with five inherited failures. Browser3 naturally reached its limit at 15:51:47; first fifteen/title Continue/station egress passed, last two unproven. Ordinary/live acceptance and specifically held operations remain unresolved.
+- State: OPEN. Prior 059 runtime 1,466/1,471 retains the same five inherited failures; full native receiver passes in 359.557 seconds. Browser3 reached its natural limit 16:23:50 with three recorded leaves passing and two unproven. Ordinary/live acceptance and specifically held operations remain unresolved.
 - Owner: Collector source correction is published; verify_orchard_ci_attribution retains prior exact-head attribution scope. verify_charon_delivery_ci follows actual d0522e8 successor CI. Existing asset/source owners retain distinct scopes and receiver activation remains unresolved.
 - Evidence: Prior fb3 route: 379.763 wall seconds; second handoff tick 53,548 / 892.467 sim seconds; 13 acquired = buyer one + receiver 12, collector zero; seven gates true; minContact +1.988 WU, 31,104 native ticks. Static-contact minimum unmeasured/null. Successor https://github.com/coldshalamov/SpaceFace/commit/db576579a30cb9af767949dcc5125af02157b9e8 ; tree ca1452aca726801732203a9833ac001b249384d9, sole fb3 parent.
-- Next: verify_charon_delivery_ci follows exact 059ca2 successor. Preserve terminal prior scoped evidence without repeat polling, held-operation retries or receiver-activation clearance.
+- Next: verify_charon_delivery_ci follows exact ac67d7 successor. Preserve native/leaf passes separately from command/aggregate outcomes; no held-operation retry or receiver-activation clearance.
 - Awaiting user: final gameplay/visual acceptance, not routine implementation choices.
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets delivered as verified public commits and draft PRs, preserving newer work.
-- State: OPEN. PR480 059ca2c2a244148e7d862e99c0caaac991aa73e6 is verified at 15:53:40 UTC, tree 47ae1dad9903b43defe0fa7667a2864699aa847f, sole e780 parent, open draft; master bce unchanged. Five scoped renderer/diagnostic/test paths are published. Optional PR-comment permission remains separate and pending.
+- State: OPEN. PR480 ac67d7ff37c852f44471a4ec6f9d19cf814caf8b is verified 16:24:53 UTC, tree 68d3cad45499a0bc0449f300ffd9b7d873fd6efa, sole 059 parent, open draft; master bce unchanged. Twelve scoped paths published. Optional PR-comment permission remains separate and pending.
 - Owner: root publication integration, with per-PR exact-head CI owners.
-- Evidence: https://github.com/coldshalamov/SpaceFace/commit/059ca2c2a244148e7d862e99c0caaac991aa73e6 . Root69/69, exact5,282 module entries/1,329 paths plus two filesystem reads; independent51 pass. Earlier local camera wall-timing failure and pinned CommonJS opening-loading suite limitation remain disclosed. Actual e780 CI terminal1,459/1,464 retains five inherited failures.
-- Next: Follow actual successor CI and pixels. Public-API baseline reproduction fails software transition while corrected source passes; actual e780 cause/cure remains unproven. No aggregate-green, comment retry or visual acceptance is inferred.
+- Evidence: https://github.com/coldshalamov/SpaceFace/commit/ac67d7ff37c852f44471a4ec6f9d19cf814caf8b . Root 133/133 with exact 4,816 module receipts/1,338 paths plus 70 filesystem reads/68 paths. Independent plan 9, timing 72 before attribution, final camera 33 and separate helper 11 pass. Registry eviction-entry removal limits live-eviction conclusions.
+- Next: Follow actual successor CI and visual attribution. Prior scoped 47-A/camera success followed by enclosing 180,777ms timeout is not a command pass. No primary acceptance, quality, simulation, timeout or publication bypass; no comment retry.
 - Awaiting user: No new user action inferred. Old receiver blobs were absent on GET at 09:39 UTC; the 09:41 message read showed no owner reactions. Neither establishes actionable pending approval or denial; no card retry. Receiver activation remains unresolved, with final acceptance separate.
 
 ## SF-RECOVER
 - Outcome: source, models, tests and resumable handoffs recoverable outside disposable execution storage, in addition to GitHub delivery.
-- State: OPEN. Candidate/source/reproduction recovery is verified; root is making final receipt backup. Published source/models/assets and historical failures remain preserved.
+- State: OPEN. Source/recovery owners completed their scoped work; root is preserving final integrated recovery. Published source/models/assets, historical failures and actual camera evidence remain retained.
 - Owner: exact source owners and integration.
 - Evidence: Fresh-route archive SHA256 b25a3bbd055059d22f5a4b9f9e474799439e71679de64321e40b9a9559d6dc24; failure/continuation archive 3d025818300cd973f2fae9fbf82c0f4419c7ae472d07b8f506519f402cede59d; terminal-CI archive f9aa94ece494d869145d8faf3ae396ed13888019a522a618af3c05c0eabed0bf. Roundtrip and archive checks passed. Final three source texts also survived independently and reconstructed the exact reviewed Git tree before publication. Older plans/assets/failed attempts remain retained.
-- Next: Finish final receipt backup and retain exact successor CI/camera evidence with earlier limitations. Keep private recovery IDs and environment paths out of public updates.
+- Next: Finish final recovery receipts and preserve exact successor findings without private artifact identifiers, environment paths or extensive diagnostics in public updates.
 - Awaiting user: no new routine recovery decision; separately pending publication operations remain outside this checkpoint.
 
 ## SF-VISUALS
@@ -43,7 +43,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: actual compiled-model Thimble camera, salvor route, Pallas paired-passage, finite seam and Tethys work-in-progress and crew rescue images delivered, honestly labeled offline reconstructions. Pallas uses actual selected Span/Wasp models and native positions. These omit runtime scene/HUD/VFX and do not certify shipping Look or player comprehension. Tethys final-source replay matches recorded poses, but fresh-origin chronology differs; do not relabel the delivered work-in-progress image as final/live acceptance. New crew images use actual Ironback/SurveyPin models and native positions, not live camera. The delivered Ceres station-only before/after preview represents a subsequently rejected candidate: its omitted anvil overlaps the tender. The earlier actual mobile CI failure screenshot shows a Codex overlay. Actual CI flight images delivered 19:34 and new Continue19:49 show HUD overlap and unclear world readability; new 19:57 Ceres final full-context top/oblique images use actual native 2549/6929 poses but remain offline exported-model reconstructions, not live camera; reaching flight is not visual acceptance. PR460 provides real browser actor-binding evidence, not visual acceptance. New four-frame fresh 9088 board delivered 21 October 01:19:24 UTC uses actual exported models at actual native first-transfer, buyer-sale, home and next-handoff poses. It is inspected offline reconstruction, not live game-camera acceptance.
 - Owner: Feature visual reviewers; receiver source owner coordinates new same-run native poses.
 - Evidence: New image SHA256 c0e07ad5ddf6a86ba28270db5d7410a85ff1208e3ca862f02fa44b1f9addbfa7. Reproduction archive 21,756,475 bytes, SHA256 33b1b9dbda4d3a927e8fb33924b8f7bdaf293d8d2a0fd31a2a0fc4c829faf9ff; roundtrip, CRC and 68 member hashes passed. Earlier actual-model receipts remain preserved.
-- Next: Prior e780 camera at82.610 seconds still shows hidden colony/hauler with six original supplies loose/intact. Active-job diagnostic zero does not prove queue membership. Published transition retains ambient/graph/GPU holds and changes only blanket opening hold to existing selective first-flight policy. Follow actual pixels; runtime visual cause/cure and acceptance remain unproven.
+- Next: Actual 059 camera shows blanket opening hold false, authored cutter, running hauler, colony still hidden and original six loose/intact. Large teal visual ownership remains unresolved. Published bounded payload metadata and temporary VFX-isolation attribution restore state; actual command deadline/cleanup reserve remains enforced. Follow real pixels without visual-cure claims.
 - Awaiting user: eventual visual acceptance; no optional per-render choice.
 
 ## SF-ASSETBANK
@@ -65,9 +65,9 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
 - State: OPEN. Published Phoebe return uses actual one-to-four journal notes, Vael +150, Shrine board, accepted physical return and filed artifact with no repeat payment. Exactly one signal is protected within the normal 64-entry cap; no new save fields, invented investigation or tracking. Legacy validated board recovers already-evicted four-note completion, not missing partial progress. Existing four pocket workers and Nim prose are grounded. Prior actual CI passes 54 Charon cases; ordinary-route and visual acceptance remain open.
-- Owner: Source/review owners completed the scoped opening-hold increment only. Root retains integration and actual visual investigation; verify_charon_delivery_ci follows exact059ca2. Existing unrelated feature/asset/route owners and held operations remain intact.
+- Owner: Source/recovery owners completed scoped work only. Root retains integration and actual visual investigation; verify_charon_delivery_ci follows exact ac67d7. Existing unrelated feature/asset/route owners and held operations remain intact.
 - Evidence: Published 1c450: root121, independent asset170 plus native probes, route46+32. Route-only 7d9 with OLD model delivered original six at tick6068/consumed6069 (~101.15s), 6,069 every-tick checks min20.671799WU/no penetration, hull200/180 unchanged. Not final combined-tree route proof; conservative moved-stock recovery remains unaccepted.
-- Next: Use actual successor CI/pixels to evaluate the correction while preserving original stock, actors, claims and truthful states. Keep public-API reproduction evidence separate from actual runtime cause/cure and whole-world acceptance.
+- Next: Evaluate actual successor evidence while preserving original stock, actors, claims and truthful states. Exact resident-plan no-op bypass retains serial handling for missing/evicted plans under the existing predicate; registry eviction removal means no exhaustive live-eviction proof.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
 
 ## SF-SECTOR-COHERENCE
@@ -75,5 +75,5 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: OPEN. Bounded Vesta and Charon native evidence remains scoped. Phoebe now has a published connected journal/board/physical-return/filed-artifact path with real note progress and no repeat payment; this is not whole-sector or ordinary-route acceptance. Actual Charon images reveal missing/loading meshes and unacceptable readability.
 - Owner: Root coordinates sector review. map_sector_experience_coherence owns SECTOR_EXPERIENCE_REGISTER_2026-10-21.md; current gameplay/story/source owners retain their paths.
 - Evidence: Public register in https://github.com/coldshalamov/SpaceFace/commit/cb0657c0542e0a5bb2cbb593c092a773f0c5e504 ; initial counts remain inventory rather than runtime proof. User authorization and reminder update remain recorded in EXECUTION_STATUS.md.
-- Next: Follow exact successor evidence without inferring runtime visual cure from software-transition tests. Preserve original colony stock/crew/history, selective first-flight policy and remaining holds. Ordinary gameplay/performance, visuals and all nine larger goals remain open.
+- Next: Use actual successor observations to resolve remaining hidden-colony and visual-owner questions. Keep diagnostic attribution separate from acceptance; ordinary gameplay/performance, visual quality, original larger scope and held operations remain open.
 - Awaiting user: no optional input pending; proceed with the authorized inventory and review.
