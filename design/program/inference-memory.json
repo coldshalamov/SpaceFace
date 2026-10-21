@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "salvage-watch-362",
-      "date": "2026-10-03",
-      "wf": "WF-08",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the station answers a lane mayday with a yard tug you defend, rob, or lose - raiders escalate onto the rescue and every outcome makes news",
-      "fingerprint": "verb=defend,subject=repair-tender,sector=fringe-lane,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "7210f1c5b1817c781463f2858bbb9c256f15801b",
-      "verification": "focused_green"
-    },
-    {
       "id": "grandee-transit-365",
       "date": "2026-10-03",
       "wf": "WF-11",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "9fea1c550",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-39-photo-look-gated-on-graph",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Photo Look button absent on the default bloom route; present and working on the render-graph route",
+      "fingerprint": "verb=show,subject=photo-look,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "e1769cbed",
       "verification": "focused_green"
     }
   ],
