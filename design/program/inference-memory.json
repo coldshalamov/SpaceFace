@@ -114,45 +114,6 @@
   ],
   "units": [
     {
-      "id": "answerable-maydays",
-      "date": "2026-10-03",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Causal survivor pods emit one mayday hail and player-towed rescues pay a 420cr salvage fee with a receipt",
-      "fingerprint": "verb=rescue,subject=survivor-pods,sector=aftermath,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "c277e8357",
-      "verification": "focused_green"
-    },
-    {
-      "id": "ending-archive-entry",
-      "date": "2026-10-03",
-      "wf": "WF-18",
-      "mode": "recovery",
-      "verdict": "implemented",
-      "reason": "The ending archive becomes player-reachable via a gated pause-menu entry (last dead world-seam intent wired)",
-      "fingerprint": "verb=open,subject=ending-archive,sector=pause,domain=wf-18",
-      "references": [],
-      "integration": "live",
-      "commit": "f1e895529",
-      "verification": "focused_green"
-    },
-    {
-      "id": "adventure-kill-replay-tape",
-      "date": "2026-10-03",
-      "wf": "WF-17",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Adventure flight publishes the last 30s tape (ticks, boost burns, kill/stunt marks) to the pause Replay surface, which previously always read NO TAPE YET",
-      "fingerprint": "verb=rewatch,subject=kill-tape,sector=flight,domain=wf-17",
-      "references": [],
-      "integration": "live",
-      "commit": "b3cdd5f76",
-      "verification": "focused_green"
-    },
-    {
       "id": "ending-archive-regate",
       "date": "2026-10-03",
       "wf": "WF-18",
@@ -1671,6 +1632,45 @@
       "references": [],
       "integration": "live",
       "commit": "b2f7bffde",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-03-one-hostile",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "stored=1 reads 'One hostile', stored=3 reads 'Three hostiles'; covered by rc-456 suite",
+      "fingerprint": "verb=say,subject=surge-count,sector=swarm,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "9bf40c366",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-04-no-item-text",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Credit chips read '+N cr'; no 'Item' string in pickup text; covered by rc-456 suite",
+      "fingerprint": "verb=see,subject=pickup-text,sector=swarm,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "9bf40c366",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-01-no-aftermath-in-swarm",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "liveSurvivalRun gates the aftermath card and its choices emit; keys 1-2 stay Charge/Blast in Swarm; covered by rc-456 suite",
+      "fingerprint": "verb=block,subject=aftermath-card,sector=swarm,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "9bf40c366",
       "verification": "focused_green"
     }
   ],
