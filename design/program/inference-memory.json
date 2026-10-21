@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "pocket-meteor-passage",
-      "date": "2026-10-13",
-      "wf": "WF-03",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A rare unpowered asteroid now crosses the player's pocket on a ballistic chord — chase it, watch it, or crack it for ordinary ore through the real mining path; one at a time, schedule survives saves, never becomes a durable field row",
-      "fingerprint": "verb=chase,subject=passing meteor,sector=any pocket,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "e6bbb1720894c7d3d6c8d14af66db6a4c08a372c",
-      "verification": "focused_green"
-    },
-    {
       "id": "ceres-chain-dock-log",
       "date": "2026-10-13",
       "wf": "WF-09",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "9022ec2cb",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-37-verb-modules-on-hull",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "verb modules bypass the outfit floor and mount on integrated Forge bodies",
+      "fingerprint": "verb=fit,subject=module,sector=hull,domain=rc-37",
+      "references": [],
+      "integration": "live",
+      "commit": "b7fe0819c",
       "verification": "focused_green"
     }
   ],
