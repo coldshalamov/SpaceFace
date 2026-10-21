@@ -540,6 +540,183 @@ export function freightDigest(intentsOrManifests) {
   return hash32(...list.map((x) => stableSerialize(x))) >>> 0;
 }
 
+// ── market play: shares, slips, chute, auditor, cold chain (R480) ───────────────────────────
+//
+// These are the pure numbers and identities behind the market's playable instruments. As with
+// the rest of this module they write nothing: economy.js owns the stake, the payout, the stock,
+// and the persistence; the market screen only reads these rows and emits intents.
+
+export const MARKET_PLAY_SCHEMA_ID = 'spaceface.marketPlay.v1';
+
+/** A share stakes part of a named freighter's lot and pays only if that lot lands. */
+export const CONVOY_SHARE_LAW = Object.freeze({
+  stakeFracOfLot: 0.12,
+  stakeMinCr: 25,
+  stakeMaxCr: 2500,
+  payoutMult: 1.75,
+  windowS: 1800,
+  maxOpen: 8,
+  maxSettled: 32,
+});
+
+/** A slip buys a locked berth price for a quantity riding one named freighter. */
+export const FORWARD_SLIP_LAW = Object.freeze({
+  feeFrac: 0.04,
+  feeMinCr: 10,
+  qtyMin: 1,
+  qtyMax: 400,
+  windowS: 1800,
+  maxOpen: 8,
+  maxSettled: 32,
+});
+
+/** The Dump Chute pays under the counter price for a pod and feeds the receiving market. */
+export const POD_INTAKE_LAW = Object.freeze({
+  payFrac: 0.72,
+  minQty: 1,
+  maxQty: 500,
+  maxAccepted: 64,
+  reachWU: 16000,
+});
+
+/** Auditor Halvard Penn watches the chute: every accepted pod raises the next sweep's odds. */
+export const MARKET_AUDIT_LAW = Object.freeze({
+  baseMult: 1,
+  perPodMult: 0.35,
+  capMult: 3.5,
+  tallyWindowS: 1800,
+});
+
+/** A freighter lost with cold goods spoils the berth's perishable stock for a while. */
+export const COLD_CHAIN_LAW = Object.freeze({
+  spoilFracPerTick: 0.10,
+  minSpoilU: 1,
+  maxSpoilU: 60,
+  windowS: 900,
+  maxStations: 12,
+});
+
+export const COLD_CHAIN_CATEGORIES = Object.freeze(['food', 'med']);
+
+/** True when this commodity definition must ride the cold chain (perishable or biohazard). */
+export function isColdChainCommodity(def) {
+  if (!def || typeof def !== 'object') return false;
+  if (def.biohazard === true) return true;
+  return COLD_CHAIN_CATEGORIES.includes(def.category);
+}
+
+export function stableShareId(seed, stationId, freighterKey, dockSeq) {
+  return `csh_${stableFreightTag(seed >>> 0 || 1, 'convoy-share', stationId, freighterKey, dockSeq | 0)}`;
+}
+
+export function stableSlipId(seed, stationId, freighterKey, commodityId) {
+  return `fsl_${stableFreightTag(seed >>> 0 || 1, 'forward-slip', stationId, freighterKey, commodityId)}`;
+}
+
+/** Quote a share on one inbound lot. Stake is a bounded fraction of the lot's counter value. */
+export function quoteConvoyShare(opts = {}) {
+  const law = CONVOY_SHARE_LAW;
+  const value = Math.max(0, Math.round(Number(opts.manifestValueCr) || 0));
+  const frac = Number.isFinite(Number(opts.stakeFrac)) ? clamp(Number(opts.stakeFrac), 0, 1) : law.stakeFracOfLot;
+  const minCr = Math.max(0, Math.round(Number(opts.minCr != null ? opts.minCr : law.stakeMinCr) || 0));
+  const maxCr = Math.max(minCr, Math.round(Number(opts.maxCr != null ? opts.maxCr : law.stakeMaxCr) || 0));
+  const stakeCr = value > 0 ? Math.min(maxCr, Math.max(minCr, Math.round(value * frac))) : 0;
+  return Object.freeze({ stakeCr, payoutCr: convoySharePayoutCr({ stakeCr }), manifestValueCr: value });
+}
+
+export function convoySharePayoutCr(opts = {}) {
+  const stake = Math.max(0, Number(opts.stakeCr) || 0);
+  return Math.max(0, Math.round(stake * CONVOY_SHARE_LAW.payoutMult));
+}
+
+/** Quote a slip: the fee, the locked price, and the notional it covers. */
+export function quoteForwardSlip(opts = {}) {
+  const law = FORWARD_SLIP_LAW;
+  const lockedBuyCr = Math.max(0, Math.round(Number(opts.lockedBuyCr) || 0));
+  const qty = clamp(Math.floor(Number(opts.qty) || 0), 0, law.qtyMax);
+  const notionalCr = Math.max(0, Math.round(lockedBuyCr * qty));
+  const feeCr = qty > 0 && lockedBuyCr > 0
+    ? Math.max(law.feeMinCr, Math.round(notionalCr * law.feeFrac))
+    : 0;
+  return Object.freeze({ qty, lockedBuyCr, notionalCr, feeCr });
+}
+
+/** A slip pays the gap between the locked price and the price the lot actually lands at. */
+export function settleForwardSlip(opts = {}) {
+  const locked = Number(opts.lockedBuyCr) || 0;
+  const arrival = Number(opts.arrivalBuyCr) || 0;
+  const qty = Math.max(0, Math.floor(Number(opts.qty) || 0));
+  if (!(qty > 0) || !(locked > 0) || !(arrival > 0)) return 0;
+  return Math.max(0, Math.round((locked - arrival) * qty));
+}
+
+/** What the chute pays for one pod: the berth's sell quote at the documented discount. */
+export function podIntakeValueCr(opts = {}) {
+  const law = POD_INTAKE_LAW;
+  const unitPriceCr = Math.max(0, Number(opts.unitPriceCr) || 0);
+  const qty = Math.max(0, Math.floor(Number(opts.qty) || 0));
+  const frac = Number.isFinite(Number(opts.payFrac)) ? clamp(Number(opts.payFrac), 0, 1) : law.payFrac;
+  return Math.max(0, Math.round(unitPriceCr * qty * frac));
+}
+
+/** Penn's scan odds at a berth: one chute dump is a lead, five is a pattern. */
+export function auditorScanMultiplier(dumpTally) {
+  const law = MARKET_AUDIT_LAW;
+  const tally = Math.max(0, Number(dumpTally) || 0);
+  return Math.min(law.capMult, law.baseMult + tally * law.perPodMult);
+}
+
+/** Units of perishable stock that rot out of a listing on one economy tick. */
+export function coldChainSpoilQty(stock, frac) {
+  const law = COLD_CHAIN_LAW;
+  const units = Math.max(0, Number(stock) || 0);
+  const rate = Number.isFinite(Number(frac)) ? clamp(Number(frac), 0, 1) : law.spoilFracPerTick;
+  if (!(units > 0) || !(rate > 0)) return 0;
+  return Math.min(law.maxSpoilU, Math.max(law.minSpoilU, Math.round(units * rate)));
+}
+
+/**
+ * Inbound lanes the berth can quote a share or a slip against: live freighter records already
+ * targeted at this station, read straight out of `state.traffic.freighters`. Pure and read-only.
+ * `opts.unitPriceFor(commodityId)` prices each line for the lot's counter value (the market screen
+ * passes the berth's own sell quote).
+ */
+export function inboundFreightLanes(state, stationId, opts = {}) {
+  const limit = Math.max(1, Math.min(8, Number(opts.limit) || 6));
+  const freighters = state && state.traffic && Array.isArray(state.traffic.freighters)
+    ? state.traffic.freighters
+    : [];
+  const priceFor = typeof opts.unitPriceFor === 'function' ? opts.unitPriceFor : null;
+  const lanes = [];
+  for (const rec of freighters) {
+    if (!rec || rec.targetId !== stationId) continue;
+    const manifest = rec.manifest;
+    if (!manifest || !Array.isArray(manifest.lines) || !manifest.lines.length) continue;
+    const lines = [];
+    for (const line of manifest.lines) {
+      const commodityId = line && line.commodityId;
+      const qty = Math.max(0, Math.round(Number(line && line.qty) || 0));
+      if (!commodityId || qty <= 0) continue;
+      lines.push({ commodityId, qty });
+    }
+    if (!lines.length) continue;
+    const cargoValueCr = priceFor
+      ? lines.reduce((sum, line) => sum + Math.max(0, Math.round(Number(priceFor(line.commodityId)) || 0)) * line.qty, 0)
+      : 0;
+    lanes.push({
+      freighterKey: String(rec.id),
+      role: rec.role || 'hauler',
+      manifestId: manifest.manifestId || null,
+      dockSeq: rec.dockSeq | 0,
+      lines,
+      totalQty: lines.reduce((sum, line) => sum + line.qty, 0),
+      cargoValueCr,
+    });
+  }
+  lanes.sort((a, b) => a.freighterKey.localeCompare(b.freighterKey));
+  return lanes.slice(0, limit);
+}
+
 // ── internals ───────────────────────────────────────────────────────────────────────────────
 
 function toIdSet(applied) {
