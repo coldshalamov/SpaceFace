@@ -42,6 +42,20 @@ const expected = Object.freeze({
   bindingId: 'hull_core',
 });
 
+test('Ashline cohort qualification pins the requalified package, unchanged bank and source seals', () => {
+  assert.equal(packageManifest.assetId, 'sf.render.ashline-dart');
+  assert.equal(packageManifest.contentHash, '6aae8369e318d6ae16db20bfc3b5f395f615370ac48ff7f6d222f7e8575698e2');
+  assert.equal(ref.sha256, '89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e');
+  assert.equal(createHash('sha256').update(bankBytes).digest('hex'), ref.sha256);
+  assert.equal(bankBytes.byteLength, 7249);
+  assert.equal(ref.rigId, 'hull');
+  assert.equal(JSON.parse(bankText).sourceGlbSha256, '480837e7a054dbee7ecf49b9ffc7fab7270ead958e17531b8c1b5022f98fb489');
+  const sourceBytes = readFileSync(SHIP_FILE);
+  assert.equal(sourceBytes.byteLength, 891524);
+  assert.equal(createHash('sha256').update(sourceBytes).digest('hex'), '7cd7680caac82056c10644e433e40057e5f94ff2b2ac9290c7c6f03805a557c8');
+  assert.equal(packageManifest.provenance.sourceGlb.sha256, '7cd7680caac82056c10644e433e40057e5f94ff2b2ac9290c7c6f03805a557c8');
+});
+
 async function verifiedBank(bytes = bankBytes) {
   return loadMotionBank(ref, async () => ({
     ok: true,
@@ -273,6 +287,12 @@ test('the default renderer admits one verified live writer and keeps overlapping
     assert.equal(isRigidOpaqueAshlineCohortRoot(owner, boundary), true);
     assert.equal(isRigidOpaqueDefaultCohortSource(owner, hull), true);
     assert.equal(isRigidOpaqueDefaultCohortSource(owner, hullLod1), true);
+    packageRoot.userData.spacefaceRenderPackage.contentHash = 'f'.repeat(64);
+    assert.equal(isRigidOpaqueDefaultCohortSource(owner, hull), false,
+      'a changed package hash stays excluded by the renderer even with a valid bank');
+    assert.equal(isRigidOpaqueDefaultCohortSource(owner, hullLod1), false);
+    packageRoot.userData.spacefaceRenderPackage.contentHash = expected.packageContentHash;
+    assert.equal(isRigidOpaqueDefaultCohortSource(owner, hull), true);
     assert.equal(isAttestedRigidMotionOwner(fixture.motion, hull, expected), true);
     assert.equal(isRigidOpaqueBatchableSurface(hull, hull.userData.spacefaceTags || {}, {
       isTransformOnlySource: (source) => isRigidOpaqueDefaultCohortSource(owner, source),
