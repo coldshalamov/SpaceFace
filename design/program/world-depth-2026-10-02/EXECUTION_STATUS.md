@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 11:11 UTC
+
+All nine goals remain OPEN. [PR #483](https://github.com/coldshalamov/SpaceFace/pull/483) now preserves head `ae1ac8c951c091c581206747612d771cfc828fb2`, tree `3b93809880250ac1e02c2aea0f233191eb135281`, sole 2991 parent, verified at 11:01:54 UTC. This is package registration only: both payload suites move from the skipped feel/attack-spec group to independent runtime-maturity. Source remains 2991; actual successor execution is pending. Actual 2991 browser47-A binding/live-entity/safety checks passed before the known 16 stale-preload 404s.
+
+Actual PR480 db576 full route and original forecast tests pass. Aggregate CI is terminal FAILURE with eight failed jobs and browser3 cancelled; 11 unrelated runtime failures remain. No full visual or aggregate acceptance is claimed.
+
+build_charon_crew_supply uses validated public integration tree `7109c3829a615a118ea63534b99bc1d9891ca711`, joining actual public c132 with PR4832991. Integration passes 89/89 checks and 1,636 unique module hashes, without private ancestry. The package-only ae1 registration must be reconciled at seal.
+
+The ordinary unanchored persistent source holds six units of Silt: explicitly abandoned intact stock at the evacuated colony, not a paid resident shipment. Its new ownership is authored before canonical spawn; later claims are preserved. Asset review selects the existing radius-three / six-WU pod, not a new mesh.
+
+Native collection and a provisional 23.3-second delivery occurred, but are NOT final proof. Between-round admission and finite-custody review defects are being corrected. The next round must consume air once only after actual original-job admission, retaining staged reserve on failure and inventing no output. Approved narrow additional hooks are aftermathWrecks for finite residue, mining for real split lineage, and a comment-only sectorActivityPockets change.
+
+Work-in-progress source/tests, failed attempts and provisional proof have been preserved and verified by read-back outside disposable execution storage. Next: resolve review defects, prove admission-coupled one-time consumption and reserve preservation, reconcile package registration at seal, then qualify the exact native chain before publication. Keep actual successor CI separate. Only the two shared handoff/goal files change; NOW and implementation remain untouched, and no private recovery identifiers are published.
+
 ## Active connected unit — 21 October 2026, 10:50 UTC
 
 All nine goals remain OPEN. The next reserved living-world increment activates the existing authored but inert Charon air-pod → original charon_colony_hauler → original charon_colony_salvor physical finite-supply chain. The visiting salvage crew pauses, receives actual supply and resumes its existing cutting route. No implementation or native-delivery success is claimed yet.
