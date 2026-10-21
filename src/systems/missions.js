@@ -88,7 +88,7 @@ import {
   setPieceFollowOnBody,
   setPieceFollowOnOffer,
 } from '../data/sandboxSetPieceFollowOns.js';
-import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
+import { settleContractClauses, unsatisfiedRequiredConditions, contractTermById } from '../data/contractClauses.js';
 import { stationMinRepFor } from '../data/dockDeny.js';
 import { stationBerthAdmits, stationBerthRefusal } from '../data/frontierRumors.js';
 import {
@@ -137,7 +137,13 @@ import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { attachClauses, attachConditions } from './contractClauses.js';
+import {
+  attachClauses,
+  attachConditions,
+  clauseGambitMeta,
+  reconstructClauseGambitOffer,
+  CLAUSE_GAMBIT_SOURCE,
+} from './contractClauses.js';
 import { rankFromRep, rankTitleForStep } from './factions.js';
 import { isFragileCommodity } from './fragileCargo.js';
 import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
@@ -1797,6 +1803,7 @@ export const missions = {
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
     bus.on('race:reset', () => this._resetAuthoredRace());
+    bus.on('race:restart', () => this._restartAuthoredRace());
     bus.on('race:abort', () => this._dnfAuthoredRaces('race_aborted'));
     bus.on('game:exitToMenu', () => { this._dnfAuthoredRaces('race_aborted'); this._racingOpponents?.stop('menu'); this._racingSetPieces?.stop('menu'); resetRacingGhostSession(this.state); });
     bus.on('save:restoring', () => { this._racingOpponents?.stop('restore'); this._racingSetPieces?.stop('restore'); resetRacingGhostSession(this.state); });
@@ -4030,8 +4037,24 @@ export const missions = {
       && state.missions.active.some((mission) => (
         mission && mission.id === retiringMissionId && mission.status === 'active'
       ));
-    const { offer, board } = this._findOffer(missionId);
+    const { offer: foundOffer, board } = this._findOffer(missionId);
+    let offer = foundOffer;
     if (!offer) return false;
+    // Rebuild premium terms before any saved fields can select another acceptance path.
+    if (offer.source === CLAUSE_GAMBIT_SOURCE) {
+      const rebuilt = reconstructClauseGambitOffer(offer, state.missions.boards, this._epoch());
+      if (!rebuilt) {
+        if (board && Array.isArray(board.slots)) {
+          board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+        }
+        this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+        this.bus.emit('toast', {
+          text: 'Those contract terms are no longer available', kind: 'warn', ttl: 4,
+        });
+        return false;
+      }
+      offer = rebuilt;
+    }
     // A row can remain displayed across a refresh boundary. Revalidate its own published
     // window before collateral, freight, or branch selection can commit the stale contract.
     if (Number.isFinite(offer.expiresAtEpoch) && offer.expiresAtEpoch <= this._epoch()) {
@@ -4112,7 +4135,12 @@ export const missions = {
     // or sealed-manifest cargo write can expose a half-selected route to synchronous listeners.
     const withdrawnSetPiece = setPieceCauseOf(offer)
       ? this._withdrawSetPieceChoiceOffers(offer) : [];
-    if (!setPieceCauseOf(offer) && board) board.slots = board.slots.filter((o) => o.id !== offer.id);
+    // RC-467: a Clause Gambit alternative and the offer it was built from are ONE choice. Accepting
+    // either version withdraws both across every board, keeping their positions for a restore.
+    const withdrawnGambit = setPieceCauseOf(offer) ? [] : this._withdrawClauseGambitPair(offer);
+    if (!setPieceCauseOf(offer) && !withdrawnGambit.length && board) {
+      board.slots = board.slots.filter((o) => o.id !== offer.id);
+    }
     if (inst.preloadedCargo && inst.params && inst.params.cmdtyId) {
       const sealedQty = Math.max(1, Math.floor(Number(inst.params.qty) || 1));
       // The reservation lives on the contract, not in a second inventory. It is visible
@@ -4124,6 +4152,7 @@ export const missions = {
       if (loaded < sealedQty) {
         if (loaded > 0) removeCargo(state, inst.params.cmdtyId, loaded);
         if (withdrawnSetPiece.length) this._restoreWithdrawnSetPieceOffers(withdrawnSetPiece);
+        else if (withdrawnGambit.length) this._restoreWithdrawnBoardOffers(withdrawnGambit);
         else if (board && !board.slots.some((candidate) => candidate.id === offer.id)) board.slots.unshift(offer);
         this.bus.emit('toast', { text: 'Cargo hold cannot receive the sealed manifest', kind: 'error', ttl: 3 });
         return false;
@@ -4330,6 +4359,74 @@ export const missions = {
       if (row.board.slots.some((candidate) => candidate && candidate.id === row.offer.id)) continue;
       row.board.slots.splice(Math.min(row.index, row.board.slots.length), 0, row.offer);
     }
+  },
+
+  /**
+   * RC-467 — a Clause Gambit alternative and the offer it was built from are ONE board choice.
+   * Taking either withdraws both, across EVERY board (the alternative always posts to the base's own
+   * board, but a moved or duplicated row must not survive as a clickable dead option while its pair
+   * is in flight). Original positions are recorded so a failed sealed-cargo load can put the pair
+   * back exactly where the player saw it.
+   */
+  _withdrawClauseGambitPair(selectedOffer) {
+    const withdrawn = [];
+    const selectedMeta = clauseGambitMeta(selectedOffer);
+    const baseId = selectedMeta && typeof selectedMeta.baseOfferId === 'string'
+      ? selectedMeta.baseOfferId : null;
+    for (const board of Object.values(this.state.missions.boards || {})) {
+      if (!board || !Array.isArray(board.slots)) continue;
+      const kept = [];
+      let changed = false;
+      for (let index = 0; index < board.slots.length; index++) {
+        const candidate = board.slots[index];
+        if (!candidate) { kept.push(candidate); continue; }
+        const candidateMeta = clauseGambitMeta(candidate);
+        const isClicked = candidate.id === selectedOffer.id;
+        const isItsAlternative = !!(candidateMeta && candidateMeta.baseOfferId === selectedOffer.id);
+        const isItsBase = baseId != null && candidate.id === baseId;
+        if (isClicked || isItsAlternative || isItsBase) {
+          withdrawn.push({ board, offer: candidate, index });
+          changed = true;
+          continue;
+        }
+        kept.push(candidate);
+      }
+      if (changed) board.slots = kept;
+    }
+    return withdrawn;
+  },
+
+  /** Position-preserving restore shared by the atomic-choice withdrawals (set piece + gambit pair). */
+  _restoreWithdrawnBoardOffers(withdrawn) {
+    for (const row of [...withdrawn].sort((a, b) => a.index - b.index)) {
+      if (!row || !row.board || !Array.isArray(row.board.slots) || !row.offer) continue;
+      if (row.board.slots.some((candidate) => candidate && candidate.id === row.offer.id)) continue;
+      row.board.slots.splice(Math.min(row.index, row.board.slots.length), 0, row.offer);
+    }
+  },
+
+  /**
+   * RC-467 — missions-owned removal seam for other owners that may read boards but must not mutate
+   * them. The clause observer prunes orphaned Clause Gambit alternatives through this method (a
+   * base accepted elsewhere, expired, or no longer eligible leaves the premium row dead). Sweeps
+   * every board and returns how many rows went; publishes the board change once.
+   */
+  pruneBoardOffers(predicate) {
+    if (typeof predicate !== 'function') return 0;
+    const boards = this.state.missions.boards;
+    if (!boards || typeof boards !== 'object') return 0;
+    let removed = 0;
+    for (const board of Object.values(boards)) {
+      if (!board || !Array.isArray(board.slots)) continue;
+      const kept = [];
+      for (const offer of board.slots) {
+        if (offer && predicate(offer)) { removed += 1; continue; }
+        kept.push(offer);
+      }
+      if (kept.length !== board.slots.length) board.slots = kept;
+    }
+    if (removed > 0) this.bus.emit('mission:updated', { missionId: null });
+    return removed;
   },
 
   /**
@@ -8352,6 +8449,82 @@ export const missions = {
     });
   },
 
+  _restartAuthoredRace() {
+    const active = this.state.missions.active || [];
+    let found = null;
+    for (const mission of active) {
+      if (mission && mission.status === 'active' && mission.type === 'race'
+        && mission.params && mission.params.racingContractId) {
+        found = mission;
+        break;
+      }
+    }
+    if (!found) return;
+    const params = found.params;
+    if (params.raceMode !== 'time-trial') {
+      this.bus.emit('toast', { text: 'Restart is for time trials.', kind: 'info', ttl: 3 });
+      return;
+    }
+    if (Number.isFinite(params.raceElapsedS) || (params.sectionMission
+      && params.phase !== 'grid' && params.phase !== 'chase')) {
+      this.bus.emit('toast', {
+        text: params.sectionMission && params.phase === 'handoff'
+          ? 'Course complete. Dock at the destination; recovery is no longer available.'
+          : 'This run is already finished.',
+        kind: 'info',
+        ttl: 3,
+      });
+      return;
+    }
+    // Same-sector relocation moves only the hull. Keep the attachment and its load intact
+    // until the pilot releases it through the Massline owner; never teleport one rope end.
+    if (this.state.player?.tether?.active) {
+      this.bus.emit('toast', { text: 'Release the Massline before restarting.', kind: 'info', ttl: 3 });
+      return;
+    }
+    const world = this.registry && this.registry.get && this.registry.get('world');
+    if (!world || typeof world.relocatePlayerInSector !== 'function') return;
+    const pose = startLineFor(params);
+    if (!pose) return;
+    if (world.relocatePlayerInSector(pose, { reason: 'race_restart' }) === false) return;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    params.nextGate = 0;
+    params.lap = 0;
+    params.lastLapElapsedS = 0;
+    params.raceOpened = false;
+    params.orderWarnGate = null;
+    params.lapTimesS = [];
+    params.planeSample = null;
+    params.planeSampleSimS = null;
+    params.precisionChain = 0;
+    params.draftTimeS = 0;
+    params.drafting = false;
+    params.resetCount = 0;
+    params.raceFitChanged = false;
+    params.raceInvalidated = false;
+    params.raceElapsedS = null;
+    params.raceClean = false;
+    params.raceCategory = null;
+    if (params.sectionMission) params.phase = 'grid';
+    params.gridUntilSimS = now + (Number(params.gridHoldS) || 0);
+    params.raceStartSimS = null;
+    this._racingOpponents?.stop?.('race_restart');
+    this._racingSetPieces?.stop?.('race_restart');
+    resetRacingGhostSession(this.state);
+    if (this._racingOpponents) this._racingOpponents.update(found);
+    if (this._racingSetPieces) this._racingSetPieces.update(found);
+    this.bus.emit('toast', {
+      text: 'Time trial restarted — clock reset.',
+      kind: 'info',
+      ttl: 3,
+    });
+    this.bus.emit('race:restarted', {
+      racingContractId: params.racingContractId,
+      levelId: params.courseId || null,
+      tick: this.state.tick | 0,
+    });
+  },
+
   /**
    * Authored circuits: grid hold, plane gates, laps, draft/boost/leash. Reached only when
    * params.racingContractId is set, so an FB-066 bubble race never enters.
@@ -9122,8 +9295,36 @@ export const missions = {
       ttl: success ? 8 : 7,
       note: success ? (zeroPayLandmark
         ? 'Field record filed; no credits issued.'
-        : `Paid ${rewardCr.toLocaleString('en-US')} cr.`) : null,
+        : this._missionPaydayNote(m, rewardCr, settlement)) : null,
     });
+  },
+
+  /**
+   * RC-467 — the payday line, itemized only for a Clause Gambit contract:
+   *   "Paid 1,100 cr — base 1,000 cr + Cargo intact 100 cr. Deposit returned: 150 cr."
+   * Every number is read from the settlement `_completeMission` already computed; this helper never
+   * pays, multiplies or rounds into a second authority. A plain contract keeps the shipped
+   * `Paid X cr.` note byte-for-byte.
+   */
+  _missionPaydayNote(m, rewardCr, settlement = {}) {
+    const paidCr = Math.max(0, Math.round(Number(rewardCr) || 0));
+    const plain = `Paid ${paidCr.toLocaleString('en-US')} cr.`;
+    const meta = clauseGambitMeta(m);
+    const clauseSettlement = settlement && settlement.clauseSettlement;
+    if (!meta || !clauseSettlement) return plain;
+    const baseCr = Math.max(0, Math.round(Number(clauseSettlement.baseRewardCr) || 0));
+    const premiumCr = Math.max(0, paidCr - baseCr);
+    const canonical = meta.clauseId ? contractTermById(meta.clauseId) : null;
+    const row = Array.isArray(m.clauses)
+      ? m.clauses.find((term) => term && term.id === meta.clauseId) : null;
+    const label = (row && row.label) || (canonical && canonical.label) || 'Contract term';
+    let line = `Paid ${paidCr.toLocaleString('en-US')} cr — base ${baseCr.toLocaleString('en-US')} cr`;
+    line += premiumCr > 0
+      ? ` + ${label} ${premiumCr.toLocaleString('en-US')} cr.`
+      : '.';
+    const refundCr = Math.max(0, Math.round(Number(settlement.collateralRefundCr) || 0));
+    if (refundCr > 0) line += ` Deposit returned: ${refundCr.toLocaleString('en-US')} cr.`;
+    return line;
   },
 
   _compileSetPieceTransition(mission, outcome, reason = null) {
@@ -9423,7 +9624,17 @@ export const missions = {
       ...(clauseSettlement.unmet.length ? { termsUnmet: [...clauseSettlement.unmet] } : {}),
     });
 
-    this._emitMissionDebrief(m, 'completed', null, { rewardCr: displayRewardCr });
+    this._emitMissionDebrief(m, 'completed', null, {
+      rewardCr: displayRewardCr,
+      // RC-467: the premium and the deposit are itemized from the settlement already computed
+      // above — a gambit contract only, so every other receipt note keeps its shipped shape.
+      ...(clauseGambitMeta(m)
+        ? {
+          clauseSettlement,
+          collateralRefundCr: Math.max(0, Math.round(Number(m.collateral_cr) || 0)),
+        }
+        : {}),
+    });
     const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
       ? `Mission complete: ${m.title} — field record filed; no credits issued.`
       : `Mission complete: ${m.title} +${displayRewardCr} cr${researchPoints > 0 ? ` +${researchPoints} RP` : ''}`;

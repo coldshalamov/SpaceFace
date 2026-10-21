@@ -45,6 +45,7 @@ import {
   OBSERVED_CONTRACT_TERM_EVENTS,
   CLAUSE_IDS,
   contractTermById,
+  settleContractClauses,
 } from '../data/contractClauses.js';
 import {
   MISSION_CONDITIONS,
@@ -212,6 +213,121 @@ function clauseFitsOffer(clause, offer) {
   return false;
 }
 
+// ── CLAUSE GAMBIT (RC-467): the player adds one clause to one posted job ──────────────────────
+// The player's edit is a BOARD CHOICE, not a second mission type: an eligible ordinary job keeps its
+// standard offer and gains ONE clearly named alternative that carries Cargo intact. Accepting either
+// version consumes both (missions owns that atomic withdrawal). The alternative is built by a pure
+// function of the base offer, so accepting never trusts saved reward/quantity/multiplier metadata —
+// it reconstructs the terms from the live base and the canonical catalog.
+//
+// Cargo intact keeps its shipped meaning (no customs confiscation, `player:scannedByPatrol` with
+// `hasContraband`) and its shipped premium (the catalog 1.10 multiplier, applied ONCE by
+// settleContractClauses). Physical cargo damage is not part of this term.
+export const CLAUSE_GAMBIT_SOURCE = 'clauseGambit';
+const CLAUSE_GAMBIT_VERSION = 1;
+const CLAUSE_GAMBIT_CLAUSE_ID = 'cargo_intact';
+// Only the two types whose shipped completion path already handles a sealed manifest and whose
+// breach predicate can actually fire (how-cargo-dies types are out of scope for this slice).
+const CLAUSE_GAMBIT_TYPES = new Set(['cargo_delivery', 'smuggling_run']);
+
+function deepCopyJson(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function fmtCr(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
+}
+
+/** The gambit metadata carried in `offer.params.clauseGambit` / `mission.params.clauseGambit`. */
+export function clauseGambitMeta(record) {
+  const meta = record && record.params && record.params.clauseGambit;
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return null;
+  return meta;
+}
+
+/**
+ * Is this offer an ordinary procedural job a gambit may be built from? A WHITELIST, not a skip list:
+ * only a rolled board offer carries no `source` at all. Every authored/posted family (economyContract,
+ * poiBehavior, salvage, ecology, custodyRecovery, set pieces, mutations, onboarding choices, posted
+ * rows) stamps one, so `source == null` is the procedural signature. Enumerating exclusions instead
+ * would let an `economyContract` alternative outlive `_shortageOfferStale`, which only revalidates
+ * offers that still call themselves `economyContract`.
+ */
+function isClauseGambitEligibleBase(offer) {
+  if (!offer || typeof offer !== 'object' || !offer.id) return false;
+  if (!CLAUSE_GAMBIT_TYPES.has(offer.type)) return false;
+  if (offer.source != null) return false;                          // ordinary procedural roll only
+  if (offer.storyTag != null || offer.storyBranch != null || offer.storyContractId != null) return false;
+  if (offer.campaign47aBeat != null) return false;
+  if (offer.trap && typeof offer.trap === 'object') return false;   // moral traps keep their own board
+  if (offer.cause && typeof offer.cause === 'object') return false; // set-piece / causal chains
+  if (!offer.economyTerms || typeof offer.economyTerms !== 'object') return false;
+  if (offer.stationId === 'station_helios') return false;           // the 47-A teaching board
+  if (Array.isArray(offer.clauses) && offer.clauses.length) return false; // already carries terms
+  if (offer.params && offer.params.clauseGambit != null) return false;
+  return true;
+}
+
+/**
+ * buildClauseGambitOffer(offer) -> a deep-independent copy carrying the Cargo intact clause, or null.
+ *
+ * PURE: the input offer is never mutated, nothing is drawn, nothing is posted. `reward_cr` stays the
+ * BASE payment so settleContractClauses applies the catalog premium exactly once; the quoted payout
+ * in the summary comes from that same settlement function rather than duplicated arithmetic.
+ */
+export function buildClauseGambitOffer(offer) {
+  if (!isClauseGambitEligibleBase(offer)) return null;
+  const canonical = CONTRACT_CLAUSES[CLAUSE_GAMBIT_CLAUSE_ID];
+  if (!canonical) return null;
+  const clauseRow = {
+    id: canonical.id,
+    event: canonical.event,
+    label: canonical.label,
+    prose: canonical.prose,
+    rewardMult: canonical.rewardMult,
+  };
+  const alt = deepCopyJson(offer);
+  alt.id = `${offer.id}:gambit:${CLAUSE_GAMBIT_CLAUSE_ID}`;
+  alt.source = CLAUSE_GAMBIT_SOURCE;
+  alt.params = {
+    ...(alt.params || {}),
+    clauseGambit: {
+      version: CLAUSE_GAMBIT_VERSION,
+      baseOfferId: offer.id,
+      clauseId: CLAUSE_GAMBIT_CLAUSE_ID,
+    },
+  };
+  alt.clauses = [clauseRow];
+  const quote = settleContractClauses(alt);
+  alt.title = `${offer.title} — ${canonical.label}`;
+  alt.summary = `Clause Gambit: add ${canonical.label}. Clean payout ${fmtCr(quote.rewardCr)} cr`
+    + ` instead of ${fmtCr(quote.baseRewardCr)} cr; customs confiscation breaks the contract.`;
+  return alt;
+}
+
+/**
+ * Rebuild a posted gambit alternative from its LIVE base offer — the one accept-side authority.
+ * Returns null for an orphaned (base gone), expired, unsupported-version, moved or tampered
+ * alternative, so a dead row can neither be taken nor pay an invented premium.
+ */
+export function reconstructClauseGambitOffer(offer, boards, epoch = 0) {
+  if (!offer || offer.source !== CLAUSE_GAMBIT_SOURCE) return null;
+  const meta = clauseGambitMeta(offer);
+  if (!meta) return null;
+  if (meta.version !== CLAUSE_GAMBIT_VERSION) return null;
+  if (meta.clauseId !== CLAUSE_GAMBIT_CLAUSE_ID) return null;
+  if (typeof meta.baseOfferId !== 'string' || !meta.baseOfferId) return null;
+  const board = boards && boards[offer.stationId];
+  if (!board || !Array.isArray(board.slots) || !board.slots.includes(offer)) return null;
+  if (Number.isFinite(offer.expiresAtEpoch) && offer.expiresAtEpoch <= epoch) return null;
+  const base = board.slots.find((candidate) => candidate && candidate.id === meta.baseOfferId);
+  if (!base || base.id === offer.id) return null;
+  if (Number.isFinite(base.expiresAtEpoch) && base.expiresAtEpoch <= epoch) return null;
+  const rebuilt = buildClauseGambitOffer(base);
+  if (!rebuilt || rebuilt.id !== offer.id || rebuilt.stationId !== offer.stationId) return null;
+  return rebuilt;
+}
+
 // ── registry SYSTEMS-only entry (event-driven; one breach voice line; never writes credits) ───
 
 export const contractClausesSystem = {
@@ -221,6 +337,10 @@ export const contractClausesSystem = {
     this._state = ctx && ctx.state;
     this._bus = ctx && ctx.bus;
     this._helpers = ctx && ctx.helpers;
+    // RC-467: the gambit alternative is POSTED through the missions owner (missions owns board
+    // arrays); this observer only reads boards and asks for one post/prune.
+    this._registry = ctx && ctx.registry || null;
+    this._syncingClauseGambit = false;
     this._onAccept = (p) => this._onMissionAccepted(p);
     this._onLegacyComplete = (p) => this._onLegacyMissionCompleted(p);
     this._onExpired = (p) => this._onMissionExpired(p);
@@ -263,7 +383,95 @@ export const contractClausesSystem = {
       // contract:clauseHonored inside settlement; this listener just posts its receipt line.
       this._bus.on('mission:expired', this._onExpired);
       this._bus.on('contract:clauseHonored', this._onHonor);
+      // RC-467: board membership changes are the ONLY trigger. `missionId == null` is the board-level
+      // publish (a refresh, a post, a prune); a single-mission update never changes which jobs exist.
+      this._onBoardChanged = (p) => {
+        if (p && p.missionId != null) return;
+        this._syncClauseGambitOffers();
+      };
+      this._onSaveLoaded = () => this._syncClauseGambitOffers();
+      this._bus.on('mission:updated', this._onBoardChanged);
+      this._bus.on('save:loaded', this._onSaveLoaded);
     }
+    // Cover boards that already exist (a load, or a warm boot) exactly once, after the
+    // subscriptions are installed so a synchronous post cannot be missed.
+    this._syncClauseGambitOffers();
+  },
+
+  _missionsOwner() {
+    const registry = this._registry;
+    if (!registry || typeof registry.get !== 'function') return null;
+    const owner = registry.get('missions');
+    return owner && typeof owner === 'object' ? owner : null;
+  },
+
+  _missionEpoch(missions) {
+    if (missions && typeof missions._epoch === 'function') {
+      try {
+        const epoch = missions._epoch();
+        if (Number.isFinite(epoch)) return epoch;
+      } catch (_) { /* fall through to 0 — no expiry filtering rather than a wrong sweep */ }
+    }
+    return 0;
+  },
+
+  /**
+   * RC-467 — keep every board carrying exactly one valid Clause Gambit alternative.
+   *
+   * Runs on the missions owner's own board publication (`mission:updated` with `missionId == null`)
+   * and once on `save:loaded`; never on a tick, a timer, or a fresh RNG draw. Stable order: boards by
+   * station id, candidate bases by offer id. Posting is deferred to `missions.postBoardOffer` and
+   * pruning to `missions.pruneBoardOffers` — this observer never mutates a board array itself.
+   *
+   * `_syncingClauseGambit` is the reentrancy guard: `postBoardOffer`/`pruneBoardOffers` publish
+   * synchronously, which would otherwise call straight back into this method.
+   */
+  _syncClauseGambitOffers() {
+    if (this._syncingClauseGambit) return false;
+    const state = this._state;
+    if (!state || !state.missions) return false;
+    const missions = this._missionsOwner();
+    if (!missions || typeof missions.postBoardOffer !== 'function') return false;
+    const boards = state.missions.boards;
+    if (!boards || typeof boards !== 'object') return false;
+    const epoch = this._missionEpoch(missions);
+
+    this._syncingClauseGambit = true;
+    let posted = 0;
+    try {
+      // Sweep first: an alternative whose base is gone, expired or no longer eligible must not stay
+      // clickable until the next epoch refresh.
+      if (typeof missions.pruneBoardOffers === 'function') {
+        missions.pruneBoardOffers((offer) => (
+          offer && offer.source === CLAUSE_GAMBIT_SOURCE
+          && !reconstructClauseGambitOffer(offer, boards, epoch)
+        ));
+      }
+      for (const stationId of Object.keys(boards).sort()) {
+        const board = boards[stationId];
+        if (!board || !Array.isArray(board.slots) || !board.slots.length) continue;
+        // Keep an existing valid alternative (and its board position) rather than re-posting it.
+        if (board.slots.some((offer) => (
+          offer && offer.source === CLAUSE_GAMBIT_SOURCE
+          && reconstructClauseGambitOffer(offer, boards, epoch)
+        ))) continue;
+        const bases = board.slots
+          .filter((offer) => offer && typeof offer.id === 'string')
+          .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+        for (const base of bases) {
+          if (Number.isFinite(base.expiresAtEpoch) && base.expiresAtEpoch <= epoch) continue;
+          const alt = buildClauseGambitOffer(base);
+          if (!alt) continue;
+          const result = missions.postBoardOffer(alt);
+          if (!result || result.ok === false) continue;
+          posted += 1;
+          break; // at most one alternative per board
+        }
+      }
+    } finally {
+      this._syncingClauseGambit = false;
+    }
+    return posted > 0;
   },
 
   /**
@@ -609,6 +817,8 @@ export const contractClausesSystem = {
       if (this._onLegacyComplete) this._bus.off('mission:completed', this._onLegacyComplete);
       if (this._onExpired) this._bus.off('mission:expired', this._onExpired);
       if (this._onHonor) this._bus.off('contract:clauseHonored', this._onHonor);
+      if (this._onBoardChanged) this._bus.off('mission:updated', this._onBoardChanged);
+      if (this._onSaveLoaded) this._bus.off('save:loaded', this._onSaveLoaded);
     }
     if (this._termHandlers) this._termHandlers.clear();
     if (this._honorLogged) this._honorLogged.clear();
@@ -618,6 +828,10 @@ export const contractClausesSystem = {
     this._onLegacyComplete = null;
     this._onExpired = null;
     this._onHonor = null;
+    this._onBoardChanged = null;
+    this._onSaveLoaded = null;
+    this._registry = null;
+    this._syncingClauseGambit = false;
     this._honorLogged = null;
     this._clauseIndexMissions = null;
     this._clauseIndexActive = null;
