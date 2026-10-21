@@ -9,6 +9,7 @@
 import { createGameState } from '../src/core/gameState.js';
 import { createScreenMemory } from '../src/ui/screenMemory.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
+import { CONTRACT_47A_B0_BODY } from '../src/data/narrative.js';
 import { createRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
@@ -123,15 +124,35 @@ function seededState() {
   state.meta.lastSavedAt = '2026-09-15T20:57:46.000Z';
   state.save.currentSlot = 'quick';
   state.ui.trackedMissionId = 'mission_helios_run';
+  // RC-48 — the tracked row is the real opening contract's installed shape, not a
+  // title-only shell: the log then renders its actual terms (pending payment, the
+  // 12.4t mass note, authorization and code) instead of the generic fallbacks.
   state.missions.active = [{
     id: 'mission_helios_run',
     status: 'active',
-    type: 'cargo_delivery',
-    title: 'Contract 47-A: Mass Variance Sample',
+    type: 'salvage_retrieval',
+    title: CONTRACT_47A_B0_BODY.title,
+    summary: CONTRACT_47A_B0_BODY.summary,
+    description: CONTRACT_47A_B0_BODY.fullText,
+    authorization: CONTRACT_47A_B0_BODY.authorization,
     objectiveProgress: 0,
     objectiveTarget: 1,
-    deadline_s: 900,
-    destStationName: 'Helios Gate',
+    deadline_s: null,
+    reward_cr: 0,
+    collateral_cr: 0,
+    riskTier: 0,
+    factionId: null,
+    distance: 600,
+    destStationId: 'station_helios',
+    destSectorId: 'sector_helios_prime',
+    storyTag: 'campaign47a:b0:recovery',
+    campaign47aBeat: 0,
+    params: {
+      cmdtyId: 'cmdty_47a_assay_sample', qty: 1, sampleRecovered: false, samplePos: null,
+      massAcceptT: CONTRACT_47A_B0_BODY.massAcceptT, massDeliverT: CONTRACT_47A_B0_BODY.massDeliverT,
+      authorization: CONTRACT_47A_B0_BODY.authorization, code: CONTRACT_47A_B0_BODY.code,
+      contractId: CONTRACT_47A_B0_BODY.contractId,
+    },
   }];
   // The board the docked station posts: the game's own offers, so the contracts tab is reviewed full.
   state.missions.boards = { station_helios: structuredClone(BENCH_HELIOS_BOARD) };
