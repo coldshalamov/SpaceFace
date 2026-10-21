@@ -4803,6 +4803,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     ventedScars.clear();
   }
 
+  // A seam is a mark the sim owns: when the cell refills (cave-in rubble replaces the tile, and
+  // RUBBLE_TILE carries no vented flag — drill.js applies drillVented only to empty cells), the
+  // scar must die with the flag or a re-bored cell would show a seam the sim sealed over.
+  function removeVentedScar(c, r) {
+    const idx = tileIndex(c, r);
+    const m = ventedScars.get(idx);
+    if (!m) return;
+    gasRoot.remove(m);
+    ventedScars.delete(idx);
+  }
+
   function refreshCells(cells) {
     if (!field) return;
     let touchedColor = false;
@@ -4814,9 +4825,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const idx = tileIndex(col, row);
       const rec = cellRock.get(idx);
       if (tile.type === 'empty') {
+        if (!tile.vented) removeVentedScar(col, row);
         carveCell(col, row);
         continue;
       }
+      removeVentedScar(col, row);
       if (!rec) {
         // Rock came back on a cell the build never instanced — a cave-in can drop rubble into a
         // hall that was already hollow on entry (restored drillCleared cells carry no cellRock
@@ -8375,6 +8388,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const bIdx = tileIndex(p.col, p.row);
       const preTile = field[p.col] && field[p.col][p.row];
       const wasGas = !!p.wasGas || gasByCell.has(bIdx) || !!(preTile && preTile.type === 'gas');
+      // A venting charge emits drill:gasVent immediately before this break — the tile is already
+      // the sim's EMPTY + vented seam, and the soft mint expression already spoke. The violent
+      // breach layer (kick, coral vignette, vapor flood, rover scar, the gasBreach ledger mark)
+      // must not replay on top of it: a vented pocket opened without detonating, by design.
+      const wasVented = !!(preTile && preTile.vented);
       carveCell(p.col, p.row);
       refreshCells(neighborhood(p.col, p.row, 1));
       crackDecal.visible = false;
@@ -8383,7 +8401,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         : (p.type === 'rock' ? '#4a5162' : '#7a6650');
       spawnChunks(x, y, rockColor, motionReduce ? 4 : 8);
       burst({ x, y, count: motionReduce ? 5 : 10, color: '#a78262', life: 0.45, size: 2.8, speed: 60, kind: 'dust', gravity: 55, cone: Math.PI * 2 });
-      if (wasGas) gasBreach(p.col, p.row);
+      if (wasVented) { /* the vent's mint ring and sigh are its whole expression — no fire */ }
+      else if (wasGas) gasBreach(p.col, p.row);
       else firePulseRing(p.col, p.row, 0xffb648, 0.3);
       return;
     }

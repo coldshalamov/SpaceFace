@@ -450,6 +450,8 @@ function chargeRefusalText(reason, cost = CHARGE_COST_CR) {
     case 'cooldown': return 'The boom arm is still retracting.';
     case 'credits': return `A bore charge is ${cost} credits — the wallet is short.`;
     case 'empty': return 'Nothing to break there — the cut is already hollow.';
+    case 'nogas': return 'No gas pocket sits in that cut — a venting charge has nothing to open.';
+    case 'tier': return 'The rock in that cut is too hard for this drill head — the charge cannot crack it.';
     case 'range': return 'The boom arm only reaches the faces beside the rig.';
     default: return 'The charge refuses to seat.';
   }
@@ -1625,7 +1627,7 @@ export const drill = {
       if (col >= 0 && col < COLS && row >= 0 && row < ROWS) cells.push({ col, row });
     };
     if (payload === 'shape') {
-      const av = d.avatar || { col: anchor.col, row: anchor.row };
+      const av = (d && d.avatar) || { col: anchor.col, row: anchor.row };
       let dx = Math.sign(anchor.col - av.col);
       let dy = Math.sign(anchor.row - av.row);
       if (dx !== 0 && dy !== 0) { if (Math.abs(anchor.col - av.col) >= Math.abs(anchor.row - av.row)) dy = 0; else dx = 0; }
@@ -1662,9 +1664,10 @@ export const drill = {
     return false;
   },
 
-  // What a blasted vein would bank — the quote the board shows before the credit moves.
-  _blastYieldQuote(d, yieldU) {
-    const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
+  // What a blasted vein would bank against `budget` — the quote the board shows before the
+  // credit moves. Callers pass the session budget, or a shadow of it already drained by the
+  // veins the same cut would eat first.
+  _blastYieldQuote(d, yieldU, budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity) {
     const avail = Math.min(Math.max(0, Math.floor(Number(yieldU) || 0)), Math.floor(budget));
     return avail > 0 ? Math.max(1, Math.floor(avail * CHARGE_YIELD_FRACTION)) : 0;
   },
@@ -1685,6 +1688,9 @@ export const drill = {
     const cells = [];
     const yields = {};
     let willBreak = 0, gasCount = 0, ventCount = 0, softenCount = 0, tierBlocked = 0, structureBlocked = 0;
+    // A blast debits the rock budget per vein it eats, so the quote must drain the same shadow:
+    // pricing every vein off the full pool over-promises what the detonation can pay.
+    let quoteBudget = Number.isFinite(d.rockBudget) ? d.rockBudget : Number.POSITIVE_INFINITY;
     for (const { col, row } of this._chargePattern(anchor, payload)) {
       const tile = d.field[col] && d.field[col][row];
       // Machine housing is stamped on HOLLOW cells — check the stamp first, or the empty
@@ -1724,8 +1730,11 @@ export const drill = {
       willBreak++;
       cells.push({ col, row, type: tile.type, verdict, ore: tile.ore || null, fault: !!tile.fault, rich: !!tile.rich });
       if (tile.type === 'vein' && tile.ore) {
-        const take = this._blastYieldQuote(d, tile.yieldU);
+        const take = this._blastYieldQuote(d, tile.yieldU, quoteBudget);
         if (take > 0) yields[tile.ore] = (yields[tile.ore] || 0) + take;
+        // settleBlastYield debits the whole avail, not merely the banked fraction — mirror that.
+        const avail = Math.min(Math.max(0, Math.floor(Number(tile.yieldU) || 0)), Math.floor(quoteBudget));
+        if (Number.isFinite(quoteBudget)) quoteBudget = Math.max(0, quoteBudget - avail);
       }
     }
     const inBounds = !!(anchor && anchor.col >= 0 && anchor.col < COLS && anchor.row >= 0 && anchor.row < ROWS);
@@ -1733,7 +1742,13 @@ export const drill = {
     if (!inBounds) reason = 'range';
     else if (d.charge) reason = 'armed';
     else if (d.chargeCooldown > 0) reason = 'cooldown';
-    else if (payload === 'vent' ? ventCount === 0 : payload === 'seismic' ? softenCount === 0 : willBreak === 0) reason = 'empty';
+    else if (payload === 'vent' ? ventCount === 0 : payload === 'seismic' ? softenCount === 0 : willBreak === 0) {
+      // 'empty' is only honest when the cut really is hollow — name the real blocker instead:
+      // solids a vent cannot sip ('nogas'), or breakable rock the head cannot crack ('tier').
+      if (payload === 'vent') reason = cells.some((c) => c.verdict === 'spare') ? 'nogas' : 'empty';
+      else if (payload !== 'seismic' && tierBlocked > 0) reason = 'tier';
+      else reason = 'empty';
+    }
     else if (stock === 0 && credits < cost) reason = 'credits';
     // Danger = the rig's square inside or beside the kill pattern. Vent/seismic never hurt.
     const selfDanger = def.harms && cells.some((c) => Math.abs(c.col - d.avatar.col) <= 1
@@ -2016,9 +2031,15 @@ export const drill = {
     if (beams.length < CAVE_HEADROOM_MIN) return;
     const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
     const fresh = [];
+    let stoodCracked = 0; // beams already cracked BEFORE this check — the escalation witness
     for (const b of beams) {
       const t = field[b.col][b.row];
-      if (t && t.type !== 'empty' && !t.cracked) { t.cracked = true; fresh.push(b); }
+      // Machine housing can terminate a headroom column and count as a beam, but it can never
+      // crack — it must be neither fresh news nor a crack already raised.
+      if (!t || t.type === 'empty') continue;
+      if (t.cracked) { stoodCracked++; continue; }
+      t.cracked = true;
+      fresh.push(b);
     }
     if (fresh.length) {
       this.bus.emit('drill:rockCreak', { cells: fresh.map((b) => ({ col: b.col, row: b.row })), span: runLen });
@@ -2029,20 +2050,23 @@ export const drill = {
       });
     }
     // A beam only falls when the hall keeps growing under cracks it already raised. First contact
-    // warns; widening a cracked span past the fall line is the decision the roof answers.
-    if (runLen < CAVE_SPAN_FALL || beams.length - fresh.length === 0) return;
+    // warns; widening a cracked span past the fall line is the decision the roof answers. The
+    // witness must be a real raised crack — an uncrackable beam (machine housing) is not one.
+    if (runLen < CAVE_SPAN_FALL || stoodCracked === 0) return;
     const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
     const fell = [];
     const dropped = [];
     for (const b of beams) {
       const roof = field[b.col][b.row];
       if (!roof || roof.type === 'empty' || roof.structure) continue;
-      // The roof cell opens; its column of air collapses — the lowest open cell fills.
+      // The roof cell opens; its column of air collapses — the lowest open cell fills. A shaft
+      // open all the way to the field's bottom still has a lowest open cell: the last row.
       let floorRow = -1;
       for (let r = b.row + 1; r < ROWS; r++) {
-        if (!openAt(b.col, r)) { floorRow = r - 1; break; }
+        if (!openAt(b.col, r)) break;
+        floorRow = r;
       }
-      if (floorRow < b.row + 1) continue;
+      if (floorRow < 0) continue;
       field[b.col][b.row] = EMPTY_TILE();
       if (rockEnt && rockEnt.data) recordClearedTile(rockEnt.data, b.col, b.row);
       fell.push({ col: b.col, row: b.row });

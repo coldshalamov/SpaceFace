@@ -156,7 +156,7 @@ export const LENS_CHIPS = Object.freeze({
   fault: { icon: 'fault', word: 'Cracked', tone: 'gold' },   // a fracture plane bores fast
   rich: { icon: 'rich', word: 'Rich seam', tone: 'gold' },
   strained: { icon: 'fault', word: 'Strained', tone: 'coral' }, // a roof beam past its span
-  rubble: { icon: 'blocked', word: 'Rubble', tone: 'coral' },   // fallen roof — bore it again
+  rubble: { icon: 'hazard', word: 'Rubble', tone: 'coral' },   // fallen roof — a blocked way; bore it again
   vented: { icon: 'farm', word: 'Vented seam', tone: 'mint' },  // open pocket — a tap still sips it
 });
 

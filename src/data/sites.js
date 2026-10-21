@@ -209,9 +209,10 @@ export const SITE_RECIPES = [
   },
   {
     // Pressed pucks never enter a lane — they stack on the asteroid as chargeStock the drill
-    // spends before credits. `outOfLane` keeps the fabricator step from asking a store for room.
+    // spends before credits. `outOfLane` keeps the fabricator step from asking a store for room,
+    // and the output id still has to satisfy the planner's lowercase goods-id rule.
     id: 'sr_press_charge', machine: 'sm_charge_press', name: 'Press Bore Charge',
-    inputs: { cmdty_refined_metals: 1, cmdty_fuel_cells: 1 }, output: { chargePuck: 1 },
+    inputs: { cmdty_refined_metals: 1, cmdty_fuel_cells: 1 }, output: { charge_puck: 1 },
     buildS: 60, outOfLane: true,
   },
 ];

@@ -461,4 +461,59 @@ function stepSeconds(state, s) {
   console.log(JSON.stringify({ ok: true, section: 'verb-grammar', calls }));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. The quote never lies twice: veins are priced against the budget as the
+//    detonation will actually find it — drained cell by cell — and a refused
+//    plant names the real blocker, not "already hollow".
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const { state, bus } = setup();
+  park(state, 14, 5, 'down');
+  fillPattern(state, 14, 6, vein(10));          // nine 10u veins in the cut
+  const d = state.drill;
+  d.rockBudget = 4;                             // the rock can only give up 4 units this visit
+  d.rockBudgetMax = 4;
+  const yields = [];
+  bus.on('drill:yield', (p) => yields.push(p));
+
+  drill.armCharge();
+  const pv = drill.chargePreview();
+  const firstTake = Math.max(1, Math.floor(4 * CHARGE_YIELD_FRACTION));
+  assert.equal(pv.yields[ORE], firstTake,
+    `the quote drains the budget like the detonation, not nine full-price veins (${pv.yields[ORE]})`);
+  assert.ok(drill.plantCharge());
+  stepSeconds(state, CHARGE_FUSE_S + 0.1);
+  const banked = yields.reduce((s, y) => s + y.qty, 0);
+  assert.equal(banked, pv.yields[ORE], 'the blast banks exactly what the board quoted');
+
+  // Refusals name the real blocker.
+  const s2h = setup(770010);
+  const warns2 = [];
+  s2h.bus.on('drill:warn', (p) => warns2.push(p));
+  const s2 = s2h.state;
+  park(s2, 14, 5, 'down');
+  fillPattern(s2, 14, 6, rock());
+  s2.drill.chargePayload = 'vent';
+  const pvVent = drill.chargePreview();
+  assert.equal(pvVent.ok, false);
+  assert.equal(pvVent.reason, 'nogas', 'a venting charge on solid rock has nothing to open');
+  assert.equal(drill.plantCharge(), false);
+  assert.ok(warns2.at(-1).text.includes('gas pocket'), 'the refusal names the missing pocket');
+
+  const s3h = setup(770011);
+  const warns3 = [];
+  s3h.bus.on('drill:warn', (p) => warns3.push(p));
+  const s3 = s3h.state;
+  park(s3, 14, 5, 'down');
+  fillPattern(s3, 14, 6, vein(10, 9));          // every cell above the drill head
+  s3.drill.chargePayload = 'blast';
+  const pvTier = drill.chargePreview();
+  assert.equal(pvTier.ok, false);
+  assert.equal(pvTier.reason, 'tier', 'an all-blocked cut refuses as too hard, not as hollow');
+  assert.equal(pvTier.tierBlocked, 9);
+  assert.equal(drill.plantCharge(), false);
+  assert.ok(warns3.at(-1).text.includes('drill head'), 'the refusal names the head that fails');
+  console.log(JSON.stringify({ ok: true, section: 'quote-and-refusals' }));
+}
+
 console.log('drill-bore-charge: all assertions passed');

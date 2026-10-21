@@ -964,12 +964,14 @@ test('§12 thermalLoad degenerates in the HOT direction', () => {
 
 // ============================================================= 13. UNWIRED
 
-test('§13 only the exterior-fin owner imports this kernel', () => {
-  // The kernel stayed unwired so landing it could not move a golden. BORE-03 is the
-  // reader: exterior vanes. Any other src importer is still a defect.
+test('§13 only the fin owner and the site-production owner import this kernel', () => {
+  // The kernel landed unwired so it could not move a golden; Asteroid Works then wired it
+  // deliberately: BORE-03's reader welds bands to exterior vanes (worldSiteRuntime), and the
+  // site-production owner derates machines inside _tickSite (asteroidSites). Any OTHER src
+  // importer is still a defect — the list names the two owners, nothing more.
   const here = fileURLToPath(new URL('.', import.meta.url));
   const srcRoot = join(here, '..', 'src');
-  const allowed = new Set(['worldSiteRuntime.js']);
+  const allowed = new Set(['worldSiteRuntime.js', 'asteroidSites.js']);
 
   const offenders = [];
   const walk = (dir) => {

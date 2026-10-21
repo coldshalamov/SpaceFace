@@ -689,6 +689,22 @@ export const asteroidSites = {
       this._markDirty(site.id, { field: true });
     });
 
+    // Charge events move no tile — but they still write the rock's record: planting spends a
+    // puck off ent.data.chargeStock, and a seismic detonation lands drillFaults without ever
+    // emitting drill:break. Without these mirrors a mid-session save reloads a stale claim
+    // (the spent puck returns on rematerialize, the fracture field is forgotten).
+    const syncChargeMirror = () => {
+      const d = state.drill;
+      if (!d) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (!site) return;
+      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
+      this._markDirty(site.id, { field: true });
+    };
+    this.bus.on('drill:chargePlanted', syncChargeMirror);
+    this.bus.on('drill:chargeBlast', syncChargeMirror);
+
     this.bus.on('drill:end', ({ asteroidId }) => {
       // The volatile claim survey is session-bound, exactly like the pulse's tile.surveyed marks:
       // leaving the bore discards uncommitted assay knowledge (the UI warns before the player
@@ -1363,8 +1379,10 @@ export const asteroidSites = {
       const flagList = (key) => (dd && Array.isArray(dd[key]) ? dd[key] : site[key]);
       applyFlaggedTiles(rt.field, flagList('drillVented'), (t) => { if (t.type === 'empty') t.vented = true; });
       applyFlaggedTiles(rt.field, flagList('drillScars'), (t) => { if (t.type === 'empty') t.scar = true; });
-      applyFlaggedTiles(rt.field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
+      // Live order (drill.js begin): rubble first, faults last — a seismic shot that softened
+      // standing fill keeps the mark on the rebuilt field.
       applyRubbleTiles(rt.field, flagList('drillRubble'));
+      applyFlaggedTiles(rt.field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
       rt.fieldDirty = false;
       rt.geoDirty = true;
     }
@@ -2711,7 +2729,7 @@ export const asteroidSites = {
           if (!workbench) this._tryLaunch(site, state, status);
         }
       } else if (def.id === 'sm_charge_press') {
-        // Discrete press batches — a chargePuck lands on the rock's ordnance rack
+        // Discrete press batches — a charge_puck lands on the rock's ordnance rack
         // (ent.data.chargeStock), not in a lane store. The recipe never asks a lane for room.
         if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
         else {
@@ -2740,13 +2758,13 @@ export const asteroidSites = {
           const recipe = SITE_RECIPE_BY_ID.get(m.mode);
           status.progress = res.progress || (m.job ? m.job.progressS / (recipe ? recipe.buildS : 1) : 0);
           if (!wantsCharge && !m.job) status.state = 'racked';
-          if (res.completed && res.completed.outputId === 'chargePuck') {
+          if (res.completed && res.completed.outputId === 'charge_puck') {
             const stocked = rack + Math.max(1, Math.floor(res.completed.qty));
             if (rockEnt && rockEnt.data) rockEnt.data.chargeStock = stocked;
             site.chargeStock = stocked;
             this._ledger(site, 'good', `Charge pressed — ${stocked} on the rack.`);
             this.bus.emit('site:chargePressed', { siteId: site.id, stock: stocked });
-            this._emitProductionReceipt(site, m, { outputId: 'chargePuck', qty: res.completed.qty, recipeId: m.mode });
+            this._emitProductionReceipt(site, m, { outputId: 'charge_puck', qty: res.completed.qty, recipeId: m.mode });
           }
         }
       } else if (def.id === 'sm_auto_drill') {
@@ -2765,6 +2783,9 @@ export const asteroidSites = {
             } else {
               status.state = 'no-geology';
               status.limit = 'geology';
+              // A ready bite with nowhere to chew stays ready — the clock is a charge on the
+              // head, not a savings account; don't let it grow unbounded in the record.
+              m.biteS = SITE_BALANCE.autoDrillBiteS;
             }
           }
           status.ratePerMin.bite = round3(clamp01(powerRatio) * 60 / SITE_BALANCE.autoDrillBiteS);
@@ -2817,7 +2838,7 @@ export const asteroidSites = {
       })),
       transport: {
         exportRatePerMin: stagedU / Math.max(1e-9, dtMin),
-        inFlightCount: site.fleet && Number.isFinite(site.fleet.podsInFlight) ? site.fleet.podsInFlight : 0,
+        inFlightCount: site.fleet && Array.isArray(site.fleet.inFlight) ? site.fleet.inFlight.length : 0,
       },
       radiatorFins: site.radiatorFins,
       background: (state.entities && state.entities.get
@@ -2872,7 +2893,12 @@ export const asteroidSites = {
     const machines = [];
     for (const m of site.machines) {
       const powerKey = rt.powerCompByMachine[m.id];
-      const powerRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : 0;
+      // "Actually running" means actually SERVED — the machine loop's status row already
+      // carries the thermal-derated ratio, so a machine in fault (served 0) stops loading
+      // the bay instead of cracking a roof while protecting itself.
+      const status = rt.status && rt.status[m.id];
+      const powerRatio = status && Number.isFinite(status.powerRatio) ? status.powerRatio
+        : (powerKey != null ? (rt.compRatio[powerKey] ?? 0) : 0);
       machines.push({
         id: m.id, defId: m.defId, col: m.col, row: m.row, powerRatio,
       });
@@ -2903,10 +2929,15 @@ export const asteroidSites = {
     if (result.fracture) {
       const idx = tileIndex(result.fracture.fromCol, result.fracture.fromRow);
       if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      // The slab lands on what WAS a bore cell: it is rock again, so it leaves the cleared
+      // record exactly like a cave-in's dropped fill (the falls list repaints the body).
+      const landed = tileIndex(result.fracture.col, result.fracture.row);
+      site.cleared = site.cleared.filter((i) => i !== landed);
       const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
       if (ent && ent.data) {
         if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
         if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+        ent.data.drillCleared = ent.data.drillCleared.filter((i) => Math.trunc(Number(i)) !== landed);
       }
       if (liveField) paintStructuralFracture(liveField, result.fracture);
       if (rt && rt.field && rt.field !== liveField) paintStructuralFracture(rt.field, result.fracture);
@@ -2989,13 +3020,19 @@ export const asteroidSites = {
       if (ent && ent.data) {
         if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
         if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
-        if (Array.isArray(ent.data.drillRubble)) {
-          ent.data.drillRubble = ent.data.drillRubble.filter((i) => Math.trunc(Number(i)) !== idx);
+        // Same exclusivity as recordClearedTile: a re-opened cell is neither rubble nor a
+        // standing fault — a softened slab chewed by the head is gone for good.
+        for (const key of ['drillRubble', 'drillFaults']) {
+          if (Array.isArray(ent.data[key])) {
+            ent.data[key] = ent.data[key].filter((i) => Math.trunc(Number(i)) !== idx);
+          }
         }
       }
-      // The claim's rubble mirror moves the same way — a re-cleared cell is never rubble.
-      if (Array.isArray(site.drillRubble)) {
-        site.drillRubble = site.drillRubble.filter((i) => Math.trunc(Number(i)) !== idx);
+      // The claim's mirrors move the same way — a re-cleared cell is never rubble or fault.
+      for (const key of ['drillRubble', 'drillFaults']) {
+        if (Array.isArray(site[key])) {
+          site[key] = site[key].filter((i) => Math.trunc(Number(i)) !== idx);
+        }
       }
       rt.geoDirty = true;
       if (live) {

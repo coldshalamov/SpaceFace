@@ -234,7 +234,12 @@ export function siteDrawerModel({
     capacity: Math.round(capacity),
     signatureLabel: (rt && rt.signature && rt.signature.signatureLabel) || (site && site.signatureClass) || 'quiet',
     thermalBand,
-    chargeStock: rockEnt && rockEnt.data ? Math.floor(Number(rockEnt.data.chargeStock) || 0) : 0,
+    chargeStock: (() => {
+      // Same read order the sim's own rack check uses: a resident rock's data is the freshest
+      // copy; the durable site.chargeStock mirror carries it while the rock is off-sector.
+      const entRack = rockEnt && rockEnt.data ? Number(rockEnt.data.chargeStock) : NaN;
+      return Math.max(0, Math.floor(Number.isFinite(entRack) ? entRack : (Number(site && site.chargeStock) || 0)));
+    })(),
     exportRatePerMin: projection ? Number(projection.exportRatePerMin) || 0 : 0,
     rates: Object.keys(ratePerMin).sort().map((id) => ({
       id, name: sentenceCase(commodityName(id)), perMin: Math.round(ratePerMin[id] * 10) / 10,
