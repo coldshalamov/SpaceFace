@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Current source handoff — 21 October 2026, 05:19 UTC
+## Current source handoff — 21 October 2026, 05:20 UTC
 
 All eight goals remain OPEN. This checkpoint supersedes older current-state entries without erasing their scoped failures or changing acceptance fields.
 
@@ -11,9 +11,9 @@ The full local receiver activation has 48 passing focused/source-release/selecte
 
 UI source wording was reviewed. Screenshot production remains blocked by local-server isolation and supported-launcher initialization; there is no new pixel-level or live graphical acceptance. Restricted diagnostic material and private recovery identifiers remain excluded.
 
-Current ownership: the receiver asset owner retains the held publication/package steps; the physical integration owner retains exact composition qualification; root coordinates publication and exact-head CI. The connected-world activity owner is inspecting actual code and existing owners before selecting the next substantial connected activity. No activity has yet been selected or delivered by that investigation.
+Current ownership: the receiver asset owner retains the held publication/package steps; the physical integration owner retains exact composition qualification; root coordinates publication and exact-head CI. After code/ownership inspection, the next approved active outcome is intentional physical return of real violence-spilled gas to its original receiving tender, with keep/leave/loss alternatives, using the existing finite debit and later Tethys delivery. build_connected_world_activity owns anvilWork, a new anvilSpillRecovery module, narrow contactHail changes and tests/native fixture; an extra provenance-persistence path remains conditional. An independent reviewer is assigned. No implementation success is claimed.
 
-Next: preserve the current published harvest source and dormant bank; resolve only the specifically held upload operations through their approval route, then verify a coherent activated commit and run its full integration/native and shipping-package checks. Continue ordinary controls and supported-launcher live graphical review without relabeling source inspection as pixels. For the next connected activity, finish the code/ownership inspection before choosing and implementing the bounded unit. Historical route/CI failures remain scoped to their recorded heads; no current aggregate-green, merge, deployment or full-goal completion is claimed. This update changes only the two handoff documents on their separate branch, not PR #480.
+Next: preserve the current published harvest source and dormant bank; resolve only the specifically held upload operations through their approval route, then verify a coherent activated commit and run its full integration/native and shipping-package checks. Continue ordinary controls and supported-launcher live graphical review without relabeling source inspection as pixels. Implement and independently qualify the approved physical spill-return activity while preserving genuine loss, finite custody and the original receiving tender; do not count it as delivered before source/native evidence exists. Historical route/CI failures remain scoped to their recorded heads; no current aggregate-green, merge, deployment or full-goal completion is claimed. This update changes only the two handoff documents on their separate branch, not PR #480.
 
 ## Current source handoff — 21 October 2026, 04:57 UTC
 
