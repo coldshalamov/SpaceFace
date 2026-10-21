@@ -4,6 +4,8 @@
 
 | R-900186b | 900186b08 | Row 453 GOLD-CABINET: swarm cabinet attract tape, initials, local board, run card | Re-check that a remount/dispose mid-initials-entry cannot double-settle a run into the cabinet — the settle latch is cabinetEntryId on the result plus terminal-phase gating, and the initials band re-reads storage on remount | OPEN |
 
+| R-36df771 | 36df7712b | Row 403 AL-LONG-5: drone composer, warm flight restore, reaction slot truth | Re-check that a drone saved mid-INTERRUPT (template flee active over a custom loop) restores the right programMotion — the interrupt path clears g.programMotion via clearTemplate, so confirm no save writes a stale warm record for an interrupted group | OPEN |
+
 # Landed review
 
 Second look at work that is already on `origin/master`. The author commits and pushes first. A later agent reviews. The review does not hold the push, and this file is not a second plan.
