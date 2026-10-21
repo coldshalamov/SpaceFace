@@ -5295,8 +5295,8 @@ export const vfx = {
       if (id.startsWith('field.cone')) {
         return presentationStyle('#eaffff', '#39d0ff', SPR_FLASH, { spread: 0.4, lightPeak: 2.0, lightDistance: 130, speed0: 54, speedJitter: 30, life0: 0.28, size0: 1.5, size1: 0.15 });
       }
-      // well — white-hot lip collapsing into the violet throat, matching the two-tone body
-      return presentationStyle('#f2f4ff', '#8f7bff', SPR_FLASH, { radial: true, lightPeak: 2.8, lightDistance: 150, speed0: 40, speedJitter: 46, life0: 0.32, size0: 1.6, size1: 0.2, drag: 1.1 });
+      // well — cool inward cyan sink pulse
+      return presentationStyle('#a6f0ff', '#39d0ff', SPR_FLASH, { radial: true, lightPeak: 2.8, lightDistance: 150, speed0: 40, speedJitter: 46, life0: 0.32, size0: 1.6, size1: 0.2, drag: 1.1 });
     }
     return presentationStyle('#ffffff', '#b060ff', SPR_RING, { radial: true, lightPeak: 3.2, lightDistance: 150, speed0: 18, speedJitter: 32 });
   },

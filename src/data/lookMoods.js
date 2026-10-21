@@ -248,8 +248,8 @@ export const LOOK_MOODS = deepFreeze({
 // Keyed by Forge finish first, material role second. This is material physics, so it is the
 // same in every mood.
 export const LOOK_EMISSIVE_GAIN = Object.freeze({
-  finish: Object.freeze({ glow_warm: 1.4, glow_drive: 1.6 }),
-  role: Object.freeze({ signal: 2.6, drive: 1.6 }),
+  finish: Object.freeze({ glow_warm: 1.2, glow_drive: 1.5 }),
+  role: Object.freeze({ signal: 2.2, drive: 1.5 }),
 });
 
 export function resolveLookEmissiveGain(role, forgeFinish) {

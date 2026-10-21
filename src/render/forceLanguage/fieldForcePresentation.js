@@ -21,10 +21,6 @@ function character(id, born) {
 const COLORS=new Map();
 // Allocate colors once; recipes never parse CSS or allocate Color objects in the frame loop.
 for(const value of [0x54e5ed,0xffc36c,0x58bdff,0xb9a2ff,0xffb766,0xffe1a4,0xb7f5ff,0x79f0c8,0xd9ffe0,0x8ac043])COLORS.set(value,new THREE.Color(value));
-// The authoritative footprint always reads as a cool white glow — "the affected area" is
-// white-hot regardless of which family fills it, so the player can read range at a glance.
-const BOUNDARY_GLOW=0xf2f8ff;
-COLORS.set(BOUNDARY_GLOW,new THREE.Color(BOUNDARY_GLOW));
 // Hull-burst wedges draw with the cone recipe in their own tints (forceLanguage/hullBurstField.js).
 for(const style of Object.values(BURST_STYLE)){COLORS.set(style.color,new THREE.Color(style.color));COLORS.set(style.accent,new THREE.Color(style.accent));}
 
@@ -390,7 +386,7 @@ export class FieldForcePresentation {
   _surface(type,a0,a1,r0,r1,width,lift=0,bow=0,phase=0,travel=0,taper=1,alpha=1,x=0,z=0,flow=this.flow,style=this.style){
     // Positional recipe descriptors avoid per-surface option objects in the render loop.
     // Slots, geometry, float buffers and colors are allocated once at owner construction.
-    const d=this.descriptor,c=this.role===FIELD_ROLE.BOUNDARY?COLORS.get(BOUNDARY_GLOW):this.tint;
+    const d=this.descriptor,c=this.tint;
     d[0]=this.local.x+x;d[1]=0.45;d[2]=this.local.z+z;d[3]=this.orientation;
     d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;
     d[8]=r1;d[9]=width;d[10]=lift;d[11]=bow;
@@ -421,16 +417,6 @@ export class FieldForcePresentation {
       const a=i*TAU/segments;
       this._surface(0,a+0.13,a+TAU/segments-0.13,radius,radius,width,0,0,i/segments,0,0,alpha,0,0,0);
     }
-    if(boundary&&radius>4){
-      // Luminous extent spill: a broad, fainter band hugging the inside of the true edge so the
-      // footprint reads as a glowing area, not a hairline. Uneven arc lengths and phase keep it
-      // material, not a uniform halo; same BOUNDARY role, so it dies the frame the force does.
-      const band=Math.min(radius*0.085,14),inner=radius-band*0.5;
-      for(let i=0;i<7;i++){
-        const a=i*TAU/7+i*0.021;
-        this._surface(0,a+0.10,a+TAU/7-0.24,inner,inner,band,0,0,i/7+0.31,0,0,alpha*0.40,0,0,0);
-      }
-    }
     this.role=saved;this.material=savedMaterial;
   }
   _well(){
@@ -442,18 +428,13 @@ export class FieldForcePresentation {
     // Outer edge is exactly the physics radius. Width lies INSIDE it, never outside the range.
     this._rim(r-r*0.009,r*0.009,4,0.68,true);
     // Five deep accretion channels with overlapping lower currents, not ten wire spirals.
-    // The fast underflow runs in the family's accent hue so the body reads two-tone
-    // (cyan intake over violet counter-current) instead of one flat blue sheet.
-    const bodyTint=this.tint,underTint=COLORS.get(this.accent)||COLORS.get(0xb9a2ff);
     this._member('membrane');
     for(let i=0;i<5;i++){
       const variation=((this.slot.character*7.13+i*.381966)%1);
       const a=i*TAU/5+(variation-.5)*.32;this.phaseOffset=i/5+variation*.13;
       this._surface(0,a,a+1.55+variation*.75,r*(.84+variation*.12),r*0.082,channel*(.70+variation*.40),Math.min(5,r*.04),0,i*0.193,0,1,0.88);
-      this.tint=underTint;
       this._member('filament');
       this._surface(0,a+0.16,a+2.00,r*0.66,r*0.12,underflow,-Math.min(2,r*.018),0,i*.19,0,1,0.78);
-      this.tint=bodyTint;
       this._member('membrane');
     }
     this.tint=COLORS.get(0xb9a2ff);
