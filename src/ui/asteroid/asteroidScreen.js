@@ -20,6 +20,7 @@ import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
 import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName, createStrataCache } from './asteroidRenderer2d.js';
+import { rockName } from './rockNames.js';
 import { createAsteroidRenderer3d } from './asteroidRenderer3d.js';
 import {
   createAsteroidController,
@@ -159,6 +160,7 @@ export function helpDrawerRows(controlMap) {
   return [
     { keys: map.movementLabel || 'UNBOUND', label: 'Drive, and keep holding to bore' },
     { keys: map.scanLabel || 'UNBOUND', label: 'Survey pulse' },
+    { keys: 'C', label: 'Bore charge — C again sets it, Esc backs off' },
     { keys: BINDINGS.drill.label, label: 'Build mode' },
     { keys: '1 - 9', label: 'Pick a structure' },
     { keys: 'Q / E', label: 'Cycle structures' },
@@ -776,6 +778,21 @@ export const asteroidScreen = {
           armLens(0);
         },
         onScan: () => pulseSurvey(),
+        // The demolition verb's two presses: arm the charge, then set it once the board has
+        // bracketed the whole cut. Refusals already speak through drill:warn.
+        onCharge() {
+          const d = state.drill;
+          if (!d || !d.active) return;
+          if (d.chargeArmed) drillSys.plantCharge();
+          else if (drillSys.armCharge && drillSys.armCharge()) {
+            announce('Bore charge armed — face the cut, then C again to set it. Esc backs off.');
+          }
+          inspElapsed = 10;
+          lensDirty = true;
+        },
+        onChargeCancel() {
+          if (drillSys.disarmCharge && drillSys.disarmCharge()) announce('Bore charge put away.');
+        },
         onPlace: (cursor) => commitPlacement(cursor),
         onRemove: (cursor) => commitRemoval(cursor),
         onCyclePalette: (dir) => palette.cycle(dir),
@@ -1182,6 +1199,12 @@ export const asteroidScreen = {
       if (!cell) hideLens();
       else if (lens.visible) lens.showAt(ev.clientX, ev.clientY, lensSubject());
       else if (lensDelay < 0 || changed) armLens(controller.state.mode === MODES.BUILD ? 0 : LENS_DELAY_S);
+      // A live charge follows the pointer when it names a face the boom can reach; the sim
+      // validates the cell, so off-reach hovers simply fall back to the auger's own face.
+      if (cell && controller.state.mode !== MODES.BUILD
+          && state.drill && state.drill.chargeArmed && drillSys.setChargeAim) {
+        drillSys.setChargeAim(cell.col, cell.row);
+      }
       if (cell && controller.state.mode === MODES.BUILD) {
         controller.state.cursor.col = cell.col;
         controller.state.cursor.row = cell.row;
@@ -1210,6 +1233,13 @@ export const asteroidScreen = {
       if (!cell) return;
       releaseSiteZoom(true); // law §9: pointer-down on the board is the first work input
       canvas.focus({ preventScroll: true });
+      // A click while the charge is armed is the same commitment as the second C press.
+      if (state.drill && state.drill.chargeArmed && controller.state.mode !== MODES.BUILD) {
+        drillSys.setChargeAim(cell.col, cell.row);
+        drillSys.plantCharge();
+        ev.preventDefault();
+        return;
+      }
       if (controller.state.mode !== MODES.BUILD) return;
       controller.state.cursor.col = cell.col;
       controller.state.cursor.row = cell.row;
@@ -2028,6 +2058,22 @@ export const asteroidScreen = {
       if (renderer3d) renderer3d.notify('cargoFull');
       showBanner('cargo', 'Hold full — leave to offload', 'bad');
     }));
+    unsubs.push(ctx.bus.on('drill:chargePlanted', (p) => {
+      if (renderer3d) renderer3d.notify('chargePlanted', { col: p.col, row: p.row });
+      pushLedgerLine('warn', `Bore charge set at ${p.col},${p.row} — stand clear.`);
+      announce('Charge set — stand clear.');
+    }));
+    unsubs.push(ctx.bus.on('drill:chargeBlast', (p) => {
+      if (renderer3d) renderer3d.notify('chargeBlast', { col: p.col, row: p.row, cells: p.cells || [] });
+      const cells = p.broken === 1 ? '1 cell' : `${p.broken || 0} cells`;
+      const pockets = p.gasCount > 0 ? (p.gasCount === 1 ? ', 1 pocket vented' : `, ${p.gasCount} pockets vented`) : '';
+      pushLedgerLine('info', `Charge cleared ${cells}${pockets}.`);
+      projDirty = true;
+    }));
+    unsubs.push(ctx.bus.on('drill:backblast', (p) => {
+      pushLedgerLine('bad', `Caught in your own blast — hull damage ${p.dmg}.`);
+      announce(`Backblast. Hull damage ${p.dmg}.`);
+    }));
     unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
       if (renderer3d) renderer3d.notify('scanPulse');
       const result = p.contacts === 1 ? '1 contact' : `${p.contacts} contacts`;
@@ -2444,7 +2490,7 @@ export const asteroidScreen = {
       drillSys.begin(pendingId);
       const astId = asteroidId();
       hudEls.siteName = nameEl;
-      nameEl.textContent = `AST-${astId != null ? String(astId) : '—'}`;
+      nameEl.textContent = rockName(astId);
       projDirty = true;
       refreshProjection();
       seedLedgerFromSite();
