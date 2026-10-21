@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 08:25 UTC. All nine outcomes remain open. This register supports the
+Updated 21 October 2026, 08:48 UTC. All nine outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -11,31 +11,31 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: open. Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage now have independent public draft delivery. Full ordinary-route, device, performance and experience acceptance remain incomplete.
 - Owner: expansion integration and exact feature owners.
 - Evidence: IMPLEMENTATION.md, TWENTY_CONCEPT_MAP.json; local b08ba532/d70c0413; public PR461 and PR462; finite Independent Seam is public PR464; physical Tethys count-lane service is public PR466.
-- Next: Finish the same Tann feature as explicit player-assisted salvage: keep or tow/slow/release an original nearby pod for Tann's real Forge delivery. Strengthen finite death/residue tests and prove native ordinary player-tow/contact/delivery; do not promise autonomous pursuit of faster runaway pods. All nine wider goals remain open.
+- Next: Finish and qualify Vesta's bounded station-contact detour with the separately reviewed performance correction, then prove original-pod pickup and finite Forge delivery through Continue. Keep actual finite-fix CI success separate from the later native contact failure; all nine larger goals remain open.
 - Awaiting user: final acceptance when adequate evidence exists; no optional engineering decision.
 
 ## SF-ORCHARD
 - Outcome: finite authored three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
 - State: OPEN. Rendezvous source is published in seven paths and passes 75 focused checks. Native proof preserves the original three units through cooperation wait/intake, not moving deceleration. Earlier cleanup policy and finite RETURN GAS remain published. Receiver activation holds are unchanged; the bank is dormant.
 - Owner: build_connected_world_activity owns the same RETURN GAS feature's explicit Hail rendezvous; review_orchard_physical_integration independently reviews. Asset owner retains held receiver operations; root owns current CI and publication coordination.
-- Evidence: Public 706c8e69cb98b58cffb59826e85da0b7ded92544 corrects finite manifest fallback: exact b01 has nine finite failures/two legacy passes, candidate has two 88/88 runs and 1,482 verified module hashes. Prior native route receipt failure remains historical; original event causality and successor full-route success are not yet established.
-- Next: Follow successor general CI 39567695442 to its actual terminal route result. Preserve valid finite spills and ordinary legacy compatibility; do not rerun the whole fixture solely to repeat evidence. Original receiver registration/census holds remain unchanged.
+- Evidence: Actual 706 CI keeps receiver cargo zero at ticks 30,609/32,907, after one-unit delivery at 17,983, then genuinely harvests 12 units by 40,833. Later native route is RED at tick 43,454: -0.412468 WU penetration into entity 3 Customs Gate, exact participant unlogged. Finite refill correction succeeds at its former failure point, not a full-route pass.
+- Next: Retain terminal 706 evidence: browser3 cancelled, final aggregate FAILURE and eight other failed jobs; stop polling. Use the prepared diagnostic-only participant patch in the next increment without weakening tolerance or asserting an unobserved cause. Receiver model holds remain unchanged.
 - Awaiting user: final gameplay/visual acceptance, not routine implementation choices.
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets delivered as verified public commits and draft PRs, preserving newer work.
-- State: OPEN. Verified PR480 706c8e69cb98b58cffb59826e85da0b7ded92544, tree 1119c315846015fc5eeb4ae98e8baec2b247c367, sole b01 parent, changes exactly traffic guard, regression test and package registration. Tann recovery remains active unpublished work. Successor character CI is green; general CI is running, not aggregate green.
+- State: OPEN. PR480 remains 706/tree1119 and is terminal non-green. Separate draft PR482 head 38f66ff705159f056c0c757018b974d9048f4f8d, tree eafd03549e4f7182c453449c38b57a3e6ec27c69, contains 16 index URL replacements only; browser pending. Vesta projection 150b19a1 is tested but not published.
 - Owner: root publication integration, with per-PR exact-head CI owners.
-- Evidence: https://github.com/coldshalamov/SpaceFace/commit/706c8e69cb98b58cffb59826e85da0b7ded92544 ; exact baseline nine finite failures/two legacy passes, two candidate 88/88 validations with 1,482 unique audited modules. Prior b01 browser3/final cancelled; successor general run https://github.com/coldshalamov/SpaceFace/actions/runs/39567695442 is running.
-- Next: Keep 706 as published baseline while player-assisted Tann recovery remains WIP. Qualify stronger death/residue tests and actual native player assistance/Forge delivery before coherent publication. Preserve CI attribution, held Orchard operations and source/model/acceptance distinctions.
+- Evidence: PR482 https://github.com/coldshalamov/SpaceFace/pull/482 ; sole parent c289291e0e34b30430be500f9f5bbda39c15594d. Immutable/actual CI static checks remove all 16 stale URLs and leave 18 unrelated missing imports. Vesta exact eight-path public-source projection passes 14/14 with 1,621 module hashes; current performance correction is not yet in that projection.
+- Next: Follow PR482's separate pending browser result, not terminal 706. Compose and qualify Vesta's physical detour/performance successor before publication; retain all held Orchard operations and source/model distinctions.
 - Awaiting user: Specific partsLibrary and census JSON upload approvals remain held; expected blobs read absent at 06:08 UTC. Generated census has never been attempted. Separate diagnostic approvals and final acceptance remain unchanged; no repeated question or restricted payload here.
 
 ## SF-RECOVER
 - Outcome: source, models, tests and resumable handoffs recoverable outside disposable execution storage, in addition to GitHub delivery.
-- State: OPEN. Published 706 guard/test/package recovery remains verified. The current Tann WIP checkpoint is also verified, but neither recovery preservation nor its nine green tests establishes final native transfer, death/residue or ordinary-route acceptance.
+- State: OPEN. Save, public-source projection, 14-test and native Vesta evidence have been preserved and verified by read-back. The retained state reproduces physical station contact after Save/Continue; it is not proof of completed pickup/Forge delivery. Published 706 recovery and separate PR482 source remain retained.
 - Owner: exact source owners and integration.
 - Evidence: Fresh-route archive SHA256 b25a3bbd055059d22f5a4b9f9e474799439e71679de64321e40b9a9559d6dc24; failure/continuation archive 3d025818300cd973f2fae9fbf82c0f4419c7ae472d07b8f506519f402cede59d; terminal-CI archive f9aa94ece494d869145d8faf3ae396ed13888019a522a618af3c05c0eabed0bf. Roundtrip and archive checks passed. Final three source texts also survived independently and reconstructed the exact reviewed Git tree before publication. Older plans/assets/failed attempts remain retained.
-- Next: Preserve the player-assisted design correction, stronger finite death fixtures and subsequent genuine native player-tow/contact/Forge evidence. Keep all private recovery identifiers and restricted diagnostic payloads outside the public register.
+- Next: Preserve the exact bounded detour/performance composition and genuine subsequent native results. Keep private recovery identifiers and restricted diagnostic payloads outside the public register.
 - Awaiting user: no new routine recovery decision; separately pending publication operations remain outside this checkpoint.
 
 ## SF-VISUALS
@@ -64,10 +64,10 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
-- State: OPEN. Tann recovery is now explicitly player-assisted: original pods discharge at 275–327 WU/s versus Tann's 55 WU/s, so autonomous chase after the prior job is not coherent. The player may keep or tow/slow/release an original nearby pod for Tann to deliver to Forge. No machinery/encounter retiming, payout/theft or taking an active Massline pod.
-- Owner: build_tann_winnow_recovery retains new data/world/test/native-fixture and narrow encounter/traffic paths, mining.js split lineage only, and now aftermathWrecks.js solely to omit duplicate 30% residue for a strict finite Winnow manifest. review_tann_finite_recovery independently reviews.
-- Evidence: Current WIP limits candidate targets to 180 WU and 8 WU/s. Initial 180-second native diagnostic shows prior-job completion around 80–90 seconds and zero transfer. A follow probe used test-only player-pose relocation solely to retain native authority and also transferred zero, not ordinary gameplay proof. Nine tests pass, but weak two-unit death coverage is being strengthened to four/ten units to expose duplicate 30% residue.
-- Next: Finish stronger death/residue coverage and prove ordinary player tow/slow/release, original-pod native contact/pickup and real finite Forge delivery without stealing active lines or adding units. Native player-tow/contact/Forge proof is pending; nine tests are not final acceptance. This replaces runaway-chase assumptions within the same feature.
+- State: OPEN. Vesta's eight-path public-source projection passes 14/14 and 1,621 module hashes. Native setup uses combat-owner clearance and initial player placement, not ordinary fight/arrival; actual F/W/brake towing reaches natural Tann admission at 47.6667 seconds with ten loose units and zero delivered. No completed pickup or Forge delivery.
+- Owner: build_tann_winnow_recovery owns the bounded station_vesta_outlying_yard contact detour inside the new recovery module, within existing narrow implementation scope. review_tann_finite_recovery remains independent reviewer. No layout/immunity/teleport change.
+- Evidence: Actual Save/Continue reveals physical station contact, not a job deadlock. Diagnostic 8ad0f2e adds only a probe to tested public projection 150b19a1. Separately reviewed current-source performance correction reduces worst-case scans 121,000 to 2,000 and no-work scans to zero; it is not yet included in 150b19a1.
+- Next: Finish and independently qualify the bounded physical detour plus performance composition, then prove original-pod native pickup and real finite Forge delivery with Continue. Preserve test-setup limitations, existing finite custody and no active-line theft; no success beyond admission is claimed.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
 
 ## SF-SECTOR-COHERENCE
@@ -75,5 +75,5 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: OPEN. SECTOR_EXPERIENCE_REGISTER_2026-10-21.md is now public in the 21-path Ceres increment. Its inventory of 25 actual sectors, 35 catalog stations, 153 catalog POIs, 58 activity pockets and 116 actor slots remains source/catalog evidence, not runtime appearance or accepted coherence.
 - Owner: Root coordinates sector review. map_sector_experience_coherence owns SECTOR_EXPERIENCE_REGISTER_2026-10-21.md; current gameplay/story/source owners retain their paths.
 - Evidence: Public register in https://github.com/coldshalamov/SpaceFace/commit/cb0657c0542e0a5bb2cbb593c092a773f0c5e504 ; initial counts remain inventory rather than runtime proof. User authorization and reminder update remain recorded in EXECUTION_STATUS.md.
-- Next: Reflect Tann's player-assisted salvage design and genuine speed constraints in the same sector experience, not a disconnected queue. Require actual ordinary native player assistance and Forge delivery; distinguish zero-transfer diagnostics/test-only pose relocation from gameplay success.
+- Next: Record Vesta's actual assisted arrival/admission and Save/Continue station-contact obstacle without pretending ordinary fight/arrival or delivery success. Qualify the bounded detour and actual finite completion, preserving existing-world geometry and source/runtime evidence distinctions.
 - Awaiting user: no optional input pending; proceed with the authorized inventory and review.
