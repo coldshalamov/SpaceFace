@@ -1,6 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 08:25 UTC
+
+All nine goals remain OPEN. Published head remains `706c8e69cb98b58cffb59826e85da0b7ded92544`, tree `1119c315846015fc5eeb4ae98e8baec2b247c367`; Tann recovery remains unpublished work.
+
+The same connected Tann recovery feature now explicitly uses player-assisted salvage instead of an incoherent autonomous runaway chase. Actual original pods discharge at 275–327 WU/s while Tann travels at 55 WU/s and first finishes the prior authored job. The player may keep an original pod or tow, slow and release a nearby original for Tann to carry to Forge. The design does not retime the machinery/encounter, add payout or theft, or take a pod from an active player Massline.
+
+Current work limits candidate targets to 180 WU and 8 WU/s. Native player-tow, contact and actual Forge-delivery proof remain pending. The initial 180-second diagnostic showed natural prior-job completion around 80–90 seconds with zero transfer. A follow probe used test-only player-pose relocation solely to retain native authority and also transferred zero. Neither diagnostic proves an ordinary gameplay recovery route.
+
+The current work-in-progress recovery checkpoint is verified. Nine tests are green, but independent review is strengthening the weak two-unit death fixture to four and ten units so it can expose duplicate 30% residue. Those nine passes are not final finite-custody or death-path acceptance.
+
+build_tann_winnow_recovery and review_tann_finite_recovery retain the same bounded implementation/review ownership, including previously granted split-lineage and strict finite-manifest residue scope. Next: finish the stronger death/residue tests, then prove ordinary player tow/slow/release, no active-line theft, original-pod contact/pickup and real finite Forge delivery under native authority. This corrects the same feature's design, not a new disconnected queue. Original Orchard upload holds and all broader acceptance goals remain unchanged. Only these two handoff/goal documents change; no private recovery identifiers or restricted diagnostic payloads are published.
+
 ## Current source handoff — 21 October 2026, 08:17 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving their scoped failures and acceptance limits.
