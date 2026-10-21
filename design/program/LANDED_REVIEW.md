@@ -2,6 +2,8 @@
 
 | R-e82cd26 | e82cd2668 | Row 393 AL-FIGHT-3: mass kills spill latchable charge cells | Re-check that a cell birthed from a whip kill can never be credited twice across a save/load boundary — the WeakSet claim resets on save:loaded while the entity round-trips only when attachment-retained, so confirm no re-collect path exists for a restored-then-detached cell | OPEN |
 
+| R-900186b | 900186b08 | Row 453 GOLD-CABINET: swarm cabinet attract tape, initials, local board, run card | Re-check that a remount/dispose mid-initials-entry cannot double-settle a run into the cabinet — the settle latch is cabinetEntryId on the result plus terminal-phase gating, and the initials band re-reads storage on remount | OPEN |
+
 # Landed review
 
 Second look at work that is already on `origin/master`. The author commits and pushes first. A later agent reviews. The review does not hold the push, and this file is not a second plan.
