@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 00:06 UTC. All eight outcomes remain open. This register supports the
+Updated 21 October 2026, 00:49 UTC. All eight outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -16,18 +16,18 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-ORCHARD
 - Outcome: finite authored three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: OPEN. Receiver delivery is published as draft PR480 at 0dd9c9a04ce70d9064e81226aa5c78ed0c93ae83, stacked on unmerged PR478. Focused 55/55 and adjacent 72/72 pass. First finite 1u harvest/handoff, sale, Continue, far residency, physical home and work resumption are proven. Full native survival gate remains RED at 672.4s; no whole-route acceptance.
+- State: OPEN. Draft PR480 head77d30f0ba50af6161914926a28c9f32e332543a2 publishes reviewed intent-only predictive civilian braking; 63 focused cases and constructed native crossing pass, while disabled control collides. Latest fresh d122 reaches900s with both original workers alive, but no required next positive handoff. Full native gate remains RED; survival alone is not acceptance.
 - Owner: resume_orchard_delivery_proof owns source; review_orchard_final_route independently reviews; root owns exact-head CI.
-- Evidence: PR480 and ORCHARD_RECEIVER_DELIVERY_2026-10-20.md. Lawful customs Hornet514 pursuing nemesis493 physically kills original collector113 at 672.4s, not Save corruption. Terminal continuation to 702.4s proves no replacement, phantom harvest, fabricated cargo or duplicate payout. Separate continued-world 2u handoff is not fresh-route acceptance.
-- Next: Implement and native-test a new narrow intent-only predictive yield from captured crossing geometry, then rerun the strict full route and independently review/update the same draft. Preserve actual collisions, damage and encounters; no immunity or refill.
+- Evidence: PR480 and ORCHARD_RECEIVER_DELIVERY_2026-10-20.md. First finite1u receiver handoff, sale299.7167s, Continue/far residency, home475.9667s and resumption504.6833s proven. This1u is traffic handoff, not total gas production: first interval also has Orchard4u/sourceRemaining44. Second interval produces no additional Orchard lot. Empty abort708.583s occurs at hull200 before damage712.567/721.633. At900s collector93.7849/hold0 returns and tender200/hold0 receives. Separate saved668 continuation5u handoff at831.2333s is not fresh acceptance.
+- Next: Trace actual fresh-route harvest eligibility/destination and implement an evidence-backed bounded correction, preserving nearest7 thermal limits. Stale witness-generation hypothesis was experimentally disproved; no planetRuntime patch on that theory. Rerun strict native/adjacent checks, independent review and same-draft publication; no immunity or fabricated cargo.
 - Awaiting user: final gameplay/visual acceptance, not routine implementation choices.
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets delivered as verified public commits and draft PRs, preserving newer work.
-- State: OPEN. Verified receiver draft PR480 head 0dd9c9a04ce70d9064e81226aa5c78ed0c93ae83 has tree 472e7cdf1bc309006c3a9ee3214be526861b2b29 and sole public parent PR478 e38eb86f4b7bc6273167aed7680abdbbf3a41272. Seven receiver paths differ from that parent. Prior verified PR457–479 evidence remains retained. No private ancestry published; neither integration nor acceptance is implied.
+- State: OPEN. Verified current receiver draft PR480 head77d30f0ba50af6161914926a28c9f32e332543a2, treed12216bedc054a382ab9c328b078b52ab54a9af5, publishes reviewed predictive yielding. Prior verified draft and asset evidence is retained. No private ancestry published; source publication is not integration or acceptance.
 - Owner: root publication integration, with per-PR exact-head CI owners.
-- Evidence: https://github.com/coldshalamov/SpaceFace/pull/480 ; OPEN DRAFT and mergeable=true verified after initial transient false. Master advanced independently to 98c72a10d77b6a6053a6f230bf76264f7814e031; PR478 remains unmerged.
-- Next: Root follows exact-head mobile39518933788 and general39518933657, RUNNING at 00:03:57 UTC. Do not claim terminal or green. All watches through PR479 are closed. Preserve newer upstream changes and publish reviewed yield fixes without private ancestry.
+- Evidence: https://github.com/coldshalamov/SpaceFace/pull/480 ; OPEN DRAFT. Master remains98c72a10d77b6a6053a6f230bf76264f7814e031 at last read; preserve newer upstream/reviewer changes.
+- Next: Root owns current CI39521451718: at00:48 UTC only browser3 active; sim/feel/static3/browser4 green, static1/static2/browser1/browser2 red. Remote runtime-maturity944/956 includes receiver next-handoff and other failures. Mobile39521451576 both116/122 with six startup-fixture failures beforebrowser. No aggregate green or live mobile acceptance. Earlier PR480-head and through479 watches are terminal CLOSED.
 - Awaiting user: final acceptance; separately pending publication operations are recorded in the private handoff and do not block independent implementation.
 
 ## SF-RECOVER
@@ -35,7 +35,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: OPEN. Verified repository PR480 preserves receiver source/tests/handoff; predecessor asset commits preserve actual models. Later exact-source and terminal-native-failure recovery packets are additionally verified. Version17 remains an older boundary through a88e181 and does not contain later service/yield work.
 - Owner: exact source owners and integration.
 - Evidence: Exact-source recovery: 10,341,233 bytes, SHA256 82f611cdb4e31acbfb75013a154fd01c29c244e8d6d65199440daab1793520d6. Terminal-death evidence: 1,930,900 bytes, SHA256 0022817414d115726769dce2e446d9eb58f5df2bc23a7901f39151ab906d49e1. Earlier plans, assets and failed attempts remain retained.
-- Next: Preserve each meaningful predictive-yield increment and its tests outside disposable storage; update verified GitHub source and resumable handoff. Backups remain additional protection, never a substitute for PR delivery.
+- Next: Preserve fresh d122 terminal-world and harvest-admission evidence outside disposable storage, plus each meaningful correction and tests; update verified GitHub source and resumable handoff. Backups are additional protection, never a PR substitute.
 - Awaiting user: no new routine recovery decision; separately pending publication operations remain outside this checkpoint.
 
 ## SF-VISUALS
@@ -43,7 +43,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: actual compiled-model Thimble camera, salvor route, Pallas paired-passage, finite seam and Tethys work-in-progress and crew rescue images delivered, honestly labeled offline reconstructions. Pallas uses actual selected Span/Wasp models and native positions. These omit runtime scene/HUD/VFX and do not certify shipping Look or player comprehension. Tethys final-source replay matches recorded poses, but fresh-origin chronology differs; do not relabel the delivered work-in-progress image as final/live acceptance. New crew images use actual Ironback/SurveyPin models and native positions, not live camera. The delivered Ceres station-only before/after preview represents a subsequently rejected candidate: its omitted anvil overlaps the tender. The earlier actual mobile CI failure screenshot shows a Codex overlay. Actual CI flight images delivered 19:34 and new Continue19:49 show HUD overlap and unclear world readability; new 19:57 Ceres final full-context top/oblique images use actual native 2549/6929 poses but remain offline exported-model reconstructions, not live camera; reaching flight is not visual acceptance. PR460 provides real browser actor-binding evidence, not visual acceptance.
 - Owner: Feature visual reviewers; receiver source owner coordinates new same-run native poses.
 - Evidence: Privately preserved actual-model image and reproduction receipts; exact public source evidence remains in the linked handoffs.
-- Next: Latest new 23:47 UTC image shows actual exported models at fresh0666 sale297.583s and home473.850s, labeled partial/offline with later death disclosed. Obtain new same-final-run evidence after the survival fix, then live game-camera and comprehension review. Do not splice separate worlds into accepted-route claims.
+- Next: Delivered23:47 UTC image remains actual exported models at fresh0666 sale297.583s/home473.850s, partial/offline with later death disclosed. It is not a d122 image. Obtain genuinely new same-final-run evidence and eventual live camera/comprehension review; do not splice separate worlds into accepted-route claims.
 - Awaiting user: eventual visual acceptance; no optional per-render choice.
 
 ## SF-ASSETBANK
@@ -64,8 +64,8 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
-- State: OPEN. Prior salvage, Pallas, finite seam, Tethys count-lane, rescue and Ceres increments remain retained. PR476/477/478 add weather work, dedicated collector identity and animation; draft PR480 adds finite receiver delivery to the existing Tethys buyer and physical work resumption. Required fresh-route survival and complete-world acceptance remain open.
+- State: OPEN. Earlier grounded world increments remain retained. PR480 now publishes reviewed civilian predictive yielding and finite Tethys receiver delivery, but fresh900s route lacks next positive handoff. Existing latchRepair heals12/s under taut physical player/tender rope without material/currency debit; attachment/time is its cost. It is only investigated for future P02 recovery, not a new feature or completed P02 brief.
 - Owner: resume_orchard_delivery_proof owns receiver implementation; review_orchard_final_route independently reviews; root owns only new PR480 exact-head CI. No competing implementation queue.
 - Evidence: PR461 repaired B10 remains passing; successor exact62/62 and remote62/62 plus sim32/32 and feel27/27 pass. Same native worker performs two real hauls accepting7/4 units at158.33/398.03s. PR462 public native/Continue/Hail14/14 and Hail21/21, remote14/14. PR464 exact public12/12; native18 units total including mid-cut Continue, no extra yield after depletion. Original public-a8 save remains zero-yield while source is legitimately unloaded, then ordinary player flight admits the source and completes18 units after56.18s. No teleport/pins/threat clearing. PR466 independent native19/19, exact public Hail/freight70/70, far/roster/kernel97/97 and CI partition30/30 pass. Strict held/berth Continue and actual retained exact residency are proved, not ordinary far shelving. Crew existing leaf100/100, partition30/30 and native repair78.0167/full-Continue77.8333/mid-weld79.05s pass. Continue uses scalar fallback then native Rapier; exact snapshot adoption and all-rescue acceptance are not claimed. Original Pallas zero-actor completion and ~1,057 WU seam/field mismatch are retained causal findings.
-- Next: Finish the predictive-yield crossing fix and strict fresh receiver route, preserving finite custody, Continue/residency and real danger. Review and publish the coherent increment, then select the next grounded original twenty-concept living-world experience.
+- Next: Finish actual harvest-admission/destination diagnosis and strict fresh receiver route without changing nearest7 thermal limits or removing real danger. Review/publish the correction, then select the next original twenty-concept living-world increment. New repair/recovery feature and broader world acceptance remain open.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
