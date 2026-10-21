@@ -1,3 +1,4 @@
+import { createOrchardHarvestEncounter } from './anvilOrchardHarvestEncounter.js';
 import { createOrchardShiftEncounter } from './anvilOrchardShiftEncounter.js';
 // Foreman Alin's radio encounter runs beside the authoritative bark director.
 // Only scalar voice receipts cross the worker boundary; no custody is granted here.
@@ -44,6 +45,7 @@ function podCold(state, pod) {
 export function createOrchardEncounter(ctx) {
   let state = ctx.state;
   const shift = createOrchardShiftEncounter(ctx);
+  const harvest = createOrchardHarvestEncounter(ctx);
   let pending = null;
   const scratch = {};
   const facts = () => resolveOrchardForecast(state, scratch);
@@ -51,7 +53,7 @@ export function createOrchardEncounter(ctx) {
     if (pending) ctx.helpers?.voice?.cancel?.(pending.id);
     pending = null;
   };
-  const onLoad = () => { cancel(); shift.reset(); };
+  const onLoad = () => { cancel(); shift.reset(); harvest.reset(); };
   const onSurface = receipt => {
     if (!pending || receipt?.id !== pending.id || receipt.kind !== 'anvil-orchard-alin' || !pending.valid()) return;
     const m = memory(state);
@@ -88,6 +90,7 @@ export function createOrchardEncounter(ctx) {
     update(nextState) {
       state = nextState || state;
       shift.update(state);
+      harvest.update(state);
       const f = facts();
       if (!f) { cancel(); return; }
       if (pending && pending.valid() && state.simTime < pending.deadline) return;
@@ -153,7 +156,7 @@ export function createOrchardEncounter(ctx) {
       if (!ctx.helpers?.voice?.say?.({ id, channel: kind === 'forecast' ? 'alert' : 'bark',
         kind: 'anvil-orchard-alin', text: `Foreman Alin: ${text}`, ttl: 5, valid })) pending = null;
     },
-    reset() { cancel(); shift.reset(); },
-    destroy() { cancel(); shift.destroy(); ctx.bus?.off?.('voice:surface', onSurface); ctx.bus?.off?.('save:loaded', onLoad); },
+    reset() { cancel(); shift.reset(); harvest.reset(); },
+    destroy() { cancel(); shift.destroy(); harvest.destroy(); ctx.bus?.off?.('voice:surface', onSurface); ctx.bus?.off?.('save:loaded', onLoad); },
   };
 }
