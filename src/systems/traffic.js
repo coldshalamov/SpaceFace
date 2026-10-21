@@ -7788,8 +7788,37 @@ export const traffic = {
     delete entity.data.salvorClaimedBy;
   },
 
+  // A live player Massline defers only a NEW cleanup reservation, never an
+  // existing crew's claim, extraction, law consequence, or ownership title.
+  _deferOrdinaryCleanupClaim(target) {
+    if (this._salvageSourceBinding(target)) return false; // authored source owner keeps its existing claim contract
+    const state = this.state, player = state.entities?.get(state.playerId);
+    if (!player || player.alive !== true || !(player.hull > 0) || !target || target.alive !== true
+      || state.entities.get(target.id) !== target) return false;
+    const physics = this._registry?.get?.('physics'), native = physics?._sg02;
+    for (const a of Object.values(state.combat?.attachments?.byId || {})) {
+      if (a?.state !== 'active' || a.defId !== 'tether_standard' || a.ownerId !== player.id || a.targetId !== target.id
+        || a.ownerGeneration !== player.occupantGeneration || a.targetGeneration !== target.occupantGeneration
+        || (a.controlMode != null && a.controlMode !== 'player')
+        || (a.controllerId != null && (a.controllerId !== player.id || a.controllerGeneration !== player.occupantGeneration))) continue;
+      if (state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
+        const line = native?.attachments?.get(a.id), owner = native?.records?.get(player.id), body = native?.records?.get(target.id);
+        if (physics?.state !== state || physics._diag?.sg02Ready !== true || physics._nativeRestorePending || physics._nativeRestoreDeferred
+          || !native?.world || !line || a.physicsHandle?.id !== a.id
+          || line.owner !== owner || line.target !== body || owner?.entity !== player || body?.entity !== target
+          || line.ownerEntity !== player || line.targetEntity !== target
+          || line.ownerLife !== player.occupantGeneration || line.targetLife !== target.occupantGeneration) continue;
+        try { if (!owner.body?.isValid() || !body.body?.isValid() || !owner.body.isEnabled() || !body.body.isEnabled()) continue; }
+        catch { continue; }
+      }
+      return true;
+    }
+    return false;
+  },
+
   _stampSalvorClaim(entity, worldRecordId) {
     if (!entity || !entity.data || !worldRecordId) return false;
+    if (!this._salvorClaimantOf(entity) && this._deferOrdinaryCleanupClaim(entity)) return false;
     const source = this._salvageSourceBinding(entity);
     if (source) {
       const salvageApi = this.helpers && this.helpers.salvage;
@@ -7858,7 +7887,7 @@ export const traffic = {
     let bestD2 = Infinity;
     for (const target of this._listSalvageTargets()) {
       const claim = this._salvorClaimantOf(target);
-      if (claim) continue;
+      if (claim || this._deferOrdinaryCleanupClaim(target)) continue;
       if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
@@ -8153,7 +8182,7 @@ export const traffic = {
     let bestD2 = Infinity;
     let bestId = '';
     for (const target of this._listSalvageTargets()) {
-      if (!this._isTowableBody(target)) continue;
+      if (!this._isTowableBody(target) || this._deferOrdinaryCleanupClaim(target)) continue;
       if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
@@ -8445,7 +8474,7 @@ export const traffic = {
     const targets = this._listSalvageTargets();
     for (const target of targets) {
       if (active >= MAX_GENERAL_SALVORS_PER_SECTOR) break;
-      if (this._salvorClaimantOf(target)) continue;
+      if (this._salvorClaimantOf(target) || this._deferOrdinaryCleanupClaim(target)) continue;
       if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       // The authored Vesta cutter must return to Forge, not whichever pocket station happens to
       // be first in the current entity ordering. Missing Forge means no Vesta dispatch, never a
@@ -8551,7 +8580,7 @@ export const traffic = {
         if (prior) this._clearSalvorClaim(prior, ent.data.worldRecordId);
       }
       const next = this._pickUnclaimedSalvageTarget(ent);
-      if (next && site) {
+      if (next && site && this._stampSalvorClaim(next, ent.data.worldRecordId)) {
         const kind = next.type === 'payload' ? 'payload' : 'hulk';
         const nextSource = this._salvageSourceBinding(next);
         site.id = `${kind}:${next.id}`;
@@ -8573,7 +8602,6 @@ export const traffic = {
           delete ent.data.salvageSource;
           delete ent.data.salvagePointId;
         }
-        this._stampSalvorClaim(next, ent.data.worldRecordId);
         continue;
       }
       // Nothing left — keep flying the empty cycle home rather than inventing a second mover.
