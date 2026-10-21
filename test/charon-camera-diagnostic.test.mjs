@@ -324,3 +324,75 @@ test('baseline overrun cannot start attribution with a partial reserved window',
  isolate:async()=>{isolations++;}});
  assert.equal(isolations,0);assert.match(warnings[0],/attribution skipped/);
 });
+
+test('initial original cohort appearing after five seconds uses remaining observation budget', async()=>{
+ let clock=0;
+ const p=fakePage(); const original=p.evaluate;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read'){
+   r.subjects=[{subject:'original-pod',id:4,generation:1,missing:clock<5000,assetState:'authored'}];
+   r.ready=clock>=5000;r.originalDiscovery={state:clock<5000?'awaiting-ledger':'observed'};
+ }return r;};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(r.report.screenshots.length,2);assert.ok(r.report.elapsedMs>=5000&&r.report.elapsedMs<20000);
+ assert.equal(r.report.status,'authored-subjects-captured-not-visual-acceptance');
+});
+test('never-observed originals remain unverified without consuming capture reserve',async()=>{
+ let clock=0;const p=fakePage({missing:true});
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(r.report.observationStop,'initial-original-cohort-not-observed');
+ assert.ok(clock>=9000&&clock<=9700);assert.ok(!p.calls.includes('frame'));assert.ok(!p.calls.includes('screenshot'));
+});
+for(const terminal of ['invalid-ledger','source-exhausted'])test(`initial ${terminal} is terminal, not retried`,async()=>{
+ const p=fakePage({missing:true});const original=p.evaluate;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read')r.originalDiscovery={state:terminal};return r;};
+ const r=await captureCharonCameraDiagnostic(p,fakeOptions());
+ assert.equal(r.report.observationStop,'original-ledger-terminal');assert.equal(r.report.elapsedMs,0);
+ assert.equal(p.calls.filter(x=>x==='read').length,1);assert.ok(!p.calls.includes('frame'));
+});
+test('known original identity replacement stops rather than restarting initial discovery',async()=>{
+ let clock=0;const p=fakePage({ready:false});const original=p.evaluate;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read')r.subjects=[{
+   subject:'original-pod',id:clock>=1000?44:4,generation:1,assetState:'loading',worldRecordId:'source',
+ }];return r;};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(r.report.observationStop,'original-subject-unavailable');
+ assert.equal(r.report.samples[0].subjects[0].identityChanged,true);assert.ok(r.report.elapsedMs<3000);
+});
+test('initial discovery deadline expiry dispatches no subsequent reads or frame',async()=>{
+ let clock=0;const p=fakePage({missing:true});const original=p.evaluate;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read')clock=20000;return r;};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock});
+ assert.equal(p.calls.filter(x=>x==='read').length,1);assert.ok(!p.calls.includes('frame'));assert.ok(!p.calls.includes('screenshot'));
+ assert.ok(r.report.elapsedMs<=20000);
+});
+test('absent ledger exposes metadata counts without asserting original identities',()=>{
+ try{const{state}=stateFixture();state.traffic.charonSalvageSupply=null;
+ window.SF.bus.pendingEmitSliceCount=()=>7;window.SF.bus.pendingPresentationCount=()=>3;
+ const r=charonCameraPageOperation('read');
+ assert.equal(r.originalDiscovery.state,'awaiting-ledger');assert.equal(r.originalDiscovery.haulerSlotMetadataCount,1);
+ assert.equal(r.subjects[1].missing,true);assert.equal(r.originalDiscovery.pendingEmitCount,7);
+ assert.match(r.originalDiscovery.evidenceScope,/not original identity proof/);
+ state.traffic.charonSalvageSupply={blocked:true};assert.equal(charonCameraPageOperation('read').originalDiscovery.state,'invalid-ledger');
+ }finally{delete globalThis.window;}
+});
+
+test('partially observed original cannot be replaced while another original is still absent',async()=>{
+ let clock=0;const p=fakePage({missing:true});const original=p.evaluate;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read'){
+   r.subjects=[{subject:'original-hauler',id:clock>=600?22:2,generation:1,worldRecordId:'h'},
+     {subject:'original-pod',missing:true}];r.originalDiscovery={state:'awaiting-originals'};
+ }return r;};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(r.report.observationStop,'original-subject-unavailable');assert.equal(clock,600);assert.ok(!p.calls.includes('frame'));
+});
+for(const change of ['ledger','epoch','sector'])test(`initial discovery stops on changed ${change} authority`,async()=>{
+ let clock=0;const p=fakePage({missing:true});const original=p.evaluate;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read'){
+   r.sectorId=change==='sector'&&clock>=600?'other':'charon';
+   r.transition={enterSerial:change==='epoch'&&clock>=600?4:3};
+   r.ledger={haulerId:change==='ledger'&&clock>=600?'replacement':'h',salvorId:'s',original:6,pods:[{id:'charon_colony_air_pod'}]};
+   r.originalDiscovery={state:'awaiting-originals',ledgerValid:true};
+ }return r;};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock,sleep:async ms=>{clock+=ms;}});
+ assert.equal(r.report.observationStop,'original-subject-unavailable');assert.equal(clock,600);assert.ok(!p.calls.includes('frame'));
+});

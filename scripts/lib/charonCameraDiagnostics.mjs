@@ -157,6 +157,24 @@ export function charonCameraPageOperation(action) {
         && e.data?.commodityId === 'cmdty_consumer_goods' && e.data?.amount===source.loose):null,
   ];
   const names = ['colony', 'original-hauler', 'original-cutter', 'original-pod'];
+  const traffic = sf.registry?.get('traffic');
+  const countSlot = slot => entities.filter(e => e.data?.activityActorSlotId === slot).length;
+  const pendingCount = method => { try { return finite(sf.bus?.[method]?.()); } catch (_) { return null; } };
+  const originalDiscovery = {
+    state: !book ? 'awaiting-ledger' : !validBook || !source || source.original !== 6
+      || !Number.isFinite(source.loose) || source.loose < 0 || source.loose > 6
+      ? 'invalid-ledger' : source.loose === 0 ? 'source-exhausted'
+      : targets.some(e => !e) ? 'awaiting-originals' : 'observed',
+    ledgerPresent: !!book, ledgerValid: !!validBook,
+    haulerSlotMetadataCount: countSlot('charon_colony_hauler'),
+    cutterSlotMetadataCount: countSlot('charon_colony_salvor'),
+    sourceSlotMetadataCount: entities.filter(e => e.data?.activityObjectSlotId === 'charon_colony_air_pod').length,
+    trafficEmittedEpoch: finite(traffic?._emittedEpoch), trafficCookedEpoch: finite(traffic?._cookedEnterEpoch),
+    pendingEmitCount: pendingCount('pendingEmitSliceCount'),
+    pendingPresentationCount: pendingCount('pendingPresentationCount'),
+    evidenceScope: 'Slot metadata counts are not original identity proof; global bus counts do not identify a pending traffic listener.',
+  };
+
   const radius = e => {
     const root = e.mesh, bounds = root?.userData?.visualBounds;
     const size = bounds?.size;
@@ -226,7 +244,7 @@ export function charonCameraPageOperation(action) {
   return {sectorId:s.world?.currentSectorId,mode:s.mode,transition,authoredQueue,admissionLane,admissionLaneError,tick:s.tick,presentCount:s.render?.presentCount??null,
     gpu:s.render?.gpu?{...s.render.gpu}:null,softwareRenderer:s.render?.softwareRenderer??null,dynResScale:Number.isFinite(s.render?.dynResScale)?s.render.dynResScale:null,
     player:player?{id:player.id,pos:{x:player.pos.x,z:player.pos.z},hull:player.hull,assetState:player.mesh?.userData?.authoredAssetState??'missing'}:null,
-    subjects,ready:!transition.pending&&subjects.every(e=>!e.missing&&e.assetState==='authored')&&player?.mesh?.userData?.authoredAssetState==='authored',
+    originalDiscovery,subjects,ready:!transition.pending&&subjects.every(e=>!e.missing&&e.assetState==='authored')&&player?.mesh?.userData?.authoredAssetState==='authored',
     ledger:book?{phase:book.phase,original:book.original,blocked:!!book.blocked,haulerId:book.haulerId,salvorId:book.salvorId,
       pods:book.pods?.slice(0,8).map(p=>({id:p.id,original:p.original,loose:p.loose,aboard:p.aboard,delivered:p.delivered,consumed:p.consumed,player:p.player,other:p.other,lost:p.lost}))}:null,
     visibilityAssessment:'unverified; inspect actual screenshots; authored state is not pixel visibility'};
@@ -248,7 +266,36 @@ export async function captureCharonCameraDiagnostic(page, {
   const check=()=>{if(closed||now()>=deadline)throw new Error('Charon diagnostic deadline exceeded');};
   const bounded=async fn=>{check();let timer;try{return await Promise.race([
     Promise.resolve().then(()=>{check();return fn();}),new Promise((_,reject)=>{timer=setTimeout(()=>{closed=true;reject(new Error('Charon diagnostic deadline exceeded'));},Math.max(1,deadline-now()));})]);}finally{clearTimeout(timer);}};
-  const read=()=>bounded(()=>page.evaluate(charonCameraPageOperation,'read'));
+  const fixedIdentities=new Map();
+  let fixedLedger=null,fixedSector=null,fixedEnter=null;
+  const read=async()=>{
+    const snapshot=await bounded(()=>page.evaluate(charonCameraPageOperation,'read'));
+    let identityLost=false;
+    if(fixedSector!==null&&snapshot.sectorId!==fixedSector)identityLost=true;
+    if(fixedEnter!==null&&snapshot.transition?.enterSerial!==fixedEnter)identityLost=true;
+    if(fixedSector===null&&typeof snapshot.sectorId==='string')fixedSector=snapshot.sectorId;
+    if(fixedEnter===null&&Number.isFinite(snapshot.transition?.enterSerial))fixedEnter=snapshot.transition.enterSerial;
+    const book=snapshot.ledger;
+    const ledgerIdentity=snapshot.originalDiscovery?.ledgerValid===true
+      ? JSON.stringify([book?.haulerId,book?.salvorId,book?.original,
+        book?.pods?.find(p=>p.id==='charon_colony_air_pod')?.id]) : null;
+    if(fixedLedger!==null&&ledgerIdentity!==fixedLedger)identityLost=true;
+    if(fixedLedger===null&&ledgerIdentity!==null)fixedLedger=ledgerIdentity;
+    const seen=new Set();
+    snapshot.subjects=snapshot.subjects.map((e,i)=>{
+      const key=e.subject??i;seen.add(key);
+      const identity=JSON.stringify([e.id,e.generation,e.worldRecordId]);
+      if(fixedIdentities.has(key)&&(e.missing||fixedIdentities.get(key)!==identity)){
+        identityLost=true;return {...e,missing:true,identityChanged:true};
+      }
+      if(!e.missing&&!fixedIdentities.has(key))fixedIdentities.set(key,identity);
+      return e;
+    });
+    if([...fixedIdentities.keys()].some(key=>!seen.has(key)))identityLost=true;
+    if(identityLost){snapshot.originalIdentityLost=true;snapshot.ready=false;
+      snapshot.subjects=snapshot.subjects.map(e=>({...e,missing:true}));}
+    return snapshot;
+  };
   const capture=async index=>{
     await bounded(()=>mkdirFn(outputDir,{recursive:true})); check();
     const file=resolve(outputDir,`${started}-charon-programmatic-${index}.png`);
@@ -263,10 +310,14 @@ export async function captureCharonCameraDiagnostic(page, {
     // Enter listeners can drain over several presented frames. Do not fabricate missing cast.
     let snapshot=await read();
     report.initialSample=snapshot;
-    const subjectsDeadline=Math.min(deadline-9000,started+4000);
-    while(snapshot.subjects.some(e=>e.missing)&&now()<subjectsDeadline){await bounded(()=>sleep(200));snapshot=await read();}
+    const subjectsDeadline=deadline-10000;
+    const initialCanProgress=sample=>!sample.originalIdentityLost&&(!sample.originalDiscovery
+      || ['awaiting-ledger','awaiting-originals'].includes(sample.originalDiscovery.state));
+    while(snapshot.subjects.some(e=>e.missing)&&initialCanProgress(snapshot)&&now()<subjectsDeadline){await bounded(()=>sleep(200));snapshot=await read();}
     if(snapshot.subjects.some(e=>e.missing)) {
-      report.samples.push(snapshot); report.status='subjects-unavailable';report.observationStop='original-subject-unavailable';
+      report.samples.push(snapshot); report.status='subjects-unavailable';report.observationStop=snapshot.originalIdentityLost
+        ? 'original-subject-unavailable' : initialCanProgress(snapshot)
+        ? 'initial-original-cohort-not-observed' : 'original-ledger-terminal';
     } else {
       report.transitionSamples.push(snapshot.transition??null);
       // Keep the capped total deadline and capture reserve. If the genuine arrival
