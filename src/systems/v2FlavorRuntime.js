@@ -5,6 +5,7 @@
 // through the one-voice helper. Packs whose physical actors do not yet exist therefore remain
 // deliberately silent until an entity carries their explicit flavor identity.
 
+import { shardSphereSongProgress } from '../data/landmarkMissions.js';
 import { hash32 } from '../core/rng.js';
 import { FLAVOR_PACKS } from '../data/flavor/index.generated.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
@@ -322,9 +323,11 @@ export const v2FlavorRuntime = {
     if (!entry || !entry.lines.length) return false;
     const fragmentIndex = Math.min(entry.lines.length, Math.max(1, nonnegativeInt(signal.scanCount))) - 1;
     const source = entry.lines[fragmentIndex];
+    const progress = fragmentIndex === entry.lines.length - 1
+      ? shardSphereSongProgress(this.state) : null;
     const line = {
       ...source,
-      text: `SCHISM FRAGMENT ${fragmentIndex + 1}/${entry.lines.length} — ${source.text}`,
+      text: `SCHISM FRAGMENT ${fragmentIndex + 1}/${entry.lines.length} — ${source.text}${progress ? ` ${progress.text}` : ''}`,
     };
     return this._say({
       packId: LANDMARK_PACK.id,

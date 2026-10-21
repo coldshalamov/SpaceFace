@@ -4,6 +4,7 @@ import { ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, ANVIL_RETURN_GAS } from '../
 // Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
+import { SHARD_SPHERE_SONG } from '../data/landmarkMissions.js';
 import { asteroidScanGlyph } from '../data/mining.js';
 import { mothlightScannerReading } from '../data/mothlight.js';
 import { borrowedVoiceScannerReading } from './borrowedVoice.js';
@@ -894,19 +895,30 @@ function visibleSignalRows(rows, limit = 6) {
   return visible.sort(compareSignalRows);
 }
 
+// The Song is recovered over several visits, not a disposable sensor contact. Preserve
+// this one authored record without pretending the pilot investigated it or changing tracking.
+// Other contacts still compete for the same 64 slots; existing completed protection is unchanged.
+function retainedSongReading(id, record) {
+  return id === `signal:poi:${SHARD_SPHERE_SONG.poiId}`
+    && record?.sourceId === SHARD_SPHERE_SONG.poiId
+    && record?.sectorId === SHARD_SPHERE_SONG.sectorId
+    && record?.sourceKind === 'archive'
+    && Number.isFinite(Number(record.scanCount)) && Number(record.scanCount) > 0;
+}
+
 function pruneSignalRecords(own) {
   const ids = Object.keys(own.records || {});
   if (ids.length <= SIGNAL_RECORD_CAP) return;
   ids.sort((a, b) => {
-    const aProtected = a === own.trackedId || !!own.completed[a];
-    const bProtected = b === own.trackedId || !!own.completed[b];
+    const aProtected = a === own.trackedId || !!own.completed[a] || retainedSongReading(a, own.records[a]);
+    const bProtected = b === own.trackedId || !!own.completed[b] || retainedSongReading(b, own.records[b]);
     if (aProtected !== bProtected) return aProtected ? 1 : -1;
     const time = (Number(own.records[a] && own.records[a].lastScanAt) || 0)
       - (Number(own.records[b] && own.records[b].lastScanAt) || 0);
     return time || a.localeCompare(b);
   });
   for (const id of ids.slice(0, Math.max(0, ids.length - SIGNAL_RECORD_CAP))) {
-    if (id !== own.trackedId && !own.completed[id]) delete own.records[id];
+    if (id !== own.trackedId && !own.completed[id] && !retainedSongReading(id, own.records[id])) delete own.records[id];
   }
 }
 

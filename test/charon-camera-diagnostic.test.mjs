@@ -41,7 +41,7 @@ test('late screenshot mkdir cannot dispatch after diagnostic deadline',async()=>
 test('wedged page times out and starts no later page operations',async()=>{
  let operations=0;const p={evaluate:()=>{operations++;return new Promise(()=>{});}};
  const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>Date.now(),budgetMs:30});
- assert.equal(r.report.status,'diagnostic-timeout');assert.equal(operations,1);
+ assert.equal(r.report.status,'diagnostic-timeout');assert.ok(operations<=1, 'deadline may expire before first dispatch; never dispatch again');
 });
 test('wedged report persistence cannot strand browser cleanup',async()=>{
  const p=fakePage({missing:true});const started=Date.now();
@@ -106,7 +106,7 @@ test('cheap reads do not call getReport; post reports absent/failed telemetry ho
  assert.equal(charonCameraPageOperation('post').post.effectiveSceneScale,.5);assert.equal(calls,1);
  window.__THREE_GAME_DIAGNOSTICS__.getReport=()=>{throw Error('telemetry broken');};
  assert.match(charonCameraPageOperation('post').error,/telemetry broken/);
- delete window.__THREE_GAME_DIAGNOSTICS__;assert.deepEqual(charonCameraPageOperation('post'),{available:false,error:null,post:null});
+ delete window.__THREE_GAME_DIAGNOSTICS__;assert.deepEqual(charonCameraPageOperation('post'),{boundaryFailures:null,boundaryFailureError:null,available:false,error:null,post:null});
  }finally{delete globalThis.window;}
 });
 test('post telemetry deadline prevents subsequent screenshot dispatch',async()=>{
@@ -114,4 +114,66 @@ test('post telemetry deadline prevents subsequent screenshot dispatch',async()=>
  p.evaluate=async(fn,action)=>{const result=await original(fn,action);if(action==='post')clock=20001;return result;};
  const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock});
  assert.equal(r.report.status,'diagnostic-timeout');assert.equal(p.calls.filter(x=>x==='post').length,1);assert.ok(!p.calls.includes('screenshot'));
+});
+test('hard-enter admission keeps arrival unchanged and reports unframed captures within original budget',async()=>{
+ const p=fakePage({ready:false}),original=p.evaluate;let reads=0;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read'){reads++;r.transition={pending:true,sectorShellAdmission:true};}return r;};
+ const r=await captureCharonCameraDiagnostic(p,fakeOptions());
+ assert.equal(r.report.status,'sector-admission-pending-unframed-captured');
+ assert.equal(r.report.setup,null);assert.equal(p.calls.includes('frame'),false);
+ assert.equal(r.report.screenshots.length,2);assert.ok(reads>2);assert.ok(r.report.elapsedMs<20000);
+ assert.equal(r.report.transitionSamples[1].pending,true);
+});
+test('finished hard-enter admission permits only then the owner relocation',async()=>{
+ const p=fakePage(),original=p.evaluate;let reads=0;
+ p.evaluate=async(fn,action)=>{const r=await original(fn,action);if(action==='read')r.transition={pending:++reads<3};if(action==='frame')assert.ok(reads>=3);return r;};
+ const r=await captureCharonCameraDiagnostic(p,fakeOptions());
+ assert.equal(r.report.status,'authored-subjects-captured-not-visual-acceptance');
+ assert.equal(p.calls.filter(x=>x==='frame').length,1);
+ assert.equal(r.report.transitionSamples[0].pending,true);assert.equal(r.report.transitionSamples[1].pending,false);
+});
+test('live admission guard rejects camera mutation even when every subject is authored',()=>{
+ try {const {state,calls}=stateFixture();state.render.sectorShellAdmission=true;
+ let r=charonCameraPageOperation('read');assert.equal(r.ready,false);assert.equal(r.transition.pending,true);
+ assert.throws(()=>charonCameraPageOperation('frame'),/admission pending/);assert.equal(calls.length,0);
+ state.render.sectorShellAdmission=false;state.render.liveSectorGpuAdmission=true;
+ assert.throws(()=>charonCameraPageOperation('frame'),/admission pending/);assert.equal(calls.length,0);
+ state.render.liveSectorGpuAdmission=false;assert.equal(charonCameraPageOperation('read').ready,true);
+ }finally{delete globalThis.window;}
+});
+test('missing subject root exposes build evidence without declaring an asset load failure',()=>{
+ try {const {state}=stateFixture();const e=state.entityList[0];delete e.mesh;
+ e._meshBuildFailures=2;e._meshBuildLastError='sample failure';e.activity={presentationTier:'R1_RUNWAY'};
+ state.render.liveSectorFirstFlightIds=new Set([e.id]);
+ const r=charonCameraPageOperation('read').subjects[0];
+ assert.equal(r.meshPresent,false);assert.equal(r.buildFailures,2);assert.equal(r.buildError,'sample failure');
+ assert.equal(r.inFirstFlight,true);assert.equal(r.presentationTier,'R1_RUNWAY');assert.equal(r.noMesh,false);
+ }finally{delete globalThis.window;}
+});
+
+test('deterministic first dispatch timeout starts exactly once and never schedules a later operation',async()=>{
+ let operations=0,clock=0;
+ const p={evaluate:()=>{operations++;clock=1001;return new Promise(()=>{});}};
+ const r=await captureCharonCameraDiagnostic(p,{...fakeOptions(),now:()=>clock,budgetMs:1000});
+ assert.equal(r.report.status,'diagnostic-timeout');assert.equal(operations,1);
+});
+test('software observation distinguishes hidden prepared boundary from absent mesh and reads activity membership',()=>{
+ try {const {state}=stateFixture();const e=state.entityList[0];delete e.mesh;
+ const record={state:'preparing',active:true,generation:8,boundary:{visible:false,userData:{authoredAssetState:'loading'}}};
+ const world=window.SF.registry.get('world');
+ const owner={_sectorBoundaryPreparations:{get:id=>id===e.id?record:null},_reconcileIter:{},_reconcileEpoch:5,
+ _firstFlightDeferredHold:true,_postOpeningPipelineAdmissionReleased:false,_authoredSectorPrewarmPendingId:'sector_charon_expanse'};
+ window.SF.registry.get=name=>name==='render'?owner:world;
+ state.render.softwareRenderer=true;state.render.activityFrame={complete:true,renderGlassIds:new Set([e.id]),renderRunwayIds:[]};
+ state.render.firstFlightDeferredHoldUntil=20;state.simTime=2.5;
+ let r=charonCameraPageOperation('read');
+ assert.equal(r.transition.pending,false);assert.equal(r.transition.reconcileActive,true);
+ assert.equal(r.transition.deferredHoldUntil,20);assert.equal(r.transition.simTime,2.5);
+ assert.equal(r.subjects[0].meshPresent,false);assert.equal(r.subjects[0].boundaryPreparation.assetState,'loading');
+ assert.equal(r.subjects[0].boundaryPreparation.visible,false);assert.equal(r.subjects[0].inActivityGlass,true);
+ assert.equal(r.subjects[0].inActivityRunway,false);assert.equal(r.ready,false);
+ record.error=new Error('decode failed');assert.equal(charonCameraPageOperation('read').subjects[0].boundaryPreparation.error,'decode failed');
+ state.render.sectorBoundaryPrewarm={failures:()=>[{id:e.id,state:'disposed',error:'prior failure'}]};
+ assert.equal(charonCameraPageOperation('post').boundaryFailures[0].error,'prior failure');
+ }finally{delete globalThis.window;}
 });

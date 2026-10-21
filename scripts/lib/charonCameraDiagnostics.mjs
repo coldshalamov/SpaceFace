@@ -9,12 +9,56 @@ export function charonCameraPageOperation(action) {
   const sf = window.SF, s = sf?.state, world = sf?.registry?.get('world');
   if (!s || !world) throw new Error('Charon diagnostic requires live SF world');
   const sectorId = 'sector_charon_expanse';
+  const render = s.render || {}, owner = sf.registry?.get('render');
+  const finite = value => Number.isFinite(value) ? value : null;
+  const bool = value => typeof value === 'boolean' ? value : null;
+  const member = (collection, id) => typeof collection?.has === 'function'
+    ? collection.has(id) : Array.isArray(collection) ? collection.includes(id) : null;
+  const activity = render.activityFrame;
+  const boundary = id => {
+    const record = owner?._sectorBoundaryPreparations?.get?.(id);
+    if (!record) return null;
+    return {state:record.state??null,active:bool(record.active),generation:finite(record.generation),
+      rootPresent:!!record.boundary,assetState:record.boundary?.userData?.authoredAssetState??null,
+      visible:bool(record.boundary?.visible),error:record.error?String(record.error.message||record.error).slice(0,1000):null,
+      abortReason:record.abortReason??null,cleanupBlocked:record.cleanupBlocked===true};
+  };
+  const transition = {
+    pending: render.sectorShellAdmission === true || render.liveSectorGpuAdmission === true,
+    sectorShellAdmission: render.sectorShellAdmission === true,
+    liveSectorGpuAdmission: render.liveSectorGpuAdmission === true,
+    enterSerial: finite(s.world?.enterSerial), shellSerial: finite(render.sectorShellAdmissionSerial),
+    cookGeneration: finite(owner?._liveSectorCookGeneration),
+    firstFlightCount: finite(render.liveSectorFirstFlightIds?.size),
+    residencyHoldUntil: finite(render.firstFlightResidencyHoldUntil), simTime: finite(s.simTime),
+    meshBuildPending: Array.isArray(owner?._meshBuildQueue)
+      ? Math.max(0, owner._meshBuildQueue.length - (owner._meshBuildQueueHead || 0)) : null,
+    reconcileDirty: bool(owner?._meshReconcileDirty), reconcileActive:!!owner?._reconcileIter,
+    reconcileEpoch:finite(owner?._reconcileEpoch), residencyPollActive:!!owner?._residencyPollIter,
+    holdExemptCollectActive:!!owner?._holdExemptCollectIter,
+    holdExemptEnqueueActive:!!owner?._holdExemptEnqueueIter,
+    holdExemptKickActive:!!owner?._holdExemptKickIter,
+    holdExemptRemaining:finite(owner?._holdExemptRemaining),
+    protectedFirstFlightDrainActive:!!owner?._protectedFirstFlightDrainIter,
+    noncriticalStreamingDeferred:bool(owner?._deferNoncriticalMeshStreaming),
+    firstFlightDeferredHold:bool(owner?._firstFlightDeferredHold),
+    deferredHoldUntil:finite(render.firstFlightDeferredHoldUntil),
+    postOpeningPipelineReleased:bool(owner?._postOpeningPipelineAdmissionReleased),
+    firstPlayableFrameAt:finite(render.firstPlayableFrameAt),
+    activityFrameComplete:bool(activity?.complete),
+    authoredSectorPrewarmPendingId:owner?._authoredSectorPrewarmPendingId??null,
+    lastPresentDtMs:finite(render.lastPresentDtMs),
+    evidenceScope:'Raw owner state only; membership and holds do not alone prove owed-mesh eligibility.',
+  };
   if (action === 'post') {
     let post=null,error=null;
     try { post=window.__THREE_GAME_DIAGNOSTICS__?.getReport?.()?.post??null; }
     catch (e) { error=String(e?.message||e).slice(0,1000); }
+    let boundaryFailures=null,boundaryFailureError=null;
+    try {boundaryFailures=render.sectorBoundaryPrewarm?.failures?.()??null;}
+    catch(e){boundaryFailureError=String(e?.message||e).slice(0,1000);}
     const finite=v=>Number.isFinite(v)?v:null;
-    return {available:!!post,error,post:post?{
+    return {boundaryFailures,boundaryFailureError,available:!!post,error,post:post?{
       activePath:post.activePath??null,effectiveSceneScale:finite(post.effectiveSceneScale),
       drawingBufferWidth:finite(post.drawingBufferWidth),drawingBufferHeight:finite(post.drawingBufferHeight),
       contentWidth:finite(post.bloom?.contentWidth),contentHeight:finite(post.bloom?.contentHeight),
@@ -57,6 +101,11 @@ export function charonCameraPageOperation(action) {
     return r;
   };
   if (action === 'frame') {
+    // Hardware hard-enter can start a position-sensitive asynchronous sector cook. Relocating while
+    // its first-flight census is in progress changes the subject of that admission.
+    // Software skips that cook; this guard is defensive, not evidence of the missing-root cause.
+    // Observe it, never force it to complete or mutate its readiness latches.
+    if (transition.pending) throw new Error('Sector admission pending; camera relocation withheld');
     if (s.world?.currentSectorId !== sectorId || targets.some(e => !e)) throw new Error('Original Charon subjects missing or ambiguous; no substitute spawned');
     const player = s.entities.get(s.playerId);
     if (!live(player)) throw new Error('Player unavailable');
@@ -93,11 +142,20 @@ export function charonCameraPageOperation(action) {
     worldRecordId:e.data?.worldRecordId??null,defId:e.data?.defId??null,placeId:e.data?.placeId??null,
     pos:{x:e.pos.x,z:e.pos.z},radius:radius(e),assetState:e.mesh?.userData?.authoredAssetState??'missing',
     assetId:e.mesh?.userData?.assetId??null,visible:e.mesh?.visible??false,
-    amount:e.data?.amount??null,commodityId:e.data?.commodityId??null}: {subject:names[i],missing:true});
-  return {sectorId:s.world?.currentSectorId,mode:s.mode,tick:s.tick,presentCount:s.render?.presentCount??null,
+    amount:e.data?.amount??null,commodityId:e.data?.commodityId??null,
+    meshPresent:!!e.mesh, meshName:e.mesh?.name??null,
+    buildQueued:owner?._meshBuildQueuedIds?.has?.(e.id)??null,
+    buildFailures:finite(e._meshBuildFailures), buildError:e._meshBuildLastError??null,
+    noMesh:e._noMesh===true,noMeshByRenderer:e._noMeshByRenderer===true,
+    buildRetryAtSim:finite(e._meshBuildRetryAtSim),buildRetryAtWallMs:finite(e._meshBuildRetryAtWallMs),
+    presentationTier:e.activity?.presentationTier??null,presentationAdmission:e.presentationAdmission??null,
+    inActivityGlass:member(activity?.renderGlassIds,e.id),inActivityRunway:member(activity?.renderRunwayIds,e.id),
+    boundaryPreparation:boundary(e.id),
+    inFirstFlight:render.liveSectorFirstFlightIds?.has?.(e.id)??null}: {subject:names[i],missing:true});
+  return {sectorId:s.world?.currentSectorId,mode:s.mode,transition,tick:s.tick,presentCount:s.render?.presentCount??null,
     gpu:s.render?.gpu?{...s.render.gpu}:null,softwareRenderer:s.render?.softwareRenderer??null,dynResScale:Number.isFinite(s.render?.dynResScale)?s.render.dynResScale:null,
     player:player?{id:player.id,pos:{x:player.pos.x,z:player.pos.z},hull:player.hull,assetState:player.mesh?.userData?.authoredAssetState??'missing'}:null,
-    subjects,ready:subjects.every(e=>!e.missing&&e.assetState==='authored')&&player?.mesh?.userData?.authoredAssetState==='authored',
+    subjects,ready:!transition.pending&&subjects.every(e=>!e.missing&&e.assetState==='authored')&&player?.mesh?.userData?.authoredAssetState==='authored',
     ledger:book?{phase:book.phase,original:book.original,blocked:!!book.blocked,haulerId:book.haulerId,salvorId:book.salvorId,
       pods:book.pods?.slice(0,8).map(p=>({id:p.id,original:p.original,loose:p.loose,aboard:p.aboard,delivered:p.delivered,consumed:p.consumed,player:p.player,other:p.other,lost:p.lost}))}:null,
     visibilityAssessment:'unverified; inspect actual screenshots; authored state is not pixel visibility'};
@@ -111,7 +169,7 @@ export async function captureCharonCameraDiagnostic(page, {
   const deadline=started+Math.max(1,totalBudget-500);
   let closed=false;
   const report={schema:'spaceface.charonCamera.v1',label:CHARON_CAMERA_LABEL,visualAcceptance:false,
-    status:'unavailable',setup:null,samples:[],postSamples:[],screenshots:[],errors:[]};
+    status:'unavailable',setup:null,transitionSamples:[],samples:[],postSamples:[],screenshots:[],errors:[]};
   const check=()=>{if(closed||now()>=deadline)throw new Error('Charon diagnostic deadline exceeded');};
   const bounded=async fn=>{check();let timer;try{return await Promise.race([
     Promise.resolve().then(()=>{check();return fn();}),new Promise((_,reject)=>{timer=setTimeout(()=>{closed=true;reject(new Error('Charon diagnostic deadline exceeded'));},Math.max(1,deadline-now()));})]);}finally{clearTimeout(timer);}};
@@ -134,8 +192,15 @@ export async function captureCharonCameraDiagnostic(page, {
     if(snapshot.subjects.some(e=>e.missing)) {
       report.samples.push(snapshot); report.status='subjects-unavailable';
     } else {
-      report.setup=await bounded(()=>page.evaluate(charonCameraPageOperation,'frame'));
-      snapshot=await read();
+      report.transitionSamples.push(snapshot.transition??null);
+      // Keep the original total deadline and capture reserve. If the genuine arrival
+      // is still cooking, preserve two arrival views instead of relocating mid-cook.
+      while(snapshot.transition?.pending&&now()<deadline-10000){await bounded(()=>sleep(250));snapshot=await read();}
+      report.transitionSamples.push(snapshot.transition??null);
+      if(!snapshot.transition?.pending){
+        report.setup=await bounded(()=>page.evaluate(charonCameraPageOperation,'frame'));
+        snapshot=await read();
+      }
       // Reserve time for two bounded captures. Readiness failure is evidence, not a forced upgrade.
       while(!snapshot.ready&&now()<deadline-10000){await bounded(()=>sleep(250));snapshot=await read();}
       report.samples.push(snapshot);
@@ -145,7 +210,7 @@ export async function captureCharonCameraDiagnostic(page, {
       while(now()-firstTime<500 || !(Number.isFinite(firstCount)&&snapshot.presentCount>firstCount));
       report.samples.push(snapshot);
       await capture(2);
-      report.status=report.samples.every(s=>s.ready)?'authored-subjects-captured-not-visual-acceptance':'unresolved-assets-captured';
+      report.status=!report.setup?'sector-admission-pending-unframed-captured':report.samples.every(s=>s.ready)?'authored-subjects-captured-not-visual-acceptance':'unresolved-assets-captured';
     }
   } catch(error) {report.status=/deadline/.test(String(error?.message))?'diagnostic-timeout':'diagnostic-failed';report.errors.push(String(error?.message||error).slice(0,1000));}
   closed=true;report.elapsedMs=now()-started;
