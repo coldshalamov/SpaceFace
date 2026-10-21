@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "ceres-chain-dock-log",
-      "date": "2026-10-13",
-      "wf": "WF-09",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The refinery's own dock-face drama (the Ceres causal chain) now reaches the dock card's DOCK LOG — completed chain events write the sector deed slot with their own line, so docking after watching the pod escape or the seam calve finally hears the station remember it",
-      "fingerprint": "verb=remember,subject=dock-face chain event,sector=ceres,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "e8f779885d7a8d7a5b65b00be4b1d1a22f968989",
-      "verification": "focused_green"
-    },
-    {
       "id": "enemy-specialist-silhouettes",
       "date": "2026-10-13",
       "wf": "WF-11",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "b7fe0819c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-48-mission-log-47a-terms",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "bench fixture seeds the installed 47-A record; terms check pins the authored terms",
+      "fingerprint": "verb=read,subject=contract,sector=log,domain=rc-48",
+      "references": [],
+      "integration": "live",
+      "commit": "f39d61cd7",
       "verification": "focused_green"
     }
   ],
