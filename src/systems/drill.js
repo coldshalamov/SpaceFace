@@ -109,8 +109,30 @@ export const CHARGE_COST_CR = 180;        // per shot, through the economy:charg
 export const CHARGE_YIELD_FRACTION = 0.6; // crude extraction — the rubble keeps the rest
 export const CHARGE_BACKBLAST_PCT = 10;   // hull % when the rig is still in the pattern
 export const CHARGE_BLAST_RADIUS = 1;     // cells — a 3×3 cut that always quotes the rig's own square
+export const CHARGE_SHAPE_LEN = 5;        // cells — the shaped charge's corridor
+export const CHARGE_SEISMIC_RADIUS = 2;  // cells — a 5×5 fracture field
 
-const EMPTY_TILE = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
+// One armed verb, four payloads. Cost is the credit price when the press has no stock on the
+// rock; the preview reports which purse pays. `harms` marks a payload whose pattern can still
+// bite the rig — venting and seismic shots are safe to stand next to.
+export const CHARGE_PAYLOADS = {
+  blast:   { label: 'Blast charge',   cost: CHARGE_COST_CR, harms: true,  fuse: CHARGE_FUSE_S },
+  shape:   { label: 'Shaped charge',  cost: 120,            harms: true,  fuse: CHARGE_FUSE_S },
+  vent:    { label: 'Venting charge', cost: 90,             harms: false, fuse: 0.9 },
+  seismic: { label: 'Seismic charge', cost: 140,            harms: false, fuse: 1.1 },
+};
+export const CHARGE_PAYLOAD_ORDER = ['blast', 'shape', 'vent', 'seismic'];
+
+// Roof mechanics. A corridor is safe — its ceiling rests on walls one row up. A HALL (a run of
+// empties with open headroom above it) is not: widen one past the warn span and the roof cells
+// crack; keep widening while cracks stand and the whole beam drops into the hall as rubble.
+export const CAVE_SPAN_WARN = 5;    // empties in a run before the roof takes notice
+export const CAVE_HEADROOM_MIN = 3; // columns of open air above the run that make it a hall
+export const CAVE_SPAN_FALL = 6;    // a cracked hall widened to this span drops its roof
+export const CAVE_BEAM_SCAN = 8;    // rows of open air a roof beam may hide behind
+export const CAVE_IN_PCT = 15;      // hull % when the fall lands on the rig
+
+export const EMPTY_TILE = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
 const clamp01 = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0; };
 
 export function tileIndex(col, row) {
@@ -189,6 +211,71 @@ function recordClearedTile(data, col, row) {
   const idx = tileIndex(col, row);
   if (idx < 0 || idx >= COLS * ROWS) return;
   if (!d.drillCleared.includes(idx)) d.drillCleared.push(idx);
+  // A re-cleared cell cannot still be rubble — the two lists are mutually exclusive.
+  if (Array.isArray(d.drillRubble)) {
+    d.drillRubble = d.drillRubble.filter((i) => Math.trunc(Number(i)) !== idx);
+  }
+}
+
+// Flag lists keep the geometry registry (`drillCleared`) honest: a vented seam is still an
+// empty cell, a scar is still an empty cell, a fault is still solid. Rubbles are the exception —
+// a fallen cell is solid again, so it must leave `drillCleared` entirely.
+function flagTile(data, key, col, row) {
+  const d = ensureAsteroidDeepCore(data);
+  if (!d) return;
+  const idx = tileIndex(col, row);
+  if (idx < 0 || idx >= COLS * ROWS) return;
+  if (!Array.isArray(d[key])) d[key] = [];
+  if (!d[key].includes(idx)) d[key].push(idx);
+}
+
+function recordVentedTile(data, col, row) { flagTile(data, 'drillVented', col, row); }
+function recordScarredTile(data, col, row) { flagTile(data, 'drillScars', col, row); }
+function recordFaultedTile(data, col, row) { flagTile(data, 'drillFaults', col, row); }
+function recordRubbleTile(data, col, row) {
+  const d = ensureAsteroidDeepCore(data);
+  if (!d) return;
+  const idx = tileIndex(col, row);
+  if (idx < 0 || idx >= COLS * ROWS) return;
+  flagTile(d, 'drillRubble', col, row);
+  for (const key of ['drillCleared', 'drillVented', 'drillScars']) {
+    if (Array.isArray(d[key])) d[key] = d[key].filter((i) => Math.trunc(Number(i)) !== idx);
+  }
+}
+
+// Fallen ceiling material — soft fill the auger has to chew a second time. It is 'dirt' so the
+// extractor's silicate contact law applies unchanged; `rubble` marks it for the renderers.
+const RUBBLE_TILE = () => ({ type: 'dirt', hp: 8, maxHp: 8, ore: null, hazard: false, tierReq: 1, hardness: 0.4, rubble: true });
+
+// One fracture body for both sources: the generator's fault planes and the seismic charge. The
+// tile stays standing — it just stops arguing with the auger.
+function fractureTile(tile) {
+  tile.fault = true;
+  tile.hardness = Math.max(0.2, Number((Number(tile.hardness) * 0.5).toFixed(2)));
+  tile.hp = Math.max(1, Math.floor(Number(tile.hp) * 0.55));
+  tile.maxHp = Math.max(tile.hp, Math.floor(Number(tile.maxHp) * 0.55));
+}
+
+export function applyRubbleTiles(field, rubble) {
+  const list = normalizeClearedTiles(rubble);
+  if (!field || !list.length) return;
+  for (const idx of list) {
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    if (!field[col] || row < 0 || row >= ROWS) continue;
+    field[col][row] = RUBBLE_TILE();
+  }
+}
+
+export function applyFlaggedTiles(field, flagged, fn) {
+  const list = normalizeClearedTiles(flagged);
+  if (!field || !list.length || typeof fn !== 'function') return;
+  for (const idx of list) {
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    const tile = field[col] && field[col][row];
+    if (tile) fn(tile, col, row);
+  }
 }
 
 function writeVeinRemainder(data, col, row, yieldU, ore) {
@@ -502,19 +589,31 @@ function seededDrillRng(seed) {
   return mulberry32((seed | 0) || 1);
 }
 
+/**
+ * The strata a prospector reads. Cap is the worked surface, spine is the working band, heart is
+ * where the deep ore and the deep risk both live. It is a label on the same math the field was
+ * already generated with — the board gains a name for what the eye was already seeing.
+ */
+export function stratumForDepth(depth) {
+  if (depth < 0.34) return 'cap';
+  if (depth < 0.68) return 'spine';
+  return 'heart';
+}
+
 function matrixTile(row, rows, basalt = false) {
   const depth = fieldDepth(row, rows);
+  const stratum = stratumForDepth(depth);
   if (!basalt || row <= 2) {
     return {
       type: 'dirt', hp: DIRT_HP, maxHp: DIRT_HP, ore: null, hazard: false, tierReq: 1,
-      hardness: DIRT_HARDNESS, risk: 'low',
+      hardness: DIRT_HARDNESS, risk: 'low', stratum,
     };
   }
   const hp = 8 + Math.floor(depth * 25);
   return {
     type: 'rock', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1,
     hardness: Number((1.15 + depth * 0.85).toFixed(2)),
-    risk: depth >= 0.7 ? 'elevated' : 'low',
+    risk: depth >= 0.7 ? 'elevated' : 'low', stratum,
   };
 }
 
@@ -522,16 +621,38 @@ function gasTile() {
   return { type: 'gas', hp: 1, maxHp: 1, ore: null, hazard: true, tierReq: 1, hardness: 0.5, risk: 'critical' };
 }
 
-function veinTile(row, rows, ore, rng) {
+function veinTile(row, rows, ore, rng, rich = false) {
   const depth = fieldDepth(row, rows);
-  const tierReq = drillTierReqForOre(ore);
-  const yieldU = 1 + Math.floor(rng() * (2 + depth * 5));
-  const hp = 5 + Math.floor(depth * 15);
+  const stratum = stratumForDepth(depth);
+  const tierReq = Math.min(4, drillTierReqForOre(ore) + (rich ? 1 : 0));
+  const yieldU = (1 + Math.floor(rng() * (2 + depth * 5))) * (rich ? 3 : 1);
+  const hp = 5 + Math.floor(depth * 15) + (rich ? 4 : 0);
   return {
     type: 'vein', hp, maxHp: hp, ore, yieldU, hazard: false, tierReq,
-    hardness: Number((0.9 + depth * 0.65 + Math.max(0, tierReq - 1) * 0.12).toFixed(2)),
-    risk: depth >= 0.7 ? 'high' : (depth >= 0.35 ? 'elevated' : 'low'),
+    hardness: Number(((0.9 + depth * 0.65 + Math.max(0, tierReq - 1) * 0.12) * (rich ? 1.25 : 1)).toFixed(2)),
+    risk: rich ? 'high' : (depth >= 0.7 ? 'high' : (depth >= 0.35 ? 'elevated' : 'low')),
+    stratum, rich: rich || undefined,
   };
+}
+
+/**
+ * A sealed cave — packed friable fill the field was born with, never a born hollow: the contact
+ * law requires every ring cell to be solid or worked, so a pocket the player hasn't opened is
+ * still rock. It bores in one bite and pays nothing — the payout is the chamber it reveals.
+ * cave:true marks it so the renderer and the inspector can name it.
+ */
+function caveTile(row, rows) {
+  const stratum = stratumForDepth(fieldDepth(row, rows));
+  return { type: 'rock', hp: 2, maxHp: 2, ore: null, hazard: false, tierReq: 1, hardness: 0.4, risk: 'low', stratum, cave: true };
+}
+
+/** A fracture plane: the same rock, cut at half hardness along a seeded run. */
+function markFault(field, col, row) {
+  const tile = field[col] && field[col][row];
+  if (!tile || tile.type === 'empty' || tile.type === 'gas' || tile.fault) return false;
+  tile.fault = true;
+  tile.hardness = Math.max(0.2, Number((Number(tile.hardness) * 0.45).toFixed(2)));
+  return true;
 }
 
 function smoothstep(t) {
@@ -790,6 +911,57 @@ export function generateFormations(seed, family = DEFAULT_GEOLOGY_FAMILY, width 
     if (!cells) break;
   }
 
+  // Rich seams — the lucky strike a deep prospector is actually digging for. Rare, denser,
+  // tier-gated one step above the ore's band, and seeded like every other body on this rock.
+  const richRng = seededDrillRng(hash32(geologySeed, 'rich-seams'));
+  const richCount = 1 + Math.floor(richRng() * 2);
+  for (let i = 0; i < richCount; i++) {
+    const size = 3 + Math.floor(richRng() * 5);
+    const ore = metalOreFor(Math.floor(h * 0.55) + i * 4, h, richRng);
+    const cells = placeFormation({
+      rng: richRng, blocked, field, width: w, height: h,
+      minRow: Math.floor(h * 0.4), maxRow: h - 2, size,
+      grainAngle: (richRng() - 0.5) * 0.7,
+      makeTile: (row) => veinTile(row, h, ore, richRng, true),
+    });
+    if (!cells) break;
+  }
+
+  // Sealed caves — born hollows inside the rock. They never open onto the surface; a bore or a
+  // charge finds them, and the board gains real chambers to expand instead of only digging.
+  const caveRng = seededDrillRng(hash32(geologySeed, 'sealed-caves'));
+  const caveCount = 1 + Math.floor(caveRng() * 2);
+  for (let i = 0; i < caveCount; i++) {
+    const size = 3 + Math.floor(caveRng() * 5);
+    const cells = placeFormation({
+      rng: caveRng, blocked, field, width: w, height: h,
+      minRow: Math.floor(h * 0.5), maxRow: h - 3, size,
+      grainAngle: caveRng() * Math.PI * 2,
+      makeTile: (row) => caveTile(row, h),
+    });
+    if (!cells) break;
+  }
+
+  // Fracture planes — seeded straight runs of cracked rock that bore at half hardness. They do not
+  // reserve cells (a fault marks rock that was already placed), and the renderer reads `fault` for
+  // the crack decal so the fast line is legible before the bit touches it.
+  const faultRng = seededDrillRng(hash32(geologySeed, 'fault-planes'));
+  const faultCount = 1 + Math.floor(faultRng() * 3);
+  for (let i = 0; i < faultCount; i++) {
+    const len = 8 + Math.floor(faultRng() * 14);
+    let col = 1 + Math.floor(faultRng() * Math.max(1, w - 2));
+    let row = 4 + Math.floor(faultRng() * Math.max(1, h - 8));
+    const angle = Math.floor(faultRng() * 4) * (Math.PI / 2) + (faultRng() - 0.5) * 0.35;
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    for (let step = 0; step < len; step++) {
+      const c = Math.round(col), r = Math.round(row);
+      if (c < 1 || c >= w - 1 || r < 3 || r >= h - 2) break;
+      markFault(field, c, r);
+      col += dx + (faultRng() - 0.5) * 0.22;
+      row += dy + (faultRng() - 0.5) * 0.22;
+    }
+  }
+
   return field;
 }
 
@@ -902,7 +1074,10 @@ export function drillCellEvidence(field, col, row, nearCleared) {
   }
   const tile = cellAt(field, c, r, cols, rows);
   if (!tile) return { kind: 'unrevealed', ...commitmentBlank() };
-  if (tile.type === 'empty') return { kind: 'open', type: 'empty', ore: null, yieldU: null, tierReq: null, risk: null };
+  if (tile.type === 'empty') return {
+    kind: 'open', type: 'empty', ore: null, yieldU: null, tierReq: null, risk: null,
+    cave: !!tile.cave, vented: !!tile.vented, scar: !!tile.scar,
+  };
   if (tile.surveyed) {
     const vein = tile.type === 'vein' && tile.ore;
     return {
@@ -910,15 +1085,21 @@ export function drillCellEvidence(field, col, row, nearCleared) {
       type: tile.type,
       ore: vein ? tile.ore : null,
       yieldU: vein ? Math.max(0, Math.floor(Number(tile.yieldU) || 0)) : null,
-      tierReq: vein ? drillTierReqForOre(tile.ore) : null,
+      tierReq: vein ? tile.tierReq ?? drillTierReqForOre(tile.ore) : null,
       risk: tile.risk || null,
+      stratum: tile.stratum || null,
+      fault: !!tile.fault,
+      rich: !!tile.rich,
+      cracked: !!tile.cracked,
+      rubble: !!tile.rubble,
     };
   }
   const told = nearCleared
     ? nearCleared[r * cols + c] === 1
     : clearedNear(field, c, r, cols, rows);
   if (tile.type === 'gas' && told) return { kind: 'suspected-gas', ...commitmentBlank() };
-  return { kind: 'unrevealed', ...commitmentBlank() };
+  // A crack is a live warning, not a survey fact — it surfaces even on rock never assayed.
+  return { kind: 'unrevealed', ...commitmentBlank(), cracked: !!tile.cracked, fault: !!tile.fault };
 }
 
 /** Cable points that are still open tunnel. A solid or unknown cell is dropped, not drawn through. */
@@ -1169,6 +1350,12 @@ export const drill = {
     if (data) data.drillCleared = cleared;
     // A partial bite is not a cleared hole. The seed would otherwise put the original yield back.
     applyVeinRemainders(field, data && data.drillVeinRemainders);
+    // Layered flags: vented seams and blast scars live on cleared holes, seismic faults live on
+    // standing rock, and rubble lands LAST so a stale cleared entry can never erase a collapse.
+    applyFlaggedTiles(field, data && data.drillVented, (t) => { if (t.type === 'empty') t.vented = true; });
+    applyFlaggedTiles(field, data && data.drillScars, (t) => { if (t.type === 'empty') t.scar = true; });
+    applyFlaggedTiles(field, data && data.drillFaults, (t) => { if (t.type !== 'empty') fractureTile(t); });
+    applyRubbleTiles(field, data && data.drillRubble);
 
     const rock = this._computeRockBudget(asteroidId);
 
@@ -1222,6 +1409,8 @@ export const drill = {
         contacts: 0,
       },
       chargeArmed: false,     // the demolition verb is being aimed (R)
+      chargePayload: 'blast', // the rack the armed verb will seat — blast/shape/vent/seismic
+      chargeStock: 0,         // pucks on the rock (press-made); stock is spent before credits
       chargeAim: null,        // pointer-named anchor cell, re-validated on every use
       charge: null,           // { col, row, fuse } once set — cooks off on the drill clock
       chargeCooldown: 0,      // re-arm dead time after a blast
@@ -1424,6 +1613,53 @@ export const drill = {
     return { col: d.avatar.col + dv[0], row: d.avatar.row + dv[1] };
   },
 
+  // The cells a payload touches. `shape` runs away from the rig along the anchor direction —
+  // plant on a face, bore a corridor. Everything else centers on the anchor.
+  _chargePattern(anchor, payload) {
+    if (!anchor) return [];
+    const d = this.state.drill;
+    const cells = [];
+    const push = (col, row) => {
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) cells.push({ col, row });
+    };
+    if (payload === 'shape') {
+      const av = d.avatar || { col: anchor.col, row: anchor.row };
+      let dx = Math.sign(anchor.col - av.col);
+      let dy = Math.sign(anchor.row - av.row);
+      if (dx !== 0 && dy !== 0) { if (Math.abs(anchor.col - av.col) >= Math.abs(anchor.row - av.row)) dy = 0; else dx = 0; }
+      if (dx === 0 && dy === 0) dy = 1;
+      for (let i = 0; i < CHARGE_SHAPE_LEN; i++) push(anchor.col + dx * i, anchor.row + dy * i);
+      return cells;
+    }
+    const radius = payload === 'seismic' ? CHARGE_SEISMIC_RADIUS : CHARGE_BLAST_RADIUS;
+    for (let dc = -radius; dc <= radius; dc++) {
+      for (let dr = -radius; dr <= radius; dr++) push(anchor.col + dc, anchor.row + dr);
+    }
+    return cells;
+  },
+
+  // Stock lives on the asteroid — charges a press fabricates stay on this rock between visits.
+  chargeStockCount() {
+    const d = this.state.drill;
+    const ent = d && this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+    const entStock = ent && ent.data ? Number(ent.data.chargeStock) : NaN;
+    if (Number.isFinite(entStock)) return Math.max(0, Math.floor(entStock));
+    return d ? Math.max(0, Math.floor(Number(d.chargeStock) || 0)) : 0;
+  },
+
+  _spendChargeStock(d) {
+    const ent = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+    if (ent && ent.data && Number(ent.data.chargeStock) > 0) {
+      ent.data.chargeStock = Math.max(0, Math.floor(Number(ent.data.chargeStock)) - 1);
+      return true;
+    }
+    if (Number(d.chargeStock) > 0) {
+      d.chargeStock = Math.max(0, Math.floor(Number(d.chargeStock)) - 1);
+      return true;
+    }
+    return false;
+  },
+
   // What a blasted vein would bank — the quote the board shows before the credit moves.
   _blastYieldQuote(d, yieldU) {
     const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
@@ -1431,73 +1667,95 @@ export const drill = {
     return avail > 0 ? Math.max(1, Math.floor(avail * CHARGE_YIELD_FRACTION)) : 0;
   },
 
-  // The 3×3 the charge would cut, clipped to the field, every cell carrying its verdict — the
-  // permanent consequence previewed at decision time (design law), not a surprise on the far
+  // The pattern the charge would touch, clipped to the field, every cell carrying its verdict —
+  // the permanent consequence previewed at decision time (design law), not a surprise on the far
   // side of the fuse. `ok`/`reason` is also the plant gate, so the quote can never lie.
   chargePreview() {
     const d = this.state.drill;
     if (!d || !d.active) return { ok: false, reason: 'inactive', anchor: null, cells: [] };
     const anchor = this.chargeAnchor();
+    const payload = CHARGE_PAYLOADS[d.chargePayload] ? d.chargePayload : 'blast';
+    const def = CHARGE_PAYLOADS[payload];
     const tier = this.getDrillTier();
     const credits = Number(this.state.player && this.state.player.credits) || 0;
+    const stock = this.chargeStockCount();
+    const cost = stock > 0 ? 0 : def.cost;
     const cells = [];
     const yields = {};
-    let willBreak = 0, gasCount = 0, tierBlocked = 0, structureBlocked = 0;
-    if (anchor && anchor.col >= 0 && anchor.col < COLS && anchor.row >= 0 && anchor.row < ROWS) {
-      for (let dc = -CHARGE_BLAST_RADIUS; dc <= CHARGE_BLAST_RADIUS; dc++) {
-        for (let dr = -CHARGE_BLAST_RADIUS; dr <= CHARGE_BLAST_RADIUS; dr++) {
-          const col = anchor.col + dc;
-          const row = anchor.row + dr;
-          if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
-          const tile = d.field[col] && d.field[col][row];
-          // Machine housing is stamped on HOLLOW cells — check the stamp first, or the empty
-          // test below swallows every machine in the cut.
-          if (tile && tile.structure) {
-            structureBlocked++;
-            cells.push({ col, row, type: tile.type, verdict: 'structure' });
-            continue;
-          }
-          if (!tile || tile.type === 'empty') {
-            cells.push({ col, row, type: 'empty', verdict: 'void' });
-            continue;
-          }
-          if ((tile.tierReq || 1) > tier) {
-            tierBlocked++;
-            cells.push({ col, row, type: tile.type, verdict: 'tier', ore: tile.ore || null, tierReq: tile.tierReq });
-            continue;
-          }
-          const verdict = tile.type === 'gas' ? 'gas' : 'break';
-          if (verdict === 'gas') gasCount++;
-          willBreak++;
-          cells.push({ col, row, type: tile.type, verdict, ore: tile.ore || null });
-          if (tile.type === 'vein' && tile.ore) {
-            const take = this._blastYieldQuote(d, tile.yieldU);
-            if (take > 0) yields[tile.ore] = (yields[tile.ore] || 0) + take;
-          }
+    let willBreak = 0, gasCount = 0, ventCount = 0, softenCount = 0, tierBlocked = 0, structureBlocked = 0;
+    for (const { col, row } of this._chargePattern(anchor, payload)) {
+      const tile = d.field[col] && d.field[col][row];
+      // Machine housing is stamped on HOLLOW cells — check the stamp first, or the empty
+      // test below swallows every machine in the cut.
+      if (tile && tile.structure) {
+        structureBlocked++;
+        cells.push({ col, row, type: tile.type, verdict: 'structure' });
+        continue;
+      }
+      if (!tile || tile.type === 'empty') {
+        cells.push({ col, row, type: 'empty', verdict: 'void' });
+        continue;
+      }
+      if (payload === 'vent') {
+        // Venting charge: pockets open into seams, every other cell is simply passed over.
+        if (tile.type === 'gas') {
+          ventCount++;
+          gasCount++;
+          cells.push({ col, row, type: 'gas', verdict: 'vent' });
+        } else {
+          cells.push({ col, row, type: tile.type, verdict: 'spare', ore: tile.ore || null });
         }
+        continue;
+      }
+      if (payload === 'seismic') {
+        softenCount++;
+        cells.push({ col, row, type: tile.type, verdict: 'soften', ore: tile.ore || null, fault: !!tile.fault, rich: !!tile.rich });
+        continue;
+      }
+      if ((tile.tierReq || 1) > tier) {
+        tierBlocked++;
+        cells.push({ col, row, type: tile.type, verdict: 'tier', ore: tile.ore || null, tierReq: tile.tierReq });
+        continue;
+      }
+      const verdict = tile.type === 'gas' ? 'gas' : 'break';
+      if (verdict === 'gas') gasCount++;
+      willBreak++;
+      cells.push({ col, row, type: tile.type, verdict, ore: tile.ore || null, fault: !!tile.fault, rich: !!tile.rich });
+      if (tile.type === 'vein' && tile.ore) {
+        const take = this._blastYieldQuote(d, tile.yieldU);
+        if (take > 0) yields[tile.ore] = (yields[tile.ore] || 0) + take;
       }
     }
+    const inBounds = !!(anchor && anchor.col >= 0 && anchor.col < COLS && anchor.row >= 0 && anchor.row < ROWS);
     let reason = null;
-    if (!anchor || anchor.col < 0 || anchor.col >= COLS || anchor.row < 0 || anchor.row >= ROWS) reason = 'range';
+    if (!inBounds) reason = 'range';
     else if (d.charge) reason = 'armed';
     else if (d.chargeCooldown > 0) reason = 'cooldown';
-    else if (willBreak === 0) reason = 'empty';
-    else if (credits < CHARGE_COST_CR) reason = 'credits';
+    else if (payload === 'vent' ? ventCount === 0 : payload === 'seismic' ? softenCount === 0 : willBreak === 0) reason = 'empty';
+    else if (stock === 0 && credits < cost) reason = 'credits';
+    // Danger = the rig's square inside or beside the kill pattern. Vent/seismic never hurt.
+    const harms = payload === 'blast' || payload === 'shape';
+    const selfDanger = harms && cells.some((c) => Math.abs(c.col - d.avatar.col) <= 1
+      && Math.abs(c.row - d.avatar.row) <= 1);
     return {
       ok: reason === null,
       reason,
       anchor,
-      cost: CHARGE_COST_CR,
+      payload,
+      payloadLabel: def.label,
+      cost,
+      fromStock: stock > 0,
+      stock,
       cells,
       breakCount: willBreak,
       gasCount,
+      ventCount,
+      softenCount,
       tierBlocked,
       // Housing inside the cut survives the blast — the bracket names it, the charge still seats.
       structureSurvives: structureBlocked,
       yields,
-      // The rig's own square sits inside every legal cut — the fuse exists so it can leave it.
-      selfDanger: !!(anchor && Math.abs(d.avatar.col - anchor.col) <= CHARGE_BLAST_RADIUS
-        && Math.abs(d.avatar.row - anchor.row) <= CHARGE_BLAST_RADIUS),
+      selfDanger,
     };
   },
 
@@ -1532,8 +1790,19 @@ export const drill = {
     d.chargeAim = reach ? { col: c, row: r } : null;
   },
 
-  // The commit half of the verb. Everything the blast will do is already bracketed on the board —
-  // this spends the credit and starts the fuse.
+  // Q while armed — walk the payload rack. The preview re-quotes immediately; nothing is free
+  // to change silently.
+  cycleChargePayload() {
+    const d = this.state.drill;
+    if (!d || !d.active || !d.chargeArmed) return null;
+    const idx = CHARGE_PAYLOAD_ORDER.indexOf(d.chargePayload);
+    d.chargePayload = CHARGE_PAYLOAD_ORDER[(idx + 1) % CHARGE_PAYLOAD_ORDER.length] || 'blast';
+    this.bus.emit('drill:chargeArm', { armed: true, payload: d.chargePayload });
+    return d.chargePayload;
+  },
+
+  // The commit half of the verb. Everything the shot will do is already bracketed on the board —
+  // this spends the puck (site stock first, then the wallet) and starts the fuse.
   plantCharge() {
     const d = this.state.drill;
     if (!d || !d.active) return false;
@@ -1548,21 +1817,27 @@ export const drill = {
       return false;
     }
     const { col, row } = preview.anchor;
-    // Ordnance money moves through the economy seam like every other spend (bombs.js:
-    // 'ordnance:<id>'). Where no economy is listening the shot is simply free — a sandbox
-    // without a wallet is no reason to refuse the verb.
-    this.bus.emit('economy:chargeCredits', {
-      amount: CHARGE_COST_CR,
-      reason: 'ordnance:bore_charge',
-      sink: 'ordnance',
-      cause: 'bore_charge',
-      pos: { col, row },
-    });
-    d.charge = { col, row, fuse: CHARGE_FUSE_S };
+    const payload = preview.payload;
+    const fuseS = (CHARGE_PAYLOADS[payload] || CHARGE_PAYLOADS.blast).fuse;
+    if (!this._spendChargeStock(d)) {
+      // Ordnance money moves through the economy seam like every other spend (bombs.js:
+      // 'ordnance:<id>'). Where no economy is listening the shot is simply free — a sandbox
+      // without a wallet is no reason to refuse the verb.
+      this.bus.emit('economy:chargeCredits', {
+        amount: preview.cost,
+        reason: 'ordnance:bore_charge',
+        sink: 'ordnance',
+        cause: `bore_charge:${payload}`,
+        pos: { col, row },
+      });
+    }
+    d.charge = { col, row, fuse: fuseS, fuseS, payload };
     d.chargeArmed = false;
     d.chargeAim = null;
     d.chargesSet = (Number(d.chargesSet) || 0) + 1;
-    this.bus.emit('drill:chargePlanted', { col, row, fuseS: CHARGE_FUSE_S, cost: CHARGE_COST_CR });
+    this.bus.emit('drill:chargePlanted', {
+      col, row, fuseS, cost: preview.cost, payload, fromStock: preview.fromStock,
+    });
     return true;
   },
 
@@ -1574,66 +1849,92 @@ export const drill = {
     d.charge = null;
     d.chargeCooldown = CHARGE_REARM_S;
     if (!charge) return;
+    const payload = CHARGE_PAYLOADS[charge.payload] ? charge.payload : 'blast';
+    const def = CHARGE_PAYLOADS[payload];
     const anchor = { col: charge.col, row: charge.row };
     const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
     const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
     const tier = this.getDrillTier();
+    const pattern = this._chargePattern(anchor, payload);
     const broken = [];
+    const vented = [];
+    const fractured = [];
     const yields = {};
     let gasCount = 0;
-    for (let dc = -CHARGE_BLAST_RADIUS; dc <= CHARGE_BLAST_RADIUS; dc++) {
-      for (let dr = -CHARGE_BLAST_RADIUS; dr <= CHARGE_BLAST_RADIUS; dr++) {
-        const col = anchor.col + dc;
-        const row = anchor.row + dr;
-        if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
-        const tile = d.field[col] && d.field[col][row];
-        if (!tile || tile.type === 'empty' || tile.structure) continue;
-        if ((tile.tierReq || 1) > tier) continue;
-        const wasGas = tile.type === 'gas';
-        const wasVein = tile.type === 'vein';
-        const ore = tile.ore || null;
-        const yieldU = tile.yieldU || 0;
-        if (wasVein && ore) {
-          const paid = settleBlastYield(this, d, rockEnt, col, row, ore, yieldU);
-          if (paid > 0) yields[ore] = (yields[ore] || 0) + paid;
+    for (const { col, row } of pattern) {
+      const tile = d.field[col] && d.field[col][row];
+      if (!tile || tile.type === 'empty' || tile.structure) continue;
+      if (payload === 'vent') {
+        // The pocket opens into a vented seam — a gas tap can still sip it afterward.
+        if (tile.type !== 'gas') continue;
+        d.field[col][row] = { ...EMPTY_TILE(), vented: true };
+        if (rockEnt && rockEnt.data) {
+          recordClearedTile(rockEnt.data, col, row);
+          recordVentedTile(rockEnt.data, col, row);
         }
-        d.field[col][row] = EMPTY_TILE();
-        if (rockEnt && rockEnt.data) recordClearedTile(rockEnt.data, col, row);
         d.tilesCleared++;
-        d.maxDepth = Math.max(d.maxDepth, row);
-        broken.push({ col, row, type: tile.type, ore });
-        this.bus.emit('drill:break', {
-          col, row, type: tile.type, ore, wasVein, wasGas, blast: true,
-        });
-        if (wasGas) {
-          gasCount++;
-          d.gasHits++;
-          if (player && player.hullMax > 0) {
-            const dmg = Math.ceil(player.hullMax * (GAS_DAMAGE / 100));
-            const packet = scalarHitToDamagePacket({
-              damage: dmg,
-              damageType: 'explosive',
-              penetration: 1,
-              shieldBypass: 0,
-              source: { kind: 'deep_core_gas', asteroidId: d.asteroidId },
-            });
-            packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
-            this._routeDamage({
-              attackerId: null,
-              targetId: this.state.playerId,
-              packet,
-              origin: { kind: 'deep_core_gas', asteroidId: d.asteroidId, col, row },
-            });
-            this.bus.emit('drill:gasHit', { dmg, pos: { col, row }, via: 'blast' });
-          }
+        gasCount++;
+        vented.push({ col, row });
+        this.bus.emit('drill:gasVent', { col, row });
+        this.bus.emit('drill:break', { col, row, type: 'gas', ore: null, wasVein: false, wasGas: true, blast: true, vented: true });
+        continue;
+      }
+      if (payload === 'seismic') {
+        // No rock moves — the 5×5 just fractures. Fault marks make the auger's follow-up fast
+        // and the renderer can read the crack straight off the tile.
+        fractureTile(tile);
+        if (rockEnt && rockEnt.data) recordFaultedTile(rockEnt.data, col, row);
+        fractured.push({ col, row, type: tile.type });
+        continue;
+      }
+      if ((tile.tierReq || 1) > tier) continue;
+      const wasGas = tile.type === 'gas';
+      const wasVein = tile.type === 'vein';
+      const ore = tile.ore || null;
+      const yieldU = tile.yieldU || 0;
+      if (wasVein && ore) {
+        const paid = settleBlastYield(this, d, rockEnt, col, row, ore, yieldU);
+        if (paid > 0) yields[ore] = (yields[ore] || 0) + paid;
+      }
+      d.field[col][row] = { ...EMPTY_TILE(), scar: true };
+      if (rockEnt && rockEnt.data) {
+        recordClearedTile(rockEnt.data, col, row);
+        recordScarredTile(rockEnt.data, col, row);
+      }
+      d.tilesCleared++;
+      d.maxDepth = Math.max(d.maxDepth, row);
+      broken.push({ col, row, type: tile.type, ore });
+      this.bus.emit('drill:break', {
+        col, row, type: tile.type, ore, wasVein, wasGas, blast: true,
+      });
+      if (wasGas) {
+        gasCount++;
+        d.gasHits++;
+        if (player && player.hullMax > 0) {
+          const dmg = Math.ceil(player.hullMax * (GAS_DAMAGE / 100));
+          const packet = scalarHitToDamagePacket({
+            damage: dmg,
+            damageType: 'explosive',
+            penetration: 1,
+            shieldBypass: 0,
+            source: { kind: 'deep_core_gas', asteroidId: d.asteroidId },
+          });
+          packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+          this._routeDamage({
+            attackerId: null,
+            targetId: this.state.playerId,
+            packet,
+            origin: { kind: 'deep_core_gas', asteroidId: d.asteroidId, col, row },
+          });
+          this.bus.emit('drill:gasHit', { dmg, pos: { col, row }, via: 'blast' });
         }
       }
     }
-    // Backblast — the rig's own square was inside the quoted cut, and the fuse was the warning.
+    // Backblast — only harming payloads bite, and only when a pattern cell sits on or beside
+    // the rig. The fuse was the warning.
     let backblast = 0;
-    if (player && player.hullMax > 0
-        && Math.abs(d.avatar.col - anchor.col) <= CHARGE_BLAST_RADIUS
-        && Math.abs(d.avatar.row - anchor.row) <= CHARGE_BLAST_RADIUS) {
+    if (def.harms && player && player.hullMax > 0
+        && pattern.some((c) => Math.abs(c.col - d.avatar.col) <= 1 && Math.abs(c.row - d.avatar.row) <= 1)) {
       backblast = Math.ceil(player.hullMax * (CHARGE_BACKBLAST_PCT / 100));
       const packet = scalarHitToDamagePacket({
         damage: backblast,
@@ -1654,17 +1955,114 @@ export const drill = {
         pos: { col: d.avatar.col, row: d.avatar.row },
       });
     }
-    this.bus.emit('camera:shake', { amount: 0.85 });
+    this.bus.emit('camera:shake', { amount: payload === 'seismic' ? 0.55 : 0.85 });
     this.bus.emit('drill:chargeBlast', {
       col: anchor.col,
       row: anchor.row,
+      payload,
       cells: broken,
       broken: broken.length,
+      vented,
+      fractured,
       gasCount,
       backblast,
       yields,
-      cost: CHARGE_COST_CR,
+      cost: def.cost,
     });
+    for (const cell of broken) this._structCheck(d, cell.col, cell.row);
+    for (const cell of vented) this._structCheck(d, cell.col, cell.row);
+  },
+
+  // ---------- roof mechanics ----------
+  //
+  // Called every time a cell opens. A horizontal run of empties shorter than the warn span is a
+  // corridor and never bothers anyone. A run with open headroom is a HALL: the solid cells above
+  // the void are a beam. Crack a beam once — the rock groans and the cells mark themselves —
+  // then let the hall keep growing and the beam drops: each cracked roof cell opens, its column
+  // of air fills with rubble, and anything standing under it pays for the excavation it skipped.
+  _structCheck(d, col, row) {
+    const field = d.field;
+    const openAt = (c, r) => {
+      const t = c >= 0 && c < COLS && r >= 0 && r < ROWS && field[c] ? field[c][r] : null;
+      return !!(t && t.type === 'empty' && !t.structure);
+    };
+    if (!openAt(col, row)) return;
+    let c0 = col;
+    while (openAt(c0 - 1, row)) c0--;
+    let c1 = col;
+    while (openAt(c1 + 1, row)) c1++;
+    const runLen = c1 - c0 + 1;
+    if (runLen < CAVE_SPAN_WARN) return;
+    // The beam is the first solid cell above each headroom column — up to CAVE_BEAM_SCAN rows of
+    // air can sit under it and still count as the same roof.
+    const beams = [];
+    for (let c = c0; c <= c1; c++) {
+      if (!openAt(c, row - 1)) continue;   // wall-top column — its roof is one row up, it holds
+      let beamRow = -1;
+      for (let r = row - 2; r >= Math.max(0, row - CAVE_BEAM_SCAN); r--) {
+        if (!openAt(c, r)) { beamRow = r; break; }
+      }
+      if (beamRow >= 0) beams.push({ col: c, row: beamRow });
+    }
+    if (beams.length < CAVE_HEADROOM_MIN) return;
+    const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+    const fresh = [];
+    for (const b of beams) {
+      const t = field[b.col][b.row];
+      if (t && t.type !== 'empty' && !t.cracked) { t.cracked = true; fresh.push(b); }
+    }
+    if (fresh.length) {
+      this.bus.emit('drill:rockCreak', { cells: fresh.map((b) => ({ col: b.col, row: b.row })), span: runLen });
+      this.bus.emit('drill:warn', {
+        reason: 'structure',
+        text: `The roof over this span is cracking — ${runLen} cells wide with open air above it.`,
+        pos: { col, row },
+      });
+    }
+    // A beam only falls when the hall keeps growing under cracks it already raised. First contact
+    // warns; widening a cracked span past the fall line is the decision the roof answers.
+    if (runLen < CAVE_SPAN_FALL || beams.length - fresh.length === 0) return;
+    const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
+    const fell = [];
+    const dropped = [];
+    for (const b of beams) {
+      const roof = field[b.col][b.row];
+      if (!roof || roof.type === 'empty' || roof.structure) continue;
+      // The roof cell opens; its column of air collapses — the lowest open cell fills.
+      let floorRow = -1;
+      for (let r = b.row + 1; r < ROWS; r++) {
+        if (!openAt(b.col, r)) { floorRow = r - 1; break; }
+      }
+      if (floorRow < b.row + 1) continue;
+      field[b.col][b.row] = EMPTY_TILE();
+      if (rockEnt && rockEnt.data) recordClearedTile(rockEnt.data, b.col, b.row);
+      fell.push({ col: b.col, row: b.row });
+      field[b.col][floorRow] = RUBBLE_TILE();
+      if (rockEnt && rockEnt.data) recordRubbleTile(rockEnt.data, b.col, floorRow);
+      dropped.push({ col: b.col, row: floorRow });
+      this.bus.emit('drill:break', { col: b.col, row: b.row, type: roof.type, ore: roof.ore || null, wasVein: false, wasGas: false, cave: true });
+      if (player && player.hullMax > 0 && d.avatar.col === b.col && d.avatar.row === floorRow) {
+        const dmg = Math.ceil(player.hullMax * (CAVE_IN_PCT / 100));
+        const packet = scalarHitToDamagePacket({
+          damage: dmg,
+          damageType: 'kinetic',
+          penetration: 0,
+          shieldBypass: 0,
+          source: { kind: 'deep_core_cavein', asteroidId: d.asteroidId },
+        });
+        packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+        this._routeDamage({
+          attackerId: null,
+          targetId: this.state.playerId,
+          packet,
+          origin: { kind: 'deep_core_cavein', asteroidId: d.asteroidId, col: b.col, row: floorRow },
+        });
+      }
+    }
+    if (fell.length) {
+      this.bus.emit('drill:caveIn', { fell, dropped, span: runLen });
+      this.bus.emit('camera:shake', { amount: 0.7 });
+    }
   },
 
   getDrillTier() {
@@ -1722,6 +2120,14 @@ export const drill = {
     d.chargeCooldown = Math.max(0, d.chargeCooldown - dt);
     if (d.charge) {
       d.charge.fuse -= dt;
+      // The fuse beats faster as it runs out — a 0.45s clock tightening to 0.18s in the last
+      // second, the same lamp strobe the board shows.
+      d.charge.tick = (d.charge.tick || 0) - dt;
+      if (d.charge.tick <= 0) {
+        const beat = d.charge.fuse < 1 ? 0.18 : 0.45;
+        d.charge.tick = beat;
+        if (this.bus) this.bus.emit('drill:chargeTick', { col: d.charge.col, row: d.charge.row, fuse: Math.max(0, d.charge.fuse) });
+      }
       if (d.charge.fuse <= 0) this._detonateCharge(d);
     }
 
@@ -1960,6 +2366,7 @@ export const drill = {
           wasVein,
           wasGas,
         });
+        this._structCheck(d, nc, nr);
 
         if (wasGas) {
           d.gasHits++;
@@ -2103,4 +2510,8 @@ export const DRILL_CONST = {
   CHARGE_YIELD_FRACTION,
   CHARGE_BACKBLAST_PCT,
   CHARGE_BLAST_RADIUS,
+  CHARGE_SHAPE_LEN,
+  CHARGE_SEISMIC_RADIUS,
+  CHARGE_PAYLOADS,
+  CHARGE_PAYLOAD_ORDER,
 };

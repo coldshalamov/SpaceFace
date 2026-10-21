@@ -3230,6 +3230,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     hollow: new THREE.Color(0x6f6252),    // a face that is already hollow: feeds nothing, ever
     refused: new THREE.Color(0xff6242),   // --aw-coral: this cell, refused
     blast: new THREE.Color(0xffb648),     // --aw-gold: the cut a set charge will take
+    vent: new THREE.Color(0x7cd9a2),      // mint — the pocket the venting charge will open
+    soften: new THREE.Color(0xc8a25a),    // dim gold — seismic fracture, rock stays standing
+    spare: new THREE.Color(0x4a4438),     // barely lit — the payload passes this cell over
   };
   let seatsUsed = 0;
   function seatGeometryForZoom() {
@@ -3300,6 +3303,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         for (const cell of pv.cells || []) {
           if (cell.verdict === 'break') markSeat(cell.col, cell.row, 'blast');
           else if (cell.verdict === 'gas') markSeat(cell.col, cell.row, 'refused');
+          else if (cell.verdict === 'vent') markSeat(cell.col, cell.row, 'vent');
+          else if (cell.verdict === 'soften') markSeat(cell.col, cell.row, 'soften');
+          else if (cell.verdict === 'spare') markSeat(cell.col, cell.row, 'spare');
           else if (cell.verdict === 'tier' || cell.verdict === 'structure') markSeat(cell.col, cell.row, 'hollow');
         }
       }
@@ -3311,7 +3317,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       chargeProp.group.visible = true;
       chargeProp.group.position.set(worldX(ch.col), worldY(ch.row), Z.face + 0.02);
       // The lamp quickens as the fuse burns — the last quarter is a strobe you cannot unsee.
-      const u = Math.max(0, Math.min(1, 1 - (ch.fuse / CHARGE_FUSE_S)));
+      const u = Math.max(0, Math.min(1, 1 - (ch.fuse / (ch.fuseS || CHARGE_FUSE_S))));
       const rate = 5 + u * 16;
       const phase = Math.sin(timeS * rate * Math.PI);
       chargeProp.lamp.visible = motionReduce || phase > -0.35;
@@ -4256,6 +4262,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return out;
   }
 
+  // Geology tells on the rock itself: a fracture plane reads as a darker cracked face, a rich
+  // seam warms toward gold — legible before the lens ever opens (law §6.4).
+  function cellTint(c, r, tile, bucket, out) {
+    rockInstanceColor(c, r, bucket, out);
+    if (tile && tile.cracked) { out.r = Math.min(1, out.r * 1.35 + 0.16); out.g *= 0.62; out.b *= 0.55; }
+    else if (tile && tile.rubble) { out.r *= 0.7; out.g *= 0.66; out.b *= 0.62; }
+    else if (tile && tile.fault) { out.r *= 0.55; out.g *= 0.5; out.b *= 0.62; }
+    else if (tile && tile.rich) { out.r = Math.min(1, out.r * 1.28 + 0.1); out.g *= 1.06; out.b *= 0.5; }
+    return out;
+  }
+
   function setRockMatrix(c, r, carved, dig = 0) {
     if (carved) {
       dummy.position.set(0, 0, 0);
@@ -4349,7 +4366,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         list.forEach((cell, i) => {
           setRockMatrix(cell.c, cell.r, false);
           inst.setMatrixAt(i, dummy.matrix);
-          inst.setColorAt(i, rockInstanceColor(cell.c, cell.r, bucket, colScratch));
+          inst.setColorAt(i, cellTint(cell.c, cell.r, field[cell.c][cell.r], bucket, colScratch));
           cellRock.set(tileIndex(cell.c, cell.r), { mesh: inst, i, carved: false, c: cell.c, r: cell.r });
         });
         inst.count = list.length;
@@ -4799,9 +4816,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         carveCell(col, row);
         continue;
       }
+      if (rec && rec.carved) {
+        // Rock came back — a cave-in drops rubble onto cells the field once called hollow.
+        rec.carved = false;
+        setRockMatrix(col, row, false);
+        rec.mesh.setMatrixAt(rec.i, dummy.matrix);
+        rec.mesh.instanceMatrix.needsUpdate = true;
+        rec.mesh.setColorAt(rec.i, cellTint(col, row, tile, materialIdFor(tile), colScratch));
+        touchedColor = true;
+      }
       if (tile.type === 'gas') syncGasAt(col, row);
       if (rec && !rec.carved) {
-        rec.mesh.setColorAt(rec.i, rockInstanceColor(col, row, materialIdFor(tile), colScratch));
+        rec.mesh.setColorAt(rec.i, cellTint(col, row, tile, materialIdFor(tile), colScratch));
         touchedColor = true;
       }
       syncOreAt(col, row);
@@ -8433,6 +8459,42 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       burst({ x, y, count: motionReduce ? 4 : 12, color: '#7a6650', life: 0.7, size: 4.2, speed: 70, kind: 'dust', gravity: 60, cone: Math.PI * 2 });
       eventLog.chargeBlasts++;
       mark('chargeBlast', p.col, p.row);
+      return;
+    }
+    if (evt === 'rockCreak') {
+      // The roof beam cracks: cells get their cracked tint and a slow dust silt — the hall's
+      // own warning before the fall.
+      for (const c of p.cells || []) {
+        refreshCells([{ col: c.col, row: c.row }]);
+        const { x, y } = centerPx(c.col, c.row);
+        burst({ x, y, count: motionReduce ? 2 : 5, color: '#8a7a5e', life: 0.9, size: 2.6, speed: 14, kind: 'dust', gravity: 22, cone: Math.PI * 2 });
+      }
+      kick.t = KICK_DUR_S * 0.4;
+      kick.elapsed = 0;
+      return;
+    }
+    if (evt === 'caveIn') {
+      // Roof cells open; the columns under them refill with rubble. refreshCells re-reads the
+      // field so a carved instance can come back (un-carve) where the fall landed.
+      kick.t = KICK_DUR_S;
+      kick.elapsed = 0;
+      const cells = [];
+      for (const c of p.fell || []) { carveCell(c.col, c.row); cells.push({ col: c.col, row: c.row }); }
+      for (const c of p.dropped || []) {
+        cells.push({ col: c.col, row: c.row });
+        const { x, y } = centerPx(c.col, c.row);
+        spawnChunks(x, y, '#6b5b45', motionReduce ? 4 : 9);
+        burst({ x, y, count: motionReduce ? 6 : 14, color: '#8a7a5e', life: 0.8, size: 4.4, speed: 60, kind: 'dust', gravity: 40, cone: Math.PI * 2 });
+      }
+      refreshCells(cells);
+      seamsDirty = true;
+      return;
+    }
+    if (evt === 'gasVent') {
+      // A pocket opened without detonating: mint ring, a sigh of vapor, no fire.
+      firePulseRing(p.col, p.row, 0x7cd9a2, 0.6);
+      const { x, y } = centerPx(p.col, p.row);
+      burst({ x, y, count: motionReduce ? 4 : 10, color: '#9fd8b4', life: 0.7, size: 3.0, speed: 30, kind: 'dust', gravity: -14, cone: Math.PI * 2 });
       return;
     }
     if (evt === 'scanPulse') {

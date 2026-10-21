@@ -18,6 +18,7 @@ export const CONTACT_YIELD = {
   oreValuePerMinCap: 24,   // nominal credits/min/contact; valuable veins cannot bypass the factory ladder
   gasPowerPerContact: 8,   // MW per gas contact (gas tap, generate mode)
   gasFeedPerMinPerContact: 1.0, // cmdty_gas_hydrogen per gas contact (feedstock mode)
+  ventedGasFraction: 0.4,  // a vented seam pays this fraction of a sealed pocket
 };
 
 // The six starter machines (brief §3). `power` < 0 draws from the network, > 0 generates.
@@ -100,6 +101,41 @@ export const SITE_MACHINES = [
     cost: { cmdty_regocrete: 5, cmdty_control_unit: 1, cmdty_electronics: 1 },
     installS: 8,
   },
+  {
+    id: 'sm_charge_press',
+    name: 'Charge Press',
+    short: 'Press',
+    verb: 'fabricate',
+    desc: 'Casts bore-charge pucks from metals and fuel cells. Pressed stock lives on this rock — the rig spends it before it ever bills the wallet.',
+    power: -6,
+    usesGeology: false,
+    modes: ['sr_press_charge'],
+    defaultMode: 'sr_press_charge',
+    cost: { cmdty_regocrete: 3, cmdty_control_unit: 1, cmdty_comp_circuitry: 1 },
+    installS: 7,
+  },
+  {
+    id: 'sm_auto_drill',
+    name: 'Auto-Bore Head',
+    short: 'Auto-Drill',
+    verb: 'extract',
+    desc: 'An anchored auger chewing its contact ring on its own cadence — matrix and basalt only. It will never open a vein or a pocket; that judgment stays yours.',
+    power: -5,
+    usesGeology: true,
+    cost: { cmdty_regocrete: 2, cmdty_control_unit: 1, cmdty_alloys: 1 },
+    installS: 7,
+  },
+  {
+    id: 'sm_relay',
+    name: 'Site Relay',
+    short: 'Relay',
+    verb: 'anchor',
+    desc: 'Raises the site signature and its reach — remote status readout and a tighter courier turnaround, at the cost of being louder about it.',
+    power: -2,
+    usesGeology: false,
+    cost: { cmdty_regocrete: 1, cmdty_electronics: 2 },
+    installS: 5,
+  },
 ];
 
 // Refinery modes run CONTINUOUSLY (units/min with fractional carry). Fabricator recipes are
@@ -171,6 +207,13 @@ export const SITE_RECIPES = [
     output: { cmdty_control_unit: 3 }, buildS: 180,
     contactOres: ['cmdty_ore_platinoid', 'cmdty_ore_platinium', 'cmdty_ore_einsteinium'],
   },
+  {
+    // Pressed pucks never enter a lane — they stack on the asteroid as chargeStock the drill
+    // spends before credits. `outOfLane` keeps the fabricator step from asking a store for room.
+    id: 'sr_press_charge', machine: 'sm_charge_press', name: 'Press Bore Charge',
+    inputs: { cmdty_refined_metals: 1, cmdty_fuel_cells: 1 }, output: { chargePuck: 1 },
+    buildS: 60, outOfLane: true,
+  },
 ];
 
 export const SITE_BALANCE = {
@@ -194,6 +237,10 @@ export const SITE_BALANCE = {
   maxPodTarget: 24,
   // Production cadence (s of simTime between site production steps).
   tickS: 1,
+  autoDrillBiteS: 8,      // powered seconds per auto-bore bite
+  chargeRackMax: 6,       // pucks the press keeps on the rock before idling
+  relayPodTravelFactor: 0.75, // a powered relay cuts courier turnaround
+  salvageRefundFraction: 0.5, // kit share a dismantle hands back
   // New claims hold construction supplies and every recipe feedstock. A fresh port must
   // not sell the inputs out from under its factory; the player can explicitly export any good.
   exportDefaultOff: [

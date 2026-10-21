@@ -22,7 +22,7 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // Excavation stays owned by systems/drill.js. This system reads the same field math
 // (generateDrillField + cleared list) to recompute machine contact rings with no live session —
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
-import { generateDrillField, applyClearedTiles, normalizeClearedTiles, tileIndex, DRILL_CONST } from './drill.js';
+import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, DRILL_CONST, EMPTY_TILE } from './drill.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { addCargo, removeCargo } from './cargo.js';
 import {
@@ -38,10 +38,13 @@ import {
 } from '../data/sites.js';
 import {
   contactProfile, machineCapability, stepContinuousRecipe, stepFabricator, clamp01, round3,
+  RING_OFFSETS,
 } from './siteProduction.js';
 import {
   stepSiteStructure, normalizeSiteStructure, paintStructuralFalls, paintStructuralFracture,
 } from './siteStructuralModel.js';
+import { stepSiteThermal } from './siteThermalModel.js';
+import { buildSiteSignature } from './siteSignatureModel.js';
 import {
   buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, podLossChance, podTravelS,
   previewStoreReconciliation, wouldOwnComponent, storePressure,
@@ -637,6 +640,29 @@ export const asteroidSites = {
       // drop a second slab on the next tick (fractured stays true).
       this._releaseFallenSlab(site, col, row);
       this._markDirty(site.id, { field: true });
+    });
+
+    // A cave-in puts rock back: dropped rubble cells leave the cleared record, fell roof cells
+    // entered it through their own drill:break events. Everything else still mirrors forward.
+    this.bus.on('drill:caveIn', ({ dropped }) => {
+      this._accessCache = null;
+      const d = state.drill;
+      if (!d) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (!site || !Array.isArray(dropped)) return;
+      const idxs = new Set(dropped.map((c) => tileIndex(c.col, c.row)));
+      site.cleared = site.cleared.filter((i) => !idxs.has(i));
+      this._markDirty(site.id, { field: true });
+    });
+
+    // A vented seam is still an empty cell in the cleared record — but a gas tap needs the
+    // residue flag mirrored onto the site's field view before it can quote the pocket.
+    this.bus.on('drill:gasVent', () => {
+      this._accessCache = null;
+      const d = state.drill;
+      if (!d) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (site) this._markDirty(site.id, { field: true });
     });
 
     this.bus.on('drill:end', ({ asteroidId }) => {
@@ -1304,6 +1330,16 @@ export const asteroidSites = {
       paintStructuralFalls(rt.field, site.structure);
       // The sealed mouth is a cap even when an older cleared list still names it.
       applySealedDeadDropCap(site, rt.field);
+      // Vented seams and seismic faults live on the asteroid record, outside site.cleared —
+      // paint them so contact reads (gas taps, fracture scars) stay truthful off-session.
+      const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
+      const dd = ent && ent.data;
+      if (dd) {
+        applyFlaggedTiles(rt.field, dd.drillVented, (t) => { if (t.type === 'empty') t.vented = true; });
+        applyFlaggedTiles(rt.field, dd.drillScars, (t) => { if (t.type === 'empty') t.scar = true; });
+        applyFlaggedTiles(rt.field, dd.drillFaults, (t) => { if (t.type !== 'empty') t.fault = true; });
+        applyRubbleTiles(rt.field, dd.drillRubble);
+      }
       rt.fieldDirty = false;
       rt.geoDirty = true;
     }
@@ -1471,7 +1507,8 @@ export const asteroidSites = {
     }
 
     const profile = contactProfile(field, col, row, COLS, ROWS);
-    if (def.requiresContact === 'gas' && profile.gas <= 0) {
+    // A vented seam qualifies a gas tap the same as a sealed pocket — the tap just pays less.
+    if (def.requiresContact === 'gas' && (profile.gas + (profile.vented || 0)) <= 0) {
       return { ok: false, reason: 'needs-gas-contact', missing: {}, profile };
     }
 
@@ -2039,7 +2076,29 @@ export const asteroidSites = {
       }
     }
 
+    // Salvage: half the non-controller kit comes back onto the machine's own lane as stock —
+    // reclaiming a machine room is re-planning, not a write-off. Lane key is read BEFORE the
+    // splice because the network forgets the machine the moment it leaves the list.
+    const rtPre = this._rt.get(site.id);
+    const salvageLaneKey = rtPre && rtPre.laneCompByMachine ? rtPre.laneCompByMachine[machine.id] : null;
+    const salvageStore = salvageLaneKey != null && rtPre ? rtPre.stores[salvageLaneKey] : null;
+    const salvaged = [];
+    if (def && def.cost && salvageStore) {
+      for (const [goodId, qty] of Object.entries(def.cost)) {
+        if (goodId === 'cmdty_control_unit') continue;
+        const back = Math.floor(Number(qty) * SITE_BALANCE.salvageRefundFraction);
+        if (back > 0) {
+          salvageStore[goodId] = (Number(salvageStore[goodId]) || 0) + back;
+          salvaged.push(`${back}u ${goodId.replace('cmdty_', '')}`);
+        }
+      }
+    }
+
     site.machines.splice(idx, 1);
+
+    if (salvaged.length) {
+      this._ledger(site, 'good', `Salvage reclaimed — ${salvaged.join(', ')} back on the lane.`);
+    }
 
     if (confirmedSpill) {
       const goods = {};
@@ -2428,6 +2487,27 @@ export const asteroidSites = {
     }
     rt.compPower = compPower;
 
+    // --- Thermal pass (siteThermalModel): heat per machine derives from its live contact ring
+    // and served power; stored heat persists on the machine record. Bands derate the power a
+    // machine is actually served this tick — a faulting machine protects itself by slowing. ---
+    const thermalIn = site.machines.map((m) => {
+      const def = SITE_MACHINE_BY_ID.get(m.defId);
+      const powerKey = rt.powerCompByMachine[m.id];
+      const baseRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : (def && def.power > 0 ? 1 : 0);
+      return {
+        id: m.id, defId: m.defId, profile: rt.geo[m.id], powerRatio: baseRatio,
+        mode: m.mode, storedHeat: Number(m.storedHeat) || 0, coolingRate: 0,
+      };
+    });
+    rt.thermal = stepSiteThermal({ dtS, machines: thermalIn, radiatorFins: site.radiatorFins });
+    const thermById = {};
+    for (const rec of rt.thermal.machines || []) {
+      thermById[rec.id] = rec;
+      const m = site.machines.find((x) => x.id === rec.id);
+      if (m) m.storedHeat = rec.step.storedAfter;
+    }
+    const THERMAL_DERATE = { nominal: 1, warm: 1, throttle: 0.55, fault: 0 };
+
     // --- Lane throughput budgets: shared per network, spent as machines move goods. ---
     const laneBudget = {};
     for (const comp of rt.laneComps) {
@@ -2452,7 +2532,11 @@ export const asteroidSites = {
       const def = SITE_MACHINE_BY_ID.get(m.defId);
       if (!def) continue;
       const powerKey = rt.powerCompByMachine[m.id];
-      const powerRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : (def.power > 0 ? 1 : 0);
+      let powerRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : (def.power > 0 ? 1 : 0);
+      // Thermal derate is a power-service haircut: 'throttle' sags the feed, 'fault' cuts it.
+      const therm = thermById[m.id];
+      const thermalLimit = therm ? (THERMAL_DERATE[therm.band] ?? 1) : 1;
+      powerRatio *= thermalLimit;
       const laneKey = rt.laneCompByMachine[m.id];
       const store = laneKey != null ? rt.stores[laneKey] : null;
       const capacity = laneKey != null ? rt.capacity[laneKey] : 0;
@@ -2594,9 +2678,70 @@ export const asteroidSites = {
           status.state = staged > 0 ? 'running' : (storeTotal(site.exportBuffer) > 0 ? 'staged' : 'idle');
           if (!workbench) this._tryLaunch(site, state, status);
         }
+      } else if (def.id === 'sm_charge_press') {
+        // Discrete press batches — a chargePuck lands on the rock's ordnance rack
+        // (ent.data.chargeStock), not in a lane store. The recipe never asks a lane for room.
+        if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
+        else {
+          const rockEnt = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+          const rack = rockEnt && rockEnt.data ? Math.max(0, Math.floor(Number(rockEnt.data.chargeStock) || 0)) : 0;
+          const wantsCharge = !!(rockEnt && rockEnt.data) && rack < SITE_BALANCE.chargeRackMax;
+          const res = stepFabricator({
+            machine: m,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
+            recipeId: m.mode,
+            dtS,
+            powerRatio,
+            store,
+            roomFor,
+            wantsBuild: wantsCharge,
+            throughputBudget: laneBudget[laneKey],
+          });
+          laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - res.moved);
+          status.state = res.status === 'completed' ? 'building' : res.status;
+          status.limit = res.limit;
+          const recipe = SITE_RECIPE_BY_ID.get(m.mode);
+          status.progress = res.progress || (m.job ? m.job.progressS / (recipe ? recipe.buildS : 1) : 0);
+          if (!wantsCharge && !m.job) status.state = 'racked';
+          if (res.completed && res.completed.outputId === 'chargePuck') {
+            rockEnt.data.chargeStock = rack + Math.max(1, Math.floor(res.completed.qty));
+            this._ledger(site, 'good', `Charge pressed — ${rockEnt.data.chargeStock} on the rack.`);
+            this.bus.emit('site:chargePressed', { siteId: site.id, stock: rockEnt.data.chargeStock });
+            this._emitProductionReceipt(site, m, { outputId: 'chargePuck', qty: res.completed.qty, recipeId: m.mode });
+          }
+        }
+      } else if (def.id === 'sm_auto_drill') {
+        // The head chews one matrix/basalt face per bite of served power — it never opens a
+        // vein or a pocket; judgment calls stay the pilot's.
+        if (powerRatio <= 0) { status.state = 'no-power'; status.limit = 'power'; }
+        else {
+          m.carry.biteS = (Number(m.carry.biteS) || 0) + dtS * clamp01(powerRatio);
+          status.state = 'running';
+          if (m.carry.biteS >= SITE_BALANCE.autoDrillBiteS) {
+            if (this._autoDrillBite(site, m, rt, state)) {
+              m.carry.biteS = 0;
+            } else {
+              status.state = 'no-geology';
+              status.limit = 'geology';
+            }
+          }
+          status.ratePerMin.bite = round3(clamp01(powerRatio) * 60 / SITE_BALANCE.autoDrillBiteS);
+        }
+      } else if (def.id === 'sm_relay') {
+        // The mast's work is presence: signature loudness in the pass below, courier turnaround
+        // in _tryLaunch. Powered it simply runs.
+        status.state = powerRatio > 0 || def.power >= 0 ? 'running' : 'no-power';
+        if (status.state === 'no-power') status.limit = 'power';
       } else if (def.id === 'sm_massline_core') {
         status.state = 'running';
         status.genMW = def.power;
+      }
+      if (therm) {
+        status.thermalBand = therm.band;
+        if (therm.band === 'fault' && status.state !== 'no-power') {
+          status.state = 'overheat';
+          status.limit = 'thermal';
+        }
       }
       rt.status[m.id] = status;
       // A FIRST observation is an initial condition, not a transition. Emitting for every machine
@@ -2615,6 +2760,48 @@ export const asteroidSites = {
         siteId: site.id, machineId: t.machineId, state: t.state, prev: t.prev,
       });
     }
+
+    // Signature pass (siteSignatureModel): geology exposure, power, machinery and transport
+    // resolve to one loudness the site drawer names and events can key on. A live relay reads
+    // louder through the machinery source on its own.
+    rt.signature = buildSiteSignature({
+      cleared: site.cleared,
+      contacts: site.machines.map((m) => rt.geo[m.id]).filter(Boolean),
+      power: Object.values(compPower),
+      machines: site.machines.map((m) => ({
+        id: m.id, defId: m.defId,
+        powerRatio: rt.status[m.id] ? rt.status[m.id].powerRatio : 0,
+        status: rt.status[m.id] || { state: 'idle' },
+      })),
+      transport: {
+        exportRatePerMin: storeTotal(site.exportBuffer) / Math.max(1, dtMin),
+        inFlightCount: site.fleet && Number.isFinite(site.fleet.podsInFlight) ? site.fleet.podsInFlight : 0,
+      },
+      radiatorFins: site.radiatorFins,
+      background: (state.entities && state.entities.get
+        && Number(state.entities.get(site.asteroidId)?.data?.sensorSignature)) || 0,
+    });
+    const sigClass = rt.signature.signatureClass;
+    if (site.signatureClass !== sigClass) {
+      const order = { quiet: 0, faint: 1, bright: 2, blazing: 3 };
+      const rising = (order[sigClass] || 0) > (order[site.signatureClass] || 0);
+      site.signatureClass = sigClass;
+      if (rising && this.bus) {
+        this.bus.emit('site:signatureBand', { siteId: site.id, class: sigClass, total: rt.signature.total });
+        this._ledger(site, 'warn', `Site signature is now ${rt.signature.signatureLabel} — the whole sky can hear this claim.`);
+      }
+    }
+    // A blazing claim draws rival interest, once. Deterministic — the first crossing only —
+    // so the warning is a fact of the record, not a random patrol roll.
+    if (sigClass === 'blazing' && !site.claimContested) {
+      site.claimContested = true;
+      if (this.bus) this.bus.emit('site:claimContested', { siteId: site.id, total: rt.signature.total });
+      this._ledger(site, 'bad', 'A rival survey crew is charting this claim — the signature gave it away.');
+    }
+    // Site aging: the claim's clock is also how old the ground is. The ledger and any dust
+    // dressing read the same number.
+    site.ageS = (Number(site.ageS) || 0) + dtS;
+    rt.siteAgeS = site.ageS;
 
     // Harmonic stress rides this same step and keeps its own record. It never
     // writes heat, cargo, credits, or a machine's derived stats.
@@ -2731,6 +2918,45 @@ export const asteroidSites = {
     });
   },
 
+  // One bite of an auto-bore head: the first matrix/basalt face in the ring goes open — veins,
+  // pockets and housings are never machine judgment. Live sessions see the same drill:break a
+  // pilot bore emits; off-session writes go straight to the durable record.
+  _autoDrillBite(site, m, rt, state) {
+    const live = state.drill && state.drill.active && state.drill.asteroidId === site.asteroidId
+      ? state.drill : null;
+    const field = (live && live.field) || rt.field;
+    if (!field) return false;
+    for (const [dc, dr] of RING_OFFSETS) {
+      const c = m.col + dc;
+      const r = m.row + dr;
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      const t = field[c] && field[c][r];
+      if (!t || t.structure || (t.type !== 'dirt' && t.type !== 'rock')) continue;
+      field[c][r] = EMPTY_TILE();
+      const idx = tileIndex(c, r);
+      if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+      if (ent && ent.data) {
+        if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+        if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+        if (Array.isArray(ent.data.drillRubble)) {
+          ent.data.drillRubble = ent.data.drillRubble.filter((i) => i !== idx);
+        }
+      }
+      rt.geoDirty = true;
+      if (live) {
+        this.bus.emit('drill:break', {
+          col: c, row: r, type: t.type, ore: null, wasVein: false, wasGas: false, auto: true,
+        });
+        const drillSys = this._registry && this._registry.get ? this._registry.get('drill') : null;
+        if (drillSys && typeof drillSys._structCheck === 'function') drillSys._structCheck(live, c, r);
+      }
+      this._ledger(site, 'info', 'The auto-bore head opened another face.');
+      return true;
+    }
+    return false;
+  },
+
   _releaseFallenSlab(site, col, row) {
     const structure = site && site.structure;
     if (!structure || !Array.isArray(structure.falls) || !structure.falls.length) return;
@@ -2779,7 +3005,11 @@ export const asteroidSites = {
     // individual runs stay dramatic (brief §6).
     const roll = drawSeeded(state.sites.meta, 'rngSeed', hash32(state.meta && state.meta.seed || 1, site.id, fleet.launches));
     const lost = roll < podLossChance(danger);
-    const travel = podTravelS(danger);
+    // A powered relay mast tightens the courier turnaround — faster handshakes both ways.
+    const rt = this._rt && this._rt.get(site.id);
+    const relayUp = site.machines.some((m) => m.defId === 'sm_relay'
+      && (!(rt && rt.status[m.id]) || rt.status[m.id].state === 'running'));
+    const travel = podTravelS(danger) * (relayUp ? SITE_BALANCE.relayPodTravelFactor : 1);
     const intentId = `site-sale:${site.id}:${fleet.launches}`;
     ensureShipment(site);
     addToShipment(site, '_pod', loaded, 9999);

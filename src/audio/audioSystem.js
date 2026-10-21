@@ -2175,6 +2175,7 @@ export const MINE_CUES = Object.freeze({
   gasBreach: mineCue('hazard', 0.98, { minGapMs: 260, peak: 0.38, alert: true, holdMs: 900 }),
   heatCritical: mineCue('hazard', 0.88, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.30, alert: true, holdMs: 700 }),
   chargeBlast: mineCue('hazard', 0.92, { minGapMs: 280, peak: 0.22, alert: true, holdMs: 800 }),
+  caveIn: mineCue('hazard', 0.90, { minGapMs: 600, peak: 0.21, alert: true, holdMs: 900 }),
   // machine state
   boreBite: mineCue('machine', 0.38, { minGapMs: 70, peak: 0.18 }),
   rockBreak: mineCue('machine', 0.46, { minGapMs: 60, peak: 0.20 }),
@@ -2186,6 +2187,8 @@ export const MINE_CUES = Object.freeze({
   machinePlaced: mineCue('machine', 0.55, { minGapMs: 120, peak: 0.26 }),
   machineStarved: mineCue('machine', 0.50, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.18 }),
   chargeSet: mineCue('machine', 0.52, { minGapMs: 140, peak: 0.24 }),
+  rockCreak: mineCue('machine', 0.42, { minGapMs: 900, peak: 0.16 }),
+  chargeTick: mineCue('machine', 0.30, { minGapMs: 120, peak: 0.24 }),
   // ambience
   assayPing: mineCue('ambience', 0.30, { minGapMs: 500, peak: 0.15 }),
 });
@@ -2211,7 +2214,11 @@ export const MINE_EVENT_CUE_MAP = Object.freeze({
   'drill:warn/resume': 'assayPing',
   'drill:warn/charge': 'lockRefusal',
   'drill:chargePlanted': 'chargeSet',
+  'drill:chargeTick': 'chargeTick',
   'drill:chargeBlast': 'chargeBlast',
+  'drill:rockCreak': 'rockCreak',
+  'drill:caveIn': 'caveIn',
+  'drill:gasVent': 'ventRelief',
   'heat:critical': 'heatCritical',
   'heat:vented': 'ventRelief',
   'site:machineInstalled': 'machinePlaced',
@@ -2237,7 +2244,12 @@ export const MINE_LAW_EVENT_ROWS = Object.freeze([
   Object.freeze({ row: 'Bore refused (rig stalled)', heard: 'strained stall whine', cue: 'rigStall', source: 'drill:warn/overheat' }),
   // Bore charges extend the vocabulary under the same rule — every sim event gets a sound.
   Object.freeze({ row: 'Charge seated', heard: 'puck clunk, rising arm chirp', cue: 'chargeSet', source: 'drill:chargePlanted' }),
+  Object.freeze({ row: 'Charge fuse running', heard: 'dry tick each beat', cue: 'chargeTick', source: 'drill:chargeTick' }),
   Object.freeze({ row: 'Charge blast', heard: 'deep boom, the whole cut at once', cue: 'chargeBlast', source: 'drill:chargeBlast' }),
+  // Roof mechanics under the same rule — a cracking beam warns before a drop answers.
+  Object.freeze({ row: 'Roof span cracking', heard: 'low stone groan, once', cue: 'rockCreak', source: 'drill:rockCreak' }),
+  Object.freeze({ row: 'Cave-in', heard: 'roof drop, rubble landing', cue: 'caveIn', source: 'drill:caveIn' }),
+  Object.freeze({ row: 'Pocket vented open', heard: 'relief hiss, no fire', cue: 'ventRelief', source: 'drill:gasVent' }),
 ]);
 
 // Presentation cue ids whose physical voice the mine takes over while screen `drill` is up. The
@@ -3067,6 +3079,10 @@ export const audio = {
     bus.on('drill:rockDepleted', (p) => this._onMineCue('rockDepleted', p));
     bus.on('drill:chargePlanted', (p) => this._onMineCue('chargeSet', p));
     bus.on('drill:chargeBlast', (p) => this._onMineCue('chargeBlast', p));
+    bus.on('drill:chargeTick', (p) => this._onMineCue('chargeTick', p));
+    bus.on('drill:rockCreak', (p) => this._onMineCue('rockCreak', p));
+    bus.on('drill:caveIn', (p) => this._onMineCue('caveIn', p));
+    bus.on('drill:gasVent', (p) => this._onMineCue('ventRelief', p));
     bus.on('drill:scanPulse', (p) => this._onMineCue('assayPing', p));
     bus.on('drill:warn', (p) => {
       const key = MINE_EVENT_CUE_MAP[`drill:warn/${(p && p.reason) || ''}`];
@@ -5640,6 +5656,18 @@ export const audio = {
         this._mineNoise(t, { filter: 'lowpass', f0: 1350, f1: 170, Q: 0.6, dur: 0.5, peak: gain, attack: 0.004 });
         this._mineTone(t, { type: 'sine', f0: 56, f1: 29, dur: 0.62, peak: gain * 0.6, attack: 0.005 });
         this._mineNoise(t + 0.07, { filter: 'bandpass', f0: 430, f1: 150, Q: 0.9, dur: 0.65, peak: gain * 0.35, attack: 0.02 });
+        break;
+      case 'chargeTick': // fuse clock — a dry click, quiet enough to layer under the strobe lamp
+        this._mineNoise(t, { filter: 'bandpass', f0: 2400, Q: 6, dur: 0.03, peak: gain });
+        break;
+      case 'rockCreak': // the roof beam groaning under a widening span — once, low
+        this._mineTone(t, { type: 'sawtooth', f0: 96, f1: 62, dur: 0.9, peak: gain, attack: 0.12, filter: 'lowpass', filterHz: 320, filterQ: 1.1 });
+        this._mineNoise(t + 0.15, { filter: 'bandpass', f0: 380, f1: 190, Q: 1.6, dur: 0.7, peak: gain * 0.5, attack: 0.08 });
+        break;
+      case 'caveIn': // the drop: low slam, then rubble settling
+        this._mineTone(t, { type: 'sine', f0: 68, f1: 38, dur: 0.5, peak: gain, attack: 0.004 });
+        this._mineNoise(t + 0.03, { filter: 'lowpass', f0: 700, f1: 160, Q: 0.7, dur: 0.55, peak: gain * 0.8 });
+        this._mineNoise(t + 0.3, { filter: 'bandpass', f0: 300, f1: 140, Q: 0.9, dur: 0.7, peak: gain * 0.4, attack: 0.06 });
         break;
       case 'machineStarved': // single soft chime, once per transition
         this._mineTone(t, { type: 'sine', f0: 662, dur: 0.72, peak: gain, attack: 0.022 });

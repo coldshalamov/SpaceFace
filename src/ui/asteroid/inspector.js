@@ -153,6 +153,11 @@ export const LENS_CHIPS = Object.freeze({
   splits: { icon: 'splits', word: 'Splits seam', tone: 'gold' },
   seat: { icon: 'seat', word: 'Valid seat', tone: 'mint' },
   blocked: { icon: 'hazard', word: 'Blocked', tone: 'coral' },
+  fault: { icon: 'fault', word: 'Cracked', tone: 'gold' },   // a fracture plane bores fast
+  rich: { icon: 'rich', word: 'Rich seam', tone: 'gold' },
+  strained: { icon: 'fault', word: 'Strained', tone: 'coral' }, // a roof beam past its span
+  rubble: { icon: 'blocked', word: 'Rubble', tone: 'coral' },   // fallen roof — bore it again
+  vented: { icon: 'farm', word: 'Vented seam', tone: 'mint' },  // open pocket — a tap still sips it
 });
 
 /** Build one chip row entry. `suffix` is numerals only ("2u", "Mk2") — never new words. */
@@ -319,15 +324,21 @@ export function tileLensModel({
       kind: 'tile',
       swatch: swatchPaint({ material, ore: null, type }),
       lamp: null,
-      name: tile.structure ? 'Machine housing' : 'Bored tunnel',
+      name: tile.structure ? 'Machine housing'
+        : (tile.vented ? 'Vented gas seam' : (tile.cave ? 'Sealed cave' : 'Bored tunnel')),
       numerals: '',
       claim,
       hp: null,
-      chips,
+      chips: tile.vented ? [lensChip('vented')] : chips,
       body: '',
       ring: null,
     };
   }
+
+  if (tile.fault) chips.push(lensChip('fault'));
+  if (tile.rich) chips.push(lensChip('rich'));
+  if (tile.cracked) chips.push(lensChip('strained'));
+  if (tile.rubble) chips.push(lensChip('rubble'));
 
   const yieldU = Math.max(0, Math.trunc(Number(tile.yieldU) || 0));
   if (seam && seam.count > 1) numerals.push(`${seam.count} cells`);
@@ -366,7 +377,7 @@ export function tileLensModel({
     kind: 'tile',
     swatch: swatchPaint({ material, ore, type }),
     lamp: null,
-    name: materialLabel({ material, ore, type }),
+    name: strataName(tile, material, ore, type),
     numerals: numerals.join(' · '),
     claim,
     hp: progress > 0.005 ? 1 - progress : null,
@@ -374,6 +385,14 @@ export function tileLensModel({
     body,
     ring: null,
   };
+}
+
+/** Strata qualifiers on the material name — 'Deep basalt formation', 'Upper silicate matrix'. */
+function strataName(tile, material, ore, type) {
+  if (tile.cave) return 'Sealed cave fill';
+  const base = materialLabel({ material, ore, type });
+  const band = tile.stratum === 'heart' ? 'Deep ' : (tile.stratum === 'cap' ? 'Upper ' : '');
+  return (tile.rich ? 'Rich ' : '') + band + base;
 }
 
 function contactCount(geo) {
@@ -459,6 +478,8 @@ const ICON_PATHS = {
   locked: ['M4.6 7.2V5.4a3.4 3.4 0 0 1 6.8 0v1.8', 'M3.4 7.2h9.2v6.2H3.4z'],
   splits: ['M8 1.6v3.6', 'M8 5.2 4.4 9v5.2', 'M8 5.2 11.6 9v5.2'],
   seat: ['M2.6 8.6 6.4 12.4l7-8.8'],
+  fault: ['M9.4 1.5 5.8 8h3.2l-2.4 6.5L10.8 8H7.6z'],
+  rich: ['M8 2l4.8 3v6L8 14l-4.8-3V5z', 'M8 5.6 10.2 8 8 10.4 5.8 8z'],
 };
 
 function icon(name) {

@@ -166,6 +166,16 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
         ev.preventDefault();
         return true;
       }
+      // Q while armed walks the payload rack (blast/shape/vent/seismic) — the board re-quotes.
+      if (code === 'KeyQ') {
+        const d = getDrillState && getDrillState();
+        if (d && d.chargeArmed) {
+          if (!ev.repeat && hooks.onChargePayload) hooks.onChargePayload();
+          ev.preventDefault();
+          return true;
+        }
+        return false;
+      }
       if (code === 'Enter' || code === 'Space') {
         const d = getDrillState && getDrillState();
         if (d && d.chargeArmed && hooks.onCharge) {

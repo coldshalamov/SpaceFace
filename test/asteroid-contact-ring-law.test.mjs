@@ -22,7 +22,8 @@ import {
   generateDrillField, recoverClearedGeometry, entryShaftIndex, tileIndex, DRILL_CONST, drill,
 } from '../src/systems/drill.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
-import { SITE_BALANCE } from '../src/data/sites.js';
+import { contactProfile, machineCapability } from '../src/systems/siteProduction.js';
+import { SITE_BALANCE, SITE_MACHINE_BY_ID } from '../src/data/sites.js';
 
 // Independent hard-coded field shape. Do NOT assert expected dimensions from DRILL_CONST alone —
 // a production COLS drift would then stay green. Runtime COLS/ROWS are used only for traversal
@@ -34,8 +35,10 @@ const { COLS, ROWS } = DRILL_CONST;
 // PINNED yield rates — CURRENT shipped values, copied by hand from src/data/sites.js CONTACT_YIELD.
 // Independent literals: a production rate change must consciously update these numbers.
 // Do NOT import CONTACT_YIELD for expected-value computation (self-referential drift hole).
-const PINNED_MATRIX_PER_MIN = 0.9;
-const PINNED_BASALT_PER_MIN = 0.35;
+// Live CONTACT_YIELD drifted from the originals (matrix 0.9->1.2, basalt 0.35->0.45) when the
+// production rebalance landed; the pins track the shipped literals, not the old ones.
+const PINNED_MATRIX_PER_MIN = 1.2;
+const PINNED_BASALT_PER_MIN = 0.45;
 // Both-sides numeric discipline for the exact yield-loss assertion.
 // Hard-coded: at-bound error 1e-9 must pass; just-beyond 1e-8 must fail the <= check.
 const YIELD_EQ_TOL = 1e-9;
@@ -316,38 +319,38 @@ test('access law: hollow target with 7-solid/1-empty ring installs (partial cont
   assert.equal(view.capability.geologyLive, true);
 });
 
-test('access law: hollow target with 8-solid/0-empty ring installs (maximum contact, best case)', () => {
-  // Isolated hollow in a fully solid field: ring is 8 solid / 0 empty.
-  // This is the MAXIMUM-contact best case — production ACCEPTS it (not a forbidden state).
+test('access law: an isolated 8-solid hollow is unreachable — the reachable ceiling is 7', () => {
+  // The access-route law (BORE series) changed this case's meaning: a hollow can only be reached
+  // through an open neighbour, and every neighbour of the target IS a ring cell — so an 8-solid
+  // ring can never be installed on. Eight contacts remain the capability ceiling, asserted
+  // directly on the profile; the gate's job is refusing what no tunnel could reach.
   const h = makeHarness();
   const ent = addAsteroid(h);
   const field = makeSolidField();
   const col = 10;
   const row = 10;
   field[col][row] = EMPTY();
-  // All 8 ring neighbours remain solid. Only the placement cell is on drillCleared.
   ent.data.drillCleared = [tileIndex(col, row)];
-  // Avatar adjacent (not on the cell — rover-here) so unanchored adjacency is satisfied.
-  // Adjacent cell may be solid; the gate only checks manhattan distance, not avatar tile type.
   h.state.drill = {
     active: true, asteroidId: ROCK_ID, field,
     avatar: { col: col - 1, row },
   };
 
   const can = h.sys.canInstall({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
-  assert.equal(can.ok, true, 'hollow with solid=8 empty=0 must pass canInstall (max contact)');
-  assert.equal(can.profile.solid, 8, 'max-contact profile solid must be 8');
-  assert.equal(can.profile.empty, 0, 'max-contact profile empty must be 0');
-  assert.equal(can.profile.solid + can.profile.empty, 8);
+  assert.equal(can.ok, false, 'an 8-solid isolated hollow has no access route');
+  assert.equal(can.reason, 'no-access-route');
 
-  const inst = h.sys.installMachine({ asteroidId: ROCK_ID, defId: 'sm_extractor', col, row });
-  assert.equal(inst.ok, true, 'max-contact hollow must installMachine');
-  const view = machineView(h, inst.siteId, inst.machineId);
-  assert.equal(view.geo.solid, 8, 'durable geo solid after max-contact install');
-  assert.equal(view.geo.empty, 0, 'durable geo empty after max-contact install');
-  assert.equal(view.geo.solid + view.geo.empty, 8);
-  assert.ok(silicateOf(view) > 0, 'max-contact extractor must produce from all 8 contacts');
-  assert.equal(view.capability.geologyLive, true);
+  // The ceiling itself: contactProfile on the hypothetical ring still counts all 8, and the
+  // extractor capability pays every one of them at the pinned rate.
+  const profile = contactProfile(field, col, row, COLS, ROWS);
+  assert.equal(profile.solid, 8, 'max-contact profile solid must be 8');
+  assert.equal(profile.empty, 0);
+  const cap = machineCapability(SITE_MACHINE_BY_ID.get('sm_extractor'), profile);
+  const expected = Math.round(
+    (profile.matrix * PINNED_MATRIX_PER_MIN + profile.basalt * PINNED_BASALT_PER_MIN) * 1000,
+  ) / 1000;
+  assert.equal(cap.outputsPerMin.cmdty_silicate, expected,
+    'all 8 contacts would pay at the pinned rate — the ceiling exists, the access law gates it');
 });
 
 test('access law: non-hollow (solid) target cell refuses install', () => {
@@ -654,8 +657,12 @@ test('dismantling a machine never restores neighbour contact and refunds the loc
   addAsteroid(h);
   openSession(h);
   const { siteId, extractorId } = buildAnchoredSite(h);
-  // Anchored → remote install; 13,1 is hollow and inside the extractor's ring.
-  const port = h.sys.installMachine({ asteroidId: ROCK_ID, defId: 'sm_cargo_port', col: 13, row: 1 });
+  // Anchored → remote install, but the access law applies: the Core at (14,1) seals the only
+  // corridor from the entry, so the reachable pocket cells are below it. 13,3 is hollow, inside
+  // the extractor's ring, and connected through (14,3)→(14,2)→(15,2)→(15,1). Give the BFS its
+  // way in by carving (15,0) beside the entry — the mouth of a second shaft.
+  hollowCell(h, 15, 0);
+  const port = h.sys.installMachine({ asteroidId: ROCK_ID, defId: 'sm_cargo_port', col: 13, row: 3 });
   assert.equal(port.ok, true);
 
   const before = machineView(h, siteId, extractorId);
@@ -708,7 +715,10 @@ test('end-to-end: units actually landed in the lane store fall after a contact i
   runTicks(240);
   const producedFull = silicateInStores() - t0;
   assert.ok(producedFull > 0, `powered extractor must actually deposit silicate, got ${producedFull}`);
-  assert.equal(machineView(h, siteId, extractorId).status.state, 'running');
+  // 'running' or 'throttled' are both producing states now that the thermal model is live:
+  // a machine whose ring is a weak heatsink sags its power feed without stopping.
+  assert.ok(['running', 'throttled'].includes(machineView(h, siteId, extractorId).status.state),
+    `expected a producing state, got ${machineView(h, siteId, extractorId).status.state}`);
 
   // Destroy one contact face and run the identical window again.
   const victim = machineView(h, siteId, extractorId).geo.cells

@@ -20,7 +20,7 @@ export function oreContactRate(oreId) {
   return Math.min(CONTACT_YIELD.orePerMinByTier[tier], CONTACT_YIELD.oreValuePerMinCap / value);
 }
 
-const RING_OFFSETS = Object.freeze([
+export const RING_OFFSETS = Object.freeze([
   [-1, -1], [0, -1], [1, -1],
   [-1, 0], [1, 0],
   [-1, 1], [0, 1], [1, 1],
@@ -40,7 +40,13 @@ export function contactProfile(field, col, row, cols, rows) {
     const tile = (c >= 0 && c < cols && r >= 0 && r < rows && field[c]) ? field[c][r] : null;
     const kind = contactKind(tile);
     profile.cells.push({ col: c, row: r, kind, ore: kind === 'ore' ? tile.ore : null });
-    if (kind === 'empty') { profile.empty++; continue; }
+    if (kind === 'empty') {
+      profile.empty++;
+      // A breached pocket keeps a residue seam — it reads empty for walking and machine
+      // housing, but a gas tap still sips it at the reduced vented rate.
+      if (tile && tile.vented) profile.vented = (profile.vented || 0) + 1;
+      continue;
+    }
     profile.solid++;
     if (kind === 'matrix') profile.matrix++;
     else if (kind === 'basalt') profile.basalt++;
@@ -89,7 +95,8 @@ export function machineCapability(def, profile, mode) {
     }
     cap.geologyLive = Object.keys(cap.outputsPerMin).length > 0;
   } else if (def.id === 'sm_gas_tap' && profile) {
-    const gas = profile.gas;
+    // Sealed pockets pay full rate; vented seams pay the residue fraction. Both are real feeds.
+    const gas = profile.gas + (profile.vented || 0) * CONTACT_YIELD.ventedGasFraction;
     cap.geologyLive = gas > 0;
     const genShare = mode === 'feedstock' ? 0 : (mode === 'split' ? 0.5 : 1);
     const feedShare = mode === 'generate' ? 0 : (mode === 'split' ? 0.5 : 1);
@@ -259,7 +266,7 @@ export function stepFabricator({
       // A batch owns its committed inputs, NOT a permanent reservation in a shared lane.
       // Hold undelivered output on the completed job, including after save/Continue.
       // No extra inputs, lost output, duplicate completion, or growing progress counter.
-      if (outputId !== 'pod') {
+      if (outputId !== 'pod' && !recipe.outOfLane) {
         const delivered = Number(machine.job.outputDelivered) || 0;
         const remaining = Math.max(0, qty - delivered);
         const room = positiveRoom(roomFor(outputId));
@@ -315,7 +322,7 @@ export function stepFabricator({
   }
   const [outputId] = Object.entries(recipe.output)[0];
   const inputTotal = inputs.reduce((sum, [, qty]) => sum + qty, 0);
-  const availableRoom = outputId === 'pod' ? Infinity : Number(roomFor(outputId));
+  const availableRoom = (outputId === 'pod' || recipe.outOfLane) ? Infinity : Number(roomFor(outputId));
   if (!(availableRoom >= 0) || availableRoom + inputTotal < recipe.output[outputId]) {
     result.status = 'backlogged';
     result.limit = 'export';

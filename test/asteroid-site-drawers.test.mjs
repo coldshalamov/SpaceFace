@@ -175,7 +175,11 @@ test('site:machineStatus fires exactly once per transition and carries the previ
   tick(h, 3);
   assert.equal(statusEvents(h).length, 0, 'the first observation of a machine is not a transition');
   const settled = h.sys.projection(siteId).machines;
-  assert.equal(settled.find((m) => m.id === ids.extractor).status.state, 'running');
+  // The thermal model is live: an extractor on a weak-heatsink ring settles into 'throttled'
+  // (producing, sagged feed) instead of 'running'. Both are the powered producing states.
+  const extractorSettled = settled.find((m) => m.id === ids.extractor).status.state;
+  assert.ok(['running', 'throttled'].includes(extractorSettled),
+    `expected a producing state, got ${extractorSettled}`);
   assert.equal(settled.find((m) => m.id === ids.port).status.state, 'idle');
 
   // Steady state is silent — this is the property that keeps golden telemetry untouched.
@@ -190,7 +194,7 @@ test('site:machineStatus fires exactly once per transition and carries the previ
   assert.equal(dark.length, 2, 'one event per machine that changed, and no others');
   const extractorDark = dark.find((p) => p.machineId === ids.extractor);
   assert.deepEqual(extractorDark, {
-    siteId, machineId: ids.extractor, state: 'no-power', prev: 'running',
+    siteId, machineId: ids.extractor, state: 'no-power', prev: extractorSettled,
   }, 'the payload names the site, the machine, the new state and the state it came from');
   assert.equal(dark.find((p) => p.machineId === ids.port).prev, 'idle');
   assert.ok(!dark.some((p) => p.machineId === ids.core), 'the generator did not change and stays quiet');
@@ -205,7 +209,7 @@ test('site:machineStatus fires exactly once per transition and carries the previ
   const back = statusEvents(h).slice(2).map((e) => e.payload);
   assert.equal(back.length, 2);
   assert.deepEqual(back.find((p) => p.machineId === ids.extractor), {
-    siteId, machineId: ids.extractor, state: 'running', prev: 'no-power',
+    siteId, machineId: ids.extractor, state: extractorSettled, prev: 'no-power',
   });
 });
 

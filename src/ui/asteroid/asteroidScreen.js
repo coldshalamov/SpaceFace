@@ -222,12 +222,19 @@ export function siteDrawerModel({
   let capacity = 0;
   for (const lane of lanes) { stored += Number(lane.stored) || 0; capacity += Number(lane.capacity) || 0; }
 
+  const rt = siteSys && siteSys._rt && siteId ? siteSys._rt.get(siteId) : null;
+  const rockEnt = siteSys && siteSys.state && siteSys.state.entities && site && site.asteroidId
+    ? siteSys.state.entities.get(site.asteroidId) : null;
+  const thermalBand = (rt && rt.thermal && rt.thermal.worstBand) || 'nominal';
   const totals = {
     machines: machines.length,
     running: machines.filter((m) => m.status && DRAWER_BUSY_STATES.has(m.status.state)).length,
     dark: machines.filter((m) => m.status && DRAWER_FAULT_STATES.has(m.status.state)).length,
     stored: Math.round(stored),
     capacity: Math.round(capacity),
+    signatureLabel: (rt && rt.signature && rt.signature.signatureLabel) || (site && site.signatureClass) || 'quiet',
+    thermalBand,
+    chargeStock: rockEnt && rockEnt.data ? Math.floor(Number(rockEnt.data.chargeStock) || 0) : 0,
     exportRatePerMin: projection ? Number(projection.exportRatePerMin) || 0 : 0,
     rates: Object.keys(ratePerMin).sort().map((id) => ({
       id, name: sentenceCase(commodityName(id)), perMin: Math.round(ratePerMin[id] * 10) / 10,
@@ -792,6 +799,15 @@ export const asteroidScreen = {
         },
         onChargeCancel() {
           if (drillSys.disarmCharge && drillSys.disarmCharge()) announce('Bore charge put away.');
+        },
+        onChargePayload() {
+          const next = drillSys.cycleChargePayload && drillSys.cycleChargePayload();
+          if (next) {
+            const p = drillSys.chargePreview ? drillSys.chargePreview() : null;
+            announce(p && p.payloadLabel ? `${p.payloadLabel} on the rack — Q walks it again.` : 'Payload swapped.');
+          }
+          inspElapsed = 10;
+          lensDirty = true;
         },
         onPlace: (cursor) => commitPlacement(cursor),
         onRemove: (cursor) => commitRemoval(cursor),
@@ -1539,6 +1555,9 @@ export const asteroidScreen = {
       siteUi.running = siteStat(prod, 'Running');
       siteUi.dark = siteStat(prod, 'Dark');
       siteUi.stored = siteStat(prod, 'Held in lanes');
+      siteUi.signature = siteStat(prod, 'Signature');
+      siteUi.thermal = siteStat(prod, 'Thermal');
+      siteUi.chargeStock = siteStat(prod, 'Charge stock');
       siteUi.exportRate = siteStat(prod, 'Export rate');
       siteUi.rates = document.createElement('div');
       siteUi.rates.className = 'aw-site-rates';
@@ -1745,6 +1764,9 @@ export const asteroidScreen = {
       setNodeText(siteUi.running, String(t.running));
       setNodeText(siteUi.dark, String(t.dark));
       setNodeText(siteUi.stored, `${t.stored} / ${t.capacity}u`);
+      setNodeText(siteUi.signature, t.signatureLabel);
+      setNodeText(siteUi.thermal, t.thermalBand);
+      setNodeText(siteUi.chargeStock, `${t.chargeStock} racked`);
       setNodeText(siteUi.exportRate, `${t.exportRatePerMin.toFixed(1)}/min`);
       siteUi.rates.textContent = '';
       for (const rate of t.rates) {
@@ -2073,6 +2095,23 @@ export const asteroidScreen = {
     unsubs.push(ctx.bus.on('drill:backblast', (p) => {
       pushLedgerLine('bad', `Caught in your own blast — hull damage ${p.dmg}.`);
       announce(`Backblast. Hull damage ${p.dmg}.`);
+    }));
+    unsubs.push(ctx.bus.on('drill:rockCreak', (p) => {
+      if (renderer3d) renderer3d.notify('rockCreak', { cells: p.cells || [] });
+      pushLedgerLine('warn', `The roof is cracking — a ${p.span || 0}-cell span with open air above it. Leave a pillar.`);
+      announce('The roof is cracking. Widen the hall again and it will fall.');
+      projDirty = true;
+    }));
+    unsubs.push(ctx.bus.on('drill:caveIn', (p) => {
+      if (renderer3d) renderer3d.notify('caveIn', { fell: p.fell || [], dropped: p.dropped || [] });
+      pushLedgerLine('bad', `Cave-in — the roof dropped across the span. The rubble will have to be bored again.`);
+      announce('Cave-in. The hall outgrew its roof.');
+      projDirty = true;
+    }));
+    unsubs.push(ctx.bus.on('drill:gasVent', (p) => {
+      if (renderer3d) renderer3d.notify('gasVent', { col: p.col, row: p.row });
+      pushLedgerLine('good', `Pocket vented open — a gas tap can still sip the seam.`);
+      projDirty = true;
     }));
     unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
       if (renderer3d) renderer3d.notify('scanPulse');

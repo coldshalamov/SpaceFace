@@ -738,14 +738,50 @@ export function createStrataCache({ cols, rows, isSurveyed, drillTier, monoFamil
     const surveyed = isSurveyed(c, r);
     if (t.type === 'gas') { paintGas(g, x, y, c, r); return; }
     if (!surveyed) { paintUnknown(g, x, y, c, r, t); return; }
-    if (t.type === 'dirt') { paintMatrix(g, x, y, c, r, false); return; }
-    if (t.type === 'rock') { paintBasalt(g, x, y, c, r, false); return; }
+    if (t.type === 'dirt') { paintMatrix(g, x, y, c, r, false); if (t.fault) paintFaultMark(g, x, y, c, r); return; }
+    if (t.type === 'rock') { paintBasalt(g, x, y, c, r, false); if (t.fault) paintFaultMark(g, x, y, c, r); return; }
     if (t.type === 'vein' && t.ore) {
       const req = t.tierReq || drillTierReqForOre(t.ore);
       paintVein(g, x, y, c, r, t.ore, drillTier() < req ? req : 0);
+      if (t.rich) paintRichMark(g, x, y);
+      if (t.fault) paintFaultMark(g, x, y, c, r);
       return;
     }
     paintBasalt(g, x, y, c, r, false);
+    if (t.fault) paintFaultMark(g, x, y, c, r);
+  }
+
+  // A fracture plane reads as one lit crack running corner to corner — the fast-bore tell.
+  function paintFaultMark(g, x, y, c, r) {
+    const a = rnd01(c, r, 'fa') * Math.PI;
+    const cx = x + TILE / 2, cy = y + TILE / 2;
+    const dx = Math.cos(a) * TILE * 0.42, dy = Math.sin(a) * TILE * 0.42;
+    g.strokeStyle = '#e8d9b8';
+    g.globalAlpha = 0.85;
+    g.lineWidth = 1.4;
+    g.beginPath();
+    g.moveTo(cx - dx, cy - dy);
+    g.lineTo(cx - dx * 0.2 + (rnd01(c, r, 'fj') - 0.5) * 8, cy - dy * 0.2);
+    g.lineTo(cx + dx * 0.2 + (rnd01(c, r, 'fk') - 0.5) * 8, cy + dy * 0.2);
+    g.lineTo(cx + dx, cy + dy);
+    g.stroke();
+    g.globalAlpha = 1;
+  }
+
+  // A rich seam gets a bright corner bracket — jackpot at a glance without a new material.
+  function paintRichMark(g, x, y) {
+    g.strokeStyle = '#ffd76a';
+    g.lineWidth = 2;
+    g.globalAlpha = 0.9;
+    g.beginPath();
+    g.moveTo(x + 4, y + 10);
+    g.lineTo(x + 4, y + 4);
+    g.lineTo(x + 10, y + 4);
+    g.moveTo(x + TILE - 10, y + TILE - 4);
+    g.lineTo(x + TILE - 4, y + TILE - 4);
+    g.lineTo(x + TILE - 4, y + TILE - 10);
+    g.stroke();
+    g.globalAlpha = 1;
   }
 
   function buildAll(field) {
