@@ -388,7 +388,7 @@ const RESCUE_GATE_ROUTE = Object.freeze({
 const COLD_OPEN_PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
 // Surfaced when the firing lesson first hands the player a trigger, so the starter weapon is named,
 // not just felt. Pulled from NEW_GAME's fitted starter loadout (see check:phase0-slice-contract).
-// The hull is Hitch — the callsign the opening already uses; "Kestrel" is the market name.
+// The hull is Hitch — the callsign the opening already uses; the market copy keeps the class name.
 const STARTER_WEAPON_HINT = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
 // A captioned opening: the one-line hook and the weapon hint also live briefly in the existing
 // objective tracker, because a muted pilot must still be able to read the premise. Captions are
@@ -4007,11 +4007,13 @@ export const onboarding = {
     else if (beat && (beat.key === 'marker' || beat.key === 'focus'
       || beat.key === 'burst' || beat.key === 'disengage')) {
       const trainer = this._trainingActor();
-      if (trainer) target = { pos: trainer.pos, label: trainer.name || 'SCN Flight Trainer' };
+      // The drill actor plays the fiction's fleeing raider; the tracker names the fiction,
+      // never the training rig (the legacy route still bills the entity "SCN Flight Trainer").
+      if (trainer) target = { pos: trainer.pos, label: trainer.name && !/trainer/i.test(trainer.name) ? trainer.name : 'Fleeing Raider' };
     }
     else if (beat && beat.key === 'tether') {
       const derelict = this._derelictId != null && st.entities && st.entities.get(this._derelictId);
-      if (derelict && derelict.alive !== false) target = { pos: derelict.pos, label: 'Training Derelict' };
+      if (derelict && derelict.alive !== false) target = { pos: derelict.pos, label: 'Derelict' };
     }
     else if (beat && beat.key === 'seam') {
       const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);

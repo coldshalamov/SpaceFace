@@ -2314,6 +2314,7 @@ export const ships = {
     delete this.state.lossLedger.impound;
     this.bus.emit('ship:purchased', {
       defId: def.id,
+      ...purchasedHullNameField(def),
       price,
       rapSheet: owned.rapSheet,
       rapSheetLine: owned.rapSheetLine,
@@ -2350,7 +2351,7 @@ export const ships = {
       livingHull: defaultLivingHull(this.state.simTime || 0),
     });
     const newIndex = p.ownedShips.length - 1;
-    this.bus.emit('ship:purchased', { defId, price: grant ? 0 : price });
+    this.bus.emit('ship:purchased', { defId, ...purchasedHullNameField(def), price: grant ? 0 : price });
     if (setActive) this.setActiveShip(newIndex);
     return true;
   },
@@ -3005,6 +3006,17 @@ export const ships = {
 };
 
 // ---- small utils ---------------------------------------------------------------------------
+
+/** The chronicler title-cases the defId when a purchase receipt carries no name
+ *  (`ship_kestrel` -> "Kestrel"). Send `name` only when the catalog name tells the ledger
+ *  something the id cannot — the starter's callsign is "Hitch" — so hulls whose id already
+ *  names them keep the minimal receipt shape. */
+function purchasedHullNameField(def) {
+  if (!def || !def.name) return {};
+  const fromId = String(def.id || '').replace(/^ship_/, '').replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+  return def.name !== fromId ? { name: def.name } : {};
+}
 
 function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
 
