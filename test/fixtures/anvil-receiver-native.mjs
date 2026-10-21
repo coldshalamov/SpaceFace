@@ -90,8 +90,10 @@ export function relocateAnvilObserver(f, watched, reason = 'anvil-receiver-obser
   }
   assert.ok(hull > 0 && Number.isFinite(hull));
   const origin = native._frameOrigin, observerShape = new native.RAPIER.Ball(hull);
-  const observerVelocity = { x: player.vel.x, y: 0, z: player.vel.z };
-  const playerTravel = Math.hypot(player.vel.x, player.vel.z) * 2;
+  // world.relocatePlayerInSector resets linear/angular velocity. Query the
+  // actual post-relocation observer, not its discarded pre-relocation drift.
+  const observerVelocity = { x: 0, y: 0, z: 0 };
+  const playerTravel = 0;
   const workers = ['collector', 'receiver'].map(role => f.actor(role)
     || f.state.world.records.byId[anvilWorkerRecordId(f.state, role)]).filter(Boolean);
   const rejected = [];

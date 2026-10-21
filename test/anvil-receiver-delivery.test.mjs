@@ -501,6 +501,7 @@ test('full production native receiver delivers the finite load through Continue 
         mkdirSync(process.env.ANVIL_RECEIVER_EVIDENCE_DIR, { recursive: true });
         writeFileSync(process.env.ANVIL_RECEIVER_EVIDENCE_DIR + '/terminal-participants.json', JSON.stringify({
           sourceTree: process.env.PUBLIC_TREE || null, time: f.state.simTime, tick: f.state.tick,
+          observerPlacements: f.observerPlacements,
           participants: ['collector', 'receiver'].map(role => ({ role,
             live: f.actor(role), retained: f.state.world.records.byId[anvilWorkerRecordId(f.state, role)],
             matchingEntities: f.state.entityList.filter(e => e.data?.worldRecordId === anvilWorkerRecordId(f.state, role)),
@@ -881,4 +882,15 @@ test('predictive yield uses the compact ship index with identical fallback decis
   const fallback={...t.state,entityIndex:null};
   assert.deepEqual(anvilTrafficYield(indexed,t.collector),anvilTrafficYield(fallback,t.collector));
  }finally{t.sim.dispose();}
+});
+
+test('observer prediction matches production relocation zero velocity instead of discarded drift',async()=>{
+ const f=await anvilReceiverFixture();try{
+  const player=f.state.entities.get(f.state.playerId);
+  player.vel.x=180;player.vel.z=-160;player.angVel=2;
+  const selected=relocateAnvilObserver(f,f.actor('collector'),'observer-velocity-reset-regression');
+  assert.ok(selected.clearance>=32);assert.ok(Math.hypot(selected.pos.x-f.actor('collector').pos.x,
+   selected.pos.z-f.actor('collector').pos.z)<=450.000001,'original candidate bounds retained');
+  assert.equal(player.vel.x,0);assert.equal(player.vel.z,0);assert.equal(player.angVel,0);
+ }finally{f.close();}
 });
