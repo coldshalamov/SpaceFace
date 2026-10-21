@@ -1288,7 +1288,15 @@ export class SpaceBackground {
       // and a wrap there folds the far edge of the plate onto screen. Every plate is baked with
       // an edge fade back to its own floor, so clamping is invisible where wrapping was a seam.
       texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+      // Anisotropic sampling for the shallow grazing angle these plates are viewed at: 4x where
+      // the GPU supports it, floored at 1 (three reports 0 without the ext) and clamped to the
+      // driver maximum. Same clamp precedent as _makeRT below.
       texture.anisotropy = 1;
+      try {
+        const maxAniso = this.renderer && this.renderer.capabilities
+          ? this.renderer.capabilities.getMaxAnisotropy() : 1;
+        texture.anisotropy = Math.max(1, Math.min(4, maxAniso || 1));
+      } catch (_) { /* anisotropy optional */ }
       texture.name = `${prefix}_${plate.id}`;
     };
     this.deepSkyPlates = new DeepSkyPlateResidency({
@@ -2103,14 +2111,18 @@ export class SpaceBackground {
   _createStars() {
     const st = this.backgroundStructure || resolveBackgroundStructure(null);
     const count = Math.max(200, Math.floor(this.starCount * st.starDensity));
+    // Haze-star tier: a tail of very faint sub-pixel stars reserved in the SAME typed arrays and
+    // drawn by the SAME Points call, so L3's draw count is unchanged. Medium+ tiers only - low
+    // tier reserves none and its allocation stays identical to the shipped field.
+    const faintCount = this.lowTier ? 0 : 2048;
     const cell = this.starCell;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const pars = new Float32Array(count);
-    const bases = new Float32Array(count);
-    const twinklePhase = new Float32Array(count);
-    const twinkleSpeed = new Float32Array(count);
+    const positions = new Float32Array((count + faintCount) * 3);
+    const colors = new Float32Array((count + faintCount) * 3);
+    const sizes = new Float32Array(count + faintCount);
+    const pars = new Float32Array(count + faintCount);
+    const bases = new Float32Array(count + faintCount);
+    const twinklePhase = new Float32Array(count + faintCount);
+    const twinkleSpeed = new Float32Array(count + faintCount);
 
     const rnd = mulberry32(this.skySeed + 101);
     const tmp = new THREE.Color();
@@ -2139,6 +2151,14 @@ export class SpaceBackground {
         authored: true,
       });
     }
+
+    // Extra twinkle coverage without touching the shipped RNG stream: the doTwinkle draw below
+    // sits inside the main mulberry32 stream, so raising that threshold would reshuffle every
+    // later star's position, color and size versus the shipped seeds. An independent skySeed-keyed
+    // stream converts a further ~0.235 share of the static pool (0.15 + 0.85 * 0.235 ~= 0.35 total
+    // coverage on medium+ tiers; low tier stays fully static). Shader cost is unchanged - the
+    // vertex shader evaluates the twinkle sine for every star either way.
+    const twinkleTopUp = this.lowTier ? null : mulberry32((this.skySeed ^ 0x5f356495) >>> 0);
 
     let accepted = 0;
     let attempts = 0;
@@ -2186,7 +2206,32 @@ export class SpaceBackground {
       const doTwinkle = !this.lowTier && rnd() < 0.15;
       twinklePhase[i] = rnd() * Math.PI * 2;
       twinkleSpeed[i] = doTwinkle ? (0.8 + rnd() * 1.4) : 0;
+      if (twinkleTopUp && !doTwinkle && twinkleTopUp() < 0.235) {
+        // Converted star: speed from the top-up stream; its phase is already set above.
+        twinkleSpeed[i] = 0.8 + twinkleTopUp() * 1.4;
+      }
       accepted++;
+    }
+
+    // Fill the faint haze tail from its own stream AFTER the rejection loop: that loop and its
+    // RNG stream stay untouched. Every attribute is initialized; the draw range is the only gate.
+    if (faintCount > 0) {
+      const faintRnd = mulberry32(this.skySeed + 404);
+      for (let f = 0; f < faintCount; f++) {
+        const i = accepted + f;
+        positions[i * 3] = (faintRnd() - 0.5) * cell;
+        positions[i * 3 + 1] = 0;
+        positions[i * 3 + 2] = (faintRnd() - 0.5) * cell;
+        pickBlackbody(faintRnd, tmp);
+        colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+        pars[i] = 0.10 + faintRnd() * 0.18;      // the far half of the existing depth band
+        // 0.7-1.0 displayed px (the vertex clamp floors at 1.0); brightness below the faint
+        // field tier's ~0.42 floor. Speed 0: a calm haze tier, no shimmer of its own.
+        sizes[i] = (0.7 + faintRnd() * 0.3) * this.starPxToWorld;
+        bases[i] = 0.16 + faintRnd() * 0.14;
+        twinklePhase[i] = faintRnd() * Math.PI * 2;
+        twinkleSpeed[i] = 0;
+      }
     }
 
     const geo = new THREE.BufferGeometry();
@@ -2197,7 +2242,7 @@ export class SpaceBackground {
     geo.setAttribute('aBase', new THREE.BufferAttribute(bases, 1));
     geo.setAttribute('aTwinklePhase', new THREE.BufferAttribute(twinklePhase, 1));
     geo.setAttribute('aTwinkleSpeed', new THREE.BufferAttribute(twinkleSpeed, 1));
-    geo.setDrawRange(0, accepted);
+    geo.setDrawRange(0, accepted + faintCount);
 
     const mat = new THREE.ShaderMaterial({
       vertexShader: STAR_VERT,
@@ -2227,7 +2272,7 @@ export class SpaceBackground {
     pts.renderOrder = -80;
     pts.position.y = STAR_DEPTH;
     this.group.add(pts);
-    this.stars = { pts, mat, count: accepted, cell };
+    this.stars = { pts, mat, count: accepted + faintCount, cell };
   }
 
   // --------------------------------------------------------------------------

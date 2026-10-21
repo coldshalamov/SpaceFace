@@ -70,7 +70,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "creep",
       "next": "a0"
     },
@@ -84,7 +84,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "creep",
       "next": "a1"
     },
@@ -98,7 +98,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "creep",
       "next": "a2"
     },
@@ -112,35 +112,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "creep",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "mining belt does not get quieter if you boost.",
+      "line": "Nobody in mining belt looks up for engine noise.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "creep",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 4,
       "motion": "creep",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DISPATCH: Holding. This does not hurry.",
+      "line": "DISPATCH: No hurry in this berth. Hold.",
       "channel": "info",
       "next": "offer"
     },

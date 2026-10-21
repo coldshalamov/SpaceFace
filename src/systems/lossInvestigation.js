@@ -10,6 +10,9 @@ import { latestLossFor } from './lossLedger.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { buildSetPieceMissionOffers } from './setPieceMissionOffers.js';
+import { caseIdForLoss } from '../data/wreckCourt/caseForLoss.js';
+import { caseDef } from '../data/wreckCourt/index.js';
+import { courtOfferPresentation } from './wreckCourt.js';
 
 const INVESTIGATION_TEMPLATES = ['wm_manifest_run', 'wm_blackbox_attacker'];
 
@@ -158,7 +161,9 @@ export const lossInvestigation = {
     point.isCommunicator = true;
     point.wreckMissionId = overlay.metadata.wreckMissionId;
     point.lossInvestigation = { ...overlay.metadata };
-    point.wreckCourtCaseId = 'wc_desperate_rescue';
+    // RC-21: the loss's own shape decides which docket case it convenes — the five authored
+    // shapes reach the whole case catalog, and the same loss always lands the same case.
+    point.wreckCourtCaseId = caseIdForLoss(loss, { seed, sectorId });
     point.wreckCourtSeed = hash32(seed, sectorId, loss.lossId, 'wreckCourt');
 
     const ent = entityForPoint(state, point);
@@ -335,7 +340,28 @@ export const lossInvestigation = {
 
   _stampOffer(offer) {
     const state = this._state;
-    if (!state || !offer || offer.source !== 'salvage' || !offer.salvagePointId) return;
+    if (!state || !offer) return;
+    // RC-21/RC-22: a communicator's court offer is built against the docket's entry case and then
+    // re-pointed at the loss's own case (salvage._buildOffer only swaps the params id). Restamp
+    // the card-facing text for the case it actually convenes — title, brief, and the settlement
+    // range the card quotes — while the offer keeps paying nothing on acceptance. This listener
+    // is registered before missions' board adoption, so the restamp lands pre-clone exactly like
+    // the salvage provenance stamp below.
+    if (offer.source === 'wreckCourt') {
+      const def = caseDef(offer.params && offer.params.wreckCourtCaseId);
+      if (!def) return;
+      const presentation = courtOfferPresentation(def);
+      offer.title = def.title;
+      offer.brief = def.briefing;
+      offer.summary = presentation.summary;
+      offer.riskNote = presentation.riskNote;
+      offer.params = {
+        ...offer.params,
+        ...(presentation.range ? { settlement_cr: presentation.range } : {}),
+      };
+      return;
+    }
+    if (offer.source !== 'salvage' || !offer.salvagePointId) return;
     const own = ensureState(state);
     const rec = own.promotedByPoint[offer.salvagePointId];
     if (!rec) return;

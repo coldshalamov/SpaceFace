@@ -12,7 +12,19 @@ import {
   difficultyForWave,
 } from '../data/survivalActs.js';
 import { SURVIVAL_ENDLESS_WAVE_MAX } from '../data/survivalWaves.js';
-import { isBossCircuitRuleset, SURVIVAL_BOSS_CIRCUIT_LENGTH } from './survivalCircuit.js';
+import {
+  CIRCUIT_ROUNDS_PER_STAGE,
+  CIRCUIT_STAGE_COUNT,
+  CIRCUIT_TOTAL_ROUNDS,
+  circuitChoicesFor,
+  circuitEntryBlocker,
+  circuitFor,
+  circuitRoundFor,
+  circuitStateError,
+  createCircuitState,
+  isBossCircuitRuleset,
+  SURVIVAL_BOSS_CIRCUIT_LENGTH,
+} from './survivalCircuit.js';
 import { isEndlessRuleset } from './survivalEndless.js';
 import {
   SWARM_REFIT_EVERY,
@@ -126,6 +138,9 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:modifierChosen', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:refitClosed', () => this._onRefitClosed()));
     this._unsubs.push(this.bus.on('run:extractionRequested', () => this._onExtractionRequested()));
+    // SWARM-08 B5 — Circuit choices travel the ordinary draft-pick intent, then this internal
+    // simulation event. This owner is the sole writer of `run.telemetry.circuit`.
+    this._unsubs.push(this.bus.on('run:circuitChoiceRequested', (payload) => this._onCircuitChoiceRequested(payload)));
     // PQ-174.06: stamp the death moment so a same-seed retry is measurable from it. The mark
     // survives the run:ended reset below and is cleared only when the next run begins.
     this._unsubs.push(this.bus.on('player:death', () => this._onPlayerDeath()));
@@ -192,6 +207,7 @@ export const survivalRun = {
       return;
     }
     if (phase === 'draft') {
+      if (circuitStateError(run)) return;
       if (!this._draftResolved) return;
       this._requestTransition('draft', this._draftNext(run), this._draftReason(run));
       return;
@@ -236,6 +252,9 @@ export const survivalRun = {
   _onStarted(payload) {
     this._resetMachine();
     const queued = takeQueuedChallenge();
+    // SWARM-08 B5 — the Circuit entry gate reads this: a queued trial/daily challenge owns the
+    // run's contract and may not also steer it through the Circuit.
+    this._queuedChallenge = !!queued;
     // A queued/share challenge rewrites the run's mutators and ruleset — its wave contract must
     // stay byte-identical for reproduction, so it never also gets the first-run opening lesson.
     this._openingLesson = !!(payload && payload.openingLesson === true) && !queued;
@@ -370,6 +389,135 @@ export const survivalRun = {
     if (!run || run.phase !== 'active') return;
     if (payload && Number.isInteger(payload.wave) && payload.wave !== run.wave) return;
     this._waveCleared = true;
+    this._advanceCircuitOnClear(run);
+  },
+
+  /**
+   * SWARM-08 B5 — the journey advances exactly once per stage boundary. The wave owner emits one
+   * clear receipt per wave, and the cleared-stage guard makes a duplicate replay a no-op.
+   */
+  _advanceCircuitOnClear(run) {
+    const circuit = circuitFor(run);
+    if (!circuit) return;
+    const wave = Number.isInteger(run.wave) ? run.wave : 0;
+    const stageBoundary = wave > 0 && wave % CIRCUIT_ROUNDS_PER_STAGE === 0;
+    if (!stageBoundary) return;
+    const clearedStage = wave / CIRCUIT_ROUNDS_PER_STAGE;
+    if (clearedStage > CIRCUIT_STAGE_COUNT) return;
+    if (circuit.clearedStages >= clearedStage) return;
+    circuit.clearedStages = clearedStage;
+    circuit.revision += 1;
+    if (clearedStage === CIRCUIT_STAGE_COUNT) {
+      circuit.status = 'finale';
+      circuit.wonAtWave = CIRCUIT_TOTAL_ROUNDS;
+    } else {
+      circuit.status = 'route';
+    }
+    run.telemetry.circuit = circuit;
+  },
+
+  /**
+   * Validate and commit a Circuit choice. The id is matched against the LIVE offered descriptors,
+   * so a stale revision, a duplicate, a wrong wave or an out-of-phase request changes nothing.
+   * Accepted choices echo through `run:circuitChoiceApplied` for the armory to refresh on.
+   */
+  _onCircuitChoiceRequested(payload) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || !isSwarmRuleset(run.ruleset) || run.phase !== 'draft') return;
+    const error = circuitStateError(run);
+    if (error) {
+      this._emit('run:circuitChoiceApplied', { offerId: payload?.offerId, accepted: false, reason: error });
+      return;
+    }
+    const circuit = circuitFor(run);
+    const offerId = payload && payload.offerId;
+    const choice = circuitChoicesFor(run).find((entry) => entry.id === offerId) || null;
+    if (!choice) {
+      this._emit('run:circuitChoiceApplied', {
+        offerId,
+        accepted: false,
+        kind: null,
+        reason: 'That Circuit choice is no longer available.',
+      });
+      return;
+    }
+    if (choice.kind === 'start') {
+      const blocker = circuitEntryBlocker(run, { queuedChallenge: this._queuedChallenge === true });
+      if (blocker) {
+        this._emit('run:circuitChoiceApplied', { offerId, accepted: false, kind: 'start', reason: blocker });
+        return;
+      }
+      if (circuit) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'start', reason: 'The Circuit has already begun.',
+        });
+        return;
+      }
+      if (!run.telemetry || typeof run.telemetry !== 'object') run.telemetry = {};
+      const next = createCircuitState(run.arenaId, choice.arenaId);
+      // Accepting the r1 descriptor moves the revision on, so replaying the same id is stale.
+      next.revision = choice.revision + 1;
+      run.telemetry.circuit = next;
+      this._emit('run:circuitChoiceApplied', {
+        offerId, accepted: true, kind: 'start', circuit: circuitFor(run),
+      });
+      return;
+    }
+    if (choice.kind === 'route') {
+      if (circuit.status !== 'route' || choice.stage !== circuit.clearedStages + 1) {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'route', reason: 'That destination is not on offer.',
+        });
+        return;
+      }
+      circuit.route = circuit.route
+        .filter((entry) => entry.stage !== choice.stage)
+        .concat([{ stage: choice.stage, arenaId: choice.arenaId, nodeId: choice.nodeId || choice.arenaId }])
+        .sort((a, b) => a.stage - b.stage);
+      circuit.status = 'running';
+      circuit.revision += 1;
+      // The destination must be installed BEFORE the next plan is emitted: survivalArena and
+      // swarmArena read the run's own arenaId through their registered slots.
+      run.arenaId = choice.arenaId;
+      run.telemetry.circuit = circuit;
+      this._emit('run:circuitChoiceApplied', {
+        offerId, accepted: true, kind: 'route', arenaId: choice.arenaId, circuit: circuitFor(run),
+      });
+      return;
+    }
+    if (choice.kind === 'finish') {
+      if (circuit.status !== 'finale') {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'finish', reason: 'The Circuit is not finished yet.',
+        });
+        return;
+      }
+      circuit.status = 'completed';
+      circuit.revision += 1;
+      run.telemetry.circuit = circuit;
+      this._emit('run:circuitChoiceApplied', {
+        offerId, accepted: true, kind: 'finish', circuit: circuitFor(run),
+      });
+      // runSession writes the terminal phase; no new run phase is invented.
+      this._emit('run:endRequested', { outcome: 'victory', reason: 'circuit_complete', tick: this._runTick });
+      return;
+    }
+    if (choice.kind === 'overtime') {
+      if (circuit.status !== 'finale') {
+        this._emit('run:circuitChoiceApplied', {
+          offerId, accepted: false, kind: 'overtime', reason: 'The Circuit is not finished yet.',
+        });
+        return;
+      }
+      circuit.status = 'overtime';
+      circuit.revision += 1;
+      run.telemetry.circuit = circuit;
+      this._emit('run:circuitChoiceApplied', {
+        offerId, accepted: true, kind: 'overtime', circuit: circuitFor(run),
+      });
+      // The build, purse, score and seed are untouched; the armory resolves through its own path.
+      return;
+    }
   },
 
   _onDraftResolved() {
@@ -386,6 +534,12 @@ export const survivalRun = {
 
   _planCurrentWaveIntro(run) {
     if (this._waveIntroHandled) return;
+    const error = circuitStateError(run);
+    if (error) {
+      this._planFailed = true;
+      this._emit('run:wavePlanFailed', { wave: run.wave + 1, error: 'circuit_invalid', issues: [error], tick: this._runTick });
+      return;
+    }
     const nextWave = run.wave < 1 ? 1 : run.wave + 1;
     const endless = isEndlessRuleset(run.ruleset);
     const circuit = isBossCircuitRuleset(run.ruleset);
@@ -403,6 +557,9 @@ export const survivalRun = {
       return;
     }
     const act = (circuit || swarm) ? 0 : actIndexForWave(nextWave);
+    // SWARM-08 B5 — the finite journey descriptor for this round, or null for ordinary Swarm,
+    // the older Boss Circuit, and Circuit Overtime (waves 17+ plan as ordinary Swarm).
+    const journey = swarm && !circuit ? circuitRoundFor(run, nextWave) : null;
     const plan = planWave({
       seed: run.seed,
       arenaId: run.arenaId,
@@ -425,7 +582,11 @@ export const survivalRun = {
       swarmThreats: swarm && run.telemetry && Array.isArray(run.telemetry.threats)
         ? run.telemetry.threats
         : null,
-      teachOpening: swarm && nextWave === 1 && this._openingLesson === true,
+      // SWARM-08 B5 — objective and boss ownership for a Circuit round. Omitted for every
+      // ordinary swarm wave, so its plan stays byte-identical.
+      circuitRound: journey,
+      // The first-run lesson belongs to the ordinary opening, never to a Circuit round.
+      teachOpening: swarm && !journey && nextWave === 1 && this._openingLesson === true,
     });
     if (isPlanError(plan)) {
       this._planFailed = true;

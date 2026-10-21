@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { noteShadowCensusLightMutation } from '../shadowDepthAdmission.js';
+import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN } from '../vfxColorLightDirector.js';
 
 // P1: pool sized to measured p90 occupancy — 6 event + 2 weapon = 8 visible point lights total,
 // so NUM_POINT_LIGHTS stops burning a 22-wide unrolled loop on every lit fragment. The constant
@@ -19,7 +20,7 @@ export class WeaponLightPool {
     this.group = new THREE.Group();
     this.group.name = 'SF_WeaponLightPool';
     for (let i = 0; i < this.capacity; i++) {
-      const light = new THREE.PointLight(0x39d0ff, 0, 16, 2);
+      const light = new THREE.PointLight(0x39d0ff, 0, 16, EVENT_LIGHT_DECAY);
       light.name = `SF_WeaponLight_${i}`;
       light.visible = true;
       light.castShadow = false;
@@ -66,10 +67,10 @@ export class WeaponLightPool {
     slot.priority = want;
     slot.light.position.set(x || 0, y || 0.4, z || 0);
     slot.light.distance = Math.max(4, distance || 14);
-    slot.light.decay = 2;
+    slot.light.decay = EVENT_LIGHT_DECAY;
     this._scratch.set(color || '#39d0ff');
     slot.light.color.copy(this._scratch);
-    slot.light.intensity = slot.peak;
+    slot.light.intensity = slot.peak * EVENT_LIGHT_GAIN;
     return slot;
   }
 
@@ -95,7 +96,7 @@ export class WeaponLightPool {
       // A discharge is an impulse, not a lamp. The hard leading spike means an automatic burst
       // reads as a stutter of separate shots rather than one held glow, without widening the
       // strict 2-slot pool or raising the peak the accessibility profile already scaled.
-      slot.light.intensity = slot.peak * (1 - t) * (1 - t) * (0.62 + 0.38 * Math.exp(-t * 11));
+      slot.light.intensity = slot.peak * EVENT_LIGHT_GAIN * (1 - t) * (1 - t) * (0.62 + 0.38 * Math.exp(-t * 11));
     }
   }
 

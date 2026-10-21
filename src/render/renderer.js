@@ -226,7 +226,6 @@ import {
   SUBMIT_LANE,
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
-import { attachShipHeadlamps } from './ships/headlamps.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
 import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
@@ -254,6 +253,7 @@ import {
   createAdaptiveResolution,
   shouldSuggestIntegratedPreset,
   INTEGRATED_PRESET_SUGGESTION,
+  DEFAULT_QUALITY_PRESET,
   dynResFloorForTier,
   softwareRendererEmergencyProfile,
 } from './adaptiveQuality.js';
@@ -308,6 +308,7 @@ import {
 } from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { syncMarrowCone, disposeMarrowCone } from './marrowCone.js';
+import { HeadlightPool } from './headlights.js';
 import { syncBolusView, disposeBolusView } from './bolusView.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
@@ -1056,6 +1057,18 @@ const RUNTIME_MESH_BUILD_BUDGET = 8;
 const SECTOR_POST_GRADE = 0.45;
 const SECTOR_POST_TOE = DEFAULT_CINEMATIC_TOE;
 const SECTOR_POST_VIGNETTE = 0.12;
+// Subtle animated film grain, used as an 8-bit dither rather than a look. The composite
+// luma-weights the term and scales it by 0.10 (bloom.js composeSpacePostPresentation), so 0.03
+// stays near the quantization floor at midtones and only perturbs dark skies by a fraction of a
+// code — enough to break up the banding the toe lift and vignette gradient would otherwise
+// expose. Keep at or below 0.05: past that it reads as sensor noise, not dither.
+const SECTOR_POST_GRAIN = 0.03;
+// detectGpu's INTEGRATED_RE misses two real-world shapes that then classify as 'discrete':
+// AMD's integrated branding ("AMD Radeon(TM) Graphics" — the (TM) suffix is AMD's iGPU
+// convention) and unidentified wrappers ("WebKit WebGL"). The MSAA eligibility screen refuses
+// both instead of reclassifying the game-wide tier — detectGpu's verdict also drives
+// pixel-ratio caps and dyn-res floors, which this unit must not retune.
+const POST_MSAA_UNSAFE_RENDERER_RE = /\(tm\)|webkit webgl/i;
 
 // entityVisualCullRadius + drawnCullRadiusForMesh live in ./visualCullRadius.js so the
 // partsLibrary glass mirror measures the same envelope the renderer does.
@@ -8785,7 +8798,6 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
     const root = item && item.mesh || (meshes && meshes.get(entity.id));
     if (!root || root.visible === false || !root.userData) continue;
-    attachShipHeadlamps(root, entity);
     const bubble = root.userData.shieldBubble;
     if (bubble) {
       bubble.visible = false;
@@ -10744,6 +10756,10 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   disposeRendererMeshRoots(owner, scene, disposeGpu);
   disposeBolusView(owner, { disposeGpu });
   disposeMarrowCone(owner, { disposeGpu });
+  if (owner._headlights) {
+    owner._headlights.dispose();
+    owner._headlights = null;
+  }
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
   disposeShipAuxPool(owner._shipAuxPool, scene, disposeGpu);
   if (disposeGpu) {
@@ -11639,6 +11655,10 @@ export const render = {
     const key = new THREE.DirectionalLight(corePalette.key, SECTOR_LIGHT_INTENSITIES.key); key.position.set(60, 140, 40); scene.add(key);
     const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
+    // Ship headlights: a fixed pool of real SpotLights mounted with the rig, so the shader warm-up
+    // below compiles every program against the final light count (src/render/headlights.js).
+    this._headlights = new HeadlightPool(scene);
+    state.render.headlights = this._headlights; // probes and look tuning read the live pool
     // Rig mount + the fog write above both move census-signature terms; the
     // epoch bump keeps a cross-pass memo from serving the pre-mount signature.
     noteShadowCensusLightMutation();
@@ -12582,6 +12602,10 @@ export const render = {
         getPerf: () => state.perfRuntime,
         getGpuTimers: () => this._gpuTimers,
         getGpuOrigin: () => this._gpuFrameOrigin || null,
+        // Geometry AA request for the scene target — eligibility resolved here (hardware
+        // context + quality preset), capability clamped/proved inside bloom. `_syncPostOptions`
+        // re-publishes it on quality-preset switches.
+        sceneSamples: this._resolvePostSceneSamples(),
       });
       // Seed the CAS gate at boot — a below-res first frame must not wait for a resize.
       const disp = displayPixelFootprint();
@@ -25760,7 +25784,35 @@ export const render = {
     return resolveEffectiveSectorPost(vd);
   },
 
-  _postOptionsSignature(norm, video = {}) {
+  // Budget quality presets are sized for integrated-class silicon: they shed the optional
+  // full-screen post terms (geometry MSAA, film grain) that the medium/high picture carries.
+  _budgetPostQualityPreset() {
+    const video = (this.state && this.state.settings && this.state.settings.video) || {};
+    const preset = typeof video.qualityPreset === 'string'
+      ? video.qualityPreset
+      : DEFAULT_QUALITY_PRESET;
+    // low/integrated/igpu60 are budgeted FOR integrated-class silicon.
+    return preset === 'low' || preset === 'integrated' || preset === 'igpu60';
+  },
+
+  // Geometry AA (MSAA) eligibility for the bloom route's scene target: hardware contexts only,
+  // and only on quality presets that are not budgeted for weak silicon. This is the ELIGIBILITY
+  // decision only — bloom's own capability gate still clamps the request to the context's
+  // maxSamples (WebGL2) and proves the multisample framebuffer complete, collapsing to the
+  // shipped single-sample target on any failure.
+  _resolvePostSceneSamples() {
+    const gpu = this.state && this.state.render && this.state.render.gpu;
+    // SwiftShader/llvmpipe (or an undetected tier) never pays the multisample resolve.
+    if (!gpu || gpu.software === true || gpu.tier !== 'discrete') return 0;
+    // Second screen for detectGpu's known integrated/unknown shapes that leak into the
+    // 'discrete' class (see POST_MSAA_UNSAFE_RENDERER_RE above).
+    if (POST_MSAA_UNSAFE_RENDERER_RE.test(gpu.renderer || '')) return 0;
+    // MSAA is a medium/high posture on discrete-class hardware only.
+    if (this._budgetPostQualityPreset()) return 0;
+    return 4;
+  },
+
+  _postOptionsSignature(norm, video = {}, sceneSamples = 0) {
     return [
       norm.bloom === false ? 0 : 1,
       norm.bloomStrength.toFixed(4),
@@ -25775,6 +25827,9 @@ export const render = {
       norm.postFx === false ? 0 : 1,
       norm.sharpen === true ? 1 : 0,
       Number.isFinite(norm.bloomLevels) ? (norm.bloomLevels | 0) : 2,
+      // Preset switches can move MSAA without touching bloomLevels (medium→igpu60 keeps 2), so
+      // the resolved sample count must participate or the cache would serve the stale routing.
+      Number.isFinite(sceneSamples) ? (sceneSamples | 0) : 0,
       video.ao === false ? 0 : 1,
       Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1)).toFixed(4),
     ].join('|');
@@ -25794,13 +25849,12 @@ export const render = {
     const post = postProfile || {};
     return resolveEffectiveSectorPost(norm, post, {
       // The composite's authored cinematic grade (teal-weighted shadows, amber-weighted highlights,
-      // slight saturation lift) and vignette ship at 0 on the live route — bloom.js's
-      // DEFAULT_POST_PRESENTATION is { grain: 0, vignette: 0, grade: 0 } — so the only pipeline that
-      // ever applied them was post/spaceRenderGraph.js, which is off by default (renderGraph:false).
-      // Independent review kept asking for "controlled black levels and a cinematic contrast curve"
-      // against a frame whose grade was multiplied away. The grade is MULTIPLICATIVE, which is
-      // precisely what fixed the earlier full-screen cyan veil: true black stays black.
-      // Grain stays 0 — it is per-pixel noise for no measured review benefit.
+      // slight saturation lift) and vignette default to 0 in bloom.js's DEFAULT_POST_PRESENTATION,
+      // so the only pipeline that ever applied them was post/spaceRenderGraph.js, which is off by
+      // default (renderGraph:false). Independent review kept asking for "controlled black levels and
+      // a cinematic contrast curve" against a frame whose grade was multiplied away. The grade is
+      // MULTIPLICATIVE, which is precisely what fixed the earlier full-screen cyan veil: true black
+      // stays black.
       grade: SECTOR_POST_GRADE,
       // Lifted black floor. Independent review's grade_post fix asks for "lifted near-blacks"; every
       // other control in the composite is multiplicative and so cannot raise a black off zero.
@@ -25808,6 +25862,14 @@ export const render = {
       // 0.15 with a pinned "keep space truly black" comment and is not touched here.
       toe: SECTOR_POST_TOE,
       vignette: SECTOR_POST_VIGNETTE,
+      // Subtle grain as an 8-bit dither (SECTOR_POST_GRAIN above). This supersedes the earlier
+      // review ruling recorded here ("grain stays 0 — no measured review benefit"): the dithering
+      // benefit is measured against banding, not reviewed as a look, and the composite's
+      // luma-weighted 0.10 scale keeps 0.03 under the visibility floor except where banding lives.
+      // Tier-gated: budget presets (low/igpu60; integrated's postFx kill switch already zeroes it
+      // upstream) do not pay the full-screen term or the uGrainFrame clock — the composite
+      // short-circuits both below 0.001 (bloom.js grain>0.001 gate).
+      grain: this._budgetPostQualityPreset() ? 0 : SECTOR_POST_GRAIN,
     });
   },
 
@@ -25936,7 +25998,8 @@ export const render = {
   _syncPostOptions(force = false) {
     const vd = (this.state && this.state.settings && this.state.settings.video) || {};
     const norm = this._applySectorPost(this._normalizePostVideo(vd));
-    const sig = this._postOptionsSignature(norm, vd);
+    const sceneSamples = this._resolvePostSceneSamples();
+    const sig = this._postOptionsSignature(norm, vd, sceneSamples);
     if (!force && this._postOptionsSig === sig) return;
     this._postOptionsSig = sig;
     const postOpts = {
@@ -25953,6 +26016,7 @@ export const render = {
       vignette: norm.vignette,
       toe: norm.toe,
       grain: norm.grain ?? 0,
+      sceneSamples,
     };
     if (this.bloom) this.bloom.setOptions(postOpts);
     // Native presentation is reserved for a degraded post-processor fallback. Keep Three's exposure
@@ -31591,6 +31655,9 @@ export const render = {
       this._updateSectorPaletteTransition(frameDt);
     });
     tryPresentedCall(this, 'marrow-cone', () => syncMarrowCone(this));
+    // The Bolus nose cone owns the player's bow light inside that sector; elsewhere it is ours.
+    tryPresentedCall(this, 'headlights', () => this._headlights?.update(this.state, frameDt, this._frameMembrane,
+      { playerLamp: !(this._marrowSpot && this._marrowSpot.intensity > 0), meshes: this._meshes }));
     tryPresentedCall(this, 'bolus-view', () => syncBolusView(this));
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {

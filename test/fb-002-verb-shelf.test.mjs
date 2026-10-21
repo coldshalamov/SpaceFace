@@ -170,7 +170,7 @@ test('line copy: ≤12 words, binding appended only when a label exists', () => 
 test('keyboard: the spoken label is the live binding, and a rebind re-labels it', () => {
   const state = makeState();
   const before = verbBindingLabel(state, 'travelBurn', 'kbm');
-  assert.equal(before, 'Num Lock/H'); // NumLock + KeyH defaults
+  assert.equal(before, 'Num Lock/F8'); // NumLock + F8 defaults (KeyH retired — it also opened Help)
   assert.equal(verbBindingLabel(state, 'deployBeacon', 'kbm'), 'U');
   assert.equal(verbBindingLabel(state, 'jettisonLot', 'kbm'), '.');
   state.settings.controls.bindings = { travelBurn: ['KeyG'] };
@@ -351,7 +351,7 @@ test('travelBurn speaks after ~3 s above the governed cap with nobody hunting', 
   h.sys._tickShelfVerbs(0.25, h.state); // 3.0 s
   assert.equal(h.firstUse.length, 1);
   assert.equal(h.firstUse[0].verbId, 'shelf:travelBurn');
-  assert.equal(h.firstUse[0].text, 'The burn keeps the speed — Num Lock/H.');
+  assert.equal(h.firstUse[0].text, 'The burn keeps the speed — Num Lock/F8.');
   // The timer resets when speed drops below the governed cap.
   const h2 = boot();
   const p2 = h2.state.entities.get(1);

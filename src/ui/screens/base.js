@@ -1630,12 +1630,18 @@ export const baseScreen = {
           freight.appendChild(deliver);
         }
       }
-      if (ledger.stores && ledger.stores.outputU > 0) {
+      const storedOutputU = (ledger.stores && ledger.stores.outputU) || 0;
+      const strandedInputU = (ledger.stores && ledger.stores.strandedInputU) || 0;
+      if (storedOutputU > 0 || strandedInputU > 0) {
         const collect = document.createElement('button');
         collect.type = 'button';
         collect.className = 'k-word k-word--emph k-word--primary';
-        collect.textContent = 'Collect output · ' + ledgerValue(ledger.stores.outputU, 'u');
-        collect.setAttribute('aria-label', 'Collect stored output from ' + body.name);
+        collect.textContent = storedOutputU > 0 && strandedInputU > 0
+          ? 'Collect output · ' + ledgerValue(storedOutputU, 'u') + ' + ' + ledgerValue(strandedInputU, 'u') + ' stranded'
+          : storedOutputU > 0
+            ? 'Collect output · ' + ledgerValue(storedOutputU, 'u')
+            : 'Collect stranded goods · ' + ledgerValue(strandedInputU, 'u');
+        collect.setAttribute('aria-label', 'Collect stored goods from ' + body.name);
         collect.addEventListener('click', () => {
           claims.collectFromClaim(body.id);
           this._render();

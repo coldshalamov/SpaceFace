@@ -46,6 +46,11 @@ import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { MASS_ANCHOR_RATIO } from './tetherGameplay.js';
+import {
+  ONBOARDING_TRACKER_STEPS, RAID_WINGMAN_NAME, SWING_CLINIC_LINE, SWING_CLINIC_RUNG_ID,
+  freshPaceState, normalizePaceState, notePaceFlight, notePendingSwing, onboardingTrackerStep,
+  paceCreditFor, settlePendingSwing, swingClinicDue, trackerStepDone,
+} from '../onboarding/firstHalfHourPace.js';
 
 export { MASS_ANCHOR_RATIO, STRAIN_GLOW_DANGER_THRESHOLD };
 
@@ -240,6 +245,9 @@ const TRAINER_FLYBY_OFFSET_WU = 52;
 // rock: whip recoil + tumble contact do the work the moment the player lets go at speed.
 const RAID_RAIDER_HULL = 150;
 const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall bearing
+const RAID_THROW_MIN_SPEED_WU = 25;
+const RAID_CLINIC_RAIDER_OFFSET_WU = 120;
+const RAID_CLINIC_ROCK_GAP_WU = 110;
 const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
 // INF-062 — consecutive genuine latch denials before the one contextual hint.
 const LATCH_DENIAL_HINT_AFTER = 3;
@@ -318,17 +326,17 @@ export const BEATS = [
   },
   {
     key: 'marker',
-    line: 'Follow the amber diamond to the trainer.',
+    line: 'Follow the amber diamond to the fleeing raider.',
     done: 'trainerRange',
   },
   {
     key: 'focus',
-    line: 'Hold course. Let the trainer cross your bow.',
+    line: 'Hold course. Let the raider cross your bow.',
     done: 'flybyFocus:start',
   },
   {
     key: 'burst',
-    line: 'Fire a short burst into the trainer.',
+    line: 'Fire a short burst into the raider.',
     followups: [
       { on: 'burst:ready', line: 'Release. Let the heat bar clear.' },
     ],
@@ -336,7 +344,7 @@ export const BEATS = [
   },
   {
     key: 'disengage',
-    line: 'Thrust away until the trainer leaves scope.',
+    line: 'Thrust away until the raider leaves scope.',
     done: 'disengaged',
   },
   { // B2 FIRST SEAM — scan + mine; modality-neutral verbs
@@ -380,7 +388,31 @@ const RESCUE_GATE_ROUTE = Object.freeze({
 const COLD_OPEN_PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
 // Surfaced when the firing lesson first hands the player a trigger, so the starter weapon is named,
 // not just felt. Pulled from NEW_GAME's fitted starter loadout (see check:phase0-slice-contract).
-const STARTER_WEAPON_HINT = 'The Kestrel is armed: fire the Pulse Laser S, then let the heat clear.';
+// The hull is Hitch — the callsign the opening already uses; the market copy keeps the class name.
+const STARTER_WEAPON_HINT = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
+// A captioned opening: the one-line hook and the weapon hint also live briefly in the existing
+// objective tracker, because a muted pilot must still be able to read the premise. Captions are
+// queued in simulation time and never replace the actionable objective.
+const TRACKER_CAPTION_S = 12;
+const TRACKER_CAPTION_IDS = new Set(['premise', 'weapon']);
+
+function sanitizeTrackerCaptions(raw) {
+  const out = [];
+  if (!Array.isArray(raw)) return out;
+  for (const rec of raw) {
+    if (!rec || typeof rec !== 'object') continue;
+    const id = rec.id;
+    if (!TRACKER_CAPTION_IDS.has(id)) continue;
+    const text = typeof rec.text === 'string' ? rec.text : '';
+    const startAtS = Number(rec.startAtS);
+    const endAtS = Number(rec.endAtS);
+    if (!text || !Number.isFinite(startAtS) || !Number.isFinite(endAtS) || !(endAtS > startAtS)) continue;
+    if (out.some((kept) => kept.id === id)) continue;
+    out.push({ id, text, startAtS, endAtS });
+    if (out.length >= 2) break;
+  }
+  return out;
+}
 
 const ORE_PREFIXES = [
   'cmdty_ore', 'cmdty_silicate', 'cmdty_ice', 'cmdty_volatiles',
@@ -481,10 +513,12 @@ export const onboarding = {
     // The payload names a scenario slice for harness boots (47a sim, lab scenarios); those own
     // their cast, so the rescue opening only stages on the default route (no scenario payload).
     bus.on('game:started', (p) => this._begin(p || {}));
+    bus.on('game:newGame', (p) => { this._pendingFlownBefore = !!(p && p.flownBefore === true); });
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
     // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
     // state, then bring up the story panel.
     bus.on('save:loaded', (p) => {
+      this._pendingFlownBefore = false;
       this._teardown();
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
@@ -611,6 +645,8 @@ export const onboarding = {
     // TEACH-10 — the first wanted escalation teaches the stand-down path (own listener;
     // the claimed-beat heat listener above is untouched).
     bus.on('heat:changed', (p) => this._onWantedStandDownLesson(p || {}));
+    bus.on('tether:released', (p) => this._onSwingRelease(p || {}));
+    bus.on('tether:cut', (p) => this._onSwingRelease(p || {}));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -1229,6 +1265,7 @@ export const onboarding = {
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
 
   _begin(payload) {
+    const flownBefore = this._pendingFlownBefore === true; this._pendingFlownBefore = false;
     const st = this.state;
     this._resumeMainTutorial = false;
     this._autoFireWasOn = null;
@@ -1259,6 +1296,7 @@ export const onboarding = {
     // fired); pendingBeat is the next one waiting for the silence gate. beatDoneAtS timestamps each
     // beat's DONE so the ≥SILENCE_S gate can enforce the one-verb cadence.
     st.onboarding = {
+      pace: null,
       active: hintsOn, finished: false,
       currentBeat: -1,            // no beat's text has fired yet
       beatDoneAt: {},             // { beatKey: simTimeS }
@@ -1282,6 +1320,7 @@ export const onboarding = {
       rangeOpenedFromPromptAt: null,
       rangeFunnel: null,
       rangePromptRungId: null,
+      trackerCaptions: [],        // bounded { id, text, startAtS, endAtS } — tutorial lifetime only
       startedAt: st.simTime || 0,
     };
     // Thesis-first tableau state (raid + claimed). Only staged on the default route — see
@@ -1302,7 +1341,10 @@ export const onboarding = {
     this._buildPanel();
     // The rescue opening stages on the default route only: harness boots that name a scenario
     // slice (47a sim, lab scenarios) keep their own cast and their golden snapshots.
-    if (!payload || payload.scenario == null) this._beginRescue();
+    if (!payload || payload.scenario == null) {
+      st.onboarding.pace = freshPaceState({ flownBefore });
+      this._beginRescue();
+    }
     else this._releasePreparedRescue();
     // No intro modal (spec2/03 B0: "no modal"). The B0 line fires on the first update tick after the
     // 4 s silence gate (no predecessor → fires immediately).
@@ -1379,9 +1421,11 @@ export const onboarding = {
       claimed: ob.claimed && typeof ob.claimed === 'object' ? railRecord(ob.claimed) : null,
       missingThree: rail ? railRecord(rail) : null,
       storeSentence: ob.storeSentence ? plainClone(ob.storeSentence) : null,
+      pace: ob.pace ? normalizePaceState(ob.pace) : null,
       choiceStationId: typeof ob.choiceStationId === 'string' ? ob.choiceStationId : null,
       choiceOfferIds: Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.slice() : null,
       recommendedMissionId: ob.recommendedMissionId != null ? ob.recommendedMissionId : null,
+      trackerCaptions: sanitizeTrackerCaptions(ob.trackerCaptions),
     };
   },
 
@@ -1406,11 +1450,14 @@ export const onboarding = {
     ob.tetherReeled = d.tetherReeled === true;
     ob.tetherBreaks = d.tetherBreaks | 0;
     ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
+    ob.pace = normalizePaceState(d.pace);
     if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence); else delete ob.storeSentence;
     // B5's berth and offers survive a docked save, so the board keeps its choice framing.
     if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
     if (Array.isArray(d.choiceOfferIds)) ob.choiceOfferIds = d.choiceOfferIds.slice(); else delete ob.choiceOfferIds;
     if (d.recommendedMissionId != null) ob.recommendedMissionId = d.recommendedMissionId; else delete ob.recommendedMissionId;
+    // Absolute simulation timestamps survive: a restored caption resumes its window, never restarts it.
+    ob.trackerCaptions = sanitizeTrackerCaptions(d.trackerCaptions);
     ob.rescue = restoreRescueRecord(d.rescue);
     ob.raid = plainClone(d.raid);
     ob.claimed = plainClone(d.claimed);
@@ -1543,6 +1590,11 @@ export const onboarding = {
   // EVERY first-hour tutorial line passes through here so the check can audit text overlap at one
   // place. Emits on the 'tutorial' tier (toast kind 'info'). Updates the silence-gate clock.
   _sayTutorial(text, { visual = true } = {}) {
+    // Keep the audited public signature literal; the optional caption id rides the same options
+    // object without changing the shape the first-hour audit reads.
+    const trackerCaptionId = arguments[1] && arguments[1].trackerCaptionId != null
+      ? arguments[1].trackerCaptionId
+      : null;
     if (!text || this.state.physicsVenueSession === true || isRacingCorridorSession(this.state)) return;
     this._lastTextAtS = this.state.simTime || 0;
     // Record for the one-voice audit: { atS, text } appended to a session log on state.onboarding.
@@ -1550,6 +1602,26 @@ export const onboarding = {
     if (ob) {
       if (!Array.isArray(ob.tutorialLog)) ob.tutorialLog = [];
       ob.tutorialLog.push({ atS: this._lastTextAtS, text });
+      // Captions are a separate, muted-safe channel beside the objective. Enqueue once per ID for
+      // the rail's whole lifetime (expired records still block a replay), and start after the
+      // previous caption's window so two authored lines can never erase each other.
+      if (TRACKER_CAPTION_IDS.has(trackerCaptionId)) {
+        if (!Array.isArray(ob.trackerCaptions)) ob.trackerCaptions = [];
+        if (!ob.trackerCaptions.some((rec) => rec && rec.id === trackerCaptionId)) {
+          let lastCaptionEndAtS = 0;
+          for (const rec of ob.trackerCaptions) {
+            if (rec && Number.isFinite(rec.endAtS)) lastCaptionEndAtS = Math.max(lastCaptionEndAtS, rec.endAtS);
+          }
+          const startAtS = Math.max(this.state.simTime || 0, lastCaptionEndAtS);
+          ob.trackerCaptions.push({
+            id: trackerCaptionId,
+            text,
+            startAtS,
+            endAtS: startAtS + TRACKER_CAPTION_S,
+          });
+          if (ob.trackerCaptions.length > 2) ob.trackerCaptions.length = 2;
+        }
+      }
     }
     this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS });
     // A matching onboarding waypoint already exposes this command through the persistent,
@@ -1600,7 +1672,8 @@ export const onboarding = {
       if (prevDoneAt == null) return;                 // predecessor not DONE yet
       const now = this.state.simTime || 0;
       // The station screen pauses sim time, so a beat DONE'd by docking opens at the berth.
-      if (!opts.atBerth && now - Math.max(prevDoneAt, this._lastTextAtS) < SILENCE_S) return;
+      const gateFromS = ob.pace && ob.pace.folded && ob.pace.folded[prev.key] ? this._lastTextAtS : Math.max(prevDoneAt, this._lastTextAtS);
+      if (!opts.atBerth && now - gateFromS < SILENCE_S) return;
     }
     // Rescue-opening gate (PQ-163.00): while a rescue verb is current, the drill beat it gates
     // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
@@ -1616,6 +1689,17 @@ export const onboarding = {
     // Missing-three gate (PQ-163.02): boost, stroke, and the well occupy the grab → seam gap.
     const three = this._missingThree();
     if (three && !three.completed && (MISSING_THREE_GATE[three.current] || 'seam') === BEATS[nextIndex].key) return;
+    // Row 458 — a drill the pilot already flew (or waived with "I've flown before") resolves silently.
+    const credit = ob.pace ? paceCreditFor(ob.pace, BEATS[nextIndex].key) : null;
+    if (credit) {
+      const folded = BEATS[nextIndex];
+      ob.currentBeat = nextIndex;
+      ob.pace.folded[folded.key] = credit;
+      this._beatDone(folded);
+      this.bus.emit('onboarding:drillFolded', { beat: folded.key, cause: credit, atS: this.state.simTime || 0 });
+      this._refreshBeatPanel();
+      return this._tryAdvanceBeat(opts);
+    }
     ob.currentBeat = nextIndex;
     const beat = BEATS[nextIndex];
     ob.beatAction = beat.line;
@@ -1632,9 +1716,6 @@ export const onboarding = {
     if (!beat) return;
     if (beat.key === 'thrust') {
       this._setObjectiveWaypoint(true);
-      // Cold-open: frame the 47-A contract the instant the tutorial begins (replaces the old intro
-      // modal's headline intent, per spec2/03 B0 "no modal"). Shares the beat voice channel.
-      this._sayTutorial(COLD_OPEN_PREMISE, { visual: false });
     }
     else if (beat.key === 'brake') this._setObjectiveWaypoint(true);
     else if (beat.key === 'marker') {
@@ -1645,6 +1726,13 @@ export const onboarding = {
     else if (beat.key === 'tether') {
       this._spawnDerelict();
       this._setObjectiveWaypoint(true);
+      // Cold-open: frame the 47-A contract with the opening tether lesson (replaces the old intro
+      // modal's headline intent, per spec2/03 B0 "no modal"). The caption keeps it readable while
+      // muted; the beat voice still speaks the same line for audio.
+      this._sayTutorial(COLD_OPEN_PREMISE, {
+        visual: false,
+        trackerCaptionId: 'premise',
+      });
     }
     else if (beat.key === 'burst') {
       this._spawnTrainer('burst');
@@ -1656,7 +1744,7 @@ export const onboarding = {
       }
       this._setObjectiveWaypoint(true);
       // Name the starter weapon at the firing lesson so the loadout is surfaced, not just felt.
-      this._sayTutorial(STARTER_WEAPON_HINT, { visual: false });
+      this._sayTutorial(STARTER_WEAPON_HINT, { visual: false, trackerCaptionId: 'weapon' });
     }
     else if (beat.key === 'disengage') this._setObjectiveWaypoint(true);
     else if (beat.key === 'raid') this._enterRaidBeat();
@@ -1866,6 +1954,9 @@ export const onboarding = {
     if (ob.claimed) ob.claimed.active = false;
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
+    // Captions live only for the tutorial's lifetime. _teardown must not clear them: save:loaded
+    // tears the rail down and then resumes the restored one.
+    if (Array.isArray(ob.trackerCaptions)) ob.trackerCaptions.length = 0;
     this._clearObjectiveWaypoint();
     // Tell the story system the tutorial is over so it can release the deferred cold-start voice.
     this.bus.emit('tutorial:finished', {});
@@ -1925,15 +2016,94 @@ export const onboarding = {
       this._tickShelfVerbs(intervalS, state);
       this._tickFitFelt(state);
       if (!ob.active || ob.finished) return;
+      this._notePaceFlight();
       this._tryAdvanceBeat();
       this._resolveProximityDone();
       this._resolveRescueDone();
       this._resolveRaidDone();
+      this._tickSwingClinic();
       this._tickClaimed();
       this._maybeAdvanceMissingThree();
       this._resolveMissingThreeDone();
       this._setObjectiveWaypoint(false);
       } catch (_) { /* never let onboarding break the loop */ }
+  },
+
+  _notePaceFlight() {
+    const ob = this.state.onboarding;
+    if (!ob.pace || ob.currentBeat < 0 || ob.beatDoneAt.brake != null) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (player && player.vel) notePaceFlight(ob.pace, Math.hypot(player.vel.x, player.vel.z), this.state.simTime || 0);
+  },
+
+  _onSwingRelease(p) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished || !ob.pace) return;
+    const now = this.state.simTime || 0;
+    const rescue = ob.rescue;
+    if (this._rescueCurrentKey() === 'swing' && p.targetId === rescue.ids.rock
+      && rescue.rockReleasedAfterReel === true) {
+      notePendingSwing(ob.pace, 'rescue', now);
+      return;
+    }
+    const raid = this._raid();
+    const raider = this._raidActor('raider');
+    if (BEATS[ob.currentBeat]?.key === 'raid' && ob.beatDoneAt.raid == null
+      && raid && p.targetId === raid.ids.raider && raider && raider.vel
+      && Math.hypot(raider.vel.x, raider.vel.z) >= RAID_THROW_MIN_SPEED_WU) {
+      notePendingSwing(ob.pace, 'raid', now);
+    }
+  },
+
+  _tickSwingClinic() {
+    const ob = this.state.onboarding;
+    if (!ob.pace) return;
+    const lesson = ob.pace.swing.pendingLesson;
+    const paidOff = lesson === 'rescue' ? ob.rescue?.beats.swing.state === 'done'
+      : lesson === 'raid' && ob.beatDoneAt.raid != null;
+    settlePendingSwing(ob.pace, { paidOff, atS: this.state.simTime || 0 });
+    if (swingClinicDue(ob.pace)) this._openSwingClinic(lesson);
+  },
+
+  _openSwingClinic(lesson) {
+    const ob = this.state.onboarding;
+    const swing = ob.pace.swing;
+    const now = this.state.simTime || 0;
+    swing.clinicOpenedAtS = now;
+    swing.clinicLesson = lesson;
+    if (lesson === 'raid' && this._raid()) this._spawnRaidCast({ clinic: true });
+    else if (lesson === 'rescue' && this._rescueCurrentKey() === 'swing') {
+      this._respawnRescueSlot('swing');
+      ob.rescue.rockLatched = false;
+      ob.rescue.rockReeled = false;
+      ob.rescue.rockReleasedAfterReel = false;
+      this._setRescueWaypoint(true);
+    }
+    ob.rangePromptActive = true;
+    ob.pointedAtRange = true;
+    ob.rangePrompt = RANGE_POINTER_LINE;
+    ob.rangePromptRungId = SWING_CLINIC_RUNG_ID;
+    this.bus.emit('onboarding:rangePrompt', {
+      active: true, text: RANGE_POINTER_LINE, atS: now, rungId: SWING_CLINIC_RUNG_ID, reason: 'swingClinic',
+    });
+    ob.beatAction = SWING_CLINIC_LINE;
+    this._sayTutorial(SWING_CLINIC_LINE);
+    this.bus.emit('onboarding:swingClinic', { lesson, misses: swing.misses, atS: now });
+    this._refreshBeatPanel();
+  },
+
+  _wingmanBreakOff() {
+    const actor = this._trainingActor();
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!actor || !actor.pos || !player || !player.pos) return;
+    const dx = actor.pos.x - player.pos.x;
+    const dz = actor.pos.z - player.pos.z;
+    const length = Math.hypot(dx, dz);
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    actor.vel = {
+      x: (length ? dx / length : Math.cos(heading)) * TRAINER_FLYBY_SPEED_WU,
+      z: (length ? dz / length : Math.sin(heading)) * TRAINER_FLYBY_SPEED_WU,
+    };
   },
 
   // Resolve drill conditions from canonical sim state. No key assumptions and no wall clock.
@@ -1993,6 +2163,7 @@ export const onboarding = {
       if (ob.burstCooling && ob.burstShots >= FLIGHT_DRILL_BURST_SHOTS
         && heat <= Math.max(0.02, (ob.burstPeakHeat || 0) * FLIGHT_DRILL_HEAT_RECOVER_FRAC)) {
         this._beatDone(beat);
+        if (ob.pace) this._wingmanBreakOff();
       }
     } else if (beat.done === 'disengaged') {
       if (trainerDistance >= FLIGHT_DRILL_DISENGAGE_RANGE_WU) {
@@ -2057,9 +2228,10 @@ export const onboarding = {
     const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos, { startedTick: st.tick });
     if (spec) {
       spec.name = mode === 'burst' ? 'SCN Gunnery Buoy' : 'SCN Flight Trainer';
+      if (st.onboarding && st.onboarding.rescue) spec.name = RAID_WINGMAN_NAME;
       spec.type = 'drone';
       spec.team = 0;
-      spec.factionId = 'faction_scn';
+      if (!(st.onboarding && st.onboarding.rescue)) spec.factionId = 'faction_scn';
       // Projectile-only custom mask gives the gunnery burst a real hit receipt; the ghost Rapier
       // material guarantees the trainer can never ram the player.
       spec.collides = true;
@@ -2884,8 +3056,9 @@ export const onboarding = {
     this._spawnRaidCast();
   },
 
-  _spawnRaidCast() {
+  _spawnRaidCast(opts = {}) {
     const st = this.state;
+    const clinic = opts.clinic === true || !!(st.onboarding.pace && st.onboarding.pace.swing.clinicOpenedAtS != null && st.onboarding.pace.swing.clinicLesson === 'raid');
     const raid = this._raid();
     if (!raid || !this.helpers || !this.helpers.spawnEntity) return;
     const player = st.entities && st.entities.get(st.playerId);
@@ -2903,7 +3076,8 @@ export const onboarding = {
       x: player.pos.x + Math.cos(ang + bearing) * range,
       z: player.pos.z + Math.sin(ang + bearing) * range,
     });
-    const raiderPos = at(RAID_RAIDER_OFFSET_WU, 0);
+    const raiderRange = clinic ? RAID_CLINIC_RAIDER_OFFSET_WU : RAID_RAIDER_OFFSET_WU;
+    const raiderPos = at(raiderRange, 0);
     const haulerPos = at(RAID_HAULER_OFFSET_WU, 0.5);
     const raiderSpec = makeEnemySpawnSpec('reaver_pirate', 1, raiderPos, { startedTick: st.tick });
     if (raiderSpec) {
@@ -2936,7 +3110,7 @@ export const onboarding = {
     // and readable, and the thrown body always has a solid near its release line.
     const throwRock = this.helpers.spawnEntity({
       type: 'asteroid',
-      pos: at(RAID_RAIDER_OFFSET_WU + 150, 0),
+      pos: at(raiderRange + (clinic ? RAID_CLINIC_ROCK_GAP_WU : 150), 0),
       vel: { x: 0, z: 0 },
       radius: 26,
       mass: 4000,
@@ -3024,7 +3198,7 @@ export const onboarding = {
       ? Math.hypot(Number(raider.vel.x) || 0, Number(raider.vel.z) || 0)
       : 0;
     // A dropped line that barely moved is not a throw; anything genuinely moving counts.
-    if (speed < 25) return;
+    if (speed < RAID_THROW_MIN_SPEED_WU) return;
     raid.lastWhipAt = this.state.simTime || 0;
   },
 
@@ -3757,6 +3931,10 @@ export const onboarding = {
     if (this._setMissingThreeWaypoint(force)) return;
     const beat = BEATS[ob.currentBeat];
     const existing = st.nav.waypoint;
+    if (beat && ob.pace && ob.pace.folded && ob.pace.folded[beat.key]) {
+      if (existing && existing.onboarding) st.nav.waypoint = null;
+      return;
+    }
     // The raid diamond tracks the raider; the claimed diamond tracks the spill until taken.
     if (beat && beat.key === 'raid') {
       const raid = this._raid();
@@ -3829,11 +4007,13 @@ export const onboarding = {
     else if (beat && (beat.key === 'marker' || beat.key === 'focus'
       || beat.key === 'burst' || beat.key === 'disengage')) {
       const trainer = this._trainingActor();
-      if (trainer) target = { pos: trainer.pos, label: trainer.name || 'SCN Flight Trainer' };
+      // The drill actor plays the fiction's fleeing raider; the tracker names the fiction,
+      // never the training rig (the legacy route still bills the entity "SCN Flight Trainer").
+      if (trainer) target = { pos: trainer.pos, label: trainer.name && !/trainer/i.test(trainer.name) ? trainer.name : 'Fleeing Raider' };
     }
     else if (beat && beat.key === 'tether') {
       const derelict = this._derelictId != null && st.entities && st.entities.get(this._derelictId);
-      if (derelict && derelict.alive !== false) target = { pos: derelict.pos, label: 'Training Derelict' };
+      if (derelict && derelict.alive !== false) target = { pos: derelict.pos, label: 'Derelict' };
     }
     else if (beat && beat.key === 'seam') {
       const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
@@ -4004,7 +4184,7 @@ export const onboarding = {
     if (!this._panel || this._storyMode) return;
     const ob = this.state.onboarding; if (!ob) return;
     const beat = BEATS[ob.currentBeat];
-    const idx = ob.currentBeat < 0 ? -1 : ob.currentBeat;
+    const step = onboardingTrackerStep(ob, BEATS);
     // Exactly one persistent command surface: spatial lessons use the HUD waypoint; non-spatial
     // lessons (thrust/brake/heat) use this compact panel title.
     const demoteObjectiveCopy = !!(this.state.nav && this.state.nav.waypoint
@@ -4016,9 +4196,9 @@ export const onboarding = {
     }
 
     if (this._countEl) {
-      const countText = (idx >= 0 ? (idx + 1) : 0) + ' / ' + BEATS.length;
+      const countText = step.number + ' / ' + step.total;
       if (this._countEl.textContent !== countText) this._countEl.textContent = countText;
-      const stepLabel = 'step ' + (idx >= 0 ? (idx + 1) : 0) + ' of ' + BEATS.length;
+      const stepLabel = 'step ' + step.number + ' of ' + step.total;
       if (this._countEl.getAttribute('aria-label') !== stepLabel) {
         this._countEl.setAttribute('aria-label', stepLabel);
       }
@@ -4056,10 +4236,10 @@ export const onboarding = {
 
     if (this._stepsEl) {
       this._stepsEl.innerHTML = '';
-      BEATS.forEach((b, i) => {
+      ONBOARDING_TRACKER_STEPS.forEach((b, i) => {
         const d = document.createElement('div');
-        const isDone = ob.beatDoneAt[b.key] != null;
-        d.className = 'sf-ob-dot' + (isDone ? ' done' : (i === idx ? ' curr' : ''));
+        const isDone = trackerStepDone(ob, i);
+        d.className = 'sf-ob-dot' + (isDone ? ' done' : (i === step.index ? ' curr' : ''));
         this._stepsEl.appendChild(d);
       });
     }

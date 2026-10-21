@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "weave",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "weave",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "weave",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "weave",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "outlaw zone does not get quieter if you boost.",
+      "line": "Full burn changes the distance, not how outlaw zone sounds.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "weave",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 4,
       "motion": "weave",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SABLE: Holding. This does not hurry.",
+      "line": "SABLE: Holding. The count finishes when it finishes.",
       "channel": "info",
       "next": "offer"
     },
@@ -150,12 +150,19 @@ const spec = {
       "verb": "say",
       "line": "Count cleared. The puck crossed outlaw zone under your name.",
       "channel": "info",
+      "next": "cost_a"
+    },
+    {
+      "id": "cost_a",
+      "verb": "cost",
+      "amount": 36,
+      "reason": "lived_outlaw_zone_toll_understory_literalized",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 0,
       "reason": "lived_outlaw_zone_toll_understory_literalized",
       "next": "rep_a"
     },

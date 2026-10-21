@@ -99,6 +99,7 @@ const VERTEX = /* glsl */`
   uniform float uPhaseZ[SF_FAMILIES];
   uniform vec2 uRootOffset;
   uniform float uPixelScale, uDensity;
+  uniform float uTime;
   varying vec3 vColor;
   varying float vFlux;
   void main() {
@@ -111,6 +112,20 @@ const VERTEX = /* glsl */`
       gl_PointSize = 1.0;
       return;
     }
+    // Subtle per-star flux flicker, hashed from the frozen raw position (the attribute is
+    // pre-uRootOffset and only rewritten on a rebuild), so no extra attributes, uploads or
+    // per-frame allocation. Periods 20-60 s at 1.8 percent amplitude keep the deep field a
+    // steady painted identity - L3 owns the strong, fast twinkle. SF_STAR_FLICKER is compiled
+    // out on the low/software tier (createFormationRecord) so the budget tiers pay neither the
+    // ~10 vertex ALU ops nor the uTime dependency.
+#ifdef SF_STAR_FLICKER
+    vec3 sfHash = fract(vec3(position.x, position.z, aStellarFamily * 43.7) * 0.1031);
+    sfHash += dot(sfHash, sfHash.yzx + 33.33);
+    float sfSeed = fract((sfHash.x + sfHash.y) * sfHash.z);
+    float sfFlicker = 1.0 + 0.018 * sin(uTime * (0.105 + sfSeed * 0.21) + sfSeed * 6.2831853);
+#else
+    float sfFlicker = 1.0;
+#endif
     vec3 p = position;
     p.x += uRootOffset.x - uPhaseX[family];
     p.z += uRootOffset.y - uPhaseZ[family];
@@ -118,7 +133,7 @@ const VERTEX = /* glsl */`
     gl_Position = projectionMatrix * mv;
     float projected = aStellarSize * uPixelScale / max(1.0, -mv.z);
     gl_PointSize = clamp(projected * sqrt(uDensity), 0.8, 4.5);
-    vFlux = weight * min(1.0, projected * projected);
+    vFlux = weight * min(1.0, projected * projected) * sfFlicker;
   }
 `;
 const FRAGMENT = /* glsl */`
@@ -246,9 +261,15 @@ function createFormationRecord(background) {
     uPhaseZ: { value: new Array(FAMILIES).fill(0) },
     uRootOffset: { value: new THREE.Vector2() },
     uPixelScale: { value: 1 }, uDensity: { value: 1 },
+    uTime: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     name: 'SpaceFace_ResolvedStellarFormation', vertexShader: VERTEX, fragmentShader: FRAGMENT,
+    // Tier gate compiled in at record creation: genuine low-class hardware (software GL,
+    // particleQuality low at boot) never compiles the flicker ALU. A later particleQuality or
+    // lab force-tier flip refills this record in place without recompiling, so the define
+    // freezes at the boot tier — the only flip paths run on hardware that can afford the term.
+    defines: background.lowTier ? {} : { SF_STAR_FLICKER: 1 },
     uniforms, transparent: true, depthTest: true, depthWrite: false,
     blending: THREE.AdditiveBlending, fog: false,
   });
@@ -267,6 +288,7 @@ function createFormationRecord(background) {
   points.onBeforeRender = (renderer, scene, renderCamera) => {
     const next = stellarFormationIndex(background.deepFieldRecipe?.id);
     const now = Number(background.bgTime) || 0;
+    uniforms.uTime.value = now;
     const dt = record.lastTime == null ? 0 : Math.max(0, Math.min(0.1, now - record.lastTime));
     const ease = record.lastTime == null ? 1 : 1 - Math.exp(-dt / 0.32);
     record.lastTime = now;

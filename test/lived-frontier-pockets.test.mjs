@@ -1,3 +1,4 @@
+import { charonSupplyFacts, ownsCharonSupplyHull, ownsFiniteCharonSupplyManifest } from '../src/world/charonSalvageSupply.js';
 // CR-HOLLOW-4 — the lived-in frontier. Eighteen sectors that used to open on anonymous ambient
 // scatter (or, in the hollow rims, on nothing at all) now open with the shift already under way:
 // Veil Nebula, Ashfall Reach, Io Reach, Charon Expanse, Dione Lane, Nereid Shoal, Hyperion Cut,
@@ -377,7 +378,21 @@ for (const sectorId of EXPECTED_SECTORS) {
       assert.equal(rec.authoredActivityCast, true, `${slotId}: authored cast, not ambient filler`);
       assert.equal(entity.homeSectorId, sectorId, `${slotId} lives in ${sectorId}`);
       assert.ok(entity.data.worldRecordId, `${slotId} carries durable identity`);
-      assert.ok(entity.data.jobId, `${slotId} is flying a real job, not parked jobless`);
+      if (sectorId === 'sector_charon_expanse' && ['charon_colony_hauler', 'charon_colony_salvor'].includes(slotId)) {
+        const supply = charonSupplyFacts(state);
+        assert.equal(supply?.phase, 'collect');
+        assert.equal(ownsCharonSupplyHull(state, entity), true);
+        assert.equal(ownsFiniteCharonSupplyManifest(state, entity, true), true);
+        assert.equal(entity.data.jobId, undefined, 'supply wait has no hidden advancing cutting job');
+        assert.equal(entity.data.itinerary?.kind, 'charon_colony_supply');
+        assert.equal(supply.loose, 6);
+        const sources = state.entityList.filter(e => e.alive && e.data?.activityObjectSlotId === 'charon_colony_air_pod');
+        assert.equal(sources.length, 1);
+        assert.equal(sources[0].data.amount, 6);
+        assert.equal(sources[0].data.commodityId, 'cmdty_consumer_goods');
+      } else {
+        assert.ok(entity.data.jobId, `${slotId} is flying a real job, not parked jobless`);
+      }
       ids.push(`${slotId}#${entity.data.worldRecordId}`);
     }
     assert.equal(new Set(ids).size, set.capacity, 'distinct durable identities');

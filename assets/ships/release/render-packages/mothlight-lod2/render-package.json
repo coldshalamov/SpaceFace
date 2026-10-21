@@ -416,12 +416,18 @@
     }
   ],
   "assetId": "sf.render.mothlight-lod2",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.mothlight-lod2.node.collision-mothlight-core.collision",
+      "nodeId": "sf.render.mothlight-lod2.node.collision-mothlight-core",
+      "reference": "COLLISION_MOTHLIGHT_CORE"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a7fbefdc4ddeb832c982dc62124714186493d524a4dc88b8388d4fc97507bd4f",
+  "contentHash": "d37e7807f2b264756eb26c8b2f3479246f62e6b9680a214efa49d71b7cb17ca3",
   "dynamicGroups": [
     {
       "id": "sf.render.mothlight-lod2.node.lod2-motion-mothlight-hatch-1-hull.dynamic",
@@ -634,7 +640,7 @@
       "indexCount": 600,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_MOTHLIGHT_CORE",
       "nodeId": "sf.render.mothlight-lod2.node.collision-mothlight-core",
       "primitiveIndex": 0,
@@ -1705,7 +1711,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_MOTHLIGHT_CORE",
       "nodeName": "COLLISION_MOTHLIGHT_CORE",
       "nodePath": [
@@ -4457,7 +4463,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "f7341d64fc9dea3c2f1b3677f2a9a907008d7076e3937e15cb52d2aa461ac97a"
+      "sha256": "c23bd1463d2c59d440d24c928e08eb78ce36beaea74e1388de0917fe9168e3b7"
     },
     "sourceGlb": {
       "bytes": 448824,
@@ -4465,8 +4471,8 @@
       "uri": "mothlight_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -6956,7 +6962,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mothlight_lod2.glb"
   },
-  "runtimeHash": "d3850f2c84919c1214b7bdae82e32f26804f9e86659e4099344c1423ea3f8597",
+  "runtimeHash": "11b80c6a13601ba0912b67d99d9471a83a491a56dc7f9f18b5f111430ad50601",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

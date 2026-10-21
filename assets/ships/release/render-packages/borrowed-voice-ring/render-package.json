@@ -94,12 +94,38 @@
     }
   ],
   "assetId": "sf.render.borrowed-voice-ring",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-1.collision",
+      "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-1",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-2.collision",
+      "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-2",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-3.collision",
+      "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-3",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-4.collision",
+      "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-4",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-5.collision",
+      "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-5",
+      "reference": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7aa939ef868862bb289583fd6bba924dc5c1d2b63e7a001c7583baae7e792905",
+  "contentHash": "e0a505996ad197317b9cd295f5286f1d1defc17c78779d761cc79fa2476394bd",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-1-stone.dynamic",
@@ -182,7 +208,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
       "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-1",
       "primitiveIndex": 0,
@@ -207,7 +233,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
       "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-2",
       "primitiveIndex": 0,
@@ -232,7 +258,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
       "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-3",
       "primitiveIndex": 0,
@@ -257,7 +283,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
       "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-4",
       "primitiveIndex": 0,
@@ -282,7 +308,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
       "nodeId": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-5",
       "primitiveIndex": 0,
@@ -832,7 +858,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
       "nodePath": [
@@ -881,7 +907,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
       "nodePath": [
@@ -930,7 +956,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
       "nodePath": [
@@ -979,7 +1005,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
       "nodePath": [
@@ -1028,7 +1054,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
       "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
       "nodePath": [
@@ -2241,7 +2267,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "8d6bbaa8ca9eb96f47d6df69ae8802b6da6c21a8a5778d276343e7361fc9de5a"
+      "sha256": "c47503b8c89c4efc456135d6af638fdfe5c6ca43044d88ae7619be7f377ff0c2"
     },
     "sourceGlb": {
       "bytes": 676788,
@@ -2249,8 +2275,8 @@
       "uri": "borrowed_voice_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -3348,7 +3374,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_ring.glb"
   },
-  "runtimeHash": "c932306cb822f4f069715fdcb8261dfe00a2589abedfbfd1a4f4e01463ec4d2c",
+  "runtimeHash": "64d1b0295943f6600a80d369f14be3045970cd938916bbf20624d54fe071c35c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

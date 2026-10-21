@@ -48,12 +48,18 @@
     }
   ],
   "assetId": "sf.render.mothlight-lamp",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp.collision",
+      "nodeId": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp",
+      "reference": "COLLISION_MOTHLIGHT_LAMP_LAMP"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e93966dec66e667741eec8e01ff56e0e481b17bfd2297649aa7fd8b354c806c5",
+  "contentHash": "cb5d09d007b406947e93a2eb6c3a38c9c5417fcf15c4fe15b588ed60e0d7308e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -75,7 +81,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_MOTHLIGHT_LAMP_LAMP",
       "nodeId": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp",
       "primitiveIndex": 0,
@@ -311,7 +317,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_MOTHLIGHT_LAMP_LAMP",
       "nodeName": "COLLISION_MOTHLIGHT_LAMP_LAMP",
       "nodePath": [
@@ -636,7 +642,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "85df54fbac3b0b1f1c6d10b75937b8472991f700ce9d9bbc1d5a273530f5fb2e"
+      "sha256": "125a3f4399040cf88f485ac849ae49e58bc53c2eb1bc95a8487cac5fbf7442c4"
     },
     "sourceGlb": {
       "bytes": 340400,
@@ -644,8 +650,8 @@
       "uri": "mothlight_lamp.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -878,7 +884,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/mothlight_lamp.glb"
   },
-  "runtimeHash": "b0cb18845f3a82da4f606532fff5380383a20695faff63a234b9c6ffd113fce3",
+  "runtimeHash": "7c2ea11ac1acca85500ce6e1a2f37e08a82e22bb0aab8ec76185c9d874ac0582",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "ring",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "derelict field does not get quieter if you boost.",
+      "line": "derelict field hums at one level. Your throttle is not it.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "ring",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 4,
       "motion": "ring",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-12: Holding. This does not hurry.",
+      "line": "HX-12: We hold. Quiet engines, patient hands.",
       "channel": "info",
       "next": "offer"
     },
@@ -150,12 +150,19 @@ const spec = {
       "verb": "say",
       "line": "Count cleared. The kettle crossed derelict field under your name.",
       "channel": "info",
+      "next": "cost_a"
+    },
+    {
+      "id": "cost_a",
+      "verb": "cost",
+      "amount": 36,
+      "reason": "lived_derelict_field_toll_helix_depth",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 0,
       "reason": "lived_derelict_field_toll_helix_depth",
       "next": "rep_a"
     },

@@ -25,6 +25,7 @@ import {
 } from '../src/render/camera.js';
 import {
   cyclePhotoLook,
+  photoLookAvailable,
   setPhotoLook,
   syncPhotoFov,
 } from '../src/ui/screens/pause.js';
@@ -188,4 +189,20 @@ test('the photo overlay picks and cycles looks, and photo FOV rides the one vide
   assert.equal(syncPhotoFov(ctx, 'not-a-number'), null);
   assert.ok(emitted.every(([id]) => id === 'settings:changed'));
   assert.ok(emitted.length >= 2);
+});
+
+test('RC-39 the Look control is absent on the default bloom route', () => {
+  // Default route: no render graph published → no grade stage → no Look control.
+  assert.equal(photoLookAvailable({ render: { renderGraph: null, photoMode: { active: true } } }), false);
+  assert.equal(photoLookAvailable({ render: {} }), false);
+  assert.equal(photoLookAvailable({}), false);
+  // A graph without the stage cannot honour the control either.
+  assert.equal(photoLookAvailable({ render: { renderGraph: {} } }), false);
+  // The live graph route publishes setPhotoFilters → the control exists and works.
+  const graph = buildGraph();
+  assert.equal(typeof graph.setPhotoFilters, 'function');
+  const state = { render: { renderGraph: graph, photoMode: createPhotoModeState({}) } };
+  assert.equal(photoLookAvailable(state), true);
+  const ctx = { state };
+  assert.equal(cyclePhotoLook(ctx), PHOTO_FILTER_LOOK_ORDER[1]);
 });

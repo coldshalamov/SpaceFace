@@ -1,7 +1,113 @@
 // PQ-140.02 — four specialists, each breaking one player plan.
-// Data only. Silhouette ids are the live enemy catalog; behaviour is the doctrine / verb.
+// Specialist catalog and pure body-launch decisions; behaviour runs through the tactical owner.
 // No new hulls (PQ-050 owns form). Two plans share bruiser_armor; mass and speed separate them.
 import { SCISSORWAKE } from '../data/scissorwake.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+
+export const BODY_LAUNCH = Object.freeze({
+  WINDUP_TICKS: 54,
+  COOLDOWN_TICKS: 660,
+  REACH_WU: 160,
+  TARGET_MAX_WU: 1100,
+  LAUNCH_SPEED_WU: 170,
+  MAX_BODY_MASS: 400,
+});
+
+export function bodyLauncherWeaponId(entity) {
+  const mounts = entity?.data?.weapons || entity?.weapons || [];
+  for (const mount of mounts) {
+    const id = typeof mount === 'string' ? mount : mount?.id || mount?.defId;
+    if (typeof id === 'string' && id.includes('concussion')) return id;
+  }
+  return null;
+}
+
+// Hostility is observer-relative and is rechecked by the live owner, never guessed from team.
+export function isBodyLauncherEnemy(entity) {
+  return entity?.type === 'ship' && entity.alive !== false && !!entity.data?.ai
+    && entity.data.ai.passive !== true && !!bodyLauncherWeaponId(entity);
+}
+
+function launchMass(body) {
+  return body?.physicsBody?.mass ?? body?.mass;
+}
+
+function launchIntercept(body, player) {
+  const x = player.pos.x - body.pos.x, z = player.pos.z - body.pos.z;
+  const vx = player.vel?.x || 0, vz = player.vel?.z || 0;
+  const speed = BODY_LAUNCH.LAUNCH_SPEED_WU;
+  const a = vx * vx + vz * vz - speed * speed;
+  const b = 2 * (x * vx + z * vz), c = x * x + z * z;
+  let eta = Infinity;
+  if (Math.abs(a) < 1e-8) {
+    if (Math.abs(b) > 1e-8) eta = -c / b;
+  } else {
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return null;
+    const root = Math.sqrt(discriminant);
+    for (const t of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
+      if (t > 0 && t < eta) eta = t;
+    }
+  }
+  if (!(eta > 0 && eta <= 2.5)) return null;
+  return { eta, x: player.pos.x + vx * eta, z: player.pos.z + vz * eta };
+}
+
+function launchCandidate(body, enemy, player) {
+  if (!body || body === enemy || body.id === player.id || !body.alive || !body.pos
+    || !body.vel || body.collides === false
+    || !['asteroid', 'wreck', 'pod'].includes(body.type)) return null;
+  const mass = launchMass(body);
+  if (!(mass > 0 && mass <= BODY_LAUNCH.MAX_BODY_MASS)
+    || !(Math.hypot(body.vel.x, body.vel.z) <= 60)
+    || Math.hypot(body.pos.x - enemy.pos.x, body.pos.z - enemy.pos.z) > BODY_LAUNCH.REACH_WU
+    || Math.hypot(body.pos.x - player.pos.x, body.pos.z - player.pos.z) > BODY_LAUNCH.TARGET_MAX_WU
+    || !isDynamicPhysicsBodyEntity(body)) return null;
+  return launchIntercept(body, player);
+}
+
+export function selectBodyLaunchCandidate(state, enemy, player) {
+  if (!enemy?.pos || !player?.pos || enemy.alive === false || player.alive === false) return null;
+  let best = null, bestEta = Infinity;
+  for (const body of state.entities.values()) {
+    const intercept = launchCandidate(body, enemy, player);
+    if (intercept && (intercept.eta < bestEta
+      || (intercept.eta === bestEta && String(body.id) < String(best.id)))) {
+      best = body;
+      bestEta = intercept.eta;
+    }
+  }
+  return best;
+}
+
+/** Transient per-enemy windup. The owner authorizes the returned launch at execution time. */
+export function bodyLaunchStep(rt, { state, enemy, player, tick }) {
+  if (rt.phase !== 'windup') {
+    if (tick < (rt.nextEligibleTick || 0)) return null;
+    const body = selectBodyLaunchCandidate(state, enemy, player);
+    if (!body) return null;
+    Object.assign(rt, { phase: 'windup', bodyId: body.id, body, enemy, target: player,
+      fireTick: tick + BODY_LAUNCH.WINDUP_TICKS });
+    return { telegraph: { bodyId: body.id, fireTick: rt.fireTick } };
+  }
+  const body = state.entities.get(rt.bodyId);
+  const intercept = enemy?.alive !== false && player?.alive !== false
+    && enemy === rt.enemy && player === rt.target && body === rt.body
+    && launchCandidate(body, enemy, player);
+  if (!intercept) {
+    Object.assign(rt, { phase: 'idle', bodyId: null, body: null, nextEligibleTick: tick + 180 });
+    return { cancel: true };
+  }
+  if (tick < rt.fireTick) return null;
+  const dx = intercept.x - body.pos.x, dz = intercept.z - body.pos.z;
+  const scale = BODY_LAUNCH.LAUNCH_SPEED_WU / Math.hypot(dx, dz);
+  const mass = launchMass(body);
+  Object.assign(rt, { phase: 'idle', bodyId: null, body: null,
+    nextEligibleTick: tick + BODY_LAUNCH.COOLDOWN_TICKS });
+  return { launch: { bodyId: body.id, impulse: {
+    x: mass * (dx * scale - body.vel.x), z: mass * (dz * scale - body.vel.z),
+  } } };
+}
 
 export const SPECIALIST_PLANS = Object.freeze([
   Object.freeze({

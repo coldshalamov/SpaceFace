@@ -47,6 +47,8 @@ import { BINDINGS } from './bindings.js';
 import { stationContactServices } from '../data/sectors.js';
 import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { stationServiceLabel } from './station/stationHubModel.js';
+import { faunaSpeciesById } from '../data/alienFauna.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -503,6 +505,56 @@ function orchardThermalFacts(target, state) {
   return facts;
 }
 
+// CLOUD-04 — a compact fauna field note built only from knowledge the run has legitimately
+// earned. The effective revelation is read, never created: ensureAlienEcologyState mutates
+// state.world to mint the record, so this projector reproduces effectiveRevelation()'s math
+// (raw tier + fitted bioScanTier bonus, clamped to 3) over whatever record actually exists.
+function faunaRevelationFor(state) {
+  const ae = state && state.world && state.world.alienEcology;
+  const base = ae && Number.isFinite(ae.revelation) ? ae.revelation : 0;
+  const bonus = fittedModuleDefs(state).reduce(
+    (m, d) => Math.max(m, Number(d && d.mods && d.mods.bioScanTier) || 0), 0);
+  return Math.min(base + bonus, 3);
+}
+
+// Live drive postures in player language. Doc 02 rule: ring-tightening and shadowing are
+// posture, never an attack label; the posture word must not outrun what the animal shows.
+const FAUNA_POSTURE_WORD = Object.freeze({
+  idle: 'IDLE', drift: 'DRIFTING', forage: 'FORAGING', investigate: 'CURIOUS',
+  shadow: 'SHADOWING', defend: 'DEFENSIVE · POSTURE', swarm: 'RINGING · POSTURE',
+  attach: 'ATTACHED', feed: 'FEEDING', flee: 'FLEEING', return: 'RETURNING',
+  migrate: 'MIGRATING', dormant: 'DORMANT', charge: 'CHARGING', trail: 'FOLLOWING WAKE',
+  anchored: 'ANCHORED', captured: 'CAPTURED', repair: 'MENDING',
+});
+
+/**
+ * Compact fauna field note for the facts line: role, one live posture, then up to four authored
+ * anatomy facts — only at or past the anatomy gate (revelation ≥ 2, the ladder tier that names the
+ * species). Below the gate the name plate already carries everything the run may claim, so the
+ * note stays silent rather than leaking taxonomy. False/zero/unknown stay distinct: an explicit
+ * relayTissue:false reports NO RELAY TISSUE while a missing key says nothing.
+ */
+export function faunaFieldNote(t, state) {
+  if (!t || t.type !== 'fauna' || t.alive === false) return null;
+  if (faunaRevelationFor(state) < 2) return null;
+  const eco = t.data && t.data.ecology || {};
+  const species = eco.speciesId ? faunaSpeciesById(eco.speciesId) : null;
+  if (!species) return null;
+  const facts = [];
+  if (typeof species.role === 'string' && species.role) facts.push(species.role.toUpperCase());
+  const posture = FAUNA_POSTURE_WORD[eco.driveState];
+  if (posture) facts.push(posture);
+  const an = species.anatomy && typeof species.anatomy === 'object' ? species.anatomy : null;
+  if (an) {
+    if (typeof an.hostTissue === 'string' && an.hostTissue) facts.push(`HOST: ${an.hostTissue.toUpperCase()}`);
+    if (typeof an.fungalTissue === 'string' && an.fungalTissue) facts.push(`GROWTH: ${an.fungalTissue.toUpperCase()}`);
+    if (an.relayTissue === true) facts.push('RELAY TISSUE PRESENT');
+    else if (an.relayTissue === false) facts.push('NO RELAY TISSUE');
+    if (typeof an.cystLoad === 'string' && an.cystLoad) facts.push(`CYST LOAD: ${an.cystLoad.toUpperCase()}`);
+  }
+  return facts.length ? facts : null;
+}
+
 function orchardSocketInfoLine(target, state) {
   // The machine's wreck envelope carries generic salvage data. The finite socket descriptors
   // own its player-facing facts; this projection grants no native release/pickup authority.
@@ -556,6 +608,10 @@ export function objectInfoLine(t, state, p, dist) {
   const facts = orchardThermalFacts(t, state);
   if (t.type === 'asteroid') {
     facts.push(d.respawnAt != null ? 'Mined out' : 'Ore-bearing');
+  } else if (t.type === 'fauna') {
+    // The scanner ladder owns the name; at anatomy tier the earned field note rides here.
+    const note = faunaFieldNote(t, state);
+    if (note) facts.push(...note);
   } else if (t.type === 'payload' || t.type === 'wreck' || t.type === 'pickup') {
     const pool = d.salvagePool && typeof d.salvagePool === 'object' ? d.salvagePool : null;
     const lines = pool

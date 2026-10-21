@@ -11,8 +11,11 @@ import assert from 'node:assert/strict';
 import {
   STARTUP_RETRY_DELAY_MS,
   STARTUP_RETRY_KEY,
+  annotateStartupFailure,
   clearStartupRetry,
+  findBrokenModules,
   presentStartupFailure,
+  startupProbeHrefs,
   summarizeStartupError,
 } from '../src/ui/bootStartupFailure.js';
 
@@ -149,6 +152,71 @@ test('a successful start clears the stamp so a later failure gets its own retry'
   const storage = fakeStorage({ [STARTUP_RETRY_KEY]: String(1) });
   clearStartupRetry(storage);
   assert.equal(storage.getItem(STARTUP_RETRY_KEY), null);
+});
+
+test('the dead-end probe names the file V8 rejects, not just the token', async () => {
+  // The import() rejection is a bare SyntaxError — the filename is recovered by re-parsing
+  // each warmed module. Healthy modules throw TypeError (their own imports cannot resolve
+  // under a blob: URL), malformed ones throw SyntaxError.
+  const sources = {
+    './src/main.js': 'import "./a.js"; import "./b.js";',
+    './src/a.js': 'export const a = 1;',
+    './src/render/vfx.js': 'export const ok = 1;\n... [truncated for diff preview]',
+    './src/b.js': 'export const b = 2;',
+  };
+  const culprits = await findBrokenModules({
+    hrefs: Object.keys(sources),
+    fetchText: async (href) => sources[href] ?? null,
+    tryParse: async (text) => (text.includes('[truncated')
+      ? new SyntaxError("Unexpected token '...'")
+      : new TypeError('Failed to resolve module specifier')),
+  });
+  assert.equal(culprits.length, 1);
+  assert.equal(culprits[0].href, './src/render/vfx.js');
+  assert.match(culprits[0].message, /Unexpected token/);
+});
+
+test('the probe skips files it cannot fetch and stops when the clock is spent', async () => {
+  const culprits = await findBrokenModules({
+    hrefs: ['./src/a.js', './src/missing.js', './src/c.js'],
+    fetchText: async (href) => (href === './src/missing.js' ? null : 'export default 0;'),
+    tryParse: async () => null,
+  });
+  assert.deepEqual(culprits, []);
+  // A spent budget leaves the rest of the list unscanned rather than hanging the dead end.
+  let fetches = 0;
+  let now = 0;
+  await findBrokenModules({
+    hrefs: ['./a.js', './b.js', './c.js', './d.js'],
+    fetchText: async () => { fetches += 1; now += 30_000; return ''; },
+    tryParse: async () => null,
+    nowMs: () => now,
+    budgetMs: 10_000,
+  });
+  assert.ok(fetches < 4, `budget stopped the scan after ${fetches} fetch(es)`);
+});
+
+test('the annotated dead end puts the broken file on screen', () => {
+  const overlay = fakeOverlay();
+  overlay.detail.textContent = 'Reload to retry. Your saved games have not been changed. (Unexpected token)';
+  assert.equal(annotateStartupFailure({
+    overlay,
+    culprits: [{ href: './src/render/vfx.js', message: "Unexpected token '...'" }],
+    summary: "Unexpected token '...'",
+  }), true);
+  assert.match(overlay.detail.textContent, /src\/render\/vfx\.js/);
+  assert.match(overlay.detail.textContent, /saved games have not been changed/);
+  // No culprits, no annotation — the plain message stands.
+  assert.equal(annotateStartupFailure({ overlay, culprits: [], summary: 'x' }), false);
+  assert.doesNotMatch(overlay.detail.textContent, /\+1 more/);
+});
+
+test('the probe list is every warmed module plus the game entry', () => {
+  const href = (u) => ({ getAttribute: () => u });
+  const doc = { querySelectorAll: () => [href('./vendor/three.module.js'), href('./src/a.js')] };
+  assert.deepEqual(startupProbeHrefs(doc), ['./src/main.js', './vendor/three.module.js', './src/a.js']);
+  assert.deepEqual(startupProbeHrefs({ querySelectorAll: () => [href('./src/main.js')] }), ['./src/main.js']);
+  assert.deepEqual(startupProbeHrefs(null), []);
 });
 
 test('the on-screen reason is one short, whitespace-collapsed line', () => {

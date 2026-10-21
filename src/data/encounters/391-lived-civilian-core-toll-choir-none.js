@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "face",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "face",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "face",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "face",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "civilian core does not get quieter if you boost.",
+      "line": "Nobody in civilian core looks up for engine noise.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "face",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 8,
+      "seconds": 4,
       "motion": "face",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Holding. This does not hurry.",
+      "line": "CANTOR: No hurry in this berth. Hold.",
       "channel": "info",
       "next": "offer"
     },
@@ -150,12 +150,19 @@ const spec = {
       "verb": "say",
       "line": "Count cleared. The casket crossed civilian core under your name.",
       "channel": "info",
+      "next": "cost_a"
+    },
+    {
+      "id": "cost_a",
+      "verb": "cost",
+      "amount": 36,
+      "reason": "lived_civilian_core_toll_choir_none",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 0,
       "reason": "lived_civilian_core_toll_choir_none",
       "next": "rep_a"
     },

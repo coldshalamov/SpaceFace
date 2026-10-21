@@ -28,7 +28,10 @@ function boot({ sectorId = 'sector_sker_haven', factions = {} } = {}) {
     factions,
     salvage: { points: [] },
   };
-  const entity = { id: 900, type: 'ship', alive: true, pos: { x: 10, z: 10 }, data: {} };
+  // _makeSalvagePoint stamps data.salvagePointId at spawn — the binding entityForPoint now
+  // verifies before honoring point.entityId (D237). A bare body at the pinned id is a
+  // recycled foreign occupant, not the point's carrier.
+  const entity = { id: 900, type: 'wreck', alive: true, pos: { x: 10, z: 10 }, data: { salvagePointId: 'sal_pod_pin' } };
   state.entities.set(900, entity);
   state.salvage.points.push({ id: 'sal_pod_pin', sectorId, entityId: 900 });
   const bus = createBus();

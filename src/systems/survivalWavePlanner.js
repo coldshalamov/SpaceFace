@@ -61,6 +61,7 @@ import {
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { normalizeThreatIds, swarmThreatPressureMult } from '../data/swarmThreats.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
+import { CIRCUIT_SURVIVE_TICKS, circuitBossFor } from './survivalCircuit.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
 // Authored recipes exist for template waves 1–10 per live arena. The thirty-wave
@@ -408,7 +409,7 @@ function biasSwarmRosterForBuild(roster, dominant) {
   return bent ? next : null;
 }
 
-function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, swarmThreats }) {
+function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, swarmThreats, circuitRound }) {
   const w = swarmWaveOf(wave);
   const list = mutatorList(mutators);
   const stake = swarmStakeFor(swarmStake);
@@ -432,7 +433,14 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // SF-068 — a boss round's reduced swarm is ammunition, not chores: the champion is the work,
   // so its opening chaff draws from the same light bodies the mass-gap wall feeds — the shapes
   // the room's berm, mines and pull can actually turn on the boss. heavies_only owns outright.
-  const bossWave = !heaviesOnly && isSwarmBossWave(w);
+  //
+  // SWARM-08 B5 — a Circuit round carries its own descriptor. Its boss override replaces the
+  // cadence champion: `null` on ordinary/survive rounds (no cadence boss), the authored row on a
+  // boss round. Everything else about the wave is still the ordinary generated swarm.
+  const bossOverride = circuitRound
+    ? (circuitRound.bossId ? circuitBossFor(circuitRound.bossId) : null)
+    : undefined;
+  const bossWave = !heaviesOnly && (bossOverride === undefined ? isSwarmBossWave(w) : bossOverride != null);
   const fodderRoster = (massGap || bossWave) && swarmFodderRoster(w).length > 0
     ? swarmFodderRoster(w)
     : null;
@@ -454,7 +462,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     ? (fodderRoster || biasedRoster || swarmRosterFor(w))
       .filter((entry) => entry.enemyId !== newcomer.enemyId)
     : (fodderRoster || biasedRoster || undefined);
-  let packages = act ? swarmActPackages(w) : swarmOpeningPackages(w, rng, openingRoster);
+  let packages = act ? swarmActPackages(w) : swarmOpeningPackages(w, rng, openingRoster, bossOverride);
   if (debuting) {
     // The debut is one of the wave's bodies, not an extra: hand its seat back from the largest
     // ordinary group so the opening budget stays exactly what the pressure math asked for.
@@ -538,7 +546,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
-  const swarm = swarmPlanBlock(w);
+  const swarm = swarmPlanBlock(w, bossOverride);
   if (biasedRoster) {
     swarm.roster = biasedRoster.map((entry) => ({
       enemyId: entry.enemyId,
@@ -613,6 +621,21 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   swarm.pressureScale = pressure;
   swarm.stake = stake.id;
   if (threats.length) swarm.threats = threats.slice();
+  // SWARM-08 B5 — a Circuit round rewrites only what the journey owns: the completion rule and
+  // the objective. A survive round is a duration round with NO quota (kills cannot end it early);
+  // a cohort round keeps the finite quota. The circuit descriptor rides the block so the wave
+  // owner, the HUD and the announcer can read stage and objective without a second source.
+  if (circuitRound) {
+    swarm.circuit = {
+      stage: circuitRound.stage,
+      localRound: circuitRound.localRound,
+      kind: circuitRound.kind,
+    };
+    if (circuitRound.kind === 'survive') {
+      swarm.killTarget = 0;
+      swarm.durationTicks = CIRCUIT_SURVIVE_TICKS;
+    }
+  }
   const rewards = swarmRewards(w);
   if (stake.earn !== 1) rewards.credits = Math.max(0, Math.round(rewards.credits * stake.earn));
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
@@ -621,10 +644,11 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   if (swarm.concurrent > SPAWN_BUDGET_HARD_MAX) {
     return invalid([issue('swarm.concurrent', `swarm concurrency ${swarm.concurrent} exceeds 40`)]);
   }
+  const surviveRound = !!circuitRound && circuitRound.kind === 'survive';
   const plan = {
     id: `swarm:w${w}:${seed.toString(16)}`,
     mode: SWARM_RULESET,
-    objective: { kind: swarm.boss ? 'boss' : 'resolve_hostiles' },
+    objective: { kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : 'resolve_hostiles') },
     packages,
     schedule,
     // An authored act round owns its room: the act table's phase wins over the cycle.
@@ -634,10 +658,11 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       ? { kind: 'refit', choices: null }
       : (isSwarmDraftWave(w) ? { kind: 'draft', choices: 3 } : { kind: 'none', choices: null }),
     completionRules: {
-      kind: 'cohort',
+      kind: surviveRound ? 'duration' : 'cohort',
       requiredPackagesMaterialized: true,
       blockingRoles: [],
       cleanupTicks: SWARM_CLEANUP_TICKS,
+      ...(surviveRound ? { durationTicks: CIRCUIT_SURVIVE_TICKS } : {}),
     },
     swarm,
     level: swarmLevel(w),
@@ -861,6 +886,9 @@ function planWaveInner(input) {
       buildSummary,
       swarmStake: typeof input.swarmStake === 'string' ? input.swarmStake : null,
       swarmThreats: Array.isArray(input.swarmThreats) ? input.swarmThreats : null,
+      // SWARM-08 B5 — a Circuit round descriptor, or null/absent for ordinary Swarm. Only its
+      // objective, boss and completion rule change; the wave is still the generated swarm.
+      circuitRound: isPlainObject(input.circuitRound) ? input.circuitRound : null,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
     const finished = input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error

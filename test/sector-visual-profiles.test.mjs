@@ -7,6 +7,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { FACTION_PALETTES } from '../src/data/palettes.js';
 import {
+  PROFILE_BY_ID,
   resolveBackgroundComposition,
   resolveBackgroundStructure,
   resolveSectorVisualProfile,
@@ -30,7 +31,7 @@ import { SpaceRenderGraph } from '../src/render/post/spaceRenderGraph.js';
 import { render } from '../src/render/renderer.js';
 import { KESTREL_HERO_COLORS } from '../src/render/ships/kestrelHero.js';
 import { resolveBloomRadianceScale } from '../src/render/vfx.js';
-import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
+import { SECTOR_PALETTE_CLASSES, SECTORS } from '../src/data/sectors.js';
 
 function rgb01(hex) {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -141,7 +142,17 @@ test('way-of-life sectors resolve their own authored rig and key tint', () => {
   }
   // Tethys keeps its junction profile; family fallbacks still serve unmapped sectors.
   assert.equal(resolveSectorVisualProfile({ id: 'sector_tethys_junction' }).id, 'tethys');
-  assert.equal(resolveSectorVisualProfile({ id: 'sector_frontier_east_ridge' }).id, 'fringe');
+  assert.equal(resolveSectorVisualProfile({ id: 'sector_io_reach' }).id, 'fringe');
+});
+
+test('every authored profile key points at a real authored sector', () => {
+  const sectorIds = new Set(SECTORS.map((s) => s.id));
+  for (const key of PROFILE_BY_ID.keys()) {
+    assert.ok(sectorIds.has(key), `profile key ${key} has no authored sector`);
+    const profile = PROFILE_BY_ID.get(key);
+    assert.ok(Object.values(SECTOR_VISUAL_PROFILES).includes(profile),
+      `profile key ${key} resolves outside the authored profile table`);
+  }
 });
 
 test('sector profiles own a stable background composition instead of only a color grade', () => {

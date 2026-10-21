@@ -98,6 +98,11 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 0.4,
     spin: 0,
     radius: 60,
+    // AL-LG-03 — she is a physical capital-tow target, not a billboard. 800 t sits past every
+    // non-capital fit's tow class (the strongest yard hull tops out under 400 t), so the rope
+    // bites only for the capital line and worldRecords carries the haul across reloads.
+    physicalBody: Object.freeze({ mass: 800 }),
+    revisitNeed: Object.freeze({ kind: 'tow', massT: 800 }),
     why: 'The bow alone out-masses everything the yard has launched since; she makes everything feel small.',
   }),
   Object.freeze({
@@ -116,6 +121,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     radius: 20,
     // Heavier than the yard tug, so the rope swings it like the poured-steel drum it is.
     physicalBody: Object.freeze({ mass: 240 }),
+    // AL-LG-02 — a real capability door: the scan reads the live tow-class verb against her
+    // mass, so she says "not yet" under a light fit and "ready" once the line can take 240 t.
+    revisitNeed: Object.freeze({ kind: 'tow', massT: 240 }),
     why: 'It slipped the crane on a double shift; the foundry logged it as scrap and the crews still steer around it.',
   }),
   Object.freeze({
@@ -320,6 +328,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0.06,
     radius: 26,
     physicalBody: Object.freeze({ mass: 260 }),
+    // AL-LG-02 — same real door as the ladle: a 260 t hull the scan quotes live as
+    // "not yet" until the fit's tow class covers her.
+    revisitNeed: Object.freeze({ kind: 'tow', massT: 260 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_salvage_clamp', dx: -42, dz: 18, rot: 1.1, radius: 8 }),

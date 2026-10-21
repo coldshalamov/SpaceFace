@@ -94,12 +94,18 @@
     }
   ],
   "assetId": "sf.render.ilex-vault",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.ilex-vault.node.collision-ilex-vault-vault.collision",
+      "nodeId": "sf.render.ilex-vault.node.collision-ilex-vault-vault",
+      "reference": "COLLISION_ILEX_VAULT_VAULT"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "af016649a039613b25f53cdc3be5028699cc2977e43b35b2415345b7e5c209eb",
+  "contentHash": "0613d7bc67a7f3c11dc4d1051ab043a8ffcad8ea59ff183d9cba388317a38271",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -121,7 +127,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_ILEX_VAULT_VAULT",
       "nodeId": "sf.render.ilex-vault.node.collision-ilex-vault-vault",
       "primitiveIndex": 0,
@@ -389,7 +395,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_ILEX_VAULT_VAULT",
       "nodeName": "COLLISION_ILEX_VAULT_VAULT",
       "nodePath": [
@@ -812,7 +818,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "ec7c08b14c42a857c6c8ec557b6f5e34b7f7f7b74876ac996cb0d5ae0e3b369b"
+      "sha256": "84cba053293bb76c6cb337611d7a22ce04588b9779de4b051ace18fa2e5aac9e"
     },
     "sourceGlb": {
       "bytes": 394628,
@@ -820,8 +826,8 @@
       "uri": "ilex_vault.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -1138,7 +1144,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/ilex_vault.glb"
   },
-  "runtimeHash": "cd6363df9e27f37e1fcb1c9b10a077c82060c7474b479f7464589321ab800ee8",
+  "runtimeHash": "146eccb8c0bd40e4581d4b5dc7f3cb3abc4ebf59c65e36082803b667aa951be4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

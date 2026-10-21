@@ -20,7 +20,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale } from '../orrery/stopDial.js';
+import { createStopScale, createStopArc } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
@@ -528,10 +528,8 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
-    // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
-    // column is narrower than four grown names on one line, so the ruler stacks a station per
-    // line and every word keeps the column's whole width (D136).
-    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
+    // ORRERY: difficulty is a four-stop dial with the Hand (ORRERY §6).
+    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopArc({ row: diffWords, width: 340, radius: 125, span: 130, overshoot: 4 });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -557,22 +555,16 @@ export const newGameScreen = {
         target.focus();
       }
     });
-    // The scale stands on end, so the stations take Up/Down along their own line — the roving's
-    // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
-    // off the first station climbs back to the starter words, Down off the last falls to the seed.
+    // Arrow bridges for the Tab-invisible difficulty dial: Up climbs back to the starter words,
+    // Down falls forward to the universe seed. Roving Left/Right answers between stations.
     diffWords.addEventListener('keydown', (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-      const all = [...diffWords.querySelectorAll('.k-word')];
-      const i = all.indexOf(e.target);
-      if (i < 0) return;
-      const next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
-      e.preventDefault();
-      if (next) { next.focus(); cue('move'); return; }
       if (e.key === 'ArrowUp') {
+        e.preventDefault();
         const target = liveWordIn(starterWords);
         if (target) target.focus();
-      } else {
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
         seed.focus();
       }
     });
@@ -615,6 +607,50 @@ export const newGameScreen = {
     seed.addEventListener('input', () => this._emitEmbarkSpec());
     body.appendChild(seedField.wrap);
     body.appendChild(hairline());
+
+    const firstFlightField = field('First flight');
+    firstFlightField.label.id = 'sf-ng-first-flight-label';
+    const firstFlightWords = words([
+      { action: 'firstFlight:teach', label: 'Teach me' },
+      { action: 'firstFlight:flown', label: "I've flown before" },
+    ], {
+      row: true, size: 'body', ariaLabel: 'First flight',
+      onPick: (a) => this._setFirstFlight(a === 'firstFlight:flown'),
+    });
+    firstFlightWords.setAttribute('aria-labelledby', firstFlightField.label.id);
+    firstFlightWords.classList.add('of-pause');
+    for (const b of firstFlightWords.querySelectorAll('.k-word')) railWord(b);
+    const firstFlightDesc = el('p', 'k-sentence', '');
+    firstFlightDesc.id = 'sf-ng-first-flight-desc';
+    firstFlightWords.setAttribute('aria-describedby', firstFlightDesc.id);
+    firstFlightField.wrap.appendChild(firstFlightWords);
+    firstFlightField.wrap.appendChild(firstFlightDesc);
+    body.appendChild(firstFlightField.wrap);
+    body.appendChild(hairline());
+    firstFlightWords.addEventListener('focusout', (e) => {
+      if (e.relatedTarget && firstFlightWords.contains(e.relatedTarget)) return;
+      for (const b of firstFlightWords.querySelectorAll('.k-word')) b.tabIndex = -1;
+    });
+    seed.addEventListener('keydown', (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === 'ArrowUp') {
+        const target = liveWordIn(diffWords);
+        if (!target) return;
+        e.preventDefault();
+        target.focus();
+        return;
+      }
+      if (e.key !== 'ArrowDown') return;
+      const target = liveWordIn(firstFlightWords);
+      if (!target) return;
+      e.preventDefault();
+      target.focus();
+    });
+    firstFlightWords.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      e.preventDefault();
+      seed.focus();
+    });
 
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
     // selection at the transition boundary; the UI never copies a whole prior run into the event.
@@ -859,6 +895,7 @@ export const newGameScreen = {
       seed.disabled = launching;
       for (const b of starterWords.querySelectorAll('.k-word')) setWord(b, launching);
       for (const b of diffWords.querySelectorAll('.k-word')) setWord(b, launching);
+      for (const b of firstFlightWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacyWords) for (const b of legacyWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacySelect) legacySelect.disabled = launching || !legacyOn;
       const launchWord = launching ? coreText('launching') : coreText('launch');
@@ -903,6 +940,7 @@ export const newGameScreen = {
     refs = {
       root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back, launchError,
       starterWords, starterDesc, hullName, hullBlurb, renderLoadout,
+      firstFlightWords, firstFlightDesc, flownBefore: false,
       starter: DEFAULT_STARTER,
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
       isLaunching: () => launching,
@@ -915,6 +953,7 @@ export const newGameScreen = {
     };
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+    this._setFirstFlight(false, { silent: true });
   },
 
   // The newGame screen used to be the only embark path with no speculation emit — every
@@ -988,6 +1027,19 @@ export const newGameScreen = {
     syncKeys(refs.diffWords);
   },
 
+  _setFirstFlight(flown) {
+    if (!refs) return;
+    refs.flownBefore = flown === true;
+    for (const b of refs.firstFlightWords.querySelectorAll('.k-word')) {
+      b.setAttribute('aria-pressed', String((b.dataset.action === 'firstFlight:flown') === refs.flownBefore));
+      b.tabIndex = -1;
+    }
+    refs.firstFlightDesc.textContent = refs.flownBefore
+      ? 'Skips the stick drills. The rope, the raid and the Range stay.'
+      : 'The full first flight: stick drills, the rope, the raid.';
+    syncKeys(refs.firstFlightWords);
+  },
+
   _launch(ctx) {
     if (!refs) return;
     const launching = refs.isLaunching();
@@ -1017,6 +1069,7 @@ export const newGameScreen = {
       shipId: refs.starter.shipId,
       starter: refs.starter.id,
       difficulty: refs.diff.value,
+      flownBefore: refs.flownBefore === true,
       ...seedOpt,
       ...newGamePlusOpt,
     });

@@ -72,9 +72,27 @@ import {
   hiddenHoldCapacity,
   remainingIllicit,
   scanChance,
+  clamp01,
   hotUntilActive,
   HOT_DURATION_S,
 } from '../economy/customsRisk.js';
+import {
+  CONVOY_SHARE_LAW,
+  FORWARD_SLIP_LAW,
+  POD_INTAKE_LAW,
+  MARKET_AUDIT_LAW,
+  COLD_CHAIN_LAW,
+  stableShareId,
+  stableSlipId,
+  quoteConvoyShare,
+  quoteForwardSlip,
+  settleForwardSlip,
+  podIntakeValueCr,
+  auditorScanMultiplier,
+  coldChainSpoilQty,
+  isColdChainCommodity,
+  inboundFreightLanes,
+} from '../economy/freightCausality.js';
 import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
 import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
@@ -1080,6 +1098,76 @@ function normalizeSalvageIntakeReceipts(raw) {
   };
 }
 
+function ensureMarketPlayState(state) {
+  const economyState = state && state.economy;
+  if (!economyState || typeof economyState !== 'object') {
+    return {
+      convoyShares: { open: [], settled: [] },
+      forwardSlips: { open: [], settled: [] },
+      coldChain: {},
+      auditorPenn: { byStation: {} },
+      podIntakeReceipts: [],
+    };
+  }
+  if (!economyState.convoyShares || typeof economyState.convoyShares !== 'object') {
+    economyState.convoyShares = { open: [], settled: [] };
+  }
+  if (!Array.isArray(economyState.convoyShares.open)) economyState.convoyShares.open = [];
+  if (!Array.isArray(economyState.convoyShares.settled)) economyState.convoyShares.settled = [];
+  if (!economyState.forwardSlips || typeof economyState.forwardSlips !== 'object') {
+    economyState.forwardSlips = { open: [], settled: [] };
+  }
+  if (!Array.isArray(economyState.forwardSlips.open)) economyState.forwardSlips.open = [];
+  if (!Array.isArray(economyState.forwardSlips.settled)) economyState.forwardSlips.settled = [];
+  if (!economyState.coldChain || typeof economyState.coldChain !== 'object') {
+    economyState.coldChain = {};
+  }
+  if (!economyState.auditorPenn || typeof economyState.auditorPenn !== 'object') {
+    economyState.auditorPenn = { byStation: {} };
+  }
+  if (!economyState.auditorPenn.byStation || typeof economyState.auditorPenn.byStation !== 'object') {
+    economyState.auditorPenn.byStation = {};
+  }
+  if (!Array.isArray(economyState.podIntakeReceipts)) economyState.podIntakeReceipts = [];
+  return economyState;
+}
+
+function trimSettledBook(book, cap) {
+  if (!book || !Array.isArray(book.settled)) return;
+  const limit = Number.isSafeInteger(cap) && cap >= 0 ? cap : 0;
+  if (book.settled.length > limit) book.settled.splice(0, book.settled.length - limit);
+}
+
+/**
+ * Restore the R480 market-play slice. A pre-feature save (no `marketPlay` key) replaces every
+ * contract book, cold chain, auditor tally, and chute receipt with empty defaults — a replaced
+ * timeline must never pay a contract the restored save does not know about.
+ */
+function restoreMarketPlayState(state, raw) {
+  const econ = ensureMarketPlayState(state);
+  const data = raw && typeof raw === 'object' ? raw : {};
+  const shares = data.convoyShares && typeof data.convoyShares === 'object' ? data.convoyShares : {};
+  const slips = data.forwardSlips && typeof data.forwardSlips === 'object' ? data.forwardSlips : {};
+  econ.convoyShares = {
+    open: cloneSaveTree(Array.isArray(shares.open) ? shares.open : []),
+    settled: cloneSaveTree(Array.isArray(shares.settled) ? shares.settled : []),
+  };
+  econ.forwardSlips = {
+    open: cloneSaveTree(Array.isArray(slips.open) ? slips.open : []),
+    settled: cloneSaveTree(Array.isArray(slips.settled) ? slips.settled : []),
+  };
+  econ.coldChain = data.coldChain && typeof data.coldChain === 'object' && !Array.isArray(data.coldChain)
+    ? cloneSaveTree(data.coldChain) : {};
+  const penn = data.auditorPenn && typeof data.auditorPenn === 'object' ? data.auditorPenn : {};
+  econ.auditorPenn = {
+    byStation: penn.byStation && typeof penn.byStation === 'object' && !Array.isArray(penn.byStation)
+      ? cloneSaveTree(penn.byStation) : {},
+  };
+  econ.podIntakeReceipts = Array.isArray(data.podIntakeReceipts)
+    ? cloneSaveTree(data.podIntakeReceipts) : [];
+  return econ;
+}
+
 function ensureSalvageIntakeState(economyState) {
   if (!economyState || typeof economyState !== 'object') return { receipts: [], blockedIds: [] };
   const normalized = normalizeSalvageIntakeReceipts(economyState.appliedSalvageIntakeReceipts);
@@ -1569,6 +1657,7 @@ export const economy = {
     if (!state.economy.econClock) state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     if (!state.economy.marketIntel) state.economy.marketIntel = {};
     ensureSalvageIntakeState(state.economy);
+    ensureMarketPlayState(state);
     state.economy.pulse ||= createEconomyPulse(state.simTime);
     ensurePlayerMarketMemory(state.player);
     ensurePlayerTradeState(state.player);
@@ -1657,6 +1746,19 @@ export const economy = {
     // NXB-027: identified deliveries settle once — the committed receipt makes a retry republish
     // the canonical freight fact for dependent owners instead of moving stock a second time.
     bus.on('cargo:delivered', (p) => { this.applyFreightDelivery(p); });
+
+    // ---- market play (R480) --------------------------------------------------------------
+    // Shares and slips are fantasy contracts on real freight. The buyer names a live inbound
+    // freighter; only that hull's real `freight:arrival` pays. Settlement is idempotent because
+    // the settled row leaves the open book. The Dump Chute is the player's own pod intake: it
+    // commits under the shared journal, pays the documented discount, and adds the goods to the
+    // receiving market through the ordinary stock authority.
+    bus.on('ui:convoyShareBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyConvoyShare(p); });
+    bus.on('ui:forwardSlipBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyForwardSlip(p); });
+    bus.on('cargo:podIntake', (p) => { if (p && typeof p === 'object') p.result = this.applyPodIntake(p); });
+    bus.on('tether:releaseRated', (p) => { if (p && typeof p === 'object') this._routeDeliberateReleaseToChute(p); });
+    bus.on('freight:arrival', (p) => { if (p && typeof p === 'object') this._settleFreightArrival(p); });
+    bus.on('freight:loss', (p) => { if (p && typeof p === 'object') this._settleFreightLoss(p); });
     // Player cargo-ship kill → salvage → sale. Economy remembers the hull and, once those goods
     // are sold, moves the destination price. Missions owns the board opportunity that follows.
     bus.on('entity:killed', (p) => this._openCargoKillChain(p));
@@ -1783,6 +1885,7 @@ export const economy = {
     clock.ticksElapsed++;
     clock.lastTickT = state.simTime;
     this._sweepStationConditions();
+    this._sweepMarketPlay(state);
 
     // 1) age / expire eventMods + active events
     this.ageEvents(state);
@@ -3426,6 +3529,507 @@ export const economy = {
     return { ok: true, duplicate: false, receiptId, qty };
   },
 
+  // -------------------------------------------------------------------------------------------
+  // MARKET PLAY (R480) — Convoy Shares, Forward Slips, Dump Chute, Auditor Penn, Cold Chain.
+  // Every credit and every stock unit here still moves through chargeCredits/grantCredits and
+  // applyStockPressure, so the single-writer contract is unchanged. Freight arrivals already move
+  // their own stock in traffic.js — settlement only pays the contract, never the goods again.
+  // -------------------------------------------------------------------------------------------
+
+  /** Live inbound lanes the berth can quote against (read-only; the market screen renders these). */
+  convoyShareLanes(stationId) {
+    const state = this.state;
+    const sid = stationId || this.dockedStationId();
+    if (!sid) return [];
+    const market = state.economy.markets[sid] || null;
+    const unitPriceFor = (commodityId) => {
+      const entry = market && market[commodityId];
+      const live = Number(entry && (entry.lastBuy != null ? entry.lastBuy : entry.buy));
+      return Number.isFinite(live) ? live : 0;
+    };
+    return inboundFreightLanes(state, sid, { limit: 6, unitPriceFor });
+  },
+
+  /** Stake on one named freighter's lot. Pays only when that hull's arrival intent lands. */
+  buyConvoyShare(payload) {
+    const state = this.state;
+    const econ = ensureMarketPlayState(state);
+    const p = payload || {};
+    const stationId = typeof p.stationId === 'string' && p.stationId ? p.stationId : this.dockedStationId();
+    if (!stationId) return { ok: false, reason: 'not_docked' };
+    const freighterKey = String(p.freighterKey || p.freighterId || '');
+    if (!freighterKey) return { ok: false, reason: 'no_freighter' };
+    const dockSeq = Number.isSafeInteger(p.dockSeq) ? p.dockSeq : null;
+    if (dockSeq == null) return { ok: false, reason: 'no_dock_seq' };
+    const seed = (state.meta && state.meta.seed) || 1;
+    const shareId = stableShareId(seed, stationId, freighterKey, dockSeq);
+    const book = econ.convoyShares;
+    const prior = book.open.find((row) => row && row.id === shareId)
+      || book.settled.find((row) => row && row.id === shareId);
+    if (prior) return { ok: true, duplicate: true, share: { ...prior } };
+    if (book.open.length >= CONVOY_SHARE_LAW.maxOpen) return { ok: false, reason: 'book_full' };
+    const lane = this.convoyShareLanes(stationId)
+      .find((row) => row.freighterKey === freighterKey && row.dockSeq === dockSeq);
+    if (!lane) return { ok: false, reason: 'lane_unknown' };
+    const quote = quoteConvoyShare({ manifestValueCr: lane.cargoValueCr });
+    if (!(quote.stakeCr > 0)) return { ok: false, reason: 'no_value' };
+    if (normalizeCredits(state.player.credits) < quote.stakeCr) return { ok: false, reason: 'credits' };
+    const now = Number(state.simTime) || 0;
+    const row = {
+      id: shareId,
+      stationId,
+      freighterId: lane.freighterKey,
+      freighterKey: lane.freighterKey,
+      manifestId: lane.manifestId,
+      dockSeq,
+      stakeCr: quote.stakeCr,
+      payoutCr: quote.payoutCr,
+      manifestValueCr: lane.cargoValueCr,
+      boughtAt: now,
+      expiresAt: now + CONVOY_SHARE_LAW.windowS,
+    };
+    this.chargeCredits(row.stakeCr, 'market:convoy-share');
+    book.open.push(row);
+    const result = { ok: true, duplicate: false, share: { ...row } };
+    this.bus.emit('economy:convoyShareBought', { ...row, credits: normalizeCredits(state.player.credits) });
+    return result;
+  },
+
+  /** Buy a locked price for a quantity riding one named freighter's lot. */
+  buyForwardSlip(payload) {
+    const state = this.state;
+    const econ = ensureMarketPlayState(state);
+    const p = payload || {};
+    const stationId = typeof p.stationId === 'string' && p.stationId ? p.stationId : this.dockedStationId();
+    if (!stationId) return { ok: false, reason: 'not_docked' };
+    const freighterKey = String(p.freighterKey || p.freighterId || '');
+    if (!freighterKey) return { ok: false, reason: 'no_freighter' };
+    const commodityId = typeof p.commodityId === 'string' ? p.commodityId : '';
+    if (!commodityId) return { ok: false, reason: 'no_commodity' };
+    const dockSeq = Number.isSafeInteger(p.dockSeq) ? p.dockSeq : null;
+    if (dockSeq == null) return { ok: false, reason: 'no_dock_seq' };
+    const seed = (state.meta && state.meta.seed) || 1;
+    const slipId = stableSlipId(seed, stationId, `${freighterKey}:${dockSeq}`, commodityId);
+    const book = econ.forwardSlips;
+    const prior = book.open.find((row) => row && row.id === slipId)
+      || book.settled.find((row) => row && row.id === slipId);
+    if (prior) return { ok: true, duplicate: true, slip: { ...prior } };
+    if (book.open.length >= FORWARD_SLIP_LAW.maxOpen) return { ok: false, reason: 'book_full' };
+    const lane = this.convoyShareLanes(stationId)
+      .find((row) => row.freighterKey === freighterKey && row.dockSeq === dockSeq);
+    if (!lane) return { ok: false, reason: 'lane_unknown' };
+    const line = lane.lines.find((row) => row.commodityId === commodityId) || null;
+    if (!line) return { ok: false, reason: 'commodity_not_aboard' };
+    const qty = Math.min(Math.max(0, Math.floor(Number(p.qty) || 0)), line.qty);
+    if (qty < FORWARD_SLIP_LAW.qtyMin) return { ok: false, reason: 'qty' };
+    const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
+    const entry = market && market[commodityId];
+    const lockedBuyCr = Math.max(0, Math.round(Number(entry && (entry.lastBuy != null ? entry.lastBuy : entry.buy)) || 0));
+    const quote = quoteForwardSlip({ lockedBuyCr, qty });
+    if (!(quote.feeCr > 0)) return { ok: false, reason: 'no_value' };
+    if (normalizeCredits(state.player.credits) < quote.feeCr) return { ok: false, reason: 'credits' };
+    const now = Number(state.simTime) || 0;
+    const row = {
+      id: slipId,
+      stationId,
+      freighterKey: lane.freighterKey,
+      manifestId: lane.manifestId,
+      dockSeq,
+      commodityId,
+      qty: quote.qty,
+      lockedBuyCr: quote.lockedBuyCr,
+      feeCr: quote.feeCr,
+      boughtAt: now,
+      expiresAt: now + FORWARD_SLIP_LAW.windowS,
+    };
+    this.chargeCredits(row.feeCr, 'market:forward-slip');
+    book.open.push(row);
+    const result = { ok: true, duplicate: false, slip: { ...row } };
+    this.bus.emit('economy:forwardSlipBought', { ...row, credits: normalizeCredits(state.player.credits) });
+    return result;
+  },
+
+  /**
+   * The Dump Chute: one jettisoned pod becomes credits at the documented discount and real stock
+   * in the receiving market. Committed under `pod-intake:<intakeId>` so a retry republishes the
+   * receipt instead of paying twice. The physical pod is consumed only when the runtime hands us
+   * a live one and a removal helper.
+   */
+  applyPodIntake(payload) {
+    const state = this.state;
+    const econ = ensureMarketPlayState(state);
+    const p = payload || {};
+    const stationId = typeof p.stationId === 'string' && p.stationId ? p.stationId : this.dockedStationId();
+    const commodityId = typeof p.commodityId === 'string' ? p.commodityId : '';
+    const intakeId = typeof p.intakeId === 'string' && p.intakeId ? p.intakeId : '';
+    const qty = Math.floor(Number(p.qty) || 0);
+    if (!stationId) return { ok: false, reason: 'not_docked' };
+    if (!commodityId || !intakeId) return { ok: false, reason: 'invalid_intake' };
+    if (!(qty >= POD_INTAKE_LAW.minQty) || qty > POD_INTAKE_LAW.maxQty) return { ok: false, reason: 'invalid_qty' };
+    const info = stationInfo(state, stationId);
+    const def = commodityDef(state, commodityId);
+    if (!info || !def) return { ok: false, reason: 'untraded' };
+    const market = state.economy.markets[stationId] || this.ensureMarket(stationId, info.type, info.size);
+    const entry = market && market[commodityId];
+    if (!entry) return { ok: false, reason: 'untraded' };
+    const intents = ensureCommittedIntents(state);
+    const intentKey = 'pod-intake:' + intakeId;
+    const prior = intents[intentKey];
+    const receipt = { intakeId, stationId, commodityId, qty, podId: p.podId != null ? String(p.podId) : null };
+    if (prior) {
+      const prev = prior.receipt || {};
+      if (prev.stationId !== stationId || prev.commodityId !== commodityId || prev.qty !== qty) {
+        return { ok: false, reason: 'receipt_conflict' };
+      }
+      const settled = prior.result || {};
+      this.bus.emit('economy:podIntakeAccepted', { ...prev, valueCr: settled.valueCr || 0, duplicate: true });
+      return { ok: true, duplicate: true, ...settled };
+    }
+    if (!this._consumeIntakePod(receipt.podId)) return { ok: false, reason: 'pod_missing' };
+    const unitPriceCr = Math.max(0, Number(entry.lastSell != null ? entry.lastSell : entry.sell) || 0);
+    const valueCr = podIntakeValueCr({ unitPriceCr, qty });
+    const result = { ok: true, intakeId, stationId, commodityId, qty, valueCr };
+    // Commit before any credit/stock write so a re-entrant retry observes the settled receipt.
+    intents[intentKey] = { receipt: { ...receipt }, result: { ...result } };
+    this._notePodIntake(stationId);
+    this.grantCredits(valueCr, 'market:pod-intake');
+    this.applyStockPressure(stationId, commodityId, 'sell', qty);
+    econ.podIntakeReceipts.push({ ...receipt, valueCr, at: Number(state.simTime) || 0 });
+    if (econ.podIntakeReceipts.length > POD_INTAKE_LAW.maxAccepted) {
+      econ.podIntakeReceipts.splice(0, econ.podIntakeReceipts.length - POD_INTAKE_LAW.maxAccepted);
+    }
+    this.bus.emit('economy:podIntakeAccepted', { ...result, duplicate: false });
+    this.bus.emit('toast', {
+      text: `Dump Chute — ${qty}u ${def.name} taken at ${Math.round(POD_INTAKE_LAW.payFrac * 100)}% of dock rate, ${valueCr} cr`,
+      kind: 'info', ttl: 5,
+    });
+    return { ...result, duplicate: false };
+  },
+
+  /**
+   * The Dump Chute's physical door: a deliberately released jettisoned pod at a berth is handed
+   * to the intake owner through the same `cargo:podIntake` boundary other callers use, under a
+   * deterministic intakeId so a replayed rating can never pay twice. The berth is the docked
+   * station when docked, else the nearest live station within the chute's reach of the pod.
+   */
+  _routeDeliberateReleaseToChute(rating) {
+    if (!rating || rating.deliberate !== true) return;
+    const state = this.state;
+    const entities = state.entities;
+    const pod = entities && typeof entities.get === 'function'
+      ? (entities.get(rating.targetId) ?? entities.get(Number(rating.targetId)))
+      : null;
+    const data = pod && pod.data;
+    if (!pod || pod.alive === false || !data || data.jettisonedCargo !== true) return;
+    const commodityId = typeof data.commodityId === 'string' ? data.commodityId : '';
+    const qty = Math.floor(Number(data.amount) || 0);
+    if (!commodityId || qty <= 0) return;
+    const reach2 = POD_INTAKE_LAW.reachWU * POD_INTAKE_LAW.reachWU;
+    const dist2To = (e) => {
+      if (!e || !e.pos || !pod.pos) return Infinity;
+      const dx = e.pos.x - pod.pos.x;
+      const dz = e.pos.z - pod.pos.z;
+      return dx * dx + dz * dz;
+    };
+    let stationId = null;
+    let bestD2 = reach2;
+    const list = typeof entities.values === 'function' ? entities.values() : (state.entityList || []);
+    const stations = [];
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const id = (e.data && e.data.stationId) || e.stationId;
+      if (!id || !stationInfo(state, id)) continue;
+      stations.push({ e, id });
+    }
+    // The docked berth counts while the pod is inside its chute reach; a remembered berth after
+    // undock must not credit a pod slung halfway across the sector.
+    const docked = this.dockedStationId();
+    if (docked) {
+      const dockEntity = stations.find((s) => s.id === docked);
+      if (!dockEntity || dist2To(dockEntity.e) <= reach2) stationId = docked;
+    }
+    if (!stationId && pod.pos) {
+      for (const s of stations) {
+        const d2 = dist2To(s.e);
+        if (d2 < bestD2 || (d2 === bestD2 && stationId && s.id < stationId)) { stationId = s.id; bestD2 = d2; }
+      }
+    }
+    if (!stationId) return;
+    // occupantGeneration names this physical instance — slot ids recycle after removal, and a
+    // recycled id must never read as the pod that already paid.
+    this.bus.emit('cargo:podIntake', {
+      intakeId: `dumpchute:${pod.id}:${Number.isSafeInteger(pod.occupantGeneration) ? pod.occupantGeneration : 0}`,
+      podId: pod.id,
+      stationId,
+      commodityId,
+      qty,
+    });
+  },
+
+  /** Consume the physical pod when the runtime can prove it exists. Headless harnesses accept. */
+  _consumeIntakePod(podId) {
+    if (!podId) return true;
+    const remove = this.helpers && this.helpers.removeEntity;
+    if (typeof remove !== 'function') return true;
+    const entities = this.state.entities;
+    // Receipts carry String(podId) for stable identity; the live Map is keyed by the real id.
+    const entity = entities && typeof entities.get === 'function'
+      ? (entities.get(podId) ?? entities.get(Number(podId)))
+      : null;
+    if (!entity) return false;
+    remove(entity.id != null ? entity.id : podId, { immediate: true });
+    return true;
+  },
+
+  /** Auditor Penn notes one chute dump at this berth; his next sweep is likelier. */
+  _notePodIntake(stationId) {
+    const econ = ensureMarketPlayState(this.state);
+    const byStation = econ.auditorPenn.byStation;
+    const now = Number(this.state.simTime) || 0;
+    const row = byStation[stationId] || (byStation[stationId] = { tally: 0, lastDumpAt: now });
+    if (now - Number(row.lastDumpAt) > MARKET_AUDIT_LAW.tallyWindowS) row.tally = 0;
+    row.tally = Math.max(0, Math.floor(Number(row.tally) || 0)) + 1;
+    row.lastDumpAt = now;
+    this.bus.emit('economy:auditorTally', {
+      stationId, tally: row.tally, scanMult: auditorScanMultiplier(row.tally),
+    });
+  },
+
+  /** Penn's live lead at a berth (0 when nothing was dumped inside his window). */
+  auditorTally(stationId) {
+    const econ = ensureMarketPlayState(this.state);
+    const row = stationId ? econ.auditorPenn.byStation[stationId] : null;
+    if (!row) return 0;
+    const now = Number(this.state.simTime) || 0;
+    if (now - Number(row.lastDumpAt) > MARKET_AUDIT_LAW.tallyWindowS) return 0;
+    return Math.max(0, Math.floor(Number(row.tally) || 0));
+  },
+
+  /** The scan chance runScan will actually use — Penn's lead folded in, clamped to a certainty. */
+  auditorScanChance(p) {
+    const opts = p || {};
+    const stationId = opts.stationId || this.dockedStationId();
+    const mult = auditorScanMultiplier(this.auditorTally(stationId));
+    return clamp01(scanChance({ security: opts.security, cloak: opts.cloak, hot: opts.hot }) * mult);
+  },
+
+  /** One real arrival: settle every open share and slip pinned to that hull and berth. */
+  _settleFreightArrival(intent) {
+    const state = this.state;
+    const econ = ensureMarketPlayState(state);
+    const stationId = intent && intent.stationId;
+    if (!stationId) return;
+    const keys = new Set([intent.freighterId, intent.freighterKey].filter((v) => v != null).map(String));
+    if (!keys.size) return;
+    const dockSeq = Number.isSafeInteger(intent.dockSeq) ? intent.dockSeq : null;
+    const at = Number(state.simTime) || 0;
+    const trades = Array.isArray(intent.trades) ? intent.trades : [];
+    const market = state.economy.markets[stationId] || null;
+    // The purchased lot, not just the hull: a different manifest riding the same freighter is
+    // not the lot the contract named. Lenient only when either side never stamped one.
+    const intentManifestId = intent.manifestId != null ? String(intent.manifestId) : null;
+    const manifestMatch = (row) => !intentManifestId || !row || row.manifestId == null
+      || String(row.manifestId) === intentManifestId;
+    const stillOpen = [];
+    for (const row of econ.convoyShares.open) {
+      if (!row || row.stationId !== stationId || dockSeq == null || row.dockSeq !== dockSeq
+        || (!keys.has(row.freighterId) && !keys.has(row.freighterKey)) || !manifestMatch(row)) {
+        stillOpen.push(row);
+        continue;
+      }
+      const settled = { ...row, outcome: 'arrived', settledAt: at, intentId: intent.intentId || null };
+      econ.convoyShares.settled.push(settled);
+      if (settled.payoutCr > 0) this.grantCredits(settled.payoutCr, 'market:convoy-share:arrival');
+      this.bus.emit('economy:convoyShareSettled', {
+        shareId: settled.id, stationId, freighterKey: settled.freighterKey,
+        outcome: 'arrived', stakeCr: settled.stakeCr, payoutCr: settled.payoutCr,
+      });
+    }
+    econ.convoyShares.open = stillOpen;
+    const slipsOpen = [];
+    for (const row of econ.forwardSlips.open) {
+      if (!row || row.stationId !== stationId || dockSeq == null || row.dockSeq !== dockSeq
+        || !keys.has(row.freighterKey) || !manifestMatch(row)) {
+        slipsOpen.push(row);
+        continue;
+      }
+      const trade = trades.find((t) => t && t.commodityId === row.commodityId) || null;
+      if (!trade) { slipsOpen.push(row); continue; }
+      const entry = market && market[row.commodityId];
+      const arrivalBuyCr = Number(entry && (entry.lastBuy != null ? entry.lastBuy : entry.buy)) || 0;
+      const payoutCr = settleForwardSlip({ lockedBuyCr: row.lockedBuyCr, arrivalBuyCr, qty: row.qty });
+      const settled = { ...row, outcome: 'landed', settledAt: at, arrivalBuyCr, payoutCr, intentId: intent.intentId || null };
+      econ.forwardSlips.settled.push(settled);
+      if (payoutCr > 0) this.grantCredits(payoutCr, 'market:forward-slip:landed');
+      this.bus.emit('economy:forwardSlipSettled', {
+        slipId: settled.id, stationId, freighterKey: settled.freighterKey,
+        commodityId: settled.commodityId, qty: settled.qty,
+        lockedBuyCr: settled.lockedBuyCr, arrivalBuyCr, payoutCr,
+      });
+    }
+    econ.forwardSlips.open = slipsOpen;
+    trimSettledBook(econ.convoyShares, CONVOY_SHARE_LAW.maxSettled);
+    trimSettledBook(econ.forwardSlips, FORWARD_SLIP_LAW.maxSettled);
+  },
+
+  /** One real loss: no arrival payout, and a cold manifest starts spoiling at the berth. */
+  _settleFreightLoss(intent) {
+    const state = this.state;
+    const econ = ensureMarketPlayState(state);
+    const stationId = intent && intent.stationId;
+    const keys = new Set([intent && intent.freighterId, intent && intent.freighterKey]
+      .filter((v) => v != null).map(String));
+    if (!stationId || !keys.size) return;
+    const at = Number(state.simTime) || 0;
+    const intentManifestId = intent.manifestId != null ? String(intent.manifestId) : null;
+    const manifestMatch = (row) => !intentManifestId || !row || row.manifestId == null
+      || String(row.manifestId) === intentManifestId;
+    const lost = [];
+    econ.convoyShares.open = econ.convoyShares.open.filter((row) => {
+      if (!row || row.stationId !== stationId
+        || (!keys.has(row.freighterId) && !keys.has(row.freighterKey)) || !manifestMatch(row)) return true;
+      lost.push({ ...row, outcome: 'lost', settledAt: at, payoutCr: 0 });
+      return false;
+    });
+    for (const row of lost) {
+      econ.convoyShares.settled.push(row);
+      this.bus.emit('economy:convoyShareSettled', {
+        shareId: row.id, stationId, freighterKey: row.freighterKey,
+        outcome: 'lost', stakeCr: row.stakeCr, payoutCr: 0,
+      });
+    }
+    const lostSlips = [];
+    econ.forwardSlips.open = econ.forwardSlips.open.filter((row) => {
+      if (!row || row.stationId !== stationId || !keys.has(row.freighterKey) || !manifestMatch(row)) return true;
+      lostSlips.push({ ...row, outcome: 'lost', settledAt: at, payoutCr: 0 });
+      return false;
+    });
+    for (const row of lostSlips) {
+      econ.forwardSlips.settled.push(row);
+      this.bus.emit('economy:forwardSlipSettled', {
+        slipId: row.id, stationId, freighterKey: row.freighterKey,
+        commodityId: row.commodityId, qty: row.qty, payoutCr: 0, outcome: 'lost',
+      });
+    }
+    trimSettledBook(econ.convoyShares, CONVOY_SHARE_LAW.maxSettled);
+    trimSettledBook(econ.forwardSlips, FORWARD_SLIP_LAW.maxSettled);
+    this._armColdChain(stationId, intent);
+  },
+
+  /** A lost cold manifest spoils this berth's perishables for the documented window. */
+  _armColdChain(stationId, intent) {
+    const state = this.state;
+    const econ = ensureMarketPlayState(state);
+    const ids = new Set();
+    for (const line of (Array.isArray(intent && intent.manifest && intent.manifest.lines) ? intent.manifest.lines : [])) {
+      if (line && line.commodityId) ids.add(line.commodityId);
+    }
+    for (const line of (Array.isArray(intent && intent.pressures) ? intent.pressures : [])) {
+      const cid = line && (line.commodityId || line.good);
+      if (cid) ids.add(cid);
+    }
+    if (intent && intent.primaryCommodityId) ids.add(intent.primaryCommodityId);
+    const cold = [];
+    for (const cid of ids) {
+      if (isColdChainCommodity(commodityDef(state, cid))) cold.push(cid);
+    }
+    if (!cold.length) return;
+    const now = Number(state.simTime) || 0;
+    const prior = econ.coldChain[stationId];
+    const merged = new Set([...(Array.isArray(prior && prior.commodityIds) ? prior.commodityIds : []), ...cold]);
+    econ.coldChain[stationId] = {
+      commodityIds: Array.from(merged).sort(),
+      atSimTime: now,
+      untilSimTime: Math.max(Number(prior && prior.untilSimTime) || 0, now + COLD_CHAIN_LAW.windowS),
+      cause: 'freight_loss',
+      freighterKey: intent.freighterKey || null,
+    };
+    this.bus.emit('economy:coldChainArmed', {
+      stationId,
+      commodityIds: econ.coldChain[stationId].commodityIds.slice(),
+      untilSimTime: econ.coldChain[stationId].untilSimTime,
+    });
+  },
+
+  /** The 5 s market-play sweep: expire contracts, rot cold stock, cool Penn's lead. */
+  _sweepMarketPlay(state) {
+    const econ = ensureMarketPlayState(state);
+    const now = Number(state.simTime) || 0;
+    // 1) contracts the named hull never landed lapse worthless
+    const expire = (book, label) => {
+      const open = [];
+      for (const row of book.open) {
+        if (!row || !(Number(row.expiresAt) > now)) { open.push(row); continue; }
+        const settled = { ...row, outcome: 'expired', settledAt: now, payoutCr: 0 };
+        book.settled.push(settled);
+        this.bus.emit('economy:marketContractExpired', { kind: label, id: row.id, stationId: row.stationId });
+      }
+      book.open = open;
+    };
+    expire(econ.convoyShares, 'convoy-share');
+    expire(econ.forwardSlips, 'forward-slip');
+    trimSettledBook(econ.convoyShares, CONVOY_SHARE_LAW.maxSettled);
+    trimSettledBook(econ.forwardSlips, FORWARD_SLIP_LAW.maxSettled);
+    // 2) cold chain: perishable stock spoils while the chain is broken
+    const market = state.economy.markets || {};
+    for (const stationId of Object.keys(econ.coldChain)) {
+      const row = econ.coldChain[stationId];
+      if (!row || !(Number(row.untilSimTime) > now) || !market[stationId]) {
+        delete econ.coldChain[stationId];
+        continue;
+      }
+      for (const commodityId of (Array.isArray(row.commodityIds) ? row.commodityIds : [])) {
+        const entry = market[stationId][commodityId];
+        if (!entry || !isColdChainCommodity(commodityDef(state, commodityId))) continue;
+        const spoiled = coldChainSpoilQty(entry.stock);
+        if (!(spoiled > 0)) continue;
+        this.applyStockPressure(stationId, commodityId, 'buy', spoiled);
+        this.bus.emit('economy:coldChainSpoiled', {
+          stationId, commodityId, qty: spoiled, untilSimTime: row.untilSimTime,
+        });
+      }
+      if (Object.keys(econ.coldChain).length > COLD_CHAIN_LAW.maxStations) {
+        const oldest = Object.keys(econ.coldChain)
+          .sort((a, b) => (Number(econ.coldChain[a].atSimTime) || 0) - (Number(econ.coldChain[b].atSimTime) || 0))[0];
+        if (oldest) delete econ.coldChain[oldest];
+      }
+    }
+    // 3) Penn's lead cools once his window has passed
+    const byStation = econ.auditorPenn.byStation;
+    for (const stationId of Object.keys(byStation)) {
+      const row = byStation[stationId];
+      if (!row || now - Number(row.lastDumpAt) > MARKET_AUDIT_LAW.tallyWindowS) delete byStation[stationId];
+    }
+  },
+
+  /** Read model the market screen prints: live shares, slips, chute pods, cold chain, Penn. */
+  marketPlayBoard(stationId) {
+    const state = this.state;
+    const econ = ensureMarketPlayState(state);
+    const sid = stationId || this.dockedStationId();
+    if (!sid) return null;
+    const cold = econ.coldChain[sid] || null;
+    const now = Number(state.simTime) || 0;
+    return {
+      stationId: sid,
+      lanes: this.convoyShareLanes(sid),
+      shares: econ.convoyShares.open.filter((row) => row && row.stationId === sid).map((row) => ({ ...row })),
+      slips: econ.forwardSlips.open.filter((row) => row && row.stationId === sid).map((row) => ({ ...row })),
+      settled: econ.convoyShares.settled.concat(econ.forwardSlips.settled)
+        .filter((row) => row && row.stationId === sid)
+        .slice(-4).map((row) => ({ ...row })),
+      podIntake: econ.podIntakeReceipts.filter((row) => row && row.stationId === sid).slice(-6).map((row) => ({ ...row })),
+      coldChain: cold ? {
+        commodityIds: (Array.isArray(cold.commodityIds) ? cold.commodityIds : []).slice(),
+        remainingS: Math.max(0, (Number(cold.untilSimTime) || 0) - now),
+      } : null,
+      auditor: {
+        tally: this.auditorTally(sid),
+        scanMult: auditorScanMultiplier(this.auditorTally(sid)),
+      },
+    };
+  },
+
   quoteTallyThreeCrate(source) {
     const qty=Math.floor(Number(source?.remainingPool?.cmdty_salvage_electronics)||0);
     if(source?.sourceKey!==TALLY_THREE.sourceKey||source.extracted||qty<=0||qty>TALLY_THREE.pool.cmdty_salvage_electronics)return {ok:false,reason:'no-crate-contents'};
@@ -4808,7 +5412,9 @@ export const economy = {
     const factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
     const hotMap = state.player.customsHotUntil || null;
     const hot = hotUntilActive(hotMap, state.simTime, factionId);
-    const pScan = scanChance({ security, cloak, hot });
+    const pScan = this.auditorScanChance({
+      security, cloak, hot, stationId: p.stationId || null,
+    });
     const roll = this._rng();
     if (roll > pScan) {
       if (factionId) this._markFactionGatesHot(factionId);
@@ -5150,6 +5756,12 @@ export const economy = {
     delete state.economy.cargoKillChains;
     delete state.economy.stationOutages;
     delete state.economy.stationConditions;
+    delete state.economy.convoyShares;
+    delete state.economy.forwardSlips;
+    delete state.economy.coldChain;
+    delete state.economy.auditorPenn;
+    delete state.economy.podIntakeReceipts;
+    ensureMarketPlayState(state);
     this._blockadeAnnounced = null;
     delete state.economy.dockSlamLatch;
     this.resetRng();
@@ -5233,6 +5845,30 @@ export const economy = {
     const split = splitStationConditionsForSave(this.state, this.state.simTime);
     if (split.outages) data.stationOutages = split.outages;
     if (split.conditions) data.stationConditions = split.conditions;
+    // R480 market play: only live contracts, live cold chains, live auditor leads, and the chute
+    // receipts a berth still remembers. An untouched run writes no key at all.
+    const play = ensureMarketPlayState(this.state);
+    const playData = {};
+    if (play.convoyShares.open.length || play.convoyShares.settled.length) {
+      playData.convoyShares = {
+        seq: play.convoyShares.seq,
+        open: cloneSaveTree(play.convoyShares.open),
+        settled: cloneSaveTree(play.convoyShares.settled),
+      };
+    }
+    if (play.forwardSlips.open.length || play.forwardSlips.settled.length) {
+      playData.forwardSlips = {
+        seq: play.forwardSlips.seq,
+        open: cloneSaveTree(play.forwardSlips.open),
+        settled: cloneSaveTree(play.forwardSlips.settled),
+      };
+    }
+    if (Object.keys(play.coldChain).length) playData.coldChain = cloneSaveTree(play.coldChain);
+    if (Object.keys(play.auditorPenn.byStation).length) {
+      playData.auditorPenn = { byStation: cloneSaveTree(play.auditorPenn.byStation) };
+    }
+    if (play.podIntakeReceipts.length) playData.podIntakeReceipts = cloneSaveTree(play.podIntakeReceipts);
+    if (Object.keys(playData).length) data.marketPlay = playData;
     return data;
   },
 
@@ -5338,6 +5974,7 @@ export const economy = {
         rawEconAccum);
     }
     econ.marketIntel = data.marketIntel || {};
+    restoreMarketPlayState(this.state, data.marketPlay);
     if (Array.isArray(data.appliedSalvageIntakeReceipts)) {
       econ.appliedSalvageIntakeReceipts = data.appliedSalvageIntakeReceipts;
     } else delete econ.appliedSalvageIntakeReceipts;

@@ -635,14 +635,15 @@ function classifyBaseFailure({ id, command, code, signal, timedOut, stdout, stde
   // — determinism holds — even when both disagree with the expected envelope. That is real
   // verification debt and the exit code cannot see it, so this classifier is intentionally stricter
   // than the process status. Do not "fix" this by letting a zero exit short-circuit it.
-  if (isStaleGolden(structured, text)) {
+  const goldenText = staleGoldenDiagnosticText(stdout, stderr);
+  if (isStaleGolden(structured, goldenText)) {
     return diagnostic(
       'stale_golden',
       'high',
       // Prefer a diff the envelope comparison actually reported. The generic pattern also matches the
       // bare word "baseline", which appears in compare's ordinary success output, so quoting the first
       // match could surface `"baseline": {` as the whole explanation and read like a false positive.
-      matchingEvidence(text, /expectedTraceCount|expectedMetric|drifted|stale|re-?record/i)
+      matchingEvidence(goldenText, /expectedTraceCount|expectedMetric|drifted|stale|re-?record/i)
       || 'candidate runs agree with each other, but the expected envelope contains differences',
     );
   }
@@ -706,6 +707,15 @@ function classifyFlakeEvidence(attempts) {
     passedAttempts,
     failedAttempts,
   };
+}
+
+function staleGoldenDiagnosticText(stdout, stderr) {
+  // TAP names describe the case under test, not observed golden drift. Strip only
+  // stdout label metadata; stderr diagnostics and structured code-zero debt remain.
+  const diagnosticStdout = String(stdout || '').replace(/\r/g, '').split('\n')
+    .filter((line) => !/^\s*(?:#\s*Subtest:|(?:not\s+)?ok\s+\d+(?:\s|$))/.test(line))
+    .join('\n');
+  return `${stderr || ''}\n${diagnosticStdout}`.replace(/\r/g, '').trim();
 }
 
 function isStaleGolden(structured, text) {
@@ -852,7 +862,11 @@ async function writeDiagnosticArtifact(artifactPath, result, stdout, stderr) {
 function summarizeReason({ code, signal, timedOut, stdout, stderr, structured }) {
   if (timedOut) return 'timed out';
   const text = `${stderr || ''}\n${stdout || ''}`.replace(/\r/g, '').trim();
-  if (isStaleGolden(structured, text)) {
+  const goldenText = staleGoldenDiagnosticText(stdout, stderr);
+  if (isStaleGolden(structured, goldenText)) {
+    if (structured?.schema !== 'spaceface.sfSimCompareResult.v1') {
+      return firstMatchingLine(goldenText, /(?:stale|out[- ]of[- ]date|re-?record)/i);
+    }
     const comparison = structured.comparison || {};
     const diffs = Array.isArray(comparison.diffs)
       ? comparison.diffs.map((diff) => `${diff.path || diff.kind}: expected ${diff.expected}, actual ${diff.actual}`).join('; ')

@@ -28,6 +28,13 @@ const LIVED_PLACES = [
   'anomaly_deep', 'planetary_mass',
 ];
 
+const UNPAID_CHOICE_A = new Set([
+  'scene_fare_dodger_chase',           // choice a settles the harbour fee — a debit
+  'scene_manifest_stop_and_search',    // customs inspection assist is not paid work
+  'scene_fog_edge_wait',               // fog-edge inspection assist is not paid work
+]);
+const CHARGED_CHOICE_A = new Set(['scene_fare_dodger_chase']);
+
 function runVignetteChoice(runtime, encounter, spec, choiceId) {
   const choices = (spec && spec.choices) || encounter.choices;
   const timeoutChoice = (spec && spec.timeoutChoice) || encounter.timeoutChoice;
@@ -35,8 +42,8 @@ function runVignetteChoice(runtime, encounter, spec, choiceId) {
   const id = (spec && spec.id) || encounter.id;
   let now = 100;
   let nextId = 1;
-  const calls = { offers: [], grants: [], reps: [], resolved: [], aborts: [] };
-  const state = { encounterDirector: { stats: {} }, entities: new Map() };
+  const calls = { offers: [], grants: [], charges: [], reps: [], resolved: [], aborts: [] };
+  const state = { encounterDirector: { stats: {} }, entities: new Map(), player: { credits: 500 } };
   const live = {
     id: `test:${id}`,
     shapeId: id,
@@ -80,6 +87,7 @@ function runVignetteChoice(runtime, encounter, spec, choiceId) {
         .filter((entity) => entity && entity.type === 'ship');
     },
     grant(amount, reason) { calls.grants.push({ amount, reason }); },
+    charge(amount, reason) { calls.charges.push({ amount, reason }); },
     rep(factionId, delta, reason) { calls.reps.push({ factionId, delta, reason }); },
     resolve(row, outcome) {
       calls.resolved.push(outcome);
@@ -197,7 +205,9 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
     assert.equal(phases.get('say_c').next, 'resolve_c');
     assert.equal(phases.get('resolve_c').verb, 'resolve');
     assert.equal(spec.choices.find((choice) => choice.id === 'c').id, 'c');
-    assert.equal(phases.get('grant_a').amount, 30);
+    assert.equal(phases.get('grant_a').amount, UNPAID_CHOICE_A.has(enc.id) ? 0 : 30);
+    assert.equal(phases.has('cost_a'), CHARGED_CHOICE_A.has(enc.id), `${enc.id} cost phase`);
+    if (CHARGED_CHOICE_A.has(enc.id)) assert.equal(phases.get('cost_a').amount, 30, enc.id);
     assert.equal(phases.get('rep_a').factionId, enc.factionId);
     assert.equal(phases.get('rep_a').delta, 2);
     assert.equal(phases.has('rep_c'), false);
@@ -240,7 +250,10 @@ test('every ambient vignette executes a/b choices and times out through c', () =
       );
 
       if (choiceId === 'a') {
-        assert.deepEqual(result.calls.grants, [{ amount: 30, reason: spec.id }], encounter.id);
+        const expectedGrants = UNPAID_CHOICE_A.has(encounter.id) ? [] : [{ amount: 30, reason: spec.id }];
+        const expectedCharges = CHARGED_CHOICE_A.has(encounter.id) ? [{ amount: 30, reason: spec.id }] : [];
+        assert.deepEqual(result.calls.grants, expectedGrants, encounter.id);
+        assert.deepEqual(result.calls.charges, expectedCharges, encounter.id);
         assert.deepEqual(result.calls.reps, [{
           factionId: spec.factionId,
           delta: 2,

@@ -5,6 +5,7 @@ import { compileAttackSpec } from '../src/combat/attackSpec.js';
 import { createLineage, resetLineageIds } from '../src/combat/attackLineage.js';
 import { handlePayloadSectorTransition, spawnPayloadEntity } from '../src/combat/industrialBeam.js';
 import { createSurfaceContactReceipt } from '../src/core/surfaceContact.js';
+import { stampOccupantGeneration } from '../src/core/entity.js';
 import { createBus } from '../src/core/eventBus.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -271,7 +272,12 @@ test('defect 5: payload sector cleanup removes entityList rows and is wired to s
   const harness = makeHarness({ state: { nextEntityId: 80 } });
   const live = spawnPayloadEntity(harness.state, { pos: { x: 4, z: 5 } });
   assert.equal(harness.state.entityList.some((row) => row && row.id === live.id), true);
-  harness.bus.emit('sector:enter', { sectorId: 'sector-b' });
+  stampOccupantGeneration(harness.state, live);
+  harness.state.world = { enterSerial: 1 };
+  harness.bus.emit('sector:enter', {
+    sectorId: 'sector-b', enterEpoch: 1,
+    payloadGenerationCutoff: harness.state.nextOccupantGeneration,
+  });
   assert.equal(harness.state.entities.has(live.id), false);
   assert.equal(harness.state.entityList.some((row) => row && row.id === live.id), false);
 });

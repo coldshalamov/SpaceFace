@@ -17,6 +17,8 @@ export const STARTUP_RETRY_KEY = 'spaceface.startup-retry-at';
 export const STARTUP_RETRY_DELAY_MS = 1_200;
 
 const SUMMARY_LIMIT = 140;
+const PROBE_CONCURRENCY = 8;
+const PROBE_BUDGET_MS = 20_000;
 
 /** One short line naming the failure, safe to put on screen. */
 export function summarizeStartupError(error) {
@@ -83,4 +85,81 @@ export function presentStartupFailure({
     return 'retrying';
   }
   return 'failed';
+}
+
+// ---- Dead-end diagnosis -----------------------------------------------------
+//
+// The rejected import's SyntaxError names a token but never the file, so "Unexpected token ':'"
+// alone has sent repair into a 2,000-module tree twice. On the terminal failure — never on the
+// success path, and never inside the retry window — we re-parse each warmed module ourselves
+// and put the filename on screen. Every failure mode degrades to the plain message.
+
+async function defaultFetchText(href) {
+  try {
+    const response = await fetch(href);
+    return response.ok ? await response.text() : null;
+  } catch { return null; } // a server that cannot answer cannot be diagnosed either
+}
+
+// Re-parse ONE module's own text by importing it as a blob and returning whatever it threw.
+// A malformed file throws SyntaxError; a healthy file's './relative' and bare imports cannot
+// resolve under a blob: URL, so it throws TypeError instead — and unresolvable imports mean
+// nothing from the file ever evaluates. The SyntaxError call is made by the caller.
+async function defaultTryParse(sourceText) {
+  const url = URL.createObjectURL(new Blob([sourceText], { type: 'text/javascript' }));
+  try {
+    await import(/* @vite-ignore */ url);
+    return null;
+  } catch (error) {
+    return error;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Fetch and re-parse candidate module URLs, returning [{ href, message }] for each file V8
+ * rejects. Bounded by `budgetMs` of wall clock so a dying server cannot hang the failure
+ * screen; callers inject fetchText/tryParse/nowMs in tests.
+ */
+export async function findBrokenModules({
+  hrefs, fetchText = defaultFetchText, tryParse = defaultTryParse,
+  budgetMs = PROBE_BUDGET_MS, nowMs = () => Date.now(),
+} = {}) {
+  const list = [...new Set(hrefs || [])];
+  const culprits = [];
+  const startedAt = nowMs();
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < list.length && nowMs() - startedAt < budgetMs) {
+      const href = list[cursor++];
+      const text = await fetchText(href);
+      if (text == null) continue;
+      const error = await tryParse(text);
+      if (error instanceof SyntaxError) culprits.push({ href, message: summarizeStartupError(error) });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PROBE_CONCURRENCY, list.length) }, worker));
+  return culprits;
+}
+
+/** The module URLs worth probing: every warmed module plus the game entry itself. */
+export function startupProbeHrefs(doc) {
+  if (!doc || typeof doc.querySelectorAll !== 'function') return [];
+  const hrefs = [...doc.querySelectorAll('link[rel="modulepreload"]')]
+    .map((link) => link.getAttribute('href')).filter(Boolean);
+  if (!hrefs.includes('./src/main.js')) hrefs.unshift('./src/main.js');
+  return hrefs;
+}
+
+/** Put the culprit file on the dead-end screen after the fact; a no-op when diagnosis found none. */
+export function annotateStartupFailure({ overlay, culprits, summary } = {}) {
+  if (!overlay || !culprits || !culprits.length) return false;
+  const detail = overlay.querySelector('[data-loading-detail]');
+  if (!detail) return false;
+  const first = culprits[0];
+  const more = culprits.length > 1 ? ` (+${culprits.length - 1} more)` : '';
+  detail.textContent = 'Reload to retry. Your saved games have not been changed. '
+    + `(${first.href}: ${first.message || summary || 'syntax error'}${more})`;
+  return true;
 }

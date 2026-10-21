@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "orbit",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "radiation field does not get quieter if you boost.",
+      "line": "Full burn changes the distance, not how radiation field sounds.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 9,
+      "seconds": 4,
       "motion": "orbit",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "VAEL: Holding. This does not hurry.",
+      "line": "VAEL: Holding. The count finishes when it finishes.",
       "channel": "info",
       "next": "offer"
     },
@@ -150,12 +150,19 @@ const spec = {
       "verb": "say",
       "line": "Count cleared. The gasket crossed radiation field under your name.",
       "channel": "info",
+      "next": "cost_a"
+    },
+    {
+      "id": "cost_a",
+      "verb": "cost",
+      "amount": 36,
+      "reason": "lived_radiation_field_toll_vael_follow_on",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 36,
+      "amount": 0,
       "reason": "lived_radiation_field_toll_vael_follow_on",
       "next": "rep_a"
     },

@@ -9,20 +9,47 @@
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
-import { droneBayCapacityForState, normalizeAutomationRecordId } from '../../systems/automation.js';
+import { droneBayCapacityForState, droneRecoveryCost, normalizeAutomationRecordId, passiveCapPerMinForTier } from '../../systems/automation.js';
 import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { laneInputWrite } from '../../core/simLaneCommands.js';
 import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
 import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
+import { SECTORS } from '../../data/sectors.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+const STATION_NAMES = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
+
+/** Earnings are ceilings on one shared bucket; depot receipts settle physical throughput. */
+export function describeDroneEarnings(state, assetOrDef = {}) {
+  const def = DRONES.find((d) => d.id === (assetOrDef.defId || assetOrDef.id)) || assetOrDef;
+  const grossPerMin = (def.mineRate || 0) * 60 * DRONE_DISPLAY_ORE_VALUE * Math.max(1, assetOrDef.count || 1);
+  const capPerMin = passiveCapPerMin(state);
+  if (assetOrDef.program?.templateId === 'mine_to_depot') {
+    return { settlement: 'throughput', grossPerMin, capPerMin, cappedPerMin: null, text: 'Depot sales · settled at the actual sale receipt' };
+  }
+  const cappedPerMin = Math.min(grossPerMin, capPerMin);
+  return { settlement: 'passive', grossPerMin, capPerMin, cappedPerMin,
+    text: `Up to ~${Math.round(cappedPerMin)} cr/min capped · shared ceiling, before upkeep` };
+}
+
+function droneRecoveryText(state, drone) {
+  if (!drone.recovery) return '';
+  const station = STATION_NAMES.get(drone.recovery.stationId);
+  if (drone.recovery.delivered) {
+    return `Stranded Drone — delivered${station ? ` to ${station}` : ''}. Waiting for payment: ${droneRecoveryCost(state, drone).totalCr} cr for fuel and unpaid upkeep.`;
+  }
+  return station
+    ? `Stranded Drone — tow to ${station}. Fuel and unpaid upkeep are charged on recovery.`
+    : 'Stranded Drone — Tow to a station. Fuel and unpaid upkeep are charged on recovery.';
+}
 
 /** Escape a restored automation identity before placing it in an HTML data-ref attribute. */
 export function automationRecordRefAttr(value, fallback = '') {
@@ -1160,6 +1187,8 @@ export const automationScreen = {
       for (const d of a.drones || []) {
         const program = d.program && d.program.templateId;
         parts.push(d.id, d.defId, d.status, Math.round(d.buffer || 0), Math.round(d.fuel || 0), program || '',
+          d.recovery?.reason, d.recovery?.sectorId, d.recovery?.stationId, d.recovery?.delivered,
+          d.recovery ? droneRecoveryCost(st, d).totalCr : '',
           d.operation && d.operation.limitStage || '', d.operation && d.operation.operatingState || '',
           d.operation?.grossUnits, d.operation?.storedUnits, d.operation?.storedCap,
           d.operation?.lastSale?.credited, d.operation?.lastSale?.quantity,
@@ -1312,6 +1341,8 @@ export const automationScreen = {
           .join('');
         const programBadge = curTpl ? ` <span class="au-program-badge">${escapeHtml(programLabel(curTpl))}</span>` : '';
         const programMeta = curTpl ? programMetaText(curTpl) : PROGRAM_OPTIONS[0].meta;
+        const earnings = describeDroneEarnings(this._ctx.state, d);
+        const recoveryText = droneRecoveryText(this._ctx.state, d);
         const readout = curTpl === 'mine_to_depot' ? describeProgrammedMinerOperation(d, def) : null;
         const opsHtml = readout ? `
             <div class="au-miner-ops" data-state="${escapeHtml(readout.state)}" role="img" aria-label="${escapeHtml(readout.accessibleSummary)}">
@@ -1335,7 +1366,7 @@ export const automationScreen = {
             <div class="meta">
               <span>tier ${def.tier}</span>
               <span>mine ${def.mineRate}/s</span>
-              <span>yield ~${fmtCr(estDroneRate(d))}/min gross</span>
+              <span>${escapeHtml(earnings.text)}</span>
               <span>buffer ${Math.round(buf)}/${bufCap} ${miniBar(buf / bufCap)}</span>
               <span>fuel ${miniBar(fuelPct)}</span>
               <span>upkeep ${def.upkeepPerMin}/min</span>
@@ -1345,8 +1376,11 @@ export const automationScreen = {
               <select class="au-program" data-act="assignProgram" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">${programOpts}</select>
             </div>
             ${opsHtml}
+            ${!curTpl ? '<div class="au-note">Bank stored ore on Recall</div>' : ''}
+            ${recoveryText ? `<div class="au-note">${escapeHtml(recoveryText)}</div>` : ''}
           </div>
           ${refuelBtn}
+          ${d.recovery ? `<button class="au-order" data-act="locateDrone" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Locate drone</button>` : ''}
           <button class="au-order" data-act="recall" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Recall</button>`;
         frag.appendChild(card);
       }
@@ -1363,14 +1397,13 @@ export const automationScreen = {
           <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" data-why="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
           <div class="meta">
             <span>mine ${def.mineRate}/s</span>
-            <span>yield ~${fmtCr(estDroneRate(def))}/min gross</span>
+            <span>${escapeHtml(describeDroneEarnings(this._ctx.state, def).text)}</span>
             <span>buffer ${def.bufferCap}</span>
             <span>range ${def.deployRange}</span>
             <span>upkeep ${def.upkeepPerMin}/min</span>
           </div>
           ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first asset: low upkeep, visible in the field, recallable.</div>`}
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" data-why="Focus the drones line on the flow strip" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1602,6 +1635,19 @@ export const automationScreen = {
   // ---- intent dispatch ----------------------------------------------------
   // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
   _onAction(act, ref, kind, extra) {
+    if (act === 'locateDrone') {
+      const ctx = this._ctx;
+      const drone = (ctx.state.automation?.drones || []).find((d) => String(d.id) === String(ref));
+      if (!drone?.recovery) return;
+      const local = drone.recovery.sectorId === ctx.state.world?.currentSectorId
+        ? (drone.entityIds || []).map((id) => ctx.state.entities?.get(id))
+          .find((e) => e && e.alive !== false && e.type === 'drone' && e.data?.groupId === drone.id)
+        : null;
+      if (local) { laneInputWrite(ctx.state, 'player.targetId', local.id); this._close(); }
+      else openGalaxyMap(ctx, { focus: MAP_FOCUS.GALAXY, sectorId: drone.recovery.sectorId,
+        label: 'Stranded Drone', source: 'automation:drone-recovery' });
+      return;
+    }
     // r2 F3: conducting is pure presentation state (the Hand rides a ring); it never emits
     // into the sim. Re-activating the conducted line releases the Hand back to the rail.
     if (act === 'conduct') {
@@ -1977,12 +2023,7 @@ function automationState(state) {
 
 function passiveCapPerMin(state) {
   const a = automationState(state);
-  const bal = a.balance || AUTO_BALANCE;
-  const ref = bal.activeRefByTier || AUTO_BALANCE.activeRefByTier;
-  const tier = playerTierFromState(state);
-  const active = ref[Math.min(tier, ref.length) - 1] || ref[0] || 0;
-  const frac = bal.passiveCapFrac != null ? bal.passiveCapFrac : 0.45;
-  return active * frac;
+  return passiveCapPerMinForTier(a.balance || AUTO_BALANCE, playerTierFromState(state));
 }
 
 function playerTierFromState(state) {

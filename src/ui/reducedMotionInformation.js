@@ -13,7 +13,7 @@ export const REDUCED_MOTION_INFORMATION_CUES = Object.freeze([
     id: 'telegraphs',
     sourceEvent: 'ai:telegraph',
     vestibular: ['tell pulse animation'],
-    information: 'FLYBY / TETHER / CHARGE tell chip and off-screen direction',
+    information: 'FLYBY / TETHER / CHARGE / LAUNCH / INCOMING tell chip and off-screen direction',
     owner: 'src/ui/hud.js',
   }),
   Object.freeze({

@@ -742,14 +742,32 @@ export const travelLanes = {
       this._boostSlingBody(player, dt, cruise);
       this._applySlingDriveCeiling(state, cruise);
     } else if (inside) {
+      const thrownBefore = player.id != null && this._slingThrownIds.has(player.id);
       this._flingSlingBody(player, dt, resolveCombatCruise(player, state));
+      if (player.id != null && !thrownBefore && this._slingThrownIds.has(player.id)) {
+        this._emitSlingPass(player, false);
+      }
     } else {
       if (player.id != null) this._slingThrownIds.delete(player.id);
-      if (this._slingPlayerActive) this._seedSlingEarnedCap(state, player);
+      if (this._slingPlayerActive) {
+        this._seedSlingEarnedCap(state, player);
+        this._emitSlingPass(player, true);
+      }
     }
     this._slingPlayerActive = active;
     this._updateSlingThrows(dt, state, player);
     this._updateSlingHauler(dt, state, player);
+  },
+
+  /** One ring traversal = one event. Aligned riders get it on exit (the boost just
+   *  committed to momentum); off-axis bodies get it the tick the throw catches them. */
+  _emitSlingPass(player, aligned) {
+    this._emit('travelLanes:slingRingPass', {
+      ringId: CERES_SLING_RING.id,
+      sectorId: CERES_SLING_RING.sectorId,
+      aligned,
+      exitSpeedWuS: bodyPlanarSpeed(player),
+    });
   },
 
   _applySlingDriveCeiling(state, cruise) {

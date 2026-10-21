@@ -431,6 +431,84 @@ export function fieldDeployFor(fittings) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// CAPABILITY DOORS — a revisitNeed row on an authored one-off is a door the live fit either opens
+// or does not. The scan layer quotes this verdict to tell the player "not yet" / "ready"; it must
+// read the same law the fit screen prints, never a second table, so each kind just calls the verb
+// above and compares against the authored bar.
+//
+// `need` shapes:
+//   tow   { kind:'tow',   massT }        — the heaviest partner mass the line can put under way
+//   slam  { kind:'slam',  speedWuPerS }  — the closing speed this hull walks away from
+//   line  { kind:'line',  speedWuPerS }  — the swing speed the fitted line is rated to carry
+//   field { kind:'field', fieldKind?, radiusWu? } — a field in the water, optionally of a kind/size
+// A bare `{ massT }` (no kind) is a legacy tow door — the form the first revisitNeed rows used.
+// ---------------------------------------------------------------------------------------------
+
+export const REVISIT_DOOR_KINDS = Object.freeze(['tow', 'slam', 'line', 'field']);
+
+export function revisitDoorState({ derived, fittings } = {}, need) {
+  if (!need || typeof need !== 'object') return null;
+  const kind = typeof need.kind === 'string' && need.kind
+    ? need.kind
+    : (finite(need.massT, 0) > 0 ? 'tow' : null);
+  switch (kind) {
+    case 'tow': {
+      const required = finite(need.massT, 0);
+      if (!(required > 0)) return null;
+      const have = towClassMassFor(derived);
+      return { kind, required, have, ready: have + 1e-9 >= required };
+    }
+    case 'slam': {
+      const required = finite(need.speedWuPerS, 0);
+      if (!(required > 0)) return null;
+      const slam = slamSurvivalSpeedFor(derived);
+      // `unbreakable` is a real verdict of the crumple law, not a shortcut: a hull the law can
+      // never total at any speed opens every slam door.
+      return {
+        kind, required,
+        have: slam.speedWuPerS,
+        unbreakable: slam.unbreakable === true,
+        ready: slam.unbreakable === true || slam.speedWuPerS + 1e-9 >= required,
+      };
+    }
+    case 'line': {
+      const required = finite(need.speedWuPerS, 0);
+      if (!(required > 0)) return null;
+      const load = lineLoadSpeedFor(derived);
+      const combatSpeed = finite(derived && derived.propulsion && derived.propulsion.combatSpeed, 0);
+      const reachable = combatSpeed > 0 ? load.speedWuPerS <= combatSpeed * 4 : true;
+      // A line whose rating is past anything the hull can reach is the verbs row's "holds any
+      // swing you can build": no authored swing requirement can refuse it — but a door fails
+      // closed without a real fit to quote (derived null → not yet, never a phantom ready).
+      return {
+        kind, required,
+        have: load.speedWuPerS,
+        reachable,
+        ready: derived != null && (!reachable || load.speedWuPerS + 1e-9 >= required),
+      };
+    }
+    case 'field': {
+      const fieldKind = typeof need.fieldKind === 'string' && need.fieldKind ? need.fieldKind : null;
+      const requiredRadiusWu = finite(need.radiusWu, 0);
+      const field = fieldDeployFor(fittings);
+      const ready = field.available === true
+        && (!fieldKind || field.kind === fieldKind)
+        && (!(requiredRadiusWu > 0) || field.radiusWu + 1e-9 >= requiredRadiusWu);
+      return {
+        kind,
+        required: fieldKind,
+        requiredRadiusWu,
+        requiredLabel: (fieldKind && FIELD_KIND_WORD[fieldKind]) || 'a field',
+        have: field,
+        ready,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
 // The four sentences.
 // ---------------------------------------------------------------------------------------------
 

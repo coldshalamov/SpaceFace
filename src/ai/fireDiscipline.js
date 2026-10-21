@@ -1,4 +1,5 @@
 import { stableId } from './contracts.js';
+import { crossfireDisciplineFor } from './temperament.js';
 import {
   OPTIC_MAX_FAMILY,
   OPTIC_MAX_GENERATION,
@@ -19,7 +20,7 @@ const CLEAR = Object.freeze({ clear: true, blockerId: null, reason: null });
  * the finite segment from the shooter to the target range against allied ship/drone hulls. It does
  * not change targeting or maneuver state, so an obstructed pilot holds fire instead of jittering.
  */
-export function assessFriendlyFireLane({ shooter, target, aimAngle, entities, corridor = FRIENDLY_FIRE_CORRIDOR_WU } = {}) {
+export function assessFriendlyFireLane({ shooter, target, aimAngle, entities, corridor = FRIENDLY_FIRE_CORRIDOR_WU, seed = 1 } = {}) {
   if (!shooter || !shooter.pos || !target || !target.pos || !Number.isFinite(aimAngle)) return CLEAR;
   const dx = target.pos.x - shooter.pos.x;
   const dz = target.pos.z - shooter.pos.z;
@@ -32,10 +33,19 @@ export function assessFriendlyFireLane({ shooter, target, aimAngle, entities, co
     : (entities && typeof entities.values === 'function' ? entities.values() : []);
   let blocker = null;
   let bestAlong = Infinity;
+  // AL-FIGHT-1: a reckless shooter only yields the lane to its OWN wingmates. Resolved once,
+  // lazily, and only when an ally has already passed the team check.
+  let reckless = null;
   for (const ally of source) {
     if (!ally || ally.alive === false || ally.id === shooter.id || ally.id === target.id) continue;
     if (ally.type !== 'ship' && ally.type !== 'drone') continue;
     if (ally.team == null || ally.team !== shooter.team) continue;
+    if (reckless === null) reckless = crossfireDisciplineFor(shooter, seed) === 'reckless';
+    if (reckless) {
+      const shooterSquad = shooter.data && shooter.data.ai && shooter.data.ai.squadId;
+      const allySquad = ally.data && ally.data.ai && ally.data.ai.squadId;
+      if (shooterSquad == null || allySquad !== shooterSquad) continue;
+    }
     const ax = ally.pos.x - shooter.pos.x;
     const az = ally.pos.z - shooter.pos.z;
     const along = ax * dirX + az * dirZ;

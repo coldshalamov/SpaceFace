@@ -278,12 +278,58 @@
     }
   ],
   "assetId": "sf.render.red-kite",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-port-sail-0.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-port-sail-0",
+      "reference": "COLLISION_RED_KITE_PORT_SAIL_0"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-port-sail-1.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-port-sail-1",
+      "reference": "COLLISION_RED_KITE_PORT_SAIL_1"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-port-sail-2.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-port-sail-2",
+      "reference": "COLLISION_RED_KITE_PORT_SAIL_2"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-port-spar.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-port-spar",
+      "reference": "COLLISION_RED_KITE_PORT_SPAR"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-pressure-dart.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-pressure-dart",
+      "reference": "COLLISION_RED_KITE_PRESSURE_DART"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-starboard-drive.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-starboard-drive",
+      "reference": "COLLISION_RED_KITE_STARBOARD_DRIVE"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-starboard-spar.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-starboard-spar",
+      "reference": "COLLISION_RED_KITE_STARBOARD_SPAR"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-stern-port.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-stern-port",
+      "reference": "COLLISION_RED_KITE_STERN_PORT"
+    },
+    {
+      "id": "sf.render.red-kite.node.collision-red-kite-stern-starboard.collision",
+      "nodeId": "sf.render.red-kite.node.collision-red-kite-stern-starboard",
+      "reference": "COLLISION_RED_KITE_STERN_STARBOARD"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6f9a7f6019004155cf257183943125081229b57ae3743a9f455f245c7b7a5d2a",
+  "contentHash": "1daf022610a91746e58c9629ebb0cb7d7c2ad44966bd6e289c890da741c6a49c",
   "dynamicGroups": [
     {
       "id": "sf.render.red-kite.node.lod0-motion-red-kite-clamp-port-armor.dynamic",
@@ -336,7 +382,7 @@
       "indexCount": 852,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_PORT_SAIL_0",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-port-sail-0",
       "primitiveIndex": 0,
@@ -361,7 +407,7 @@
       "indexCount": 708,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_PORT_SAIL_1",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-port-sail-1",
       "primitiveIndex": 0,
@@ -386,7 +432,7 @@
       "indexCount": 708,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_PORT_SAIL_2",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-port-sail-2",
       "primitiveIndex": 0,
@@ -411,7 +457,7 @@
       "indexCount": 600,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_PORT_SPAR",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-port-spar",
       "primitiveIndex": 0,
@@ -436,7 +482,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_PRESSURE_DART",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-pressure-dart",
       "primitiveIndex": 0,
@@ -461,7 +507,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_STARBOARD_DRIVE",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-starboard-drive",
       "primitiveIndex": 0,
@@ -486,7 +532,7 @@
       "indexCount": 660,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_STARBOARD_SPAR",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-starboard-spar",
       "primitiveIndex": 0,
@@ -511,7 +557,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_STERN_PORT",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-stern-port",
       "primitiveIndex": 0,
@@ -536,7 +582,7 @@
       "indexCount": 900,
       "indexed": true,
       "materialHash": null,
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "meshName": "COLLISION_RED_KITE_STERN_STARBOARD",
       "nodeId": "sf.render.red-kite.node.collision-red-kite-stern-starboard",
       "primitiveIndex": 0,
@@ -943,7 +989,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_PORT_SAIL_0",
       "nodeName": "COLLISION_RED_KITE_PORT_SAIL_0",
       "nodePath": [
@@ -992,7 +1038,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_PORT_SAIL_1",
       "nodeName": "COLLISION_RED_KITE_PORT_SAIL_1",
       "nodePath": [
@@ -1041,7 +1087,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_PORT_SAIL_2",
       "nodeName": "COLLISION_RED_KITE_PORT_SAIL_2",
       "nodePath": [
@@ -1090,7 +1136,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_PORT_SPAR",
       "nodeName": "COLLISION_RED_KITE_PORT_SPAR",
       "nodePath": [
@@ -1139,7 +1185,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_PRESSURE_DART",
       "nodeName": "COLLISION_RED_KITE_PRESSURE_DART",
       "nodePath": [
@@ -1188,7 +1234,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_STARBOARD_DRIVE",
       "nodeName": "COLLISION_RED_KITE_STARBOARD_DRIVE",
       "nodePath": [
@@ -1237,7 +1283,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_STARBOARD_SPAR",
       "nodeName": "COLLISION_RED_KITE_STARBOARD_SPAR",
       "nodePath": [
@@ -1286,7 +1332,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_STERN_PORT",
       "nodeName": "COLLISION_RED_KITE_STERN_PORT",
       "nodePath": [
@@ -1335,7 +1381,7 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "non-render",
       "mergeBoundary": "COLLISION_RED_KITE_STERN_STARBOARD",
       "nodeName": "COLLISION_RED_KITE_STERN_STARBOARD",
       "nodePath": [
@@ -2349,7 +2395,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "2463b999723293ac7417baabff1ff7c0b92e72b282a41ed328f8286a5cbfc02a"
+      "sha256": "9b3e83e81daa60620048cd957b11ef105acd57e176e8b43796cd109632c53364"
     },
     "sourceGlb": {
       "bytes": 556124,
@@ -2357,8 +2403,8 @@
       "uri": "red_kite.glb"
     },
     "sourceManifest": {
-      "bytes": 270903,
-      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
+      "bytes": 272571,
+      "sha256": "b796923ac0cda2d39962d0ee0690b7383a24e0cc9c621e4395d4fd6c3d1597cd",
       "uri": "pilots.json"
     }
   },
@@ -3340,7 +3386,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/red_kite.glb"
   },
-  "runtimeHash": "d6228fea70775d478f67ebc6db7020b0d6ddf5809b7e8cdf3ed836b1d40653fa",
+  "runtimeHash": "e7b64e81bb7ec401bc77495c20ec30e243792cf542cad903e8a300f6d880dbb6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

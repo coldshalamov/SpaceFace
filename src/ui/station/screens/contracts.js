@@ -125,6 +125,20 @@ export function missionBoardDispatchLabel(state, stationId, offerCount = 0) {
 
 const SECTOR_NAME = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
 
+/** Row 458 — where a first-hour contract goes, as a short tag. Presentation only; '' when unknown. */
+export function firstHourOfferDestinationTag(state, offer) {
+  if (!firstHourBoardOfferPresentation(state, offer)) return '';
+  const params = (offer && offer.params) || {};
+  const stationRec = STATION_DEF.get(offer.destStationId || params.destStationId);
+  const sectorId = offer.destSectorId || params.destSectorId;
+  const sectorName = sectorId ? SECTOR_NAME.get(sectorId) : null;
+  const here = state && state.world && state.world.currentSectorId;
+  if (stationRec && stationRec.name) {
+    return sectorName && sectorId !== here ? `→ ${stationRec.name} · ${sectorName}` : `→ ${stationRec.name}`;
+  }
+  return sectorName ? `→ ${sectorName}` : '';
+}
+
 // A live mission carries destStationId / destSectorId, not a name: resolve the berth, then the
 // sector, before any fallback. (The row used to print the raw sector id, or "Destination".)
 function destName(m) {
@@ -662,12 +676,13 @@ export function createContractsScreen(ctx) {
         const r = risk(m);
         const filing = finalDispositionPresentation(m);
         const firstHour = firstHourBoardOfferPresentation(state, m);
+        const destTag = firstHour ? firstHourOfferDestinationTag(state, m) : '';
         // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise a
         // featured day's premium mark outranks the best-next pick. Never more than one, never a reorder.
         const badge = firstHour ? firstHour.label
           : (m.featured ? 'FEATURED'
             : (recommended.label && recommended.missionId === id ? recommended.label : ''));
-        const badgePrefix = badge ? `${badge} · ` : '';
+        const badgePrefix = badge ? `${badge}${destTag ? ' ' + destTag : ''} · ` : '';
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
           : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
@@ -677,7 +692,7 @@ export function createContractsScreen(ctx) {
             `<span class="sx-ct-row__crest" aria-hidden="true">${crestHtml(m.factionId)}</span>` +
             // The badge sits in the row's top pad zone, above the title — emitted as a row child,
             // not inside the title: the title's overflow:hidden would clip it entirely.
-            (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}</span>` : '') +
+            (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>` : '') +
             `<span class="k-row__name sx-ct-row__title">` +
               `${escapeHtml(m.title || typeLabel(m.type))}` +
             `</span>` +

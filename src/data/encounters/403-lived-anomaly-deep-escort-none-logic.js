@@ -60,7 +60,7 @@ const spec = {
     {
       "id": "move",
       "verb": "motion",
-      "seconds": 7,
+      "seconds": 2,
       "motion": "orbit",
       "next": "a0"
     },
@@ -74,7 +74,7 @@ const spec = {
     {
       "id": "p0",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a1"
     },
@@ -88,7 +88,7 @@ const spec = {
     {
       "id": "p1",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a2"
     },
@@ -102,35 +102,35 @@ const spec = {
     {
       "id": "p2",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "a3"
     },
     {
       "id": "a3",
       "verb": "say",
-      "line": "anomaly deep does not get quieter if you boost.",
+      "line": "Boost all you like; anomaly deep keeps its own volume.",
       "channel": "info",
       "next": "p3"
     },
     {
       "id": "p3",
       "verb": "motion",
-      "seconds": 5,
+      "seconds": 1,
       "motion": "orbit",
       "next": "work"
     },
     {
       "id": "work",
       "verb": "motion",
-      "seconds": 9,
+      "seconds": 4,
       "motion": "orbit",
       "next": "work_line"
     },
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Holding. This does not hurry.",
+      "line": "BUOY: Holding. The lane keeps its own clock.",
       "channel": "info",
       "next": "offer"
     },

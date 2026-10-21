@@ -7,6 +7,7 @@ import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
+import { captureFlightPicturePair, observeGraphicsMessages } from './lib/flightPictureDiagnostics.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -19,12 +20,14 @@ const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
 let page = null;
+let graphicsObserver = null;
 
 try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page, { playerStoreMounted: false });
+  graphicsObserver = observeGraphicsMessages(page);
 
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
   // Boot liveness on a contended runner: cooperative startup yields, so the SF surface can take
@@ -249,10 +252,19 @@ try {
     'live cold open should not contain a hostile target lock on the player');
   assert.deepEqual(hostileShips.filter((ship) => ship.firing || ship.fireGroup != null), [],
     'live cold open should not contain a hostile firing intent during the first window');
+  // Preserve the actual game camera/HUD after actor and safety checks, even if
+  // the final console gate fails. Diagnostic only: no DOM, animation or game edits.
+  try {
+    const diagnostic = await captureFlightPicturePair(page, { graphicsMessages: () => graphicsObserver.snapshot() });
+    console.log(`47-A game-camera diagnostic: ${diagnostic.path} (${diagnostic.report.status})`);
+  } catch (error) {
+    console.warn(`47-A camera diagnostic unavailable: ${error?.message || error}`);
+  }
   assert.deepEqual(issues.errorIssues(), [], 'browser cold-open check should not record page errors');
 
   console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);
 } finally {
+  graphicsObserver?.dispose();
   // A wedged page cannot delay owned-browser cleanup indefinitely.
   let cleanupTimer;
   if (page) {

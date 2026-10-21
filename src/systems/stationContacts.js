@@ -2,6 +2,7 @@
 // faction, cargo, credits, heat, missions, or traffic; it records conversations and receipts.
 
 import { COMMODITIES } from '../data/commodities.js';
+import { MODULES } from '../data/modules.js';
 import {
   CONTACT_COUNTER_DEFS,
   createInitialStationContactCounters,
@@ -31,6 +32,7 @@ import {
 } from '../data/dossArchive.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((def) => [def.id, def]));
+const MODULE_BY_ID = new Map(MODULES.map((def) => [def.id, def]));
 const MAX_TRAFFIC_RECEIPTS = 8;
 const MAX_PENDING_VONN_RECEIPTS = 8;
 // Station deed notices (U6): the pocket station keeps the latest notable lane event per
@@ -233,7 +235,10 @@ export const stationContacts = {
     };
     on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
-    on('freight:arrival', (payload = {}) => this._recordFreight(payload, 'arrival'));
+    on('freight:arrival', (payload = {}) => {
+      this._recordFreight(payload, 'arrival');
+      this._noteYuneCleanArrival(payload);
+    });
     on('freight:loss', (payload = {}) => {
       this._recordFreight(payload, 'loss');
       this._recordVonnFreightLoss(payload);
@@ -247,6 +252,9 @@ export const stationContacts = {
     on('survivorPod:delivered', (payload = {}) => this._notePodReceipt(payload, 'delivered'));
     on('survivorPod:rescued', (payload = {}) => this._notePodReceipt(payload, 'rescued'));
     on('encounter:convoyEscorted', (payload = {}) => this._noteConvoyEscort(payload));
+    on('machine:appealAccepted', (payload = {}) => this._noteSuhlClause(payload));
+    on('uniqueWreck:resolved', (payload = {}) => this._noteSennaName(payload));
+    on('module:purchased', (payload = {}) => this._noteZellInstall(payload));
     on('save:restoring', () => this._clearVonnFreightReceipts());
     on('vestaOreCache:resolved', (payload = {}) => {
       if (payload.recordId === 'vesta-ore-cache:shift-end:v1') this._reconcileDossArchive('vesta-resolved');
@@ -276,25 +284,36 @@ export const stationContacts = {
   },
 
   _recordCounterDelta(payload) {
-    const trackerId = String(payload.trackerId || '');
-    const def = CONTACT_COUNTER_DEFS[trackerId];
-    const delta = Math.trunc(Number(payload.delta) || 0);
-    if (!def || !delta) return;
+    if (!payload || typeof payload !== 'object') return;
+    this._applyCounterDelta(payload.trackerId, payload.delta, payload.reason);
+  },
+
+  /**
+   * The one counter writer: mission-owned `stationContact:counterDelta` intents and this
+   * system's own observed-event listeners both land here so every path gets the same def
+   * bounds, the same normalization, and the same `stationContact:counterChanged` receipt.
+   */
+  _applyCounterDelta(trackerId, delta, reason = null) {
+    const id = String(trackerId || '');
+    const def = CONTACT_COUNTER_DEFS[id];
+    const amount = Math.trunc(Number(delta) || 0);
+    if (!def || !amount) return false;
     const previous = ensureCounterBag(this.state);
     const next = normalizeStationContactCounters({
       ...previous,
-      [trackerId]: previous[trackerId] + delta,
+      [id]: previous[id] + amount,
     });
     this.state.player.stationContactCounters = next;
     // G2 witness seam: the bar voice for Dorin/Kell re-derives from the persisted counter bag.
     this._syncWitnessSeamVoice();
     this.bus.emit('stationContact:counterChanged', {
-      trackerId,
+      trackerId: id,
       contactId: def.contactId,
-      previous: previous[trackerId],
-      value: next[trackerId],
-      reason: String(payload.reason || '').slice(0, 96) || null,
+      previous: previous[id],
+      value: next[id],
+      reason: String(reason || '').slice(0, 96) || null,
     });
+    return true;
   },
 
   /** G2: keep the witness-run seam voice a pure function of the persisted counters. */
@@ -489,6 +508,10 @@ export const stationContacts = {
     model.traffic.unshift(rec);
     if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
     this.bus.emit('stationLife:trafficChanged', { ...rec });
+    // RC-18: a pod signed into a medical berth is one more soul Mara's convoy keeps count of.
+    // 'promoted' is only the inbound board notice; the same dedupe that guards the receipt
+    // keeps a replayed delivery from counting twice, and losses never subtract here.
+    if (kind !== 'promoted') this._applyCounterDelta('mara.debt', 1, `survivor-pod:${kind}`);
     return true;
   },
 
@@ -517,6 +540,55 @@ export const stationContacts = {
     if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
     this.bus.emit('stationLife:trafficChanged', { ...rec });
     return true;
+  },
+
+  /**
+   * RC-17: Clerk Yune's sealed ledger is the Helios weigh-point. A clean arrival is one the
+   * tally post counted and the raid ledger never marked lost — traffic stamps 'delivered'
+   * only after this event runs, so a still-'counted' row is the intact one. Ambient hulls
+   * docking untallied and robbed holds limping in both stay off her books. Record-only: no
+   * credits, cargo, heat, or rep move on this path.
+   */
+  _noteYuneCleanArrival(payload) {
+    if (!payload || String(payload.stationId || '') !== 'station_helios') return false;
+    const manifestId = String(payload.manifestId || '');
+    if (!manifestId) return false;
+    const rows = this.state && this.state.traffic && this.state.traffic.heliosFreightTallies;
+    const tally = Array.isArray(rows)
+      ? rows.find((row) => row && row.manifestId === manifestId)
+      : null;
+    if (!tally || tally.disposition !== 'counted') return false;
+    return this._applyCounterDelta('yune.trust', 1, `helios-freight-clean:${manifestId}`);
+  },
+
+  /**
+   * RC-19: every accepted appeal is one more machine clause Dr. Suhl holds a transcript of.
+   * The machine's own 'accepted' status is terminal per incident, so the event is already
+   * once-per-incident. Record-only: nothing else moves on this path.
+   */
+  _noteSuhlClause(payload) {
+    if (!payload || payload.incidentId == null) return false;
+    return this._applyCounterDelta('suhl.clauses', 1, `machine-appeal:${payload.incidentId}`);
+  },
+
+  /**
+   * RC-19: every resolved unique wreck is one more name Senna writes back into the record —
+   * claimed or left whole, the dead get counted either way. Record-only.
+   */
+  _noteSennaName(payload) {
+    if (!payload || payload.wreckId == null) return false;
+    return this._applyCounterDelta('senna.names', 1, `unique-wreck:${payload.wreckId}`);
+  },
+
+  /**
+   * RC-20: Zell's book is illegal installs. A contraband-class module purchase is one line
+   * in it; a legal or merely restricted fit is not work she counts. ships.js stays the
+   * purchase writer — this only observes the event it already emits. Record-only.
+   */
+  _noteZellInstall(payload) {
+    const def = payload && MODULE_BY_ID.get(String(payload.defId || ''));
+    if (!def || (def.legality !== 'contraband' && def.legality !== 'illegal')) return false;
+    return this._applyCounterDelta('zell.work', 1, `module-purchased:${def.id}`);
   },
 
   /**

@@ -340,6 +340,43 @@ function mtFmtTime(s) {
   return `${m}m ${sec < 10 ? '0' : ''}${sec}s`;
 }
 
+// The opening's muted-safe caption: a short tutorial line that shares the objective tracker's
+// secondary line. It never replaces the actionable objective (mtObj) — it only supplements it.
+export function tutorialTrackerCaptionText(state) {
+  if (!state) return '';
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return '';
+  const ob = state.onboarding;
+  if (!ob || ob.active !== true || ob.finished === true) return '';
+  if (state.mode !== 'flight') return '';
+  // The Crucible's sealed HUD keeps the campaign tracker quiet at its owner.
+  if (state.run && state.run.kind === 'survival' && isRunSealed(state)) return '';
+  const now = Number(state.simTime) || 0;
+  const captions = Array.isArray(ob.trackerCaptions) ? ob.trackerCaptions : [];
+  for (const rec of captions) {
+    if (!rec || typeof rec !== 'object') continue;
+    const startAtS = Number(rec.startAtS);
+    const endAtS = Number(rec.endAtS);
+    if (!Number.isFinite(startAtS) || !Number.isFinite(endAtS)) continue;
+    if (typeof rec.text !== 'string' || !rec.text) continue;
+    if (startAtS <= now && now < endAtS) return rec.text;
+  }
+  return '';
+}
+
+export function paintTutorialTrackerCaption(element, state) {
+  const text = tutorialTrackerCaptionText(state);
+  if (!text) {
+    if (element) setDisplay(element, false);
+    return false;
+  }
+  setText(element, text);
+  // The deadline-urgency tone belongs to the objective, never to a tutorial caption.
+  setClass(element, 'sf-mt-urgent', false);
+  setDisplay(element, true);
+  return true;
+}
+
 export function objectiveTravelReadout(state, wp, out = null) {
   const result = out && typeof out === 'object' ? out : {};
   const pos = wp && wp.pos;
@@ -1045,6 +1082,8 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   FLYBY: 'Break the beam',
   TETHER: 'Deny the latch',
   CHARGE: 'Close or break LOS',
+  LAUNCH: 'Mass inbound — move',
+  INCOMING: 'Sidestep or send it back',
 });
 const DOCTRINE_TELL_ICON = Object.freeze({
   // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
@@ -1052,6 +1091,8 @@ const DOCTRINE_TELL_ICON = Object.freeze({
   FLYBY: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
   TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
   CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  LAUNCH: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  INCOMING: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
 });
 // The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
 // `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
@@ -1065,7 +1106,7 @@ const DOCTRINE_TELL_GLYPH_ALIAS = Object.freeze({
   chevron: 'iff_ally',
 });
 function tellGlyphName(tellId) {
-  const paletteState = tellId === 'TETHER' ? 'warning' : 'danger';
+  const paletteState = (tellId === 'TETHER' || tellId === 'LAUNCH') ? 'warning' : 'danger';
   const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
   const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
   return name && hasGlyph(name) ? name : null;
@@ -1083,6 +1124,10 @@ const LEAD_PIP_GAP_CENTER_OFFSET = (LEAD_PIP_ARC_FRACTION + (1 - LEAD_PIP_ARC_FR
 
 export function doctrineTellKind(payload) {
   if (!payload) return null;
+  // Hostile-hands phases specialize the shared kinds: a charging enemy's throw and the mass it
+  // releases are different player decisions, so they carry different tells.
+  if (payload.phase === 'body_launch') return 'LAUNCH';
+  if (payload.phase === 'incoming_mass') return 'INCOMING';
   const byKind = DOCTRINE_TELL_BY_KIND[String(payload.kind || '')];
   if (byKind) return byKind;
   return DOCTRINE_TELL_BY_ID[String(payload.doctrineId || '')] || null;
@@ -1772,6 +1817,9 @@ export function createHud(ctx, alerts) {
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
+  // The secondary tracker line carries tutorial captions; it is a labelled line inside the
+  // tracker's existing region, not a second live region.
+  if (mtTime) mtTime.setAttribute('aria-label', 'Tutorial caption');
   const objectiveRecall = createObjectiveRecall();
   if (ctx.bus) {
     // FB-065 — the three condition states the sim already emits, surfaced on the objective
@@ -2540,6 +2588,7 @@ export function createHud(ctx, alerts) {
     .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
     .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
+    .sf-tell--LAUNCH .sf-tell__kind { color:var(--k-signal); }
     .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
       overflow:hidden; text-overflow:ellipsis; }
     .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
@@ -2613,7 +2662,8 @@ export function createHud(ctx, alerts) {
     slot.expiresAtTick = -1;
     slot.age = Infinity;
     slot.announced = '';
-    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
+    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse',
+      'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING');
     slot.el.hidden = true;
     slot.iconGlyph = null;
     slot.iconEl.innerHTML = '';
@@ -2654,7 +2704,8 @@ export function createHud(ctx, alerts) {
     const kindLabel = tellId;
     const hint = DOCTRINE_TELL_HINT[tellId] || '';
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
-    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
+    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE',
+      'sf-tell--LAUNCH', 'sf-tell--INCOMING');
     slot.el.classList.add(`sf-tell--${tellId}`);
     // The drawn mark renders as an element (innerHTML with internally-authored markup from
     // glyphs.js); the text icon stays a textContent write. Labels below remain text either way.
@@ -5146,11 +5197,16 @@ export function createHud(ctx, alerts) {
       setDisplay(mtTime, false);
       if (dest.line) rememberObjective(objectiveRecall, dest.line);
       const showObjective = objectiveVisible(objectiveRecall, dest.show);
-      if (!showObjective) {
+      // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
+      // the objective's verb, distance and recall state above are untouched.
+      const showCaption = paintTutorialTrackerCaption(mtTime, state);
+      if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
+      if (!showObjective && !showCaption) {
         setDisplay(missionTracker, false);
       } else {
-        setText(mtObj, objectiveRecall.text || dest.line);
-        setClass(mtTime, 'sf-mt-urgent', dest.urgent);
+        // A caption may be the only reason the tracker is up; never leave a stale objective
+        // line sitting above it.
+        setText(mtObj, showObjective ? (objectiveRecall.text || dest.line) : '');
         setDisplay(missionTracker, true);
       }
     }

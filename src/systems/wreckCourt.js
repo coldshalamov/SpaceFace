@@ -768,10 +768,46 @@ export function carefulInvestigation(session) {
   return { supported, ruling: session.ruling };
 }
 
+/**
+ * RC-22 — what a filed ruling on this case can disburse, as a min–max over the authored
+ * hypothesis payouts. A filing that pays nothing is a declined claim, not a settlement, so the
+ * range only counts positive payouts. This is presentation over the same consequence table
+ * doFile settles from — it never changes what a ruling pays.
+ */
+export function settlementRangeForCase(caseIdOrDef) {
+  const def = typeof caseIdOrDef === 'object' ? caseIdOrDef : caseDef(caseIdOrDef);
+  const payouts = (def && Array.isArray(def.hypotheses) ? def.hypotheses : [])
+    .map((h) => Number(h && h.consequence && h.consequence.payout_cr))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (!payouts.length) return null;
+  return { min: Math.min(...payouts), max: Math.max(...payouts) };
+}
+
+const COURT_OFFER_SUMMARY_BASE = 'Read the wreckage in place. File the claim the bodies support.';
+
+/**
+ * The settlement presentation the contracts card quotes for a case: the dossier sentence and the
+ * risk-note fragment both name the same range so the card says what the court pays without
+ * paying anything on acceptance (reward_cr stays 0; the ruling is the only writer of credits).
+ */
+export function courtOfferPresentation(caseIdOrDef) {
+  const range = settlementRangeForCase(caseIdOrDef);
+  const text = range
+    ? `${range.min.toLocaleString('en-US')}–${range.max.toLocaleString('en-US')} cr`
+    : null;
+  return {
+    range,
+    text,
+    summary: `${COURT_OFFER_SUMMARY_BASE}${text ? ` The court settles ${text} by ruling.` : ''}`,
+    riskNote: text ? `the court disburses ${text} by ruling` : null,
+  };
+}
+
 export function buildAdventureOffer(seed, { caseId = WRECK_COURT_ENTRY_CASE } = {}) {
   const def = caseDef(caseId);
   if (!def) throw new Error('unknown wreck court case');
   const numericSeed = (seed >>> 0) || 1;
+  const presentation = courtOfferPresentation(def);
   return {
     id: `wreck_court_${def.id}_${numericSeed}`,
     offerId: `wreck_court_${def.id}_${numericSeed}`,
@@ -780,13 +816,14 @@ export function buildAdventureOffer(seed, { caseId = WRECK_COURT_ENTRY_CASE } = 
     tag: 'wreck_court',
     choice: null,
     title: def.title,
-    summary: 'Read the wreckage in place. File the claim the bodies support.',
+    summary: presentation.summary,
     brief: def.briefing,
     giver: 'Loss investigation communicator',
     stationId: null,
     reward_cr: 0,
     reward_rep: 0,
     collateral_cr: 0,
+    riskNote: presentation.riskNote,
     factionId: null,
     params: {
       wreckCourtCaseId: def.id,
@@ -794,6 +831,7 @@ export function buildAdventureOffer(seed, { caseId = WRECK_COURT_ENTRY_CASE } = 
       scanTargets: 4,
       acceptsBy: 'physical_reconstruction',
       settlesExternally: true,
+      ...(presentation.range ? { settlement_cr: presentation.range } : {}),
     },
   };
 }

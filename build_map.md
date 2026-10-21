@@ -1,6 +1,11 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace Build Map
 
+The owner-requested [Maturity and cloud implementation pack](design/program/maturity-cloud-2026-10-20/README.md)
+expands the existing first-hour, physics/Swarm, living-world, economy and discovery rows into
+bounded workflows and ten cloud-sized slices. This is supporting detail, not a second queue;
+existing row identities, current claims and acceptance remain authoritative.
+
 This is the repository's implementation front door. It routes an agent to the smallest authoritative packet and the live owners it must respect. It deliberately contains no current queue snapshot, branch name, lease, test transcript, or completion history.
 
 The owner-directed weapons and powers audit is [Arsenal experience](design/program/ARSENAL_EXPERIENCE.md):
@@ -639,7 +644,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | admit-craft | done (claude-oct17) | admit SFQ-P18/P19/P21–P24 family candidates (models/VFX/ORRERY/perf/save/finish) — ~60 build + ~24 inference | - |
 | admit-content | done (claude-oct17) | admit mission briefs M01–M36, model briefs A01–A36, and the Depth roll-up — mints rows for missions/models/depth | - |
 | rope-world | devin-fleet-oct20 | `tetherGameplay.js` obstruction/wrap seam, `combat/attachments.js`, `world/asteroidField.js`, `masslineThrow.js`, `combat/masslineTargetScoring.js`, cable render, `cameraDirector.js` throw framing (§31 THE HAND) | 390 |
-| hostile-hands | devin-fleet-oct20 | `src/ai/` doctrine/maneuver/reflexes/fireDiscipline/temperament/squad, `aiPorts.js`, `engagementAuthority.js`, `combat/damage.js` friendly-fire flag, weapons splash path, `lawSecurity.js` retaliation, `collisionConsequences.js`, capacitor in `combat.js` (§31 THE FIGHT) | 391, 392, 393 |
+| hostile-hands | devin-fleet-oct20 | `src/ai/` doctrine/maneuver/reflexes/fireDiscipline/temperament/squad, `aiPorts.js`, `engagementAuthority.js`, `combat/damage.js` friendly-fire flag, weapons splash path, `lawSecurity.js` retaliation, `collisionConsequences.js`, capacitor in `combat.js` (§31 THE FIGHT) | 393 |
 | racing | devin-fleet-oct20 | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395, 472 |
 | world-answers-2 | free | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | 396, 397, 398, 426 |
 | run-memory | devin-fleet-oct20 | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
@@ -655,7 +660,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | rope-scale | devin-fleet-oct20 | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js` (§31.5) | 423, 444 |
 | hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 424, 425, 460 |
 | first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 443, 427, 428 |
-| stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457, 458, 431 |
+| stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457, 431 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
 | pulse-voice | devin-fleet-oct20 | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
 | pulse-print | free | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
@@ -873,7 +878,7 @@ git history (consolidated 2026-10-15).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 270 | SWARM-08 | The journey: the Circuit route map and alternate objectives; the arcade arsenal with levels, evolutions, legendaries and abilities — SWARM_EXPANSION B5, B7 | BUILD | OPEN — phase C, unparked 2026-10-19 (phases A + B shipped as rows 263–269; §31.2 call 5) |
+| 270 | SWARM-08 | The journey: the Circuit route map and alternate objectives; the arcade arsenal with levels, evolutions, legendaries and abilities — SWARM_EXPANSION B5, B7 | BUILD | OPEN — Circuit journey landed (fleet oct20): 16-round run, 4 stages + champions, authored route gates with room/law, survival boundaries, finish/overtime choice, settlement and worker telemetry; remaining: arcade arsenal breadth (levels, evolutions, legendaries, abilities expansion) |
 | 271 | SWARM-09 | The show: the broadcast layer (host, crowd, sponsors, rivals), eight pilots, the Machine faction, the remaining biomes and bosses, Adventure incursions — SWARM_EXPANSION B8, B9, §5 | BUILD | PARKED — phase D |
 | 272 | SWARM-10 | Fortify: arena construction, the Hold the Line mode, the Engineer pilot — SWARM_EXPANSION B13 | BUILD | PARKED — phase E; deliberately last, additive once the arcade core is strong (owner) |
 | 273 | SWARM-11 | Sharing: the arena editor and global boards — SWARM_EXPANSION B12 | BUILD | PARKED — phase F |
@@ -1020,8 +1025,6 @@ production units, and never build what they write.
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 390 | AL-HAND-1 | The Line touches the world — obstruction provider (AL-HF-08), terrain wrap pivots only during a deliberate swing (owner 2026-10-19: towing never snags), unwrap on reversal, no tunnelling (§31.3) | BUILD | OPEN |
-| 391 | AL-FIGHT-1 | Crossfire — temperament-gated enemy-on-enemy damage + 12 s grudges; AL-HF-01/02/14/15 inside (§31.3) | BUILD | OPEN |
-| 392 | AL-FIGHT-2 | They have hands too — incoming-mass cue AL-HF-06 first, then telegraphed enemy body launches, catch-and-return credit; AL-HF-11/13 inside (§31.3) | BUILD | OPEN — gated on AL-HF-06 inside the row |
 | 393 | AL-FIGHT-3 | Verbs feed verbs — mass kills spill latchable charge cells; guns-only tape runs dry (§31.3) | BUILD | OPEN — after 391 + 392 |
 | 394 | AL-RACE-1 | The line is contested — RF-05 second slice: rivals take anchors, takedowns, medal times, instant restart; AL-HF-03/04/09/10/12 inside (§31.3) | BUILD | OPEN |
 | 395 | AL-RACE-2 | Every way of life is a course — six sector-signature circuits through the RF-02 validator (§31.3) | BUILD | OPEN — reuses 394's rival lines |
@@ -1031,7 +1034,7 @@ production units, and never build what they write.
 | 399 | AL-LONG-1 | Seen at minute one, moved at hour fifteen — ≥8 `revisitNeed` one-offs, ≥3 in hours 10–25; AL-LG-01/02/03 inside (§31.3) | BUILD | OPEN |
 | 400 | AL-LONG-2 | The reckoning is built from your run — four one-fact-different saves give four B7 boards; AL-LG-04/05 inside (§31.3) | BUILD | OPEN |
 | 401 | AL-LONG-3 | Hulls you commit to — two irreversible refits per hull; ladder to hour 15; deed-priced resale; AL-LG-10/11/12 inside (§31.3) | BUILD | OPEN |
-| 402 | AL-LONG-4 | One works — one recipe per product, relay chain with per-hop receipts, outpost refinery retired with save migration; AL-LG-13/14 inside (§31.3) | BUILD | OPEN |
+| 402 | AL-LONG-4 | One works — one recipe per product, relay chain with per-hop receipts, outpost refinery retired with save migration; AL-LG-13/14 inside (§31.3) | BUILD | OPEN — claim refinery runs the site recipe book, forwards output to a same-sector relay with per-hop receipts, stranded pre-402 inputs collectible (fleet oct20); remaining: outpost refinery retirement |
 | 403 | AL-LONG-5 | Write the drone — ≤6-step composed loops with refusal reasons; AL-LG-15 inside (§31.3) | BUILD | OPEN — after 402 |
 | 404 | AL-EAR-1 | The chain sings — CV-EAR next slice; AL-PR-01…06 inside (§31.3) | BUILD | OPEN |
 | 405 | AL-EAR-2 | Twenty-five sectors, twenty-five beds — composed beds from the existing score identities (§31.3) | BUILD | OPEN |
@@ -1086,8 +1089,7 @@ production units, and never build what they write.
 | 454 | GOLD-M1 | M1 First Hour Gold — integration lane: play-capture-fix the first hour until every first-hour system is Gold or names its blocker (§32.4, §32.5) | BUILD | OPEN — M1; claims exact paths per sitting |
 | 455 | ENGINE-0 | The plan refills itself — `program-dispatch --next` returns the due PLAN_ENGINE cycle below threshold; `check-plan-integrity` reports it (§32.6) | BUILD | OPEN |
 | 456 | RC-SWARM-CLEAN | Swarm runs clean — aftermath card gated in survival, round-1 resolution diagnosed, round-10 Iron Maw script, wording fixes (§32.7) | FIX | OPEN — M2; first in the swarm seam. Aftermath-card gate, round-1 diagnosis and wording landed (fleet oct20); remaining: round-10 Iron Maw script (fb-027 pins the current setup), clipped ROUND label, swarm-active player-truth gate |
-| 457 | RC-FIRST-MINUTES | The clean first two minutes — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook (§32.7) | FIX | OPEN — M1 |
-| 458 | RC-ONBOARD-PACE | A tighter first half hour — ≤8 tracker steps, Swing Clinic, "I've flown before", contract tags, player-truth budget (§32.7) | BUILD | OPEN — M1; after 457 |
+| 457 | RC-FIRST-MINUTES | The clean first two minutes — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook (§32.7) | FIX | OPEN — M1. Captioned 47-A hook, Hitch naming, and the tutorial-owned ticker landed (fleet oct20); remaining: drive key vs Help, markers off instruments |
 | 459 | RC-VIGNETTES | Lived vignettes worth meeting — regenerate from the generator, charge/await verbs, first-hour prop preference, trim (§32.7) | BUILD | OPEN — M1 |
 | 460 | RC-CAST-MEMORY | A cast that remembers — wire 12 dormant contact counters, band glyphs, spoken leads, Last Call reads them (§32.7) | BUILD | OPEN — M3; after 424 in the seam |
 | 461 | RC-DOCKET | The docket opens — caseForLoss table, reachability test, settlement range, hull-scaled restitution (§32.7) | BUILD | OPEN |
@@ -6425,7 +6427,6 @@ small agents can take them. Evidence for every claim is in the researcher findin
 |---|---|---|---|
 | 456 | **Swarm runs clean** (M2; before row 270) | Gate the aftermath card in a live survival run (`combatOutcome.js` never checks for one), which returns keys 1–2; diagnose why the player-truth swarm baseline never leaves round 1; give the round-10 boss its Iron Maw script (`swarmMode.js:364–371`); fix "One hostiles", "+10 Item" and the clipped ROUND label; hide the remaining Adventure instruments in a run | `npm run player-truth -- --mode=swarm-active --gate` passes round resolution and transitions; the contact sheet shows no "FIELD STILL LIVE"; the round-10 capture shows the script's moves |
 | 457 | **The clean first two minutes** (M1) | The drive fallback key H also opens Help (`systems/input.js:322` versus `ui/input.js:523`); the ticker is gated while the tutorial runs; threat markers stay off the instruments; "Kestrel" becomes "Hitch" in the tutorial and chronicle; "Training Derelict" and "trainer" get in-world names; the three `visual:false` premise and hint lines are captioned in the tracker; the Range uses WU not m/s; the key label prefers a non-lock key | A muted stranger on seed 4242 reads the hook within 60 s, presses the key the rail shows to drive, and sees no news, no "Kestrel" and no training vocabulary in the first two minutes |
-| 458 | **A tighter first half hour** (M1; after 457) | Fold thrust and brake into the tether step; make target → burst → disengage one step against a real raider; a Swing Clinic after 3 missed swings; an "I've flown before" toggle on New Game; destination tags on the first contracts; a player-truth budget (first latch ≤60 s, raid ≤3 min) | First input to docking takes ≤8 tracker steps; the budget holds; the rescue verbs and the Range fallback survive |
 | 459 | **Lived vignettes worth meeting** (M1/M3) | Regenerate from `scripts/build-lived-vignettes.mjs`: remove the two filler lines, give the toll a real cost, use a reward table by situation, capitalise place names, cut the orbit wait to ≤10 s. Add `charge` and physical `await` verbs to `vignetteInterpreter.js`. Prefer prop vignettes in the first hour. Then trim to the physically distinct ones (target ≤60 in rotation) | A seeded two-hour run repeats no line; every choice is a real trade-off; ≥30 vignettes resolve only by a physical action; IDs and phase IDs are unchanged for saves |
 | 460 | **A cast that remembers** (after 424 in the seam) | Wire the 12 dormant counters to the events they are named after (Yune ← clean Helios freight, Mara ← delivered pods, Suhl ← `machine:appealAccepted`, Senna ← `uniqueWreck:resolved`, Zell ← contraband installs…); a band glyph on contact cards; bar leads spoken by the offering contact; Last Call has the finale read the counters | Two saves differing in one deed show different contact openers and different Last Call lines for ≥6 contacts; `stationContacts` stays the only writer |
 | 461 | **The docket opens** | A pure `caseForLoss(record)` table makes the 11 lab-only Wreck Court cases reachable; a reachability test; a settlement range on the court card instead of "0 cr"; restitution scales with hull value; "work the bill" requires a physical step | A 3-hour lab run surfaces ≥5 distinct cases; the contract card shows a settlement range; a Mule and an Ironback are quoted differently |

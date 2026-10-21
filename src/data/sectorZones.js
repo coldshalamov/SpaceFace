@@ -230,7 +230,7 @@ const CORE_SECTOR_ZONES = {
       reason: 'Reach packs hunt the Ashfall approach; the Collective can\'t spare escorts this far out.',
       center: { x: -980, z: -540 }, radius: 720, presence: P.raiders([3, 5]) },
     { id: 'zone_charon_colony', name: 'Colony Barge', type: 'colony', factionId: 'faction_free',
-      reason: 'A struggling colony trades air and salvage for anything it can get.',
+      reason: 'Visiting salvage workers stage air and tools beside the intact, evacuated colony barge.',
       center: { x: -620, z: 1420 }, radius: 420 },
                   ],
 

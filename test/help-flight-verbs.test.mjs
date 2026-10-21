@@ -17,7 +17,7 @@ test('flight help lists travel burn and charge detonate from the live binding ma
   // The throw was the one ORDNANCE verb the bind sheet never named — the gap behind
   // "I press keys and I don't know what they do".
   assert.equal(rows.get('chargeThrow'), 'Throw impulse charge (sticks where it lands; detonate later)');
-  assert.ok(DEFAULTS.BINDINGS.travelBurn.includes('KeyH'));
+  assert.ok(DEFAULTS.BINDINGS.travelBurn.includes('F8'));
   assert.ok(DEFAULTS.BINDINGS.chargeDetonate.includes('KeyR'));
   assert.ok(DEFAULTS.BINDINGS.chargeDetonate.includes('Digit2'), 'the ORDNANCE hotbar seat is a real binding');
 });
