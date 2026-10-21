@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { packagedConvexSpec, measurePackagedConvex } from './lib/modelTruthPackagedConvex.mjs';
 import { hasUnclassifiedTextures } from './lib/modelTextureRoles.mjs';
 import { authoredCompoundMeasurement, authoredCompoundCoverage, extractAuthoredConvexSource, isAuthoredNonRenderHelper } from './lib/modelTruthAuthoredCompound.mjs';
 import { authoredWorldSiteMeasurement, measureWorldSiteAssetChain } from './lib/modelTruthWorldSite.mjs';
@@ -566,9 +567,13 @@ async function measureRow(row) {
 
   const authoredWorldSite = authoredWorldSiteMeasurement(row);
   const worldSiteEvidence = authoredWorldSite ? await measureWorldSiteAssetChain(ROOT, row, authoredWorldSite) : null;
+  const packagedSpec = packagedConvexSpec(row);
+  const packagedConvex = await measurePackagedConvex(ROOT, row, io);
   const authoredCompound = authoredCompoundMeasurement(row);
   const authoredPlace = row.fit === 'authored-place-origin';
-  const measured = await cachedGlb(row.file, { excludeHelpers: !!authoredCompound || authoredPlace });
+  const measured = packagedSpec
+    ? { ...await measureGlb(resolve(ROOT, packagedSpec.geometry.url), { excludeHelpers: true }), bounds: packagedConvex.bounds, url: packagedSpec.geometry.url }
+    : await cachedGlb(row.file, { excludeHelpers: !!authoredCompound || authoredPlace });
   if (measured.missing) {
     const status = rowStatus(row, { missing: true, overTolerance: false, throatSealed: false, lod: null });
     return {
@@ -608,11 +613,12 @@ async function measureRow(row) {
       dockRadius: size?.dockRadius || row.dockRadius,
       placeScale: row.placeScale,
     };
-    const fit = authoredCompound?.fit || (authoredPlace ? { scale: row.placeScale, offset: [0, 0, 0] }
+    const fit = packagedConvex?.fit || authoredCompound?.fit || (authoredPlace ? { scale: row.placeScale, offset: [0, 0, 0] }
       : drawFit(row.fit === 'station' ? 'station' : row.fit, measured.bounds, fitSpec));
     const world = applyFit(measured.points, fit);
-    const collider = authoredWorldSite?.collider || authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
+    const collider = packagedConvex?.collider || authoredWorldSite?.collider || authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
     const evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
+    if (packagedConvex) Object.assign(evaluated, packagedConvex.evaluated);
     if (authoredCompound) Object.assign(evaluated, authoredCompoundCoverage(world, authoredCompound, compoundCertificate));
     if (worldSiteEvidence) Object.assign(evaluated, worldSiteEvidence);
     if (!worst || evaluated.gapWu > worst.gapWu || evaluated.throatSealed) {
@@ -668,7 +674,7 @@ async function measureRow(row) {
     ? (worst.dockRadius || row.dockRadius || worst.entityRadius)
     : (worst.entityRadius || row.entityRadius || 1);
   let skin = null;
-  if (row.solid && !authoredCompound && !authoredPlace && worstEval.slice && worstEval.slice.length) {
+  if (row.solid && !packagedConvex && !authoredCompound && !authoredPlace && worstEval.slice && worstEval.slice.length) {
     skin = buildPlanarSkin(worstEval.slice, { referenceRadius: reference, opening: row.opening || null });
     const fitted = scaleProxyPrimitives(skin.primitives, reference);
     const opening = skin.mouthBearingDeg == null ? null : {
@@ -763,6 +769,7 @@ async function measureRow(row) {
         coverageMetric: worstEval.coverageMetric,
         sourceCompoundParity: worstEval.sourceCompoundParity,
       } : {}),
+      ...(packagedConvex ? { packagedRuntimeEvidence: packagedConvex.evidence } : {}),
       ...(worldSiteEvidence ? { worldSiteEvidence } : {}),
       gapWu: worstEval.gapWu,
       toleranceWu: worstEval.toleranceWu,
@@ -781,7 +788,9 @@ async function measureRow(row) {
     solid: row.solid === true,
     status: status.status,
     reasons: status.reasons,
-    note: row.runtimeColliderFixed === true
+    note: packagedConvex
+      ? 'Explicit lastShift.physicsBody runtime convex union; legacy query OBBs are approximate. XZ vertex coverage and sampled reverse residual do not establish full 3D surface equivalence. No inferred skin adopted.'
+      : row.runtimeColliderFixed === true
       ? `Fixed runtime collider owned by ${row.runtimeCollisionAuthority}; proposed skin is diagnostic only.`
       : status.note,
     tasteBudget: null,

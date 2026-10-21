@@ -9740,9 +9740,9 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_last_shift_fairlead.glb",
-      "tris": 6060,
+      "tris": 9665,
       "bytes": 800756,
-      "textureSize": 256,
+      "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "mechanical": "Material_Mechanical"

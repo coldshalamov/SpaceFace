@@ -44,7 +44,7 @@ export function createVesper() {
     name: 'vesper',
     init(ctx) {
       this.destroy(); this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
-      this.state.vesper = normalizeVesperMemory(this.state.vesper, this.state.simTime || 0); this._reset();
+      this.state.vesper = normalizeVesperMemory(this.state.vesper, this.state.simTime || 0); this._restoring = false; this._reset();
       this._unsubs = [];
       const on = (name, fn) => { const off = this.bus?.on(name, fn); if (typeof off === 'function') this._unsubs.push(off); };
       on('scan:pulse', p => this._scan(p));
@@ -53,7 +53,8 @@ export function createVesper() {
       on('tether:broken', () => { this._held = null; });
       on('physics:impact', p => this._impact(p));
       on('combat:damage', p => this._damage(p)); on('entity:killed', p => this._killed(p));
-      on('sector:exit', () => { this._capture(); this._clear(); this._reset(); });
+      on('voice:surface', p => this._welcomeSurfaced(p));
+      on('sector:exit', () => { this._depart(); this._capture(); this._clear(); this._reset(); });
       // Live GPU + flight + hard enter: capture/reset stay inline bookkeeping;
       // the ensemble sync defers into the cook's FIFO — the same stored provider
       // the census registers, so (provider,epoch) dedupe + the identity-skip both
@@ -71,23 +72,53 @@ export function createVesper() {
       const providers = this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []);
       this._cookProvider = () => this._syncSteps();
       providers.push(this._cookProvider);
-      on('save:restoring', () => { this._clear(); this._reset(); });
-      on('save:loaded', () => { this._reset(); this._sync(); });
+      on('save:restoring', () => { this._restoring = true; this._clear(); this._reset(); });
+      on('save:loaded', () => { this._restoring = false; this._reset(); this._sync(); });
       on('game:newGame', () => this.newGame());
     },
     _reset() {
+      this._cancelWelcome();
       this._hubId = null; this._bellIds = [null, null, null]; this._nextSync = 0;
       this._scanSeq = 0; this._scanSource = null; this._held = null; this._following = false;
       this._notes = []; this._phrase = []; this._progress = 0; this._lastPlayerNote = -100;
       this._lastVoice = -100; this._lastRing = [-100, -100, -100]; this._physicalRings = [-100, -100, -100]; this._ballistic = [0, 0, 0];
-      this._inside = false; this._discovered = false; this._idle = 0; this._bloomAt = -100;
+      this._discovered = false; this._idle = 0; this._bloomAt = -100;
       this._rest = { x: this.state?.vesper?.hub?.x ?? C.anchor.x, z: this.state?.vesper?.hub?.z ?? C.anchor.z };
+    },
+    _depart() {
+      const m = this.state?.vesper; if (!m || this._restoring) return;
+      if (m.visitPresence === 'inside' && m.met && m.performances > 0 && !m.returnHeard) m.returnPending = true;
+      m.visitPresence = 'away'; this._cancelWelcome();
+    },
+    _cancelWelcome() { this._welcomeOffer = null; this.helpers?.voice?.cancel?.('vesper:welcome'); },
+    _welcomeValid(surfaced = false) {
+      const m = this.state?.vesper, hub = this._get(this._hubId), player = this._player();
+      return this._live() && !!hub && m.met && m.performances > 0 && (surfaced || (m.returnPending && !m.returnHeard))
+        && m.visitPresence === 'inside' && m.mutedUntil <= (this.state.simTime || 0)
+        && dist(player.pos, hub.pos) < C.scanRadius;
+    },
+    _welcomeSurfaced(p) {
+      if (!this._welcomeOffer || p?.id !== 'vesper:welcome' || p.text !== VESPER_LINES.welcome || !this._welcomeValid()) return;
+      this.state.vesper.returnHeard = true; this.state.vesper.returnPending = false; this._welcomeOffer.surfaced = true;
+      this.bus?.emit('vesper:voice', { from: C.callsign, key: 'welcome', text: VESPER_LINES.welcome });
+    },
+    _offerWelcome() {
+      if (!this._welcomeValid()) return;
+      const now = this.state.simTime || 0;
+      if (now - this._lastVoice < 7) return;
+      this._lastVoice = now;
+      const token = {}; this._welcomeOffer = token;
+      const message = { id: 'vesper:welcome', priority: 24, channel: 'comms', text: VESPER_LINES.welcome, ttl: 9,
+        valid: () => this._welcomeOffer === token && this._welcomeValid(token.surfaced === true) };
+      // An accepted queue entry is not a heard memory. The arbiter can surface synchronously.
+      if (this.helpers.voice?.say) this.helpers.voice.say(message);
+      // Without an arbiter there is no delivery receipt; keep the memory pending.
     },
     _get(id) { const e = this.state?.entities?.get(id); return e?.alive && belongs(e) ? e : null; },
     _player() { return this.state?.entities?.get(this.state.playerId); },
     _home() { const kind = this.state?.run?.kind; return (!kind || kind === 'adventure' || kind === 'campaign')
       && this.state?.world?.currentSectorId === C.sectorId; },
-    _live() { const p = this._player(); return this._home() && this.state.mode === 'flight'
+    _live() { const p = this._player(); return !this._restoring && this._home() && this.state.mode === 'flight'
       && this.state.timeScale > 0 && p?.alive && !p.flags?.docked && finiteXZ(p.pos); },
     _clear() {
       for (const e of this.state?.entityList || []) if (e?.alive && belongs(e)) this.helpers?.removeEntity?.(e.id);
@@ -108,6 +139,7 @@ export function createVesper() {
       for (const _ of this._syncSteps()) { /* inline */ }
     },
     *_syncSteps() {
+      if (this._restoring) return;
       if (!this._home()) { this._capture(); this._clear(); return; }
       const m = this.state.vesper, found = [null, null, null, null];
       // Snapshot the roster: a suspended slice must not see entities another system
@@ -135,10 +167,11 @@ export function createVesper() {
       }
       this._hubId = found[0]?.id ?? null; this._bellIds = found.slice(1).map(e => e?.id ?? null);
     },
-    newGame() { this._clear(); this.state.vesper = freshVesperMemory(); this._reset(); },
+    newGame() { this._restoring = false; this._clear(); this.state.vesper = freshVesperMemory(); this._reset(); },
     serialize() { this._capture(); return normalizeVesperMemory(this.state.vesper, this.state.simTime || 0); },
     deserialize(raw) { this._clear(); this.state.vesper = normalizeVesperMemory(raw, this.state.simTime || 0); this._reset(); },
     destroy() {
+      this._cancelWelcome();
       for (const off of this._unsubs || []) off(); this._unsubs = [];
       const providers = this.helpers && this.helpers.sectorCookProviders;
       if (Array.isArray(providers) && this._cookProvider) {
@@ -249,14 +282,14 @@ export function createVesper() {
     _killed(p) {
       if (p?.id == null) return;
       if (p.id === this._hubId) {
-        this.state.vesper.hub.dead = true; this.state.vesper.hub.hull = 0; this._hubId = null;
+        this._cancelWelcome(); this.state.vesper.hub.dead = true; this.state.vesper.hub.hull = 0; this._hubId = null;
         this._following = false; this._held = null; this._notes.length = 0;
         this.bus?.emit('comms:log', { from: C.callsign, text: VESPER_LINES.memorial, kind: 'character' }); return;
       }
       const i = this._bellIds.indexOf(p.id); if (i < 0) return;
       this.state.vesper.bells[i].dead = true; this.state.vesper.bells[i].hull = 0; this._bellIds[i] = null;
       if (this._held?.id === p.id) this._held = null;
-      this._progress = 0; this._phrase.length = 0; if (this.state.vesper.met) this._say('missing');
+      this._progress = 0; this._phrase.length = 0; if (this.state.vesper.met && this._get(this._hubId)) this._say('missing');
     },
     _steer(e, target, dt, acceleration) {
       const force = vesperSteering(e.pos, e.vel, target, acceleration);
@@ -264,7 +297,7 @@ export function createVesper() {
     },
     update(dt, state = this.state) {
       if (!Number.isFinite(dt) || dt <= 0 || dt > 0.1 || state !== this.state) return;
-      if (!this._home()) { this._capture(); this._clear(); this._reset(); return; }
+      if (!this._home()) { this._depart(); this._capture(); this._clear(); this._reset(); return; }
       if (!this._live()) { this._held = null; this._notes.length = 0; return; }
       const now = state.simTime || 0;
       if (now >= this._nextSync) { this._sync(); this._nextSync = now + 1; }
@@ -276,10 +309,13 @@ export function createVesper() {
       }
       const distance = dist(player.pos, hub.pos), shy = m.mutedUntil > now;
       if (distance < C.discoverRadius && !this._discovered) { this._discovered = true; if (!m.met) this._say('discover'); }
-      if (distance < C.scanRadius && !this._inside) {
-        this._inside = true; m.visits = Math.min(1e6, m.visits + 1);
-        if (m.met && m.visits > 1) this._say('welcome');
-      } else if (distance > C.discoverRadius + 50) this._inside = false;
+      if (distance < C.scanRadius && m.visitPresence !== 'inside') {
+        // Unknown legacy presence is reconciled, never mistaken for a new return.
+        if (m.visitPresence === 'away' || m.visits === 0) m.visits = Math.min(1e6, m.visits + 1);
+        m.visitPresence = 'inside';
+      } else if (distance > C.discoverRadius + 50) this._depart();
+      // Narrative policy: only a completed player phrase gives Vesper a part to keep.
+      this._offerWelcome();
       if (this._held && !this._get(this._held.id)) this._held = null;
       if (now - this._lastPlayerNote > C.phraseGap) this._progress = 0;
       while (this._notes.length && this._notes[0].at <= now) { const note = this._notes.shift(); this._ring(note.note, 0.6, false, 'answer'); }

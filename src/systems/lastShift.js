@@ -1,5 +1,6 @@
 import { LAST_SHIFT as C, LAST_SHIFT_POS, LAST_SHIFT_CLUES, lastShiftClue,
   lastShiftBodyKey, lastShiftFactIds, lastShiftReport, freshLastShiftRecord } from '../data/lastShift.js';
+import { LAST_SHIFT_FAIRLEAD_PROXY } from '../data/lastShiftFairleadGeometry.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import { resolveDockRange } from '../core/dockRange.js';
@@ -9,6 +10,15 @@ const terminal = new Set(['destroyed', 'salvaged', 'returned']);
 const distance = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
 const bearingTo = (from, to) => (Math.round(Math.atan2(to.x - from.x, -(to.z - from.z)) * 180 / Math.PI) + 360) % 360;
 const clone = value => JSON.parse(JSON.stringify(value));
+function alignFairleadBody(entity) {
+  if (entity?.type !== 'wreck' || entity.data?.persistenceOwner !== C.persistenceOwner
+    || entity.data.lastShiftSiteId !== C.siteId || entity.data.lastShiftClueId !== 'fairlead'
+    || entity.data.lastShiftBodyKey !== lastShiftBodyKey('fairlead')) return;
+  const body = entity.physicsBody;
+  if (!body || typeof body !== 'object' || body.shape !== 'ball' || body.dynamic !== false
+    || body.radius !== 26 || body.mass !== 1800 || body.collisionProxyManifest) return;
+  entity.physicsBody = { ...body, collisionProxyManifest: LAST_SHIFT_FAIRLEAD_PROXY, revision: (body.revision || 0) + 1 };
+}
 const position = (p, fallback) => p && Number.isFinite(p.x) && Number.isFinite(p.z)
   && Math.abs(p.x) < 1e7 && Math.abs(p.z) < 1e7 ? { x: p.x, z: p.z } : { ...fallback };
 
@@ -95,16 +105,17 @@ export const lastShift = {
   },
   serialize() { this._capture(); return clone(this._row); },
   deserialize(row) { this._bindings.clear(); this._adopt(row); this._nextTick = 0; },
-  afterContinue() { this._nextCueAt = 0; this._revisitPending = true; this._restoring = false; this._bindings.clear(); this._nextTick = 0; this._lastReturnOffer = null; },
+  afterContinue() { this._find('fairlead'); this._nextCueAt = 0; this._revisitPending = true; this._restoring = false; this._bindings.clear(); this._nextTick = 0; this._lastReturnOffer = null; },
   _find(clueId) {
     const expected = lastShiftBodyKey(clueId);
     const bound = this._bindings.get(clueId);
     if (bound && this.state.entities.get(bound.id) === bound.entity && bound.entity.alive !== false
-      && bound.entity.occupantGeneration === bound.life && bound.entity.data?.lastShiftBodyKey === expected) return bound.entity;
+      && bound.entity.occupantGeneration === bound.life && bound.entity.data?.lastShiftBodyKey === expected) { alignFairleadBody(bound.entity); return bound.entity; }
     this._bindings.delete(clueId);
     for (const entity of this.state.entities.values()) {
       if (entity.alive !== false && entity.data?.lastShiftSiteId === C.siteId
         && entity.data?.lastShiftBodyKey === expected) {
+        alignFairleadBody(entity);
         this._bindings.set(clueId, { id: entity.id, life: entity.occupantGeneration, entity }); return entity;
       }
     }
@@ -126,7 +137,8 @@ export const lastShift = {
         rot: record?.rot || (clue.id === 'fairlead' ? 0.61 : -0.25), radius: clue.radius,
         mass: clue.mass, hull: clue.id === 'fairlead' ? 360 : 80, hullMax: clue.id === 'fairlead' ? 360 : 80,
         flags: { persistent: true }, physicsBody: { schemaVersion: 1, dynamic: clue.dynamic,
-          shape: 'ball', radius: clue.radius, mass: clue.mass, inertiaY: clue.mass * clue.radius ** 2 / 2, revision: 0 },
+          shape: 'ball', radius: clue.radius, mass: clue.mass, inertiaY: clue.mass * clue.radius ** 2 / 2, revision: 0,
+          ...(clue.id === 'fairlead' ? { collisionProxyManifest: LAST_SHIFT_FAIRLEAD_PROXY } : {}) },
         data: { lastShiftSiteId: C.siteId, lastShiftBodyKey: lastShiftBodyKey(clue.id), lastShiftClueId: clue.id,
           persistenceOwner: C.persistenceOwner, homeSectorId: C.sectorId, scannable: true,
           authoredScanLabel: clue.label, scanLabel: clue.label, parentType: clue.parentType,

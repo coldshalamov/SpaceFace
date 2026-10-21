@@ -1,7 +1,7 @@
 {
   "counts": {
-    "green": 16,
-    "red": 203,
+    "green": 17,
+    "red": 202,
     "rows": 219
   },
   "generatedBy": "scripts/model-truth-census.mjs",
@@ -97980,15 +97980,15 @@
           4.100452
         ]
       },
-      "bytes": 332868,
+      "bytes": 533208,
       "collider": {
-        "coverageWu": 0.020185,
-        "gapWu": 16.572571,
-        "id": null,
-        "kind": "ball",
+        "coverageWu": 0.044942,
+        "gapWu": 0.044942,
+        "id": "last-shift:fairlead:deck:v1",
+        "kind": "proxy",
         "outline": [
           26.002195,
-          24.195927,
+          24.195926,
           23.732874,
           9.260361,
           0,
@@ -97996,24 +97996,356 @@
           0,
           6.305007,
           14.636939,
-          22.707011,
+          22.70701,
           26.000518,
           26.020185,
-          25.582105,
-          25.28847,
-          22.140905,
-          7.484007,
+          25.582104,
+          25.288471,
+          22.140904,
+          7.484006,
           13.588524,
           0,
           0,
           0,
-          6.681939,
+          6.681938,
           23.725862,
-          24.056158,
+          24.056159,
           0
         ],
-        "overTolerance": true,
-        "stickWu": 16.572571,
+        "overTolerance": false,
+        "packagedRuntimeEvidence": {
+          "boundarySampleLimitWu": 0.4,
+          "boundarySampleMetric": "13 samples per convex-part edge to LOD0 projected triangle union; diagnostic, not a surface-equivalence proof",
+          "boundarySampleResidualWu": 0.357069,
+          "boundarySamples": 715,
+          "convexPartsWU": [
+            {
+              "id": "deck-0",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": -26.022910787069527,
+                  "z": -0.33815687050703375
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.144715467474077
+                }
+              ]
+            },
+            {
+              "id": "deck-1",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.144715467474077
+                },
+                {
+                  "x": -19.259766927092254,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                }
+              ]
+            },
+            {
+              "id": "deck-2",
+              "points": [
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": 24.362510969761146,
+                  "z": -8.521560941079533
+                },
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                }
+              ]
+            },
+            {
+              "id": "deck-3",
+              "points": [
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                },
+                {
+                  "x": 21.65725342577024,
+                  "z": -1.1497341337043063
+                },
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                }
+              ]
+            },
+            {
+              "id": "deck-4",
+              "points": [
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                },
+                {
+                  "x": 26.053296934755462,
+                  "z": -0.33815687050703375
+                },
+                {
+                  "x": 24.024353776762286,
+                  "z": 4.531306708676602
+                }
+              ]
+            },
+            {
+              "id": "deck-5",
+              "points": [
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                },
+                {
+                  "x": 22.333567811767967,
+                  "z": 11.970764954651601
+                },
+                {
+                  "x": 17.261209916785013,
+                  "z": 13.864445235445238
+                }
+              ]
+            },
+            {
+              "id": "deck-6",
+              "points": [
+                {
+                  "x": 17.261209916785013,
+                  "z": 13.864445235445238
+                },
+                {
+                  "x": -19.259766927092254,
+                  "z": 13.864445235445238
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                }
+              ]
+            },
+            {
+              "id": "deck-7",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.144715467474077
+                },
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                }
+              ]
+            },
+            {
+              "id": "deck-8",
+              "points": [
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                },
+                {
+                  "x": 24.024353776762286,
+                  "z": 4.531306708676602
+                },
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                }
+              ]
+            },
+            {
+              "id": "deck-9",
+              "points": [
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                },
+                {
+                  "x": 17.261209916785013,
+                  "z": 13.864445235445238
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                }
+              ]
+            },
+            {
+              "id": "deck-10",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                }
+              ]
+            },
+            {
+              "id": "deck-11",
+              "points": [
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                },
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                },
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                }
+              ]
+            },
+            {
+              "id": "deck-12",
+              "points": [
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                }
+              ]
+            },
+            {
+              "id": "buckled-lip",
+              "points": [
+                {
+                  "x": 18.275681495781605,
+                  "z": -5.207620449690669
+                },
+                {
+                  "x": 25.37698254875774,
+                  "z": -5.207620449690669
+                },
+                {
+                  "x": 25.37698254875774,
+                  "z": -7.101300730484306
+                },
+                {
+                  "x": 18.275681495781605,
+                  "z": -7.101300730484306
+                }
+              ]
+            },
+            {
+              "id": "rib-port",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 11.463529165153307
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": 11.463529165153307
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": 10.178531831757624
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 10.178531831757624
+                }
+              ]
+            },
+            {
+              "id": "rib-starboard",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.178531186773965
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": -10.178531186773965
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": -11.463528520169646
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": -11.463528520169646
+                }
+              ]
+            },
+            {
+              "id": "crossmember",
+              "points": [
+                {
+                  "x": -19.530292681491346,
+                  "z": 13.188130849447512
+                },
+                {
+                  "x": -17.63661240069771,
+                  "z": 13.188130849447512
+                },
+                {
+                  "x": -17.63661240069771,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": -19.530292681491346,
+                  "z": -13.864444590461577
+                }
+              ]
+            }
+          ],
+          "coverageByLodWu": [
+            0.026134,
+            0.023994,
+            0.035816
+          ],
+          "coverageMetric": "all-LOD-visible-vertices-to-runtime-XZ-convex-union",
+          "faceCentroidCoverageWu": 0.044942,
+          "fit": {
+            "offset": [
+              0.35335,
+              -0.107926,
+              -0.338157
+            ],
+            "scale": 6.763144
+          },
+          "legacyQueryPrimitiveCount": 30,
+          "nativePartCount": 17,
+          "sourceGlbPath": "assets/ships/release/render-packages/last-shift-fairlead/render.glb",
+          "sourceGlbSha256": "a0218fcba0b6bf6bf26be9d6a550b2c7b2b6dacb321488a4377898b047f3ad7a"
+        },
+        "stickWu": null,
         "throatSealed": false,
         "toleranceWu": 3.122422,
         "worstSize": null
@@ -98028,9 +98360,9 @@
       "forwardAxis": "+X",
       "frozenMesh": false,
       "gameplay": {
-        "ballFactor": 1,
-        "colliderId": null,
-        "colliderKind": "ball",
+        "ballFactor": null,
+        "colliderId": "last-shift:fairlead:deck:v1",
+        "colliderKind": "proxy",
         "collisionAuthority": "lastShift.physicsBody",
         "dockRadius": null,
         "entityRadius": 26,
@@ -98095,198 +98427,24 @@
           "doubleSided": false,
           "name": "Material_Warning",
           "role": "opaqueHull"
-        },
-        {
-          "additive": false,
-          "alphaMode": "OPAQUE",
-          "depthWrite": false,
-          "doubleSided": false,
-          "name": "other",
-          "role": "other"
         }
       ],
       "measuredProportions": null,
       "meshHash": null,
       "meshes": 28,
       "nodes": 30,
-      "note": "Fixed runtime collider owned by lastShift.physicsBody; proposed skin is diagnostic only.",
+      "note": "Explicit lastShift.physicsBody runtime convex union; legacy query OBBs are approximate. XZ vertex coverage and sampled reverse residual do not establish full 3D surface equivalence. No inferred skin adopted.",
       "opening": null,
       "pivot": [
         -0.052246,
         0.015958,
         0.05
       ],
-      "proposedSkin": {
-        "adopted": false,
-        "capped": false,
-        "cellWu": 3.122422,
-        "gapWu": 0,
-        "mouthBearingDeg": null,
-        "primitiveCount": 17,
-        "primitives": [
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.983902,
-            "bz": -0.129533,
-            "id": "arm-0",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.852667,
-            "bz": -0.353186,
-            "id": "arm-1",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.718072,
-            "bz": -0.550996,
-            "id": "arm-2",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.212138,
-            "bz": -0.276464,
-            "id": "arm-3",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.084368,
-            "bz": -0.203681,
-            "id": "arm-7",
-            "kind": "capsule",
-            "r": 0.031653
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.338025,
-            "bz": -0.440523,
-            "id": "arm-8",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.68677,
-            "bz": -0.526977,
-            "id": "arm-9",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.916791,
-            "bz": -0.379747,
-            "id": "arm-10",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.872238,
-            "bz": -0.114832,
-            "id": "arm-11",
-            "kind": "capsule",
-            "r": 0.130628
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.967883,
-            "bz": 0.127424,
-            "id": "arm-12",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.891489,
-            "bz": 0.369267,
-            "id": "arm-13",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.669496,
-            "bz": 0.513722,
-            "id": "arm-14",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.170547,
-            "bz": 0.222261,
-            "id": "arm-15",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": 0.177578,
-            "bz": 0.428711,
-            "id": "arm-16",
-            "kind": "capsule",
-            "r": 0.068218
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.151767,
-            "bz": 0.197787,
-            "id": "arm-20",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.717858,
-            "bz": 0.550832,
-            "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.017308
-          },
-          {
-            "ax": 0,
-            "az": 0,
-            "bx": -0.847701,
-            "bz": 0.351129,
-            "id": "arm-22",
-            "kind": "capsule",
-            "r": 0.017308
-          }
-        ],
-        "silhouetteRadius": 26.020185,
-        "toleranceWu": 3.122422
-      },
-      "reasons": [
-        "collider-gap"
-      ],
+      "proposedSkin": null,
+      "reasons": [],
       "shell": {
         "boundaryEdges": 511,
-        "inwardFaceFraction": 0.2595,
+        "inwardFaceFraction": 0.273,
         "silhouetteRadius": 26.020185,
         "sliceY": 0
       },
@@ -98302,15 +98460,15 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
-      "triangles": 9571,
+      "triangles": 9271,
       "unmeasuredHitVolumes": [],
-      "url": "assets/ships/release/parts/places/place_last_shift_fairlead.glb",
+      "url": "assets/ships/release/render-packages/last-shift-fairlead/render.glb",
       "worldSize": [
         52,
-        10.902926,
-        27.731948
+        10.902859,
+        27.731946
       ]
     }
   ],

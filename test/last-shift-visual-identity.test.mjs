@@ -86,7 +86,7 @@ function threeNode(node) {
   return object;
 }
 
-test('real packages load isolated instances, fit clue dimensions and bound fairlead ball overhang', async () => {
+test('real packages load isolated instances, fit clue dimensions and bound fairlead render envelope', async () => {
   await MeshoptDecoder.ready;
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder});
   const releases = read('assets/ships/release/release_manifest.json').assets;
@@ -128,8 +128,8 @@ test('real packages load isolated instances, fit clue dimensions and bound fairl
         }
       });
       // A max-dimension fit retains the bevelled plate thickness at the axial tips.
-      // Bound that known render-only overhang to 0.2WU (<0.8%); physics stays ball26.
-      assert.ok(furthest <= clue.radius + .2, `actual fairlead vertices exceed unchanged ball: ${furthest} ${JSON.stringify(furthestPoint)}`);
+      // Bound that known render-only overhang to 0.2WU (<0.8%); native footprint is tested separately.
+      assert.ok(furthest <= clue.radius + .2, `actual fairlead vertices exceed nominal render envelope: ${furthest} ${JSON.stringify(furthestPoint)}`);
       assert.equal(hash(fs.readFileSync(`assets/ships/parts/${files.fairlead}`)), row.sourceSha256);
     }
     a.dispose();b.dispose();loader.dispose();
@@ -153,14 +153,31 @@ test('retained fallback stays deterministic across Continue without changing unr
 });
 
 
-test('Last Shift census preserves explicit simulation ball rather than adopting a generated skin', () => {
+test('Last Shift census preserves explicit runtime convex authority rather than adopting a generated skin', () => {
   const row=read('src/data/modelTruthCensus.json').rows.find(r=>r.id==='place_last_shift_fairlead');
   assert.equal(row.gameplay.entityRadius,26);
-  assert.equal(row.gameplay.colliderKind,'ball');
-  assert.equal(row.gameplay.colliderId,null);
+  assert.equal(row.gameplay.colliderKind,'proxy');
+  assert.equal(row.gameplay.colliderId,'last-shift:fairlead:deck:v1');
   assert.equal(row.gameplay.runtimeColliderFixed,true);
   assert.equal(row.gameplay.collisionAuthority,'lastShift.physicsBody');
-  assert.equal(row.collider.kind,'ball');
-  assert.equal(row.proposedSkin?.adopted,false);
-  assert.match(row.note,/diagnostic only/);
+  assert.equal(row.collider.kind,'proxy');
+  assert.equal(row.proposedSkin,null);
+  assert.match(row.note,/No inferred skin adopted/);
+});
+
+import { collectLodTriangleCounts, resolveTriangleMetric } from '../scripts/lib/partsManifestMetrics.mjs';
+test('fairlead source manifest uses actual aggregate GLB triangles, not only LOD0', () => {
+  const part=read('assets/ships/parts/parts_manifest.json').parts.find(p=>p.id==='place_last_shift_fairlead');
+  const bytes=fs.readFileSync(`assets/ships/parts/${part.file}`);
+  assert.equal(bytes.readUInt32LE(0),0x46546c67);
+  assert.equal(bytes.readUInt32LE(16),0x4e4f534a);
+  const gltf=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)).toString('utf8').trim());
+  const triangles=gltf.meshes.reduce((total,mesh)=>total+mesh.primitives.reduce((sum,p)=>{
+    if((p.mode??4)!==4)return sum;
+    return sum+Math.floor((gltf.accessors[p.indices??p.attributes.POSITION].count)/3);
+  },0),0);
+  const metric=resolveTriangleMetric(part,{triangles,lodTriangles:collectLodTriangleCounts(gltf)});
+  assert.equal(metric.supported,true);assert.equal(metric.metric,'all');
+  assert.equal(metric.total,9665);assert.ok(metric.lod0<metric.total);
+  assert.equal(part.tris,metric.measured);assert.equal(part.bytes,bytes.length);
 });
