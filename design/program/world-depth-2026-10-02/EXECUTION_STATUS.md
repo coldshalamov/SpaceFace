@@ -1,6 +1,40 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current continuation — 21 October 2026, 01:57 UTC
+
+This checkpoint supersedes older current-state headings below; historical evidence is retained. All eight outcomes in OPEN_GOALS.md remain OPEN. The original twenty-concept/IMPLEMENTATION scope, established owners and acceptance requirements remain in force.
+
+### Published physical collector service and diagnostic timing
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is independently verified at head `e419889ba07cd0d2ef95f65e509f0fc442fa71f6`, tree `d0ca8fc79adc53c04568f492d44d048ecdc22397`, sole parent `e654353fe68b1e7e4e5a936cb303d266ff5ca810`. Its increment changes exactly src/systems/anvilWork.js, test/anvil-receiver-delivery.test.mjs and ORCHARD_RECEIVER_DELIVERY_2026-10-20.md. This is published draft source, not merged, integrated, accepted or whole-P02 completion.
+
+The same original collector latches service need at 50% injury, preserves genuine loaded return and handoff, and moves through ordinary physical intent to an exterior layby. A two-leg lateral 160 WU egress avoids crossing the home tender. Hail describes the actual service or unavailable-tender state. Release requires at least 75% actual hull and a usable drive; the existing repair authority remains responsible for restoring a disabled drive. No health, cargo, currency, immunity, admission, speed or hazard grants were introduced.
+
+Qualified native saved-world evidence on candidate 251e preserves service hold through 600 far-residency ticks, then uses a real native player attachment and span-eligible latchRepair world ticks to heal 93.7849 to 150.1849 over 4.7 seconds. Cutting stops repair. The same stable collector reopens its outbound leg at 988.433 seconds; 400.626 WU displacement includes layby return, not exclusively outbound travel. The proof uses APIs and observer relocation, not ordinary player controls or a live game-camera capture. Zero captured contacts over 9,652 admitted participant ticks is not a measured numeric-clearance guarantee; minFixedOrPairGap is null. Eligibility is actual attachment span, not a claim of measured tensile force.
+
+Checks are scoped and overlapping: 101 earlier focused/adjacent checks, nine independent service cases, final 85 focused cases and two independent timing-negative cases passed. Final combined executor session 97149 became unobservable after the execution connection failed at 01:51 UTC; no final combined pass is invented.
+
+### Preserve the distinct route results
+
+The prior exact-head tree `9088e3e720755dcacf702310cb87d9fdaf2af0ed` fresh native route passed all seven flags at 886.3833 seconds under the unchanged historical 900-second cap. Its 1,613-module audit and custody 13 acquired = 1 sold + 12 held, zero spills remain valid for that tree only. Actual collector damage and 124 dynamic contacts are retained; this was not collision-free.
+
+The original integrated CI merge `f02544410471e84600f77abfca5a63b1cc802459` failed the 900-second deadline. Test-only projection `2262bf3ae2432491c538b2c703d4b91493bf4c7b` then failed at 956.700 seconds under a 180-second loaded-return bound. Its unchanged terminal-save continuation physically hands off 12 units at 965.0667 seconds, but this is not a fresh pass or stitched acceptance. Both failures remain evidence. The 180-second estimate omitted the slow terminal chord.
+
+The published diagnostic now latches first second-collection and first positive-loaded-clear clocks once, including across phase changes, Continue and residency: 240 seconds collection, 240 seconds loaded-clear to genuine handoff, and 1,200 seconds global hard cap. Real original/live transfer and custody checks remain; death, replacement and phantom cargo do not pass. The loaded-return bound accounts for radial approach, half-orbit, slow terminal chord and settling. These are bounded test diagnostics, not a production deadline or weakened gameplay constraints.
+
+### CI, visual evidence, recovery and next executable work
+
+Root owns successor CI [39529934911](https://github.com/coldshalamov/SpaceFace/actions/runs/39529934911) and [mobile 39529934982](https://github.com/coldshalamov/SpaceFace/actions/runs/39529934982), observed active at 01:54 UTC. No successor pass is claimed. Prior e654 CI is terminal red: simulation/static3/browser4 passed; static1/static2/feel/browser1/browser2 failed; browser3 canceled with cause unproven. The refinery assertion is a stale fixture against the newer 3 silicate to 1 purified silica recipe, not authority to revert that recipe. The 47-A initial binding failure remains unattributed. Mobile 116/122 failures occur before browser startup and do not establish live mobile acceptance.
+
+A new inspected four-frame board was delivered at 01:19:24 UTC: actual exported models at the fresh9088 native first-transfer, buyer-sale, home and next-handoff poses. It is an offline reconstruction, not a live camera or final visual acceptance. Image SHA256: c0e07ad5ddf6a86ba28270db5d7410a85ff1208e3ca862f02fa44b1f9addbfa7. Its 21,756,475-byte reproduction archive passed roundtrip, CRC and 68 member hashes; archive SHA256: 33b1b9dbda4d3a927e8fb33924b8f7bdaf293d8d2a0fd31a2a0fc4c829faf9ff.
+
+GitHub now preserves the exact final source, tests and unit handoff; Library recovery is additional protection, not a substitute. Publication succeeded through exact-text Git objects after the shell disconnected, with reviewed-tree equality and remote commit/ref verification. The fresh-route packet SHA256 b25a3bbd055059d22f5a4b9f9e474799439e71679de64321e40b9a9559d6dc24, failure/continuation packet 3d025818300cd973f2fae9fbf82c0f4419c7ae472d07b8f506519f402cede59d and terminal prior-CI packet f9aa94ece494d869145d8faf3ae396ed13888019a522a618af3c05c0eabed0bf remain separately verified.
+
+Source/service integration owns only its three paths; root owns successor CI; this handoff owner owns only EXECUTION_STATUS.md and OPEN_GOALS.md on the separate public handoff branch. Latest direct master observed at 01:50 UTC was 1e7b59a0fdd97de90e5521f1c02c4c7203be4ae8; preserve newer upstream and reviewer work.
+
+Next: validate and improve ordinary player repair controls, Hail comprehension and the connected service experience, while root follows successor CI and fixes attributable regressions. Do not loop on already-proven fixtures or relabel saved-world proofs as fresh/ordinary-input acceptance. Execution-dependent steps await restoration of the existing assistant environment; GitHub reads/writes remain available. No external execution thread, merge, deployment or credential change is authorized here. Earlier separately pending publication approvals are unchanged and are not a blocker for this delivered increment; no repeated user approval is requested.
+
 ## Current implementation — 17 October 2026, UTC
 
 Public master was verified at `f079f9e12c4502fc5da0005975b1132c3f071e1e`. PRs #391 and #430 are merged; #430's last source head is `09cbe5d503ca4bcf4efc8283f8c1978ad05d8813`. The broader merged startup work already supersedes the earlier unlanded first-picture lease proposal. Preserve that work rather than transplanting the old renderer.
