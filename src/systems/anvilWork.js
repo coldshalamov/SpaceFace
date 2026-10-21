@@ -1,3 +1,6 @@
+import { createCombatCatalog, ensureCombatant } from '../combat/runtime.js';
+import { hasOrchardWorkDamage, orchardDamageUnavailable, orchardSavedDriveOffline } from '../combat/orchardWorkDamage.js';
+let orchardCombatCatalog;
 import { orchardWorkerWeather } from '../world/anvilOrchardWorkWeather.js';
 import { validateOrchardTowQuote, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 // Stormshift's first normal shift, mixed into the existing traffic owner. The itinerary and
@@ -25,10 +28,10 @@ const live = (state, e) => !!e && e.alive !== false && e.hull > 0 && state.entit
 const itinerary = (e) => e?.data?.itinerary;
 const used = (e) => Math.max(0, finite(e?.data?.cargoManifest?.totalQty));
 const finitePose = e => [e?.pos?.x, e?.pos?.z, e?.vel?.x, e?.vel?.z].every(Number.isFinite);
-function collectorDriveReady(state, e) {
+function workerDriveReady(state, e) {
   const combat = state.combat?.entities?.[String(e.id)];
   const drive = combat?.subsystems?.subsystem_drive;
-  return combat?.capabilities?.drive !== false && drive?.effectiveDisabled !== true && drive?.destroyed !== true;
+  return !orchardDamageUnavailable(state, e) && (combat || !orchardSavedDriveOffline(state, e)) && combat?.capabilities?.drive !== false && drive?.effectiveDisabled !== true && drive?.destroyed !== true;
 }
 
 
@@ -65,6 +68,7 @@ export function anvilCollectorWorkStatus(state, entity, { detail = false } = {})
   if (state?.mode !== 'flight' || state.world?.currentSectorId !== PLANET_SITE.sectorId
     || entity?.data?.worldRecordId !== anvilWorkerRecordId(state, 'collector')
     || actor({ state }, 'collector') !== entity || entity?.data?.jobId) return null;
+  if (orchardDamageUnavailable(state, entity)) return 'STORMSHIFT · DAMAGE RECORD UNAVAILABLE · WORK HOLD';
   const route = itinerary(entity), center = route?.center;
   if (!center || ![center.x, center.z].every(Number.isFinite)) return null;
   if (route.serviceRequired === true || (entity.hull > 0 && entity.hull < entity.hullMax * ANVIL_WORK.serviceEntryHull)) {
@@ -73,7 +77,7 @@ export function anvilCollectorWorkStatus(state, entity, { detail = false } = {})
     const away = (receiver && (!receiverAtHome(receiver) || receiver.data.jobId))
       || (retained && retained.itinerary.phase !== 'receiving');
     const held = route.phase === 'service_hold' || route.phase === 'berthed';
-    const driveReady = collectorDriveReady(state, entity);
+    const driveReady = workerDriveReady(state, entity);
     const hullPercent = Math.floor(100 * Math.max(0, Math.min(1, entity.hull / entity.hullMax)));
     const targetPercent = driveReady ? ANVIL_WORK.serviceReleaseHull * 100 : 100;
     const action = held
@@ -114,6 +118,11 @@ export function anvilReceiverWorkStatus(state, entity) {
   if (state?.mode !== 'flight' || state.world?.currentSectorId !== PLANET_SITE.sectorId
     || entity?.data?.worldRecordId !== anvilWorkerRecordId(state, 'receiver')
     || actor({ state }, 'receiver') !== entity || entity.data.jobId) return null;
+  if (orchardDamageUnavailable(state, entity)) return 'STORMSHIFT · DAMAGE RECORD UNAVAILABLE · WORK HOLD';
+  if (!workerDriveReady(state, entity)) {
+    const hullPercent = Math.floor(100 * Math.max(0, Math.min(1, entity.hull / entity.hullMax)));
+    return `STORMSHIFT · DRIVE OFFLINE · ${used(entity)} GAS HELD · HULL ${hullPercent}% / 100% · REPAIR LINE TAUT`;
+  }
   if (itinerary(entity)?.phase === 'return_berth' && itinerary(entity).interruption === 'empty_load')
     return 'STORMSHIFT · EMPTY HOLD · RETURNING TO COLLECTOR BERTH';
   return ({ receiving: 'STORMSHIFT · RECEIVING SHALLOW GAS',
@@ -426,6 +435,7 @@ export const anvilTrafficMethods = {
 
   _transferAnvilLoad(e, receiver) {
     if (actor(this, 'collector') !== e || actor(this, 'receiver') !== receiver
+      || orchardDamageUnavailable(this.state, e) || orchardDamageUnavailable(this.state, receiver)
       || itinerary(e).phase !== 'return' || e.data.jobId || receiver.data.jobId
       || !receiverAtHome(receiver) || !serviceReady(e, receiver)
       || !validManifest(e?.data?.cargoManifest, ANVIL_WORK.capacity)
@@ -451,6 +461,7 @@ export const anvilTrafficMethods = {
 
   _deliverAnvilReceiver(receiver, station) {
     if (actor(this, 'receiver') !== receiver || receiver.data.jobId
+      || orchardDamageUnavailable(this.state, receiver)
       || itinerary(receiver).phase !== 'delivery' || !live(this.state, station)
       || station.type !== 'station' || station.data?.stationId !== ANVIL_WORK.buyerId
       || !validManifest(receiver.data.cargoManifest, ANVIL_WORK.receiverCapacity)) return false;
@@ -473,6 +484,7 @@ export const anvilTrafficMethods = {
       const currentApproach = anvilBuyerApproach(receiver, station);
       if (committed || this.state.traffic !== run || actor(this, 'receiver') !== receiver
         || occupantGenerationOf(receiver) !== generation || receiver.data.jobId
+        || orchardDamageUnavailable(this.state, receiver)
         || itinerary(receiver) !== route || route.phase !== 'delivery'
         || receiver.data.cargoManifest !== source || JSON.stringify(source) !== offered
         || !finitePose(receiver) || !finitePose(station)
@@ -517,11 +529,22 @@ export const anvilTrafficMethods = {
   },
 
   _stepAnvilReceiver(receiver) {
-    if (!receiver || receiver.data.jobId) return;
+    if (actor(this, 'receiver') !== receiver || !receiver || receiver.data.jobId) return;
+    if (!this.state.combat?.entities?.[receiver.id] && hasOrchardWorkDamage(this.state, receiver))
+      ensureCombatant(this.state, receiver, orchardCombatCatalog ||= createCombatCatalog());
     const route = itinerary(receiver), home = homeBerth(route);
     if (!home || !finitePose(receiver) || !validManifest(receiver.data.cargoManifest, ANVIL_WORK.receiverCapacity)) { hold(receiver); return; }
     const station = this._sectorStations().find(e => live(this.state, e)
       && e.data?.stationId === ANVIL_WORK.buyerId);
+    // Loss of real propulsion pauses movement, not ownership or intake. A settled
+    // disabled tender can still accept cargo, or unload at the existing buyer;
+    // neither operation requires thrust. Keep the exact route for genuine repair.
+    // No hull threshold, invented intake subsystem, offscreen repair or replacement.
+    if (!workerDriveReady(this.state, receiver)) {
+      hold(receiver);
+      if (!orchardDamageUnavailable(this.state, receiver) && route.phase === 'delivery' && station) this._deliverAnvilReceiver(receiver, station);
+      return;
+    }
     const approach = station && anvilBuyerApproach(receiver, station);
     const transitRadius = approach ? Math.max(ANVIL_WORK.berthRadius,
       Math.hypot(approach.x - route.center.x, approach.z - route.center.z) + 100) : ANVIL_WORK.berthRadius;
@@ -596,6 +619,9 @@ export const anvilTrafficMethods = {
     bindWorkerIdentity(this, e, 'collector'); bindWorkerIdentity(this, receiver, 'receiver');
     this._stepAnvilReceiver(receiver);
     if (!e || e.data.jobId) return; // another existing movement owner wins
+    if (orchardDamageUnavailable(state, e)) { hold(e); return; }
+    if (!state.combat?.entities?.[e.id] && hasOrchardWorkDamage(state, e))
+      ensureCombatant(state, e, orchardCombatCatalog ||= createCombatCatalog());
     e.data.anvilSlingWitness = true;
     bindCollectorCollision(e);
     if (state.planet?.active) {
@@ -610,7 +636,7 @@ export const anvilTrafficMethods = {
       route.serviceRequired = true; persist(this, e);
     }
     if (route.serviceRequired === true && e.hull >= e.hullMax * ANVIL_WORK.serviceReleaseHull
-      && collectorDriveReady(state, e)) {
+      && workerDriveReady(state, e)) {
       route.serviceRequired = false;
       if (route.phase === 'service_hold') route.phase = 'berthed';
       persist(this, e);
