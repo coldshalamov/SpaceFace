@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Sector-coherence authorization — 21 October 2026, 06:30 UTC
+
+Nine goals are now OPEN: the existing eight remain unchanged and SF-SECTOR-COHERENCE is newly authorized. This adds a systematic sector-by-sector review rather than replacing the original scope or closing any earlier outcome.
+
+The user asked to evaluate every actual sector: what happens on first arrival, what continues to happen, and what changes over time, while meticulously inspecting existing assets and code and creatively improving quality with resources already available or straightforward to make. The intended outcome is a coherent experience spanning recurring life, progression and consequences, return visits, and Save/Continue, connected to actual story and missions.
+
+Root coordinates sector review. The next concrete step is an inventory-backed sector register: enumerate the sectors that actually exist, identify their code, assets, story/mission hooks and current owners, then document first-arrival, recurring-life, change-over-time, return-visit and persistence behavior with evidence and actionable gaps. Reuse suitable assets before inventing redundant models; distinguish existing behavior, proposed improvements, implementation and acceptance. No inventory completion, sector improvement or accepted result is claimed yet.
+
+The user's two existing continuation reminders were updated at 06:29:52 UTC to include this scope; their schedules and enabled states were unchanged. No optional user input is pending. Current source/model publication and pending approval states remain as recorded below. This checkpoint changes only the two public handoff/goal documents and contains no private reminder configuration or restricted diagnostics.
+
 ## Current source handoff — 21 October 2026, 06:14 UTC
 
 All eight goals remain OPEN. This checkpoint supersedes older current-state entries without erasing scoped failures or implying acceptance.
