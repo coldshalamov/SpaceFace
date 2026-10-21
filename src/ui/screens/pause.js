@@ -790,6 +790,13 @@ export function setPhotoLook(ctx, lookId) {
   return photoState.filterLook;
 }
 
+/** The Look control only exists when a live grade stage can honour it — the render
+ *  graph route is opt-in; on the default bloom route the button would do nothing. */
+export function photoLookAvailable(state) {
+  const graph = state && state.render && state.render.renderGraph;
+  return !!(graph && typeof graph.setPhotoFilters === 'function');
+}
+
 /** Advance the photo look to the next authored one (the overlay's Look control). */
 export function cyclePhotoLook(ctx) {
   const state = ctx && ctx.state;
@@ -868,14 +875,20 @@ function enterPhoto(rootEl, ctx) {
   exposure.setAttribute('aria-label', 'Exposure');
   exposure.addEventListener('input', () => syncPhotoExposure(ctx, exposure.value));
   // FB-085: the filter flag finally does something — the Look control cycles the three authored
-  // grades (the grade stage itself lives on the render graph; selection lives here).
-  const lookBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', 'Look');
-  lookBtn.type = 'button';
-  lookBtn.setAttribute('aria-label', 'Cycle photo filter look');
-  lookBtn.addEventListener('click', () => {
-    const next = cyclePhotoLook(ctx);
-    if (next) lookBtn.textContent = `Look · ${next}`;
-  });
+  // grades (the grade stage itself lives on the render graph; selection lives here). The graph
+  // route is opt-in: on the default bloom route no grade stage exists, so the control that can
+  // never change the picture stays off the bar instead of lying to the player.
+  const lookBtn = photoLookAvailable(state)
+    ? el('button', 'k-word k-word--fine fh-key fh-key--small', 'Look')
+    : null;
+  if (lookBtn) {
+    lookBtn.type = 'button';
+    lookBtn.setAttribute('aria-label', 'Cycle photo filter look');
+    lookBtn.addEventListener('click', () => {
+      const next = cyclePhotoLook(ctx);
+      if (next) lookBtn.textContent = `Look · ${next}`;
+    });
+  }
   // Photo FOV rides the one video.fov setting the chase camera already reads (settings slider
   // bounds 35–90); nothing new to persist — the settings route owns it.
   const fov = document.createElement('input');
@@ -894,7 +907,7 @@ function enterPhoto(rootEl, ctx) {
   exposureControl.appendChild(el('span', 'k-t-fine', 'Exposure'));
   exposureControl.appendChild(exposure);
   bar.appendChild(exposureControl);
-  bar.appendChild(lookBtn);
+  if (lookBtn) bar.appendChild(lookBtn);
   const fovControl = el('label', 'sf-photo-control');
   fovControl.appendChild(el('span', 'k-t-fine', 'FOV'));
   fovControl.appendChild(fov);
