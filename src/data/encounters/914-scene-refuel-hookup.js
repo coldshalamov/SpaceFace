@@ -1,45 +1,45 @@
-// Paperless Dash — lived vignette. External-only: ambient world scene.
+// Refuel Hookup — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_paperless_dash",
-  "title": "Paperless Dash",
-  "factionId": "faction_scn",
+  "id": "scene_refuel_hookup",
+  "title": "Refuel Hookup",
+  "factionId": "faction_mts",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "quiet_ghost",
-      "factionId": "faction_quiet",
+      "archetype": "mule_trader",
+      "factionId": "faction_mts",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "PAPERLESS FREIGHT"
+      "scanLabel": "MTS TENDER"
     },
     {
       "role": "ship_1",
-      "archetype": "customs_cutter",
-      "factionId": "faction_scn",
+      "archetype": "mule_trader",
+      "factionId": "faction_mts",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "CUSTOMS CUTTER"
+      "scanLabel": "FREE HAULER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Back the cutter",
-      "playerLine": "I will help customs take the unlisted freight."
+      "label": "Take the lamp",
+      "playerLine": "I will hold the work lamp while they finish refueling."
     },
     {
       "id": "b",
-      "label": "Clear a path",
-      "playerLine": "I will give the paperless hull one clean line into fog."
+      "label": "Back the hauler",
+      "playerLine": "I will lend the free crew a clear line out."
     },
     {
       "id": "c",
-      "label": "Stay unlisted",
-      "playerLine": "I am not adding my name to somebody else’s manifest."
+      "label": "Leave them coupled",
+      "playerLine": "I will leave the fuel line to its own hands."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CLERK: Freight has no papers. The fog is not a stamp.",
+      "line": "DESK: Two hulls are coupled; the lamp-holder still has no shift.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -60,21 +60,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "chase",
+      "motion": "face",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "The cutter reads the empty manifest into an empty channel.",
+      "line": "Fuel is moving through the line one quiet measure at a time.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "chase",
+      "motion": "face",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -85,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The cutter got a bearing. The cargo stayed covered.",
+      "line": "The lamp stayed steady until the coupler went dry.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -93,15 +93,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_paperless_dash",
+      "reason": "scene_refuel_hookup",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_scn",
+      "factionId": "faction_mts",
       "delta": 2,
-      "reason": "scene_paperless_dash",
+      "reason": "scene_refuel_hookup",
       "next": "resolve_a"
     },
     {
@@ -112,24 +112,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The ghost went into the fog with its hold shut.",
+      "line": "The free hauler left with its fuel line capped.",
       "channel": "info",
       "next": "rep_b_runner"
     },
     {
       "id": "rep_b_runner",
       "verb": "rep",
-      "factionId": "faction_quiet",
+      "factionId": "faction_free",
       "delta": 1,
-      "reason": "scene_paperless_dash",
+      "reason": "scene_refuel_hookup",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_scn",
+      "factionId": "faction_mts",
       "delta": -1,
-      "reason": "scene_paperless_dash",
+      "reason": "scene_refuel_hookup",
       "next": "resolve_b"
     },
     {
@@ -140,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You kept your name off the manifest.",
+      "line": "You left the two hulls facing each other.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 573;
+export const encounterOrder = 914;
 export const trigger = deepFreeze({
-  "id": "scene_paperless_dash",
+  "id": "scene_refuel_hookup",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,46 +187,45 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "trade",
-    "place": "nebula_fog",
+    "situation": "convoy",
+    "place": "patrol_corridor",
     "twist": "literalized",
-    "actor": "faction_scn"
+    "actor": "faction_mts"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_nyx_march",
-    "sector_eris_margin",
-    "sector_proteus_well",
-    "sector_eunomia_gulf"
+    "sector_pallas_drift",
+    "sector_nereid_shoal",
+    "sector_dione_lane"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Paperless Dash",
-  "primaryLine": "CLERK: Freight has no papers. The fog is not a stamp.",
-  "factionId": "faction_scn",
+  "title": "Refuel Hookup",
+  "primaryLine": "DESK: Two hulls are coupled; the lamp-holder still has no shift.",
+  "factionId": "faction_mts",
   "choices": [
     {
       "id": "a",
-      "label": "Back the cutter",
-      "playerLine": "I will help customs take the unlisted freight."
+      "label": "Take the lamp",
+      "playerLine": "I will hold the work lamp while they finish refueling."
     },
     {
       "id": "b",
-      "label": "Clear a path",
-      "playerLine": "I will give the paperless hull one clean line into fog."
+      "label": "Back the hauler",
+      "playerLine": "I will lend the free crew a clear line out."
     },
     {
       "id": "c",
-      "label": "Stay unlisted",
-      "playerLine": "I am not adding my name to somebody else’s manifest."
+      "label": "Leave them coupled",
+      "playerLine": "I will leave the fuel line to its own hands."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The cutter got a bearing. The cargo stayed covered.",
-    "b": "The ghost went into the fog with its hold shut.",
-    "c": "You kept your name off the manifest."
+    "a": "The lamp stayed steady until the coupler went dry.",
+    "b": "The free hauler left with its fuel line capped.",
+    "c": "You left the two hulls facing each other."
   }
 });

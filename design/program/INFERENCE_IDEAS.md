@@ -1,4 +1,4 @@
-| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
+| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
 # INFERENCE ideas — directed grunt catalog
 
 Law: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) §0.1. Feelings and inventions live in
@@ -878,6 +878,14 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | RC-10 | rc-10-chronicle-hitch | this session | ship:purchased emits name when catalog name differs from id label; chronicle reads Hitch for the starter |
 | RC-11 | rc-11-no-trainer-labels | this session | tracker labels read Derelict / Fleeing Raider / actor in-world name; trainer billing off the surface |
 | RC-12 | rc-12-range-wu-labels | this session | range screen strings read wu/s and wu; no value conversion |
+| RC-13 | rc-13-vignette-phrase-variation | this session | generator emits hashed shelves of filler lines; both stock phrases at 0 across 195 regenerated vignettes |
+| RC-14 | rc-14-toll-debits | this session | toll/inspection phases emit cost verb + grant 0; paying the count debits instead of paying |
+| RC-15 | rc-15-vignette-cost-verb | this session | new cost verb routes through economy:chargeCredits sole-writer; insufficient_funds aborts with reason |
+| RC-16 | rc-16-offer-wait-10s | this session | pre-offer orbit trimmed to <=10 s across regenerated vignettes; no phase renames |
+| PULSE-03 | pulse-03-wreck-rumors | this session | 90 rumors each subjectId-keyed to a real wreck/one-off/landmark; focused resolver test |
+| PULSE-05 | pulse-05-headline-variety | this session | all headline kinds 15 templates, regime entries 6, existing placeholder set only |
+| PULSE-06 | pulse-06-commodity-flavor | this session | all 66 commodity ids carry COMMODITY_FLAVOR nouns; stale 43-count test repaired |
+| PULSE-07 | pulse-07-poi-lore | this session | every landmark (already true) + all rim POIs carry >=3 lore lines; ids resolve |
 | NXI-022 | nxi-022-kinematic-proxy-not-offered | 6eca0bd9a | isAttachable applies the physicsBody:false exclusion (and world-site machine roles) to the offer: machine/fauna/route proxies denied, loose payloads beside them still offered, stations/asteroids/mines/beacons/survival wrecks keep latching; focused test pins all of it on seed 4242 |
 | VERB-32 | verb-32-mine-keeps-velocity | 6dd3b0e5ce | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |

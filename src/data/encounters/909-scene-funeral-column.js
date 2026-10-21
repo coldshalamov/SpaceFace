@@ -1,45 +1,53 @@
-// Refuel Hookup — lived vignette. External-only: ambient world scene.
+// Funeral Column — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_refuel_hookup",
-  "title": "Refuel Hookup",
-  "factionId": "faction_mts",
+  "id": "scene_funeral_column",
+  "title": "Funeral Column",
+  "factionId": "faction_choir",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "mule_trader",
-      "factionId": "faction_mts",
+      "archetype": "choir_zealot",
+      "factionId": "faction_choir",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "MTS TENDER"
+      "scanLabel": "PILGRIM 1"
     },
     {
       "role": "ship_1",
-      "archetype": "mule_trader",
-      "factionId": "faction_mts",
+      "archetype": "choir_zealot",
+      "factionId": "faction_choir",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "FREE HAULER"
+      "scanLabel": "PILGRIM 2"
+    },
+    {
+      "role": "ship_2",
+      "archetype": "choir_zealot",
+      "factionId": "faction_choir",
+      "dx": 160,
+      "dz": 70,
+      "scanLabel": "PILGRIM 3"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Take the lamp",
-      "playerLine": "I will hold the work lamp while they finish refueling."
+      "label": "Hold the lane",
+      "playerLine": "I will keep the crossing clear until the column passes."
     },
     {
       "id": "b",
-      "label": "Back the hauler",
-      "playerLine": "I will lend the free crew a clear line out."
+      "label": "Cross the column",
+      "playerLine": "I will cross their line before the dark berth closes."
     },
     {
       "id": "c",
-      "label": "Leave them coupled",
-      "playerLine": "I will leave the fuel line to its own hands."
+      "label": "Wait outside",
+      "playerLine": "I will wait beyond the route and let them pass."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +60,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DESK: Two hulls are coupled; the lamp-holder still has no shift.",
+      "line": "CANTOR: The Candle Fleet held one dark place for this column.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -60,21 +68,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "face",
+      "motion": "column",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "Fuel is moving through the line one quiet measure at a time.",
+      "line": "Three hulls keep the same distance from the empty fourth berth.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "face",
+      "motion": "column",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -85,7 +93,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The lamp stayed steady until the coupler went dry.",
+      "line": "The column crossed without changing its order.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -93,15 +101,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_refuel_hookup",
+      "reason": "scene_funeral_column",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_mts",
+      "factionId": "faction_choir",
       "delta": 2,
-      "reason": "scene_refuel_hookup",
+      "reason": "scene_funeral_column",
       "next": "resolve_a"
     },
     {
@@ -112,24 +120,16 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The free hauler left with its fuel line capped.",
+      "line": "The hymn broke once. The column kept its bearing.",
       "channel": "info",
-      "next": "rep_b_runner"
-    },
-    {
-      "id": "rep_b_runner",
-      "verb": "rep",
-      "factionId": "faction_free",
-      "delta": 1,
-      "reason": "scene_refuel_hookup",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_mts",
+      "factionId": "faction_choir",
       "delta": -1,
-      "reason": "scene_refuel_hookup",
+      "reason": "scene_funeral_column",
       "next": "resolve_b"
     },
     {
@@ -140,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the two hulls facing each other.",
+      "line": "You waited beyond the empty berth.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 581;
+export const encounterOrder = 909;
 export const trigger = deepFreeze({
-  "id": "scene_refuel_hookup",
+  "id": "scene_funeral_column",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,45 +187,46 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "convoy",
-    "place": "patrol_corridor",
-    "twist": "literalized",
-    "actor": "faction_mts"
+    "situation": "escort",
+    "place": "civilian_core",
+    "twist": "admirers",
+    "actor": "faction_choir"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_pallas_drift",
-    "sector_nereid_shoal",
-    "sector_dione_lane"
+    "sector_helios_prime",
+    "sector_veil_nebula",
+    "sector_phoebe_echo",
+    "sector_triton_wake"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Refuel Hookup",
-  "primaryLine": "DESK: Two hulls are coupled; the lamp-holder still has no shift.",
-  "factionId": "faction_mts",
+  "title": "Funeral Column",
+  "primaryLine": "CANTOR: The Candle Fleet held one dark place for this column.",
+  "factionId": "faction_choir",
   "choices": [
     {
       "id": "a",
-      "label": "Take the lamp",
-      "playerLine": "I will hold the work lamp while they finish refueling."
+      "label": "Hold the lane",
+      "playerLine": "I will keep the crossing clear until the column passes."
     },
     {
       "id": "b",
-      "label": "Back the hauler",
-      "playerLine": "I will lend the free crew a clear line out."
+      "label": "Cross the column",
+      "playerLine": "I will cross their line before the dark berth closes."
     },
     {
       "id": "c",
-      "label": "Leave them coupled",
-      "playerLine": "I will leave the fuel line to its own hands."
+      "label": "Wait outside",
+      "playerLine": "I will wait beyond the route and let them pass."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The lamp stayed steady until the coupler went dry.",
-    "b": "The free hauler left with its fuel line capped.",
-    "c": "You left the two hulls facing each other."
+    "a": "The column crossed without changing its order.",
+    "b": "The hymn broke once. The column kept its bearing.",
+    "c": "You waited beyond the empty berth."
   }
 });

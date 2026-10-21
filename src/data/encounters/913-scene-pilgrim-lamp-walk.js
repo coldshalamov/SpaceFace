@@ -1,45 +1,53 @@
-// Manifest Stop And Search — lived vignette. External-only: ambient world scene.
+// Pilgrim Lamp Walk — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_manifest_stop_and_search",
-  "title": "Manifest Stop And Search",
-  "factionId": "faction_scn",
+  "id": "scene_pilgrim_lamp_walk",
+  "title": "Pilgrim Lamp Walk",
+  "factionId": "faction_choir",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "mule_trader",
-      "factionId": "faction_mts",
+      "archetype": "choir_zealot",
+      "factionId": "faction_choir",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "HAULER"
+      "scanLabel": "PILGRIM 1"
     },
     {
       "role": "ship_1",
-      "archetype": "customs_cutter",
-      "factionId": "faction_scn",
+      "archetype": "choir_zealot",
+      "factionId": "faction_choir",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "CUSTOMS CUTTER"
+      "scanLabel": "PILGRIM 2"
+    },
+    {
+      "role": "ship_2",
+      "archetype": "choir_zealot",
+      "factionId": "faction_choir",
+      "dx": 160,
+      "dz": 70,
+      "scanLabel": "PILGRIM 3"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Back the search",
-      "playerLine": "I will help customs match the pod to its manifest."
+      "label": "Keep their passage",
+      "playerLine": "I will hold the lane while the lamp procession passes."
     },
     {
       "id": "b",
-      "label": "Back the hauler",
-      "playerLine": "I will keep the cutter from turning a mismatch into seizure."
+      "label": "Cross the line",
+      "playerLine": "I will cross their bearing before the last lamp fades."
     },
     {
       "id": "c",
-      "label": "Stay outside",
-      "playerLine": "I am not joining a count that has already started."
+      "label": "Wait beyond",
+      "playerLine": "I will wait beyond the procession and its lamps."
     }
   ],
   "timeoutChoice": "c",
@@ -47,22 +55,12 @@ export const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
-      "next": "prop"
-    },
-    {
-      "id": "prop",
-      "verb": "prop",
-      "scanLabel": "OPENED POD",
-      "dx": 54,
-      "dz": -28,
-      "radius": 9,
-      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "CLERK: Opened pod sits at the weigh; read the seal back.",
+      "line": "CANTOR: We walk the lamp line where the Veil loses its edges.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -70,21 +68,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "hold",
+      "motion": "column",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "The pod lid is open. The manifest still calls it sealed.",
+      "line": "Each hull leaves one measured length for the next.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "hold",
+      "motion": "column",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -95,7 +93,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Customs marked the pod opened. The hauler kept its berth.",
+      "line": "The last lamp crossed without losing the first.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -103,15 +101,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_manifest_stop_and_search",
+      "reason": "scene_pilgrim_lamp_walk",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_scn",
+      "factionId": "faction_choir",
       "delta": 2,
-      "reason": "scene_manifest_stop_and_search",
+      "reason": "scene_pilgrim_lamp_walk",
       "next": "resolve_a"
     },
     {
@@ -122,24 +120,16 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The hauler left with the seal still in its own hand.",
+      "line": "The line opened once, then closed behind your hull.",
       "channel": "info",
-      "next": "rep_b_runner"
-    },
-    {
-      "id": "rep_b_runner",
-      "verb": "rep",
-      "factionId": "faction_mts",
-      "delta": 1,
-      "reason": "scene_manifest_stop_and_search",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_scn",
+      "factionId": "faction_choir",
       "delta": -1,
-      "reason": "scene_manifest_stop_and_search",
+      "reason": "scene_pilgrim_lamp_walk",
       "next": "resolve_b"
     },
     {
@@ -150,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You watched the weigh slip change desks.",
+      "line": "You waited beyond the measured wake.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -162,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 571;
+export const encounterOrder = 913;
 export const trigger = deepFreeze({
-  "id": "scene_manifest_stop_and_search",
+  "id": "scene_pilgrim_lamp_walk",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -197,44 +187,45 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "patrol",
-    "place": "border_checkpoint",
-    "twist": "player_echo",
-    "actor": "faction_scn"
+    "situation": "wake",
+    "place": "colony",
+    "twist": "follow_on",
+    "actor": "faction_choir"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_tethys_junction",
-    "sector_dione_lane"
+    "sector_veil_nebula",
+    "sector_sedna_dark",
+    "sector_phoebe_echo"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Manifest Stop And Search",
-  "primaryLine": "CLERK: Opened pod sits at the weigh; read the seal back.",
-  "factionId": "faction_scn",
+  "title": "Pilgrim Lamp Walk",
+  "primaryLine": "CANTOR: We walk the lamp line where the Veil loses its edges.",
+  "factionId": "faction_choir",
   "choices": [
     {
       "id": "a",
-      "label": "Back the search",
-      "playerLine": "I will help customs match the pod to its manifest."
+      "label": "Keep their passage",
+      "playerLine": "I will hold the lane while the lamp procession passes."
     },
     {
       "id": "b",
-      "label": "Back the hauler",
-      "playerLine": "I will keep the cutter from turning a mismatch into seizure."
+      "label": "Cross the line",
+      "playerLine": "I will cross their bearing before the last lamp fades."
     },
     {
       "id": "c",
-      "label": "Stay outside",
-      "playerLine": "I am not joining a count that has already started."
+      "label": "Wait beyond",
+      "playerLine": "I will wait beyond the procession and its lamps."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Customs marked the pod opened. The hauler kept its berth.",
-    "b": "The hauler left with the seal still in its own hand.",
-    "c": "You watched the weigh slip change desks."
+    "a": "The last lamp crossed without losing the first.",
+    "b": "The line opened once, then closed behind your hull.",
+    "c": "You waited beyond the measured wake."
   }
 });

@@ -162,7 +162,7 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 582;
+export const encounterOrder = 915;
 export const trigger = deepFreeze({
   "id": "scene_rescue_drill",
   "tier": "ambient",

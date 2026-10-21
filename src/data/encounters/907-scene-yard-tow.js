@@ -1,53 +1,45 @@
-// Pilgrim Lamp Walk — lived vignette. External-only: ambient world scene.
+// Yard Tow — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_pilgrim_lamp_walk",
-  "title": "Pilgrim Lamp Walk",
-  "factionId": "faction_choir",
+  "id": "scene_yard_tow",
+  "title": "Yard Tow",
+  "factionId": "faction_dmc",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "choir_zealot",
-      "factionId": "faction_choir",
+      "archetype": "mule_trader",
+      "factionId": "faction_dmc",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "PILGRIM 1"
+      "scanLabel": "TUG"
     },
     {
       "role": "ship_1",
-      "archetype": "choir_zealot",
-      "factionId": "faction_choir",
+      "archetype": "mule_trader",
+      "factionId": "faction_dmc",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "PILGRIM 2"
-    },
-    {
-      "role": "ship_2",
-      "archetype": "choir_zealot",
-      "factionId": "faction_choir",
-      "dx": 160,
-      "dz": 70,
-      "scanLabel": "PILGRIM 3"
+      "scanLabel": "DEAD HAULER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Keep their passage",
-      "playerLine": "I will hold the lane while the lamp procession passes."
+      "label": "Clear the tow",
+      "playerLine": "I will get the dead hull into the yard intact."
     },
     {
       "id": "b",
-      "label": "Cross the line",
-      "playerLine": "I will cross their bearing before the last lamp fades."
+      "label": "Claim salvage first",
+      "playerLine": "I will mark the salvage before that tow reaches the yard."
     },
     {
       "id": "c",
-      "label": "Wait beyond",
-      "playerLine": "I will wait beyond the procession and its lamps."
+      "label": "Leave the tag",
+      "playerLine": "I will leave the claim crews to settle the hull."
     }
   ],
   "timeoutChoice": "c",
@@ -60,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: We walk the lamp line where the Veil loses its edges.",
+      "line": "FOREMAN: Long Berth has a dead hull. One tow line is enough.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -68,21 +60,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "column",
+      "motion": "tow",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "Each hull leaves one measured length for the next.",
+      "line": "The dead hauler is still carrying somebody else’s claim tag.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "column",
+      "motion": "tow",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -93,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The last lamp crossed without losing the first.",
+      "line": "The tug reached the yard with its claim tag visible.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -101,15 +93,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_pilgrim_lamp_walk",
+      "reason": "scene_yard_tow",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_choir",
+      "factionId": "faction_dmc",
       "delta": 2,
-      "reason": "scene_pilgrim_lamp_walk",
+      "reason": "scene_yard_tow",
       "next": "resolve_a"
     },
     {
@@ -120,16 +112,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The line opened once, then closed behind your hull.",
+      "line": "The salvage mark went on before the yard gate.",
       "channel": "info",
+      "next": "rep_b_runner"
+    },
+    {
+      "id": "rep_b_runner",
+      "verb": "rep",
+      "factionId": "faction_free",
+      "delta": 1,
+      "reason": "scene_yard_tow",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_choir",
+      "factionId": "faction_dmc",
       "delta": -1,
-      "reason": "scene_pilgrim_lamp_walk",
+      "reason": "scene_yard_tow",
       "next": "resolve_b"
     },
     {
@@ -140,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You waited beyond the measured wake.",
+      "line": "You left the hull between the tug and the yard.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 580;
+export const encounterOrder = 907;
 export const trigger = deepFreeze({
-  "id": "scene_pilgrim_lamp_walk",
+  "id": "scene_yard_tow",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,45 +187,46 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "wake",
-    "place": "colony",
-    "twist": "follow_on",
-    "actor": "faction_choir"
+    "situation": "yard",
+    "place": "refinery_approach",
+    "twist": "k1",
+    "actor": "faction_dmc"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_veil_nebula",
-    "sector_sedna_dark",
-    "sector_phoebe_echo"
+    "sector_ceres_belt",
+    "sector_vesta_forge",
+    "sector_charon_expanse",
+    "sector_hyperion_cut"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Pilgrim Lamp Walk",
-  "primaryLine": "CANTOR: We walk the lamp line where the Veil loses its edges.",
-  "factionId": "faction_choir",
+  "title": "Yard Tow",
+  "primaryLine": "FOREMAN: Long Berth has a dead hull. One tow line is enough.",
+  "factionId": "faction_dmc",
   "choices": [
     {
       "id": "a",
-      "label": "Keep their passage",
-      "playerLine": "I will hold the lane while the lamp procession passes."
+      "label": "Clear the tow",
+      "playerLine": "I will get the dead hull into the yard intact."
     },
     {
       "id": "b",
-      "label": "Cross the line",
-      "playerLine": "I will cross their bearing before the last lamp fades."
+      "label": "Claim salvage first",
+      "playerLine": "I will mark the salvage before that tow reaches the yard."
     },
     {
       "id": "c",
-      "label": "Wait beyond",
-      "playerLine": "I will wait beyond the procession and its lamps."
+      "label": "Leave the tag",
+      "playerLine": "I will leave the claim crews to settle the hull."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The last lamp crossed without losing the first.",
-    "b": "The line opened once, then closed behind your hull.",
-    "c": "You waited beyond the measured wake."
+    "a": "The tug reached the yard with its claim tag visible.",
+    "b": "The salvage mark went on before the yard gate.",
+    "c": "You left the hull between the tug and the yard."
   }
 });

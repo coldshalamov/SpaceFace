@@ -1,10 +1,10 @@
-// Mail Through Crossfire — lived vignette. External-only: ambient world scene.
+// Fissure Haul Out — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_mail_through_crossfire",
-  "title": "Mail Through Crossfire",
+  "id": "scene_fissure_haul_out",
+  "title": "Fissure Haul Out",
   "factionId": "faction_free",
   "start": "spawn",
   "cast": [
@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "COURIER 1"
+      "scanLabel": "FISSURE TUG"
     },
     {
       "role": "ship_1",
@@ -22,24 +22,24 @@ export const spec = {
       "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "COURIER 2"
+      "scanLabel": "DEAD HAULER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Escort the mail",
-      "playerLine": "I will hold a clear lane for the couriers."
+      "label": "Guard the line",
+      "playerLine": "I will keep the haul clear until both hulls are out."
     },
     {
       "id": "b",
-      "label": "Back the Reach",
-      "playerLine": "I will let the Reach keep the next bearing."
+      "label": "Mark the salvage",
+      "playerLine": "I will mark the load before it clears the fissure."
     },
     {
       "id": "c",
-      "label": "Stay out",
-      "playerLine": "I will leave the packet to its own route."
+      "label": "Stay above",
+      "playerLine": "I will keep outside the seam and let them work."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "MOSS: The Reach mail still runs; keep the packet on the marked bearing.",
+      "line": "MOSS: Fissure haul is moving. Keep the second hull clear of the seam.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -60,21 +60,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "column",
+      "motion": "tow",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "The dock flag changed. The courier pouch did not.",
+      "line": "The tow line has one clean pull left before the fissure shifts.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "column",
+      "motion": "tow",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -85,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Both couriers carried the packet past the held dock.",
+      "line": "Both hulls cleared the fissure with the line still attached.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -93,7 +93,7 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_mail_through_crossfire",
+      "reason": "scene_fissure_haul_out",
       "next": "rep_a"
     },
     {
@@ -101,7 +101,7 @@ export const spec = {
       "verb": "rep",
       "factionId": "faction_free",
       "delta": 2,
-      "reason": "scene_mail_through_crossfire",
+      "reason": "scene_fissure_haul_out",
       "next": "resolve_a"
     },
     {
@@ -112,16 +112,8 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The Reach took the lane. The mail kept moving.",
+      "line": "The salvage mark stayed on the load through the pull.",
       "channel": "info",
-      "next": "rep_b_runner"
-    },
-    {
-      "id": "rep_b_runner",
-      "verb": "rep",
-      "factionId": "faction_reach",
-      "delta": 1,
-      "reason": "scene_mail_through_crossfire",
       "next": "rep_b_authority"
     },
     {
@@ -129,7 +121,7 @@ export const spec = {
       "verb": "rep",
       "factionId": "faction_free",
       "delta": -1,
-      "reason": "scene_mail_through_crossfire",
+      "reason": "scene_fissure_haul_out",
       "next": "resolve_b"
     },
     {
@@ -140,7 +132,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the courier line unchanged.",
+      "line": "You kept above the seam until the tow passed.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +144,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 579;
+export const encounterOrder = 917;
 export const trigger = deepFreeze({
-  "id": "scene_mail_through_crossfire",
+  "id": "scene_fissure_haul_out",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,43 +179,43 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "trade",
-    "place": "ambush_lane",
-    "twist": "named",
+    "situation": "salvage",
+    "place": "anomaly_deep",
+    "twist": "k1",
     "actor": "faction_free"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_io_reach"
+    "sector_haumea_rift"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Mail Through Crossfire",
-  "primaryLine": "MOSS: The Reach mail still runs; keep the packet on the marked bearing.",
+  "title": "Fissure Haul Out",
+  "primaryLine": "MOSS: Fissure haul is moving. Keep the second hull clear of the seam.",
   "factionId": "faction_free",
   "choices": [
     {
       "id": "a",
-      "label": "Escort the mail",
-      "playerLine": "I will hold a clear lane for the couriers."
+      "label": "Guard the line",
+      "playerLine": "I will keep the haul clear until both hulls are out."
     },
     {
       "id": "b",
-      "label": "Back the Reach",
-      "playerLine": "I will let the Reach keep the next bearing."
+      "label": "Mark the salvage",
+      "playerLine": "I will mark the load before it clears the fissure."
     },
     {
       "id": "c",
-      "label": "Stay out",
-      "playerLine": "I will leave the packet to its own route."
+      "label": "Stay above",
+      "playerLine": "I will keep outside the seam and let them work."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Both couriers carried the packet past the held dock.",
-    "b": "The Reach took the lane. The mail kept moving.",
-    "c": "You left the courier line unchanged."
+    "a": "Both hulls cleared the fissure with the line still attached.",
+    "b": "The salvage mark stayed on the load through the pull.",
+    "c": "You kept above the seam until the tow passed."
   }
 });

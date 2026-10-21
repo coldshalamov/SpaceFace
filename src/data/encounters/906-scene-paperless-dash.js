@@ -1,53 +1,45 @@
-// Fresh Wreck Vultures — lived vignette. External-only: ambient world scene.
+// Paperless Dash — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_fresh_wreck_vultures",
-  "title": "Fresh Wreck Vultures",
-  "factionId": "faction_free",
+  "id": "scene_paperless_dash",
+  "title": "Paperless Dash",
+  "factionId": "faction_scn",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "reaver_pirate",
-      "factionId": "faction_reach",
+      "archetype": "quiet_ghost",
+      "factionId": "faction_quiet",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "VULTURE 1"
+      "scanLabel": "PAPERLESS FREIGHT"
     },
     {
       "role": "ship_1",
-      "archetype": "reaver_pirate",
-      "factionId": "faction_reach",
+      "archetype": "customs_cutter",
+      "factionId": "faction_scn",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "VULTURE 2"
-    },
-    {
-      "role": "ship_2",
-      "archetype": "reaver_pirate",
-      "factionId": "faction_reach",
-      "dx": 160,
-      "dz": 70,
-      "scanLabel": "VULTURE 3"
+      "scanLabel": "CUSTOMS CUTTER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Protect the claim",
-      "playerLine": "I will hold the wreck clear until its owner answers."
+      "label": "Back the cutter",
+      "playerLine": "I will help customs take the unlisted freight."
     },
     {
       "id": "b",
-      "label": "Back the cutters",
-      "playerLine": "I will leave the wreck to the Reach salvage crews."
+      "label": "Clear a path",
+      "playerLine": "I will give the paperless hull one clean line into fog."
     },
     {
       "id": "c",
-      "label": "Keep clear",
-      "playerLine": "I will not enter a field where the claim is still warm."
+      "label": "Stay unlisted",
+      "playerLine": "I am not adding my name to somebody else’s manifest."
     }
   ],
   "timeoutChoice": "c",
@@ -55,22 +47,12 @@ export const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
-      "next": "prop"
-    },
-    {
-      "id": "prop",
-      "verb": "prop",
-      "scanLabel": "FRESH WRECK",
-      "dx": 54,
-      "dz": -28,
-      "radius": 9,
-      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "SLIP: Fresh wreck. Reach cutters are already measuring the gaps.",
+      "line": "CLERK: Freight has no papers. The fog is not a stamp.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -78,21 +60,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "vulture",
+      "motion": "chase",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "The beacon is still warm. The vultures have stopped pretending.",
+      "line": "The cutter reads the empty manifest into an empty channel.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "vulture",
+      "motion": "chase",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -103,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The owner kept the first claim on the beacon.",
+      "line": "The cutter got a bearing. The cargo stayed covered.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -111,15 +93,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_fresh_wreck_vultures",
+      "reason": "scene_paperless_dash",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_scn",
       "delta": 2,
-      "reason": "scene_fresh_wreck_vultures",
+      "reason": "scene_paperless_dash",
       "next": "resolve_a"
     },
     {
@@ -130,24 +112,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Reach marked three cuts and called the wreck open.",
+      "line": "The ghost went into the fog with its hold shut.",
       "channel": "info",
       "next": "rep_b_runner"
     },
     {
       "id": "rep_b_runner",
       "verb": "rep",
-      "factionId": "faction_reach",
+      "factionId": "faction_quiet",
       "delta": 1,
-      "reason": "scene_fresh_wreck_vultures",
+      "reason": "scene_paperless_dash",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_scn",
       "delta": -1,
-      "reason": "scene_fresh_wreck_vultures",
+      "reason": "scene_paperless_dash",
       "next": "resolve_b"
     },
     {
@@ -158,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You stayed outside the wreck field.",
+      "line": "You kept your name off the manifest.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -170,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 575;
+export const encounterOrder = 906;
 export const trigger = deepFreeze({
-  "id": "scene_fresh_wreck_vultures",
+  "id": "scene_paperless_dash",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -205,46 +187,46 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "wreck",
-    "place": "derelict_field",
-    "twist": "unique_wreck",
-    "actor": "faction_reach"
+    "situation": "trade",
+    "place": "nebula_fog",
+    "twist": "literalized",
+    "actor": "faction_scn"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_pallas_drift",
-    "sector_ashfall_reach",
-    "sector_kepler_scar",
-    "sector_io_reach"
+    "sector_nyx_march",
+    "sector_eris_margin",
+    "sector_proteus_well",
+    "sector_eunomia_gulf"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Fresh Wreck Vultures",
-  "primaryLine": "SLIP: Fresh wreck. Reach cutters are already measuring the gaps.",
-  "factionId": "faction_free",
+  "title": "Paperless Dash",
+  "primaryLine": "CLERK: Freight has no papers. The fog is not a stamp.",
+  "factionId": "faction_scn",
   "choices": [
     {
       "id": "a",
-      "label": "Protect the claim",
-      "playerLine": "I will hold the wreck clear until its owner answers."
+      "label": "Back the cutter",
+      "playerLine": "I will help customs take the unlisted freight."
     },
     {
       "id": "b",
-      "label": "Back the cutters",
-      "playerLine": "I will leave the wreck to the Reach salvage crews."
+      "label": "Clear a path",
+      "playerLine": "I will give the paperless hull one clean line into fog."
     },
     {
       "id": "c",
-      "label": "Keep clear",
-      "playerLine": "I will not enter a field where the claim is still warm."
+      "label": "Stay unlisted",
+      "playerLine": "I am not adding my name to somebody else’s manifest."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The owner kept the first claim on the beacon.",
-    "b": "Reach marked three cuts and called the wreck open.",
-    "c": "You stayed outside the wreck field."
+    "a": "The cutter got a bearing. The cargo stayed covered.",
+    "b": "The ghost went into the fog with its hold shut.",
+    "c": "You kept your name off the manifest."
   }
 });

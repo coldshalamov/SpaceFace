@@ -1,53 +1,45 @@
-// Funeral Column — lived vignette. External-only: ambient world scene.
+// Fare Dodger Chase — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_funeral_column",
-  "title": "Funeral Column",
-  "factionId": "faction_choir",
+  "id": "scene_fare_dodger_chase",
+  "title": "Fare Dodger Chase",
+  "factionId": "faction_scn",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "choir_zealot",
-      "factionId": "faction_choir",
+      "archetype": "mule_trader",
+      "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "PILGRIM 1"
+      "scanLabel": "UNLICENSED SKIFF"
     },
     {
       "role": "ship_1",
-      "archetype": "choir_zealot",
-      "factionId": "faction_choir",
+      "archetype": "patrol_lawman",
+      "factionId": "faction_scn",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "PILGRIM 2"
-    },
-    {
-      "role": "ship_2",
-      "archetype": "choir_zealot",
-      "factionId": "faction_choir",
-      "dx": 160,
-      "dz": 70,
-      "scanLabel": "PILGRIM 3"
+      "scanLabel": "SCN PATROL"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Hold the lane",
-      "playerLine": "I will keep the crossing clear until the column passes."
+      "label": "Read the fee",
+      "playerLine": "I will back the patrol and settle the harbour fee."
     },
     {
       "id": "b",
-      "label": "Cross the column",
-      "playerLine": "I will cross their line before the dark berth closes."
+      "label": "Wave it through",
+      "playerLine": "Let the skiff pass; the harbour can wait one run."
     },
     {
       "id": "c",
-      "label": "Wait outside",
-      "playerLine": "I will wait beyond the route and let them pass."
+      "label": "Stay clear",
+      "playerLine": "I am staying clear; finish the crossing without me."
     }
   ],
   "timeoutChoice": "c",
@@ -60,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The Candle Fleet held one dark place for this column.",
+      "line": "WARD: The Answering Buoy clocks one skiff skipping the harbour fee.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -68,21 +60,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "column",
+      "motion": "chase",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "Three hulls keep the same distance from the empty fourth berth.",
+      "line": "It cuts the freight spine with the fee still unpaid.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "column",
+      "motion": "chase",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -93,23 +85,30 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The column crossed without changing its order.",
+      "line": "Fee recorded. The skiff keeps its engine and its route.",
       "channel": "info",
+      "next": "cost_a"
+    },
+    {
+      "id": "cost_a",
+      "verb": "cost",
+      "amount": 30,
+      "reason": "scene_fare_dodger_chase",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 30,
-      "reason": "scene_funeral_column",
+      "amount": 0,
+      "reason": "scene_fare_dodger_chase",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_choir",
+      "factionId": "faction_scn",
       "delta": 2,
-      "reason": "scene_funeral_column",
+      "reason": "scene_fare_dodger_chase",
       "next": "resolve_a"
     },
     {
@@ -120,16 +119,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The hymn broke once. The column kept its bearing.",
+      "line": "The skiff cleared the spine before the buoy could answer.",
       "channel": "info",
+      "next": "rep_b_runner"
+    },
+    {
+      "id": "rep_b_runner",
+      "verb": "rep",
+      "factionId": "faction_free",
+      "delta": 1,
+      "reason": "scene_fare_dodger_chase",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_choir",
+      "factionId": "faction_scn",
       "delta": -1,
-      "reason": "scene_funeral_column",
+      "reason": "scene_fare_dodger_chase",
       "next": "resolve_b"
     },
     {
@@ -140,7 +147,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You waited beyond the empty berth.",
+      "line": "You stayed out. The patrol kept counting hulls.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +159,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 576;
+export const encounterOrder = 902;
 export const trigger = deepFreeze({
-  "id": "scene_funeral_column",
+  "id": "scene_fare_dodger_chase",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,46 +194,43 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "escort",
-    "place": "civilian_core",
-    "twist": "admirers",
-    "actor": "faction_choir"
+    "situation": "patrol",
+    "place": "trade_lane",
+    "twist": "named",
+    "actor": "faction_scn"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_helios_prime",
-    "sector_veil_nebula",
-    "sector_phoebe_echo",
-    "sector_triton_wake"
+    "sector_helios_prime"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Funeral Column",
-  "primaryLine": "CANTOR: The Candle Fleet held one dark place for this column.",
-  "factionId": "faction_choir",
+  "title": "Fare Dodger Chase",
+  "primaryLine": "WARD: The Answering Buoy clocks one skiff skipping the harbour fee.",
+  "factionId": "faction_scn",
   "choices": [
     {
       "id": "a",
-      "label": "Hold the lane",
-      "playerLine": "I will keep the crossing clear until the column passes."
+      "label": "Read the fee",
+      "playerLine": "I will back the patrol and settle the harbour fee."
     },
     {
       "id": "b",
-      "label": "Cross the column",
-      "playerLine": "I will cross their line before the dark berth closes."
+      "label": "Wave it through",
+      "playerLine": "Let the skiff pass; the harbour can wait one run."
     },
     {
       "id": "c",
-      "label": "Wait outside",
-      "playerLine": "I will wait beyond the route and let them pass."
+      "label": "Stay clear",
+      "playerLine": "I am staying clear; finish the crossing without me."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The column crossed without changing its order.",
-    "b": "The hymn broke once. The column kept its bearing.",
-    "c": "You waited beyond the empty berth."
+    "a": "Fee recorded. The skiff keeps its engine and its route.",
+    "b": "The skiff cleared the spine before the buoy could answer.",
+    "c": "You stayed out. The patrol kept counting hulls."
   }
 });

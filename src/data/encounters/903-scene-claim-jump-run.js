@@ -1,11 +1,11 @@
-// Press Gang Tow — lived vignette. External-only: ambient world scene.
+// Claim Jump Run — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_press_gang_tow",
-  "title": "Press Gang Tow",
-  "factionId": "faction_free",
+  "id": "scene_claim_jump_run",
+  "title": "Claim Jump Run",
+  "factionId": "faction_dmc",
   "start": "spawn",
   "cast": [
     {
@@ -14,32 +14,40 @@ export const spec = {
       "factionId": "faction_reach",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "PRESS GANG TUG"
+      "scanLabel": "CLAIM JUMPER"
     },
     {
       "role": "ship_1",
-      "archetype": "mule_trader",
-      "factionId": "faction_free",
+      "archetype": "patrol_lawman",
+      "factionId": "faction_dmc",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "PRESSED HAULER"
+      "scanLabel": "DMC SEAM PATROL"
+    },
+    {
+      "role": "ship_2",
+      "archetype": "patrol_lawman",
+      "factionId": "faction_dmc",
+      "dx": 160,
+      "dz": 70,
+      "scanLabel": "DMC SEAM PATROL"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Cut the tow",
-      "playerLine": "I will help the hauler break free of that line."
+      "label": "Hold the claim",
+      "playerLine": "I will help the watch recover the stolen ore."
     },
     {
       "id": "b",
-      "label": "Look away",
-      "playerLine": "I will leave the Reach crew to finish its business."
+      "label": "Cover the jumper",
+      "playerLine": "I will keep the claim crew looking at the wrong seam."
     },
     {
       "id": "c",
-      "label": "Keep your distance",
-      "playerLine": "I will keep clear of both hulls and their paperwork."
+      "label": "Leave the seam",
+      "playerLine": "I am leaving the belt to the crews already there."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +60,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "SLIP: The Concealed Harbour can see this tow. Call it a transfer.",
+      "line": "FOREMAN: That ore left the Quarry Cathedral without a receipt.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -60,21 +68,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "tow",
+      "motion": "chase",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "The aft clamps are closed. Nobody aboard signed the release.",
+      "line": "The seam is still loading while the claim mark runs.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "tow",
+      "motion": "chase",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -85,7 +93,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The tow line went slack. The hauler kept its people.",
+      "line": "The watch logged the load. The seam remains open.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -93,15 +101,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_press_gang_tow",
+      "reason": "scene_claim_jump_run",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_dmc",
       "delta": 2,
-      "reason": "scene_press_gang_tow",
+      "reason": "scene_claim_jump_run",
       "next": "resolve_a"
     },
     {
@@ -112,7 +120,7 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The pirate kept the line and took the quiet approach.",
+      "line": "The jumper kept the ore and lost the clean bearing.",
       "channel": "info",
       "next": "rep_b_runner"
     },
@@ -121,15 +129,15 @@ export const spec = {
       "verb": "rep",
       "factionId": "faction_reach",
       "delta": 1,
-      "reason": "scene_press_gang_tow",
+      "reason": "scene_claim_jump_run",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_dmc",
       "delta": -1,
-      "reason": "scene_press_gang_tow",
+      "reason": "scene_claim_jump_run",
       "next": "resolve_b"
     },
     {
@@ -140,7 +148,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the harbour to name the transfer.",
+      "line": "You left the claim crew to count the empty cradle.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +160,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 572;
+export const encounterOrder = 903;
 export const trigger = deepFreeze({
-  "id": "scene_press_gang_tow",
+  "id": "scene_claim_jump_run",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,44 +195,46 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "escort",
-    "place": "outlaw_zone",
-    "twist": "depth",
+    "situation": "claim",
+    "place": "mining_belt",
+    "twist": "follow_on",
     "actor": "faction_reach"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_sker_haven",
-    "sector_kepler_scar"
+    "sector_ceres_belt",
+    "sector_hyperion_cut",
+    "sector_rhea_cinder",
+    "sector_nereid_shoal"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Press Gang Tow",
-  "primaryLine": "SLIP: The Concealed Harbour can see this tow. Call it a transfer.",
-  "factionId": "faction_free",
+  "title": "Claim Jump Run",
+  "primaryLine": "FOREMAN: That ore left the Quarry Cathedral without a receipt.",
+  "factionId": "faction_dmc",
   "choices": [
     {
       "id": "a",
-      "label": "Cut the tow",
-      "playerLine": "I will help the hauler break free of that line."
+      "label": "Hold the claim",
+      "playerLine": "I will help the watch recover the stolen ore."
     },
     {
       "id": "b",
-      "label": "Look away",
-      "playerLine": "I will leave the Reach crew to finish its business."
+      "label": "Cover the jumper",
+      "playerLine": "I will keep the claim crew looking at the wrong seam."
     },
     {
       "id": "c",
-      "label": "Keep your distance",
-      "playerLine": "I will keep clear of both hulls and their paperwork."
+      "label": "Leave the seam",
+      "playerLine": "I am leaving the belt to the crews already there."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The tow line went slack. The hauler kept its people.",
-    "b": "The pirate kept the line and took the quiet approach.",
-    "c": "You left the harbour to name the transfer."
+    "a": "The watch logged the load. The seam remains open.",
+    "b": "The jumper kept the ore and lost the clean bearing.",
+    "c": "You left the claim crew to count the empty cradle."
   }
 });

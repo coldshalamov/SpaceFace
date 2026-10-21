@@ -1,53 +1,45 @@
-// Lane Racers — lived vignette. External-only: ambient world scene.
+// Archive Record Tail — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_lane_racers",
-  "title": "Lane Racers",
-  "factionId": "faction_mts",
+  "id": "scene_archive_record_tail",
+  "title": "Archive Record Tail",
+  "factionId": "faction_archive",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "mule_trader",
-      "factionId": "faction_free",
+      "archetype": "quiet_ghost",
+      "factionId": "faction_quiet",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "RACER 1"
+      "scanLabel": "RECORD RUNNER"
     },
     {
       "role": "ship_1",
-      "archetype": "mule_trader",
-      "factionId": "faction_free",
+      "archetype": "choir_zealot",
+      "factionId": "faction_archive",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "RACER 2"
-    },
-    {
-      "role": "ship_2",
-      "archetype": "patrol_lawman",
-      "factionId": "faction_mts",
-      "dx": 160,
-      "dz": 70,
-      "scanLabel": "MTS PATROL"
+      "scanLabel": "ARCHIVE WARDEN"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Clear the lane",
-      "playerLine": "I will ask the racers to leave room for freight."
+      "label": "Recover the record",
+      "playerLine": "I will help the archive bring the record back."
     },
     {
       "id": "b",
-      "label": "Pick a hull",
-      "playerLine": "I will back the lead hauler through the next marker."
+      "label": "Cover the runner",
+      "playerLine": "I will keep the quiet hull ahead of the archive."
     },
     {
       "id": "c",
-      "label": "Stay off course",
-      "playerLine": "I will keep my hull out of their race."
+      "label": "Leave the file",
+      "playerLine": "I will not take custody of a moving record."
     }
   ],
   "timeoutChoice": "c",
@@ -60,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DESK: Two haulers have made the weigh a starting line.",
+      "line": "ARCHIVIST: A stolen record is running. Its last byte names Orcus.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -75,7 +67,7 @@ export const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The patrol follows at a speed no freight invoice can explain.",
+      "line": "The record skips the same second each time it turns.",
       "channel": "info",
       "next": "offer"
     },
@@ -93,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The haulers opened one lane for the waiting freight.",
+      "line": "The archive has a bearing. The record is still incomplete.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -101,15 +93,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_lane_racers",
+      "reason": "scene_archive_record_tail",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_mts",
+      "factionId": "faction_archive",
       "delta": 2,
-      "reason": "scene_lane_racers",
+      "reason": "scene_archive_record_tail",
       "next": "resolve_a"
     },
     {
@@ -120,24 +112,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "One mule crossed first. The patrol kept the time.",
+      "line": "The ghost kept the file and its last missing second.",
       "channel": "info",
       "next": "rep_b_runner"
     },
     {
       "id": "rep_b_runner",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_quiet",
       "delta": 1,
-      "reason": "scene_lane_racers",
+      "reason": "scene_archive_record_tail",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_mts",
+      "factionId": "faction_archive",
       "delta": -1,
-      "reason": "scene_lane_racers",
+      "reason": "scene_archive_record_tail",
       "next": "resolve_b"
     },
     {
@@ -148,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the racers to their own marker.",
+      "line": "You left the record running into the dark.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -160,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 578;
+export const encounterOrder = 916;
 export const trigger = deepFreeze({
-  "id": "scene_lane_racers",
+  "id": "scene_archive_record_tail",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -195,44 +187,43 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "convoy",
-    "place": "trade_lane",
-    "twist": "admirers",
-    "actor": "faction_mts"
+    "situation": "archive",
+    "place": "anomaly_deep",
+    "twist": "depth",
+    "actor": "faction_archive"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_dione_lane",
-    "sector_tethys_junction"
+    "sector_orcus_shadow"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Lane Racers",
-  "primaryLine": "DESK: Two haulers have made the weigh a starting line.",
-  "factionId": "faction_mts",
+  "title": "Archive Record Tail",
+  "primaryLine": "ARCHIVIST: A stolen record is running. Its last byte names Orcus.",
+  "factionId": "faction_archive",
   "choices": [
     {
       "id": "a",
-      "label": "Clear the lane",
-      "playerLine": "I will ask the racers to leave room for freight."
+      "label": "Recover the record",
+      "playerLine": "I will help the archive bring the record back."
     },
     {
       "id": "b",
-      "label": "Pick a hull",
-      "playerLine": "I will back the lead hauler through the next marker."
+      "label": "Cover the runner",
+      "playerLine": "I will keep the quiet hull ahead of the archive."
     },
     {
       "id": "c",
-      "label": "Stay off course",
-      "playerLine": "I will keep my hull out of their race."
+      "label": "Leave the file",
+      "playerLine": "I will not take custody of a moving record."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The haulers opened one lane for the waiting freight.",
-    "b": "One mule crossed first. The patrol kept the time.",
-    "c": "You left the racers to their own marker."
+    "a": "The archive has a bearing. The record is still incomplete.",
+    "b": "The ghost kept the file and its last missing second.",
+    "c": "You left the record running into the dark."
   }
 });

@@ -1,11 +1,11 @@
-// Fare Dodger Chase — lived vignette. External-only: ambient world scene.
+// Lane Racers — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_fare_dodger_chase",
-  "title": "Fare Dodger Chase",
-  "factionId": "faction_scn",
+  "id": "scene_lane_racers",
+  "title": "Lane Racers",
+  "factionId": "faction_mts",
   "start": "spawn",
   "cast": [
     {
@@ -14,32 +14,40 @@ export const spec = {
       "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "UNLICENSED SKIFF"
+      "scanLabel": "RACER 1"
     },
     {
       "role": "ship_1",
-      "archetype": "patrol_lawman",
-      "factionId": "faction_scn",
+      "archetype": "mule_trader",
+      "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "SCN PATROL"
+      "scanLabel": "RACER 2"
+    },
+    {
+      "role": "ship_2",
+      "archetype": "patrol_lawman",
+      "factionId": "faction_mts",
+      "dx": 160,
+      "dz": 70,
+      "scanLabel": "MTS PATROL"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Read the fee",
-      "playerLine": "I will back the patrol and settle the harbour fee."
+      "label": "Clear the lane",
+      "playerLine": "I will ask the racers to leave room for freight."
     },
     {
       "id": "b",
-      "label": "Wave it through",
-      "playerLine": "Let the skiff pass; the harbour can wait one run."
+      "label": "Pick a hull",
+      "playerLine": "I will back the lead hauler through the next marker."
     },
     {
       "id": "c",
-      "label": "Stay clear",
-      "playerLine": "I am staying clear; finish the crossing without me."
+      "label": "Stay off course",
+      "playerLine": "I will keep my hull out of their race."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +60,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "WARD: The Answering Buoy clocks one skiff skipping the harbour fee.",
+      "line": "DESK: Two haulers have made the weigh a starting line.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -67,7 +75,7 @@ export const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "It cuts the freight spine with the fee still unpaid.",
+      "line": "The patrol follows at a speed no freight invoice can explain.",
       "channel": "info",
       "next": "offer"
     },
@@ -85,7 +93,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Fee recorded. The skiff keeps its engine and its route.",
+      "line": "The haulers opened one lane for the waiting freight.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -93,15 +101,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_fare_dodger_chase",
+      "reason": "scene_lane_racers",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_scn",
+      "factionId": "faction_mts",
       "delta": 2,
-      "reason": "scene_fare_dodger_chase",
+      "reason": "scene_lane_racers",
       "next": "resolve_a"
     },
     {
@@ -112,7 +120,7 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The skiff cleared the spine before the buoy could answer.",
+      "line": "One mule crossed first. The patrol kept the time.",
       "channel": "info",
       "next": "rep_b_runner"
     },
@@ -121,15 +129,15 @@ export const spec = {
       "verb": "rep",
       "factionId": "faction_free",
       "delta": 1,
-      "reason": "scene_fare_dodger_chase",
+      "reason": "scene_lane_racers",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_scn",
+      "factionId": "faction_mts",
       "delta": -1,
-      "reason": "scene_fare_dodger_chase",
+      "reason": "scene_lane_racers",
       "next": "resolve_b"
     },
     {
@@ -140,7 +148,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You stayed out. The patrol kept counting hulls.",
+      "line": "You left the racers to their own marker.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +160,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 1300;
+export const encounterOrder = 911;
 export const trigger = deepFreeze({
-  "id": "scene_fare_dodger_chase",
+  "id": "scene_lane_racers",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,43 +195,44 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "patrol",
+    "situation": "convoy",
     "place": "trade_lane",
-    "twist": "named",
-    "actor": "faction_scn"
+    "twist": "admirers",
+    "actor": "faction_mts"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_helios_prime"
+    "sector_dione_lane",
+    "sector_tethys_junction"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Fare Dodger Chase",
-  "primaryLine": "WARD: The Answering Buoy clocks one skiff skipping the harbour fee.",
-  "factionId": "faction_scn",
+  "title": "Lane Racers",
+  "primaryLine": "DESK: Two haulers have made the weigh a starting line.",
+  "factionId": "faction_mts",
   "choices": [
     {
       "id": "a",
-      "label": "Read the fee",
-      "playerLine": "I will back the patrol and settle the harbour fee."
+      "label": "Clear the lane",
+      "playerLine": "I will ask the racers to leave room for freight."
     },
     {
       "id": "b",
-      "label": "Wave it through",
-      "playerLine": "Let the skiff pass; the harbour can wait one run."
+      "label": "Pick a hull",
+      "playerLine": "I will back the lead hauler through the next marker."
     },
     {
       "id": "c",
-      "label": "Stay clear",
-      "playerLine": "I am staying clear; finish the crossing without me."
+      "label": "Stay off course",
+      "playerLine": "I will keep my hull out of their race."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Fee recorded. The skiff keeps its engine and its route.",
-    "b": "The skiff cleared the spine before the buoy could answer.",
-    "c": "You stayed out. The patrol kept counting hulls."
+    "a": "The haulers opened one lane for the waiting freight.",
+    "b": "One mule crossed first. The patrol kept the time.",
+    "c": "You left the racers to their own marker."
   }
 });

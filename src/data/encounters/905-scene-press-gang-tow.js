@@ -1,45 +1,45 @@
-// Yard Tow — lived vignette. External-only: ambient world scene.
+// Press Gang Tow — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_yard_tow",
-  "title": "Yard Tow",
-  "factionId": "faction_dmc",
+  "id": "scene_press_gang_tow",
+  "title": "Press Gang Tow",
+  "factionId": "faction_free",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "mule_trader",
-      "factionId": "faction_dmc",
+      "archetype": "reaver_pirate",
+      "factionId": "faction_reach",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "TUG"
+      "scanLabel": "PRESS GANG TUG"
     },
     {
       "role": "ship_1",
       "archetype": "mule_trader",
-      "factionId": "faction_dmc",
+      "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "DEAD HAULER"
+      "scanLabel": "PRESSED HAULER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Clear the tow",
-      "playerLine": "I will get the dead hull into the yard intact."
+      "label": "Cut the tow",
+      "playerLine": "I will help the hauler break free of that line."
     },
     {
       "id": "b",
-      "label": "Claim salvage first",
-      "playerLine": "I will mark the salvage before that tow reaches the yard."
+      "label": "Look away",
+      "playerLine": "I will leave the Reach crew to finish its business."
     },
     {
       "id": "c",
-      "label": "Leave the tag",
-      "playerLine": "I will leave the claim crews to settle the hull."
+      "label": "Keep your distance",
+      "playerLine": "I will keep clear of both hulls and their paperwork."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "FOREMAN: Long Berth has a dead hull. One tow line is enough.",
+      "line": "SLIP: The Concealed Harbour can see this tow. Call it a transfer.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -67,7 +67,7 @@ export const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The dead hauler is still carrying somebody else’s claim tag.",
+      "line": "The aft clamps are closed. Nobody aboard signed the release.",
       "channel": "info",
       "next": "offer"
     },
@@ -85,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The tug reached the yard with its claim tag visible.",
+      "line": "The tow line went slack. The hauler kept its people.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -93,15 +93,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_yard_tow",
+      "reason": "scene_press_gang_tow",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_dmc",
+      "factionId": "faction_free",
       "delta": 2,
-      "reason": "scene_yard_tow",
+      "reason": "scene_press_gang_tow",
       "next": "resolve_a"
     },
     {
@@ -112,24 +112,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The salvage mark went on before the yard gate.",
+      "line": "The pirate kept the line and took the quiet approach.",
       "channel": "info",
       "next": "rep_b_runner"
     },
     {
       "id": "rep_b_runner",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_reach",
       "delta": 1,
-      "reason": "scene_yard_tow",
+      "reason": "scene_press_gang_tow",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_dmc",
+      "factionId": "faction_free",
       "delta": -1,
-      "reason": "scene_yard_tow",
+      "reason": "scene_press_gang_tow",
       "next": "resolve_b"
     },
     {
@@ -140,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the hull between the tug and the yard.",
+      "line": "You left the harbour to name the transfer.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 574;
+export const encounterOrder = 905;
 export const trigger = deepFreeze({
-  "id": "scene_yard_tow",
+  "id": "scene_press_gang_tow",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,46 +187,44 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "yard",
-    "place": "refinery_approach",
-    "twist": "k1",
-    "actor": "faction_dmc"
+    "situation": "escort",
+    "place": "outlaw_zone",
+    "twist": "depth",
+    "actor": "faction_reach"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_ceres_belt",
-    "sector_vesta_forge",
-    "sector_charon_expanse",
-    "sector_hyperion_cut"
+    "sector_sker_haven",
+    "sector_kepler_scar"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Yard Tow",
-  "primaryLine": "FOREMAN: Long Berth has a dead hull. One tow line is enough.",
-  "factionId": "faction_dmc",
+  "title": "Press Gang Tow",
+  "primaryLine": "SLIP: The Concealed Harbour can see this tow. Call it a transfer.",
+  "factionId": "faction_free",
   "choices": [
     {
       "id": "a",
-      "label": "Clear the tow",
-      "playerLine": "I will get the dead hull into the yard intact."
+      "label": "Cut the tow",
+      "playerLine": "I will help the hauler break free of that line."
     },
     {
       "id": "b",
-      "label": "Claim salvage first",
-      "playerLine": "I will mark the salvage before that tow reaches the yard."
+      "label": "Look away",
+      "playerLine": "I will leave the Reach crew to finish its business."
     },
     {
       "id": "c",
-      "label": "Leave the tag",
-      "playerLine": "I will leave the claim crews to settle the hull."
+      "label": "Keep your distance",
+      "playerLine": "I will keep clear of both hulls and their paperwork."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The tug reached the yard with its claim tag visible.",
-    "b": "The salvage mark went on before the yard gate.",
-    "c": "You left the hull between the tug and the yard."
+    "a": "The tow line went slack. The hauler kept its people.",
+    "b": "The pirate kept the line and took the quiet approach.",
+    "c": "You left the harbour to name the transfer."
   }
 });

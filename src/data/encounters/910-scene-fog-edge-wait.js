@@ -1,53 +1,45 @@
-// Claim Jump Run — lived vignette. External-only: ambient world scene.
+// Fog Edge Wait — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_claim_jump_run",
-  "title": "Claim Jump Run",
-  "factionId": "faction_dmc",
+  "id": "scene_fog_edge_wait",
+  "title": "Fog Edge Wait",
+  "factionId": "faction_mts",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "reaver_pirate",
-      "factionId": "faction_reach",
+      "archetype": "quiet_ghost",
+      "factionId": "faction_quiet",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "CLAIM JUMPER"
+      "scanLabel": "PAPERLESS FREIGHT"
     },
     {
       "role": "ship_1",
-      "archetype": "patrol_lawman",
-      "factionId": "faction_dmc",
+      "archetype": "customs_cutter",
+      "factionId": "faction_mts",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "DMC SEAM PATROL"
-    },
-    {
-      "role": "ship_2",
-      "archetype": "patrol_lawman",
-      "factionId": "faction_dmc",
-      "dx": 160,
-      "dz": 70,
-      "scanLabel": "DMC SEAM PATROL"
+      "scanLabel": "MTS CUSTOMS CUTTER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Hold the claim",
-      "playerLine": "I will help the watch recover the stolen ore."
+      "label": "Back the cutter",
+      "playerLine": "I will help customs hold the fog edge for inspection."
     },
     {
       "id": "b",
-      "label": "Cover the jumper",
-      "playerLine": "I will keep the claim crew looking at the wrong seam."
+      "label": "Warn the runner",
+      "playerLine": "I will give the freight hull time to turn away."
     },
     {
       "id": "c",
-      "label": "Leave the seam",
-      "playerLine": "I am leaving the belt to the crews already there."
+      "label": "Stay quiet",
+      "playerLine": "I will keep this channel empty and my bearing clear."
     }
   ],
   "timeoutChoice": "c",
@@ -60,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "FOREMAN: That ore left the Quarry Cathedral without a receipt.",
+      "line": "DESK: Cutter holds the fog edge. One unlisted freight hull should arrive.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -75,7 +67,7 @@ export const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The seam is still loading while the claim mark runs.",
+      "line": "The engines idle where the scan line loses its name.",
       "channel": "info",
       "next": "offer"
     },
@@ -93,23 +85,23 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The watch logged the load. The seam remains open.",
+      "line": "The cutter kept the edge and logged the empty approach.",
       "channel": "info",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 30,
-      "reason": "scene_claim_jump_run",
+      "amount": 0,
+      "reason": "scene_fog_edge_wait",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_dmc",
+      "factionId": "faction_mts",
       "delta": 2,
-      "reason": "scene_claim_jump_run",
+      "reason": "scene_fog_edge_wait",
       "next": "resolve_a"
     },
     {
@@ -120,24 +112,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The jumper kept the ore and lost the clean bearing.",
+      "line": "The ghost turned before the scan line closed.",
       "channel": "info",
       "next": "rep_b_runner"
     },
     {
       "id": "rep_b_runner",
       "verb": "rep",
-      "factionId": "faction_reach",
+      "factionId": "faction_quiet",
       "delta": 1,
-      "reason": "scene_claim_jump_run",
+      "reason": "scene_fog_edge_wait",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_dmc",
+      "factionId": "faction_mts",
       "delta": -1,
-      "reason": "scene_claim_jump_run",
+      "reason": "scene_fog_edge_wait",
       "next": "resolve_b"
     },
     {
@@ -148,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the claim crew to count the empty cradle.",
+      "line": "You left the fog to keep its own count.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -160,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 570;
+export const encounterOrder = 910;
 export const trigger = deepFreeze({
-  "id": "scene_claim_jump_run",
+  "id": "scene_fog_edge_wait",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -195,46 +187,44 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "claim",
-    "place": "mining_belt",
-    "twist": "follow_on",
-    "actor": "faction_reach"
+    "situation": "hunt",
+    "place": "radiation_field",
+    "twist": "depth",
+    "actor": "faction_mts"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_ceres_belt",
-    "sector_hyperion_cut",
-    "sector_rhea_cinder",
-    "sector_nereid_shoal"
+    "sector_pallas_drift",
+    "sector_io_reach"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Claim Jump Run",
-  "primaryLine": "FOREMAN: That ore left the Quarry Cathedral without a receipt.",
-  "factionId": "faction_dmc",
+  "title": "Fog Edge Wait",
+  "primaryLine": "DESK: Cutter holds the fog edge. One unlisted freight hull should arrive.",
+  "factionId": "faction_mts",
   "choices": [
     {
       "id": "a",
-      "label": "Hold the claim",
-      "playerLine": "I will help the watch recover the stolen ore."
+      "label": "Back the cutter",
+      "playerLine": "I will help customs hold the fog edge for inspection."
     },
     {
       "id": "b",
-      "label": "Cover the jumper",
-      "playerLine": "I will keep the claim crew looking at the wrong seam."
+      "label": "Warn the runner",
+      "playerLine": "I will give the freight hull time to turn away."
     },
     {
       "id": "c",
-      "label": "Leave the seam",
-      "playerLine": "I am leaving the belt to the crews already there."
+      "label": "Stay quiet",
+      "playerLine": "I will keep this channel empty and my bearing clear."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The watch logged the load. The seam remains open.",
-    "b": "The jumper kept the ore and lost the clean bearing.",
-    "c": "You left the claim crew to count the empty cradle."
+    "a": "The cutter kept the edge and logged the empty approach.",
+    "b": "The ghost turned before the scan line closed.",
+    "c": "You left the fog to keep its own count."
   }
 });

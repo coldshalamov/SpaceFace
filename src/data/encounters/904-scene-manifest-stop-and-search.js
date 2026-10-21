@@ -1,45 +1,45 @@
-// Fissure Haul Out — lived vignette. External-only: ambient world scene.
+// Manifest Stop And Search — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_fissure_haul_out",
-  "title": "Fissure Haul Out",
-  "factionId": "faction_free",
+  "id": "scene_manifest_stop_and_search",
+  "title": "Manifest Stop And Search",
+  "factionId": "faction_scn",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
       "archetype": "mule_trader",
-      "factionId": "faction_free",
+      "factionId": "faction_mts",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "FISSURE TUG"
+      "scanLabel": "HAULER"
     },
     {
       "role": "ship_1",
-      "archetype": "mule_trader",
-      "factionId": "faction_free",
+      "archetype": "customs_cutter",
+      "factionId": "faction_scn",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "DEAD HAULER"
+      "scanLabel": "CUSTOMS CUTTER"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Guard the line",
-      "playerLine": "I will keep the haul clear until both hulls are out."
+      "label": "Back the search",
+      "playerLine": "I will help customs match the pod to its manifest."
     },
     {
       "id": "b",
-      "label": "Mark the salvage",
-      "playerLine": "I will mark the load before it clears the fissure."
+      "label": "Back the hauler",
+      "playerLine": "I will keep the cutter from turning a mismatch into seizure."
     },
     {
       "id": "c",
-      "label": "Stay above",
-      "playerLine": "I will keep outside the seam and let them work."
+      "label": "Stay outside",
+      "playerLine": "I am not joining a count that has already started."
     }
   ],
   "timeoutChoice": "c",
@@ -47,12 +47,22 @@ export const spec = {
     {
       "id": "spawn",
       "verb": "spawn",
+      "next": "prop"
+    },
+    {
+      "id": "prop",
+      "verb": "prop",
+      "scanLabel": "OPENED POD",
+      "dx": 54,
+      "dz": -28,
+      "radius": 9,
+      "mass": 48,
       "next": "hail"
     },
     {
       "id": "hail",
       "verb": "say",
-      "line": "MOSS: Fissure haul is moving. Keep the second hull clear of the seam.",
+      "line": "CLERK: Opened pod sits at the weigh; read the seal back.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -60,21 +70,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "tow",
+      "motion": "hold",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "The tow line has one clean pull left before the fissure shifts.",
+      "line": "The pod lid is open. The manifest still calls it sealed.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "tow",
+      "motion": "hold",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -85,23 +95,23 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Both hulls cleared the fissure with the line still attached.",
+      "line": "Customs marked the pod opened. The hauler kept its berth.",
       "channel": "info",
       "next": "grant_a"
     },
     {
       "id": "grant_a",
       "verb": "grant",
-      "amount": 30,
-      "reason": "scene_fissure_haul_out",
+      "amount": 0,
+      "reason": "scene_manifest_stop_and_search",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_scn",
       "delta": 2,
-      "reason": "scene_fissure_haul_out",
+      "reason": "scene_manifest_stop_and_search",
       "next": "resolve_a"
     },
     {
@@ -112,16 +122,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The salvage mark stayed on the load through the pull.",
+      "line": "The hauler left with the seal still in its own hand.",
       "channel": "info",
+      "next": "rep_b_runner"
+    },
+    {
+      "id": "rep_b_runner",
+      "verb": "rep",
+      "factionId": "faction_mts",
+      "delta": 1,
+      "reason": "scene_manifest_stop_and_search",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_free",
+      "factionId": "faction_scn",
       "delta": -1,
-      "reason": "scene_fissure_haul_out",
+      "reason": "scene_manifest_stop_and_search",
       "next": "resolve_b"
     },
     {
@@ -132,7 +150,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You kept above the seam until the tow passed.",
+      "line": "You watched the weigh slip change desks.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -144,9 +162,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 584;
+export const encounterOrder = 904;
 export const trigger = deepFreeze({
-  "id": "scene_fissure_haul_out",
+  "id": "scene_manifest_stop_and_search",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -179,43 +197,44 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "salvage",
-    "place": "anomaly_deep",
-    "twist": "k1",
-    "actor": "faction_free"
+    "situation": "patrol",
+    "place": "border_checkpoint",
+    "twist": "player_echo",
+    "actor": "faction_scn"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_haumea_rift"
+    "sector_tethys_junction",
+    "sector_dione_lane"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Fissure Haul Out",
-  "primaryLine": "MOSS: Fissure haul is moving. Keep the second hull clear of the seam.",
-  "factionId": "faction_free",
+  "title": "Manifest Stop And Search",
+  "primaryLine": "CLERK: Opened pod sits at the weigh; read the seal back.",
+  "factionId": "faction_scn",
   "choices": [
     {
       "id": "a",
-      "label": "Guard the line",
-      "playerLine": "I will keep the haul clear until both hulls are out."
+      "label": "Back the search",
+      "playerLine": "I will help customs match the pod to its manifest."
     },
     {
       "id": "b",
-      "label": "Mark the salvage",
-      "playerLine": "I will mark the load before it clears the fissure."
+      "label": "Back the hauler",
+      "playerLine": "I will keep the cutter from turning a mismatch into seizure."
     },
     {
       "id": "c",
-      "label": "Stay above",
-      "playerLine": "I will keep outside the seam and let them work."
+      "label": "Stay outside",
+      "playerLine": "I am not joining a count that has already started."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "Both hulls cleared the fissure with the line still attached.",
-    "b": "The salvage mark stayed on the load through the pull.",
-    "c": "You kept above the seam until the tow passed."
+    "a": "Customs marked the pod opened. The hauler kept its berth.",
+    "b": "The hauler left with the seal still in its own hand.",
+    "c": "You watched the weigh slip change desks."
   }
 });

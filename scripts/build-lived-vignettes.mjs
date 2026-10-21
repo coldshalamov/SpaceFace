@@ -337,6 +337,31 @@ function renderText(template, values) {
   return template.replace(/\$\{(noun|voice|placeLabel)\}/g, (_, key) => values[key]);
 }
 
+// RC-13 — the two stock filler beats used to read identically in all ~195 vignettes.
+// Keep a small authored shelf and pick by a stable hash of the vignette id: the output
+// stays deterministic across regenerations and every scene still gets exactly one line.
+const WORK_LINE_VARIANTS = [
+  'Holding. The lane keeps its own clock.',
+  'Still holding. Nobody here is paid by the minute.',
+  'Holding. The work decides when it is done.',
+  'We hold. Quiet engines, patient hands.',
+  'Holding. The count finishes when it finishes.',
+  'No hurry in this berth. Hold.',
+];
+const PLACE_COLOR_VARIANTS = [
+  (noun, placeLabel) => `Boost all you like; ${placeLabel} keeps its own volume.`,
+  (noun, placeLabel) => `${placeLabel} sounds the same at idle or at full burn.`,
+  (noun, placeLabel) => `The noise in ${placeLabel} was running before your drive.`,
+  (noun, placeLabel) => `${placeLabel} hums at one level. Your throttle is not it.`,
+  (noun, placeLabel) => `Full burn changes the distance, not how ${placeLabel} sounds.`,
+  (noun, placeLabel) => `Nobody in ${placeLabel} looks up for engine noise.`,
+];
+function pickVariant(seed, variants) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return variants[Math.abs(h) % variants.length];
+}
+
 const HAND = [
   scene(372, '372-the-kettle-hold.js', 'cold_kettle', 'trade|civilian_core|none|mule_trader', 'hold_and_talk', 2,
     'KETTLE HOLD', 'BRACK', 'faction_free',
@@ -682,7 +707,7 @@ function moreScenes(startOrder, usedKeys) {
         [
           ...text.color.map((line) => renderText(line, values)),
           `The ${noun} has a serial someone still loves.`,
-          `${placeLabel} does not get quieter if you boost.`,
+          pickVariant(id, PLACE_COLOR_VARIANTS)(noun, placeLabel),
         ],
         verb === 'tow_prop' || verb === 'procession' ? noun.toUpperCase() : null,
       ));
@@ -691,6 +716,15 @@ function moreScenes(startOrder, usedKeys) {
   }
   return out;
 }
+
+// RC-16 — the pre-offer beat used to run 25–35 s of silent motion before the choice
+// appeared. Cap the total timed orbit before 'offer' at ten seconds: a short move,
+// one-beat pauses between color lines, and the work beat takes whatever is left.
+const PRE_OFFER_BUDGET_S = 10;
+const MOVE_S = 2;
+const COLOR_PAUSE_S = 1;
+// RC-14 — a toll is a debit: "Pay the count" charges the count instead of granting it.
+const TOLL_CR = 36;
 
 function phasesFor(row) {
   const motion = MOTION[row.verb];
@@ -703,25 +737,25 @@ function phasesFor(row) {
     });
   }
   phases.push({ id: 'hail', verb: 'say', line: row.hail, channel: 'info', primary: true, next: 'move' });
-  phases.push({ id: 'move', verb: 'motion', seconds: 7, motion, next: 'a0' });
+  phases.push({ id: 'move', verb: 'motion', seconds: MOVE_S, motion, next: 'a0' });
   row.color.forEach((line, index) => {
     const sayId = `a${index}`;
     const pauseId = `p${index}`;
     const next = index === row.color.length - 1 ? 'work' : `a${index + 1}`;
     phases.push({ id: sayId, verb: 'say', line, channel: 'info', next: pauseId });
-    phases.push({ id: pauseId, verb: 'motion', seconds: 5, motion, next });
+    phases.push({ id: pauseId, verb: 'motion', seconds: COLOR_PAUSE_S, motion, next });
   });
   phases.push({
     id: 'work',
     verb: 'motion',
-    seconds: row.verb === 'race_loop' ? 9 : 8,
+    seconds: Math.max(2, PRE_OFFER_BUDGET_S - MOVE_S - COLOR_PAUSE_S * row.color.length),
     motion,
     next: 'work_line',
   });
   phases.push({
     id: 'work_line',
     verb: 'say',
-    line: `${row.voice}: Holding. This does not hurry.`,
+    line: `${row.voice}: ${pickVariant(row.id, WORK_LINE_VARIANTS)}`,
     channel: 'info',
     next: 'offer',
   });
@@ -729,10 +763,15 @@ function phasesFor(row) {
   for (const choice of row.choices) onChoice[choice.id] = `say_${choice.id}`;
   phases.push({ id: 'offer', verb: 'offer', windowS: 56, motion, onChoice });
   for (const choice of row.choices) {
-    const grant = choice.id === 'a' ? 36 : 0;
+    const isTollPay = row.situation === 'toll' && choice.id === 'a';
+    const grant = choice.id === 'a' && !isTollPay ? 36 : 0;
     const rep = choice.id === 'c' ? -1 : 2;
-    phases.push({ id: `say_${choice.id}`, verb: 'say', line: row.receipts[choice.id], channel: 'info', next: grant ? `grant_${choice.id}` : `rep_${choice.id}` });
-    if (grant) phases.push({ id: `grant_${choice.id}`, verb: 'grant', amount: grant, reason: row.id, next: `rep_${choice.id}` });
+    const next = isTollPay ? `cost_${choice.id}` : grant ? `grant_${choice.id}` : `rep_${choice.id}`;
+    phases.push({ id: `say_${choice.id}`, verb: 'say', line: row.receipts[choice.id], channel: 'info', next });
+    if (isTollPay) phases.push({ id: `cost_${choice.id}`, verb: 'cost', amount: TOLL_CR, reason: row.id, next: `grant_${choice.id}` });
+    // The grant phase stays (the interpreter skips amount ≤ 0) — a paid toll just no
+    // longer pays the player; the debit already happened on the cost phase.
+    if (grant || isTollPay) phases.push({ id: `grant_${choice.id}`, verb: 'grant', amount: grant, reason: row.id, next: `rep_${choice.id}` });
     phases.push({ id: `rep_${choice.id}`, verb: 'rep', factionId: row.factionId, delta: rep, reason: row.id, next: `done_${choice.id}` });
     phases.push({ id: `done_${choice.id}`, verb: 'resolve', outcome: choice.id });
   }
@@ -805,6 +844,12 @@ function emit(row) {
   writeFileSync(join(DIR, row.file), text);
 }
 
+// RC-14 — ambient choice 'a' is not always paid work. fare_dodger_chase settles the
+// harbour fee out of your hold (a real debit through the cost verb); the customs
+// inspections are volunteered assists — nobody tips the witness.
+const LEVIED_SCENES = new Set(['fare_dodger_chase']);
+const UNPAID_ASSIST_SCENES = new Set(['manifest_stop_and_search', 'fog_edge_wait']);
+
 function emitAmbient(row) {
   const title = row.id.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ');
   const encounterId = `scene_${row.id}`;
@@ -835,10 +880,15 @@ function emitAmbient(row) {
     id, label: row.choices[i][0], playerLine: row.choices[i][1],
   }));
   for (const id of choiceIds) {
-    const next = id === 'a' ? 'grant_a' : id === 'b' && row.runner !== 'none' ? 'rep_b_runner' : 'rep_b_authority';
+    const levied = id === 'a' && LEVIED_SCENES.has(row.id);
+    const next = levied ? 'cost_a' : id === 'a' ? 'grant_a' : id === 'b' && row.runner !== 'none' ? 'rep_b_runner' : 'rep_b_authority';
     phases.push({ id: `say_${id}`, verb: 'say', line: row.receipts[choiceIds.indexOf(id)], channel: 'info', next: id === 'c' ? 'resolve_c' : next });
     if (id === 'a') {
-      phases.push({ id: 'grant_a', verb: 'grant', amount: 30, reason: encounterId, next: 'rep_a' });
+      if (levied) {
+        phases.push({ id: 'cost_a', verb: 'cost', amount: 30, reason: encounterId, next: 'grant_a' });
+      }
+      const amount = levied || UNPAID_ASSIST_SCENES.has(row.id) ? 0 : 30;
+      phases.push({ id: 'grant_a', verb: 'grant', amount, reason: encounterId, next: 'rep_a' });
       phases.push({ id: 'rep_a', verb: 'rep', factionId: row.authority, delta: 2, reason: encounterId, next: 'resolve_a' });
     } else if (id === 'b' && row.runner !== 'none') {
       phases.push({ id: 'rep_b_runner', verb: 'rep', factionId: row.runner, delta: 1, reason: encounterId, next: 'rep_b_authority' });
@@ -942,8 +992,11 @@ for (const row of ambientRows) {
 }
 const keep = new Set([...names, ...ambientRows.map((row) => row.file)]);
 for (const name of readdirSync(DIR)) {
-  if (!/^\d{3}-/.test(name)) continue;
-  const order = Number(name.slice(0, 3));
+  // The sweep covers 4-digit orders too: a generated scene parked at e.g. 1300- to free
+  // a 3-digit slot keeps its generated header, and leaving it would ship a duplicate
+  // encounter id next to the regenerated copy.
+  if (!/^\d{3,4}-/.test(name)) continue;
+  const order = Number(name.slice(0, name.indexOf('-')));
   if (order >= 372 && !keep.has(name)) {
     const path = join(DIR, name);
     const header = readFileSync(path, 'utf8').split('\n', 1)[0];

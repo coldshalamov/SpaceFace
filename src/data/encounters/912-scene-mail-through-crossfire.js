@@ -1,45 +1,45 @@
-// Archive Record Tail — lived vignette. External-only: ambient world scene.
+// Mail Through Crossfire — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
-  "id": "scene_archive_record_tail",
-  "title": "Archive Record Tail",
-  "factionId": "faction_archive",
+  "id": "scene_mail_through_crossfire",
+  "title": "Mail Through Crossfire",
+  "factionId": "faction_free",
   "start": "spawn",
   "cast": [
     {
       "role": "runner",
-      "archetype": "quiet_ghost",
-      "factionId": "faction_quiet",
+      "archetype": "mule_trader",
+      "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "RECORD RUNNER"
+      "scanLabel": "COURIER 1"
     },
     {
       "role": "ship_1",
-      "archetype": "choir_zealot",
-      "factionId": "faction_archive",
+      "archetype": "mule_trader",
+      "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "ARCHIVE WARDEN"
+      "scanLabel": "COURIER 2"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Recover the record",
-      "playerLine": "I will help the archive bring the record back."
+      "label": "Escort the mail",
+      "playerLine": "I will hold a clear lane for the couriers."
     },
     {
       "id": "b",
-      "label": "Cover the runner",
-      "playerLine": "I will keep the quiet hull ahead of the archive."
+      "label": "Back the Reach",
+      "playerLine": "I will let the Reach keep the next bearing."
     },
     {
       "id": "c",
-      "label": "Leave the file",
-      "playerLine": "I will not take custody of a moving record."
+      "label": "Stay out",
+      "playerLine": "I will leave the packet to its own route."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "ARCHIVIST: A stolen record is running. Its last byte names Orcus.",
+      "line": "MOSS: The Reach mail still runs; keep the packet on the marked bearing.",
       "channel": "info",
       "primary": true,
       "next": "run"
@@ -60,21 +60,21 @@ export const spec = {
     {
       "id": "run",
       "verb": "motion",
-      "motion": "chase",
+      "motion": "column",
       "seconds": 6,
       "next": "a0"
     },
     {
       "id": "a0",
       "verb": "say",
-      "line": "The record skips the same second each time it turns.",
+      "line": "The dock flag changed. The courier pouch did not.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "chase",
+      "motion": "column",
       "windowS": 22,
       "onChoice": {
         "a": "say_a",
@@ -85,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The archive has a bearing. The record is still incomplete.",
+      "line": "Both couriers carried the packet past the held dock.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -93,15 +93,15 @@ export const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 30,
-      "reason": "scene_archive_record_tail",
+      "reason": "scene_mail_through_crossfire",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_archive",
+      "factionId": "faction_free",
       "delta": 2,
-      "reason": "scene_archive_record_tail",
+      "reason": "scene_mail_through_crossfire",
       "next": "resolve_a"
     },
     {
@@ -112,24 +112,24 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The ghost kept the file and its last missing second.",
+      "line": "The Reach took the lane. The mail kept moving.",
       "channel": "info",
       "next": "rep_b_runner"
     },
     {
       "id": "rep_b_runner",
       "verb": "rep",
-      "factionId": "faction_quiet",
+      "factionId": "faction_reach",
       "delta": 1,
-      "reason": "scene_archive_record_tail",
+      "reason": "scene_mail_through_crossfire",
       "next": "rep_b_authority"
     },
     {
       "id": "rep_b_authority",
       "verb": "rep",
-      "factionId": "faction_archive",
+      "factionId": "faction_free",
       "delta": -1,
-      "reason": "scene_archive_record_tail",
+      "reason": "scene_mail_through_crossfire",
       "next": "resolve_b"
     },
     {
@@ -140,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the record running into the dark.",
+      "line": "You left the courier line unchanged.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -152,9 +152,9 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 583;
+export const encounterOrder = 912;
 export const trigger = deepFreeze({
-  "id": "scene_archive_record_tail",
+  "id": "scene_mail_through_crossfire",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -187,43 +187,43 @@ export const trigger = deepFreeze({
 export const runtime = compileVignette(spec);
 export default defineEncounter(trigger, {
   "shape": {
-    "situation": "archive",
-    "place": "anomaly_deep",
-    "twist": "depth",
-    "actor": "faction_archive"
+    "situation": "trade",
+    "place": "ambush_lane",
+    "twist": "named",
+    "actor": "faction_free"
   },
   "livedVignette": true,
   "ambientScene": true,
   "sectorIds": [
-    "sector_orcus_shadow"
+    "sector_io_reach"
   ],
   "noCombat": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
-  "title": "Archive Record Tail",
-  "primaryLine": "ARCHIVIST: A stolen record is running. Its last byte names Orcus.",
-  "factionId": "faction_archive",
+  "title": "Mail Through Crossfire",
+  "primaryLine": "MOSS: The Reach mail still runs; keep the packet on the marked bearing.",
+  "factionId": "faction_free",
   "choices": [
     {
       "id": "a",
-      "label": "Recover the record",
-      "playerLine": "I will help the archive bring the record back."
+      "label": "Escort the mail",
+      "playerLine": "I will hold a clear lane for the couriers."
     },
     {
       "id": "b",
-      "label": "Cover the runner",
-      "playerLine": "I will keep the quiet hull ahead of the archive."
+      "label": "Back the Reach",
+      "playerLine": "I will let the Reach keep the next bearing."
     },
     {
       "id": "c",
-      "label": "Leave the file",
-      "playerLine": "I will not take custody of a moving record."
+      "label": "Stay out",
+      "playerLine": "I will leave the packet to its own route."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The archive has a bearing. The record is still incomplete.",
-    "b": "The ghost kept the file and its last missing second.",
-    "c": "You left the record running into the dark."
+    "a": "Both couriers carried the packet past the held dock.",
+    "b": "The Reach took the lane. The mail kept moving.",
+    "c": "You left the courier line unchanged."
   }
 });
