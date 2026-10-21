@@ -17,12 +17,23 @@ const { parse } = require(require.resolve('@babel/parser', { paths: [process.env
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
 let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
+const ownerActiveAdmissionMatches = [];
+function containsOwnedExactTouch(node) {
+  if (!node || typeof node !== 'object') return false;
+  if (node.type === 'CallExpression' && node.callee?.name === 'submitExactSubjectTouch'
+      && node.arguments?.[0]?.name === 'subject'
+      && node.arguments?.[1]?.type === 'MemberExpression'
+      && node.arguments[1].object?.name === 'admissionOptions'
+      && node.arguments[1].property?.name === 'isActive') return true;
+  return Object.values(node).some(value => Array.isArray(value)
+    ? value.some(containsOwnedExactTouch) : value?.type && containsOwnedExactTouch(value));
+}
 function walk(node) {
   if (!node || typeof node !== 'object') return;
   if (node.type === 'ArrowFunctionExpression' && node.async
-      && source.slice(node.start, node.end).includes('submitExactSubjectTouch(subject, admissionOptions.isActive)')
+      && containsOwnedExactTouch(node)
       && source.slice(node.start, node.end).includes('admissionOptions.isActive(subject) !== true')) {
-    ownerActiveAdmissionNode = node;
+    ownerActiveAdmissionMatches.push(node);
   }
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorAfterJump') cookNode = node.right;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'pipelinePrecompile') pipelineNode = node.init;
@@ -47,6 +58,9 @@ function walk(node) {
   }
 }
 walk(ast);
+assert.equal(ownerActiveAdmissionMatches.length, 1,
+  'expected exactly one async admitted-owner continuation with an owned exact-target touch');
+[ownerActiveAdmissionNode] = ownerActiveAdmissionMatches;
 assert.ok(cookNode && pipelineNode);
 const cookCode = source.slice(cookNode.start, cookNode.end);
 const pipelineCode = source.slice(pipelineNode.start, pipelineNode.end);
