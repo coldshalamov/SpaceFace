@@ -114,32 +114,6 @@
   ],
   "units": [
     {
-      "id": "ending-archive-regate",
-      "date": "2026-10-03",
-      "wf": "WF-18",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Cold-review P1 fix: the archive row re-gates on a mid-run filed finale instead of the mount-time snapshot",
-      "fingerprint": "verb=open,subject=ending-archive,sector=pause,domain=wf-18",
-      "references": [],
-      "integration": "live",
-      "commit": "70b2512b5",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-world-courier-promotes-named",
-      "date": "2026-10-04",
-      "wf": "WF-03",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "the boot-shelved Cinder Run Courier promotes anonymous and parked; far-actor restore now re-adopts her through the save path so the default route's authored face keeps her name and flies her route",
-      "fingerprint": "verb=fix,subject=named_lane_contact,sector=helios_prime,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "913252eff",
-      "verification": "focused_green"
-    },
-    {
       "id": "infer-cache-contents",
       "date": "2026-10-08",
       "wf": "WF-10",
@@ -1671,6 +1645,32 @@
       "references": [],
       "integration": "live",
       "commit": "9bf40c366",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-02-iron-maw-script",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Round-10 iron_maw carries scoreId capital_boss_hulk; authored script drives the boss; covered by fb-027 champion-tricks test",
+      "fingerprint": "verb=fight,subject=iron-maw,sector=swarm,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "7cb721017",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-12-range-wu",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Zero m/s strings in range.js; every lesson speaks wu/wu-s",
+      "fingerprint": "verb=say,subject=range-units,sector=range,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "7cb721017",
       "verification": "focused_green"
     }
   ],
