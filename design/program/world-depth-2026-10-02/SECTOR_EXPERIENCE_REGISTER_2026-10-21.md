@@ -17,6 +17,16 @@ Evidence labels:
 
 No game was launched, no images inspected and no new runtime/save tests run for this register. Therefore every sector's first-arrival readability, complete repeated-work loop, composed visual quality and normal-player Save/Continue acceptance are **U**, even where detailed source exists. In particular, a descriptive way-of-life sentence, timer route, registered system, GLB on disk or passing historical unit test cannot close a sector experience.
 
+## Connected experience increment: Ilex active-voyage guidance — 21 October 2026
+
+Scope: existing SF20-04 / P08 Tethys departure, original six-vault escort and Ceres greenhouse outcome. The frozen inventory above remains unchanged. This increment fixes an inspected behavior gap: the live offer previously used settled outcome prose during an active voyage, incorrectly announcing failure when no vault had arrived yet.
+
+- First contact retains the existing optional escort briefing. Once accepted, the actual offer and prompt consumer distinguish active progress from settlement, show arrived/6 plus nonzero custody states, and explain carrier protection or Massline recovery of released originals before the existing deadline.
+- Ordinary revisits use current original-vault records. A lost carrier does not erase recoverable loose vaults; zero recoverable originals and all six arrived each receive truthful guidance. Ceres receiver course, eligible handover and filing actions remain gated by existing behavior.
+- Filing warns that remaining recoverable originals become lost. Existing destroyed records, reward calculation, greenhouse harvest delay, finite stock, mission state, native receiver rules and prompt cadence are unchanged. True settled outcomes retain their original wording.
+- Evidence: `src/data/ilexArk.js`, `src/systems/ilexArk.js`, and `test/ilex-active-voyage-readout.test.mjs` exercise actual offer-to-prompt data, scalar original-body transactions and production save/loadEnvelope restoration. Seven focused checks pass independently. Scalar world setup is not native flight, a browser layout witness or complete world-reentry acceptance.
+- Remaining acceptance: ordinary Tethys-to-Ceres voyage, readable in-game prompt layout, actual physics/performance, and full connected greenhouse consequence experience. Keep SF-LIVING-WORLD and SF-SECTOR-COHERENCE open. No new inventory or isolated subsystem is introduced.
+
 ## Inventory coverage and the actual gap
 
 Public evaluation returns **25 sectors, 35 catalog stations, 153 catalog POIs, 58 authored activity pockets and 116 actor slots**. These are catalog counts, not simultaneous rendered entities, unique final models or all dynamic locations. Runtime additions such as Borrowed Sun are outside the static station count. All 25 sector IDs have way-of-life, composition and activity-pocket rows. The ten concept-image sectors are not the whole game. The Bolus is the twenty-fifth sector, not an omitted footnote. Swarm arenas are a separate mode roster under P14–P21 and are not silently counted as Adventure sectors.
