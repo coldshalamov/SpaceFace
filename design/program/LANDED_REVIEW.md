@@ -36,4 +36,5 @@ The oldest OPEN row is the next second look.
 | R-9bf40c3 | 9bf40c36617 | Row 456: RC-SWARM-CLEAN aftermath gate + wording | Re-check that a Crucible run that ends always clears run state before Adventure resumes, so the liveSurvivalRun gate never hides a real Adventure aftermath card | OPEN |
 | R-d4a7436 | d4a743673d9 | Row 465: RC-MARKET-WHY mover/lane-risk/mechanic/local news | Re-check that the player-trade mover (trade time vs event start) never hides a newer market event on the live market screen | OPEN |
 | R-62eba53 | 62eba5336d2 | Row 457: RC-FIRST-MINUTES captioned hook + Hitch + ticker gate | Re-check that the caption reader returns nothing outside live flight, with hints off, after finish, and in sealed Survival, and that the ticker restores retained history on tutorial:finished without a new market event | OPEN |
+| R-8d99cfb | 8d99cfb5eea | Row 402: AL-LONG-4 one recipe book + relay receipts + save migration | Re-check that stranded-input collection only ever moves non-recipe ids, that forwarding never exceeds relay free space, and that pre-402 saves keep every stored unit | OPEN |
 
