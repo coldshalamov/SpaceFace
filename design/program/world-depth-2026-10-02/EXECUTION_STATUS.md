@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 08:48 UTC
+
+All nine goals remain OPEN. PR #480 stays at published `706c8e69cb98b58cffb59826e85da0b7ded92544`, tree `1119c315846015fc5eeb4ae98e8baec2b247c367`; Vesta recovery remains unpublished.
+
+Actual 706 CI passes the former invented-cargo point: receiver cargo is zero at ticks 30,609 and 32,907, after genuine delivery of one unit at tick 17,983; the second harvest genuinely reaches 12 units by tick 40,833. The later native route is RED at tick 43,454 on static/original-pair penetration of -0.412468 WU into entity 3, Customs Gate. The exact participant was not logged, so no causal claim or tolerance change is made. A diagnostic-only patch is prepared for the next increment. The 706 run is terminal: browser3 cancelled, final aggregate FAILURE, with eight other failed jobs. Stop polling this terminal run; keep the finite-fix success distinct from the later contact failure.
+
+Separate draft [PR #482](https://github.com/coldshalamov/SpaceFace/pull/482) preserves head `38f66ff705159f056c0c757018b974d9048f4f8d`, tree `eafd03549e4f7182c453449c38b57a3e6ec27c69`, sole parent `c289291e0e34b30430be500f9f5bbda39c15594d`. Its index-only change replaces 16 stale URLs. Immutable-source and actual CI static checks remove all 16 stale entries while leaving 18 unrelated missing imports visible. Its browser check is separately pending; no aggregate or browser success is inferred.
+
+Vesta public-source projection 150b19a1 over 706 contains exactly eight paths and passes 14/14 tests with 1,621 audited module hashes. Diagnostic 8ad0f2e adds only a probe. The bounded native scenario clears combat through its owner and places the player initially, so it is not ordinary fight/arrival proof. It uses actual F/W/brake input to tow an original pod and reaches natural Tann admission at 47.6667 seconds, with ten units still loose and zero delivered.
+
+Actual Save/Continue reveals physical contact with station_vesta_outlying_yard causing the stall, not a job deadlock. The writer now owns a bounded detour inside the new recovery module: no layout change, immunity or teleport. Save, source, 14-test and native evidence have been preserved and verified by read-back. A separately reviewed current-source performance correction reduces worst-case scans from 121,000 to 2,000, with zero when no work exists; it is not yet included in projection 150b19a1.
+
+Next: finish the bounded physical detour and qualify the composed performance/route source, then prove actual original-pod pickup and finite Forge delivery through Continue. Neither pickup nor delivery is claimed complete. Follow PR #482's pending browser result separately; retain 706's terminal CI and unexplained participant/contact limitation. Original Orchard holds and broader acceptance goals remain unchanged. Only these two shared handoff/goal files change; private recovery identifiers and restricted diagnostics remain excluded.
+
 ## Current source handoff — 21 October 2026, 08:25 UTC
 
 All nine goals remain OPEN. Published head remains `706c8e69cb98b58cffb59826e85da0b7ded92544`, tree `1119c315846015fc5eeb4ae98e8baec2b247c367`; Tann recovery remains unpublished work.
