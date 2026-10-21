@@ -8,6 +8,8 @@
 
 | R-c133f86 | c133f8670 | Row 481 (partial): arena kill words per swarm room | Re-check that a run saved mid-Circuit and restored in a different arena resumes the right vocabulary — run.arenaId is serialized but confirm the restored run's next kill reads the restored arena, not the default table | OPEN |
 
+| R-ecca50c | ecca50ccc | Row 429 (partial): stranger-readable HUD + wreck concealment | Re-check that concealment can't hide a LIVE ship: isWreckLike covers type wreck/fx/prop-likes — confirm no production path stamps kind/poiType/salvage on a live ship entity, and that ghost-ship 'unknown'→'ship' kind cycles stay unaffected | OPEN |
+
 # Landed review
 
 Second look at work that is already on `origin/master`. The author commits and pushes first. A later agent reviews. The review does not hold the push, and this file is not a second plan.
