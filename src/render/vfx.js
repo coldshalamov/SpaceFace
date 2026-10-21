@@ -103,7 +103,7 @@ import {
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
-import { presetFor, scalePreset } from './vfxColorLightDirector.js';
+import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN, presetFor, scalePreset } from './vfxColorLightDirector.js';
 import {
   collectStatusAttachedVictims,
   planStatusAttachedEmit,
@@ -440,6 +440,9 @@ export const EVENT_LIGHT_POOL_SIZE = 6;
 export { WEAPON_LIGHT_POOL_SIZE };
 const PLAYER_PLUME_EVENT_LIGHT_KEY = 'player-plume';
 const PLAYER_PLUME_EVENT_LIGHT_PRIORITY = 0.72;
+// Sustained power-glow slots. Two at most, so with the plume resident three transient flash
+// slots always remain for hits and explosions.
+const FIELD_POWER_LIGHT_KEYS = Object.freeze(['field-power-0', 'field-power-1']);
 
 // Engine plumeCore ('#36c8ff'-style) as raw 0..1 RGB, matching the family eventLight recipe
 // convention (parsed hex, no color-management round trip). Scratch-filled, never allocated.
@@ -7447,7 +7450,7 @@ export const vfx = {
     if (typeof color === 'number') slot.obj.color.setHex(color);
     else slot.obj.color.set(color);
     slot.obj.distance = range || 100;
-    slot.obj.intensity = peak;
+    slot.obj.intensity = peak * EVENT_LIGHT_GAIN;
     slot.intensity = peak;
     slot.peak = peak;
     slot.decay = 0;
@@ -12495,6 +12498,45 @@ export const vfx = {
     if (this._gyreSnareFx) this._gyreSnareFx.update(dt, this.state);
     this._updateGyrePayloadLight();
   },
+  // A running power lights its surroundings for as long as it runs: up to FIELD_POWER_LIGHT_KEYS
+  // sustained slots in the existing event pool (never a new light), the player's own fields
+  // first. Each follows its field's ignition/release envelope and retires with the field.
+  _syncFieldPowerLights() {
+    if (!this._lights) return;
+    const reads = this._fieldGlowReads || (this._fieldGlowReads = FIELD_POWER_LIGHT_KEYS.map(() => ({
+      active: false, score: 0, x: 0, z: 0, radius: 0, level: 0, color: new THREE.Color(),
+    })));
+    if (this._fieldGeom) {
+      const pp = this._playerPos();
+      this._fieldGeom.glowRead(reads, this.state && this.state.playerId, pp.x, pp.z);
+    } else {
+      for (const r of reads) r.active = false;
+    }
+    const preset = presetFor('field', 'sustain');
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    for (let i = 0; i < FIELD_POWER_LIGHT_KEYS.length; i++) {
+      const key = FIELD_POWER_LIGHT_KEYS[i];
+      const read = reads[i];
+      let slot = this._findSustainedEventLight(key);
+      const intensity = read.active ? preset.peak * read.level * accessibility.eventLightPeakScale : 0;
+      if (!(intensity > 0.02)) {
+        if (slot) this._retireEventLightSlot(slot);
+        continue;
+      }
+      slot = slot || this._claimEventLightSlot(preset.priority, key);
+      if (!slot) continue;
+      const spanScale = Math.min(2.2, Math.max(1, (read.radius * 0.5) / 22));
+      const scaledIntensity = intensity * spanScale * spanScale;
+      slot.obj.position.set(read.x, 26, read.z);
+      slot.obj.color.copy(read.color);
+      slot.obj.distance = Math.max(90, read.radius * preset.distance);
+      slot.obj.intensity = scaledIntensity * EVENT_LIGHT_GAIN;
+      slot.intensity = slot.peak = scaledIntensity;
+      slot.decay = slot.t = 0;
+      slot.sustained = true;
+      slot.admissionPriority = preset.priority;
+    }
+  },
   _syncMaterialContactLight() {
     // One shared request, not one light per particle/system. Priority stays below actual weapon
     // hits and the player drive. Saturation simply denies this decorative contact request.
@@ -12508,7 +12550,8 @@ export const vfx = {
     slot.obj.position.set(source.x, source.y, source.z);
     slot.obj.color.setRGB(source.r, source.g, source.b);
     slot.obj.distance = source.range;
-    slot.obj.intensity = slot.intensity = slot.peak = source.intensity;
+    slot.obj.intensity = source.intensity * EVENT_LIGHT_GAIN;
+    slot.intensity = slot.peak = source.intensity;
     slot.decay = slot.t = 0; slot.sustained = true; slot.admissionPriority = 24;
   },
 
@@ -12523,7 +12566,7 @@ export const vfx = {
     slot.obj.position.set(source.x, source.y, source.z);
     slot.obj.color.set(source.color);
     slot.obj.distance = source.range;
-    slot.obj.intensity = source.intensity;
+    slot.obj.intensity = source.intensity * EVENT_LIGHT_GAIN;
     slot.intensity = slot.peak = source.intensity;
     slot.decay = slot.t = 0;
     slot.sustained = true;
@@ -12751,6 +12794,7 @@ export const vfx = {
       const fields = this._updateFieldGeometry(dt);
       sub.fieldFlow = fields ? fields.surfaces : 0;
     } else sub.fieldFlow = 0;
+    this._syncFieldPowerLights();
     if (this._gyreRelevant() || this._gyreSnareFx) this._updateGyreSnare(dt);
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
@@ -15533,7 +15577,7 @@ export const vfx = {
     this._activeLightCount = 0;
     this._lights = [];
     for (let i = 0; i < this._LIGHT_NPOOL; i++) {
-      const l = new THREE.PointLight(0xffffff, 0, 400, 2.0); // color, intensity, distance, decay
+      const l = new THREE.PointLight(0xffffff, 0, 400, EVENT_LIGHT_DECAY); // color, intensity, distance, decay
       // Pool lights stay VISIBLE forever and flash via intensity only. three bakes the visible
       // light COUNT into every shader program, so toggling .visible forces a synchronous
       // whole-scene shader recompile (measured multi-second stalls on Intel/ANGLE). The count
@@ -15675,7 +15719,7 @@ export const vfx = {
       Math.max(0, Math.min(1, source.b)),
     );
     slot.obj.distance = range;
-    slot.obj.intensity = intensity;
+    slot.obj.intensity = intensity * EVENT_LIGHT_GAIN;
     slot.intensity = intensity;
     slot.peak = intensity;
     slot.decay = 0;
@@ -15765,7 +15809,7 @@ export const vfx = {
     const ATTACK = 0.05; // seconds to reach peak after the initial partial ramp
     for (const slot of pool) {
       if (slot.sustainedKey != null) {
-        slot.obj.intensity = slot.intensity;
+        slot.obj.intensity = slot.intensity * EVENT_LIGHT_GAIN;
         continue;
       }
       if (slot.peak <= 0) continue;
@@ -15781,7 +15825,7 @@ export const vfx = {
           continue;
         }
       }
-      slot.obj.intensity = slot.intensity;
+      slot.obj.intensity = slot.intensity * EVENT_LIGHT_GAIN;
     }
     return this._activeLightCount > 0;
   },

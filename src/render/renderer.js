@@ -307,6 +307,7 @@ import {
 } from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { syncMarrowCone, disposeMarrowCone } from './marrowCone.js';
+import { HeadlightPool } from './headlights.js';
 import { syncBolusView, disposeBolusView } from './bolusView.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
@@ -10742,6 +10743,10 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   disposeRendererMeshRoots(owner, scene, disposeGpu);
   disposeBolusView(owner, { disposeGpu });
   disposeMarrowCone(owner, { disposeGpu });
+  if (owner._headlights) {
+    owner._headlights.dispose();
+    owner._headlights = null;
+  }
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
   disposeShipAuxPool(owner._shipAuxPool, scene, disposeGpu);
   if (disposeGpu) {
@@ -11637,6 +11642,10 @@ export const render = {
     const key = new THREE.DirectionalLight(corePalette.key, SECTOR_LIGHT_INTENSITIES.key); key.position.set(60, 140, 40); scene.add(key);
     const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
+    // Ship headlights: a fixed pool of real SpotLights mounted with the rig, so the shader warm-up
+    // below compiles every program against the final light count (src/render/headlights.js).
+    this._headlights = new HeadlightPool(scene);
+    state.render.headlights = this._headlights; // probes and look tuning read the live pool
     // Rig mount + the fog write above both move census-signature terms; the
     // epoch bump keeps a cross-pass memo from serving the pre-mount signature.
     noteShadowCensusLightMutation();
@@ -31589,6 +31598,9 @@ export const render = {
       this._updateSectorPaletteTransition(frameDt);
     });
     tryPresentedCall(this, 'marrow-cone', () => syncMarrowCone(this));
+    // The Bolus nose cone owns the player's bow light inside that sector; elsewhere it is ours.
+    tryPresentedCall(this, 'headlights', () => this._headlights?.update(this.state, frameDt, this._frameMembrane,
+      { playerLamp: !(this._marrowSpot && this._marrowSpot.intensity > 0), meshes: this._meshes }));
     tryPresentedCall(this, 'bolus-view', () => syncBolusView(this));
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {

@@ -25,6 +25,32 @@ Working machinery finished like a show car, under stage light, in black space.
 5. **Moods, not filters.** A place changes the colour relationship and the darkness. It never
    changes what a hull is made of.
 
+## Lighting is light (owner, 2026-10-20)
+
+The owner's direction: *a John le Carré ambience — dark, with lonely lights piercing the darkness,
+spotlights splaying across the dark sides of ships, and powers that light up the space around them.*
+An earlier pass faked this with geometry (stretched glowing spheres on every bow, a flat additive
+fan for a beam, white glow strips around fields). It was ripped out. The rules:
+
+- **Light is a THREE light.** A headlight, a power's glow or a flash is a real light that changes
+  how nearby surfaces are shaded. Never add a mesh, sprite, fan, cone or strip that poses as light.
+  In vacuum a beam is invisible; you see it only where it lands on a hull, rock or station.
+- **The dark is authored.** `LOOK_BASE.rig.ambientGain` / `fillGain` / `rimGain` and lowered
+  `surface.rockFill` / `sceneEnv` (darker in `neon_noir`, `sodium_yard`, `void_signal`) cut the
+  sector fill and back-wash so the side a sun misses is left dark for lamps. The key stays a hard
+  rake and the grazing surface rim keeps silhouettes readable.
+- **Headlights** ([`src/render/headlights.js`](../../src/render/headlights.js), values
+  `LOOK_HEADLIGHT`): a fixed pool of SpotLights mounted with the rig before shader warm-up. Slot 0
+  rides the player's bow; the rest go to the nearest powered NPC hulls. Mounted high on the bow and
+  pitched down, because the chase camera sees the tops of things. Switched by intensity, never by
+  visibility (the light count is part of every shader program).
+- **Effect lights are calibrated.** three.js measures point lights physically (inverse square). Every
+  authored `peak` in [`vfxColorLightDirector.js`](../../src/render/vfxColorLightDirector.js) means
+  the irradiance a surface receives `EVENT_LIGHT_REFERENCE_WU` from the light; `EVENT_LIGHT_GAIN`
+  converts it once at the pool. Before this, an explosion lit nearby hulls at under 2% of the sun.
+- **Running powers glow.** A live field holds a sustained slot in the existing event-light pool
+  (`fieldSustain`, at most two), in its family colour, following the field's ignition and release.
+
 ## One owner
 
 Every number that decides the vibe is a **Look value**, authored in one file and written to shared

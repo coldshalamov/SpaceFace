@@ -379,6 +379,43 @@ export class FieldForcePresentation {
       else {bodies[base+i].set(0,0,0,0);velocities[base+i].set(0,0);}
     }
   }
+  /**
+   * The light a running power throws on its surroundings: up to out.length records
+   * {active,x,z,radius,level,color}, frame-local, the player's own fields first, then the
+   * nearest. `level` follows the same ignition/release envelope as the surfaces and breathes
+   * slowly while sustained (held steady in reduced motion). Read-only; fills `out` in place.
+   */
+  glowRead(out,playerId=null,px=0,pz=0){
+    for(const r of out)r.active=false;
+    const motion=this.particleOptions.reducedMotion;
+    for(const s of this.slots){
+      if(s.id===null)continue;
+      const kind=shapeOfFieldKind(s.kind),sig=fieldSignature(kind);
+      if(!sig)continue;
+      const env=sampleFieldLifecycle(this.time,s.born,s.release,FIELD_LIFECYCLES[kind],this._glowLife||(this._glowLife={}));
+      const breath=motion||s.release>=0?1:1+0.12*Math.sin(this.time*2.4+s.character*6.283);
+      const level=env.opacity*(0.70+0.30*env.build)*breath;
+      if(!(level>0.01))continue;
+      const own=playerId!=null&&s.ownerId===playerId;
+      const score=(own?0:1e9)+Math.hypot(s.x-px,s.z-pz);
+      let at=-1;
+      for(let i=0;i<out.length;i++){
+        const r=out[i];
+        if(!r.active||score<r.score){at=i;break;}
+      }
+      if(at<0)continue;
+      for(let i=out.length-1;i>at;i--){
+        const to=out[i],from=out[i-1];
+        to.active=from.active;to.score=from.score;to.x=from.x;to.z=from.z;to.radius=from.radius;to.level=from.level;to.color.copy(from.color);
+      }
+      const r=out[at];
+      this._position(s);
+      const reach=(kind==='cone'||kind==='sheet')?s.radius*0.42:0;
+      r.active=true;r.score=score;r.x=this.local.x+Math.cos(s.angle)*reach;r.z=this.local.z+Math.sin(s.angle)*reach;r.radius=s.radius;r.level=level;
+      r.color.copy(COLORS.get((BURST_STYLE[s.kind]||sig).color)||COLORS.get(sig.color));
+    }
+    return out;
+  }
   _position(slot){
     if(this.toLocal)this.toLocal(slot.x,slot.z,this.local);
     else {this.local.x=slot.x;this.local.z=slot.z;}

@@ -66,6 +66,9 @@ const PRESETS = {
   thrustAfterburner: { color: '#8f66ff', peak: 2.8, decay: 16, distance: 95, priority: 0.45 },
 
   field: { color: '#b49aff', peak: 4.6, decay: 6, distance: 155, priority: 0.65 },
+  // A running power holds its light for as long as it runs (vfx._syncFieldPowerLights). Colour
+  // is the field family's; peak is the sustained level; distance scales with the field radius.
+  fieldSustain: { color: '#b49aff', peak: 3.6, decay: 0, distance: 2.0, priority: 0.6 },
   pickup: { color: '#d7efff', peak: 2.8, decay: 9, distance: 86, priority: 0.35 },
 
   // Surface-contact identities.
@@ -105,6 +108,16 @@ Object.freeze(PRESETS);
 for (const key of Object.keys(PRESETS)) Object.freeze(PRESETS[key]);
 
 export const VFX_LIGHT_PRESETS = PRESETS;
+
+// Physical calibration. three.js (r155+) measures point lights in candela with inverse-square
+// falloff, but every peak above was authored as "how bright where it lands". A pool light hangs
+// ~12 WU over the play plane, so an explosion's 7.5 used to reach a hull at ~0.05: under 2% of the
+// sector key, i.e. the effects lit nothing. A peak now means the irradiance a surface receives
+// EVENT_LIGHT_REFERENCE_WU from the light; nearer is hotter and farther falls off physically.
+// Owner, 2026-10-20: effects with lighting must actually light the scene.
+export const EVENT_LIGHT_DECAY = 2;
+export const EVENT_LIGHT_REFERENCE_WU = 22;
+export const EVENT_LIGHT_GAIN = EVENT_LIGHT_REFERENCE_WU ** EVENT_LIGHT_DECAY;
 
 // Normalised lookup: 'explosionCapital', 'explosion-capital', 'explosion_capital' and
 // 'explosioncapital' all resolve to the same row.
