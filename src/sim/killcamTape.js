@@ -47,7 +47,7 @@ const wrapPi = (a) => {
   return v;
 };
 
-function createShipTrack() {
+function createShipTrack(sampleCount = KILLCAM_SAMPLE_COUNT) {
   return {
     used: false,
     id: null,
@@ -64,11 +64,11 @@ function createShipTrack() {
     deathSample: -1,
     // Death velocity for the wreck drift, derived at close time from the last two samples.
     vx: 0, vz: 0, wz: 0,
-    ring: new Float32Array(KILLCAM_SAMPLE_COUNT * SHIP_STRIDE),
+    ring: new Float32Array(sampleCount * SHIP_STRIDE),
   };
 }
 
-function createRoundTrack() {
+function createRoundTrack(sampleCount = KILLCAM_SAMPLE_COUNT) {
   return {
     used: false,
     id: null,
@@ -77,7 +77,7 @@ function createRoundTrack() {
     firstSample: 0,
     lastSample: -1,
     dead: false,
-    ring: new Float32Array(KILLCAM_SAMPLE_COUNT * ROUND_STRIDE),
+    ring: new Float32Array(sampleCount * ROUND_STRIDE),
   };
 }
 
@@ -99,9 +99,9 @@ export function createKillcamRecorder(options = {}) {
     ? options.maxFlashes : KILLCAM_MAX_FLASHES;
 
   const ships = new Array(maxShips);
-  for (let i = 0; i < maxShips; i++) ships[i] = createShipTrack();
+  for (let i = 0; i < maxShips; i++) ships[i] = createShipTrack(sampleCount);
   const rounds = new Array(maxRounds);
-  for (let i = 0; i < maxRounds; i++) rounds[i] = createRoundTrack();
+  for (let i = 0; i < maxRounds; i++) rounds[i] = createRoundTrack(sampleCount);
   const byId = new Map(); // entity id -> track (ship or round)
   // Ship deaths in the window, oldest first: ring of [sample, x, z, size].
   const flashes = new Float32Array(maxFlashes * 4);
@@ -135,6 +135,11 @@ export function createKillcamRecorder(options = {}) {
   const recorder = {
     get sampleSeq() { return recorder._sampleSeq | 0; },
     _sampleSeq: 0,
+    // The resolved ring length and tape rate this recorder was configured with — the
+    // encoder/decoder must read these, not the module constants, or a custom ring
+    // silently misaligns.
+    _sampleCount: sampleCount,
+    _sampleRate: 60 / stride,
 
     /** Wipe everything — the round boundary (run:started). */
     clear() {
@@ -220,7 +225,7 @@ export function createKillcamRecorder(options = {}) {
         track.dead = true;
         if (isShipTrack(track)) {
           track.deathSample = track.lastSample;
-          const [x, z, rot, vx, vz, wz] = shipDeathMotion(track, sampleCount);
+          const [x, z, rot, vx, vz, wz] = shipDeathMotion(track, sampleCount, recorder._sampleRate);
           track.vx = vx; track.vz = vz; track.wz = wz;
           pushFlash(track.lastSample, x, z, Math.max(2.5, (track.radius || 0) * 2.6));
         }
@@ -270,14 +275,19 @@ function isShipTrack(track) {
 }
 
 /** Last pose + finite-difference velocity of a dying ship, from its ring. */
-function shipDeathMotion(track, sampleCount) {
+function shipDeathMotion(track, sampleCount, sampleRate = KILLCAM_SAMPLE_RATE) {
   const s = track.lastSample;
   const at = (i) => ((i % sampleCount) + sampleCount) % sampleCount;
-  const i0 = at(s - 1), i1 = at(s);
-  const x0 = track.ring[i0 * SHIP_STRIDE], z0 = track.ring[i0 * SHIP_STRIDE + 1];
+  const i1 = at(s);
   const x1 = track.ring[i1 * SHIP_STRIDE], z1 = track.ring[i1 * SHIP_STRIDE + 1];
-  const r0 = track.ring[i0 * SHIP_STRIDE + 2], r1 = track.ring[i1 * SHIP_STRIDE + 2];
-  const dt = 1 / KILLCAM_SAMPLE_RATE;
+  const r1 = track.ring[i1 * SHIP_STRIDE + 2];
+  // A ship that died on its first accepted sample has no in-life predecessor: slot s-1
+  // still holds a previous life's pose, which would read as a violent bogus drift.
+  if (s <= track.firstSample) return [x1, z1, r1, 0, 0, 0];
+  const i0 = at(s - 1);
+  const x0 = track.ring[i0 * SHIP_STRIDE], z0 = track.ring[i0 * SHIP_STRIDE + 1];
+  const r0 = track.ring[i0 * SHIP_STRIDE + 2];
+  const dt = 1 / (sampleRate > 0 ? sampleRate : KILLCAM_SAMPLE_RATE);
   return [
     x1, z1, r1,
     (x1 - x0) / dt, (z1 - z0) / dt,
@@ -293,8 +303,10 @@ function shipDeathMotion(track, sampleCount) {
  */
 export function encodeKillcamTape(recorder, meta = {}) {
   if (!recorder) return null;
+  const ringLength = Number.isInteger(recorder._sampleCount) && recorder._sampleCount >= 2
+    ? recorder._sampleCount : KILLCAM_SAMPLE_COUNT;
   const endSample = recorder.sampleSeq;
-  const fromSample = Math.max(0, endSample - KILLCAM_SAMPLE_COUNT + 1);
+  const fromSample = Math.max(0, endSample - ringLength + 1);
   const ships = [];
   for (const track of recorder._ships) {
     if (!track.used || track.lastSample < fromSample) continue;
@@ -305,7 +317,7 @@ export function encodeKillcamTape(recorder, meta = {}) {
     const z = new Float32Array(n);
     const r = new Float32Array(n);
     for (let i = 0; i < n; i++) {
-      const slot = ((start + i) % KILLCAM_SAMPLE_COUNT) * SHIP_STRIDE;
+      const slot = ((start + i) % ringLength) * SHIP_STRIDE;
       x[i] = track.ring[slot];
       z[i] = track.ring[slot + 1];
       r[i] = track.ring[slot + 2];
@@ -331,7 +343,7 @@ export function encodeKillcamTape(recorder, meta = {}) {
     const x = new Float32Array(n);
     const z = new Float32Array(n);
     for (let i = 0; i < n; i++) {
-      const slot = ((start + i) % KILLCAM_SAMPLE_COUNT) * ROUND_STRIDE;
+      const slot = ((start + i) % ringLength) * ROUND_STRIDE;
       x[i] = track.ring[slot];
       z[i] = track.ring[slot + 1];
     }
@@ -341,7 +353,7 @@ export function encodeKillcamTape(recorder, meta = {}) {
     schema: KILLCAM_TAPE_SCHEMA,
     seed: meta.seed >>> 0 || 0,
     tickRate: 60,
-    sampleRate: KILLCAM_SAMPLE_RATE,
+    sampleRate: recorder._sampleRate > 0 ? recorder._sampleRate : KILLCAM_SAMPLE_RATE,
     windowS: KILLCAM_WINDOW_S,
     endSample,
     samples: endSample - fromSample + 1,
@@ -367,6 +379,8 @@ export function isKillcamTape(tape) {
 export function decodeKillcamTape(tape) {
   if (!isKillcamTape(tape)) return null;
   const total = tape.samples | 0;
+  const sampleRate = Number.isFinite(tape.sampleRate) && tape.sampleRate > 0
+    ? tape.sampleRate : KILLCAM_SAMPLE_RATE;
   const ships = tape.ships.map((ship) => ({
     ship,
     last: ship.n - 1,
@@ -378,7 +392,7 @@ export function decodeKillcamTape(tape) {
         x: ship.x[i0] + (ship.x[i1] - ship.x[i0]) * a,
         z: ship.z[i0] + (ship.z[i1] - ship.z[i0]) * a,
         rot: ship.r[i0] + wrapPi(ship.r[i1] - ship.r[i0]) * a,
-        turning: wrapPi(ship.r[i1] - ship.r[i0]) * KILLCAM_SAMPLE_RATE,
+        turning: wrapPi(ship.r[i1] - ship.r[i0]) * sampleRate,
       };
     },
   }));
@@ -390,13 +404,13 @@ export function decodeKillcamTape(tape) {
       const i0 = Math.floor(f), i1 = Math.min(n - 1, i0 + 1), a = f - i0;
       const x = round.x[i0] + (round.x[i1] - round.x[i0]) * a;
       const z = round.z[i0] + (round.z[i1] - round.z[i0]) * a;
-      return { x, z, vx: (round.x[i1] - round.x[i0]) * KILLCAM_SAMPLE_RATE, vz: (round.z[i1] - round.z[i0]) * KILLCAM_SAMPLE_RATE };
+      return { x, z, vx: (round.x[i1] - round.x[i0]) * sampleRate, vz: (round.z[i1] - round.z[i0]) * sampleRate };
     },
   }));
   return {
     tape,
     total,
-    seconds: total / tape.sampleRate,
+    seconds: total / sampleRate,
     ships, rounds,
     flashes: tape.flashes.slice().sort((a, b) => a.s - b.s),
   };

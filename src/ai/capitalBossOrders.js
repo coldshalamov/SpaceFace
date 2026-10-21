@@ -11,7 +11,7 @@ export function shapeCapitalBossManeuverRequest(request,state) {
   const order=capitalBossOrder(state,request.entityId);
   if(!order?.scoreOwnsAttacks) return request; // Wings retain the real squad commander.
   const result={...request,brake:order.brake===true,
-    forceLocal:{...(request.forceLocal||{}),forward:order.forward||0,strafe:0}};
+    forceLocal:{...(request.forceLocal||{}),forward:order.forward||0,right:0}};
   if(Number.isFinite(order.heading)) result.targetHeading=order.heading;
   // Preserve non-enumerable normalization markers used by the thrust owner.
   for(const name of Object.getOwnPropertyNames(request)) {
