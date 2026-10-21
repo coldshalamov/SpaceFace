@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "sector-trade-signatures",
-      "date": "2026-10-03",
-      "wf": "WF-06",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Two authored station trade personalities (Ceres fuel-cell glut, Drift ration glut) with shortage ends, band/news/rumor storytelling and flyable routes",
-      "fingerprint": "verb=trade,subject=stations,sector=ceres-pallas,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "30d5cc912",
-      "verification": "focused_green"
-    },
-    {
       "id": "absent-faction-presence",
       "date": "2026-10-03",
       "wf": "WF-01",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "068d9ed2f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-32-named-rocks",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Drill site header reads a stable hashed name like 'Grey Molar'; no AST- string on the default capture",
+      "fingerprint": "verb=see,subject=rock-name,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "9a8697a3f",
       "verification": "focused_green"
     }
   ],
