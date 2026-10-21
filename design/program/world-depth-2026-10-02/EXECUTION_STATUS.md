@@ -1,6 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 08:03 UTC
+
+All nine goals remain OPEN. Published source baseline remains `b01eedbb75a737ad419a19a91432e332d3b273b6`, tree `c8f4e30368adec23a46755742c2f6df8eb2d8c31`. The new activity below is active work, not a published or accepted successor.
+
+The next connected feature is Tann Winnow recovery. build_tann_winnow_recovery owns new src/data/vestaWinnowRecovery.js, src/world/vestaWinnowRecovery.js, test/vesta-winnow-recovery.test.mjs and test/fixtures/vesta-winnow-recovery-native.mjs, with narrow existing encounters/355-the-winnow-throw.js and traffic.js integration. mining.js is now granted only for split-lineage preservation. review_tann_finite_recovery is the independent reviewer; retain these exact boundaries and do not duplicate implementation.
+
+The first actual integration check passes 1/1: the original named Tann's prior authored job is not replaced; the original five two-unit pods retain identities through save/load; duplicate registration creates no new units. Movement, settlement, loss and replay remain unproved, and reviewer defects are active. Do not generalize this identity/registration proof into a completed finite-recovery route.
+
+Actual b01 CI now clears the static1 manifest check with 9,665 triangles, and all 44 new cases pass. The native full route instead fails at tick 30,068 on a receipt assertion, with leading receipt 13 versus ledger 1, under newer merge base d7af. Cause is not established. The CI owner is investigating that specific failure without rerunning the entire fixture; no blame, aggregate-green or new route pass is claimed.
+
+Next: address reviewer findings and prove Tann's real movement, bounded finite custody/settlement, actual loss and replay behavior, preserving split lineage without adding units or replacing authored work. Continue the targeted CI receipt investigation separately. Source/model acceptance distinctions and original Orchard upload holds remain unchanged. This update changes only the two shared handoff/goal files on their separate branch, not implementation, NOW or PR #480, and includes no private recovery identifiers or restricted diagnostics.
+
 ## Current source handoff — 21 October 2026, 07:44 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical failures and scope limits.
