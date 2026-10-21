@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "celebration-identity-audio",
-      "date": "2026-10-03",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Achievements, career promotions, tech research and ship purchases each speak their own authored voice (previously silent or reusing the mission jingle)",
-      "fingerprint": "verb=celebrate,subject=progression-moments,sector=ui-audio,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "7f45a0908",
-      "verification": "focused_green"
-    },
-    {
       "id": "allied-rep-exclusive-hardware",
       "date": "2026-10-03",
       "wf": "WF-07",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "d4a743673",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-33-drone-distress-event",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Distressed drone emits automation:droneDistressed with id, sectorId, pos, reason; covered by rc-industry-true suite",
+      "fingerprint": "verb=emit,subject=drone-distress,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "6a8757a84",
       "verification": "focused_green"
     }
   ],
