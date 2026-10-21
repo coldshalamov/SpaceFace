@@ -5747,7 +5747,9 @@ export const missions = {
     const name = m && m.storyTarget && m.storyTarget.role === 'board_writ' ? m.storyTarget.name : null;
     if (!name) return;
     const missions = this.state.missions;
-    const ledger = missions.killedMarkNames || (missions.killedMarkNames = []);
+    const ledger = Array.isArray(missions.killedMarkNames)
+      ? missions.killedMarkNames
+      : (missions.killedMarkNames = []);
     if (!ledger.includes(name)) ledger.push(name);
   },
 
@@ -13341,6 +13343,11 @@ export const missions = {
     if (m.postEndingReplay) {
       serialized.postEndingReplay = JSON.parse(JSON.stringify(m.postEndingReplay));
     }
+    // RC-34: the dead-mark graveyard ledger. Preserves absence like yardContracts — an empty
+    // ledger rolls identically to none, so only a live ledger reaches the save payload.
+    if (Array.isArray(m.killedMarkNames) && m.killedMarkNames.length) {
+      serialized.killedMarkNames = [...m.killedMarkNames];
+    }
     return serialized;
   },
 
@@ -13408,6 +13415,13 @@ export const missions = {
         ? JSON.parse(JSON.stringify(data.postEndingReplay)) : null;
     } else {
       delete state.missions.postEndingReplay;
+    }
+    // RC-34: restore the graveyard so a killed board_writ mark stays undealt after a reload.
+    // Absent on legacy saves — the ledger is minted lazily on the next mark death.
+    if (Array.isArray(data.killedMarkNames) && data.killedMarkNames.length) {
+      state.missions.killedMarkNames = [...data.killedMarkNames];
+    } else {
+      delete state.missions.killedMarkNames;
     }
     yield 'missions-scalars';
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.

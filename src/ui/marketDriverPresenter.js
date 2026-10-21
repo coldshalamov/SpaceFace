@@ -245,18 +245,27 @@ export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
     if (m && m.eventId != null && !ids.includes(m.eventId)) ids.push(m.eventId);
   }
   let newest = null;
+  let newestT = -Infinity;
   if (ids.length) {
     const events = (state && state.economy && state.economy.econEvents) || [];
     for (const id of ids) {
       const ev = events.find((e) => e && e.id === id);
-      if (ev && (!newest || Number(ev.startT) >= Number(newest.startT))) newest = ev;
+      if (!ev) continue;
+      const startT = Number(ev.startT);
+      if (Number.isFinite(startT)) {
+        if (startT >= newestT) { newest = ev; newestT = startT; }
+      } else if (!newest) {
+        // A restored row can carry no startT (normalizeRestoredEconomyEvent validates only
+        // type). It cannot outrank a datable cause, but it still stands in when nothing else does.
+        newest = ev;
+      }
     }
   }
   const name = COMMODITY_NAME_FALLBACK(commodity, commodity && commodity.id);
   const mine = playerTradeMover(state, stationId, commodity && commodity.id);
   // The pilot's own trade is the honest mover while it is at least as new as the newest event.
   // eventId stays null: marketPresentation and lg-forecast-proof treat it as an `evt_` id.
-  if (mine && (!newest || mine.at >= Number(newest.startT))) {
+  if (mine && (!newest || mine.at >= newestT)) {
     return Object.freeze({
       text: `Last move: your ${mine.side === 'sell' ? 'sale' : 'purchase'} of ${mine.qty} ${name} here`,
       eventId: null,

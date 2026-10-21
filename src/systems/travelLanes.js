@@ -748,10 +748,13 @@ export const travelLanes = {
         this._emitSlingPass(player, false);
       }
     } else {
+      // A hull thrown during this presence already announced its pass — the exit
+      // emit is only for a traversal the throw never claimed (one pass, one event).
+      const wasThrown = player.id != null && this._slingThrownIds.has(player.id);
       if (player.id != null) this._slingThrownIds.delete(player.id);
       if (this._slingPlayerActive) {
         this._seedSlingEarnedCap(state, player);
-        this._emitSlingPass(player, true);
+        if (!wasThrown) this._emitSlingPass(player, true);
       }
     }
     this._slingPlayerActive = active;

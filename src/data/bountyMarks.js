@@ -230,19 +230,20 @@ function markPlaceCandidates(sectorId, sectorDef) {
 export function rollBountyMark({ seed, offerId, sectorId, riskTier = 0, sectorDef = null, exclude = null } = {}) {
   if (!offerId || !sectorId) return null;
   const h0 = hash32(seed || 1, offerId, 'bounty-mark');
-  const dead = exclude ? new Set(exclude) : null;
+  const dead = exclude && typeof exclude[Symbol.iterator] === 'function' ? new Set(exclude) : null;
   // RC-34: a named mark already killed never comes back. The name pool is the only
   // field that can collide with the graveyard; walking forward from the hashed slot
   // keeps every other rolled field bit-identical and stays deterministic on
   // (seed, offerId, kill ledger) — no rng draw.
+  // The walk is bounded by the name pool — no size pre-check: the ledger also
+  // records non-pool board_writ names (starter runners), so ledger size alone
+  // cannot prove every pool name is dead.
   let name = null;
-  if (!dead || dead.size < MARK_NAMES.length) {
-    for (let k = 0; k < MARK_NAMES.length; k++) {
-      const candidate = MARK_NAMES[(h0 + k) % MARK_NAMES.length];
-      if (dead && dead.has(candidate)) continue;
-      name = candidate;
-      break;
-    }
+  for (let k = 0; k < MARK_NAMES.length; k++) {
+    const candidate = MARK_NAMES[(h0 + k) % MARK_NAMES.length];
+    if (dead && dead.has(candidate)) continue;
+    name = candidate;
+    break;
   }
   // Every name in the graveyard (deep-late-game edge): the writ still needs a face.
   if (!name) name = MARK_NAMES[h0 % MARK_NAMES.length];
