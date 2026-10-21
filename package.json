@@ -88,7 +88,7 @@
     "check:asteroid-motion": "node scripts/check-asteroid-motion.mjs",
     "check:asteroid-works-render": "node --test test/asteroid-works-render.test.mjs",
     "check:crucible:arc": "node --test test/crucible-thirty-wave-arc.test.mjs test/crucible-survival-style.test.mjs test/crucible-no-hp-scaling.test.mjs",
-    "check:attack-spec": "node --test test/attack-spec.test.mjs test/attack-lineage.test.mjs test/surface-contact.test.mjs test/attack-chain-payload.test.mjs test/attack-live-wiring.test.mjs test/orbit-cryo-reactions.test.mjs test/weapons-five-verified-defects.test.mjs test/payload-durable-lifetime.test.mjs",
+    "check:attack-spec": "node --test test/attack-spec.test.mjs test/attack-lineage.test.mjs test/surface-contact.test.mjs test/attack-chain-payload.test.mjs test/attack-live-wiring.test.mjs test/orbit-cryo-reactions.test.mjs test/weapons-five-verified-defects.test.mjs test/payload-durable-lifetime.test.mjs test/payload-transition-boundary.test.mjs",
     "check:all": "node scripts/check-ci-report.mjs",
     "check:sweep-recovery": "node --test --test-concurrency=2 test/input-pointer-lock-recovery.test.mjs test/input-gamepad-capture-boundary.test.mjs test/input-modal-release-boundary.test.mjs test/input-haptics-rejection.test.mjs test/startup-route-cancellation.test.mjs test/world-object-picking-motion.test.mjs test/world-catchup-bounded-angle.test.mjs test/wingmen-damage-and-moving-rock.test.mjs test/ships-instance-id-continue.test.mjs test/save-gzip-read-bound.test.mjs test/save-utf8-write-bound.test.mjs",
     "check:draw-to-fly": "node --test test/draw-to-fly-path-tracking.test.mjs test/draw-to-fly-stroke-speed.test.mjs",

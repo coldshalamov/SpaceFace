@@ -18,7 +18,8 @@ for(const sliced of [false,true])test(`authored47-A payloads survive ${sliced?'s
  const f=fixture(sliced);
  try{
   const old=spawnPayloadEntity(f.state,{pos:{x:1,z:1}},f.helpers);
-  f.bus.emit('sector:enter',{sectorId:'sector_helios_prime',enterTick:0});
+  f.state.world.enterSerial = 1;
+  f.bus.emit('sector:enter',{sectorId:'sector_helios_prime',enterTick:0,enterEpoch:1,payloadGenerationCutoff:f.state.nextOccupantGeneration});
   const cast=spawn47aOpeningScene({state:f.state,helpers:f.helpers,liveColdStartSafe:true});
   const props=[cast.spindle,cast.civilianPod];
   assert.ok(props.every(Boolean),'real authored props must exist');
@@ -53,7 +54,8 @@ for(const[policy,stamp]of Object.entries(durablePolicies))test(`payload cleanup 
   assert.equal(f.state.entities.get(e.id),e);assert.equal(e.occupantGeneration,generation);
   assert.equal(JSON.stringify({data:e.data,flags:e.flags}),before);
   assert.equal(f.state.entityList.filter(x=>x===e).length,1);
-  for(let i=0;i<3;i++){f.bus.emit('sector:enter',{sectorId:'sector_helios_prime',enterTick:i});f.bus.flushSlicedEmits();f.bus.flush();}
+  f.state.world.enterSerial = 1;
+  for(let i=0;i<3;i++){f.bus.emit('sector:enter',{sectorId:'sector_helios_prime',enterTick:i,enterEpoch:1,payloadGenerationCutoff:f.state.nextOccupantGeneration});f.bus.flushSlicedEmits();f.bus.flush();}
   assert.equal(f.state.entities.get(e.id),e);assert.equal(JSON.stringify({data:e.data,flags:e.flags}),before);
   assert.deepEqual(destroyed,[]);
  }finally{f.close();}

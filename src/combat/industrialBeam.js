@@ -2,7 +2,7 @@
 // Pure module & single-writer helper for industrial beam verbs (cut, extract, repair, transfer) and payload lifecycle.
 
 import { removeCargo, addCargo } from '../systems/cargo.js';
-import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
+import { allocateEntityId, makeEntity, clearEntityRuntime, occupantGenerationOf } from '../core/entity.js';
 
 export function resolveBeamVerb(descriptor, toolState = {}) {
   const mode = toolState.mode || 'auto';
@@ -224,8 +224,17 @@ export function spawnPayloadEntity(state, spec = {}, helpers = null) {
 // Despawns un-anchored transient payloads on sector transition while preserving
 // anchored/saved payloads.
 // -----------------------------------------------------------------------------
-export function handlePayloadSectorTransition(state, helpers = null) {
+// An omitted boundary preserves immediate legacy/helper cleanup. Production event
+// consumers always pass their event: missing or invalid proof must not delete bodies.
+export function handlePayloadSectorTransition(state, helpers = null, boundary = undefined) {
   if (!state || !state.entities || !state.entities.values) return 0;
+  const scoped = boundary !== undefined;
+  const cutoff = boundary?.payloadGenerationCutoff;
+  if (scoped && (!Number.isSafeInteger(boundary?.enterEpoch) || boundary.enterEpoch < 1
+    || boundary.enterEpoch !== state.world?.enterSerial
+    || !Number.isSafeInteger(cutoff) || cutoff < 1
+    || !Number.isSafeInteger(state.nextOccupantGeneration)
+    || cutoff > state.nextOccupantGeneration)) return 0;
   if (hasCanonicalEntityLifecycle(state)
     && (!helpers || typeof helpers.removeEntity !== 'function')) {
     throw new Error('industrial payload cleanup requires canonical helpers.removeEntity');
@@ -235,7 +244,15 @@ export function handlePayloadSectorTransition(state, helpers = null) {
     ? helpers.removeEntity
     : null;
   for (const entity of Array.from(state.entities.values())) {
+    // Canonical removal can synchronously re-enter a reset or recycle another row.
+    // Revalidate ownership against the live map before acting on the snapshot.
+    if (scoped && boundary.enterEpoch !== state.world?.enterSerial) break;
+    if (scoped && state.entities.get(entity.id) !== entity) continue;
     if (entity.type === 'payload' && entity.data) {
+      if (scoped) {
+        const generation = occupantGenerationOf(entity);
+        if (!Number.isSafeInteger(generation) || generation < 1 || generation >= cutoff) continue;
+      }
       // Respect authored durable payload lifetime markers; saved persistent bodies
       // must not lose custody to a late sector-enter listener.
       // Default industrial scraps remain transient; malformed truthy strings do not
