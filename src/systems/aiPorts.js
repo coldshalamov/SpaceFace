@@ -278,6 +278,7 @@ export const aiPorts = {
       options.tetherContactsScratch || (live ? this._sensorTetherContactsScratch : null),
     );
     for (const contact of tetherContacts) contacts.push(contact);
+    appendWellObstacles(state, entity, range, contacts, freeze);
     if (freeze !== identity) contacts.sort(contactSort);
     if (live) {
       const frame = options.frameScratch || this._liveSensorFrameScratch;
@@ -1436,6 +1437,29 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
     }
   }
   return out;
+}
+
+const WELL_OBSTACLE_TAGS = Object.freeze(['solid', 'field_well']);
+
+function appendWellObstacles(state, observer, range, contacts, freeze) {
+  const data = observer.data || {};
+  if (data.silhouette !== 'corsair_blade' && observer.silhouette !== 'corsair_blade'
+    && data.ai?.combatDoctrineId !== 'interceptor_flyby'
+    && !data.aceId && !data.aceMemory?.aceId && !data.ai?.aceId) return;
+  const active = state.fields?.active;
+  const wells = active?.length ? active : state.fields?.snapshot || [];
+  for (let i = 0; i < wells.length; i++) {
+    const well = wells[i];
+    if (!well || well.kind !== 'well' || well.alive === false
+      || (well.ownerId != null && well.ownerId !== state.playerId)) continue;
+    const center = well.center || well;
+    if (!Number.isFinite(center.x) || !Number.isFinite(center.z) || !(well.radius > 0)
+      || Math.hypot(center.x - observer.pos.x, center.z - observer.pos.z) > range) continue;
+    contacts.push(freeze({ id: `well:${well.id ?? i}`, kind: ContactKind.WAYPOINT,
+      tags: WELL_OBSTACLE_TAGS, pos: freeze({ x: center.x, z: center.z }),
+      vel: freeze({ x: 0, z: 0 }), radius: well.radius, planarRadius: well.radius,
+      alive: true, valid: true, visible: true, hostile: false, threat: 0, confidence: 1, team: null }));
+  }
 }
 
 function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner) {

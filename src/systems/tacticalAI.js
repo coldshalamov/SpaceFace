@@ -31,6 +31,9 @@ import {
   maintainFirstSessionAttackerOwnership,
   refreshFirstSessionAttackerOwnership,
   resetFirstSessionAttackerOwnership,
+  authorizeAIEngagement,
+  isDoctrineFirePhase,
+  isHostileForAI,
 } from '../ai/engagementAuthority.js';
 import { hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
 import { SHIPS } from '../data/ships.js';
@@ -42,7 +45,8 @@ import {
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
-import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
+import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeaponId,
+  isBodyLauncherEnemy } from '../ai/specialistPlans.js';
 import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
 import { applyNpcBombMirror } from '../ai/npcBombMirror.js';
 import {
@@ -54,7 +58,10 @@ import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrin
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { stepEgressExits } from '../ai/egressExit.js';
 import { getCombatKernel } from '../combat/kernel.js';
-import { setThrusterHealth } from '../core/physicsAuthority.js';
+import { setThrusterHealth, isDynamicPhysicsBodyEntity, queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { recordImpulseProvenance } from '../combat/impulseKernel.js';
+import { isTumbling } from '../combat/tumbleStatus.js';
+import { selectIncomingMassCue, INCOMING_MASS_CUE_KIND, INCOMING_MASS_CUE_TICKS } from '../render/incomingMassCue.js';
 import { driveCounterplay, isCounterplayOwned, rebindCounterplayCast } from '../ai/counterplay/live.js';
 import { placeCounterplayAdventure, clearCounterplayAdventure } from '../ai/counterplay/adventure.js';
 
@@ -62,6 +69,90 @@ import { placeCounterplayAdventure, clearCounterplayAdventure } from '../ai/coun
 globalThis.__SF_TACTICAL_AI_EVALUATED__ = true;
 
 const OWNERSHIP_REFRESH_TICKS = 3;
+const incomingMassContacts = [];
+const incomingMassPool = [];
+
+/** Runs even while the NPC think stack is quiet: a thrown body can still reach the player. */
+export function emitIncomingMassCue(state, bus) {
+  const player = state.entities?.get(state.playerId);
+  if (state.mode !== 'flight' || !player || player.alive === false || !bus?.emit) return;
+  incomingMassContacts.length = 0;
+  for (const body of state.entities.values()) {
+    if (body === player || !body.alive || body.collides === false || !body.pos || !body.vel
+      || !(body.vel.x * body.vel.x + body.vel.z * body.vel.z >= 120 * 120)) continue;
+    const ship = body.type === 'ship' || body.type === 'drone';
+    if (body.type === 'projectile' || body.type === 'pickup' || body.type === 'fieldEmitter') continue;
+    const tumbling = ship && isTumbling(state, body);
+    if (!tumbling && !isDynamicPhysicsBodyEntity(body)) continue;
+    const index = incomingMassContacts.length;
+    const contact = incomingMassPool[index] || (incomingMassPool[index] = {});
+    contact.id = body.id;
+    contact.pos = body.pos;
+    contact.vel = body.vel;
+    contact.radius = body.radius;
+    contact.planarRadius = body.planarRadius;
+    contact.kind = ship ? 'ship' : 'hazard';
+    contact.tumbling = tumbling;
+    contact.disabled = ship && state.combat?.entities?.[String(body.id)]?.capabilities?.drive === false;
+    incomingMassContacts.push(contact);
+  }
+  const threat = selectIncomingMassCue(player, incomingMassContacts);
+  // Do not retain world/entity references between sessions in the reusable contact pool.
+  for (const contact of incomingMassContacts) { contact.pos = null; contact.vel = null; }
+  incomingMassContacts.length = 0;
+  // No targetId: ActionVfx anchors the cue on the resolved id — the thrown body, not the
+  // pilot it threatens (the HUD tell treats a targetless telegraph as aimed at the player).
+  if (threat) bus.emit('ai:telegraph', { entityId: threat.bodyId,
+    kind: INCOMING_MASS_CUE_KIND, phase: 'incoming_mass', durationTicks: INCOMING_MASS_CUE_TICKS,
+    tick: state.tick });
+}
+
+/** Same execution seam on decision and cached-decision ticks; no direct physics writes. */
+export function stepHostileBodyLaunches(state, bus, runtime, doctrineRuntime) {
+  const player = state.entities?.get(state.playerId);
+  if (state.mode !== 'flight' || !player || player.alive === false || !bus?.emit) {
+    runtime.clear();
+    return;
+  }
+  for (const [id, rt] of runtime) {
+    const enemy = state.entities.get(id);
+    if (enemy !== rt.actor || !isBodyLauncherEnemy(enemy) || !isHostileForAI(state, enemy, player)) runtime.delete(id);
+  }
+  for (const enemy of state.entities.values()) {
+    if (enemy.id === player.id || !isBodyLauncherEnemy(enemy)
+      || !isHostileForAI(state, enemy, player) || isCounterplayOwned(enemy, state)) continue;
+    let rt = runtime.get(enemy.id);
+    if (!rt) {
+      rt = { phase: 'idle', nextEligibleTick: 0, actor: enemy };
+      runtime.set(enemy.id, rt);
+    }
+    // Start a windup inside the doctrine's committed window, rather than spending the
+    // entire cooldown on a charge begun during ingress that could never legally fire.
+    const live = doctrineRuntime?.byEntity?.get(enemy.id);
+    const doctrineId = enemy.data.ai.combatDoctrineId;
+    if (rt.phase !== 'windup' && (!live || live.doctrineId !== doctrineId
+      || live.targetId !== player.id || !isDoctrineFirePhase(doctrineId, live.phase))) continue;
+    const tick = state.tick;
+    const result = bodyLaunchStep(rt, { state, enemy, player, tick });
+    // No targetId here either — the weapon_charge tributaries draw on the charging hull.
+    if (result?.telegraph) bus.emit('ai:telegraph', { entityId: enemy.id,
+      kind: 'weapon_charge', phase: 'body_launch', durationTicks: BODY_LAUNCH.WINDUP_TICKS, tick });
+    if (!result?.launch) continue;
+    // combatDoctrine owns phase in its byEntity runtime, not entity.data.ai.
+    if (!live || live.doctrineId !== doctrineId || live.targetId !== player.id
+      || !isDoctrineFirePhase(doctrineId, live.phase)
+      || capitalBossOrder(state, enemy.id)?.suppressStockFire || !nemesisFireAllowed(enemy, state)) continue;
+    const authority = authorizeAIEngagement({ state, self: enemy, target: player, tick,
+      objectiveReason: `combat_doctrine:${doctrineId}:${live.phase}` });
+    if (!authority.ok) continue;
+    const body = state.entities.get(result.launch.bodyId);
+    const impulse = result.launch.impulse;
+    if (queuePhysicsImpulse(body, impulse)) recordImpulseProvenance(body, {
+      actorId: enemy.id, weaponId: bodyLauncherWeaponId(enemy), tag: 'npc_body_launch',
+      appliedTick: tick, magnitude: Math.hypot(impulse.x, impulse.z),
+    });
+  }
+}
 function counterplayFreeRoster(base, stateProvider) {
   if (!base) return base;
   const filter = (rows) => {
@@ -244,6 +335,7 @@ export function createTacticalAISystem({
   let lastOwnershipRefreshTick = -Infinity;
   let lastManeuverRequests = [];
   const lastDecisionEntityRefs = new Map();
+  const bodyLaunchRt = new Map();
   const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
   let quietLatch = null;
@@ -329,6 +421,7 @@ export function createTacticalAISystem({
   }
 
   function resetRuntime() {
+    bodyLaunchRt.clear();
     stack = null;
     inspection = null;
     lastDecisionTick = -Infinity;
@@ -429,6 +522,7 @@ export function createTacticalAISystem({
     },
 
     update(_dt, state) {
+      emitIncomingMassCue(state, ctxRef && ctxRef.bus);
       if (productionPortDefaults) placeCounterplayAdventure(ctxRef);
       const bindingVersion = entityIndexVersion(state);
       if (bindingVersion !== counterplayBindingVersion) {
@@ -454,6 +548,7 @@ export function createTacticalAISystem({
       stepEgressExits(state, shipLikeList, ctxRef && ctxRef.bus);
       if (TACTICAL_AI_QUIET_LATCH !== false && productionPortDefaults) {
         if (!anyNonPlayerNeedsAiThink(state, shipLikeList)) {
+          bodyLaunchRt.clear();
           quietLatch = {
             armed: true,
             armedTick: Number.isInteger(state && state.tick) ? state.tick : 0,
@@ -486,6 +581,7 @@ export function createTacticalAISystem({
         revalidateCachedAIFiringIntents(liveStack, state, lastDecisionEntityRefs);
         applySquadTokenFireGate(liveStack, state, shipLikeList);
         applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
+        stepHostileBodyLaunches(state, ctxRef.bus, bodyLaunchRt, liveStack.combatDoctrine);
         return;
       }
       const authored = typeof authoredEncounter === 'function'
@@ -603,6 +699,7 @@ export function createTacticalAISystem({
       // Runs after the mind veto and the Nemesis denial gate: those vetoes still close fire, and a
       // score-owned capital/wing must not double-fire its authored attacks through stock intent.
       applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
+      stepHostileBodyLaunches(state, ctxRef.bus, bodyLaunchRt, liveStack.combatDoctrine);
     },
 
     inspect(query = {}) {

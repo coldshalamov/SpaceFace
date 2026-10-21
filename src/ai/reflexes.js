@@ -336,6 +336,35 @@ function planarBodyRadius(body, fallback = 0) {
   return Number(body && body.radius) || fallback;
 }
 
+/** Player threat policy: no NPC notice roll, reaction delay, or occlusion gate. */
+export function incomingBodyThreatFor(self, candidates) {
+  if (!self?.pos) return null;
+  let best = null;
+  const selfR = planarBodyRadius(self, 16);
+  for (const c of candidates || []) {
+    if (!c || c.id === self.id || c.alive === false || !c.pos || !c.vel) continue;
+    if (c.kind === ContactKind.SHIP) {
+      if (c.tumbling !== true && c.disabled !== true) continue;
+    } else if (c.kind !== ContactKind.HAZARD && c.kind !== ContactKind.OBJECTIVE) continue;
+    if (!(Math.hypot(c.vel.x, c.vel.z) >= MOVING_BODY_MIN_SPEED)) continue;
+    const dx = c.pos.x - self.pos.x, dz = c.pos.z - self.pos.z;
+    const vx = c.vel.x - (self.vel?.x || 0), vz = c.vel.z - (self.vel?.z || 0);
+    const speed2 = vx * vx + vz * vz;
+    const distance = Math.hypot(dx, dz);
+    const approach = -(dx * vx + dz * vz);
+    const closingSpeed = approach / distance;
+    if (!(distance >= 1e-6 && speed2 >= 1 && closingSpeed >= BODY_MIN_CLOSING_SPEED)) continue;
+    const eta = approach / speed2;
+    if (!(eta > 0 && eta <= BODY_MAX_ETA)) continue;
+    const miss = Math.hypot(dx + vx * eta, dz + vz * eta);
+    if (!(miss < selfR + planarBodyRadius(c) + BODY_MISS_PAD)) continue;
+    if (!best || eta < best.eta || (eta === best.eta && String(c.id) < String(best.bodyId))) {
+      best = { bodyId: c.id, eta, closingSpeed, miss };
+    }
+  }
+  return best;
+}
+
 function segmentClearance(ax, az, bx, bz, px, pz) {
   const sx = bx - ax, sz = bz - az;
   const len2 = sx * sx + sz * sz;

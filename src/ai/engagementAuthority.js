@@ -65,6 +65,10 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   detonator_run: new Set(),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
+/** Read the same fail-closed phase table used by ordinary weapon authorization. */
+export function isDoctrineFirePhase(doctrineId, phase) {
+  return DOCTRINE_FIRE_PHASES[doctrineId]?.has(phase) === true;
+}
 // Ambient predation: unscripted team-1 pirates hunting manifested team-2 civilians. The director's
 // cadenced evaluator (src/ai/ambientPredation.js) stamps these exact values; the relation below
 // revalidates every one of them so the exception can never widen. Raid ids carry the `ambient:raid:`

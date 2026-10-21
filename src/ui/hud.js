@@ -1082,6 +1082,8 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   FLYBY: 'Break the beam',
   TETHER: 'Deny the latch',
   CHARGE: 'Close or break LOS',
+  LAUNCH: 'Mass inbound — move',
+  INCOMING: 'Sidestep or send it back',
 });
 const DOCTRINE_TELL_ICON = Object.freeze({
   // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
@@ -1089,6 +1091,8 @@ const DOCTRINE_TELL_ICON = Object.freeze({
   FLYBY: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
   TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
   CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  LAUNCH: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  INCOMING: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
 });
 // The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
 // `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
@@ -1102,7 +1106,7 @@ const DOCTRINE_TELL_GLYPH_ALIAS = Object.freeze({
   chevron: 'iff_ally',
 });
 function tellGlyphName(tellId) {
-  const paletteState = tellId === 'TETHER' ? 'warning' : 'danger';
+  const paletteState = (tellId === 'TETHER' || tellId === 'LAUNCH') ? 'warning' : 'danger';
   const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
   const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
   return name && hasGlyph(name) ? name : null;
@@ -1120,6 +1124,10 @@ const LEAD_PIP_GAP_CENTER_OFFSET = (LEAD_PIP_ARC_FRACTION + (1 - LEAD_PIP_ARC_FR
 
 export function doctrineTellKind(payload) {
   if (!payload) return null;
+  // Hostile-hands phases specialize the shared kinds: a charging enemy's throw and the mass it
+  // releases are different player decisions, so they carry different tells.
+  if (payload.phase === 'body_launch') return 'LAUNCH';
+  if (payload.phase === 'incoming_mass') return 'INCOMING';
   const byKind = DOCTRINE_TELL_BY_KIND[String(payload.kind || '')];
   if (byKind) return byKind;
   return DOCTRINE_TELL_BY_ID[String(payload.doctrineId || '')] || null;
@@ -2580,6 +2588,7 @@ export function createHud(ctx, alerts) {
     .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
     .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
+    .sf-tell--LAUNCH .sf-tell__kind { color:var(--k-signal); }
     .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
       overflow:hidden; text-overflow:ellipsis; }
     .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
@@ -2653,7 +2662,8 @@ export function createHud(ctx, alerts) {
     slot.expiresAtTick = -1;
     slot.age = Infinity;
     slot.announced = '';
-    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
+    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse',
+      'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING');
     slot.el.hidden = true;
     slot.iconGlyph = null;
     slot.iconEl.innerHTML = '';
@@ -2694,7 +2704,8 @@ export function createHud(ctx, alerts) {
     const kindLabel = tellId;
     const hint = DOCTRINE_TELL_HINT[tellId] || '';
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
-    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
+    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE',
+      'sf-tell--LAUNCH', 'sf-tell--INCOMING');
     slot.el.classList.add(`sf-tell--${tellId}`);
     // The drawn mark renders as an element (innerHTML with internally-authored markup from
     // glyphs.js); the text icon stays a textContent write. Labels below remain text either way.
