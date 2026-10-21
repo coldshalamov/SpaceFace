@@ -1,3 +1,5 @@
+import { CHARON_SUPPLY, charonSupplyLive as live, charonSupplyBook as book, charonSupplyQuantity as quantity, charonSupplyActor as actor, charonSupplyCarrier as carrier, charonSupplyRecipient as recipient, charonSupplyActorLife } from './charonSupplyReadout.js';
+export { CHARON_SUPPLY, charonSupplyHailLines, charonSupplyFacts } from './charonSupplyReadout.js';
 // One visiting crew, one authored air-system supply lot. Cargo stays in native pods/manifests;
 // this bounded provenance receipt never creates inventory or a replacement hull.
 import { activityPocketById } from '../data/sectorActivityPockets.js';
@@ -6,68 +8,16 @@ import { spawnJettisonedCargoPod } from '../systems/lootShards.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
-export const CHARON_SUPPLY = Object.freeze({
-  sectorId: 'sector_charon_expanse',
-  pocketId: 'charon_colony_barge',
-  sourceId: 'charon_colony_air_pod',
-  hauler: 'charon_colony_hauler',
-  salvor: 'charon_colony_salvor',
-  commodityId: 'cmdty_consumer_goods',
-  quantity: 6,
-  schema: 1
-});
 const C = CHARON_SUPPLY,
   CLAIM = 'charon_colony_supply';
 const whole = x => Number.isSafeInteger(x) && x >= 0;
-const live = (s, e) => e?.alive === true && s.entities.get(e.id) === e;
-const book = s => s.traffic?.charonSalvageSupply;
 const clone = x => JSON.parse(JSON.stringify(x));
 const receipts = new WeakSet(),
   deathProof = new WeakMap(),
   leafLives = new WeakMap(),
-  actorLives = new WeakMap(),
   pickupTransactions = new WeakMap();
 const legacyCargo = e => e?.data?.carrying === true || e?.data?.cargo && Object.values(e.data.cargo).some(n => Number(n) > 0);
 const empty = m => m == null || m.totalQty === 0 && Array.isArray(m.lines) && m.lines.length === 0;
-const quantity = (b, field) => b.pods.reduce((n, r) => n + r[field], 0);
-function actor(s, slot, recordId = null) {
-  const rows = s.entityList.filter(e => live(s, e) && e.data?.activityActorSlotId === slot && (!recordId || e.data.worldRecordId === recordId));
-  if (rows.length !== 1 || s.entityList.filter(e => live(s, e) && e.data?.worldRecordId === rows[0].data.worldRecordId).length !== 1) return null;
-  const e = rows[0],
-    b = book(s);
-  if (b && !b.blocked) {
-    let lives = actorLives.get(b);
-    if (!lives) {
-      lives = new Map();
-      actorLives.set(b, lives);
-    }
-    const old = lives.get(slot);
-    if (old && (old.entity !== e || old.life !== e.occupantGeneration)) {
-      // The world owner may rematerialize a shelved hull. Rebind only its durable,
-      // alive original record after the previous healthy incarnation left canon.
-      const rec = s.world?.records?.byId?.[recordId || e.data.worldRecordId],
-        prior = old.entity,
-        key = `charon:activity:${slot}`;
-      if (prior === e || prior.alive || s.entities.get(prior.id) === prior || !(prior.hull > 0) || !e.data.durable || e.data.identityKey !== key || prior.data?.identityKey !== key || rec?.recordId !== e.data.worldRecordId || rec.identityKey !== key || rec.alive !== true || rec.outcome !== 'active' || rec.homeSectorId !== C.sectorId) return null;
-      lives.set(slot, {
-        entity: e,
-        life: e.occupantGeneration
-      });
-    } else if (!old) lives.set(slot, {
-      entity: e,
-      life: e.occupantGeneration
-    });
-  }
-  return e;
-}
-function carrier(s) {
-  const b = book(s);
-  return b && actor(s, C.hauler, b.haulerId);
-}
-function recipient(s) {
-  const b = book(s);
-  return b && actor(s, C.salvor, b.salvorId);
-}
 function row(s, p) {
   const b = book(s),
     id = p?.data?.charonSupplyPod?.id,
@@ -697,27 +647,6 @@ export function charonSupplyDestroyed(o, payload) {
     r.loose = 0;
   }
 }
-export function charonSupplyHailLines(s, e) {
-  const b = book(s);
-  if (!b || b.blocked || !live(s, e) || ![[C.hauler, b.haulerId], [C.salvor, b.salvorId]].some(([slot, id]) => e.data?.activityActorSlotId === slot && e.data.worldRecordId === id)) return null;
-  const h = carrier(s),
-    r = recipient(s),
-    loose = quantity(b, 'loose'),
-    aboard = quantity(b, 'aboard');
-  return ['Visiting salvage crew. The colony was evacuated. We are recovering its abandoned sealed air-system supplies; the barge is a landmark, not a cargo receiver.', b.phase === 'working' ? r ? `Recovered scrubber kits used by ${r.data?.name || 'the original cutter'} to start its next cutting round.` : 'The scrubber reserve reached the original cutter, which is no longer present.' : b.phase === 'delivered' ? 'Air-system supplies are physically aboard the cutter, awaiting next-round admission.' : b.phase === 'awaiting_round' ? b.haulerReady && b.salvorReady ? 'Waiting to recover sealed scrubber kits before our first cutting round.' : 'We are finishing our current jobs before recovering the next round’s air-system supplies.' : b.phase === 'shortfall' ? 'The next cutting round is cancelled: part of the original scrubber reserve was taken or lost. Remaining stock stays where it is; no replacement is being issued.' : !h || !r ? 'The original supply crew is missing. No replacement load has been issued.' : `Cutter waiting to start its next round: ${aboard} aboard ${h.data?.name || 'the original hauler'}, ${loose} loose, ${quantity(b, 'player')} recovered by you, ${quantity(b, 'other')} taken by another collector, ${quantity(b, 'lost')} lost. Bring the original loose supply pod within reach, slow it and release your tether.`];
-}
-export function charonSupplyFacts(s) {
-  const b = book(s);
-  if (!b || b.blocked) return null;
-  return {
-    phase: b.phase,
-    original: b.original,
-    ...Object.fromEntries(['loose', 'aboard', 'delivered', 'consumed', 'player', 'other', 'lost'].map(k => [k, quantity(b, k)])),
-    haulerId: carrier(s)?.id ?? null,
-    salvorId: recipient(s)?.id ?? null
-  };
-}
-
 // Run after synchronous death listeners have offered the actual finite manifest spill.
 // Absence during streaming/Continue is not death and never creates a replacement lot.
 export function reconcileCharonSupply(o) {
@@ -727,7 +656,7 @@ export function reconcileCharonSupply(o) {
   for (const [id, field] of [[b.haulerId, 'aboard'], [b.salvorId, 'delivered']]) {
     const entities = s.entityList.filter(e => s.entities.get(e.id) === e && e.data?.worldRecordId === id),
       rec = s.world?.records?.byId?.[id];
-    const bound = actorLives.get(b)?.get(field === 'aboard' ? C.hauler : C.salvor);
+    const bound = charonSupplyActorLife(b, field === 'aboard' ? C.hauler : C.salvor);
     const dead = entities.length === 1 && entities[0] === bound?.entity && entities[0].occupantGeneration === bound.life && entities[0].hull <= 0 || rec?.alive === false || ['destroyed', 'defeated'].includes(rec?.outcome);
     if (!dead) continue;
     for (const r of b.pods) {

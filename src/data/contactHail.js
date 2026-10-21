@@ -1,4 +1,4 @@
-import { charonSupplyHailLines } from '../world/charonSalvageSupply.js';
+import { charonSupplyHailLines } from '../world/charonSupplyReadout.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { ANVIL_RETURN_GAS, ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
 import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';

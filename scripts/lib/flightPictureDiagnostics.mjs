@@ -70,6 +70,8 @@ export async function captureFlightPicturePair(page, {
   const beforeScreenshotDispatch = () => {
     if (observationClosed || now() >= deadline) throw new Error('picture observation deadline exceeded');
   };
+  // Per-capture cap for this diagnostic only; evaluated after filesystem preparation.
+  const screenshotTimeoutMs = () => Math.min(4000, Math.max(1, deadline - now()));
   const report = {
     schema: 'spaceface.flightPicturePair.v1',
     label: '47-A CI flight after actor/safety checks and post-opening dialogue fixture',
@@ -90,7 +92,7 @@ export async function captureFlightPicturePair(page, {
   try {
     const first = await bounded(() => page.evaluate(readFlightPictureSnapshot));
     report.samples.push(first);
-    report.screenshots.push(await bounded(() => capture(page, { boundary: '47a-actors-bound' }, { beforeScreenshotDispatch })));
+    report.screenshots.push(await bounded(() => capture(page, { boundary: '47a-actors-bound' }, { beforeScreenshotDispatch, screenshotTimeoutMs })));
     // Wait at least two wall seconds from the first observation, plus renderer progression.
     // Poll cheap scalar state only; expensive getReport runs at most twice in the entire hook.
     const firstObservedAt = now();
@@ -102,7 +104,7 @@ export async function captureFlightPicturePair(page, {
     }
     const second = await bounded(() => page.evaluate(readFlightPictureSnapshot));
     report.samples.push(second);
-    report.screenshots.push(await bounded(() => capture(page, { boundary: '47a-picture-later' }, { beforeScreenshotDispatch })));
+    report.screenshots.push(await bounded(() => capture(page, { boundary: '47a-picture-later' }, { beforeScreenshotDispatch, screenshotTimeoutMs })));
     const complete = report.samples.every(s => Number.isFinite(s?.post?.effectiveSceneScale)
       && Number.isFinite(s?.dynResScale) && Number.isFinite(s?.firstPlayableFrameAt) && s?.gpu);
     report.status = !complete ? 'telemetry-incomplete'

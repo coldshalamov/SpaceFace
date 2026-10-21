@@ -151,3 +151,55 @@ test('actual screenshot helper never dispatches after delayed mkdir exceeds pair
   await assert.rejects(helperCompletion, /deadline exceeded/);
   assert.equal(screenshotCalls, 0);
 });
+
+test('pair uses actual helper with four-second cap, then remaining deadline after mkdir', async () => {
+  const { captureStationHandoffScreenshot } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  let time = 0, captures = 0, snapshots = 0;
+  const timeouts = [];
+  const page = {
+    evaluate: async fn => fn.name === 'readFlightPictureSnapshot'
+      ? { presentCount: ++snapshots, dynResScale: 0.34, firstPlayableFrameAt: 0,
+          gpu: { software: true }, post: { effectiveSceneScale: 0.34 } } : 2,
+    screenshot: async options => {
+      timeouts.push(options.timeout);
+      assert.equal(Object.hasOwn(options, 'animations'), false);
+      assert.equal(Object.hasOwn(options, 'style'), false);
+      if (captures === 1) time = 3900;
+    },
+  };
+  const result = await captureFlightPicturePair(page, {
+    now: () => time, sleep: async ms => { time += ms; }, save: async () => 'pair.json',
+    capture: (actualPage, context, options) => captureStationHandoffScreenshot(actualPage, context, {
+      ...options, prepareDirectory: async () => { captures++; time = captures === 1 ? 100 : 8500; },
+    }),
+  });
+  assert.deepEqual(timeouts, [4000, 1500]);
+  assert.equal(snapshots, 2);
+  assert.equal(result.report.elapsedMs, 8500);
+});
+
+test('actual helper timeout rejection stays diagnostic, without a second capture', async () => {
+  const { captureStationHandoffScreenshot } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  let calls = 0;
+  const result = await captureFlightPicturePair({
+    evaluate: async () => ({ presentCount: 1 }),
+    screenshot: async options => { calls++; assert(options.timeout <= 4000); throw new Error('capture timeout'); },
+  }, {
+    capture: (page, context, options) => captureStationHandoffScreenshot(page, context, {
+      ...options, prepareDirectory: async () => {},
+    }),
+    save: async () => 'timeout.json',
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.report.status, 'observation-failed');
+  assert.deepEqual(result.report.errors, ['capture timeout']);
+});
+
+test('omitted and invalid helper timeout budgets preserve the two-second default', async () => {
+  const { captureStationHandoffScreenshot } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  for (const budget of [undefined, 0, -1, NaN, Infinity]) {
+    await captureStationHandoffScreenshot({ screenshot: async options => {
+      assert.equal(options.timeout, 2000);
+    } }, { boundary: 'default' }, { prepareDirectory: async () => {}, screenshotTimeoutMs: budget });
+  }
+});
