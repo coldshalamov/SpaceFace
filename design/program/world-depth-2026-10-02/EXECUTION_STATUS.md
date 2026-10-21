@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 03:54 UTC
+
+All eight larger goals remain OPEN. This source-only update supersedes earlier current-state headings while retaining historical evidence and reviewer acceptance fields.
+
+[PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now has verified head [95100fff77a1006cfd2b678abe6a1481ead90263](https://github.com/coldshalamov/SpaceFace/commit/95100fff77a1006cfd2b678abe6a1481ead90263), tree `9c61e2992e2cd36515c25e375f6b05e1c80df8cc`, sole parent `11ec20d093473da72bae0f40659738ed538f7f88`. The exact three-file increment changes package.json, src/systems/anvilWork.js and test/orchard-collection-clearance.test.mjs. The bounded native route before the new receiver model passed, and the registered focused selection passes 94 checks. This does not qualify the later composed model or establish whole-game acceptance.
+
+Current general [CI 39540519478](https://github.com/coldshalamov/SpaceFace/actions/runs/39540519478) is running. [Mobile CI 39540519495](https://github.com/coldshalamov/SpaceFace/actions/runs/39540519495) failed the same startup checks before browser execution. No aggregate green or live mobile acceptance is claimed.
+
+The distinct receiver is now locally bound in a separate composition with the delivered route source. Its exact focused selection passes 74 tests; fresh composed native qualification is running, not yet successful, published or accepted. Fresh offline compiled-package visual review is complete, not gameplay-camera acceptance. Asset text-object uploads remain in progress and three binary Git objects are prepared; no reachable asset commit is claimed.
+
+The prior clearance owner has released its paths. resume_orchard_service_integration now owns the narrow receiver binding seams; build_orchard_receiver_asset retains the authored model and selected-model pipeline; review_orchard_physical_integration remains read-only reviewer. Root coordinates final publication, remote verification and CI. Next: finish the composed native qualification and independent review, complete asset uploads, publish the coherent source/model increment through the authorized route, then continue ordinary-control and live graphical review.
+
+Separate diagnostic JSON and revised unit report publication approvals remain unchanged. No restricted report payload is included here. Exported, offline reviewed, locally bound, publicly delivered and accepted remain distinct states; all larger game and world goals stay open.
+
 ## Current source handoff — 21 October 2026, 03:44 UTC
 
 This source-only checkpoint supersedes earlier current-state entries; historical evidence and reviewer acceptance fields remain unchanged. All eight goals remain OPEN.
