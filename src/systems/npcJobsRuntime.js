@@ -1,3 +1,5 @@
+import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPallasSeamLife } from './pallasSeamWork.js';
+import { pallasSeamRole, pallasSeamRecordRole } from '../data/pallasSeamWork.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
@@ -1044,11 +1046,18 @@ export const npcJobsRuntime = {
     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
     // consume these later; today they are the observable proof that jobs run. Bound once.
     this._sink = (intent) => {
+      const entry = this._byId()[intent.jobId];
+      const actor = this.state.entities?.get(entry?.entityId);
+      const life = intent.event === 'npcjobs:work' && pallasSeamRole(this.state, actor)
+        ? { entry, job: entry.job, route: entry.job.route, actor, data: actor.data, generation: actor.occupantGeneration } : null;
       if (this.bus && typeof this.bus.emit === 'function') {
         try { this.bus.emit(intent.event, intent); } catch { /* a listener must not corrupt the record */ }
       }
       // INF-071: the miner→hauler handoff rides the same intents. Never throws: a ledger
       // failure must not corrupt the deterministic record the kernel just wrote.
+      if (life && (this._byId()[intent.jobId] !== life.entry || entry.job !== life.job
+        || entry.job.route !== life.route || this.state.entities?.get(entry.entityId) !== life.actor
+        || life.actor.data !== life.data || life.actor.occupantGeneration !== life.generation)) return;
       try { this._noteHandoffIntent(intent); } catch { /* ledger is advisory, the job is not */ }
     };
 
@@ -1246,6 +1255,13 @@ export const npcJobsRuntime = {
     if (!sectorId) return;
     // The relief crew borrows the one-shot transport itinerary for patients, not ore custody.
     if (entry.job?.payload?.choirRelief === true) return;
+    const seamEntity = this.state.entities?.get(entry.entityId);
+    if (pallasSeamRecordRole(this.state, entry)) {
+      // This crew cuts loose ore and measures ground; neither operation posts fictitious freight.
+      const pos = intent.event === 'npcjobs:work' && pallasSeamMeasurement(this, entry, seamEntity);
+      if (pos) this._recordSurveyorMeasurement({ ...intent, pos }, sectorId, Number(this.state.simTime) || 0);
+      return;
+    }
     const lots = this._lots();
     const now = Number(this.state && this.state.simTime) || 0;
     // SF-078: a surveyor's WORK completion IS the measurement — the mark it stopped at
@@ -4337,18 +4353,19 @@ export const npcJobsRuntime = {
       const approachingSeam = !claimedBeforeAdvance && starterRock && entity.pos
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
-      const physicalTarget = !claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity);
+      const physicalTarget = !claimedBeforeAdvance && (pallasSeamTarget(this, entry, entity) || this._livingAdventureWorkTarget(entry, entity));
       // The settle test is relative to the target: a hull riding a drifting rock at matching
       // velocity IS arrived, even though its world-frame speed stays at belt drift.
       // A cutter's commission is paperwork at the pad, not a docking manoeuvre; the seam face and
       // the unload berth are the stops that need the hull physically there.
-      const holdingForArrival = physicalTarget
+      const physicalPose = physicalTarget?.workPose || entity;
+      const holdingForArrival = physicalTarget?.blocked || physicalTarget?.ready === false || physicalTarget
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
           && entry.worldRecordId === this._heliosStarterMinerRecordId)
-        && (Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
-          || Math.hypot((entity.vel?.x || 0) - (physicalTarget.vel?.x || 0),
-            (entity.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
+        && (Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
+          || Math.hypot((physicalPose.vel?.x || 0) - (physicalTarget.vel?.x || 0),
+            (physicalPose.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
       // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
       // out the line at a real position, so the kernel clock waits with it (no work at distance).
       // Leased hulls keep their clock: their owner drives, we never gate a controller's route.
@@ -4385,6 +4402,7 @@ export const npcJobsRuntime = {
       }
       const claimed = !!entry.control;
       if (!claimed) this._holdHeliosStarterMinerBeam(entry, entity, step);
+      if (!claimed) stepPallasSeamCut(this, entry, entity, step);
 
       // A tug's load is a real attachment owned by the combat/physics authority. Bind it only after
       // the finite freight job has left loading, and never while a controller lease owns the hull.
@@ -4400,7 +4418,7 @@ export const npcJobsRuntime = {
       if (entry.job.phase === NPC_JOB_PHASE.COMPLETE && !claimed) { this.release(jobId); continue; }
 
       if (!claimed) this._drive(entry, entity);
-      if (!claimed) applyLaneErrandIntent(this, entry, entity, simT);
+      if (!claimed && !pallasSeamRole(this.state, entity)) applyLaneErrandIntent(this, entry, entity, simT);
     }
   },
 
@@ -4795,7 +4813,8 @@ export const npcJobsRuntime = {
   },
 
   _driveLivingAdventureWorker(entry, entity, target) {
-    const dx = target.pos.x - entity.pos.x, dz = target.pos.z - entity.pos.z;
+    const pos = target.workPose?.pos || entity.pos, vel = target.workPose?.vel || entity.vel;
+    const dx = target.pos.x - pos.x, dz = target.pos.z - pos.z;
     const distance = Math.hypot(dx, dz), close = distance <= target.reach;
     const aim = distance > 0.01 ? Math.atan2(dz, dx) : entity.rot || 0;
     const profile = resolvePropulsionProfile(entity, this.state);
@@ -4804,8 +4823,8 @@ export const npcJobsRuntime = {
       // PulsePlate's BRAKE fires the plate. Delicate work uses its authored RCS instead.
       const speed = close ? 0 : Math.min(planningSpeed,
         Math.sqrt(2 * Math.max(1, profile.rcsReverseAccel) * Math.max(0, distance - target.reach * 0.6)));
-      const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
-      const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
+      const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (vel?.x || 0);
+      const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (vel?.z || 0);
       const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
       const forward = vx * c + vz * s, side = -vx * s + vz * c;
       this._writeIntent(entity, clamp(side / Math.max(1, profile.rcsStrafeAccel), -1, 1),
@@ -4825,7 +4844,7 @@ export const npcJobsRuntime = {
     const dvz = tvz + uz * closing;
     const dSpeed = Math.hypot(dvx, dvz);
     const chaseAim = dSpeed > 0.01 ? Math.atan2(dvz, dvx) : entity.rot || 0;
-    const approach = ((entity.vel?.x || 0) - tvx) * ux + ((entity.vel?.z || 0) - tvz) * uz;
+    const approach = ((vel?.x || 0) - tvx) * ux + ((vel?.z || 0) - tvz) * uz;
     const targetStill = tvx * tvx + tvz * tvz <= 0.25;
     const brake = Math.cos(chaseAim - (entity.rot || 0)) < 0.85
       || (close ? targetStill
@@ -4910,7 +4929,11 @@ export const npcJobsRuntime = {
     // reach this branch; everything else retains the authored route controller below.
     if (this._tryDriveCeresRealTarget(entry, entity)) return;
 
-    const physicalTarget = this._livingAdventureWorkTarget(entry, entity);
+    const physicalTarget = pallasSeamTarget(this, entry, entity) || this._livingAdventureWorkTarget(entry, entity);
+    if (physicalTarget?.blocked) {
+      this._driveLivingAdventureWorker(entry, entity, { pos: entity.pos, vel: { x: 0, z: 0 }, reach: 1, workPose: { pos: entity.pos, vel: entity.vel } });
+      return;
+    }
     if (physicalTarget) { this._driveLivingAdventureWorker(entry, entity, physicalTarget); return; }
 
     // A tug's only honest destination while the line is still off is the body it came for — not
@@ -6466,6 +6489,7 @@ export const npcJobsRuntime = {
       return true;
     }
     materialize(entry.job);
+    forgetPallasSeamLife(entry);
     entry.entityId = entity.id;
     entry.threatId = null;
     this._goneIndexDirty = true;

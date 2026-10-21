@@ -51,7 +51,7 @@ test('Pallas pockets load as four two-actor routes on seed 4242', () => {
 
 test('four handoffs land in order inside twenty minutes and the hulls keep working speed', () => {
   const state = world();
-  const miner = state.entities.get('pallas_seam_miner');
+  const miner = state.entities.get('pallas_hub_hauler');
   assert.equal(stepPallasWorkLoop({ ...state, world: { currentSectorId: 'sector_helios_prime' } }, 1), null);
   let loop = null;
   for (let second = 0; second < 1200; second += 1) loop = stepPallasWorkLoop(state, 1);
@@ -64,4 +64,9 @@ test('four handoffs land in order inside twenty minutes and the hulls keep worki
   assert.equal(state.entities.get('pallas_ambush_hauler').data.ai.passive, false);
   assert.equal(state.entities.get('pallas_ambush_escort').data.pallasEscortClosing, true);
   assert.equal(loop.seed, SEED);
+  for (const slot of ['pallas_seam_miner', 'pallas_seam_surveyor']) {
+    const worker = state.entities.get(slot);
+    assert.deepEqual(worker.pos, { x: 0, z: 0 }, 'seam native work is never nudged by the old clock');
+    assert.equal(worker.data.pallasWorkStepWU, undefined);
+  }
 });

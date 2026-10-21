@@ -1007,7 +1007,7 @@ export const mining = {
       if (!verbAcceptsType('mine', e.type) && !isBeamSplittableCargoPod(e)) continue; // PQ-015: shared beam membership (asteroid|wreck); F12: cargo pods split, not mine
       if (!presentationAllowsPlayerFacingAction(e, state)) continue;
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
-      if (e.type === 'asteroid' && e.data && e.data.opticMaterial) continue;
+      if (e.type === 'asteroid' && e.data && typeof e.data.opticStructureId === 'string' && e.data.opticStructureId) continue;
       const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
       const dist = Math.hypot(dx, dz);
       if (dist > range + (e.radius || 0)) continue;
@@ -1049,7 +1049,7 @@ export const mining = {
     const state = this.state;
     const ast = state.entities.get(targetId);
     if (!ast || !ast.alive || ast.type !== 'asteroid') return 0;
-    if (ast.data && ast.data.opticMaterial) return 0;
+    if (typeof ast.data?.opticStructureId === 'string' && ast.data.opticStructureId) return 0;
     const d = ast.data || (ast.data = {});
     // Core-anchored site rocks are beam-locked (ASTEROID_SITES_BRIEF §2): a developed asteroid
     // moves cargo through its physical port, never back out through the mining laser. Destroying
@@ -2988,7 +2988,7 @@ export function isBeamTargetEligible(entity, state) {
     && !weldableHullForBeam(entity, state)) return false;
   if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
   if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
-  if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
+  if (entity.type === 'asteroid' && entity.data && typeof entity.data.opticStructureId === 'string' && entity.data.opticStructureId) return false;
   return true;
 }
 
@@ -3075,7 +3075,7 @@ function activeMineableTetherTarget(state, ship, range) {
       || (target.type !== 'asteroid' && target.type !== 'wreck' && !isBeamSplittableCargoPod(target)
         && !weldableHullForBeam(target, state))) continue;
     // Optic lattices are not ore — same guard as _isValidMineableTarget / _acquireTarget.
-    if (target.type === 'asteroid' && target.data && target.data.opticMaterial) continue;
+    if (target.type === 'asteroid' && target.data && typeof target.data.opticStructureId === 'string' && target.data.opticStructureId) continue;
     const dist = tableDist != null ? tableDist : Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z);
     const allowed = Math.max(0, Number(range) || 0) + (target.radius || 0) + (ship.radius || 0);
     return dist <= allowed ? target : null;
