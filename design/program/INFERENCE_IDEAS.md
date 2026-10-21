@@ -1,4 +1,4 @@
-| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
+| SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
 # INFERENCE ideas — directed grunt catalog
 
 Law: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) §0.1. Feelings and inventions live in
@@ -892,6 +892,10 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | AL-LG-03 | al-lg-03-tanker-capital-tow | this session | Great Tanker gets physicalBody 800t beyond non-capital tow; persists via world-record lane |
 | RC-21 | rc-21-loss-docket | this session | five loss shapes map deterministically to five of the 12 authored court cases |
 | RC-22 | rc-22-court-settlement-range | this session | offer card shows settlement min-max on summary/riskNote/params; payment still at ruling |
+| RC-05 | rc-05-travel-fallback-key | this session | travelBurn fallback NumLock/F8; F8 engages drive, Help stays closed, lesson names a key laptops have |
+| RC-06 | rc-06-nonlock-key-label | this session | rail/Cluster labels prefer the non-lock binding; NUM LOCK only when it is the sole binding |
+| RC-07 | rc-07-tutorial-ticker-gate | already true | tutorialOwnsAttention gate already hides the tape and restores history on tutorial:finished |
+| RC-08 | rc-08-threat-marker-cluster | this session | threat halo edge pinning reserves live ORRERY furniture; lower-left hostile parks beside the Cluster |
 | NXI-022 | nxi-022-kinematic-proxy-not-offered | 6eca0bd9a | isAttachable applies the physicsBody:false exclusion (and world-site machine roles) to the offer: machine/fauna/route proxies denied, loose payloads beside them still offered, stations/asteroids/mines/beacons/survival wrecks keep latching; focused test pins all of it on seed 4242 |
 | VERB-32 | verb-32-mine-keeps-velocity | 6dd3b0e5ce | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |

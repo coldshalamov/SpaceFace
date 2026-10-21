@@ -98,7 +98,8 @@ test('W1-5: the latch is bound to Num Lock by default, with a laptop fallback in
   assert.ok(b.length > 1, 'a laptop fallback must ship — many laptops have no Num Lock key');
   // Extending the EXISTING multi-code idiom (as WASD-and-arrows already does), not a parallel
   // laptop binding scheme.
-  assert.ok(b.includes('KeyH'));
+  assert.ok(b.includes('F8'), 'F8 is the fallback — KeyH was retired: the UI router owns h/H for Help');
+  assert.ok(!b.includes('KeyH'), 'a flight seat on the Help key fired the drive AND opened Help (RC-05)');
 });
 
 test('W1-5: the latch binding is present in every control scheme and collides with nothing', () => {
