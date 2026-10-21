@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "beacon-hold-skirmish",
-      "date": "2026-10-03",
-      "wf": "WF-05",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the claim beacon holds while its skirmish is live instead of expiring at the climax, bounded at 4x TTL",
-      "fingerprint": "verb=plant,subject=claim-beacon,sector=field,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "a9302bd43",
-      "verification": "focused_green"
-    },
-    {
       "id": "celebration-identity-audio",
       "date": "2026-10-03",
       "wf": "WF-13",
@@ -1668,6 +1655,19 @@
       "verdict": "implemented",
       "reason": "Scar-free hull at 86/100 reads the dent; Clean plate only on a genuinely clean hull",
       "fingerprint": "verb=say,subject=mechanic-dented-plate,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "d4a743673",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-30-station-news-only",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Bar market tag only speaks for its own station's econ events; foreign station news yields no tag",
+      "fingerprint": "verb=say,subject=bar-market-tag,sector=all,domain=wf-14",
       "references": [],
       "integration": "live",
       "commit": "d4a743673",
