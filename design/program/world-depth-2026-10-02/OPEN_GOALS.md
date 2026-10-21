@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 18:42 UTC. All nine outcomes remain open. This register supports the
+Updated 21 October 2026, 19:16 UTC. All nine outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -11,12 +11,12 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: open. Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage now have independent public draft delivery. Full ordinary-route, device, performance and experience acceptance remain incomplete.
 - Owner: expansion integration and exact feature owners.
 - Evidence: IMPLEMENTATION.md, TWENTY_CONCEPT_MAP.json; local b08ba532/d70c0413; public PR461 and PR462; finite Independent Seam is public PR464; physical Tethys count-lane service is public PR466.
-- Next: Follow exact 548e7f01 CI and actual sector pixels, then continue the original connected sector/build-map scope. Scoped source delivery is not final game acceptance.
+- Next: Follow exact 7a521f3 CI and actual sector pixels, then continue the original connected sector/build-map scope. Scoped source delivery is not final game acceptance.
 - Awaiting user: final acceptance when adequate evidence exists; no optional engineering decision.
 
 ## SF-ORCHARD
 - Outcome: finite authored three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: OPEN. Prior 90159 runtime is 1,564/1,568; full native receiver passes 363.239 seconds. Ordinary/live acceptance and specifically held operations remain unresolved.
+- State: OPEN. Prior 548 runtime is 1,579/1,579; full native receiver passes 278.830 seconds. Ordinary/live acceptance and specifically held operations remain unresolved.
 - Owner: Root integration and original receiver/asset owners retain their scopes; verify_charon_delivery_ci follows the current published successor. Held receiver activation remains unresolved.
 - Evidence: Prior fb3 route: 379.763 wall seconds; second handoff tick 53,548 / 892.467 sim seconds; 13 acquired = buyer one + receiver 12, collector zero; seven gates true; minContact +1.988 WU, 31,104 native ticks. Static-contact minimum unmeasured/null. Successor https://github.com/coldshalamov/SpaceFace/commit/db576579a30cb9af767949dcc5125af02157b9e8 ; tree ca1452aca726801732203a9833ac001b249384d9, sole fb3 parent.
 - Next: Follow actual successor evidence, keeping native proof separate from whole experience and visual acceptance. No held-operation retry.
@@ -24,9 +24,9 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-PUBLISH
 - Outcome: coherent tested source/assets delivered as verified public commits and draft PRs, preserving newer work.
-- State: OPEN. PR480 548e7f01d49a9fa96e1d337d72df63c75c62d487 verified at 18:42:15 UTC, tree f0c7dc2a993eae3cd4194a55f471fefeb11ebc87, open draft/unmerged/mergeable. Master inspected and untouched; later upstream changes remain distinct. Optional comment permission is separate and unanswered.
+- State: OPEN. PR480 7a521f3e1dc0115595570b92b8c39c8326b87472 verified open/unmerged at 19:16:43 UTC, tree 568c07f7e8b9bc73e8b9b860a9e76658a9fb33c7. Current master inspected and untouched. Optional comment permission remains separate and unanswered.
 - Owner: root publication integration, with per-PR exact-head CI owners.
-- Evidence: https://github.com/coldshalamov/SpaceFace/commit/548e7f01d49a9fa96e1d337d72df63c75c62d487 . Root final 28/28; prior greenhouse 30/30 and POI 36/36. Independent policy 10/10 with eight negative controls; production policy/config unchanged. New actual CI is pending.
+- Evidence: https://github.com/coldshalamov/SpaceFace/commit/7a521f3e1dc0115595570b92b8c39c8326b87472 . Root combined 69/69, independent diagnostic 47/47 and PA twelve. Previous runtime 1,579/1,579; aggregate CI is not green. New actual CI pending.
 - Next: Follow exact new CI through natural terminal, verify actual merged checkout and attribute later upstream changes correctly. No force, comment retry, deployment or master merge.
 - Awaiting user: No new user action inferred. Old receiver blobs were absent on GET at 09:39 UTC; the 09:41 message read showed no owner reactions. Neither establishes actionable pending approval or denial; no card retry. Receiver activation remains unresolved, with final acceptance separate.
 
@@ -40,7 +40,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-VISUALS
 - Outcome: frequent genuinely new inspected images of actual work, plus eventual live game-camera acceptance.
-- State: OPEN. Latest inspected actual 90159 game-camera capture shows the original hauler visibly authored and the cutter authored, while the colony remains unresolved. Baseline/isolated/restored captures do not prove a VFX cause. Historical source/exported-model views remain explicitly non-live evidence in the execution history. Optional station-UI screenshot was not obtained; dialogue layout is unreviewed.
+- State: OPEN. Latest image remains the inspected 90159 staged game-camera view with visible authored hauler and unresolved colony. Actual 548 produced no PNG because original cohort discovery stopped early; null ledger is not actor-loss proof. Published bounded discovery correction retains strict identities and total deadline. Optional station-UI screenshot was not obtained; layout is unreviewed.
 - Owner: Root visual review and exact feature owners; verify_charon_delivery_ci preserves actual current-run captures.
 - Evidence: New image SHA256 c0e07ad5ddf6a86ba28270db5d7410a85ff1208e3ca862f02fa44b1f9addbfa7. Reproduction archive 21,756,475 bytes, SHA256 33b1b9dbda4d3a927e8fb33924b8f7bdaf293d8d2a0fd31a2a0fc4c829faf9ff; roundtrip, CRC and 68 member hashes passed. Earlier actual-model receipts remain preserved.
 - Next: Inspect successor colony, hauler and pod pixels after the narrow FX-POI correction. Do not equate API tests, authored status or a staged capture with ordinary-flight or user visual acceptance.
@@ -64,15 +64,15 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
-- State: OPEN. Recovered Ilex greenhouse followthrough now connects accepted vault lines to a persistent Ceres barkeep report of actual credited reward and committed first crop. Historical crop is not current market availability. Existing news, stock, reward and save schema remain unchanged. Prior Ilex active guidance, Phoebe and other connected increments remain retained.
-- Owner: Root integration and exact source owners; verify_charon_delivery_ci follows 548e7f01 actual evidence. Greenhouse implementation/review owners completed only the scoped unit, not world acceptance.
-- Evidence: PR480 548e7f01 and the dated greenhouse sector-register addendum. Root greenhouse integration 30/30, independent ten cases, actual production Save/loadEnvelope under scalar setup, and preserved public-consumer baseline failures. No native-flight or dialogue-layout acceptance.
+- State: OPEN. The restored production-worker station PA connects qualifying Ceres approaches to actual accepted-line and committed-harvest recaps, with actual-surface receipts and existing quiet/rate gates. Recovered Ilex greenhouse followthrough also connects accepted vault lines to a persistent Ceres barkeep report of actual credited reward and committed first crop. Historical crop is not current market availability. Existing news, stock, reward and save schema remain unchanged. Prior Ilex active guidance, Phoebe and other connected increments remain retained.
+- Owner: Root integration and exact source owners; verify_charon_delivery_ci follows 7a521f3 actual evidence. Greenhouse implementation/review owners completed only the scoped unit, not world acceptance.
+- Evidence: PR480 7a521f3 and dated greenhouse/PA sector-register addenda. Root greenhouse integration 30/30, independent ten cases, actual production Save/loadEnvelope under scalar setup, and preserved public-consumer baseline failures. No native-flight or dialogue-layout acceptance.
 - Next: Finish current Charon appearance and ordinary sector experience. Continue the next evidence-backed connected sector increment without inventing stock, history or completion from a checklist.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
 
 ## SF-SECTOR-COHERENCE
 - Outcome: every actual sector becomes an intentional, coherent experience across first arrival, recurring life, time/progression/consequences, return visits and Save/Continue, grounded in actual asset/code inventory and connected story/missions.
-- State: OPEN. The sector register now includes dated Ilex active-voyage and recovered Ceres greenhouse evidence while preserving its frozen inventory and original scope. Current Charon captures still show unresolved colony readiness; full sector routes, visual quality and persistence acceptance remain incomplete.
+- State: OPEN. The sector register now includes dated Ilex active-voyage, recovered Ceres greenhouse and approach-announcement evidence while preserving its frozen inventory and original scope. Current Charon captures still show unresolved colony readiness; full sector routes, visual quality and persistence acceptance remain incomplete.
 - Owner: Root coordinates sector review. map_sector_experience_coherence owns SECTOR_EXPERIENCE_REGISTER_2026-10-21.md; current gameplay/story/source owners retain their paths.
 - Evidence: Public register in https://github.com/coldshalamov/SpaceFace/commit/cb0657c0542e0a5bb2cbb593c092a773f0c5e504 ; initial counts remain inventory rather than runtime proof. User authorization and reminder update remain recorded in EXECUTION_STATUS.md.
 - Next: Use actual successor pixels and CI to validate the authored POI correction, then continue systematic sector work grounded in existing source, assets, inhabitants and consequences.
