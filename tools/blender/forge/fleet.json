@@ -1189,6 +1189,14 @@
         "MOTION_ORCHARD_"
       ],
       "motion_bank": "anvil-orchard-native"
+    },
+    "stormshift_receiver": {
+      "layout": "npc",
+      "file": "ship_stormshift_receiver_v01",
+      "asset_id": "SF_STORMSHIFT_RECEIVER_V01",
+      "part_id": "wholeship_ship_stormshift_receiver_v01",
+      "npc_root": "STORMSHIFT_RECEIVER_ROOT",
+      "note": "Open segmented receiving throat, fixed asymmetric service boom and separate empty storage saddle; recessed status shutter only."
     }
   }
 }
