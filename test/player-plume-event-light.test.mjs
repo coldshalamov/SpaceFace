@@ -6,6 +6,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { EVENT_LIGHT_POOL_SIZE, vfx } from '../src/render/vfx.js';
 import { KESTREL_MAIN_PLUME_RECIPE } from '../src/render/thruster/recipes/kestrelRecipes.js';
 import { EventLightPool } from '../src/render/thruster/systems/eventLight.js';
+import { resolveVfxAccessibilityProfile } from '../src/render/vfxAccessibility.js';
 
 const DT = 1 / 60;
 const PLAYER_ID = 11;
@@ -82,6 +83,9 @@ function makeHarness({
       },
       accessibility: { flashReduce },
     },
+    // NPC sits ~546 WU from the player; the table draw radius at the default
+    // 144 zoom is ~363 WU, so pin the harness to max-zoom to keep it admitted.
+    camera: { zoom: 330 },
     render: { scene },
     combat: { attachments: { byId: {} } },
   };
@@ -94,6 +98,26 @@ function makeHarness({
 
 function playerPlumeSlot(system) {
   return system._lights.find((slot) => slot.sustainedKey === PLAYER_PLUME_KEY) || null;
+}
+
+// The player hero light is driven by the plasma stream's own eventLightSource(),
+// not the family plume's shared lights[0] (aggregate writes land there last).
+// Mirrors the single application in vfx._syncPlayerPlasmaStreamLight.
+function plasmaLightExpectation(src, system) {
+  const a11y = resolveVfxAccessibilityProfile(system.state && system.state.settings);
+  const peakScale = a11y && Number.isFinite(a11y.eventLightPeakScale)
+    ? a11y.eventLightPeakScale : 1;
+  const drive = Math.max(0, Math.min(1.4, src.drive || 0));
+  const norm = Math.max(0, Math.min(1, (drive - 0.06) / 0.94));
+  const boost = Math.max(0, Math.min(1, src.boost || 0));
+  const flashGate = (system._productionThrusterA11y && system._productionThrusterA11y.reducedFlash)
+    ? 0.25 : 1;
+  const lightRamp = Number.isFinite(src.ramp) ? Math.max(0, Math.min(1, src.ramp)) : 1;
+  return {
+    intensity: Math.min(2.6,
+      2.6 * (0.24 + 0.76 * norm) * (1 + boost * 0.28) * flashGate * peakScale * lightRamp),
+    range: 10.5 * (0.5 + 0.5 * norm),
+  };
 }
 
 function warmPlayerPlume(harness, frames = 90) {
@@ -145,14 +169,18 @@ test('live bridge samples only the retained exact player after the fleet frame',
   assert.ok(npcRecord.driveState.boostBlend > playerRecord.driveState.boostBlend + 0.5,
     'same-family NPC is deliberately the hotter aggregate contributor');
 
-  const plume = fleet.familyPlume(playerRecord.profileId);
-  const source = plume.eventLights.lights[0];
-  assert.equal(source.alive, true);
-  near(slot.obj.position.x, playerRecord.sockets[0].x, 1e-6, 'exact player nozzle x');
-  near(slot.obj.position.y, playerRecord.sockets[0].y, 1e-6, 'exact player nozzle y');
-  near(slot.obj.position.z, playerRecord.sockets[0].z, 1e-6, 'exact player nozzle z');
-  near(slot.intensity, source.intensity, 1e-9, 'pre-scaled source intensity copied once');
-  near(slot.obj.distance, source.range, 1e-9, 'bounded source range copied once');
+  // Player hero exhaust runs the unified plasma stream: its fleet record keeps zero continuous
+  // sockets (RCS ownership only), so the light's source of truth is stream.eventLightSource().
+  // The family plume's shared lights[0] carries the last aggregate write — the hotter NPC's.
+  const src = system._energy.plasmaStream.eventLightSource();
+  assert.ok(src && src.on === true, 'exact-player plasma source publishes a live light frame');
+  assert.ok(npcRecord.socketCount >= 1, 'admitted NPC wrote real sockets into the family aggregate');
+  const expected = plasmaLightExpectation(src, system);
+  near(slot.obj.position.x, src.x, 1e-6, 'exact player nozzle x');
+  near(slot.obj.position.y, src.y + 1.0, 1e-6, 'exact player nozzle y lifted to the hull deck');
+  near(slot.obj.position.z, src.z, 1e-6, 'exact player nozzle z');
+  near(slot.intensity, expected.intensity, 1e-9, 'pre-scaled source intensity copied once');
+  near(slot.obj.distance, expected.range, 1e-9, 'bounded source range copied once');
   assert.ok(Math.abs(slot.obj.position.x - npcRecord.sockets[0].x) > 100,
     'NPC/family fallback nozzle cannot contaminate the player resident');
 
@@ -220,7 +248,10 @@ test('accessibility and all presentation boundaries release or retain the steady
   assert.ok(reducedFlashSlot.intensity < normalIntensity * 0.4,
     'reduced-flash recipe remains materially dimmer without a second VFX scale');
   near(reducedFlashSlot.intensity,
-    reducedFlash.system._energy.plumeSystem.eventLights.lights[0].intensity,
+    plasmaLightExpectation(
+      reducedFlash.system._energy.plasmaStream.eventLightSource(),
+      reducedFlash.system,
+    ).intensity,
     1e-9, 'reduced source copied exactly once');
 
   const reducedMotion = makeHarness({ playerThrottle: 1, playerBoost: true, motionReduce: true });
