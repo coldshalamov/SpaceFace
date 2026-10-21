@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 10:44 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state entries while retaining historical failures and exact-head scope.
+
+[PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now preserves [db576579a30cb9af767949dcc5125af02157b9e8](https://github.com/coldshalamov/SpaceFace/commit/db576579a30cb9af767949dcc5125af02157b9e8), tree `ca1452aca726801732203a9833ac001b249384d9`, sole parent `fb3afd914fef745415ec85d9645a2acf84d8c59d`, verified at 10:36:26 UTC. It corrects the attributable forecast escape regression without changing the original assertions; 55 focused checks pass. verify_orchard_ci_attribution follows successor verification; aggregate CI is not green.
+
+The prior fb3 actual CI route 111 PASSED in 379.763 wall seconds. Second handoff occurs at tick 53,548 / 892.467 simulation seconds; finite custody is 13 acquired = one buyer unit + 12 receiver units, collector zero. All seven gates are true, measured minContact is +1.988 WU and native ticks total 31,104. The static-contact minimum is unmeasured/null: do not turn that absence into a numeric static-clearance guarantee. This route success belongs to fb3, not unverified successor or whole-game acceptance.
+
+Separate [PR #483](https://github.com/coldshalamov/SpaceFace/pull/483) now preserves [2991cdb7c3348b80568ab19d193ee3b097e77afc](https://github.com/coldshalamov/SpaceFace/commit/2991cdb7c3348b80568ab19d193ee3b097e77afc), tree `d137b8d9f872d51d96541832eade4eac87e087e2`, sole parent `d0b23840854086c5eede64c733fbce156907bf0a`, verified at 10:42:01 UTC. An outgoing-generation cutoff is established before materialization/yields, protecting ordinary new arrivals, stale events, recycled IDs and reentrant resets. Validation passes 73/73 with 998 pinned modules. trace_ceres_payload_departure follows successor CI.
+
+The old d0 actual browser 47-A check passed required actor binding, live entity, neutral and no-fire assertions, then failed on stale-preload console 404s. That is scoped behavioral progress, not full acceptance or a successor pass. Source/proof/publication backups for both increments are verified without exposing private identifiers.
+
+select_next_sector_experience is a read-only next owner inspecting actual Io Reach/Charon source to choose one connected experience increment, not starting a new broad queue. No selected implementation or completed result is claimed yet. Next: finish this bounded source/ownership inspection and follow both actual successor CI outcomes, preserving existing reviewer/source scopes. Only the two handoff/goal files change; NOW and implementation remain untouched.
+
 ## Current source handoff — 21 October 2026, 10:27 UTC
 
 All nine goals remain OPEN. Separate draft [PR #483](https://github.com/coldshalamov/SpaceFace/pull/483) preserves verified head [d0b23840854086c5eede64c733fbce156907bf0a](https://github.com/coldshalamov/SpaceFace/commit/d0b23840854086c5eede64c733fbce156907bf0a), tree `5ca7f55c434f715efd1b6c62be075e588d45ffbb`, sole public-master parent `bce62cfd65c72b27bdba81feacd654f9cbb218db`; publication was verified at 10:27:06 UTC.
