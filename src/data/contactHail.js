@@ -1,4 +1,4 @@
-import { anvilCollectorWorkStatus } from '../systems/anvilWork.js';
+import { anvilCollectorWorkStatus, anvilReceiverWorkStatus } from '../systems/anvilWork.js';
 import { isOrchardReceiver, orchardTowQuote } from '../world/anvilOrchardTowAssist.js';
 // Deterministic contact-hail classification and copy.
 //
@@ -1291,7 +1291,7 @@ function tenderServiceHailStatus(truth) {
  */
 export function livingWorkStatusText(entity, opts = {}) {
   if (!entity) return null;
-  const orchardWork = anvilCollectorWorkStatus(opts.state, entity);
+  const orchardWork = anvilCollectorWorkStatus(opts.state, entity) || anvilReceiverWorkStatus(opts.state, entity);
   if (orchardWork) return `WORK · ${orchardWork}`;
   const data = entity.data || {};
   const passengerStatus = passengerLinerStatusText(opts.state || null, entity);
@@ -1486,7 +1486,7 @@ function workerIdentifyText(target) {
 }
 
 function routeText(state, target) {
-  const orchardWork = anvilCollectorWorkStatus(state, target);
+  const orchardWork = anvilCollectorWorkStatus(state, target) || anvilReceiverWorkStatus(state, target);
   if (orchardWork) return `ROUTE · ${orchardWork}`;
   const record = traderRecord(state, target.id);
   const passengerItinerary = passengerLinerItinerary(state, target);
