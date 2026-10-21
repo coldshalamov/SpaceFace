@@ -6,6 +6,8 @@
 
 | R-36df771 | 36df7712b | Row 403 AL-LONG-5: drone composer, warm flight restore, reaction slot truth | Re-check that a drone saved mid-INTERRUPT (template flee active over a custom loop) restores the right programMotion — the interrupt path clears g.programMotion via clearTemplate, so confirm no save writes a stale warm record for an interrupted group | OPEN |
 
+| R-c133f86 | c133f8670 | Row 481 (partial): arena kill words per swarm room | Re-check that a run saved mid-Circuit and restored in a different arena resumes the right vocabulary — run.arenaId is serialized but confirm the restored run's next kill reads the restored arena, not the default table | OPEN |
+
 # Landed review
 
 Second look at work that is already on `origin/master`. The author commits and pushes first. A later agent reviews. The review does not hold the push, and this file is not a second plan.
