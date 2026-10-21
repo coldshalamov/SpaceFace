@@ -1280,7 +1280,7 @@ export const weapons = {
     const range = w.range != null ? w.range : def.range || 0;
     const overheated = (w._heat || 0) >= heatMax;
     if (!overheated) w._overheatTold = false;
-    else if (firing && e.id === state.playerId) this._noteWeaponOverheat(w);
+    else if (firing && e.id === state.playerId) this._noteWeaponOverheat(w, state);
     let beamAim = aimAngle;
     const arcadeTarget = fireGate?.target || forceTarget;
     const arcadeAim = arcadeGunTarget(e, arcadeTarget, state);
@@ -1387,9 +1387,13 @@ export const weapons = {
     }
   },
 
-  _noteWeaponOverheat(w) {
+  _noteWeaponOverheat(w, state) {
     if (!w || w._overheatTold) return;
     w._overheatTold = true;
+    // One announcer per vent: where the forced-vent feature is on, the weapons:vent
+    // alert already owns the beat ("WEAPONS VENTING") and the receipt lane stays quiet.
+    // Where the feature is off (legacy profile), the toast is the only voice.
+    if (isWeaponVentEnabled(state || this.state)) return;
     if (this.bus) this.bus.emit('toast', { text: 'Weapon overheated', kind: 'warn', ttl: 1.6 });
   },
 
@@ -1441,7 +1445,7 @@ export const weapons = {
     const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
     const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
     if ((w._heat || 0) >= heatMax) {
-      if (isPlayer) this._noteWeaponOverheat(w);
+      if (isPlayer) this._noteWeaponOverheat(w, state);
       return capLeft;            // overheated
     }
     w._overheatTold = false;
@@ -1832,8 +1836,8 @@ export const weapons = {
     const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
     const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
     if ((w._heat || 0) >= heatMax) {
-      if (isPlayer) this._noteWeaponOverheat(w);
-      return capLeft;
+      if (isPlayer) this._noteWeaponOverheat(w, state);
+      return capLeft;            // overheated
     }
     w._overheatTold = false;
     if (capLeft < energyCost) {

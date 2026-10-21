@@ -105,12 +105,25 @@ test('the quiet idle skip clears the latch when the trigger is up', () => {
 });
 
 test('another ship stays silent, and a cooked gun names the heat instead', () => {
+  // No runtime features → the legacy vent-off profile, where the toast is
+  // the only overheat voice.
   const { sys, state, player, events } = host();
   const npc = { id: 9, pos: { x: 0, z: 0 }, rot: 0, data: {} };
   sys._serviceProjectileWeapon(npc, { energyCost: 4, _cooldown: 0, _heat: 0 }, { energyCost: 4 }, false, 0, 1 / 60, state, 0, null);
   const cooked = { energyCost: 4, _cooldown: 0, _heat: 100, heat: 8, heatMax: 100 };
   sys._serviceProjectileWeapon(player, cooked, { energyCost: 4, heatPerShot: 8, heatMax: 100 }, true, 0, 1 / 60, state, 0, null);
   assert.deepEqual(toasts(events), ['Weapon overheated']);
+});
+
+test('with the vent alert live, holding fire into the vent posts no receipt', () => {
+  // Production profile: weapons:vent owns the beat (WEAPONS VENTING) so the
+  // receipt lane stays silent — one vent, one voice.
+  const { sys, state, player, events } = host();
+  state.runtime = { features: { combat: { weaponHeatVent: true } } };
+  const cooked = { energyCost: 4, _cooldown: 0, _heat: 100, heat: 8, heatMax: 100 };
+  sys._serviceProjectileWeapon(player, cooked, { energyCost: 4, heatPerShot: 8, heatMax: 100 }, true, 0, 1 / 60, state, 0, null);
+  sys._serviceProjectileWeapon(player, cooked, { energyCost: 4, heatPerShot: 8, heatMax: 100 }, true, 0, 1 / 60, state, 0, null);
+  assert.deepEqual(toasts(events), []);
 });
 
 test('a cooked empty mine names the heat, not the capacitor', () => {
