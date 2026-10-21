@@ -15,7 +15,8 @@ const clone = x => JSON.parse(JSON.stringify(x));
 const receipts = new WeakSet(),
   deathProof = new WeakMap(),
   leafLives = new WeakMap(),
-  pickupTransactions = new WeakMap();
+  pickupTransactions = new WeakMap(),
+  roundJobs = new WeakMap();
 const legacyCargo = e => e?.data?.carrying === true || e?.data?.cargo && Object.values(e.data.cargo).some(n => Number(n) > 0);
 const empty = m => m == null || m.totalQty === 0 && Array.isArray(m.lines) && m.lines.length === 0;
 function row(s, p) {
@@ -59,6 +60,11 @@ export function bindRestoredCharonSupply(o) {
     r = recipient(s);
   if (!normalizeCharonSupply(b) || !['awaiting_round', 'collect', 'delivered', 'shortfall'].includes(b.phase)) return;
   if (quantity(b, 'consumed') || b.phase === 'collect' && quantity(b, 'delivered') || b.phase === 'delivered' && quantity(b, 'delivered') !== C.quantity || b.phase === 'shortfall' && !quantity(b, 'player') && !quantity(b, 'other') && !quantity(b, 'lost')) return;
+  if (b.phase === 'awaiting_round') {
+    for (const [e, ready] of [[h, b.haulerReady], [r, b.salvorReady]]) {
+      if (e && ready === false && !e.data.itinerary) originalRoundJob(o, e, b);
+    }
+  }
   // Residency may rebuild a durable hull without its transient itinerary. Only
   // restore this proven finite lease, never adopt a foreign job or empty label.
   for (const [e, ready] of [[h, b.haulerReady], [r, b.salvorReady]]) {
@@ -119,7 +125,7 @@ export function ownsFiniteCharonSupplyManifest(s, e, allowEmpty = false) {
   const n = quantity(b, field);
   return (allowEmpty || n > 0) && m?.finiteSource === CLAIM && m.manifestId === `${CLAIM}:${e.data.worldRecordId}` && m.freighterKey === e.data.worldRecordId && m.lotId === C.sourceId && m.totalQty === n && (n === 0 ? m.lines?.length === 0 : m.lines?.length === 1 && m.lines[0].commodityId === C.commodityId && m.lines[0].qty === n);
 }
-function exactJob(o, e) {
+function originalJob(o, e, allowSalvageRetarget = false) {
   const j = o.helpers.npcJobs?.get?.(e?.data?.jobId),
     pocket = activityPocketById(C.pocketId),
     slot = pocket?.actorSlots.find(x => x.id === e?.data?.activityActorSlotId);
@@ -132,10 +138,33 @@ function exactJob(o, e) {
         x: pocket.activityAnchor.localPos.x + m.offset.x,
         z: pocket.activityAnchor.localPos.z + m.offset.z
       }, C.sectorId);
-    if (r.id !== m.id || r.targetRef !== m.targetRef || r.pos?.x !== pos.x || r.pos?.z !== pos.z) return null;
+    if (r.targetRef !== m.targetRef) return null;
+    if (r.id === m.id && r.pos?.x === pos.x && r.pos?.z === pos.z) continue;
+    // Traffic's existing salvor target refresh mutates only this work mark,
+    // preserving its authored purpose and the original immutable home mark.
+    const payload = j.job.payload;
+    const prefix = payload?.targetType === 'payload' ? 'payload' : ['wreck', 'pickup'].includes(payload?.targetType) ? 'hulk' : null;
+    if (!allowSalvageRetarget || e.data.activityActorSlotId !== C.salvor || i !== 1 || !prefix
+      || !Number.isSafeInteger(payload.targetId) || payload.targetId <= 0
+      || r.id !== `${prefix}:${payload.targetId}` || !Number.isFinite(r.pos?.x) || !Number.isFinite(r.pos?.z)) return null;
   }
   return j;
 }
+
+function exactJob(o, e) { return originalJob(o, e); }
+// The kernel advances its existing job in place; only actual runtime restore
+// replaces this object. This transient fence is not a second saved job authority.
+function originalRoundJob(o, e, b = book(o.state)) {
+  const entry = originalJob(o, e, true);
+  if (!entry || !b) return null;
+  let entries = roundJobs.get(b);
+  if (!entries) { entries = new Map(); roundJobs.set(b, entries); }
+  const prior = entries.get(e.data.worldRecordId);
+  if (prior && (prior.entry !== entry || prior.job !== entry.job)) return null;
+  if (!prior) entries.set(e.data.worldRecordId, { entry, job: entry.job });
+  return entry;
+}
+
 function owned(o, e) {
   const b = book(o.state);
   return !!b && !e.data.jobId && e.data.itinerary?.kind === CLAIM && e.data.itinerary.sourceId === C.sourceId && [b.haulerId, b.salvorId].includes(e.data.worldRecordId);
@@ -156,8 +185,9 @@ export function charonSupplyRoundBoundary(o, event) {
     b = book(s);
   if (!b || b.phase !== 'awaiting_round') return false;
   const e = event?.event === 'npcjobs:cycle' ? recipient(s) : event?.event === 'npcjobs:complete' ? carrier(s) : null,
-    j = e && exactJob(o, e);
-  if (!e || !j || event.jobId !== j.job.id || event.kind !== j.kind || event.seq !== j.job.sequence || o.helpers.npcJobs.controlClaim(e.data.jobId) || e.data.itinerary || !empty(e.data.cargoManifest)) return false;
+    j = e && originalRoundJob(o, e);
+  if (!e || !j || event.jobId !== j.job.id || event.kind !== j.kind || event.seq !== j.job.sequence || o.helpers.npcJobs.controlClaim(e.data.jobId) || e.data.itinerary || e.data.claimDepotId || legacyCargo(e) || !empty(e.data.cargoManifest)) return false;
+  if (event.event === 'npcjobs:cycle' && (j.job.phase !== 'unload' || j.job.progress !== 1 || j.job.routeIndex !== 0 || event.at !== j.job.route[0].id || event.loopCount !== j.job.loopCount)) return false;
   const key = e.data.worldRecordId === b.haulerId ? 'haulerReady' : 'salvorReady';
   if (b[key]) return false;
   const id = e.data.jobId;
@@ -200,7 +230,7 @@ export function materializeCharonSupply(o, priorCast = null) {
   if (s.world?.currentSectorId !== C.sectorId || book(s) || s.entityList.some(e => e.data?.charonSupplyPod || e.data?.cargoManifest?.finiteSource === CLAIM)) return false;
   const h = actor(s, C.hauler),
     r = actor(s, C.salvor);
-  if (!h || !r || !exactJob(o, h) || !exactJob(o, r) || !empty(h.data.cargoManifest) || !empty(r.data.cargoManifest) || h.data.itinerary || r.data.itinerary || h.data.claimDepotId || r.data.claimDepotId || legacyCargo(h) || legacyCargo(r) || s.traffic.freighters.some(x => [h.id, r.id].includes(x.id) && (x.carrying === true || !empty(x.manifest))) || o.helpers.npcJobs.controlClaim(h.data.jobId) || o.helpers.npcJobs.controlClaim(r.data.jobId)) return false;
+  if (!h || !r || !originalJob(o, h, true) || !originalJob(o, r, true) || !empty(h.data.cargoManifest) || !empty(r.data.cargoManifest) || h.data.itinerary || r.data.itinerary || h.data.claimDepotId || r.data.claimDepotId || legacyCargo(h) || legacyCargo(r) || s.traffic.freighters.some(x => [h.id, r.id].includes(x.id) && (x.carrying === true || !empty(x.manifest))) || o.helpers.npcJobs.controlClaim(h.data.jobId) || o.helpers.npcJobs.controlClaim(r.data.jobId)) return false;
   const pocket = activityPocketById(C.pocketId),
     slot = pocket?.objectSlots.find(x => x.id === C.sourceId);
   if (!slot) return false;
@@ -230,6 +260,8 @@ export function materializeCharonSupply(o, priorCast = null) {
     }]
   };
   s.traffic.charonSalvageSupply = b;
+  originalRoundJob(o, h, b);
+  originalRoundJob(o, r, b);
   actor(s, C.hauler, b.haulerId);
   actor(s, C.salvor, b.salvorId);
   const spawnHelpers = {

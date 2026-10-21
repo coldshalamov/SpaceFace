@@ -808,3 +808,123 @@ test('contradictory active saved phases cannot reconstruct a spent or fictional 
     assert.equal(h.data.itinerary, undefined);
   }
 });
+
+import { advance as advanceCharonRound } from '../src/systems/npcJobs.js';
+import { charonSupplyRoundBoundary } from '../src/world/charonSalvageSupply.js';
+function progressedCharon(retargetBeforeAdmission = false, targetType = 'wreck') {
+  return enterSector('sector_charon_expanse', (sim, owner) => {
+    const original = owner._materializeAuthoredActivityCast;
+    owner._materializeAuthoredActivityCast = function (...args) {
+      const result = original.apply(this, args);
+      for (const e of sim.state.entityList.filter(e => ['charon_colony_hauler', 'charon_colony_salvor'].includes(e.data?.activityActorSlotId))) {
+        const entry = this.helpers.npcJobs.get(e.data.jobId);
+        entry.job.progress = 0.25;
+        entry.job.simTime = 0.5;
+        entry.lastAdvanceSimT = 0.5;
+        if (e.data.activityActorSlotId === 'charon_colony_salvor') sim.spawn({type:targetType,pos:{...e.pos},radius:4,data:{salvagePool:{cmdty_scrap:3},salvorNoticeAt:0,payloadType:'civilian_manifest',spillNoticed:true,freightCustodyPod:{id:'fixture-loose'},commodityId:'cmdty_scrap',amount:3}});
+      }
+      if (retargetBeforeAdmission) this._maintainGeneralSalvorJobs();
+      return result;
+    };
+  });
+}
+function nextActualRound(owner, entry, beforeBoundary = () => {}) {
+  let cycle = null;
+  // Pure kernel continuation, not native travel acceptance or forced completion.
+  for (let i=0; i<2000 && !cycle; i++) advanceCharonRound(entry.job, 1, event => {
+    if (event.event === 'npcjobs:cycle' && !cycle) { beforeBoundary(event); cycle = {...event, accepted:charonSupplyRoundBoundary(owner,event)}; }
+  });
+  assert.ok(cycle, 'real kernel emits a completed round');
+  return cycle;
+}
+test('existing original salvor production retarget reaches genuine round then yields exactly once', () => {
+  const f=progressedCharon(true), e=f.bySlot.get('charon_colony_salvor').entity;
+  f.owner._maintainGeneralSalvorJobs();
+  const entry=f.owner.helpers.npcJobs.get(e.data.jobId), originalJob=entry.job;
+  assert.match(entry.job.route[1].id,/^hulk:/);
+  assert.equal(entry.job.route[1].targetRef,'activity:charon-scrap-face');
+  assert.equal(nextActualRound(f.owner,entry).accepted,true);
+  assert.equal(entry.job,originalJob,'kernel legitimately mutates same object');
+  assert.equal(e.data.jobId,undefined);
+  assert.equal(f.state.traffic.charonSalvageSupply.salvorReady,true);
+  assert.equal(total(f),6);
+});
+test('never-admitted legacy retargeted original can stage the finite source without stealing current work', () => {
+  const f=progressedCharon(true), e=f.bySlot.get('charon_colony_salvor').entity;
+  assert.ok(f.state.traffic.charonSalvageSupply);
+  const entry=f.owner.helpers.npcJobs.get(e.data.jobId);
+  assert.match(entry.job.route[1].id,/^hulk:/);
+  assert.equal(f.state.traffic.charonSalvageSupply.salvorReady,false);
+  assert.equal(nextActualRound(f.owner,entry).accepted,true);
+  assert.equal(total(f),6);
+});
+test('retarget boundary rejects replacement job, foreign route/control/cargo and stale event', () => {
+  for(const variant of ['replacement','home','targetRef','targetId','targetType','position','control','cargo','itinerary','stale']) {
+    const f=progressedCharon(true), e=f.bySlot.get('charon_colony_salvor').entity;
+    f.owner._maintainGeneralSalvorJobs();
+    const entry=f.owner.helpers.npcJobs.get(e.data.jobId);
+    const cycle=nextActualRound(f.owner,entry,event => {
+    if(variant==='replacement') entry.job=structuredClone(entry.job);
+    if(variant==='home') entry.job.route[0].id='foreign_home';
+    if(variant==='targetRef') entry.job.route[1].targetRef='foreign_work';
+    if(variant==='targetId') entry.job.payload.targetId+=1;
+    if(variant==='targetType') entry.job.payload.targetType='station';
+    if(variant==='position') entry.job.route[1].pos.x=NaN;
+    if(variant==='control') f.owner.helpers.npcJobs.controlClaim=()=>({claimId:'foreign'});
+    if(variant==='cargo') e.data.cargo={cmdty_scrap:1};
+    if(variant==='itinerary') e.data.itinerary={kind:'foreign'};
+    if(variant==='stale') event.seq-=1;
+    });
+    assert.equal(cycle.accepted,false,variant);
+    assert.ok(e.data.jobId,variant);
+  }
+});
+test('actual Continue rebinds a genuine waiting retargeted original job then accepts its real round', () => {
+  const f=charonSupplySaveFixture();
+  try {
+    // Recreate a progressed legacy workload through the real assignment owner.
+    const b=f.state.traffic.charonSalvageSupply;
+    for (const slot of ['charon_colony_hauler','charon_colony_salvor']) {
+      const e=f.state.entityList.find(e=>e.alive&&e.data?.activityActorSlotId===slot);
+      delete e.data.itinerary;
+      b[slot.endsWith('salvor')?'salvorReady':'haulerReady']=false;
+      const pocket=activityPocketById('charon_colony_pocket') || ACTIVITY_POCKETS.find(p=>p.actorSlots.some(s=>s.id===slot));
+      f.owner._assignActivityJob(e,{pocket,slot:pocket.actorSlots.find(s=>s.id===slot),service:false});
+      const entry=f.owner.helpers.npcJobs.get(e.data.jobId);
+      entry.job.progress=.25; entry.job.simTime=.5;
+      if(slot.endsWith('salvor')) f.runtime.spawn({type:'wreck',pos:{...e.pos},radius:4,data:{salvagePool:{cmdty_scrap:3},salvorNoticeAt:0}});
+    }
+    f.owner._maintainGeneralSalvorJobs();
+    assert.equal(f.save.loadEnvelope(f.save.serialize('charon-waiting-retargeted-round')),true);
+    const e=f.state.entityList.find(e=>e.alive&&e.data?.activityActorSlotId==='charon_colony_salvor');
+    const entry=f.owner.helpers.npcJobs.get(e.data.jobId);
+    assert.match(entry.job.route[1].id,/^hulk:/);
+    assert.equal(nextActualRound(f.owner,entry).accepted,true);
+    assert.equal(charonSupplyFacts(f.state).loose,6);
+  } finally {f.close();}
+});
+
+// Exact job tuple retained from the failed production run at t360, not a live arrival claim.
+const retainedRetargetedCharonJob = {"schema": "npc_jobs_v1", "id": "job:wr_convoy_9c3379d5", "kind": "salvor", "phase": "work", "routeIndex": 1, "progress": 0.11530755529241432, "loopCount": 1, "sequence": 11, "simTime": 360.00000000000125, "rngSeed": 3682705032, "heading": -2.312606335148668, "materialized": true, "interrupted": false, "preInterruptPhase": null, "corrupt": false, "healed": [], "speed": 3.1445278748256493, "commissionS": 2, "departS": 3, "approachS": 4, "workS": 40, "loadS": 8, "unloadS": 6, "dwellS": 12, "route": [{"id": "charon_salvor_freighter_face", "pos": {"x": 7470.4, "z": 30058.5}, "label": "charon_salvor_freighter_face", "targetRef": "activity:charon-warm-freighter-face"}, {"id": "hulk:534", "pos": {"x": 7041.4862060546875, "z": 29590.465087890625}, "label": "Hulk", "targetRef": "activity:charon-scrap-face"}], "payload": {"targetId": 534, "targetType": "wreck", "extracted": false}};
+test('retained production work/loop1 tuple yields at its actual next kernel cycle', () => {
+  const f=progressedCharon(true), e=f.bySlot.get('charon_colony_salvor').entity;
+  const entry=f.owner.helpers.npcJobs.get(e.data.jobId);
+  assert.equal(entry.job.id,retainedRetargetedCharonJob.id);
+  Object.assign(entry.job,structuredClone(retainedRetargetedCharonJob));
+  const cycle=nextActualRound(f.owner,entry);
+  assert.equal(cycle.seq,17);
+  assert.equal(cycle.loopCount,2);
+  assert.equal(cycle.at,'charon_salvor_freighter_face');
+  assert.equal(cycle.accepted,true);
+});
+
+test('production payload and finite pickup retarget forms keep original round identity', () => {
+  for(const type of ['payload','pickup']) {
+    const f=progressedCharon(true,type), e=f.bySlot.get('charon_colony_salvor').entity;
+    const entry=f.owner.helpers.npcJobs.get(e.data.jobId);
+    assert.equal(entry.job.payload.targetType,type);
+    assert.equal(entry.job.route[1].id,`${type==='payload'?'payload':'hulk'}:${entry.job.payload.targetId}`);
+    assert.equal(nextActualRound(f.owner,entry).accepted,true);
+    assert.equal(total(f),6);
+  }
+});

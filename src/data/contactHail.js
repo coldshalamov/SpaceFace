@@ -1,4 +1,4 @@
-import { charonSupplyHailLines } from '../world/charonSupplyReadout.js';
+import { charonSupplyPresentation } from '../world/charonSupplyReadout.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { ANVIL_RETURN_GAS, ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
 import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';
@@ -1069,11 +1069,13 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
         ],
       };
     }
+    const charon = charonSupplyPresentation(state, availability.entity, { detailed: false });
     const salvorSource = salvorSourceTruth(state, availability.entity);
     const actions = [{ id: 'status', label: 'STATUS' }];
     // A source-backed cutter uses the existing, read-only manifest response rather than a new
     // action type. The compact scanner presenter still receives at most three choices.
-    actions.push(salvorSource ? { id: 'manifest', label: 'MANIFEST' } : { id: 'identify', label: 'IDENTIFY' });
+    actions.push(charon ? { id: 'route', label: 'SUPPLY ROUTE' }
+      : salvorSource ? { id: 'manifest', label: 'MANIFEST' } : { id: 'identify', label: 'IDENTIFY' });
     if (availability.towAssistBodyId != null) {
       actions.push({ id: CONTACT_HAIL_ACTION_TOW_ASSIST, label: 'HIRE TOW' });
     }
@@ -1084,7 +1086,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     const remembered = availability.rescuedWorkerMemory;
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-      lines: [`${name} · WORKING TRAFFIC`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
+      lines: charon ? charon.compact : [`${name} · WORKING TRAFFIC`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
       actions,
     };
   }
@@ -1116,13 +1118,14 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
       actions,
     };
   }
-  const actions = [{ id: 'route', label: 'ROUTE' }];
+  const charon = charonSupplyPresentation(state, availability.entity, { detailed: false });
+  const actions = [{ id: 'route', label: charon ? 'SUPPLY ROUTE' : 'ROUTE' }];
   if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
   const remembered = availability.rescuedWorkerMemory;
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-    lines: [`${name} · CIVILIAN FREIGHT`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
+    lines: charon ? charon.compact : [`${name} · CIVILIAN FREIGHT`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
     actions,
   };
 }
@@ -1508,6 +1511,8 @@ function ordinaryJobStatusText(entity, depth, state) {
  */
 export function livingWorkStatusText(entity, opts = {}) {
   if (!entity) return null;
+  const charon = charonSupplyPresentation(opts.state, entity, { detailed: false });
+  if (charon) return charon.status;
   const orchardWork = anvilCollectorWorkStatus(opts.state, entity) || anvilReceiverWorkStatus(opts.state, entity);
   if (orchardWork) return `WORK · ${orchardWork}`;
   const data = entity.data || {};
@@ -1768,10 +1773,14 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     line = `${callsign(target)}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
-    const charon = charonSupplyHailLines(state, target);
-    if (charon) detailLines = [line, ...charon];
+    const charon = charonSupplyPresentation(state, target, { detailed: false });
+    if (charon) detailLines = charon.compact;
     const winnow = winnowRecoveryHailLines(state, target);
     if (winnow) detailLines = [line, ...winnow];
+  } else if (offer.kind === 'worker' && id === 'route' && charonSupplyPresentation(state, target, { detailed: false })
+    && offer.actions?.some(action => action.id === 'route')) {
+    detailLines = charonSupplyPresentation(state, target).route;
+    line = detailLines[0];
   } else if (offer.kind === 'worker' && id === 'route' && isOrchardReceiver(state, target)) {
     const status = orchardReceiverRepairFacts(state, target)?.status;
     const guidance = orchardReceiverRepairGuidance(state, target);
@@ -1829,8 +1838,8 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       : 'ESCORT · NO RECOVERY WINDOW OPEN.';
   } else if (offer.kind === 'trader' && id === 'route') {
     line = routeText(state, target);
-    const charon = charonSupplyHailLines(state, target);
-    if (charon) detailLines = [line, ...charon];
+    const charon = charonSupplyPresentation(state, target);
+    if (charon) detailLines = charon.route;
     const winnow = winnowRecoveryHailLines(state, target);
     if (winnow) detailLines = [line, ...winnow];
   } else if (offer.kind === 'trader' && id === 'manifest') {

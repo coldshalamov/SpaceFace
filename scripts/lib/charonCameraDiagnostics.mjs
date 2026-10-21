@@ -1,0 +1,171 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+export const CHARON_CAMERA_LABEL = 'Programmatically staged Charon game-camera diagnostic; real runtime entities; not an ordinary flown arrival or visual/gameplay acceptance.';
+export function charonCameraEnabled(argv = process.argv) { return argv.includes('--charon-camera-diagnostic'); }
+
+// Serialized into the existing main-lane page. Only world/camera owners mutate setup.
+export function charonCameraPageOperation(action) {
+  const sf = window.SF, s = sf?.state, world = sf?.registry?.get('world');
+  if (!s || !world) throw new Error('Charon diagnostic requires live SF world');
+  const sectorId = 'sector_charon_expanse';
+  if (action === 'post') {
+    let post=null,error=null;
+    try { post=window.__THREE_GAME_DIAGNOSTICS__?.getReport?.()?.post??null; }
+    catch (e) { error=String(e?.message||e).slice(0,1000); }
+    const finite=v=>Number.isFinite(v)?v:null;
+    return {available:!!post,error,post:post?{
+      activePath:post.activePath??null,effectiveSceneScale:finite(post.effectiveSceneScale),
+      drawingBufferWidth:finite(post.drawingBufferWidth),drawingBufferHeight:finite(post.drawingBufferHeight),
+      contentWidth:finite(post.bloom?.contentWidth),contentHeight:finite(post.bloom?.contentHeight),
+      contentScale:finite(post.bloom?.contentScale),
+    }:null};
+  }
+  if (action === 'enter') {
+    if (s.mode !== 'flight') throw new Error(`Cannot stage from mode ${s.mode}`);
+    world.enterSector(sectorId, { fromJump: true, via: 'charon-camera-diagnostic' });
+    return { sectorId: s.world?.currentSectorId };
+  }
+  const live = e => e?.alive === true && s.entities.get(e.id) === e;
+  const entities = s.entityList.filter(live), book = s.traffic?.charonSalvageSupply;
+  const unique = predicate => { const rows = entities.filter(predicate); return rows.length === 1 ? rows[0] : null; };
+  const validBook=book && !book.blocked && book.original===6
+    && typeof book.haulerId==='string' && book.haulerId.length>0
+    && typeof book.salvorId==='string' && book.salvorId.length>0 && book.haulerId!==book.salvorId;
+  const sourceRows=Array.isArray(book?.pods)?book.pods.filter(p=>p.id==='charon_colony_air_pod'):[];
+  const source=sourceRows.length===1?sourceRows[0]:null;
+  const originalActor=(slot,id)=>validBook && entities.filter(e=>e.data?.worldRecordId===id).length===1
+    ? unique(e=>e.data?.activityActorSlotId===slot && e.data?.worldRecordId===id):null;
+  const targets = [
+    unique(e => e.data?.poiId === 'poi_colony' && e.data?.sectorId === sectorId),
+    originalActor('charon_colony_hauler',book?.haulerId),
+    originalActor('charon_colony_salvor',book?.salvorId),
+    validBook && source?.original===6 && Number.isFinite(source.loose) && source.loose>0 && source.loose<=6
+      ? unique(e => e.data?.charonSupplyPod?.id === 'charon_colony_air_pod'
+        && e.data?.activityObjectSlotId === 'charon_colony_air_pod'
+        && e.data?.commodityId === 'cmdty_consumer_goods' && e.data?.amount===source.loose):null,
+  ];
+  const names = ['colony', 'original-hauler', 'original-cutter', 'original-pod'];
+  const radius = e => {
+    const root = e.mesh, bounds = root?.userData?.visualBounds;
+    const size = bounds?.size;
+    const measured = Array.isArray(size) && size.length === 3
+      ? Math.hypot(...size.map((v, i) => Number(v) * Math.abs(Number(root.scale?.[['x','y','z'][i]]) || 1))) / 2
+        + (Array.isArray(bounds.center) ? Math.hypot(...bounds.center.map((v,i)=>Number(v)*Math.abs(Number(root.scale?.[['x','y','z'][i]])||1))) : 0) : 0;
+    const r=Math.max(1, Number(e.radius) || 0, Number(e.data?.placeRadius) || 0, measured);
+    if (!Number.isFinite(r)) throw new Error('Nonfinite subject/collision bounds');
+    return r;
+  };
+  if (action === 'frame') {
+    if (s.world?.currentSectorId !== sectorId || targets.some(e => !e)) throw new Error('Original Charon subjects missing or ambiguous; no substitute spawned');
+    const player = s.entities.get(s.playerId);
+    if (!live(player)) throw new Error('Player unavailable');
+    const blockers=entities.filter(e=>targets.includes(e)||e.collides===true);
+    if ([...blockers,player].some(e=>!Number.isFinite(e.pos?.x)||!Number.isFinite(e.pos?.z))) throw new Error('Nonfinite framing position');
+    const bounds = targets.reduce((b,e) => {
+      const r = radius(e); b.minX=Math.min(b.minX,e.pos.x-r); b.maxX=Math.max(b.maxX,e.pos.x+r);
+      b.minZ=Math.min(b.minZ,e.pos.z-r); b.maxZ=Math.max(b.maxZ,e.pos.z+r); return b;
+    }, {minX:Infinity,maxX:-Infinity,minZ:Infinity,maxZ:-Infinity});
+    const cx=(bounds.minX+bounds.maxX)/2, cz=(bounds.minZ+bounds.maxZ)/2;
+    const clearance=radius(player)+12;
+    const edgeOffset=clearance+1;
+    // Prefer the nearest collision-proxy-clear camera anchor, never inside a subject.
+    const candidates=[{x:cx,z:cz}, {x:cx,z:bounds.minZ-edgeOffset}, {x:bounds.minX-edgeOffset,z:cz},
+      {x:bounds.maxX+edgeOffset,z:cz}, {x:cx,z:bounds.maxZ+edgeOffset}];
+    const clear = p => blockers.every(e => e === player || Math.hypot(p.x-e.pos.x,p.z-e.pos.z)>radius(e)+clearance);
+    const pose=candidates.find(clear);
+    if (!pose) throw new Error('No collision-proxy-clear framing pose; not relocating');
+    const extent=Math.max(...targets.map(e=>Math.hypot(e.pos.x-pose.x,e.pos.z-pose.z)+radius(e)));
+    const camera=s.render?.cameraCtrl?.obj;
+    const fov=Number(camera?.fov)||50, aspect=Number(camera?.aspect)||16/9;
+    if (!(fov>0&&fov<180&&aspect>0&&Number.isFinite(aspect))) throw new Error('Invalid camera projection');
+    const halfAngle=Math.min(fov*Math.PI/360,Math.atan(Math.tan(fov*Math.PI/360)*aspect));
+    const requested=extent/Math.sin(halfAngle)*1.1;
+    const zoom=Math.max(45,Math.min(330,requested));
+    if (!world.relocatePlayerInSector({...pose,heading:0},{reason:'charon-camera-diagnostic'})) throw new Error('World relocation rejected');
+    sf.bus.emit('camera:zoom',{level:zoom});
+    if (!s.render?.cameraCtrl?.snapToPlayer?.()) throw new Error('Camera snap unavailable');
+    return {pose,bounds,extent,zoom,requestedZoom:requested,fitClamped:requested>330,
+      framingBasis:'Live subject collision/place radii and available authored visual bounds; clearance is a conservative proxy, not collision/visibility proof.'};
+  }
+  const player=s.entities.get(s.playerId);
+  const subjects=targets.map((e,i)=>e?{subject:names[i],id:e.id,generation:e.occupantGeneration,
+    worldRecordId:e.data?.worldRecordId??null,defId:e.data?.defId??null,placeId:e.data?.placeId??null,
+    pos:{x:e.pos.x,z:e.pos.z},radius:radius(e),assetState:e.mesh?.userData?.authoredAssetState??'missing',
+    assetId:e.mesh?.userData?.assetId??null,visible:e.mesh?.visible??false,
+    amount:e.data?.amount??null,commodityId:e.data?.commodityId??null}: {subject:names[i],missing:true});
+  return {sectorId:s.world?.currentSectorId,mode:s.mode,tick:s.tick,presentCount:s.render?.presentCount??null,
+    gpu:s.render?.gpu?{...s.render.gpu}:null,softwareRenderer:s.render?.softwareRenderer??null,dynResScale:Number.isFinite(s.render?.dynResScale)?s.render.dynResScale:null,
+    player:player?{id:player.id,pos:{x:player.pos.x,z:player.pos.z},hull:player.hull,assetState:player.mesh?.userData?.authoredAssetState??'missing'}:null,
+    subjects,ready:subjects.every(e=>!e.missing&&e.assetState==='authored')&&player?.mesh?.userData?.authoredAssetState==='authored',
+    ledger:book?{phase:book.phase,original:book.original,blocked:!!book.blocked,haulerId:book.haulerId,salvorId:book.salvorId,
+      pods:book.pods?.slice(0,8).map(p=>({id:p.id,original:p.original,loose:p.loose,aboard:p.aboard,delivered:p.delivered,consumed:p.consumed,player:p.player,other:p.other,lost:p.lost}))}:null,
+    visibilityAssessment:'unverified; inspect actual screenshots; authored state is not pixel visibility'};
+}
+
+export async function captureCharonCameraDiagnostic(page, {
+  budgetMs = 20000, now = () => Date.now(), sleep = ms => new Promise(r=>setTimeout(r,ms)),
+  mkdirFn = mkdir, writeFileFn = writeFile, outputDir = resolve('scratch/check-ci-report/station-handoff'),
+} = {}) {
+  const started=now(), totalBudget=Math.min(20000,Math.max(1,budgetMs));
+  const deadline=started+Math.max(1,totalBudget-500);
+  let closed=false;
+  const report={schema:'spaceface.charonCamera.v1',label:CHARON_CAMERA_LABEL,visualAcceptance:false,
+    status:'unavailable',setup:null,samples:[],postSamples:[],screenshots:[],errors:[]};
+  const check=()=>{if(closed||now()>=deadline)throw new Error('Charon diagnostic deadline exceeded');};
+  const bounded=async fn=>{check();let timer;try{return await Promise.race([
+    Promise.resolve().then(()=>{check();return fn();}),new Promise((_,reject)=>{timer=setTimeout(()=>{closed=true;reject(new Error('Charon diagnostic deadline exceeded'));},Math.max(1,deadline-now()));})]);}finally{clearTimeout(timer);}};
+  const read=()=>bounded(()=>page.evaluate(charonCameraPageOperation,'read'));
+  const capture=async index=>{
+    await bounded(()=>mkdirFn(outputDir,{recursive:true})); check();
+    const file=resolve(outputDir,`${started}-charon-programmatic-${index}.png`);
+    // Expensive diagnostics run at most twice, only immediately before screenshots, never in polls.
+    const post=await bounded(()=>page.evaluate(charonCameraPageOperation,'post'));
+    report.postSamples.push({capture:index,...post});
+    await bounded(()=>{check();return page.screenshot({path:file,type:'png',timeout:Math.min(4000,Math.max(1,deadline-now()))});});
+    report.screenshots.push(file);
+  };
+  try {
+    await bounded(()=>page.evaluate(charonCameraPageOperation,'enter'));
+    // Enter listeners can drain over several presented frames. Do not fabricate missing cast.
+    let snapshot=await read();
+    const subjectsDeadline=Math.min(deadline-9000,started+4000);
+    while(snapshot.subjects.some(e=>e.missing)&&now()<subjectsDeadline){await bounded(()=>sleep(200));snapshot=await read();}
+    if(snapshot.subjects.some(e=>e.missing)) {
+      report.samples.push(snapshot); report.status='subjects-unavailable';
+    } else {
+      report.setup=await bounded(()=>page.evaluate(charonCameraPageOperation,'frame'));
+      snapshot=await read();
+      // Reserve time for two bounded captures. Readiness failure is evidence, not a forced upgrade.
+      while(!snapshot.ready&&now()<deadline-10000){await bounded(()=>sleep(250));snapshot=await read();}
+      report.samples.push(snapshot);
+      await capture(1);
+      const firstCount=snapshot.presentCount, firstTime=now();
+      do {await bounded(()=>sleep(200));snapshot=await read();}
+      while(now()-firstTime<500 || !(Number.isFinite(firstCount)&&snapshot.presentCount>firstCount));
+      report.samples.push(snapshot);
+      await capture(2);
+      report.status=report.samples.every(s=>s.ready)?'authored-subjects-captured-not-visual-acceptance':'unresolved-assets-captured';
+    }
+  } catch(error) {report.status=/deadline/.test(String(error?.message))?'diagnostic-timeout':'diagnostic-failed';report.errors.push(String(error?.message||error).slice(0,1000));}
+  closed=true;report.elapsedMs=now()-started;
+  // In-flight page requests cannot be cancelled here; existing checker finally closes the browser.
+  // Its pre-existing cleanup is outside this diagnostic budget and stays unchanged.
+  // Filesystem-only persistence may finish later; no diagnostic page dispatch follows closure.
+  let path=null;
+  let saveTimer;
+  try {
+    path=await Promise.race([(async()=>{await mkdirFn(outputDir,{recursive:true});
+      const file=resolve(outputDir,`${started}-charon-programmatic.json`);
+      await writeFileFn(file,JSON.stringify(report,null,2)+'\n');return file;})(),
+      new Promise((_,reject)=>{saveTimer=setTimeout(()=>reject(new Error('report persistence timeout')),Math.max(1,started+totalBudget-now()));})]);
+  } catch(error){report.errors.push(`Report save failed: ${String(error?.message||error).slice(0,500)}`);path=null;}
+  finally {clearTimeout(saveTimer);}
+  return {path,report};
+}
+
+export async function runOptionalCharonCameraDiagnostic(page, {argv=process.argv, capture=captureCharonCameraDiagnostic, log=console.log, warn=console.warn}={}) {
+  if(!charonCameraEnabled(argv))return null;
+  try {const result=await capture(page);log(`Charon programmatic game-camera diagnostic: ${result.path??'report unavailable'} (${result.report.status})`);return result;}
+  catch(error){warn(`Charon camera diagnostic unavailable: ${error?.message||error}`);return null;}
+}

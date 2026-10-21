@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { runOptionalCharonCameraDiagnostic } from './lib/charonCameraDiagnostics.mjs';
 import { captureStartupFailureDiagnostics, observeStartupFailureEvents } from './lib/startup-failure-diagnostics.mjs';
 
 import { spawn } from 'node:child_process';
@@ -263,6 +264,8 @@ try {
   assert.deepEqual(issues.errorIssues(), [], 'browser cold-open check should not record page errors');
 
   console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);
+  // Optional, separately labeled staging only AFTER every original acceptance gate passed.
+  await runOptionalCharonCameraDiagnostic(page);
 } finally {
   graphicsObserver?.dispose();
   // A wedged page cannot delay owned-browser cleanup indefinitely.

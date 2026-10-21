@@ -77,3 +77,51 @@ export function charonSupplyFacts(s) {
 }
 
 export {actor as charonSupplyActor,carrier as charonSupplyCarrier,recipient as charonSupplyRecipient};
+
+// Read-only contact presentation. Bind the selected hull through the same original-life
+// view as custody; a reused slot/name must not inherit this crew's story or choices.
+// Compact rows stay short; the existing chosen ROUTE surface owns wrapped guidance.
+export function charonSupplyPresentation(s, e, { detailed = true } = {}) {
+  const b = s && book(s);
+  if (!b || b.blocked || !e || !live(s, e)
+    || ![[C.hauler, b.haulerId], [C.salvor, b.salvorId]].some(([slot, id]) =>
+      e.data?.activityActorSlotId === slot && e.data.worldRecordId === id)) return null;
+  const h = carrier(s), r = recipient(s);
+  if (e !== h && e !== r) return null;
+  const loose = quantity(b, 'loose'), aboard = quantity(b, 'aboard');
+  // Custody can become incomplete while the old jobs still own their round.
+  // Report that fact without advancing the deferred physical phase.
+  const pendingShortfall = ['awaiting_round', 'collect'].includes(b.phase)
+    && quantity(b, 'player') + quantity(b, 'other') + quantity(b, 'lost') > 0;
+  let status;
+  if (b.phase === 'working') status = 'RESERVE USED · ROUND STARTED';
+  else if (b.phase === 'shortfall') status = 'RESERVE SHORT · ROUND CANCELLED';
+  else if (pendingShortfall) status = 'RESERVE SHORT · ROUND BLOCKED';
+  else if (b.phase === 'lost') status = quantity(b, 'lost') === C.quantity
+    ? 'RESERVE LOST · NO REPLACEMENT' : 'RECOVERY STOPPED · NO REFILL';
+  else if (!h || !r) status = 'CREW MISSING · NO REPLACEMENT';
+  else if (b.phase === 'delivered') status = 'KITS AT CUTTER · ROUND PENDING';
+  else if (b.phase === 'awaiting_round' && !(b.haulerReady && b.salvorReady)) status = 'FINISHING CURRENT JOBS';
+  else if (aboard) status = `${aboard} KITS ABOARD HAULER`;
+  else status = `${loose} KITS LOOSE · ROUND WAITING`;
+  const compact = {
+    status: `SUPPLY · ${status}`,
+    compact: ['VISITING SALVAGE · NO RESIDENTS', status],
+  };
+  // Target locks and compact Hail rows need no route prose or repeated actor resolution.
+  // Keep the full original-life and duplicate checks above on every read, including restore.
+  if (!detailed) return compact;
+  const lines = charonSupplyHailLines(s, e);
+  if (!lines) return null;
+  const choices = !pendingShortfall && loose > 0 && ['awaiting_round', 'collect'].includes(b.phase) && h && r
+    ? ' Leave the reserve for this crew, or recover it yourself. Taking any cancels their next cutting round.' : '';
+  return {
+    ...compact,
+    route: [lines[0] + choices, b.phase === 'lost'
+      ? `Recovery stopped: ${loose} kits loose, ${aboard} aboard the original hauler, ${quantity(b, 'delivered')} at the original cutter, ${quantity(b, 'player')} recovered by you, ${quantity(b, 'other')} taken by another collector, ${quantity(b, 'lost')} lost. No replacement load is being issued.`
+      : pendingShortfall
+        ? `Scrubber reserve incomplete: ${loose} kits loose, ${aboard} aboard the original hauler, ${quantity(b, 'player')} recovered by you, ${quantity(b, 'other')} taken by another collector, ${quantity(b, 'lost')} lost. The next cutting round cannot start with this shortfall. Existing jobs keep their current round; no replacement load is being issued.`
+      : (!h || !r) && !['working', 'shortfall'].includes(b.phase)
+        ? 'The original supply crew is missing. No replacement load has been issued.' : lines[1]],
+  };
+}
