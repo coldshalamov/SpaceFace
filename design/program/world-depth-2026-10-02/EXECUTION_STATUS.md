@@ -1,6 +1,20 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 05:19 UTC
+
+All eight goals remain OPEN. This checkpoint supersedes older current-state entries without erasing their scoped failures or changing acceptance fields.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) has verified source head [3fff1e51477695f79b1cb7e7e4ea8ae6904d88ec](https://github.com/coldshalamov/SpaceFace/commit/3fff1e51477695f79b1cb7e7e4ea8ae6904d88ec), tree `aea77f44e4aa0f3d0492ff40f866810a6f9eb6e6`, sole parent `388045a033957c7e70cbb2b2f527e7f77dc6da7f`. Harvest guidance now runs through the actual Alin parent: occupied-socket state, remapped beam controls, native-ready whole-pod pickup and acknowledgment of finalized accepted finite cargo. The exact selection passes 70 tests with 1,506 unique module hashes plus a scenario-file pin; independent review adds 14 passing cases. The predecessor fixes this work's preloads and forecast test, with 11 passing checks. These are source and focused-test results, not whole-game acceptance.
+
+The full local receiver activation has 48 passing focused/source-release/selected-census checks and independent composition review, but is NOT published. The source/release bank at `cf327a97ee992536aa00d5277db4c238c19e49e9` remains dormant. Seventeen asset text uploads are confirmed; the partsLibrary registration and census JSON uploads remain held for approval and were not found on read-back. The generated census upload has never been attempted. No upload is currently active. Do not turn uploaded blobs, local activation or review into claims of reachable shipping registration.
+
+UI source wording was reviewed. Screenshot production remains blocked by local-server isolation and supported-launcher initialization; there is no new pixel-level or live graphical acceptance. Restricted diagnostic material and private recovery identifiers remain excluded.
+
+Current ownership: the receiver asset owner retains the held publication/package steps; the physical integration owner retains exact composition qualification; root coordinates publication and exact-head CI. The connected-world activity owner is inspecting actual code and existing owners before selecting the next substantial connected activity. No activity has yet been selected or delivered by that investigation.
+
+Next: preserve the current published harvest source and dormant bank; resolve only the specifically held upload operations through their approval route, then verify a coherent activated commit and run its full integration/native and shipping-package checks. Continue ordinary controls and supported-launcher live graphical review without relabeling source inspection as pixels. For the next connected activity, finish the code/ownership inspection before choosing and implementing the bounded unit. Historical route/CI failures remain scoped to their recorded heads; no current aggregate-green, merge, deployment or full-goal completion is claimed. This update changes only the two handoff documents on their separate branch, not PR #480.
+
 ## Current source handoff — 21 October 2026, 04:57 UTC
 
 All eight goals remain OPEN. This checkpoint supersedes older current-state claims below, while retaining their scoped failures and historical evidence.
