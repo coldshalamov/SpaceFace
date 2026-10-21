@@ -1,6 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 10:17 UTC
+
+All nine goals remain OPEN. This checkpoint supersedes older current-state entries without erasing their scoped failures or acceptance limits.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) has verified head [fb3afd914fef745415ec85d9645a2acf84d8c59d](https://github.com/coldshalamov/SpaceFace/commit/fb3afd914fef745415ec85d9645a2acf84d8c59d), tree `c49e79ef2bd4ee22483ae80ed8d500daefd936fa`, sole parent `2093fe7c61f6c9ec07a347b381c17b44a1060b0e`; publication was verified at 10:16:10 UTC. Five paths preserve the narrow collector return/clear-band fixed-solid correction, 14 short regression tests, package registration and opt-in native probe/proof note.
+
+Focused and adjacent validation passes 51/51. Identical reduced native controls with empty cargo and explicit seeded 12-unit cargo reproduce baseline Customs Gate contact at 11.283 seconds; the candidate passes at 25.967 seconds with no contacts, hull 200 and cargo unchanged. These are reduced native controls, not a full-route pass. Original collection and yield rules are preserved; the full-registry shortcut's yield toward Hornet 155 remains a separate limitation.
+
+verify_orchard_ci_attribution follows actual successor CI. Existing PR #457 CI is also active, with no new attributable failure identified yet. Its existing 47-A diagnostic found required spindle/pod destruction at tick 1 with reason payload_sector_transition. trace_ceres_payload_departure is a read-only investigation owner before any implementation decision; the cause and repair are not assumed.
+
+Next: follow both exact-head CI outcomes and finish the bounded read-only payload-departure investigation. Preserve the collector correction's limited proof scope, original yield behavior and ordinary/full-route/live-camera acceptance gaps. All prior unresolved receiver/model operations remain unchanged. This update changes only the two shared handoff/goal files, not NOW, gameplay implementation or PR source, and includes no private identifiers or private ancestry.
+
 ## Current source handoff — 21 October 2026, 10:00 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state entries while preserving historical evidence and scope limits.
