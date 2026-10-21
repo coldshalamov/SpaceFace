@@ -8,7 +8,8 @@
 // (src/ui/swarmJuiceHud.js) draws them; this file never touches a document.
 //
 // Event surface (all swarm-only, all gated on a live swarm-ruleset run):
-//   swarm:killPopup    { pos, word, cause, score, credits, wave } — one per paid kill
+//   swarm:killPopup    { pos, word, cause, friendlyFire, score, credits, wave } — one per paid
+//                      kill; `word` is the live arena's vocabulary (row 481)
 //   swarm:announce     { kind, text, count } — DOUBLE/TRIPLE/QUAD/SWARM WIPE, PILE-UP ×N,
 //                      COLLATERAL, REVENGE, CLOSE CALL, LAST ONE
 //   swarm:roundSlam    { wave, boss, newcomer } — "ROUND N" with the boss card + debut card
@@ -243,7 +244,9 @@ export const swarmJuice = {
     const friendlyFire = !playerKill && runOwnsReward(killer);
     const cause = styleCauseFromKill(payload);
     const surface = payload.presentation && payload.presentation.surface || null;
-    const word = swarmKillCauseWord({ cause, surface, friendlyFire });
+    // Row 481 — the live room's own vocabulary; the Circuit can switch arenas mid-run, so the
+    // arena is read at kill time, never captured at run start.
+    const word = swarmKillCauseWord({ cause, surface, friendlyFire, arenaId: run.arenaId });
     const threat = victim.data && victim.data.stuntThreat;
 
     if (playerKill) {
@@ -253,6 +256,7 @@ export const swarmJuice = {
         pos: payload.pos || victim.pos || null,
         word,
         cause,
+        friendlyFire: false,
         score: playerKill ? Math.max(0, Math.round(threat && threat.baseScore || 0)) : 0,
         credits: Math.max(0, Math.round(threat && threat.credits || 0)),
         wave: run.wave,
@@ -261,7 +265,7 @@ export const swarmJuice = {
     } else if (friendlyFire) {
       // The room did our work — worth a word, never the chain.
       this._emit('swarm:killPopup', {
-        pos: payload.pos || victim.pos || null, word, cause, score: 0,
+        pos: payload.pos || victim.pos || null, word, cause, friendlyFire: true, score: 0,
         credits: 0, wave: run.wave,
       });
       this._emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL', count: 1 });
@@ -331,13 +335,15 @@ export const swarmJuice = {
     if (count <= 0) return;
     const now = simTimeOf(st);
     const cause = typeof payload.cause === 'string' && payload.cause ? payload.cause : 'direct';
-    const word = swarmKillCauseWord({ cause });
+    // Row 481 — a Brood wipe is still the room speaking: the live arena names the end.
+    const word = swarmKillCauseWord({ cause, arenaId: run.arenaId });
     this._waveKills += count;
     this._lastKillAt = now;
     this._emit('swarm:killPopup', {
       pos: payload.pos || null,
       word,
       cause,
+      friendlyFire: false,
       score: Math.max(0, Math.round(Number(payload.score) || 0)),
       credits: Math.max(0, Math.round(Number(payload.credits) || 0)),
       wave: run.wave,

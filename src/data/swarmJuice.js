@@ -73,15 +73,72 @@ export const SWARM_KILL_WORDS = Object.freeze({
   down: 'DOWN',
 });
 
-export function swarmKillCauseWord({ cause = null, surface = null, friendlyFire = false } = {}) {
+// Row 481 — the room decides what a kill is CALLED.
+//
+// SWARM_KILL_WORDS above is the room-agnostic fallback; each live Swarm arena names the same
+// six ends in its own language, so the popup and the stunt line teach the room the player is
+// standing in (the Foundry presses, the Crucible wells, the Sluice washes, Cryo shatters, the
+// Lattice grounds, the Mill grinds, the Hive eats). Arena identity comes from the run
+// (`run.arenaId`, switched at kill time on the Circuit); these values are presentation only —
+// scoring never reads them.
+//
+// family keys mirror SWARM_KILL_WORDS minus `friendlyFire`: "the room killed one of its own"
+// is the same law in every room, and the friendly-fire check runs before the table lookup.
+export const SWARM_ARENA_KILL_WORDS = Object.freeze({
+  helios_core: Object.freeze({
+    slammed: 'PRESSED', banked: 'CAROMED', slung: 'SHUNTED',
+    mined: 'COOKED', shredded: 'PUNCHED', down: 'SCRAPPED',
+  }),
+  lagrange_crucible: Object.freeze({
+    slammed: 'SPIKED', banked: 'PYLONED', slung: 'SLINGSHOT',
+    mined: 'DROWNED', shredded: 'PINNED', down: 'WELLED',
+  }),
+  cinder_sluice: Object.freeze({
+    slammed: 'ASHED', banked: 'SLUICED', slung: 'WASHED',
+    mined: 'BURNED', shredded: 'SCORED', down: 'DRIFTED',
+  }),
+  cryo_drift: Object.freeze({
+    slammed: 'SHATTERED', banked: 'SKIDDED', slung: 'PLATED',
+    mined: 'ICED', shredded: 'CHIPPED', down: 'FROSTED',
+  }),
+  storm_lattice: Object.freeze({
+    slammed: 'GROUNDED', banked: 'ARCED', slung: 'CIRCUITED',
+    mined: 'SHORTED', shredded: 'ZAPPED', down: 'FRIED',
+  }),
+  asteroid_mill: Object.freeze({
+    slammed: 'MILLED', banked: 'BELTED', slung: 'CRUSHED',
+    mined: 'BLASTED', shredded: 'GOUGED', down: 'GROUND',
+  }),
+  the_hive: Object.freeze({
+    slammed: 'SWALLOWED', banked: 'WEBBED', slung: 'LASHED',
+    mined: 'DIGESTED', shredded: 'BITTEN', down: 'EATEN',
+  }),
+});
+
+/** The word table for `arenaId`, or the room-agnostic fallback for a missing/unknown room. */
+function arenaKillWords(arenaId) {
+  if (typeof arenaId !== 'string' || arenaId.length === 0) return SWARM_KILL_WORDS;
+  if (!Object.prototype.hasOwnProperty.call(SWARM_ARENA_KILL_WORDS, arenaId)) return SWARM_KILL_WORDS;
+  return SWARM_ARENA_KILL_WORDS[arenaId] || SWARM_KILL_WORDS;
+}
+
+/**
+ * `arenaId` names the live room (`run.arenaId`) so the same cause speaks that arena's word;
+ * omit it (or pass a room with no table) for the generic vocabulary. Friendly fire always wins,
+ * in every room.
+ */
+export function swarmKillCauseWord({
+  cause = null, surface = null, friendlyFire = false, arenaId = null,
+} = {}) {
+  const words = arenaKillWords(arenaId);
   if (friendlyFire === true) return SWARM_KILL_WORDS.friendlyFire;
   if (cause === 'terrain') {
-    return surface === 'structure' ? SWARM_KILL_WORDS.banked : SWARM_KILL_WORDS.slammed;
+    return surface === 'structure' ? words.banked : words.slammed;
   }
-  if (cause === 'collision') return SWARM_KILL_WORDS.slung;
-  if (cause === 'explosive') return SWARM_KILL_WORDS.mined;
-  if (cause === 'direct') return SWARM_KILL_WORDS.shredded;
-  return SWARM_KILL_WORDS.down;
+  if (cause === 'collision') return words.slung;
+  if (cause === 'explosive') return words.mined;
+  if (cause === 'direct') return words.shredded;
+  return words.down;
 }
 
 // --- The multi-kill announcer (§5.3) ----------------------------------------------

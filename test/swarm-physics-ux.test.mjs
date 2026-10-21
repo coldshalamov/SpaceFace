@@ -329,6 +329,16 @@ test('physics kill causes ride the stunt line; gun kills stay quiet', () => {
   assert.match(text, /MINED/);
   assert.ok(!/SHREDDED/.test(text), 'gun kills never needed teaching');
   assert.ok(!/\bDOWN\b/.test(text));
+
+  // Row 481 — the gate is the CAUSE family, not the word: an arena renames the vocabulary, so
+  // a physics-caused kill lands whatever it is called, and a gun kill stays quiet even when its
+  // word reads like physics.
+  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'SWALLOWED', cause: 'terrain', wave: 2 });
+  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'BANKED', cause: 'direct', wave: 2 });
+  owner.update(30);
+  text = calloutTextFor(owner.root);
+  assert.match(text, /SWALLOWED/, "the room's own word lands");
+  assert.ok(!/BANKED/.test(text), 'a physics-looking word on a gun kill stays quiet');
   owner.destroy();
 });
 

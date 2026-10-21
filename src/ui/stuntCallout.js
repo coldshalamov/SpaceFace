@@ -351,13 +351,16 @@ function mk(doc, tag, className, text) {
   return node;
 }
 
-// SWARM-03 — kill causes reach the stunt line (SWARM_EXPANSION §10): every physics kill
-// already carries its cause word on `swarm:killPopup` (swarmJuice reads the kill-
-// presentation receipt); the line quotes the word so SLAMMED/MINED/BANKED/SLUNG stop
-// being invisible payouts. Gun kills (SHREDDED/DOWN) stay quiet — guns never needed
-// teaching. Repeats inside the TTL roll the count like a pinball display, keyed so the
-// three-line budget is spent on kinds, not on spam.
-const SWARM_CAUSE_WORDS = new Set(['SLAMMED', 'BANKED', 'SLUNG', 'MINED']);
+// SWARM-03 / row 481 — kill causes reach the stunt line (SWARM_EXPANSION §10): every physics kill
+// already carries its cause family and a word on `swarm:killPopup` (swarmJuice reads the kill-
+// presentation receipt and the LIVE ARENA's vocabulary), so SLAMMED/MINED/BANKED/SLUNG stop being
+// invisible payouts in whatever language the room speaks. The gate is the CAUSE, never the word:
+// arena tables rename the words (PRESSED, WELLED, ASHED …) and a word list would drop them.
+// Gun kills (direct) stay quiet — guns never needed teaching. Friendly fire is its own receipt
+// (the announcer already says COLLATERAL), excluded on the payload flag, never by matching a word.
+// Repeats inside the TTL roll the count like a pinball display, keyed so the three-line budget is
+// spent on kinds, not on spam.
+const SWARM_TEACHING_CAUSES = new Set(['terrain', 'collision', 'explosive']);
 
 function collectText(node, acc) {
   if (!node) return acc;
@@ -701,8 +704,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const scope = calloutScope(st);
     // Runs only: the word stream is swarm-authored, and adventure has no swarm bus events.
     if (!scope || scope.adventure) return;
-    const word = p && p.word;
-    if (!SWARM_CAUSE_WORDS.has(word)) return;
+    if (!p) return;
+    // Friendly fire already has its own announcer beat (COLLATERAL); the teaching lane is the
+    // player's own physics kills. Excluded on the payload flag, never on a word.
+    if (p.friendlyFire === true) return;
+    if (!SWARM_TEACHING_CAUSES.has(p.cause)) return;
+    const word = p.word;
+    if (typeof word !== 'string' || word.length === 0) return;
     const now = calloutNow();
     let rec = causeRuns.get(word);
     if (!rec || rec.until <= now) rec = { count: 0 };
