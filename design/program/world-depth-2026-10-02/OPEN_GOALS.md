@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 06:14 UTC. All eight outcomes remain open. This register supports the
+Updated 21 October 2026, 06:30 UTC. All nine outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -69,3 +69,11 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - Evidence: PR461 repaired B10 remains passing; successor exact62/62 and remote62/62 plus sim32/32 and feel27/27 pass. Same native worker performs two real hauls accepting7/4 units at158.33/398.03s. PR462 public native/Continue/Hail14/14 and Hail21/21, remote14/14. PR464 exact public12/12; native18 units total including mid-cut Continue, no extra yield after depletion. Original public-a8 save remains zero-yield while source is legitimately unloaded, then ordinary player flight admits the source and completes18 units after56.18s. No teleport/pins/threat clearing. PR466 independent native19/19, exact public Hail/freight70/70, far/roster/kernel97/97 and CI partition30/30 pass. Strict held/berth Continue and actual retained exact residency are proved, not ordinary far shelving. Crew existing leaf100/100, partition30/30 and native repair78.0167/full-Continue77.8333/mid-weld79.05s pass. Continue uses scalar fallback then native Rapier; exact snapshot adoption and all-rescue acceptance are not claimed. Original Pallas zero-actor completion and ~1,057 WU seam/field mismatch are retained causal findings.
 - Next: Implement and independently qualify explicit Hail rendezvous with ordinary braking and a total 30 simulation-second budget across current-timeline retries/Continue. Prove moving physical handoff without autotransfer, extra gas or weakened gates. No completion claim; original wider world goals remain open.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
+
+## SF-SECTOR-COHERENCE
+- Outcome: every actual sector becomes an intentional, coherent experience across first arrival, recurring life, time/progression/consequences, return visits and Save/Continue, grounded in actual asset/code inventory and connected story/missions.
+- State: OPEN, newly authorized. Existing sector behavior, assets, code and ownership are not yet systematically inventoried under this goal. No sector improvement or acceptance is claimed; the prior eight goals remain open with their evidence intact.
+- Owner: root coordinates sector review with current source, story, gameplay and asset owners.
+- Evidence: direct user request on 21 October 2026 to evaluate every sector, establish what happens on first arrival, what continues and what changes over time, and meticulously examine assets/code to maximize quality using existing or easily created resources. The two existing continuation reminders were updated at 06:29:52 UTC; schedules and enabled states were unchanged.
+- Next: build an evidence-backed register of every actual sector, its assets/code, story/mission hooks and owners. Record first-arrival, ongoing-life, progression/consequence, return-visit and Save/Continue behavior; distinguish implemented facts from proposals and prioritize concrete gaps without duplicating active work.
+- Awaiting user: no optional input pending; proceed with the authorized inventory and review.
