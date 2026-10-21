@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "stunt-witness-headlines",
-      "date": "2026-10-03",
-      "wf": "WF-16",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the best physics kills are now named on the galaxy news wire, credited to the pilot, once per episode",
-      "fingerprint": "verb=publish,subject=stunt,sector=pocket,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "5dc97d98a",
-      "verification": "focused_green"
-    },
-    {
       "id": "corridor-log-section",
       "date": "2026-10-03",
       "wf": "WF-14",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "ad4aa2106",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-45-pad-player-beats",
+      "date": "2026-10-21",
+      "wf": "WF-05",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Dash, hit-taken, kill and base-drop pulses gated on the player id join the verb table; NPC stays silent, gap and off hold",
+      "fingerprint": "verb=feel,subject=gamepad,sector=all,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "c971e5851",
       "verification": "focused_green"
     }
   ],
