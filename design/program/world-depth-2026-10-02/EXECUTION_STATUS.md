@@ -1,6 +1,22 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 03:14 UTC
+
+This source/status checkpoint supersedes older current-state headings below without changing historical evidence or reviewer acceptance fields. All eight larger goals remain OPEN. Live graphical WebGL, ordinary player comprehension and whole-world acceptance remain open.
+
+Draft [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now preserves public source head [11ec20d093473da72bae0f40659738ed538f7f88](https://github.com/coldshalamov/SpaceFace/commit/11ec20d093473da72bae0f40659738ed538f7f88), tree `acefc74ba92670efed92b98099175e2942712852`, with sole parent [ffcd00f01406d364ef8467d44f2a2aefddca66dc](https://github.com/coldshalamov/SpaceFace/commit/ffcd00f01406d364ef8467d44f2a2aefddca66dc). Receiver drive damage now persists across Continue and residency, earned repair transitions are preserved, and corrupt damage is quarantined. No new health or cargo grants are introduced. The preceding public increment provides Hail reading UI and a manual-input runner. Publication does not establish integration or acceptance.
+
+Current ownership and next actions:
+- `fix_orchard_collection_clearance`: repair the measured fixed-gate work-lane clearance problem.
+- `build_orchard_receiver_asset`: finish the genuinely distinct receiver and selected-model pipeline. The model is exported and reviewed offline; its new image was delivered at 02:58 UTC. It is not yet published, integrated or accepted.
+- `review_orchard_physical_integration`: independent read-only review of the joined physical experience.
+- Root: follow current general CI [39537046011](https://github.com/coldshalamov/SpaceFace/actions/runs/39537046011) and [mobile CI 39537045992](https://github.com/coldshalamov/SpaceFace/actions/runs/39537045992), currently active. The prior ffcd watch ended in failure; no current aggregate pass is claimed.
+
+The assistant execution environment is available again. Continue concrete source, asset and ordinary-control work with these owners rather than repeating proven fixtures. Keep export, offline review, publication, integration and acceptance as separate states. Preserve the original twenty-concept scope, finite custody, real hazards and established visual language.
+
+Separate diagnostic publication awaits user approval. The raw repair report and revised unit delivery report are excluded from this source-only checkpoint; no report payload is relocated here. This does not block permitted source implementation and publication. No merge, deployment, credential change or new external execution thread is included.
+
 ## Current continuation — 21 October 2026, 01:57 UTC
 
 This checkpoint supersedes older current-state headings below; historical evidence is retained. All eight outcomes in OPEN_GOALS.md remain OPEN. The original twenty-concept/IMPLEMENTATION scope, established owners and acceptance requirements remain in force.
