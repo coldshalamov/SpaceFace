@@ -1,6 +1,18 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 18:09 UTC
+
+All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `90159f77757caebeb66e127ef8f1c87e3d687652`, tree `2bc2fe59bfb97a67ad63ac314e0478ef2d7b5544`, open draft/unmerged and mergeable at 18:09:27 UTC. Public ancestry preserves the reviewed Ashline qualification, connected Ilex guidance and guarded pipeline observations, plus clean upstream merges through `028bfff84b2e6b122021ebdc3dc6f65a9d625825`. Master itself was not changed.
+
+Ilex active voyage now reports original-vault custody, recoverable cargo after carrier loss, the existing deadline and irreversible filing consequences, rather than premature settled failure. Waiting/settled text, state/schema/rewards/stock/receiver gates and prompt cadence remain intact. The sector register contains a dated evidence addendum. Ashline's explicit package seal was requalified after provenance-only drift; authoring/release/render GLBs and motion bank are unchanged, and altered hashes remain excluded. Pipeline observations distinguish root substage from pending pool siblings without changing readiness or await behavior. An initial options-spread approach was rejected before publication; final separate observer preserves identity/getters and errors.
+
+Root checks: 34/34 reviewed source composition; 46/46 first exact upstream merge; 11/11 final RC29/30 plus Ilex checks. These are separate scoped runs, not a whole-game green claim. First upstream reconciliation retains RC42–46 UI/gamepad, NPC mining spill bounds, grudge restore and ledgers alongside existing finite split inheritance and sector-epoch guards. Second merge preserves station-local news/helper tests and ledgers exactly. Source/recovery packages and meaningful failed attempts have verified external readbacks.
+
+Prior a4df CI is terminal: runtime 1,553/1,558 with five inherited failures, full native receiver passes 319.391 seconds; Arcade including real mouse/pointer-lock passes, lifetime gate passes 116/116. Browser3 naturally reaches its cap after three passing leaves; two unproven. Actual Charon remains visually unresolved, with hauler preparing-pipelines and colony queued; all six original supplies remain loose/intact. Baseline/isolated/restored captures do not establish VFX causality or acceptance.
+
+verify_charon_delivery_ci follows new check5716/run39650166400. Current synthetic merge also includes later public charge-cell and dead-bounty-marker changes: its tree is not assumed equal to this branch. Verify actual job checkout and attribute failures carefully. Next: use finer actual stages/pixels to finish Charon readiness while recovering the existing unpublished Ilex-to-Ceres greenhouse followthrough only after exact ownership/source review. Preserve original twenty-concept scope, all goals, newer owners and held Orchard operations. Optional PR-comment permission remains separately unanswered; no retry. No master merge/deployment, credentials or external execution thread creation.
+
 ## Current source handoff — 21 October 2026, 17:29 UTC
 
 All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `a4df2efa02f8a00fa278a30dddcac9a3ac28278f`, tree `0760ce582f6b92150598d1b8df1614a1b0354d0b`, sole a899 parent, open draft at 17:29:35 UTC; master bce remains unchanged.
