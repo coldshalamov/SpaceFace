@@ -1007,6 +1007,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
       return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
         lines: [towQuote ? `STORMSHIFT SPILL · Optional tow ${towQuote.feeCr}CR on dispatch; kept on cancellation/loss. Continue refunds. No delivery guarantee.` : 'STORMSHIFT · ORIGINAL GAS SPILL',
           returnQuote ? `Return ${returnQuote.amount}u to this tender for its Tethys delivery. No payment; no change to the law record.`
+            : spill.claimed ? 'Original gas is claimed by a salvage crew. Return is unavailable while that claim remains; attaching a line does not clear it.'
             : facts && !facts.amount ? 'TENDER HOLD FULL. Keep the original pod intact until there is room.'
             : 'Massline the original loose gas pod to the planet-facing service side of this tender. Match speed, then Hail to RETURN GAS. Keeping or leaving it does not restore the delivery.'],
         actions: [...(returnQuote ? [{id: ANVIL_RETURN_GAS,label: `RETURN GAS · ${returnQuote.amount}u`}] : []),

@@ -217,3 +217,15 @@ for(const fault of ['zero-count','wrong-map'])test(`receiver index ${fault} stil
   assert.equal(t.owner.returnAnvilSpill(t.receiver,q).ok,false);assert.equal(t.pod.data.amount,3);assert.equal(t.receiver.data.cargoManifest.totalQty,9);
  }finally{t.close();}
 });
+
+test('claimed original Hail explains salvage reservation without repeating Massline instructions or changing custody',async()=>{
+ const t=await boot();try{
+  t.pod.data.salvorClaimedBy='wr_salvor_other';
+  const before=JSON.stringify({data:t.pod.data,manifest:t.receiver.data.cargoManifest});
+  const offer=createContactHailOffer(t.s,{enabled:true,kind:'worker',entity:t.receiver,targetId:t.receiver.id},'contested',4);
+  assert.ok(!offer.actions.some(a=>a.id==='return_gas'));assert.ok(offer.lines.length<=2);
+  assert.match(offer.lines.join(' '),/claimed by a salvage crew/);assert.ok(!offer.lines.join(' ').includes('Massline the original'));
+  assert.equal(JSON.stringify({data:t.pod.data,manifest:t.receiver.data.cargoManifest}),before);
+  assert.equal(t.s.player.tether.active,true);
+ }finally{t.close();}
+});

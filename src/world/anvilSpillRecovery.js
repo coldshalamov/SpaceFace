@@ -133,6 +133,7 @@ export function anvilSpillReturnOffer(state,receiver) {
   const receipt = anvilSpillReceipt(state,receiver);
   if (!receipt || receipt.returnedQty === receipt.initialQty) return null;
   const facts = returnFacts(state,receiver,receipt);
-  const exists = facts || indexedTypeScan(state,'payloads').some(e => e.alive !== false && e.data?.anvilSpillReturn?.id === receipt.id);
-  return exists ? {facts,quote:makeQuote(state,receiver,facts)} : null;
+  const original = facts?.pod || indexedTypeScan(state,'payloads').find(e => e.alive !== false && e.data?.anvilSpillReturn?.id === receipt.id);
+  const claimed = typeof original?.data?.salvorClaimedBy === 'string' && !!original.data.salvorClaimedBy;
+  return original ? {facts,quote:makeQuote(state,receiver,facts),claimed} : null;
 }
