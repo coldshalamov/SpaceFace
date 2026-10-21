@@ -894,3 +894,119 @@ test('observer prediction matches production relocation zero velocity instead of
   assert.equal(player.vel.x,0);assert.equal(player.vel.z,0);assert.equal(player.angVel,0);
  }finally{f.close();}
 });
+
+async function harvestBudgetFixture(t) {
+  const { planetRuntime } = await import('../src/systems/planetRuntime.js');
+  const { fields } = await import('../src/systems/fields.js');
+  const { PRODUCTION_FEATURES } = await import('../src/runtime/runtimeProfiles.js');
+  const { snapshotFeatureMaps, applyFeatureConfigToMaps, restoreFeatureMaps } = await import('../src/data/featureFlags.js');
+  const prior = snapshotFeatureMaps(); applyFeatureConfigToMaps(PRODUCTION_FEATURES);
+  const sim = createSimulation({ seed: 424213, systems: [
+    { name: 'world', init(ctx) { this.state = ctx.state; }, upsertWorldRecord: world.upsertWorldRecord },
+    traffic, fields, planetRuntime,
+  ], updateOrder: [] });
+  t.after(() => { sim.dispose(); restoreFeatureMaps(prior); });
+  const state = sim.state; state.mode = 'flight'; state.world.currentSectorId = PLANET_SITE.sectorId;
+  const planet = sim.registry.get('planetRuntime'); planet.update(0, state);
+  const rt = state.planet, worker = state.entities.get(rt.witnessId);
+  worker.pos.x = rt.center.x + 980; worker.pos.z = rt.center.z;
+  worker.vel.x = 0; worker.vel.z = 70; worker.data.itinerary.phase = 'collect';
+  const crowded = Array.from({ length: 7 }, () => sim.spawn({ type: 'ship', hull: 100, hullMax: 100,
+    collides: true, radius: 12, mass: 30, pos: { ...worker.pos }, vel: { x: 0, z: 0 },
+    physicsBody: { dynamic: true, radius: 12, mass: 30 } }));
+  let candidates = [worker];
+  // Constructed candidate order exercises the real bounded admission and producer owners.
+  // It is not a reconstruction of the fresh production encounter.
+  planet.helpers = { ...planet.helpers, queryRadius(center, radius, out) { out.push(...candidates); return out; } };
+  const admit = () => { candidates = [worker]; planet._tickShips(1 / 60, state, rt, PLANET_SITE); };
+  const evict = () => { candidates = [...crowded, worker]; planet._tickShips(1 / 60, state, rt, PLANET_SITE); };
+  const harvest = (dt = .5) => planet._tickWorkerHarvest(dt, state, rt, PLANET_SITE);
+  admit();
+  return { sim, state, planet, rt, worker, admit, evict, harvest };
+}
+
+test('bounded harvest budget retains only admitted fractional path without retaining heat or extra slots', async t => {
+  const f = await harvestBudgetFixture(t); f.harvest();
+  assert.ok(Math.abs(f.rt.ships[f.worker.id].pendingShallow - .35) < 1e-10);
+  f.rt.ships[f.worker.id].heat = .4;
+  f.evict(); assert.equal(f.rt.ships[f.worker.id], undefined);
+  assert.equal(f.planet._scratchIds.length, 7); assert.ok(!f.planet._scratchIds.includes(f.worker.id));
+  const carry = structuredClone(f.rt.workerHarvestCarry);
+  f.harvest(100); assert.deepEqual(f.rt.workerHarvestCarry, carry, 'unadmitted time produces nothing');
+  assert.equal(f.worker.data.cargoManifest.totalQty, 0);
+  f.admit(); assert.ok(f.rt.ships[f.worker.id].heat < .01, 'thermal state still resets under ordinary admission');
+  const carryIdentity = f.rt.workerHarvestCarry;
+  f.harvest(); assert.ok(Math.abs(f.rt.ships[f.worker.id].pendingShallow - .70) < 1e-10);
+  assert.strictEqual(f.rt.workerHarvestCarry, carryIdentity, 'same-life bookkeeping reuses one bounded carry object');
+  f.evict(); f.admit(); f.harvest();
+  assert.equal(f.worker.data.cargoManifest.totalQty, 1, 'only actual admitted path becomes one finite unit');
+  assert.ok(Math.abs(f.rt.workerHarvestCarry.pendingShallow - .05) < 1e-10);
+});
+
+for (const invalidation of ['dead', 'new-life', 'new-record', 'new-site', 'left-band', 'left-collect']) {
+  test(`fractional harvest carry rejects ${invalidation} before budget readmission`, async t => {
+    const f = await harvestBudgetFixture(t); f.harvest(); f.evict();
+    if (invalidation === 'dead') f.worker.alive = false;
+    if (invalidation === 'new-life') {
+      const { stampOccupantGeneration } = await import('../src/core/entity.js'); stampOccupantGeneration(f.state, f.worker);
+    }
+    if (invalidation === 'new-record') f.worker.data.worldRecordId += ':foreign';
+    if (invalidation === 'new-site') f.rt.workerHarvestCarry.siteId = 'other-site';
+    if (invalidation === 'left-band') f.worker.pos.x = f.rt.center.x + PLANET_SITE.bands.influence + 10;
+    if (invalidation === 'left-collect') f.worker.data.itinerary.phase = 'return';
+    f.harvest(); assert.equal(f.rt.workerHarvestCarry, null);
+  });
+}
+
+test('fractional carry never restores refused whole units and is transient across planet teardown', async t => {
+  const f = await harvestBudgetFixture(t);
+  f.sim.registry.get('traffic').acceptAnvilHarvest = () => 0;
+  f.harvest(2); assert.equal(f.worker.data.cargoManifest.totalQty, 0);
+  assert.ok(Math.abs(f.rt.workerHarvestCarry.pendingShallow - .4) < 1e-10);
+  f.evict(); f.admit(); f.harvest(.01);
+  assert.ok(f.rt.ships[f.worker.id].pendingShallow < .5, 'refused whole unit was discarded');
+  f.planet._unwind('save_loaded'); assert.equal(f.state.planet.workerHarvestCarry, null);
+});
+
+test('an admitted changed record cannot inherit the previous worker fraction', async t => {
+  const f = await harvestBudgetFixture(t); f.harvest(); f.evict();
+  f.worker.data.worldRecordId += ':replacement'; f.admit(); f.harvest();
+  assert.ok(Math.abs(f.rt.ships[f.worker.id].pendingShallow - .35) < 1e-10);
+  assert.equal(f.rt.workerHarvestCarry.recordId, f.worker.data.worldRecordId);
+  assert.equal(f.worker.data.cargoManifest.totalQty, 0);
+});
+
+test('actual save/load drops transient fractional carry without granting cargo to the restored life', async t => {
+  const { planetRuntime } = await import('../src/systems/planetRuntime.js');
+  const { fields } = await import('../src/systems/fields.js');
+  const { npcJobsRuntime } = await import('../src/systems/npcJobsRuntime.js');
+  const { PRODUCTION_FEATURES } = await import('../src/runtime/runtimeProfiles.js');
+  const { snapshotFeatureMaps, applyFeatureConfigToMaps, restoreFeatureMaps } = await import('../src/data/featureFlags.js');
+  const { occupantGenerationOf } = await import('../src/core/entity.js');
+  const prior = snapshotFeatureMaps(); applyFeatureConfigToMaps(PRODUCTION_FEATURES);
+  const sim = createSimulation({ seed: 424213, systems: [world, npcJobsRuntime, traffic, fields, planetRuntime, save] });
+  t.after(() => { sim.dispose(); restoreFeatureMaps(prior); });
+  const state = sim.state; state.mode = 'flight';
+  const player = sim.spawn({ type: 'ship', team: 0, hull: 100, hullMax: 100,
+    pos: { x: 0, z: 0 }, radius: 6, flags: { persistent: true } }); state.playerId = player.id;
+  sim.registry.get('world').enterSector(PLANET_SITE.sectorId); sim.step();
+  const planet = sim.registry.get('planetRuntime'), worker = state.entities.get(state.planet.witnessId);
+  const recordId = worker.data.worldRecordId, oldLife = occupantGenerationOf(worker);
+  worker.pos.x = state.planet.center.x + 980; worker.pos.z = state.planet.center.z;
+  worker.vel.x = 0; worker.vel.z = 70; worker.data.itinerary.phase = 'collect';
+  player.pos.x = worker.pos.x; player.pos.z = worker.pos.z + 100;
+  planet._tickShips(1 / 60, state, state.planet, PLANET_SITE);
+  planet._tickWorkerHarvest(.5, state, state.planet, PLANET_SITE);
+  assert.ok(state.planet.workerHarvestCarry.pendingShallow > .3);
+  const saver = sim.registry.get('save'), envelope = JSON.parse(JSON.stringify(saver.serialize('anvil-fractional-carry')));
+  assert.equal(saver.loadEnvelope(envelope), true); state.mode = 'flight';
+  assert.equal(state.planet.workerHarvestCarry, null, 'actual load normalization discards the transient fraction');
+  const restored = state.entityList.find(e => e.alive !== false && e.data?.worldRecordId === recordId);
+  assert.ok(restored); assert.notEqual(occupantGenerationOf(restored), oldLife);
+  assert.equal(restored.data.cargoManifest.totalQty, 0, 'loading does not materialize a whole unit');
+  sim.registry.get('traffic')._stepAnvilWork(1 / 60, state);
+  planet._scratchIds.length = 0;
+  planet._tickWorkerHarvest(100, state, state.planet, PLANET_SITE);
+  assert.equal(restored.data.cargoManifest.totalQty, 0, 'unadmitted restored time cannot turn discarded carry into cargo');
+  assert.equal(state.planet.workerHarvestCarry, null);
+});

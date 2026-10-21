@@ -144,3 +144,65 @@ An immediate query on that unedited terminal save reproduces all48 rejections wi
 Exact fixture/test candidate949b3eeb23dee5f89d9c4d74b6c1d40c927c763d passes4 observer checks, including actual production relocation from180/−160WU/s and angular velocity2 to zero. Failure-safe terminal capture now includes the actual rejected observer placements. A bounded continuation of the genuine668s terminal world is running to absolute900s for the next real finite handoff; at788.067s originalcollector has actual5u/hull200 and is physically returning to the same tender. This is explicitly continued-world evidence, not fresh whole-route acceptance.
 
 The exact949b continuation completed at831.233333s: original collector113 transferred5u hydrogen, lot lot:wr_convoy_58ecee81:1, to original tender119. Both original actors survived with hull200;82 observer placements and zero native participant contacts were recorded during this continuation. Final collector hold0 and tender hold5 are captured in its real terminal save. This proves the remaining finite handoff after Continue from the failed668s fixture, not an uninterrupted fresh route. A fresh whole-route run with the corrected observer prediction remains required.
+
+## 2026-10-21: fresh recurrence failure and bounded harvest-budget repair
+
+The exact published d12216bedc054a382ab9c328b078b52ab54a9af5 full native attempt
+finished at absolute900s with exit1: both original workers survived, but the required
+second positive handoff was absent. Actual1u sale299.7167s, physical home475.9667s and
+collector resumption504.6833s passed. Next collect began570.7833s and cleared empty at
+708.5833s while hull was still200. Subsequent asteroid contacts at712.5667s and721.6333s
+reduced hull to150.6242 then93.7849. Damage therefore does not explain the initial empty
+abort. Receiver acquisition stayed1u with no receiver spill; the accepted-return and
+terminal Orchard ledgers both contain the same retained4u lot and sourceRemaining44.
+The separate949b continued-world5u handoff is not a substitute for this failed fresh gate.
+
+A real ten-second shelf/rematerialization diagnostic disproved stale witness identity:
+original life99 rematerialized as life100 and the existing traffic owner refreshed the
+planet witness binding to100. No witness-refresh patch was needed. A bounded replay of
+the accepted-return save instead produced four1u harvest events and a heat-triggered
+empty abort at550.4833s. That divergent continued world did not reproduce fresh starvation;
+its unrecorded final destination ledger must not be presented as a complete custody proof.
+
+A separate constructed, actual-owner budget test reproduced a narrower definite defect:
+0.35 units of admitted path yield disappeared when seven ordinary candidate ships consumed
+the bounded thermal budget. Readmitting the same worker in the same skim band restarted
+its fraction atzero. This proves fractional loss, not its causal role in the fresh failure.
+An independently instrumented fresh run remains frozen on d122 to capture that question.
+
+The narrow repair adds src/systems/planetRuntime.js to this unit's ownership. It retains
+only the current bound collector life's already-earned sub-unit fractions across thermal
+budget eviction. Stable record, occupant generation, site, collect phase and actual band
+are checked. It does not reserve a thermal slot, preserve heat, accrue while unadmitted,
+create whole cargo, or recover refused whole units. Death, replacement, band/phase exit and
+site invalidation clear the carry. As with the pre-existing transient fractional accumulator,
+Continue/sector teardown resets this unmaterialized fraction; no new save schema or private
+inventory is introduced. Eight focused actual-owner cases pass on candidate51a23177,
+including no extra slot/heat retention, no off-budget progress and invalidation/refusal cases.
+That runtime also passes90 focused/adjacent cases (full native route excluded). The unchanged
+runtime on d6d20854 additionally passes admitted-record-change and actual save/load cases:
+real load discards transient carry, binds a new occupant life, and grants no cargo on restore
+or100s of unadmitted producer calls. Independent review approved the narrow carry invariants. Full native recurrence remains
+RED; ordinary player-flight, visual and whole-game acceptance remain open.
+
+The frozen d122 comprehensive fresh diagnostic subsequently reproduced the exact second
+abort at708.5833s. It captured974 admitted harvest-eligible ticks,7191 untracked ticks,
+62 below-speed ticks and41 outside-band ticks. Seventy-two actual budget evictions discarded
+10.7650927 cumulative units of already-flown shallow fractional yield; no whole acceptance
+occurred during the second collection. Candidate order, before/after fractional records,
+actual witness life and both acceptance owners were captured in the same run. The original
+collector113/life279 remained correctly bound. At abort it had hull200/cargo0, region reentry,
+radius706.524WU and heat0.580833; local weather was null. Thus real heat triggered the empty
+retreat after repeated budget loss, before the later physical damage. Orchard source48→44
+and its single retained4u lot account for the first collection only. This diagnostic stopped
+at that abort by design; its successful diagnostic exit is NOT a passing full recurrence test.
+The carry repair still needs a new positive native recurrence proof, without changing thermal
+admission, heat consequences, encounters or the strict second-handoff requirement.
+
+The narrow repair also passes the public47a comparison:20 repeats,720ticks and actual
+reload at600, with public-matching input and expected telemetry files. No baseline was edited.
+
+Final bookkeeping cleanup moves fraction helpers to module scope and reuses the single
+validated carry object instead of allocating closures/arrays/replacement objects each tick.
+Exact candidate2b506a63 passes all92 focused and adjacent cases, including real save/load
+and same-object reuse. The full native recurrence test is explicitly excluded from that count.
