@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "corridor-log-section",
-      "date": "2026-10-03",
-      "wf": "WF-14",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "the mission log now reads the saved encounter receipts ring, so every beat's outcome text outlives its toast",
-      "fingerprint": "verb=read,subject=receipts,sector=instrument,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "77832c37e",
-      "verification": "focused_green"
-    },
-    {
       "id": "beacon-hold-skirmish",
       "date": "2026-10-03",
       "wf": "WF-05",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "c971e5851",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-29-dented-plate-line",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Scar-free hull at 86/100 reads the dent; Clean plate only on a genuinely clean hull",
+      "fingerprint": "verb=say,subject=mechanic-dented-plate,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "d4a743673",
       "verification": "focused_green"
     }
   ],
