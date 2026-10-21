@@ -159,7 +159,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   // Event-only deck adapters. newGame only resolves a card, and promptDeck stays
   // importable without a DOM, so a fresh run can clear them under Node the same way
   // customsPrompt does. capability stays hud: they are not a sim tick.
-  lastShiftPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  lastShiftPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   redKitePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   // Ilex offers cross to the realm-local main prompt deck, not a worker-owned deck.
   ilexArkPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
