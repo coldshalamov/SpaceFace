@@ -329,6 +329,9 @@ if (!process.argv.includes('--forward-set') && !process.argv.includes('--markdow
 // why a literal scan missed it. Sim-side subscription was verified at the same
 // sites the literal census lists.
 const DYNAMIC_FORWARD = [
+  ...['towlineTable:take', 'towlineTable:deliver', 'towlineTable:assist', 'towlineTable:release', 'towlineTable:course'].map(type => ({
+    type, emitters: ['src/ui/towlineTablePrompt.js'], note: 'finite Towline decision adapter dynamic dispatch; subscribed by towlineTable',
+  })),
   ...['orbital-gallery:retry', 'orbital-gallery:next', 'orbital-gallery:leave',
     'kinetic-league:retry', 'kinetic-league:next', 'kinetic-league:leave'].map(type => ({
     type, emitters: ['src/ui/physicsVenues.js'], note: 'public venue instrument dynamic dispatch',

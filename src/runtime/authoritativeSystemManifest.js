@@ -162,7 +162,8 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   lastShiftPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   redKitePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   ilexArkPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
-  towlineTablePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  // The realm-local prompt deck is owned by main; worker emits its offer only.
+  towlineTablePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   mothlightPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   palletJackPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   borrowedVoicePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
