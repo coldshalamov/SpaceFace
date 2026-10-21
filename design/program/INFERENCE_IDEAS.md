@@ -1,4 +1,4 @@
-| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
+| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED already true || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
 # INFERENCE ideas — directed grunt catalog
 
 Law: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) §0.1. Feelings and inventions live in
@@ -863,6 +863,7 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | RC-39 | 2026-10-20 | devin-inf20b | `src/ui/screens/pause.js`, `src/render/camera.js` |
 | RC-40 | 2026-10-20 | devin-inf20b | `src/ui/screens/statistics.js` |
 | RC-47 | 2026-10-20 | devin-inf20b | `src/systems/travelLanes.js`, `src/ui/toasts.js` |
+| RC-42 | 2026-10-21 | devin-inf20b | `src/ui/loadingTerminalArt.js`, `src/ui/bootVisualizer.js` |
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
@@ -886,6 +887,11 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | PULSE-05 | pulse-05-headline-variety | this session | all headline kinds 15 templates, regime entries 6, existing placeholder set only |
 | PULSE-06 | pulse-06-commodity-flavor | this session | all 66 commodity ids carry COMMODITY_FLAVOR nouns; stale 43-count test repaired |
 | PULSE-07 | pulse-07-poi-lore | this session | every landmark (already true) + all rim POIs carry >=3 lore lines; ids resolve |
+| AL-LG-01 | al-lg-01-revisit-door-state | this session | scanReveal resolves revisitNeed to not-yet/ready via live fit verbs; object stays visible |
+| AL-LG-02 | al-lg-02-ladle-erased-doors | this session | Runaway Ladle and Erased carry tow doors equal to their real masses |
+| AL-LG-03 | al-lg-03-tanker-capital-tow | this session | Great Tanker gets physicalBody 800t beyond non-capital tow; persists via world-record lane |
+| RC-21 | rc-21-loss-docket | this session | five loss shapes map deterministically to five of the 12 authored court cases |
+| RC-22 | rc-22-court-settlement-range | this session | offer card shows settlement min-max on summary/riskNote/params; payment still at ruling |
 | NXI-022 | nxi-022-kinematic-proxy-not-offered | 6eca0bd9a | isAttachable applies the physicsBody:false exclusion (and world-site machine roles) to the offer: machine/fauna/route proxies denied, loose payloads beside them still offered, stations/asteroids/mines/beacons/survival wrecks keep latching; focused test pins all of it on seed 4242 |
 | VERB-32 | verb-32-mine-keeps-velocity | 6dd3b0e5ce | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |

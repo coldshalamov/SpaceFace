@@ -37,7 +37,7 @@ import {
   TETHYS_CUSTOMS_WEIR,
   pointInsideCustomsWeir,
 } from '../world/customsWeir.js';
-import { towClassMassFor } from './shipCapabilities.js';
+import { revisitDoorState } from './shipCapabilities.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
 const INVESTIGATED_CAP = 64;
@@ -651,6 +651,13 @@ function playerDerived(state) {
   return player.derived || (player.data && player.data.derived) || null;
 }
 
+function playerFittings(state) {
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!player) return [];
+  const fit = player.fittings || (player.data && player.data.fittings);
+  return Array.isArray(fit) ? fit : [];
+}
+
 function improvisedHitch(state, entity, need) {
   const list = state && state.entityList || [];
   for (const body of list) {
@@ -663,19 +670,127 @@ function improvisedHitch(state, entity, need) {
   return null;
 }
 
+// A revisitNeed row is a capability door, never a visibility gate: the one-off stays on the scan
+// either way and the lesson reads "not yet" until the live fit opens the door. The verdict comes
+// from the same shipCapabilities verbs the fit screen quotes — a scan never invents a second bar.
 function capabilityLesson(state, entity) {
   const data = entity && entity.data || {};
   const tug = data.oneOffId === 'oneoff_abandoned_tug';
-  const needSpec = data.revisitNeed || (tug ? { massT: TUG_NEED_MASS } : null);
+  const oneOff = data.oneOffId
+    ? WORLD_ONE_OFFS.find((row) => row.id === data.oneOffId)
+    : null;
+  const needSpec = data.revisitNeed
+    || (oneOff && oneOff.revisitNeed)
+    || (tug ? { massT: TUG_NEED_MASS } : null);
+  const door = revisitDoorState(
+    { derived: playerDerived(state), fittings: playerFittings(state) },
+    needSpec,
+  );
+  if (!door) return null;
+
+  // The authored (kinded) door names its own requirement; the legacy bare-mass form keeps the
+  // original tug sentences verbatim so the SF-174 contract the wreck tests read is unchanged.
+  if (typeof needSpec.kind === 'string' && needSpec.kind) {
+    let sentence;
+    let improvised = false;
+    if (door.kind === 'tow') {
+      const hitch = improvisedHitch(state, entity, door.required);
+      improvised = !!hitch;
+      const ready = door.ready || improvised;
+      if (improvised) {
+        sentence = `The load wants ${door.required} t of tow class. A hull already on the hitch will take it — ready.`;
+      } else if (ready) {
+        sentence = `The load wants ${door.required} t of tow class. Your line will take it — ready.`;
+      } else {
+        sentence = `The load wants ${door.required} t of tow class. This fit will not take it — not yet.`;
+      }
+      return {
+        sf: 'SF-174',
+        sentence,
+        pos: xz(entity.pos),
+        trackable: true,
+        paid: 0,
+        kind: door.kind,
+        needMass: door.required,
+        towClass: door.have,
+        ready,
+        verdict: ready ? 'ready' : 'not yet',
+        improvised,
+        interactionLocked: false,
+        rewardReset: false,
+      };
+    }
+    if (door.kind === 'slam') {
+      sentence = door.ready
+        ? `The way in wants a ${door.required} WU/s slam. ${door.unbreakable ? 'No rock can break this hull' : 'This hull walks away from it'} — ready.`
+        : `The way in wants a ${door.required} WU/s slam. This hull would not walk away — not yet.`;
+      return {
+        sf: 'SF-174',
+        sentence,
+        pos: xz(entity.pos),
+        trackable: true,
+        paid: 0,
+        kind: door.kind,
+        required: door.required,
+        have: door.have,
+        ready: door.ready,
+        verdict: door.ready ? 'ready' : 'not yet',
+        improvised: false,
+        interactionLocked: false,
+        rewardReset: false,
+      };
+    }
+    if (door.kind === 'line') {
+      sentence = door.ready
+        ? `The swing wants a line rated for a ${door.required} WU/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
+        : `The swing wants a line rated for a ${door.required} WU/s load. This line would part — not yet.`;
+      return {
+        sf: 'SF-174',
+        sentence,
+        pos: xz(entity.pos),
+        trackable: true,
+        paid: 0,
+        kind: door.kind,
+        required: door.required,
+        have: door.have,
+        ready: door.ready,
+        verdict: door.ready ? 'ready' : 'not yet',
+        improvised: false,
+        interactionLocked: false,
+        rewardReset: false,
+      };
+    }
+    // field
+    const wantLabel = door.requiredLabel || 'a field';
+    sentence = door.ready
+      ? `The reach wants ${wantLabel} in the water. Your ${door.have.moduleName || 'launcher'} throws it — ready.`
+      : `The reach wants ${wantLabel} in the water. Nothing fitted throws it — not yet.`;
+    return {
+      sf: 'SF-174',
+      sentence,
+      pos: xz(entity.pos),
+      trackable: true,
+      paid: 0,
+      kind: door.kind,
+      required: door.required || wantLabel,
+      have: door.have,
+      ready: door.ready,
+      verdict: door.ready ? 'ready' : 'not yet',
+      improvised: false,
+      interactionLocked: false,
+      rewardReset: false,
+    };
+  }
+
   const need = Number(needSpec && needSpec.massT) || 0;
   if (!(need > 0)) return null;
-  const tow = towClassMassFor(playerDerived(state));
+  const tow = door.have;
   const hitch = improvisedHitch(state, entity, need);
-  const ready = tow + 1e-9 >= need || !!hitch;
+  const ready = door.ready || !!hitch;
   let sentence;
   if (hitch) {
     sentence = `The tug needs ${need} t. A hull already on the hitch will take it. The line rating is not required.`;
-  } else if (tow + 1e-9 >= need) {
+  } else if (door.ready) {
     sentence = `The tug needs ${need} t. Your tow class will take the hitch.`;
   } else {
     sentence = `The tug needs ${need} t. The hitch is visible, but this tow class will not take it.`;
@@ -689,6 +804,7 @@ function capabilityLesson(state, entity) {
     needMass: need,
     towClass: tow,
     ready,
+    verdict: ready ? 'ready' : 'not yet',
     improvised: !!hitch,
     interactionLocked: false,
     rewardReset: false,
