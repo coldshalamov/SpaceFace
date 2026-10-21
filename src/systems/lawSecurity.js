@@ -1257,6 +1257,17 @@ export const lawSecurity = {
     const ai = victim && victim.data && victim.data.ai;
     const g = ai && ai.npcGrudge;
     if (!g) return;
+    // A bare weapons_free value cannot prove the grudge still owns the roe field — a foreign
+    // writer (player retaliation, a scripted escalation) can land the same value — so capture
+    // grudge ownership from the identity channels BEFORE any of the restores below run. The two
+    // authority channels are the ones _startNpcGrudge writes: combat.targetId is only a per-tick
+    // weapon lock and cannot prove ownership (a stale lock outlives the grudge's authority).
+    const grudgeOwnsPosture = g.targetId != null
+      && (ai.retaliationTargetId === g.targetId
+        || (ai.activity && ai.activity.reason === NPC_GRUDGE_REASON));
+    // Known limit: tacticalAI's egress posture stash can rewrite activity while leaving the
+    // grudge's retaliationTargetId in place, so a restrictive prior may still revert mid-egress;
+    // no channel-membership test separates that case from a live grudge fight.
     if (ai.retaliationTargetId === g.targetId) {
       const priorId = g.prior && g.prior.retaliationTargetId;
       const priorEntity = entityById(state, priorId);
@@ -1274,7 +1285,14 @@ export const lawSecurity = {
           startedTick: state.tick | 0,
           targetId: null,
         });
-      if (g.prior && g.prior.roe != null) ai.roe = g.prior.roe;
+    }
+    // Roe restore stands alone from the activity: another system may replace the activity while
+    // the grudge is live, and the weapons-free escalation must still hand the original posture
+    // back — but only while the grudge still owns the posture. An absent prior roe is restored
+    // by deleting the key, never by writing a null-valued one.
+    if (ai.roe === RulesOfEngagement.WEAPONS_FREE && g.prior && grudgeOwnsPosture) {
+      if (g.prior.roe == null) delete ai.roe;
+      else ai.roe = g.prior.roe;
     }
     const combat = victim.data.combat;
     if (combat && combat.targetId === g.targetId) {
