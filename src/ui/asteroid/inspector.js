@@ -387,12 +387,13 @@ export function tileLensModel({
   };
 }
 
-/** Strata qualifiers on the material name — 'Deep basalt formation', 'Upper silicate matrix'. */
+/** Strata qualifiers on the material name — 'Deep dense basalt', 'Upper silicate matrix'. */
 function strataName(tile, material, ore, type) {
   if (tile.cave) return 'Sealed cave fill';
   const base = materialLabel({ material, ore, type });
   const band = tile.stratum === 'heart' ? 'Deep ' : (tile.stratum === 'cap' ? 'Upper ' : '');
-  return (tile.rich ? 'Rich ' : '') + band + base;
+  // sentenceCase keeps mid-name qualifiers lowercase: 'Rich deep iron ore', not 'Rich Deep…'.
+  return sentenceCase((tile.rich ? 'Rich ' : '') + band + base);
 }
 
 function contactCount(geo) {

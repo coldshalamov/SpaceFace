@@ -282,7 +282,7 @@ function deepFreeze(obj) {
  * NOTE: `solid` is read from neither form. See SITE_THERMAL.gasPerContact for why.
  */
 function readContacts(profile) {
-  const out = { matrix: 0, basalt: 0, gas: 0, ores: {} };
+  const out = { matrix: 0, basalt: 0, gas: 0, vented: 0, ores: {} };
   if (!profile || typeof profile !== 'object') return out;
 
   const hasCounts = ['matrix', 'basalt', 'gas', 'ores'].some((k) => profile[k] != null);
@@ -292,6 +292,10 @@ function readContacts(profile) {
     out.matrix = cappedCount(profile.matrix);
     out.basalt = cappedCount(profile.basalt);
     out.gas = cappedCount(profile.gas);
+    // Breached-pocket residue seams (contactProfile's `vented` count). They conduct nothing —
+    // rockSinkFor never reads this — but a gas tap still sips them, so the heat side needs the
+    // real feed count or a vent-fed tap reads as making no heat while genuinely generating.
+    out.vented = cappedCount(profile.vented);
     const ores = profile.ores && typeof profile.ores === 'object' ? profile.ores : null;
     if (ores) for (const k of Object.keys(ores).sort()) out.ores[k] = cappedCount(ores[k]);
     return out;
@@ -372,6 +376,7 @@ export function heatPerMachine(def, profile, powerRatio, mode) {
     matrix: contacts.matrix,
     basalt: contacts.basalt,
     gas: contacts.gas,
+    vented: contacts.vented,
     ores: { ...contacts.ores },
     empty: 0,
     solid: 0,
@@ -576,7 +581,7 @@ function machineKey(m) {
   const ores = Object.fromEntries(Object.keys(prof.ores).sort().map((k) => [k, prof.ores[k]]));
   const content = JSON.stringify([
     num(m.powerRatio, -1), nonNegative(m.storedHeat), nonNegative(m.coolingRate),
-    prof.matrix, prof.basalt, prof.gas, ores,
+    prof.matrix, prof.basalt, prof.gas, prof.vented, ores,
   ]);
   return [id, defId, num(m.col, -1), num(m.row, -1), typeof m.mode === 'string' ? m.mode : '', content]
     .join('\u0000');

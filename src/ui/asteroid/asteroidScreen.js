@@ -160,7 +160,7 @@ export function helpDrawerRows(controlMap) {
   return [
     { keys: map.movementLabel || 'UNBOUND', label: 'Drive, and keep holding to bore' },
     { keys: map.scanLabel || 'UNBOUND', label: 'Survey pulse' },
-    { keys: 'R', label: 'Bore charge — R again sets it, Esc backs off' },
+    { keys: 'R', label: 'Bore charge — R again sets it, Q picks the payload, Esc backs off' },
     { keys: BINDINGS.drill.label, label: 'Build mode' },
     { keys: '1 - 9', label: 'Pick a structure' },
     { keys: 'Q / E', label: 'Cycle structures' },
@@ -225,14 +225,19 @@ export function siteDrawerModel({
   const rt = siteSys && siteSys._rt && siteId ? siteSys._rt.get(siteId) : null;
   const rockEnt = siteSys && siteSys.state && siteSys.state.entities && site && site.asteroidId
     ? siteSys.state.entities.get(site.asteroidId) : null;
-  const thermalBand = (rt && rt.thermal && rt.thermal.worstBand) || 'nominal';
+  // Band ids are machine words ('throttle', 'quiet'); the drawer prints the models' player
+  // labels — read off the owning system's records, never by importing a sim kernel into UI.
+  const signatureLabel = (rt && rt.signature && rt.signature.signatureLabel)
+    || (site && site.signatureLabel)
+    || (site && site.signatureClass ? sentenceCase(site.signatureClass) : 'Quiet');
+  const thermalBand = (rt && rt.thermalLabel) || 'Nominal';
   const totals = {
     machines: machines.length,
     running: machines.filter((m) => m.status && DRAWER_BUSY_STATES.has(m.status.state)).length,
     dark: machines.filter((m) => m.status && DRAWER_FAULT_STATES.has(m.status.state)).length,
     stored: Math.round(stored),
     capacity: Math.round(capacity),
-    signatureLabel: (rt && rt.signature && rt.signature.signatureLabel) || (site && site.signatureClass) || 'quiet',
+    signatureLabel,
     thermalBand,
     chargeStock: (() => {
       // Same read order the sim's own rack check uses: a resident rock's data is the freshest

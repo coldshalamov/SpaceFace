@@ -43,7 +43,7 @@ import {
 import {
   stepSiteStructure, normalizeSiteStructure, paintStructuralFalls, paintStructuralFracture,
 } from './siteStructuralModel.js';
-import { stepSiteThermal } from './siteThermalModel.js';
+import { stepSiteThermal, THERMAL_BANDS } from './siteThermalModel.js';
 import { buildSiteSignature } from './siteSignatureModel.js';
 import {
   buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, podLossChance, podTravelS,
@@ -2546,6 +2546,9 @@ export const asteroidSites = {
       };
     });
     rt.thermal = stepSiteThermal({ dtS, machines: thermalIn, radiatorFins: site.radiatorFins });
+    // The plain-words band name rides the runtime view so readers (the site drawer) never
+    // import the thermal kernel — same owner translation worldSiteRuntime does for the scanner.
+    rt.thermalLabel = (THERMAL_BANDS.find((b) => b.id === rt.thermal.worstBand) || {}).label || '';
     const thermById = {};
     for (const rec of rt.thermal.machines || []) {
       thermById[rec.id] = rec;
@@ -2845,6 +2848,9 @@ export const asteroidSites = {
         && Number(state.entities.get(site.asteroidId)?.data?.sensorSignature)) || 0,
     });
     const sigClass = rt.signature.signatureClass;
+    // The plain-words class name is part of the durable mirror — a drawer reading the claim
+    // record off-tick shows 'Blazing', never the bare class id, and never imports the kernel.
+    site.signatureLabel = rt.signature.signatureLabel;
     if (site.signatureClass !== sigClass) {
       const order = { quiet: 0, faint: 1, bright: 2, blazing: 3 };
       // A FIRST observation is an initial condition, not a rise — the same law the machine

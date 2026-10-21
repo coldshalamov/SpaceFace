@@ -4825,7 +4825,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const idx = tileIndex(col, row);
       const rec = cellRock.get(idx);
       if (tile.type === 'empty') {
-        if (!tile.vented) removeVentedScar(col, row);
+        // An empty cell keeps whatever seam mark it earned: the sim has no transition that
+        // un-opens an empty cell, and a bore/blast breach leaves plain empty or `scar` —
+        // neither carries `vented`, yet law D2's scar is still permanent for the session.
+        // Only a REFILL kills the mark, and that is the non-empty branch below.
         carveCell(col, row);
         continue;
       }
@@ -8496,8 +8499,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const { x, y } = centerPx(c.col, c.row);
         burst({ x, y, count: motionReduce ? 2 : 5, color: '#8a7a5e', life: 0.9, size: 2.6, speed: 14, kind: 'dust', gravity: 22, cone: Math.PI * 2 });
       }
-      kick.t = KICK_DUR_S * 0.4;
-      kick.elapsed = 0;
+      // The creak rides UNDER whatever caused it — the sim emits it in the same pass as the
+      // blast/breach that set a full kick, and a 40% assignment would clip that one mid-swing.
+      if (kick.t < KICK_DUR_S * 0.4) { kick.t = KICK_DUR_S * 0.4; kick.elapsed = 0; }
       return;
     }
     if (evt === 'caveIn') {
