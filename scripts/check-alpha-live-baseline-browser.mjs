@@ -22,6 +22,7 @@ import {
 } from './lib/alphaLiveBaselineContracts.mjs';
 import { runBrowserPublicRoute } from './lib/alphaLiveBaselineRoute.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import { isCancelledMediaRequest, isGenericResourceLoadConsoleError } from './lib/browser-issues.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const TASK_ID = 'm0-live-baseline-browser';
@@ -328,6 +329,9 @@ function collectStrictPageIssues(targetPage) {
   const push = (issue) => issues.push({ at: new Date().toISOString(), ...issue });
   targetPage.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') {
+      // The generic "Failed to load resource" console line is the twin of a response event that
+      // the handler below already records with its real URL and status (browser-issues.mjs).
+      if (isGenericResourceLoadConsoleError({ type: message.type(), text: message.text() })) return;
       push({ source: 'console', level: message.type(), text: message.text() });
     }
   });
@@ -335,6 +339,10 @@ function collectStrictPageIssues(targetPage) {
     push({ source: 'pageerror', level: 'error', text: String(error?.message || error) });
   });
   targetPage.on('requestfailed', (request) => {
+    // Chromium cancels media range fetches as a matter of course — e.g. the title intro video
+    // unmounts mid-stream when the run starts. A missing clip still fails loudly via the
+    // response handler's HTTP status; only the cancelled stream is excused (browser-issues.mjs).
+    if (isCancelledMediaRequest(request, request.failure())) return;
     push({
       source: 'request',
       level: 'error',
@@ -343,6 +351,12 @@ function collectStrictPageIssues(targetPage) {
   });
   targetPage.on('response', (response) => {
     if (response.status() >= 400) {
+      // The shared Browser/Electron player save store is an optional route: dev servers
+      // without the store backend 404 it by design (browser-issues.mjs / check-game-playable
+      // OPTIONAL_ROUTES). Other >=400 responses remain fail-closed.
+      try {
+        if (response.status() === 404 && new URL(response.url()).pathname === '/__spaceface_player_store') return;
+      } catch { /* keep the issue */ }
       push({ source: 'response', level: 'error', text: `HTTP ${response.status()} ${response.url()}` });
     }
   });
