@@ -26,6 +26,8 @@ import { zonesForSector } from '../data/sectorZones.js';
 import { FACTION_META } from '../data/factions.js';
 import { getSectorWayOfLife } from '../data/sectorWayOfLife.js';
 import { ALL_KILL_MACHINE_BY_ID } from '../data/environmentalMachinery.js';
+import { openSurveyFix } from '../systems/surveyFix.js';
+import { missionNextActionRow, trackedMission } from './sim/missionNextAction.js';
 
 // dangerTier 0..5 → one-word security read (0 = safest). Pure display language.
 export const SECURITY_TIER_LABELS = ['secure', 'patrolled', 'contested', 'dangerous', 'lawless', 'lethal'];
@@ -53,6 +55,112 @@ const COMMODITY_BY_STATION_TYPE = {
 
 const SIZE_RANK = { L: 3, M: 2, S: 1 };
 
+// CLOUD-02 — locality + next action.
+// Station id → { name, sectorId }: the only provenance the postcard trusts. A headline counts
+// as local when its own sectorId names this sector or its stationId resolves to a station that
+// physically lives here — never inferred from the headline's prose.
+const STATION_META_BY_ID = new Map();
+for (const sec of SECTORS) {
+  for (const st of sec.stations || []) {
+    if (st && st.id && !STATION_META_BY_ID.has(st.id)) {
+      STATION_META_BY_ID.set(st.id, { name: st.name || null, sectorId: sec.id });
+    }
+  }
+}
+
+function headlineSectorId(rec) {
+  if (!rec || typeof rec !== 'object') return null;
+  if (typeof rec.sectorId === 'string' && rec.sectorId) return rec.sectorId;
+  const meta = rec.stationId != null && STATION_META_BY_ID.get(String(rec.stationId));
+  return meta ? meta.sectorId : null;
+}
+
+/**
+ * Freshest headline that provably belongs to this sector. The log is unshift-ordered (newest
+ * commit first) and each record's `t` is stamped at commit time, so the first local record in
+ * log order is the freshest; ties and malformed rows resolve to commit order, deterministically.
+ * Records without verifiable provenance are skipped — missing provenance is not locality.
+ */
+function localRumor(log, sectorId) {
+  for (const rec of log) {
+    if (!rec || typeof rec.text !== 'string' || !rec.text) continue;
+    if (headlineSectorId(rec) === sectorId) return rec.text;
+  }
+  return null;
+}
+
+// One service verb per berth kind. Order matters when a station offers several services: the
+// desk that hands a pilot work outranks conveniences; fuel is the last thing worth saying.
+const SERVICE_PRIORITY = [
+  'missions', 'shipyard', 'refine', 'ore_buy', 'trade', 'repair',
+  'module_craft', 'scan_tech', 'scan', 'black_market', 'toll', 'refuel',
+];
+const SERVICE_PHRASE = {
+  missions: 'a contract desk', shipyard: 'a shipyard', refine: 'a refinery line',
+  ore_buy: 'an ore buyer', trade: 'a market', repair: 'repair slips',
+  module_craft: 'a module shop', scan_tech: 'a scan-tech bench', scan: 'a survey desk',
+  black_market: 'a quiet market', toll: 'a toll gate', refuel: 'refuel pumps',
+};
+
+/**
+ * The one next-action sentence the card may claim from already-known facts, in order:
+ * a live contract whose destination is here, the player's own paid survey bearing on this
+ * sector, or the most useful service a local berth publicly offers. Never names an
+ * undiscovered position and never touches navigation state.
+ */
+function localNextAction(state, sectorId, sector) {
+  const active = state && state.missions && Array.isArray(state.missions.active)
+    ? state.missions.active.filter((m) => m && m.status === 'active') : [];
+  if (active.length) {
+    const tracked = trackedMission(state);
+    const ordered = tracked ? [tracked, ...active.filter((m) => m !== tracked)] : active;
+    for (const m of ordered) {
+      let row = null;
+      try { row = missionNextActionRow(state, m); } catch { row = null; }
+      const dest = row && row.destination;
+      if (!dest) continue;
+      const stationMeta = dest.stationId != null ? STATION_META_BY_ID.get(dest.stationId) : null;
+      if (dest.sectorId !== sectorId && (!stationMeta || stationMeta.sectorId !== sectorId)) continue;
+      const title = row.title || 'Contract';
+      const action = row.action || {};
+      const stationName = (action.stationId != null && STATION_META_BY_ID.get(action.stationId) || stationMeta || {}).name;
+      switch (action.kind) {
+        case 'dock':
+          return stationName ? `${title} — turn in at ${stationName}.` : `${title} — turn in here.`;
+        case 'trade':
+          return stationName ? `${title} — sell the leg at ${stationName}.` : `${title} — sell the leg here.`;
+        case 'acquire':
+          return `${title} — the hold still owes the contract load.`;
+        case 'engage':
+          return `${title} — your mark still flies here.`;
+        case 'settle_clause':
+          return `${title} — terms to settle before it pays.`;
+        case 'report':
+          return `${title} — the mark is gone; report in.`;
+        case 'travel':
+          return stationName ? `${title} — bound for ${stationName}.` : `${title} — bound for this sector.`;
+        default:
+          return `${title} — work still open here.`;
+      }
+    }
+  }
+  // A sold bearing is the player's own revealed mark — naming it exposes nothing new.
+  if (openSurveyFix(state, sectorId)) return 'Your charted bearing still waits in this sector.';
+  let best = null;
+  for (const st of sector.stations || []) {
+    if (!st || !st.name || st.closed === true || st.destroyed === true) continue;
+    const services = Array.isArray(st.services) ? st.services : [];
+    const svc = SERVICE_PRIORITY.find((s) => services.includes(s));
+    if (!svc) continue;
+    if (!best
+      || SERVICE_PRIORITY.indexOf(svc) < SERVICE_PRIORITY.indexOf(best.svc)
+      || (svc === best.svc && (SIZE_RANK[st.size] || 0) > (SIZE_RANK[best.st.size] || 0))) {
+      best = { st, svc };
+    }
+  }
+  return best ? `${best.st.name} keeps ${SERVICE_PHRASE[best.svc]}.` : null;
+}
+
 /** De-prefixed human fallback for an unknown sector id. */
 function prettySectorName(sectorId) {
   return String(sectorId || 'unknown sector').replace(/^sector_/, '').replace(/_/g, ' ');
@@ -69,18 +177,24 @@ function prettySectorName(sectorId) {
 export function buildPostcard(state, sectorId, ecologyReadout = null) {
   const sector = SECTORS.find((s) => s && s.id === sectorId) || null;
 
-  // Rumor line: the freshest live marketNews headline, if any (shipped state, read-only).
+  // Rumor line: the freshest headline that provably belongs to THIS sector (CLOUD-02). The
+  // rolling log is global; a foreign incident is not local news and records without provenance
+  // earn no place on the card.
   const log = state && state.ui && state.ui.marketNews && Array.isArray(state.ui.marketNews.log)
     ? state.ui.marketNews.log : null;
-  const rumor = (log && log.length && log[0] && typeof log[0].text === 'string' && log[0].text) || null;
+  const rumor = log ? localRumor(log, sectorId) : null;
 
   if (!sector) {
     // Degrade: bare name card — a sector we know nothing about still gets a name, silently.
     return {
       name: prettySectorName(sectorId), faction: null, securityTier: null,
-      hazards: [], primaryCommodity: null, ecology: null, dominantZone: null, rumor: null,
+      hazards: [], primaryCommodity: null, ecology: null, dominantZone: null,
+      rumor: null, nextAction: null,
     };
   }
+
+  // One next-action sentence, derived only from known-local facts. Card text, never voiced.
+  const nextAction = localNextAction(state, sectorId, sector);
 
   const meta = FACTION_META.find((f) => f && f.id === sector.factionId) || null;
   const tier = dangerTier(sector);
@@ -135,6 +249,7 @@ export function buildPostcard(state, sectorId, ecologyReadout = null) {
     ecology,
     dominantZone,
     rumor,
+    nextAction,
     wayOfLife: life && life.sentence ? life.sentence : null,
     signatureToy: life && life.signatureToy ? life.signatureToy : null,
   };
@@ -235,6 +350,7 @@ export const sectorPostcard = {
         : null,
     ].filter(Boolean).join(' · ');
     line(placeIdentity, 'sf-postcard__dim');
+    line(card.nextAction, 'sf-postcard__dim');
     line(card.rumor && `“${card.rumor}”`, 'sf-postcard__rumor');
 
     host.appendChild(el);
