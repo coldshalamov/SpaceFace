@@ -959,10 +959,11 @@ ${W} .sx-sw__salering .sx-sw__bezel-end { fill:none; stroke:rgb(240 236 226); st
 /* the fit dial's legend stands under the dial's foot: at the 12px floor it no longer fits between the WEAPON and
    THRUSTERS words at the arc's two ends (a short stage shows no words round the arc and keeps it inside) */
 @media (min-height:801px) { ${W} .sx-sw-circuit__core .k-hero__w { top:auto; bottom:0; } }
-/* a roster row's role line runs under the price as well (at the 12px floor it wrapped inside the name column and,
-   on a short Fleet stage, into the readings under the roster) */
-${W} .sx-sw-row > .sx-sw-row__body { grid-column:1 / -1; grid-row:1; }
-${W} .sx-sw-row > .k-row__num { grid-column:2; grid-row:1; align-self:start; }
+/* Hull and role share a flow row; the price or active flag gets its own row. */
+${W} .sx-sw-row { display:grid; grid-template-columns:minmax(0,1fr); row-gap:3px; }
+${W} .sx-sw-row > .sx-sw-row__body { grid-column:1; grid-row:1; display:block; min-width:0; }
+${W} .sx-sw-row .sx-sw-row__name, ${W} .sx-sw-row .sx-sw-row__sub { display:block; white-space:normal; overflow-wrap:anywhere; }
+${W} .sx-sw-row > .k-row__num { grid-column:1; grid-row:2; justify-self:start; white-space:normal; overflow-wrap:anywhere; }
 ${W} .sx-sw-row .k-row__sub { letter-spacing:.1em !important; }
 /* Fleet on a tall stage: both side columns stand on the same foot as the verb row under the dial. The hull's
    readings (left) and the rack and readouts (right) sit down on it; the roster and the fit dial keep the top line */

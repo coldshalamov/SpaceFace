@@ -131,6 +131,9 @@ import {
 import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+export function shipworksHullName(defId) {
+  return SHIP_BY_ID.get(defId)?.name || 'Unidentified hull';
+}
 const STATION_ARCHETYPE_BY_ID = new Map();
 for (const sector of SECTORS) {
   for (const station of sector.stations || []) {
@@ -3638,8 +3641,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
-            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
+          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(shipworksHullName(s.defId))}" aria-label="Inspect ${escapeHtml(shipworksHullName(s.defId))}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
+            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(shipworksHullName(s.defId))}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${def.tier != null ? def.tier : '?'}</span></span>` +
             `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
           `</button>`

@@ -43,7 +43,7 @@ import {
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
-import { isHostileToPlayer } from './scanner.js';
+import { isHostileToPlayer, isWreckLike, wreckScanned } from './scanner.js';
 import { SECTOR_IMPULSE_DANGER_CAP } from './sectorSim.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
@@ -762,12 +762,18 @@ export const mining = {
     const weldedNow = Number(target.hull);
     if (Number.isFinite(weldedMax) && weldedMax > 0 && Number.isFinite(weldedNow)
       && weldedNow >= weldedMax - 1e-6) {
+      // Weld-out is a completion like fracture/strip: the rest of this hold must not nag
+      // 'no-target' now that the casualty no longer resolves as a beam target.
+      this._beamSpentThisHold = true;
       const now = Number(this.state && this.state.simTime) || 0;
       const lastThanks = this._tenderThanks.get(target.id);
       if (lastThanks == null || now - lastThanks >= BEAM_TENDER_THANKS_COOLDOWN_S) {
         if (this._tenderThanks.size >= TENDER_THANKS_KEY_CAP) this._tenderThanks.clear();
         this._tenderThanks.set(target.id, now);
-        const label = (describeEntity(this.state, target) || {}).label || 'The hull';
+        // An unresolved derelict keeps its scan-only identity even in the weld receipt.
+        const label = (isWreckLike(target) && !wreckScanned(target))
+          ? 'The hulk'
+          : (describeEntity(this.state, target) || {}).label || 'The hull';
         try {
           this.bus.emit('toast', {
             text: `${label} is welded shut and underway — thanks for the weld.`,
@@ -1013,7 +1019,7 @@ export const mining = {
       if (!verbAcceptsType('mine', e.type) && !isBeamSplittableCargoPod(e)) continue; // PQ-015: shared beam membership (asteroid|wreck); F12: cargo pods split, not mine
       if (!presentationAllowsPlayerFacingAction(e, state)) continue;
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
-      if (e.type === 'asteroid' && e.data && e.data.opticMaterial) continue;
+      if (e.type === 'asteroid' && isOpticLatticeCellData(e.data)) continue;
       const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
       const dist = Math.hypot(dx, dz);
       if (dist > range + (e.radius || 0)) continue;
@@ -1055,7 +1061,7 @@ export const mining = {
     const state = this.state;
     const ast = state.entities.get(targetId);
     if (!ast || !ast.alive || ast.type !== 'asteroid') return 0;
-    if (ast.data && ast.data.opticMaterial) return 0;
+    if (isOpticLatticeCellData(ast.data)) return 0;
     const d = ast.data || (ast.data = {});
     // Core-anchored site rocks are beam-locked (ASTEROID_SITES_BRIEF §2): a developed asteroid
     // moves cargo through its physical port, never back out through the mining laser. Destroying
@@ -3023,6 +3029,15 @@ const miningCombatScratch = [];
 const miningPodScratch = [];
 const miningMineableSeen = new Set();
 
+// Optic lattice cells are not ore — the lattice marker is opticStructureId (world.js stamps it
+// beside opticMaterial on lattice bodies; world/asteroidField.js isOpticRockData documents the
+// same split). Ordinary ore also carries an opticMaterial surface tag ('metal'/'diamond') from
+// environmentSurfaceData, so refusing on the tag made every metallic and crystalline field rock
+// unmineable (demo defect ledger D227).
+function isOpticLatticeCellData(data) {
+  return !!(data && typeof data.opticStructureId === 'string' && data.opticStructureId);
+}
+
 // F12: only jettisoned cargo pods split under the beam — cut panels, custody capsules, and other
 // payload types keep their own verbs. Kept out of `mine` catalog membership on purpose: a pod is
 // cracked open, never mined.
@@ -3047,7 +3062,7 @@ export function isBeamTargetEligible(entity, state) {
     && !weldableHullForBeam(entity, state)) return false;
   if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
   if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
-  if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
+  if (entity.type === 'asteroid' && isOpticLatticeCellData(entity.data)) return false;
   return true;
 }
 
@@ -3134,7 +3149,7 @@ function activeMineableTetherTarget(state, ship, range) {
       || (target.type !== 'asteroid' && target.type !== 'wreck' && !isBeamSplittableCargoPod(target)
         && !weldableHullForBeam(target, state))) continue;
     // Optic lattices are not ore — same guard as _isValidMineableTarget / _acquireTarget.
-    if (target.type === 'asteroid' && target.data && target.data.opticMaterial) continue;
+    if (target.type === 'asteroid' && isOpticLatticeCellData(target.data)) continue;
     const dist = tableDist != null ? tableDist : Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z);
     const allowed = Math.max(0, Number(range) || 0) + (target.radius || 0) + (ship.radius || 0);
     return dist <= allowed ? target : null;

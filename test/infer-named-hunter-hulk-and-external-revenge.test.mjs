@@ -64,11 +64,11 @@ test('with lossLedger active, a killed named hunter keeps its authored Hulk scan
   const hulk = hulks[0];
   assert.equal(hulk.data.scanLabel, `${captainName}'s Hulk`,
     'lossLedger._tagWreck preserves the authored captain hulk scanLabel instead of overwriting it');
+  hulk.data.scanned = true;
   assert.equal(targetDisplayName(hulk), `${captainName}'s Hulk`);
   assert.equal(hulk.data.provenance.killerLabel, 'You');
   assert.ok(hulk.data.provenance.lossId, 'sector loss provenance is merged without dropping killerLabel');
 
-  hulk.data.scanned = true;
   const facts = objectInfoLine(hulk, t.state, t.player, 50);
   assert.match(facts, /Killer: You/, `scanned hulk names its killer: ${facts}`);
 });

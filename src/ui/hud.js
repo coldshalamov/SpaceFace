@@ -16,7 +16,7 @@
 // The HUD READS state for display and never mutates sim state (§5, §0.6).
 
 import { createRadar } from './radar.js';
-import { createTargetPanel } from './targetPanel.js';
+import { createTargetPanel, targetDisplayName } from './targetPanel.js';
 import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
@@ -212,7 +212,7 @@ const STATION_ROLE_LABELS = {
 
 function cargoDisplayName(id) {
   const c = MT_CMDTY_BY_ID.get(id) || PERSISTENT_CARGO_BY_ID.get(id);
-  return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
+  return c?.name || 'Unidentified cargo';
 }
 
 export function manifestSummary(e) {
@@ -1061,10 +1061,6 @@ function threatArcPath(a, r = 48, s = 0.28) {
   const y1 = (r * Math.sin(a + s)).toFixed(1);
   return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`;
 }
-function hudEntityName(entity) {
-  return (entity && (entity.name || (entity.data && entity.data.name))) || (entity ? entity.type : '');
-}
-
 // M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
 const DOCTRINE_TELL_BY_KIND = Object.freeze({
   engine_flare: 'FLYBY',
@@ -1934,6 +1930,9 @@ export function createHud(ctx, alerts) {
   // ---- bottom-right: target panel + radar ----
   const rightDock = document.createElement('div');
   rightDock.className = 'sf-rightdock';
+  rightDock.setAttribute('tabindex', '0');
+  rightDock.setAttribute('role', 'group');
+  rightDock.setAttribute('aria-label', 'Contacts and flight controls');
   const targetPanel = createTargetPanel(ctx);
   let lastTargetSurrendered = false;
   
@@ -4124,7 +4123,9 @@ export function createHud(ctx, alerts) {
       } else {
         setClass(lockDiamond, 'visible', false);
         if (marker) {
-          const name = String(tgt.data?.callsign || hudEntityName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
+          // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast
+          // callsign but never leaks its private name or scan label onto the edge ribbon.
+          const name = String(targetDisplayName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
           const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} WU`;
           setText(targetEdgeLabel, text);
           setAttr(targetEdge, 'aria-label', text);
@@ -4456,9 +4457,7 @@ export function createHud(ctx, alerts) {
     const sword = c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
     const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
     const scannedWreck = c.isWreck && wreckScanned(e);
-    const data = e.data || {};
-    const name = data.callsign || data.name || data.trafficRole || data.role || e.role
-      || (c.isWreck ? ((scannedWreck && data.scanLabel) || 'Derelict') : 'Ship');
+    const name = targetDisplayName(e, { concealWreck: c.isWreck && !scannedWreck });
 
     // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
     // + weak-point callout (GDD 2.0 §7.4).

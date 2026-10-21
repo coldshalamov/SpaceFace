@@ -19,7 +19,8 @@ import { isConfirmOpen, bindConfirmBus } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
 import { injectHudCss } from './views/hudStyles.js';
-import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { isHostileToPlayer, isWreckLike, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { targetDisplayName } from './targetPanel.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 import { dedupError } from '../core/warnDedup.js';
 import {
@@ -837,12 +838,8 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
     this.bandHud = createBandHud(ctx);
-    if (this.racingHud && typeof this.racingHud.dispose === 'function') {
-      try { this.racingHud.dispose(); } catch (_) { /* remount */ }
-    }
-    this.racingHud = null;
-    this.physicsVenueHud?.dispose();
-    this.spectrumOverlay?.dispose();
+    // Remount: same teardown destroy() uses — a failed re-mount below leaves nulls, not zombies.
+    this.disposeHudOverlays();
     try {
       const uiRootEl = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
       this.racingHud = mountRacingHud({
@@ -1986,6 +1983,15 @@ export const ui = {
     this._cinematicInputFence = null;
     this._cinematicActive = false;
     this._pendingMainMenu = false;
+    this.disposeHudOverlays();
+  },
+  disposeHudOverlays() {
+    if (this.racingHud && typeof this.racingHud.dispose === 'function') { try { this.racingHud.dispose(); } catch (_) {} }
+    this.racingHud = null;
+    this.physicsVenueHud?.dispose?.();
+    this.physicsVenueHud = null;
+    this.spectrumOverlay?.dispose?.();
+    this.spectrumOverlay = null;
   },
 };
 
@@ -2271,9 +2277,14 @@ export { cycleTarget, clearCombatTarget, targetNearestHostileToPlayer };
 
 function targetLabel(e) {
   if (!e) return 'Contact';
+  // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast callsign but
+  // reads 'Derelict' here too — never its scan label or private name. isWreckLike also catches
+  // fx/prop wreck-likes, not only type:'wreck'.
+  if (isWreckLike(e)) return targetDisplayName(e);
   if (e.type === 'station') {
     if (e.data && e.data.isGate) return e.data.name || 'Jump Gate';
-    return (e.data && (e.data.name || e.data.stationName || e.data.stationId)) || 'Station';
+    // A raw stationId is an internal key, not a name — never print it.
+    return (e.data && (e.data.name || e.data.stationName)) || 'Station';
   }
   if (e.type === 'asteroid') return 'Asteroid';
   if (e.type === 'wreck') return 'Wreck';

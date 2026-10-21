@@ -39,6 +39,8 @@ import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
 // the law's own protected definition and the release geometry's advisory corridor. Read
 // only on both sides — the cue never touches release authority.
 import { isLawProtectedBody } from '../systems/lawSecurity.js';
+import { isWreckLike } from '../systems/scanner.js';
+import { targetDisplayName } from './targetPanel.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
 import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
 import { announceStrokeGrade } from './stuntCallout.js';
@@ -701,7 +703,9 @@ function throwCollateralSpots(state, throwState) {
         || !Number.isFinite(entity.radius)) return;
     if (!isLawProtectedBody(entity)) return;
     const data = entity.data || {};
-    const raw = data.displayName || data.name || data.label || entity.type || 'body';
+    // Scan-only identity stays concealed until resolved — same rule as the roster/panel.
+    const raw = isWreckLike(entity) ? targetDisplayName(entity)
+      : (data.displayName || data.name || data.label || entity.type || 'body');
     let spot = spots[count];
     if (!spot) spot = spots[count] = { x: 0, z: 0, r: 0, label: '' };
     spot.x = entity.pos.x;
@@ -2370,6 +2374,8 @@ function previewStatusCopy(status, reason) {
 
 function worldEntityLabel(entity) {
   const data = entity && entity.data;
+  // A wreck-like endpoint reads 'Derelict' (or its public callsign) until a scan resolves it.
+  if (isWreckLike(entity)) return targetDisplayName(entity);
   const label = data && (data.displayName || data.name || data.label);
   if (typeof label === 'string' && label.trim()) return label.trim();
   if (data && (data.massSeed === true || data.kind === 'mass_seed')) return 'Mass Seed';

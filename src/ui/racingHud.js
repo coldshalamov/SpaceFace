@@ -53,6 +53,23 @@ export function mountRacingHud({ root, bus, state, screens }) {
   });
   select.hidden = true;
   readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,row,live); root.appendChild(panel);
+  const syncParent = (authored) => {
+    // HUD reconstruction can replace the entire dock, so ownership is re-derived each frame —
+    // but a tape already inside a live .sf-rightdock under root is correctly placed, and only
+    // a missing/disconnected parent pays the subtree querySelector (not every frame).
+    let parent = root;
+    if (!authored) {
+      const cur = panel.parentNode;
+      const docked = cur && cur !== root
+        && cur.classList?.contains?.('sf-rightdock')
+        && cur.isConnected !== false
+        && (typeof root.contains !== 'function' || root.contains(cur));
+      parent = docked ? cur : (root.querySelector?.('.sf-rightdock') || root);
+    }
+    if (panel.parentNode === parent) return;
+    if (parent === root) root.appendChild(panel);
+    else parent.insertBefore(panel, parent.firstChild);
+  };
   let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
   const offs = [];
   const combatLock = createHudCombatLock({ bus, state });
@@ -97,6 +114,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
   return {
     frame(liveState) {
       const st = liveState || state;
+      const authored = activeAuthoredRace(st);
+      syncParent(authored);
+      setProperty(panel.dataset, 'compact', authored ? 'false' : 'true');
       const inFlight = st?.mode === 'flight' && !st.ui?.docked && !screens?.isOpen?.()
         && !st.render?.photoMode?.active && st.entities?.get?.(st.playerId)?.alive !== false;
       // Crucible (Swarm/Gauntlet/boss_circuit/block): sealed survival run. Racing does not
@@ -109,9 +129,8 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const now=st.simTime||0;
       if(now>=lastTick&&now-lastTick<0.1)return;
       lastTick=now;
-      const authored=activeAuthoredRace(st), race=authored||activeRaceMission(st), lock=activeSteerLock(st);
+      const race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
-      setProperty(panel.dataset, 'compact', authored?'false':'true');
       setProperty(view, 'textContent', lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
       setProperty(view, 'disabled', !!lock);
       const pressed=String(viewMode==='racing');

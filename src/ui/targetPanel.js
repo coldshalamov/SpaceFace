@@ -23,7 +23,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
-import { contactThreatTier, contactStateWord, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionClassLine, interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -44,7 +44,8 @@ import { stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetConditionReadout } from './targetCondition.js';
 import { BINDINGS } from './bindings.js';
-import { stationContactServices } from '../data/sectors.js';
+import { SECTORS, stationContactServices } from '../data/sectors.js';
+import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { stationServiceLabel } from './station/stationHubModel.js';
 import { faunaSpeciesById } from '../data/alienFauna.js';
@@ -53,6 +54,23 @@ import { fittedModuleDefs } from '../core/fittedModules.js';
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
+const STATION_BY_ID = new Map(SECTORS.flatMap((sector) => sector.stations || []).map((s) => [s.id, s]));
+const ZONE_BY_ID = new Map(Object.values(SECTOR_ZONES).flat().map((zone) => [zone.id, zone]));
+const CATALOG_IDS = new Set([...SHIP_BY_ID.keys(), ...STATION_BY_ID.keys(), ...ZONE_BY_ID.keys(),
+  ...COMMODITY_BY_ID.keys(), ...SECTORS.map((sector) => sector.id)]);
+
+// Reject identity fields masquerading as names, without rewriting authored callsigns.
+function readableIdentity(value, entity = null) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const text = value.trim();
+  const data = entity?.data || {};
+  const ids = [entity?.id, data.defId, data.stationId, data.commodityId, data.typeId, data.worldRecordId];
+  if (ids.some((id) => id != null && String(id) === text) || CATALOG_IDS.has(text)
+    || /^(?:ship|station|sector|zone|cmdty|faction|wpn|mod|mission|squad|sq|npc|entity)[_:]/i.test(text)
+    || /^(?:squad|sq|npc|entity)[-_:]/i.test(text)
+    || /^\d+$/.test(text) || /[a-f0-9]{12,}/i.test(text)) return null;
+  return text;
+}
 
 // Damage triangle (BP-02): the player-facing E/K/X families mapped to the kernel's damage channels
 // (weights transcribed from scalarHitToDamagePacket in src/combat/damage.js — keep in sync). The panel
@@ -149,23 +167,30 @@ function getGimmickLabel(gimmick) {
     || String(gimmick).replace(/_/g, ' ').toUpperCase();
 }
 
-export function targetDisplayName(e) {
+export function targetDisplayName(e, { concealWreck = false } = {}) {
   if (!e) return '—';
+  // A broadcast callsign is already public. Scan-only identity stays concealed until resolved —
+  // on every surface, not just the roster that opts in (wreck-like covers fx dressing and
+  // set-piece props, not only literal type:'wreck').
+  if (concealWreck || (isWreckLike(e) && !wreckScanned(e))) return readableIdentity(e.data?.callsign, e) || 'Derelict';
   if (e.type === 'ship') {
     const d = e.data || {};
     const ai = d.ai || {};
     // Named/gimmick-readable identity first (lane contacts, bosses, callsigns) — never portraits.
-    const named = d.name || ai.name || d.callsign || d.scanLabel || d.trafficLabel;
+    const named = [d.name, ai.name, d.callsign, d.scanLabel, d.trafficLabel]
+      .map((value) => readableIdentity(value, e)).find(Boolean);
     if (named) return named;
     const def = d.defId ? SHIP_BY_ID.get(d.defId) : null;
     return (def && def.name) || 'Unidentified';
   }
   if (e.type === 'station') {
-    if (e.data && e.data.isGate) return e.data.name || 'Jump Gate';
-    return (e.data && (e.data.name || e.data.stationName || e.data.stationId)) || 'Station';
+    const d = e.data || {};
+    return readableIdentity(d.name, e) || readableIdentity(d.stationName, e)
+      || STATION_BY_ID.get(d.stationId)?.name || (d.isGate ? 'Jump Gate' : 'Station');
   }
   if (e.type === 'asteroid' || e.type === 'wreck') return interactionDisplayName(e);
-  if (e.type === 'drone') return (e.data && (e.data.callsign || e.data.name)) || 'Unidentified';
+  if (e.type === 'drone') return readableIdentity(e.data?.callsign, e)
+    || readableIdentity(e.data?.name, e) || 'Unidentified';
   return interactionDisplayName(e);
 }
 
@@ -276,10 +301,8 @@ function entityClass(e) {
     // Traffic role beats hull class for ambient readability (HAULER vs "Freighter").
     const trafficRole = d.trafficRole || d.role;
     if (trafficRole && ROLE_LABEL[trafficRole]) return ROLE_LABEL[trafficRole];
-    if (trafficRole) return trafficRole;
     const def = d.defId ? SHIP_BY_ID.get(d.defId) : null;
-    const role = e.role || (def && def.role) || '';
-    return ROLE_LABEL[role] || role || 'Ship';
+    return ROLE_LABEL[e.role] || ROLE_LABEL[def?.role] || 'Ship';
   }
   if (e.type === 'station') {
     return e.data && e.data.isGate ? 'Gate' : 'Station';
@@ -309,7 +332,7 @@ function readableMotive(value) {
 // the doctrine identity stamped alongside it (a mine-layer reads as area denial the same
 // way in the panel as in the wing grammar), and the live combat target for the tracking
 // half. Pure and DOM-free for headless checks.
-export function wingLineFor(target, playerId) {
+export function wingLineFor(target, playerId, state = null) {
   if (!target) return null;
   const ai = (target.data && target.data.ai) || {};
   const squadId = ai.squadId != null ? String(ai.squadId).trim() : '';
@@ -318,15 +341,17 @@ export function wingLineFor(target, playerId) {
   const wingRole = IDENTITY_WING_ROLE[doctrineId] || (doctrineId ? 'press' : null);
   const tracking = target.data && target.data.combat && target.data.combat.targetId != null
     && playerId != null && target.data.combat.targetId === playerId;
-  // A hex slug is not a callsign: show its tail as a unit number, never a chopped hash
-  // ('WING SQ-77F3C2A19B04D1E…'). A readable designation stays whole when the line fits.
-  const full = squadId.toUpperCase();
+  const sectorId = state?.world?.currentSectorId;
+  const zone = SECTOR_ZONES[sectorId]?.find((entry) => entry.id === squadId) || ZONE_BY_ID.get(squadId);
+  let hash = 2166136261;
+  for (let i = 0; i < squadId.length; i++) hash = Math.imul(hash ^ squadId.charCodeAt(i), 16777619);
+  const code = (hash >>> 0).toString(36).toUpperCase().padStart(4, '0').slice(-4);
+  const designation = zone?.name || (!/[_:]/.test(squadId) && readableIdentity(squadId)) || code;
+  const full = designation.toUpperCase();
   const role = wingRole ? ` · ${wingRole.replace(/_/g, ' ').toUpperCase()}` : '';
   const track = tracking ? ' · TRACKING YOU' : '';
-  const tail = /[0-9A-F]{12,}/.test(full);
-  let line = `WING ${tail ? full.slice(-4) : full}${role}${track}`;
-  if (line.length > 64) line = `WING ${full.slice(-4)}${role}${track}`;
-  return line;
+  const room = 64 - 'WING '.length - role.length - track.length;
+  return `WING ${full.length > room ? full.slice(0, Math.max(0, room - 1)) + '…' : full}${role}${track}`;
 }
 
 const ZERO_VEL = { x: 0, z: 0 };
@@ -476,7 +501,7 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
     threatPips: tierPips(threatTier),
     rangeBand: targetRangeBand(distance, player),
     // INF-022: targeting a wing member names the wing and its rough role.
-    wing: wingLineFor(target, state && state.playerId),
+    wing: wingLineFor(target, state && state.playerId, state),
   });
 }
 
@@ -600,7 +625,11 @@ export function objectInfoLine(t, state, p, dist) {
   if (t.type === 'ship' || t.type === 'drone') return presentationStatusWord(t) || '';
   if (t.type === 'station') {
     const services = stationContactServices(t.data && t.data.stationId);
-    return services.length ? `Services: ${services.map(stationServiceLabel).join(' · ')}` : '';
+    const facts = services.length ? [`Services: ${services.map(stationServiceLabel).join(' · ')}`] : [];
+    if (Number.isFinite(t.mass) && t.mass > 0) {
+      facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);
+    }
+    return facts.join(' · ');
   }
   if (isOrchardFrame(t)) return orchardSocketInfoLine(t, state);
   if (t.data?.orchardId === ANVIL_ORCHARD.id && t.data.orchardKind === 'frame') return 'Orchard status unavailable';
@@ -620,13 +649,13 @@ export function objectInfoLine(t, state, p, dist) {
     if (lines.length) {
       const parts = lines.slice(0, 3).map(([id, q]) => {
         const c = COMMODITY_BY_ID.get(id);
-        const label = (c && c.name) || String(id).replace(/^cmdty_/, '').replace(/_/g, ' ');
+        const label = (c && c.name) || 'Unidentified cargo';
         return `${label} ×${q}`;
       });
       facts.push(`Holds ${parts.join(', ')}`);
     } else if (d.commodityId) {
       const c = COMMODITY_BY_ID.get(d.commodityId);
-      const label = (c && c.name) || String(d.commodityId);
+      const label = (c && c.name) || 'Unidentified cargo';
       const amount = finiteWholePickupAmount(d.amount);
       facts.push(`Holds ${label}${amount > 0 ? ` ×${amount}` : ''}`);
     } else if (t.type === 'wreck') {
@@ -902,7 +931,7 @@ export function createTargetPanel(ctx) {
         triX.classList.toggle('best', eX === best);
         setText(elTriLayer, layer.toUpperCase());
       }
-      if (elTriangle.style.display !== 'flex') elTriangle.style.display = 'flex';
+      if (elTriangle.style.display !== 'grid') elTriangle.style.display = 'grid';
     } else {
       if (elTriangle.style.display !== 'none') elTriangle.style.display = 'none';
       lastTriKey = null;

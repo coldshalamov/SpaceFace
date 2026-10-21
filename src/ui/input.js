@@ -21,7 +21,8 @@ import {
 import { resolveActionLabel, selectedWorldSiteTarget } from '../systems/input.js';
 import { resolveGamepadBindings } from '../systems/gamepad.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
-import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { targetDisplayName } from './targetPanel.js';
+import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveDockDeny } from './dockDenyBanner.js';
 import { dedupError } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
@@ -699,7 +700,7 @@ export function createUiInput(ctx, screenManager) {
         });
       } else {
         bus.emit('toast', {
-          text: `${interactionDisplayName(wreck)} is salvage, not an asteroid. `
+          text: `${targetDisplayName(wreck)} is salvage, not an asteroid. `
             + `${BINDINGS.drill.label} drills asteroids; hold the mining control to salvage this wreck.`,
           kind: 'info',
           ttl: 4,

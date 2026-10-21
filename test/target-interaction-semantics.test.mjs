@@ -160,7 +160,7 @@ test('flight Tab cycles the combat target and Backspace releases it', () => {
 });
 
 test('selected ordinary wreck is labeled salvage and B explains the salvage verb', () => {
-  const wreck = entity('wreck', 'wreck', { parentType: 'hull' });
+  const wreck = entity('wreck', 'wreck', { parentType: 'hull', scanned: true });
   assert.equal(targetPanel.targetDisplayName(wreck), 'Wreckage');
   assert.equal(typeof targetPanel.targetInteractionClass, 'function');
   assert.equal(targetPanel.targetInteractionClass(wreck), 'Salvage');
@@ -178,6 +178,7 @@ test('active unstable reactor wreck massline is labeled hazardous salvage and B 
   const reactor = entity('reactor', 'wreck', {
     parentType: 'reactor',
     unstableReactor: { dueAt: 120, vented: false },
+    scanned: true,
   });
   assert.equal(targetPanel.targetDisplayName(reactor), 'Unstable Reactor Wreck');
   assert.equal(typeof targetPanel.targetInteractionClass, 'function');
