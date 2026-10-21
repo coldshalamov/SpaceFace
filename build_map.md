@@ -4627,8 +4627,14 @@ Mining skill is `PQ-155.04`, not a G row, and it must not lock the beam. Twin-st
 
 ### 22.11 Not scheduled
 
-A scarred personal ship. An empire management screen. A loot-rarity ladder. A dialogue campaign.
-A starter-tool limit. A second renderer. Those are refusals, not deferred rows.
+A scarred personal ship. An empire management screen. A starter-tool limit. A second renderer.
+Those are refusals, not deferred rows.
+
+**Owner ruling, 2026-10-21:** loot rarity and a dialogue campaign are *allowed* — they serve a
+purpose nothing else serves easily, and their earlier refusal was an agent rule, not the owner's.
+Enemies that tether, throw, or reshape the environment stay *rare and carefully authored* (one
+specialist at a time, telegraphed): a common enemy with physics weapons is a chaos vector — the
+screen fills with flying bodies and things break.
 
 ## 23. Superpower campaigns — ADMITTED 2026-09-22
 
@@ -4962,9 +4968,9 @@ law is that it is calm.
 ### 23.2 Creative — new situations the premise still has room for
 
 These are not a content quota. Each one is a fantasy the current world almost supports and
-does not yet play. Invent the form. Extend the owners. If the idea needs a new genre, a
-dialogue campaign, an empire screen, or a loot ladder, it is the wrong idea — keep the
-fantasy and change the mechanism.
+does not yet play. Invent the form. Extend the owners. If the idea needs a new genre or an
+empire screen, it is the wrong idea — keep the fantasy and change the mechanism. (Loot rarity
+and dialogue are allowed — owner ruling 2026-10-21, §22.11.)
 
 The weak variation, so you do not invent a sixth copy of the same shape: early play recycles
 ambush, patrol, and convoy; trade, yard, archive, and escort are almost unique; six factions
@@ -5058,8 +5064,8 @@ physically do, what changes if you interfere. Then it is a place in the chart, n
 codex entry. Do not build six capitals in one slice. One honest address teaches the pattern.
 
 **Read.** `src/data/factions/`, the K1 encounter band, `src/systems/factions.js`,
-`src/data/stationContacts.js`. §22.11 still refuses a dialogue campaign and an empire
-screen. Receipts and bodies, not a relationship web UI.
+`src/data/stationContacts.js`. §22.11 still refuses an empire screen (a dialogue
+campaign is allowed since 2026-10-21). Receipts and bodies, not a relationship web UI.
 
 **Thin.** A new faction. A reputation number with no door. An encounter that despawns
 the address when the timer ends.
@@ -5120,8 +5126,7 @@ can be the whole slice if the join is a situation and not a map pin.
 
 ### 23.3 What these campaigns refuse
 
-A scarred personal ship as a character creator. An empire screen. A loot-rarity ladder. A
-dialogue campaign. A second renderer. A starter-tool limit. Hyperreal materials as the
+A scarred personal ship as a character creator. An empire screen. A second renderer. A starter-tool limit. Hyperreal materials as the
 definition of beauty. A cheaper hull on the live glass. Content as the cure for feel.
 
 When a campaign's feeling is ordinary on the default route, say so in the §1.4 report and
