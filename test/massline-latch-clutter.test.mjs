@@ -824,7 +824,9 @@ function preciseCursorScoreFor(entity, aim) {
 
 test('a ship directly under the Massline cursor wins over an overlapping large asteroid', () => {
   const enemy = smallEnemy(81, 150, 0, { radius: 10 });
-  const rock = asteroid(80, 156, 0, { radius: 52, mass: 5200 });
+  // Overlaps the ship's disc (54 < 62) but sits past the endpoint — its collider never touches
+  // the open player→ship segment, so obstruction legitimately stays clear (R390 fix-1).
+  const rock = asteroid(80, 195, 30, { radius: 52, mass: 5200 });
   const h = buildClutterHarness([rock, enemy], {
     aimWorld: { x: enemy.pos.x, z: enemy.pos.z },
     aimIntentActive: true,
@@ -838,7 +840,8 @@ test('a ship directly under the Massline cursor wins over an overlapping large a
 
 test('Tab combat assist keeps physical Massline cursor intent', () => {
   const enemy = smallEnemy(82, 150, 0, { radius: 10 });
-  const rock = asteroid(79, 156, 0, { radius: 52, mass: 5200 });
+  // Same overlap-past-the-endpoint geometry as the neighboring ship-under-cursor case.
+  const rock = asteroid(79, 195, 30, { radius: 52, mass: 5200 });
   const h = buildClutterHarness([rock, enemy], {
     aimWorld: { x: enemy.pos.x, z: enemy.pos.z },
     aimIntentActive: true,

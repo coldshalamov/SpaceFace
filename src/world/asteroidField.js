@@ -310,6 +310,189 @@ export function queryAsteroidField(state, pos, radius, out = []) {
   return out;
 }
 
+// ── Massline obstruction (AL-HF-08) ──────────────────────────────────────────────────────────
+// A Massline cannot pass through rock. These are read-only geometry queries used by latch
+// ADMISSION only: they never promote a record, never advance it, never initialize physics
+// metadata, and never touch the field version, so asking "is this line clear?" cannot change
+// what the world is doing. The tether system must never consult them about a line it already
+// carries — an obstruction is a reason not to start a latch, never a reason to sever one.
+const MASSLINE_SEGMENT_EPS = 1e-9;
+// Parameter tolerance along the unit chord. The attachment segment is OPEN at both endpoints, so a
+// disc that only touches one of them is not an obstruction — the rock sits inside the target's own
+// skin, not between the two bodies.
+const MASSLINE_T_EPS = 1e-9;
+
+/** The collision disc a massline has to clear for this rock. A live body carries the radius the
+ * physics authority minted it with; a dormant record has not been promoted yet, so use the same
+ * ordinary/optic collider rules promotion will apply. */
+function masslineObstacleRadius(rock) {
+  const body = rock && rock.physicsBody;
+  const bodyRadius = body && typeof body === 'object' ? finite(body.radius, NaN) : NaN;
+  if (Number.isFinite(bodyRadius) && bodyRadius > 0) return bodyRadius;
+  const visual = Math.max(0.5, finite(rock && rock.radius, 8));
+  if (!rock || rock.fieldResident !== true) return visual;
+  const data = rock.data && typeof rock.data === 'object' ? rock.data : {};
+  return isOpticRockData(data)
+    ? opticColliderRadius(data, visual)
+    : asteroidColliderRadius(data.typeId, visual);
+}
+
+/** Current XZ of an obstacle without modifying it. Dormant rows drift ballistically between
+ * exact catch-ups, so their stored pos can be stale; the live XZ is stored pos + vel × elapsed
+ * sim time, matching catchUpFieldRock's advanceResourceBody input. */
+function masslineObstacleXZ(rock, simTime, out) {
+  const px = finite(rock && rock.pos && rock.pos.x);
+  const pz = finite(rock && rock.pos && rock.pos.z);
+  if (!rock || rock.fieldResident !== true) {
+    out.x = px;
+    out.z = pz;
+    return out;
+  }
+  const fromT = Number.isFinite(rock.lastExactT) ? rock.lastExactT : simTime;
+  const elapsed = simTime - fromT;
+  if (!(elapsed > 0)) {
+    out.x = px;
+    out.z = pz;
+    return out;
+  }
+  out.x = px + finite(rock.vel && rock.vel.x) * elapsed;
+  out.z = pz + finite(rock.vel && rock.vel.z) * elapsed;
+  return out;
+}
+
+function masslineObstacleEligible(rock) {
+  if (!rock || rock.alive === false || rock.type !== 'asteroid') return false;
+  if (rock.collides === false || rock.physicsBody === false) return false;
+  return true;
+}
+
+function discOverlapsBounds(x, z, radius, minX, minZ, maxX, maxZ) {
+  const cx = x < minX ? minX : (x > maxX ? maxX : x);
+  const cz = z < minZ ? minZ : (z > maxZ ? maxZ : z);
+  const dx = x - cx;
+  const dz = z - cz;
+  return dx * dx + dz * dz <= radius * radius;
+}
+
+/**
+ * Collect the rocks whose collision discs overlap `bounds` ({ minX, minZ, maxX, maxZ }).
+ * Clears and reuses `out`; returns obstacle references. Live asteroids come from the
+ * authoritative entity collection; dormant rows are scanned linearly because they drift
+ * without re-gridding (a stored-cell query would miss one that left its cell).
+ */
+export function collectMasslineObstructionRocks(state, bounds, out = []) {
+  const rocks = Array.isArray(out) ? out : [];
+  rocks.length = 0;
+  if (!state || !bounds) return rocks;
+  const minX = finite(bounds.minX, NaN);
+  const minZ = finite(bounds.minZ, NaN);
+  const maxX = finite(bounds.maxX, NaN);
+  const maxZ = finite(bounds.maxZ, NaN);
+  if (!Number.isFinite(minX) || !Number.isFinite(minZ)
+      || !Number.isFinite(maxX) || !Number.isFinite(maxZ)
+      || maxX < minX || maxZ < minZ) return rocks;
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const xz = { x: 0, z: 0 };
+
+  const live = indexedTypeScan(state, 'asteroids');
+  for (let i = 0; i < live.length; i++) {
+    const entity = live[i];
+    if (!masslineObstacleEligible(entity) || !entity.pos) continue;
+    const radius = masslineObstacleRadius(entity);
+    if (!(radius > 0)) continue;
+    if (!discOverlapsBounds(finite(entity.pos.x), finite(entity.pos.z), radius,
+      minX, minZ, maxX, maxZ)) continue;
+    rocks.push(entity);
+  }
+
+  const field = state.world && state.world.asteroidField;
+  const dormant = field && Array.isArray(field.rocks) ? field.rocks : null;
+  if (!dormant) return rocks;
+  for (let i = 0; i < dormant.length; i++) {
+    const rec = dormant[i];
+    // A promoted row keeps its identity on the live entity; it is no longer a dormant obstacle.
+    if (!masslineObstacleEligible(rec) || rec.liveEntityId != null || !rec.pos) continue;
+    const radius = masslineObstacleRadius(rec);
+    if (!(radius > 0)) continue;
+    masslineObstacleXZ(rec, simTime, xz);
+    if (!discOverlapsBounds(xz.x, xz.z, radius, minX, minZ, maxX, maxZ)) continue;
+    rocks.push(rec);
+  }
+  return rocks;
+}
+
+/** Endpoint identities that can never obstruct their own line — including a dormant record and
+ * the live body it was (or will be) promoted to, which share an id. */
+function masslineEndpointIds(player, target) {
+  const ids = new Set();
+  if (player && player.id != null) ids.add(player.id);
+  if (player && player.liveEntityId != null) ids.add(player.liveEntityId);
+  if (target && target.id != null) ids.add(target.id);
+  if (target && target.liveEntityId != null) ids.add(target.liveEntityId);
+  return ids;
+}
+
+/**
+ * Does the open attachment segment from `sourceWorld` to `targetWorld` pass through rock?
+ * Pure geometry: quadratic segment-vs-disc against the open span, no cable thickness, no
+ * sampling, no tuning. A tangent that lands inside the segment blocks; a disc that only touches
+ * an endpoint, or lies wholly before or after it, does not. Zero-length finite segments are
+ * clear; malformed endpoints fail closed.
+ */
+export function isMasslineObstructed({
+  state, player, target, sourceWorld, targetWorld, obstacles,
+} = {}) {
+  const sx = finite(sourceWorld && sourceWorld.x, NaN);
+  const sz = finite(sourceWorld && sourceWorld.z, NaN);
+  const tx = finite(targetWorld && targetWorld.x, NaN);
+  const tz = finite(targetWorld && targetWorld.z, NaN);
+  if (!Number.isFinite(sx) || !Number.isFinite(sz)
+      || !Number.isFinite(tx) || !Number.isFinite(tz)) {
+    return true;
+  }
+  const dx = tx - sx;
+  const dz = tz - sz;
+  const span = Math.hypot(dx, dz);
+  if (!(span > MASSLINE_SEGMENT_EPS)) return false;
+  const ux = dx / span;
+  const uz = dz / span;
+  const simTime = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  const excluded = masslineEndpointIds(player, target);
+  const list = Array.isArray(obstacles)
+    ? obstacles
+    : collectMasslineObstructionRocks(state, {
+      minX: Math.min(sx, tx),
+      minZ: Math.min(sz, tz),
+      maxX: Math.max(sx, tx),
+      maxZ: Math.max(sz, tz),
+    });
+  const xz = { x: 0, z: 0 };
+  for (let i = 0; i < list.length; i++) {
+    const rock = list[i];
+    if (!masslineObstacleEligible(rock)) continue;
+    if (rock.id != null && excluded.has(rock.id)) continue;
+    if (rock.liveEntityId != null && excluded.has(rock.liveEntityId)) continue;
+    const radius = masslineObstacleRadius(rock);
+    if (!(radius > 0)) continue;
+    masslineObstacleXZ(rock, simTime, xz);
+    const px = xz.x - sx;
+    const pz = xz.z - sz;
+    // Quadratic segment-vs-disc on the OPEN span: the disc's intersection interval is
+    // [along - half, along + half] in unit-direction world units, and only an overlap with
+    // (0, span) blocks. A rock that only touches an endpoint is clear; one that overlaps the
+    // interior — including a tangent landing strictly inside — blocks.
+    const along = px * ux + pz * uz;
+    const perp2 = px * px + pz * pz - along * along;
+    const radius2 = radius * radius;
+    if (perp2 > radius2) continue;
+    const half = Math.sqrt(Math.max(0, radius2 - perp2));
+    if (along + half <= MASSLINE_T_EPS) continue;
+    if (along - half >= span - MASSLINE_T_EPS) continue;
+    return true;
+  }
+  return false;
+}
+
 function removeFieldRecord(field, rec) {
   if (!field || !rec) return false;
   const idx = field.rocks.indexOf(rec);

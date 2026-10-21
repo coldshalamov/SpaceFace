@@ -4,8 +4,10 @@
 // reels, cuts, and emits player-facing gameplay events.
 //
 // T04/PQ-004: latch eligibility and the visible pre-latch receipt consume the existing T03 scorer.
-// Obstruction remains caller-resolved: a physics/terrain owner may provide isMasslineObstructed;
-// selection then fails closed and publishes the same blocked reason the latch will consume.
+// AL-HF-08: rock obstruction is answered by the production provider in world/asteroidField.js for
+// ADMISSION only (selection and the fresh press both fail closed with the same blocked reason the
+// latch will consume). A physics/terrain owner may still override isMasslineObstructed. A line
+// already carried is never severed because a rock crosses it.
 import {
   classifyMasslineIntent,
   MASSIVE_ANCHOR_MIN_MASS,
@@ -20,7 +22,12 @@ import { modelTruthRopeEnd } from '../data/modelTruth.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
-import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import {
+  collectMasslineObstructionRocks,
+  isMasslineObstructed as isAsteroidMasslineObstructed,
+  promoteAsteroidFieldRock,
+  queryAsteroidField,
+} from '../world/asteroidField.js';
 import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
@@ -197,6 +204,8 @@ export const tetherGameplay = {
     this._targetScratch = [];
     this._nonCollidingTargetScratch = [];
     this._fieldTargetScratch = [];
+    this._obstructionScratch = [];
+    this._obstructionBounds = { minX: 0, minZ: 0, maxX: 0, maxZ: 0 };
     this._candidateSeen = new Set();
     this._active = null;
     this._tensionEstimate = 0;
@@ -769,6 +778,11 @@ export const tetherGameplay = {
 
     const def = attachmentDef(kernel, TWIN_BRIDLE_DEF_ID);
     const nearestOnly = !this._bridleSetup && state.input?.tetherMode === 'nearest';
+    // Second press: A is already the bridle's first endpoint, so admission is the remote
+    // A→candidate pair the rope will actually span — never the controller→candidate line.
+    const bridleSource = this._bridleSetup && state.entities && state.entities.get
+      ? state.entities.get(this._bridleSetup.sourceId)
+      : null;
     const tickNow = Math.trunc(finite(state.tick));
     const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
     const standingWasRendered = !!publishedReceipt
@@ -777,8 +791,12 @@ export const tetherGameplay = {
     if (!def || nearestOnly) {
       this._clearAcquisitionPreview(state);
     } else {
-      if (!wantsLatch || !standingWasRendered) {
-        this._refreshAcquisitionPreview(player, def, state, now, !standingWasRendered);
+      if (this._bridleSetup && !bridleSource) {
+        // A despawned/demoted between presses: never preview on controller→candidate geometry —
+        // the press dies at validateTwinBridlePair anyway; a wrong-segment status would misreport.
+        this._clearAcquisitionPreview(state);
+      } else if (!wantsLatch || !standingWasRendered) {
+        this._refreshAcquisitionPreview(player, def, state, now, !standingWasRendered, false, bridleSource);
       }
       this._lastPreviewTick = tickNow;
     }
@@ -803,7 +821,7 @@ export const tetherGameplay = {
     this._lastLatchDenial = null;
     const latch = nearestOnly
       ? this._acquireCommandTarget(player, def, state)
-      : this._consumeAcquisitionReceipt(player, def, state, now);
+      : this._consumeAcquisitionReceipt(player, def, state, now, bridleSource);
     let target = latch && latch.entity;
     if (!target) {
       this._denyTwinBridle(state, (this._lastLatchDenial && this._lastLatchDenial.reason) || 'no-target');
@@ -1215,13 +1233,13 @@ export const tetherGameplay = {
     }
   },
 
-  _refreshAcquisitionPreview(player, def, state, now, force = false, pressOverride = false) {
+  _refreshAcquisitionPreview(player, def, state, now, force = false, pressOverride = false, admissionSource = null) {
     const intent = rememberAcquisitionIntent(this, state, player, now);
     if (!force && !intent.reversed && now - this._lastAcquisitionRefreshT < ACQUISITION_REFRESH_S) {
       return state.masslineAcquisition || null;
     }
     this._lastAcquisitionRefreshT = now;
-    const snapshot = buildAcquisitionSnapshot(this, player, def, state, intent);
+    const snapshot = buildAcquisitionSnapshot(this, player, def, state, intent, admissionSource);
     if (!snapshot.ranked.length) {
       this._acquisitionMemory = null;
       state.masslineAcquisition = emptyAcquisitionReceipt(this, state, now, snapshot.denial || 'no-target');
@@ -1250,7 +1268,7 @@ export const tetherGameplay = {
     return state.masslineAcquisition;
   },
 
-  _consumeAcquisitionReceipt(player, def, state, now) {
+  _consumeAcquisitionReceipt(player, def, state, now, admissionSource = null) {
     const receipt = state.masslineAcquisition;
     const selected = receipt && receipt.selected;
     if (!selected) {
@@ -1272,7 +1290,7 @@ export const tetherGameplay = {
     // preview and press — the latch must name the dead pick as lost, not weld onto its heir.
     const denial = (selected.occupantGeneration != null && occupantGenerationOf(target) !== selected.occupantGeneration)
       ? 'target-lost'
-      : validateAcquisitionTarget(this, player, target, def, state);
+      : validateAcquisitionTarget(this, player, target, def, state, null, admissionSource);
     if (denial) {
       this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
       invalidateAcquisitionReceipt(state, denial);
@@ -1292,11 +1310,12 @@ export const tetherGameplay = {
       maxLength,
       this._targetScratch || (this._targetScratch = []),
     );
+    const obstacles = collectAcquisitionObstacles(this, state, player, entities);
     let nearest = null;
     let nearestSurfaceDistance = Infinity;
     for (const entity of entities) {
       if (!isAttachable(entity, player.id)) continue;
-      if (validateAcquisitionTarget(this, player, entity, def, state)) continue;
+      if (validateAcquisitionTarget(this, player, entity, def, state, obstacles)) continue;
       const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       const surfaceDistance = Math.max(0, centerDistance - Math.max(0, finite(entity.radius)));
       if (surfaceDistance < nearestSurfaceDistance
@@ -2831,7 +2850,11 @@ export function validateTwinBridlePair(host, state, player, source, target, def)
   // momentum, not an admission flag.
   if (isLargeBridleEndpoint(source) && isLargeBridleEndpoint(target)) return 'two_heavy_endpoints';
   if (activeAttachmentPathExists(state, source.id, target.id)) return 'attachment_cycle';
-  if (masslineObstructed(host, state, source, target)) return 'blocked';
+  // The bridle has no player endpoint: the rope runs source→target, so the geometry checked is
+  // that remote pair, and the remote source stands in the override's `player` field (identity
+  // exclusion only — the controller ship is never a third endpoint). Both ends are excluded by
+  // identity inside the provider.
+  if (masslineObstructed(host, state, source, target, worlds)) return 'blocked';
   return null;
 }
 
@@ -3038,7 +3061,7 @@ function intentWorldDirection(player, intent) {
   return length > 1e-6 ? { x: x / length, z: z / length } : { x: fx, z: fz };
 }
 
-function buildAcquisitionSnapshot(host, player, def, state, intent) {
+function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSource = null) {
   const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
   const focus = state.player && state.player.flybyFocus;
   const focusTarget = focus && focus.active && focus.targetId != null && state.entities?.get
@@ -3082,6 +3105,11 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
   appendExactCandidate(candidates, focusTarget);
   appendExactCandidate(candidates, routeId != null && state.entities?.get ? state.entities.get(routeId) : null);
 
+  // One obstacle batch for every candidate's prospective segment: the dormant field is walked
+  // once per snapshot instead of once per candidate. In Twin Bridle's second press the segments
+  // are the remote A→candidate pairs the bridle will actually span.
+  const obstacles = collectAcquisitionObstacles(host, state, player, candidates, admissionSource);
+
   const physicallyEligible = [];
   const deniedCandidates = [];
   const denialById = new Map();
@@ -3089,7 +3117,7 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
   for (const entity of candidates) {
     if (!isAttachable(entity, player.id) || byId.has(entity.id)) continue;
     byId.set(entity.id, entity);
-    const denial = validateAcquisitionTarget(host, player, entity, def, state);
+    const denial = validateAcquisitionTarget(host, player, entity, def, state, obstacles, admissionSource);
     denialById.set(entity.id, denial);
     if (denial) deniedCandidates.push(entity);
     else physicallyEligible.push(entity);
@@ -3278,14 +3306,20 @@ export function acquisitionDenialReason(entity, playerId) {
   return 'target-lost';
 }
 
-function validateAcquisitionTarget(host, player, target, def, state) {
+function validateAcquisitionTarget(host, player, target, def, state, obstacles = null, admissionSource = null) {
   if (!isAttachable(target, player && player.id, state)) {
     return acquisitionDenialReason(target, player && player.id);
   }
   const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
   const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
   if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
-  if (masslineObstructed(host, state, player, target)) return 'blocked';
+  // Twin Bridle's second press is admitted on the remote A→candidate pair, the same segment the
+  // pair validator and the bridle's own create call use. The controller ship is never an endpoint.
+  const endpoints = admissionSource
+    ? bridleAcquisitionEndpoints(admissionSource, target)
+    : acquisitionAttachmentEndpoints(player, target);
+  if (!endpoints) return 'blocked';
+  if (masslineObstructed(host, state, admissionSource || player, target, endpoints, obstacles)) return 'blocked';
   return null;
 }
 
@@ -3303,14 +3337,97 @@ function invalidateAcquisitionReceipt(state, reason) {
   };
 }
 
-function masslineObstructed(host, state, player, target) {
+/** Endpoint geometry for an ordinary player↔target line, resolved exactly the way the latch's
+ * `attachments.create` call resolves it: both ends through contextualAttachmentWorlds, with the
+ * acquired surface point as the fallback anchor for the target. */
+function acquisitionAttachmentEndpoints(player, target) {
+  const acquiredTargetWorld = target && target.pos ? surfacePointToward(target, player && player.pos) : null;
+  return contextualAttachmentWorlds(player, target, acquiredTargetWorld);
+}
+
+/** Endpoint geometry for the Twin Bridle's SECOND press (A already selected): the remote A→candidate
+ * pair the bridle will actually span, exactly as validateTwinBridlePair and the bridle's
+ * `attachments.create` call resolve it. The controller ship is never an endpoint, so endpoint A's
+ * own body must not be forced onto a clear controller→candidate line. */
+function bridleAcquisitionEndpoints(source, target) {
+  if (!source || !source.pos || !target || !target.pos) return null;
+  return contextualRemoteAttachmentWorlds(source, target);
+}
+
+/**
+ * Obstruction admission. An injected `helpers.isMasslineObstructed` still wins (it receives the
+ * full request, including the physical endpoints, so an external owner can answer with the same
+ * geometry the latch will use); with no override the production rock provider answers. Either
+ * way a thrown check fails closed.
+ */
+function masslineObstructed(host, state, player, target, endpoints = null, obstacles = null) {
+  const request = {
+    state,
+    player,
+    target,
+    sourceWorld: endpoints && endpoints.sourceWorld ? endpoints.sourceWorld : null,
+    targetWorld: endpoints && endpoints.targetWorld ? endpoints.targetWorld : null,
+    obstacles: Array.isArray(obstacles) ? obstacles : null,
+  };
   const check = host && host.helpers && host.helpers.isMasslineObstructed;
-  if (typeof check !== 'function') return false;
+  if (typeof check === 'function') {
+    try {
+      return check(request) === true;
+    } catch (_) {
+      return true;
+    }
+  }
   try {
-    return check({ state, player, target }) === true;
+    return isAsteroidMasslineObstructed(request) === true;
   } catch (_) {
     return true;
   }
+}
+
+/**
+ * One obstacle batch for a whole acquisition pass. Bounds cover every candidate's prospective
+ * attachment segment, so the dormant field is walked once per snapshot rather than once per
+ * candidate. Returns the host's reusable scratch array (never retain it across decisions).
+ */
+function collectAcquisitionObstacles(host, state, player, candidates, admissionSource = null) {
+  const scratch = host._obstructionScratch || (host._obstructionScratch = []);
+  const bounds = host._obstructionBounds || (host._obstructionBounds = { minX: 0, minZ: 0, maxX: 0, maxZ: 0 });
+  let minX = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxZ = -Infinity;
+  let any = false;
+  for (let i = 0; i < candidates.length; i++) {
+    const entity = candidates[i];
+    if (!entity || !entity.pos) continue;
+    const worlds = admissionSource
+      ? bridleAcquisitionEndpoints(admissionSource, entity)
+      : acquisitionAttachmentEndpoints(player, entity);
+    if (!worlds) continue;
+    const ax = worlds.sourceWorld && worlds.sourceWorld.x;
+    const az = worlds.sourceWorld && worlds.sourceWorld.z;
+    const bx = worlds.targetWorld && worlds.targetWorld.x;
+    const bz = worlds.targetWorld && worlds.targetWorld.z;
+    if (!Number.isFinite(ax) || !Number.isFinite(az) || !Number.isFinite(bx) || !Number.isFinite(bz)) continue;
+    if (ax < minX) minX = ax;
+    if (bx < minX) minX = bx;
+    if (ax > maxX) maxX = ax;
+    if (bx > maxX) maxX = bx;
+    if (az < minZ) minZ = az;
+    if (bz < minZ) minZ = bz;
+    if (az > maxZ) maxZ = az;
+    if (bz > maxZ) maxZ = bz;
+    any = true;
+  }
+  if (!any) {
+    scratch.length = 0;
+    return scratch;
+  }
+  bounds.minX = minX;
+  bounds.minZ = minZ;
+  bounds.maxX = maxX;
+  bounds.maxZ = maxZ;
+  return collectMasslineObstructionRocks(state, bounds, scratch);
 }
 
 // A GUN SOLUTION IS NOT A CURSOR. masslineTargetScoring.js:39-41 forbids weapon-aim coupling BY
