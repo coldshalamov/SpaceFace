@@ -7,6 +7,7 @@
 // Export: automationScreen  (id 'automation'). No 'three' import.
 
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { CLAIM_REFINERY_RECIPES } from '../../data/sites.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { droneBayCapacityForState, droneRecoveryCost, normalizeAutomationRecordId, passiveCapPerMinForTier } from '../../systems/automation.js';
@@ -179,13 +180,37 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
     ? outpost.production
     : null;
   const recipe = (def && def.recipe) || outpost.recipe || null;
-  const recipeInputs = recipe && recipe.inputs && typeof recipe.inputs === 'object'
-    ? Object.entries(recipe.inputs)
-      .filter(([, amount]) => Number(amount) > 0)
-      .sort(([left], [right]) => String(left).localeCompare(String(right)))
-    : [];
-  const recipeOutput = recipe && recipe.output && typeof recipe.output === 'object'
-    ? Object.entries(recipe.output).find(([, amount]) => Number(amount) > 0)
+  const book = recipe && recipe.book === 'claim_refinery' ? CLAIM_REFINERY_RECIPES : null;
+  // Book-driven refineries report the recipe they actually ran on the production ledger; a
+  // legacy ledger without that stamp shows the goods it consumed, and a cold one shows the
+  // book's first recipe as the line's shape.
+  const activeBookRecipe = book
+    ? (book.find((r) => production && r.id === production.recipeId) || null)
+    : null;
+  let recipeInputs;
+  if (activeBookRecipe) {
+    recipeInputs = Object.entries(activeBookRecipe.inputs);
+  } else if (book) {
+    const flowed = new Set([
+      ...Object.keys((production && production.consumedByGood) || {}),
+      ...Object.keys((production && production.missingByGood) || {}),
+    ]);
+    if (flowed.size) {
+      const outRecipe = book.find((r) => Object.keys(r.output)[0] === (production && production.outputGoodId));
+      recipeInputs = [...flowed].map((id) => [id, (outRecipe && outRecipe.inputs[id]) || 1]);
+    } else {
+      recipeInputs = Object.entries(book[0].inputs);
+    }
+  } else {
+    recipeInputs = recipe && recipe.inputs && typeof recipe.inputs === 'object'
+      ? Object.entries(recipe.inputs)
+        .filter(([, amount]) => Number(amount) > 0)
+        .sort(([left], [right]) => String(left).localeCompare(String(right)))
+      : [];
+  }
+  const recipeOutput = (activeBookRecipe || recipe) && (activeBookRecipe || recipe).output
+    && typeof (activeBookRecipe || recipe).output === 'object'
+    ? Object.entries((activeBookRecipe || recipe).output).find(([, amount]) => Number(amount) > 0)
     : null;
   const outputPerBatch = recipeOutput ? Number(recipeOutput[1]) : 1;
   const outputGoodId = (production && production.outputGoodId)
@@ -2272,6 +2297,7 @@ function metricHtml(k, v, s) {
 function recipeText(r) {
   if (!r) return 'idle';
   if (r.passive) return `passive ${r.creditGen || 0} cr/s`;
+  if (r.book) return 'shared refinery book (by feedstock)';
   const ins = r.inputs ? Object.entries(r.inputs).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
   const out = r.output ? Object.entries(r.output).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
   return `${ins} → ${out}`;

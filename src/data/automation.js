@@ -29,7 +29,7 @@ export const TRADERS = [
 export const OUTPOSTS = [
   {
     id: 'outpost_refinery',
-    recipe: { inputs: { cmdty_ore_iron: 2 }, output: { cmdty_alloys: 1 } },
+    recipe: { book: 'claim_refinery' },
     outRate: 0.5, storageCap: 300, buildCost: 60000,  defense: 20, upkeepPerMin: 50,
   },
   {

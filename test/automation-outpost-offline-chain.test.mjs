@@ -11,9 +11,12 @@ const REMOTE_SECTOR = 'sector_frontier_remote';
 const WINDOW_START_MS = 9_000_000_000_000;
 const ELAPSED_SEC = 10;
 
+// AL-LG-13: the outpost refinery runs the shared claim book, so an iron-only feed banks
+// refined metals at their real base-price ratio (iron 14 -> refined 91, stub scale 10/14).
 const PRICE = Object.freeze({
   cmdty_ore_iron: 10,
   cmdty_ore_copper: 20,
+  cmdty_refined_metals: 65,
   cmdty_alloys: 100,
 });
 
@@ -175,9 +178,9 @@ test('offline extraction feeds a local refinery before only the residual drone s
   // 4 banked + (0.8/s * 10s) = 12 iron. The refinery can make five alloys in this window,
   // consuming ten iron at its authored 2:1 ratio. Only the two-iron residue may be valued directly.
   const expectedResidualIron = 2;
-  const expectedAlloys = 5;
+  const expectedRefined = 5;
   const expectedDroneGross = expectedResidualIron * PRICE.cmdty_ore_iron;
-  const expectedOutpostGross = expectedAlloys * PRICE.cmdty_alloys
+  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
     * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
 
   assert.equal(iron.buffer, 0, 'the residual buffer is valued only after local recipe consumption');
@@ -207,17 +210,20 @@ test('wrong-commodity and off-sector buffers cannot feed an offline refinery', (
 
   const receipt = catchUp(inst);
 
-  // Each drone also extracts eight units during the window. Neither buffer is a valid local iron
-  // feed, so both remain unconsumed by the recipe and are accounted only as residual drone value.
-  const expectedCopper = 2 + 8;
+  // Each drone also extracts eight units during the window. Under the shared book copper IS a
+  // valid feed (claim_smelt_copper), so the local copper smelts to refined; only the remote
+  // sector buffer stays outside the recipe and is accounted as residual drone value.
+  const expectedRefined = (2 + 8) / 2;
   const expectedRemoteIron = 4 + 8;
-  const expectedDroneGross = expectedCopper * PRICE.cmdty_ore_copper
-    + expectedRemoteIron * PRICE.cmdty_ore_iron;
+  const expectedDroneGross = expectedRemoteIron * PRICE.cmdty_ore_iron;
+  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
+    * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
 
-  assert.equal(receipt.outpostCr, 0, 'a refinery without same-sector iron cannot create alloys');
+  assert.equal(receipt.outpostCr, expectedOutpostGross * receipt.offlineEff,
+    'local copper feeds the book smelt while remote iron cannot feed the refinery');
   assert.equal(receipt.droneCr, expectedDroneGross * receipt.offlineEff,
-    'mismatched and remote stock stays outside the recipe and is valued unchanged');
-  assert.equal(receipt.grossCr, expectedDroneGross);
+    'remote stock stays outside the recipe and is valued unchanged');
+  assert.equal(receipt.grossCr, expectedDroneGross + expectedOutpostGross);
 });
 
 test('offline streaming extraction can feed production before the drone buffer cap', () => {
@@ -231,8 +237,8 @@ test('offline streaming extraction can feed production before the drone buffer c
   // The drone extracts 96 iron over the window. A live refinery would consume that flow as it
   // arrives and make 48 alloys; the drone's 60-unit storage cap must not truncate feed before the
   // refinery sees it.
-  const expectedAlloys = 48;
-  const expectedOutpostGross = expectedAlloys * PRICE.cmdty_alloys
+  const expectedRefined = 48;
+  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
     * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
   assert.equal(receipt.droneCr, 0, 'all streamed iron is consumed before residual valuation');
   assert.equal(receipt.outpostCr, Math.round(expectedOutpostGross * receipt.offlineEff));
@@ -251,8 +257,8 @@ test('long offline windows settle auto-selling production at coarse minute caden
 
   // 0.8 iron/s * 1200s = 960 iron -> 480 alloys. Auto-sell clears the 300-unit storage
   // at the existing minute cadence, so a one-shot storage clamp must not erase 180 alloys.
-  const expectedAlloys = 480;
-  const expectedOutpostGross = expectedAlloys * PRICE.cmdty_alloys
+  const expectedRefined = 480;
+  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
     * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
   assert.equal(refinery.storage, 0);
   assert.equal(receipt.droneCr, 0);
@@ -274,8 +280,8 @@ test('offline production is bounded by drone fuel and keeps an exhausted group w
   const receipt = inst.runOfflineCatchup({ nowMs: WINDOW_START_MS + elapsedSec * 1000 });
 
   // Mk1 fuelRate is 1/s: one second yields 0.8 iron -> 0.4 alloys, then the group waits.
-  const expectedAlloys = 0.4;
-  const expectedOutpostGross = expectedAlloys * PRICE.cmdty_alloys
+  const expectedRefined = 0.4;
+  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
     * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
   assert.equal(state.automation.drones.length, 1, 'fuel shortage never deletes the purchased machine');
   assert.equal(iron.status, 'stranded');
@@ -283,7 +289,7 @@ test('offline production is bounded by drone fuel and keeps an exhausted group w
   assert.equal(receipt.lost, 0);
   assert.equal(receipt.droneCr, 0);
   assert.equal(receipt.outpostCr, Math.round(expectedOutpostGross * receipt.offlineEff));
-  assert.equal(receipt.grossCr, expectedOutpostGross);
+  assert.equal(receipt.grossCr, Math.round(expectedOutpostGross));
 });
 
 test('offline upkeep accrues through a fuel-bounded drone lifetime while the machine remains', () => {
@@ -337,8 +343,8 @@ test('offline raid cooldown expires at its boundary and production resumes for r
   const receipt = inst.runOfflineCatchup({ nowMs: WINDOW_START_MS + elapsedSec * 1000 });
 
   // Thirty seconds blocked, ninety seconds producing at 0.5 alloy/s.
-  const expectedAlloys = 45;
-  const expectedOutpostGross = expectedAlloys * PRICE.cmdty_alloys
+  const expectedRefined = 45;
+  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
     * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
   assert.equal(refinery.raidCooldown, 0);
   assert.equal(refinery.status, 'producing');

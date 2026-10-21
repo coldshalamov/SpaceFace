@@ -23,6 +23,7 @@
 // Pure-data deps only (no 'three'). Reads economy via the registry (priceOf/quote/getMarket),
 // danger from the SECTORS catalog (dangerIndex), the player tier from player.droneTierCap.
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
+import { CLAIM_REFINERY_RECIPES, CLAIM_REFINERY_INPUT_IDS } from '../data/sites.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -414,13 +415,32 @@ export function droneGrossCrPerMin(def, orePrice, count = 1) {
 }
 
 export function outpostOutputGoodId(def) {
-  return def && def.recipe && def.recipe.output ? Object.keys(def.recipe.output)[0] : DRONE_ORE_ID;
+  const recipe = def && def.recipe;
+  // AL-LG-13: a book-driven refinery's flagship estimate stays alloys — the same good legacy
+  // saves banked — while a live instance reports its own stamped storageGoodId.
+  if (recipe && recipe.book === 'claim_refinery') return 'cmdty_alloys';
+  return recipe && recipe.output ? Object.keys(recipe.output)[0] : DRONE_ORE_ID;
 }
 
-export function outpostGrossValue(def, quantity, orePriceForGood) {
+export function outpostRecipeBook(recipe) {
+  return recipe && recipe.book === 'claim_refinery' ? CLAIM_REFINERY_RECIPES : null;
+}
+
+// The good actually sitting in storage. Old saves banked only the old recipe's output, so an
+// unstamped non-empty refinery store reads as alloys.
+export function outpostStoredGoodId(o, def) {
+  if (o && o.storageGoodId != null) return o.storageGoodId;
+  const recipe = def && def.recipe;
+  if (recipe && recipe.book === 'claim_refinery') {
+    return (o && Number(o.storage) > 0) ? 'cmdty_alloys' : null;
+  }
+  return null;
+}
+
+export function outpostGrossValue(def, quantity, orePriceForGood, goodId = null) {
   const qty = Math.max(0, quantity || 0);
   if (def && def.recipe && def.recipe.passive) return qty;
-  const goodId = outpostOutputGoodId(def);
+  goodId = goodId || outpostOutputGoodId(def);
   const price = typeof orePriceForGood === 'function' ? orePriceForGood(goodId) : orePriceForGood;
   return qty * (price || 0) * OUTPOST_AUTOSELL_MULT;
 }
@@ -430,7 +450,7 @@ export function outpostGrossCrPerMin(def, orePriceForGood, opts = {}) {
   const outRate = opts.outRate != null
     ? opts.outRate
     : ((def && def.outRate) || 0) * Math.pow(1.6, level - 1);
-  return Math.round(outpostGrossValue(def, outRate * 60, orePriceForGood));
+  return Math.round(outpostGrossValue(def, outRate * 60, orePriceForGood, opts.goodId || null));
 }
 
 // Pure coarse production planner shared by live ticks and offline catch-up. The planner knows
@@ -2072,7 +2092,8 @@ export const automation = {
 
   _outpostRatePerMin(o, def, outRate) {
     // Hab/trade hub generates credits directly; production outposts bank goods at the local price -20%.
-    return outpostGrossCrPerMin(def, (goodId) => this._orePrice(goodId), { outRate, level: o.level || 1 });
+    return outpostGrossCrPerMin(def, (goodId) => this._orePrice(goodId),
+      { outRate, level: o.level || 1, goodId: outpostStoredGoodId(o, def) });
   },
 
   _advanceOutpost(o, def, dt, a) {
@@ -2093,20 +2114,26 @@ export const automation = {
     const authoredRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
     const cap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
     const room = Math.max(0, cap - (o.storage || 0));
-    const recipe = def.recipe || o.recipe || null;
-    const availableByGood = this._availableOutpostInputs(o, recipe, a);
+    const recipeDef = def.recipe || o.recipe || null;
+    const availableByGood = this._availableOutpostInputs(o, recipeDef, a);
+    const recipe = this._resolveOutpostRecipe(o, def, recipeDef, availableByGood);
     const requestedOutput = Math.max(0, authoredRate * dt);
     const plan = planOutpostProduction({ recipe, requestedOutput, storageRoom: room, availableByGood });
 
     this._consumeOutpostInputs(o, plan.consumedByGood, a);
     o.storage = Math.min(cap, Math.max(0, (o.storage || 0) + plan.produced));
+    if (plan.produced > 1e-9 && recipe && recipe.output) {
+      o.storageGoodId = Object.keys(recipe.output)[0];
+    }
     o.storageCap = cap;
     o.status = plan.status === 'storage_full' ? 'storage_full' : plan.status;
     const actualRate = dt > 0 ? plan.produced / dt : 0;
     o.ratePerMin = this._outpostRatePerMin(o, def, actualRate);
     o.production = {
       status: o.status,
-      outputGoodId: recipe && recipe.passive ? 'credits' : outpostOutputGoodId(def),
+      outputGoodId: recipe && recipe.passive ? 'credits'
+        : (recipe && recipe.output ? Object.keys(recipe.output)[0] : outpostOutputGoodId(def)),
+      recipeId: recipe && recipe.id ? recipe.id : null,
       requestedRate: authoredRate,
       actualRate,
       consumedByGood: plan.consumedByGood,
@@ -2135,9 +2162,26 @@ export const automation = {
       .sort(compareStableId);
   },
 
+  _resolveOutpostRecipe(o, def, recipeDef, availableByGood) {
+    const book = outpostRecipeBook(recipeDef);
+    if (!book) return recipeDef;
+    // Storage holds one good: a non-empty store pins the recipe to the banked good; an empty
+    // store takes the first book recipe the feedstock can run (claim-refinery book order).
+    const storedGood = outpostStoredGoodId(o, def);
+    const candidates = book.filter((r) => !storedGood || Object.keys(r.output)[0] === storedGood);
+    // Continuous production runs partial batches — a recipe is feedable while every input has
+    // nonzero stock; the planner then limits batches by the scarcest good (book order).
+    const feedable = candidates.find((r) => Object.keys(r.inputs).every(
+      (id) => (Number(availableByGood[id]) || 0) > 1e-9));
+    const chosen = feedable || candidates[0] || book[0];
+    return chosen ? { id: chosen.id, inputs: chosen.inputs, output: chosen.output } : null;
+  },
+
   _availableOutpostInputs(o, recipe, a) {
+    const book = outpostRecipeBook(recipe);
+    const inputIds = book ? CLAIM_REFINERY_INPUT_IDS : Object.keys((recipe && recipe.inputs) || {}).sort();
     const available = {};
-    for (const goodId of Object.keys((recipe && recipe.inputs) || {}).sort()) {
+    for (const goodId of inputIds) {
       available[goodId] = this._outpostFeedGroups(o, goodId, a)
         .reduce((sum, g) => sum + Math.max(0, Number(g.buffer) || 0), 0);
     }
@@ -2163,8 +2207,10 @@ export const automation = {
       const def = OUTPOST_BY_ID.get(o.defId) || o;
       const sellable = o.storage || 0;
       if (sellable <= 0) continue;
-      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
+      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId),
+        outpostStoredGoodId(o, def));
       o.storage = 0;
+      o.storageGoodId = null;
       if (income > 0) this.creditPassive(income, 'outpost');
     }
   },
@@ -3102,8 +3148,10 @@ export const automation = {
         const def = OUTPOST_BY_ID.get(o.defId) || o;
         const sellable = Math.max(0, Number(o.storage) || 0);
         if (sellable <= 0) continue;
-        outpostCr += outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
+        outpostCr += outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId),
+          outpostStoredGoodId(o, def));
         o.storage = 0;
+        o.storageGoodId = null;
         if (o.status === 'storage_full') o.status = 'producing';
         if (o.production && o.production.status === 'storage_full') {
           o.production.status = 'producing';
@@ -3375,7 +3423,10 @@ export const automation = {
           for (const o of localOutposts) {
             const outpostDef = OUTPOST_BY_ID.get(o.defId) || o;
             const recipe = outpostDef.recipe || o.recipe;
-            for (const goodId of Object.keys((recipe && recipe.inputs) || {}).sort()) {
+            const inputIds = outpostRecipeBook(recipe)
+              ? CLAIM_REFINERY_INPUT_IDS
+              : Object.keys((recipe && recipe.inputs) || {}).sort();
+            for (const goodId of inputIds) {
               requiredInputs.add(goodId);
             }
           }

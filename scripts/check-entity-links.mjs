@@ -17,6 +17,7 @@ import { MODULES } from '../src/data/modules.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { ORES, RECIPES } from '../src/data/mining.js';
 import { OUTPOSTS } from '../src/data/automation.js';
+import { CLAIM_REFINERY_RECIPES } from '../src/data/sites.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const failures = [];
@@ -262,7 +263,12 @@ const ID_SPACES = [
   ['shipworks fittable catalogue', 'module', MODULES.concat(WEAPONS).map((m) => m.id)],
   ['drill ore ids', 'commodity', ORES.map((o) => o.id)],
   ['industry fabricator goods', 'commodity', RECIPES.flatMap((r) => [...Object.keys(r.inputs || {}), ...Object.keys(r.output || {})])],
-  ['automation outpost goods', 'commodity', OUTPOSTS.flatMap((o) => o.recipe ? [...Object.keys(o.recipe.inputs || {}), ...Object.keys(o.recipe.output || {})] : [])],
+  ['automation outpost goods', 'commodity', OUTPOSTS.flatMap((o) => {
+    const r = o.recipe;
+    if (!r) return [];
+    const recipes = r.book === 'claim_refinery' ? CLAIM_REFINERY_RECIPES : [r];
+    return recipes.flatMap((c) => [...Object.keys(c.inputs || {}), ...Object.keys(c.output || {})]);
+  })],
 ];
 for (const [space, type, ids] of ID_SPACES) {
   for (const id of ids) {
