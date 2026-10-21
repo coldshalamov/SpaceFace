@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 12:29 UTC
+
+All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now preserves verified head `6b42bac9e770edc6a35c1ad28d75648fbcca3f37`, tree `277f7058adb948b1ffff5c2e4041ee5c5f95e9fc`, sole d0522 parent, verified at 12:29:29 UTC. Twelve scoped files repair the attributable Hail → controller → lootShards → scanner import cycle through a no-import readout with the same identity cache, retain two Tally-specific errands at the actual living authored Tally post, and allow a pair-only four-second PNG cap inside the unchanged ten-second total. Independent review is complete; exact checks pass 131/131, 1,505 paths are audited and 2,205 preloads resolve. Source, tests and readout fixes are backed up.
+
+Actual prior d0522 CI passes all 38 Charon tests, full Orchard native receiver test 115 in 365.803 seconds, and the 47-A cold open with ten actors and 34 trace records; stale-preload 404s are gone. The aggregate remains non-green. verify_charon_delivery_ci owns exact prior browser3 pending/superseded status and new successor CI, which is pending. Prior-head passes do not establish successor or whole-game acceptance.
+
+Current paired-camera evidence is telemetry only: SwiftShader renders 435 × 245 inside 1280 × 720, effective scale 0.33984375. The first PNG timed out at two seconds; there is no new image or second sample. The revised capture cap is not a renderer change or visual acceptance. Earlier native 37.8333-second and connected 42.9833-second receipts retain their original limits; ordinary flown arrival remains open.
+
+trace_charon_worker_dialogue has completed its bounded correction. The next owner, ground_charon_arrival_cue, is read-only scoping one ordinary approach/discoverability improvement through actual existing narrative/cue owners. No implementation or new broad queue has begun. Next: follow exact successor CI and finish that bounded read-only scope before deciding a change. Existing implementation/reviewer scopes and historical failures below remain preserved. Only these two shared handoff/goal files change here; NOW and canonical implementation remain untouched. No new user action, private identifiers, private ancestry, master merge or deployment is introduced.
+
 ## Current source handoff — 21 October 2026, 12:08 UTC
 
 All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now preserves verified head `d0522e8d382215085bbb4a3789b471d2c1e33809`, tree `6dc96c7de53816f5f89481bc6e0c156b931de9ed`, verified at 12:08:06 UTC. Parents preserve prior db576, PR483 bd9 and PR482 38f. PR comment 6315530569 records scope. All 14 feature paths and the full src inventory match the final reviewed candidate; 38 focused and 105 adjacent checks pass. All 2,204 preload paths resolve and 49 paired diagnostic controls pass.
