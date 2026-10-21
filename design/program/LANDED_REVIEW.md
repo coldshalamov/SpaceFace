@@ -1,5 +1,7 @@
 | R-7657b6e | 7657b6e63 | Grudge roe restore no longer disarms live foreign postures | Re-check that _endNpcGrudge's ownership proof (retaliationTargetId or activity reason === NPC_GRUDGE_REASON, non-null targetId, captured before restores, combat lock excluded) cannot mistake a grudge still owned by the record for a foreign takeover — i.e. that a grudge whose channels are still its own still restores the prior roe on expiry | OPEN |
 
+| R-e82cd26 | e82cd2668 | Row 393 AL-FIGHT-3: mass kills spill latchable charge cells | Re-check that a cell birthed from a whip kill can never be credited twice across a save/load boundary — the WeakSet claim resets on save:loaded while the entity round-trips only when attachment-retained, so confirm no re-collect path exists for a restored-then-detached cell | OPEN |
+
 # Landed review
 
 Second look at work that is already on `origin/master`. The author commits and pushes first. A later agent reviews. The review does not hold the push, and this file is not a second plan.
