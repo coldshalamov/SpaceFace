@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Active connected unit — 21 October 2026, 10:50 UTC
+
+All nine goals remain OPEN. The next reserved living-world increment activates the existing authored but inert Charon air-pod → original charon_colony_hauler → original charon_colony_salvor physical finite-supply chain. The visiting salvage crew pauses, receives actual supply and resumes its existing cutting route. No implementation or native-delivery success is claimed yet.
+
+build_charon_crew_supply owns new world/charonSalvageSupply.js, Charon-only traffic/contactHail hooks, the colony reason in sectorZones.js, and new focused/native fixtures. Root retains package/index/document integration. Work uses isolated public db576 source and does not import unrelated private traffic changes. NOW and other implementation owners remain untouched.
+
+Preserve the evacuated colony's history and claimability. The contradictory zone reason will be narrowly corrected to describe visiting salvage crews, not invented residents. Reuse existing cmdty_volatiles as pressurized air/Silt, existing cargo-pod and conveyor-barge assets; do not add rewards, infinite refill or substitute actors. review_charon_supply_assets owns asset review; no new mesh is authorized yet.
+
+Next: implement and independently qualify finite original-pod custody, original-hauler delivery, original-salvor pause/resume and existing-route continuity, with focused/native evidence and honest Save/Continue/ordinary-route limits. PR480 db576 and PR483 2991 CI continue separately; their pending outcomes do not establish this new unit's completion. This update changes only the two shared handoff/goal documents and includes no private identifiers or ancestry.
+
 ## Current source handoff — 21 October 2026, 10:44 UTC
 
 All nine goals remain OPEN. This checkpoint supersedes older current-state entries while retaining historical failures and exact-head scope.
