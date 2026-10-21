@@ -464,7 +464,7 @@
     "check:command-deck-ui": "node scripts/check-command-deck-ui.mjs",
     "test:command-deck-refit": "node --test test/command-deck-refit.test.mjs",
     "check:wcag-contrast": "node scripts/check-wcag-contrast.mjs",
-    "check:boot-resilience": "node --test test/loading-boot-resilience.test.mjs",
+    "check:boot-resilience": "node --test test/loading-boot-resilience.test.mjs test/boot-graphics-failure.test.mjs",
     "check:playable": "node scripts/check-game-playable.mjs",
     "check:live-whole-ship-admission": "node scripts/check-live-whole-ship-admission.mjs",
     "check:crucible:route": "node scripts/check-crucible-route.mjs",
