@@ -1,4 +1,4 @@
-<!-- LIFETIME: VOLATILE -->
+| SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 || SHIPPED devin-inf20 |<!-- LIFETIME: VOLATILE -->
 # INFERENCE ideas — directed grunt catalog
 
 Law: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) §0.1. Feelings and inventions live in
@@ -797,7 +797,7 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 | RC-37 | Verb-granting modules always show on the hull | `src/render/partsLibrary.js` (~:13276–13300) | The part appears in preview and flight; `check:assets:live` green; no per-frame allocation | New models in this task | The 15% outfit-budget threshold | OPEN — row 469 |
 | RC-38 | Two lines from one faction don't sound identical | `src/audio/barkVoice.js` (~:264–275), `audioSystem.js` | A unit test shows different `rate` per line (hashed ±3%) | `Math.random` | `rate: 1` hardcoded | OPEN — row 470 |
 | RC-39 | Photo Look works on default settings, or is hidden | `src/ui/screens/pause.js` (~:872–878), `src/render/camera.js` (~:324–332) | On defaults, each look produces a different PNG, or the button is absent | Force the render graph on; CSS filters | Early return when the render graph is off | OPEN — row 471 |
-| RC-40 | A fresh Statistics page shows one sentence, not rows of zeros | `src/ui/screens/statistics.js` (~:26–49) | The fresh-save bench shot has no zero rows | Fake data | `statistics.png` | OPEN — row 471 |
+| RC-40 | A fresh Statistics page shows one sentence, not rows of zeros | `src/ui/screens/statistics.js` (~:26–49) | The fresh-save bench shot has no zero rows | Fake data | `statistics.png` | SHIPPED — rc-40-statistics-fresh-sentence @ c0f37bedb |
 | RC-41 | Physics Venues lists events as rows, and launching from the menu asks nothing | `src/ui/screens/physicsVenues.js` (~:27–29, :36–39) | Bench shot plus walk; no confirm when there is no flight progress | A new stylesheet | Native dropdowns and an always-on confirm | OPEN — row 472 |
 | RC-42 | The loading clock reads mm:ss | `src/ui/loadingTerminalArt.js` (~:1855–1858, :2163–2165) | The clock shows no tenths digit | Remove the ring; fake progress | Tenths at ~:1858 | OPEN — row 473 |
 | RC-43 | An empty save slot says "empty" once | `src/ui/screens/saveLoad.js`, `src/ui/screens/saveNotices.js` | The bench shot shows one heading and one sentence | Drop the slot name | `save-load-empty.png` | OPEN — row 473 |
@@ -867,6 +867,10 @@ ORRERY-consistent, with a bench shot (and `--walk` for changed controls).
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
+| RC-17 | rc-17-yune-clean-freight | this session | clean tallied Helios freight:arrival bumps yune.trust via _applyCounterDelta, capped 3, save-persisted |
+| RC-18 | rc-18-mara-pod-count | this session | survivorPod delivered/rescued-station_delivery bumps mara.debt once per receipt, no subtract |
+| RC-19 | rc-19-suhl-senna-counters | this session | machine:appealAccepted→suhl.clauses (cap 9), uniqueWreck:resolved→senna.names (cap 8) |
+| RC-20 | rc-20-zell-contraband | this session | contraband/illegal module:purchased→zell.work (cap 20), legal/restricted ignored |
 | NXI-022 | nxi-022-kinematic-proxy-not-offered | 6eca0bd9a | isAttachable applies the physicsBody:false exclusion (and world-site machine roles) to the offer: machine/fauna/route proxies denied, loose payloads beside them still offered, stations/asteroids/mines/beacons/survival wrecks keep latching; focused test pins all of it on seed 4242 |
 | VERB-32 | verb-32-mine-keeps-velocity | 6dd3b0e5ce | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |
