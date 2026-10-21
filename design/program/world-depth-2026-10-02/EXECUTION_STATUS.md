@@ -1,6 +1,16 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current source handoff — 21 October 2026, 13:17 UTC
+
+All nine goals remain OPEN within the original twenty-concept/IMPLEMENTATION/build-map scope. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) is verified at `483b0988b7f57dbc4c563a03c9ba62af1b4b7e56`, tree `55b0e8f700587e96a7a57e70a78fce1846d959e7`, sole 6b42 parent, open draft at 13:17:41 UTC. Public master bce remains unchanged. UI and legacy-boundary owners have completed this independently reviewed scoped increment, not the broader goals.
+
+Final UI checks pass 79/79, including actual one-unit player pickup with five units loose while awaiting the current job: reserve-short/round-blocked messaging is truthful without interrupting physical work. Legacy-boundary checks pass 44 focused plus 32 adjacent. Root combined checks pass 189/189; immutable audit matches all 5,994 module entries across 1,508 paths plus 13 filesystem reads across six paths. Source, tests, readout fixes and publication receipts are durably preserved and verified. These checks do not imply ordinary-flight or visual acceptance.
+
+Prior 6b42 [CI 39600016463](https://github.com/coldshalamov/SpaceFace/actions/runs/39600016463) is terminal FAILURE: browser3 timed out after 30 minutes 19 seconds at 13:01 UTC, not successor cancellation. Charon 38/38, Orchard native receiver and standalone readout pass; browser47-A passes and browser4 passes all five tests. Retain scoped success separately from non-green aggregate. verify_charon_delivery_ci owns actual successor followthrough. An actual Charon post-acceptance camera capture is queued with CI; no new image exists yet.
+
+Root retains integration and next ordinary-route work. Existing implementation/reviewer scopes remain intact; the UI and boundary increment is complete without closing any goal or opening a broad queue. Next: follow exact successor CI and the queued actual-camera evidence, then progress ordinary-route work while preserving finite custody, truthful reserve state, original actors and held Orchard/receiver operations. Earlier connected native receipts remain scoped; ordinary flown arrival, accepted visuals and whole-sector acceptance remain open. No new user action is inferred. Only these two shared handoff/goal files change here; NOW and canonical/private implementation remain untouched. No private recovery identifiers, private ancestry, master merge or deployment is introduced.
+
 ## Current source handoff — 21 October 2026, 12:29 UTC
 
 All nine goals remain OPEN. [PR #480](https://github.com/coldshalamov/SpaceFace/pull/480) now preserves verified head `6b42bac9e770edc6a35c1ad28d75648fbcca3f37`, tree `277f7058adb948b1ffff5c2e4041ee5c5f95e9fc`, sole d0522 parent, verified at 12:29:29 UTC. Twelve scoped files repair the attributable Hail → controller → lootShards → scanner import cycle through a no-import readout with the same identity cache, retain two Tally-specific errands at the actual living authored Tally post, and allow a pair-only four-second PNG cap inside the unchanged ten-second total. Independent review is complete; exact checks pass 131/131, 1,505 paths are audited and 2,205 preloads resolve. Source, tests and readout fixes are backed up.
