@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "ceres-clamp-pod-escape",
-      "date": "2026-10-13",
-      "wf": "WF-01",
-      "mode": "multiplication",
-      "verdict": "implemented",
-      "reason": "a cargo pod can now shear off the refinery dock and drift free — grabbable, witnessed, reported",
-      "fingerprint": "verb=grab,subject=loose cargo pod,sector=ceres,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "4d7861e40",
-      "verification": "focused_green"
-    },
-    {
       "id": "pocket-meteor-passage",
       "date": "2026-10-13",
       "wf": "WF-03",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "620b7bd33",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-41-venue-rows-launch",
+      "date": "2026-10-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "venue challenges are launch rows; the confirm gates only a live flight",
+      "fingerprint": "verb=launch,subject=venue,sector=menu,domain=rc-41",
+      "references": [],
+      "integration": "live",
+      "commit": "9022ec2cb",
       "verification": "focused_green"
     }
   ],
