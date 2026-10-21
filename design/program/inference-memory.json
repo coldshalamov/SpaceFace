@@ -114,19 +114,6 @@
   ],
   "units": [
     {
-      "id": "planet-band-first-voices",
-      "date": "2026-10-03",
-      "wf": "WF-15",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "a planetary dive is answered: each band explains itself and its law once, starting with the sling band's earned-speed rule",
-      "fingerprint": "verb=hear,subject=planet-bands,sector=anvil,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "d4623f3cf",
-      "verification": "focused_green"
-    },
-    {
       "id": "station-deed-notices",
       "date": "2026-10-03",
       "wf": "WF-09",
@@ -1671,6 +1658,19 @@
       "references": [],
       "integration": "live",
       "commit": "7019c1665",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rc-46-overheat-one-voice",
+      "date": "2026-10-21",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Vent alert owns overheat on the production profile; the receipt speaks only where the vent feature is off",
+      "fingerprint": "verb=announce,subject=overheat,sector=all,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "848f4485a",
       "verification": "focused_green"
     }
   ],
