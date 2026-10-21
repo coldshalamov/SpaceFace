@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Open expansion outcomes
 
-Updated 21 October 2026, 05:19 UTC. All eight outcomes remain open. This register supports the
+Updated 21 October 2026, 05:20 UTC. All eight outcomes remain open. This register supports the
 existing original twenty-concept/IMPLEMENTATION/build-map scope, not a new dispatch queue.
 Scoped tests, exports, source publication and offline images do not establish whole-game acceptance.
 Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historical handoffs.
@@ -11,7 +11,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 - State: open. Thimble finite recorder/through-or-outside routes and reviewed camera are locally sealed; Mile and connected Ilex work are retained. Physical salvage and Pallas escorted passage now have independent public draft delivery. Full ordinary-route, device, performance and experience acceptance remain incomplete.
 - Owner: expansion integration and exact feature owners.
 - Evidence: IMPLEMENTATION.md, TWENTY_CONCEPT_MAP.json; local b08ba532/d70c0413; public PR461 and PR462; finite Independent Seam is public PR464; physical Tethys count-lane service is public PR466.
-- Next: Preserve the published harvest guidance and dormant receiver bank. Resolve specifically held registration/census uploads, qualify coherent activation, and continue ordinary-control/live graphical acceptance. Inspect actual code and owners before selecting the next substantial connected-world activity; none is claimed yet.
+- Next: Preserve the published harvest guidance and dormant receiver bank. Resolve specifically held registration/census uploads, qualify coherent activation, and continue ordinary-control/live graphical acceptance. The next approved active unit is physical return of real violence-spilled gas to its original tender, with keep/leave/loss alternatives and later Tethys delivery; no implementation success yet.
 - Awaiting user: final acceptance when adequate evidence exists; no optional engineering decision.
 
 ## SF-ORCHARD
@@ -65,7 +65,7 @@ Prior detailed evidence remains in EXECUTION_STATUS.md and the existing historic
 ## SF-LIVING-WORLD
 - Outcome: coherent inhabited sectors, work, economy, history, characters and consequences using real assets and systems.
 - State: OPEN. Actual Alin-parent harvest guidance connects occupied sockets and remapped beam controls to native-ready whole-pod pickup and finalized accepted finite cargo. The corrected tow approach and real hazards remain preserved. Receiver activation is still local; the published bank is dormant.
-- Owner: Exact Orchard source and asset owners retain their seams; root coordinates current publication and CI. The connected-world activity owner is inspecting actual code and owners before choosing the next substantial unit.
+- Owner: Exact Orchard source and asset owners retain their seams; root coordinates current publication and CI. build_connected_world_activity owns anvilWork, new anvilSpillRecovery, narrow contactHail and tests/native fixture for approved physical spill return; extra provenance persistence remains conditional. An independent reviewer is assigned.
 - Evidence: PR461 repaired B10 remains passing; successor exact62/62 and remote62/62 plus sim32/32 and feel27/27 pass. Same native worker performs two real hauls accepting7/4 units at158.33/398.03s. PR462 public native/Continue/Hail14/14 and Hail21/21, remote14/14. PR464 exact public12/12; native18 units total including mid-cut Continue, no extra yield after depletion. Original public-a8 save remains zero-yield while source is legitimately unloaded, then ordinary player flight admits the source and completes18 units after56.18s. No teleport/pins/threat clearing. PR466 independent native19/19, exact public Hail/freight70/70, far/roster/kernel97/97 and CI partition30/30 pass. Strict held/berth Continue and actual retained exact residency are proved, not ordinary far shelving. Crew existing leaf100/100, partition30/30 and native repair78.0167/full-Continue77.8333/mid-weld79.05s pass. Continue uses scalar fallback then native Rapier; exact snapshot adoption and all-rescue acceptance are not claimed. Original Pallas zero-actor completion and ~1,057 WU seam/field mismatch are retained causal findings.
-- Next: Finish code/ownership inspection, then choose and implement a bounded substantial connected activity; no result is claimed yet. In parallel, resolve held receiver uploads, qualify coherent activation, and continue ordinary-control comprehension/live graphical review. Preserve the original wider world goals and earlier scoped failures.
+- Next: Implement and independently qualify intentional physical return of real violence-spilled gas to its original receiving tender, versus keep/leave/loss, preserving existing finite debit and later Tethys delivery. This is the next active executable outcome, not completed. In parallel, resolve held receiver uploads, qualify coherent activation, and continue ordinary-control comprehension/live graphical review. Preserve the original wider world goals and earlier scoped failures.
 - Awaiting user: no routine narrative/engineering choice. Complete world acceptance remains separate.
