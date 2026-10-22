@@ -1893,3 +1893,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **Checked:** bench `station-industry` 720×800 4→0, 900×800 4→0; 800×700, 860×760, 760×641, 651×700, 801×600, 900×600, 1280×720 clean; 700×600 keeps its pre-existing 4 ("Source in market" on "Titanium Ore", unchanged from master). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish90/`.
 
 **Leftovers:** at 720×800 the blocked reason ("NEEDS REFINERY / FIND A REFINERY ON THE CHART") still runs past the right edge (pre-existing); 700×600 Titanium Ore / Source in market overlap.
+
+## Save/Load: QUICK's CURRENT clear of SLOT 1 at 791–940 wide (ui-polish-92)
+
+**Before (master 2d35c9be33):** from 791 (where the page stops stacking) to ~940 wide above 460 tall, the filmstrip sits beside the reading with ~67–80px stations. QUICK's CURRENT ran into SLOT 1, and each filed save's line broke mid-word ("Adventur / e·Hitch") down to six lines; at 861×600 the quick save's credits fell off the frame.
+
+**After (`saveLayouts.js`, desktop only):** one block for 791–860 × 461–749 and 861–940 × 461+. A filed station shows its name and credits only (the reading on the left carries the selected save's line, as the stacked and short bands already do), and the slot name and badge close up their letter-spacing. Empty stations keep "Empty slot". No selector or ID changes.
+
+**Checked:** 791×600, 820×600, 860×600, 860×749, 861×600, 900×600 and 940×700 clean by eye and bench; 790×600 (stacked), 941×600, 960×540, 1280×720 and 1920×1080 unchanged. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish92/`.

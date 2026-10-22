@@ -317,6 +317,15 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.04em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { white-space:normal; }
 }
+/* ui-polish-92: from 791 (the stack's edge) to ~940 wide above 460 tall the strip sits beside the reading with
+   ~67-80px stations: QUICK's CURRENT ran into SLOT 1 and each filed save's line broke mid-word ("Adventur /
+   e·Hitch") down to six lines, its credits off the frame at 861x600. A filed station shows its name and credits
+   only (the reading carries the selected save's line, as in the stacked and short bands); the badge closes up. */
+@media (min-width:791px) and (max-width:860px) and (min-height:461px) and (max-height:749px), (min-width:861px) and (max-width:940px) and (min-height:461px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.02em; }
+}
 /* review: a narrow and short window (≤739 × ≤460) stacks too; the title keeps the short-desktop size so LOAD stays above the fold */
 @media (max-width:739px) and (max-height:460px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; row-gap:6px !important; }
