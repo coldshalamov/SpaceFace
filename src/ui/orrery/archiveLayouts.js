@@ -1144,6 +1144,13 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} :is(.ml-route__from, .ml-route__to) { font-size:13px !important; white-space:normal; text-overflow:clip; line-height:1.25; }
   ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
 }
+/* Short phone-width windows (639x461, 600x500): the 90px title and a 40vh list left the dossier ~95px. Smaller title, 36vh list (still shows the selected row). */
+@media (max-width:639px) and (max-height:620px) {
+  ${ML} { row-gap:8px !important; }
+  ${ML} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(30px, 8vh, 44px) !important; line-height:1 !important; margin:0 !important; }
+  ${ML} > .k-hang.sf-mlog-body { max-height:36vh !important; }
+  ${ML} > .k-stage.sf-mlog-stage { padding-top:8px !important; }
+}
 @media (forced-colors:active) {
   ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }
 }
