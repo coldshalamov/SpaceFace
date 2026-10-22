@@ -218,6 +218,22 @@ export const PRESENTATION_RECIPES = Object.freeze({
     shape: SEVERITY_SHAPE_TIERS[1],
     tags: ['critical', 'tether', 'slice'],
   }),
+  // SEED-HF-10 — a hostile line on the player's hull is a threat, not the player's own latch.
+  'tether.line_on_you': recipe({
+    importance: 0.9,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.payload_composition',
+      vfx: 'vfx.tether_snap',
+      audio: 'audio.tether_snap',
+      ui: 'ui.tension_warning',
+      accessibility: 'accessibility.tension_alt',
+    },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2] || SEVERITY_SHAPE_TIERS[1],
+    tags: ['critical', 'tether', 'line_on_you'],
+  }),
   'tether.near_break': recipe({
     importance: 0.72,
     dedupeWindowTicks: 12,
