@@ -46,6 +46,8 @@ import {
   warrantHunterAce,
   warrantHunterById,
   warrantHunterLine,
+  warrantContactKind,
+  warrantStreakCount,
   warrantRecoverSeconds,
 } from '../data/warrantHunters.js';
 import { WANTED_TIER, wantedTierFor } from './heat.js';
@@ -566,8 +568,10 @@ export function createWarrantHunterWaves(host) {
     const m = memory(s, true);
     const rec = recordFor(m, hunter.id);
     // A tipped wave says where it heard: the fence who sold the pilot is named to their face.
-    const kind = entry.tippedBy ? 'tipped' : entry.returning && rec.grievance ? 'grievance' : 'first';
-    const line = say(s, hunter, kind, 'contact', { grievance: rec.grievance, fenceId: entry.tippedBy });
+    const kind = warrantContactKind(entry, rec);
+    const line = say(s, hunter, kind, 'contact', {
+      grievance: rec.grievance, fenceId: entry.tippedBy, count: warrantStreakCount(rec),
+    });
     if (hunter.quirk.id === 'hails_first') {
       const ai = entity.data && entity.data.ai;
       const amount = Math.max(0, Math.round(Number(s.player.bounty) || 0));
@@ -617,7 +621,7 @@ export function createWarrantHunterWaves(host) {
   function say(s, hunter, kind, salt, opts = {}) {
     const text = warrantHunterLine(hunter, kind, {
       seed: seedOf(s), salt: hash32(String(salt), s.tick | 0), grievance: opts.grievance || null,
-      fenceId: opts.fenceId || null,
+      fenceId: opts.fenceId || null, count: opts.count | 0,
     });
     if (!text) return '';
     const voice = host.helpers && host.helpers.voice;
