@@ -1869,6 +1869,19 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 - test/ui-polish-88-pause-narrow.test.mjs: mounts at 700, resizes 700→1280→700 and 1280→700.
 - Bench (mk499): resize 1280→700 now column, 0/18 unreachable (was dial, 7/18, 4 off-x); 700→1280 now dial, 0 overlaps (was column, 12). 390x844 / 760x800 / 1280x720 unchanged.
 
+## Pause: a resize across 760 keeps the player's place (ui-polish-91)
+
+**Before (master 065f9d293e, Code Work's #499 follow-ups):** the remount that runs when the window crosses 760 put focus back on RESUME, so a player on SETTINGS or MISSION LOG lost their place. The narrow-pause test had no gamepad case and no covered-then-shown case.
+
+**After:**
+- `pause.js`: before the remount it notes the focused verb's `data-action`; afterwards the rebuilt button with the same action takes focus (RESUME only if that verb is gone). Focus outside pause is left alone. No selector or ID changes.
+- `test/ui-polish-88-pause-narrow.test.mjs`, four new cases:
+  - gamepad in the column at 700: the pad's spatial focus (`spatialFocusTarget`, the one `moveFocus` uses) reaches every verb from RESUME, along the banked rows and back up, and the strip says `↑↓ MOVE`;
+  - focus on a verb survives 1280→700→1280 on the rebuilt button (fails on master);
+  - a crossing with focus outside pause doesn't pull focus in;
+  - covered then shown: a crossing that pause doesn't hear while covered is fixed on `onShow`, and a crossing it did hear isn't rebuilt a second time.
+
+**Checked:** narrow-pause test 7/7 (master: 6/7, the focus case fails). The other pause test files pass, except `pause-freezes-ship-presentation` 1 failure, which fails the same way on master. Type floor OK.
 ## Industry: FABRICATE printed over "per run" at 720×800 (ui-polish-90)
 
 **Before (master 065f9d293e):** after #501 gave the 651–900 × 641–800 band a taller body, the chain kept its 42vh height (336px at 800 tall) and ran past the stage, and the key's seat (`--fab-foot-y`) was measured before the words above the chain finished reflowing. FABRICATE sat on the product's "per run" (bench `station-industry` 720×800: 4 findings; 900×800: 4).

@@ -628,6 +628,13 @@ function pauseWantsColumn() {
   const w = globalThis.window && globalThis.window.innerWidth;
   return typeof w === 'number' && w > 0 && w <= 760;
 }
+function pauseVerbButton(rootEl, action) {
+  if (!rootEl || typeof rootEl.querySelectorAll !== 'function') return null;
+  for (const button of rootEl.querySelectorAll('button')) {
+    if (typeof button.getAttribute === 'function' && button.getAttribute('data-action') === action) return button;
+  }
+  return null;
+}
 function unwatchPauseNarrow() {
   if (!pauseNarrowWatch) return;
   const { mql, onChange } = pauseNarrowWatch;
@@ -1158,10 +1165,16 @@ export const pauseScreen = {
     if (mql) {
       const onChange = () => {
         if (pauseRootEl !== rootEl || pauseWantsColumn() === this._columnAtMount) return;
-        const hadFocus = !!(els && els.bResume && globalThis.document && rootEl.contains
-          && rootEl.contains(globalThis.document.activeElement));
+        const active = globalThis.document ? globalThis.document.activeElement : null;
+        const hadFocus = !!(els && els.bResume && active && rootEl.contains && rootEl.contains(active));
+        // keep the player's place: the same verb (data-action survives the rebuild) takes focus again,
+        // not Resume (review #499 follow-up)
+        const keptAction = hadFocus && typeof active.getAttribute === 'function' ? active.getAttribute('data-action') : null;
         this.mount(rootEl, ctx);
-        if (hadFocus && els && els.bResume) try { els.bResume.focus(); } catch (e) {}
+        if (hadFocus && els && els.bResume) {
+          const again = keptAction ? pauseVerbButton(rootEl, keptAction) : null;
+          try { (again || els.bResume).focus(); } catch (e) {}
+        }
         if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
       };
       try {
