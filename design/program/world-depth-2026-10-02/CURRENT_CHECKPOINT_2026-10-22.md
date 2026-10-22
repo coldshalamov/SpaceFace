@@ -112,3 +112,13 @@ No open marker has been removed. A document, test, artifact or draft PR alone ca
 ## Active bounded allocation: Runaway Kiln
 
 The [exact Runaway Kiln claim](CLAIM_RUNAWAY_KILN_2026-10-22.md) assigns only its fire() crucible type/verified existing visual metadata, a new focused test, a unique package command and evidence. Ordinary combat currently rejects the beacon-type crucible; a fixture-only payload substitution reaches the existing warning and detonation. No protected Vesta/Winnow or combat writer is assigned. Interrupted rescue persistence remains an existing, explicitly unsolved gap.
+
+## Delivery and corrective CI wiring, 21:53 UTC
+
+Runaway Kiln is delivered as [draft PR #515](https://github.com/coldshalamov/SpaceFace/pull/515), verified head 942e6c22424d868d6935c1359b1ce4add162c6c7 with sole public parent 5e5b and all seven file blobs matching. Three new and six existing checks plus an independent single-settlement edge pass locally. Actual public source-preview recipes and bounds are included; no new model or live-camera acceptance is claimed. The independent provenance review clarified that 1,028 sources are cumulative and 897 were loaded in its focused run. A 302,328-byte, 14-member recovery was independently read back, including all seven shipping files.
+
+The first PR #515 head's standalone package command is not reachable from scripts.check, so its ongoing CI will not run the new case. The exact package claim is now expanded to add that invocation and verify matrix inclusion without executing the aggregate. Do not claim targeted CI success at that head.
+
+PR #514's full run 39854604366 ended red at 21:37:32 UTC: eight failed jobs and browser (3) cancelled, not by this work. Its new five-case command passed. Comparison to exact-base run 39852539933 shows identical assertion details across the static/sim/feel failures and several browser 404s. Asset-live and station-tabs terminal stages differ, shader resource identities differ, and cancellation is not a success. No replay-attributable regression was established; do not call every failure baseline.
+
+The next executable baseline repair is allocated in [the boot preload claim](CLAIM_BOOT_PRELOADS_2026-10-22.md): regenerate only the stale managed index block from a coherent public snapshot. All open goal markers and existing publishing/browser holds remain unchanged.

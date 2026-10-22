@@ -12,7 +12,7 @@ At authored Vesta positions, the existing beacon-type crucible rejects ordinary 
 
 - src/systems/runawayKilnRuntime.js: only fire() crucible spawn type and bounded per-prop visual metadata using the already-existing packagedPropFile/Slot/Radius hook, if the actual shipped mesh is verified to fit. Preserve the physical compound, mass, velocity, outcome handlers, rewards and story.
 - New test/encounter-runaway-kiln-damage-route.test.mjs: actual damage-owner regression and narrow side-effect coverage.
-- package.json: a unique check:runaway-kiln-damage-route command only, preserving all current scripts.
+- package.json: a unique check:runaway-kiln-damage-route command and, as expanded at 21:53 UTC after CI graph inspection, one invocation appended to scripts.check. Preserve every existing command; verify matrix inclusion without running the aggregate.
 - New RUNAWAY_KILN_DAMAGE_ROUTE_2026-10-22.md in this directory: evidence and explicit acceptance limits.
 - Optional evidence/runaway-kiln-20261022/ actual exported-model review image and its reproducible inspection recipe. No new model or renderer implementation is allocated.
 
