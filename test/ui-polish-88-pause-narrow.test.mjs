@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { pauseScreen } from '../src/ui/screens/pause.js';
-import { spatialFocusTarget } from '../src/ui/input.js';
+import { spatialFocusTarget, padFocusTarget } from '../src/ui/input.js';
 
 function installMiniDom({ desktop = true, width = 1280 } = {}) {
   const previous = { document: globalThis.document, window: globalThis.window, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame, matchMedia: globalThis.matchMedia };
@@ -206,5 +206,40 @@ test('covered then shown: a crossing while another screen is over pause lands on
     pauseScreen.onShow(ctx);
     assert.ok(dial(root));
     assert.equal(root.querySelector('.sf-pause-words'), list, 'no second rebuild on show');
+  } finally { dom.restore(); }
+});
+
+// ---- ui-polish-93: the d-pad walks the column in order at 700 ----
+
+// The column as Chromium lays it out at 700x800 (tools/ui-bench.html?screen=pause, measured):
+// a full-width RESUME over left-aligned banked rows. [left, top, width, height] in list order.
+const COLUMN_700 = [[42, 361, 616, 49], [42, 439, 92, 23], [148, 439, 51, 23], [213, 439, 52, 23], [42, 491, 152, 23],
+  [208, 491, 79, 23], [301, 491, 251, 23], [42, 515, 141, 23], [42, 567, 159, 23], [215, 567, 66, 23], [295, 567, 143, 23],
+  [452, 567, 105, 23], [42, 618, 66, 23], [122, 618, 74, 23], [209, 618, 57, 23], [42, 670, 201, 23], [42, 721, 91, 23], [42, 773, 106, 23]];
+
+test('d-pad Down/Up at 700 step every verb in list order from Resume (no jump to Achievements)', () => {
+  const dom = installMiniDom({ width: 700 });
+  try {
+    const root = globalThis.document.createElement('div');
+    pauseScreen.mount(root, makeCtx());
+    assert.ok(column(root));
+    const all = verbs(root);
+    assert.equal(all.length, COLUMN_700.length, 'the measured layout covers every verb');
+    all.forEach((b, i) => { const [left, top, width, height] = COLUMN_700[i]; const rect = { left, top, width, height, right: left + width, bottom: top + height }; b.getBoundingClientRect = () => rect; });
+    const resume = all[0];
+    assert.ok(resume.textContent.startsWith('Resume'));
+    const expected = all.map((b) => b.getAttribute('data-action'));
+    // the cause: pure geometry picks the word under Resume's centre, skipping the rows above it
+    assert.notEqual(spatialFocusTarget(all, resume, 'down'), all[1], 'geometric picking alone skips Settings..Help');
+    const down = [resume];
+    for (let at = resume, n; (n = padFocusTarget(all, at, 'down')); at = n) { down.push(n); if (down.length > 40) break; }
+    assert.deepEqual(down.map((b) => b.getAttribute('data-action')), expected, 'Down walks the exact list order and stops at the last verb');
+    const up = [down[down.length - 1]];
+    for (let at = up[0], n; (n = padFocusTarget(all, at, 'up')); at = n) { up.push(n); if (up.length > 40) break; }
+    assert.deepEqual(up.map((b) => b.getAttribute('data-action')), [...expected].reverse(), 'Up walks it back to Resume');
+    // the dial keeps its geometric two-level walk: no linear mark above 760
+    dom.resize(1280);
+    assert.ok(dial(root));
+    assert.ok(verbs(root).every((b) => { for (let p = b.parentElement; p; p = p.parentElement) if (p.getAttribute('data-pad-linear') != null) return false; return true; }), 'the dial list is not linear');
   } finally { dom.restore(); }
 });
