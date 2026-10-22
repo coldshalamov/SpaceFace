@@ -183,7 +183,8 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   towlineTablePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   mothlightPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   palletJackPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
-  borrowedVoicePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  // The prompt deck lives on main; the authoritative offer already crosses the event bridge.
+  borrowedVoicePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   core: Object.freeze({ nodeSafe: true, phase: 'core', capability: 'core' }),
   aiSlot: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'ai', slot: true }),
   flightSlot: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'flight', slot: true }),
