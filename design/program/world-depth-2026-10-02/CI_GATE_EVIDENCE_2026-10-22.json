@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-22T22:24:41Z",
+  "preload": {
+    "run": 39862879739,
+    "head": "6783d6c814a3b255c3b6e2764887a610e7b4eef3",
+    "artifactId": 12462298795,
+    "artifactSha256": "55defcdde6c7afe554d8f50df901f6d4b9d7ed8449a90be75cd123170f33c816",
+    "command": "node scripts/sync-modulepreload.mjs --check",
+    "ok": true,
+    "exitCode": 0,
+    "durationMs": 204,
+    "stdout": "[modulepreload] in sync — 35 main + 2182 registry imports covered."
+  },
+  "kiln": {
+    "run": 39861841707,
+    "head": "1608d857929257cc182e36582ed7d7a4ab2ee63d",
+    "jobId": 120114454673,
+    "staticShard": 1,
+    "command": "npm run check:runaway-kiln-damage-route",
+    "precedingFailure": "Validate Ceres physical workfleet and Continue",
+    "targetStep": "Run static check group (shard 1 of 3)",
+    "targetConclusion": "skipped",
+    "matrixOnly": true,
+    "aggregateExecutedLocally": false
+  },
+  "limits": [
+    "Passing the preload gate does not establish browser/mobile launch acceptance or an overall green workflow.",
+    "The Kiln command is present in the actual public command graph, but its static shard was skipped after a preceding Ceres failure.",
+    "No aggregate was executed locally to prove command placement."
+  ]
+}
