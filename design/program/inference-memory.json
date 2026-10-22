@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-22",
+  "updated": "2026-10-21",
   "runs": [
     {
       "date": "2026-08-12",
@@ -113,6 +113,682 @@
     }
   ],
   "units": [
+    {
+      "id": "enemy-specialist-silhouettes",
+      "date": "2026-10-13",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Specialist enemies render with distinct silhouettes instead of fallback hulls",
+      "fingerprint": "verb=render,subject=silhouette,sector=ceres,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "8d01545751",
+      "verification": "focused_green"
+    },
+    {
+      "id": "hud-wreck-salvage-pool-readout",
+      "date": "2026-10-13",
+      "wf": "WF-14",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Scanner HUD target readout inspects and formats authored salvage pools on scanned derelicts",
+      "fingerprint": "verb=scan,subject=wreck,sector=vesta,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "adcd4c222a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "dock-arrival-service-gaps",
+      "date": "2026-10-13",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Dock arrival presentation detects and warns player of missing essential berth services (refuel/repair)",
+      "fingerprint": "verb=dock,subject=station_services,sector=ceres,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "f2a6390f5c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "room-tone-profile-override",
+      "date": "2026-10-13",
+      "wf": "WF-13",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Room tone audio engine resolves explicit room acoustic profiles and safeguards mix gain against NaN corruption",
+      "fingerprint": "verb=listen,subject=room_tone,sector=pallas,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "2c9514dd4f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "aftermath-marker-custom-salvage-pool",
+      "date": "2026-10-13",
+      "wf": "WF-16",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Aftermath wrecks system respects custom authored salvage pools on markers instead of wiping them to default scrap",
+      "fingerprint": "verb=salvage,subject=aftermath_pool,sector=charon,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "433d1b8ab6",
+      "verification": "focused_green"
+    },
+    {
+      "id": "INF-SEEKER-BREAK",
+      "date": "2026-10-13",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A missile the player fired says once when chaff or a decoy breaks it. Later ticks stay quiet, and an enemy round does not.",
+      "fingerprint": "verb=warn,subject=missile,domain=combat",
+      "references": [],
+      "integration": "live",
+      "commit": "c98f6dfdfd39201d4172bcb0c22dd28cd56c2d66",
+      "verification": "focused_green"
+    },
+    {
+      "id": "INF-COURIER-BODY",
+      "date": "2026-10-13",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The courier drone stays visible until the matching freight pod arrives, instead of vanishing after fourteen seconds.",
+      "fingerprint": "verb=watch,subject=courier,domain=industry",
+      "references": [],
+      "integration": "live",
+      "commit": "1c1a45cfaca57cc3fc33bc2e8efa8d69b5278fa4",
+      "verification": "focused_green"
+    },
+    {
+      "id": "INF-FOULED-SCAN",
+      "date": "2026-10-13",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Severe biological fouling shortens hull scan range. Below severe the range is unchanged, and a sensor post keeps its own reach.",
+      "fingerprint": "verb=scan,subject=contacts,domain=instruments",
+      "references": [],
+      "integration": "live",
+      "commit": "36620f8220ec3d1925a8ddae0139be71a861aa8f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "halo-names-shooter",
+      "date": "2026-10-13",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Offscreen hostile arcs name role plus closing state",
+      "fingerprint": "verb=identify,subject=threat-halo,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "d243fc3697",
+      "verification": "focused_green"
+    },
+    {
+      "id": "dumb-round-names-cause",
+      "date": "2026-10-13",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A spent player missile emits one guidance-loss event with its cause plus one cue",
+      "fingerprint": "verb=shoot,subject=missile-guidance,sector=all,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "8297af76bb",
+      "verification": "focused_green"
+    },
+    {
+      "id": "toll-deals-screen",
+      "date": "2026-10-13",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Opening pirate toll can deal a point-defense screen priority target",
+      "fingerprint": "verb=fight,subject=pirate-toll,sector=trade-lane,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "aed4777736",
+      "verification": "focused_green"
+    },
+    {
+      "id": "work-hails-seven-registers",
+      "date": "2026-10-13",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Seven working trades hail in their own registers on a close pass",
+      "fingerprint": "verb=meet,subject=lane-traffic,sector=all,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "b1dc9fc40b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "dead-tow-live-pods",
+      "date": "2026-10-13",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Dead tow plus live pods found on derelict-field communicators",
+      "fingerprint": "verb=tow,subject=derelict-communicator,sector=all,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "86aad86620",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u1-chart-service-truth",
+      "date": "2026-10-14",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "the galaxy chart names missing refuel/repair beside its service chips from the same rule the dock card speaks, and the berth notice can no longer be sliced off a busy station",
+      "fingerprint": "verb=read,subject=station_services,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "4f3fb53348",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u2-derelict-first-contact",
+      "date": "2026-10-14",
+      "wf": "WF-10",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "seven named derelict/wreck POIs on ordinary routes gain authored first-contact plates through the existing discovery pipeline",
+      "fingerprint": "verb=discover,subject=derelicts,sector=helios-ceres-tethys-vesta-pallas,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "81459f8abd",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u3-convoy-escort-memory",
+      "date": "2026-10-14",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "the station at a defended convoy's destination remembers the wingman on its traffic rail and says so on the dock card",
+      "fingerprint": "verb=remember,subject=convoy_escort,sector=any,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "bbeb4bc09a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u4-wreck-cause-readout",
+      "date": "2026-10-14",
+      "wf": "WF-16",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a scanned battlefield wreck names its killer on the target panel from the provenance the aftermath system already records",
+      "fingerprint": "verb=read,subject=wreck_cause,sector=any,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "a6f19ff76d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u5-fuel-cell-decant",
+      "date": "2026-10-14",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "carried fuel cells convert to tank fuel at any berth through a self-serve verb, giving the no-refuel outpost notice an attached play at honest worse-than-pump economics",
+      "fingerprint": "verb=refuel,subject=fuel_cells,sector=any,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "0da18fb0dd",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u6-derelict-bar-directions",
+      "date": "2026-10-14",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "four plated derelicts gain one authored bar rumor at their home berth, retired by the pilot's own first contact, so the stories are findable instead of stumble-upon",
+      "fingerprint": "verb=hear,subject=derelict_rumors,sector=helios-tethys-vesta-pallas,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "9624f911ab",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u1-wreck-cargo-legality-readout",
+      "date": "2026-10-15",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "locked wrecks and cargo pods report class fallback, volatile pickups, and Restricted salvage / Contraband / Restricted cargo / Papers washed legality before the pilot cuts or scoops",
+      "fingerprint": "verb=read,subject=wreck_cargo_legality,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "7d75cbd60e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u2-specialist-disable-and-breather",
+      "date": "2026-10-15",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "all four combat specialists obey stun/disable/subsystem incapacitation, beaten cutter passes release the SF-052 commitLock, and late-window cuts still reserve the authored breather",
+      "fingerprint": "verb=counter,subject=specialist_incapacitation,sector=combat,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "5d855facaa",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u3-tractor-and-repulsor-head-guards",
+      "date": "2026-10-15",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "whole-wreck tractor skips empty husks, unstable reactors, berth hulks, and Massline-latched wrecks; repulsor/lure/rack resolvers honor entity-fitted draft hulls without leaking parked ships",
+      "fingerprint": "verb=tractor,subject=utility_head_guards,sector=flight,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "13e173cf58",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u4-berth-watch-and-arrival-truth",
+      "date": "2026-10-15",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "per-berth displacement watch preserves restitution across multiple berths, dockArrival and galaxyMap surface moored/displaced faction-berth status, and outlaw ports advertise their fence instead of customs scans",
+      "fingerprint": "verb=dock,subject=faction_berth_arrival,sector=vesta-charon-pallas-sedna,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "7c03c94af5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u5-named-hunter-hulk-and-external-revenge",
+      "date": "2026-10-15",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "named hunter hulks keep their authored scanLabel and black-box killerLabel when lossLedger tags them, and external captain kills record deathTick/killedBy and escalate surviving NAMED_CAPTAINS for the revenge vow",
+      "fingerprint": "verb=avenge,subject=named_hunter_revenge,sector=io_reach,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "575f70d5cd",
+      "verification": "focused_green"
+    },
+    {
+      "id": "bearing-fixed-plate-motif",
+      "date": "2026-10-15",
+      "wf": "WF-13",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Fixing a unique wreck's bearing - the discovery loop's payoff beat - plays the authored 3-note plate motif instead of silence; once per wreck, re-emits stay quiet",
+      "fingerprint": "verb=announce,subject=unique-wreck-bearing,sector=frontier,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "65085b8add",
+      "verification": "focused_green"
+    },
+    {
+      "id": "zone-reason-surfaced",
+      "date": "2026-10-15",
+      "wf": "WF-14",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Entering a named zone speaks its authored reason sentence once per visit instead of dropping it; the bare-name toast still announces every crossing",
+      "fingerprint": "verb=tell,subject=named-zones,sector=helios,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "7ca8a3b3ae",
+      "verification": "focused_green"
+    },
+    {
+      "id": "freight-arrival-news",
+      "date": "2026-10-15",
+      "wf": "WF-06",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "A station taking delivery publishes its authored cited arrival headline with intent provenance instead of silence; per-station cooldown keeps lane rhythm off the wire",
+      "fingerprint": "verb=publish,subject=freight-arrival,sector=tethys,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "704b49d5fd",
+      "verification": "focused_green"
+    },
+    {
+      "id": "vael-station-screen-schedulable",
+      "date": "2026-10-15",
+      "wf": "WF-08",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "The authored warden checkpoint interdiction can actually schedule now - policed core sectors host it through the real planner; the authored 0.6 security floor stays",
+      "fingerprint": "verb=interdict,subject=warden-screen,sector=policed-core,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "3945ee93b5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "weir-bolt-law-consequence",
+      "date": "2026-10-15",
+      "wf": "WF-02",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Bolting the customs gate raises WANTED heat through the gate's own witness and the law:response row speaks its filing in the lawful register - the hunt answers through existing machinery",
+      "fingerprint": "verb=enforce,subject=customs-weir,sector=dione,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "dee6ba0942",
+      "verification": "focused_green"
+    },
+    {
+      "id": "worldnews-save-persistence",
+      "date": "2026-10-15",
+      "wf": "WF-09",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Witnessed wreck chart marks and courier pins survive save/load; the world-beat dedupe keys persist so the map keeps its memory across Continue",
+      "fingerprint": "verb=remember,subject=chart-marks,sector=all,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "1866d0419c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rw-01-winch-brace",
+      "date": "2026-10-16",
+      "wf": "WF-05",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Winch-braced recoil: latched taut to a massive anchor, a light hull holds a siege volley on aim while recoil routes into line load; the load rides the near-break warning and can snap the line, and siege-class weapons (heavy beam, siege lance) now answer on the shooter",
+      "fingerprint": "verb=brace/recoil-routing,subject=massline-vs-heavy-weapons,sector=any,domain=wf-05-combat-tools",
+      "references": [],
+      "integration": "live",
+      "commit": "ec496941eb",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-32-mine-keeps-velocity",
+      "date": "2026-10-16",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Mine dropped at speed keeps the deploying ship's velocity",
+      "fingerprint": "verb=deploy,subject=mine,sector=all,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "6dd3b0e5ce",
+      "verification": "focused_green"
+    },
+    {
+      "id": "vig-02-runaway-kiln",
+      "date": "2026-10-16",
+      "wf": "WF-08",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Runaway Kiln vignette: an unmanned kilnback-mass crucible drifts ballistic on the Vesta depot ring; a shot is a real detonation ending, and the only save is physical rope work (massline, Mass Seed, Twin Bridle) bleeding the vector below save speed - no offer menu, no timer HUD, no scripted stop",
+      "fingerprint": "verb=tow/sling-bleed,subject=ballistic-crucible-vs-ring,sector=sector_vesta_forge,domain=wf-08-activity",
+      "references": [],
+      "integration": "live",
+      "commit": "34fff2e122",
+      "verification": "focused_green"
+    },
+    {
+      "id": "story-08-weekly-digest",
+      "date": "2026-10-16",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A week with new history ends in one cited dockside digest line",
+      "fingerprint": "verb=dock,subject=digest,sector=all,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "95e42831a1",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pro-19-pause-seed",
+      "date": "2026-10-16",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Pause footer shows the active run seed beside the build mark",
+      "fingerprint": "verb=read,subject=seed,sector=none,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "b708ff51b2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "law-10-scan-dump-suspicion",
+      "date": "2026-10-16",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Dumping the scanned lot mid-scan downgrades the finding to suspicion",
+      "fingerprint": "verb=dump,subject=scan,sector=all,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "e3890eb692",
+      "verification": "focused_green"
+    },
+    {
+      "id": "rw-04-slag-quench",
+      "date": "2026-10-16",
+      "wf": "WF-05",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Slag quench: coupling the Frame Coupler into cryo ice (ast_icy asteroids, now the cryo material) sheds every mount's weapon heat at the authored rate while contact holds; the rock pays through the ordinary thermal-state owner - its cold reserve drains, a drained rock reaches its fracture heat and cracks apart, and the plume paints as a coolant well; ordinary rock, a plain rope, or spent ice quench nothing",
+      "fingerprint": "verb=quench/dump-heat,subject=cryo-rock-heat-sink,sector=any-icy-field,domain=wf-05-thermal-stance",
+      "references": [],
+      "integration": "live",
+      "commit": "b23957b259",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pic-31-damaged-hull-vent",
+      "date": "2026-10-16",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A damaged hull vents where it is hurt, through the status-attached loop",
+      "fingerprint": "verb=vent,subject=hull,sector=all,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "96af864a5e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "econ-08-loss-moves-price",
+      "date": "2026-10-16",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A loss you caused moves the price and the news names the cause",
+      "fingerprint": "verb=lose,subject=shipment,sector=all,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "c09dbb1d4a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-43-miner-worked-out",
+      "date": "2026-10-16",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A miner that works a seam out says so and moves to the next rock",
+      "fingerprint": "verb=mine,subject=miner,sector=all,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "c6408c46d7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inst-35-earned-speed",
+      "date": "2026-10-16",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Speed you earned reads differently from speed the thrusters bought",
+      "fingerprint": "verb=read,subject=speed,sector=all,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "579203723e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "fight-13-hot-debris",
+      "date": "2026-10-16",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Fresh capital debris is dangerous for its first seconds, then it is salvage",
+      "fingerprint": "verb=collide,subject=debris,sector=all,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "8cfd5d6c64",
+      "verification": "focused_green"
+    },
+    {
+      "id": "teach-10-wanted-standdown",
+      "date": "2026-10-16",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The first wanted escalation teaches the stand-down path",
+      "fingerprint": "verb=surrender,subject=patrol,sector=all,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "8dcbf948e5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pic-32-distress-lamp",
+      "date": "2026-10-16",
+      "wf": "WF-12",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A live distress encounter now carries one lamp record on the broadcasting hull (victim or bait beacon), admitted by the script's fire and cleared by the one encounter:resolved funnel; pinned on seed 4242 across ignore, lost and bait_broken outcomes",
+      "fingerprint": "verb=present-witness,subject=distress-broadcast-hull,sector=any,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "b74aac87f9",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-33-modifier-jettison",
+      "date": "2026-10-16",
+      "wf": "WF-15",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Holding the boost grip (Shift / pad boost) through the jettison key dumps the whole selected lot as one payload body with one cargo:jettisoned receipt; the tap stays a one-unit release, the modifier reads the raw hold not the hold-to-toggle latch, and the chord follows rebound keys",
+      "fingerprint": "verb=jettison-all,subject=selected-cargo-lot,sector=any,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "3beb61352b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "set-piece-aftermath-all-eleven",
+      "date": "2026-10-16",
+      "wf": "WF-08",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "all eleven authored set pieces now end in a distinct follow-on contract with a board line, body and news line (was 3 of 11)",
+      "fingerprint": "verb=follow,subject=authored-set-piece-aftermath,sector=multi,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "d67c4cc10c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "standing-berth-cargo-loss-ear",
+      "date": "2026-10-16",
+      "wf": "WF-13",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "faction rank changes, finished berth services and four cargo-loss moments get an authored sound and caption instead of text only",
+      "fingerprint": "verb=hear,subject=standing-berth-cargo-loss,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "eb990124b7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "helios-claim-day-ambient-chain",
+      "date": "2026-10-17",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "the starter sector runs a staged claim-day afternoon (stake, customs pullover, argument, claim jump) with a news line, via a per-sector causal chain table instead of Ceres-only",
+      "fingerprint": "verb=witness,subject=ambient-causal-chain,sector=helios_prime,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "0f61a207aa3",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ceres-ambush-pack-dart",
+      "date": "2026-10-18",
+      "wf": "WF-02",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "The first fight a new pilot goes looking for, the Ceres belt-shadow ambush on the first trade-contract route, now springs a 3-4 ship Reach pack with a detonator dart in it instead of a 1-2 generic-pirate duet.",
+      "fingerprint": "verb=fight,subject=ambush-pack-dart,sector=ceres,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "f209449d132",
+      "verification": "focused_green"
+    },
+    {
+      "id": "starter-seam-haulable-core",
+      "date": "2026-10-18",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A new pilot mining the Helios starter claim now finds three oversized metallic boulders pinned in the seam; cutting one fractures a 26u iron core too big to scoop, the TETHER TO HAUL tag arms, and the route hint points at Ceres Refinery.",
+      "fingerprint": "verb=haul,subject=metallic-boulder-core,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "f209449d132",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wasp-starter-ram-receipt",
+      "date": "2026-10-18",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "the wasp opening ram job pays on the live plate receipt and names one runner",
+      "fingerprint": "verb=ram,subject=wasp-starter,sector=helios,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "4c19cda2608046072dc650beb7d11c9bb26fd60e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "the-second-bite",
+      "date": "2026-10-19",
+      "wf": "WF-08",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Hyperion Cut had zero eligible majors; the seams now bury crews on a real oxygen clock — tow, hold, strip, or fly on",
+      "fingerprint": "verb=tow,subject=crew_pod,sector=hyperion_cut,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "4c0814398f5",
+      "verification": "focused_green"
+    },
     {
       "id": "vesta-feedstock-day",
       "date": "2026-10-19",
@@ -1007,7 +1683,7 @@
       "fingerprint": "verb=meet,subject=pitborn-ace,sector=sker,domain=wf-02",
       "references": [],
       "integration": "live",
-      "commit": "afd945319c",
+      "commit": "afd945319c15820da71520414eecd8b7ffc73642",
       "verification": "focused_green"
     },
     {
@@ -1020,7 +1696,7 @@
       "fingerprint": "verb=interdict,subject=concord-ace,sector=dione,domain=wf-02",
       "references": [],
       "integration": "live",
-      "commit": "afd945319c",
+      "commit": "afd945319c15820da71520414eecd8b7ffc73642",
       "verification": "focused_green"
     },
     {
@@ -1033,7 +1709,7 @@
       "fingerprint": "verb=overhear,subject=ace-route,sector=sker,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "9502e514dd",
+      "commit": "9502e514dd83678f743f8c779ee605d4f788edde",
       "verification": "focused_green"
     },
     {
@@ -1046,7 +1722,7 @@
       "fingerprint": "verb=weather,subject=rock-rain,sector=mill,domain=wf-03",
       "references": [],
       "integration": "live",
-      "commit": "48bdc91cb2",
+      "commit": "48bdc91cb21e5c47aced55212573256a2f964485",
       "verification": "focused_green"
     },
     {
@@ -1059,7 +1735,7 @@
       "fingerprint": "verb=catch,subject=sprocket-crate,sector=helios,domain=wf-03",
       "references": [],
       "integration": "live",
-      "commit": "48bdc91cb2",
+      "commit": "48bdc91cb21e5c47aced55212573256a2f964485",
       "verification": "focused_green"
     },
     {
@@ -1072,7 +1748,7 @@
       "fingerprint": "verb=salvage,subject=garden-wreck,sector=charon,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "5c9db9dc67",
+      "commit": "5c9db9dc67f72bafc00e8cabcc6a7591ad1a0426",
       "verification": "focused_green"
     },
     {
@@ -1085,7 +1761,7 @@
       "fingerprint": "verb=read,subject=codex-wreck,sector=pallas,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "5c9db9dc67",
+      "commit": "5c9db9dc67f72bafc00e8cabcc6a7591ad1a0426",
       "verification": "focused_green"
     },
     {
@@ -1098,7 +1774,7 @@
       "fingerprint": "verb=speak,subject=helix-grammar,sector=helios,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "cba713834e",
+      "commit": "cba713834e2a06c54749389afd30af256d53f43c",
       "verification": "focused_green"
     },
     {
@@ -1111,7 +1787,7 @@
       "fingerprint": "verb=hail,subject=helix-voice,sector=dione,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "cba713834e",
+      "commit": "cba713834e2a06c54749389afd30af256d53f43c",
       "verification": "focused_green"
     },
     {
@@ -1124,7 +1800,7 @@
       "fingerprint": "verb=enter,subject=activity-wreck,sector=charon,domain=wf-10",
       "references": [],
       "integration": "live",
-      "commit": "dd52384100",
+      "commit": "dd523841009369fcae47fd58f990639d7a048f5a",
       "verification": "focused_green"
     },
     {
@@ -1137,7 +1813,7 @@
       "fingerprint": "verb=paint,subject=cargo-family,sector=market,domain=wf-12",
       "references": [],
       "integration": "live",
-      "commit": "c09487d551",
+      "commit": "c09487d5510ec22f91cb659cabacbd2de9af8c7b",
       "verification": "focused_green"
     },
     {
@@ -1150,7 +1826,7 @@
       "fingerprint": "verb=ask,subject=page-nine,sector=veil,domain=wf-10",
       "references": [],
       "integration": "live",
-      "commit": "d87e6a8756",
+      "commit": "d87e6a87565b388f91376d100147d7d81eedbd39",
       "verification": "focused_green"
     },
     {
@@ -1163,7 +1839,7 @@
       "fingerprint": "verb=weigh,subject=living-hold,sector=hold,domain=wf-14",
       "references": [],
       "integration": "live",
-      "commit": "88449c7f51",
+      "commit": "88449c7f5188cc8bad7cac25727686ef17534add",
       "verification": "focused_green"
     },
     {
@@ -1176,7 +1852,7 @@
       "fingerprint": "verb=spill,subject=living-sample,sector=flight,domain=wf-16",
       "references": [],
       "integration": "live",
-      "commit": "0a0da0f78a",
+      "commit": "0a0da0f78a8b06d2dd7c1593811d885c276e0e1b",
       "verification": "focused_green"
     },
     {
@@ -1189,7 +1865,7 @@
       "fingerprint": "verb=dump,subject=corrosive-sample,sector=belt,domain=wf-16",
       "references": [],
       "integration": "live",
-      "commit": "794f8719f0",
+      "commit": "794f8719f045481ca76047b579cb6bf2466429a5",
       "verification": "focused_green"
     },
     {
@@ -1202,7 +1878,7 @@
       "fingerprint": "verb=scatter,subject=null-corridor,sector=veil,domain=wf-03",
       "references": [],
       "integration": "live",
-      "commit": "b0d0977f78",
+      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
       "verification": "focused_green"
     },
     {
@@ -1215,7 +1891,7 @@
       "fingerprint": "verb=spare,subject=containment-core,sector=veil,domain=wf-03",
       "references": [],
       "integration": "live",
-      "commit": "b0d0977f78",
+      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
       "verification": "focused_green"
     },
     {
@@ -1228,7 +1904,7 @@
       "fingerprint": "verb=name,subject=fault-contact,sector=ashfall,domain=wf-12",
       "references": [],
       "integration": "live",
-      "commit": "b0d0977f78",
+      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
       "verification": "focused_green"
     },
     {
@@ -1241,7 +1917,7 @@
       "fingerprint": "verb=classify,subject=excepted-machine,sector=veil,domain=wf-12",
       "references": [],
       "integration": "live",
-      "commit": "b0d0977f78",
+      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
       "verification": "focused_green"
     },
     {
@@ -1254,7 +1930,7 @@
       "fingerprint": "verb=speak,subject=revoked-gate,sector=veil,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "b0d0977f78",
+      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
       "verification": "focused_green"
     },
     {
@@ -1267,7 +1943,7 @@
       "fingerprint": "verb=interrogate,subject=gate-auditor,sector=veil,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "b0d0977f78",
+      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
       "verification": "focused_green"
     },
     {
@@ -1280,7 +1956,7 @@
       "fingerprint": "verb=announce,subject=scanner-catalogue,sector=charon,domain=wf-12",
       "references": [],
       "integration": "live",
-      "commit": "b0d0977f78",
+      "commit": "b0d0977f7839ec309d52249a77bac1270925020f",
       "verification": "focused_green"
     },
     {
@@ -1293,7 +1969,7 @@
       "fingerprint": "verb=warn,subject=claim-raid,sector=io-reach,domain=wf-14",
       "references": [],
       "integration": "live",
-      "commit": "48f2126d70",
+      "commit": "48f2126d70a803609a0d7c99fac905838e7afe82",
       "verification": "focused_green"
     },
     {
@@ -1306,7 +1982,7 @@
       "fingerprint": "verb=name,subject=loss-house,sector=dione,domain=wf-12",
       "references": [],
       "integration": "live",
-      "commit": "2a98ab5c3e",
+      "commit": "2a98ab5c3e31795c30506fdbf6cc56c5581b3842",
       "verification": "focused_green"
     },
     {
@@ -1319,7 +1995,7 @@
       "fingerprint": "verb=interrupt,subject=jump-spool,sector=pursuit,domain=wf-15",
       "references": [],
       "integration": "live",
-      "commit": "20eee04a7e",
+      "commit": "20eee04a7e2ee241ef8cdae8acbac1e4207ed8ca",
       "verification": "focused_green"
     },
     {
@@ -1332,7 +2008,7 @@
       "fingerprint": "verb=allow,subject=live-fight,sector=io-reach,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "e379a447df",
+      "commit": "e379a447df5dc04c78ece0ae40e64e2d72691f0b",
       "verification": "focused_green"
     },
     {
@@ -1345,7 +2021,7 @@
       "fingerprint": "verb=withhold,subject=combat-supply,sector=helios,domain=wf-14",
       "references": [],
       "integration": "live",
-      "commit": "e379a447df",
+      "commit": "e379a447df5dc04c78ece0ae40e64e2d72691f0b",
       "verification": "focused_green"
     },
     {
@@ -1358,7 +2034,7 @@
       "fingerprint": "verb=report,subject=memorial-anomaly,sector=helios,domain=wf-12",
       "references": [],
       "integration": "live",
-      "commit": "1aab0967a7",
+      "commit": "1aab0967a70f566277ac626a7f7e03f5230cc085",
       "verification": "focused_green"
     },
     {
@@ -1371,7 +2047,7 @@
       "fingerprint": "verb=plot,subject=veil-wormhole,sector=veil,domain=wf-10",
       "references": [],
       "integration": "live",
-      "commit": "5fafdd1c26",
+      "commit": "5fafdd1c2676dc6922aedfc9bbd5ec359f3976f0",
       "verification": "focused_green"
     },
     {
@@ -1384,7 +2060,7 @@
       "fingerprint": "verb=prefer,subject=tethys-road,sector=tethys,domain=wf-14",
       "references": [],
       "integration": "live",
-      "commit": "5fafdd1c26",
+      "commit": "5fafdd1c2676dc6922aedfc9bbd5ec359f3976f0",
       "verification": "focused_green"
     },
     {
@@ -1397,7 +2073,7 @@
       "fingerprint": "verb=aim,subject=deep-tar,sector=field,domain=wf-15",
       "references": [],
       "integration": "live",
-      "commit": "e6f53a9f73",
+      "commit": "e6f53a9f73d61d7281f10f6f29b4f54478216b3f",
       "verification": "focused_green"
     },
     {
@@ -1410,7 +2086,7 @@
       "fingerprint": "verb=hold,subject=yard-pad,sector=helios,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "df23422610",
+      "commit": "df234226105555558cff5d4df59e79b703a33cad",
       "verification": "focused_green"
     },
     {
@@ -1423,7 +2099,7 @@
       "fingerprint": "verb=list,subject=overnight-hauler,sector=helios,domain=wf-03",
       "references": [],
       "integration": "live",
-      "commit": "df23422610",
+      "commit": "df234226105555558cff5d4df59e79b703a33cad",
       "verification": "focused_green"
     },
     {
@@ -1436,7 +2112,7 @@
       "fingerprint": "verb=flinch,subject=veil-ray,sector=veil,domain=wf-15",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1449,7 +2125,7 @@
       "fingerprint": "verb=scatter,subject=needle-swarm,sector=charon,domain=wf-02",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1462,7 +2138,7 @@
       "fingerprint": "verb=pile,subject=archive-crab,sector=ashfall,domain=wf-10",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1475,7 +2151,7 @@
       "fingerprint": "verb=lead,subject=wake-eel,sector=ashfall,domain=wf-02",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1488,7 +2164,7 @@
       "fingerprint": "verb=yank,subject=suture-mite,sector=ceres,domain=wf-05",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1501,7 +2177,7 @@
       "fingerprint": "verb=exhale,subject=stone-lung,sector=veil,domain=wf-01",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1514,7 +2190,7 @@
       "fingerprint": "verb=fog,subject=glassback,sector=veil,domain=wf-14",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1527,7 +2203,7 @@
       "fingerprint": "verb=toll,subject=cold-bell,sector=ashfall,domain=wf-13",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1540,7 +2216,7 @@
       "fingerprint": "verb=preserve,subject=nursery-recorder,sector=charon,domain=wf-09",
       "references": [],
       "integration": "live",
-      "commit": "b32dceefd7",
+      "commit": "b32dceefd7d09dd1ed53795019fd5767e2b4fc15",
       "verification": "focused_green"
     },
     {
@@ -1553,7 +2229,7 @@
       "fingerprint": "verb=stop,subject=veil-wreck,sector=belt,domain=wf-15",
       "references": [],
       "integration": "live",
-      "commit": "05a5eb5543",
+      "commit": "05a5eb5543a0c59ad3e2a60ede99e0de9e911763",
       "verification": "focused_green"
     },
     {
@@ -1566,7 +2242,7 @@
       "fingerprint": "verb=refuse,subject=paper-wash,sector=pallas,domain=wf-14",
       "references": [],
       "integration": "live",
-      "commit": "d5e46120b0",
+      "commit": "d5e46120b044d4234329584ac2ca650a092dcef4",
       "verification": "focused_green"
     },
     {
@@ -1579,7 +2255,7 @@
       "fingerprint": "verb=name,subject=cradle-core,sector=ceres,domain=wf-12",
       "references": [],
       "integration": "live",
-      "commit": "431fa30dc1",
+      "commit": "431fa30dc1f29da36492ab02275613882603b14b",
       "verification": "focused_green"
     },
     {
