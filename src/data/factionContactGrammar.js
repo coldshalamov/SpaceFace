@@ -269,6 +269,26 @@ export const FACTION_CONTACT_GRAMMAR = Object.freeze({
     }),
     sampleLine: 'Ashfall accord: your presence is registered under prior claim. Await disposition.',
   }),
+  // EXP-02 — Helix speaks in the Concord shape, with the Directorate's own words.
+  faction_helix: Object.freeze({
+    id: 'faction_helix',
+    callsign: 'Helix Directorate',
+    contactWord: 'INVOICE',
+    firstFire: false,
+    lawfulRoe: 'lawful_wanted_only',
+    demandType: 'read_the_invoice',
+    scanPolicy: 'lawful_interdiction',
+    lootLegality: 'adjudicated_salvage',
+    barkSituations: Object.freeze(['scan', 'warn', 'demand-cargo', 'patrol-greeting']),
+    primaryBark: 'scan',
+    aftermath: Object.freeze({
+      repChannel: 'faction:repDelta',
+      heatChannel: 'heat:wanted',
+      paperwork: true,
+      graffitiTone: 'invoice',
+    }),
+    sampleLine: 'Lawful interdiction. Under orders. Read the invoice first.',
+  }),
 });
 
 export const PRESSURE_FACTION_IDS = Object.freeze([
