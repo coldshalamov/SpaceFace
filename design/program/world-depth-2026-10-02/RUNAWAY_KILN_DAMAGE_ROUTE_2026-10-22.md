@@ -10,7 +10,7 @@ Four implementation/handoff files plus three source-preview review artifacts:
 
 - `src/systems/runawayKilnRuntime.js`: fire() spawns a damageable `payload`, not a damage-filtered `beacon`; explanatory comment only otherwise.
 - `test/encounter-runaway-kiln-damage-route.test.mjs`: new actual combat-route and physical eligibility regression.
-- `package.json`: adds only `check:runaway-kiln-damage-route`; preserves all pre-existing scripts and fields.
+- `package.json`: adds `check:runaway-kiln-damage-route` and one invocation in `scripts.check`; preserves every pre-existing command and field.
 - This evidence handoff.
 - `evidence/runaway-kiln-20261022/extract.mjs`, `render.py`, and `review.json`: reproducible static source-preview recipe and measured primitive bounds. Generated JPEG/geometry output is not a game asset.
 
@@ -38,7 +38,7 @@ The actual SG-02 owner still constructs mass 150, proxy `kilnback:forge:v1:00`, 
 - Candidate: `node --test test/encounter-runaway-kiln-damage-route.test.mjs`, 3/3 passed.
 - Package command: `npm run check:runaway-kiln-damage-route`, 3/3 passed.
 - Existing suite separately: `node --test test/encounter-runaway-kiln.test.mjs`, 6/6 passed.
-- Parsed package comparison confirms the unique command is the only package change.
+- Parsed package comparison confirms only the unique command and its aggregate invocation are added.
 
 Execution used an existing exact-public source overlay with a private import loader supplying only the candidate runtime module. No copied source tree or private Git ancestry is part of this delivery. Loaded closure grew from 766 source files for initial combat reproduction, to 971 for side-effect checks, to a cumulative 1,028 including the reproduction, side-effect/save probes and test runs. The independent focused tests plus edge loaded 897 unique source URLs. All underlying public source hashes matched the public inventory plus complete verified upstream deltas; the sole intentional runtime replacement is the shipping file. No aggregate tests or `anvil-receiver-delivery` test ran.
 
@@ -65,3 +65,9 @@ The exact public visualFactory blob `aba8b7cb9aa411907eb3d867f0f38892463484bd` w
 The primitive slice changes from 304 triangles / five mesh objects to 336 triangles / four mesh objects. These are not live GPU draw calls, residency measurements or frame-time results. Material scalar properties were transferred; game lighting, tone mapping, blink/animation and material-role processing were not reproduced. The canister still does not match the dedicated core-only collider precisely, so no finished-art or collision-silhouette acceptance is claimed. The existing full Kilnback mesh was intentionally rejected because its external casks also mismatch that collider.
 
 Reproduce the static comparison from a checkout containing the source baseline: run `node design/program/world-depth-2026-10-02/evidence/runaway-kiln-20261022/extract.mjs`, then `blender -b --python design/program/world-depth-2026-10-02/evidence/runaway-kiln-20261022/render.py`. The extractor rejects a different factory source hash. Outputs are geometry.json, review.json and source-comparison.jpg beside the recipes. This is a source preview, not an exported-package render or live game-camera capture.
+
+## CI reachability correction
+
+The initial PR #515 head 942e6c22424d868d6935c1359b1ce4add162c6c7 exposed the test as a standalone npm command but did not connect it to the CI matrix. Its workflow run therefore did not execute the new three-case regression. This follow-up appends that command to scripts.check without changing workflow configuration or any existing command.
+
+The actual public check-ci-report matrix builder and ciGateGraph helper are imported for static inspection only. Before the correction the focused file has zero matrix entries; afterward it has exactly one classified entry, with all preceding commands unchanged. Neither the aggregate nor its child tests is executed by this matrix inspection. Targeted CI success must still be read from the corrected remote head's report, not inferred from local success or graph inclusion.
