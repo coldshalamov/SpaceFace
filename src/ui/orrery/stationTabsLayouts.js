@@ -2013,6 +2013,14 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 @media (min-width:901px) and (max-width:999px) and (max-height:800px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
 }
+/* Industry at 720×800-class (651–900 wide, 641–800 tall): #501's side-by-side station signs gave the body
+   ~330px, but the chain kept its 42vh (336px) and ran past the stage, so FABRICATE, seated under the
+   product's "per run", fell off the body's foot. The chain stands 264px tall and the
+   run's count takes the short-body 30px size: the key clears the foot's fade and the reason still clears the title. */
+@media (min-width:651px) and (max-width:900px) and (min-height:641px) and (max-height:800px) {
+  ${D} .orr-ind-chain { height:264px !important; min-height:0 !important; }
+  ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
+}
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

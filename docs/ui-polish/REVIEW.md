@@ -1868,3 +1868,15 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 - The column's key strip says `↑↓ MOVE` (a flat list) instead of `↑↓ CATEGORY / ←→ ITEM`; the dial keeps its two-level hints.
 - test/ui-polish-88-pause-narrow.test.mjs: mounts at 700, resizes 700→1280→700 and 1280→700.
 - Bench (mk499): resize 1280→700 now column, 0/18 unreachable (was dial, 7/18, 4 off-x); 700→1280 now dial, 0 overlaps (was column, 12). 390x844 / 760x800 / 1280x720 unchanged.
+
+## Industry: FABRICATE printed over "per run" at 720×800 (ui-polish-90)
+
+**Before (master 065f9d293e):** after #501 gave the 651–900 × 641–800 band a taller body, the chain kept its 42vh height (336px at 800 tall) and ran past the stage, and the key's seat (`--fab-foot-y`) was measured before the words above the chain finished reflowing. FABRICATE sat on the product's "per run" (bench `station-industry` 720×800: 4 findings; 900×800: 4).
+
+**After:**
+- `industry.js`: the key's seat is recomputed whenever the head rows (category, name, description) resize, not only when the chain itself does, so it always lands 12px under the product's words. The observer is disconnected with the chain.
+- `stationTabsLayouts.js`, one desktop-only block for 651–900 wide × 641–800 tall: the chain stands 264px and the run's count uses the short-body 30px size, so FABRICATE clears the stage's foot fade and the blocked reason still clears the title.
+
+**Checked:** bench `station-industry` 720×800 4→0, 900×800 4→0; 800×700, 860×760, 760×641, 651×700, 801×600, 900×600, 1280×720 clean; 700×600 keeps its pre-existing 4 ("Source in market" on "Titanium Ore", unchanged from master). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish90/`.
+
+**Leftovers:** at 720×800 the blocked reason ("NEEDS REFINERY / FIND A REFINERY ON THE CHART") still runs past the right edge (pre-existing); 700×600 Titanium Ore / Source in market overlap.
