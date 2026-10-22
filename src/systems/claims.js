@@ -1826,10 +1826,7 @@ export const claims = {
           // settles 'ignored' on schedule if nobody is.
           this._resumeDefenseIds.delete(defense.id);
           delete defense.retryAt;
-          defense.phase = 'warning';
-          defense.requestedAt = null;
-          defense.deadlineAt = Math.max(defense.deadlineAt || 0, now + CLAIM_DEFENSE_REPRIEVE_S);
-          this._setDefenseWaypoint(body, defense);
+          this._rearmDefenseWarning(body, defense);
         } else {
           defense.retryAt = now + 2;
         }
@@ -1878,6 +1875,40 @@ export const claims = {
     return { ok: true, encounterId: defense.encounterId };
   },
 
+  // A fight that collapsed is not a settled raid. The stores are still the prize, and the
+  // fallback clock only helps a pilot who hears that the crew turned back.
+  _rearmDefenseWarning(body, defense) {
+    if (!body || !defense) return;
+    const now = this.state.simTime || 0;
+    defense.phase = 'warning';
+    defense.requestedAt = null;
+    defense.deadlineAt = Math.max(defense.deadlineAt || 0, now + CLAIM_DEFENSE_REPRIEVE_S);
+    this._setDefenseWaypoint(body, defense);
+    if (!this.bus) return;
+    const left = Math.max(1, Math.ceil((defense.deadlineAt || now) - now));
+    this.bus.emit('claim:defenseWarning', {
+      bodyId: body.id,
+      bodyName: body.name,
+      defenseId: defense.id,
+      encounterId: defense.encounterId,
+      sectorId: body.sectorId,
+      pos: { x: body.x, z: body.z },
+      attackerFactionId: defense.attackerFactionId,
+      attackerName: defense.attackerName,
+      attackerCount: defense.attackerCount,
+      motive: defense.motive,
+      deadlineAt: defense.deadlineAt,
+      countdownS: left,
+      rearm: true,
+    });
+    this.bus.emit('toast', {
+      text: `CLAIM STILL LIVE — ${defense.attackerName} turned back. Reach ${body.name} in ${left}s.`,
+      kind: 'warn',
+      ttl: 7,
+    });
+    this.bus.emit('audio:cue', { id: 'warning' });
+  },
+
   _onDefenseEncounterResolved(payload) {
     if (!payload || payload.shape !== 'claim_threat' || !payload.encounterId) return;
     const bodies = (this.state.claims && this.state.claims.bodies) || [];
@@ -1885,10 +1916,7 @@ export const claims = {
       && candidate.spec.defense.encounterId === payload.encounterId);
     if (!body) return;
     if (String(payload.outcome || '').startsWith('aborted:')) {
-      body.spec.defense.phase = 'warning';
-      body.spec.defense.requestedAt = null;
-      body.spec.defense.deadlineAt = Math.max(body.spec.defense.deadlineAt || 0, (this.state.simTime || 0) + CLAIM_DEFENSE_REPRIEVE_S);
-      this._setDefenseWaypoint(body, body.spec.defense);
+      this._rearmDefenseWarning(body, body.spec.defense);
       return;
     }
     this._settleDefense(body, payload.outcome || 'timeout');
