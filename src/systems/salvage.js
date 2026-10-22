@@ -26,6 +26,14 @@ import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { buildAdventureOffer } from './wreckCourt.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
+
+const COMMODITY_NAME = new Map((COMMODITIES || []).map((row) => [row && row.id, row && row.name]));
+
+function spokenCommodity(id) {
+  const name = COMMODITY_NAME.get(id);
+  if (typeof name === 'string' && name.trim()) return name.trim();
+  return String(id || 'cargo').replace(/^cmdty_/, '').replaceAll('_', ' ');
+}
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
 import { addSalvage } from './cargo.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -1039,7 +1047,7 @@ export const salvage = {
     const pct = Math.round(pocket.integrity * 100);
     this.bus.emit('toast', {
       text: accepted > 0
-        ? `Cradle took the core — ${accepted}u ${pocket.commodityId.replace('cmdty_', '').replaceAll('_', ' ')} to the bay (${pct}% integrity).`
+        ? `Cradle took the core — ${accepted}u ${spokenCommodity(pocket.commodityId)} to the bay (${pct}% integrity).`
         : 'Cradle took the core — the salvage bay could not take one more unit.',
       kind: accepted > 0 ? 'info' : 'warn', ttl: 4,
     });
