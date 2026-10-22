@@ -243,6 +243,7 @@ export const flightV3 = {
       });
       this.bus.on('player:death', () => { this._clearAngularIntent(); this._clearSwingCommit(); });
       this.bus.on('player:respawn', () => { this._clearAngularIntent(); this._clearSwingCommit(); });
+      this.bus.on('ship:controlChanging', () => { this._clearAngularIntent(); this._clearSwingCommit(); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -361,6 +362,12 @@ export const flightV3 = {
       entity.physicsBody && entity.physicsBody.thrusters,
       state.combat && state.combat.entities ? state.combat.entities[String(entity.id)] : null,
     );
+    // A physically extracted drive is absent, rather than merely combat-damaged. A replacement
+    // fitted by ships restores it; this does not erase momentum or collision response.
+    if (entity.data?.shipjackDriveRemoved) {
+      driveAuthority.forward = 0; driveAuthority.reverse = 0;
+      driveAuthority.strafe = 0; driveAuthority.yaw = 0;
+    }
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
     // Hoisted above the player boost block: the boost state machine only queues impulses and

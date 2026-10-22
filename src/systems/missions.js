@@ -42,6 +42,7 @@
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import { dedupWarn } from '../core/warnDedup.js';
+import { installBlackFlagMissions, normalizeBlackFlagJobs } from '../missions/blackFlagMissions.js';
 import { CLEAN_CYLINDER, buildCleanCylinderOffer } from '../data/cleanCylinder.js';
 import { QUIET_PASSAGE, buildQuietPassageOffer, evaluatePassengerHeatProximity } from '../data/heatLure.js';
 import { pointContaminationAt } from '../data/alienEcology.js';
@@ -1283,7 +1284,7 @@ function setPieceCauseOf(value) {
 }
 
 function isFingerprintBoardSource(source) {
-  return source === 'poiBehavior'
+  return source === 'blackFlag' || source === 'poiBehavior'
     || source === 'mercyService' || source === 'wreckCourt'
     || source === SET_PIECE_MISSION_SOURCE
     || source === LANDMARK_QUEST_SOURCE
@@ -1585,6 +1586,7 @@ export const missions = {
     // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
     // their existing consumers and cannot accidentally become malformed board entries.
     bus.on('mission:offered', (p) => this._onExternalBoardOffer(p));
+    installBlackFlagMissions(this);
     bus.on('jump:chargeStart', (p) => {
       this._dnfAuthoredRaces('race_left_course');
       this._projectMissionTargetDecodes(p && p.targetSectorId);
@@ -3051,6 +3053,7 @@ export const missions = {
       // Alien Ecology AE-067/068/069/087/088/089: colonized sites emit fieldwork contracts on
       // close approach — the site IS the giver (alienEcology.emitEcologyOffer builds the row).
       || rawOffer.source === 'ecology'
+      || rawOffer.source === 'blackFlag'
     );
     if (!allowedSource) return false;
     if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;
@@ -4988,6 +4991,13 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+
+    if(m.source==='blackFlag'){
+      const v=this.state.player?.shipjack?.vesselsById[m.params?.vesselId];
+      const body=v&&this.state.entities.get(v.location?.entityId);
+      if(v&&v.custodian!=='player')return {...base,stationId:null,sectorId:v.location.sectorId,label:v.name,targetEntityId:body?.id ?? null,pos:body?.pos?{x:body.pos.x,z:body.pos.z}:sectorLocalToGlobalForSector(v.location.pos,v.location.sectorId),reason:m.brief};
+      return {...base,reason:'Deliver the living frame to the claimant’s receiving berth; release it through Registry & recovery.'};
+    }
 
     if (m.storyTag === CONTRACT_47A_B0_TAG && !(m.params && m.params.sampleRecovered)) {
       const source = this._resolveContract47aSampleSource(m);
@@ -13392,6 +13402,7 @@ export const missions = {
     state.missions.active = [];
     state.missions.completedLog = [];
     state.missions.receipts = [];
+    delete state.missions.blackFlagJobs;
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
     delete state.missions.setPieceSettlements;
@@ -13531,6 +13542,7 @@ export const missions = {
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    if (m.blackFlagJobs) serialized.blackFlagJobs = normalizeBlackFlagJobs(m.blackFlagJobs);
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
     if (m.ilexArkReward) serialized.ilexArkReward = { ...m.ilexArkReward, deliveredVaultIds: [...m.ilexArkReward.deliveredVaultIds] };
     if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
@@ -13579,6 +13591,9 @@ export const missions = {
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
     state.missions.receipts = normalizeMissionReceipts(data.receipts);
+    const blackFlagJobs = normalizeBlackFlagJobs(data.blackFlagJobs);
+    if (blackFlagJobs) state.missions.blackFlagJobs = blackFlagJobs;
+    else delete state.missions.blackFlagJobs;
     const speedCompleted = {};
     for (const definition of ADVENTURE_SPEED_CONTRACTS) {
       if (data.adventureSpeedCompleted?.[definition.id] === true) speedCompleted[definition.id] = true;

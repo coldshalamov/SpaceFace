@@ -15,6 +15,7 @@ import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.j
 import { getDerivedStats, shipworksStationAccess } from './ships.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
 import { salvageBaySaleAllowsIllicit } from './economy.js';
+import { isBlackFlagAdventure } from '../shipjack/model.js';
 import {
   acceptDeadDropLoad,
   collectDeadDropLoads,
@@ -1277,6 +1278,47 @@ export const cargo = {
     this._massDirty = false;
     this._lastHotDockSpillTick = -1;
     this._pendingSpillAnnounce = null;
+  },
+
+  /** BLACK FLAG partial victory: the existing freight owner ejects a finite real lot.
+   * No direct player award: the pod still has to be recovered through ordinary cargo input. */
+  releaseVesselFreight({ vesselId, entityId, operationId } = {}) {
+    const state = this.state;
+    const refuse = (reason) => ({ ok: false, reason });
+    if (!isBlackFlagAdventure(state)) return refuse('Freight access is available in Adventure only');
+    if (typeof operationId !== 'string' || operationId.length < 3 || operationId.length > 120) return refuse('Missing operation identity');
+    const target = state.entities?.get(entityId);
+    const vessel = (state.player?.shipjack || state.shipjack)?.vesselsById?.[vesselId];
+    const attempt = (state.player?.shipjack || state.shipjack)?.custodyAttempts?.[vesselId];
+    const player = state.entities?.get(state.playerId);
+    if (!target || target.alive === false || target.type !== 'ship' || target.id === state.playerId
+      || !vessel || target.data?.vesselId !== vesselId || vessel.location?.entityId !== target.id
+      || vessel.generation !== target.data?.shipjackGeneration) return refuse('Vessel identity or physical occupant changed');
+    if (!player || player.alive === false || Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) > 115) {
+      return refuse('Close within 115 WU to maintain the cargo-door link');
+    }
+    if (attempt?.phase !== 'foothold' || !(attempt.windowUntil >= state.simTime)) return refuse('Establish a live electronic foothold first');
+    if (target.data.violenceCargoSpilled || target.data.freightRewardOwner === 'manifest_custody'
+      || target.data.freightCustody) return refuse('This freight has already been released or belongs to an active custody contract');
+    const manifest = target.data.cargoManifest;
+    const lines = manifest?.lines;
+    if (!Array.isArray(lines) || lines.length === 0 || lines.length > 16
+      || !lines.every((line) => VOL[line?.commodityId] != null && Number.isSafeInteger(line.qty) && line.qty > 0 && line.qty <= 100000)) {
+      return refuse('No verified freight is aboard this vessel');
+    }
+    const traffic = this.registry?.get?.('traffic');
+    if (!traffic || typeof traffic._spillHaulerCargoFromViolence !== 'function') return refuse('The freight owner is unavailable');
+    // This owner already reconciles both the live hull and durable traffic manifest, names
+    // the rightful owner on a persistent physical pod, and alerts local salvage competitors.
+    const pod = traffic._spillHaulerCargoFromViolence(target, player, 'shipjack_breach');
+    if (!pod || pod.alive === false) return refuse('This carrier has no releasable civilian freight hatch');
+    pod.data.sourceVesselId = vesselId;
+    pod.data.releaseOperationId = operationId;
+    const receipt = { ok: true, operationId, vesselId, entityId, payloadId: pod.id,
+      commodityId: pod.data.commodityId, qty: pod.data.amount,
+      manifestId: manifest.manifestId || null, at: state.simTime || 0 };
+    this.bus.emit('cargo:vesselFreightReleased', receipt);
+    return receipt;
   },
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */

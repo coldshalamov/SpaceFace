@@ -25,6 +25,16 @@ import { hasMachineProtocol } from '../data/alienEcology.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { DRONES } from '../data/automation.js';
+import { SECTORS } from '../data/sectors.js';
+
+const STATION_NAME_BY_ID = new Map();
+for (const sec of SECTORS) {
+  for (const st of sec.stations || []) {
+    if (st && st.id && typeof st.name === 'string' && st.name.trim()) {
+      STATION_NAME_BY_ID.set(st.id, st.name.trim());
+    }
+  }
+}
 
 export const MAX_PROGRAM_STEPS = 6;
 export const MAX_PROGRAM_NAME_LENGTH = 40;
@@ -195,6 +205,8 @@ export function resolveStationDisplayName(state, stationId, beacon = null) {
       }
     }
   }
+  const catalog = stationId ? STATION_NAME_BY_ID.get(stationId) : '';
+  if (catalog) return catalog;
   return 'depot station';
 }
 

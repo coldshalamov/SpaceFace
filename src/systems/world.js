@@ -2263,6 +2263,18 @@ export const world = {
     });
   },
 
+  // The living-world slot terminates when ships takes custody; the physical hull stays alive.
+  // Explicit persistence ownership prevents the old traffic/world slot rematerializing a twin.
+  transferRecordToVesselCustody(entityId,vesselId) {
+    const entity=this.state.entities.get(entityId);
+    if(!entity?.alive||entity.data?.vesselId!==vesselId)return false;
+    const data=entity.data;
+    if(data.worldRecordId)this.markWorldRecordDestroyed(data.worldRecordId,{outcome:'custody_transferred',pos:{x:entity.pos.x,z:entity.pos.z}});
+    if(data.jobId)this.helpers?.npcJobs?.release?.(data.jobId);
+    data.persistenceOwner='shipjack';
+    return true;
+  },
+
   /**
    * Test/harness hook: force a tier transition (used by residency tests for eviction).
    * @param {string} sectorId

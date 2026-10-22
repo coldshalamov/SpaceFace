@@ -1065,13 +1065,13 @@ production units, and never build what they write.
 | 413 | AL-MACH-2 | Split `missions.js` and `traffic.js` below 8k LOC, byte-identical digests (§31.3) | BUILD | OPEN — only while seams `world-answers-2`/`run-memory` are not claimed |
 | 414 | AL-MACH-3 | Newest versions — three, Electron, Rapier, electron-builder on ≥7-day-old releases, digest-gated (§31.3) | BUILD | OPEN |
 | 415 | AL-MACH-4 | A toolchain a newcomer can read — tier the 662 npm scripts, retire zero-reference aliases (§31.3) | BUILD | OPEN — after 414 |
-| 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | OPEN |
-| 417 | SEED-WORLD-LONG | Seed ≥12 audited lines: readers for written-and-unread flags, hour 10–25 career beats, standing-order clients (§31.3) | SEED | OPEN |
-| 418 | SEED-SHOW-EAR | Seed ≥12 audited lines: caption gaps by recipe id, off-grid stingers, replay/photo gaps (§31.3) | SEED | OPEN |
-| 419 | SEED-SECTORS | The 25-sector postcard pass — each sector's identity as verb, job, sound and picture within 2 min of arrival; each miss is one line (§31.3) | SEED | OPEN |
-| 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | OPEN |
-| 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | OPEN |
-| 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | OPEN |
+| 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | DONE devin-ten-oct22 (21452bddf9) |
+| 417 | SEED-WORLD-LONG | Seed ≥12 audited lines: readers for written-and-unread flags, hour 10–25 career beats, standing-order clients (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 418 | SEED-SHOW-EAR | Seed ≥12 audited lines: caption gaps by recipe id, off-grid stingers, replay/photo gaps (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 419 | SEED-SECTORS | The 25-sector postcard pass — each sector's identity as verb, job, sound and picture within 2 min of arrival; each miss is one line (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | DONE devin-ten-oct22 (21452bddf9) |
 | 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | OPEN |
 | 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
 | 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424; owner ruling needed: `src/ui/AGENTS.md` bans pilot portraits in the flight HUD, so until ruled the portrait shows on the station comms screen and the in-flight line carries name, voice and caption only |
@@ -1091,7 +1091,7 @@ production units, and never build what they write.
 | 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | OPEN |
 | 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | DONE devin-thirty-oct22 |
-| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | OPEN |
+| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
 | 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |
 | 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | BUILD | OPEN — M3 |
 | 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | BUILD | OPEN — M3; after 445 |
@@ -1122,7 +1122,7 @@ production units, and never build what they write.
 | 473 | RC-FRONT-DOOR | A fast, kind front door — interactive title ≤10 s, mm:ss clock, destination slate, first-light preset, settings density (§32.7) | BUILD | OPEN — M1; coordinate with L-MACHINE shader admission |
 | 475 | RC-FELT | Every verb is felt — callout rarity, haptics, Around the World, Trick Book, arena bounties, Prize Run, Perfect Vent, Match Burn (§32.7) | BUILD | OPEN — M1/M2 |
 | 476 | RC-TRAVEL | Travel is a choice — Freight Spine, stale chart, Two Roads, Interdiction Wrestle, drift vector (§32.7) | BUILD | OPEN |
-| 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | OPEN |
+| 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — job phases already had `livingWorkStatusText`; this row puts it on the contacts-roster detail line; grudge hails (`aceHailOpener`, `patrolGrievanceHail`) and robbed-hauler price moves (`accountFreightDiversion` → `freight:loss` → `economy:applyTradePressure` at the bound station) pre-existed and are claimed here |
 | 478 | RC-STATION-STAGE | The station is a stage — bar reactions, Regulars, Appeals Window, Clearance Pending, The Tab, the Fine at Helios (§32.7) | BUILD | OPEN — M3 |
 | 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
 | 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
@@ -1136,18 +1136,18 @@ production units, and never build what they write.
 | 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 491 | CRAFT-INTENT | Enemies with intent — attack cycles, cruise ≥70 % of the player's, ≤0.4 reversals/s (measured 50 vs 117, 0.8/s) (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 492 | CRAFT-LINE | The Line you can see — strain thickness and glow, a rim-lit latch, the release arc at the chase camera (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
-| 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | OPEN — merge landed 2026-10-22 (owner chose Pull · Shove · Pin · Bomb · Rig on 1–5, `src/systems/powerVerbs.js`; rail, Cluster, help, settings, pad and phone deck name and tint each power); remaining: the held-key preview |
+| 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — held-key preview: deterministic capped plan (24 outlines), per-power tint, predicted paths; `src/data/powerPreview.js` + `src/render/powerPreview.js` |
 | 495 | CRAFT-ROCKS | Rocks are the hero art (§33.2) | ART | OPEN — with 509 |
-| 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | OPEN |
+| 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | DONE devin-thirty-oct22-b (187daf8f) — TOP SPEED / LIMIT / AT TOP SPEED / DRIVE SPINNING UP / OUT OF POWER on the velocity tape; RELEASE SPEED on the cadence readout |
 | 497 | CRAFT-CADENCE | Something happens every minute — first contact ≤2 min, then every 3–5; cohort travel ≤50 % (§33.3) | BUILD | OPEN — after 482–492 make a pocket fight worth meeting |
 | 498 | W-TONNAGE | Tonnage Logged and Line Class I–VIII, shown on the hull (§34.1) | BUILD | OPEN |
 | 499 | W-STRAIN | The honest strain — over-class towing, a hot cable, a snap event, record stamps (§34.1) | BUILD | OPEN — after 498 |
 | 500 | W-PROVENANCE | Provenance rarity — Stock, Worked, Named, Storied, Relic, plus Backordered; behaviours, not stats (§34.1) | BUILD | OPEN |
 | 501 | W-HEADS | The 14 Line heads, P0 first: Coupler, Breaker, Barb, Weld, Magnet, Override (§34.1) | BUILD | OPEN |
-| 502 | W-LOG | LOG — the physics narrator (EXP-12 fills its copy) (§34.1) | BUILD | OPEN |
+| 502 | W-LOG | LOG — the physics narrator (EXP-12 fills its copy) (§34.1) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — cause-aware one-line register (`src/data/physicsLog.js`) riding the stunt-callout lane's ~3 s fade; silent in terminal zones |
 | 503 | W-COUPLING | Coupling you can see — filaments; panic, aggression and grief cascades (§34.2) | BUILD | OPEN |
 | 504 | W-PATHOLOGY | Pain loop, route-memory, host-shadow Husks (§34.2) | BUILD | OPEN — after 503 |
-| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | OPEN |
+| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | DONE devin-ten-oct22 (32918b94f6) |
 | 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505 |
 | 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN |
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
@@ -1179,7 +1179,7 @@ production units, and never build what they write.
 | 537 | W-CANON | Interludes as quiet scenes; PROPOSED CANON folded into `docs/worldbuilding/` or rejected in one sentence (§34.7) | BUILD | OPEN |
 | 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
-| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | OPEN |
+| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
 | 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | OPEN — with 485 |
 | 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |

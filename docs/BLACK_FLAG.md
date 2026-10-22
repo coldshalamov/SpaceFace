@@ -1,0 +1,109 @@
+# BLACK FLAG integration
+
+Implementation branch: `feature/black-flag-shipjack`. This is a substantial integrated
+work in progress, not acceptance of the full expansion commission.
+[Player controls and discovery](BLACK_FLAG_PLAYER.md).
+
+The starting inventory found real ship fitting/cargo swaps, surrender towing, law,
+provenance, station Shipworks, missions and automation. Those owners remain authoritative.
+The missing seam was transferring control between two living bodies without replacing
+the incoming hull with the outgoing loadout or manufacturing clean title.
+
+| Facts / responsibility | Source of truth |
+|---|---|
+| Owned membership, active index, fitting, module inventory and derived stats | `src/systems/ships.js`; transaction helper `shipControlTransfer.js` |
+| Vessel identity, title, custody, sector-local footprint, bounded history | optional `player.shipjack`, normalized by `src/shipjack/model.js` |
+| Readiness, incident contest, boarding pod, transfer dwell and rematerialization | `src/systems/shipjack.js` |
+| Live poses and impulses / live subsystem damage and shutdown | existing physics authority / combat kernel |
+| Quotes, inspection and disjoint valuation | `src/shipjack/market.js` |
+| Physical yard jobs / ships-owned inventory mutations | `yardOperations.js` / `ownedOperations.js` |
+| Paid finite retrieval and berth transport | `fleetOperations.js`; pure save normalization in `fleetPersistence.js` |
+| Wages, board acceptance, objectives and completion | existing missions owner, `src/missions/blackFlagMissions.js` adapter |
+| Credits / cargo / witnessed crime / existing lawful recovery | economy / cargo / lawSecurity / surrenderRecovery |
+| Flight interaction / station registry | existing prompt deck plus `src/ui/blackFlag.js` / `blackFlagRegistry.js` |
+| Authored encounters / equipment | `src/data/blackFlag.js` / `shipjackEquipment.js`, merged into canonical module catalog |
+
+## Physical contract
+
+The native target body becomes `playerId`; both bodies retain their exact poses, motion,
+damage, cargo and module identities. The outgoing body loses player authority and becomes
+a parked hull. The incoming body's traffic/world lease is released before its persistence
+owner changes. Captured membership is provisional; registration is a separate transaction.
+Ordinary station switching still uses the existing contract, with saved parked damage
+restored rather than healed. Target locks, cruise, weapons and Massline have explicit
+handoff policies. A persisted transfer journal rejects repeated commands. The diagnostic
+kill switch is `state.flags.disableShipControlTransfer`.
+
+The contest reads actual shields, drive/weapon capability, line of sight, relative speed,
+spin and a generation-validated live Massline attachment. Entry speed is 14 WU/s with
+18 WU/s hysteresis; service range is 115 WU. A service pod is a shootable mining-drone
+body driven toward the moving aft port. It must match motion and dwell to open a finite
+window. This is the physical timing stunt; broader stunt/device acceptance is unfinished.
+Pulse isolation and temporary shutdown affect the combat/flight owners, not just a label.
+
+## Conservation and persistence
+
+Quotes fingerprint operative inventory, condition, title, lien, buyer demand and service
+facts, expire in simulation time and are revalidated. Shell and installed-component value
+are disjoint. Intact sale/return is blocked for the active hull and nonempty holds. Engine
+extraction removes one exact instance and disables the real drive. Repair restores its
+actual subsystem. Forgery consumes an actual module; it never erases title or WANTED.
+Credit settlement uses economy's exact/full payment path and terminal receipts.
+
+No optional section is allocated before an Adventure interaction. Other modes refuse
+commands and content. Save restoration replaces optional state, including when loading
+an older slot. No halfway control transfer is restorable. Locations use sector-local
+coordinates; rematerialization converts once and applies bounded drift. Only the explicit
+shipjack materialization owner can recreate a hull; ordinary world-owned targets stay
+with the existing world owner.
+
+Caps: 96 admitted vessels, 8 active attempts, 12 history entries/vessel, 32 claims,
+96 recent receipts, 2,048 terminal identifiers, 8 yard jobs, 8 retrieval jobs. Saturated
+identity/terminal stores refuse new admissions rather than forgetting owned property or
+reopening paid operations. Full-save growth depends on actual assets and fittings.
+
+## Intersections chosen
+
+Ranked by visible choice, reuse and persistence relative to integration risk. The first
+eight have concrete code paths and focused coverage; the remaining intersections were
+considered but are not claimed as shipped systems.
+
+1. Physical control handoff + cargo: leave a real ship with its own freight.
+2. Component identity + drive authority: extracting an engine strands its source hull.
+3. Title + canonical resale: fly hot property while honest yards refuse it.
+4. Signature hardware + inspection grade: a false broadcast passes shallow checks only.
+5. Crew terms + proof recorder: documented safe recovery improves its service payment.
+6. Boarding + existing live drone physics: moving service-port attachment windows.
+7. Fleet footprints + sector graph: finite paid retrieval rather than passive profit.
+8. Mission receipts + prior world actions: recognize out-of-order recovery and extraction.
+9. Named claimant memory + a later recovery contractor: not yet implemented.
+10. Rival tug + contested custody: not yet implemented.
+11. Insurance audit + deliberate damage evidence: not yet implemented.
+12. Supply shocks + fence procurement: not yet implemented.
+
+## Verification and open acceptance
+
+77 focused checks passed across state, combat, handoff, actual runtime owners, yards,
+fleet retrieval, mission settlement and UI/content. Independent economic review found
+ordinary resale bypassing title and station switching healing parked damage; both were
+fixed with regressions. A 10,000-event normalization test produced 168,089 JSON bytes
+under the configured caps. That is a bounded fixture, not a whole-save measurement.
+
+Desktop and 390px touch station benches rendered and exercised quote/back controls.
+Public menu-to-flight runs discovered the Empty Seat and exercised approach, scan, crew
+terms, Massline, port access and helm claim. They exposed opener steering and a mismatched
+handoff range, both corrected. Complete browser monetization/save/reload and illicit
+prototype playthrough acceptance are still pending. No full-game performance claim.
+
+The broad baseline run did not pass: golden hash mismatches, an unrelated automation
+assertion and a Massline timeout remain. Committed HEAD also mismatched the V3 golden,
+but feature snapshot equivalence has not been established. Player-truth failed at the
+opening First light prompt; its public route handler was corrected and needs acceptance.
+Do not treat these as a passed gameplay landing gate.
+
+Missing from the full commission: the complete four-act campaign; rival cutter custody
+AI; counter-theft raids; insurance fraud and lender negotiation; recurring recovery-agent
+careers; broad fleet employment; bespoke Forge clamp/cradle/cutter assets; comprehensive
+normal-camera, mobile GPU, audio and end-to-end save acceptance. Twelve bounded job
+patterns reuse real verbs; they are not eighteen independent new mechanics. The expansion
+must remain a draft until these gaps and the player-truth gate are resolved.

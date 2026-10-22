@@ -83,6 +83,26 @@ function nowOf(state) {
   return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
 }
 
+/**
+ * Where a Pin would launch and lock right now: the deploy's own published, exact rule (lockPos is
+ * a pure function of spawn, direction, speed and travel time). The deploy and the held-key preview
+ * (row 493) both read it.
+ */
+export function massSeedLaunchPlan(player, state) {
+  const dir = deployDirection(player, state);
+  const spawnDistance = finite(player.radius, 6) + MASS_SEED_DEF.radius + MASS_SEED_DEF.spawnGap;
+  const spawnPos = {
+    x: player.pos.x + dir.x * spawnDistance,
+    z: player.pos.z + dir.z * spawnDistance,
+  };
+  const travelDistance = MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS;
+  const lockPos = {
+    x: spawnPos.x + dir.x * travelDistance,
+    z: spawnPos.z + dir.z * travelDistance,
+  };
+  return { dir, spawnPos, lockPos };
+}
+
 // Same aim convention as impulse charges: aim point direction from the player when the cursor
 // paints a world point, else the nose. Pure; no allocation.
 function deployDirection(player, state) {
@@ -172,17 +192,7 @@ export const massSeed = {
       }
     }
 
-    const dir = deployDirection(player, state);
-    const spawnDistance = finite(player.radius, 6) + MASS_SEED_DEF.radius + MASS_SEED_DEF.spawnGap;
-    const spawnPos = {
-      x: player.pos.x + dir.x * spawnDistance,
-      z: player.pos.z + dir.z * spawnDistance,
-    };
-    const travelDistance = MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS;
-    const lockPos = {
-      x: spawnPos.x + dir.x * travelDistance,
-      z: spawnPos.z + dir.z * travelDistance,
-    };
+    const { dir, spawnPos, lockPos } = massSeedLaunchPlan(player, state);
 
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return;

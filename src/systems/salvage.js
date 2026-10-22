@@ -1023,11 +1023,41 @@ export const salvage = {
   },
 
   _deliverSortPocket(pocket, core, cradle, state) {
+    const bay = state.player && state.player.salvageBay;
+    const usedNow = bay ? Number(bay.usedVolume) || 0 : 0;
+    // A cradle that already refused this fill stays quiet until the bay actually
+    // loses volume. Sitting inside the ring must not toast on every tick.
+    if (pocket.bayRefuseUsed != null && usedNow >= pocket.bayRefuseUsed - 1e-6) return;
+
     const paid = Math.floor(pocket.poolQty * pocket.integrity);
     const accepted = addSalvage(state, pocket.commodityId, paid);
+    const refused = Math.max(0, paid - accepted);
     const lost = Math.max(0, pocket.poolQty - paid);
     const repairEstimateCr = lost > 0 ? lost * (BASE_PRICE_BY_ID.get(pocket.commodityId) || 0) : 0;
+    if (refused > 0) {
+      // The bay kept what fit. The rest stays on the live core so a later dump can finish the set-down.
+      pocket.poolQty = refused;
+      pocket.integrity = 1;
+      const after = state.player && state.player.salvageBay;
+      pocket.bayRefuseUsed = after ? Number(after.usedVolume) || 0 : usedNow;
+      if (!this.bus) return;
+      this.bus.emit('toast', {
+        text: accepted > 0
+          ? `Cradle held the core — the bay took ${accepted}u and ${refused}u are still on it.`
+          : `Cradle held the core — no room in the bay. ${refused}u stay on the core.`,
+        kind: 'warn', ttl: 4,
+      });
+      if (lost > 0) {
+        this.bus.emit('comms:log', {
+          from: 'SALVAGE CRADLE',
+          text: `Delivery short: ${lost}u scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
+          kind: 'salvage',
+        });
+      }
+      return;
+    }
     pocket.phase = 'delivered';
+    if (pocket.bayRefuseUsed != null) delete pocket.bayRefuseUsed;
     // The cradle took the core; this runtime spawned it and retires it.
     core.alive = false;
     if (!this.bus) return;

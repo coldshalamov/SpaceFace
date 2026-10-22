@@ -2,6 +2,7 @@ import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
 import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { createBlackFlagRegistry } from '../../blackFlagRegistry.js';
 import { rollTo } from '../../orrery/text.js';
 import { createSpring } from '../../orrery/motion.js';
 import { svg as orrSvg, arcD as orrArcD, ticksD as orrTicksD, polar as orrPolar } from '../../orrery/svg.js';
@@ -479,6 +480,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   const statsEl = el.querySelector('.sx-sw__stats');
   const sideEl = el.querySelector('.sx-sw__side');
+  const blackFlagRegistry = createBlackFlagRegistry(ctx, { dockHost: () => host === 'dock' });
+  el.querySelector('.sx-sw__rail')?.appendChild(blackFlagRegistry.el);
   const chooserEl = el.querySelector('.sx-sw__chooser');
   const stageEl = el.querySelector('.sx-sw__stage');
   const slotfieldEl = el.querySelector('.sx-sw__slotfield');
@@ -3719,6 +3722,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   // ---------- right: slots (fleet) or spec+buy (buy) ----------
   function renderSide() {
+    blackFlagRegistry.render(mode === 'fleet' ? viewedShip() : null);
     if (mode === 'buy') {
       const def = SHIP_BY_ID.get(buyId);
       if (!def) { sideEl.innerHTML = ''; return; }
@@ -5520,6 +5524,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }, // stop the render loop when leaving (perf)
     refresh,
     dispose() {
+      blackFlagRegistry.dispose();
       clearSableDemo(); for (const off of sableLifecycleUnsubs) off();
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
       if (previewSettleTimer) clearTimeout(previewSettleTimer);

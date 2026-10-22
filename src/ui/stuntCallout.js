@@ -32,6 +32,7 @@ import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
 import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
+import { physicsLogLine, physicsLogSilent, PHYSICS_LOG_EVENTS } from '../data/physicsLog.js';
 import { onFrame } from './orrery/motion.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
@@ -768,6 +769,16 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       if (typeof owns === 'function' && !owns(st, payload || {})) return;
       speak(handlineSenseLine(eventName, payload));
     };
+    // W-LOG 502 — LOG, the physics narrator: one declarative register line per cause-aware event.
+    // Same callout lane (its ~3 s fade is the authored TTL); silent inside terminal zones.
+    const onLogEvent = (eventName) => (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || physicsLogSilent(st)) return;
+      const line = physicsLogLine(eventName, payload || {});
+      if (line) speak({ key: `log:${eventName}`, name: line, detail: '' });
+    };
+    for (const ev of PHYSICS_LOG_EVENTS) unsubs.push(bus.on(ev, onLogEvent(ev)));
     unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
     unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));

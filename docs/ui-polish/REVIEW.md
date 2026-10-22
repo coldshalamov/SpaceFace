@@ -1855,3 +1855,16 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **Checked:** bench `station-contracts` clean at 720×600, 801×600 and 900×600. Other tabs at 801×600 and 700×600 have no new findings and fewer old ones (Shipworks 16→12 and 15→7, Market 18→16, Ledger unchanged). 390×844, 960×540, 1280×720 and 1920×1080 can't match the rule (counts unchanged). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish89/`.
 
 **Leftovers:** Shipworks and Market are still cramped at 651–900 × 600 (pre-existing composition findings).
+## Pause in a narrow desktop window — session notes (2026-10-22, ui-polish-88)
+
+**Before:** a desktop window ≤760 wide without touch (no `data-sf-mobile`) still got the dial composition. At 390–700 wide the group banks ran off the right edge (RESUME, SETTINGS, SAVE… outside the frame), the brief's Next and Saved lines printed over RESUME and GAME, and the foot keycaps ran into EXIT (390×844: 52 findings; 600×800: 31; 700×800: 26). At 701–760 STATISTICS and the save note collided with the ladder.
+
+**After (`pause.js` one line, `pauseLayouts.js` one `max-width:760px` block scoped to `:not([data-sf-mobile="1"])`):** windows ≤760 wide take the existing phone column, and the sheet gives it the phone sheet's flow (one scroll owner, rows that wrap, a single-column body, 20–48px margins). 0 findings at 390×844, 600×800, 700×800, 701×800; 700×500 and 760×700 only report verbs below the fold of the scrolling list. 960×540, 1280×720, 1920×1080 and the real phone (`--phone` 390×844) are unchanged. Selectors and IDs are unchanged.
+
+**Still open:** at 761–~790 wide the dial's REFERENCE bank runs STATISTICS past the right edge.
+
+### ui-polish-88 review fixes (#499, after Code Work's 227ae0e47a hand-back)
+- pause.js watches `matchMedia('(max-width:760px)')` and remounts when the window crosses 760 (and on show if it crossed while covered); classes are reset first so the dial and the column never stack.
+- The column's key strip says `↑↓ MOVE` (a flat list) instead of `↑↓ CATEGORY / ←→ ITEM`; the dial keeps its two-level hints.
+- test/ui-polish-88-pause-narrow.test.mjs: mounts at 700, resizes 700→1280→700 and 1280→700.
+- Bench (mk499): resize 1280→700 now column, 0/18 unreachable (was dial, 7/18, 4 off-x); 700→1280 now dial, 0 overlaps (was column, 12). 390x844 / 760x800 / 1280x720 unchanged.

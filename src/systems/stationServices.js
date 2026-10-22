@@ -528,7 +528,17 @@ export const stationServices = {
     const room = Math.max(0, (fuel.max || 0) - (fuel.current || 0) - bookedFuel);
     const held = cargo.items ? Math.floor(Number(cargo.items.cmdty_fuel_cells) || 0) : 0;
     if (held <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
-    if (room < FUEL_UNITS_PER_CELL) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
+    if (room < FUEL_UNITS_PER_CELL) {
+      // The dock button stays up while the tank shows leftover room that cannot hold a whole
+      // cell, and while a paid pump already owns that room. Say which, or the click is silence.
+      const left = Math.max(0, Math.floor((fuel.max || 0) - (fuel.current || 0)));
+      const booked = Math.floor(bookedFuel);
+      const text = booked > 0
+        ? `The pump already owns ${booked} of this tank — no room to decant a cell.`
+        : `The tank has ${left} left — a fuel cell needs ${FUEL_UNITS_PER_CELL}.`;
+      if (this.bus) this.bus.emit('toast', { text, kind: 'warn', ttl: 2.8 });
+      return { ok: false, reason: 'tank_full', cells: 0, units: 0, text };
+    }
     const cells = Math.min(held, DECANT_MAX_CELLS_PER_PASS, Math.floor(room / FUEL_UNITS_PER_CELL));
     if (cells <= 0) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
     const removed = removeCargo(state, 'cmdty_fuel_cells', cells);

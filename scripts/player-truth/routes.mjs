@@ -4,6 +4,24 @@
 import { quoteLoadError } from './environment.mjs';
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+const firstLightHandlerPages = new WeakSet();
+
+export function isFirstLightPrompt(title, cancelLabel) {
+  // confirm.js appends an aria-hidden ESC keycap inside the button.
+  return norm(title) === 'First light' && norm(cancelLabel).toUpperCase().replace(/\s*ESC$/, '') === 'KEEP MY SETTINGS';
+}
+
+// First light is scheduled after the title is painted. On a busy renderer it can appear
+// after the initial 1.5s check, while a real New Game click is waiting for actionability.
+// Playwright's public locator handler answers that one known settings choice; all other
+// dialogs retain normal input ownership. No force click or settings mutation is involved.
+export async function installFirstLightPromptHandler(page, step) {
+  if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
+  await page.addLocatorHandler(page.locator('#sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
+    await answerFirstRunPrompt(page, step);
+  });
+  firstLightHandlerPages.add(page);
+}
 
 /** Page text that is a load failure, or null. The sentence is the player's, quoted unchanged. */
 export async function readLoadError(page) {
@@ -18,6 +36,7 @@ function environmentError(quote) {
 }
 
 export async function bootToMenu(page, baseUrl, step) {
+  await installFirstLightPromptHandler(page, step);
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   const deadline = Date.now() + 180000;
   while (Date.now() < deadline) {
@@ -29,7 +48,9 @@ export async function bootToMenu(page, baseUrl, step) {
     }).catch(() => false);
     if (ready) {
       step('main menu', true, 'menu visible');
-      await answerFirstRunPrompt(page, step);
+      // The registered handler owns the public click if First light appears now or
+      // later. A second explicit cancel would race the same handler's dismissal.
+      if (!firstLightHandlerPages.has(page)) await answerFirstRunPrompt(page, step);
       return;
     }
     await page.waitForTimeout(400);
@@ -51,6 +72,8 @@ async function answerFirstRunPrompt(page, step) {
     return; // no question asked
   }
   const title = await page.locator('#sf-confirm-title').first().textContent().catch(() => '');
+  const cancelLabel = await open.textContent().catch(() => '');
+  if (!isFirstLightPrompt(title, cancelLabel)) return;
   await open.click();
   step('first-run prompt', true, `answered "${String(title || '').trim()}" with keep (shipped settings)`);
 }

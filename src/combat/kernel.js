@@ -5,8 +5,9 @@ import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, rem
 import { occupantGenerationOf } from '../core/entity.js';
 import { createStatusService } from './statuses.js';
 import { applyMomentumSink } from './momentumSink.js';
-import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
-import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem } from './subsystems.js';
+import { MOMENTUM_SINK_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_DEF } from '../data/combatDefs.js';
+import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem, damageSubsystem } from './subsystems.js';
+import { isBlackFlagAdventure } from '../shipjack/model.js';
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
 import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
@@ -96,6 +97,16 @@ export function createCombatKernel(ctx, options = {}) {
   const catalog = options.catalog || createCombatCatalog(options.catalogOverrides || {});
   assertValidCombatCatalog(catalog, options.validation || {});
   ensureCombatState(state);
+  const admitShipjackStatus = () => {
+    if (catalog.statuses.has(SHIPJACK_SHUTDOWN_STATUS_ID)) return;
+    assertValidCombatCatalog({ ...catalog, statusDefs: [...catalog.statusDefs, SHIPJACK_SHUTDOWN_STATUS_DEF] });
+    catalog.statuses.set(SHIPJACK_SHUTDOWN_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_DEF);
+  };
+  const admitRestoredShipjackStatus = () => {
+    if (Object.values(state.combat.entities || {}).some(runtime => runtime.statuses?.[SHIPJACK_SHUTDOWN_STATUS_ID]
+      || runtime.pendingStatuses?.some(status => status.id === SHIPJACK_SHUTDOWN_STATUS_ID))) admitShipjackStatus();
+  };
+  admitRestoredShipjackStatus();
 
   const hooks = { onKill: typeof options.onKill === 'function' ? options.onKill : null };
   const context = { state, bus, helpers, registry: ctx.registry || null, catalog, currentAttackerId: null };
@@ -106,6 +117,7 @@ export function createCombatKernel(ctx, options = {}) {
   // thin facades rather than mutating the frozen exports.
   const statuses = {
     schedule(targetEntity, runtime, application, source) {
+      if (application?.id === SHIPJACK_SHUTDOWN_STATUS_ID) admitShipjackStatus();
       noteCombatPrePhysicsWake();
       return statusesRaw.schedule(targetEntity, runtime, application, source);
     },
@@ -187,6 +199,7 @@ export function createCombatKernel(ctx, options = {}) {
       onEntityGone(payload);
     }));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
+    subscriptions.push(bus.on('save:loaded', admitRestoredShipjackStatus));
     subscriptions.push(bus.on('combat:routeDamage', (payload) => routeDamage(payload || {})));
     subscriptions.push(bus.on('combat:repairSubsystem', (payload) => {
       if (payload) repair(payload.entityId, payload.subsystemId, payload.amount, payload.reason);
@@ -201,6 +214,10 @@ export function createCombatKernel(ctx, options = {}) {
     getCombatCapabilities: (entityId) => capabilities(entityId),
     reconcileCombatPhysicsAttachments: () => reconcilePhysicsAttachments(),
     describeCombatPhysicsAttachment: (attachmentId) => attachments.physicsContract(attachmentId),
+    requestShipjackPulse,
+    requestShipjackShutdown,
+    disableShipjackSubsystem,
+    restoreShipjackSubsystems,
   });
 
   const kernel = Object.freeze({
@@ -402,6 +419,100 @@ export function createCombatKernel(ctx, options = {}) {
     const runtime = ensureCombatant(state, entity, catalog);
     const result = repairSubsystem(context, entity, runtime, subsystemId, Math.max(0, Number(amount) || 0), reason);
     return { ok: result.applied > 0, ...result };
+  }
+
+  function shipjackActors(request, range) {
+    if (state.mode !== 'flight' || !isBlackFlagAdventure(state)
+      || (state.run?.kind && state.run.kind !== 'adventure')) return { ok: false, reason: 'adventure_only' };
+    const actor = getEntity(request.actorId), target = getEntity(request.targetId);
+    if (!actor || actor.id !== state.playerId || actor.alive === false || !(actor.hull > 0)
+      || !target || target.type !== 'ship' || target === actor || target.alive === false || !(target.hull > 0)) return { ok: false, reason: 'body_unavailable' };
+    if (state.ui?.docked || actor.flags?.docked || target.flags?.docked || target.flags?.invuln) return { ok: false, reason: 'protected_body' };
+    if (request.generation != null && request.generation !== (target.data?.shipjackGeneration ?? target.occupantGeneration)) return { ok: false, reason: 'stale_target' };
+    if (!actor.pos || !target.pos || Math.hypot(target.pos.x - actor.pos.x, target.pos.z - actor.pos.z) > range) return { ok: false, reason: 'out_of_range' };
+    if ((target.shield || 0) > 1) return { ok: false, reason: 'shield_denies_access' };
+    return { ok: true, actor, target };
+  }
+
+  function shipjackCooldown(actor, key, cost, commit = false) {
+    const table = state.combat.actions.cooldownReadyTickByActor;
+    const cooldowns = table[entityKey(actor.id)] || {};
+    if (Number(cooldowns[key]) > state.tick) return { ok: false, reason: 'tool_recharging' };
+    if (!Number.isFinite(actor.cap) || actor.cap < cost) return { ok: false, reason: 'capacitor_low' };
+    if (commit) {
+      actor.cap -= cost;
+      table[entityKey(actor.id)] = cooldowns;
+      cooldowns[key] = state.tick + 480;
+    }
+    return { ok: true };
+  }
+
+  function requestShipjackPulse(request = {}) {
+    const pair = shipjackActors(request, 180);
+    if (!pair.ok) return pair;
+    const { actor, target } = pair;
+    const ready = shipjackCooldown(actor, 'black_flag_pulse', 18);
+    if (!ready.ok) return ready;
+    const actorRuntime = ensureCombatant(state, actor, catalog);
+    if (actorRuntime.capabilities.weapon === false || actorRuntime.capabilities.power === false) return { ok: false, reason: 'tool_power_isolated' };
+    // The existing EMP damage packet is an actual targeted hit, with attribution, armor,
+    // subsystem overflow and lawful assault evidence. It is never a hull-health capture tag.
+    const result = routeDamage({ attackerId: actor.id, targetId: target.id,
+      origin: { kind: 'weapon', id: 'wpn_emp_disruptor_m', weaponId: 'wpn_emp_disruptor_m' },
+      packet: { channels: { kinetic: 0, thermal: 0, ion: 45, plasma: 0, phase: 0 },
+        penetration: 0, shieldBypass: 1, subsystemShare: 1, heat: 0,
+        source: { kind: 'weapon', weaponId: 'wpn_emp_disruptor_m' }, hit: { subsystemId: 'subsystem_drive' },
+        statuses: [{ id: 'status_ionized', stacks: 1 }] } });
+    if (!result.ok) return result;
+    shipjackCooldown(actor, 'black_flag_pulse', 18, true);
+    bus?.emit('combat:shipjackPulse', { attackerId: actor.id, targetId: target.id, capacitorCost: 18, rebootReadyTick: state.tick + 480 });
+    return { ok: true, subsystemId: 'subsystem_drive', capacitorCost: 18 };
+  }
+
+  function requestShipjackShutdown(request = {}) {
+    const pair = shipjackActors(request, 115);
+    if (!pair.ok) return pair;
+    const { actor, target } = pair;
+    const ready = shipjackCooldown(actor, 'black_flag_shutdown', 12);
+    if (!ready.ok) return ready;
+    const runtime = ensureCombatant(state, target, catalog);
+    const durationTicks = Math.max(1, Math.min(360, Math.floor(Number(request.durationTicks) || 360)));
+    const result = statuses.schedule(target, runtime, { id: SHIPJACK_SHUTDOWN_STATUS_ID, durationTicks }, { attackerId: actor.id });
+    if (!result.ok) return result;
+    shipjackCooldown(actor, 'black_flag_shutdown', 12, true);
+    bus?.emit('combat:shipjackShutdown', { attackerId: actor.id, targetId: target.id, applyTick: state.tick + 1, rebootTick: state.tick + 1 + durationTicks });
+    return { ok: true, durationTicks, rebootTick: state.tick + 1 + durationTicks };
+  }
+
+  function disableShipjackSubsystem({ entityId, subsystemId } = {}) {
+    if (!isBlackFlagAdventure(state) || (state.run?.kind && state.run.kind !== 'adventure')) return { ok: false, reason: 'adventure_only' };
+    const entity = getEntity(entityId);
+    if (!entity || entity.type !== 'ship' || entity.alive === false) return { ok: false, reason: 'body_unavailable' };
+    const runtime = ensureCombatant(state, entity, catalog);
+    if (!runtime.subsystems[subsystemId]) return { ok: false, reason: 'subsystem_missing' };
+    noteCombatPrePhysicsWake();
+    damageSubsystem(context, entity, runtime, subsystemId, 1e6, { ion: 1 }, 1);
+    return { ok: true, subsystemId };
+  }
+
+  function restoreShipjackSubsystems({ entityId, subsystems } = {}) {
+    if (!isBlackFlagAdventure(state) || !subsystems || typeof subsystems !== 'object') return { ok: false, reason: 'invalid_snapshot' };
+    const entity = getEntity(entityId);
+    if (!entity || entity.alive === false) return { ok: false, reason: 'body_unavailable' };
+    const runtime = ensureCombatant(state, entity, catalog);
+    for (const [id, subsystem] of Object.entries(runtime.subsystems)) {
+      const saved = subsystems[id];
+      if (!saved || !Number.isFinite(saved.health) || !(saved.maxHealth > 0)) continue;
+      subsystem.health = subsystem.maxHealth * Math.max(0, Math.min(1, saved.health / saved.maxHealth));
+      subsystem.destroyed = subsystem.health <= 0;
+      subsystem.pendingTransition = null;
+    }
+    runtime.pendingSubsystemTransitionCount = 0;
+    runtime.pendingStatuses = [];
+    runtime.statuses = {};
+    noteCombatPrePhysicsWake();
+    recomputeCombatantModifiers(context, entity, runtime, attachments);
+    return { ok: true };
   }
 
   function capabilities(entityId) {

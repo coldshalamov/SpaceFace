@@ -551,6 +551,8 @@ const REGION_ORCUS = freezeRegion({
     fields: [
       { id: 'f_orcus_1', type: 'ast_rare_exotic', countWeight: 1.0 },
       { id: 'f_orcus_2', type: 'ast_gas_cloud', countWeight: 0.8 },
+      // 04 "Throw: shadow debris" — the flock the Broken Shepherd never finished herding (row 540).
+      { id: 'f_orcus_3', type: 'ast_metallic', countWeight: 0.6 },
     ],
     hazards: [
       { type: 'radiation', center: { x: 0, z: 0 }, radius: 1600, intensity: 0.75 },
@@ -581,6 +583,8 @@ const REGION_ORCUS = freezeRegion({
     fields: [
       { id: 'f_orcus_1', center: { x: 720, z: -280 }, clusterRadius: 420 },
       { id: 'f_orcus_2', center: { x: -880, z: 640 }, clusterRadius: 480 },
+      // Shadow debris past the plinth, rimward of the anomaly's throat.
+      { id: 'f_orcus_3', center: { x: 1160, z: -860 }, clusterRadius: 420 },
     ],
     pois: [
       {

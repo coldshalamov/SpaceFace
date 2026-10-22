@@ -44,6 +44,7 @@ export const INERTIAL_SHUNT_TUNING = Object.freeze({
 });
 export const UNMOORED_STATUS_ID = 'status_unmoored';
 export const CRYO_LOCK_STATUS_ID = 'status_cryo_lock';
+export const SHIPJACK_SHUTDOWN_STATUS_ID = 'status_shipjack_shutdown';
 
 export const COMBAT_CUE_IDS = Object.freeze([
   'combat.action.dash.start', 'combat.action.dash.active', 'combat.action.dash.end',
@@ -64,6 +65,7 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
   'combat.status.scrambled', 'combat.status.gravity_marked', 'combat.status.momentum_sink',
   'combat.status.cryo_lock', 'combat.status.goo',
+  'combat.status.shipjack_shutdown',
   'combat.attachment.created', 'combat.attachment.broken',
   'combat.attachment.created', 'combat.attachment.broken',
 ]);
@@ -176,6 +178,16 @@ export const ACTION_DEFS = Object.freeze([
     cues: { start: 'combat.action.drop.start', active: 'combat.action.drop.release', end: 'combat.action.drop.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
   },
 ]);
+
+// Optional Adventure definition. The combat owner admits it on first use / saved status restore,
+// preserving the existing catalog and trace for runs with no BLACK FLAG interaction.
+export const SHIPJACK_SHUTDOWN_STATUS_DEF = Object.freeze({
+    id: SHIPJACK_SHUTDOWN_STATUS_ID, version: 1, tags: ['electronic', 'safe_shutdown'], durationTicks: 360,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: ['electronic_immune'],
+    effects: { capabilities: { drive: false, weapon: false }, multipliers: { movement: 0 },
+      blockedActionTags: ['weapon', 'burst', 'dash', 'sling'] },
+    interactions: [], periodic: null, cueId: 'combat.status.shipjack_shutdown',
+});
 
 export const STATUS_DEFS = Object.freeze([
   {

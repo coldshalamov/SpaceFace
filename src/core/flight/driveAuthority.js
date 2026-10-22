@@ -5,6 +5,7 @@
 // multipliers.movement = 0, which is a stun if the helm multiplies by it.
 // This composer keeps a steer floor and never reads hull hit points, the
 // stick, or that movement multiplier.
+import { SHIPJACK_SHUTDOWN_STATUS_ID } from '../../data/combatDefs.js';
 
 /** Below this fraction a dead main drive is still a drive: weak, not a stun. */
 export const DAMAGED_DRIVE_AUTHORITY_FLOOR = 0.22;
@@ -58,6 +59,9 @@ function thrusterWeight(value) {
  * and reverse take the drive fraction and yaw/strafe stay full.
  */
 export function composePlayerDriveAuthority(thrusters, runtime) {
+  // Safe shutdown isolates the live bus; unlike a damaged drive there is no emergency thrust.
+  // Status expiry reboots the controller through the canonical combat prePhysics tick.
+  if (runtime?.statuses?.[SHIPJACK_SHUTDOWN_STATUS_ID]) return { forward: 0, reverse: 0, strafe: 0, yaw: 0 };
   const driveScale = combatDriveScale(runtime);
   // Default craft thrusters are a synthetic port/starboard/RCS set installed
   // for every hull. Mixing those full-health RCS weights into a drive hit
