@@ -24,6 +24,7 @@ import { massline2Flag } from '../../data/featureFlags.js';
 import { reelRebindText } from '../../systems/masslineInputGrammar.js';
 import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
+import { POWER_LEGACY_ACTIONS } from '../../systems/powerVerbs.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
 import { createGameState } from '../../core/gameState.js';
 import {
@@ -1508,6 +1509,9 @@ export const settingsScreen = {
       s.controls.bindings[action] = arr;
       live[action] = arr;
     }
+    // A power row owns its old verb names (five powers, 2026-10-22): a key saved under deployWell
+    // before the merge would otherwise come back through the alias the moment this row is reset.
+    for (const old of POWER_LEGACY_ACTIONS[action] || []) delete s.controls.bindings[old];
     // Ship the whole binding map: the delete-to-default path removes the key
     // entirely, which a leaf write cannot express. Spread — the envelope must
     // not carry a live reference (the map keeps mutating per bind).
@@ -1594,6 +1598,8 @@ export const settingsScreen = {
     const overrides = { ...(s.controls.gamepad.bindings || {}) };
     if (stdName == null) delete overrides[action];
     else overrides[action] = [stdName];
+    // Same ownership on the pad: an old verb's saved button never outlives its power's own row.
+    for (const old of POWER_LEGACY_ACTIONS[action] || []) delete overrides[old];
     const bindings = Object.keys(overrides).length ? overrides : null;
     this._set(ctx, 'controls', 'gamepad', { ...s.controls.gamepad, bindings });
     this._render(ctx); // refresh the rows to show the new glyph

@@ -199,12 +199,12 @@ alone; aligning it is the swarm seam's job. Final homes, by live behaviour:
 | Tool | Final home |
 |---|---|
 | Gravity Marker S, Gravity Wellhead M | retired → **Pull** |
-| Vector Mine M (a zero-damage radial shove) | retired → **Shove** |
 | Sticky Detonator, Viscosity Field | retired → **Bomb** (the sticky charge; the goo drift bomb) |
 | Momentum Sink S (latch and slingshot) | retired → **the Line** |
 | Inertial Shunt S | retired → the **ram plate** module (`mod_ram_plate`) |
 | Conductive Primer | retired → the **relay-arc** payload modules (`mod_relay_arc`) |
 | Concussion bomb (`bomb_concussion`) | retired → **Shove**; off the starter rack |
+| Vector Mine M | **kept** under Bomb (a placed proximity trap: the mine family) |
 | Grav Anchor | **kept**: it links two bodies, which Pin does not do |
 | Polarity Inverter, Seismic Gong, Quantum Sympathy, Hardlight Prism, Thruster Hijacker, RCS Disruptor | **kept** until their Line heads exist (§7.1) |
 | Concussion Cannon S / M, Mass Driver, Thermal Cooker, EMP Disruptor M, Snarl Webcaster | **kept** |

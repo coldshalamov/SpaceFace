@@ -245,7 +245,7 @@ test('the phone deck carries the five powers on one page', () => {
 
 test('retired arsenal leaves the adventure shop and tech tree; its job has a home; owned copies stay defined', () => {
   const RETIRED = {
-    wpn_gravity_marker_s: 'pull', wpn_gravity_well_m: 'pull', wpn_vector_mine_m: 'shove', wpn_momentum_sink_s: 'line',
+    wpn_gravity_marker_s: 'pull', wpn_gravity_well_m: 'pull', wpn_momentum_sink_s: 'line',
     wpn_inertial_shunt_s: 'mod_ram_plate', wpn_sticky_detonator: 'bomb', tool_viscosity_field: 'bomb', wpn_conductive_primer: 'mod_relay_arc',
   };
   for (const [id, home] of Object.entries(RETIRED)) {
@@ -259,7 +259,41 @@ test('retired arsenal leaves the adventure shop and tech tree; its job has a hom
   assert.equal(BOMB_DEFS.bomb_concussion.retiredInto, 'shove');
   assert.ok(!BOMB_STARTER_KIT.includes('bomb_concussion'));
   // The kept arsenal is untouched.
-  for (const id of ['wpn_concussion_cannon_s', 'wpn_mass_driver', 'wpn_thermal_cooker', 'wpn_emp_disruptor_m', 'tool_grav_anchor', 'tool_polarity_inverter', 'tool_seismic_gong', 'tool_quantum_sympathy', 'tool_hardlight_prism', 'tool_thruster_hijacker']) {
+  // The approved table keeps the vector mine (a placed trap, the mine family) on sale and researchable.
+  assert.ok(TECH_NODES.find((n) => n.id === 'tech_guided_ordnance').unlocks.modules.includes('wpn_vector_mine_m'));
+  for (const id of ['wpn_vector_mine_m', 'wpn_concussion_cannon_s', 'wpn_mass_driver', 'wpn_thermal_cooker', 'wpn_emp_disruptor_m', 'tool_grav_anchor', 'tool_polarity_inverter', 'tool_seismic_gong', 'tool_quantum_sympathy', 'tool_hardlight_prism', 'tool_thruster_hijacker']) {
     assert.equal(WEAPONS.find((w) => w.id === id)?.retiredInto, undefined, `${id} stays on sale`);
+  }
+});
+
+test('resetting or rebinding a power row clears the keys saved under its old names', async () => {
+  const { settingsScreen } = await import('../src/ui/screens/settings.js');
+  const { PILOT_BINDINGS } = await import('../src/systems/input.js');
+  const state = { settings: { gameplay: { controlScheme: 'pilot' }, controls: {
+    bindings: { deployWell: ['KeyZ'], chargeThrow: ['KeyT'] },
+    gamepad: { enabled: true, deadzone: 0.12, invertY: false, bindings: { deployWell: ['r1+dLeft'] } },
+  } } };
+  const ctx = { state, bus: { emit() {} } };
+  const host = Object.create(settingsScreen);
+  host._render = () => {};
+  host._set = (c, section, key, value) => { c.state.settings[section][key] = value; };
+  assert.deepEqual(resolveActionCodes(state, 'pull'), ['KeyZ'], 'the old remap drives Pull before the reset');
+  host._commitBind(ctx, 'pull', null, {}, PILOT_BINDINGS);
+  assert.equal(state.settings.controls.bindings.deployWell, undefined, 'the reset clears the old name too');
+  assert.deepEqual(resolveActionCodes(state, 'pull'), ['Digit1'], 'reset restores the shipped key, not the old remap');
+  host._commitBind(ctx, 'bomb', 'KeyB', {}, PILOT_BINDINGS);
+  assert.equal(state.settings.controls.bindings.chargeThrow, undefined, 'a rebind retires the old name');
+  assert.deepEqual(resolveActionCodes(state, 'bomb'), ['KeyB', 'KeyY']);
+  host._commitPadBind(ctx, 'pull', null);
+  assert.equal(state.settings.controls.gamepad.bindings, null, 'the pad reset clears the old Well remap');
+  assert.deepEqual(resolveGamepadBindings(state.settings).pull, ['l1+dLeft']);
+});
+
+test('the field power roster points each verb at the rail socket of the power that fires it', async () => {
+  const { POWER_ROSTER } = await import('../src/data/fields.js');
+  const owner = { seed: 'pin', well: 'pull', repulsor: 'shove', cone: 'rig', skim: 'rig' };
+  for (const row of POWER_ROSTER) {
+    assert.equal(row.railSlot, POWER_SLOT[owner[row.id]], `${row.id} sits on ${owner[row.id]}`);
+    assert.equal(POWER_VERB_ALIASES[row.action], owner[row.id], `${row.action} is an alias of ${owner[row.id]}`);
   }
 });

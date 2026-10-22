@@ -54,7 +54,9 @@ for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
 for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
 const HANDLING_PROFILE_DOMAIN = handlingProfileDomain();
 
-const ALL_BUYABLE = [...MODULES, ...WEAPONS].filter((d) => d.price > 0);
+// Retired arsenal (`retiredInto`, the five powers, owner 2026-10-22) is off the shop, so it is never
+// the next buy either; an owned copy still reads through FITTABLE_BY_ID above.
+const ALL_BUYABLE = [...MODULES, ...WEAPONS].filter((d) => d.price > 0 && !d.retiredInto);
 ALL_BUYABLE.sort((a, b) => {
   if (a.slotType < b.slotType) return -1;
   if (a.slotType > b.slotType) return 1;

@@ -1248,7 +1248,7 @@ export const fields = {
       this.bus.emit('fields:deployDenied', { kind, reason: 'cooldown', readyAt: cd });
       // The same SHOVE press set off armed ordnance this tick: the press worked, so no warning.
       if (kind === 'repulsor' && this._shoveDetonatedTick === state.tick) return;
-      this.bus.emit('toast', { text: `${kind === 'well' ? 'Well' : 'Repulsor'} recharging — ${Math.ceil(cd - now)}s`, kind: 'warn', ttl: 1.6 });
+      this.bus.emit('toast', { text: `${kind === 'well' ? 'Pull' : 'Shove'} recharging — ${Math.ceil(cd - now)}s`, kind: 'warn', ttl: 1.6 });
       this.bus.emit('audio:cue', { id: 'ui_deny' });
       return;
     }
@@ -1687,7 +1687,7 @@ export const fields = {
     } else if (reason === FIELD_END_REASONS.replaced && !rec.planted) {
       // Cap replacement has no explosion cue. Only the player's own oldest emitter is announced.
       this.bus.emit('toast', {
-        text: `Oldest ${rec.kind === 'well' ? 'Well' : 'Repulsor'} was replaced`,
+        text: `Oldest ${rec.kind === 'well' ? 'Pull well' : 'Shove field'} was replaced`,
         kind: 'warn',
         ttl: 1.6,
       });

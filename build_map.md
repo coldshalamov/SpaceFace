@@ -1194,7 +1194,7 @@ production units, and never build what they write.
 | 547 | W-COLOSSI | The Colossus roster on row 448's framework; the bar is the parts (§34.9) | BUILD | OPEN — after 448 |
 | 548 | W-AUDIT | The fifty-point A-list audit, repeated after each phase (§34.9) | FIX | OPEN |
 | 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | OPEN |
-| 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — story-mode table applied 2026-10-22 (8 tools + the concussion bomb carry `retiredInto`, off the shop and research, owned copies keep working; final homes in 05 §7.3); remaining: the Crucible draft (swarm seam) and the Line-head moves (wait on §7.1 heads) |
+| 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — story-mode table applied 2026-10-22 (7 tools + the concussion bomb carry `retiredInto`, off the shop and research, owned copies keep working; final homes in 05 §7.3); remaining: the Crucible draft (swarm seam) and the Line-head moves (wait on §7.1 heads) |
 
 ### Landed rows index (consolidated 2026-10-15)
 

@@ -3,7 +3,7 @@
   "id": "drill.power.skim",
   "powerId": "skim",
   "action": "toggleSkimCollector",
-  "railSlot": 8,
+  "railSlot": 5,
   "volume": "sheet",
   "title": "Skim scoop",
   "rule": "A SHEET COLLECTS LOOSE MASS ONTO THE FLIGHT LINE",

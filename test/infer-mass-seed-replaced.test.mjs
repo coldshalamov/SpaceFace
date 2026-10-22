@@ -29,7 +29,7 @@ test('replacing a live mass seed says the previous one was replaced', () => {
   const { events, retired, pressed } = press('active');
   assert.equal(pressed, false);
   assert.equal(retired, 'seed_replaced');
-  assert.equal(events.find((event) => event.name === 'toast').payload.text, 'Previous mass seed replaced');
+  assert.equal(events.find((event) => event.name === 'toast').payload.text, 'Previous Pin anchor replaced');
 });
 
 test('the first mass seed does not claim it replaced one', () => {
