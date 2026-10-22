@@ -10,6 +10,7 @@ import { Masks } from '../core/entity.js';
 import {
   BOLUS_SECTOR_ID,
   BOLUS_RIB_STATE, readBolusRibState, migrateBolusRibState,
+  BOLUS_SPECIMEN_KEYS, bolusSpecimenStateKey, readBolusSpecimenState,
   BOLUS_ACID_X0,
   BOLUS_ACID_X1,
   planBolusLayout,
@@ -65,7 +66,7 @@ function ribOwner(world) {
     ribRuntime.set(world, runtime);
     world.bus?.on?.('entity:destroyed', event => {
       const r = ribRuntime.get(world), b = r?.binding, e = event?.entity;
-      if (!originalRibBinding(b, e) || event.id !== b.id
+      if (!e || !originalRibBinding(b, e) || event.id !== b.id
         || r.flags !== ensureAlienEcologyState(world.state).sectorFlags) return;
       if (event.reason === 'sector_residency') r.binding = null;
       else if (e.hull <= 0 && !['save_restore', 'run_reset', 'virtualize'].includes(event.reason)) {
@@ -82,9 +83,9 @@ function ribOwner(world) {
   return runtime;
 }
 
-function ribPose(world, binding) {
+function ribPose(world, binding, isOriginal = originalRibBinding) {
   const e = binding?.entity, s = world.state;
-  if (!originalRibBinding(binding) || e.alive === false || s.entities?.get(e.id) !== e
+  if (!isOriginal(binding) || e.alive === false || s.entities?.get(e.id) !== e
     || !presentationAllowsPlayerFacingAction(e, s)) return null;
   const origin = world._sectorOrigin?.(BOLUS_SECTOR_ID);
   if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return null;
@@ -118,6 +119,8 @@ function ribPose(world, binding) {
 // Only observes the original body's native state; never writes live native motion.
 export function captureBolusRib(world, sectorId = BOLUS_SECTOR_ID, opts = {}) {
   if (!world?.state || sectorId !== BOLUS_SECTOR_ID) return false;
+  // This is the existing world-owned Save/residency seam for Bolus loose bodies.
+  captureBolusSpecimens(world, sectorId, opts);
   const runtime = ribOwner(world), bound = runtime.binding;
   if (originalRibBinding(bound) && world.state.entities?.get(bound.id) === bound.entity
     && Number.isFinite(bound.entity.hull) && bound.entity.hull <= 0) {
@@ -139,6 +142,78 @@ export function captureBolusRib(world, sectorId = BOLUS_SECTOR_ID, opts = {}) {
   return true;
 }
 
+// Specimens share the rib's read-only native observation, not a motion controller.
+// A maximum of five bound lives is checked, regardless of world population.
+const specimenRuntime = new WeakMap();
+function originalSpecimenBinding(b, e = b?.entity) {
+  return !!e && b?.entity === e && b.id === e.id && b.life === e.occupantGeneration
+    && b.data === e.data && b.tag === e.data?.bolus && b.key === b.tag.key
+    && BOLUS_SPECIMEN_KEYS.includes(b.key) && b.tag.role === (b.key === 'bolus_cyst' ? 'cyst' : 'bezoar')
+    && e.homeSectorId === BOLUS_SECTOR_ID;
+}
+function specimenOwner(world) {
+  const flags = ensureAlienEcologyState(world.state).sectorFlags;
+  let r = specimenRuntime.get(world);
+  if (!r) {
+    r = { flags, bindings: new Map() }; specimenRuntime.set(world, r);
+    world.bus?.on?.('entity:destroyed', event => {
+      if (r.flags !== ensureAlienEcologyState(world.state).sectorFlags) return;
+      for (const [key, b] of r.bindings) {
+        if (!event?.entity || !originalSpecimenBinding(b, event.entity) || event.id !== b.id) continue;
+        if (event.reason === 'sector_residency' && !b.terminal) r.bindings.delete(key);
+        else if (event.entity.hull <= 0 && !['save_restore', 'run_reset', 'virtualize'].includes(event.reason)) {
+          r.flags[bolusSpecimenStateKey(key)] = { version: 1, key, status: 'lost' };
+          b.terminal = 'lost';
+        }
+      }
+    });
+    world.bus?.on?.('save:restoring', () => r.bindings.clear());
+    world.bus?.on?.('game:newGame', () => r.bindings.clear());
+  }
+  // A bag replacement alone is not a new physical life. Only explicit restore or
+  // New Game boundaries release bindings; cloning flags cannot duplicate bodies.
+  if (r.flags !== flags) r.flags = flags;
+  return r;
+}
+export function captureBolusSpecimens(world, sectorId = BOLUS_SECTOR_ID, opts = {}) {
+  if (!world?.state || sectorId !== BOLUS_SECTOR_ID) return false;
+  const r = specimenOwner(world); let captured = false;
+  for (const [key, b] of r.bindings) {
+    const stateKey = bolusSpecimenStateKey(key), e = b.entity;
+    const saved = readBolusSpecimenState(r.flags, key);
+    if (!b.terminal && (saved?.status === 'lost' || saved?.status === 'unavailable')) b.terminal = saved.status;
+    if (b.terminal) { r.flags[stateKey] = { version: 1, key, status: b.terminal }; continue; }
+    const exact = originalSpecimenBinding(b) && world.state.entities?.get(b.id) === e;
+    if (!exact || e.alive === false && !(Number.isFinite(e.hull) && e.hull <= 0)) {
+      // An unexplained missing/recycled runtime is not an observed death and must
+      // not reload the previous pose as a second body (or a new reward source).
+      if (!b.retiring) {
+        b.terminal = 'unavailable';
+        r.flags[stateKey] = { version: 1, key, status: b.terminal };
+      }
+      continue;
+    }
+    if (Number.isFinite(e.hull) && e.hull <= 0) {
+      b.terminal = 'lost';
+      r.flags[stateKey] = { version: 1, key, status: b.terminal }; captured = true; continue;
+    }
+    const pose = ribPose(world, b, originalSpecimenBinding);
+    if (!world._isProtectedFromResidency?.(e)
+      && (opts.reason === 'evict' || opts.reason === 'strip_full' && opts.despawnIds?.has(b.id))) b.retiring = true;
+    if (!pose) {
+      // Hull belongs to the logical damage owner. Keep its finite current value
+      // even during native warm-up, without changing the last observed pose.
+      if (saved?.status === 'present' && Number.isFinite(e.hull) && e.hull > 0 && e.hull <= 48) {
+        r.flags[stateKey] = { ...saved, hull: e.hull }; captured = true;
+      }
+      continue; // Native readiness cannot authorize stale scalar motion.
+    }
+    const row = readBolusSpecimenState({ [stateKey]: { version: 1, key, status: 'present', ...pose } }, key);
+    if (row) { r.flags[stateKey] = row; captured = true; }
+  }
+  return captured;
+}
+
 export function materializeBolus(world, sector, active) {
   if (!world || !sector || sector.id !== BOLUS_SECTOR_ID) return;
   const spawn = world.helpers && world.helpers.spawnEntity;
@@ -149,6 +224,7 @@ export function materializeBolus(world, sector, active) {
   const runtime = ribOwner(world);
   if (runtime.binding?.retiring && (state.entities?.get(runtime.binding.entity.id) !== runtime.binding.entity
     || runtime.binding.entity.alive === false)) runtime.binding = null;
+  const specimens = specimenOwner(world);
   const savedRib = migrateBolusRibState(flags);
   const layout = planBolusLayout(seed);
   for (let i = 0; i < layout.length; i++) {
@@ -156,7 +232,14 @@ export function materializeBolus(world, sector, active) {
     const isRib = spec.key === 'bolus_rib';
     if (isRib && (runtime.binding || savedRib?.status === 'lost'
       || Object.hasOwn(flags, BOLUS_RIB_STATE) && !savedRib)) continue;
-    const restored = isRib && savedRib?.status === 'present' ? savedRib : null;
+    const isSpecimen = BOLUS_SPECIMEN_KEYS.includes(spec.key);
+    const specimenKey = bolusSpecimenStateKey(spec.key);
+    const savedSpecimen = isSpecimen ? readBolusSpecimenState(flags, spec.key) : null;
+    const bound = specimens.bindings.get(spec.key);
+    if (bound?.retiring && !bound.terminal && (state.entities?.get(bound.id) !== bound.entity || bound.entity.alive === false)) specimens.bindings.delete(spec.key);
+    if (isSpecimen && (specimens.bindings.has(spec.key)
+      || Object.hasOwn(flags, specimenKey) && savedSpecimen?.status !== 'present')) continue;
+    const restored = isRib && savedRib?.status === 'present' ? savedRib : savedSpecimen?.status === 'present' ? savedSpecimen : null;
     const pos = world._toGlobal(restored || { x: spec.x, z: spec.z }, sector.id);
     const ent = spawn({
       type: 'fauna',
@@ -200,6 +283,12 @@ export function materializeBolus(world, sector, active) {
       },
     });
     if (!ent) continue;
+    if (isSpecimen) {
+      specimens.bindings.set(spec.key, { key: spec.key, entity: ent, id: ent.id, life: ent.occupantGeneration, data: ent.data, tag: ent.data.bolus });
+      // First materialization is authored provenance, never invented native motion.
+      if (!savedSpecimen) flags[specimenKey] = { version: 1, key: spec.key, status: 'present', source: 'authored',
+        x: spec.x, z: spec.z, vx: 0, vz: 0, rot: spec.rot ?? 0, spin: 0, hull: 48 };
+    }
     if (isRib) runtime.binding = { entity: ent, id: ent.id, life: ent.occupantGeneration, data: ent.data, tag: ent.data.bolus };
     if (typeof world._stampHomeSector === 'function') world._stampHomeSector(ent, sector.id);
     if (active && Array.isArray(active.dressing)) {

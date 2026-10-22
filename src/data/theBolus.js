@@ -388,3 +388,23 @@ export function migrateBolusRibState(flags) {
     source: 'legacy-lodged', x: BOLUS_COUGH_POS.x, z: BOLUS_COUGH_POS.z,
     vx: 0, vz: 0, rot: 0, spin: 0, hull: 48 };
 }
+
+// Only the five authored, non-driven loose specimens. Missing rows are old saves;
+// invalid rows are quarantined individually, never treated as permission to mint.
+export const BOLUS_SPECIMEN_KEYS = Object.freeze([
+  'bolus_bezoar_0', 'bolus_bezoar_1', 'bolus_bezoar_2', 'bolus_bezoar_3', 'bolus_cyst',
+]);
+export const bolusSpecimenStateKey = key => `bolus:specimen:${key}`;
+export function readBolusSpecimenState(flags, key) {
+  if (!BOLUS_SPECIMEN_KEYS.includes(key) || !flags || !Object.hasOwn(flags, bolusSpecimenStateKey(key))) return null;
+  const r = flags[bolusSpecimenStateKey(key)];
+  if (!r || typeof r !== 'object' || Array.isArray(r)
+    || !['version', 'key', 'status'].every(k => Object.hasOwn(r, k))
+    || r.version !== 1 || r.key !== key) return null;
+  if (r.status === 'lost' || r.status === 'unavailable') return { version: 1, key, status: r.status };
+  if (r.status !== 'present' || !['source', 'x', 'z', 'vx', 'vz', 'rot', 'spin', 'hull'].every(k => Object.hasOwn(r, k))
+    || !['native', 'scalar', 'authored'].includes(r.source)) return null;
+  // Same finite pose envelope as the rib, without granting its legacy-lodged provenance.
+  const pose = readBolusRibState({ [BOLUS_RIB_STATE]: { ...r, key: 'bolus_rib', source: r.source === 'authored' ? 'scalar' : r.source } });
+  return pose ? { ...pose, key, source: r.source } : null;
+}
