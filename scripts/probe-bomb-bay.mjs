@@ -135,8 +135,12 @@ try {
       }, null, { timeout: 180_000 });
       await live.keyboard.press('KeyW');
       await live.evaluate((ms) => new Promise((resolve) => setTimeout(resolve, ms)), 400);
+      // BOMB (4) throws the sticky charge while one is aboard (the Crucible opens with six); one
+      // cycle press turns it to the first loaded drift bomb before the drop loop.
+      await live.keyboard.press('Comma');
+      await live.evaluate((ms) => new Promise((resolve) => setTimeout(resolve, ms)), 80);
       for (let i = 0; i < 6; i++) {
-        await live.keyboard.press('Digit9');
+        await live.keyboard.press('Digit4');
         await live.evaluate((ms) => new Promise((resolve) => setTimeout(resolve, ms)), 400);
         if (i < 5) {
           await live.keyboard.press('Comma');

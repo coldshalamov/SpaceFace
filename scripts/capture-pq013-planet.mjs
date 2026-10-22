@@ -142,12 +142,13 @@ try {
   await page.focus('body');
   // Real key edge: hold ~90ms so the fixed-tick input sampler sees the down state (an instantaneous
   // down+up inside one frame is missed — the capture-fields precedent holds its keys too).
-  await page.keyboard.down('Digit8');
+  // RIG (5) opens the skim scoop inside a planet band (the five powers, owner 2026-10-22).
+  await page.keyboard.down('Digit5');
   await page.waitForTimeout(90);
-  await page.keyboard.up('Digit8');
+  await page.keyboard.up('Digit5');
   await page.waitForTimeout(300);
   let scoopOn = await page.evaluate(() => window.SF.state.planet.player.collectorOn);
-  log(`collector: Digit8 held 90ms -> collectorOn=${scoopOn} (ordinary input path)`);
+  log(`collector: Digit5 (RIG) held 90ms -> collectorOn=${scoopOn} (ordinary input path)`);
   if (!scoopOn) {
     // Honest fallback (logged as such): drive the same action flag the key edge sets.
     await page.evaluate(() => { window.SF.state.input.actions.toggleSkimCollector = true; });

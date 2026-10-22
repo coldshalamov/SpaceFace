@@ -51,16 +51,27 @@ export function powerVerbFor(action) {
 
 /**
  * A saved binding table may still hold custom codes under the old names. Return the codes that
- * should drive `power`: the power's own saved entry first, then the first old name that has one.
+ * should drive `power`: the power's own saved entry when it has one; otherwise every old name's
+ * saved codes merged in order (a player who moved both the Repulsor and the Detonate keeps both on
+ * Shove). An old verb the player explicitly unbound stays a choice: with no custom key left among
+ * the merged verbs the power reads unbound (Settings shows it, and a rebind restores it), rather
+ * than quietly firing the action they switched off on the scheme default.
  * `undefined` means "nothing saved — use the scheme default".
  */
 export function savedCodesForPower(saved, power) {
   if (!saved || typeof saved !== 'object') return undefined;
-  if (Object.prototype.hasOwnProperty.call(saved, power) && saved[power] != null) return saved[power];
-  for (const legacy of POWER_LEGACY_ACTIONS[power] || []) {
-    if (Object.prototype.hasOwnProperty.call(saved, legacy) && saved[legacy] != null) return saved[legacy];
+  const has = (key) => Object.prototype.hasOwnProperty.call(saved, key) && saved[key] != null;
+  if (has(power)) return saved[power];
+  const legacyNames = POWER_LEGACY_ACTIONS[power] || [];
+  let merged;
+  for (const legacy of legacyNames) {
+    if (!has(legacy)) continue;
+    merged = merged || [];
+    for (const code of Array.isArray(saved[legacy]) ? saved[legacy] : [saved[legacy]]) {
+      if (code && !merged.includes(code)) merged.push(code);
+    }
   }
-  return undefined;
+  return merged;
 }
 
 /** Impulse charges the player carries (cargo owns the count). */

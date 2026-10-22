@@ -70,7 +70,9 @@ const HASH_JSON_PREFIX = 'CRUCIBLE_BENCH_HASH_JSON:';
 const BIND = {
   forward: ['KeyW'], reverse: ['KeyS'], brake: ['Digit0'], boost: ['ShiftLeft'],
   yawLeft: ['KeyA'], yawRight: ['KeyD'], strafeLeft: ['KeyQ'], strafeRight: ['KeyE'],
-  tether: ['Space'], chargeThrow: ['KeyY'], deployWell: ['Digit5'], deployRepulsor: ['Digit6'],
+  // The five powers: PULL (1) is the well, SHOVE (2) the repulsor; Y is BOMB's letter, which throws
+  // the sticky charge while one is aboard (the Crucible opens with six).
+  tether: ['Space'], chargeThrow: ['KeyY'], deployWell: ['Digit1'], deployRepulsor: ['Digit2'],
 };
 const RANGE = 150;
 const VERB_PERIOD = 150;
@@ -238,7 +240,7 @@ export async function simulateCrucibleSwarm({
   }
 
   // Production play has wells/repulsors. FIELD_FLAGS defaults OFF under node for the 47-A
-  // golden; without this opt-in the physics kit's Digit5/6 verbs are silent no-ops and the
+  // golden; without this opt-in the physics kit's Pull/Shove verbs are silent no-ops and the
   // kit-order clause would be grading a gun that is missing half its grammar.
   const prevFieldsEnabled = FIELD_FLAGS.enabled;
   FIELD_FLAGS.enabled = true;

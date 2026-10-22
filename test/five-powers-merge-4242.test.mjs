@@ -76,6 +76,11 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.deepEqual(resolveActionCodes(settingsFor('pilot', { pull: ['KeyP'], deployWell: ['KeyZ'] }), 'pull'), ['KeyP'],
     'the power\'s own saved entry wins over an old one');
   assert.equal(savedCodesForPower(null, 'pull'), undefined);
+  // Two old verbs merged into one power keep both custom keys; an old verb the player explicitly
+  // unbound leaves the power unbound unless another merged verb still carries a custom key.
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: ['KeyB'] }), 'shove'), ['KeyV', 'KeyB']);
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeDetonate: [] }), 'shove'), []);
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: [] }), 'shove'), ['KeyV']);
   // Pad: defaults and an old remap.
   assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['alt', 'dDown']);
   assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['dRight']);

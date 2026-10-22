@@ -5413,7 +5413,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
   }, 20_000, { deadlineTick: toolkitActionDeadlineTick });
 
   const seedAction = await triggerCeresPublicFlightAction(page, {
-    key: 'Digit4',
+    key: 'Digit3', // PIN: the anchor Mass Seed (the five powers, owner 2026-10-22)
     deadlineTick: toolkitActionDeadlineTick,
     expectedEvent: {
       event: 'massSeed:deployed',
@@ -5516,7 +5516,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
   }
 
   await triggerCeresPublicFlightAction(page, {
-    key: 'Digit6',
+    key: 'Digit2', // SHOVE: the repulsor (the same press sets off armed ordnance)
     deadlineTick: toolkitActionDeadlineTick,
     expectedEvent: {
       event: 'fields:deployed',
@@ -6886,7 +6886,7 @@ async function releasePublicInput(page) {
   if (!page || page.isClosed()) return;
   await page.mouse.up().catch(() => {});
   for (const key of [
-    'KeyW', 'KeyA', 'KeyD', 'KeyS', 'Digit0', 'Shift', 'Space', 'Digit4', 'Digit6',
+    'KeyW', 'KeyA', 'KeyD', 'KeyS', 'Digit0', 'Shift', 'Space', 'Digit3', 'Digit2',
   ]) {
     await page.keyboard.up(key).catch(() => {});
   }

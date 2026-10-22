@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { readClusterModel } from '../src/ui/orrery/hudAdapter.js';
+import { POWER_SLOT } from '../src/ui/powerRail.js';
 import { nextFlightDecision } from '../src/ui/orrery/nextDecision.js';
 
 const QUIET = Object.freeze({
@@ -42,8 +43,10 @@ test('a loaded production rail stays quiet when the detonate command has no depl
     entityList: [player], player: { cargo: { items: { cmdty_impulse_charge: 3 } } }, fields: {},
     bombs: { rack: { cells: [{ id: 'bomb_frag', count: 2 }] }, selectedId: 'bomb_frag' } };
   const model = readClusterModel(state, player);
-  assert.equal(model.ordnance['2'].state, 'empty');
-  assert.equal(model.ordnance['2'].consumable, undefined);
+  // SHOVE carries the detonate since the five powers (2026-10-22): with nothing armed its key is the
+  // repulsor, ready — never an empty consumable that could nag for a restock.
+  assert.equal(model.ordnance[String(POWER_SLOT.shove)].state, 'ready');
+  assert.equal(model.ordnance[String(POWER_SLOT.shove)].consumable, undefined);
   assert.equal(nextFlightDecision(model), '');
   state.player.cargo.items.cmdty_impulse_charge = 0;
   state.bombs.rack.cells[0].count = 0;

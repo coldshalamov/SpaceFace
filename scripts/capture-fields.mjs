@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // PQ-012 field route evidence. Boots a normal New Game, drives the THREE consumers through
-// ORDINARY INPUT (real Digit5/6/7 key presses handled by src/systems/input.js — proving the
+// ORDINARY INPUT (real Digit1/2/5 key presses — PULL, SHOVE, RIG — handled by src/systems/input.js — proving the
 // binding end-to-end, not a console flag), and captures default-camera screenshots plus the
 // reduced-motion and reduced-flash variants into .devshots/pq012-fields/. Mirrors the boot +
 // capture pattern of capture-combat-vfx-acceptance.mjs (shipped visual-probe helpers).
@@ -56,14 +56,14 @@ try {
   await page.waitForTimeout(600);
 
   // Deploy each consumer via a REAL key press, verify it registered, settle the flow, capture.
-  await runConsumer(page, 'well', 'Digit5', 'aim', '01-well-default');
-  await runConsumer(page, 'repulsor', 'Digit6', 'ship', '02-repulsor-default');
-  await runConsumer(page, 'repulsor', 'Digit6', 'ship', '06-repulsor-berm-close', true);
-  await runConsumer(page, 'cone', 'Digit7', 'wedge', '03-cone-default');
+  await runConsumer(page, 'well', 'Digit1', 'aim', '01-well-default');
+  await runConsumer(page, 'repulsor', 'Digit2', 'ship', '02-repulsor-default');
+  await runConsumer(page, 'repulsor', 'Digit2', 'ship', '06-repulsor-berm-close', true);
+  await runConsumer(page, 'cone', 'Digit5', 'wedge', '03-cone-default');
 
   // Accessibility variants on the richest flow (the Well). Direction + boundary must stay readable.
-  await runConsumer(page, 'well', 'Digit5', 'aim', '04-well-reduced-motion', false, { motionReduce: true, flashReduce: false });
-  await runConsumer(page, 'well', 'Digit5', 'aim', '05-well-reduced-flash', false, { motionReduce: false, flashReduce: true });
+  await runConsumer(page, 'well', 'Digit1', 'aim', '04-well-reduced-motion', false, { motionReduce: true, flashReduce: false });
+  await runConsumer(page, 'well', 'Digit1', 'aim', '05-well-reduced-flash', false, { motionReduce: false, flashReduce: true });
 
   const report = {
     packet: 'PQ-012', ok: issues.length === 0, capturedAt: new Date().toISOString(),

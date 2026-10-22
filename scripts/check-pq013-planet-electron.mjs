@@ -4,7 +4,7 @@
 // teleport to The Anvil: registration transaction fires, bands classify, the sheath subsystem
 // wakes, one screenshot. (The full sequence evidence lives in the browser route capture; this
 // proves the vertical is not browser-only. Note: the user profile in Electron binds the tether
-// latch to KeyF — irrelevant here; this smoke presses only Digit8.)
+// latch to KeyF — irrelevant here; this smoke presses no flight key.)
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -274,8 +274,8 @@ export const STRIP_SCENARIOS = Object.freeze({
       { atS: 0.5, keyDown: 'KeyW' },
       { atS: 2.5, keyUp: 'KeyW' },
       { atS: 3.0, aim: 'nearestHostile' },
-      { atS: 3.5, keyDown: 'Digit5' },
-      { atS: 3.65, keyUp: 'Digit5' },
+      { atS: 3.5, keyDown: 'Digit1' }, // PULL: the well
+      { atS: 3.65, keyUp: 'Digit1' },
       { atS: 9.0, aim: 'nearestHostile' },
       { atS: 9.5, mouseDown: true },
       { atS: 11.0, mouseUp: true },

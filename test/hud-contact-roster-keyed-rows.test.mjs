@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import * as hud from '../src/ui/hud.js';
 import { glyphSvg } from '../src/ui/glyphs.js';
 import { createBus } from '../src/core/eventBus.js';
+import { POWER_SLOT } from '../src/ui/powerRail.js';
 
 test('destroying the HUD releases its event-bus subscriptions', () => {
   const fx = mountHudFixture();
@@ -98,7 +99,8 @@ test('stable active Massline controls do not rewrite their accessible label at H
 
     // The Line socket is the active Massline accessibility surface. Its tip is derived from
     // the live rail state, so watch the label and tip writes after that state has settled.
-    const controls = fx.document.querySelector('[data-slot="3"]');
+    // The Line sits after the five powers (2026-10-22): its socket is POWER_SLOT.line.
+    const controls = fx.document.querySelector(`[data-slot="${POWER_SLOT.line}"]`);
     assert.ok(controls, 'the active Cluster exposes its Massline socket');
     assert.equal(controls.getAttribute('tabindex'), '0', 'the socket stays keyboard reachable');
     const labelBefore = controls.getAttribute('aria-label');
