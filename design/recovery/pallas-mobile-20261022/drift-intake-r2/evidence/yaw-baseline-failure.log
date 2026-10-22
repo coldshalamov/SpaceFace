@@ -1,0 +1,446 @@
+ADMISSION {"at":242.38333333341836,"carrier":{"pos":{"x":-19909.33819580078,"z":19610.080932617188},"vel":{"x":5.561478137969971,"z":1.5973273515701294}},"section":{"pos":{"x":-19929.769165039062,"z":19613.417114257812},"vel":{"x":6.617748737335205,"z":4.230205059051514}},"anchor":{"x":-19911.396501613617,"z":19606.76647780469,"dockRadius":20,"speedGate":12,"kind":"berth"},"stocks":{"cmdty_scrap_metal":179.67744932614139,"cmdty_salvage_electronics":137.87398471846205},"credits":0}
+▶ original section reaches the real Drift berth and commits finite stock once
+  ✖ station native yaw must match geometry modulo a full turn (807.054467ms)
+  ✔ stale native record and actor lifetime fail closed (803.056185ms)
+  ✔ carrier death (795.968964ms)
+  ✔ section destruction (836.292059ms)
+  ✔ station absence (920.754481ms)
+  ✔ broken native line (858.576634ms)
+  ✔ native job flee (837.217082ms)
+  ✔ real mining-owner dispute (911.745696ms)
+  ✔ old tug death does not invalidate the transferred carrier (677.928717ms)
+  ✔ leave and return does no offscreen intake (1524.735857ms)
+✖ original section reaches the real Drift berth and commits finite stock once (12229.406424ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 9
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14504.717595
+
+✖ failing tests:
+
+test at test/pallas-drift-intake.test.mjs:53:10
+✖ station native yaw must match geometry modulo a full turn (807.054467ms)
+  AssertionError [ERR_ASSERTION]: stale station geometry cannot admit a rotated native receiver
+  + actual - expected
+  
+  + {
+  +   anchor: {
+  +     dockRadius: 20,
+  +     kind: 'berth',
+  +     speedGate: 12,
+  +     x: -19911.396501613617,
+  +     z: 19606.76647780469
+  +   },
+  +   axis: {
+  +     bearingRad: 3.0106929596902186,
+  +     x: -0.9914448613738104,
+  +     z: 0.13052619222005157
+  +   },
+  +   c: {
+  +     pos: {
+  +       x: -19909.15216064453,
+  +       z: 19610.133666992188
+  +     },
+  +     vel: {
+  +       x: 5.574312686920166,
+  +       z: 1.582882046699524
+  +     }
+  +   },
+  +   clear: true,
+  +   lane: {
+  +     carrier: {
+  +       across: -3.6313276979568854,
+  +       along: -1.7856339378422483
+  +     },
+  +     section: {
+  +       across: -4.36391874409075,
+  +       along: 18.88262115764873
+  +     }
+  +   },
+  +   line: {
+  +     actionInstanceId: null,
+  +     braceLoadN: 0,
+  +     breakReason: null,
+  +     brokenTick: null,
+  +     controlMode: 'npc_tow',
+  +     controllerGeneration: null,
+  +     createdTick: 2,
+  +     defId: 'tether_standard',
+  +     id: 'att_000003',
+  +     lastImpulse: 0,
+  +     lastReelTick: 14295,
+  +     lastTension: 0,
+  +     lastYank: 0,
+  +     masslineRuntime: {
+  +       cutReason: null,
+  +       heat: 0.0013333333333333333,
+  +       integrity: 1,
+  +       lastImpulse: 0,
+  +       lastTension: 0,
+  +       overheatLatched: false,
+  +       overloadS: 0,
+  +       recentLoad: 119.21425416244413,
+  +       reelVelocity: 0,
+  +       restLength: 29.683783,
+  +       schemaVersion: 1,
+  +       state: 'holding',
+  +       targetLength: 29.683783,
+  +       workJ: 0
+  +     },
+  +     masslineTelemetry: {
+  +       attachmentId: 'att_000003',
+  +       distance: 29.594559492685043,
+  +       heatFraction: 0.000013333333333333333,
+  +       impulse: 0,
+  +       integrity: 1,
+  +       massResponse: {
+  +         massRatio: 1.2222222222222223,
+  +         ownerMotionShare: 0.45,
+  +         reducedMass: 24.75,
+  +         targetMotionShare: 0.55
+  +       },
+  +       overloadRatio: 0,
+  +       reelVelocity: 0,
+  +       restLength: 29.683783,
+  +       slack: 0.08922350731495499,
+  +       state: 'holding',
+  +       targetLength: 29.683783,
+  +       tension: 0,
+  +       tensionFraction: 0,
+  +       yank: 0
+  +     },
+  +     nearBreakWarned: false,
+  +     ownerGeneration: 437,
+  +     ownerId: 510,
+  +     physicsHandle: {
+  +       id: 'att_000003'
+  +     },
+  +     physicsSpringState: {
+  +       breakRequested: false,
+  +       captureActive: false,
+  +       captureT: 0,
+  +       lastFrameErrorSpeed: 0,
+  +       lastImpulse: 0,
+  +       lastRelativeSpeed: 0,
+  +       lastSpentEnergy: 0,
+  +       lastStoredEnergy: 0,
+  +       lastStretch: 0,
+  +       lastTension: 0,
+  +       lastYank: 0,
+  +       phase: 'slack',
+  +       reelSlip: false,
+  +       slackS: 0.11666666666666665,
+  +       wasTaut: false
+  +     },
+  +     reelRevision: 61,
+  +     restLength: 29.683783,
+  +     sourceAnchorLocal: {
+  +       x: 9,
+  +       z: 0
+  +     },
+  +     sourceSocketId: 'socket_tether_spool',
+  +     state: 'active',
+  +     targetAnchorLocal: {
+  +       x: 0,
+  +       z: 0
+  +     },
+  +     targetGeneration: 434,
+  +     targetId: 507,
+  +     targetSocketId: 'socket_tether_anchor',
+  +     tetherPolicy: {
+  +       break: {
+  +         damping: 6,
+  +         graceTicks: 4,
+  +         maxImpulse: 190000,
+  +         maxTension: 10500000,
+  +         maxYank: 150000,
+  +         stiffness: 90
+  +       },
+  +       headId: 'frame_coupler',
+  +       maxLength: 390,
+  +       payoutRevision: 1,
+  +       reelRate: 69,
+  +       spring: {
+  +         K: 640,
+  +         captureS: 0.35,
+  +         maxForce: 24000,
+  +         maxStretchRatio: 1.44,
+  +         mode: 'frame_coupler',
+  +         reelSafeStretchRatio: 1.32,
+  +         velocityGain: 8,
+  +         zeta: 1.05
+  +       },
+  +       strengthRevision: 2
+  +     }
+  +   },
+  +   near: true,
+  +   ready: true,
+  +   s: {
+  +     pos: {
+  +       x: -19929.547973632812,
+  +       z: 19613.557739257812
+  +     },
+  +     vel: {
+  +       x: 6.617748737335205,
+  +       z: 4.230205059051514
+  +     }
+  +   },
+  +   section: {
+  +     _indexSectorKey: 'sector_pallas_drift',
+  +     _indexType: 'wreck',
+  +     _physicsPartition: 2,
+  +     _wrIndexStamp: 'pallas:reef:light-section',
+  +     alive: true,
+  +     angVel: -0.3717704117298126,
+  +     armorFlat: 0,
+  +     armorHp: 0,
+  +     armorMax: 0,
+  +     bank: 0,
+  +     bankVel: 0,
+  +     cap: 0,
+  +     capMax: 0,
+  +     capRegen: 0,
+  +     collides: true,
+  +     collisionMask: 0,
+  +     data: {
+  +       durable: true,
+  +       homeSectorId: 'sector_pallas_drift',
+  +       loot: [],
+  +       npcMasslineLatch: true,
+  +       npcTowAttachmentId: 'att_000003',
+  +       npcTowedByJobId: 'job:pallas:reef:carrier',
+  +       parentType: 'freighter',
+  +       payloadStableId: 'pallas:reef:light-section',
+  +       persistenceOwner: 'worldRecords',
+  +       proportions: {
+  +         halfWidth: 0.4,
+  +         height: 0.5,
+  +         length: 1.6
+  +       },
+  +       salvagePointId: 'pallas:reef:light-cut',
+  +       salvagePool: {
+  +         cmdty_salvage_electronics: 1,
+  +         cmdty_scrap_metal: 3
+  +       },
+  +       salvageSourceKey: 'salvage-point:pallas:reef:light-cut',
+  +       salvageTimeLeft: 8,
+  +       salvorClaimedBy: 'pallas:reef:carrier',
+  +       scanLabel: 'Reef Light Cut · machinery section',
+  +       sectorId: 'sector_pallas_drift',
+  +       towable: true,
+  +       transientSector: false,
+  +       worldRecordId: 'pallas:reef:light-section'
+  +     },
+  +     drag: 0,
+  +     factionId: null,
+  +     flags: {
+  +       boosting: false,
+  +       docked: false,
+  +       invuln: false,
+  +       noInterp: false,
+  +       persistent: true,
+  +       tethered: true
+  +     },
+  +     homeSectorId: 'sector_pallas_drift',
+  +     hull: 90,
+  +     hullMax: 90,
+  +     id: 507,
+  +     lastDamageT: -1000000000,
+  +     mass: 45,
+  +     maxSpeed: 0,
+  +     ownerId: null,
+  +     physicsBody: {
+  +       attachmentPoints: {
+  +         massline: {
+  +           x: 0,
+  +           y: 0,
+  +           z: 0
+  +         }
+  +       },
+  +       ccd: true,
+  +       centerOfMass: {
+  +         x: 0,
+  +         y: 0,
+  +         z: 0
+  +       },
+  +       dynamic: true,
+  +       inertiaY: 1440,
+  +       mass: 45,
+  +       material: 'debris',
+  +       radius: 8,
+  +       revision: 0,
+  +       schemaVersion: 1,
+  +       shape: 'capsule',
+  +       thrusters: []
+  +     },
+  +     physicsIslandId: 2e-322,
+  +     physicsSleeping: false,
+  +     pitch: 0,
+  +     pos: SimVector3 {
+  +       x: -19929.547973632812,
+  +       y: 0,
+  +       z: 19613.557739257812
+  +     },
+  +     prevBank: 0,
+  +     prevPitch: 0,
+  +     prevPos: SimVector3 {
+  +       x: -19929.658569335938,
+  +       y: 0,
+  +       z: 19613.487426757812
+  +     },
+  +     prevRot: -0.9553466161626002,
+  +     radius: 8,
+  +     rot: -0.9615490986576268,
+  +     shield: 0,
+  +     shieldMax: 0,
+  +     shieldRegenDelay: 3,
+  +     shieldRegenRate: 0,
+  +     team: 0,
+  +     thrust: 0,
+  +     ttl: Infinity,
+  +     turnRate: 0,
+  +     type: 'wreck',
+  +     vel: SimVector3 {
+  +       x: 6.617748737335205,
+  +       y: 0,
+  +       z: 4.230205059051514
+  +     }
+  +   },
+  +   station: {
+  +     _indexSectorKey: 'sector_pallas_drift',
+  +     _indexType: 'station',
+  +     _physicsPartition: 1,
+  +     alive: true,
+  +     angVel: 0,
+  +     armorFlat: 0,
+  +     armorHp: 0,
+  +     armorMax: 0,
+  +     bank: 0,
+  +     bankVel: 0,
+  +     cap: 0,
+  +     capMax: 0,
+  +     capRegen: 0,
+  +     collides: true,
+  +     collisionMask: 1,
+  +     data: {
+  +       archetypeGlb: 'place_station_trade_hub',
+  +       chartNote: 'Open board, thin oversight. Good rates on cargo nobody wants logged.',
+  +       collisionProxy: 'skin:place_station_trade_hub',
+  +       collisionRadius: 34,
+  +       contested: false,
+  +       corridorBearingDeg: 125.1664360357929,
+  +       dockRadius: 72,
+  +       factionId: 'faction_mts',
+  +       homeSectorId: 'sector_pallas_drift',
+  +       landmark: false,
+  +       landmarkGlb: null,
+  +       name: 'Drift Market',
+  +       placeScale: 5.142857142857143,
+  +       repGated: false,
+  +       sectorId: 'sector_pallas_drift',
+  +       services: [
+  +         'trade',
+  +         'refuel',
+  +         'repair',
+  +         'missions'
+  +       ],
+  +       size: 'M',
+  +       stationId: 'station_drift',
+  +       stationTypeId: 'trade_hub'
+  +     },
+  +     drag: 0,
+  +     factionId: 'faction_mts',
+  +     flags: {
+  +       boosting: false,
+  +       docked: false,
+  +       invuln: false,
+  +       noInterp: false
+  +     },
+  +     homeSectorId: 'sector_pallas_drift',
+  +     hull: 1000000,
+  +     hullMax: 1000000,
+  +     id: 2,
+  +     lastDamageT: -1000000000,
+  +     mass: 1000000,
+  +     maxSpeed: 0,
+  +     ownerId: null,
+  +     physicsBody: {
+  +       attachmentPoints: {
+  +         massline: {
+  +           x: 0,
+  +           y: 0,
+  +           z: 0
+  +         }
+  +       },
+  +       ccd: false,
+  +       centerOfMass: {
+  +         x: 0,
+  +         y: 0,
+  +         z: 0
+  +       },
+  +       dynamic: false,
+  +       inertiaY: 578000000,
+  +       mass: 1000000,
+  +       material: 'station',
+  +       radius: 34,
+  +       revision: 0,
+  +       schemaVersion: 1,
+  +       shape: 'ball',
+  +       thrusters: []
+  +     },
+  +     physicsSleeping: false,
+  +     pitch: 0,
+  +     pos: SimVector3 {
+  +       x: -19860,
+  +       y: 0,
+  +       z: 19600
+  +     },
+  +     presentationAdmission: 'pending',
+  +     prevBank: 0,
+  +     prevPitch: 0,
+  +     prevPos: SimVector3 {
+  +       x: -19860,
+  +       y: 0,
+  +       z: 19600
+  +     },
+  +     prevRot: 0,
+  +     radius: 34,
+  +     rot: 0,
+  +     shield: 0,
+  +     shieldMax: 0,
+  +     shieldRegenDelay: 3,
+  +     shieldRegenRate: 0,
+  +     team: 0,
+  +     thrust: 0,
+  +     ttl: Infinity,
+  +     turnRate: 0,
+  +     type: 'station',
+  +     vel: SimVector3 {
+  +       x: 0,
+  +       y: 0,
+  +       z: 0
+  +     }
+  +   },
+  +   target: {
+  +     x: -19898.55752908746,
+  +     z: 19605.076195005164
+  +   }
+  + }
+  - null
+  
+      at TestContext.<anonymous> (file://<candidate>/test/pallas-drift-intake.test.mjs:53:450)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async TestContext.<anonymous> (file://<candidate>/test/pallas-drift-intake.test.mjs:53:2)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: { station: { id: 2, type: 'station', alive: false, factionId: 'faction_mts', pos: [Object], vel: [Object], prevPos: [Object], rot: 0, prevRot: 0, angVel: 0, bank: 0, prevBank: 0, bankVel: 0, pitch: 0, prevPitch: 0, radius: 34, mass: 1000000, hull: 1000000, hullMax: 1000000, armorHp: 0, armorMax: 0, armorFlat: 0, shield: 0, shieldMax: 0, shieldRegenRate: 0, shieldRegenDelay: 3, lastDamageT: -1000000000, cap: 0, capMax: 0, capRegen: 0, thrust: 0, turnRate: 0, maxSpeed: 0, drag: 0, ttl: Infinity, collides: true, collisionMask: 1, team: 0, ownerId: null, flags: [Object], data: [Object], presentationAdmission: 'pending', _indexSectorKey: 'sector_pallas_drift', _indexType: 'station', homeSectorId: 'sector_pallas_drift', _physicsPartition: 1, physicsBody: [Object], physicsSleeping: false }, section: { id: 507, type: 'wreck', alive: false, factionId: null, pos: [Object], vel: [Object], prevPos: [Object], rot: -0.9615490986576268, prevRot: -0.9553466161626002, angVel: -0.3717704117298126, bank: 0, prevBank: 0, bankVel: 0, pitch: 0, prevPitch: 0, radius: 8, mass: 45, hull: 90, hullMax: 90, armorHp: 0, armorMax: 0, armorFlat: 0, shield: 0, shieldMax: 0, shieldRegenRate: 0, shieldRegenDelay: 3, lastDamageT: -1000000000, cap: 0, capMax: 0, capRegen: 0, thrust: 0, turnRate: 0, maxSpeed: 0, drag: 0, ttl: Infinity, collides: true, collisionMask: 0, team: 0, ownerId: null, flags: [Object], data: [Object], homeSectorId: 'sector_pallas_drift', physicsBody: [Object], physicsSleeping: false, physicsIslandId: 2e-322, _wrIndexStamp: 'pallas:reef:light-section', _indexSectorKey: 'sector_pallas_drift', _indexType: 'wreck', _physicsPartition: 2 }, line: { id: 'att_000003', defId: 'tether_standard', controlMode: 'npc_tow', sourceSocketId: 'socket_tether_spool', targetSocketId: 'socket_tether_anchor', sourceAnchorLocal: [Object], targetAnchorLocal: [Object], state: 'broken', createdTick: 2, brokenTick: 14542, breakReason: 'npc_tow_job_released', restLength: 29.683783, lastTension: 0, lastImpulse: 0, braceLoadN: 0, nearBreakWarned: false, actionInstanceId: null, tetherPolicy: [Object], lastYank: 0, physicsSpringState: [Object], masslineRuntime: [Object], masslineTelemetry: [Object], reelRevision: 61, lastReelTick: 14295, ownerId: 510, targetId: 507, ownerGeneration: 437, targetGeneration: 434, controllerGeneration: null, physicsHandle: [Object] }, c: { pos: [Object], vel: [Object] }, s: { pos: [Object], vel: [Object] }, anchor: { x: -19911.396501613617, z: 19606.76647780469, dockRadius: 20, speedGate: 12, kind: 'berth' }, axis: { x: -0.9914448613738104, z: 0.13052619222005157, bearingRad: 3.0106929596902186 }, target: { x: -19898.55752908746, z: 19605.076195005164 }, near: true, ready: true, clear: true, lane: { carrier: [Object], section: [Object] } },
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

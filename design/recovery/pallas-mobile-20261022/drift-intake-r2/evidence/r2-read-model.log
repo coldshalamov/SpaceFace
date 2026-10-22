@@ -1,0 +1,22 @@
+[flight-v3] waiting for rapier-dynamic physics authority; no craft motion commands emitted
+[flight-v3] waiting for rapier-dynamic physics authority; no craft motion commands emitted
+✔ optional approach speed leaves every absent/invalid target unchanged (513.201467ms)
+✔ hauling, settling and committed intake survive real bounded domain transport (239.638143ms)
+ Particle system powered by three.quarks. https://quarks.art/
+[flight-v3] waiting for rapier-dynamic physics authority; no craft motion commands emitted
+▶ Pallas reef facts reach Hail through the bounded worker/main projection
+  ✔ only the bounded reef leaf and projected jobs cross the wire (33.005787ms)
+  ✔ status and route describe reef work without promising a Sker delivery (6.284733ms)
+  ✔ received, interrupted and recovered remain distinct after wire updates (2.976108ms)
+  ✔ stale, future and absent observation stamps cannot report current success (2.537002ms)
+  ✔ a role marker alone cannot turn an unrelated actor into the reef crew (1.22039ms)
+✔ Pallas reef facts reach Hail through the bounded worker/main projection (289.955974ms)
+✔ reef cutting vitals transport only a current authenticated cutter and exact target life (12.843059ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4555.283446

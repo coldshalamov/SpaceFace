@@ -1,0 +1,57 @@
+[
+  {
+    "path": "src/data/pallasReefCrew.js",
+    "sha256": "c96302d314e48dc817333deeb082b3e2b24c77f1ca8111a7512c8bd46a430515",
+    "baseSha256": "ff2d315aaf3d8854545893759d51b9a42fa2337446168d5ac2e3de72d374bb7c"
+  },
+  {
+    "path": "src/systems/pallasReefCrew.js",
+    "sha256": "a9579a051fc1e17e035706d3cf91d949363d2e0bbeee618ee26e34765b583fcf",
+    "baseSha256": "2d96672e48a6b93a75b55d0afc59d58a6e82ce0df8defeeb35896b4976b2ccdd"
+  },
+  {
+    "path": "src/systems/pallasReefSource.js",
+    "sha256": "aed659511dbd5ca48ee401c24f9da7ad3cbec02608058c9301272a2e1d6f1047",
+    "baseSha256": "f92487f8936a9beb6f697e5402cb2d5deedb5461e63c9ab754f021909c83bed1"
+  },
+  {
+    "path": "src/systems/salvage.js",
+    "sha256": "9688dbb3cead1e2d1b9a39f20f8dbb7c84fe1bcc172e9b47b4c30e8e53f90558",
+    "baseSha256": "8aed7c50d35d4ef87f8f00658f73f89fd607cf4c7b56805401dacdcf28c5fa2c"
+  },
+  {
+    "path": "src/systems/economy.js",
+    "sha256": "bc66820ce384d000e23d339ec564b2c2e39f17e3d18a9518441b5146b1b48945",
+    "baseSha256": "9f5396610bff8d547143479574417edbb33c9f0f3c4d94725fb17070c800a8b8"
+  },
+  {
+    "path": "src/data/contactHail.js",
+    "sha256": "2c149901d81cb0cbc2a5e7c6019213fcc93ada4a99fa0dd4da8d46babf5b779a",
+    "baseSha256": "b6af7aab5dbac19e9dc4631e379eca4a20f05771364d3f1d64a7614c1881d8a6"
+  },
+  {
+    "path": "src/systems/npcJobsRuntime.js",
+    "sha256": "1578242f6a7330d5924c2595d6f835b4879e8d0418bc31dcb4a1768b09378cd0",
+    "baseSha256": "c4c9f4ea3536382f1cdd9379c168a7eb356e2c598f3a9987ba83cb213b3ce950"
+  },
+  {
+    "path": "test/fixtures/pallas-drift-native.mjs",
+    "sha256": "13426a9833d745e7626711634894e51a26db492b64c86c26b0b3c4f208de9b15",
+    "baseSha256": null
+  },
+  {
+    "path": "test/pallas-drift-intake.test.mjs",
+    "sha256": "e4ad2b13d25880c52ff1a278e5911f6e331b9fc8c5aa286e0f6de8229e304094",
+    "baseSha256": null
+  },
+  {
+    "path": "test/pallas-drift-read-model.test.mjs",
+    "sha256": "fbb07c95b7599bb3074413de28fb54079516b1aaba6e7f950979480ebb36d87b",
+    "baseSha256": null
+  },
+  {
+    "path": "test/pallas-reef-read-model.test.mjs",
+    "sha256": "35e7a986f2b5f6b6a7fee518e11deb428df6b60a6aace2e6a3acf4a7f9f91d18",
+    "baseSha256": "d0d941346c38e30bc80d9de4e6176ece0f03c823fb596c391ad5d6ebca64c79a"
+  }
+]

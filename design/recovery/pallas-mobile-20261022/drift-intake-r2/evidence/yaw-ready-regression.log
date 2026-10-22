@@ -1,0 +1,21 @@
+ADMISSION {"at":242.38333333341836,"carrier":{"pos":{"x":-19909.33819580078,"z":19610.080932617188},"vel":{"x":5.561478137969971,"z":1.5973273515701294},"yaw":-0.32451275995882667},"section":{"pos":{"x":-19929.769165039062,"z":19613.417114257812},"vel":{"x":6.617748737335205,"z":4.230205059051514},"yaw":-0.9491379413538841},"anchor":{"x":-19911.396501613617,"z":19606.76647780469,"dockRadius":20,"speedGate":12,"kind":"berth"},"stocks":{"cmdty_scrap_metal":179.67744932614139,"cmdty_salvage_electronics":137.87398471846205},"credits":0}
+▶ original section reaches the real Drift berth and commits finite stock once
+  ✔ station native yaw must match geometry modulo a full turn (851.836946ms)
+  ✔ stale native record and actor lifetime fail closed (675.792933ms)
+  ✔ carrier death (732.575607ms)
+  ✔ section destruction (756.972042ms)
+  ✔ station absence (757.124221ms)
+  ✔ broken native line (735.320984ms)
+  ✔ native job flee (733.603188ms)
+  ✔ real mining-owner dispute (748.878356ms)
+  ✔ old tug death does not invalidate the transferred carrier (705.416301ms)
+  ✔ leave and return does no offscreen intake (1540.542981ms)
+✔ original section reaches the real Drift berth and commits finite stock once (11302.943351ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13526.224381

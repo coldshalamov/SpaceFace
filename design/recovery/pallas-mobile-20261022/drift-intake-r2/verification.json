@@ -1,0 +1,9 @@
+{
+  "patchSha256": "0f3536afb6a95fe2eadf01dedc5d5d52b97fe0c054271003140d078cca45c53f",
+  "changedFilesVerified": 11,
+  "sourceManifestEntriesVerified": 2399,
+  "sourceManifestSha256": "a2df082009f30cfac7c4f8121b3378dd4cd12e22c6ec720a365f937c733f3233",
+  "baseCommit": "bcfdd4730a74c2b79b6e53e3bd7111d6d2ec1dc3",
+  "baseTree": "707320df59191f596616b9741c79586fd817e386",
+  "method": "Apply exact patch to baseline Git blobs; compare each result SHA256. Compare full source manifest against reconstructed changed files and sealed unchanged baseline source."
+}

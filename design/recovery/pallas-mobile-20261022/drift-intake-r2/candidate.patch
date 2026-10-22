@@ -1,0 +1,673 @@
+--- a/src/data/pallasReefCrew.js
++++ b/src/data/pallasReefCrew.js
+@@ -28,13 +28,26 @@
+     && state.entities?.get(e.id) === e);
+   return matches.length === 1 ? matches[0] : null;
+ }
++export const PALLAS_REEF_INTAKE_ID = 'pallas:reef:light-cut:drift-intake';
++export function normalizeReefIntake(raw) {
++  if (raw?.receiptId !== PALLAS_REEF_INTAKE_ID || raw.sourceKey !== PALLAS_REEF_CREW.sourceKey
++    || raw.stationId !== PALLAS_REEF_CREW.homeStationId || raw.sectionRecordId !== PALLAS_REEF_CREW.sectionId
++    || raw.carrierRecordId !== PALLAS_REEF_CREW.actors[2].id
++    || !Number.isFinite(raw.at) || raw.at < 0
++    || Object.keys(raw.pool || {}).length !== 2
++    || Object.entries(PALLAS_REEF_CREW.pool).some(([id, qty]) => raw.pool[id] !== qty)) return null;
++  return { receiptId: PALLAS_REEF_INTAKE_ID, sourceKey: PALLAS_REEF_CREW.sourceKey,
++    stationId: PALLAS_REEF_CREW.homeStationId, sectionRecordId: PALLAS_REEF_CREW.sectionId,
++    carrierRecordId: PALLAS_REEF_CREW.actors[2].id, pool: {...PALLAS_REEF_CREW.pool}, at: raw.at };
++}
+ export function reefSourceFields(raw = {}) {
+-  return { cutS: Math.max(0, Math.min(PALLAS_REEF_CREW.cutS, Number(raw.cutS) || 0)),
++  return { intake: raw.extracted === true && Object.values(raw.remainingPool || {}).every(q => q === 0)
++      ? normalizeReefIntake(raw.intake) : null, cutS: Math.max(0, Math.min(PALLAS_REEF_CREW.cutS, Number(raw.cutS) || 0)),
+     released: raw.released === true, sectionLost: raw.sectionLost === true,
+     manifested: raw.manifested === true, carrierRecordId: raw.carrierRecordId === 'pallas:reef:carrier' ? raw.carrierRecordId : null };
+ }
+ export function normalizeReefCrew(raw) {
+-  const phases = ['waiting', 'cutting', 'holding', 'transfer', 'received', 'interrupted', 'recovered', 'lost'];
++  const phases = ['waiting', 'cutting', 'holding', 'transfer', 'received', 'hauling', 'settling', 'intaken', 'interrupted', 'recovered', 'lost'];
+   return { id: PALLAS_REEF_CREW.id, phase: phases.includes(raw?.phase) ? raw.phase : 'waiting',
+     receipt: raw?.receipt?.sourceKey === PALLAS_REEF_CREW.sourceKey
+       && raw.receipt.carrierRecordId === 'pallas:reef:carrier' && Number.isSafeInteger(raw.receipt.qty)
+@@ -49,6 +62,10 @@
+ // No visit counter, random chatter timer, reward promise or additional save state.
+ const reefRadio = {
+   cutter: {
++    hauling: 'Pale Line: Waiting Room has the piece. Our cut is finished.',
++    settling: 'Pale Line: The carrier is at Drift. Let the load settle.',
++    intaken: 'Pale Line: Drift took the original piece. This hulk has nothing else for us.',
++
+     waiting: 'Pale Line: We cut in the calm. Second Pull takes the weight before we open the clamp.',
+     cutting: 'Pale Line: Steady on the clamp. Check Second Pull’s line before the cut.',
+     holding: 'Pale Line: Clamp is open. Leave the pull to Second Pull.',
+@@ -59,6 +76,10 @@
+     lost: 'Pale Line: Piece is gone. We’re not cutting a replacement out of thin air.',
+   },
+   tug: {
++    hauling: 'Second Pull: My line is clear. Waiting Room carries it to Drift.',
++    settling: 'Second Pull: Give the carrier room to settle the load.',
++    intaken: 'Second Pull: The load is off my hands and off Waiting Room’s line.',
++
+     waiting: 'Second Pull: I take the weight before Pale Line opens the clamp. Give the line room.',
+     cutting: 'Second Pull: I’m on brake duty. Give the working line room.',
+     holding: 'Second Pull: Loose piece. Check the line while we wait for the surge to ease.',
+@@ -69,6 +90,10 @@
+     lost: 'Second Pull: No load left to catch. Mind the debris.',
+   },
+   carrier: {
++    hauling: 'Waiting Room: Original piece on my line. Taking it to Drift Market.',
++    settling: 'Waiting Room: At Drift. Hold clear while the section settles.',
++    intaken: 'Waiting Room: Drift took the scrap and electronics. Intake, not a sale.',
++
+     waiting: 'Waiting Room: Pale Line cuts, Second Pull catches. I keep clear until they’re ready.',
+     cutting: 'Waiting Room: I stay outside the surge cone. Let them finish.',
+     holding: 'Waiting Room: Keep the approach open. I’ll meet the load outside the cone.',
+@@ -87,21 +112,35 @@
+   const fresh = Number.isInteger(r.observedTick) && r.observedTick >= 0
+     && state.tick - r.observedTick >= 0 && state.tick - r.observedTick <= 120;
+   let phase = typeof r.phase === 'string' && Object.hasOwn(reefRadio[a.role], r.phase) ? r.phase : null;
+-  if (phase === 'received' && !(r.receipt?.sourceKey === PALLAS_REEF_CREW.sourceKey
++  if (['received','hauling','settling','intaken'].includes(phase) && !(r.receipt?.sourceKey === PALLAS_REEF_CREW.sourceKey
+     && r.receipt.sectionRecordId === PALLAS_REEF_CREW.sectionId
+     && r.receipt.carrierRecordId === PALLAS_REEF_CREW.actors[2].id
+     && Number.isSafeInteger(r.receipt.qty) && r.receipt.qty > 0 && r.receipt.qty <= 4)) phase = null;
++  if (phase === 'intaken') {
++    const committed = normalizeReefIntake(state.economy?.committedIntents?.[PALLAS_REEF_INTAKE_ID]?.receipt);
++    // The bounded main-thread mirror transports economy and the observed traffic row, not
++    // the private salvage ledger. This economy receipt exists only after the finite commit.
++    if (!committed) phase = null;
++  }
+   const text = !fresh || !phase ? 'Reef crew: waiting for a current work report.' : {
+     waiting: 'Reef crew: waiting for the source, working line and calm water.',
+     cutting: 'Reef crew: cut window open; cutter and tug assigned to the light section.',
+     holding: 'Reef crew: section released. Awaiting calm before transfer.',
+     transfer: 'Reef crew: preparing a handoff outside the surge cone.',
+     received: `Reef crew: carrier received ${r.receipt?.qty || 0} units from the light cut. The original section is on the carrier’s external line; it has not been sold.`,
++    hauling: 'Reef crew: Waiting Room is hauling the original light cut to Drift Market. Nothing has been sold.',
++    settling: 'Reef crew: Waiting Room is settling the external section at Drift Market. Intake is not yet committed.',
++    intaken: 'Reef crew: Drift Market took in 3 units of scrap and 1 of salvage electronics from the original light cut. No second cut is waiting.',
+     interrupted: 'Reef crew: work interrupted. The original section remains recoverable if it survives.',
+     recovered: 'Reef crew: someone else recovered the remaining material. There is no second cut.',
+     lost: 'Reef crew: the light section was lost. No replacement stock is waiting.',
+   }[phase];
+   const label = text || 'Reef crew: waiting for a current work report.';
+   const voice = fresh && phase && reefRadio[a.role][phase];
+-  return { label, text: voice ? `${label} ${voice}` : label };
++  return { label, text: voice ? `${label} ${voice}` : label,
++    route: fresh && phase ? phase === 'intaken' ? 'Drift Market intake complete. The original light cut is off Waiting Room’s line.'
++      : ['received','hauling','settling'].includes(phase) ? 'Reef light cut to Drift Market. The original section travels on Waiting Room’s external line.'
++      : ['interrupted','recovered','lost'].includes(phase) ? 'The reef route to Drift Market is suspended. No intake is confirmed.'
++      : 'Reef light cut to Drift Market. Carrier intake follows the physical handoff; no sale is commissioned.'
++      : 'Waiting for a current reef route report.' };
+ }
+--- a/src/systems/pallasReefCrew.js
++++ b/src/systems/pallasReefCrew.js
+@@ -1,12 +1,12 @@
+ // Traffic owns these three workers. Jobs owns steering; combat owns lines; salvage owns stock.
+-import { PALLAS_REEF_CREW as C, reefBody, normalizeReefCrew } from '../data/pallasReefCrew.js';
++import { PALLAS_REEF_CREW as C, reefBody, normalizeReefCrew, PALLAS_REEF_INTAKE_ID, normalizeReefIntake } from '../data/pallasReefCrew.js';
+ import { pallasReefPhase, pointInsidePallasReef } from '../data/environmentalMachinery.js';
+ import { makeShipEntitySpec } from './ships.js';
+-import { reefPose } from './pallasReefSource.js';
++import { reefPose, reefDriftApproach } from './pallasReefSource.js';
+ import { BEAMS } from '../data/mining.js';
+ const cutBeam=BEAMS.find(b=>b.id==='beam_mk1');
+ const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
+-const terminal = new Set(['received','recovered','lost']);
++const terminal = new Set(['received','hauling','settling','intaken','recovered','lost']);
+ const lives = new WeakMap();
+ function row(owner) { return owner.state.traffic.pallasReefCrew ||= normalizeReefCrew(null); }
+ function entryFor(owner, entity) {
+@@ -96,6 +96,14 @@
+   const workPose=reefPose(owner,entity), source=owner.helpers.salvage?.source(C.sourceKey);
+   const section=reefBody(owner.state,C.sectionId), s=reefPose(owner,section);
+   if (!workPose) return {blocked:true,reefCrew:true};
++  if (a.role === 'carrier' && source?.intake) return {blocked:true,reefCrew:true};
++  if (a.role === 'carrier' && r.receipt) {
++    if (source?.extracted || source?.disputedBy || source?.sectionLost) return {blocked:true,reefCrew:true};
++    const approach = reefDriftApproach(owner,entity);
++    return approach ? {pos:approach.target,vel:{x:0,z:0},reach:4,workPose,reefCrew:true,
++      ...(Math.hypot(workPose.pos.x-approach.anchor.x,workPose.pos.z-approach.anchor.z)<160?{planningSpeed:6}:{})}
++      : {blocked:true,reefCrew:true};
++  }
+   let pos={...a.pos}, vel={x:0,z:0};
+   if (!terminal.has(r.phase) && !r.lost.length) {
+     if(a.role==='cutter'&&s){pos={...a.pos};}
+@@ -134,7 +142,7 @@
+   if(role==='carrier' && !owner.helpers.salvage?.source(C.sourceKey)?.carrierRecordId)return undefined;
+   const r=row(owner), section=reefBody(owner.state,C.sectionId), source=owner.helpers.salvage?.source(C.sourceKey);
+   if(reefBody(owner.state,entity.data.worldRecordId)!==entity||entryFor(owner,entity)!==entry||!free(owner,entity)
+-    ||r.lost.length||!source||source.extracted||source.sectionLost||source.disputedBy
++    ||(!r.receipt&&r.lost.length)||!source||source.extracted||source.sectionLost||source.disputedBy
+     ||source.claimId!==(role==='carrier'?C.actors[2].id:C.claimId)
+     ||(role==='carrier' ? source.carrierRecordId!==C.actors[2].id : !!source.carrierRecordId)
+     ||!reefPose(owner,entity)||!reefPose(owner,section)||distance(entity.pos,section.pos)>390)return null;
+@@ -147,6 +155,10 @@
+   const cuttingHull=reefBody(owner.state,C.actors[0].id);
+   if(cuttingHull){cuttingHull.data.minerShiftActive=false;cuttingHull.data.minerShiftRockId=null;cuttingHull.data.pallasReefCutTargetGeneration=null;}
+   r.observedTick=owner.state.tick;
++  if(source?.intake){
++    const committed=normalizeReefIntake(owner.state.economy?.committedIntents?.[PALLAS_REEF_INTAKE_ID]?.receipt);
++    r.phase=committed&&JSON.stringify(committed)===JSON.stringify(source.intake)?'intaken':'interrupted';return;
++  }
+   if(source?.sectionLost){r.phase='lost';return;}
+   if(source?.extracted){r.phase='recovered';return;}
+   if(source?.disputedBy){r.phase='interrupted';r.interrupted=true;return;}
+@@ -155,7 +167,19 @@
+     const section=reefBody(owner.state,C.sectionId);
+     const line=section&&owner._registry?.get('combat')?.kernel?.attachments?.listForEntity(section.id,true)
+       .find(a=>a.ownerId===carrier?.id&&a.targetId===section.id&&a.controlMode==='npc_tow');
+-    r.phase=line&&reefPose(owner,carrier)&&reefPose(owner,section)?'received':'interrupted';return;
++    if (!line || !carrier || !free(owner,carrier)) {r.phase='interrupted';return;}
++    owner.helpers.salvage?.reelReefIntake(carrier,dt);
++    const approach = reefDriftApproach(owner,carrier);
++    if (!approach) {r.phase='interrupted';return;}
++    r.phase = approach.near ? 'settling' : 'hauling';
++    if (approach.ready) {
++      const out = owner._registry?.get('economy')?.applyPallasReefIntake(carrier, {
++        receiptId:PALLAS_REEF_INTAKE_ID,sourceKey:C.sourceKey,stationId:C.homeStationId,
++        sectionRecordId:C.sectionId,carrierRecordId:C.actors[2].id});
++      // A publication listener can Continue/New Game; never write an old traffic row afterward.
++      if (out?.ok && owner.state.traffic?.pallasReefCrew === r) r.phase='intaken';
++    }
++    return;
+   }
+   if(r.lost.length || [cutter,tug,carrier].some(e=>!e||!free(owner,e))){
+     r.phase='interrupted';r.interrupted=true;return;
+--- a/src/systems/pallasReefSource.js
++++ b/src/systems/pallasReefSource.js
+@@ -1,7 +1,8 @@
+ // Runs only as the existing salvage owner. No separate ledger or extraction currency.
+-import { PALLAS_REEF_CREW as C, reefBody, reefSourceFields } from '../data/pallasReefCrew.js';
++import { PALLAS_REEF_CREW as C, reefBody, reefSourceFields, normalizeReefIntake } from '../data/pallasReefCrew.js';
+ import { pallasReefPhase, pointInsidePallasReef } from '../data/environmentalMachinery.js';
+ import { captureEntityRecord, markRecordDestroyed } from '../world/worldRecords.js';
++import { resolveCollisionProxyManifest, resolveDockAnchor, resolveCorridorAxisWorld, proxyWorldPrimitives, distanceToProxy, hullEnvelopeWu, proxyOuterRadiusWu } from '../data/collisionProxyManifests.js';
+ import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
+ 
+ export function reefPose(owner, entity) {
+@@ -12,14 +13,17 @@
+   if (physics?._nativeRestorePending || physics?._nativeRestoreDeferred || !physicsBodyNativeReady(entity)
+     || r?.entity !== entity || !b || !Number.isInteger(native._simTick)
+     || owner.state.tick - native._simTick < 0 || owner.state.tick - native._simTick > 2
+-    || r._postStepReadTick !== native.tick || !r.colliders?.length) return null;
++    || (r.spec?.dynamic !== false && r._postStepReadTick !== native.tick) || !r.colliders?.length) return null;
+   try {
+     if (!b.isEnabled() || native.world.getRigidBody(b.handle) !== b || b.numColliders() !== r.colliders.length
+       || r.colliders.some((c, i) => !c.isEnabled() || b.collider(i) !== c || native.world.getCollider(c.handle) !== c || c.parent() !== b)) return null;
+     const p = b.translation(), v = b.linvel(), q = b.rotation(), w = b.angvel();
+     if (![p.x,p.y,p.z,v.x,v.y,v.z,q.x,q.y,q.z,q.w,w.x,w.y,w.z].every(Number.isFinite)) return null;
+     const o = native._frameOrigin || { x: 0, z: 0 };
+-    return { pos: { x: p.x + o.x, z: p.z + o.z }, vel: { x: v.x, z: v.z } };
++    // Match the native owner's planar quaternion convention. Geometry uses entity.rot,
++    // so callers must not combine this native translation with an unverified yaw.
++    const yaw = -Math.atan2(2 * (q.w*q.y + q.x*q.z), 1 - 2 * (q.y*q.y + q.z*q.z));
++    return { pos: { x: p.x + o.x, z: p.z + o.z }, vel: { x: v.x, z: v.z }, yaw };
+   } catch { return null; }
+ }
+ 
+@@ -76,6 +80,7 @@
+   observeReefLifetime(owner);
+   const r = owner._sourceRecord(C.sourceKey, false);
+   if (!r || r.extracted || r.sectionLost) return;
++  if (r.carrierRecordId) prepareReefIntake(owner,reefBody(owner.state,C.actors[2].id));
+   const section = retainedSection(owner), hulk = reefBody(owner.state, C.hulkId);
+   const dead = (owner.state.entityList || []).some(e => e.data?.worldRecordId === C.sectionId && e.alive === false);
+   if (dead) { r.sectionLost = true; r.remainingPool = {}; r.extracted = true; return; }
+@@ -144,6 +149,8 @@
+   if(!result?.ok)return {ok:false,reason:result?.reason};
+   r.claimId=C.actors[2].id;r.carrierRecordId=C.actors[2].id;r.workId=C.id;
+   section.data.salvorClaimedBy=r.claimId;
++  const job = owner.helpers.npcJobs.byEntity(carrier.id);
++  owner._reefIntakeLife = {carrier,data:carrier.data,entry:job,job:job.job,generation:carrier.occupantGeneration};
+   return {ok:true,attachmentId:line.id,qty:Object.values(r.remainingPool).reduce((a,b)=>a+b,0)};
+ }
+ 
+@@ -174,3 +181,132 @@
+  return !!markRecordDestroyed(bag,C.sectionId,{tick:owner.state.tick,pos:entity.pos,
+    stub:captureEntityRecord(entity,{sectorId:C.sectorId,tick:owner.state.tick})});
+ }
++
++// The destination is the existing station's resolved docking lane, not an invented receiver.
++// Traffic and salvage use the same measured geometry; only salvage can consume the source.
++export function reefDriftApproach(owner, carrier) {
++  const state = owner.state;
++  if (state.mode !== 'flight' || state.world?.currentSectorId !== C.sectorId) return null;
++  const stations = (state.entityList || []).filter(e => e.alive !== false && e.type === 'station'
++    && e.data?.stationId === C.homeStationId && state.entities.get(e.id) === e);
++  if (stations.length !== 1) return null;
++  const station = stations[0], section = reefBody(state, C.sectionId);
++  const c = reefPose(owner, carrier), s = reefPose(owner, section);
++  const dock = reefPose(owner,station);
++  if (!c || !s || !dock || Math.hypot(dock.pos.x-station.pos.x,dock.pos.z-station.pos.z) > .01
++    || !Number.isFinite(dock.yaw) || !Number.isFinite(station.rot)
++    || Math.abs(Math.atan2(Math.sin(dock.yaw-station.rot),Math.cos(dock.yaw-station.rot))) > 1e-5) return null;
++  const manifest = resolveCollisionProxyManifest(station);
++  const anchor = resolveDockAnchor(station, manifest, carrier);
++  if (!anchor) return null;
++  const axis = resolveCorridorAxisWorld(station, manifest);
++  const attachments = (owner.registry || owner._registry)?.get('combat')?.kernel?.attachments;
++  const lines = attachments?.listForEntity(section.id, true) || [];
++  const line = lines.length === 1 && lines[0];
++  if (!line || line.ownerId !== carrier.id || line.targetId !== section.id
++    || line.controlMode !== 'npc_tow' || line.state !== 'active') return null;
++  if (state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
++    const native = (owner.registry || owner._registry)?.get('physics')?._sg02;
++    const held = native?.attachments.get(line.id);
++    const contract = attachments.physicsContract(line.id);
++    if (!held || held.id !== line.id || held.ownerId !== carrier.id || held.targetId !== section.id
++      || held.owner !== native.records.get(carrier.id) || held.target !== native.records.get(section.id)
++      || held.ownerEntity !== carrier || held.targetEntity !== section
++      || held.owner?.entity !== carrier || held.target?.entity !== section
++      || held.ownerLife !== carrier.occupantGeneration || held.targetLife !== section.occupantGeneration) return null;
++    if (!contract || held.defId !== line.defId || held.restLength !== line.restLength
++      || held.sourceSocketId !== line.sourceSocketId || held.targetSocketId !== line.targetSocketId
++      || ['x','y','z'].some(k => (held.anchorA?.[k] || 0) !== (line.sourceAnchorLocal?.[k] || 0)
++        || (held.anchorB?.[k] || 0) !== (line.targetAnchorLocal?.[k] || 0))
++      || held.reelRevision !== (line.reelRevision || 0)
++      || held.spring?.mode !== (contract.spring?.mode || 'spring')) return null;
++    if (held.spring.mode === 'legacy_rope') {
++      const joint = held.contactJoint;
++      if (!joint?.isValid() || native.world.getImpulseJoint(joint.handle) !== joint) return null;
++    } else if (held.contactJoint) return null;
++  }
++  const lane = p => ({ along: (p.x-anchor.x)*axis.x+(p.z-anchor.z)*axis.z,
++    across: (p.x-anchor.x)*-axis.z+(p.z-anchor.z)*axis.x });
++  const cp = lane(c.pos), sp = lane(s.pos);
++  const lead = Math.max(line.restLength, hullEnvelopeWu(carrier)+hullEnvelopeWu(section)) + anchor.dockRadius;
++  const outside = Math.abs(cp.across) > anchor.dockRadius || cp.along > lead+10;
++  // The carrier takes the inner clear edge of the SAME berth so the trailing section can
++  // enter its existing dock gate. This does not extend the station's receiving reach.
++  const anchorAlong = (anchor.x-station.pos.x)*axis.x+(anchor.z-station.pos.z)*axis.z;
++  const safeAlong = proxyOuterRadiusWu(manifest,station)+hullEnvelopeWu(carrier)
++    +(manifest.docking.mooring?.standoffWu || 4);
++  const inset = Math.max(0,Math.min(anchor.dockRadius*.75,anchorAlong-safeAlong));
++  const berthTarget = {x:anchor.x-axis.x*inset,z:anchor.z-axis.z*inset};
++  const target = outside ? { x: anchor.x+axis.x*lead, z: anchor.z+axis.z*lead } : berthTarget;
++  const near = Math.hypot(c.pos.x-anchor.x,c.pos.z-anchor.z) <= anchor.dockRadius;
++  const primitives = proxyWorldPrimitives(station, manifest);
++  const clear = primitives.length > 0 && [ [c.pos,carrier], [s.pos,section] ].every(([pos,body]) =>
++    primitives.every(p => distanceToProxy(pos,p) >= hullEnvelopeWu(body)+2));
++  const ready = near && clear
++    && Math.hypot(s.pos.x-anchor.x,s.pos.z-anchor.z) <= anchor.dockRadius
++    && Math.hypot(c.vel.x,c.vel.z) <= anchor.speedGate
++    && Math.hypot(s.vel.x,s.vel.z) <= anchor.speedGate
++    && Math.hypot(c.vel.x-s.vel.x,c.vel.z-s.vel.z) <= 8;
++  return { station, section, line, c, s, anchor, axis, target, near, ready, clear, lane: {carrier:cp,section:sp} };
++}
++
++export function prepareReefIntake(owner, carrier, requireArrival = true) {
++  if (!carrier || owner.state.settings?.gameplay?.physicsBackend !== 'rapier-dynamic') return null;
++  const r = owner._sourceRecord(C.sourceKey, false);
++  const row = owner.state.traffic?.pallasReefCrew;
++  const section = retainedSection(owner);
++  if (!r || r.intake || r.extracted || r.sectionLost || r.disputedBy || !r.released
++    || r.claimId !== C.actors[2].id || r.carrierRecordId !== C.actors[2].id
++    || reefBody(owner.state,C.actors[2].id) !== carrier || !section
++    || row?.receipt?.sourceKey !== C.sourceKey || row.receipt.carrierRecordId !== C.actors[2].id
++    || !row.spawned?.includes(C.actors[2].id) || carrier.flags?.persistent !== true
++    || carrier.data.pallasReefRole !== 'carrier' || carrier.data.cargoManifest?.totalQty > 0
++    || Object.keys(r.remainingPool).length !== 2
++    || Object.entries(C.pool).some(([id,qty]) => r.remainingPool[id] !== qty)) return null;
++  const job = owner.helpers.npcJobs?.byEntity(carrier.id);
++  if (!job || owner.state.npcJobs?.byId?.[job.job.id] !== job || job.entityId !== carrier.id
++    || job.worldRecordId !== C.actors[2].id || carrier.data.jobId !== job.job.id
++    || job.job.payload?.pallasReefCrew !== C.id || job.job.payload.role !== 'carrier'
++    || job.control || job.towAssist || ['flee','complete'].includes(job.job.phase)
++    || !Number.isInteger(carrier.occupantGeneration)) return null;
++  const life = owner._reefIntakeLife;
++  if (life && (life.carrier !== carrier || life.data !== carrier.data || life.job !== job.job
++    || life.entry !== job || life.generation !== carrier.occupantGeneration)) return null;
++  if (!life) owner._reefIntakeLife = {carrier, data:carrier.data, entry:job, job:job.job, generation:carrier.occupantGeneration};
++  const approach = reefDriftApproach(owner,carrier);
++  return approach && (!requireArrival || approach.ready) && approach.section === section ? approach : null;
++}
++
++export function consumeReefIntake(owner, carrier, receipt) {
++  const canonical = normalizeReefIntake(receipt);
++  if (!canonical || !prepareReefIntake(owner,carrier)) return {ok:false,reason:'source-not-at-intake'};
++  // Ledger-only commit: body retirement waits until economy has committed both stock lines.
++  const record = owner._sourceRecord(C.sourceKey,false);
++  record.remainingPool = {}; record.extracted = true; record.claimId = null;
++  record.extractedBy = C.actors[2].id; record.workId = canonical.receiptId;
++  record.intake = canonical;
++  return {ok:true, receipt:canonical};
++}
++
++export function retireReefIntake(owner) {
++  const record = owner._sourceRecord(C.sourceKey,false);
++  const receipt = normalizeReefIntake(record?.intake);
++  const committed = receipt && normalizeReefIntake(owner.state.economy?.committedIntents?.[receipt.receiptId]?.receipt);
++  if (!receipt || !committed || JSON.stringify(receipt) !== JSON.stringify(committed)
++    || !record.extracted || Object.keys(record.remainingPool).length) return false;
++  owner._retireSourceEntity(record,C.sourceKey);
++  return true;
++}
++
++// Reel only the genuine carrier line at the station, using the existing attachment policy.
++// The load must itself enter the unchanged station dock gate; no tow-length remote intake.
++export function reelReefIntake(owner, carrier, dt) {
++  if (!(dt > 0) || dt > .1) return false;
++  const a = prepareReefIntake(owner,carrier,false);
++  if (!a?.near) return false;
++  const attachments = owner.registry.get('combat').kernel.attachments;
++  const rate = attachments.reelPolicy(a.line.id)?.reelRate;
++  const minimum = hullEnvelopeWu(carrier)+hullEnvelopeWu(a.section)+6;
++  if (!(rate > 0) || a.line.restLength <= minimum) return false;
++  return attachments.reel(a.line.id,-Math.min(a.line.restLength-minimum,rate*dt),minimum)?.ok === true;
++}
+--- a/src/systems/salvage.js
++++ b/src/systems/salvage.js
+@@ -1,5 +1,5 @@
+ import { PALLAS_REEF_CREW, reefSourceFields } from '../data/pallasReefCrew.js';
+-import { ensureReefSource, stepReefSource, cutReefClamp, transferReefSection, reelReefSection, retireReefSourceRecord, observeReefLifetime } from './pallasReefSource.js';
++import { ensureReefSource, stepReefSource, cutReefClamp, transferReefSection, reelReefSection, retireReefSourceRecord, observeReefLifetime, prepareReefIntake, consumeReefIntake, retireReefIntake, reelReefIntake } from './pallasReefSource.js';
+ // Salvage discovery loop (GDD pillar 1 — "wire the momentum toy": a floating communicator near
+ // wreckage starts a mission). This system turns the `derelict_field` named zones (src/data/
+ // sectorZones.js) into a reason to fly out: on sector entry it deterministically scatters 0-2
+@@ -106,7 +106,7 @@
+     this.bus = ctx.bus;
+     this.helpers = ctx.helpers;
+     this.registry = ctx.registry;
+-    this._reefClamp = null; this._reefSectionLife = null;
++    this._reefClamp = null; this._reefSectionLife = null; this._reefIntakeLife = null;
+     const state = this.state;
+     this._ensureState();
+     if (this.helpers) {
+@@ -117,6 +117,10 @@
+         source: (sourceKey) => this._sourceSnapshot(sourceKey),
+         cutReefClamp: (cutter, tug, dt) => cutReefClamp(this, cutter, tug, dt),
+         reelReefSection: (tug, dt) => reelReefSection(this, tug, dt),
++        reelReefIntake: (carrier, dt) => reelReefIntake(this, carrier, dt),
++        prepareReefIntake: (carrier) => prepareReefIntake(this, carrier),
++        retireReefIntake: () => retireReefIntake(this),
++        consumeReefIntake: (carrier, receipt) => consumeReefIntake(this, carrier, receipt),
+         transferReefSection: (tug, carrier) => transferReefSection(this, tug, carrier),
+         entityForPoint: (salvagePointId, sourceKey = null) => this._entityForPoint(salvagePointId, sourceKey),
+         claimSource: (request) => this._claimSource(request),
+@@ -185,7 +189,7 @@
+   },
+ 
+   newGame() {
+-    this._reefSectionLife=null;this._reefClamp=null;
++    this._reefSectionLife=null;this._reefClamp=null;this._reefIntakeLife=null;
+     const body=tallyThreeBody(this.state,TALLY_THREE.worldRecordId);
+     if(body)this.helpers.removeEntity?.(body.id);
+     this.state.salvage = freshSalvageState();
+@@ -204,7 +208,7 @@
+   },
+ 
+   deserialize(data) {
+-    this._reefClamp = null; this._reefSectionLife = null;
++    this._reefClamp = null; this._reefSectionLife = null; this._reefIntakeLife = null;
+     const sources = data && !Array.isArray(data) && data.schema === SALVAGE_SOURCE_SCHEMA
+       ? normalizeSourceLedger(data.sources)
+       : {};
+--- a/src/systems/economy.js
++++ b/src/systems/economy.js
+@@ -1,3 +1,4 @@
++import { PALLAS_REEF_CREW as REEF, PALLAS_REEF_INTAKE_ID, normalizeReefIntake } from '../data/pallasReefCrew.js';
+ // economy system — stock-based market economy + SOLE writer of state.player.credits.
+ // Contract: ARCHITECTURE §0.6 (single-writer credits), §0.12/§0.13 (cargo: volume is the only
+ // hard cap), §3.6 (economy schema), §4.4 (master event table), design/specs/03-economy-trading.md.
+@@ -4058,6 +4059,46 @@
+    * Admit one conserved NPC salvage lot into an eligible industrial yard. This intentionally has
+    * no player wallet/cargo path: player salvage continues through execute(..., 'sell', ...).
+    */
++  // One authored, physical section into Drift's existing market. Not an NPC sale or a new yard.
++  applyPallasReefIntake(carrier, request = {}) {
++    if (request.receiptId !== PALLAS_REEF_INTAKE_ID || request.sourceKey !== REEF.sourceKey
++      || request.stationId !== REEF.homeStationId || request.sectionRecordId !== REEF.sectionId
++      || request.carrierRecordId !== REEF.actors[2].id
++      || (request.pool && (Object.keys(request.pool).length !== 2
++        || Object.entries(REEF.pool).some(([id,qty]) => request.pool[id] !== qty)))) return {ok:false,reason:'intake-identity-conflict'};
++    const state = this.state, salvage = this.helpers.salvage;
++    const source = salvage?.source(REEF.sourceKey);
++    const prior = state.economy.committedIntents?.[PALLAS_REEF_INTAKE_ID];
++    if (prior || source?.intake) {
++      const a = normalizeReefIntake(prior?.receipt), b = normalizeReefIntake(source?.intake);
++      return a && b && JSON.stringify(a) === JSON.stringify(b)
++        ? {ok:true,duplicate:true,receipt:a} : {ok:false,reason:'intake-identity-conflict'};
++    }
++    const physical = salvage?.prepareReefIntake(carrier);
++    if (!physical) return {ok:false,reason:'source-not-at-intake'};
++    const info = stationInfo(state,REEF.homeStationId);
++    const market = state.economy.markets[REEF.homeStationId];
++    const listings = Object.entries(REEF.pool).map(([id,qty]) => ({id,qty,entry:market?.[id],def:commodityDef(state,id)}));
++    if (!info || info.type !== 'trade_hub' || listings.some(({entry,def,qty}) => !entry || !def
++      || !Number.isFinite(entry.stock) || !Number.isFinite(entry.stock+qty))) return {ok:false,reason:'intake-listing-unavailable'};
++    const receipt = normalizeReefIntake({...request, pool:{...REEF.pool}, at:state.simTime});
++    if (!receipt) return {ok:false,reason:'invalid-intake'};
++    const intents = ensureCommittedIntents(state);
++    // No events, callbacks or awaits inside this finite commit. Salvage writes its ledger and
++    // economy writes both stocks; retirement and publication happen only after they agree.
++    const taken = salvage.consumeReefIntake(carrier,receipt);
++    if (!taken?.ok) return {ok:false,reason:'source-changed'};
++    for (const {entry,qty} of listings) entry.stock += qty;
++    intents[PALLAS_REEF_INTAKE_ID] = {receipt, result:{ok:true,qty:4}};
++    salvage.retireReefIntake();
++    for (const {id,entry,def} of listings) {
++      this.recomputeLivePrices(entry,def,REEF.homeStationId,id);
++      this.recordLivePriceHistory(entry,def,REEF.homeStationId,id);
++    }
++    this.bus.emit('pallas:reefIntaken', {...receipt,pool:{...receipt.pool}});
++    return {ok:true,duplicate:false,receipt};
++  },
++
+   applyNpcSalvageIntake(payload) {
+     const intake = npcSalvageIntakeFrom(payload);
+     if (!intake) return { ok: false, reason: 'invalid_salvage_intake' };
+--- a/src/data/contactHail.js
++++ b/src/data/contactHail.js
+@@ -1731,7 +1731,7 @@
+     line = `STATUS · ${pallas.text}`;
+   } else if (pallas && id === 'route') {
+     line = pallasReefStatus(state, target)
+-      ? 'ROUTE · Reef light cut to the outer holding point. Destination delivery is not commissioned.'
++      ? `ROUTE · ${pallas.route}`
+       : 'ROUTE · Sker run marks to Smuggler Den at Hollow Hub.';
+   } else if (offer.kind === 'ace' && id === 'status') {
+     line = aceHailStatusText(state, target);
+--- a/src/systems/npcJobsRuntime.js
++++ b/src/systems/npcJobsRuntime.js
+@@ -4836,7 +4836,8 @@
+     const distance = Math.hypot(dx, dz), close = distance <= target.reach;
+     const aim = distance > 0.01 ? Math.atan2(dz, dx) : entity.rot || 0;
+     const profile = resolvePropulsionProfile(entity, this.state);
+-    const planningSpeed = Math.min(40, entry.job.speed || 35);
++    const planningSpeed = Number.isFinite(target.planningSpeed) && target.planningSpeed > 0 && target.planningSpeed <= 40
++      ? target.planningSpeed : Math.min(40, entry.job.speed || 35);
+     if (profile.family === DRIVE_FAMILIES.PULSE_PLATE) {
+       // PulsePlate's BRAKE fires the plate. Delicate work uses its authored RCS instead.
+       const speed = close ? 0 : Math.min(planningSpeed,
+--- /dev/null
++++ b/test/fixtures/pallas-drift-native.mjs
+@@ -0,0 +1,78 @@
++import { economy } from '../../src/systems/economy.js';
++import { salvage } from '../../src/systems/salvage.js';
++import { environmentalMachinery } from '../../src/systems/environmentalMachinery.js';
++import { terrainAnchors } from '../../src/systems/terrainAnchors.js';
++import { fields } from '../../src/systems/fields.js';
++import assert from 'node:assert/strict';
++import { createSimulation } from '../../src/core/sim.js';
++import { applyFrameOrigin, snapFrameOrigin } from '../../src/core/coordinates.js';
++import { physics } from '../../src/core/physics.js';
++import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../../src/runtime/authoritativeSystemManifest.js';
++import { PRODUCTION_FEATURES } from '../../src/runtime/runtimeProfiles.js';
++import { applyFeatureConfigToMaps, snapshotFeatureMaps, restoreFeatureMaps } from '../../src/data/featureFlags.js';
++import { PALLAS_SEAM as C } from '../../src/data/pallasSeamWork.js';
++import { world } from '../../src/systems/world.js';
++import { traffic } from '../../src/systems/traffic.js';
++import { npcJobsRuntime } from '../../src/systems/npcJobsRuntime.js';
++import { flightV3 } from '../../src/systems/flightV3.js';
++import { aiPorts } from '../../src/systems/aiPorts.js';
++import { combat } from '../../src/systems/combat.js';
++import { createTacticalAISystem } from '../../src/systems/tacticalAI.js';
++import { ships, makeShipEntitySpec } from '../../src/systems/ships.js';
++import { mining } from '../../src/systems/mining.js';
++import { cargo } from '../../src/systems/cargo.js';
++import { fieldDepletion } from '../../src/systems/fieldDepletion.js';
++import { save } from '../../src/save/saveSystem.js';
++
++// Production owners, actual authored actor producer and original poses. Unrelated world encounters
++// are not ticked. This is a focused native route, not a full world/player-camera acceptance claim.
++export async function pallasDriftNativeFixture({
++  native = true
++} = {}) {
++  const flags = snapshotFeatureMaps();
++  applyFeatureConfigToMaps(PRODUCTION_FEATURES);
++  const selected = new Map([['economy', economy], ['salvage',salvage],['environmentalMachinery',environmentalMachinery],['terrainAnchors',terrainAnchors],['fields',fields],['aiSlot', createTacticalAISystem()], ['flightSlot', flightV3], ['physics', physics], ['aiPorts', aiPorts], ['combat', combat], ['world', world], ['npcJobsRuntime', npcJobsRuntime], ['ships', ships], ['traffic', traffic], ['save', save], ['mining', mining], ['cargo', cargo], ['fieldDepletion', fieldDepletion]]);
++  const sim = createSimulation({
++    seed: 4242,
++    runtimeConfig: {
++      profileId: 'production',
++      features: PRODUCTION_FEATURES
++    },
++    systems: PRODUCTION_INIT_ORDER.map(id => selected.get(id)).filter(Boolean),
++    updateOrder: PRODUCTION_UPDATE_ORDER.filter(id => id !== 'world').map(id => selected.get(id)).filter(Boolean)
++  });
++  const state = sim.state;
++  state.mode = 'flight';
++  state.settings.gameplay.physicsBackend = native ? 'rapier-dynamic' : 'custom';
++  const w = sim.registry.get('world');
++  w.enterSector(C.sector);
++  const owner = sim.registry.get('traffic');
++  const player = sim.spawn(makeShipEntitySpec('ship_kestrel', {
++    isPlayer: true,
++    player: state.player,
++    team: 0,
++    pos: {
++      x: state.entityList.find(e => e.data?.activityActorSlotId === 'pallas_seam_miner').pos.x + 500,
++      z: state.entityList.find(e => e.data?.activityActorSlotId === 'pallas_seam_miner').pos.z
++    }
++  }));
++  state.playerId = player.id;
++  applyFrameOrigin(state, snapFrameOrigin(player.pos, {}));
++  const phys = sim.registry.get('physics');
++  if (native) assert.equal(await phys.prepareBackend(state), true);
++  return {
++    sim,
++    state,
++    owner,
++    player,
++    physics: phys,
++    step(n = 1) {
++      for (let i = 0; i < n; i++) sim.step(1 / 60);
++    },
++    close() {
++      phys._disableSg02DynamicAuthority();
++      sim.dispose();
++      restoreFeatureMaps(flags);
++    }
++  };
++}
+--- /dev/null
++++ b/test/pallas-drift-intake.test.mjs
+@@ -0,0 +1,66 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFileSync,writeFileSync} from 'node:fs';
++import {reefDriftApproach} from '../src/systems/pallasReefSource.js';
++import {pallasDriftNativeFixture} from './fixtures/pallas-drift-native.mjs';
++import {PALLAS_REEF_CREW as C,PALLAS_REEF_INTAKE_ID as ID,reefBody,pallasReefStatus} from '../src/data/pallasReefCrew.js';
++
++const output=name=>process.env.PALLAS_INTAKE_READY_SAVE?`diagnostic-${name}`:name;
++export const request={receiptId:ID,sourceKey:C.sourceKey,stationId:C.homeStationId,sectionRecordId:C.sectionId,carrierRecordId:C.actors[2].id};
++test('original section reaches the real Drift berth and commits finite stock once', {timeout:240000},async t=>{
++ const h=await pallasDriftNativeFixture();t.after(()=>h.close());h.step(3);
++ const economy=h.sim.registry.get('economy'),save=h.sim.registry.get('save'),jobs=h.sim.registry.get('npcJobsRuntime');
++ if(process.env.PALLAS_INTAKE_READY_SAVE){const resume=economy.applyPallasReefIntake;economy.applyPallasReefIntake=()=>({ok:false,reason:'test-observe'});save.loadEnvelope(JSON.parse(readFileSync(process.env.PALLAS_INTAKE_READY_SAVE)));h.physics._finishNativeRestore();h.state.mode='flight';await h.physics.prepareBackend(h.state);h.step(3);economy.applyPallasReefIntake=resume;}
++ const source=()=>h.sim.helpers.salvage.source(C.sourceKey),stocks=()=>Object.fromEntries(Object.keys(C.pool).map(id=>[id,h.state.economy.markets[C.homeStationId][id]?.stock]));
++ const original=economy.applyPallasReefIntake;let admission=null,readyEnvelope=null,callbacks=0,commits=0;
++ h.sim.bus.on('pallas:reefIntaken',()=>{callbacks++;assert.deepEqual(source().remainingPool,{});assert.equal(source().intake.receiptId,ID);assert.ok(h.state.economy.committedIntents[ID]);assert.equal(reefBody(h.state,C.sectionId),null);for(const[id,q]of Object.entries(C.pool))assert.equal(stocks()[id],admission.stocks[id]+q);});
++ economy.applyPallasReefIntake=function(carrier,payload){
++  const a=reefDriftApproach(h.owner,carrier);assert.ok(a.ready,'both original bodies in real receiving gate');
++  if(!readyEnvelope){readyEnvelope=save.serialize('drift-ready');writeFileSync(output('ready-save.json'),JSON.stringify(readyEnvelope));return {ok:false,reason:'test-save-boundary'};}
++  admission={at:h.state.simTime,carrier:a.c,section:a.s,anchor:a.anchor,stocks:stocks(),credits:h.state.player.credits};
++  writeFileSync(output('admission.json'),JSON.stringify(admission,null,2));
++  const unchanged=()=>{assert.deepEqual(source().remainingPool,C.pool);assert.deepEqual(stocks(),admission.stocks);assert.equal(h.state.economy.committedIntents?.[ID],undefined);};
++  assert.equal(original.call(this,carrier,{...payload,pool:{cmdty_scrap_metal:4,cmdty_salvage_electronics:1}}).ok,false);unchanged();
++  const market=h.state.economy.markets[C.homeStationId],id='cmdty_salvage_electronics',listing=market[id];delete market[id];
++  assert.equal(original.call(this,carrier,payload).reason,'intake-listing-unavailable');market[id]=listing;unchanged();
++  assert.equal(jobs.claimControl(carrier.data.jobId,{claimId:'test:borrow',holder:'player'}).granted,true);
++  assert.equal(original.call(this,carrier,payload).ok,false);unchanged();jobs.releaseControl(carrier.data.jobId,'test:borrow');
++  const result=original.call(this,carrier,payload);assert.equal(result.ok,true);commits++;return result;
++ };
++ t.after(()=>{economy.applyPallasReefIntake=original;});
++ for(let i=0;i<60*150&&!h.state.traffic.pallasReefCrew.receipt;i++)h.step();
++ assert.ok(h.state.traffic.pallasReefCrew.receipt,'native original tug-to-carrier handoff');
++ const carrier=reefBody(h.state,C.actors[2].id),section=reefBody(h.state,C.sectionId),line=h.sim.registry.get('combat').kernel.attachments.listForEntity(section.id,true)[0];
++ assert.equal(line.ownerId,carrier.id);assert.equal(line.targetId,section.id);
++ const samples=[];
++ for(let i=0;i<60*360&&!source().intake;i++){h.step();if(i%600===0)samples.push({at:h.state.simTime,carrier:{...carrier.pos},section:{...section.pos},phase:h.state.traffic.pallasReefCrew.phase});}
++ writeFileSync(output('route-samples.json'),JSON.stringify(samples,null,2));
++ assert.ok(source().intake,'native carrier must deliver original section, not stop at received');assert.equal(commits,1);assert.equal(callbacks,1);
++ assert.equal(h.state.traffic.pallasReefCrew.phase,'intaken');assert.equal(h.state.player.credits,admission.credits);assert.equal(carrier.data.cargoManifest?.totalQty||0,0);for(const[id,q]of Object.entries(C.pool))assert.equal(stocks()[id],admission.stocks[id]+q);
++ const after=stocks(),receipt=structuredClone(source().intake);
++ assert.equal(original.call(economy,carrier,request).duplicate,true);assert.deepEqual(stocks(),after);assert.equal(callbacks,1);
++ assert.equal(original.call(economy,carrier,{...request,stationId:'station_sker'}).ok,false);assert.deepEqual(stocks(),after);
++ const envelope=save.serialize('drift-intaken');writeFileSync(output('intaken-save.json'),JSON.stringify(envelope));save.loadEnvelope(envelope);
++ assert.match(pallasReefStatus(h.state,reefBody(h.state,C.actors[2].id)).text,/waiting for a current work report/,'restored observation cannot announce intake');
++ h.physics._finishNativeRestore();h.state.mode='flight';await h.physics.prepareBackend(h.state);h.step(3);
++ assert.deepEqual(source().intake,receipt);assert.deepEqual(source().remainingPool,{});assert.equal(source().sectionLost,false);assert.equal(h.state.traffic.pallasReefCrew.phase,'intaken');assert.equal(reefBody(h.state,C.sectionId),null);
++ const restoredStocks=stocks();assert.equal(original.call(economy,reefBody(h.state,C.actors[2].id),request).duplicate,true);assert.deepEqual(stocks(),restoredStocks);assert.equal(callbacks,1);
++ const committed=h.state.economy.committedIntents[ID];committed.receipt={...committed.receipt,stationId:'station_sker'};assert.equal(original.call(economy,reefBody(h.state,C.actors[2].id),request).ok,false);assert.deepEqual(stocks(),restoredStocks);assert.deepEqual(source().intake,receipt);committed.receipt=receipt;
++
++ // Fork only the genuinely reached native Save. No actor pose, velocity, readiness or cargo is imposed.
++ economy.applyPallasReefIntake=()=>({ok:false,reason:'test-observe-before-commit'});
++ async function restoreReady(){save.loadEnvelope(structuredClone(readyEnvelope));h.physics._finishNativeRestore();h.state.mode='flight';await h.physics.prepareBackend(h.state);h.step(3);const c=reefBody(h.state,C.actors[2].id);assert.ok(reefDriftApproach(h.owner,c)?.ready);return c;}
++ await t.test('station native yaw must match geometry modulo a full turn',async()=>{const c=await restoreReady(),station=h.state.entityList.find(e=>e.alive!==false&&e.type==='station'&&e.data?.stationId===C.homeStationId),body=h.physics._sg02.records.get(station.id).body,q={...body.rotation()},rot=station.rot,before=stocks();assert.ok(reefDriftApproach(h.owner,c)?.ready);try{body.setRotation({x:0,y:-Math.SQRT1_2,z:0,w:Math.SQRT1_2},true);assert.equal(reefDriftApproach(h.owner,c),null,'stale station geometry cannot admit a rotated native receiver');assert.equal(original.call(economy,c,request).ok,false);assert.deepEqual(stocks(),before);assert.deepEqual(source().remainingPool,C.pool);}finally{body.setRotation(q,true);}assert.ok(reefDriftApproach(h.owner,c)?.ready);try{station.rot=rot+Math.PI*2;assert.ok(reefDriftApproach(h.owner,c)?.ready);station.rot=NaN;assert.equal(reefDriftApproach(h.owner,c),null);}finally{station.rot=rot;}});
++ await t.test('stale native record and actor lifetime fail closed',async()=>{const c=await restoreReady(),native=h.physics._sg02,a=h.sim.registry.get('combat').kernel.attachments.listForEntity(c.id,true)[0],held=native.attachments.get(a.id),owner=held.owner,before=stocks();h.state.settings.gameplay.physicsBackend='custom';assert.equal(original.call(economy,c,request).ok,false);h.state.settings.gameplay.physicsBackend='rapier-dynamic';held.owner={...owner};assert.equal(original.call(economy,c,request).ok,false);held.owner=owner;const generation=c.occupantGeneration;c.occupantGeneration++;assert.equal(original.call(economy,c,request).ok,false);c.occupantGeneration=generation;assert.deepEqual(source().remainingPool,C.pool);assert.deepEqual(stocks(),before);});
++ for(const [name,interfere]of [
++  ['carrier death',c=>h.sim.helpers.removeEntity(c.id)],
++  ['section destruction',()=>h.sim.helpers.removeEntity(reefBody(h.state,C.sectionId).id)],
++  ['station absence',()=>h.sim.helpers.removeEntity(h.state.entityList.find(e=>e.type==='station'&&e.data?.stationId===C.homeStationId).id)],
++  ['broken native line',c=>{const a=h.sim.registry.get('combat').kernel.attachments;assert.equal(a.breakAttachment(a.listForEntity(c.id,true)[0].id,'test-impact',h.state.playerId).ok,true);}],
++  ['native job flee',c=>jobs.interruptJob(c.data.jobId,{entityId:h.state.playerId,untilSimT:h.state.simTime+30})],
++  ['real mining-owner dispute',()=>{h.sim.registry.get('mining')._drainWreck(h.state.entities.get(h.state.playerId),reefBody(h.state,C.sectionId),18,3);assert.ok(source().disputedBy);assert.ok(source().remainingQty<4);}],
++ ]) await t.test(name,async()=>{const c=await restoreReady();interfere(c);const before=stocks(),pool=structuredClone(source().remainingPool);assert.equal(original.call(economy,c,request).ok,false);assert.deepEqual(stocks(),before);assert.deepEqual(source().remainingPool,pool);h.step(3);assert.equal(source().intake,null);});
++ await t.test('old tug death does not invalidate the transferred carrier',async()=>{const c=await restoreReady();h.sim.helpers.removeEntity(reefBody(h.state,C.actors[1].id).id);assert.equal(original.call(economy,c,request).ok,true);assert.ok(source().intake);});
++ await t.test('leave and return does no offscreen intake',async()=>{const c=await restoreReady(),world=h.sim.registry.get('world'),before=stocks();world.enterSector('sector_sker_haven');h.step(120);assert.equal(original.call(economy,c,request).ok,false);assert.equal(source().intake,null);assert.deepEqual(source().remainingPool,C.pool);world.enterSector(C.sectorId);await h.physics.prepareBackend(h.state);h.step(3);assert.equal(source().intake,null);assert.deepEqual(source().remainingPool,C.pool);assert.equal(h.state.economy.committedIntents?.[ID],undefined);});
++ console.log('ADMISSION',JSON.stringify(admission));
++});
+--- /dev/null
++++ b/test/pallas-drift-read-model.test.mjs
+@@ -0,0 +1,25 @@
++import test from 'node:test';import assert from 'node:assert/strict';
++import {pallasDriftNativeFixture} from './fixtures/pallas-drift-native.mjs';
++import {PALLAS_REEF_CREW as C,PALLAS_REEF_INTAKE_ID as ID,reefBody,pallasReefStatus} from '../src/data/pallasReefCrew.js';
++import {createDomainDiffer,applyDomainPathUpdate} from '../scripts/lib/simReadModel.mjs';
++test('optional approach speed leaves every absent/invalid target unchanged',async t=>{
++ const h=await pallasDriftNativeFixture({native:false});t.after(()=>h.close());h.step(3);
++ const jobs=h.sim.registry.get('npcJobsRuntime'),e=reefBody(h.state,C.actors[2].id),entry=h.sim.helpers.npcJobs.byEntity(e.id),original=jobs._writeIntent;let intent;
++ jobs._writeIntent=(_e,...args)=>{intent=args};t.after(()=>{jobs._writeIntent=original});
++ const target={pos:{x:e.pos.x+Math.cos(e.rot||0)*100,z:e.pos.z+Math.sin(e.rot||0)*100},vel:{x:0,z:0},reach:4};
++ const capture=value=>{jobs._driveLivingAdventureWorker(entry,e,{...target,...value});return structuredClone(intent)};
++ const base=capture({});for(const planningSpeed of [undefined,null,0,-1,41,Infinity,NaN,'6',true])assert.deepEqual(capture({planningSpeed}),base);
++ const slow=capture({planningSpeed:6});assert.ok(slow[1]<base[1]);
++});
++test('hauling, settling and committed intake survive real bounded domain transport',async t=>{
++ const h=await pallasDriftNativeFixture({native:false});t.after(()=>h.close());h.step(3);const e=reefBody(h.state,C.actors[2].id),main={},differ=createDomainDiffer();
++ const receipt={sourceKey:C.sourceKey,sectionRecordId:C.sectionId,carrierRecordId:C.actors[2].id,qty:4,at:1};
++ const intake={receiptId:ID,sourceKey:C.sourceKey,stationId:C.homeStationId,sectionRecordId:C.sectionId,carrierRecordId:C.actors[2].id,pool:{...C.pool},at:2};
++ function wire(phase,observed=true){h.state.tick+=121;Object.assign(h.state.traffic.pallasReefCrew,{phase,receipt,observedTick:observed?h.state.tick:-1});for(const update of JSON.parse(JSON.stringify(differ.diff(h.state,h.state.tick).updates))){const segs=update.segs.length===1&&update.segs[0].includes('.')?update.segs[0].split('.'):update.segs;const roots=new Map([[segs[0],main[segs[0]]]]);applyDomainPathUpdate(roots,{...update,segs},new Set());main[segs[0]]=roots.get(segs[0]);}return pallasReefStatus(main,e);}
++ assert.match(wire('hauling').text,/hauling the original/);assert.match(wire('settling').text,/not yet committed/);
++ assert.match(wire('intaken').text,/waiting for a current/);
++ (h.state.economy.committedIntents ||= {})[ID]={receipt:intake,result:{ok:true,qty:4}};
++ let report=wire('intaken');for(let i=0;i<10&&!report.text.includes('took in 3 units');i++)report=wire('intaken');
++ assert.match(report.text,/took in 3 units/);assert.equal(main.salvage,undefined);assert.match(wire('intaken',false).text,/waiting for a current/);
++ for(const phase of ['waiting','cutting','holding','transfer','lost','recovered','interrupted'])assert.doesNotMatch(wire(phase).route,/section travels on/);
++});
+--- a/test/pallas-reef-read-model.test.mjs
++++ b/test/pallas-reef-read-model.test.mjs
+@@ -101,8 +101,8 @@
+       assert.match(livingWorkStatusText(entity, { state: main }), /cut window open/);
+       assert.match(hail(entity), /cutter and tug assigned to the light section/);
+       const route = hail(entity, 'route');
+-      assert.match(route, /Reef light cut to the outer holding point/);
+-      assert.match(route, /Destination delivery is not commissioned/);
++      assert.match(route, /Reef light cut to Drift Market/);
++      assert.match(route, /Carrier intake follows the physical handoff/);
+       assert.doesNotMatch(route, /Sker|Smuggler Den|Hollow Hub/i);
+       const offer = createContactHailOffer(main, {
+         enabled: true, kind: 'trader', targetId: entity.id, entity,
