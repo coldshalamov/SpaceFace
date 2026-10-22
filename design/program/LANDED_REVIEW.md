@@ -1,3 +1,5 @@
+| R-187daf8 | 187daf8fa6 | Rows 493/496/502/477: held-key power preview, plain-verb HUD, LOG physics narrator, roster job phases | Re-check `powerPreviewPlan` determinism and cap: a held power must outline ≤24 bodies with no per-frame allocation, and the shove cone must exclude bodies behind the hull; also confirm `physicsLogSilent` stays quiet across a save/load inside a terminal mode | OPEN |
+
 | R-579d9e3 | 579d9e319 | Rows 490/491/492 fight-read: role engine glows, reversal governor, latch rim ring | Re-check that the reversal governor cannot lock a ship into a stale committed arc — a denied reversal holds `runtime.lastDesiredUnit` for up to 150 ticks, so confirm a target that crosses behind the ship mid-hold still gets re-approached on the next allowed reversal and that obstacle/emergency lanes always exempt | OPEN |
 | R-pulse | HEAD | pulse rows 433-441: signs, mail, codex, watches/festivals, roaming stories | Re-check worldClock's once-per-transition announcer across save/load — a saved mid-watch game must not re-speak the watch it already announced, and the dockingSessionKey fix must not reset the ad deck when lastDock exists | OPEN |
 
