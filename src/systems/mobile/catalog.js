@@ -1,23 +1,21 @@
 // Input action IDs, not key codes. Rebinding the desktop cannot break the phone.
 const power = (id, label, symbol, description, kind = 'pulse') => Object.freeze({ id, label, symbol, description, kind });
 export const POWER_PAGES = Object.freeze([
-  { name: 'Ordnance', powers: [
-    power('chargeThrow', 'CHARGE', 'charge', 'Throw an impulse charge.'),
-    power('chargeDetonate', 'DETONATE', 'blast', 'Detonate your armed charges and bombs.'),
-    power('dropBomb', 'BOMB', 'bomb', 'Release the selected drift bomb.'),
-    power('cycleBomb', 'NEXT BOMB', 'cycle', 'Select the next bomb type.'),
-    power('countermeasure', 'DECOY', 'decoy', 'Deploy the equipped countermeasure.'),
-    power('cloak', 'CLOAK', 'cloak', 'Toggle your cloak.'),
+  // The five powers (owner 2026-10-22, src/systems/powerVerbs.js): one page, one job each.
+  { name: 'Powers', powers: [
+    power('pull', 'PULL', 'well', 'Drop a gravity well at your aim. It grips your locked target three times as hard.'),
+    power('shove', 'SHOVE', 'repel', 'Blast everything outward from your ship, and set off every armed charge and bomb.'),
+    power('pin', 'PIN', 'seed', 'Fire an anchor that locks where it lands, ready for your Line.'),
+    power('bomb', 'BOMB', 'bomb', 'Throw a sticky charge — or the drift bomb the cycle chose.'),
+    power('cycleBomb', 'NEXT BOMB', 'cycle', 'Select the next ordnance: the sticky charge, then your loaded bombs.'),
+    power('rig', 'RIG', 'cone', 'Toggle your rig: the clearing cone, or the skim scoop in a planet band.'),
     // Same hold-to-toggle contract as the desktop latch: tap lashes the beam,
-    // tap again bowls the clump straight ahead.
+    // tap again bowls the clump straight ahead. It stays on the first page (gyre wave-63 reachability).
     power('gyreSnare', 'GYRE', 'gyre', 'Snare a body in the cone, then tap again to bowl it.', 'toggle'),
   ] },
-  { name: 'Fieldwork', powers: [
-    power('deployMassSeed', 'MASS SEED', 'seed', 'Launch an anchor toward your aim.'),
-    power('deployWell', 'WELL', 'well', 'Deploy an attractive gravity well.'),
-    power('deployRepulsor', 'REPULSOR', 'repel', 'Push surrounding bodies away.'),
-    power('toggleClearingCone', 'CONE', 'cone', 'Toggle the forward clearing field.'),
-    power('toggleSkimCollector', 'COLLECTOR', 'skim', 'Toggle the skim collector.'),
+  { name: 'Gear', powers: [
+    power('countermeasure', 'DECOY', 'decoy', 'Deploy the equipped countermeasure.'),
+    power('cloak', 'CLOAK', 'cloak', 'Toggle your cloak.'),
     power('deployBeacon', 'BEACON', 'beacon', 'Drop a claim beacon in open space.'),
   ] },
   { name: 'Flight', powers: [

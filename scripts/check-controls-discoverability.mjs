@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 import { BINDINGS } from '../src/ui/bindings.js';
 import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
+import { POWER_SLOT } from '../src/ui/powerRail.js';
 
 const settingsSource = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
 const helpSource = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
@@ -72,7 +73,7 @@ assert.match(clusterSource, /if \(tip\) sk\.el\.setAttribute\('data-why', tip\)/
   'the active Line control context must reach the existing hover/focus reveal');
 const line = readOrdnanceModel({ settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {
   tether: ['KeyP'], forward: ['KeyI'], reverse: ['KeyK'], yawLeft: ['KeyJ'], yawRight: ['KeyL'], boost: ['KeyB'],
-} } }, player: { cargo: { items: {} }, tether: { active: true } }, entities: new Map() }, null)['3'];
+} } }, player: { cargo: { items: {} }, tether: { active: true } }, entities: new Map() }, null)[String(POWER_SLOT.line)];
 assert.equal(line.key, 'P', 'the Line socket must name the actual rebound key');
 assert.match(line.tip, /Hold P.*I REEL.*K PAY OUT.*J\/L ORBIT.*B PUMP/,
   'the active tether HUD must teach the live line-control axes');

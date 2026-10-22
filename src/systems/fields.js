@@ -2,10 +2,13 @@ import { isPlayerSaucer } from '../data/saucer.js';
 // PQ-012 / SF-12 — Continuous field system (lifecycle / input / force application / presentation).
 //
 // Drives the ONE field kernel (src/core/fields/fieldKernel.js) and its three player-facing
-// consumers, all reachable on the default route via real input:
-//   • Well     (Digit5) — deployed at the aim point; PULLS light bodies/projectiles/marked targets.
-//   • Repulsor (Digit6) — dropped at the ship; SHOVES bodies outward.
-//   • Cone     (Digit7) — a player-attached sustained forward wedge (toggle); the gravitic snowplow.
+// consumers, all reachable on the default route via real input (the five powers, powerVerbs.js):
+//   • Well     (PULL, 1)  — deployed at the aim point; PULLS light bodies/projectiles/marked targets,
+//                           and marks the locked target it lands on (_pullMarkLockedTarget).
+//   • Repulsor (SHOVE, 2) — dropped at the ship; SHOVES bodies outward (the same press detonates
+//                           armed charges and drift bombs in their own owners).
+//   • Cone     (RIG, 5)   — a player-attached sustained forward wedge (toggle); the gravitic snowplow.
+//                           In a planet band the RIG press goes to the skim scoop instead.
 //
 // Physics: every force crosses the SG-02 command membrane as an ADDITIVE impulse
 // (queuePhysicsImpulse — the proven dockingCorridor/Tideline pattern: a·mass·dt per tick). It
@@ -37,7 +40,8 @@ import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
-import { PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
+import { GRAVITY_MARK_STATUS_ID, PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
+import { isHostileToPlayer } from './scanner.js';
 import { bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope, bombSurfaceFalloff, fillBombViscosityImpulse } from '../combat/bombDynamics.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -585,6 +589,11 @@ export const fields = {
         // Re-roping a hitched body is the manual release: the latch path is player-only, so a
         // hitch on the seed ring is cut by roping the same body again.
         this.bus.on('tether:latched', (p) => this._onTetherLatchedForHitch(p)),
+        // SHOVE is one press for two owners: bombs and charges (earlier in UPDATE_ORDER) set off
+        // armed ordnance, then the repulsor answers here. Remember when the press already did its
+        // job this tick, so a cooling repulsor does not read the press as a failure.
+        this.bus.on('bombs:commanded', (p) => this._noteShoveDetonation(p)),
+        this.bus.on('charge:detonated', (p) => { if (p && p.trigger === 'manual') this._noteShoveDetonation(p); }),
       ];
     }
   },
@@ -1215,6 +1224,12 @@ export const fields = {
     return state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
   },
 
+  _noteShoveDetonation(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.ownerId !== state.playerId) return;
+    this._shoveDetonatedTick = state.tick;
+  },
+
   _deployBlocked(state, player) {
     if (!player || !player.alive) return true;
     if (player.flags && player.flags.docked) return true;
@@ -1231,6 +1246,8 @@ export const fields = {
     if (now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
       this.bus.emit('fields:deployDenied', { kind, reason: 'cooldown', readyAt: cd });
+      // The same SHOVE press set off armed ordnance this tick: the press worked, so no warning.
+      if (kind === 'repulsor' && this._shoveDetonatedTick === state.tick) return;
       this.bus.emit('toast', { text: `${kind === 'well' ? 'Well' : 'Repulsor'} recharging — ${Math.ceil(cd - now)}s`, kind: 'warn', ttl: 1.6 });
       this.bus.emit('audio:cue', { id: 'ui_deny' });
       return;
@@ -1318,8 +1335,38 @@ export const fields = {
 
     this.bus.emit('fields:deployed', { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt });
     this._emitDeployCue(kind, cx, cz, def.radius);
+    if (kind === 'well') this._pullMarkLockedTarget(state, player, cx, cz, def.radius, fieldId);
     // CV-EAR: no generic UI confirm here — each power's own deploy voice arrives via the
     // fields:deployed → accessibility-cue path in audioSystem.
+  },
+
+  // PULL = the Well + the Gravity Marker (owner 2026-10-22, design/expansion/05_ASSET_ROSTER.md
+  // §7.3). A well that lands on the player's locked target marks it, so the well grips it three
+  // times as hard: the same GRAVITY_MARK status the retired marker gun applied (status →
+  // fieldCoupling multiplier → fieldResponseMult in the field kernel). The status is scheduled
+  // directly, like the well's own PINNED status, not routed as a hit, so dropping a well is never an
+  // assault. Only a hostile hull or a non-ship body (rock, wreck, pod, cargo) is marked; a locked
+  // civilian is left alone.
+  _pullMarkLockedTarget(state, player, cx, cz, radius, fieldId) {
+    const targetId = state.player && state.player.targetId;
+    if (targetId == null || !player || targetId === player.id) return false;
+    const target = state.entities && typeof state.entities.get === 'function' ? state.entities.get(targetId) : null;
+    if (!target || target.alive === false || !target.pos) return false;
+    const dx = finite(target.pos.x) - cx;
+    const dz = finite(target.pos.z) - cz;
+    if (dx * dx + dz * dz > radius * radius) return false;
+    const isShip = target.type === 'ship' || target.type === 'drone';
+    if (isShip && !isHostileToPlayer(target, player.team, state)) return false;
+    const kernel = this._combatKernel;
+    if (!kernel || !kernel.statuses || typeof kernel.statuses.schedule !== 'function') return false;
+    const runtime = ensureCombatant(state, target, kernel.catalog);
+    if (!runtime) return false;
+    kernel.statuses.schedule(target, runtime, { id: GRAVITY_MARK_STATUS_ID, stacks: 1 }, {
+      attackerId: player.id,
+      actionId: `field:${fieldId}:pull_mark`,
+    });
+    this.bus.emit('fields:pullMarked', { fieldId, targetId: target.id });
+    return true;
   },
 
   _toggleCone(state, rt) {

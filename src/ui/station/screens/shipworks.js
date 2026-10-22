@@ -4119,7 +4119,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const availability = shipworksActionAvailability(ctx.state);
     const shopStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
     const byTierThenPrice = (a, b) => (a.tier - b.tier) || (a.price - b.price);
-    const sameType = FITTABLE.filter((d) => d.slotType === slot.type && d.purchasable !== false);
+    // Retired arsenal (owner 2026-10-22, design/expansion/05_ASSET_ROSTER.md §7.3) is off the buy list;
+    // an owned copy still leads the chooser from the hold below.
+    const sameType = FITTABLE.filter((d) => d.slotType === slot.type && d.purchasable !== false && !d.retiredInto);
     const compat = sameType.filter((d) => fits(slot, d)).sort(byTierThenPrice);
     // PQ-176.02: a weapon of the right size that this hardpoint's class refuses stays on the list,
     // locked, with the sentence. The fit screen refuses an illegal mount in words, not by omission.
@@ -4393,7 +4395,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const availability = shipworksActionAvailability(ctx.state);
     const outfit = availability.outfitEnabled;
     const byTierThenPrice = (a, b) => ((a.unlockTier || 0) - (b.unlockTier || 0)) || (a.price - b.price);
-    const catalogue = BOMB_IDS.map((id) => BOMB_DEFS[id]).sort(byTierThenPrice);
+    // A retired payload (the concussion drum: the SHOVE power owns its job) leaves the catalogue,
+    // except while this player still holds some, so it can be unloaded or sold back.
+    const holdsPayload = (id) => (rack.stock[id] || 0) > 0 || rack.cells.some((c) => c && c.id === id);
+    const catalogue = BOMB_IDS.map((id) => BOMB_DEFS[id])
+      .filter((d) => !d.retiredInto || holdsPayload(d.id))
+      .sort(byTierThenPrice);
     const rows = catalogue.map((d) => {
       const stock = rack.stock[d.id] || 0;
       const inSocket = cellDef && cellDef.id === d.id ? cell.count : 0;

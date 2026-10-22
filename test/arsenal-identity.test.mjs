@@ -11,7 +11,7 @@ import { equipmentSvg } from '../src/ui/orrery/equipmentGlyphs.js';
 import { airSentenceForId } from '../src/ui/ship/fitReadout.js';
 import { crucibleFittingDescription } from '../src/ui/crucibleCombatReadout.js';
 import { offerCardLines } from '../src/ui/screens/crucibleDraft.js';
-import { readBombBayModel } from '../src/ui/powerRail.js';
+import { BOMB_SLOT_INDEX, readBombBayModel } from '../src/ui/powerRail.js';
 import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
 
 const doc = { createElementNS(ns, tag) { return { tag, attributes: {}, children: [],
@@ -59,7 +59,7 @@ test('bomb cycling changes the visible rail and live ORRERY icon, including a dr
   for (const id of Object.keys(BOMB_DEFS)) {
     state.bombs.selectedId = id;
     assert.equal(readBombBayModel(state, 1).glyph, id);
-    assert.equal(readOrdnanceModel(state, null, {})['9'].arsenalId, id);
+    assert.equal(readOrdnanceModel(state, null, {})[String(BOMB_SLOT_INDEX)].arsenalId, id);
     state.bombs.rack = { cells: [{ id, count: 0 }] };
     assert.equal(readBombBayModel(state, 1).glyph, id, 'dry socket retains the fitted identity');
     delete state.bombs.rack;

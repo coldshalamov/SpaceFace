@@ -569,25 +569,22 @@ const DEMO = Object.freeze({
   hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armor: 20, armorMax: 30,
   energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, boost: 0.7, drift: 0,
 });
+// The five powers (owner 2026-10-22) and the Line, keyed as the shipped Pilot scheme prints them and
+// tinted per power like the live Cluster (hudAdapter.buildOrdnanceGroups is the live source).
+const demoPower = (id, name, icon, power, key = id) => Object.freeze({
+  name, icon, power, slots: [{ id, key, name, icon, power }],
+});
 const DEMO_GROUPS = Object.freeze([
-  { name: 'Ordnance', icon: 'weapon', slots: [
-    { id: '1', key: '1', name: 'Charge', icon: 'munitions' },
-    { id: '2', key: '2', name: 'Blast', icon: 'fire' },
-    { id: '3', key: '3', name: 'Line', icon: 'line' },
-  ] },
-  { name: 'Fieldwork', icon: 'well', slots: [
-    { id: '4', key: '4', name: 'Seed', icon: 'seed' },
-    { id: '5', key: '5', name: 'Well', icon: 'well' },
-    { id: '6', key: '6', name: 'Repel', icon: 'repel' },
-  ] },
-  { name: 'Rig', icon: 'cone', slots: [
-    { id: '7', key: '7', name: 'Cone', icon: 'cone' },
-    { id: '8', key: '8', name: 'Skim', icon: 'skim' },
-  ] },
+  demoPower('1', 'Pull', 'well', 'pull'),
+  demoPower('2', 'Shove', 'repel', 'shove'),
+  demoPower('3', 'Pin', 'seed', 'pin'),
+  demoPower('4', 'Bomb', 'munitions', 'bomb'),
+  demoPower('5', 'Rig', 'cone', 'rig'),
+  demoPower('6', 'Line', 'line', 'line', 'Space'),
 ]);
 const DEMO_ORDNANCE = Object.freeze({
-  1: { state: 'ready', count: 3 }, 2: { state: 'cooldown', cooldown: 0.55 }, 3: { state: 'ready' },
-  4: { state: 'ready' }, 5: { state: 'cooldown', cooldown: 0.3 }, 6: { state: 'ready' }, 7: { state: 'ready' }, 8: { state: 'locked' },
+  1: { state: 'ready' }, 2: { state: 'cooldown', cooldown: 0.55 }, 3: { state: 'ready' },
+  4: { state: 'ready', count: 3 }, 5: { state: 'ready' }, 6: { state: 'ready' },
 });
 const DRIFT_BY_MODEL = Object.freeze({ assisted: 0, drift: 18, newtonian: 32 });
 // the room kept over and under the Cluster for the hint and the caption

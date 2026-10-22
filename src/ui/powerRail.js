@@ -1,17 +1,17 @@
 // src/ui/powerRail.js — J06 The Power Rail (build_map §11.12).
 //
-// The permanent bottom-centre 1–9 rank, with a dedicated bomb bay socket. This is the direct answer to the
-// owner's complaint that they "can't look at the HUD and see the big game": today `Digit4`–`Digit8`
-// fire five real physics powers (mass seed, well, repulsor, clearing cone, skim collector) and two
-// of them have ZERO references anywhere in `src/ui/`. The powers shipped; the shelf to put them on
-// never did. Nothing here invents a new verb — it surfaces the ones already wired.
-//
-// THE BANDS ARE A PROMISE ABOUT CONSEQUENCE, not a grouping of convenience:
-//   ORDNANCE  (1–3) instantaneous; leaves nothing behind.
-//   FIELDWORK (4–6) spawns a persistent bounded object you must later live with.
-//   RIG       (7–8) ship-attached sustained toggle; it is on until you turn it off.
-//   BAY       (9)   released drifting ordnance; shows actual deployed count and selected readiness.
-// A verb that breaks its band's promise belongs in a different band.
+// THE FIVE POWERS (owner 2026-10-22, src/systems/powerVerbs.js). Eight overlapping verbs (Charge,
+// Blast, Seed, Well, Repel, Cone, Skim, Bomb) became five, one job each, and the rank shows exactly
+// those five on the number row, plus the Line and the travel-drive lamp:
+//   1 PULL   a gravity well at the aim point; it grips the locked target three times as hard.
+//   2 SHOVE  the repulsor pulse at the ship, plus every armed charge and drift bomb goes off.
+//   3 PIN    the anchor Mass Seed; it locks where it lands, ready for the Line.
+//   4 BOMB   the selected ordnance: a drift bomb, or the sticky charge (Comma cycles).
+//   5 RIG    the clearing cone, or the skim scoop in a planet band.
+//   LINE     the tether (Space / F).
+// Each power is its own band, so the ORRERY Cluster prints each one by name with its key
+// ("PULL 1 · SHOVE 2 …") instead of hiding several behind a group label. Nothing here invents a
+// verb: every power drives an owner that already existed.
 //
 // ── Two design rules that are load-bearing ──────────────────────────────────────────────────────
 //
@@ -50,14 +50,19 @@ import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../systems/im
 import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { bombUsesCharge, playerImpulseCharges, resolveRigTarget } from '../systems/powerVerbs.js';
 
 export const BAND_DRIVE = 'DRIVE';
-export const BAND_ORDNANCE = 'ORDNANCE';
-// The band under this label is Seed / Well / Repel — deployed mass fields, not the field-science
-// activity the research labels call "fieldwork". Name the devices, not the discipline.
-export const BAND_FIELDWORK = 'FIELDS';
-export const BAND_RIG = 'RIG';
+export const BAND_PULL = 'PULL';
+export const BAND_SHOVE = 'SHOVE';
+export const BAND_PIN = 'PIN';
+// The bomb power keeps the BAY band id: its band label prints the live bay badge ("BAY 2/6").
 export const BAND_BAY = 'BAY';
+export const BAND_RIG = 'RIG';
+export const BAND_LINE = 'LINE';
+// Retired band ids (the eight-verb rank). Kept exported so an old import resolves; no slot uses them.
+export const BAND_ORDNANCE = 'ORDNANCE';
+export const BAND_FIELDWORK = 'FIELDS';
 
 export const CLAIM_SINGLE = 'SINGLE';
 export const CLAIM_PARTIAL = 'PARTIAL';
@@ -84,29 +89,25 @@ export const RAIL_SLOTS = Object.freeze([
   // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
   { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
     description: 'latch the travel drive — a long burn that holds your speed' },
-  // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
-  // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
-  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'munitions',
-    description: 'throw an impulse charge that sticks where it lands' },
-  { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'blast',
-    description: 'detonate every armed charge and drift bomb at once' },
-  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'tether',
+  // Slots 1–5 are the five powers; each index is its own number-row digit.
+  { index: 1, band: BAND_PULL, action: 'pull', name: 'Pull', glyph: 'well',
+    description: 'drop a gravity well at your aim — it drags light ships, rocks and shots in, and grips your locked target three times as hard' },
+  { index: 2, band: BAND_SHOVE, action: 'shove', name: 'Shove', glyph: 'repel',
+    description: 'blast everything outward from your ship — and set off every charge and bomb you have armed' },
+  { index: 3, band: BAND_PIN, action: 'pin', name: 'Pin', glyph: 'seed',
+    description: 'fire an anchor that locks where it lands — latch your Line to it and swing' },
+  { index: 4, band: BAND_BAY, action: 'bomb', name: 'Bomb', glyph: 'weapon',
+    description: 'throw a sticky charge that Shove sets off — or the drift bomb the cycle chose' },
+  { index: 5, band: BAND_RIG, action: 'rig', name: 'Rig', glyph: 'cone',
+    description: 'toggle your rig — the clearing cone sweeps debris ahead; in a planet band it opens the skim scoop' },
+  // The Line has no digit (Space / F); index 6 keeps it off the power row's own numbers.
+  { index: 6, band: BAND_LINE, action: 'tether', name: 'Line', glyph: 'tether',
     description: 'throw the tether line onto a body and haul it — tap to latch or cut' },
-  { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'seed',
-    description: 'launch an anchor Mass Seed toward the aim point — it locks where it lands' },
-  { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'well',
-    description: 'drop an attractive Well at the aim point — it pulls light bodies and shots' },
-  // Display name shortened to fit the slot's 38px label row untruncated; the verb family
-  // (deployRepulsor, help text) keeps the full "Repulsor" name.
-  { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repel', glyph: 'repel',
-    description: 'drop a Repulsor at the ship — it shoves bodies outward' },
-  { index: 7, band: BAND_RIG, action: 'toggleClearingCone', name: 'Cone', glyph: 'cone',
-    description: 'toggle the forward Clearing Cone — a gravitic snowplow that sweeps debris ahead' },
-  { index: 8, band: BAND_RIG, action: 'toggleSkimCollector', name: 'Skim', glyph: 'skim',
-    description: 'toggle the scoop sheet and harvest by grazing a planet band' },
-  { index: 9, band: BAND_BAY, action: 'dropBomb', name: 'Bomb', glyph: 'weapon',
-    description: 'release the selected drift bomb at ship velocity' },
 ]);
+
+/** The rail index of each power, the Line and the bomb bay (one place, so no reader hardcodes a digit). */
+export const POWER_SLOT = Object.freeze({ pull: 1, shove: 2, pin: 3, bomb: 4, rig: 5, line: 6 });
+export const BOMB_SLOT_INDEX = POWER_SLOT.bomb;
 
 /** Static description for a slot index, or '' — the enumerated bank above, read verbatim. */
 export function slotDescription(index) {
@@ -114,7 +115,7 @@ export function slotDescription(index) {
   return (slot && slot.description) || '';
 }
 
-const BANDS = [BAND_DRIVE, BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG, BAND_BAY];
+const BANDS = [BAND_DRIVE, BAND_PULL, BAND_SHOVE, BAND_PIN, BAND_BAY, BAND_RIG, BAND_LINE];
 
 // Sweep ring geometry. r=13 in a 32-box leaves room for the 1.6 stroke without clipping.
 //
@@ -288,25 +289,24 @@ export function applyClaims(slotState, claims, now) {
  * one place where "what the HUD claims" and "what the systems actually own" have to agree, and each
  * field below is read from that system's real writer, not from a HUD-local mirror:
  *
- *   4 seed      state.player.massSeed.cooldownUntil   (massSeed.js, seconds)
- *   5 well      state.fields.cooldowns.well           (fields.js, seconds, runtime-only)
- *   6 repulsor  state.fields.cooldowns.repulsor       (fields.js, seconds, runtime-only)
- *   7 cone      state.fields.coneActive               (fields.js, boolean latch)
- *   8 skim      per-site rec.collectorOn              (planetRuntime.js)
+ *   1 pull   state.fields.cooldowns.well              (fields.js, seconds, runtime-only)
+ *   2 shove  state.fields.cooldowns.repulsor + the armed charge net and armed drift bombs
+ *   3 pin    state.player.massSeed.cooldownUntil      (massSeed.js, seconds)
+ *   4 bomb   the sticky charge while one is aboard, else the bomb bay model (bombUsesCharge)
+ *   5 rig    state.fields.coneActive / the planet record's collectorOn + band (resolveRigTarget)
+ *   6 line   state.player.tether
  *
- * The skim collector is deliberately `locked` away from a planet rather than `ready`: it is
- * site-scoped state, and a rail that showed it ready in open space would be advertising a key that
- * does nothing. `nowS` is sim seconds, matching the cooldown clocks.
+ * `nowS` is sim seconds, matching the cooldown clocks.
  */
 // ── SWARM-03: the rail answers "why now" (SWARM_EXPANSION §10) ─────────────────────────
 // In a live Swarm run a slot gains `live: true` the moment its verb is tactically real:
 //
-//   2 Blast — armed ordnance is actually on the field (the state already says ARMED; the
+//   2 Shove — armed ordnance is actually on the field (the state already says ARMED; the
 //             pulse is the "a pack is near it" cue — the swarm room always has one)
-//   3 Line  — the massline's own acquisition receipt has a READY hostile on it. The
+//   6 Line  — the massline's own acquisition receipt has a READY hostile on it. The
 //             tether system publishes that candidate every tick; the pulse quotes it
 //             rather than re-deriving range/obstruction rules the latch already owns
-//   5 Well  — a deployed well is holding a pack (≥2 run bodies inside its footprint),
+//   1 Pull  — a deployed well is holding a pack (≥2 run bodies inside its footprint),
 //             OR a pack is clumped inside one well footprint within deploy range, so
 //             dropping one now would catch them
 //
@@ -314,8 +314,9 @@ export function applyClaims(slotState, claims, now) {
 // holds, so a campaign flight never sees a pulse it did not earn.
 export const SWARM_WELL_PACK_MIN = 2;        // bodies inside a live footprint that make it "holding"
 export const SWARM_WELL_OPPORTUNITY_MIN = 3; // a clump this size is worth a fresh well
-/** The slot a tactically-live verb is on. Exported so tests pin the contract, not the layout. */
-export const SWARM_LIVE_SLOTS = Object.freeze({ blast: 2, line: 3, well: 5 });
+/** The slot a tactically-live verb is on. Exported so tests pin the contract, not the layout.
+ *  `blast` and `well` are the pre-merge names of the same two cues (Shove and Pull). */
+export const SWARM_LIVE_SLOTS = Object.freeze({ shove: 2, line: 6, pull: 1, blast: 2, well: 1 });
 
 function liveSwarmRail(s) {
   const run = s && s.run;
@@ -411,7 +412,7 @@ export function readRailModel(state, nowS) {
   const wellCd = cooling(cooldowns.well);
   const repCd = cooling(cooldowns.repulsor);
   const hull = s.entities?.get?.(s.playerId);
-  const charges = player.cargo?.items?.cmdty_impulse_charge || 0;
+  const charges = playerImpulseCharges(s);
   const throwCd = Math.max(0, hull?.data?.impulseCharges?.throwCdT || 0);
   const capacity = resolveImpulseChargeCapacity(s);
   const chargeWhy = charges <= 0 ? 'No impulse charges in cargo'
@@ -432,7 +433,18 @@ export function readRailModel(state, nowS) {
     if (swarmLineLive(s)) lineLiveWhy = 'Latch is in reach — a body you can throw';
     wellLiveWhy = swarmWellLive(s, hostiles, hull);
   }
-  const blastLive = swarm && (armed || bay.armedCount > 0);
+  const armedOrdnance = armed || bay.armedCount > 0;
+  const blastLive = swarm && armedOrdnance;
+  // BOMB throws the sticky charge while one is aboard, unless the ordnance cycle chose a drift bomb —
+  // the same predicate the input layer uses, so the socket and the press agree.
+  const bombSlot = bombUsesCharge(s) ? {
+    name: `Charge${charges > 0 ? ` ×${charges}` : ''}${repulsionTrapFitted(s) ? ' · +Trap' : ''}`,
+    glyph: 'munitions',
+    state: throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
+    capacity, badge: 'CHARGE', charge: true,
+    why: `${chargeWhy} · up to ${capacity}`,
+    description: 'Sticky impulse charge. It sticks where it lands; Shove sets it off. Cycle to reach your drift bombs.',
+  } : bay;
   // VERB-16: the 3 s cruise spool is a verb-shelf meter. The rail owns no cruise clock — it
   // reads the cruise system's writer (state.player.cruise) through its query helpers, so the
   // shelf shows the spool rising 0→1 while charging and the engaged state after. ORRERY owns
@@ -459,31 +471,27 @@ export function readRailModel(state, nowS) {
           : driveState === 'cooldown' ? 'Drive cooling'
             : 'Drive latched off',
     },
-    // The count rides as "x3" so it reads as a quantity; at zero the verb stands alone in the dim
-    // empty state ("CHARGE 0" read as a broken label, not as "none left").
-    1: { name: `Charge${charges > 0 ? ` ×${charges}` : ''}${repulsionTrapFitted(s) ? ' · +Trap' : ''}`,
-      state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
-      capacity,
-      why: `${chargeWhy} · up to ${capacity}` },
-    2: { state: armed || bay.armedCount > 0 ? 'armed' : 'empty',
-      live: blastLive || undefined,
-      description: 'Detonate your armed bombs and the armed charge network. Active bomb fields finish normally.',
-      why: blastLive ? 'Armed — the pack is on the field' : armed || bay.armedCount > 0 ? 'Armed — press to detonate' : 'Nothing armed to detonate' },
-    3: { state: player.tether?.active ? 'armed' : 'ready',
-      live: lineLiveWhy != null || undefined,
-      why: player.tether?.active ? 'Line is live' : (lineLiveWhy || 'Ready') },
-    4: seedCd ? { ...seedCd, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
-    5: { ...(wellCd || { state: 'ready' }),
+    // 1 PULL — the well.
+    1: { ...(wellCd || { state: 'ready' }),
       live: wellCd ? undefined : (wellLiveWhy != null || undefined),
       why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready') },
-    6: repCd ? { ...repCd, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
-    7: { state: fields.coneActive ? 'armed' : 'ready',
-      why: fields.coneActive ? 'Cone is on' : 'Ready' },
-    // SWARM-03: the collector harvests planet bands — there is none in the arena, so the
-    // shelf says so instead of advertising a dead key. The DOM rail already hides the
-    // locked socket under .sf-swarm-flight; the Cluster keeps it as a dim node.
-    8: swarm ? { state: 'locked', why: 'No planet band in the arena' } : skimSlotState(s),
-    9: bay,
+    // 2 SHOVE — the repulsor, plus the detonation of armed ordnance. Armed ordnance makes the key
+    // ARMED even while the repulsor recharges: the press still sets the ordnance off.
+    2: armedOrdnance ? {
+      state: 'armed',
+      live: blastLive || undefined,
+      why: blastLive ? 'Armed — the pack is on the field' : 'Armed — Shove sets them off',
+    } : repCd ? { ...repCd, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    // 3 PIN — the anchor Mass Seed.
+    3: seedCd ? { ...seedCd, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    // 4 BOMB — the drift bomb bay, or the sticky charge when it is the chosen ordnance.
+    4: bombSlot,
+    // 5 RIG — the clearing cone, or the skim scoop in a planet band.
+    5: rigSlotState(s),
+    // 6 LINE — the tether.
+    6: { state: player.tether?.active ? 'armed' : 'ready',
+      live: lineLiveWhy != null || undefined,
+      why: player.tether?.active ? 'Line is live' : (lineLiveWhy || 'Ready') },
   };
 }
 
@@ -565,12 +573,16 @@ function dryFittedBomb(cells) {
   return null;
 }
 
-function skimSlotState(state) {
-  const rt = state.planetRuntime || state.planet || null;
-  if (!rt) return { state: 'locked', why: 'Only works grazing a planet band' };
-  const rec = rt.record || rt.current || rt;
-  if (!rec || typeof rec.collectorOn === 'undefined') return { state: 'locked', why: 'Only works grazing a planet band' };
-  return { state: rec.collectorOn ? 'armed' : 'ready', why: rec.collectorOn ? 'Collector is on' : 'Ready' };
+// RIG reads the same predicate the input layer uses (resolveRigTarget), so the socket's "why" names
+// the rig the next press will actually toggle.
+function rigSlotState(state) {
+  if (state.fields && state.fields.coneActive) return { state: 'armed', why: 'Cone is on — press to fold it' };
+  const planet = state.planet;
+  const rec = planet && planet.active && planet.player ? planet.player : null;
+  if (rec && rec.collectorOn === true) return { state: 'armed', why: 'Scoop is open — press to close it' };
+  return resolveRigTarget(state) === 'skim'
+    ? { state: 'ready', why: 'In a planet band — press to open the scoop' }
+    : { state: 'ready', why: 'Ready — the clearing cone' };
 }
 
 function sweepSvg() {
@@ -650,7 +662,7 @@ export function createPowerRail(options = {}) {
         glyph: given.glyph || slot.glyph,
         badge: given.badge || '',
         description: (given.description || slot.description || '')
-          + (slot.index === 9 ? ` Cycle: ${cycleLabel}. Detonate: ${labels[2] || 'unbound'}.` : ''),
+          + (slot.index === BOMB_SLOT_INDEX ? ` Cycle: ${cycleLabel}. Shove sets armed ordnance off: ${labels[POWER_SLOT.shove] || 'unbound'}.` : ''),
         why: given.why || '',
         live: given.live === true,
         state: bound ? (given.state || 'ready') : 'empty',

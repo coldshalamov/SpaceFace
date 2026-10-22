@@ -18,6 +18,7 @@ import {
 } from '../src/systems/input.js';
 import { controlPrompt, setPromptScheme } from '../src/ui/controlPrompts.js';
 import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
+import { POWER_SLOT } from '../src/ui/powerRail.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
@@ -95,12 +96,12 @@ assert.match(read('src/ui/screens/range.js'), /resolveActionLabel\(/,
 const tether = resolveActionLabel(PILOT_STATE, 'tether');
 const brake = resolveActionLabel(PILOT_STATE, 'brake');
 const forward = resolveActionLabel(PILOT_STATE, 'forward');
-const line = readOrdnanceModel({ ...PILOT_STATE, player: { cargo: { items: {} }, tether: { active: true } }, entities: new Map() }, null)['3'];
+const line = readOrdnanceModel({ ...PILOT_STATE, player: { cargo: { items: {} }, tether: { active: true } }, entities: new Map() }, null)[String(POWER_SLOT.line)];
 assert.ok(line.tip.includes(`Hold ${tether} for line control`),
   'the active Line reveal must name the resolved Massline modifier');
 assert.ok(line.tip.includes(`${forward.split('/')[0]} REEL`),
   'the active Line reveal must name the resolved forward key');
-assert.equal(tether, 'Space/F/3', 'PILOT Massline is Space with F as the permanent alias; 3 is the ORDNANCE hotbar seat');
+assert.equal(tether, 'Space/F', 'PILOT Massline is Space with F as the permanent alias; 3 is the PIN power since the five powers');
 assert.equal(brake, '0', 'PILOT dedicated brake is Digit0');
 assert.match(forward, /^W\//, 'PILOT forward still teaches W');
 assert.equal(resolveActionLabel(PILOT_STATE, 'fire'), MOUSE_ACTION_LABELS.fire);
@@ -143,7 +144,7 @@ const section41 = gdd.slice(gdd.indexOf('### 4.1 Control scheme'), gdd.indexOf('
 assert.match(section41, /Space became the Massline|Space is \*\*not\*\* brake; Space is the Massline/);
 assert.match(section41, /\*\*0 \(Digit0\)\*\* = dedicated zero-thrust brake/);
 assert.equal(DEFAULTS.SCHEMES.pilot.brake[0], 'Digit0');
-assert.deepEqual(DEFAULTS.SCHEMES.pilot.tether, ['Space', 'KeyF', 'Digit3'],
-  'the Massline stays Space with F as the permanent alias; Digit3 is the ORDNANCE hotbar seat');
+assert.deepEqual(DEFAULTS.SCHEMES.pilot.tether, ['Space', 'KeyF'],
+  'the Massline stays Space with F as the permanent alias; Digit3 is the PIN power since the five powers');
 
 console.log(`UI control labels OK — ${TAUGHT_FLIGHT_ACTIONS.length} taught flight actions resolve from input.js; README/GDD match PILOT.`);

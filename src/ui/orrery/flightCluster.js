@@ -95,6 +95,14 @@ const CSS = `
 .orr-cluster__icon { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; background:currentColor;
   -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:1.0; }
 .orr-cluster__key.is-node .orr-cluster__icon { width:14px; height:14px; margin:-7px 0 0 -7px; opacity:.66; }
+/* The five powers (owner 2026-10-22): one tint per power so a glance tells them apart. Declared
+   before the state rules so armed / live / cooldown still recolour the mark. */
+.orr-cluster__key[data-power="pull"] .orr-cluster__icon { color:var(--orr-power-pull, #f2c14e); }
+.orr-cluster__key[data-power="shove"] .orr-cluster__icon { color:var(--orr-power-shove, #ff6b5a); }
+.orr-cluster__key[data-power="pin"] .orr-cluster__icon { color:var(--orr-power-pin, #78a6ff); }
+.orr-cluster__key[data-power="bomb"] .orr-cluster__icon { color:var(--orr-power-bomb, #ff8a3d); }
+.orr-cluster__key[data-power="rig"] .orr-cluster__icon { color:var(--orr-power-rig, #eef2f4); }
+.orr-cluster__key[data-power="line"] .orr-cluster__icon { color:var(--orr-power-line, #5fd6e8); }
 .orr-cluster__icon.has-arsenal { background:none; -webkit-mask:none; mask:none; }
 .orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
@@ -325,10 +333,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   // one bank of words that says what the verb does, which keys fire it, and why it is not ready —
   // revealed on hover AND keyboard focus by the shared mechanism (whyReveal.js). The same words
   // carry the accessible name while no tip is on screen.
-  const mkSocket = ({ node, icon, label, sub, id = '', tip = '' }) => {
+  const mkSocket = ({ node, icon, label, sub, id = '', tip = '', power = '' }) => {
     const k = el('div', `orr-cluster__key${node ? ' is-node' : ''}`);
     k.setAttribute('tabindex', '0');
     if (id) k.setAttribute(node ? 'data-group' : 'data-slot', id);
+    if (power) k.setAttribute('data-power', power);
     if (tip) k.setAttribute('data-why', tip);
     k.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${label}${sub ? `, key ${sub}` : ''}`);
     const ks = svg('svg', { viewBox: '-24 -24 48 48', class: 'orr-svg' });
@@ -366,7 +375,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     groups.forEach((group, gi) => {
       if (gi === armedGroup) {
         group.slots.forEach((slot) => {
-          const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key, id: slot.id });
+          const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key, id: slot.id, power: slot.power || '' });
           const [x, y] = at(R.crescent, a);
           place(sk.el, x, y);
           sockets.push({ ...sk, slot, angle: a });
@@ -376,7 +385,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         });
         a += 2;
       } else {
-        const sk = mkSocket({ node: true, icon: group.icon, label: group.name, sub: group.slots.map((sl) => sl.key).join(' '), id: group.name, tip: group.tip || '' });
+        const sk = mkSocket({ node: true, icon: group.icon, label: group.name, sub: group.slots.map((sl) => sl.key).join(' '), id: group.name, tip: group.tip || '', power: group.power || '' });
         const [x, y] = at(R.crescent, a);
         place(sk.el, x, y);
         sockets.push({ ...sk, group, angle: a });
@@ -446,7 +455,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       }
       if (groupChanged) {
         keysChanged = true;
-        group.tip = `${group.name} — ${group.slots.map(slot => `${slot.name} ${slot.key}`).join(' · ')}`;
+        const only = group.slots.length === 1 ? group.slots[0] : null;
+        group.tip = only && only.description ? `${only.name} — ${only.description} (${only.key})`
+          : `${group.name} — ${group.slots.map(slot => `${slot.name} ${slot.key}`).join(' · ')}`;
       }
     }
     let armedGroup = -1;

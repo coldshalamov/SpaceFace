@@ -24,7 +24,9 @@ const line = (state, id) => crucibleCombatLines(state).find(row => row.id === id
 
 test('Pilot, Classic and Helm use the live charge action, including remaps and unbinding', () => {
   const state = fixture();
-  for (const [scheme, expected] of [['pilot', 'Y/1'], ['classic', 'Y/1'], ['helm-assist', 'Q/1']]) {
+  // The five powers (owner 2026-10-22): the plate rides BOMB (4), which keeps each scheme's old
+  // charge-throw letter beside it.
+  for (const [scheme, expected] of [['pilot', '4/Y'], ['classic', '4/Y'], ['helm-assist', '4/Q']]) {
     state.settings.gameplay.controlScheme = scheme;
     assert.equal(resolveActionLabel(state, 'chargeThrow'), expected);
     const brake = resolveActionLabel(state, 'brake');
@@ -100,7 +102,7 @@ test('Trap keeps empty/cooldown and deployed/arming facts distinct, ignoring for
     { ...trap, data: { ...trap.data, chargeId: 'charge_standard' } });
   state.player.cargo.items.cmdty_impulse_charge = 2;
   ship.data.impulseCharges.throwCdT = 0.5;
-  const head = `Plate — Y/1 · Trap — ${resolveActionLabel(state, 'brake')}+Y/1`;
+  const head = `Plate — 4/Y · Trap — ${resolveActionLabel(state, 'brake')}+4/Y`;
   assert.equal(line(state, 'trap').text, `${head} · 2 remaining · cooldown · 1 arming`);
   trap.data.armed = true;
   ship.data.impulseCharges.throwCdT = 0;

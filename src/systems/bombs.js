@@ -8,7 +8,8 @@ import { addEnvironmentHeat } from './environmentMaterials.js';
 // PQ-205.03: the bay is a fitted rack (state.bombs.rack/stock), not eight free consumables.
 // This system owns rack/stock/cooldown state and serializes it; credits stay inside the
 // economy owner's transaction seam (economy:chargeCredits / economy:grantCredits emits).
-import { BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT, bombDef } from '../data/bombs.js';
+import { BOMB_CHARGE_CHOICE, BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT, bombDef } from '../data/bombs.js';
+import { playerImpulseCharges } from './powerVerbs.js';
 import { shipworksStationAccess } from './ships.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
@@ -24,7 +25,7 @@ import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
   bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse, bombInteractionState,
 } from '../combat/bombDynamics.js';
-import { bumpCollidesFlipEpoch, indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
 export const BOMB_TYPE = 'bomb';
 export const BOMB_SHOVE_CAP = 8;
@@ -114,11 +115,6 @@ const blastShoveEligible = (e) => e?.physicsBody !== false && (isDynamicPhysicsB
 const EMPTY = Object.freeze([]);
 const simNow = state => Number.isFinite(state?.simTime) ? state.simTime : (state?.tick || 0) / 60;
 
-/** Read-only: does the player's charge net have anything the shared detonate key could fire? */
-function armedPlayerCharges(state) {
-  return indexedTypeScan(state, 'charges').some((e) => e && e.alive && e.type === 'charge'
-    && e.data?.ownerId === state.playerId && e.data?.armed);
-}
 const craft = e => e?.type === 'ship' || e?.type === 'drone';
 const movable = e => e?.physicsBody !== false && (craft(e) || (LOOSE_TYPES.has(e?.type) && isDynamicPhysicsBodyEntity(e)));
 function massOf(e, fallback = 1) {
@@ -289,7 +285,17 @@ function ensureRuntime(state) {
   normalizeStock(rt);
   normalizeRack(rt);
   normalizeSelection(rt);
+  normalizeChargeChoice(state, rt);
   return rt;
+}
+// The five powers (owner 2026-10-22): the BOMB power throws the sticky impulse charge whenever one
+// is aboard, and the ordnance cycle turns to the loaded rack cells. Turning to a drift bomb is a
+// flag BESIDE selectedId (`bombChosen`), never a fake cell id, so "selectedId names a loaded cell"
+// stays true for every reader. The key exists only while a bomb is chosen over a charge and a cell
+// is selected (an untouched bay keeps the exact state shape every save and replay hash already has).
+function normalizeChargeChoice(state, rt) {
+  if (rt.bombChosen === true && rt.selectedId != null) return;
+  if ('bombChosen' in rt) delete rt.bombChosen;
 }
 function blocked(state, owner) {
   return state.mode !== 'flight' || !owner?.alive || owner.flags?.docked || state.ui?.screenStack?.length > 0;
@@ -748,15 +754,13 @@ export const bombs = {
       if (!blocked(state, player)) this.cycleSelection(state);
     }
     this._collect(state);
-    // R is the existing shared ordnance command. Read it BEFORE impulseCharges consumes it;
-    // never clear another owner's edge. Both consumers are pinned by a manifest-order test.
+    // SHOVE (2 / R) is the shared ordnance command: it detonates here, then the charge net
+    // detonates in impulseCharges from the same press. Read it BEFORE impulseCharges consumes it;
+    // never clear another owner's edge. Both consumers are pinned by a manifest-order test. The old
+    // "Nothing armed to detonate" answer is gone: the same press always drops a repulsor (or says
+    // it is recharging), so the key is never silent.
     if (detonateEdge && !blocked(state, player)) {
-      const n = this.commandDetonate(player.id, state);
-      // The charge net detonates after us from the same press. A press that fires neither net is
-      // answered once, here — silence was how "pressing Blast does nothing" stayed invisible.
-      if (!n && !armedPlayerCharges(state)) {
-        this.bus.emit('toast', { text: 'Nothing armed to detonate', kind: 'info', ttl: 1.6 });
-      }
+      this.commandDetonate(player.id, state);
     }
     this._tickBombs(dt, state);
     this._tickSweeps(dt, state);
@@ -777,17 +781,36 @@ export const bombs = {
 
   // In-flight cycle walks only LOADED rack sockets — the catalogue order (BOMB_IDS) is the
   // shop listing, never the cycle order. A dry rack answers once per press edge.
+  // The cycle walks the sticky impulse charge (while one is aboard — the BOMB power's default), then
+  // the loaded cells in rack order.
   cycleSelection(state = this.state) {
     const rt = ensureRuntime(state);
     const loaded = loadedCells(rt);
-    if (!loaded.length) {
+    const charges = playerImpulseCharges(state);
+    if (!loaded.length && charges <= 0) {
       this.bus.emit('bombs:denied', { reason: 'empty_rack' });
       this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
       return null;
     }
-    const index = loaded.findIndex((c) => c.id === rt.selectedId);
-    const next = loaded[(index + 1) % loaded.length];
+    // The charge leads (it is the default ordnance while aboard), then the loaded cells in rack order.
+    const entries = loaded.map((c) => c.id);
+    if (charges > 0) entries.unshift(BOMB_CHARGE_CHOICE);
+    const onCharge = charges > 0 && !(rt.bombChosen === true && rt.selectedId != null);
+    const current = onCharge ? BOMB_CHARGE_CHOICE : rt.selectedId;
+    const index = entries.indexOf(current);
+    const nextId = entries[(index + 1) % entries.length];
+    if (nextId === BOMB_CHARGE_CHOICE) {
+      if ('bombChosen' in rt) delete rt.bombChosen;
+      this.bus.emit('bombs:cycle', { payloadId: BOMB_CHARGE_CHOICE, name: 'Impulse charge', index: -1, kind: 'charge' });
+      this.bus.emit('toast', { text: `Ordnance: impulse charge ×${charges}`, kind: 'info', ttl: 1.6, silent: true });
+      return BOMB_CHARGE_CHOICE;
+    }
+    const next = loaded.find((c) => c.id === nextId);
     rt.selectedId = next.id;
+    // Turning away from an aboard charge is the explicit choice; with no charge aboard the rack is
+    // all there is, and a charge picked up later is the default again.
+    if (charges > 0) rt.bombChosen = true;
+    else if ('bombChosen' in rt) delete rt.bombChosen;
     this.bus.emit('bombs:cycle', { payloadId: next.id, name: bombDef(next.id).name, index: rt.rack.cells.indexOf(next) });
     this.bus.emit('toast', { text: `Bomb bay: ${bombDef(next.id).name}`, kind: 'info', ttl: 1.6, silent: true });
     return next.id;
@@ -1692,6 +1715,8 @@ export const bombs = {
     return {
       v: 1,
       selectedId: rt.selectedId,
+      // Written only while a drift bomb is chosen over an aboard charge (absent = the charge leads).
+      ...(rt.bombChosen === true ? { bombChosen: true } : {}),
       cooldownUntil: rt.cooldownUntil,
       cooldowns: { ...rt.cooldowns },
       rack: {
@@ -1741,6 +1766,9 @@ export const bombs = {
     }
     rt.selectedId = typeof data.selectedId === 'string' ? data.selectedId : null;
     normalizeSelection(rt);
+    if (data.bombChosen === true) rt.bombChosen = true;
+    else if ('bombChosen' in rt) delete rt.bombChosen;
+    normalizeChargeChoice(this.state, rt);
   },
 };
 

@@ -39,7 +39,10 @@ test('Inertial Shunt is a small-slot ram plate next to the marker and sink', () 
   assert.equal(weapon.requiresTech, 'tech_graviton_drives');
   assert.ok(weapon.dmg > 0 && weapon.dmg < 10);
   assert.ok(weapon.impulsePerHit <= 1);
-  assert.ok(graviton.unlocks.modules.includes(INERTIAL_SHUNT_WEAPON_ID));
+  // The five powers (owner 2026-10-22): the ram plate module owns this job now, so the shunt is
+  // retired from sale and research stops advertising it. Owned copies keep working.
+  assert.equal(weapon.retiredInto, 'mod_ram_plate');
+  assert.ok(!graviton.unlocks.modules.includes(INERTIAL_SHUNT_WEAPON_ID));
 });
 
 test('a shunt ram on a light hostile sends it a screen and stops the ramming hull', () => {

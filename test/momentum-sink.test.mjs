@@ -47,7 +47,10 @@ test('Momentum Sink is a reachable small-slot setup weapon with no control effec
     'the setup round has a readable hit ping, not a displacement payoff');
   assert.equal(weapon.impulseProvenance, 'momentum_sink_latch');
   assert.deepEqual(weapon.statuses, [{ id: MOMENTUM_SINK_STATUS_ID, stacks: 1 }]);
-  assert.ok(graviton.unlocks.modules.includes(WEAPON_ID));
+  // The five powers (owner 2026-10-22): the Line latches a target and slingshots off a rock, so the
+  // sink is retired from sale and research stops advertising it. Owned copies keep working.
+  assert.equal(weapon.retiredInto, 'line');
+  assert.ok(!graviton.unlocks.modules.includes(WEAPON_ID));
 
   assert.ok(status);
   assert.equal(status.stacking.mode, 'replace', 'a new hit explicitly owns the reference frame');

@@ -1489,10 +1489,31 @@ function textRuns() {
       // anything that is. Its rect still exists, which is how an adventure prompt 250px below the
       // market's scroll viewport read as five collisions with the trade console drawn over it.
       // severedType still sees these -- being unreachable is its own finding.
-      runs.push({ host, text, rects, box, offstage: scrolledOutOfView(host, box) });
+      // A run straddling the edge of the panel that scrolls it is drawn only where the panel shows
+      // it, so the collision test reads the visible part (`seen`): the clipped-away half of a help
+      // row under the list's fade is not printed on top of the note set just below the list.
+      const seen = clipToScrollers(host, rects);
+      runs.push({ host, text, rects, box, seen, seenBox: seen.length ? unionRect(seen) : null, offstage: scrolledOutOfView(host, box) });
     }
   }
   return runs;
+}
+
+// Each line box cut to the visible rect of every ancestor that scrolls or clips; lines cut to a
+// sliver are dropped. Only the collision test reads this; the other audits keep the full boxes.
+function clipToScrollers(host, rects) {
+  let out = rects.map((r) => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }));
+  for (let node = host.parentElement; node && node !== document.body && out.length; node = node.parentElement) {
+    const style = styleOf(node);
+    if (!/auto|scroll|hidden|clip/.test(`${style.overflow} ${style.overflowX} ${style.overflowY}`)) continue;
+    const view = node.getBoundingClientRect();
+    out = out.map((r) => {
+      const left = Math.max(r.left, view.left); const right = Math.min(r.right, view.right);
+      const top = Math.max(r.top, view.top); const bottom = Math.min(r.bottom, view.bottom);
+      return { left, top, right, bottom, width: right - left, height: bottom - top };
+    }).filter((r) => r.width >= 4 && r.height >= 4);
+  }
+  return out;
 }
 
 // True when the run sits outside the visible rect of the nearest ancestor that scrolls or clips.
@@ -1591,20 +1612,20 @@ function tangledType(runs) {
     {
       const a = runs[i];
       const b = runs[j];
-      if (a.offstage || b.offstage) continue;
+      if (a.offstage || b.offstage || !a.seenBox || !b.seenBox) continue;
       if (a.host === b.host || a.host.contains(b.host) || b.host.contains(a.host)) continue;
       // The same string twice in the same place is a drawing technique -- a stroke copy behind the
       // face for legibility over a bright scene, which is how alerts.js prints TAKING FIRE. You can
       // still read it, so it is not a collision.
       if (a.text === b.text) continue;
-      if (!intersectArea(a.box, b.box)) continue;
+      if (!intersectArea(a.seenBox, b.seenBox)) continue;
       const shared = commonAncestor(a.host, b.host);
       if (plateBetween(a.host, shared) || plateBetween(b.host, shared)) continue;
       let worst = 0;
       let smallest = Infinity;
-      for (const raw of a.rects) {
+      for (const raw of a.seen) {
         const ra = inkBox(raw);
-        for (const rawB of b.rects) {
+        for (const rawB of b.seen) {
           const rb = inkBox(rawB);
           const area = intersectArea(ra, rb);
           if (area <= worst) continue;

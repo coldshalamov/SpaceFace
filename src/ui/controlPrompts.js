@@ -50,21 +50,21 @@ function buildKbmPrompts(state) {
   const fire = promptKey(state, 'fire') || MOUSE_ACTION_LABELS.fire;
   const mine = MOUSE_ACTION_LABELS.mine;
   const tether = promptKey(state, 'tether');
-  const shove = promptKey(state, 'chargeThrow');
+  const shove = promptKey(state, 'shove');
   const boost = promptKey(state, 'boost');
   const autoFire = promptKey(state, 'autoFire');
   const counter = promptKey(state, 'countermeasure');
-  const bomb = promptKey(state, 'dropBomb');
+  const bomb = promptKey(state, 'bomb');
   const bombCycle = promptKey(state, 'cycleBomb');
-  const seed = promptKey(state, 'deployMassSeed');
+  const seed = promptKey(state, 'pin');
   const beam = promptKey(state, 'siteBeam');
   const maps = `${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.codex.label} codex  •  ${BINDINGS.cargo.label} cargo  •  ${BINDINGS.comms.label} comms`;
   const mapChart = `${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`;
 
   const classic = {
-    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${mine} select · hold to use  •  ${beam} site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
+    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  ${seed} pin  •  ${mine} select · hold to use  •  ${beam} site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
     mining: `${mine} select · hold to mine  •  ${beam} site beam  •  Release to cool  •  Fly through cargo drift  •  ${tether} tether, then ${BINDINGS.drill.label} enter asteroid  •  Tab next signal`,
-    combat: `${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${bomb} bomb  •  ${bombCycle} cycle bombs  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
+    combat: `${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${bomb} bomb  •  ${bombCycle} cycle ordnance  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
     station: `${BINDINGS.dock.label} dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  ${BINDINGS.dock.label}/Esc undock`,
     gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
     tutorialFlight: `Follow the yellow nav arrow to the bad reading. ${forwardSecond ? `${forwardFirst} / ${forwardSecond}` : forwardFirst} thrusts, ${yaw} steer, and the mouse aims.`,
@@ -79,8 +79,8 @@ function buildKbmPrompts(state) {
   if (scheme === 'helm-assist') {
     return {
       ...classic,
-      flight: `Mouse steer+aim  •  ${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${strafe} strafe  •  ${fire} fire  •  ${mine} select · hold to use  •  ${boost} boost  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${mapChart}`,
-      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${brake} or ${reverse} brake  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
+      flight: `Mouse steer+aim  •  ${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${strafe} strafe  •  ${fire} fire  •  ${mine} select · hold to use  •  ${boost} boost  •  ${tether} Massline  •  ${shove} shove  •  ${seed} pin  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${mapChart}`,
+      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${brake} or ${reverse} brake  •  ${bomb} bomb  •  ${bombCycle} cycle ordnance`,
       tutorialFlight: `Follow the yellow nav arrow. Nose follows the mouse — ${forwardFirst} thrusts, ${brake} or ${reverse} brakes, ${tether} controls the Massline.`,
       firstFlight: `Nose follows the mouse. ${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop.`,
       firstCombat: `${autoFire} toggles auto-target. ${tether} controls the Massline. ${shove} shove. Guns track lock.`,
@@ -89,8 +89,8 @@ function buildKbmPrompts(state) {
   if (scheme === 'pilot') {
     return {
       ...classic,
-      flight: `${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} turn  •  Mouse aim  •  ${fire} fire  •  ${mine} select · hold to use  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${boost} boost  •  Tab target  •  ${mapChart}`,
-      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
+      flight: `${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} turn  •  Mouse aim  •  ${fire} fire  •  ${mine} select · hold to use  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${seed} pin  •  ${boost} boost  •  Tab target  •  ${mapChart}`,
+      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${bomb} bomb  •  ${bombCycle} cycle ordnance`,
       tutorialFlight: `Follow the yellow nav arrow. ${forwardFirst} thrusts; ${brake} or ${reverse} brakes; ${yaw.replace(' ', '/')} turns; mouse aims; ${tether} controls the Massline.`,
       firstFlight: `${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop. ${yaw} turn. Mouse aims.`,
       firstCombat: `${autoFire} toggles auto-target. ${tether} controls the Massline. ${shove} shove. Guns track lock.`,
@@ -104,9 +104,9 @@ function padGlyph(action) {
 }
 
 const GAMEPAD_PROMPTS = Object.freeze({
-  flight: `Left stick fly  •  Right stick aim  •  ${padGlyph('fire')} fire  •  ${padGlyph('mine')} mine / selected Site beam  •  ${padGlyph('boost')} boost  •  ${padGlyph('brake')} brake  •  ${padGlyph('deployRepulsor')} shove  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('massline')} Massline  •  ${padGlyph('dock')} dock when prompted  •  ${padGlyph('cycleTarget')} target  •  ${padGlyph('map')} star map  •  ${padGlyph('pause')} → Pause → Mission Log`,
+  flight: `Left stick fly  •  Right stick aim  •  ${padGlyph('fire')} fire  •  ${padGlyph('mine')} mine / selected Site beam  •  ${padGlyph('boost')} boost  •  ${padGlyph('brake')} brake  •  ${padGlyph('shove')} shove  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('massline')} Massline  •  ${padGlyph('dock')} dock when prompted  •  ${padGlyph('cycleTarget')} target  •  ${padGlyph('map')} star map  •  ${padGlyph('pause')} → Pause → Mission Log`,
   mining: `${padGlyph('mine')} hold to mine  •  Release to cool  •  Fly through cargo drift  •  ${padGlyph('cycleTarget')} next signal`,
-  combat: `${padGlyph('fire')} fire  •  Right stick aim at target  •  ${padGlyph('cycleTarget')} cycle targets  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('dropBomb')} bomb  •  ${padGlyph('cycleBomb')} cycle bombs  •  ${padGlyph('boost')} boost to dodge  •  ${padGlyph('pause')} pause`,
+  combat: `${padGlyph('fire')} fire  •  Right stick aim at target  •  ${padGlyph('cycleTarget')} cycle targets  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('bomb')} bomb  •  ${padGlyph('cycleBomb')} cycle ordnance  •  ${padGlyph('boost')} boost to dodge  •  ${padGlyph('pause')} pause`,
   station: `${padGlyph('dock')} dock when prompted  •  Hub: ${padGlyph('tabPrev')}/${padGlyph('tabNext')} tabs  •  D-pad/left stick focus  •  ${padGlyph('accept')} act  •  ${padGlyph('cancel')} leave once aboard`,
   gate: `${padGlyph('map')} open Star Map  •  Select destination  •  Jump to travel between systems`,
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',

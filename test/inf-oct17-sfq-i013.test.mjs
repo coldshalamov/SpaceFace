@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readBombBayModel, readRailModel } from '../src/ui/powerRail.js';
+import { BOMB_SLOT_INDEX, readBombBayModel, readRailModel } from '../src/ui/powerRail.js';
 import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
 import { BOMB_DRIFT } from '../src/data/bombs.js';
 import { createGameState } from '../src/core/gameState.js';
@@ -77,10 +77,10 @@ test('SFQ-I013: with deployed === 0 and worldCount >= BOMB_DRIFT.maxWorldActive,
 
   assert.equal(bay.deployed, 0);
   assert.equal(bay.why, expectedWhy, 'readBombBayModel must distinguish full field from full player bay');
-  assert.equal(rail[9].why, expectedWhy, 'readRailModel[9].why must say field is full');
-  assert.match(ord[9].tip, /Field is full of armed ordnance — wait for one to finish/, 'readOrdnanceModel[9].tip must include field is full phrase');
-  assert.equal(rail[9].state, 'locked');
-  assert.equal(ord[9].state, 'locked');
+  assert.equal(rail[BOMB_SLOT_INDEX].why, expectedWhy, 'readRailModel[BOMB_SLOT_INDEX].why must say field is full');
+  assert.match(ord[BOMB_SLOT_INDEX].tip, /Field is full of armed ordnance — wait for one to finish/, 'readOrdnanceModel[BOMB_SLOT_INDEX].tip must include field is full phrase');
+  assert.equal(rail[BOMB_SLOT_INDEX].state, 'locked');
+  assert.equal(ord[BOMB_SLOT_INDEX].state, 'locked');
 });
 
 test('SFQ-I013: with deployed >= BOMB_DRIFT.maxActive, rail why and ordnance tip keep bay is full', () => {
@@ -98,10 +98,10 @@ test('SFQ-I013: with deployed >= BOMB_DRIFT.maxActive, rail why and ordnance tip
 
   assert.equal(bay.deployed, BOMB_DRIFT.maxActive);
   assert.equal(bay.why, expectedWhy);
-  assert.equal(rail[9].why, expectedWhy);
-  assert.match(ord[9].tip, /Bay is full — trigger armed ordnance/);
-  assert.equal(rail[9].state, 'locked');
-  assert.equal(ord[9].state, 'locked');
+  assert.equal(rail[BOMB_SLOT_INDEX].why, expectedWhy);
+  assert.match(ord[BOMB_SLOT_INDEX].tip, /Bay is full — trigger armed ordnance/);
+  assert.equal(rail[BOMB_SLOT_INDEX].state, 'locked');
+  assert.equal(ord[BOMB_SLOT_INDEX].state, 'locked');
 });
 
 test('SFQ-I013: when both player bay and world active caps are reached, bay full takes precedence', () => {
@@ -114,8 +114,8 @@ test('SFQ-I013: when both player bay and world active caps are reached, bay full
   const rail = readRailModel(state, state.simTime);
   const ord = readOrdnanceModel(state);
 
-  assert.equal(rail[9].why, 'Bay is full — trigger armed ordnance');
-  assert.match(ord[9].tip, /Bay is full — trigger armed ordnance/);
+  assert.equal(rail[BOMB_SLOT_INDEX].why, 'Bay is full — trigger armed ordnance');
+  assert.match(ord[BOMB_SLOT_INDEX].tip, /Bay is full — trigger armed ordnance/);
 });
 
 test('SFQ-I013: quiet/negative branch when neither cap is reached', () => {
@@ -131,9 +131,9 @@ test('SFQ-I013: quiet/negative branch when neither cap is reached', () => {
 
   assert.equal(bay.deployed, 2);
   assert.equal(bay.why, 'Ready');
-  assert.equal(rail[9].why, 'Ready');
-  assert.equal(rail[9].state, 'ready');
-  assert.equal(ord[9].state, 'ready');
-  assert.doesNotMatch(rail[9].why, /full/i);
-  assert.doesNotMatch(ord[9].tip, /full/i);
+  assert.equal(rail[BOMB_SLOT_INDEX].why, 'Ready');
+  assert.equal(rail[BOMB_SLOT_INDEX].state, 'ready');
+  assert.equal(ord[BOMB_SLOT_INDEX].state, 'ready');
+  assert.doesNotMatch(rail[BOMB_SLOT_INDEX].why, /full/i);
+  assert.doesNotMatch(ord[BOMB_SLOT_INDEX].tip, /full/i);
 });

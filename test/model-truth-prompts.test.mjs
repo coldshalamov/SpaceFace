@@ -29,13 +29,14 @@ test('default controls are the live tables and six pad verbs do not share a butt
   assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.brake, ['l1']);
   assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.massline, ['accept']);
   assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.accept, ['accept']);
-  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.deployRepulsor, ['alt']);
+  // SHOVE (five powers, owner 2026-10-22) keeps the repulsor's Y and adds the old detonate's D-Pad Down.
+  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.shove, ['alt', 'dDown']);
   assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.dock, ['cancel']);
   const six = {
     thrust: 'stick',
     brake: GAMEPAD_DEFAULT_BINDINGS.brake[0],
     rope: GAMEPAD_DEFAULT_BINDINGS.massline[0],
-    shove: GAMEPAD_DEFAULT_BINDINGS.deployRepulsor[0],
+    shove: GAMEPAD_DEFAULT_BINDINGS.shove[0],
     fire: GAMEPAD_DEFAULT_BINDINGS.fire[0],
     dock: GAMEPAD_DEFAULT_BINDINGS.dock[0],
   };
@@ -61,6 +62,6 @@ test('live prompt strings do not hardcode Press E, W, A, or Y', () => {
     assert.equal(pressed[1], 'E', line);
   }
   const input = readFileSync(resolve(ROOT, 'src/systems/input.js'), 'utf8');
-  assert.equal(input.includes("tether:         ['Space', 'KeyF', 'Digit3']"), true);
-  assert.equal(input.includes("chargeThrow: ['KeyY', 'Digit1']"), true);
+  assert.equal(input.includes("tether:         ['Space', 'KeyF']"), true);
+  assert.equal(input.includes("bomb: ['Digit4', 'KeyY']"), true);
 });

@@ -12,6 +12,7 @@ import { BINDINGS } from '../src/ui/bindings.js';
 import { resolveDrillControlMap } from '../src/ui/screens/drill.js';
 import { controlPrompt, setPromptScheme } from '../src/ui/controlPrompts.js';
 import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
+import { POWER_SLOT } from '../src/ui/powerRail.js';
 
 function pilotState(bindings = null) {
   return {
@@ -103,7 +104,8 @@ test('active ORRERY line controls name only the actual bound keys and omit unbou
     yawLeft: ['KeyJ'], yawRight: [], boost: [] });
   state.player = { cargo: { items: {} }, tether: { active: true } };
   state.entities = new Map();
-  const line = readOrdnanceModel(state, null)['3'];
+  // The Line sits after the five powers (2026-10-22): its socket is POWER_SLOT.line, never a digit seat.
+  const line = readOrdnanceModel(state, null)[String(POWER_SLOT.line)];
   assert.equal(line.key, 'P');
   assert.match(line.tip, /Hold P.*I REEL.*J ORBIT/);
   assert.doesNotMatch(line.tip, /PAY OUT|PUMP|Space|SHIFT|KeyI/);

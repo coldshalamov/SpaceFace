@@ -7,6 +7,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { createUiInput } from '../src/ui/input.js';
 import { MASSLINE_HOLD_S } from '../src/systems/masslineInputGrammar.js';
 
+// The bomb key is BOMB (4) since the five powers (owner 2026-10-22); with no impulse charge aboard
+// it drops the selected drift bomb, the `dropBomb` edge these samples read.
 function flightState() {
   const player = {
     id: 1, type: 'ship', alive: true, team: 0,
@@ -163,24 +165,24 @@ test('a tap sampled before the next update is one edge, repeats add none, and mo
 
 test('a key that went down under a screen does not drop a bomb after the screen is gone', () => {
   const host = boot();
-  assert.equal(key(host.owner, 'Digit9', true, { blocked: true }), false);
-  assert.equal(key(host.owner, 'Digit9', false), false);
+  assert.equal(key(host.owner, 'Digit4', true, { blocked: true }), false);
+  assert.equal(key(host.owner, 'Digit4', false), false);
   for (let i = 0; i < 3; i += 1) {
     assert.equal(step(host.owner, host.state).bomb, false);
   }
-  key(host.owner, 'Digit9', true);
+  key(host.owner, 'Digit4', true);
   const live = step(host.owner, host.state);
   const held = step(host.owner, host.state);
   assert.equal(live.bomb, true, 'a press that starts after the screen is gone still deploys');
   assert.equal(held.bomb, false);
-  key(host.owner, 'Digit9', false);
+  key(host.owner, 'Digit4', false);
   assert.equal(step(host.owner, host.state).bomb, false);
 
   const prior = boot();
-  key(prior.owner, 'Digit9', true);
+  key(prior.owner, 'Digit4', true);
   assert.equal(step(prior.owner, prior.state).bomb, true);
   assert.equal(step(prior.owner, prior.state).bomb, false);
-  key(prior.owner, 'Digit9', false, { blocked: true });
+  key(prior.owner, 'Digit4', false, { blocked: true });
   const ended = step(prior.owner, prior.state);
   assert.equal(ended.bomb, false, 'a hold that started in flight ends on its keyup');
   assert.equal(step(prior.owner, prior.state).bomb, false);
@@ -190,8 +192,8 @@ test('a key that went down under a screen does not drop a bomb after the screen 
 
 test('a tap sampled as a screen opens does not fire on the way out', () => {
   const host = boot();
-  key(host.owner, 'Digit9', true);
-  key(host.owner, 'Digit9', false);
+  key(host.owner, 'Digit4', true);
+  key(host.owner, 'Digit4', false);
   key(host.owner, 'KeyU', true);
   host.state.ui.screenStack = ['pause'];
   assert.equal(step(host.owner, host.state).bomb, false);
@@ -201,7 +203,7 @@ test('a tap sampled as a screen opens does not fire on the way out', () => {
   assert.equal(back.bomb, false, 'the bomb tap must not drop as the screen closes');
   assert.equal(back.beacon, false, 'a beacon key still held through the screen is not a new press');
   key(host.owner, 'KeyU', false);
-  key(host.owner, 'Digit9', true);
+  key(host.owner, 'Digit4', true);
   assert.equal(step(host.owner, host.state).bomb, true);
   host.owner.destroy();
 });
@@ -295,7 +297,7 @@ test('reversed wall-clock stamps do not reorder sampled verbs', () => {
       ['KeyR', true],
       ['KeyR', false],
       ['KeyU', true],
-      ['Digit9', true],
+      ['Digit4', true],
     ];
     pairs.forEach(([code, pressed], index) => {
       key(host.owner, code, pressed, { timeStamp: stamps[index] });
@@ -430,8 +432,8 @@ test('closing a screen with a remapped bomb key does not drop the bomb', () => {
     };
     dom.bubble('keyup', release);
     assert.equal(step(owner, state).bomb, false);
-    key(owner, 'Digit9', true);
-    assert.equal(step(owner, state).bomb, false, 'Escape is the live bomb binding, not Digit9');
+    key(owner, 'Digit4', true);
+    assert.equal(step(owner, state).bomb, false, 'Escape is the live bomb binding, not Digit4');
     key(owner, 'Escape', true);
     assert.equal(step(owner, state).bomb, true, 'the bomb key still works once the screen is gone');
     assert.equal(step(owner, state).bomb, false);

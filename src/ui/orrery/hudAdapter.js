@@ -15,7 +15,7 @@
 //   ordnance            readRailModel(state, simTime)     (slots 1..9, states ready/armed/cooling/…)
 //   tether              masslineInstrumentReadout(tether) + the attached body's mass
 import { weaponHeatSummary } from '../weaponHeat.js';
-import { readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
+import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
 import { SHIPS } from '../../data/ships.js';
 import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
@@ -27,13 +27,16 @@ import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
-const GROUP_NAME = Object.freeze({ ORDNANCE: 'Ordnance', FIELDWORK: 'Fields', RIG: 'Rig', BAY: 'Bay' });
-const GROUP_ICON = Object.freeze({ Ordnance: 'weapon', Fieldwork: 'well', Rig: 'cone', Bay: 'munitions' });
+// The five powers (owner 2026-10-22): each power is its own band, so each prints by name.
+const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Rig', LINE: 'Line' });
+const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Rig: 'cone', Line: 'line' });
+// One tint per power (design/expansion/05_ASSET_ROSTER.md §7.2): the Cluster colours each key's
+// mark so a glance tells the five apart. Armed/live states still override the tint.
+const GROUP_POWER = Object.freeze({ PULL: 'pull', SHOVE: 'shove', PIN: 'pin', BAY: 'bomb', RIG: 'rig', LINE: 'line' });
 // The rail's 24-px glyph names → the 48-px kit icon file names the Cluster masks.
 const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether: 'line', seed: 'seed', well: 'well', repel: 'repel', cone: 'cone', skim: 'skim', weapon: 'munitions' });
-const SLOT_ARSENAL = Object.freeze({ 1: 'power_charge', 2: 'power_detonate', 3: 'power_massline',
-  4: 'field_seed_standard', 5: 'field_well_standard', 6: 'field_repulsor_standard',
-  7: 'field_cone_standard', 8: 'field_skim_standard' });
+const SLOT_ARSENAL = Object.freeze({ 1: 'field_well_standard', 2: 'field_repulsor_standard',
+  3: 'field_seed_standard', 5: 'field_cone_standard', 6: 'power_massline' });
 
 /** The rail's slots grouped by band, each with a stable id (its rail index) and its live key label. */
 export function buildOrdnanceGroups(bindings) {
@@ -43,19 +46,25 @@ export function buildOrdnanceGroups(bindings) {
   const byName = new Map();
   for (const slot of RAIL_SLOTS) {
     const name = GROUP_NAME[slot.band] || String(slot.band);
+    const power = GROUP_POWER[slot.band] || '';
     let g = byName.get(name);
-    if (!g) { g = { name, icon: GROUP_ICON[name] || 'weapon', slots: [] }; byName.set(name, g); groups.push(g); }
+    if (!g) { g = { name, icon: GROUP_ICON[name] || 'weapon', power, slots: [] }; byName.set(name, g); groups.push(g); }
     g.slots.push({
       id: String(slot.index), key: labels[slot.index] || '—', name: slot.name,
-      icon: SLOT_ICON[slot.glyph] || slot.glyph || 'weapon',
+      icon: SLOT_ICON[slot.glyph] || slot.glyph || 'weapon', power,
       keys: keys[slot.index] || '', description: slotDescription(slot.index),
     });
   }
   // A collapsed node answers "what is in this band" without unfolding it.
-  for (const g of groups) {
-    g.tip = `${g.name} — ${g.slots.map((s) => `${s.name} ${s.key}`).join(' · ')}`;
-  }
+  for (const g of groups) g.tip = groupTip(g);
   return groups;
+}
+
+/** A folded node's tip: a one-power band explains that power; a wider band lists its keys. */
+export function groupTip(group) {
+  const only = group.slots.length === 1 ? group.slots[0] : null;
+  if (only && only.description) return `${only.name} — ${only.description} (${only.key})`;
+  return `${group.name} — ${group.slots.map((s) => `${s.name} ${s.key}`).join(' · ')}`;
 }
 
 /**
@@ -110,8 +119,11 @@ export function readOrdnanceModel(state, tracker, bindings) {
   for (const slot of RAIL_SLOTS) {
     const r = rail[slot.index] || {};
     const st = RAIL_STATE[r.state] || 'ready';
-    const entry = { state: st, key: labels[slot.index] || '', arsenalId: slot.index === 9 && r.glyph?.startsWith('bomb_') ? r.glyph : SLOT_ARSENAL[slot.index] || '' };
-    if (slot.index === 1 || slot.index === 9) entry.consumable = true;
+    const isBomb = slot.index === BOMB_SLOT_INDEX;
+    // The bomb key shows the chosen ordnance: the sticky charge, or the selected drift bomb.
+    const bombArt = r.charge ? 'power_charge' : (r.glyph?.startsWith('bomb_') ? r.glyph : '');
+    const entry = { state: st, key: labels[slot.index] || '', arsenalId: isBomb ? bombArt : SLOT_ARSENAL[slot.index] || '' };
+    if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
     // inside the well) — a cue, not a new surface.

@@ -276,9 +276,10 @@ test('B011 release-to-neutral is immediate, and a mode change cannot smuggle a d
 test('B012 the tether-and-bomb chase chain is fully keyboard-first in the default pilot scheme', () => {
   const pilot = DEFAULTS.SCHEMES.pilot;
   // steer: WASD/arrows + G-stick (KeyG toggle). latch + release: tether. arm + drop + cycle:
-  // the bomb bay. escape tool: countermeasure. every one resolves a keyboard code.
+  // the bomb bay — since the five powers (owner 2026-10-22) BOMB throws or drops, the cycle picks,
+  // and SHOVE sets armed ordnance off. escape tool: countermeasure. every one resolves a keyboard code.
   const chain = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
-    'autoFire', 'tether', 'dropBomb', 'cycleBomb', 'chargeThrow', 'chargeDetonate',
+    'autoFire', 'tether', 'bomb', 'cycleBomb', 'shove',
     'countermeasure', 'boost', 'brake'];
   for (const action of chain) {
     const codes = pilot[action] || [];

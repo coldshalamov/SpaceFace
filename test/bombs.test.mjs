@@ -275,9 +275,10 @@ function bootBombs({ playerVel = { x: 0, z: 0 }, selectedId = 'bomb_frag' } = {}
   const t = bootBombs();
   try {
     // PQ-205.03: the cycle walks only loaded rack sockets — the starter rack carries
-    // frag + concussion, so cycling alternates the two fitted payloads and wraps.
+    // frag + goo (five powers, 2026-10-22: the concussion drum's job is SHOVE now), so with no
+    // impulse charge aboard cycling alternates the two fitted payloads and wraps.
     const fitted = t.state.bombs.rack.cells.filter((c) => c && c.count > 0).map((c) => c.id);
-    assert.deepEqual(fitted, ['bomb_frag', 'bomb_concussion']);
+    assert.deepEqual(fitted, ['bomb_frag', 'bomb_goo']);
     for (let i = 0; i < fitted.length * 2; i++) {
       t.press('cycleBomb');
       t.tick(1);

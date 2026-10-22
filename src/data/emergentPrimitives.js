@@ -115,6 +115,9 @@ function gun(partial) {
 
 export const EMERGENT_WEAPON_DEFS = [
   gun({
+    // Retired from sale (owner 2026-10-22): the BOMB power throws the sticky charge; SHOVE sets it off. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'bomb',
     id: 'wpn_sticky_detonator',
     name: 'Sticky Detonator',
     price: 26000,
@@ -130,6 +133,9 @@ export const EMERGENT_WEAPON_DEFS = [
     lineageGenerationMax: 2,
   }),
   gun({
+    // Retired from sale (owner 2026-10-22): the relay-arc and conductive-path payload modules chain the shock. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'mod_relay_arc',
     id: 'wpn_conductive_primer',
     name: 'Conductive Primer',
     price: 28000,
@@ -203,6 +209,9 @@ export const EMERGENT_WEAPON_DEFS = [
     emergentPrimitive: 'polarity',
   }),
   gun({
+    // Retired from sale (owner 2026-10-22): the goo drift bomb lays the clinging field. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'bomb',
     id: 'tool_viscosity_field',
     name: 'Viscosity Field',
     price: 30000,

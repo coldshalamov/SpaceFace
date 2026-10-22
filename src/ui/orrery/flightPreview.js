@@ -3,7 +3,9 @@
 // The bench mounts it as `--shot=orrery-flight`; the live HUD adopts the same instruments in Phase 1.
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
-import { railSlotTip, slotDescription } from '../powerRail.js';
+import { POWER_SLOT, RAIL_SLOTS, railSlotTip, slotDescription } from '../powerRail.js';
+import { buildOrdnanceGroups } from './hudAdapter.js';
+import { PILOT_BINDINGS } from '../../systems/input.js';
 import { mountWhyReveal } from '../whyReveal.js';
 import {
   createRadarOrrery, createObjectiveTape, createLockRing, createThreatChannel, createSignalToasts, createPlaceBlock,
@@ -86,41 +88,13 @@ const box = (cls) => {
   return node;
 };
 
-// The preview's ordnance shelf is the same rank the live HUD builds (hudAdapter.buildOrdnanceGroups):
-// nine verbs, hotbar digits 1–9, and the one tip bank (powerRail.js) explaining what each does.
-// Keys are drawn as the live Cluster draws them — the slot's own digit owns the label, and the tip
-// lists every key that fires the verb.
+// The preview's ordnance shelf IS the live HUD's rank: the same adapter (hudAdapter.buildOrdnanceGroups)
+// builds it from the shipped Pilot keys, so the bench cannot drift from the game — the drive lamp, the
+// five powers on 1–5 (owner 2026-10-22) and the Line, each explained by the one tip bank (powerRail.js).
 const tipFor = (id, name, keys, why) => railSlotTip({ name, keys, description: slotDescription(id), why });
+const PREVIEW_BINDINGS = Object.freeze(Object.fromEntries(RAIL_SLOTS.map((s) => [s.action, PILOT_BINDINGS[s.action] || []])));
 
-export const ORDNANCE_LAYOUT = Object.freeze([
-  {
-    name: 'Ordnance', icon: 'weapon', tip: 'Ordnance — Charge 1 · Blast 2 · Line 3',
-    slots: [
-      { id: '1', key: '1', keys: '1 · Y', name: 'Charge', icon: 'munitions' },
-      { id: '2', key: '2', keys: '2 · R', name: 'Blast', icon: 'fire' },
-      { id: '3', key: '3', keys: '3 · Space · F', name: 'Line', icon: 'line' },
-    ],
-  },
-  {
-    name: 'Fieldwork', icon: 'well', tip: 'Fieldwork — Seed 4 · Well 5 · Repel 6',
-    slots: [
-      { id: '4', key: '4', keys: '4', name: 'Seed', icon: 'seed' },
-      { id: '5', key: '5', keys: '5', name: 'Well', icon: 'well' },
-      { id: '6', key: '6', keys: '6', name: 'Repel', icon: 'repel' },
-    ],
-  },
-  {
-    name: 'Rig', icon: 'cone', tip: 'Rig — Cone 7 · Skim 8',
-    slots: [
-      { id: '7', key: '7', keys: '7', name: 'Cone', icon: 'cone' },
-      { id: '8', key: '8', keys: '8', name: 'Skim', icon: 'skim' },
-    ],
-  },
-  {
-    name: 'Bay', icon: 'munitions', tip: 'Bay — Frag 9',
-    slots: [{ id: '9', key: '9', keys: '9', name: 'Frag', icon: 'munitions' }],
-  },
-]);
+export const ORDNANCE_LAYOUT = Object.freeze(buildOrdnanceGroups(PREVIEW_BINDINGS));
 
 export const orreryFlightScreen = {
   mount(root) {
@@ -162,15 +136,13 @@ export const orreryFlightScreen = {
       energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, speedMax: 405, boost: 0.7, drift: 24,
       tether: { state: 'Payload', mass: 960, strain: 0.62 },
       ordnance: {
-        1: { state: 'armed', count: 3, tip: tipFor(1, 'Charge ×3', '1 · Y', 'Armed — press to detonate') },
-        2: { state: 'cooldown', cooldown: 0.55, tip: tipFor(2, 'Blast', '2 · R', 'Recharging — 3s') },
-        3: { state: 'ready', tip: tipFor(3, 'Line', '3 · Space · F', 'Ready') },
-        4: { state: 'ready', tip: tipFor(4, 'Seed', '4', 'Ready') },
-        5: { state: 'cooldown', cooldown: 0.3, tip: tipFor(5, 'Well', '5', 'Recharging — 2s') },
-        6: { state: 'ready', tip: tipFor(6, 'Repel', '6', 'Ready') },
-        7: { state: 'ready', tip: tipFor(7, 'Cone', '7', 'Ready') },
-        8: { state: 'locked', tip: tipFor(8, 'Skim', '8', 'Only works grazing a planet band') },
-        9: { state: 'ready', count: 2, tip: tipFor(9, 'Frag ×2', '9', 'Ready') },
+        0: { state: 'ready', tip: tipFor(0, 'Burn', 'F8 · Num Lock', 'Drive latched off') },
+        [POWER_SLOT.pull]: { state: 'cooldown', cooldown: 0.3, tip: tipFor(POWER_SLOT.pull, 'Pull', '1', 'Recharging — 2s') },
+        [POWER_SLOT.shove]: { state: 'armed', tip: tipFor(POWER_SLOT.shove, 'Shove', '2 · R', 'Armed — Shove sets them off') },
+        [POWER_SLOT.pin]: { state: 'ready', tip: tipFor(POWER_SLOT.pin, 'Pin', '3', 'Ready') },
+        [POWER_SLOT.bomb]: { state: 'ready', count: 3, consumable: true, arsenalId: 'power_charge', tip: tipFor(POWER_SLOT.bomb, 'Charge ×3', '4 · Y', 'Ready · up to 4') },
+        [POWER_SLOT.rig]: { state: 'ready', tip: tipFor(POWER_SLOT.rig, 'Rig', '5', 'Ready — the clearing cone') },
+        [POWER_SLOT.line]: { state: 'armed', tip: tipFor(POWER_SLOT.line, 'Line', 'Space · F', 'Line is live') },
       },
     });
     radar.setContacts([

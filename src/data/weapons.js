@@ -235,6 +235,9 @@ const SHIPPED_WEAPONS = [
     // shot leaves a six-second simulation status that triples well/sink coupling; merely selecting
     // a target does nothing. The cyan disruption projectile and persistent contracting world marker
     // make the state readable without adding an asset or changing the default fit.
+    // Retired from sale (owner 2026-10-22): the PULL power marks the locked target it lands on. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'pull',
     id: 'wpn_gravity_marker_s', name: 'Gravity Marker S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 18000, requiresTech: 'tech_graviton_drives',
     sentence: 'Marks a hull so wells and sinks grip it three times as hard.',
     dmg: 3, rof: 0.25, dps: 0.75, damageType: 'emp', energyCost: 7,
@@ -248,6 +251,9 @@ const SHIPPED_WEAPONS = [
     // bungee on the shooter: burn away to store receding speed, then release (second trigger or
     // the four-second window) and slingshot back at ≥ 2× that speed. The setup round stays a ping;
     // the weapon never writes speed caps, brakes, facing, or controls.
+    // Retired from sale (owner 2026-10-22): the Line latches a target and slingshots off a rock. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'line',
     id: 'wpn_momentum_sink_s', name: 'Momentum Sink S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 21000, requiresTech: 'tech_graviton_drives',
     sentence: 'Latches a target to your frame — or slingshots you off a rock.',
     dmg: 3, rof: 0.2, dps: 0.6, damageType: 'emp', energyCost: 9,
@@ -259,6 +265,9 @@ const SHIPPED_WEAPONS = [
     // INERTIAL SHUNT — the ram plate. A fitted hull that hits another ship dumps its closing
     // speed into them, mass-bounded: a wasp flies a screen, you stop; a gunship shrugs. The
     // ping is only a catalog hit-confirm; the payoff is the contact, never a DPS grind.
+    // Retired from sale (owner 2026-10-22): the ram plate module turns closing speed into the hit. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'mod_ram_plate',
     id: 'wpn_inertial_shunt_s', name: 'Inertial Shunt S', slotType: 'weapon', size: 'S', tier: 2, mass: 4, price: 24000, requiresTech: 'tech_graviton_drives',
     sentence: 'The ram plate: your closing speed becomes their problem.',
     dmg: 3, rof: 0.2, dps: 0.6, damageType: 'kinetic', energyCost: 8,
@@ -297,6 +306,9 @@ const SHIPPED_WEAPONS = [
     // never as a projectile — impulsePerHit is the blast momentum the detonation imparts through the
     // physics authority (756 at centre = 45 % of Wasp cruise). dmg 0 is honest: the mine throws,
     // it does not damage.
+    // Retired from sale (owner 2026-10-22): the SHOVE power is the shove pulse. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'shove',
     id: 'wpn_vector_mine_m', name: 'Vector Mine M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 22000, requiresTech: 'tech_guided_ordnance',
     sentence: 'A dropped scatter charge: shoves every hull nearby, damages none.',
     mount: 'launcher',
@@ -313,6 +325,9 @@ const SHIPPED_WEAPONS = [
     // life at up to mineWellPull WU/s² with distance falloff — INCLUDING the owner, because the
     // well does not know friend from mass. dmg 0 is honest: nothing here damages; the fight is
     // repositioned, then finished with whatever else you carry. Fired on the same key as the mine.
+    // Retired from sale (owner 2026-10-22): the PULL power is the well. Owned copies keep working;
+    // the Crucible draft is the swarm seam's to align.
+    retiredInto: 'pull',
     id: 'wpn_gravity_well_m', name: 'Gravity Wellhead M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 38000, requiresTech: 'tech_graviton_drives',
     sentence: 'A sustained pull that drags the whole fight toward one point.',
     mount: 'launcher',

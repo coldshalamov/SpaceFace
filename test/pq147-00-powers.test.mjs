@@ -26,7 +26,7 @@ import {
   normalizeField,
 } from '../src/core/fields/fieldKernel.js';
 import { classifyCausalVfxFamily } from '../src/presentation/causalVfxGrammar.js';
-import { readRailModel } from '../src/ui/powerRail.js';
+import { POWER_SLOT, readRailModel } from '../src/ui/powerRail.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const DRILL_DIR = join(ROOT, '../src/data/scenarios');
@@ -220,20 +220,24 @@ test('Mass Seed publishes a lock-ring volume without adding gravity', () => {
   });
 });
 
-test('rail slots 4–8 already surface real field/seed/skim state', () => {
+test('the power rail surfaces real field/seed/scoop state on PULL, SHOVE, PIN and RIG', () => {
   withFlag(true, () => {
     const t = boot();
     t.state.player = { massSeed: { cooldownUntil: 12 } };
     t.state.fields.cooldowns = { well: 8, repulsor: 0 };
     t.state.fields.coneActive = true;
-    t.state.planet = { schemaVersion: 1, player: { collectorOn: true } };
+    // An open scoop only exists on an active planet runtime (deactivation closes every scoop).
+    t.state.planet = { schemaVersion: 1, active: true, player: { collectorOn: true } };
     t.fieldsSys._publish(t.state, t.state.fields, 0, 0, 0);
     const rail = readRailModel(t.state, 1);
-    assert.equal(rail[4].state, 'cooling');
-    assert.equal(rail[5].state, 'cooling');
-    assert.equal(rail[6].state, 'ready');
-    assert.equal(rail[7].state, 'armed');
-    assert.equal(rail[8].state, 'armed');
+    assert.equal(rail[POWER_SLOT.pin].state, 'cooling');
+    assert.equal(rail[POWER_SLOT.pull].state, 'cooling');
+    assert.equal(rail[POWER_SLOT.shove].state, 'ready');
+    assert.equal(rail[POWER_SLOT.rig].state, 'armed', 'the cone is on');
+    t.state.fields.coneActive = false;
+    const scoop = readRailModel(t.state, 1)[POWER_SLOT.rig];
+    assert.equal(scoop.state, 'armed', 'with the cone folded, RIG reads the open scoop');
+    assert.match(scoop.why, /Scoop is open/);
   });
 });
 

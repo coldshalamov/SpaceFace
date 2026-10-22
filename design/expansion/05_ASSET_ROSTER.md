@@ -161,21 +161,29 @@ faction and has a provenance rarity (08 §3).
 | **Seal** | sticks a Directorate fine on an enemy; lawful ships hunt it | Helix (via the Archive) | Relic |
 | **Multi-latch** | two lines at once | Verge (Measure fragments) | Relic |
 
-### 7.2 The field powers: a recommended merge (the owner picks; §33 row 493)
+### 7.2 The field powers: five, on 1–5 (owner chose this merge, 2026-10-22; §33 row 493)
 
-Today about eight powers push or pull bodies. The recommended set has five, each with one colour
-and one outcome:
+Eight overlapping verbs became five. Each has one key on the number row, one colour and one
+outcome. The definitions live in `src/systems/powerVerbs.js`; the owners underneath did not change.
 
-1. **Pull** (amber). Merges Well and Gravity Marker. It drags bodies to a point.
-2. **Shove** (red). Merges Repulsor, Blast and the concussion bomb. It pushes everything out.
-3. **Pin** (cyan). Merges Mass Seed and Grav Anchor. It fixes a body in place and makes an anchor.
-4. **Bomb** (orange). Drift bombs stay, minus concussion, which Shove now covers.
-5. **Rig** (white). The Cone and Skim collector stay as toggles.
+1. **Pull** (amber, `1`). The Well. A Pull that lands on your locked target marks it with the
+   gravity mark, so the well grips it three times as hard (the Gravity Marker's job).
+2. **Shove** (red, `2` / `R`). The Repulsor, and in the same press it sets off every armed charge
+   and drift bomb (the old Blast/detonate). The concussion bomb's job lives here now.
+3. **Pin** (blue, `3`). The anchor Mass Seed: it locks where it lands, and the Line latches to it.
+4. **Bomb** (orange, `4` / `Y`). Throws the sticky impulse charge whenever one is aboard; the
+   ordnance cycle (`,`) turns to a loaded drift bomb. The starter rack is frag + goo.
+5. **Rig** (white, `5`). The Clearing Cone; inside a planet band the same key opens the skim scoop.
+   A rig that is on folds first.
 
-While its key is held, every power **outlines each body it will move and draws its predicted
-path**.
+The Line keeps `Space` / `F` (cyan). The pad keeps every power reachable: Shove on Y and D-Pad Down,
+Bomb on D-Pad Right, the cycle on D-Pad Left, Pin / Pull / Rig on LB + D-Pad Down / Left / Right.
+Saved custom keys under the old names carry over to their power.
 
-### 7.3 The arsenal: keep, merge or move (the owner picks; `build_map.md` §34 row 550)
+**Still to build (row 493):** while its key is held, every power **outlines each body it will move
+and draws its predicted path**.
+
+### 7.3 The arsenal: keep, merge or move (applied for story mode 2026-10-22; `build_map.md` §34 row 550)
 
 `src/data/weapons.js` holds about twenty physics tools beside the guns. Most of them push, pull,
 stick or stop bodies in slightly different ways, which is a direct cause of "I don't know what my
@@ -183,6 +191,25 @@ powers do". The recommendation below gives every tool one home: a gun that stays
 merged powers (§7.2), or a Line head (§7.1). **Read each tool's live behaviour in `weapons.js` and its
 owner before acting**, because a name can hide a behaviour. Where the live behaviour differs from
 the guess here, the behaviour decides the home.
+
+**What shipped.** A merged tool carries `retiredInto: '<home>'`: it leaves the adventure shop and
+the research tree, owned copies keep working, and NPC kits keep it. The Crucible draft was left
+alone; aligning it is the swarm seam's job. Final homes, by live behaviour:
+
+| Tool | Final home |
+|---|---|
+| Gravity Marker S, Gravity Wellhead M | retired → **Pull** |
+| Vector Mine M (a zero-damage radial shove) | retired → **Shove** |
+| Sticky Detonator, Viscosity Field | retired → **Bomb** (the sticky charge; the goo drift bomb) |
+| Momentum Sink S (latch and slingshot) | retired → **the Line** |
+| Inertial Shunt S | retired → the **ram plate** module (`mod_ram_plate`) |
+| Conductive Primer | retired → the **relay-arc** payload modules (`mod_relay_arc`) |
+| Concussion bomb (`bomb_concussion`) | retired → **Shove**; off the starter rack |
+| Grav Anchor | **kept**: it links two bodies, which Pin does not do |
+| Polarity Inverter, Seismic Gong, Quantum Sympathy, Hardlight Prism, Thruster Hijacker, RCS Disruptor | **kept** until their Line heads exist (§7.1) |
+| Concussion Cannon S / M, Mass Driver, Thermal Cooker, EMP Disruptor M, Snarl Webcaster | **kept** |
+
+The recommendation as first written follows.
 
 | Tool (`weapons.js` id) | Recommendation | Why |
 |---|---|---|

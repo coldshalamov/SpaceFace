@@ -68,7 +68,9 @@ and was the #1 cause of "hard to fly." Three schemes ship, selectable in Setting
 - **0 (Digit0)** = dedicated zero-thrust brake. Space is **not** brake; Space is the Massline (§4.3).
 - **LMB** fires. Weapons gimbal toward the cursor independently of the nose; the player gets a 360°
   gimbal arc while NPCs get 22°.
-- **G** = auto-fire. **X** = countermeasure. **Y** = throw an impulse charge.
+- **G** = auto-fire. **X** = countermeasure. **Y** = the Bomb power's letter (it throws the impulse charge while one is aboard).
+- **1–5** = the five powers (owner, 2026-10-22; `design/expansion/05_ASSET_ROSTER.md` §7.2): **1** Pull · **2** Shove
+  (also **R**; it also sets off armed ordnance) · **3** Pin · **4** Bomb · **5** Rig. **,** cycles ordnance.
 
 **Classic** (`classic`) keeps Q/E strafe with A/D yaw and is the 1.x parity scheme. **Helm Assist**
 (`helm-assist`) is the mouse-nose scheme the original draft of this section proposed: yaw keys are

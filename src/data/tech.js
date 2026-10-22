@@ -27,7 +27,7 @@ export const TECH_NODES = [
   {
     id: 'tech_guided_ordnance', name: 'Guided Ordnance', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 4000, rp: 7 },
-    unlocks: { modules: ['wpn_missile_rack_m', 'wpn_vector_mine_m'] },
+    unlocks: { modules: ['wpn_missile_rack_m'] },
   },
   {
     id: 'tech_plasma_dynamics', name: 'Plasma Dynamics', branch: 'combat', prereqs: ['tech_kinetic_drivers', 'tech_beam_focusing'],
@@ -141,7 +141,7 @@ export const TECH_NODES = [
     cost: { credits: 9000, rp: 12 },
     // SWARM-06: the Saucer left the research tree — it is earned in Swarm (Zone 3 boss) and
     // bought at shipyards off the crossover ledger. Graviton keeps its drives-family unlocks.
-    unlocks: { ships: [], modules: ['mod_engine_warp_l', 'mod_gravity_bumper_s', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
+    unlocks: { ships: [], modules: ['mod_engine_warp_l', 'mod_gravity_bumper_s'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],

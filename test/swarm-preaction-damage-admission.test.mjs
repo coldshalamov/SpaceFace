@@ -108,6 +108,9 @@ test('physical verbs count as pilot acts even with the combat stick enabled', ()
 
 test('rebound charge input latches admission before its one-shot action is consumed', () => {
   const h = harness();
+  // The Crucible opens with six impulse charges (swarmSupply); with one aboard the BOMB power
+  // throws the charge, and a charge remap saved under the old name drives it (five powers).
+  h.state.player.cargo.items.cmdty_impulse_charge = 6;
   h.state.settings.controls.bindings = { chargeThrow: ['KeyO'] };
   const host = Object.assign(Object.create(input), {
     _keys: { KeyO: true }, _ndc: { x: 0, y: 0 }, _screen: { x: 0, y: 0, active: false },

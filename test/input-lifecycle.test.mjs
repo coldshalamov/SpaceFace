@@ -210,22 +210,20 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     countermeasure: true,
     travelBurn: true,
     autoTarget: true,
-    chargeDetonate: true,
-    deployRepulsor: true,
-    dropBomb: true,
+    // The five powers (owner 2026-10-22) are the pad's ordnance and field verbs now.
+    shove: true,
+    bomb: true,
     cycleBomb: true,
     // FB-003 chord verbs carry the same neutral-sample guarantee.
     scanPulse: true,
     cruise: true,
     deployBeacon: true,
-    deployMassSeed: true,
-    deployWell: true,
-    toggleClearingCone: true,
-    toggleSkimCollector: true,
+    pin: true,
+    pull: true,
+    rig: true,
     siteBeam: true,
     bulletTime: true,
     cloak: true,
-    chargeThrow: true,
     jettisonLot: true,
     // The Gyre Snare pad chord (RB+Y) is a held verb: a grip carried across a dock or
     // tab-hide stays quarantined until a connected neutral sample.
@@ -306,23 +304,24 @@ test('gamepad lifecycle quarantine protects the detonation edge after resume', (
   host.gamepad = null;
   host.touch = null;
 
+  // SHOVE carries the detonation since the five powers (its pad seats are Y and D-Pad Down).
   host.releaseHeldControls('hidden');
-  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), false,
+  assert.equal(host._gamepadLifecycleActionAllowed('shove'), false,
     'a resumed held D-pad-down must not detonate ordnance');
 
   const connected = { isConnected: () => true };
   host._refreshGamepadLifecycleQuarantine(connected);
-  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), false,
+  assert.equal(host._gamepadLifecycleActionAllowed('shove'), false,
     'a missing action sample is not proof that the detonation button was released');
 
-  connected.actions = { chargeDetonate: { held: true } };
+  connected.actions = { shove: { held: true } };
   host._refreshGamepadLifecycleQuarantine(connected);
-  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), false,
+  assert.equal(host._gamepadLifecycleActionAllowed('shove'), false,
     'a reconnected held detonation button remains quarantined');
 
-  connected.actions.chargeDetonate.held = false;
+  connected.actions.shove.held = false;
   host._refreshGamepadLifecycleQuarantine(connected);
-  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), true,
+  assert.equal(host._gamepadLifecycleActionAllowed('shove'), true,
     'a connected neutral sample releases the detonation quarantine');
 });
 

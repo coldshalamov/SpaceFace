@@ -14,10 +14,13 @@ import {
   SWEEP_CIRCUMFERENCE,
   RAIL_SLOTS,
   BAND_DRIVE,
-  BAND_ORDNANCE,
-  BAND_FIELDWORK,
+  BAND_PULL,
+  BAND_SHOVE,
+  BAND_PIN,
   BAND_RIG,
   BAND_BAY,
+  BAND_LINE,
+  POWER_SLOT,
   CLAIM_SINGLE,
   CLAIM_PARTIAL,
   CLAIM_FULL,
@@ -44,22 +47,23 @@ function baseSlots(overrides = {}) {
   }));
 }
 
-test('the rank keeps nine keys and gives drifting bombs their own bay band', () => {
-  // FB-002: slot 0 rides ahead of the hotbar as the DRIVE state lamp — it owns no digit,
-  // so the rank is still the nine keys the player reaches for plus the latch socket.
-  assert.equal(RAIL_SLOTS.length, 10);
-  for (const [band, count] of [[BAND_DRIVE, 1], [BAND_ORDNANCE, 3], [BAND_FIELDWORK, 3], [BAND_RIG, 2], [BAND_BAY, 1]]) {
-    assert.equal(RAIL_SLOTS.filter((s) => s.band === band).length, count);
+test('the rank is the drive lamp, the five powers on 1–5, and the Line', () => {
+  // FB-002: slot 0 rides ahead of the hotbar as the DRIVE state lamp — it owns no digit. The
+  // five powers (owner 2026-10-22) replaced the nine overlapping verbs: each power is its own
+  // band, so the Cluster prints each by name.
+  assert.equal(RAIL_SLOTS.length, 7);
+  for (const band of [BAND_DRIVE, BAND_PULL, BAND_SHOVE, BAND_PIN, BAND_BAY, BAND_RIG, BAND_LINE]) {
+    assert.equal(RAIL_SLOTS.filter((s) => s.band === band).length, 1, band);
   }
-  assert.deepEqual(RAIL_SLOTS.map((s) => s.index), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(RAIL_SLOTS.map((s) => s.index), [0, 1, 2, 3, 4, 5, 6]);
   assert.equal(RAIL_SLOTS[0].action, 'travelBurn', 'slot 0 is the travel-drive latch');
 });
 
-test('FIELDWORK and RIG name the physics verbs that are actually bound today', () => {
-  const fieldwork = RAIL_SLOTS.filter((s) => s.band === BAND_FIELDWORK).map((s) => s.action);
-  assert.deepEqual(fieldwork, ['deployMassSeed', 'deployWell', 'deployRepulsor']);
-  const rig = RAIL_SLOTS.filter((s) => s.band === BAND_RIG).map((s) => s.action);
-  assert.deepEqual(rig, ['toggleClearingCone', 'toggleSkimCollector']);
+test('each socket names the power verb that is actually bound today', () => {
+  assert.deepEqual(RAIL_SLOTS.map((s) => s.action), ['travelBurn', 'pull', 'shove', 'pin', 'bomb', 'rig', 'tether']);
+  for (const [power, index] of Object.entries(POWER_SLOT)) {
+    assert.equal(RAIL_SLOTS[index].action, power === 'line' ? 'tether' : power, `${power} sits at ${index}`);
+  }
 });
 
 test('codeToLabel renders the key a player recognises, not the DOM code', () => {
@@ -81,17 +85,16 @@ test('codeToLabel never leaks a raw DOM code — modifier and punctuation keys g
 
 test('labels come from the live binding table, so a rebind moves the label', () => {
   const stock = resolveSlotLabels({
-    deployMassSeed: ['Digit4'], deployWell: ['Digit5'], deployRepulsor: ['Digit6'],
-    toggleClearingCone: ['Digit7'], toggleSkimCollector: ['Digit8'],
+    pull: ['Digit1'], shove: ['Digit2'], pin: ['Digit3'], bomb: ['Digit4'], rig: ['Digit5'],
   });
-  assert.equal(stock[4], '4');
-  assert.equal(stock[8], '8');
-  // Unbound ORDNANCE slots must not claim a key that does nothing.
-  assert.equal(stock[1], '');
+  assert.equal(stock[1], '1');
+  assert.equal(stock[5], '5');
+  // An unbound Line must not claim a key that does nothing.
+  assert.equal(stock[6], '');
 
-  const rebound = resolveSlotLabels({ deployMassSeed: ['KeyG'] });
-  assert.equal(rebound[4], 'G', 'a rebound verb relabels rather than lying about Digit4');
-  assert.equal(rebound[5], '', 'an action missing from the table has no label');
+  const rebound = resolveSlotLabels({ pin: ['KeyG'] });
+  assert.equal(rebound[3], 'G', 'a rebound verb relabels rather than lying about Digit3');
+  assert.equal(rebound[1], '', 'an action missing from the table has no label');
 });
 
 test('worstState escalates rather than averaging', () => {
@@ -158,7 +161,7 @@ test('a claim naming a slot that does not exist is ignored, not thrown', () => {
   const out = applyClaims(baseSlots(), [
     { claimId: 'bad', slots: [42], answers: ['Nope'], mode: CLAIM_PARTIAL },
   ], 1000);
-  assert.equal(out.slots.length, 10);
+  assert.equal(out.slots.length, RAIL_SLOTS.length);
   assert.ok(out.slots.every((s) => s.answer === null));
   // Slot 0 is not claimable either — a prompt that names it by index still cannot borrow the lamp.
   const lamp = applyClaims(baseSlots(), [
@@ -193,25 +196,25 @@ test('claims do not mutate the caller\'s slot model', () => {
 });
 
 test('the rank reads as one hotbar: a slot shows its own digit whenever the action carries it', () => {
-  // The defect this pins: the shelf is nine verbs and the player reads it as a 1–9 hotbar, but the
-  // ORDNANCE seat used to print Y/R/SPACE while 4–9 printed digits — so 1–3 looked bound and did
-  // nothing. Each seat prefers the digit that IS its rank when the action carries that code.
+  // The defect this pins: the player reads the shelf as a number-row hotbar, but a seat whose verb
+  // also carries a letter used to print the letter (Y/R) while its neighbours printed digits — so
+  // the row looked half-bound. Each seat prefers the digit that IS its rank when the action has it.
   const stock = resolveSlotLabels({
-    chargeThrow: ['KeyY', 'Digit1'], chargeDetonate: ['KeyR', 'Digit2'], tether: ['Space', 'KeyF', 'Digit3'],
-    deployMassSeed: ['Digit4'],
+    pull: ['Digit1'], shove: ['KeyR', 'Digit2'], pin: ['Digit3'], bomb: ['KeyY', 'Digit4'], tether: ['Space', 'KeyF'],
   });
   assert.equal(stock[1], '1');
   assert.equal(stock[2], '2');
   assert.equal(stock[3], '3');
   assert.equal(stock[4], '4');
-  // The legacy keys stay bound; they just do not own the label. The tip lists them all.
-  const keys = resolveSlotKeys({ chargeThrow: ['KeyY', 'Digit1'], tether: ['Space', 'KeyF', 'Digit3'] });
-  assert.equal(keys[1], '1 · Y');
-  assert.equal(keys[3], '3 · Space · F');
+  assert.equal(stock[6], 'Space', 'the Line has no digit of its own');
+  // The letter keys stay bound; they just do not own the label. The tip lists them all.
+  const keys = resolveSlotKeys({ bomb: ['KeyY', 'Digit4'], tether: ['Space', 'KeyF'] });
+  assert.equal(keys[4], '4 · Y');
+  assert.equal(keys[6], 'Space · F');
   // The label never invents a key: only the slot's own digit counts, and a digitless rebind
   // falls back to the primary code.
-  assert.equal(resolveSlotLabels({ chargeThrow: ['KeyY'] })[1], 'Y');
-  assert.equal(resolveSlotLabels({ chargeThrow: ['KeyY', 'Digit5'] })[1], 'Y');
+  assert.equal(resolveSlotLabels({ bomb: ['KeyY'] })[4], 'Y');
+  assert.equal(resolveSlotLabels({ bomb: ['KeyY', 'Digit5'] })[4], 'Y');
 });
 
 test('every verb carries its explanation bank, and a tip names the verb, the keys and the live state', () => {
@@ -221,8 +224,8 @@ test('every verb carries its explanation bank, and a tip names the verb, the key
     assert.ok(slotDescription(slot.index) === slot.description);
   }
   assert.equal(
-    railSlotTip({ name: 'Line', keys: '3 · Space · F', description: slotDescription(3), why: 'Ready' }),
-    'Line — throw the tether line onto a body and haul it — tap to latch or cut (3 · Space · F)\nReady',
+    railSlotTip({ name: 'Line', keys: 'Space · F', description: slotDescription(POWER_SLOT.line), why: 'Ready' }),
+    'Line — throw the tether line onto a body and haul it — tap to latch or cut (Space · F)\nReady',
   );
   assert.equal(railSlotTip({ name: 'Seed', description: 'goes somewhere' }), 'Seed — goes somewhere',
     'no keys and no state invent nothing');
@@ -236,14 +239,17 @@ test('readRailModel answers WHY a verb is not ready, not only that it is not', (
     entityList: [],
   };
   const model = readRailModel(state, 1);
-  const capacity = resolveImpulseChargeCapacity(state);
-  assert.equal(model[1].capacity, capacity);
-  assert.equal(model[1].why, `No impulse charges in cargo · up to ${capacity}`);
-  assert.equal(model[2].why, 'Nothing armed to detonate');
-  assert.equal(model[3].why, 'Ready');
-  assert.equal(model[5].why, 'Recharging — 3s');
-  assert.equal(model[7].why, 'Cone is on');
-  assert.equal(model[8].why, 'Only works grazing a planet band');
+  assert.equal(model[POWER_SLOT.pull].why, 'Recharging — 3s');
+  assert.equal(model[POWER_SLOT.shove].why, 'Ready', 'nothing armed: SHOVE is the repulsor, ready');
+  assert.equal(model[POWER_SLOT.pin].why, 'Ready');
+  assert.equal(model[POWER_SLOT.rig].why, 'Cone is on — press to fold it');
+  assert.equal(model[POWER_SLOT.line].why, 'Ready');
+  // With charges aboard the charge leads, and BOMB answers with the charge's capacity.
+  const charged = { ...state, player: { ...state.player, cargo: { items: { cmdty_impulse_charge: 2 } } } };
+  const capacity = resolveImpulseChargeCapacity(charged);
+  const bomb = readRailModel(charged, 1)[POWER_SLOT.bomb];
+  assert.equal(bomb.capacity, capacity);
+  assert.equal(bomb.why, `Ready · up to ${capacity}`);
   for (const slot of RAIL_SLOTS) {
     assert.ok(model[slot.index].why, `slot ${slot.index} must say why it reads as it does`);
   }

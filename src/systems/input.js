@@ -62,6 +62,7 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotIsActing } from './swarmSafety.js';
+import { POWER_VERBS, bombUsesCharge, powerVerbFor, resolveRigTarget, savedCodesForPower } from './powerVerbs.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
@@ -251,20 +252,32 @@ function stepTravelLatch(host, state, inp, dt, lineOwnsAxis = false) {
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 //
-// THE NUMBER ROW IS THE ORDNANCE HOTBAR (1–9). The rank on the HUD (powerRail.js / the ORRERY
-// Cluster's ordnance crescent) is nine verbs in four bands, and a player reads that shelf as a
-// hotbar — pressing 1–3 and getting nothing was the resulting defect. Digit1–3 therefore carry the
-// three ORDNANCE verbs alongside their original keys (Y/R/Space stay primary so nothing already
-// taught or remapped is lost; the digit is a real second code in the same multi-code array idiom
-// travelBurn already uses). Digit4–9 were already the deployable row.
+// THE NUMBER ROW IS THE FIVE POWERS (owner 2026-10-22, src/systems/powerVerbs.js). Eight
+// overlapping verbs (Charge, Blast, Seed, Well, Repel, Cone, Skim, Bomb) became five, one job
+// each: 1 PULL · 2 SHOVE · 3 PIN · 4 BOMB · 5 RIG. The rank on the HUD (powerRail.js / the ORRERY
+// Cluster's ordnance crescent) reads the same five in the same order, so the shelf is one hotbar.
+// R stays a second Shove key (it was the detonate key, and Shove now detonates), and the bomb
+// verb keeps the old charge-throw letter in each scheme. The Line is Space/F only now: its old
+// Digit3 alias went to Pin.
+//
+// The old verb names are still the internal action flags the owners consume; input turns each
+// power press into them below. They are also lookup aliases (see binding()), so every surface
+// that asks for an old name's key reads the power's key.
 //
 // Prompt answers still win the row while a decision is live: contactHail/promptDeck/wingmanRadial
 // capture and swallow their digits on document capture, and flight input is neutralized under
 // modals (`modalInputActive`) — the same slot-claim contract the rail was designed around.
 const VERB_BINDINGS = {
   siteBeam:       ['KeyB'],   // level: contextual beam for an explicitly selected World Site proxy
-  tether:         ['Space', 'KeyF', 'Digit3'], // PQ-003: Space primary, F retained as a permanent alias
-  chargeDetonate: ['KeyR', 'Digit2'],   // edge: detonate owned armed drift bombs and impulse charges
+  tether:         ['Space', 'KeyF'], // PQ-003: Space primary, F retained as a permanent alias
+  // The five powers (edges). PULL deploys the Well; SHOVE the Repulsor plus a detonation of every
+  // armed charge and drift bomb; PIN the anchor Mass Seed; RIG the cone or, in a planet band, the
+  // skim scoop. BOMB is per scheme (the scheme tables below) because it inherits the old
+  // charge-throw letter, which differs between schemes.
+  pull:           ['Digit1'],
+  shove:          ['Digit2', 'KeyR'],
+  pin:            ['Digit3'],
+  rig:            ['Digit5'],
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
   autopursuit:    [],         // retired; retained as an inert save/input compatibility field.
@@ -275,22 +288,6 @@ const VERB_BINDINGS = {
   // on the free left-pinky cluster next to WASD; both are rebindable like every other action.
   bulletTime:     ['CapsLock'],   // level: hold for time dilation (bulletTime system owns meter)
   cloak:          ['Backquote'],  // edge: toggle the cloak module (cloak system owns energy/gating)
-  // PQ-011/SF-11 deployable anchor Mass Seed. Every letter code is claimed (P alone would collide
-  // with the UI pause route), so the verb ships on Digit4: left-hand reachable off WASD, free
-  // repo-wide (Digit1–3 carry the ORDNANCE band; flight verbs are suppressed under modals),
-  // and rebindable like every other flight verb.
-  // Edge: launch the seed toward the aim point (massSeed system owns lifecycle/cooldown/cap).
-  deployMassSeed: ['Digit4'],
-  // PQ-012/SF-12 continuous field tools. Digit5-7 are free repo-wide (checked against both scheme
-  // tables and ui/bindings.js, same as Digit4), left-hand reachable off WASD, and rebindable like
-  // every flight verb. The fields system owns lifecycle/cooldown/cap for all three.
-  deployWell:         ['Digit5'], // edge: deploy an attractive Well at the aim point (PULL)
-  deployRepulsor:     ['Digit6'], // edge: drop a Repulsor at the ship (outward SHOVE)
-  toggleClearingCone: ['Digit7'], // edge: toggle the ship-attached forward Clearing Cone (snowplow)
-  // PQ-013/SF-14 planetary skim collector. Digit8 is free repo-wide (checked against both scheme
-  // tables and ui/bindings.js, same audit as Digit4-7) and sits with the deployable family. The
-  // planetRuntime system owns the collector state; yield is path x density, never a hold timer.
-  toggleSkimCollector: ['Digit8'], // edge: toggle the atmospheric skim collector (The Anvil bands)
   // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state).
   // Quote (') is free repo-wide (checked against both scheme tables, ui/bindings.js, and the
   // UI key router): every letter is claimed, and 'o' in particular was triple-claimed
@@ -299,13 +296,11 @@ const VERB_BINDINGS = {
   // hold to beam + hold the clump, release to bowl it; hold-to-toggle latch opt-in via
   // accessibility.holdToToggle.gyreSnare.
   gyreSnare:          ['Quote'],    // level: hold to pull/snag/grow a ball, release to bowl it
-  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Digit9 is free repo-wide (same audit as
-  // Digit4-8; Digit1-3 carry the ORDNANCE band) and completes the deployable row.
-  // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
-  // next to the deployable row as the bay's cycle key. The bombs system owns
-  // lifecycle/fuze/payload; both are ordinary rebindable edge verbs.
-  dropBomb:  ['Digit9'], // edge: release the selected drift bomb at current ship velocity
-  cycleBomb: ['Comma'],  // edge: cycle the bomb bay's selected payload
+  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Comma is free repo-wide (checked against both
+  // scheme tables and ui/bindings.js) and is the bay's cycle key: it turns between the sticky
+  // impulse charge (the BOMB default while one is aboard) and the loaded drift bombs. The bombs
+  // system owns lifecycle/fuze/payload/selection.
+  cycleBomb: ['Comma'],  // edge: cycle the ordnance (the charge, then the loaded rack cells)
   // VERB-13: one flight key dumps the selected hold lot as the payload body cargo already spawns.
   // Period is free of the verb tables and the UI bindings. Cargo owns the dump.
   jettisonLot: ['Period'],
@@ -337,7 +332,7 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   brake:    ['Digit0'],         // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
-  chargeThrow: ['KeyY', 'Digit1'],       // classic: Q/E are strafe and T is the tech-tree UI key, so throw lives on Y; Digit1 is the hotbar seat
+  bomb: ['Digit4', 'KeyY'],    // the BOMB power: Digit4 is its hotbar seat; Y is the old charge-throw letter (Q/E strafe, T is the tech tree)
   // VERB-14: the winch needs keys every player has. BracketLeft/Right are free repo-wide
   // (no flight verb, no UI shortcut, no help copy claims them) and sit as a natural in/out pair
   // on any layout. Rebindable like every other flight verb; the hold-grammar line-control path stays.
@@ -360,7 +355,7 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
   brake:    ['Digit0'],        // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
-  chargeThrow: ['KeyQ', 'Digit1'],
+  bomb: ['Digit4', 'KeyQ'],    // helm: Q is free (A/D strafe), the old charge-throw letter here
   reelIn:  ['BracketLeft'],
   reelOut: ['BracketRight'],
   ...VERB_BINDINGS,
@@ -378,7 +373,7 @@ export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fi
   brake:    ['Digit0'],              // dedicated zero-thrust brake; S/Down remains reverse + brake
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
-  chargeThrow: ['KeyY', 'Digit1'],             // Q/E are strafe here, so throw lives on Y (classic parity); Digit1 is the hotbar seat
+  bomb: ['Digit4', 'KeyY'],                    // Q/E are strafe here, so the bomb's letter is Y (classic parity); Digit4 is the hotbar seat
   reelIn:  ['BracketLeft'],
   reelOut: ['BracketRight'],
   ...VERB_BINDINGS,
@@ -426,10 +421,18 @@ export function projectPilotFlightControls({
 
 // Resolve the live binding for an action: player rebinds (settings) win, then the active scheme's
 // table, then classic defaults. Always returns an array of codes.
+//
+// An old power verb name (deployWell, chargeDetonate, dropBomb, …) resolves to the power that now
+// owns its key, so every surface still asking "which key fires X" reads the live power key. A
+// custom code a player saved under an old name keeps driving its power (powerVerbs.js); settings
+// only ever stores the actions a player changed, so an untouched save simply reads the new row.
 function binding(state, action) {
   const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
   const scheme = SCHEME_BINDINGS[activeScheme(state)];
-  const list = (cfg && cfg[action]) || scheme[action] || DEFAULT_BINDINGS[action];
+  const power = powerVerbFor(action);
+  const saved = power === action ? (cfg && cfg[action]) : undefined;
+  const custom = saved || (POWER_VERBS.includes(power) ? savedCodesForPower(cfg, power) : undefined);
+  const list = custom || scheme[power] || DEFAULT_BINDINGS[power];
   return Array.isArray(list) ? list : (list ? [list] : []);
 }
 
@@ -448,8 +451,9 @@ export const MOUSE_ACTION_LABELS = Object.freeze({ fire: 'LMB', mine: 'RMB' });
 /** Flight actions the default route teaches. Interface keys live in `src/ui/bindings.js`. */
 export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
-  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut', 'deployMassSeed',
-  'siteBeam', 'scanPulse', 'cruise', 'dropBomb', 'cycleBomb', 'chargeDetonate',
+  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut',
+  'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
+  'siteBeam', 'scanPulse', 'cruise',
 ]);
 
 /**
@@ -624,9 +628,8 @@ function applyFlightKeyTransition(keys, nextKeys) {
 
 // Verbs that must not collapse into the key map. Movement stays on the map itself.
 const SAMPLED_EDGE_ACTIONS = new Set([
-  'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'deployBeacon',
-  'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
-  'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
+  'tether', 'pull', 'shove', 'pin', 'bomb', 'rig', 'scanPulse', 'cruise', 'deployBeacon',
+  'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
 ]);
 
 // Pad verbs that must re-prove a deliberate press after a lifecycle reset (blur, dock, resume).
@@ -642,10 +645,10 @@ const GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS = Object.freeze([
 ]);
 
 const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
-  'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate', 'deployRepulsor',
-  'dropBomb', 'cycleBomb',
-  'scanPulse', 'cruise', 'deployBeacon', 'deployMassSeed', 'deployWell', 'toggleClearingCone',
-  'toggleSkimCollector', 'siteBeam', 'bulletTime', 'cloak', 'chargeThrow', 'jettisonLot',
+  'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'shove',
+  'bomb', 'cycleBomb',
+  'scanPulse', 'cruise', 'deployBeacon', 'pin', 'pull', 'rig',
+  'siteBeam', 'bulletTime', 'cloak', 'jettisonLot',
   // gyreSnare is a held pad chord (RB+Y): a grip held across a dock or tab-hide must not
   // re-fire the beam the moment the pad publishes again.
   'gyreSnare',
@@ -2047,30 +2050,36 @@ export const input = {
     // FB-003: every verb below also listens on its pad binding (stock chords or a player remap)
     // through the same quarantine gate the stock pad verbs already used. `_padEdge`/`_padHeld`
     // read gp.actions.<name>, which the chord layer resolves before this merge runs.
-    acts.chargeThrow = edge('chargeThrow') || this._padEdge(gp, 'chargeThrow');
-    acts.chargeDetonate = edge('chargeDetonate') || !!(gp && gp.isConnected()
-      && this._gamepadLifecycleActionAllowed('chargeDetonate')
-      && gp.actions.chargeDetonate && gp.actions.chargeDetonate.pressed);
+    // THE FIVE POWERS (owner 2026-10-22, powerVerbs.js). Each power press becomes the internal
+    // flags the owners already consume, so fields/massSeed/bombs/impulseCharges/planetRuntime are
+    // unchanged:
+    //   PULL  → deployWell
+    //   SHOVE → deployRepulsor + chargeDetonate (every armed charge and drift bomb goes off)
+    //   PIN   → deployMassSeed
+    //   BOMB  → chargeThrow while an impulse charge is aboard (unless the ordnance cycle chose a
+    //           drift bomb), else dropBomb
+    //   RIG   → toggleClearingCone, or toggleSkimCollector in a planet band (resolveRigTarget)
+    const pullEdge = edge('pull') || this._padEdge(gp, 'pull');
+    const shoveEdge = edge('shove') || this._padEdge(gp, 'shove');
+    const pinEdge = edge('pin') || this._padEdge(gp, 'pin');
+    const bombEdge = edge('bomb') || this._padEdge(gp, 'bomb');
+    const rigEdge = edge('rig') || this._padEdge(gp, 'rig');
+    const bombThrowsCharge = bombEdge && bombUsesCharge(state);
+    acts.chargeThrow = bombThrowsCharge;
+    acts.dropBomb = bombEdge && !bombThrowsCharge;
+    acts.chargeDetonate = shoveEdge;
     acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
     acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
     acts.autopursuit = false;
     acts.deployBeacon = edge('deployBeacon') || this._padEdge(gp, 'deployBeacon');
-    // PQ-011 anchor Mass Seed: ordinary edge verb (Digit4 default, rebindable like every flight verb).
-    acts.deployMassSeed = edge('deployMassSeed') || this._padEdge(gp, 'deployMassSeed');
-    // PQ-012 field tools: three ordinary edge verbs (Digit5-7 default, rebindable like every flight verb).
-    acts.deployWell = edge('deployWell') || this._padEdge(gp, 'deployWell');
-    acts.deployRepulsor = edge('deployRepulsor') || !!(gp && gp.isConnected()
-      && this._gamepadLifecycleActionAllowed('deployRepulsor')
-      && gp.actions.deployRepulsor && gp.actions.deployRepulsor.pressed);
-    acts.toggleClearingCone = edge('toggleClearingCone') || this._padEdge(gp, 'toggleClearingCone');
-    // PQ-013 skim collector: ordinary edge verb (Digit8 default, rebindable like every flight verb).
-    acts.toggleSkimCollector = edge('toggleSkimCollector') || this._padEdge(gp, 'toggleSkimCollector');
-    // Drift-bomb bay: two ordinary edge verbs (Digit9/Comma default, rebindable like every flight
-    // verb), OR-ed with the pad edges (dRight/dLeft default) behind the same lifecycle gate as
-    // travelBurn. The bombs system consumes them; input only reports the edges.
-    acts.dropBomb = edge('dropBomb') || !!(gp && gp.isConnected()
-      && this._gamepadLifecycleActionAllowed('dropBomb')
-      && gp.actions.dropBomb && gp.actions.dropBomb.pressed);
+    acts.deployMassSeed = pinEdge;
+    acts.deployWell = pullEdge;
+    acts.deployRepulsor = shoveEdge;
+    const rigTarget = rigEdge ? resolveRigTarget(state) : null;
+    acts.toggleClearingCone = rigTarget === 'cone';
+    acts.toggleSkimCollector = rigTarget === 'skim';
+    // Ordnance cycle (Comma / pad dLeft) behind the same lifecycle gate as travelBurn. The bombs
+    // system owns the selection, including the charge choice the BOMB power reads above.
     acts.cycleBomb = edge('cycleBomb') || !!(gp && gp.isConnected()
       && this._gamepadLifecycleActionAllowed('cycleBomb')
       && gp.actions.cycleBomb && gp.actions.cycleBomb.pressed);

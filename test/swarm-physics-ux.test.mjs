@@ -23,6 +23,7 @@ import {
   SURVIVAL_SPAWN_DISTANCE,
 } from '../src/systems/waveMaterialization.js';
 import {
+  POWER_SLOT,
   readRailModel,
   SWARM_LIVE_SLOTS,
   SWARM_WELL_OPPORTUNITY_MIN,
@@ -171,13 +172,14 @@ test('the Well pulses on a held pack and on a reachable clump — never on an em
   assert.equal(readRailModel(state, state.simTime)[SWARM_LIVE_SLOTS.well].live, undefined);
 });
 
-test('the arena shelf retires the planet-grazing verb and keeps the physics verbs', () => {
+test('the arena shelf never offers the planet-grazing scoop; RIG is the cone there', () => {
   const state = railState();
   const model = readRailModel(state, state.simTime);
-  assert.equal(model[8].state, 'locked');
-  assert.match(model[8].why, /no planet band/i);
-  // Cone stays: the sluice plows arena debris — real ammunition.
-  assert.equal(model[7].state, 'ready');
+  // Cone stays: the sluice plows arena debris — real ammunition. The scoop half of RIG needs a
+  // planet band and the arena has none, so the key never offers it (five powers, 2026-10-22).
+  assert.equal(model[POWER_SLOT.rig].state, 'ready');
+  assert.match(model[POWER_SLOT.rig].why, /clearing cone/i);
+  assert.doesNotMatch(model[POWER_SLOT.rig].why, /scoop/i);
 });
 
 test('the live flag flows through the Cluster ordnance model unchanged', () => {

@@ -141,10 +141,11 @@ function fixture() {
  return {state,touch,model:touch.mobile.model,host,calls,original:held};
 }
 test('adapter drives existing axes and action resolver without touching keyboard or entity',()=>{
- const f=fixture();begin(f.model);f.model.move(1,170,200,100);f.model.pulse('deployWell');const before=JSON.stringify(f.state.entities.get(1));
+ // The deck pulses the PULL power (five powers, owner 2026-10-22); input turns it into the well's flag.
+ const f=fixture();begin(f.model);f.model.move(1,170,200,100);f.model.pulse('pull');const before=JSON.stringify(f.state.entities.get(1));
  f.touch.tick(1/60,f.state,f.host);assert.equal(f.touch.axes.leftX,0);assert.equal(f.touch.axes.leftY,-1);
- assert.equal(f.host._held(f.state,'deployWell'),true);assert.deepEqual(f.host._keys,{});
- assert.equal(JSON.stringify(f.state.entities.get(1)),before);f.touch.tick(1/60,f.state,f.host);assert.equal(f.host._held(f.state,'deployWell'),false);
+ assert.equal(f.host._held(f.state,'pull'),true);assert.deepEqual(f.host._keys,{});
+ assert.equal(JSON.stringify(f.state.entities.get(1)),before);f.touch.tick(1/60,f.state,f.host);assert.equal(f.host._held(f.state,'pull'),false);
 });
 test('virtual gun held feeds the real touch fire channel',()=>{
  const f=fixture();begin(f.model,'fire');f.touch.tick(1/60,f.state,f.host);
@@ -176,7 +177,8 @@ test('disabling mobile restores original host methods and releases keys',()=>{
 });
 test('all four power banks have distinct, described choices',()=>{
  // 24 -> 25: gyreSnare joins the Ordnance page (gyre wave-63 touch-deck reachability).
- assert.equal(POWER_PAGES.length,4);assert.equal(new Set(POWER_PAGES.flatMap(p=>p.powers.map(x=>x.id))).size,25);
+ // 25 -> 22: the five powers (owner 2026-10-22) replace eight ordnance/field verbs.
+ assert.equal(POWER_PAGES.length,4);assert.equal(new Set(POWER_PAGES.flatMap(p=>p.powers.map(x=>x.id))).size,22);
  for(const p of POWER_PAGES)for(const a of p.powers)assert.ok(a.description&&a.id&&a.label);
 });
 

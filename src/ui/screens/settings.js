@@ -240,12 +240,14 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // Flight actions the player may rebind. Mouse buttons stay out of the grid; Space is the
 // new-profile Massline primary and F remains its permanent alias.
 export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
-  'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
+  'brake', 'siteBeam', 'tether',
+  // The five powers (owner 2026-10-22, src/systems/powerVerbs.js), in number-row order.
+  'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
+  'scanPulse', 'cruise', 'reelIn', 'reelOut', 'bulletTime', 'cloak', 'travelBurn',
   // The rest of the live bound verbs: rebindable in data (input.js VERB_BINDINGS; countermeasure
   // sits in the scheme tables) but until now with no row here — "rebindable in data but no row
   // is not rebindable to a player" (below).
-  'countermeasure', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot', 'gyreSnare'];
+  'countermeasure', 'deployBeacon', 'jettisonLot', 'gyreSnare'];
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -258,8 +260,11 @@ export const REBIND_LABELS = {
   brake: 'Brake (0; S / Down also reverse)',
   siteBeam: 'World Site beam (selected target)',
   tether: 'Massline: tap latch/cut; hold line control',
-  chargeThrow: 'Impulse charge: throw',
-  chargeDetonate: 'Ordnance: detonate armed bombs and charges',
+  pull: 'Pull: gravity well at your aim',
+  shove: 'Shove: outward blast + set off armed ordnance',
+  pin: 'Pin: anchor seed for the Line',
+  bomb: 'Bomb: sticky charge, or the chosen drift bomb',
+  rig: 'Rig: clearing cone / skim scoop',
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   reelIn: 'Tether winch in',
@@ -268,20 +273,11 @@ export const REBIND_LABELS = {
   cloak: 'Cloak toggle',
   // W1-5. A latch that is rebindable in data but has no row here is not rebindable to a player.
   travelBurn: 'Travel drive (burn latch)',
-  // PQ-011. Keyboard verb (same reachability posture as the impulse-charge verbs): no standard
-  // gamepad button remains unclaimed, so the pad row stays unbound rather than commandeered.
-  deployMassSeed: 'Anchor Mass Seed: deploy',
-  // PQ-012 continuous field tools.
-  deployWell: 'Field: deploy attractive Well',
-  deployRepulsor: 'Field: deploy Repulsor',
-  toggleClearingCone: 'Field: toggle Clearing Cone',
   // The Gyre Snare is a held verb: grip to beam/hold, release to bowl the clump.
   gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
-  dropBomb: 'Bomb bay: drop bomb',
-  cycleBomb: 'Bomb bay: cycle payload',
+  cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
   // Labels mirror the pad grid's names for the same verbs (one verb, one name across devices).
   countermeasure: 'Countermeasure',
-  toggleSkimCollector: 'Field: toggle skim collector',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
 };
@@ -291,15 +287,15 @@ export const REBIND_LABELS = {
 // the chord layer: every keyboard flight verb has a pad route, and capture accepts a held
 // modifier + a tapped key as a 'mod+key' chord.
 export const GAMEPAD_REBINDABLE = [
-  'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
-  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
-  'scanPulse', 'cruise', 'bulletTime', 'cloak', 'chargeThrow', 'siteBeam', 'deployMassSeed', 'deployWell',
-  'toggleClearingCone', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView',
+  'accept', 'cancel', 'massline', 'dock', 'shove', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
+  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'bomb', 'cycleBomb', 'tabPrev', 'tabNext',
+  'scanPulse', 'cruise', 'bulletTime', 'cloak', 'siteBeam', 'pin', 'pull',
+  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
   dock: 'Dock (when prompted)',
-  deployRepulsor: 'Shove (repulsor)',
+  shove: 'Shove: outward blast + set off armed ordnance',
   cancel: 'Back / cancel',
   massline: 'Massline: tap latch/cut; hold line control',
   fire: 'Fire',
@@ -314,22 +310,19 @@ export const GAMEPAD_REBIND_LABELS = {
   pause: 'Pause menu',
   countermeasure: 'Countermeasure',
   travelBurn: 'Travel drive (burn latch)',
-  chargeDetonate: 'Ordnance: detonate armed bombs and charges',
   tabPrev: 'Station tab: previous',
   tabNext: 'Station tab: next',
-  dropBomb: 'Bomb bay: drop bomb',
-  cycleBomb: 'Bomb bay: cycle payload',
+  bomb: 'Bomb: sticky charge, or the chosen drift bomb',
+  cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
   // FB-003 chord layer — stock seats live on LB (survey/deploy) and RB (combat-state) chords.
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   bulletTime: 'Bullet time (hold)',
   cloak: 'Cloak toggle',
-  chargeThrow: 'Impulse charge: throw',
   siteBeam: 'World Site beam (selected target)',
-  deployMassSeed: 'Anchor Mass Seed: deploy',
-  deployWell: 'Field: deploy attractive Well',
-  toggleClearingCone: 'Field: toggle Clearing Cone',
-  toggleSkimCollector: 'Field: toggle skim collector',
+  pin: 'Pin: anchor seed for the Line',
+  pull: 'Pull: gravity well at your aim',
+  rig: 'Rig: clearing cone / skim scoop',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
   gyreSnare: 'Gyre Snare: hold to lash, release to bowl',

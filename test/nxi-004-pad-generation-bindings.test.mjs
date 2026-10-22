@@ -145,7 +145,7 @@ test('NXI-004 under a different resolved map only B\'s fresh mapping is accepted
     assert.equal(gp._mapCache.map.cancel[0], 'alt', 'the fresh map, not A\'s, resolved');
     assert.equal(gp.actions.cancel.held, false,
       'B\'s held B/Circle means nothing under the new map — the old seat is unbound');
-    assert.equal(gp.actions.deployRepulsor.held, false);
+    assert.equal(gp.actions.shove.held, false, 'Y is SHOVE in flight (five powers); nothing is held on it');
 
     padsRef.pads = [fakePad('pad-b', [0, 0, 0, 0], [])]; // B lets go of everything
     tick();

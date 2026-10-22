@@ -1,5 +1,6 @@
 // §22 E1 — thrust, brake, rope, shove, fire, and dock each have their own pad control.
-// No chord. The flight owner reads shove the same way the keyboard edge does.
+// No chord. The flight owner reads shove the same way the keyboard edge does. Since the five powers
+// (owner 2026-10-22) the pad action is SHOVE; it still drives the repulsor's internal flag.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -29,7 +30,7 @@ test('the six flight verbs do not share a button or a chord', () => {
   claim('thrust', 'axis:left');
   claim('brake', GAMEPAD_DEFAULT_BINDINGS.brake[0]);
   claim('rope', GAMEPAD_DEFAULT_BINDINGS.massline[0]);
-  claim('shove', GAMEPAD_DEFAULT_BINDINGS.deployRepulsor[0]);
+  claim('shove', GAMEPAD_DEFAULT_BINDINGS.shove[0]);
   claim('fire', GAMEPAD_DEFAULT_BINDINGS.fire[0]);
   claim('dock', GAMEPAD_DEFAULT_BINDINGS.dock[0]);
   assert.deepEqual(CORE.map((row) => row[1]), ['axis', 'l1', 'accept', 'alt', 'r2', 'cancel']);
@@ -49,7 +50,7 @@ test('a pad shove reaches state.input the way the keyboard edge does', () => {
   const gp = {
     axes: { leftX: 0, leftY: -1, rightX: 0, rightY: 0, l2: 0, r2: 0 },
     actions: {
-      deployRepulsor: { held: true, pressed: true, released: false, value: 1 },
+      shove: { held: true, pressed: true, released: false, value: 1 },
       brake: { held: false, pressed: false, released: false, value: 0 },
       fire: { held: true, pressed: false, released: false, value: 1 },
       massline: { held: false, pressed: false, released: false, value: 0 },
@@ -74,7 +75,7 @@ test('a pad shove reaches state.input the way the keyboard edge does', () => {
   assert.ok(state.input.moveZ > 0, 'thrust is the left stick');
   gp.actions.brake = { held: true, pressed: true, released: false, value: 1 };
   gp.axes.leftY = 0;
-  gp.actions.deployRepulsor = { held: false, pressed: false, released: true, value: 0 };
+  gp.actions.shove = { held: false, pressed: false, released: true, value: 0 };
   host.update(1 / 60, state);
   assert.equal(state.input.brake, true, 'brake');
 });

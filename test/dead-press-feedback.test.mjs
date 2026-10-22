@@ -11,6 +11,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { bombs } from '../src/systems/bombs.js';
 import { planetRuntime } from '../src/systems/planetRuntime.js';
+import { fields } from '../src/systems/fields.js';
 
 function toastRecorder() {
   const bus = createBus();
@@ -45,7 +46,11 @@ test('a throw with no charges in cargo names the shortage', () => {
   assert.deepEqual(seen, ['No impulse charges in cargo']);
 });
 
-test('a detonate press with neither the charge net nor the bomb net armed says so once', () => {
+// SHOVE (five powers, owner 2026-10-22) is one press for two owners: it sets off armed ordnance
+// AND drops the repulsor. The bomb bay no longer answers "Nothing armed" — the repulsor half
+// always answers (it fires, or names its recharge) — and a press that did set ordnance off is
+// never answered with a recharge warning.
+test('a SHOVE press with nothing armed leaves the answer to the repulsor', () => {
   const { bus, seen } = toastRecorder();
   const player = { id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {} };
   const state = {
@@ -60,7 +65,47 @@ test('a detonate press with neither the charge net nor the bomb net armed says s
   system._collect = () => {};
   system._tickBombs = () => {};
   system.update(1 / 60, state);
-  assert.deepEqual(seen, ['Nothing armed to detonate']);
+  assert.deepEqual(seen, [], 'the bay stays quiet: the repulsor owns the answer');
+});
+
+function repulsorHarness() {
+  const { bus, seen } = toastRecorder();
+  const player = { id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, flags: {}, data: {} };
+  const state = { mode: 'flight', playerId: 1, simTime: 5, tick: 300, entities: new Map([[1, player]]), entityList: [player] };
+  const system = Object.create(fields);
+  system.state = state;
+  system.bus = bus;
+  system._noteShoveDetonation = fields._noteShoveDetonation;
+  bus.on('bombs:commanded', (p) => system._noteShoveDetonation(p));
+  bus.on('charge:detonated', (p) => { if (p && p.trigger === 'manual') system._noteShoveDetonation(p); });
+  const rt = { cooldowns: { repulsor: 9 } };
+  return { bus, seen, state, system, rt };
+}
+
+test('a SHOVE press on a cooling repulsor names the recharge', () => {
+  const { seen, state, system, rt } = repulsorHarness();
+  system._deployRadial(state, rt, 'repulsor');
+  assert.deepEqual(seen, ['Repulsor recharging — 4s']);
+});
+
+test('a SHOVE press that set off armed ordnance is not answered with a recharge warning', () => {
+  for (const [event, payload] of [
+    ['bombs:commanded', { ownerId: 1, count: 2, tick: 300 }],
+    ['charge:detonated', { ownerId: 1, trigger: 'manual' }],
+  ]) {
+    const { bus, seen, state, system, rt } = repulsorHarness();
+    bus.emit(event, payload);
+    system._deployRadial(state, rt, 'repulsor');
+    assert.deepEqual(seen, [], `${event}: the press already worked`);
+    assert.equal(rt.lastDenial.reason, 'cooldown', 'the denial is still recorded for the HUD');
+  }
+  // A charge someone else set off, or one that blew on proximity, is not this press.
+  for (const payload of [{ ownerId: 2, trigger: 'manual' }, { ownerId: 1, trigger: 'proximity' }]) {
+    const { bus, seen, state, system, rt } = repulsorHarness();
+    bus.emit('charge:detonated', payload);
+    system._deployRadial(state, rt, 'repulsor');
+    assert.deepEqual(seen, ['Repulsor recharging — 4s']);
+  }
 });
 
 test('the skim toggle answers away from a planet band and is wired to the no-site return', () => {

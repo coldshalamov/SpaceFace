@@ -23,33 +23,39 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
   assert.deepEqual(stock.find(([label]) => label === 'Chase / overhead camera'),
     ['Chase / overhead camera', null, 'LB / L1 + View / Select']);
   assert.deepEqual(stock[2], ['Fire', null, 'RT / R2']);
-  assert.deepEqual(stock[6], ['Shove (repulsor)', null, 'Y / △']);
+  // The five powers (owner 2026-10-22): SHOVE took both the repulsor's Y and the old detonate's
+  // D-Pad Down, so either button shoves (and sets off armed ordnance).
+  assert.deepEqual(stock[6], ['Shove (repulsor; sets off armed ordnance)', null, 'Y / △ or D-Pad Down']);
   assert.deepEqual(stock[7], ['Accept / confirm', null, 'A / Cross']);
   assert.deepEqual(stock[8], ['Massline', null, 'A / Cross']);
+  assert.deepEqual(stock[10], ['Bomb (selected ordnance)', null, 'D-Pad Right']);
+  assert.deepEqual(stock[11], ['Cycle ordnance', null, 'D-Pad Left']);
   assert.deepEqual(stock[13], ['Open star-map', null, 'View / Select']);
   assert.deepEqual(stock[17], ['Dock / activate', null, 'B / ○ (when prompted)']);
   assert.deepEqual(stock[19], ['Station tab: previous', null, 'LB / L1']);
   assert.deepEqual(stock[20], ['Station tab: next', null, 'RB / R1']);
   assert.deepEqual(stock[21], ['Travel burn', null, 'L3']);
   assert.deepEqual(stock[22], ['Auto-target', null, 'D-Pad Up']);
-  assert.deepEqual(stock[23], ['Detonate charge', null, 'D-Pad Down']);
   // FB-003 chord layer: the dual register prints both halves of each chord.
-  assert.deepEqual(stock[24], ['Throw impulse charge', null, 'RB / R1 + D-Pad Left']);
-  assert.deepEqual(stock[28], ['Scanner pulse', null, 'LB / L1 + D-Pad Up']);
-  assert.deepEqual(stock[35], ['Jettison cargo lot', null, 'RB / R1 + Guide']);
+  assert.deepEqual(stock[23], ['Cloak', null, 'RB / R1 + D-Pad Down']);
+  assert.deepEqual(stock[26], ['Scanner pulse', null, 'LB / L1 + D-Pad Up']);
+  assert.deepEqual(stock[27], ['Pin (anchor seed)', null, 'LB / L1 + D-Pad Down']);
+  assert.deepEqual(stock[28], ['Pull (gravity well)', null, 'LB / L1 + D-Pad Left']);
+  assert.deepEqual(stock[29], ['Rig (clearing cone / skim scoop)', null, 'LB / L1 + D-Pad Right']);
+  assert.deepEqual(stock[32], ['Jettison cargo lot', null, 'RB / R1 + Guide']);
   const taught = [
     ['fire', 'Fire'], ['mine', 'Mine beam'], ['boost', 'Boost'], ['brake', 'Brake / reverse'],
-    ['deployRepulsor', 'Shove (repulsor)'], ['accept', 'Accept / confirm'], ['massline', 'Massline'],
-    ['countermeasure', 'Countermeasure'], ['dropBomb', 'Drop bomb'], ['cycleBomb', 'Cycle bomb-bay payload'],
+    ['shove', 'Shove (repulsor; sets off armed ordnance)'], ['accept', 'Accept / confirm'], ['massline', 'Massline'],
+    ['countermeasure', 'Countermeasure'], ['bomb', 'Bomb (selected ordnance)'], ['cycleBomb', 'Cycle ordnance'],
     ['cycleTarget', 'Cycle target'], ['map', 'Open star-map'], ['codex', 'Open codex'],
     ['pause', 'Pause'], ['dock', 'Dock / activate'], ['cancel', 'Cancel / back'],
     ['tabPrev', 'Station tab: previous'], ['tabNext', 'Station tab: next'], ['travelBurn', 'Travel burn'],
-    ['autoTarget', 'Auto-target'], ['chargeDetonate', 'Detonate charge'],
+    ['autoTarget', 'Auto-target'],
     // FB-003 chord layer — every keyboard flight verb now has a pad seat.
-    ['scanPulse', 'Scanner pulse'], ['deployMassSeed', 'Anchor Mass Seed'],
-    ['deployWell', 'Deploy attractive Well'], ['toggleClearingCone', 'Clearing Cone'],
-    ['toggleSkimCollector', 'Skim collector'], ['siteBeam', 'World Site beam'],
-    ['bulletTime', 'Bullet time'], ['cloak', 'Cloak'], ['chargeThrow', 'Throw impulse charge'],
+    ['scanPulse', 'Scanner pulse'], ['pin', 'Pin (anchor seed)'],
+    ['pull', 'Pull (gravity well)'], ['rig', 'Rig (clearing cone / skim scoop)'],
+    ['siteBeam', 'World Site beam'],
+    ['bulletTime', 'Bullet time'], ['cloak', 'Cloak'],
     ['cruise', 'Cruise drive'], ['deployBeacon', 'Deploy nav beacon'],
     ['jettisonLot', 'Jettison cargo lot'],
     ['gyreSnare', 'Gyre Snare (hold: lash; release: bowl)'],

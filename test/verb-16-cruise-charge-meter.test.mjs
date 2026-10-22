@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
-import { readRailModel } from '../src/ui/powerRail.js';
+import { RAIL_SLOTS, readRailModel } from '../src/ui/powerRail.js';
 import { cruise, cruiseChargeProgress } from '../src/systems/cruise.js';
 
 function boot() {
@@ -78,7 +78,7 @@ test('seed-4242 drive: V starts the spool, 0→1 rises over the charge, then eng
 test('existing slots are untouched by the cruise meter', () => {
   const state = boot();
   const model = readRailModel(state, state.simTime || 0);
-  for (let i = 1; i <= 9; i++) assert.ok(model[i] && typeof model[i].state === 'string', `slot ${i} still reads`);
+  for (const { index: i } of RAIL_SLOTS) assert.ok(model[i] && typeof model[i].state === 'string', `slot ${i} still reads`);
 });
 
 test('pressure log stays bounded under beam-rate fire', () => {

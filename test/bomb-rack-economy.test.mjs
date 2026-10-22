@@ -137,9 +137,9 @@ test('cycle walks only fitted, loaded sockets — hangar stock is never cyclable
   try {
     t.state.bombs.stock.bomb_emp = 5; // owned but never fitted
     for (let i = 0; i < 3; i++) { t.press('cycleBomb'); t.tick(1); }
-    assert.deepEqual(t.cycles.map((c) => c.payloadId), ['bomb_concussion', 'bomb_frag', 'bomb_concussion']);
-    assert.equal(t.state.bombs.selectedId, 'bomb_concussion');
-    // Unfit the concussion cell dock-side: a one-payload rack wraps onto itself.
+    assert.deepEqual(t.cycles.map((c) => c.payloadId), ['bomb_goo', 'bomb_frag', 'bomb_goo']);
+    assert.equal(t.state.bombs.selectedId, 'bomb_goo');
+    // Unfit the goo cell dock-side: a one-payload rack wraps onto itself.
     t.dock();
     t.bus.emit('ui:unfitPayload', { socketIndex: 1 });
     t.undock();
@@ -153,7 +153,7 @@ test('cycle walks only fitted, loaded sockets — hangar stock is never cyclable
 test('depletion advances in socket order, not back to the first loaded socket', () => {
   const t = rackScenario();
   try {
-    // Three sockets: 0 frag, 1 concussion, 2 EMP. Deplete the MIDDLE one — the next loaded
+    // Three sockets: 0 frag, 1 goo, 2 EMP. Deplete the MIDDLE one — the next loaded
     // socket in circular order is EMP (socket 2), not the frag at socket 0.
     t.dock();
     t.state.player.credits += BOMB_RACK.socketUpgradeCr + BOMB_DEFS.bomb_emp.price;
@@ -161,13 +161,13 @@ test('depletion advances in socket order, not back to the first loaded socket', 
     t.bus.emit('ui:buyPayload', { payloadId: 'bomb_emp', units: 1 });
     t.bus.emit('ui:fitPayload', { socketIndex: 2, payloadId: 'bomb_emp' });
     assert.equal(t.cell('bomb_emp').count, 1);
-    t.state.bombs.selectedId = 'bomb_concussion';
-    const concussion = t.cell('bomb_concussion');
-    concussion.count = 1;
+    t.state.bombs.selectedId = 'bomb_goo';
+    const goo = t.cell('bomb_goo');
+    goo.count = 1;
     t.state.simTime += 10; // clear the payload cooldown for the fixture
-    const bomb = t.sys.drop(t.player, 'bomb_concussion', t.state);
+    const bomb = t.sys.drop(t.player, 'bomb_goo', t.state);
     assert.ok(bomb);
-    assert.equal(t.cell('bomb_concussion').count, 0);
+    assert.equal(t.cell('bomb_goo').count, 0);
     assert.equal(t.state.bombs.selectedId, 'bomb_emp',
       'selection advanced to the next loaded socket in rack order');
     assert.equal(t.cycles[t.cycles.length - 1].index, 2, 'the cycle receipt names socket 2');
@@ -188,7 +188,7 @@ test('a drop consumes one loaded unit; a dry rack refuses the verb and toasts on
     assert.ok(last);
     assert.equal(t.cell('bomb_frag').count, 0);
     assert.equal(t.cell('bomb_frag').id, 'bomb_frag', 'a dry socket keeps its fit for dock-side restock');
-    assert.equal(t.state.bombs.selectedId, 'bomb_concussion');
+    assert.equal(t.state.bombs.selectedId, 'bomb_goo');
     // Drain the rack entirely: the verb answers with a toast and drops nothing.
     t.state.bombs.rack.cells[1].count = 0;
     const droppedBefore = t.dropped.length, toastsBefore = t.toasts.length;
@@ -197,8 +197,8 @@ test('a drop consumes one loaded unit; a dry rack refuses the verb and toasts on
     assert.equal(t.state.bombs.selectedId, null);
     assert.ok(t.toasts.slice(toastsBefore).some((x) => /rack empty/i.test(x.text)));
     // The player cannot reach unfitted ordnance directly either.
-    assert.equal(t.sys.drop(t.player, 'bomb_goo', t.state), null);
-    assert.ok(t.denied.some((d) => d.reason === 'not_loaded' && d.payloadId === 'bomb_goo'));
+    assert.equal(t.sys.drop(t.player, 'bomb_emp', t.state), null);
+    assert.ok(t.denied.some((d) => d.reason === 'not_loaded' && d.payloadId === 'bomb_emp'));
   } finally { t.close(); }
 });
 
@@ -238,18 +238,18 @@ test('payload cooldowns are per-payload and survive cycles, sector sweeps and do
     t.sys.drop(t.player, 'bomb_frag', t.state);
     const fragUntil = t.state.bombs.cooldowns.bomb_frag;
     assert.ok(fragUntil > t.state.simTime);
-    // Cycling to concussion does not touch frag's clock, and concussion itself is hot.
+    // Cycling to goo does not touch frag's clock, and goo itself is hot.
     t.press('cycleBomb'); t.tick(1);
-    assert.equal(t.state.bombs.selectedId, 'bomb_concussion');
+    assert.equal(t.state.bombs.selectedId, 'bomb_goo');
     assert.equal(t.state.bombs.cooldowns.bomb_frag, fragUntil);
     t.state.simTime += 1; // past the shared release latch
-    const conc = t.sys.drop(t.player, 'bomb_concussion', t.state);
-    assert.ok(conc, 'an uncooled fitted payload drops while frag is still cooling');
+    const gooDrop = t.sys.drop(t.player, 'bomb_goo', t.state);
+    assert.ok(gooDrop, 'an uncooled fitted payload drops while frag is still cooling');
     assert.ok(t.state.bombs.cooldowns.bomb_frag > t.state.simTime, 'frag still on its own clock');
     // Sector/dock sweeps release live entities but never the payload clocks.
     t.bus.emit('sector:exit'); t.bus.emit('sector:enter');
     assert.equal(t.state.bombs.cooldowns.bomb_frag, fragUntil);
-    assert.equal(t.state.bombs.cooldowns.bomb_concussion, t.state.bombs.cooldowns.bomb_concussion);
+    assert.equal(t.state.bombs.cooldowns.bomb_goo, t.state.bombs.cooldowns.bomb_goo);
     // Frag cannot drop again until its own cooldown passes.
     t.state.bombs.selectedId = 'bomb_frag';
     assert.equal(t.sys.drop(t.player, 'bomb_frag', t.state), null, 'still cooling');

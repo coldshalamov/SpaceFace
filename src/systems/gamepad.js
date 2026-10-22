@@ -7,6 +7,7 @@ import {
   worldFeelHaptic,
   worldFeelTick,
 } from '../audio/worldFeelSeams.js';
+import { POWER_VERBS, POWER_VERB_ALIASES, savedCodesForPower } from './powerVerbs.js';
 
 // Gamepad polling layer (goal P1-12).
 //
@@ -93,7 +94,9 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   brake: Object.freeze(['l1']),
   // §22 E1: shove is its own face button. Y used to open the codex; the codex stays on the
   // guide button and inside Pause, so a fight never needs a chord to drop the repulsor.
-  deployRepulsor: Object.freeze(['alt']),
+  // The five powers (owner 2026-10-22, powerVerbs.js): SHOVE keeps Y and gains the old detonate
+  // D-pad down, because Shove now sets off armed ordnance too.
+  shove: Object.freeze(['alt', 'dDown']),
   cycleTarget: Object.freeze(['action']),
   autoTarget: Object.freeze(['dUp']),
   map: Object.freeze(['view']),
@@ -116,9 +119,9 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). D-right releases the selected bomb; d-left
   // cycles the payload. Both are edges; the bombs system owns cooldown/fuze/lifecycle. dUp stays
   // auto-target; the free d-pad wings are exactly the deployable-shaped pair.
-  dropBomb: Object.freeze(['dRight']),
+  // BOMB throws the sticky charge while one is aboard, else the chosen drift bomb; D-left cycles it.
+  bomb: Object.freeze(['dRight']),
   cycleBomb: Object.freeze(['dLeft']),
-  chargeDetonate: Object.freeze(['dDown']), // flight only; UI navigation remains modal-owned
   // FB-003 — the chord layer. Hold LB or RB and tap the second button; the modifier's own verb
   // keeps working (you can brake while pinging), and the chorded button's solo verb is held off
   // only while that button is down — releasing it re-arms the solo on the next press. LB is the
@@ -127,14 +130,12 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   // D-pad up is already autoTarget/draw-to-fly — and reel is the left stick while the Massline
   // line-control owns the axis. Every verb is rebindable under Settings → Controls.
   scanPulse: Object.freeze(['l1+dUp']),           // LB layer: scanner ping, "look up"
-  deployMassSeed: Object.freeze(['l1+dDown']),    // LB layer: set the anchor seed, "plant it"
-  deployWell: Object.freeze(['l1+dLeft']),        // LB layer: pull field, left hand shape
-  toggleClearingCone: Object.freeze(['l1+dRight']),// LB layer: the snowplow, right hand shape
-  toggleSkimCollector: Object.freeze(['l1+alt']), // LB+Y: the harvest tool under the brake hand
+  pin: Object.freeze(['l1+dDown']),               // LB layer: PIN the anchor seed, "plant it"
+  pull: Object.freeze(['l1+dLeft']),              // LB layer: PULL, the well, left hand shape
+  rig: Object.freeze(['l1+dRight']),              // LB layer: RIG, the cone or the skim scoop
   siteBeam: Object.freeze(['l1+action']),         // LB+X: the contextual world-site beam
   bulletTime: Object.freeze(['r1+dUp']),          // RB layer: time dilation, "slow up"
   cloak: Object.freeze(['r1+dDown']),             // RB layer: cloak engages, "drop out of sight"
-  chargeThrow: Object.freeze(['r1+dLeft']),       // RB layer: throw a plate behind the charge
   cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
   deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
   jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
@@ -303,6 +304,8 @@ export const GAMEPAD_VERB_ALIASES = Object.freeze({
   autoFire: 'autoTarget',
   reelIn: 'lineControl',
   reelOut: 'lineControl',
+  // The five powers (owner 2026-10-22): an old power verb's pad route is its power's binding.
+  ...POWER_VERB_ALIASES,
 });
 
 // --- Remapping (PQ-164.01) -------------------------------------------------------------------
@@ -325,23 +328,20 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   autoTarget: 'flight',
   countermeasure: 'flight',
   travelBurn: 'flight',
-  dropBomb: 'flight',
+  bomb: 'flight',
   cycleBomb: 'flight',
-  chargeDetonate: 'flight',
   massline: 'flight',
-  deployRepulsor: 'flight',
+  shove: 'flight',
   dock: 'flight',
   // FB-003 chord-layer verbs are all flight-only: a modal owns the stick and the bumpers, so no
   // chord may reach through a screen.
   scanPulse: 'flight',
-  deployMassSeed: 'flight',
-  deployWell: 'flight',
-  toggleClearingCone: 'flight',
-  toggleSkimCollector: 'flight',
+  pin: 'flight',
+  pull: 'flight',
+  rig: 'flight',
   siteBeam: 'flight',
   bulletTime: 'flight',
   cloak: 'flight',
-  chargeThrow: 'flight',
   cruise: 'flight',
   deployBeacon: 'flight',
   jettisonLot: 'flight',
@@ -382,9 +382,17 @@ export function findGamepadBindConflict(map, action, stdName) {
  * the frozen default map — callers on the hot tick path must not allocate.
  */
 export function resolveGamepadBindings(settings) {
-  const custom = settings && settings.controls && settings.controls.gamepad
+  const stored = settings && settings.controls && settings.controls.gamepad
     ? settings.controls.gamepad.bindings : null;
-  if (!custom || typeof custom !== 'object' || Array.isArray(custom)) return ACTION_MAP;
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return ACTION_MAP;
+  // A pad remap saved before the five powers names the old verbs (deployWell, dropBomb, …).
+  // Carry each one to the power that owns its button now, unless the power has its own entry.
+  const custom = { ...stored };
+  for (const power of POWER_VERBS) {
+    if (Object.prototype.hasOwnProperty.call(custom, power)) continue;
+    const legacy = savedCodesForPower(stored, power);
+    if (legacy !== undefined) custom[power] = legacy;
+  }
   const owners = {}; // std button name -> [actions holding it]
   const claimable = (action, name) =>
     (owners[name] || []).every((other) => gamepadShareAllowed(action, other));

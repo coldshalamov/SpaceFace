@@ -49,12 +49,14 @@ export const TEN_VERB_PROGRESSION_PURCHASES = Object.freeze([
     verbLabel: 'Concussion cannon impulse push / control gun',
     price: 3667,
   },
+  // The five powers (owner 2026-10-22) made the vector mine SHOVE and the well PULL — innate
+  // powers, not purchases — so hours 5 and 10 buy the verbs those research nodes still unlock.
   {
     hour: 5,
     techId: 'tech_guided_ordnance',
-    itemId: 'wpn_vector_mine_m',
-    verbKey: 'vector_mine',
-    verbLabel: 'Deployable vector mine hazard',
+    itemId: 'wpn_missile_rack_m',
+    verbKey: 'guided_missile',
+    verbLabel: 'Missile rack — guided ordnance that shoves what it hits',
     price: 4000,
   },
   {
@@ -92,9 +94,9 @@ export const TEN_VERB_PROGRESSION_PURCHASES = Object.freeze([
   {
     hour: 10,
     techId: 'tech_graviton_drives',
-    itemId: 'wpn_gravity_well_m',
-    verbKey: 'gravity_well',
-    verbLabel: 'Singularity gravity well deployment',
+    itemId: 'mod_gravity_bumper_s',
+    verbKey: 'hullBurst',
+    verbLabel: 'Gravity bumper — a hull burst that throws everything off your hull',
     price: 9000,
   },
 ]);

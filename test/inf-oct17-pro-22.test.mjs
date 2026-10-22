@@ -6,7 +6,7 @@
 //
 // The test drives the real owner code (createGamepad tick + verbBindingLabel over the live
 // settings) on seed 4242: Xbox -> disconnect -> DualShock-family reconnect must flip the
-// face-button register from 'LB + Y' to 'LB + △' on the SAME gp object and SAME state
+// face-button register from 'RB + Y' to 'RB + △' (the Gyre Snare chord) on the SAME gp object and SAME state
 // object (no restart), while an unknown pad and a same-family reconnect stay quiet and
 // deliberate keyboard<->pad switches still own the helm exactly as NXI-003 proved.
 import test from 'node:test';
@@ -71,7 +71,7 @@ test('PRO-22 reconnecting as another pad family swaps the prompt glyphs live, no
     tickGp(gp, state); // boot-time acquisition of the Xbox-family pad
     assert.equal(gp.isConnected(), true);
     assert.equal(state.settings.controls.gamepad.glyphSet, 'xb');
-    assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + Y');
+    assert.equal(verbBindingLabel(state, 'gyreSnare', 'gamepad'), 'RB + Y');
     assert.equal(verbBindingLabel(state, 'tether', 'gamepad'), 'A');
 
     pads[0] = null; // unplug mid-session
@@ -90,7 +90,7 @@ test('PRO-22 reconnecting as another pad family swaps the prompt glyphs live, no
     assert.equal(gp.isConnected(), true);
     // The live swap: same gp object, same state object — no restart anywhere.
     assert.equal(state.settings.controls.gamepad.glyphSet, 'ds');
-    assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + △');
+    assert.equal(verbBindingLabel(state, 'gyreSnare', 'gamepad'), 'RB + △');
     assert.equal(verbBindingLabel(state, 'tether', 'gamepad'), '✕');
     assert.equal(gp.helmGestureEdge, true, 'the re-acquire is still a helm gesture');
   } finally { restore(); }
@@ -216,7 +216,7 @@ test('PRO-22 the in-flight source rules still hold across a pad-family swap', ()
     stepFlight(host, state);
     assert.equal(host.gamepad.isConnected(), true);
     assert.equal(state.settings.controls.gamepad.glyphSet, 'ds');
-    assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + △');
+    assert.equal(verbBindingLabel(state, 'gyreSnare', 'gamepad'), 'RB + △');
     assert.equal(host.movementSource, 'gamepad', 'the deliberate stick gesture still claims');
     const changes = host.movementSourceChanges;
     for (let i = 0; i < 10; i++) stepFlight(host, state);

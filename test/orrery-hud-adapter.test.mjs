@@ -69,10 +69,12 @@ test('the rail states map onto the Cluster vocabulary', () => {
   state.fields.cooldowns = { well: 12 };
   state.player.cargo.items.cmdty_impulse_charge = 3;
   const ord = readOrdnanceModel(state, createCooldownTracker());
-  assert.equal(ord['3'].state, 'armed', 'an active line is the armed slot');
-  assert.equal(ord['5'].state, 'cooldown', 'a well on cooldown reads as cooling');
-  assert.equal(typeof ord['5'].cooldown, 'number');
-  assert.equal(ord['1'].count, 3, 'the charge count rides along');
+  // The five powers (owner 2026-10-22): 1 PULL · 2 SHOVE · 3 PIN · 4 BOMB · 5 RIG, the Line at 6.
+  assert.equal(ord['6'].state, 'armed', 'an active line is the armed slot');
+  assert.equal(ord['1'].state, 'cooldown', 'PULL (the well) on cooldown reads as cooling');
+  assert.equal(typeof ord['1'].cooldown, 'number');
+  assert.equal(ord['4'].count, 3, 'with a dry rack BOMB throws the charge, and the count rides along');
+  assert.equal(ord['4'].arsenalId, 'power_charge', 'the bomb key shows the charge it will throw');
 });
 
 test('the cooldown tracker turns time-left into a rising fraction', () => {
@@ -98,22 +100,23 @@ test('the speed Scale phases against the displayed reading: asleep, flight, abov
 
 test('every ordnance key explains itself: bank sentence, live keys and live state in one tip', () => {
   const bindings = {
-    chargeThrow: ['KeyY', 'Digit1'], chargeDetonate: ['KeyR', 'Digit2'], tether: ['Space', 'KeyF', 'Digit3'],
+    pull: ['Digit1'], shove: ['KeyR', 'Digit2'], bomb: ['KeyY', 'Digit4'], tether: ['Space', 'KeyF'],
   };
   const { state } = fakeState();
-  state.player.cargo.items.cmdty_impulse_charge = 0;
+  state.player.cargo.items.cmdty_impulse_charge = 2;
   const ord = readOrdnanceModel(state, createCooldownTracker(), bindings);
   const capacity = resolveImpulseChargeCapacity(state);
-  assert.equal(ord['1'].tip,
-    `Charge — throw an impulse charge that sticks where it lands (1 · Y)\nNo impulse charges in cargo · up to ${capacity}`);
-  assert.match(ord['3'].tip, /\(3 · Space · F\)\nReady$/);
-  assert.match(ord['2'].tip, /Nothing armed to detonate$/);
-  // A collapsed node answers "what is in this band" without unfolding it. The DRIVE lamp
-  // group rides ahead of the hotbar (FB-002 slot 0); find the ordnance band by name.
+  assert.equal(ord['4'].tip,
+    `Charge ×2 — Sticky impulse charge. It sticks where it lands; Shove sets it off. Cycle to reach your drift bombs. (4 · Y)\nReady · up to ${capacity}`);
+  assert.match(ord['6'].tip, /\(Space · F\)\nReady$/);
+  assert.match(ord['2'].tip, /\(2 · R\)\nReady$/, 'nothing armed: SHOVE is the repulsor, ready');
+  // A collapsed node answers "what is this" without unfolding it: a one-power band explains the
+  // power. The DRIVE lamp group rides ahead of the hotbar (FB-002 slot 0).
   const groups = buildOrdnanceGroups(bindings);
-  const ordnance = groups.find((g) => g.name === 'Ordnance');
-  assert.equal(ordnance.tip, 'Ordnance — Charge 1 · Blast 2 · Line 3');
-  assert.equal(ordnance.slots[0].key, '1', 'the shelf reads as the 1–9 hotbar the player reaches for');
+  const shove = groups.find((g) => g.name === 'Shove');
+  assert.equal(shove.tip, 'Shove — blast everything outward from your ship — and set off every charge and bomb you have armed (2)');
+  assert.equal(groups.find((g) => g.name === 'Pull').slots[0].key, '1', 'the shelf reads as the number-row hotbar the player reaches for');
+  assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Rig', 'Line']);
   const drive = groups.find((g) => g.name === 'DRIVE');
   assert.ok(drive && drive.slots.length === 1, 'the travel-drive lamp is its own group');
 });
@@ -141,7 +144,7 @@ test('the mounted Cluster follows live rebinds, including an intentionally unbou
   state.entities.set(8, { mass: 40 });
   const root = doc.createElement('div');
   let mounted;
-  const socket = () => findAll(root, node => node.getAttribute('data-slot') === '3')[0];
+  const socket = () => findAll(root, node => node.getAttribute('data-slot') === '6')[0];
   const key = () => findAll(socket(), node => node.tagName === 'b')[0]?.textContent;
   try {
     // hud.js still passes the legacy default table; the live state is authoritative.
@@ -156,7 +159,7 @@ test('the mounted Cluster follows live rebinds, including an intentionally unbou
     mounted.update(state, player, true);
     assert.equal(key(), 'U', 'a rebind after mount updates the visible key as well as its tip');
     assert.match(socket().getAttribute('data-why'), /O REEL/);
-    assert.doesNotMatch(socket().getAttribute('data-why'), /I REEL|\(3 · Space · F\)/);
+    assert.doesNotMatch(socket().getAttribute('data-why'), /I REEL|\(Space · F\)/);
     const settled = socket();
     mounted.update(state, player, false);
     assert.equal(socket(), settled, 'an unchanged frame does not rebuild the sockets');

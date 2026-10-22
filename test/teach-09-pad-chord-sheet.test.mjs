@@ -56,12 +56,13 @@ test('a player who never opens Settings still reads the dual Xbox/PlayStation re
   assert.equal(rows.get('Mine beam'), 'LT / L2');
   assert.equal(rows.get('Boost'), 'RB / R1');
   assert.equal(rows.get('Brake / reverse'), 'LB / L1');
-  assert.equal(rows.get('Shove (repulsor)'), 'Y / △');
+  // The five powers (owner 2026-10-22): SHOVE keeps Y and takes the old detonate's D-Pad Down.
+  assert.equal(rows.get('Shove (repulsor; sets off armed ordnance)'), 'Y / △ or D-Pad Down');
   assert.equal(rows.get('Accept / confirm'), 'A / Cross');
   assert.equal(rows.get('Massline'), 'A / Cross');
   assert.equal(rows.get('Countermeasure'), 'R3');
-  assert.equal(rows.get('Drop bomb'), 'D-Pad Right');
-  assert.equal(rows.get('Cycle bomb-bay payload'), 'D-Pad Left');
+  assert.equal(rows.get('Bomb (selected ordnance)'), 'D-Pad Right');
+  assert.equal(rows.get('Cycle ordnance'), 'D-Pad Left');
   assert.equal(rows.get('Cycle target'), 'X / □');
   assert.equal(rows.get('Open star-map'), 'View / Select');
   assert.equal(rows.get('Open codex'), 'Guide (or Pause → Codex)');
@@ -72,10 +73,12 @@ test('a player who never opens Settings still reads the dual Xbox/PlayStation re
   assert.equal(rows.get('Station tab: next'), 'RB / R1');
   assert.equal(rows.get('Travel burn'), 'L3');
   assert.equal(rows.get('Auto-target'), 'D-Pad Up');
-  assert.equal(rows.get('Detonate charge'), 'D-Pad Down');
+  assert.equal(rows.get('Detonate charge'), undefined, 'the detonate is SHOVE now, not its own row');
   // FB-003: the chord layer prints every button it holds, in the same dual register.
   assert.equal(rows.get('Scanner pulse'), 'LB / L1 + D-Pad Up');
-  assert.equal(rows.get('Anchor Mass Seed'), 'LB / L1 + D-Pad Down');
+  assert.equal(rows.get('Pin (anchor seed)'), 'LB / L1 + D-Pad Down');
+  assert.equal(rows.get('Pull (gravity well)'), 'LB / L1 + D-Pad Left');
+  assert.equal(rows.get('Rig (clearing cone / skim scoop)'), 'LB / L1 + D-Pad Right');
   assert.equal(rows.get('Cloak'), 'RB / R1 + D-Pad Down');
   assert.equal(rows.get('Cruise drive'), 'RB / R1 + D-Pad Right');
 });
@@ -163,8 +166,9 @@ test('the static rows are keyed by label, so inserting a row cannot mis-target o
   const rows = byLabel(gamepadControlRows(null));
   assert.equal(rows.get('Fly (yaw + throttle)'), 'Left stick');
   assert.equal(rows.get('Aim weapons'), 'Right stick');
-  // FB-003: the Mass Seed has a real pad seat now (LB + D-Pad Down) — it is an action row, so the
-  // static 'keyboard verb' text is gone and only the mission log stays pad-less.
-  assert.equal(rows.get('Anchor Mass Seed'), 'LB / L1 + D-Pad Down');
+  // FB-003: the Mass Seed has a real pad seat now (LB + D-Pad Down; the PIN power since the five
+  // powers) — it is an action row, so the static 'keyboard verb' text is gone and only the mission
+  // log stays pad-less.
+  assert.equal(rows.get('Pin (anchor seed)'), 'LB / L1 + D-Pad Down');
   assert.equal(rows.get('Open mission log'), 'Start / Options → Pause → Mission Log');
 });

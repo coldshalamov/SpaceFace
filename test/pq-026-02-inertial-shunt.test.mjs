@@ -264,7 +264,10 @@ test('PQ-026.02 shunt catalog is a ping-only ram plate on graviton drives', () =
   assert.equal(weapon.size, 'S');
   assert.equal(weapon.requiresTech, 'tech_graviton_drives');
   assert.ok(weapon.impulsePerHit <= 1, 'the ping is not the shove');
-  assert.ok(graviton.unlocks.modules.includes(INERTIAL_SHUNT_WEAPON_ID));
+  // Retired from sale into the ram plate module (five powers, owner 2026-10-22): research stops
+  // advertising it; owned copies keep the shunt behaviour below.
+  assert.equal(weapon.retiredInto, 'mod_ram_plate');
+  assert.ok(!graviton.unlocks.modules.includes(INERTIAL_SHUNT_WEAPON_ID));
   assert.equal(INERTIAL_SHUNT_TUNING.screenDepthWu, 126);
   assert.equal(INERTIAL_SHUNT_TUNING.playerStopWu, 20);
   assert.equal(INERTIAL_SHUNT_TUNING.screenCoastS, 1.2);

@@ -95,6 +95,10 @@ export const BOMB_DEFS = Object.freeze({
   // mobility/comedy verb, priced as a frequent displacement tool rather than a damage upgrade.
   bomb_concussion: Object.freeze({
     id: 'bomb_concussion',
+    // The five powers (owner 2026-10-22): the SHOVE power is this bomb's job now (the repulsor
+    // pulse plus every armed charge and bomb). The drum stays in data for NPC kits and old saves;
+    // it leaves the starter kit and the shipworks catalogue.
+    retiredInto: 'shove',
     shortName: 'Shove',
     name: 'Concussion drum',
     sentence: 'A pure shove: hurls hulls and debris; the collisions can still hurt.',
@@ -318,10 +322,15 @@ export const BOMB_RACK = Object.freeze({
   sellbackFraction: 0.5,
 });
 
-// The starter fit for a new hull (and the additive default for pre-rack saves): the two
-// cheapest, most legible verbs — the kill verb (frag) and the shove verb (concussion) —
-// one full magazine each, so a fresh save leaves the yard armed but not solved.
-export const BOMB_STARTER_KIT = Object.freeze(['bomb_frag', 'bomb_concussion']);
+// The starter fit for a new hull (and the additive default for pre-rack saves): two legible
+// verbs — the kill verb (frag) and the stick verb (goo: thrust dies in the tar) — one full
+// magazine each, so a fresh save leaves the yard armed but not solved. The shove verb used to
+// ride here as the concussion drum; the SHOVE power owns that job now (owner 2026-10-22).
+export const BOMB_STARTER_KIT = Object.freeze(['bomb_frag', 'bomb_goo']);
+
+// The sticky impulse charge leads the ordnance cycle while one is aboard (the BOMB power's default);
+// this id names that choice in events and HUD models. It is never a rack cell.
+export const BOMB_CHARGE_CHOICE = 'impulse_charge';
 
 export function bombDef(id) {
   return BOMB_DEFS[id] || BOMB_DEFS.bomb_frag;

@@ -56,17 +56,20 @@ test('B031: the starter verbs carry different authored consequences — kill, sh
   assert.ok(auto.tumbleTorque > pulse.tumbleTorque * 10,
     'the autocannon is the knock-over gun — pulse plinks, slugs tumble');
   assert.ok(pulse.dmg * pulse.rof >= 40, 'the starter gun kills on a readable burst, not a peashooter');
-  // Shove: the drum pays momentum and zero damage; the ram plate is a contact verb.
+  // Shove: the drum pays momentum and zero damage; the ram plate is a contact verb. Since the five
+  // powers (owner 2026-10-22) the shove is the SHOVE power itself, and the drum is retired into it.
   assert.equal(BOMB_DEFS.bomb_concussion.damage, 0);
   assert.ok(BOMB_DEFS.bomb_concussion.impulse > 1000, 'the drum is a real shove');
+  assert.equal(BOMB_DEFS.bomb_concussion.retiredInto, 'shove');
   assert.ok(ram, 'the ram plate def exists for the brawler starter');
   // Trap: the frag cassette persists as a drifting proximity/fuze hazard, not an instant hit.
   assert.ok(BOMB_DEFS.bomb_frag.fuzeS >= 4 && BOMB_DEFS.bomb_frag.triggerRadius > 0,
     'the bomb lays a moving trap');
   // Rope: the tug starter's winch is a utility module that exists and fits.
   assert.ok(winch && winch.slotType === 'utility', 'the tow line is a fitted verb, not flavor text');
-  // The bomb starter kit stays the two most legible payloads.
-  assert.deepEqual([...BOMB_STARTER_KIT], ['bomb_frag', 'bomb_concussion']);
+  // The bomb starter kit stays the two most legible payloads: the frag trap and the goo cling field.
+  assert.deepEqual([...BOMB_STARTER_KIT], ['bomb_frag', 'bomb_goo']);
+  assert.ok(BOMB_DEFS.bomb_goo.field, 'the goo bomb lays a clinging field, not a second blast');
 });
 
 // ------------------------------------------------------------------ SFQ-B033

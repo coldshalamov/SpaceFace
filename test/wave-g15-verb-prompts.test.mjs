@@ -12,7 +12,8 @@ function reboundState() {
       controls: {
         bindings: {
           tether: ['KeyP'],
-          chargeThrow: ['KeyZ'],
+          // The shove hint names the SHOVE power (five powers, owner 2026-10-22), not the charge throw.
+          shove: ['KeyZ'],
         },
       },
     },
@@ -26,6 +27,6 @@ test('G15 rope and shove prompts follow the live binding on flight and combat', 
     assert.match(line, /P Massline|P controls the Massline/, `${key} shows the rebound rope key`);
     assert.match(line, /Z shove/, `${key} shows the rebound shove key`);
     assert.doesNotMatch(line, /Space\/F/, `${key} does not keep the default rope key`);
-    assert.doesNotMatch(line, /\bY shove\b/, `${key} does not keep the default shove key`);
+    assert.doesNotMatch(line, /\b2\/R shove\b/, `${key} does not keep the default shove key`);
   }
 });

@@ -182,7 +182,8 @@ test('gamepad: chords print button names, verb aliases reach their pad route', (
   assert.equal(verbBindingLabel(state, 'deployBeacon', 'gamepad'), 'RB + View');
   assert.equal(verbBindingLabel(state, 'jettisonLot', 'gamepad'), 'RB + Home');
   assert.equal(verbBindingLabel(state, 'travelBurn', 'gamepad'), 'L3');
-  assert.equal(verbBindingLabel(state, 'chargeThrow', 'gamepad'), 'RB + D-Pad Left');
+  // The charge throw rides the BOMB power since the five powers (owner 2026-10-22): D-Pad Right.
+  assert.equal(verbBindingLabel(state, 'chargeThrow', 'gamepad'), 'D-Pad Right');
   // Alias: the rope verb rides the Massline button (accept → A), never a blank.
   assert.equal(verbBindingLabel(state, 'tether', 'gamepad'), 'A');
 });
@@ -190,13 +191,15 @@ test('gamepad: chords print button names, verb aliases reach their pad route', (
 test('glyph sets: face buttons spell xb / ds / fh, shoulders are stable', () => {
   const state = makeState();
   assert.equal(gamepadGlyphSetFor(state), 'xb', 'unset defaults to xb');
-  // toggleSkimCollector = l1+alt: LB + <face alt>
-  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + Y');
+  // gyreSnare = r1+alt: RB + <face alt>. (The skim collector's old LB+Y seat went to RIG's
+  // LB + D-Pad Right in the five-power merge, so the face-button spelling is pinned on the snare.)
+  assert.equal(verbBindingLabel(state, 'gyreSnare', 'gamepad'), 'RB + Y');
+  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + D-Pad Right');
   state.settings.controls.gamepad = { glyphSet: 'ds' };
-  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + △');
+  assert.equal(verbBindingLabel(state, 'gyreSnare', 'gamepad'), 'RB + △');
   assert.equal(verbBindingLabel(state, 'tether', 'gamepad'), '✕');
   state.settings.controls.gamepad.glyphSet = 'fh';
-  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + Ⓨ');
+  assert.equal(verbBindingLabel(state, 'gyreSnare', 'gamepad'), 'RB + Ⓨ');
   assert.equal(verbBindingLabel(state, 'tether', 'gamepad'), 'Ⓐ');
   state.settings.controls.gamepad.glyphSet = 'nonsense';
   assert.equal(gamepadGlyphSetFor(state), 'xb', 'unknown set falls back to xb');
@@ -213,7 +216,7 @@ test('glyph sets: face buttons spell xb / ds / fh, shoulders are stable', () => 
     glyphSet: 'xb',
     bindings: { toggleSkimCollector: ['l1+view'] },
   };
-  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + Y', 'a taken chord is not stolen');
+  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + D-Pad Right', 'a taken chord is not stolen');
 });
 
 test('touch: no key or pad label is claimed for a button the overlay does not have', () => {
@@ -279,7 +282,8 @@ test('beacon/collector/jettison receipts each speak their verb exactly once', ()
   h.bus.emit('planet:collector', { on: true });
   assert.equal(h.firstUse.length, 2);
   assert.equal(h.firstUse[1].verbId, 'shelf:toggleSkimCollector');
-  assert.equal(h.firstUse[1].text, 'The scoop harvests a band — 8.');
+  // The scoop opens from RIG (5) inside a planet band since the five powers.
+  assert.equal(h.firstUse[1].text, 'The scoop harvests a band — 5.');
 
   h.bus.emit('cargo:jettisoned', { count: 3 });
   assert.equal(h.firstUse.length, 3);
@@ -337,7 +341,7 @@ test('chargeThrow speaks on the cadence tick when a hostile closes on a racked c
   h.sys._tickShelfVerbs(0.25, h.state);
   assert.equal(h.firstUse.length, 1);
   assert.equal(h.firstUse[0].verbId, 'shelf:chargeThrow');
-  assert.equal(h.firstUse[0].text, 'A charge is racked — Y/1.');
+  assert.equal(h.firstUse[0].text, 'A charge is racked — 4/Y.');
   h.sys._tickShelfVerbs(0.25, h.state);
   assert.equal(h.firstUse.length, 1, 'once only');
 });

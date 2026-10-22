@@ -30,7 +30,10 @@ test('Gravity Marker is a real small-slot field setup weapon, not free target se
   assert.equal(weapon.requiresTech, 'tech_graviton_drives');
   assert.ok(weapon.dmg > 0 && weapon.dmg < 10, 'the mark is a hit-confirm, not a DPS weapon');
   assert.deepEqual(weapon.statuses, [{ id: GRAVITY_MARK_STATUS_ID, stacks: 1 }]);
-  assert.ok(graviton.unlocks.modules.includes(MARK_WEAPON_ID), 'research names the buyable weapon');
+  // The five powers (owner 2026-10-22): PULL marks the locked target it lands on, so the marker is
+  // retired from sale and research stops advertising it. Owned copies and NPC kits keep working.
+  assert.equal(weapon.retiredInto, 'pull');
+  assert.ok(!graviton.unlocks.modules.includes(MARK_WEAPON_ID), 'research no longer advertises the retired marker');
 
   assert.ok(status);
   assert.equal(status.effects.multipliers.fieldCoupling, GRAVITY_MARK_FIELD_COUPLING);

@@ -253,12 +253,14 @@ function openField(t, id = 'bomb_goo') {
 });
 
  test('keyboard teaching, controller mapping and rebind settings cover all three bay verbs', () => {
-  for (const action of ['dropBomb', 'cycleBomb', 'chargeDetonate']) assert.ok(TAUGHT_FLIGHT_ACTIONS.includes(action));
-  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.chargeDetonate, ['dDown']);
-  assert.equal(gamepadShareAllowed('chargeDetonate', 'fire'), false);
-  assert.equal(gamepadShareAllowed('chargeDetonate', 'tabPrev'), true);
+  // The five powers (owner 2026-10-22): the bay is BOMB + its cycle, and SHOVE sets armed
+  // ordnance off (it took the old detonate's D-Pad Down beside the repulsor's Y).
+  for (const action of ['bomb', 'cycleBomb', 'shove']) assert.ok(TAUGHT_FLIGHT_ACTIONS.includes(action));
+  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.shove, ['alt', 'dDown']);
+  assert.equal(gamepadShareAllowed('shove', 'fire'), false);
+  assert.equal(gamepadShareAllowed('shove', 'tabPrev'), true);
   const settings = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
-  for (const action of ['dropBomb', 'cycleBomb', 'chargeDetonate']) assert.ok(settings.includes(`${action}: '`) && settings.includes(`'${action}'`));
+  for (const action of ['bomb', 'cycleBomb', 'shove']) assert.ok(settings.includes(`${action}: '`) && settings.includes(`'${action}'`));
 });
 
  test('all eight definitions travel through the same lifecycle, damage and cleanup path', () => {
