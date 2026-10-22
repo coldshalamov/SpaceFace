@@ -1822,4 +1822,12 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 
 **Review fix:** the wrapped TO end made the 640–760 strip one line taller, so at 700 tall the tick ruler ran past the stage's visible bottom. That block's route spacing is ~19px tighter (host margin 14→6, top pad 4→0, ends gap 6→3, wrap line-height 1.3→1.2); the ruler now ends at 645/648/605 against a visible bottom of 668/665/662 at 640/700/760×700.
 
-**Leftover:** at 390×844 the Missions page shows only the list (no dossier or route) until a row is opened; the bench still flags the hidden route names there.
+**Leftover:** at 390×844 the Missions page showed only the list (no dossier or route); fixed in ui-polish-86.
+
+## Missions on an upright phone or narrow window — the dossier under the list (ui-polish-86)
+
+**Before:** under 640 wide (390×844, 360×740, phone or desktop) Missions kept its hang | stage columns, so the 360px list filled the width and the chosen contract's dossier sat off the right edge at 0px wide: no title, terms, dial, verbs or route.
+
+**After (`archiveLayouts.js`, one `max-width:639px` block):** the page stacks: title, the list capped at min(330px, 40vh), then the dossier in its own scrolling stage with a hairline above and a fade at its foot. The dossier is one column (kicker, title, objective, terms), then the 120px dial beside TRACKED / OPEN ON THE CHART / ABANDON, then the route band with FROM and TO wrapping as in the 640–760 band.
+
+**Checked:** bench `mission-log` clean at 390×844, 360×740 and 390×844 phone; scrolled to the stage's foot the route band and both ends are whole. Wider viewports are outside the query. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish86/`.
