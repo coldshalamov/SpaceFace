@@ -150,6 +150,9 @@ export const COMMODITY_PRESENTATION_BY_CATEGORY = Object.freeze({
   salvage: Object.freeze({ id: 'cargo-family-salvage', color: '#9aa0a8' }),
   contraband: Object.freeze({ id: 'cargo-family-contraband', color: '#ff7a45' }),
   military: Object.freeze({ id: 'cargo-family-military', color: '#df6d78' }),
+  // Living samples and lattice credentials were falling through to ordinary freight green.
+  bioresource: Object.freeze({ id: 'cargo-family-bioresource', color: '#6ecf4a' }),
+  protocol: Object.freeze({ id: 'cargo-family-protocol', color: '#7f8cff' }),
 });
 const DEFAULT_COMMODITY_PRESENTATION = Object.freeze({ id: 'cargo-family-general', color: '#9fd8a0' });
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
