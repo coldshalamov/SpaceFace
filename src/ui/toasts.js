@@ -17,6 +17,7 @@
 // dismissed or expires, focus moves to the nearest remaining toast, else a valid previous
 // control / active-screen fallback — never silently to body when a restorable target exists.
 
+import { validCharonApproachReceipt } from '../world/charonSupplyReadout.js';
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { admitReceipt, RECEIPT_MAX, stuntDetectionReceipt } from './hudAttention.js';
 import { jumpAbortReceipt } from './jumpNotice.js';
@@ -173,7 +174,16 @@ export function createToasts(ctx) {
     });
   }
 
-  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '' } = {}) {
+  let destroyed = false;
+  const approach = createCharonApproachToastGate(bus, () => ctx.state, payload => {
+    pushNow(payload);
+  });
+  function push(payload = {}) {
+    if (destroyed) return;
+    if (payload.charonApproach != null) { approach.enqueue(payload); return; }
+    pushNow(payload);
+  }
+  function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', charonApproach = null } = {}) {
     if (!root || !text) return;
     ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
@@ -188,7 +198,7 @@ export function createToasts(ctx) {
     const job = typeof document !== 'undefined' && document.body && document.body.dataset
       ? document.body.dataset.sfHudJob
       : '';
-    const decision = admitReceipt({ text, kind, channel, _fromVoice, combat: job === 'fight' || job === 'hurt' });
+    const decision = admitReceipt({ text, kind, channel, _fromVoice, charonApproach, state: ctx.state, combat: job === 'fight' || job === 'hurt' });
     if (!decision.admit) return;
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
@@ -345,13 +355,14 @@ export function createToasts(ctx) {
     }
   }
 
-  bus.on('toast', push);
+  const offToast = bus.on('toast', push);
+  const offSession = [];
   // Session boundary (SF-283): receipts live when a save loads or a new run starts were minted by
   // the pre-save session — dismiss them rather than letting their TTL finish over the restored
   // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
   // receipt on save:loaded, and that new-session receipt must land in the lane AFTER this clear.
   for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
-    bus.on(name, () => { while (live.length) dismiss(live[live.length - 1], { instant: true }); });
+    offSession.push(bus.on(name, () => { while (live.length) dismiss(live[live.length - 1], { instant: true }); }));
   }
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
@@ -361,7 +372,13 @@ export function createToasts(ctx) {
   bindAutomationPayoffUi(bus, () => ctx.state);
   bindReturningPilotSummary(bus, ctx && ctx.state);
 
-  return { push, tick };
+  return { push, tick, destroy() {
+    destroyed = true;
+    approach.destroy();
+    offToast?.();
+    for (const off of offSession) off?.();
+    while (live.length) dismiss(live[live.length - 1], { instant: true });
+  } };
 }
 
 function normalizeTtlMs(ttl) {
@@ -595,4 +612,26 @@ export function bindJumpDenialToasts(bus, getState) {
       channel: 'jump',
     });
   });
+}
+
+// Worker replay temporarily substitutes emit-time mode/enterSerial. Only this
+// optional cue waits one microtask to see the real post-batch state. No retries,
+// timers, saved acknowledgement, or queue survives a session/sector boundary.
+export function createCharonApproachToastGate(bus, getState, present) {
+  let epoch = 0, disposed = false, pending = false;
+  const off = ['save:loaded', 'game:new', 'game:newGame', 'sector:enter'].map(name =>
+    bus.on(name, () => { epoch++; pending = false; }));
+  return {
+    enqueue(payload) {
+      if (disposed || pending) return;
+      pending = true;
+      const ticket = epoch;
+      queueMicrotask(() => {
+        if (disposed || ticket !== epoch) return;
+        pending = false;
+        if (validCharonApproachReceipt(getState(), payload)) present(payload);
+      });
+    },
+    destroy() { disposed = true; epoch++; pending = false; for (const fn of off) fn?.(); },
+  };
 }

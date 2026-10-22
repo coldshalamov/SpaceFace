@@ -1,5 +1,7 @@
-// Dependency-free presentation and original-actor identity view. Never imports
+// Pure-data presentation and original-actor identity view. Never imports
 // physical cargo owners; scanner may import Hail before the runtime is composed.
+import { activityPocketById } from '../data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 export const CHARON_SUPPLY = Object.freeze({
   sectorId: 'sector_charon_expanse',
   pocketId: 'charon_colony_barge',
@@ -132,4 +134,90 @@ export function charonSupplyPresentation(s, e, { detailed = true } = {}) {
       : (!h || !r) && !['working', 'shortfall'].includes(b.phase)
         ? 'The original supply crew is missing. No replacement load has been issued.' : lines[1]],
   };
+}
+
+// Restrict discovery to the ordinary original civilian work channels. Other
+// Hail specialties (tolls, ghosts, patrols) must never inherit this instruction.
+function charonApproachHailable(s, e) {
+  const d = e.data || {}, role = d.trafficRole || d.role || e.role;
+  if (e.team !== 2 || !['hauler', 'salvor'].includes(role) || d.ai?.lawful) return false;
+  if (!(d.jobPhase || role === 'salvor' && d.jobId || role === 'hauler' && d.ai?.passive === true)) return false;
+  return !Object.values(s.pirateParley?.squads || {}).some(r => r && !r.resolved
+    && r.phase === 'demand' && r.demand && r.deadlineAt > s.simTime
+    && (r.hailerId === e.id || Array.isArray(r.memberIds) && r.memberIds.includes(e.id)));
+}
+
+export function charonApproachCenter() {
+  return sectorLocalToGlobalForSector(activityPocketById(C.pocketId).activityAnchor.localPos, C.sectorId);
+}
+
+// Match traffic's ordinary-flight exclusions without importing registered owners.
+export function charonApproachFlight(s) {
+  return s?.mode === 'flight' && !s.ui?.docked
+    && !(s.run?.kind === 'survival' && s.run.phase !== 'inactive')
+    && !(Array.isArray(s.missions?.active) ? s.missions.active : []).some(m => m?.status === 'active'
+      && m.params?.racingContractId && m.params.raceLease === true
+      && (!m.params.sectionMission || ['grid', 'chase'].includes(m.params.phase)));
+}
+
+// Optional discovery, not a new service or a durable acknowledgement. Resolve the
+// same original lives as SUPPLY ROUTE and never direct a player to an absent hull.
+export function charonSupplyApproachCue(s) {
+  const b = s && book(s), player = s?.entities?.get(s.playerId);
+  if (!b || b.blocked || !live(s, player)) return null;
+  const h = carrier(s), r = recipient(s);
+  const available = e => e && charonApproachHailable(s, e) && e.hull > 0 && ['ship', 'drone'].includes(e.type)
+    && !['isGhost', 'ghost', 'unresolved'].some(k => e.data?.[k]) && e.data?.kind !== 'unknown'
+    && [e.pos?.x, e.pos?.z, player.pos?.x, player.pos?.z].every(Number.isFinite)
+    && Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z) <= 900;
+  const e = [h, r].find(available);
+  if (!e) return null;
+  const view = charonSupplyPresentation(s, e, { detailed: false });
+  if (!view) return null;
+  const name = String(e.data?.callsign || e.data?.name || (e === h ? 'the original hauler' : 'the original cutter'));
+  return {
+    text: approachText(view.compact[1], name),
+    status: view.compact[1], actorRecordId: e.data.worldRecordId, actorSlot: e.data.activityActorSlotId,
+    actorId: e.id, actorGeneration: e.occupantGeneration,
+  };
+}
+
+const approachStatuses = new Set([
+  'RESERVE USED · ROUND STARTED', 'RESERVE SHORT · ROUND CANCELLED',
+  'RESERVE SHORT · ROUND BLOCKED', 'RESERVE LOST · NO REPLACEMENT',
+  'RECOVERY STOPPED · NO REFILL', 'CREW MISSING · NO REPLACEMENT',
+  'KITS AT CUTTER · ROUND PENDING', 'FINISHING CURRENT JOBS',
+  ...Array.from({ length: 7 }, (_, n) => `${n} KITS LOOSE · ROUND WAITING`),
+  ...Array.from({ length: 6 }, (_, n) => `${n + 1} KITS ABOARD HAULER`),
+]);
+const approachText = (status, name) => `Charon evacuated colony. Last crew report: ${status.toLowerCase()}. Select ${name}: Hail → SUPPLY ROUTE for current status.`;
+
+// The UI has no custody book. Validate a short-lived authoritative observation,
+// not a claim that the phase is still current. No actor-life binding or writes.
+export function validCharonApproachReceipt(s, payload) {
+  const m = payload?.charonApproach;
+  if (!m || !s || !charonApproachFlight(s) || s.world?.currentSectorId !== C.sectorId
+    || !approachStatuses.has(m.status) || !Number.isFinite(m.simTime)
+    || !Number.isFinite(s.simTime) || s.simTime < m.simTime || s.simTime - m.simTime > 1
+    || !Array.isArray(s.entityList) || typeof m.actorRecordId !== 'string' || !m.actorRecordId
+    || ![C.hauler, C.salvor].includes(m.actorSlot)) return false;
+  const center = charonApproachCenter();
+  if (m.centerX !== center.x || m.centerZ !== center.z) return false;
+  const p = s.entities?.get?.(m.playerId), e = s.entities?.get?.(m.actorId);
+  if (s.playerId !== m.playerId || !p || !e || !live(s, p) || !live(s, e)
+    || !Number.isSafeInteger(m.playerGeneration) || !Number.isSafeInteger(m.actorGeneration)
+    || p.occupantGeneration !== m.playerGeneration || e.occupantGeneration !== m.actorGeneration
+    || !charonApproachHailable(s, e) || !(e.hull > 0) || !(p.hull > 0) || !['ship', 'drone'].includes(e.type)
+    || e.data?.activityActorSlotId !== m.actorSlot || e.data?.worldRecordId !== m.actorRecordId
+    || !e.data?.durable || e.data?.identityKey !== `charon:activity:${m.actorSlot}`
+    || ['isGhost', 'ghost', 'unresolved'].some(k => e.data?.[k]) || e.data?.kind === 'unknown'
+    || !Number.isFinite(m.centerX) || !Number.isFinite(m.centerZ)
+    || ![p.pos?.x, p.pos?.z, e.pos?.x, e.pos?.z].every(Number.isFinite)
+    || !(Math.hypot(p.pos.x - m.centerX, p.pos.z - m.centerZ) <= 500)
+    || !(Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z) <= 900)) return false;
+  const matches = s.entityList.filter(x => live(s, x)
+    && (x.data?.worldRecordId === m.actorRecordId || x.data?.activityActorSlotId === m.actorSlot));
+  if (matches.length !== 1 || matches[0] !== e) return false;
+  const name = String(e.data?.callsign || e.data?.name || (m.actorSlot === C.hauler ? 'the original hauler' : 'the original cutter'));
+  return payload.text === approachText(m.status, name);
 }

@@ -1,4 +1,4 @@
-import { CHARON_SUPPLY, charonSupplyLive as live, charonSupplyBook as book, charonSupplyQuantity as quantity, charonSupplyActor as actor, charonSupplyCarrier as carrier, charonSupplyRecipient as recipient, charonSupplyActorLife } from './charonSupplyReadout.js';
+import { CHARON_SUPPLY, charonSupplyLive as live, charonSupplyBook as book, charonSupplyQuantity as quantity, charonSupplyActor as actor, charonSupplyCarrier as carrier, charonSupplyRecipient as recipient, charonSupplyActorLife, charonSupplyApproachCue, charonApproachFlight, charonApproachCenter } from './charonSupplyReadout.js';
 export { CHARON_SUPPLY, charonSupplyHailLines, charonSupplyFacts } from './charonSupplyReadout.js';
 // One visiting crew, one authored air-system supply lot. Cargo stays in native pods/manifests;
 // this bounded provenance receipt never creates inventory or a replacement hull.
@@ -18,6 +18,45 @@ const receipts = new WeakSet(),
   leafLives = new WeakMap(),
   pickupTransactions = new WeakMap(),
   roundJobs = new WeakMap();
+// Entirely transient: no save schema, stock, jobs, or selection changes.
+const approachWindows = new WeakMap();
+// Resolve lazily: scanner/Hail can import this graph before data initialization.
+let approachCenter;
+function approachCharonSupply(o) {
+  const s = o.state, b = book(s), now = s.simTime;
+  if (!b || b.blocked || s.world?.currentSectorId !== C.sectorId) {
+    approachWindows.delete(o);
+    return;
+  }
+  let w = approachWindows.get(o);
+  if (!w || w.state !== s || w.book !== b || now < w.lastTime) {
+    w = { state: s, book: b, armed: false, count: 0, lastTime: now, nextCheck: now, lastCue: -Infinity };
+    approachWindows.set(o, w);
+  }
+  w.lastTime = now;
+  const p = s.entities.get(s.playerId);
+  if (!Number.isFinite(now) || !charonApproachFlight(s) || !live(s, p)) {
+    w.armed = false;
+    return;
+  }
+  if (![p.pos?.x, p.pos?.z].every(Number.isFinite)) { w.armed = false; return; }
+  approachCenter ||= charonApproachCenter();
+  const distance = Math.hypot(p.pos.x - approachCenter.x, p.pos.z - approachCenter.z);
+  if (distance >= 750) { w.armed = true; return; }
+  if (distance > 500 || !w.armed || w.count >= 2 || now < w.nextCheck || now - w.lastCue < 120) return;
+  // Identity scans and prose only once a second in the narrow approach window.
+  w.nextCheck = now + 1;
+  if (!normalizeCharonSupply(b) || b.phase === 'admitting') return;
+  const cue = charonSupplyApproachCue(s);
+  if (!cue || !o.bus?.emit) return;
+  w.armed = false;
+  w.count++;
+  w.lastCue = now;
+  o.bus.emit('toast', { text: cue.text, kind: 'info', ttl: 7,
+    charonApproach: { status: cue.status, actorRecordId: cue.actorRecordId, actorSlot: cue.actorSlot, actorId: cue.actorId, actorGeneration: cue.actorGeneration,
+      playerId: p.id, playerGeneration: p.occupantGeneration, simTime: now,
+      centerX: approachCenter.x, centerZ: approachCenter.z } });
+}
 const legacyCargo = e => e?.data?.carrying === true || e?.data?.cargo && Object.values(e.data.cargo).some(n => Number(n) > 0);
 const empty = m => m == null || m.totalQty === 0 && Array.isArray(m.lines) && m.lines.length === 0;
 function row(s, p) {
@@ -49,6 +88,7 @@ function pod(s, r) {
 // Save has already restored canonical entities when this event runs. Bind exact
 // lives now so a queued cap removal before the first gameplay tick stays truthful.
 export function bindRestoredCharonSupply(o) {
+  approachWindows.delete(o);
   const s = o.state,
     b = book(s);
   if (!b || b.blocked) return;
@@ -174,6 +214,7 @@ function release(o, e) {
   if (e?.data?.itinerary?.kind === CLAIM && e.data.itinerary.sourceId === C.sourceId) delete e.data.itinerary;
 }
 export function releaseCharonSupply(o) {
+  approachWindows.delete(o);
   const b = book(o.state);
   if (!b || b.blocked) return;
   release(o, carrier(o.state));
@@ -720,7 +761,7 @@ export function charonSupplyDestroyed(o, payload) {
 export function reconcileCharonSupply(o) {
   const s = o.state,
     b = book(s);
-  if (!b || b.blocked) return;
+  if (!b || b.blocked) { approachWindows.delete(o); return; }
   for (const [id, field] of [[b.haulerId, 'aboard'], [b.salvorId, 'delivered']]) {
     const entities = s.entityList.filter(e => s.entities.get(e.id) === e && e.data?.worldRecordId === id),
       rec = s.world?.records?.byId?.[id];
@@ -733,6 +774,7 @@ export function reconcileCharonSupply(o) {
     }
     if (!['delivered', 'working'].includes(b.phase)) b.phase = 'lost';
   }
+  approachCharonSupply(o);
 }
 export function charonSupplyNativeDiagnostic(o, a, b) {
   const ar = nativeRecord(o, a),
