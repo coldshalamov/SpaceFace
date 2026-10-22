@@ -609,6 +609,16 @@ export function createPromptDeck(ctx = {}) {
     if (destroyed || ev.ctrlKey || ev.altKey || ev.metaKey) return;
     if (!entries.size || !root || root.hidden) return;
     if (fenced() || modalOpen() || !inFlight()) return;
+    // Escape has the same safe meaning as gamepad Back: only an explicitly supplied
+    // cancel choice. It never guesses a destructive refusal or pauses behind a live overlay.
+    if (ev.key === 'Escape') {
+      const cancel = entries.get(raisedId)?.spec.choices?.find(choice => choice.cancel && !choice.disabled);
+      if (!cancel) return;
+      ev.preventDefault?.();
+      ev.stopImmediatePropagation?.();
+      choose(raisedId, cancel.id, 'keyboard');
+      return;
+    }
     const route = routeDigit(
       [...entries.values()].map((e) => ({ id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: 0, choices: e.spec.choices })),
       raisedId, ev.key != null ? ev.key : ev.code,

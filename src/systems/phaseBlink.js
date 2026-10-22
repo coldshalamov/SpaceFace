@@ -15,6 +15,18 @@ import {
 const NEARBY = [];
 const SOLIDS = new Set(['asteroid', 'station']);
 
+/** A wreck is a wall only when the spawn stamped a live collider. Marker wrecks
+ *  (no physics body, or a sensor/ghost) are scenery the hull already flies through.
+ *  Ships stay phased through — the step is how you cross a fighter, not a hulk. */
+function wreckBlocksPhase(other) {
+  if (!other || other.type !== 'wreck') return false;
+  const body = other.physicsBody;
+  if (!body || typeof body !== 'object') return false;
+  if (body.sensor === true || body.ghost === true) return false;
+  return body.shape === 'capsule' || body.shape === 'ball' || body.shape === 'cuboid'
+    || other.collides === true;
+}
+
 function finite(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -43,7 +55,7 @@ function toast(bus, text) {
   }
 }
 
-/** True when a station or a rock owns this point. Ships are phased through. */
+/** True when a station, a rock, or a solid wreck owns this point. Ships are phased through. */
 export function phaseBlinkBlocked(state, entity, x, z) {
   if (!state) return false;
   const nearby = queryNearbyEntities(state, { x, z }, 96, NEARBY) || NEARBY;
@@ -51,10 +63,11 @@ export function phaseBlinkBlocked(state, entity, x, z) {
   for (let i = 0; i < nearby.length; i += 1) {
     const other = nearby[i];
     if (!other || other === entity || other.alive === false) continue;
-    if (!SOLIDS.has(other.type)) continue;
+    if (!SOLIDS.has(other.type) && !wreckBlocksPhase(other)) continue;
     const ox = finite(other.pos && other.pos.x);
     const oz = finite(other.pos && other.pos.z);
-    const rad = finite(other.radius, other.type === 'station' ? 70 : 16) + selfR;
+    const fallback = other.type === 'station' ? 70 : other.type === 'wreck' ? 18 : 16;
+    const rad = finite(other.radius, fallback) + selfR;
     const dx = ox - x;
     const dz = oz - z;
     if (dx * dx + dz * dz < rad * rad) return true;

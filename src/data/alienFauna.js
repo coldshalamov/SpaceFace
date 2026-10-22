@@ -572,3 +572,76 @@ export function carrierSpecies(speciesId) {
   const sp = faunaSpeciesById(speciesId);
   return sp && sp.carrier ? sp : null;
 }
+
+// A grazer that actually watches the scanner (veil rays) bolts when a pulse lights it.
+// Hunters, sleepers, and sessile bodies do not use this rule.
+export function faunaScanFlinch(species, distance) {
+  if (!species || species.role !== 'grazer' || species.sessile || species.dormant) return false;
+  const scan = Number(species.stimuli && species.stimuli.scan) || 0;
+  const alert = Number(species.alertR) || 0;
+  return scan >= 0.85 && Number.isFinite(distance) && distance <= alert;
+}
+
+// Drifters that treat gunfire as a threat break their ring. Other roles keep their own verb.
+export function faunaWeaponScatter(species, distance) {
+  if (!species || species.role !== 'drifter' || species.sessile || species.dormant) return false;
+  const weapon = Number(species.stimuli && species.stimuli.weapon) || 0;
+  const alert = Number(species.alertR) || 0;
+  return weapon >= 0.85 && Number.isFinite(distance) && distance <= alert;
+}
+
+// An archive crab that has been foraging in view finishes one readable pile.
+export function faunaDebrisPile(species, eco, playerDistance) {
+  if (!species || species.pilesDebris !== true || !eco || eco.driveState !== 'forage') return null;
+  const watch = (Number(species.alertR) || 0) * 3;
+  if (!(watch > 0) || !Number.isFinite(playerDistance) || playerDistance > watch) return null;
+  if ((Number(eco.driveT) || 0) < 8) return null;
+  return Object.freeze({
+    commodityId: 'cmdty_host_archive_sample',
+    qty: 1,
+    label: 'Arranged debris — host archive',
+  });
+}
+
+export function faunaPileFact(species, eco) {
+  if (!species || species.pilesDebris !== true || !eco || !eco.pile || eco.pileCollapsed) return null;
+  return 'DEBRIS PILE · HOST ARCHIVE';
+}
+
+// A trailing wake eel leads a cold heat-hunter. A hot hunter keeps the heat rule.
+export function faunaWakeLeadsHunter(hunter, eel, eelDrive, heatSaturated) {
+  if (!hunter || hunter.heatHunter !== true || heatSaturated === true) return false;
+  if (!eel || eel.trails !== true || eelDrive !== 'trail') return false;
+  return true;
+}
+
+// Pulling a suture mite off an active repair makes it defend the seam it was knitting.
+export function faunaRepairYank(species, eco) {
+  if (!species || species.repairer !== true || !eco || eco.yankedFromRepair !== true) return null;
+  return 'defend';
+}
+
+export function faunaVentFeeds(species) {
+  return !!(species && Number(species.ventPeriodS) > 0);
+}
+
+// Glass-backed bodies in a scanner-fog orchard stay "scattered glass" until you close in.
+export function faunaOrchardFogName(species, site, playerDistance) {
+  if (!species || !site || site.orchardScannerFog !== true) return null;
+  if (!((Number(species.beamResist) || 0) >= 0.5)) return null;
+  const close = site.arrivalBands && Number(site.arrivalBands.close);
+  if (!(close > 0)) return null;
+  if (Number.isFinite(playerDistance) && playerDistance <= close) return null;
+  return 'SCATTERED GLASS';
+}
+
+export function faunaBellInReach(species, playerDistance) {
+  if (!species || species.weatherListener !== true) return false;
+  const alert = Number(species.alertR) || 0;
+  return alert > 0 && Number.isFinite(playerDistance) && playerDistance <= alert;
+}
+
+export function faunaTollFact(species, eco) {
+  if (!species || species.weatherListener !== true || !eco || eco.tolling !== true) return null;
+  return 'TOLLS AHEAD OF THE FRONT';
+}

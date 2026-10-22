@@ -184,6 +184,7 @@ const STATUS_ROW = {
   'no-pods': { tone: 'gold', body: 'No couriers — berth a pod' },
   'no-network': { tone: 'coral', body: 'No lane — paint a lane' },
   'no-geology': { tone: 'coral', body: 'No contacts — keep a face' },
+  overheat: { tone: 'coral', body: 'Overheated — output cut' },
   staged: { tone: 'mint', body: 'Cargo staged' },
   idle: { tone: 'idle', body: 'Idle' },
 };

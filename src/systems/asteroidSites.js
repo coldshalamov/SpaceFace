@@ -84,6 +84,44 @@ const { COLS, ROWS } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
+function commoditySpoken(id) {
+  const row = COMMODITY_BY_ID.get(id);
+  const name = row && typeof row.name === 'string' ? row.name.trim() : '';
+  if (name) return name;
+  return String(id || 'cargo').replace(/^cmdty_/, '').replaceAll('_', ' ');
+}
+
+/** Player phrase for a would-spill preview: "4u Stellarite Ore and 6u Iron Ore". */
+export function spillGoodsPhrase(spill) {
+  const goods = {};
+  const rows = spill && Array.isArray(spill.spilled) ? spill.spilled : [];
+  for (const row of rows) {
+    const store = row && row.store;
+    if (!store || typeof store !== 'object') continue;
+    for (const id of Object.keys(store)) {
+      const q = Math.max(0, Number(store[id]) || 0);
+      if (q > 0) goods[id] = (goods[id] || 0) + q;
+    }
+  }
+  const parts = Object.keys(goods).sort().map((id) => `${Math.floor(goods[id])}u ${commoditySpoken(id)}`);
+  if (parts.length === 0) {
+    const total = Math.floor(Number(spill && spill.spilledTotal) || 0);
+    return `${total}u of stored goods`;
+  }
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
+/** The sentence the claim screen reads before a second click confirms the loss. */
+export function spillConfirmWarning(spill, kind) {
+  const phrase = spillGoodsPhrase(spill);
+  if (kind === 'machine') {
+    return `Dismantling this machine would spill ${phrase} — dismantle it again to confirm the loss.`;
+  }
+  return `Clearing this lane would spill ${phrase} — clear it again to confirm the loss.`;
+}
+
 const SITES_SCHEMA_VERSION = 1;
 
 function makeDefaultSites() {
@@ -2095,7 +2133,12 @@ export const asteroidSites = {
       const preview = this.previewMachineRemoval(siteId, machineId);
       if (preview.spilledTotal > 0) {
         if (!(opts && opts.confirmSpill)) {
-          return { ok: false, reason: 'would-spill', spill: preview };
+          return {
+            ok: false,
+            reason: 'would-spill',
+            spill: preview,
+            warning: spillConfirmWarning(preview, 'machine'),
+          };
         }
         confirmedSpill = preview;
       }
@@ -2154,7 +2197,7 @@ export const asteroidSites = {
           if (q > 0) goods[g] = (goods[g] || 0) + q;
         }
       }
-      const summary = Object.keys(goods).sort().map((g) => `${Math.floor(goods[g])}u ${g}`).join(', ');
+      const summary = spillGoodsPhrase(confirmedSpill);
       this._ledger(site, 'warn', `${def ? def.name : machine.defId} dismantled under load — spilled ${summary}.`);
       this.bus.emit('site:laneSpilled', {
         siteId, machineId, spilledTotal: confirmedSpill.spilledTotal, goods,
@@ -2218,7 +2261,12 @@ export const asteroidSites = {
       const preview = this.previewOverlayRemoval(siteId, kind, col, row);
       if (preview.spilledTotal > 0) {
         if (!(opts && opts.confirmSpill)) {
-          return { ok: false, reason: 'would-spill', spill: preview };
+          return {
+            ok: false,
+            reason: 'would-spill',
+            spill: preview,
+            warning: spillConfirmWarning(preview, 'lane'),
+          };
         }
         confirmedSpill = preview;
       }
@@ -2238,7 +2286,7 @@ export const asteroidSites = {
           if (q > 0) goods[g] = (goods[g] || 0) + q;
         }
       }
-      const summary = Object.keys(goods).sort().map((g) => `${Math.floor(goods[g])}u ${g}`).join(', ');
+      const summary = spillGoodsPhrase(confirmedSpill);
       this._ledger(site, 'warn', `Lane dismantled under load — spilled ${summary}.`);
       this.bus.emit('site:laneSpilled', {
         siteId, col, row, spilledTotal: confirmedSpill.spilledTotal, goods,
@@ -2819,6 +2867,14 @@ export const asteroidSites = {
       const before = prevStatus[m.id];
       if (before && before.state !== status.state) {
         statusTransitions.push({ machineId: m.id, state: status.state, prev: before.state });
+      }
+      // A first watch is not news for ordinary idle or starved — but a machine that is
+      // already in thermal fault on that first watch has cut its output, and the board
+      // used to leave the claim log empty. Say it once, on the entry.
+      if (status.state === 'overheat' && (!before || before.state !== 'overheat')) {
+        const line = `${def.name} overheated — output is cut until it cools.`;
+        this._ledger(site, 'warn', line);
+        if (this.bus) this.bus.emit('toast', { text: line, kind: 'warn', ttl: 3.2 });
       }
     }
     for (const t of statusTransitions) {

@@ -74,7 +74,7 @@ export function createMasslineCadenceReadout(parent) {
     <path d="M1 1V18" stroke="#eef7f4" stroke-width="2"/>
   </svg>
   <div class="ml-cadence__stats">
-    <span><span class="ml-cadence__value" data-ml="speed"></span><span class="ml-cadence__label">EXIT / WU·S⁻¹</span></span>
+    <span><span class="ml-cadence__value" data-ml="speed"></span><span class="ml-cadence__label">RELEASE SPEED</span></span>
     <span><span class="ml-cadence__value" data-ml="clearance"></span><span class="ml-cadence__label">CLEARANCE / WU</span></span>
     <span><span class="ml-cadence__value" data-ml="length"></span><span class="ml-cadence__label">LINE / WU</span></span>
   </div>

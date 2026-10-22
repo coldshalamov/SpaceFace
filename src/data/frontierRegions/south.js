@@ -122,6 +122,8 @@ export const SOUTH_SECTORS = Object.freeze([
     ]),
     fields: Object.freeze([
       Object.freeze({ id: 'f_eunomia_1', type: 'ast_rare_exotic', countWeight: 1.0 }),
+      // 04 "Throw: licensed plate and wrecks" — stamped hull metal off the Gulf Hulk's ribs (row 540).
+      Object.freeze({ id: 'f_eunomia_2', type: 'ast_metallic', countWeight: 0.6 }),
     ]),
     hazards: Object.freeze([
       Object.freeze({
@@ -209,6 +211,8 @@ export const SOUTH_SECTORS = Object.freeze([
     ]),
     fields: Object.freeze([
       Object.freeze({ id: 'f_sedna_1', type: 'ast_rare_exotic', countWeight: 1.0 }),
+      // 04 "Throw: dead lane buoys" — dead hardware drift on the unlit lane (row 540).
+      Object.freeze({ id: 'f_sedna_2', type: 'ast_metallic', countWeight: 0.55 }),
     ]),
     hazards: Object.freeze([
       Object.freeze({
@@ -341,6 +345,12 @@ export const SOUTH_ANCHORS = Object.freeze({
         center: Object.freeze({ x: 200, z: 380 }),
         clusterRadius: 400,
       }),
+      // Licensed plate drift beside the hulk the scavengers still pick.
+      Object.freeze({
+        id: 'f_eunomia_2',
+        center: Object.freeze({ x: 1000, z: 700 }),
+        clusterRadius: 400,
+      }),
     ]),
     pois: Object.freeze([
       Object.freeze({
@@ -395,6 +405,12 @@ export const SOUTH_ANCHORS = Object.freeze({
         id: 'f_sedna_1',
         center: Object.freeze({ x: 720, z: -280 }),
         clusterRadius: 420,
+      }),
+      // Dead lane buoys strung along the unlit southern reach.
+      Object.freeze({
+        id: 'f_sedna_2',
+        center: Object.freeze({ x: -150, z: -1150 }),
+        clusterRadius: 450,
       }),
     ]),
     pois: Object.freeze([

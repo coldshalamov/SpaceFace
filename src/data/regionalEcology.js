@@ -82,6 +82,13 @@ const RESOURCE_YIELD = Object.freeze({
 
 const HAZARD_ANOMALY_TYPES = Object.freeze(new Set(['nebula', 'radiation']));
 const ZONE_ANOMALY_TYPES = Object.freeze(new Set(['anomaly_deep', 'nebula_fog', 'radiation_field']));
+// A named zone pocket is a hazard the dossier can say. The score already counted
+// the pocket; the type list used to stay empty, so the chart read "clear".
+const ZONE_POCKET_HAZARD = Object.freeze({
+  anomaly_deep: 'anomaly',
+  nebula_fog: 'nebula',
+  radiation_field: 'radiation',
+});
 
 function clamp(value, lo, hi) {
   return value < lo ? lo : value > hi ? hi : value;
@@ -132,11 +139,17 @@ function hazardComposition(sector, zones) {
     seen.add(type);
     hazards.push(type);
   }
-  hazards.sort((a, b) => a.localeCompare(b));
   let anomalyZones = 0;
   for (const zone of zones) {
-    if (zone && ZONE_ANOMALY_TYPES.has(zone.type)) anomalyZones += 1;
+    if (!zone) continue;
+    if (ZONE_ANOMALY_TYPES.has(zone.type)) anomalyZones += 1;
+    const pocket = ZONE_POCKET_HAZARD[zone.type];
+    if (pocket && !seen.has(pocket)) {
+      seen.add(pocket);
+      hazards.push(pocket);
+    }
   }
+  hazards.sort((a, b) => a.localeCompare(b));
   const hazardAnomalies = hazards.filter((type) => HAZARD_ANOMALY_TYPES.has(type)).length;
   return Object.freeze({
     types: Object.freeze(hazards.slice()),

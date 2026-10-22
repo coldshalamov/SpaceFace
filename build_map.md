@@ -667,8 +667,8 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457, 431 |
 | set-pieces | free | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks (§31.5) | 430 |
 | pulse-voice | devin-fleet-oct20 | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
-| pulse-print | devin-thirty-oct22 | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
-| pulse-world | devin-thirty-oct22 | far-plane depth layers and far-actor feed, station shift/calendar data, `050-roaming-events.js` + event runtimes, memorial/graffiti-about-you, hull trinkets via `livingHull` presentation — coordinate with L-PICTURE on render layers (§31.6) | 438, 439, 440, 441 |
+| pulse-print | free | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
+| pulse-world | free | far-plane depth layers and far-actor feed, station shift/calendar data, `050-roaming-events.js` + event runtimes, memorial/graffiti-about-you, hull trinkets via `livingHull` presentation — coordinate with L-PICTURE on render layers (§31.6) | 438, 439, 440, 441 |
 | vignettes | devin-fleet-oct20 | `scripts/build-lived-vignettes.mjs` and the generated lived-vignette encounter files, `vignetteInterpreter.js`, `livedWorldDirector.js` (§32.7) | 459 |
 | docket | devin-fleet-oct20 | `lossInvestigation.js`, `data/wreckCourt/`, `wreckCourt.js` offers, `custodyConsequences.js`, witness/sweep/sponsor hunks of `lawSecurity.js`/`heat.js`/`bountyHunt.js` (serial with `rope-scale` on customs), inspector career branch (§32.4, §32.7) | 461, 462, 452 |
 | boss-read | devin-fleet-oct20 | `capitalBossPresentation.js`, boss-warning adapter, the Swarm-only boss-bar gate in `swarmJuice.js` (serial with `swarm`), `ai/counterplay/adventure.js` toast, act retry hunk of `missions.js`, `encounters/capital-boss/` plates (§32.4, §32.7) | 463, 448 |
@@ -678,31 +678,31 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | discovery-shown | free | anatomy hunk of `ui/targetPanel.js`, `data/alienFauna.js` taxonomy, `alienEcology.js` toasts, `ui/comms.js` styling, codex species pages (serial with `pulse-print`), fauna/machine recipes in `audioRecipes.js`, Helios tease placement, `precursorMachines.js` clause decode (§32.7) | 468 |
 | records | free | `ui/screens/statistics.js`, photo Look in `pause.js`/`camera.js`, achievements screen, empty Replay/Clips copy (serial with `theater`), today's board in `survivalRecords.js`/crucible door, Range Licence in `range.js` (§32.7) | 471 |
 | front-door-speed | devin-fleet-oct20 | `ui/loadingPresenter.js`, `loadingTerminalArt.js`, `core/newGameBoot.js` (inside the L-MACHINE shader-admission work), first-light preset in `accessibility.js`/`mainMenu.js`, `orrery/settingsLayouts.js`, `saveLoad.js`/`saveNotices.js` (§32.7) | 473 |
-| glass | devin-thirty-oct22 | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | 474 |
+| glass | free | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | 474 |
 | feel | devin-fleet-oct20 | `systems/gamepad.js`, `ui/stuntCallout.js`, `combat/stuntEvidence.js`/`stuntRecognition.js`, trick book screen, `data/survivalArenas.js` signature tricks (serial with `swarm`), vent hunk of `weapons.js` (serial with `hostile-hands`), match burn in `flightV3.js` (§32.7) | 475 |
-| travel | free | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | 476 |
-| npc-read | free | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |
+| travel | devin-thirty-oct22 | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | 476 |
+| npc-read | devin-thirty-oct22 | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |
 | station-stage | free | `ui/station/screens/bar.js`, `barContacts.js` (serial with `market-why`), ledger appeal, codex redactions, Manifest card game screen + data, logbook from `chronicler/` (§32.4, §32.7) | 478, 447, 451 |
 | screens-true | devin-fleet-oct20 | `ui/screens/missionLog.js`, station shell scroll padding, `gameOver` bench fixture and fallback copy, map destination strip in `galaxyMap.js`, `orrery/settingsPreview.js`, ledger/factions empty states (§32.7) | 479 |
 | home-crew | free | the Long Berth (`worldOneOffs.js` hunk serial with `run-memory`; `claims.js` hunk serial with `works`), trophy yard persistence, crew data + perk hook through the ships derived-stat writer (serial with `hull-commit`) (§32.4) | 445, 446 |
-| weather | free | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | 449 |
+| weather | devin-thirty-oct22 | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | 449 |
 | m1-first-hour | free | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
 | engine | done | `scripts/program-dispatch.mjs`, `scripts/check-plan-integrity.mjs`, `design/program/PLAN_ENGINE.md` (§32.6) | - |
 | seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
 | seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
 | seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422, 442 |
-| rock-core | devin-thirty-oct22 | impact-kill path in `combat/damage.js`, `systems/hullBurst.js`, `systems/hullFracture.js`, `data/physicsMaterials.js` substance layer, hit-stop in `render/feel.js`, swarm wave composition and arena-scale hunk of `data/swarmMode.js` (serial with `swarm`) (§33 core, §34) | 488, 482, 487, 510, 509, 486, 483, 485, 484, 511, 541 |
+| rock-core | devin-thirty-oct22 | impact-kill path in `combat/damage.js`, `systems/hullBurst.js`, `systems/hullFracture.js`, `data/physicsMaterials.js` substance layer, hit-stop in `render/feel.js`, swarm wave composition and arena-scale hunk of `data/swarmMode.js` (serial with `swarm`) (§33 core, §34) | 488, 482, 483, 485, 484, 541 |
 | fight-read | free | attack-cycle hunk of `ai/maneuver.js`, `ai/reflexes.js` consolidation (serial with `hostile-hands`), enemy silhouette and engine-colour reads, `render/masslineCableSurface.js`, `masslineReleaseArc.js`, `masslinePresentation.js` at chase distance (serial with `rope-world`), `render/camera.js` framing | 545 |
-| glass-tiers | devin-thirty-oct22 | `ui/hud.js` tier hunks (serial with `glass` row 474), `ui/powerRail.js`, `ui/orrery/flightCluster.js`, `ui/stuntCallout.js` (LOG feed), `ui/screens/newGame.js` copy, `systems/onboarding.js` situation hunk; edits minimal and ORRERY-consistent with bench shots and `--walk` (owner 2026-09-27) | 494, 496, 502, 546, 493 |
-| line-progression | free | Line Class and strain hunk of `systems/tetherGameplay.js` (serial with `rope-world`), `masslineTelemetry.js` (serial with `rope-scale`), class hull states, Line heads in `data/modules.js` and `systems/ships.js` (serial with `hull-commit`), provenance rarity, `economy.js` pacing (§34) | 498, 499, 501, 489, 500, 550, 544 |
-| bloom | free | `data/swarmBrood.js`, `systems/swarmBrood.js`, swarm group-behaviour hunk of `systems/survivalSwarm.js`, `systems/alienEcology.js`, `regionalEcology.js`, coupling-filament VFX (§34.2) | 503, 507, 504, 508 |
-| world-pressure | free | `systems/sectorSim.js` tide and gate readers (serial with `world-answers-2`), gate-closure hunk of `travelLanes.js` and `routePlanner.js` (serial with `travel`), chart layer of `ui/galaxyMap.js`, Meridian ticker in `economyCycles.js`, receipt caps and save migrations (§34.6) | 520, 521, 522, 523, 549 |
+| glass-tiers | devin-thirty-oct22 | `ui/hud.js` tier hunks (serial with `glass` row 474), `ui/powerRail.js`, `ui/orrery/flightCluster.js`, `ui/stuntCallout.js` (LOG feed), `ui/screens/newGame.js` copy, `systems/onboarding.js` situation hunk; edits minimal and ORRERY-consistent with bench shots and `--walk` (owner 2026-09-27) | 496, 502, 546, 493 |
+| line-progression | devin-thirty-oct22 | Line Class and strain hunk of `systems/tetherGameplay.js` (serial with `rope-world`), `masslineTelemetry.js` (serial with `rope-scale`), class hull states, Line heads in `data/modules.js` and `systems/ships.js` (serial with `hull-commit`), provenance rarity, `economy.js` pacing (§34) | 498, 499, 501, 489, 500, 550, 544 |
+| bloom | devin-thirty-oct22 | `data/swarmBrood.js`, `systems/swarmBrood.js`, swarm group-behaviour hunk of `systems/survivalSwarm.js`, `systems/alienEcology.js`, `regionalEcology.js`, coupling-filament VFX (§34.2) | 503, 507, 504, 508 |
+| world-pressure | devin-thirty-oct22 | `systems/sectorSim.js` tide and gate readers (serial with `world-answers-2`), gate-closure hunk of `travelLanes.js` and `routePlanner.js` (serial with `travel`), chart layer of `ui/galaxyMap.js`, Meridian ticker in `economyCycles.js`, receipt caps and save migrations (§34.6) | 520, 521, 522, 523, 549 |
 | faction-art | free | Forge faction hull kits, the Overgrowth and junk kits, station dressing kits, the 24-body rock family, portraits; skip a body the graphics lane L-PICTURE has claimed (§34) | 514, 512, 495, 543 |
-| faction-law-trade | devin-thirty-oct22 | `systems/lawSecurity.js` scans and weirs (serial with `rope-scale`), convoy and spine hunk of `systems/traffic.js` (serial with `monoliths`), `systems/aiEncounter.js`, `systems/encounterScripts.js`, Concord, Meridian, Helix, Quiet, Drift and Reach data in `data/factions/` (§34.5) | 515, 513, 516, 526, 525, 530, 531 |
-| faction-strange | devin-thirty-oct22 | Understory gardens, Fulfillment routes, the Pitborn Cull and Yardmaster, Vael liens, Archive redaction, Choir bells, Verge court, Frontier homesteads: each as its own system file plus its `data/factions/*.js` row; one faction per sitting (§34.5) | 517, 518, 519, 524, 527, 528, 529, 532 |
+| faction-law-trade | free | `systems/lawSecurity.js` scans and weirs (serial with `rope-scale`), convoy and spine hunk of `systems/traffic.js` (serial with `monoliths`), `systems/aiEncounter.js`, `systems/encounterScripts.js`, Concord, Meridian, Helix, Quiet, Drift and Reach data in `data/factions/` (§34.5) | 515, 513, 516, 526, 525, 530, 531 |
+| faction-strange | free | Understory gardens, Fulfillment routes, the Pitborn Cull and Yardmaster, Vael liens, Archive redaction, Choir bells, Verge court, Frontier homesteads: each as its own system file plus its `data/factions/*.js` row; one faction per sitting (§34.5) | 517, 518, 519, 524, 527, 528, 529, 532 |
 | campaign | free | `systems/story.js`, `story/campaign47a/`, Book hunks of `systems/missions.js` (serial with `run-memory` for the B7 hunk), `data/narrative.js`, `systems/capitalBossRuntime.js` Colossus parts (§34.7) | 533, 534, 535, 536, 537, 538, 539, 547 |
 | places-people | free | one-off census tool, new Orphaned Shift encounter owners (one per sitting, on the Morrow and Rubric pattern), `data/sectorWayOfLife.js` readers, canon cast hooks in their owners (§34.3, §34.8) | 505, 540, 542, 506 |
-| cadence | free | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
+| cadence | devin-thirty-oct22 | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
 | audit-50 | free | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
@@ -1065,13 +1065,13 @@ production units, and never build what they write.
 | 413 | AL-MACH-2 | Split `missions.js` and `traffic.js` below 8k LOC, byte-identical digests (§31.3) | BUILD | OPEN — only while seams `world-answers-2`/`run-memory` are not claimed |
 | 414 | AL-MACH-3 | Newest versions — three, Electron, Rapier, electron-builder on ≥7-day-old releases, digest-gated (§31.3) | BUILD | OPEN |
 | 415 | AL-MACH-4 | A toolchain a newcomer can read — tier the 662 npm scripts, retire zero-reference aliases (§31.3) | BUILD | OPEN — after 414 |
-| 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | OPEN |
-| 417 | SEED-WORLD-LONG | Seed ≥12 audited lines: readers for written-and-unread flags, hour 10–25 career beats, standing-order clients (§31.3) | SEED | OPEN |
-| 418 | SEED-SHOW-EAR | Seed ≥12 audited lines: caption gaps by recipe id, off-grid stingers, replay/photo gaps (§31.3) | SEED | OPEN |
-| 419 | SEED-SECTORS | The 25-sector postcard pass — each sector's identity as verb, job, sound and picture within 2 min of arrival; each miss is one line (§31.3) | SEED | OPEN |
-| 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | OPEN |
-| 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | OPEN |
-| 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | OPEN |
+| 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | DONE devin-ten-oct22 (21452bddf9) |
+| 417 | SEED-WORLD-LONG | Seed ≥12 audited lines: readers for written-and-unread flags, hour 10–25 career beats, standing-order clients (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 418 | SEED-SHOW-EAR | Seed ≥12 audited lines: caption gaps by recipe id, off-grid stingers, replay/photo gaps (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 419 | SEED-SECTORS | The 25-sector postcard pass — each sector's identity as verb, job, sound and picture within 2 min of arrival; each miss is one line (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | DONE devin-ten-oct22 (21452bddf9) |
 | 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | OPEN |
 | 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | OPEN |
 | 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424; owner ruling needed: `src/ui/AGENTS.md` bans pilot portraits in the flight HUD, so until ruled the portrait shows on the station comms screen and the in-flight line carries name, voice and caption only |
@@ -1091,7 +1091,7 @@ production units, and never build what they write.
 | 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | OPEN |
 | 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | DONE devin-thirty-oct22 |
-| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | OPEN |
+| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
 | 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |
 | 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | BUILD | OPEN — M3 |
 | 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | BUILD | OPEN — M3; after 445 |
@@ -1122,7 +1122,7 @@ production units, and never build what they write.
 | 473 | RC-FRONT-DOOR | A fast, kind front door — interactive title ≤10 s, mm:ss clock, destination slate, first-light preset, settings density (§32.7) | BUILD | OPEN — M1; coordinate with L-MACHINE shader admission |
 | 475 | RC-FELT | Every verb is felt — callout rarity, haptics, Around the World, Trick Book, arena bounties, Prize Run, Perfect Vent, Match Burn (§32.7) | BUILD | OPEN — M1/M2 |
 | 476 | RC-TRAVEL | Travel is a choice — Freight Spine, stale chart, Two Roads, Interdiction Wrestle, drift vector (§32.7) | BUILD | OPEN |
-| 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | OPEN |
+| 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — job phases already had `livingWorkStatusText`; this row puts it on the contacts-roster detail line; grudge hails (`aceHailOpener`, `patrolGrievanceHail`) and robbed-hauler price moves (`accountFreightDiversion` → `freight:loss` → `economy:applyTradePressure` at the bound station) pre-existed and are claimed here |
 | 478 | RC-STATION-STAGE | The station is a stage — bar reactions, Regulars, Appeals Window, Clearance Pending, The Tab, the Fine at Helios (§32.7) | BUILD | OPEN — M3 |
 | 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
 | 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
@@ -1136,18 +1136,18 @@ production units, and never build what they write.
 | 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 491 | CRAFT-INTENT | Enemies with intent — attack cycles, cruise ≥70 % of the player's, ≤0.4 reversals/s (measured 50 vs 117, 0.8/s) (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
 | 492 | CRAFT-LINE | The Line you can see — strain thickness and glow, a rim-lit latch, the release arc at the chase camera (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
-| 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | OPEN — merge landed 2026-10-22 (owner chose Pull · Shove · Pin · Bomb · Rig on 1–5, `src/systems/powerVerbs.js`; rail, Cluster, help, settings, pad and phone deck name and tint each power); remaining: the held-key preview |
+| 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — held-key preview: deterministic capped plan (24 outlines), per-power tint, predicted paths; `src/data/powerPreview.js` + `src/render/powerPreview.js` |
 | 495 | CRAFT-ROCKS | Rocks are the hero art (§33.2) | ART | OPEN — with 509 |
-| 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | OPEN |
+| 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | DONE devin-thirty-oct22-b (187daf8f) — TOP SPEED / LIMIT / AT TOP SPEED / DRIVE SPINNING UP / OUT OF POWER on the velocity tape; RELEASE SPEED on the cadence readout |
 | 497 | CRAFT-CADENCE | Something happens every minute — first contact ≤2 min, then every 3–5; cohort travel ≤50 % (§33.3) | BUILD | OPEN — after 482–492 make a pocket fight worth meeting |
 | 498 | W-TONNAGE | Tonnage Logged and Line Class I–VIII, shown on the hull (§34.1) | BUILD | OPEN |
 | 499 | W-STRAIN | The honest strain — over-class towing, a hot cable, a snap event, record stamps (§34.1) | BUILD | OPEN — after 498 |
 | 500 | W-PROVENANCE | Provenance rarity — Stock, Worked, Named, Storied, Relic, plus Backordered; behaviours, not stats (§34.1) | BUILD | OPEN |
 | 501 | W-HEADS | The 14 Line heads, P0 first: Coupler, Breaker, Barb, Weld, Magnet, Override (§34.1) | BUILD | OPEN |
-| 502 | W-LOG | LOG — the physics narrator (EXP-12 fills its copy) (§34.1) | BUILD | OPEN |
+| 502 | W-LOG | LOG — the physics narrator (EXP-12 fills its copy) (§34.1) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — cause-aware one-line register (`src/data/physicsLog.js`) riding the stunt-callout lane's ~3 s fade; silent in terminal zones |
 | 503 | W-COUPLING | Coupling you can see — filaments; panic, aggression and grief cascades (§34.2) | BUILD | OPEN |
 | 504 | W-PATHOLOGY | Pain loop, route-memory, host-shadow Husks (§34.2) | BUILD | OPEN — after 503 |
-| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | OPEN |
+| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | DONE devin-ten-oct22 (32918b94f6) |
 | 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | OPEN — after 505 |
 | 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN |
 | 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
@@ -1179,7 +1179,7 @@ production units, and never build what they write.
 | 537 | W-CANON | Interludes as quiet scenes; PROPOSED CANON folded into `docs/worldbuilding/` or rejected in one sentence (§34.7) | BUILD | OPEN |
 | 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
 | 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
-| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | OPEN |
+| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
 | 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | OPEN — with 485 |
 | 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | OPEN |
 | 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |

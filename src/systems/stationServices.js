@@ -123,19 +123,38 @@ export function planYardClients(seed, sectorId, dayIndex, stationId, sizeKey) {
 }
 
 /**
- * Occupancy of a station's pads/crews at `now`, from the seeded schedule. Clients berth in
- * arrival order; when every pad is taken, later arrivals wait off-pad (occupant of nothing, still
- * hangar traffic the player waits behind). busyCrews counts berthed clients still inside their
- * service window, capped at the crew count — a crew-limited yard is what a player job queues on.
+ * Today's seeded clients plus any hauler from the previous day still inside its departure.
+ * A day plan by itself drops that hull at midnight even though departAt is still ahead.
  */
-export function yardOccupancy(visits, pads, crews, now) {
+export function yardVisitsCovering(seed, sectorId, stationId, sizeKey, now) {
+  const day = Math.floor(now / DAY_SECONDS);
+  const today = planYardClients(seed, sectorId, day, stationId, sizeKey);
+  if (day <= 0) return today;
+  const prev = planYardClients(seed, sectorId, day - 1, stationId, sizeKey);
+  const dayStart = day * DAY_SECONDS;
+  const carry = prev.filter((v) => v && v.departAt > dayStart);
+  if (!carry.length) return today;
+  return carry.concat(today).sort((a, b) => a.arriveAt - b.arriveAt);
+}
+
+/**
+ * Occupancy of a station's pads/crews at `now`, from the seeded schedule. Clients berth in
+ * arrival order on pads the player has not already reserved; when every remaining pad is taken,
+ * later arrivals wait off-pad (occupant of nothing, still hangar traffic the player waits behind).
+ * busyCrews counts berthed clients still inside their service window, capped at the crew count —
+ * a crew-limited yard is what a player job queues on. Omit reservedPad and the old assignment stands.
+ */
+export function yardOccupancy(visits, pads, crews, now, reservedPad = -1) {
   const active = (visits || [])
     .filter((v) => v && v.arriveAt <= now && now < v.departAt)
     .sort((a, b) => a.arriveAt - b.arriveAt);
+  const hold = Number.isInteger(reservedPad) && reservedPad >= 0 && reservedPad < pads;
+  const open = [];
+  for (let i = 0; i < pads; i++) if (!hold || i !== reservedPad) open.push(i);
   const berthed = [];
   const waiting = [];
   for (const v of active) {
-    if (berthed.length < pads) berthed.push({ ...v, padIdx: berthed.length });
+    if (berthed.length < open.length) berthed.push({ ...v, padIdx: open[berthed.length] });
     else waiting.push(v);
   }
   const busyCrews = Math.min(crews, berthed.filter((v) => now < v.arriveAt + v.serviceS).length);
@@ -509,7 +528,17 @@ export const stationServices = {
     const room = Math.max(0, (fuel.max || 0) - (fuel.current || 0) - bookedFuel);
     const held = cargo.items ? Math.floor(Number(cargo.items.cmdty_fuel_cells) || 0) : 0;
     if (held <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
-    if (room < FUEL_UNITS_PER_CELL) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
+    if (room < FUEL_UNITS_PER_CELL) {
+      // The dock button stays up while the tank shows leftover room that cannot hold a whole
+      // cell, and while a paid pump already owns that room. Say which, or the click is silence.
+      const left = Math.max(0, Math.floor((fuel.max || 0) - (fuel.current || 0)));
+      const booked = Math.floor(bookedFuel);
+      const text = booked > 0
+        ? `The pump already owns ${booked} of this tank — no room to decant a cell.`
+        : `The tank has ${left} left — a fuel cell needs ${FUEL_UNITS_PER_CELL}.`;
+      if (this.bus) this.bus.emit('toast', { text, kind: 'warn', ttl: 2.8 });
+      return { ok: false, reason: 'tank_full', cells: 0, units: 0, text };
+    }
     const cells = Math.min(held, DECANT_MAX_CELLS_PER_PASS, Math.floor(room / FUEL_UNITS_PER_CELL));
     if (cells <= 0) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
     const removed = removeCargo(state, 'cmdty_fuel_cells', cells);
@@ -561,19 +590,20 @@ export const stationServices = {
     const crews = yardCrewsFor(sizeKey);
     const rep = playerRepFor(state, profile && profile.factionId);
 
-    // Seeded yard traffic for this station-day. A day rollover mid-dock is rare and cheap to
-    // re-plan: yesterday's clients are simply absent from today's schedule. The plan is a pure
-    // function of the day, so it is cached on the station record rather than rebuilt per tick.
+    // Seeded yard traffic for this station-day, plus a hauler from yesterday still
+    // on the clock. The plan is a pure function of the day, so it is cached on the
+    // station record rather than rebuilt per tick.
     const day = Math.floor(now / DAY_SECONDS);
     const seed = state.meta && state.meta.seed;
     const sectorId = (profile && profile.sectorId)
       || (state.world && state.world.currentSectorId) || 'sector';
     const st = s.stations[stationId] || (s.stations[stationId] = {});
     if (!st._plan || st._plan.day !== day) {
-      st._plan = { day, visits: planYardClients(seed, sectorId, day, stationId, sizeKey) };
+      st._plan = { day, visits: yardVisitsCovering(seed, sectorId, stationId, sizeKey, now) };
     }
     const visits = st._plan.visits;
-    const occ = yardOccupancy(visits, pads, crews, now);
+    const reservedPad = Number.isInteger(player.padIdx) && player.padIdx >= 0 ? player.padIdx : -1;
+    const occ = yardOccupancy(visits, pads, crews, now, reservedPad);
 
     // Pad assignment: a holding player takes the first pad no client occupies.
     if (player.padIdx < 0) {
@@ -741,9 +771,12 @@ export const stationServices = {
           || (this.state.world && this.state.world.currentSectorId) || 'sector';
         const st = s.stations[stationId] || (s.stations[stationId] = {});
         if (!st._plan || st._plan.day !== day) {
-          st._plan = { day, visits: planYardClients(seed, sectorId, day, stationId, sizeKey) };
+          st._plan = { day, visits: yardVisitsCovering(seed, sectorId, stationId, sizeKey, now) };
         }
-        return { pads: yardPadsFor(sizeKey), occ: yardOccupancy(st._plan.visits, yardPadsFor(sizeKey), yardCrewsFor(sizeKey), now) };
+        const padsN = yardPadsFor(sizeKey);
+        const docked = s.player;
+        const reservedPad = docked && Number.isInteger(docked.padIdx) && docked.padIdx >= 0 ? docked.padIdx : -1;
+        return { pads: padsN, occ: yardOccupancy(st._plan.visits, padsN, yardCrewsFor(sizeKey), now, reservedPad) };
       })();
     const player = s.player;
     const padsArr = [];

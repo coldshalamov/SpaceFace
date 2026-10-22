@@ -92,6 +92,19 @@ export function ordnanceClassVerdict(entity) {
   };
 }
 
+/**
+ * Where a drift bomb is released and how it starts moving: behind the hull along the flight
+ * heading (the nose when nearly still), at ship velocity. The drop and the held-key preview
+ * (row 493) both read it.
+ */
+export function bombDropPlan(owner) {
+  const vx = Number(owner.vel?.x) || 0, vz = Number(owner.vel?.z) || 0;
+  const heading = Math.hypot(vx, vz) > 12 ? Math.atan2(vz, vx) : owner.rot || 0;
+  const standoff = Math.max(0, owner.radius || 6) + BOMB_DRIFT.dropStandoffWu;
+  const pos = { x: owner.pos.x - Math.cos(heading) * standoff, z: owner.pos.z - Math.sin(heading) * standoff };
+  return { pos, vx, vz, heading };
+}
+
 /** Fuze law: craft only, never the dropper, never the bomb's own team. */
 export function proximityTriggerEligible(victim, bomb, ownerId) {
   if (!victim || victim.alive === false || !craft(victim)) return false;
@@ -1106,10 +1119,8 @@ export const bombs = {
         : 'Bomb bay full — trigger armed ordnance or let its fuze finish.');
       return null; // no cooldown, no eviction, no free explosion
     }
-    const def = bombDef(payloadId), vx = Number(owner.vel?.x) || 0, vz = Number(owner.vel?.z) || 0;
-    const heading = Math.hypot(vx, vz) > 12 ? Math.atan2(vz, vx) : owner.rot || 0;
-    const standoff = Math.max(0, owner.radius || 6) + BOMB_DRIFT.dropStandoffWu;
-    const pos = { x: owner.pos.x - Math.cos(heading) * standoff, z: owner.pos.z - Math.sin(heading) * standoff };
+    const def = bombDef(payloadId);
+    const { pos, vx, vz, heading } = bombDropPlan(owner);
     const bomb = this.helpers.spawnEntity({
       type: BOMB_TYPE, pos, vel: { x: vx, z: vz }, rot: heading,
       radius: BOMB_PROXY_RADIUS, mass: 2, collides: true, physicsBody: false,

@@ -40,7 +40,11 @@ import {
   NURSERY_CLAIM_CREW,
   grantAlienUnique,
 } from '../data/alienEcology.js';
-import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
+import {
+  carrierSpecies, faunaSpeciesById, faunaScanFlinch, faunaWeaponScatter,
+  faunaDebrisPile, faunaWakeLeadsHunter, faunaRepairYank, faunaVentFeeds,
+  faunaOrchardFogName, faunaBellInReach,
+} from '../data/alienFauna.js';
 import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
 import { noteHeatTrial } from '../data/heatProximityTrial.js';
 import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
@@ -58,7 +62,7 @@ import {
 import {
   COPY_POS, COPY_REACH, COPY_SECTOR_ID, copySurveySale, surveyCopyOffer,
 } from '../data/surveyCopy.js';
-import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
+import { suppressionFieldAt, MACHINE_SITES, advanceMachineProtocol } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
 import { captureClosedRefineryProps, reconcileClosedRefineryProps, registerClosedRefineryProp } from './closedRefineryProps.js';
@@ -396,6 +400,11 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
       // AE-162: a disguised species (black sail) reads as debris on the board until a
       // completed close scan flips it broadside.
       const disguised = !!species.disguise;
+      const playerEnt = state.playerId != null ? state.entities.get(state.playerId) : null;
+      const fogDistance = playerEnt && playerEnt.pos
+        ? Math.hypot(playerEnt.pos.x - pos.x, playerEnt.pos.z - pos.z)
+        : Infinity;
+      const fogName = !disguised ? faunaOrchardFogName(species, site, fogDistance) : null;
       const budget = site.nursery ? world.helpers.spawnBudget : null;
       if (site.nursery && (!budget || budget.request(1, member.faunaKey) !== 1)) continue;
       const ent = world.helpers.spawnEntity({
@@ -415,9 +424,11 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
           // Display name obeys the same reveal ladder as the scanner label: at low
           // revelation the target panel reads the generic scan term, not the taxonomy name.
           name: disguised ? 'Debris field fragment'
+            : fogName ? fogName
             : effectiveRevelation(state) >= 2 ? species.name
             : scannerBiologyLabel(effectiveRevelation(state), species.signature),
           scanLabel: disguised ? 'debris'
+            : fogName ? fogName
             : scannerBiologyLabel(effectiveRevelation(state), species.signature),
           scannerSignalKind: disguised ? 'debris' : 'anomaly',
           strainId: strain ? strain.id : null,
@@ -775,7 +786,8 @@ export function handleAlienEcologyEvent(world, type, payload) {
       if (rec) rec.objectiveDone = true;
       const ae = ensureAlienEcologyState(state);
       ae.taxonomy.filamentousContamination = true;
-      ae.machineProtocol = 'observed';
+      // The recorder is a 'seen' beat. It must not wipe a fault or a higher standing.
+      advanceMachineProtocol(state, 'seen');
       setRevelation(state, 3);
       toast('DMC flight recorder secured. Research contact logged: FILAMENTOUS CONTAMINATION.', 'good', 6);
       refreshAlienLabels(world);
@@ -893,6 +905,18 @@ export function handleAlienEcologyEvent(world, type, payload) {
         }
         // AE-226..228 harvest: dead fauna shed bio-resource pickups; inside a machine
         // suppression pocket the roll swaps to the sterile-shell table (AE-227).
+        const piled = faunaSpeciesById(eco.speciesId);
+        if (piled && piled.pilesDebris && eco.pile && !eco.pileTaken) {
+          eco.pileCollapsed = true;
+          const pileEnt = eco.pileEntityId != null ? state.entities.get(eco.pileEntityId) : null;
+          if (pileEnt && pileEnt.alive !== false) {
+            pileEnt.alive = false;
+            if (world.helpers && typeof world.helpers.removeEntity === 'function') {
+              world.helpers.removeEntity(pileEnt.id, { immediate: true });
+            }
+          }
+          toast('The crab dies and the pile collapses — the arrangement is gone.', 'warn', 5);
+        }
         dropFaunaHarvest(world, e, eco);
         // AE-054 carrier rupture: killing a carrier seeds a bloom patch, releases juvenile
         // forms, pushes local C, and flips nearby fauna to feed.
@@ -1026,6 +1050,51 @@ export function handleAlienEcologyEvent(world, type, payload) {
       else if (payload.outcome === 'biohazard_sale') entry.sold += 1;
       break;
     }
+    case 'scan:pulse': {
+      // Grazers that watch the scanner bolt. The nursery already has its own disturbance.
+      if (payload.source !== 'player-scanner' || !payload.pos) break;
+      const origin = payload.pos;
+      const radius = Math.max(0, Number(payload.radius) || 0);
+      let count = 0;
+      for (const ent of indexedTypeScan(state, 'fauna')) {
+        const eco = ent && ent.data && ent.data.ecology;
+        if (!eco || ent.alive === false || eco.aggregate || eco.disguised || !ent.pos) continue;
+        const siteDef = eco.siteId && ALIEN_SITES[eco.siteId];
+        if (siteDef && siteDef.nursery) continue;
+        const species = faunaSpeciesById(eco.speciesId);
+        const dist = Math.hypot(ent.pos.x - origin.x, ent.pos.z - origin.z);
+        if (dist > radius || !faunaScanFlinch(species, dist)) continue;
+        eco.flinchUntil = (Number(state.simTime) || 0) + 4;
+        eco.fleeFrom = { x: origin.x, z: origin.z };
+        setDrive(eco, 'flee');
+        count += 1;
+      }
+      if (count > 0) toast('The veil rays flinch — the scan lights their membranes.', 'info', 4);
+      break;
+    }
+    case 'combat:fire': {
+      if (!payload.origin || payload.ownerId !== state.playerId) break;
+      const origin = payload.origin;
+      let count = 0;
+      const nowFire = Number(state.simTime) || 0;
+      for (const ent of indexedTypeScan(state, 'fauna')) {
+        const eco = ent && ent.data && ent.data.ecology;
+        if (!eco || ent.alive === false || eco.aggregate || !ent.pos) continue;
+        const siteDef = eco.siteId && ALIEN_SITES[eco.siteId];
+        if (siteDef && siteDef.nursery) continue;
+        const species = faunaSpeciesById(eco.speciesId);
+        const dist = Math.hypot(ent.pos.x - origin.x, ent.pos.z - origin.z);
+        if (!faunaWeaponScatter(species, dist)) continue;
+        if ((eco.scatterUntil || 0) <= nowFire) {
+          eco.scatterUntil = nowFire + 5;
+          eco.fleeFrom = { x: origin.x, z: origin.z };
+          setDrive(eco, 'flee');
+        }
+        count += 1;
+      }
+      if (count > 0) toast('Gunfire scatters the needle swarm — the ring breaks and they run.', 'warn', 4);
+      break;
+    }
     default:
       break;
   }
@@ -1129,6 +1198,16 @@ export function refreshAlienLabels(world) {
     if (e.data.ecology.disguised === true) continue;
     const species = faunaSpeciesById(e.data.ecology.speciesId);
     if (!species) continue;
+    const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+    const fogDistance = player && player.pos && e.pos
+      ? Math.hypot(player.pos.x - e.pos.x, player.pos.z - e.pos.z)
+      : Infinity;
+    const fogName = faunaOrchardFogName(species, e.data.ecology.siteId && ALIEN_SITES[e.data.ecology.siteId], fogDistance);
+    if (fogName) {
+      e.data.scanLabel = fogName;
+      e.data.name = fogName;
+      continue;
+    }
     const label = scannerBiologyLabel(tier, species.signature);
     e.data.scanLabel = label;
     // Species names open at effective R2 only. R0/R1 stay on the scanner term.
@@ -1380,10 +1459,31 @@ export function tickAlienEcology(world, dt) {
         return sp && sp.weatherListener && f.alive !== false;
       });
       if (bells) {
-        world.bus.emit('comms:log', {
-          from: 'Band intercept', kind: 'ecology',
-          text: 'A low electromagnetic toll rolls across the band — something out there rings before the radiation front arrives.',
-        });
+        let nearest = null;
+        let nearestD = Infinity;
+        if (player && player.pos) {
+          for (const f of fauna) {
+            if (!f || !f.pos || f.alive === false) continue;
+            const sp = f.data && f.data.ecology && faunaSpeciesById(f.data.ecology.speciesId);
+            const dist = Math.hypot(player.pos.x - f.pos.x, player.pos.z - f.pos.z);
+            if (!faunaBellInReach(sp, dist) || dist >= nearestD) continue;
+            nearest = f;
+            nearestD = dist;
+          }
+        }
+        if (nearest) {
+          const sp = faunaSpeciesById(nearest.data.ecology.speciesId);
+          nearest.data.ecology.tolling = true;
+          world.bus.emit('comms:log', {
+            from: sp.name, kind: 'ecology',
+            text: `${sp.name} tolls on the band — it rings before the radiation front arrives.`,
+          });
+        } else {
+          world.bus.emit('comms:log', {
+            from: 'Band intercept', kind: 'ecology',
+            text: 'A low electromagnetic toll rolls across the band — something out there rings before the radiation front arrives.',
+          });
+        }
       }
     }
 
@@ -1753,8 +1853,9 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
 
   // ── AE-059 capture: a massline latch immobilizes capturable species. ──
   const tether = state.player && state.player.tether;
-  const latched = !!(species.capturable && tether && tether.active && tether.targetId === e.id);
+  const latched = !!((species.capturable || species.repairer) && tether && tether.active && tether.targetId === e.id);
   if (latched) {
+    if (species.repairer && eco.driveState === 'repair') eco.yankedFromRepair = true;
     const rel = Math.hypot((e.vel?.x || 0) - (player?.vel?.x || 0),
       (e.vel?.z || 0) - (player?.vel?.z || 0));
     const vx = e.vel?.x || 0, vz = e.vel?.z || 0;
@@ -1778,7 +1879,18 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   eco.captureLastVelocity = null;
   eco.captureStress = Math.max(0, (eco.captureStress || 0) - dt * 0.25);
   if (eco.captureStress < 0.5) eco.captureWarned = false;
-  if (eco.driveState === 'captured') eco.driveState = 'drift';
+  if (eco.driveState === 'captured') {
+    const yanked = faunaRepairYank(species, eco);
+    if (yanked) {
+      eco.yankedFromRepair = false;
+      eco.yankUntil = now + 6;
+      setDrive(eco, yanked);
+      if (world.bus) world.bus.emit('toast', {
+        text: 'The suture mite comes off the seam defensive — it was knitting that breach.',
+        kind: 'warn', ttl: 4,
+      });
+    } else eco.driveState = 'drift';
+  }
 
   if (eco.speciesId === 'hull_leech' && eco.attachTargetId != null) {
     const target = state.entities.get(eco.attachTargetId);
@@ -1881,6 +1993,30 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     eco.lureTarget = { x: lure.x, z: lure.z };
   } else {
     eco.lureTarget = null;
+    // A cold maw follows a wake eel that is already trailing. Heat still outranks the trail.
+    if (species.heatHunter && (eco.heatSat || 0) <= 3) {
+      let leader = null;
+      let leaderD = Infinity;
+      const reach = Number(species.alertR) || 0;
+      for (const f of siteFauna || []) {
+        if (!f || f === e || f.alive === false || !f.pos || !f.data || !f.data.ecology) continue;
+        if (f.data.ecology.siteId !== site.siteId) continue;
+        const other = faunaSpeciesById(f.data.ecology.speciesId);
+        if (!faunaWakeLeadsHunter(species, other, f.data.ecology.driveState, false)) continue;
+        const d = Math.hypot(e.pos.x - f.pos.x, e.pos.z - f.pos.z);
+        if (d <= reach && d < leaderD) { leaderD = d; leader = f; }
+      }
+      if (leader) {
+        eco.lureTarget = { x: leader.pos.x, z: leader.pos.z };
+        if (!eco.wakeLeadTold && world.bus) {
+          eco.wakeLeadTold = true;
+          world.bus.emit('comms:log', {
+            from: 'Field notebook', kind: 'ecology',
+            text: "The wake eel's trail is leading the furnace maw in.",
+          });
+        }
+      }
+    }
   }
 
   // ── stimulus → drive resolution (doc 02 grammar) ──
@@ -1893,8 +2029,16 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   // Feed signal wins over curiosity: a fresh rupture pulls feeders toward it.
   const feedSignal = rec.signals && rec.signals.find((s) => s.kind === 'spore_density');
   if (feedSignal && (sens.spore_density || 0) > 0 && eco.driveState !== 'feed' && eco.driveState !== 'flee') {
+    const was = eco.driveState;
     eco.feedTarget = { x: feedSignal.pos.x, z: feedSignal.pos.z };
     setDrive(eco, 'feed');
+    if (feedSignal.vent && species.role === 'grazer' && was !== 'feed' && !rec.ventGrazersTold) {
+      rec.ventGrazersTold = true;
+      if (world.bus) world.bus.emit('toast', {
+        text: "Grazers break off and feed on the stone lung's exhale.",
+        kind: 'info', ttl: 4,
+      });
+    }
   }
 
   // AE-169 — heatWakes sites: dormant fauna also read a sustained warm plume as a wake
@@ -1907,7 +2051,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
 
   // D07 predator silence: a live heat-hunter on the field flattens every smaller drive —
   // prey species hold station instead of investigating while the hunter patrols.
-  const silenced = predatorAlive && !species.heatHunter
+  const silenced = predatorAlive && !species.heatHunter && !species.trails
     && playerD >= species.threatenR && eco.driveState !== 'flee'
     && eco.driveState !== 'feed' && eco.driveState !== 'captured';
   if (silenced) {
@@ -1970,6 +2114,17 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   // Resolve flee before the switch so the body actually leaves reattachment range.
   if (species.id === 'hull_leech' && now < (eco.detachUntil || 0)) setDrive(eco, 'flee');
 
+  const alarmUntil = Math.max(Number(eco.flinchUntil) || 0, Number(eco.scatterUntil) || 0);
+  if (now < alarmUntil && !species.sessile && species.dormant !== true
+      && eco.driveState !== 'captured' && eco.driveState !== 'feed') {
+    if (eco.fleeFrom == null && px != null) eco.fleeFrom = { x: px, z: pz };
+    if (eco.driveState !== 'flee') setDrive(eco, 'flee');
+  }
+  if (species.repairer && now < (Number(eco.yankUntil) || 0)
+      && eco.driveState !== 'captured' && eco.driveState !== 'feed' && eco.driveState !== 'flee') {
+    if (eco.driveState !== 'defend') setDrive(eco, 'defend');
+  }
+
   // ── drive behaviors: kinematic steering toward intent ──
   if (eco.echo != null) eco.echo = null;
   const speedMult = coherent ? 1 : species.coherenceLoss.speedMult;
@@ -1994,6 +2149,11 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
         if (now >= eco.nextVentAt) {
           eco.nextVentAt = now + species.ventPeriodS;
           rec.siteC = Math.min(0.2, (rec.siteC || 0) + 0.003);
+          if (faunaVentFeeds(species)) {
+            rec.signals = rec.signals || [];
+            rec.signals.push({ kind: 'spore_density', pos: { x: e.pos.x, z: e.pos.z }, t: now, vent: true });
+            if (rec.signals.length > 8) rec.signals.shift();
+          }
           if (world.bus) {
             world.bus.emit('alienEcology:vented', { siteId: site.siteId, x: e.pos.x, z: e.pos.z });
             if (playerD < 700) {
@@ -2060,6 +2220,26 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       targetX = siteGlobalAnchor.x + Math.cos(w) * 110;
       targetZ = siteGlobalAnchor.z + Math.sin(w) * 110;
       speed *= 0.6;
+      const pile = faunaDebrisPile(species, eco, playerD);
+      if (pile && !eco.pile && world.helpers && typeof world.helpers.spawnEntity === 'function') {
+        eco.pile = pile;
+        const spawned = world.helpers.spawnEntity({
+          type: 'pickup',
+          pos: { x: e.pos.x, z: e.pos.z },
+          vel: { x: 0, z: 0 },
+          radius: 2.2,
+          homeSectorId: e.homeSectorId,
+          data: {
+            kind: 'cargo', commodityId: pile.commodityId, amount: pile.qty,
+            name: pile.label, scanLabel: pile.label, faunaPileOf: e.id,
+          },
+        });
+        if (spawned && spawned.id != null) eco.pileEntityId = spawned.id;
+        if (world.bus) world.bus.emit('toast', {
+          text: 'The archive crab finishes a pile — arranged debris, still readable.',
+          kind: 'discovery', ttl: 5,
+        });
+      }
       break;
     }
     case 'feed': {
@@ -2494,6 +2674,7 @@ function sectorDefWeatherSlow(state, sectorId) {
 // nerve glass exist nowhere else, which is why the dead pockets pay.
 function dropFaunaHarvest(world, e, eco) {
   const state = world.state;
+  if (eco && eco.pileCollapsed) return;
   if (!world.helpers || typeof world.helpers.spawnEntity !== 'function') return;
   const local = world._toLocal ? world._toLocal(e.pos, e.homeSectorId) : e.pos;
   const suppressed = !!suppressionFieldAt(e.homeSectorId, local.x, local.z)

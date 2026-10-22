@@ -65,6 +65,41 @@ const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 // only illustrate the strongest real directions, never one invented global axis.
 export const IMPULSE_CHARGE_SHOVE_CAP = 8;
 
+/**
+ * Where a charge throw starts and how it flies right now: the throw's own branches (the aimed
+ * sticky plate; the Repulsion Trap laid behind while braking; the aft drop when bomb propulsion is
+ * fitted). The throw and the held-key preview (row 493) both read it.
+ */
+export function chargeThrowPlan(state, player) {
+  const actions = state.input && state.input.actions;
+  const braking = !!((actions && actions.brake) || state.input.brake || Number(state.input.moveZ) < -0.5);
+  const trap = braking && repulsionTrapFitted(state);
+  const chargeId = trap ? 'charge_repulsion_trap' : 'charge_standard';
+  const def = chargeDef(chargeId);
+  const aftDrop = bombPropulsionAvailable(state) && braking;
+  // Escape traps go behind the actual flight path, even while the guns aim into the chase.
+  const heading = Math.hypot(player.vel.x, player.vel.z) > 12
+    ? Math.atan2(player.vel.z, player.vel.x) : (player.rot || 0);
+  const dir = trap ? heading + Math.PI : aftDrop ? (player.rot || 0) + Math.PI : aimDir(player, state);
+  const cf = Math.cos(dir), sf = Math.sin(dir);
+  const noseR = player.radius || 6;
+  const spawnDistance = trap ? noseR + 22 : aftDrop
+    ? Math.max(
+      BOMB_PROPULSION_DIALS.minStandoff,
+      noseR + Math.min(
+        noseR * (BOMB_PROPULSION_DIALS.standoffRadii - 1),
+        def.radius * BOMB_PROPULSION_DIALS.maxSurfaceGapRadiusFrac,
+      ),
+    )
+    : noseR;
+  const throwSpeed = aftDrop ? BOMB_PROPULSION_DIALS.relativeDropSpeed : def.throwSpeed;
+  return {
+    braking, trap, chargeId, def, aftDrop, dir, cf, sf, spawnDistance, throwSpeed,
+    pos: { x: player.pos.x + cf * spawnDistance, z: player.pos.z + sf * spawnDistance },
+    vel: { x: trap ? 0 : cf * throwSpeed + player.vel.x, z: trap ? 0 : sf * throwSpeed + player.vel.z },
+  };
+}
+
 // M3 bomb-propulsion dials. Brake/reverse + the existing throw verb drops an already-armed plate
 // aft at a safe but still damaging standoff; R remains the deliberate detonation verb.
 export const BOMB_PROPULSION_DIALS = Object.freeze({
@@ -1153,10 +1188,8 @@ export const impulseCharges = {
 
     // A fitted Repulsion Trap adds a verb: a plain throw is still the aimed sticky plate, and
     // throwing while braking lays the trap on the wake. Capacity, debit and arming are shared.
-    const braking = !!(actions.brake || state.input.brake || Number(state.input.moveZ) < -0.5);
-    const trap = braking && repulsionTrapFitted(state);
-    const chargeId = trap ? 'charge_repulsion_trap' : 'charge_standard';
-    const def = chargeDef(chargeId);
+    const plan = chargeThrowPlan(state, player);
+    const { trap, chargeId, def } = plan;
     const have = Number(state.player && state.player.cargo && state.player.cargo.items
       && state.player.cargo.items[CHARGE_COMMODITY]) || 0;
     const alreadyPaid = rt.debitedThrowTick === state.tick;
@@ -1172,23 +1205,7 @@ export const impulseCharges = {
     }
     rt.debitedThrowTick = state.tick;
 
-    const aftDrop = bombPropulsionAvailable(state) && braking;
-    // Escape traps go behind the actual flight path, even while the guns aim into the chase.
-    const heading = Math.hypot(player.vel.x, player.vel.z) > 12
-      ? Math.atan2(player.vel.z, player.vel.x) : (player.rot || 0);
-    const dir = trap ? heading + Math.PI : aftDrop ? (player.rot || 0) + Math.PI : aimDir(player, state);
-    const cf = Math.cos(dir), sf = Math.sin(dir);
-    const noseR = player.radius || 6;
-    const spawnDistance = trap ? noseR + 22 : aftDrop
-      ? Math.max(
-        BOMB_PROPULSION_DIALS.minStandoff,
-        noseR + Math.min(
-          noseR * (BOMB_PROPULSION_DIALS.standoffRadii - 1),
-          def.radius * BOMB_PROPULSION_DIALS.maxSurfaceGapRadiusFrac,
-        ),
-      )
-      : noseR;
-    const throwSpeed = aftDrop ? BOMB_PROPULSION_DIALS.relativeDropSpeed : def.throwSpeed;
+    const { aftDrop, dir, cf, sf, spawnDistance, throwSpeed } = plan;
 
     const active = activeCharges(state, player.id);
     const capacity = resolveImpulseChargeCapacity(state);

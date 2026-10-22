@@ -326,6 +326,7 @@ export const tetherGameplay = {
           this.bus.on('game:started', resetForNewGame),
           this.bus.on('player:death', () => this._retirePlayerLines(this.state, 'endpoint_lost')),
           this.bus.on('player:respawn', () => this._retirePlayerLines(this.state, 'endpoint_lost')),
+          this.bus.on('ship:controlChanging', () => this._retirePlayerLines(this.state, 'helm_transfer')),
           this.bus.on('sector:exit', () => endForSectorBoundary('sector_exit')),
           this.bus.on('sector:enter', () => endForSectorBoundary('sector_enter')),
           this.bus.on('tether:broken', onAuthorityBroken),

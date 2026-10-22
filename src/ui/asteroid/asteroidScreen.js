@@ -33,6 +33,7 @@ import {
 } from './inspector.js';
 import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
 import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/sites.js';
+import { spillConfirmWarning } from '../../systems/asteroidSites.js';
 import { industryReadoutFromState } from '../screens/industryReadout.js';
 import { miningNextStep } from './progressionGuide.js';
 
@@ -1098,8 +1099,7 @@ export const asteroidScreen = {
         confirmed ? { confirmSpill: true } : undefined), (res) => {
         if (!res.ok && res.reason === 'would-spill') {
           armedSpill = { kind, idx };
-          const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
-          announce(`Clearing this lane would spill ${total}u of stored goods — clear it again to confirm the loss.`);
+          announce(res.warning || spillConfirmWarning(res.spill, 'lane'));
           return res;
         }
         armedSpill = null;
@@ -1172,8 +1172,7 @@ export const asteroidScreen = {
           confirmed ? { confirmSpill: true } : undefined), (res) => {
           if (!res.ok && res.reason === 'would-spill') {
             armedSpill = { kind: 'machine', idx };
-            const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
-            announce(`Dismantling this machine would spill ${total}u of stored goods — dismantle it again to confirm the loss.`);
+            announce(res.warning || spillConfirmWarning(res.spill, 'machine'));
             return res;
           }
           armedSpill = null;

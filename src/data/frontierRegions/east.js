@@ -252,6 +252,8 @@ export const EAST_SECTORS = Object.freeze([
     fields: Object.freeze([
       Object.freeze({ id: 'f_triton_1', type: 'ast_gas_cloud', countWeight: 1.0 }),
       Object.freeze({ id: 'f_triton_2', type: 'ast_rare_exotic', countWeight: 0.65 }),
+      // 04 "Throw: wake debris" — dead metal dragged along the departure lane (row 540).
+      Object.freeze({ id: 'f_triton_3', type: 'ast_metallic', countWeight: 0.55 }),
     ]),
     hazards: Object.freeze([
       Object.freeze({
@@ -471,6 +473,12 @@ export const EAST_ANCHORS = Object.freeze({
         id: 'f_triton_2',
         center: Object.freeze({ x: 940, z: 280 }),
         clusterRadius: 400,
+      }),
+      // Wake debris on the lane between the marker and the radiation glow.
+      Object.freeze({
+        id: 'f_triton_3',
+        center: Object.freeze({ x: -980, z: -380 }),
+        clusterRadius: 420,
       }),
     ]),
     pois: Object.freeze([

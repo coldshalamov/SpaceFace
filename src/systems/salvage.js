@@ -26,6 +26,14 @@ import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { buildAdventureOffer } from './wreckCourt.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
+
+const COMMODITY_NAME = new Map((COMMODITIES || []).map((row) => [row && row.id, row && row.name]));
+
+function spokenCommodity(id) {
+  const name = COMMODITY_NAME.get(id);
+  if (typeof name === 'string' && name.trim()) return name.trim();
+  return String(id || 'cargo').replace(/^cmdty_/, '').replaceAll('_', ' ');
+}
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
 import { addSalvage } from './cargo.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -1015,11 +1023,41 @@ export const salvage = {
   },
 
   _deliverSortPocket(pocket, core, cradle, state) {
+    const bay = state.player && state.player.salvageBay;
+    const usedNow = bay ? Number(bay.usedVolume) || 0 : 0;
+    // A cradle that already refused this fill stays quiet until the bay actually
+    // loses volume. Sitting inside the ring must not toast on every tick.
+    if (pocket.bayRefuseUsed != null && usedNow >= pocket.bayRefuseUsed - 1e-6) return;
+
     const paid = Math.floor(pocket.poolQty * pocket.integrity);
     const accepted = addSalvage(state, pocket.commodityId, paid);
+    const refused = Math.max(0, paid - accepted);
     const lost = Math.max(0, pocket.poolQty - paid);
     const repairEstimateCr = lost > 0 ? lost * (BASE_PRICE_BY_ID.get(pocket.commodityId) || 0) : 0;
+    if (refused > 0) {
+      // The bay kept what fit. The rest stays on the live core so a later dump can finish the set-down.
+      pocket.poolQty = refused;
+      pocket.integrity = 1;
+      const after = state.player && state.player.salvageBay;
+      pocket.bayRefuseUsed = after ? Number(after.usedVolume) || 0 : usedNow;
+      if (!this.bus) return;
+      this.bus.emit('toast', {
+        text: accepted > 0
+          ? `Cradle held the core — the bay took ${accepted}u and ${refused}u are still on it.`
+          : `Cradle held the core — no room in the bay. ${refused}u stay on the core.`,
+        kind: 'warn', ttl: 4,
+      });
+      if (lost > 0) {
+        this.bus.emit('comms:log', {
+          from: 'SALVAGE CRADLE',
+          text: `Delivery short: ${lost}u scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
+          kind: 'salvage',
+        });
+      }
+      return;
+    }
     pocket.phase = 'delivered';
+    if (pocket.bayRefuseUsed != null) delete pocket.bayRefuseUsed;
     // The cradle took the core; this runtime spawned it and retires it.
     core.alive = false;
     if (!this.bus) return;
@@ -1039,7 +1077,7 @@ export const salvage = {
     const pct = Math.round(pocket.integrity * 100);
     this.bus.emit('toast', {
       text: accepted > 0
-        ? `Cradle took the core — ${accepted}u ${pocket.commodityId.replace('cmdty_', '').replaceAll('_', ' ')} to the bay (${pct}% integrity).`
+        ? `Cradle took the core — ${accepted}u ${spokenCommodity(pocket.commodityId)} to the bay (${pct}% integrity).`
         : 'Cradle took the core — the salvage bay could not take one more unit.',
       kind: accepted > 0 ? 'info' : 'warn', ttl: 4,
     });

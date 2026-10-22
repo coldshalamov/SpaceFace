@@ -101,14 +101,42 @@ Rules:
 - Engine cores, muzzle cores, explosion cores, nav/beacon/glow finishes, and
   shield seams are the only HDR emissive sources. Paint never emits.
 - Bloom threshold 1.0 (science default −0.15), strength default 0.52, pyramid
-  norm 1.5. The full quality tier builds four pyramid levels (1/2, 1/4, 1/8,
-  1/16) and composites three: tight 1.0, body 0.62, wide 0.48 — the wide levels
-  are what make a lamp read as neon. Sector post scales strength/threshold
+  norm 1.32. The full quality tier builds four pyramid levels (1/2, 1/4, 1/8,
+  1/16) and composites three of them — tight 1/2 at weight 1.0, body 1/8 at
+  0.52, wide 1/16 at 0.38; the 1/4 level only feeds the pyramid — the wide
+  levels are what make a lamp read as neon. Sector post scales strength/threshold
   mildly (±0.16 strength scale, threshold bias ≤ 0).
+- Output dither (`POST_DITHER_LSB` and the gated block at the end of
+  `composeSpacePostPresentation`, bloom.js). Banding in the final 8-bit encode
+  is broken up by a static ±1 LSB triangular dither on every preset; film
+  grain, which runs on Balanced and High only, was previously the only dither
+  and is too weak to remove banding on its own (±0.38 LSB in darks, fading to
+  ±0.1 LSB in highlights). The dither is about 0.41 LSB RMS and static in time
+  (a fixed pattern, nothing animates). It is gated at half an LSB, so exact
+  black stays black; pure white is not gated and loses about 1/8 LSB of mean,
+  which is invisible. Stacked with grain the peak is about ±1.4 LSB. The CAS /
+  sharpen routes (any frame drawn below display resolution, which is every
+  budget preset: render scale 0.75 / 0.75 / 0.85) roughly double the noise: on
+  shipped shaders under SwiftShader the RMS deviation from the undithered
+  encode goes 0.58 to 1.2 LSB with peaks of ±2, and the longest flat run on a
+  synthetic dark ramp still drops from 95 to 6 px.
+  Cost: about 0.06 ms (0.056–0.062) on a 0.9–1.0 ms composite pass on the Intel
+  iGPU at 1600x1000, about 0.035 ms at render scale 0.75 — from an isolated
+  timing of the composite shader on a synthetic scene, not an in-game capture.
+  `design/PERF_BUDGET.md` §6 still asks for a before/after capture if the
+  budget presets matter. The opt-in render-graph photo-filter route
+  (`post/spaceRenderGraph.js`) writes the dither into a half-float grade target
+  and `PHOTO_GRADE_FRAG` does the single 8-bit write without a dither of its
+  own; the noise rides through that grade ahead of the rounding, so it is
+  expected to keep working there (a ramp model of the Chrome filter: longest
+  run 584 to 6 px), but nobody has captured that route.
 - Grade, contrast, saturation, ink, bloom colour and vignette are Look values
   per mood (`post`): grade amount 0.7–0.9, vignette 0.20–0.26, contrast
-  1.12–1.22, saturation 1.10–1.22, ink ≤ 0.26 (the retired pass ran 1.0). Toe
-  default 0.012 (cinematic 0.02), grain 0 except cinematic.
+  1.12–1.22, saturation 1.10–1.22, ink ≤ 0.26 (the retired pass ran 1.0). Toe:
+  `DEFAULT_POST_PRESENTATION.toe` in bloom.js is 0; the live renderer lifts it
+  to `DEFAULT_CINEMATIC_TOE` (0.0039, one 8-bit code) through `SECTOR_POST_TOE`.
+  Grain: `SECTOR_POST_GRAIN` 0.03 (renderer.js) on Balanced and High, 0 on the
+  budget presets (`low`, `igpu60`, `integrated`).
 - Colored bloom is bounded: hot cores may bloom white/colored; shadowed paint
   must not bloom at any setting.
 

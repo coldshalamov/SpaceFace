@@ -121,7 +121,10 @@ Measured on the owner's machine class (Intel integrated, 1600x1000, live game, i
 2026-09-30): the coat, rim and the two extra bloom levels are inside run-to-run noise (under 1 ms)
 at the opening, close zoom and the trade hub. The clear coat is one environment fetch and one loop
 over the three sun lights, skipped on rough or metal surfaces. No lights, passes over a tenth of a
-megapixel, textures or program variants were added.
+megapixel, textures or program variants were added. The final 8-bit encode carries a static
+one-LSB triangular dither (`POST_DITHER_LSB` in `bloom.js`); it is measurable but small, about
+0.06 ms on a 0.9 ms composite pass on the Intel iGPU in an isolated timing, not an in-game capture
+(numbers and caveats: [COLOR_LIGHTING_STANDARD.md](COLOR_LIGHTING_STANDARD.md) §5).
 
 Real-time key-light shadows stay off by default on integrated GPUs: the same A/B measured +0.7 ms
 at the opening, +2.7 ms at close zoom and +14.6 ms (25%) at the trade hub. Discrete GPUs turn them

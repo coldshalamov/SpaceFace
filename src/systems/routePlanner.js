@@ -27,6 +27,15 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 const clampRoute = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
+/** A wormhole hop is a gate, not an open-space jump, unless the chart also lists it as a neighbor. */
+function routeLegVia(fromSector, toId) {
+  const hop = fromSector && fromSector.wormholeTo;
+  if (!hop || hop.sectorId !== toId) return 'drive';
+  const neighbors = fromSector.neighbors || [];
+  for (let i = 0; i < neighbors.length; i++) if (neighbors[i] === toId) return 'drive';
+  return 'gate';
+}
+
 /** Edge distance in lightyears from the two sectors' static map positions (clamped 2..9). */
 export function routeEdgeDist(a, b) {
   if (a && b && a.position && b.position) {
@@ -134,9 +143,10 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
   const drive = opts.drive || DEFAULT_DRIVE;
   const wormholeGate = opts.wormholeGate || (() => 'closed');
 
-  const dist = new Map(), prev = new Map();
+  const dist = new Map(), prev = new Map(), risk = new Map();
   const visited = new Set();
   dist.set(start, 0);
+  risk.set(start, 0);
   const pq = [start];
 
   const sectorOf = (id) => state.world.sectors[id] || SECTOR_BY_ID.get(id);
@@ -149,7 +159,9 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
     // Pop the smallest-dist node (linear scan; the canonical graph is only 24 nodes).
     let bi = 0;
     for (let i = 1; i < pq.length; i++) {
-      if ((dist.get(pq[i]) ?? Infinity) < (dist.get(pq[bi]) ?? Infinity)) bi = i;
+      const di = dist.get(pq[i]) ?? Infinity;
+      const db = dist.get(pq[bi]) ?? Infinity;
+      if (di < db || (di === db && (risk.get(pq[i]) ?? Infinity) < (risk.get(pq[bi]) ?? Infinity))) bi = i;
     }
     const u = pq.splice(bi, 1)[0];
     if (visited.has(u)) continue;
@@ -166,10 +178,15 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
       const sv = sectorOf(v);
       if (!sv) continue;
       const edgeDist = routeEdgeDist(su, sv);
+      const via = routeLegVia(su, v);
       const w = mode === 'hops' ? 1 : Math.ceil(ROUTE_BASE_FUEL * edgeDist * drive.tierFuelMult);
       const alt = (dist.get(u) ?? Infinity) + w;
-      if (alt < (dist.get(v) ?? Infinity)) {
-        dist.set(v, alt); prev.set(v, u);
+      const altRisk = (risk.get(u) ?? 0) + routeInterdictChance(sv, via, drive);
+      const cur = dist.get(v) ?? Infinity;
+      // Same fuel (or the same hop count) used to keep whichever road was relaxed
+      // first, so a watched drift could beat an equally cheap policed junction.
+      if (alt < cur || (!visited.has(v) && alt === cur && altRisk < (risk.get(v) ?? Infinity) - 1e-12)) {
+        dist.set(v, alt); risk.set(v, altRisk); prev.set(v, u);
         if (!visited.has(v)) pq.push(v);
       }
     }
@@ -187,10 +204,11 @@ export function computeDiscoveredRoute(state, targetSectorId, mode, opts = {}) {
   for (let i = 0; i < nodes.length - 1; i++) {
     const a = sectorOf(nodes[i]), b = sectorOf(nodes[i + 1]);
     const edgeDist = routeEdgeDist(a, b);
+    const via = routeLegVia(a, nodes[i + 1]);
     const fuel = Math.ceil(ROUTE_BASE_FUEL * edgeDist * drive.tierFuelMult);
     const charge = drive.baseCharge * (edgeDist / 4);
-    const interdict = routeInterdictChance(b, 'drive', drive);
-    legs.push({ from: nodes[i], to: nodes[i + 1], fuel, charge, interdict });
+    const interdict = routeInterdictChance(b, via, drive);
+    legs.push({ from: nodes[i], to: nodes[i + 1], fuel, charge, interdict, via });
     totalFuel += fuel;
   }
   return { legs, totalFuel, totalHops: legs.length };
