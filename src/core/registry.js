@@ -61,6 +61,8 @@ import { shipjack } from '../systems/shipjack.js';
 import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { deedRecord } from '../systems/deedRecord.js';
+import { mail } from '../systems/mail.js';
+import { worldClock } from '../systems/worldClock.js';
 import { barkDirector } from '../systems/barkDirector.js';
 import { stuntGrammar } from '../systems/stuntGrammar.js';
 import { aiPorts } from '../systems/aiPorts.js';
@@ -720,6 +722,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['priceForecastSystem', priceForecastSystem],
     ['contractClausesSystem', contractClausesSystem],
     ['moralTrapSystem', moralTrapSystem],
+    ['mail', mail],               // PULSE-MAIL: triggered letter delivery under state.mail
+    ['worldClock', worldClock],   // PULSE-TIME: world calendar transition announcer
     ['render', render],
     ['vfx', vfx],
     ['feel', feel],

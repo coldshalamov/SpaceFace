@@ -72,7 +72,11 @@ function validateCorpus() {
   if (FLAVOR_PACKS.band.entries.length !== 8) add('flavor.band-channels', 'band', 'Expected eight Band channels.');
   const bandLineCount = FLAVOR_PACKS.band.entries.reduce((sum, channel) => sum + channel.lines.length, 0);
   if (bandLineCount < 60) add('flavor.band-lines', 'band', `Expected at least 60 ticker lines, found ${bandLineCount}.`);
-  if (FLAVOR_PACKS.roaming_events.entries.length !== 2) add('flavor.roaming', 'roaming_events', 'Expected Insolvent and Slow Fleet.');
+  // PULSE-STORIES: the two epics still lead the pack; at least thirty small lane stories follow.
+  const roamingIds = FLAVOR_PACKS.roaming_events.entries.map((entry) => entry.id);
+  if (roamingIds.length < 32 || roamingIds[0] !== 'insolvent' || roamingIds[1] !== 'slow_fleet') {
+    add('flavor.roaming', 'roaming_events', 'Expected Insolvent and Slow Fleet leading thirty-plus lane stories.');
+  }
   if (FLAVOR_PACKS.quiessence.entries.length !== 17) add('flavor.quiessence', 'quiessence', 'Expected seventeen black-box facts.');
   if (FLAVOR_PACKS.hush.entries.length < 8) add('flavor.hush', 'hush', 'Expected a complete scanner progression.');
   if (FLAVOR_PACKS.landmark_lore.entries.length !== 19) add('flavor.landmarks', 'landmark_lore', 'Expected nineteen physical landmark targets.');

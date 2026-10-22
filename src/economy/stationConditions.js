@@ -22,6 +22,7 @@
 // fixtures and saves keep working; new writes go to the record above.
 
 import { activeFrontForFaction } from '../data/conflictZones.js';
+import { marketDayMults } from '../data/worldCalendar.js';
 
 export const STATION_CONDITION_LAW = Object.freeze({
   // One "day" in sim seconds — the same clock the rumor/fuel-reserve day latches use.
@@ -161,10 +162,13 @@ export function stationYardRateMult(state, stationId) {
   return live && live.strike ? STATION_CONDITION_LAW.strike.yardRateMult : 1;
 }
 
-/** Player buy/sell price multipliers at this berth (strike: worse sells; blockade: dear buys). */
+/** Player buy/sell price multipliers at this berth (strike: worse sells; blockade: dear buys;
+ *  the berth's weekly market day and any festival tilt fold in the same way the blockade does —
+ *  derived on read from the world calendar, nothing stored, nothing to expire). */
 export function stationTradeMults(state, stationId, info = null) {
   const live = liveStationConditions(state, stationId, info);
-  const mults = { buy: 1, sell: 1 };
+  const cal = marketDayMults(stationId, state && state.simTime);
+  const mults = { buy: cal.buy, sell: cal.sell };
   if (!live) return mults;
   if (live.strike) mults.sell *= STATION_CONDITION_LAW.strike.sellMult;
   if (live.blockade) mults.buy *= STATION_CONDITION_LAW.blockade.buyMult;

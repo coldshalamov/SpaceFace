@@ -17,6 +17,7 @@
 // cumulatively so the schedule is constructed already-ascending (no sort — no stable-sort trap).
 
 import { hash32, mulberry32 } from '../core/rng.js';
+import { stationShiftAt, RUSH_AFTER_S } from './worldCalendar.js';
 
 // Side-event shape catalogue. `affinity: null` = fits any station type. `budget` is the spawnBudget
 // cost (0 cosmetic seam, 1 real launched patrol). `path` is a symbolic movement the graphics lane
@@ -91,4 +92,58 @@ export function planStationSideEvents(seed, sectorId, dayIndex, stationId, stati
   return out;
 }
 
-export default { SIDE_EVENTS, SIDE_EVENT_IDS, planStationSideEvents };
+/**
+ * rushHourSideEvents(seed, sectorId, dayIndex, stationId, stationTypeId, nowS)
+ *   -> Array of extra mover events whose delays land inside the station's next rush windows.
+ *
+ * PULSE-TIME: the world calendar's rush hours (worldCalendar.js — the brackets around each
+ * shift change) thicken the traffic the planner already draws. Two crew hulls ride each rush
+ * window — an inbound crew run and an outbound off-watch haul — as budget-0 cosmetic seams,
+ * the same lane the daily movers use. Deterministic on a separate salt so the daily plan's
+ * stream is never reshuffled by adding rush items; delays are absolute within the day so a
+ * station planned mid-rush still gets its changeover visible.
+ */
+export function rushHourSideEvents(seed, sectorId, dayIndex, stationId, stationTypeId, nowS = 0) {
+  if (sectorId == null || stationId == null) return [];
+  const rng = mulberry32(hash32(seed == null ? 0 : seed, 'rush', String(sectorId), dayIndex | 0, String(stationId)));
+  const typeId = stationTypeId == null ? '' : String(stationTypeId);
+  const eligible = SIDE_EVENT_IDS.filter((id) => {
+    const aff = SIDE_EVENTS[id].affinity;
+    return aff == null || aff.includes(typeId);
+  });
+  const pool = (eligible.length ? eligible : ['repair_drone'])
+    .filter((id) => (SIDE_EVENTS[id].budget | 0) === 0);   // crew runs are never spawned ships
+
+  const dayStartS = (dayIndex | 0) * 600;
+  const out = [];
+  // Three shift boundaries a day; each draws two crew movers across the post-change surge.
+  for (let b = 0; b < 3; b++) {
+    for (let k = 0; k < 2; k++) {
+      const kindRoll = rng();
+      const offsetRoll = rng();
+      const bearingRoll = rng();
+      // Find the boundary instant: the start of the (b+1)th watch in station-local time.
+      const boundaryLocalS = ((b + 1) * 200 + 600) % 600;
+      // Convert station-local boundary to a delay from nowS: the shift clock's own local
+      // fraction is authoritative — never re-derive the offset here.
+      const local = stationShiftAt(stationId, nowS).dayFrac * 600;
+      let delay = boundaryLocalS - local + offsetRoll * (RUSH_AFTER_S - 15);
+      if (delay < -45) delay += 600;                       // a window that just closed waits for next time
+      if (delay < 2) delay = 2 + offsetRoll * 20;          // never stack on "now" exactly
+      const kind = pool[Math.floor(kindRoll * pool.length) % pool.length] || 'repair_drone';
+      const def = SIDE_EVENTS[kind];
+      out.push({
+        eventId: `sse-rush:${stationId}#${dayIndex | 0}#${b}#${k}`,
+        kind,
+        budget: 0,
+        path: def.path,
+        durationS: def.durationS,
+        delay: Math.round(delay * 1e3) / 1e3,
+        bearing: Math.round(bearingRoll * TWO_PI * 1e6) / 1e6,
+      });
+    }
+  }
+  return out;
+}
+
+export default { SIDE_EVENTS, SIDE_EVENT_IDS, planStationSideEvents, rushHourSideEvents };

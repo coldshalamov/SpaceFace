@@ -196,7 +196,19 @@ test('flavor packs meet the V2 count and identity contracts', () => {
 
   assert.deepEqual(
     FLAVOR_PACKS.roaming_events.entries.map((entry) => entry.id),
-    ['insolvent', 'slow_fleet'],
+    [
+      'insolvent', 'slow_fleet',
+      // PULSE-STORIES: the thirty-six small roaming stories authored in data/roamingStories.js
+      // ride the same roaming_events pack — convoys and traders the world already spawns.
+      'wedding_cake', 'lost_goat', 'library_tapes', 'pigeon_coop', 'orchid_run',
+      'surprise_party', 'bee_run', 'big_piano', 'school_play', 'soup_pot',
+      'kite_run', 'mail_catchup', 'prize_goldfish', 'parasol_order', 'mural_paint',
+      'choir_robes', 'honey_hold', 'cheese_wheel', 'habitat_mower', 'cracked_aquarium',
+      'wrong_name_banner', 'antique_clock', 'tea_race', 'found_keys', 'snow_globes',
+      'tomato_glut', 'first_violin', 'laundry_code', 'model_ship', 'captains_last',
+      'umbrella_audit', 'ice_sculpture', 'chess_set', 'compost_crates', 'paper_books',
+      'window_glass',
+    ],
   );
   assert.equal(FLAVOR_PACKS.roaming_events.entries.every((entry) => entry.economyHook && entry.lines.length >= 8), true);
 

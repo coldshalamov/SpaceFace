@@ -39,6 +39,13 @@ export function stationFrameHtml() {
         <article class="sxb-event sxb-berth__mechanic" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
         <p class="sxb-berth__patch" hidden></p><p class="sxb-berth__route" hidden></p>
       </div>
+      <!-- PULSE-SIGNS: the bay screen (station ops copy) and the station wire (crawl headlines)
+           live in the shared frame head, so both stay up across every dock tab. The ad-board
+           module fills them from the session deck; both hide until they have copy. -->
+      <div class="sxb-signs">
+        <aside class="k-t-fine k-62 sx-adboard sx-adboard--bay" data-bay-screen aria-label="Bay screen" hidden></aside>
+        <aside class="k-t-fine k-62 sx-adboard sx-adboard--crawl" data-sign-crawl aria-label="Station wire" hidden></aside>
+      </div>
       <div class="sxb-handoff" hidden></div>
       <!-- THE PURSE AND THE GAUGES live in the head band, right of the name (2026-09-22). They were a
            panel beside the workspace on every tab, so all seven tabs had the same left-list /

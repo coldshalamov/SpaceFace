@@ -1,4 +1,5 @@
 import { defineFlavorPack } from './catalog.js';
+import { ROAMING_STORIES } from '../roamingStories.js';
 
 export const flavorOrder = 50;
 export const flavorId = 'roaming_events';
@@ -7,7 +8,7 @@ export const flavorKind = 'event_flavor';
 export default defineFlavorPack({
   id: flavorId,
   kind: flavorKind,
-  description: 'Band, news, hail, and economy copy for two rare moving stories.',
+  description: 'Band, news, hail, and economy copy for the lane\'s moving stories — two rare epics plus thirty-six small ones.',
   entries: [
     {
       id: 'insolvent', eventId: 'event_insolvent',
@@ -53,5 +54,10 @@ export default defineFlavorPack({
         { id: 'slow_fleet_news_02', surface: 'news', text: 'A delivery outlived the nation waiting for it.' },
       ],
     },
+    // PULSE-STORIES: the small lane — thirty-six low-stakes stories told across hail, band,
+    // trade, and news. Authored in data/roamingStories.js; they bind to convoys and traders
+    // the world already spawns, exactly like the two epics above. Nothing here makes an
+    // obstacle: no entry carries spawn, position, or path data.
+    ...ROAMING_STORIES,
   ],
 });

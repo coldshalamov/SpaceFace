@@ -45,6 +45,7 @@ import {
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { fenceBarContact, fenceBarReply } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
+import { barPressureAt, festivalAt } from '../../data/worldCalendar.js';
 import { deedLine } from '../../data/deedPhrases.js';
 import { mostCitedShipDeed } from '../../systems/shipLedger.js';
 import { deedToneFor, markTold, peekDeedRecord, pickDeedToTell } from '../../systems/deedRecord.js'; // U-E: the bar gossips
@@ -519,10 +520,22 @@ export function tellBarDeedOnce(state, contact, deedSession, stationId) {
   return !!markTold(state, contact.deedId, { by: `bar:${stationId}` });
 }
 
+// Shift-end and festival lines the bar swaps into greetings when the calendar says the room
+// changed (PULSE-TIME): the same patrons, visibly off-watch.
+const SHIFT_END_LINE = 'Shift just turned — the rail is three deep and the tabs are already open.';
+const FESTIVAL_MOOD_LINE = 'The whole berth is keeping the day. Tabs run light, voices run loud.';
+
 export function generateContacts(stationId, state = {}, opts = {}) {
   const seed = fnvHash('bar_contacts_' + stationId);
   const rng  = mulberry32(seed);
-  const count = 2 + Math.floor(rng() * 3); // 2-4 contacts
+  let count = 2 + Math.floor(rng() * 3); // 2-4 contacts
+  // PULSE-TIME: the world calendar's bar pressure — the post-shift swell and festival crowds —
+  // visibly fills the room. At shift end the floor crews come off-watch together; a festival
+  // keeps them all night. Both are deterministic reads of simTime + stationId.
+  const pressure = barPressureAt(stationId, state && state.simTime);
+  const festival = festivalAt(stationId, state && state.simTime,
+    (STATION_INDEX.get(stationId) || {}).station && STATION_INDEX.get(stationId).station.type);
+  if (pressure >= 0.6 || festival) count = Math.min(count + 1, 5);
 
   const info = STATION_INDEX.get(stationId);
   const stationFactionId = info ? info.station.factionId : 'faction_scn';
@@ -566,6 +579,15 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       line: barGreetingBarkFor(factionId, role, fnvHash(contactId + '_line')) || ROLE_LINES[role],
       approach: barApproachBarkFor(factionId, fnvHash(contactId + '_approach')),
     });
+  }
+
+  // The room tells the hour: at shift end or on a festival the barkeep's greeting carries it.
+  if (contacts.length && festival) {
+    contacts[0].line = festival.barLine || FESTIVAL_MOOD_LINE;
+    contacts[0].calendarMood = 'festival';
+  } else if (contacts.length && pressure >= 0.55) {
+    contacts[0].line = SHIFT_END_LINE;
+    contacts[0].calendarMood = 'shift_end';
   }
 
   const canonical = canonicalContactForStation(stationId);

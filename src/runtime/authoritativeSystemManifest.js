@@ -71,7 +71,11 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // PRODUCTION_UPDATE_ORDER.
   'impoundPayPrompt', 'warrantOfferPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
-  'moralTrapSystem', 'render', 'vfx', 'feel', 'audio', 'ui', 'save',
+  'moralTrapSystem',
+  // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
+  // transition announcer — both slow observers on the calendar clock.
+  'mail', 'worldClock',
+  'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);
 
 /**
@@ -156,6 +160,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // voiceArbiter so a reveal it speaks is collected on the same tick.
   'moralTrapSystem',
   'voiceArbiter',
+  // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
+  // and deed systems so same-tick triggers resolve before letters and headlines go out.
+  'mail', 'worldClock',
   'save',
 ]);
 
@@ -293,6 +300,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // moralTrapSystem: fires the reveal fork once simTime passes _trapRevealAt; every other
   // path is already event-driven.
   'moralTrapSystem',
+  // PULSE rows 435/439: letter delivery evaluates at most once a second; the calendar's
+  // transition announcements are day-scale work — 2 Hz is generous for both.
+  'mail', 'worldClock',
 ]);
 
 /**

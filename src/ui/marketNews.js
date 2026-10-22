@@ -28,6 +28,7 @@ import {
   normalizeKind, fillTemplate,
 } from '../data/newsTemplates.js';
 import { isSurvivalRunLive } from '../systems/adventureMigration.js';
+import { playerCallsign } from './playerIdentity.js';
 import { claimDeliveryNote, claimLegFirstSeen, ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
 
 // A headline names the place, not its id. An id that does not resolve is printed as given.
@@ -681,8 +682,11 @@ export function createMarketNews(ctx) {
       if (wasNoted(deed, 'news')) continue;
       const eventId = `deed:news:${deed.id}`;
       if (deedNewsIds.has(eventId) || model.log.some((rec) => rec && rec.eventId === eventId)) continue;
-      const text = deedLine(deed, { voice: 'neutral' });
-      if (!text) continue;
+      const body = deedLine(deed, { voice: 'neutral' });
+      if (!body) continue;
+      // PULSE-SIGNS (row 433): feat headlines name the player. The deed body is third-person,
+      // so the wire runs it under the pilot's callsign the way the berth poster does.
+      const text = `${playerCallsign(state)} — ${body}`;
       const committed = surfacePublished({
         id: eventId, eventId, sourceRef: eventId, source: 'deedRecord', kind: 'deed', text,
         sectorId: deed.sectorId || null, stationId: deed.stationId || null,

@@ -22,6 +22,7 @@ import { hullPosterUrl } from '../hullPosters.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
 import { lossesFor } from '../../systems/lossLedger.js';
 import { discoveryKnowledge } from '../sim/discoveryKnowledge.js';
+import { codexPagesView } from '../sim/codexPages.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
@@ -92,7 +93,7 @@ function nav(ctx, method, arg) {
   ctx.bus.emit('ui:' + method, { id: arg });
 }
 
-const TABS = ['Story', 'Comms', 'Discoveries', 'World', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Comms', 'Discoveries', 'World', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Catalog', 'Ledger'];
 
 /** The live tab's one-line description under the title. */
 const TAB_LINES = Object.freeze({
@@ -104,6 +105,7 @@ const TAB_LINES = Object.freeze({
   Figures: 'The people whose names keep turning up.',
   Ship: "The Tessera's sealed history, and what travels with you.",
   Archive: 'Recovered transmission stills from the Reach corridor.',
+  Catalog: 'Cargo, hulls, fittings, flags, systems, and what lives between them — filed as you earn them.',
   Ledger: 'The pages the Tessera keeps for itself.',
 });
 
@@ -1023,6 +1025,7 @@ export const codexScreen = {
       case 'Figures':  this._renderFigures(ctx); break;
       case 'Ship':     this._renderShip(ctx); break;
       case 'Archive':  this._renderArchive(ctx); break;
+      case 'Catalog':  this._renderCatalog(ctx); break;
       case 'Ledger':   this._renderLedger(ctx); break;
     }
     // What was locked the last time this section was drawn and is open now decrypts in place.
@@ -2168,5 +2171,35 @@ export const codexScreen = {
       meta: p.mass + ' t · unsellable',
       note: p.note,
     })));
+  },
+
+  // Catalog tab (PULSE-CODEX): the in-world reference — every commodity, hull, module, weapon,
+  // faction, sector, species, and figure as a page that unseals on discovery. codexPagesView is the
+  // pure gated read; locked pages render cipher and their honest "how to earn it" line as the note.
+  _renderCatalog(ctx) {
+    const view = codexPagesView(ctx && ctx.state);
+    for (const section of view.sections) {
+      const entries = section.pages.map((page) => page.unlocked
+        ? makeEntry({
+          id: 'catalog:' + section.id + ':' + page.id,
+          name: page.name,
+          sub: page.tag || section.title,
+          meta: page.tag || section.title,
+          body: page.body,
+        })
+        : makeEntry({
+          id: 'catalog:' + section.id + ':' + page.id,
+          name: page.name,
+          sub: 'Not yet filed',
+          meta: 'Not yet filed',
+          locked: true,
+          note: page.hint,
+        }));
+      this._section(
+        section.title + ' (' + section.unlocked + '/' + section.total + ')',
+        entries,
+        section.line,
+      );
+    }
   },
 };

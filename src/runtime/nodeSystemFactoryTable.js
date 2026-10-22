@@ -207,6 +207,8 @@ import { securityReadoutSystem } from '../ui/securityReadout.js';
 import { priceForecastSystem } from '../ui/priceForecast.js';
 import { contractClausesSystem } from '../systems/contractClauses.js';
 import { moralTrapSystem } from '../systems/moralTrap.js';
+import { mail } from '../systems/mail.js';
+import { worldClock } from '../systems/worldClock.js';
 import { lossLedger } from '../systems/lossLedger.js';
 import { provenanceLedger } from '../systems/provenanceLedger.js';
 import { factionPresence } from '../systems/factionPresence.js';
@@ -467,6 +469,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['priceForecastSystem', priceForecastSystem],
     ['contractClausesSystem', contractClausesSystem],
     ['moralTrapSystem', moralTrapSystem],
+    ['mail', mail],
+    ['worldClock', worldClock],
     ['save', save],
   ];
 

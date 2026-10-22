@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { createGameState } from '../src/core/gameState.js';
 import { generateContacts } from '../src/ui/station/barContacts.js';
+import { barPressureAt, festivalAt, CAL_DAY_S } from '../src/data/worldCalendar.js';
 import {
   BAR_GREETING_BARKS,
   BAR_APPROACH_BARKS,
@@ -101,6 +102,14 @@ test('selectors are deterministic and fall back cleanly', () => {
 
 test('generated contacts speak their own faction register', () => {
   const state = createGameState(4242);
+  // The world calendar owns shift-end and festival bar voices; pin a calm mid-watch instant
+  // on a plain day so this test reads the faction pools themselves.
+  for (let t = 3 * CAL_DAY_S; t < 4 * CAL_DAY_S; t += 10) {
+    if (barPressureAt('station_io_merc', t) < 0.55 && !festivalAt('station_io_merc', t)) {
+      state.simTime = t;
+      break;
+    }
+  }
   const contacts = generateContacts('station_io_merc', state);
   const generated = contacts.filter((c) => !c.canonicalKey);
   assert.ok(generated.length >= 2, 'station_io_merc has generated contacts beside Sallow');

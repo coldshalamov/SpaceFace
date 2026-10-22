@@ -28,7 +28,7 @@
 // noTouch honored: world.js / encounterDirector.js / spawnBudget.js / traffic.js / combat.js are
 // imported read-only where needed, never edited.
 
-import { planStationSideEvents, SIDE_EVENTS, SIDE_EVENT_IDS } from '../data/stationSideEvents.js';
+import { planStationSideEvents, rushHourSideEvents, SIDE_EVENTS, SIDE_EVENT_IDS } from '../data/stationSideEvents.js';
 import { bubblesFor } from '../data/stationBubbles.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { makeShipEntitySpec } from './ships.js';
@@ -163,6 +163,13 @@ export const stationSideEventDirector = {
     const typeId = station.data && station.data.stationTypeId;
     const schedule = planStationSideEvents(state.meta && state.meta.seed, sectorId, day, stId, typeId);
     for (const item of schedule) {
+      s.pending.push({ ...item, sectorId, stationId: stId, dueAt: now + item.delay });
+    }
+    // PULSE-TIME rush hours: the world calendar's shift-change brackets add their own crew
+    // movers (budget-0 cosmetic seams, same lane, separate seeded salt — the daily plan's
+    // stream is untouched).
+    const rush = rushHourSideEvents(state.meta && state.meta.seed, sectorId, day, stId, typeId, now);
+    for (const item of rush) {
       s.pending.push({ ...item, sectorId, stationId: stId, dueAt: now + item.delay });
     }
     // Bounded memory: drop plans older than yesterday.
