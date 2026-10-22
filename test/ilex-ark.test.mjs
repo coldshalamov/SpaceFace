@@ -11,7 +11,7 @@ import { economy } from '../src/systems/economy.js';
 import { missions } from '../src/systems/missions.js';
 import { ilexArk, ilexArkPresentation } from '../src/systems/ilexArk.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
-import { ILEX_ARK as C, ILEX_START, ILEX_RECEIVER, ILEX_VAULT_IDS, ilexReleasePose, ilexOutcomeText } from '../src/data/ilexArk.js';
+import { ILEX_ARK as C, ILEX_START, ILEX_RECEIVER, ILEX_VAULT_IDS, ILEX_ROUTE, ilexReleasePose, ilexOutcomeText } from '../src/data/ilexArk.js';
 import { ilexVaultSocket } from '../src/data/ilexArkBody.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { resolveCollisionProxyManifest, resolveDockAnchor } from '../src/data/collisionProxyManifests.js';
@@ -87,9 +87,9 @@ test('actual hull damage at one collar releases that vault; native propulsion ad
     const packet=scalarHitToDamagePacket({damage:40,damageType:'kinetic',pos:{x:q.x,z:q.z},source:{kind:'fixture_collar_hit'}});
     packet.flags={ignoreFriendlyFire:true,allowAnyTarget:true};getCombatKernel(h.system.ctx).routeDamage({targetId:e.id,packet,origin:{kind:'fixture_collar_hit'}});
     assert.equal(h.system._row.vaults.vault_3.status,'releasing');assert.equal(h.system._row.vaults.vault_4.status,'attached');
-    const x=e.pos.x,z=e.pos.z;h.tick(600);assert.ok(dist({x,z},e.pos)>100,'ordinary selected native flight must actually move the escort');
+    const x=e.pos.x,z=e.pos.z;const motion=observeReleasedTravel(h.system,e,()=>h.tick());assert.ok(dist({x,z},e.pos)>100,'ordinary selected native flight must actually move the escort');
     assert.ok(Math.hypot(e.vel.x,e.vel.z)<100,'finite convoy travel remains bounded');assert.equal(h.system._row.vaults.vault_3.status,'drifting');
-    assert.equal(h.system._find('carrier'),e);console.log('ILEX_NATIVE_ROUTE',JSON.stringify({distance:dist({x,z},e.pos),speed:Math.hypot(e.vel.x,e.vel.z),vault:'vault_3'}));
+    assertReleasedClearance(h.system,e,{x,z},motion);assert.equal(h.system._find('carrier'),e);console.log('ILEX_NATIVE_ROUTE',JSON.stringify({distance:dist({x,z},e.pos),speed:Math.hypot(e.vel.x,e.vel.z),vault:'vault_3'}));
   }finally{h.close();}
 });
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -147,6 +147,43 @@ test('prompt exposes actual optional escort/recovery/close choices and discards 
     assert.deepEqual(row.choices.map(c=>c.id),['deliver','finish','leave']);sim.bus.emit('save:restoring');assert.ok(resolved>0);
   }finally{sim.dispose();setPromptDeck(null);}
 });
+// Observe ordinary native ticks only: no pose, velocity, readiness or residency writes.
+function observeReleasedTravel(owner,carrier,tick){
+  let vault=null,firstClearance=null;const clearances=[];
+  for(let i=0;i<600;i++){
+    tick();const loose=owner._find('vault_3');
+    if(vault)assert.equal(loose,vault,'released body remains present on every subsequent tick');
+    if(loose){
+      if(!vault){vault=loose;firstClearance=dist(carrier.pos,vault.pos);}
+      assert.equal(loose,vault,'the original released body survives travel');
+      for(const e of [carrier,vault]){
+        assert.ok([e.pos.x,e.pos.z,e.vel.x,e.vel.z,e.rot,e.angVel].every(Number.isFinite));
+        assert.ok(Math.hypot(e.vel.x,e.vel.z)<100,'physical speeds stay bounded');
+      }
+      if((i+1)%60===0)clearances.push(dist(carrier.pos,vault.pos));
+    }
+  }
+  return {vault,firstClearance,clearances};
+}
+function assertReleasedClearance(owner,carrier,start,motion){
+  const {vault,firstClearance,clearances}=motion;assert.ok(vault);
+  assert.equal(clearances.length,10,'observe outward clearance throughout all ten seconds');
+  assert.equal(owner._row.vaults.vault_3.status,'drifting');
+  assert.equal(owner._attached().length,5);
+  assert.equal(carrier.physicsBody.mass+vault.physicsBody.mass,420);
+  assert.equal(owner._native(carrier).colliders.length,6);
+  assert.ok(owner._native(vault).colliders.length>0,'released vault retains native solid geometry');
+  const safetyMargin=carrier.radius*1.6+vault.radius;
+  assert.ok(clearances.at(-1)>safetyMargin,'carrier clears the real vault avoidance envelope');
+  assert.ok(clearances.at(-1)>firstClearance+50,'motion separates carrier and released vault');
+  for(let i=5;i<clearances.length;i++)assert.ok(clearances[i]>clearances[i-1],
+    'late travel continues outward instead of orbiting the moving shoulder');
+  const route=ILEX_ROUTE[0],dx=route.x-start.x,dz=route.z-start.z;
+  assert.ok(((carrier.pos.x-start.x)*dx+(carrier.pos.z-start.z)*dz)/Math.hypot(dx,dz)>25,
+    'egress also makes forward progress along the route');
+  assert.equal(ilexArkPresentation(owner.state,carrier).nativeBodyReady,true);
+}
+
 test('production default owners expose the optional voyage and Continue preserves five attached parts plus the original loose vault',async()=>{
   const runtime=createAuthoritativeRuntime({profileId:'production',nodeSafeOnly:true,seed:804});
   try{const s=runtime.state,world=runtime.getSystem('world'),owner=runtime.getSystem('ilexArk');
@@ -174,5 +211,32 @@ test('production default owners expose the optional voyage and Continue preserve
     assert.equal(s.entityList.filter(e=>e.alive&&e.data?.ilexVaultId==='vault_4').length,1);
     console.log('ILEX_PRODUCTION_CONTINUE',JSON.stringify({tick:s.tick,deadline,attached:5,loose:'vault_4',carrierMass:402,vaultMass:18,
       movedWu:dist(start,resumed.pos),nativeReady:ilexArkPresentation(s,resumed).nativeBodyReady}));
+  }finally{runtime.dispose();}
+});
+
+test('production collar damage before travel clears the original solid vault using native propulsion',async()=>{
+  const runtime=createAuthoritativeRuntime({profileId:'production',nodeSafeOnly:true,seed:804});
+  try{const s=runtime.state,world=runtime.getSystem('world'),owner=runtime.getSystem('ilexArk');
+    s.mode='flight';s.ui.screenStack=[];runtime.getSystem('ships').newGame();
+    // Explicit prior-delivery fixture; the production optional-offer gate reads the canonical
+    // mission owner's history, rather than a feature flag or an automatically accepted escort.
+    s.missions.completedLog=[{type:'cargo_delivery',success:1,count:1,totalCr:1200}];
+    const p=runtime.spawn(makeShipEntitySpec('ship_kestrel',{isPlayer:true,player:s.player,fittings:s.player.ownedShips[0].fittings}));s.playerId=p.id;
+    world.enterSector(C.originSectorId);world.relocatePlayerInSector({x:ILEX_START.x+100,z:ILEX_START.z+60},{reason:'ilex-prior-delivery-fixture'});
+    assert.equal(await runtime.getSystem('physics').prepareBackend(s),true);runtime.runTicks(60);
+    const carrier=owner._find('carrier');assert.ok(carrier);let menu;runtime.bus.on('ilexArk:offer',r=>menu=r);
+    runtime.bus.emit('scan:completed',{targetId:carrier.id});assert.equal(menu.canAccept,true);runtime.bus.emit('ilexArk:accept',{revision:menu.revision});
+    assert.equal(owner._row.phase,'active');const start={...carrier.pos};
+    const q=ilexReleasePose(carrier,ilexVaultSocket('vault_3'));
+    const packet=scalarHitToDamagePacket({damage:40,damageType:'kinetic',pos:{x:q.x,z:q.z},source:{kind:'fixture_collar_hit'}});
+    packet.flags={ignoreFriendlyFire:true,allowAnyTarget:true};
+    getCombatKernel(owner.ctx).routeDamage({targetId:carrier.id,packet,origin:{kind:'fixture_collar_hit'}});
+    assert.equal(owner._row.vaults.vault_3.status,'releasing');
+    const motion=observeReleasedTravel(owner,carrier,()=>runtime.runTicks(1));
+    assert.ok(dist(start,carrier.pos)>100,'production damage-before-travel convoy advances');
+    assertReleasedClearance(owner,carrier,start,motion);
+    assert.equal(owner._find('carrier'),carrier);
+    console.log('ILEX_PRODUCTION_RELEASE_TRAVEL',JSON.stringify({distance:dist(start,carrier.pos),
+      firstClearance:motion.firstClearance,clearances:motion.clearances,carrierMass:carrier.physicsBody.mass,vaultMass:motion.vault.physicsBody.mass}));
   }finally{runtime.dispose();}
 });

@@ -117,7 +117,7 @@ import {
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
 import { SECTOR_CAUSAL_CHAIN_DEFS } from '../data/sectorCausalChains.js';
-import { stepPallasWorkLoop } from './pallasWorkLoop.js';
+import { stepPallasWorkLoop, pallasWorkTarget, normalizePallasShift } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zoneAt } from '../data/sectorZones.js';
@@ -1934,6 +1934,7 @@ export const traffic = {
       this.helpers.traffic = {
         ...(this.helpers.traffic || {}),
         heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
+        pallasWorkTarget: (entry, entity) => pallasWorkTarget(this, entry, entity),
       };
     }
 
@@ -5616,7 +5617,7 @@ export const traffic = {
     ensureActivityClassified(state);
     this._ensureState();
     if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {
-      stepPallasWorkLoop(state, dt);
+      stepPallasWorkLoop(state, dt, this);
     }
     if ((state.simTime || 0) >= (this._nextDepotDispatchAt || 0)) {
       this._nextDepotDispatchAt = (state.simTime || 0) + 1;
@@ -13560,6 +13561,7 @@ export const traffic = {
     const heliosFreightTallies = normalizeHeliosFreightTallyList(this.state.traffic.heliosFreightTallies);
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,
+      pallasWorkLoop: normalizePallasShift(this.state.traffic.pallasWorkLoop, this.state.meta.seed),
       ...(this.state.traffic.depotServices?.length
         ? { depotServices: normalizeDepotServices(this.state.traffic.depotServices) } : {}),
       ceresMinerHaulerHandoff: normalizeCeresMinerHaulerHandoff(
@@ -13613,6 +13615,7 @@ export const traffic = {
     this._nextDepotDispatchAt = 0;
     this._depotWatchRequested = new Set();
     yield 'traffic-releases';
+    this.state.traffic.pallasWorkLoop = normalizePallasShift(data?.pallasWorkLoop, this.state.meta.seed);
     const depotServices = normalizeDepotServices(data?.depotServices);
     if (depotServices.length) this.state.traffic.depotServices = depotServices;
     else delete this.state.traffic.depotServices;

@@ -986,6 +986,7 @@ const pallasAnchors = requireRecord(SECTOR_ANCHORS[PALLAS_ACTIVITY_SECTOR_ID], '
 const pallasBelt = findById(pallasZones, 'zone_pallas_belt', 'Pallas belt zone');
 const pallasDrift = findById(pallasZones, 'zone_pallas_drift', 'Pallas drift zone');
 const pallasAmbushZone = findById(pallasZones, 'zone_pallas_ambush', 'Pallas ambush zone');
+const pallasSeamField = findById(pallasAnchors.fields, 'f_pallas_1', 'Pallas metallic seam');
 const pallasGraveField = findById(pallasAnchors.fields, 'f_pallas_3', 'Pallas grave field');
 
 const pallasSeamId = 'pallas_working_seam';
@@ -1013,7 +1014,7 @@ export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
     label: 'Independent Seam',
     identity: Object.freeze({ zoneId: pallasBelt.id, fieldId: 'f_pallas_1' }),
     anchor: canonicalAnchor({
-      kind: 'zone', id: pallasBelt.id, zoneId: pallasBelt.id, localPos: pallasBelt.center,
+      kind: 'field', id: pallasSeamField.id, zoneId: pallasBelt.id, localPos: pallasSeamField.center,
     }),
     actorSlots: Object.freeze([
       pallasActor('pallas_seam_miner', pallasSeamId, 'miner', 'miner', point(30, -20),
@@ -1021,7 +1022,7 @@ export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
           mark('pallas_miner_a', 103.4, 37.6),
           mark('pallas_miner_b', -9.2, 104.6),
         ]),
-      pallasActor('pallas_seam_surveyor', pallasSeamId, 'miner', 'miner', point(-24, 18),
+      pallasActor('pallas_seam_surveyor', pallasSeamId, 'miner', 'surveyor', point(-24, 18),
         'pallas_seam_survey', 28, [
           mark('pallas_survey_a', -91.9, 77.1),
           mark('pallas_survey_b', -34.2, -94),

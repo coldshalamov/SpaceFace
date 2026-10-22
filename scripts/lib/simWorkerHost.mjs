@@ -281,6 +281,18 @@ function livingHullWireRecord(record) {
   return livingHullWireRecords.get(record);
 }
 
+// Only the authored seam miner has this two-scalar work light. Durable identity is checked
+// again by the target-panel consumer; no native body/source/owner crosses the wire.
+function hasPallasSeamWorkLight(e) {
+  const d = e.data;
+  return e.type === 'ship' && d?.activityActorSlotId === 'pallas_seam_miner'
+    && d.authoredActivityCast === true && d.identityKey === 'pallas:activity:pallas_seam_miner'
+    && d.homeSectorId === 'sector_pallas_drift' && d.defId === 'ship_pelican';
+}
+function pallasSeamStandbyTick(e) {
+  return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
+}
+
 export function entityVitalsOf(e) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
@@ -324,6 +336,10 @@ export function entityVitalsOf(e) {
     fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
       ? ai.fsm
       : (typeof ai.state === 'string' && ai.state ? ai.state : null);
+  }
+  if (hasPallasSeamWorkLight(e)) {
+    fields.pallasSeamCutting = e.data.minerShiftActive === true;
+    fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
   return fields;
 }
@@ -382,6 +398,9 @@ function vitalShadowMatches(e, shadow) {
       : (typeof ai.state === 'string' && ai.state ? ai.state : null))
     : VITAL_SHADOW_MISSING;
   if (aiFsm !== shadow[i++]) return false;
+  const seam = hasPallasSeamWorkLight(e);
+  if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   return true;
 }
 
@@ -418,6 +437,9 @@ function writeVitalShadow(e, shadow) {
       ? ai.fsm
       : (typeof ai.state === 'string' && ai.state ? ai.state : null))
     : VITAL_SHADOW_MISSING;
+  const seam = hasPallasSeamWorkLight(e);
+  shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
   shadow.length = i;
   return shadow;
 }

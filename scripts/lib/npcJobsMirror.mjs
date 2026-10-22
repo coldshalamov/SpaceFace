@@ -19,6 +19,7 @@ const JOB_KEYS = Object.freeze([
 
 const ROUTE_KEYS = Object.freeze(['id', 'pos', 'label', 'targetRef']);
 const PAYLOAD_KEYS = Object.freeze(['role', 'activityRunSeq']);
+const PALLAS_SEAM_FLAGS = Object.freeze(['pallasSeamFinished', 'pallasSeamWaiting', 'pallasSeamUnavailable']);
 const CLAIM_DEPOT_KEYS = Object.freeze(['bodyId', 'legSeq']);
 
 function isObject(value) {
@@ -56,6 +57,10 @@ function projectPayload(payload) {
   if (!isObject(payload)) return payload;
   const out = {};
   for (const key of PAYLOAD_KEYS) copyOwn(payload, out, key);
+  // Finite Independent Seam presentation only; never ship its source identity or work authority.
+  for (const key of PALLAS_SEAM_FLAGS) {
+    if (typeof payload[key] === 'boolean') out[key] = payload[key];
+  }
   // The map draws claim-depot freight from this identity and leg.  The worker keeps the full
   // manifest/cargo payload for traffic, economy, and save; only this small public marker crosses.
   if (isObject(payload.claimDepot)) {
@@ -116,4 +121,5 @@ export const NPC_JOB_MIRROR_CONTRACT = Object.freeze({
   route: ROUTE_KEYS,
   payload: PAYLOAD_KEYS,
   claimDepot: CLAIM_DEPOT_KEYS,
+  pallasSeamFlags: PALLAS_SEAM_FLAGS,
 });
