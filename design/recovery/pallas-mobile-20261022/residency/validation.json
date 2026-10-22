@@ -1,0 +1,38 @@
+{
+  "reviewedAtUtc": "2026-10-22T08:28:00Z",
+  "verdict": "PASS: independent focused source review, exact frozen artifact verification and fresh 51/51 tests. Not a live master integration or gameplay acceptance.",
+  "baseCommit": "14b80eeba8da81b81224286d133f34972dfdff30",
+  "baseTree": "61eba1857f51cabf27f6a69f633421a1e998ac72",
+  "ownedPaths": [
+    "src/systems/pallasReefCrew.js",
+    "src/systems/npcJobsRuntime.js",
+    "src/systems/traffic.js",
+    "test/pallas-reef-residency.test.mjs"
+  ],
+  "review": [
+    "Retention requires previously admitted object/data/job/generation identity and unique live world record; no new lifetime admitted by retention predicate.",
+    "Job custody retention rejects real control leases, tow assist, flee/complete phase, disputed/extracted/lost sources.",
+    "Only sector exit/hard entry enable traffic retention; ordinary cleanup defaults destructive. Existing death and save owners unchanged.",
+    "Carrier pursuit changes approach target only; native transfer identity, position, velocity, line and lease checks remain intact.",
+    "No claim of personally piloted gameplay, rendering, full world population performance or current master integration.",
+    "Historical guard failure remains preserved; its prior narrative attributes it to test duration, but that historical cause was not independently reproduced. The actual frozen real mining drain assertion passed in this fresh run."
+  ],
+  "freshTests": [
+    {
+      "command": "node --test --test-concurrency=1 --test-reporter=tap test/pallas-reef-residency.test.mjs test/pallas-reef-physical.test.mjs test/pallas-reef-read-model.test.mjs",
+      "tests": 17,
+      "passed": 17,
+      "failures": 0,
+      "skips": 0,
+      "logSha256": "084842cfc9bc52d2859083257b3af2e007ba69d0848a2ad34cc66a2b648fbfa4"
+    },
+    {
+      "command": "node --test test/npc-jobs-runtime-towing.test.mjs test/npc-jobs-runtime-wiring.test.mjs test/traffic-restore-roster.test.mjs",
+      "tests": 34,
+      "passed": 34,
+      "failures": 0,
+      "skips": 0,
+      "logSha256": "f413c399a8c38963aaeadc83e1040030fdda816a4a52c35a2c67ff0cb1ba164f"
+    }
+  ]
+}

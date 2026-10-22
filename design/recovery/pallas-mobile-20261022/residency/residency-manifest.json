@@ -1,0 +1,43 @@
+{
+  "base_commit": "14b80eeba8da81b81224286d133f34972dfdff30",
+  "base_tree": "61eba1857f51cabf27f6a69f633421a1e998ac72",
+  "result_tree": null,
+  "patch_sha256": "eb5ef0f3a1a3ace66b39cf4845dbf43aa07a5f72487945c9b5eae749e40a4876",
+  "compressed_sha256": "cf89af1ae6d8e893b8a964b7cde27fe812cd5e4d0b2df4fd3b8243033981cd83",
+  "patch_bytes": 14451,
+  "compressed_bytes": 4608,
+  "chunks": [
+    {
+      "path": "residency.patch.xz.b64.000",
+      "bytes": 6145,
+      "sha256": "0924ae9c549c0a7e66c75710945a1e425229dc7bc7303209be23e87be8ca313d",
+      "blob": "120e2f8a62f7092761165858054aa8c4bd735a25"
+    }
+  ],
+  "files": [
+    {
+      "path": "src/systems/pallasReefCrew.js",
+      "baseline_blob": "1a496d125878f4af9add497893c00d9746ec57dc",
+      "blob": "207dcb0231f4812aaf10fbdc3ffec36873787146",
+      "sha256": "2d96672e48a6b93a75b55d0afc59d58a6e82ce0df8defeeb35896b4976b2ccdd"
+    },
+    {
+      "path": "src/systems/npcJobsRuntime.js",
+      "baseline_blob": "c117788496bd80718265121564068918c15da297",
+      "blob": "f690973906d9b01f1ca415ad60059999c6c8362e",
+      "sha256": "c4c9f4ea3536382f1cdd9379c168a7eb356e2c598f3a9987ba83cb213b3ce950"
+    },
+    {
+      "path": "src/systems/traffic.js",
+      "baseline_blob": "6d92b03791748fd5ccc1cca73f7bad95d21a1a22",
+      "blob": "cea5ec4cd79c1cb55c1befc225ea98c881992298",
+      "sha256": "515377fcad8239d6692b01e002e5dcc52710ceae2d9e05062624fb29dd6e0037"
+    },
+    {
+      "path": "test/pallas-reef-residency.test.mjs",
+      "baseline_blob": null,
+      "blob": "eaedf4d03d4d4a3079689489577e5e5ec1b63ed4",
+      "sha256": "e55b534c9ddb4a9b8d982ecad69ae43543cd0d3f37605a218699f497d6f23231"
+    }
+  ]
+}

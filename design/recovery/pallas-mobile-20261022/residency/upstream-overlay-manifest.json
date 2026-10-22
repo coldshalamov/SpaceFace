@@ -1,0 +1,451 @@
+{
+  "base_commit": "77b7e2b1161b850783a2940b9ab8b19e5bed4dbe",
+  "base_tree": "958959c62a2ceee1966795904a9c4beef6205983",
+  "result_tree": "61eba1857f51cabf27f6a69f633421a1e998ac72",
+  "patch_sha256": "1baf29d729422346319bb868ee956c4396f6f41d54294e7821047717b4f5dc8c",
+  "compressed_sha256": "c9d60cf2e6d1c8801c556c9a769cff97c3d074f721418314272b1b8bd49b2430",
+  "patch_bytes": 267696,
+  "compressed_bytes": 67232,
+  "chunks": [
+    {
+      "path": "upstream-overlay.patch.xz.b64.000",
+      "bytes": 24576,
+      "sha256": "22ffd018940d07d8de28ff235bcfe3e756b0bb4a33b3cdfa67d95c1e22908c51",
+      "blob": "00b565b6b188ba4f523ccb01c2584cdcc8a14bff"
+    },
+    {
+      "path": "upstream-overlay.patch.xz.b64.001",
+      "bytes": 24576,
+      "sha256": "bbd0d91f370fdf2e11817313e76d988c5cd29eb146fef36198334fa1fa982fd2",
+      "blob": "cc3c30aa433649b3187a80767c1e049daedcf15f"
+    },
+    {
+      "path": "upstream-overlay.patch.xz.b64.002",
+      "bytes": 24576,
+      "sha256": "a96e0ed95d3cc4cd0431f5740cfafb5464df9a5a00fc63b0dbd321cca7ef1c04",
+      "blob": "0d54d7ed6167b28de580a60a55c578f25da8612f"
+    },
+    {
+      "path": "upstream-overlay.patch.xz.b64.003",
+      "bytes": 15917,
+      "sha256": "38bf6c4f8144a585dfc5753fae95be2acf085ce6d4abb610fc13f978fa0402ed",
+      "blob": "8b685d00fa33ff453ed310561b9e4d55beb36a97"
+    }
+  ],
+  "files": [
+    {
+      "path": "build_map.md",
+      "baseline_blob": "f48206fee21fd0989ae4e91b1dc5e3ab2f55ff9b",
+      "blob": "c57a178a8f97e2d1f2f606611a8457393ce51cf0",
+      "sha256": "ee45ee811bfacc6c917fd4fa9609af72a0c7cee3d5bf172c3199787cd93edab7"
+    },
+    {
+      "path": "design/GDD_2_0.md",
+      "baseline_blob": "0cb630175a7a1548b0465a9ce24dd56ba8e27600",
+      "blob": "474ae6a3256f69c827fd13c0b48e945c6b553aa0",
+      "sha256": "a573c6a239ea4699464958148c8d4b1eaeda9b809190d6d73ceb97abe43cb658"
+    },
+    {
+      "path": "design/expansion/05_ASSET_ROSTER.md",
+      "baseline_blob": "feb183dca9aa8fe89e71b23662ad6eb6ecc4ff40",
+      "blob": "7022ef2e24b930bca69ca4e63c108e0d0fd17598",
+      "sha256": "4ae8cc294fb6cd8a4cb1387b629450b23a95ee91c2490b3fce5f846fb26cea92"
+    },
+    {
+      "path": "design/program/DEMO_READINESS_2026-09-20.md",
+      "baseline_blob": "da287b1eb223e25356c0f1099c487838262a9987",
+      "blob": "d5356910923b0a61553f3712bfb4569a0521dd3e",
+      "sha256": "dec4adcbf16920db2c656d168678ff85786f146949f0a1afafc7f43254eaa5c4"
+    },
+    {
+      "path": "design/program/LANDED_REVIEW.md",
+      "baseline_blob": "bca00324ad78da841020fb2392413a484a75fca2",
+      "blob": "3b8325e7123902d1031d25c043360888c491fe6e",
+      "sha256": "268555a3b79f7ee884aaaccb1227c126321e59bcca2577454e08c478f625cf10"
+    },
+    {
+      "path": "docs/ui-polish/REVIEW.md",
+      "baseline_blob": "4b55e48ca4824c53bcea48da72580010cc8fde93",
+      "blob": "2401189f522e59bf60f47ecf0b00aa58bf45caf2",
+      "sha256": "e15b486ad469c1355b32bb0e7b494088d43d695cce8f8636af941a1a5c4b86c3"
+    },
+    {
+      "path": "scripts/check-controls-discoverability.mjs",
+      "baseline_blob": "a5d2ac1e47c7b1a94e5ee56a85933716cfa6daa8",
+      "blob": "a777f29e5568a1f5c625ee5e4e52cad35a5f1662",
+      "sha256": "0f242b580472808e154e3322026543837da5ca88d2ee335c4a841b01621dfa86"
+    },
+    {
+      "path": "scripts/check-ui-control-labels.mjs",
+      "baseline_blob": "39fbff82dc88e55829182f307beb4070626da798",
+      "blob": "78b7dcf9c3361b5793461d9a84af8762b84d6074",
+      "sha256": "3b407e4ec451874358fac0c5a4f652592ba0c430598c831c549b2a0a75fa43bd"
+    },
+    {
+      "path": "src/data/bombs.js",
+      "baseline_blob": "5ae40bcb29d95cb264a88374655ab4d58ce58ba4",
+      "blob": "7f36fd84533086ffbce5e540f1463944d5cd1578",
+      "sha256": "3ac96b2a672eceabd96bafdea524f2cb88ebfe996680078f3a448f561dda2300"
+    },
+    {
+      "path": "src/data/emergentPrimitives.js",
+      "baseline_blob": "ff4e7b5a9c501c202734091df2b9812a527b110b",
+      "blob": "d3c28e33abba690de5a39a9cb9840b60d58e2bd1",
+      "sha256": "797b2f5b3a8485884627d4ae97e0fce93093e83bcd40601b65f2553a63a82600"
+    },
+    {
+      "path": "src/data/tech.js",
+      "baseline_blob": "f0390493c9432414779adddbd9234ff344cfde82",
+      "blob": "af24f8dc048595446f61a1533fca85fccdf95f77",
+      "sha256": "04f51c75e9b62b892cc208a2fcdd2b0adc6b2eee30eb59bfe24e79399d8ca025"
+    },
+    {
+      "path": "src/data/weapons.js",
+      "baseline_blob": "23d1154d0495389c0e7693426a66c751f95126a6",
+      "blob": "ff3bab289aa480eb75ff8c21b1538cab4e02154b",
+      "sha256": "5aba8f29f0508c88c6de3e1fa4ba1e203847cd8e7fe9d9b4e62bd0baf163ea38"
+    },
+    {
+      "path": "src/systems/bombs.js",
+      "baseline_blob": "b4d7cbe1ae7def517ec9c7b396de33b4fc9e9395",
+      "blob": "a2f55d1db6171840f14d38f22dd8fe85e8358982",
+      "sha256": "3c951e36d0d6b45212f0127a462846bf0dc1d35f9ca99d3bd95686567c1fbcc7"
+    },
+    {
+      "path": "src/systems/fields.js",
+      "baseline_blob": "3836f422e6c36244ac8acd25144d2e87f6f11c46",
+      "blob": "a8d6b84e92d18752c488e906242f94a94da69bbe",
+      "sha256": "6a33ec8c4f6400724bda7bb40793289d22d912dfca99ff61640fc1795b8f09e2"
+    },
+    {
+      "path": "src/systems/gamepad.js",
+      "baseline_blob": "c73c0b95be0375995381dd23318e39f0a8004b40",
+      "blob": "b2179215af7e56bfc68ff4188c6ddf64631708e9",
+      "sha256": "820a7c88a7795ebdef0af478081ce6831aaeccb0d80d112455cfbe678cf020cc"
+    },
+    {
+      "path": "src/systems/input.js",
+      "baseline_blob": "780daff81e7d0084f64cb9524c1524a7e3890ae3",
+      "blob": "c4faf709066693bdf7bde7cae7bbbbcdddb87d3a",
+      "sha256": "a6ccdc27556a233d36ad78ff7419992b216dda2dfc0605a1f0526f0a6c4317d3"
+    },
+    {
+      "path": "src/systems/mobile/catalog.js",
+      "baseline_blob": "adbb21eb81a42c76b8055d4e6b92a44974bfaa16",
+      "blob": "4a54944d1dde627f647e0a9c9ba2d4caabdc9cd6",
+      "sha256": "c0d7aab4c7c870f277eee2b45d163dde46886520d6384eba9d5781a47943f1d6"
+    },
+    {
+      "path": "src/systems/powerVerbs.js",
+      "baseline_blob": null,
+      "blob": "2377ea02648270edf71d51057842c67985573bcd",
+      "sha256": "75febf4407fec6c622a0f4bd458338487922e593fb96a6d3a088efb71c90b745"
+    },
+    {
+      "path": "src/ui/controlPrompts.js",
+      "baseline_blob": "98882630d02bb086456fa8e90801d0a55353dec7",
+      "blob": "faf1a5e024d3678ea63cf111f958c2c3f360216c",
+      "sha256": "d33671b273362db688352ad90d66fc7d012187b048c9ae5330e0ca15186e3527"
+    },
+    {
+      "path": "src/ui/orrery/flightCluster.js",
+      "baseline_blob": "eb493a9f572ff09322a9ece2fb2c08b60bca2d88",
+      "blob": "569f983bdfdd383d8bce4ae8f4f3a9c59becf8b4",
+      "sha256": "0f8be34ad1253cb2de3ef36ffa1caf852c5da9723ee64b0a1bda224ebaa0dd13"
+    },
+    {
+      "path": "src/ui/orrery/flightPreview.js",
+      "baseline_blob": "381b2ce01d7b273999ec8f63fda3b76665d6d784",
+      "blob": "79d13749345c55532514189509cd690e5ba9ac58",
+      "sha256": "4724fce3db19cecbc518eeeb16f348701d9613bb10264256059695ce86b23aae"
+    },
+    {
+      "path": "src/ui/orrery/hudAdapter.js",
+      "baseline_blob": "538f1f4bac094127271c3dd4314e654f804c740c",
+      "blob": "8f75cda68392038820630779ceac03ac0e8fedd3",
+      "sha256": "4cffe2cbf47849460d668567125e555b74e4a39c8dbadbfa18e8825c2245c9b8"
+    },
+    {
+      "path": "src/ui/orrery/saveLayouts.js",
+      "baseline_blob": "3a15798da03aa09ceaa0ff64ad4f842d00bf78e3",
+      "blob": "83130eeb83d081f6dc0a7797863048e1d5772ed7",
+      "sha256": "48c7eefe9b846081da48845945898f517dbe20cbafd68910df1fb7cf663be5d6"
+    },
+    {
+      "path": "src/ui/orrery/settingsPreview.js",
+      "baseline_blob": "157a21b305fb31769ef0aa0e26bf7f5bf1b98f79",
+      "blob": "bcd6762ee2863b705cb304c8e685eed820a83705",
+      "sha256": "2b9254b9ee897b96941f59f2795f1f8067675d97f5e10e9f545b3f06a7f3a3b1"
+    },
+    {
+      "path": "src/ui/orrery/stationTabsLayouts.js",
+      "baseline_blob": "fa9e8c1256f42297034fb31eb7f265b5bc8beffc",
+      "blob": "231a193b5dc389e29b7a09b135013b14502dee26",
+      "sha256": "8b1e522a25c31d7f21f0548d5360f5e327d567b822915fa6f553b2d7b7ef0253"
+    },
+    {
+      "path": "src/ui/powerRail.js",
+      "baseline_blob": "c4e1f1c885fe24fba66c3f6ffd2b1ec4f39c5066",
+      "blob": "0e19853e7cf49f7feb95c6d219debbdef7753190",
+      "sha256": "709b61084b4e206187c24df11c07eb9232c038579a4a8457df423410f2ffba00"
+    },
+    {
+      "path": "src/ui/screens/help.js",
+      "baseline_blob": "37835aa6e5e4f28d1d899abc95b53047ae910031",
+      "blob": "2fbf8495ef6d7ac5097737be9fb1afbdcaa58c70",
+      "sha256": "c2518b77fc67d12832d0565201dc08db16715e2be8616cf56723d43e06b999fe"
+    },
+    {
+      "path": "src/ui/screens/saveLoad.js",
+      "baseline_blob": "819c76b8f9397dd1907db467880be1e829c21bf0",
+      "blob": "f202f64a8e6071522efa4d68192d3a75ed4aec36",
+      "sha256": "3d96c8d2e6f90154478571b799c2386038a484e73c32d685ba941dd83b16ca65"
+    },
+    {
+      "path": "src/ui/screens/settings.js",
+      "baseline_blob": "b6351f5c6ecadde958db8ed5fd0e84e1eaec42b2",
+      "blob": "58f1521c95349c7f58f36fc21cea325f4d1e9f76",
+      "sha256": "3d4c0f37759d49f0d9a03c76761ea7333534b2740f6cfd6138b4c592a51a7229"
+    },
+    {
+      "path": "src/ui/station/screens/shipworks.js",
+      "baseline_blob": "cd3f6a156701529d19e4053f39f25701128bf291",
+      "blob": "fd0bcae3d668f4d20a4316556f71357b2f0c3197",
+      "sha256": "5e2baf6b29f2ec221fece8223e424672a54f693d411127f62427a425fde9068f"
+    },
+    {
+      "path": "test/arsenal-identity.test.mjs",
+      "baseline_blob": "77538a4d515a1ae0a990ac7e0d5df48b5cf2157d",
+      "blob": "f99008837bf83edc750bf6daf578df38838f7986",
+      "sha256": "a11901a807c747a964df5bd4bbe979bbe21dfa0ede57a12cfc8896084b267b11"
+    },
+    {
+      "path": "test/bomb-choreography.test.mjs",
+      "baseline_blob": "e3d93c6687fb63f7d0a0b8e3f1e9063979aa430f",
+      "blob": "1ccf3ba38ac9659b192d25b6e9c675fc5bd51969",
+      "sha256": "179eebfb86d375139239c929b0f4d0ec90c3c81cc7483994d3ce61c9ee3460b6"
+    },
+    {
+      "path": "test/bomb-rack-economy.test.mjs",
+      "baseline_blob": "6163ec6f56030fe263d60e588d3914cd12af0ab9",
+      "blob": "fbddfd2de80dd6ca6f82715c83aed8ed557fb061",
+      "sha256": "5f5ed96ba927aae5c008b542223b973492ddb7b91e797e8ad5fd8dec15c700c6"
+    },
+    {
+      "path": "test/bomb-remap-help.test.mjs",
+      "baseline_blob": "e1bdf220470d00d9ee5603afd655a02f0d88e45d",
+      "blob": "62bd58d9898c2449a4c80a14d3020936755f4f10",
+      "sha256": "55d00c0a821bf5205c6eae821d5404031fe6a9a6945c421044405af5422fe792"
+    },
+    {
+      "path": "test/bombs.test.mjs",
+      "baseline_blob": "bd9265e75652779fcd044b36eb02772aef8bda30",
+      "blob": "b93d5189c67aee46e8dc13718c6e6ba1b4ffbffb",
+      "sha256": "fc08c1f491023f916f1e00d025e7b0a2c28e6447d1c8101dc627b9b273cf1cce"
+    },
+    {
+      "path": "test/crucible-combat-readout.test.mjs",
+      "baseline_blob": "02b729d8a585b83104b6215efae3e55e53243a01",
+      "blob": "4373a4a1e4b72b07581cb4faf41a9c8113de97ac",
+      "sha256": "3f7d4450990c1e5a322382386c8325bb4421c2b9a83640abf7c4c3f454a5f43e"
+    },
+    {
+      "path": "test/dead-press-feedback.test.mjs",
+      "baseline_blob": "ca7033dab7f0b66da08575fa956507954d9051f2",
+      "blob": "21135c3420e63868923a889a4874e111b38f05d8",
+      "sha256": "fe5d42b854c2c285fe270035bef19569edffd267f9c920f67e3d310fb3decfeb"
+    },
+    {
+      "path": "test/fb-002-verb-shelf.test.mjs",
+      "baseline_blob": "1b9d403146a890270349f0b1b4f673a6610ab62c",
+      "blob": "ca6a9d404153df8651d0d11722a1ff281fce0bd1",
+      "sha256": "40fdb4c4c8cf986f55a495b8f2eae7e76c1a275f548a5861de33258984e24da3"
+    },
+    {
+      "path": "test/fb-pad-covers-the-hand.test.mjs",
+      "baseline_blob": "abcb6fab6ffdb42d9e3777bfa46be9bc1dd784cf",
+      "blob": "5fe5dc03aaff34a0bf0168c546a7dc6479b6a7a6",
+      "sha256": "c6b21289ac38302b4adbd4982064a35a9fc14984959cf66f05164e46ae7e75a6"
+    },
+    {
+      "path": "test/five-powers-merge-4242.test.mjs",
+      "baseline_blob": null,
+      "blob": "40ac502590b8efb17bd7688acf3f8c00d9b5db37",
+      "sha256": "fb3bc4c68816b7cf9cd722b5e0c02a2cc3652b38f45a2a00b9e0293d6e47c44f"
+    },
+    {
+      "path": "test/gravity-mark.test.mjs",
+      "baseline_blob": "1f3ff5810a6b0e3e939075d4fe6901ebbf5f0afc",
+      "blob": "1a5146abb8cd35fd0721f591c921e39b849bc36b",
+      "sha256": "c1db62a8469e82d581107f90b10507a6715712b8e92bb89a239b2ff36504ef6c"
+    },
+    {
+      "path": "test/help-flight-verbs.test.mjs",
+      "baseline_blob": "7c86b6aa3ad8ed6fd438f7c3af7d46c899909abf",
+      "blob": "323ef67782c164be8450a54b3aba81e58bd3f5b7",
+      "sha256": "9e85704a2b956c7c62f8c472455f7444f7221ab60b848041d692d72b78d3744d"
+    },
+    {
+      "path": "test/help-gamepad-rebind.test.mjs",
+      "baseline_blob": "a1648b10ad646a93694742d6c91c8b1026074a02",
+      "blob": "977c40ddd5433c2763015e8249616c5b4a9240b5",
+      "sha256": "0560e0dc87def4758c54eecf0d4f9549cde1ab0c0c5c55339baccaaa4d49f3fe"
+    },
+    {
+      "path": "test/inertial-shunt.test.mjs",
+      "baseline_blob": "be3e055167fbd93285bc002b03bceb84836d336c",
+      "blob": "3b734f3dc352b1ce90343f62cc580eee50467801",
+      "sha256": "8558e156aec4850cf89da9edb61ee79b2010f8bae803f4c3fd27ff87376ec9ba"
+    },
+    {
+      "path": "test/inf-oct17-pro-22.test.mjs",
+      "baseline_blob": "65c939713f91bf142ea85e3c2bf0dabcee77a4f8",
+      "blob": "ed7efa8441e2eb820054a8ed134ccda47b3e7915",
+      "sha256": "37afac81e8471c62ffb2cbf81b028ef21ae32d6632272dd7a6003adae94245a3"
+    },
+    {
+      "path": "test/inf-oct17-sfq-i013.test.mjs",
+      "baseline_blob": "ba55ae723a5d9939708b396aba4359e609ec9aea",
+      "blob": "eb13ccd833f5e06f3efe24480e220de274f3ca9d",
+      "sha256": "97f9f1bae1cd53b0283803b46933eb36b4350457c54f91deeb3fc724fa56246c"
+    },
+    {
+      "path": "test/input-lifecycle.test.mjs",
+      "baseline_blob": "b6869a081c94f66330e1e69fd7b981bb9598f5ee",
+      "blob": "bedb3fd33a4cc61bbb1f150f19b21b1bb65d7cd0",
+      "sha256": "37130bbbde96764d45104386a7131e71e4556c41a3542d7150b3b30db16fa1d8"
+    },
+    {
+      "path": "test/massline-input-grammar.test.mjs",
+      "baseline_blob": "af940b3fb01bb021cb930de851e4e8ac215b5892",
+      "blob": "c45ad1455ff454aad631afa4890ce1c1890ccb2f",
+      "sha256": "cdfb232c01424e0ff92d237fa456609a82e05bdaae6a4d64d40f9e1081f64918"
+    },
+    {
+      "path": "test/mobile-flight.test.mjs",
+      "baseline_blob": "3d9b0ff0a570afc161686c2d5da9f678545f716f",
+      "blob": "5b91a4db04d7d9db867c11b4ed0c630bf9c091c6",
+      "sha256": "3b1afa3001a8d4a4af57643c91ccb98b7096b571ab4c91a73131d994a3acdc62"
+    },
+    {
+      "path": "test/model-truth-prompts.test.mjs",
+      "baseline_blob": "8ad1927f0465828cd17e38418986c656d3095de4",
+      "blob": "ea7d59fd92985b9edea26ba691b6a6670e415fa0",
+      "sha256": "5114f74d3855a60fb8266f085f22c01db583db27c783c846cb0c9a4659266fec"
+    },
+    {
+      "path": "test/momentum-sink.test.mjs",
+      "baseline_blob": "481fd50149df98d109f0b714812468d727f3a5d7",
+      "blob": "6851dd2cfc43836b4f0ead45e1edcfc537ecbbf1",
+      "sha256": "219cd7564df47f1c747bd9a0bccacca3a29589d6c8e873577e7875390fe626e2"
+    },
+    {
+      "path": "test/next-wave-nxb-003.test.mjs",
+      "baseline_blob": "927ed301cb1b973b09c23dc74b5bb17a875691a1",
+      "blob": "7fc292c131f4f94c419e2ae38533d45161a6b858",
+      "sha256": "6c0210ff70d67e9bdb8df3dba8f5e0eb59e55c240ea6f561e0224fc34ad7c345"
+    },
+    {
+      "path": "test/next-wave-verb-30.test.mjs",
+      "baseline_blob": "f2ce704550f8d1c654f3304f13f4f078030d8da3",
+      "blob": "c76a7fad489b8d0374a2f3e19a01ceed0c01ece1",
+      "sha256": "5c91b01238252697fcc0934142a9f56af7d19cced58281842875b8f6851d6433"
+    },
+    {
+      "path": "test/nxi-004-pad-generation-bindings.test.mjs",
+      "baseline_blob": "4001889637af46b7db44d6fe83cce8424148b949",
+      "blob": "ad965e9b0cc1fb3e2681df4b5e9d1fa48121e45a",
+      "sha256": "4092023731e2e4ecbc16c94eed5d76d46b1e720948b58e624fc9174860d87840"
+    },
+    {
+      "path": "test/orrery-hud-adapter.test.mjs",
+      "baseline_blob": "f64c5cb1b335f348d33febdd6cd6645f86041d7e",
+      "blob": "6c7f6332d1430c446c79364b70f6114b1240df54",
+      "sha256": "704e0a72c2ff39b7ca41dac9a4a283dee2df4a125ae856d297ea540a85d88319"
+    },
+    {
+      "path": "test/power-rail.test.mjs",
+      "baseline_blob": "15ce1effa56f3ae74189a5bc64c769813d8bfd33",
+      "blob": "61cacf133bda80f06de7cc5f28ea2a4a93e4f32d",
+      "sha256": "291ea149b1b34151d897b0842f4f3e6b4d520607f0e8d126be53ed31ccbc0a7a"
+    },
+    {
+      "path": "test/pq-026-02-inertial-shunt.test.mjs",
+      "baseline_blob": "e4e8161d184beb990d01f45e991b7745743d9777",
+      "blob": "e8d422620239094331b44ee7a07e3a924c1ef625",
+      "sha256": "de3890ef8813af7cd37420b463f5ae7d8b636b125f7a68dd1985fb6141890a06"
+    },
+    {
+      "path": "test/pq147-00-powers.test.mjs",
+      "baseline_blob": "912fd3e8f687860f7dee8a393e9902df6cbc0453",
+      "blob": "400832e507c2bc7b53aa1408817e11d952b4c6c9",
+      "sha256": "977ade5f57e7cb3b2b75140c11c28c00d6b2818d23332cd844ab5baaa4c303b1"
+    },
+    {
+      "path": "test/sfq-b011-gstick-verification.test.mjs",
+      "baseline_blob": "f016ede80201e2f34afd9e756ddb4cbad7605bb0",
+      "blob": "2efea842b6abb152319cf363b2d2f12212bc117e",
+      "sha256": "bc52e90378633d004433f7b2d80fc01cbcd8d377d54dc693024a67b5d65fef86"
+    },
+    {
+      "path": "test/sfq-b031-b033-starter-verbs.test.mjs",
+      "baseline_blob": "8d2a21273676a3b087c3673d2768aaf0dc2f81d3",
+      "blob": "059e529b5006bb1d49f6ea3ed3e5eb80048c8b1a",
+      "sha256": "2aa7fc50a6c620242524a42f4eca47c924dda0ddbc61eaf519de628189014a58"
+    },
+    {
+      "path": "test/swarm-physics-ux.test.mjs",
+      "baseline_blob": "9aa9070a223c689aa5a70264f3a7995fecf239c2",
+      "blob": "a643900907ff80403e53dcc04c3add107b0da035",
+      "sha256": "f6172c018e57eb70a151f2776c849265df6214acfc411a8f1f7952b5e75002e2"
+    },
+    {
+      "path": "test/swarm-preaction-damage-admission.test.mjs",
+      "baseline_blob": "b84570ab1ab6cac8b7bc3e487ad2a6288a3ccefd",
+      "blob": "90f85a885d060fb2dd2a3bd4f56db28ad20d7b83",
+      "sha256": "9ee78bb0180b23fafd7094b05ae1a5ffb7032ebc2031c95adaf7f6cb856b9027"
+    },
+    {
+      "path": "test/teach-09-pad-chord-sheet.test.mjs",
+      "baseline_blob": "dabb43411e4e4c96b16fd31895af3d04e53b31cc",
+      "blob": "efe5ee9cae8503527ea71d3d8859c56e6414b5cd",
+      "sha256": "befbdecfc635ffa8fc592700b552044401b32af670b8ee51dfa510e09e6a5dbc"
+    },
+    {
+      "path": "test/ui-control-labels.test.mjs",
+      "baseline_blob": "183a2b8f0a76548690c026774321152f87523a84",
+      "blob": "393fccbd863d26951b16b1895f772fe931709da7",
+      "sha256": "412a2c19253cc469b05b8bd35847fa350c9b9c4f2bdd1339716ebe6013701280"
+    },
+    {
+      "path": "test/verb-16-cruise-charge-meter.test.mjs",
+      "baseline_blob": "c3539c31633980194b67904fb4f37a51e43d27fa",
+      "blob": "b4287fabce2c6fa1de080aaf55e5cdd59d1f6086",
+      "sha256": "46b9d6a6de550324dd2fba7ad09ed7ef673dbb0e8642c846e19e57d089db5a3e"
+    },
+    {
+      "path": "test/wave-b8-progression-verbs.test.mjs",
+      "baseline_blob": "f394774c470ed792bf5360918f4e61dcd2d10e3c",
+      "blob": "b70c8112e954c03e4ebb0db90f49081cc94a98bc",
+      "sha256": "805686a4da07721684f5f3a23c34bcc8761eb76339aa53ca863df1120b9d55ef"
+    },
+    {
+      "path": "test/wave-e1-pad-verbs.test.mjs",
+      "baseline_blob": "21e6f066925cf2eee0c0ee03400285829a20958c",
+      "blob": "07abf6c38d0f265113a3b1b20aecb74d0bd2ede7",
+      "sha256": "dfc950d10fce3b5e06286d1304e8fb9fdf72e816e73de5222218e1e820233bad"
+    },
+    {
+      "path": "test/wave-g15-verb-prompts.test.mjs",
+      "baseline_blob": "c1602a05a4eccd1e8ac72c7807814135ab525f27",
+      "blob": "cc48b4b7c7e2952f346c042050f93512b5dae13b",
+      "sha256": "30170699167a38874687157c2d444c473d1d25c5df0a3ed331ecadda6485f7b5"
+    },
+    {
+      "path": "tools/ui-bench.js",
+      "baseline_blob": "444c5fac8df59bf5b03fe2fc1656d797640f1474",
+      "blob": "9987b224f1253fef60a2451a98c01ede1bad8faa",
+      "sha256": "b869137dc47b9bec76e8c2488a5fa49b20bdbbcc5664038d8223f7ff4db3ee94"
+    }
+  ]
+}
