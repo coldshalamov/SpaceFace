@@ -1382,12 +1382,19 @@ export const saveLoadScreen = {
     const badges = occupied ? slotBadges(id, meta, currentSlot, latestOccupiedSlot(refs.slots)) : [];
     const flown = occupied ? fmtLastFlown(meta.savedAt || meta.lastSavedAt) : '';
     const notice = this._notices && this._notices[id];
-    refs.fine.textContent = [
+    // Each reading is its own unbreakable run, so a narrow column wraps between them, never mid-phrase.
+    const contextParts = [
       slotLabel(id) + ' save',
       ...badges.filter((badge) => !/^v\d/.test(badge)),
       occupied && (flown ? 'flown ' + flown : 'filed'),
-      notice && notice.text,
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean);
+    refs.fine.replaceChildren();
+    contextParts.forEach((part, i) => {
+      if (i) refs.fine.append(' · ');
+      refs.fine.append(el('span', 'sf-slot-context__part', String(part)));
+    });
+    // A notice is a sentence, so it may wrap inside itself.
+    if (notice && notice.text) refs.fine.append(' · ', String(notice.text));
 
     const emptyCopy = occupied ? null : emptySlotDetailCopy(saveAllowed);
     paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,

@@ -1780,6 +1780,28 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 
 **Leftover:** at 1280×720 the context line still wraps "DAYS AGO" onto a second line.
 
+## Save/Load: the context line wraps between readings, not inside one (ui-polish-82)
+
+**Before:** at 1280×720 and 390×844 the etched line over the hull's name broke mid-phrase ("FLOWN 29 / DAYS AGO", "29 DAYS / AGO").
+
+**After (`saveLoad.js` + one rule in `saveLayouts.js`):** each reading (QUICK SAVE, CURRENT, FLOWN 29 DAYS AGO) is its own no-wrap span, so a narrow column breaks only at a `·`. A save notice stays plain text and may wrap. `textContent` is unchanged.
+
+**Checked:** bench clean at 1280×720, 960×540 (still one line), 390×844 and 1920×1080. `fb-repaired-save-notice` and `instrument-hierarchy-six-screens` pass.
+
+**Leftover:** bench stills catch the SAVED / PLAYED readings mid-decrypt (glyph noise), at every size.
+## Missions dossier in a mid-size desktop window — 801–1100 wide, 461–800 tall (ui-polish-81)
+
+**Before (master e51a7389cd):** the ≤1100 × ≤800 wrapped column flow ran into a third column past the frame's right edge, so the risk sentence and the terms showed as a sliver of letters ("E / p / C") at 801×600, 900×600 and 960×540. The legend read "PASSENGER TRANSPO…" / "PASSENGER …", the reward words broke "CR ON / DELIVER / Y" at 801, and the title took three lines in a ~150px column.
+
+**After (`stationTabsLayouts.js`, one additive desktop-only block, `min-width:801px and max-width:1100px and min-height:461px and max-height:800px`):**
+- 901–1100: two fixed columns, as on the short desktop: legend, title, client and reward on the left; ACCEPT, the risk sentence and the terms on the right. 801–900: one column with ACCEPT under the reward.
+- The dossier scrolls under a 16px fade (its backdrop no longer adds 40px of empty scroll). Legend, reward words and term labels break only at spaces; term labels take their own width, so COLLATERAL / FOLLOW-UP / READINESS stay whole.
+- A blocked job's RESOLVE READINESS keeps its reason under it instead of past the right edge.
+
+**Checked:** bench `station-contracts` clean at 651×600, 720×461, 801×600, 900×600, 960×540, 1024×768, 1100×700, 1280×720, 1920×1080, 844×390; walks at 801×600, 900×600, 960×540, 1024×768 (ACCEPT, every job row and blocked job; post-action UNREACHABLE notes are the palette / comms / receipt layers, as above). ACCEPT on first paint at every in-band size; page scrollWidth = viewport. Pixel Δ vs master: 0% at 651×600, 720×461, 1280×720, 390×844 (1920×1080: 0.01%, the orrery). Focused tests: `station-field-hardware` 7/7, `next-wave-nxi-098` 5/5, `ui-bench-control-reachability` 10/10. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish81/`.
+
+**Leftovers:** at 960×540 the term values wrap in the ~115px value column ("Posted on / success"), and the terms need a scroll there and at 801–900. At 720×461 (651–800 band) the job list still shows only one row and the dossier only its title before scrolling; ACCEPT needs a scroll at 651×600. Save/Load 1280×720 context line still wraps "DAYS AGO".
+
 ## Achievements on an upright phone — one column (ui-polish-83)
 
 **Before (master 8d34976b84):** under 560px wide the screen kept its desktop two-column grid (the stage column plus a fixed ≥290px reading column). At 390×844 the stage column was a sliver, so the medal orrery stood down entirely (it needs 320px) and no medal could be picked. The "Next: Berth Assigned" line broke into three one-word lines, and the category words ran off the right edge (bench: MASSLINE, CRUCIBLE and CAREER offscreen).
