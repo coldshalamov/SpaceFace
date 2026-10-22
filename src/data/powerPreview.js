@@ -77,7 +77,9 @@ const blastShoveEligible = (e) => !!e && e.physicsBody !== false
 /**
  * The power whose key is held right now, or null. input.js publishes the newest live grip through
  * powerVerbs.heldPower; a merged `state.input.actions[p].held` flag is read when no grip is
- * published (an input layer that writes one).
+ * published (an input layer that writes one). The grip lives in the realm input runs in: every
+ * player route runs the main lane (simLaneMain.resolveSimLaneFlags), so the renderer sees it; the
+ * `?simLane=worker` diagnostic keeps it in the worker and draws no preview.
  */
 export function powerHeld(state) {
   const grip = heldPower(state);
