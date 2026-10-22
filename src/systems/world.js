@@ -457,6 +457,7 @@ const DRESSING_RADIUS = Object.freeze({
   place_mining_drone: 8,
   place_station_billboard: 28,
   place_conveyor_barge: 48,
+  place_charon_colony_service_barge: 48,
   place_dead_hulk: 42,
   place_debris_chunk: 26,
   place_ceres_bait_wreck: 48,
@@ -1054,6 +1055,12 @@ export const world = {
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) { dedupWarn('world/unknown-sector', '[world] enterSector: unknown sector', sectorId); return null; }
 
+    // Capture the pre-transition occupant cohort before exit listeners, residency
+    // materialization, or any yield can mint arrivals. Tick/time cannot distinguish
+    // two bodies created within the same simulation beat. Invalid counters fail closed.
+    const payloadGenerationCutoff = Number.isSafeInteger(state.nextOccupantGeneration)
+      && state.nextOccupantGeneration > 0 ? state.nextOccupantGeneration : null;
+
     this._ensureResidencyState();
     const fromSectorId = opts.fromSectorId != null ? opts.fromSectorId : (state.world.currentSectorId || null);
     const continuous = !!opts.continuous;
@@ -1166,6 +1173,7 @@ export const world = {
     const enterPayload = {
       sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
       enterEpoch: state.world.enterSerial,
+      payloadGenerationCutoff,
       // Tail-drain listeners run ~1-5 presented frames late (32-listener slice at
       // 4/frame); state.simTime has advanced by then. Carry the emit's sim time so
       // stamps that want the enter's own clock don't wobble by the window length.

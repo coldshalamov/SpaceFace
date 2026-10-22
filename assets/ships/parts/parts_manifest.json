@@ -9675,6 +9675,168 @@
           2.619999885559082
         ]
       }
+    },
+    {
+      "id": "wholeship_ship_stormshift_receiver_v01",
+      "assetId": "SF_STORMSHIFT_RECEIVER_V01",
+      "category": "wholeships",
+      "priority": "P2",
+      "file": "wholeships/ship_stormshift_receiver_v01.glb",
+      "triangleMetric": "lod0",
+      "boundsMetric": "lod0",
+      "tris": 26192,
+      "bytes": 2650496,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "mount": "origin",
+      "note": "Forge source tools/blender/forge/ships/stormshift_receiver.py. Fixed service receiver: source-derived compound leaves mouth/saddle open. Motion is recessed status shutter only.",
+      "bounds": {
+        "min": [
+          -13.920000076293945,
+          -1.600000023841858,
+          -9.460000038146973
+        ],
+        "max": [
+          13.899999618530273,
+          3.424499988555908,
+          10.925000190734863
+        ],
+        "dimensionsM": [
+          27.81999969482422,
+          5.024500012397766,
+          20.385000228881836
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Receive",
+        "SOCKET_Service",
+        "SOCKET_Storage",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
+      "id": "place_last_shift_fairlead",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_last_shift_fairlead.glb",
+      "tris": 9665,
+      "bytes": 800756,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical"
+      },
+      "note": "Last Shift torn tow-deck, side-loaded roller and lateral mounting scar. Forge export; live visual acceptance remains separate.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Inspection"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -3.894061326980591,
+          -0.7899999618530273,
+          -2
+        ],
+        "max": [
+          3.7915306091308594,
+          0.8220000267028809,
+          2.0999999046325684
+        ],
+        "dimensionsM": [
+          7.68559193611145,
+          1.6119999885559082,
+          4.099999904632568
+        ]
+      }
+    },
+    {
+      "id": "place_charon_colony_service_barge",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_charon_colony_service_barge.glb",
+      "tris": 11976,
+      "bytes": 1392088,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy"
+      },
+      "note": "Charon-only intact evacuated habitat and attached service annex on conveyor barge.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Barge_Bridge",
+        "SOCKET_Container_Aft",
+        "SOCKET_Container_Fore",
+        "SOCKET_Container_Mid",
+        "SOCKET_Drive_Plume",
+        "SOCKET_Emissive",
+        "SOCKET_Status_Port",
+        "SOCKET_Status_Starboard",
+        "SOCKET_Structure_Core",
+        "SOCKET_Trail_Main"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1,
+          0,
+          -8.300000190734863
+        ],
+        "max": [
+          72.30000305175781,
+          11.100000381469727,
+          8.300000190734863
+        ],
+        "dimensionsM": [
+          73.30000305175781,
+          11.100000381469727,
+          16.600000381469727
+        ]
+      },
+      "triangleMetric": "lod0",
+      "boundsMetric": "lod0"
     }
   ],
   "runtimeSlots": {
@@ -9816,7 +9978,8 @@
       "places/place_pip_spanner.glb",
       "places/place_tally_three.glb",
       "places/place_anvil_storm_orchard.glb",
-      "places/place_anvil_condensate_pod.glb"
+      "places/place_anvil_condensate_pod.glb",
+      "places/place_last_shift_fairlead.glb"
     ]
   }
 }

@@ -1,5 +1,6 @@
+import { hasOrchardWorkDamage, isCanonicalOrchardDamageActor } from './orchardWorkDamage.js';
 import { COMBAT_SCHEMA_VERSION } from '../data/combatDefs.js';
-import { ensureCombatState, entityKey, createCombatCatalog, resolveCombatProfile } from './runtime.js';
+import { ensureCombatState, ensureCombatant, entityKey, createCombatCatalog, resolveCombatProfile } from './runtime.js';
 import { CERES_WORKFLEET_CONTRACT as CERES } from '../data/ceresWorkfleet.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
@@ -71,6 +72,14 @@ export function* restoreCombatStateSteps(state, payload, resolveEntityRef, { def
     ? state.entities.get(id) || null
     : null;
   restoreCombatants(combat, payload.entities, resolveEntityRef, summary);
+  // World records own Orchard wounds across residency. The save reset removed
+  // spawn-time runtime, so rehydrate only already-materialized originals here.
+  // This does not enroll any actor into action/attachment reference persistence.
+  const orchardCatalog = createCombatCatalog();
+  for (const entity of state.entities?.values?.() || []) {
+    if (!combat.entities[entity.id] && isCanonicalOrchardDamageActor(state, entity) && hasOrchardWorkDamage(state, entity))
+      ensureCombatant(state, entity, orchardCatalog);
+  }
   yield 'combat-entities-restored';
   restoreAttachments(state, combat, payload.attachments, resolveEntityRef, entityFor, summary);
   yield 'combat-attachments-restored';

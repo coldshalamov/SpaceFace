@@ -1,8 +1,8 @@
 {
   "counts": {
-    "green": 16,
+    "green": 18,
     "red": 202,
-    "rows": 218
+    "rows": 220
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -97955,6 +97955,983 @@
         609.261904,
         220.746337,
         252.406402
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          -0.052246,
+          0.015958,
+          0.05
+        ],
+        "max": [
+          3.79212,
+          0.822013,
+          2.100226
+        ],
+        "min": [
+          -3.896612,
+          -0.790097,
+          -2.000226
+        ],
+        "size": [
+          7.688732,
+          1.612109,
+          4.100452
+        ]
+      },
+      "bytes": 533208,
+      "collider": {
+        "coverageWu": 0.044942,
+        "gapWu": 0.044942,
+        "id": "last-shift:fairlead:deck:v1",
+        "kind": "proxy",
+        "outline": [
+          26.002195,
+          24.195926,
+          23.732874,
+          9.260361,
+          0,
+          0,
+          0,
+          6.305007,
+          14.636939,
+          22.70701,
+          26.000518,
+          26.020185,
+          25.582104,
+          25.288471,
+          22.140904,
+          7.484006,
+          13.588524,
+          0,
+          0,
+          0,
+          6.681938,
+          23.725862,
+          24.056159,
+          0
+        ],
+        "overTolerance": false,
+        "packagedRuntimeEvidence": {
+          "boundarySampleLimitWu": 0.4,
+          "boundarySampleMetric": "13 samples per convex-part edge to LOD0 projected triangle union; diagnostic, not a surface-equivalence proof",
+          "boundarySampleResidualWu": 0.357069,
+          "boundarySamples": 715,
+          "convexPartsWU": [
+            {
+              "id": "deck-0",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": -26.022910787069527,
+                  "z": -0.33815687050703375
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.144715467474077
+                }
+              ]
+            },
+            {
+              "id": "deck-1",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.144715467474077
+                },
+                {
+                  "x": -19.259766927092254,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                }
+              ]
+            },
+            {
+              "id": "deck-2",
+              "points": [
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": 24.362510969761146,
+                  "z": -8.521560941079533
+                },
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                }
+              ]
+            },
+            {
+              "id": "deck-3",
+              "points": [
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                },
+                {
+                  "x": 21.65725342577024,
+                  "z": -1.1497341337043063
+                },
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                }
+              ]
+            },
+            {
+              "id": "deck-4",
+              "points": [
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                },
+                {
+                  "x": 26.053296934755462,
+                  "z": -0.33815687050703375
+                },
+                {
+                  "x": 24.024353776762286,
+                  "z": 4.531306708676602
+                }
+              ]
+            },
+            {
+              "id": "deck-5",
+              "points": [
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                },
+                {
+                  "x": 22.333567811767967,
+                  "z": 11.970764954651601
+                },
+                {
+                  "x": 17.261209916785013,
+                  "z": 13.864445235445238
+                }
+              ]
+            },
+            {
+              "id": "deck-6",
+              "points": [
+                {
+                  "x": 17.261209916785013,
+                  "z": 13.864445235445238
+                },
+                {
+                  "x": -19.259766927092254,
+                  "z": 13.864445235445238
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                }
+              ]
+            },
+            {
+              "id": "deck-7",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.144715467474077
+                },
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                }
+              ]
+            },
+            {
+              "id": "deck-8",
+              "points": [
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                },
+                {
+                  "x": 24.024353776762286,
+                  "z": 4.531306708676602
+                },
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                }
+              ]
+            },
+            {
+              "id": "deck-9",
+              "points": [
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                },
+                {
+                  "x": 17.261209916785013,
+                  "z": 13.864445235445238
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                }
+              ]
+            },
+            {
+              "id": "deck-10",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": 17.93752430278274,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                }
+              ]
+            },
+            {
+              "id": "deck-11",
+              "points": [
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                },
+                {
+                  "x": 20.304624653774788,
+                  "z": 3.0434150594816023
+                },
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                }
+              ]
+            },
+            {
+              "id": "deck-12",
+              "points": [
+                {
+                  "x": 20.778044723973196,
+                  "z": 8.45393014746342
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 9.806558919458874
+                },
+                {
+                  "x": 18.749101565980016,
+                  "z": -2.97578297589817
+                }
+              ]
+            },
+            {
+              "id": "buckled-lip",
+              "points": [
+                {
+                  "x": 18.275681495781605,
+                  "z": -5.207620449690669
+                },
+                {
+                  "x": 25.37698254875774,
+                  "z": -5.207620449690669
+                },
+                {
+                  "x": 25.37698254875774,
+                  "z": -7.101300730484306
+                },
+                {
+                  "x": 18.275681495781605,
+                  "z": -7.101300730484306
+                }
+              ]
+            },
+            {
+              "id": "rib-port",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": 11.463529165153307
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": 11.463529165153307
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": 10.178531831757624
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": 10.178531831757624
+                }
+              ]
+            },
+            {
+              "id": "rib-starboard",
+              "points": [
+                {
+                  "x": -21.96502447108316,
+                  "z": -10.178531186773965
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": -10.178531186773965
+                },
+                {
+                  "x": 14.555952372794104,
+                  "z": -11.463528520169646
+                },
+                {
+                  "x": -21.96502447108316,
+                  "z": -11.463528520169646
+                }
+              ]
+            },
+            {
+              "id": "crossmember",
+              "points": [
+                {
+                  "x": -19.530292681491346,
+                  "z": 13.188130849447512
+                },
+                {
+                  "x": -17.63661240069771,
+                  "z": 13.188130849447512
+                },
+                {
+                  "x": -17.63661240069771,
+                  "z": -13.864444590461577
+                },
+                {
+                  "x": -19.530292681491346,
+                  "z": -13.864444590461577
+                }
+              ]
+            }
+          ],
+          "coverageByLodWu": [
+            0.026134,
+            0.023994,
+            0.035816
+          ],
+          "coverageMetric": "all-LOD-visible-vertices-to-runtime-XZ-convex-union",
+          "faceCentroidCoverageWu": 0.044942,
+          "fit": {
+            "offset": [
+              0.35335,
+              -0.107926,
+              -0.338157
+            ],
+            "scale": 6.763144
+          },
+          "legacyQueryPrimitiveCount": 30,
+          "nativePartCount": 17,
+          "sourceGlbPath": "assets/ships/release/render-packages/last-shift-fairlead/render.glb",
+          "sourceGlbSha256": "a0218fcba0b6bf6bf26be9d6a550b2c7b2b6dacb321488a4377898b047f3ad7a"
+        },
+        "stickWu": null,
+        "throatSealed": false,
+        "toleranceWu": 3.122422,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0.35335,
+        -0.107926,
+        -0.338157
+      ],
+      "drawScale": 6.763144,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "last-shift:fairlead:deck:v1",
+        "colliderKind": "proxy",
+        "collisionAuthority": "lastShift.physicsBody",
+        "dockRadius": null,
+        "entityRadius": 26,
+        "proportions": null,
+        "runtimeColliderFixed": true,
+        "sizes": null
+      },
+      "id": "place_last_shift_fairlead",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 28,
+      "nodes": 30,
+      "note": "Explicit lastShift.physicsBody runtime convex union; legacy query OBBs are approximate. XZ vertex coverage and sampled reverse residual do not establish full 3D surface equivalence. No inferred skin adopted.",
+      "opening": null,
+      "pivot": [
+        -0.052246,
+        0.015958,
+        0.05
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 511,
+        "inwardFaceFraction": 0.273,
+        "silhouetteRadius": 26.020185,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Inspection",
+          "position": [
+            0,
+            0.82,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
+      "tasteBudget": null,
+      "triangles": 9271,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/render-packages/last-shift-fairlead/render.glb",
+      "worldSize": [
+        52,
+        10.902859,
+        27.731946
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          35.650002,
+          5.548887,
+          0
+        ],
+        "max": [
+          72.300003,
+          11.098255,
+          8.301019
+        ],
+        "min": [
+          -1,
+          -0.00048,
+          -8.301019
+        ],
+        "size": [
+          73.300003,
+          11.098735,
+          16.602038
+        ]
+      },
+      "bytes": 498992,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:place_charon_colony_service_barge",
+        "kind": "proxy",
+        "outline": [
+          37.534543,
+          25.427458,
+          11.751899,
+          0,
+          7.261645,
+          7.13148,
+          0,
+          0,
+          9.309542,
+          0,
+          22.272218,
+          35.269323,
+          35.269323,
+          22.27317,
+          0,
+          9.309542,
+          0,
+          0,
+          7.13148,
+          7.261724,
+          0,
+          11.751899,
+          25.427458,
+          37.534543
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 4.504145,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -35.650002,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:place_charon_colony_service_barge",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 48,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_charon_colony_service_barge",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull_aged",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Stone",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 36,
+      "nodes": 47,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        35.650002,
+        5.548887,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 4.504145,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 16,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.771149,
+            "bz": -0.101524,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.485565,
+            "bz": -0.201128,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.173017,
+            "bz": -0.13276,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.031957
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.05233,
+            "bz": -0.126337,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.019747
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.017541,
+            "bz": -0.133239,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.019393
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.105828,
+            "bz": -0.137918,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.025315
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.424835,
+            "bz": -0.175972,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.72436,
+            "bz": -0.095364,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.72436,
+            "bz": 0.095364,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.424853,
+            "bz": 0.17598,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.105828,
+            "bz": 0.137918,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.025315
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.017541,
+            "bz": 0.133239,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.019393
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.052331,
+            "bz": 0.126338,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.019747
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.173017,
+            "bz": 0.13276,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.031957
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.485565,
+            "bz": 0.201128,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.009375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.771149,
+            "bz": 0.101524,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.009375
+          }
+        ],
+        "silhouetteRadius": 37.534543,
+        "toleranceWu": 4.504145
+      },
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 288,
+        "inwardFaceFraction": 0.266,
+        "silhouetteRadius": 37.534543,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Barge_Bridge",
+          "position": [
+            44,
+            5.5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Aft",
+          "position": [
+            32,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Fore",
+          "position": [
+            12,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Container_Mid",
+          "position": [
+            22,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Drive_Plume",
+          "position": [
+            -2.5,
+            2.2,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Emissive",
+          "position": [
+            26,
+            6.2,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Status_Port",
+          "position": [
+            44,
+            0,
+            -7.5
+          ]
+        },
+        {
+          "name": "SOCKET_Status_Starboard",
+          "position": [
+            44,
+            0,
+            7.5
+          ]
+        },
+        {
+          "name": "SOCKET_Structure_Core",
+          "position": [
+            33.852501,
+            3.0125,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -2.5,
+            2.2,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
+      "tasteBudget": null,
+      "triangles": 18662,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb",
+      "worldSize": [
+        73.300003,
+        11.098735,
+        16.602038
       ]
     }
   ],

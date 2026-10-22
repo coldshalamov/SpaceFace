@@ -1,3 +1,5 @@
+import { ownsFiniteCharonSupplyManifest } from '../world/charonSalvageSupply.js';
+import { ownsFiniteWinnowManifest } from '../world/vestaWinnowRecovery.js';
 // aftermathWrecks.js - BP-01/C11 Battle-Aftermath Persistence.
 //
 // Event-sourced battle residue. Live `entity:killed` events anywhere in a sector become bounded,
@@ -688,7 +690,7 @@ function makeMarker(state, payload, entity) {
     headline: null,
     structurePatch: null,
   };
-  marker.manifestResidue = wreckCargoResidueFor(data.cargoManifest);
+  marker.manifestResidue = (ownsFiniteWinnowManifest(state, entity) || ownsFiniteCharonSupplyManifest(state, entity)) ? null : wreckCargoResidueFor(data.cargoManifest);
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
 }

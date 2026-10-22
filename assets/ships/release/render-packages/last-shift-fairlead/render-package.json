@@ -1,0 +1,3469 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.last-shift-fairlead.anchor.socket-inspection",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.8199999928474426,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Inspection",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentNodeId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.8199999928474426,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.last-shift-fairlead",
+  "collisions": [
+    {
+      "id": "sf.render.last-shift-fairlead.collision",
+      "nodeId": "sf.render.last-shift-fairlead.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "6009694b9e959e8eec897815aba641094833b06e3ea23744e063e1e70dc87f0b",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.791463851928711,
+          0.8220125436782837,
+          2.1001429557800293
+        ],
+        "min": [
+          -3.8938167095184326,
+          -0.7897691130638123,
+          -2.000143051147461
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "727faa6a6b0f6341b068bd9c796020873a5890adc63611406ee4951319e7cabb",
+      "id": "sf.render.last-shift-fairlead.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.last-shift-fairlead.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 836
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0999999046325684,
+          0.6200965642929077,
+          1.999847412109375
+        ],
+        "min": [
+          -3.3000001907348633,
+          -0.7900965213775635,
+          -1.999847412109375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dedfe5a5ddca8e378b692e236fb11fee74923c0f81c494cf9bf89b161b2eb877",
+      "id": "sf.render.last-shift-fairlead.node.lod0-armor.primitive.0",
+      "indexCount": 3816,
+      "indexed": true,
+      "materialHash": "0b4bf18ada498ec9ccd30218a14eedcf6e917b04971162e0ee1bec62e1432e4b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1241
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9075679779052734,
+          0.09996867179870605,
+          0.950068473815918
+        ],
+        "min": [
+          -1,
+          -0.1399686634540558,
+          -0.9719346165657043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1b9c46cf792385a17cb28657865409d1e2009498054024b962bec6ba8cbe697f",
+      "id": "sf.render.last-shift-fairlead.node.lod0-brushedmetal.primitive.0",
+      "indexCount": 5592,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1731
+    },
+    {
+      "bounds": {
+        "max": [
+          3.6862409114837646,
+          0.41129550337791443,
+          -0.720025360584259
+        ],
+        "min": [
+          2.6602821350097656,
+          -0.34097614884376526,
+          -0.9999746680259705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "925b7e998a5d3a474737e6eb5747c5aa88cfef12686e8cfa083a21d0cec5da9a",
+      "id": "sf.render.last-shift-fairlead.node.lod0-hull.primitive.0",
+      "indexCount": 660,
+      "indexed": true,
+      "materialHash": "12a59005826166c476e9b35866ef334fb97bbd85cb61edf2595a8d2ce6ceed57",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 200
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4460849165916443,
+          0.8200168609619141,
+          0.472004771232605
+        ],
+        "min": [
+          -0.22608502209186554,
+          0.4199831187725067,
+          -0.6320048570632935
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a28c94743ea26126ee006f1cac17c68ed6eba967c7da1c8d9d7681ac6394fb78",
+      "id": "sf.render.last-shift-fairlead.node.lod0-last-shift-roller-brushedmetal.primitive.0",
+      "indexCount": 1140,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-last-shift-roller-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 372
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7915306091308594,
+          -0.13990895450115204,
+          2.1002259254455566
+        ],
+        "min": [
+          -3.894061326980591,
+          -0.3800910413265228,
+          -2.0002260208129883
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "51f7e369907515b12f3bf018cf19554de6d16655e7f0810961fb6ccc26294350",
+      "id": "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-brushedmetal.primitive.0",
+      "indexCount": 1494,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 519
+    },
+    {
+      "bounds": {
+        "max": [
+          3.780626058578491,
+          -0.14011019468307495,
+          2.096320390701294
+        ],
+        "min": [
+          -3.892087459564209,
+          -0.3798898160457611,
+          -1.9963243007659912
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "92552bb023d614c1892795605c7318e0a30f8630cc0862e65381c64f1060b2cd",
+      "id": "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-hull.primitive.0",
+      "indexCount": 702,
+      "indexed": true,
+      "materialHash": "12a59005826166c476e9b35866ef334fb97bbd85cb61edf2595a8d2ce6ceed57",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_LAST_SHIFT_TORN_DECK_Hull",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 245
+    },
+    {
+      "bounds": {
+        "max": [
+          0.42465442419052124,
+          0.69913649559021,
+          -0.5533475875854492
+        ],
+        "min": [
+          0.18534547090530396,
+          0.4808635115623474,
+          -0.8766524791717529
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b30f28ec7c632252ee39d004ecb4e12f85080a93d562d9483511e1df94d83417",
+      "id": "sf.render.last-shift-fairlead.node.lod0-mechanical.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 198
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6222944259643555,
+          0.822002649307251,
+          0.14003655314445496
+        ],
+        "min": [
+          -0.09750000387430191,
+          -0.12200262397527695,
+          -0.661865770816803
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "64c9567c3e9426f6a9a4af6ea98edd32d1c9f8afddd6691f84f017a39a7b44aa",
+      "id": "sf.render.last-shift-fairlead.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 2982,
+      "indexed": true,
+      "materialHash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1134
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0499999523162842,
+          -0.10747519880533218,
+          1.914976954460144
+        ],
+        "min": [
+          -2.75,
+          -0.1325247883796692,
+          -1.8149770498275757
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "60e3f816e86daa6c3ca93467a25ff7f5d27fbd5df43cb66f5609e36e636ef636",
+      "id": "sf.render.last-shift-fairlead.node.lod0-warning.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "d50fb45a38567ca8489c30a646b6c2146342c682e01317612f0ae010f930e88a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0999999046325684,
+          0.6200965642929077,
+          1.999847412109375
+        ],
+        "min": [
+          -3.3000001907348633,
+          -0.7900965213775635,
+          -1.999847412109375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "58787e0d73a945fb0fd12422d809a98f33fb436dfaf44a71ccb4e675b8a1e2c5",
+      "id": "sf.render.last-shift-fairlead.node.lod1-armor.primitive.0",
+      "indexCount": 3252,
+      "indexed": true,
+      "materialHash": "0b4bf18ada498ec9ccd30218a14eedcf6e917b04971162e0ee1bec62e1432e4b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1089
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9075679779052734,
+          0.10008983314037323,
+          0.9489981532096863
+        ],
+        "min": [
+          -0.9985445737838745,
+          -0.13928130269050598,
+          -0.9718122482299805
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b0d17e9110d0c56edac76bb8011d07b76758ccd887e696f03631ea515cfafd41",
+      "id": "sf.render.last-shift-fairlead.node.lod1-brushedmetal.primitive.0",
+      "indexCount": 1506,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 631
+    },
+    {
+      "bounds": {
+        "max": [
+          3.6856329441070557,
+          0.41071534156799316,
+          -0.7199751138687134
+        ],
+        "min": [
+          2.6606812477111816,
+          -0.34094297885894775,
+          -1.0000249147415161
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db23151073aa5268388cc61ff650b0dced838ccc6cb223a48cb21e349918305e",
+      "id": "sf.render.last-shift-fairlead.node.lod1-hull.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "12a59005826166c476e9b35866ef334fb97bbd85cb61edf2595a8d2ce6ceed57",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 102
+    },
+    {
+      "bounds": {
+        "max": [
+          0.44681909680366516,
+          0.8187555074691772,
+          0.47289085388183594
+        ],
+        "min": [
+          -0.2269088178873062,
+          0.4212445914745331,
+          -0.6323481202125549
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "950b502eb2e96f33a3bd98a9df5bbf2acdf87e820b8b91eee7d6c6177000aa71",
+      "id": "sf.render.last-shift-fairlead.node.lod1-last-shift-roller-brushedmetal.primitive.0",
+      "indexCount": 456,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-last-shift-roller-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 136
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7921195030212402,
+          -0.14242000877857208,
+          2.1001675128936768
+        ],
+        "min": [
+          -3.8936076164245605,
+          -0.37979161739349365,
+          -1.9994184970855713
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e3b6d97485e3682495a7da29709896223a5c84c9fbc37f13d6b0ed42b2c3c493",
+      "id": "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-brushedmetal.primitive.0",
+      "indexCount": 579,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 232
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7708733081817627,
+          -0.1399003118276596,
+          2.0867159366607666
+        ],
+        "min": [
+          -3.8853650093078613,
+          -0.38009968400001526,
+          -1.9877943992614746
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "47f46f1887a68deb2b6fef6bcfee44646f8c0801408a7190afdec01fb02b5a82",
+      "id": "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-hull.primitive.0",
+      "indexCount": 297,
+      "indexed": true,
+      "materialHash": "12a59005826166c476e9b35866ef334fb97bbd85cb61edf2595a8d2ce6ceed57",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_LAST_SHIFT_TORN_DECK_Hull",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 113
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4250522553920746,
+          0.6993094086647034,
+          -0.5531081557273865
+        ],
+        "min": [
+          0.18489213287830353,
+          0.48065677285194397,
+          -0.876975417137146
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4a85b237b43efc96eff2c29951ad47b888061d084b8538f2ef525ef6a7ed59cc",
+      "id": "sf.render.last-shift-fairlead.node.lod1-mechanical.primitive.0",
+      "indexCount": 276,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 86
+    },
+    {
+      "bounds": {
+        "max": [
+          2.620432138442993,
+          0.8209993839263916,
+          0.13895173370838165
+        ],
+        "min": [
+          -0.09654946625232697,
+          -0.12169791013002396,
+          -0.6601312160491943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b74d47f9e1f40f745d718ab1d2e99166473bf2e35495e5aadb439a58b9713b07",
+      "id": "sf.render.last-shift-fairlead.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 258,
+      "indexed": true,
+      "materialHash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 170
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0493453741073608,
+          -0.10821213573217392,
+          1.9145828485488892
+        ],
+        "min": [
+          -2.7494592666625977,
+          -0.13186264038085938,
+          -1.8141978979110718
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "152b49c4cddd89746fb338cfedccc989eb5791f096d79ab2b68c6628a9edce8d",
+      "id": "sf.render.last-shift-fairlead.node.lod1-warning.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": "d50fb45a38567ca8489c30a646b6c2146342c682e01317612f0ae010f930e88a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 101
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0968456268310547,
+          0.6166207790374756,
+          1.995720386505127
+        ],
+        "min": [
+          -3.2964301109313965,
+          -0.7865493297576904,
+          -1.996360421180725
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8221b6fb22c84b491db2819a73574100cdc2deb9dcf46fa8250ac7e4df717c91",
+      "id": "sf.render.last-shift-fairlead.node.lod2-armor.primitive.0",
+      "indexCount": 927,
+      "indexed": true,
+      "materialHash": "0b4bf18ada498ec9ccd30218a14eedcf6e917b04971162e0ee1bec62e1432e4b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 395
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9075679779052734,
+          0.0973750501871109,
+          0.9465023279190063
+        ],
+        "min": [
+          -0.997042715549469,
+          -0.1385674923658371,
+          -0.9735694527626038
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ceadd907d12dc15d569b6457891484069ab5cf9a525b93538ec0d08c6e69b0ae",
+      "id": "sf.render.last-shift-fairlead.node.lod2-brushedmetal.primitive.0",
+      "indexCount": 507,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 328
+    },
+    {
+      "bounds": {
+        "max": [
+          3.6899452209472656,
+          0.41356202960014343,
+          -0.7228065729141235
+        ],
+        "min": [
+          2.657010316848755,
+          -0.3428160548210144,
+          -0.9972198009490967
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e73408333a49e9a3edc292a4b5bd931559e9e489972e74c5531a3024b57c754a",
+      "id": "sf.render.last-shift-fairlead.node.lod2-hull.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "12a59005826166c476e9b35866ef334fb97bbd85cb61edf2595a8d2ce6ceed57",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 59
+    },
+    {
+      "bounds": {
+        "max": [
+          0.44599851965904236,
+          0.8171765208244324,
+          0.4731321334838867
+        ],
+        "min": [
+          -0.22711165249347687,
+          0.4233541190624237,
+          -0.6319786310195923
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9db3585793957d2e77c629252cf2554b85c2d85b76319b9db82fa58d51ca5c6e",
+      "id": "sf.render.last-shift-fairlead.node.lod2-last-shift-roller-brushedmetal.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-last-shift-roller-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          3.791102409362793,
+          -0.14318862557411194,
+          2.100104808807373
+        ],
+        "min": [
+          -3.8966124057769775,
+          -0.3787446916103363,
+          -1.996787667274475
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d426b5081dea37badee869fc1b1119ca3eb35b5b7add670d841cfd73ca024fa5",
+      "id": "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-brushedmetal.primitive.0",
+      "indexCount": 267,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 132
+    },
+    {
+      "bounds": {
+        "max": [
+          3.768321990966797,
+          -0.14184829592704773,
+          2.0945558547973633
+        ],
+        "min": [
+          -3.8928263187408447,
+          -0.3784607946872711,
+          -1.9853733777999878
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c333a0b8f62ef05bc03edde75101b41ac9b1e4cef03b7da2d4bc534243977c51",
+      "id": "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-hull.primitive.0",
+      "indexCount": 123,
+      "indexed": true,
+      "materialHash": "12a59005826166c476e9b35866ef334fb97bbd85cb61edf2595a8d2ce6ceed57",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_LAST_SHIFT_TORN_DECK_Hull",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 46
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4247293174266815,
+          0.6983475685119629,
+          -0.5530993938446045
+        ],
+        "min": [
+          0.18550151586532593,
+          0.48164698481559753,
+          -0.8774178624153137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49e0a08ba19c5c077e4f35ef033652276d957c34594adc33c5d711e76f871719",
+      "id": "sf.render.last-shift-fairlead.node.lod2-mechanical.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6182658672332764,
+          0.8210605382919312,
+          0.13898779451847076
+        ],
+        "min": [
+          -0.09654946625232697,
+          -0.12154806405305862,
+          -0.6594580411911011
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b382ea9d9672774c42306e59a7dcef254701a74f9c03c9b318f4e3a8074a296",
+      "id": "sf.render.last-shift-fairlead.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 183,
+      "indexed": true,
+      "materialHash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 133
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0480989217758179,
+          -0.10934141278266907,
+          1.9131109714508057
+        ],
+        "min": [
+          -2.7480990886688232,
+          -0.1306586116552353,
+          -1.8131110668182373
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d7cbcc1cdee806dbbd145a7e38f7cc7006c823a861e6a20138d43a4796473e06",
+      "id": "sf.render.last-shift-fairlead.node.lod2-warning.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "d50fb45a38567ca8489c30a646b6c2146342c682e01317612f0ae010f930e88a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.last-shift-fairlead.node.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0b4bf18ada498ec9ccd30218a14eedcf6e917b04971162e0ee1bec62e1432e4b",
+      "id": "material:0b4bf18ada498ec9ccd30218",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "12a59005826166c476e9b35866ef334fb97bbd85cb61edf2595a8d2ce6ceed57",
+      "id": "material:12a59005826166c476e9b358",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "id": "material:18d0ea13c3be0a94dbbd42b5",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
+      "id": "material:647b3573b7c8c31a116596a3",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d50fb45a38567ca8489c30a646b6c2146342c682e01317612f0ae010f930e88a",
+      "id": "material:d50fb45a38567ca8489c30a6",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.last-shift-fairlead.node.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-last-shift-roller-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodeName": "LOD0_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodeName": "LOD0_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_LAST_SHIFT_TORN_DECK_Hull",
+      "nodeName": "LOD0_LAST_SHIFT_TORN_DECK_Hull",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-last-shift-roller-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodeName": "LOD1_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodeName": "LOD1_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_LAST_SHIFT_TORN_DECK_Hull",
+      "nodeName": "LOD1_LAST_SHIFT_TORN_DECK_Hull",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-last-shift-roller-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodeName": "LOD2_LAST_SHIFT_ROLLER_BrushedMetal",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodeName": "LOD2_LAST_SHIFT_TORN_DECK_BrushedMetal",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_LAST_SHIFT_TORN_DECK_Hull",
+      "nodeName": "LOD2_LAST_SHIFT_TORN_DECK_Hull",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.lod2-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_LAST_SHIFT_FAIRLEAD_ROOT",
+      "nodeName": "SF_PLACE_LAST_SHIFT_FAIRLEAD_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.last-shift-fairlead.node.socket-inspection",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.8199999928474426,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Inspection",
+      "nodeName": "SOCKET_Inspection",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.last-shift-fairlead.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.8199999928474426,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "53a093ae8fce76510ae3b8da474bd0045e1741fea656cee65b6f0c05f6843478"
+    },
+    "sourceGlb": {
+      "bytes": 332868,
+      "sha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+      "uri": "place_last_shift_fairlead.glb"
+    },
+    "sourceManifest": {
+      "bytes": 273266,
+      "sha256": "5a18e60212b514e54636912631ce2d6d84a9f342b1f220d7181cf8d9d48a24b7",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 533208,
+    "sha256": "a0218fcba0b6bf6bf26be9d6a550b2c7b2b6dacb321488a4377898b047f3ad7a",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.05224645137786865,
+        0.015958011150360107,
+        0.04999995231628418
+      ],
+      "max": [
+        3.7921195030212402,
+        0.8220125436782837,
+        2.1002259254455566
+      ],
+      "min": [
+        -3.8966124057769775,
+        -0.7900965213775635,
+        -2.0002260208129883
+      ],
+      "size": [
+        7.688731908798218,
+        1.6121090650558472,
+        4.100451946258545
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.8199999928474426,
+          0,
+          1
+        ],
+        "name": "SOCKET_Inspection",
+        "planIndex": 30,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Inspection",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Inspection",
+            "recordIds": [
+              "sf.render.last-shift-fairlead.anchor.socket-inspection",
+              "sf.render.last-shift-fairlead.node.socket-inspection"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 10,
+      "mechanical": 15,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 31,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_LAST_SHIFT_ROLLER_BrushedMetal",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_LAST_SHIFT_TORN_DECK_BrushedMetal",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_LAST_SHIFT_TORN_DECK_Hull",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_LAST_SHIFT_ROLLER_BrushedMetal",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_LAST_SHIFT_TORN_DECK_BrushedMetal",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_LAST_SHIFT_TORN_DECK_Hull",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_LAST_SHIFT_ROLLER_BrushedMetal",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_LAST_SHIFT_TORN_DECK_BrushedMetal",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_LAST_SHIFT_TORN_DECK_Hull",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_last_shift_fairlead.glb"
+  },
+  "runtimeHash": "a21415b6f6fa047d38c87270d35f6cdc79845e65f9b8fa2462ebf5ab48bb0307",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.7921195030212402,
+          0.8220125436782837,
+          2.1002259254455566
+        ],
+        "min": [
+          -3.8966124057769775,
+          -0.7900965213775635,
+          -2.0002260208129883
+        ]
+      },
+      "id": "sf.render.last-shift-fairlead.body",
+      "nodeIds": [
+        "sf.render.last-shift-fairlead.node.collision-hull",
+        "sf.render.last-shift-fairlead.node.lod0-armor",
+        "sf.render.last-shift-fairlead.node.lod0-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod0-hull",
+        "sf.render.last-shift-fairlead.node.lod0-last-shift-roller-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod0-last-shift-torn-deck-hull",
+        "sf.render.last-shift-fairlead.node.lod0-mechanical",
+        "sf.render.last-shift-fairlead.node.lod0-mechanicaldark",
+        "sf.render.last-shift-fairlead.node.lod0-warning",
+        "sf.render.last-shift-fairlead.node.lod1-armor",
+        "sf.render.last-shift-fairlead.node.lod1-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod1-hull",
+        "sf.render.last-shift-fairlead.node.lod1-last-shift-roller-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod1-last-shift-torn-deck-hull",
+        "sf.render.last-shift-fairlead.node.lod1-mechanical",
+        "sf.render.last-shift-fairlead.node.lod1-mechanicaldark",
+        "sf.render.last-shift-fairlead.node.lod1-warning",
+        "sf.render.last-shift-fairlead.node.lod2-armor",
+        "sf.render.last-shift-fairlead.node.lod2-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod2-hull",
+        "sf.render.last-shift-fairlead.node.lod2-last-shift-roller-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-brushedmetal",
+        "sf.render.last-shift-fairlead.node.lod2-last-shift-torn-deck-hull",
+        "sf.render.last-shift-fairlead.node.lod2-mechanical",
+        "sf.render.last-shift-fairlead.node.lod2-mechanicaldark",
+        "sf.render.last-shift-fairlead.node.lod2-warning",
+        "sf.render.last-shift-fairlead.node.sf-place-last-shift-fairlead-root",
+        "sf.render.last-shift-fairlead.node.socket-inspection"
+      ]
+    }
+  ]
+}

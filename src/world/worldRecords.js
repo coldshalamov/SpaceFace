@@ -1,3 +1,4 @@
+import { captureOrchardWorkDamage } from '../combat/orchardWorkDamage.js';
 import {claimsTallyAssessor} from './tallyThreeIdentity.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
@@ -948,6 +949,7 @@ export function captureEntityRecord(entity, opts = {}) {
     extra: claimsTallyAssessor(entity) ? {...(opts.extra !== undefined ? opts.extra : previous?.extra),tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
       : opts.extra !== undefined ? opts.extra : (previous && previous.extra) || null,
   });
+  rec.extra = captureOrchardWorkDamage(opts.stationSource || opts.state, entity, rec.extra);
   return rec;
 }
 

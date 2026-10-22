@@ -54,6 +54,23 @@ export function ilexOutcomeText(ids,carrierAlive=true){
     :n===0?'No vault reached the greenhouse. The planting cannot begin. Ilex asks for the incident record, not a claim of successful delivery.'
     :`${n}/6 vault${n===1?'':'s'} accepted. ${6-n} seed line${6-n===1?' is':'s are'} missing; Ceres plants only the surviving lines.${carrierAlive?'':' The carrier was lost; its recovered vaults still count.'}`;
 }
+// Read-only current objective. Settlement prose belongs only to a closed voyage:
+// an original still aboard, separating or drifting is not a failed seed line.
+export function ilexActiveVoyageText(row){
+  const count=status=>ILEX_VAULT_IDS.filter(id=>row.vaults[id].status===status).length;
+  const arrived=count('delivered'),attached=count('attached'),releasing=count('releasing'),loose=count('drifting');
+  const lost=count('lost')+count('destroyed');
+  const disposition=[[attached,'attached'],[releasing,'releasing'],[loose,'loose'],[lost,'lost or destroyed']]
+    .filter(([n])=>n>0).map(([n,label])=>`${n} ${label}`).join(', ');
+  const facts=`Voyage open: ${arrived}/6 at Ceres.${disposition?' '+disposition+'.':''}`;
+  const carrier=row.carrierStatus==='lost'?' Carrier lost.':'';
+  const recoverable=attached+releasing+loose;
+  const objective=arrived===6?' All six originals have arrived.'
+    :!recoverable?' No unreceived originals remain recoverable.'
+    :`${attached&&row.carrierStatus==='live'?' Protect the carrier before the voyage deadline.':''}${releasing||loose?' Recover released originals before the voyage deadline: use Massline and bring pilot and vault slowly into the Ceres receiver.':''}`;
+  return facts+carrier+objective+' Return to the Ceres receiver and slow down to file the outcome.'
+    +(recoverable?' Filing records remaining recoverable originals as lost.':'');
+}
 export function ilexReleasePose(entity,socket,nativeBody=null){
   const c=Math.cos(entity.rot||0),s=Math.sin(entity.rot||0),dx=socket.x*c-socket.z*s,dz=socket.x*s+socket.z*c;
   const x=entity.pos.x+dx,z=entity.pos.z+dz,spin=entity.angVel||0;

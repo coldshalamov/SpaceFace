@@ -1,8 +1,10 @@
+import { ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, ANVIL_RETURN_GAS } from '../world/anvilSpillRecovery.js';
 // Scanner pulse system (GDD 2.0 §7.4).
 //
 // Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
+import { SHARD_SPHERE_SONG } from '../data/landmarkMissions.js';
 import { asteroidScanGlyph } from '../data/mining.js';
 import { mothlightScannerReading } from '../data/mothlight.js';
 import { borrowedVoiceScannerReading } from './borrowedVoice.js';
@@ -893,19 +895,30 @@ function visibleSignalRows(rows, limit = 6) {
   return visible.sort(compareSignalRows);
 }
 
+// The Song is recovered over several visits, not a disposable sensor contact. Preserve
+// this one authored record without pretending the pilot investigated it or changing tracking.
+// Other contacts still compete for the same 64 slots; existing completed protection is unchanged.
+function retainedSongReading(id, record) {
+  return id === `signal:poi:${SHARD_SPHERE_SONG.poiId}`
+    && record?.sourceId === SHARD_SPHERE_SONG.poiId
+    && record?.sectorId === SHARD_SPHERE_SONG.sectorId
+    && record?.sourceKind === 'archive'
+    && Number.isFinite(Number(record.scanCount)) && Number(record.scanCount) > 0;
+}
+
 function pruneSignalRecords(own) {
   const ids = Object.keys(own.records || {});
   if (ids.length <= SIGNAL_RECORD_CAP) return;
   ids.sort((a, b) => {
-    const aProtected = a === own.trackedId || !!own.completed[a];
-    const bProtected = b === own.trackedId || !!own.completed[b];
+    const aProtected = a === own.trackedId || !!own.completed[a] || retainedSongReading(a, own.records[a]);
+    const bProtected = b === own.trackedId || !!own.completed[b] || retainedSongReading(b, own.records[b]);
     if (aProtected !== bProtected) return aProtected ? 1 : -1;
     const time = (Number(own.records[a] && own.records[a].lastScanAt) || 0)
       - (Number(own.records[b] && own.records[b].lastScanAt) || 0);
     return time || a.localeCompare(b);
   });
   for (const id of ids.slice(0, Math.max(0, ids.length - SIGNAL_RECORD_CAP))) {
-    if (id !== own.trackedId && !own.completed[id]) delete own.records[id];
+    if (id !== own.trackedId && !own.completed[id] && !retainedSongReading(id, own.records[id])) delete own.records[id];
   }
 }
 
@@ -1693,6 +1706,18 @@ export const scanner = {
       this._clearContactHail('offer_invalid');
       return false;
     }
+    if (offer.anvilReturnQuote && !this.registry?.get?.('traffic')?.bindAnvilSpillReturnQuote?.(availability.entity,offer.anvilReturnQuote)) {
+      offer.actions=offer.actions.filter(a=>a.id!==ANVIL_RETURN_GAS);
+      offer.lines=[offer.lines[0], 'Return unavailable; physical line and receiver must be ready. Hail again.'];
+      delete offer.anvilReturnQuote;
+    }
+    if (offer.anvilRendezvousQuote && !this.registry?.get?.('traffic')?.bindAnvilSpillRendezvousQuote?.(availability.entity,offer.anvilRendezvousQuote)) {
+      offer.actions=offer.actions.filter(a=>a.id!==ANVIL_RENDEZVOUS);delete offer.anvilRendezvousQuote;
+      offer.lines[0]='RENDEZVOUS UNAVAILABLE · native line and capable tender must be ready.';
+    }
+    for (const quote of [offer.anvilReturnQuote,offer.anvilRendezvousQuote]) {
+      if (Number.isFinite(quote?.expiresAt)) offer.expiresAt=Math.min(offer.expiresAt,quote.expiresAt);
+    }
     this._contactHail = offer;
     this.bus.emit('contactHail:offer', cloneContactHailPayload(offer));
     return true;
@@ -1728,12 +1753,21 @@ export const scanner = {
     const towAssist = choice === CONTACT_HAIL_ACTION_TOW_ASSIST
       ? this._requestContactTowAssist(target, active)
       : null;
+    const anvilReturn = choice === ANVIL_RETURN_GAS && active.anvilReturnQuote
+      && active.actions?.some(action => action.id === ANVIL_RETURN_GAS)
+      ? this.registry?.get?.('traffic')?.returnAnvilSpill?.(target, active.anvilReturnQuote) : null;
+    const anvilRendezvous = active.actions?.some(a=>a.id===choice)
+      ? choice===ANVIL_RENDEZVOUS && active.anvilRendezvousQuote
+        ? this.registry?.get?.('traffic')?.requestAnvilSpillRendezvous?.(target,active.anvilRendezvousQuote)
+        : choice===ANVIL_CANCEL_RENDEZVOUS ? this.registry?.get?.('traffic')?.cancelAnvilSpillRendezvous?.(target) : null
+      : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
       weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
       roe: ai.roe || null,
       heaveTo,
       towAssist,
+      anvilReturn,anvilRendezvous,
     });
     if (!response) return false;
     this._contactHail = null;

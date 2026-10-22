@@ -5,6 +5,7 @@ import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
+import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
 // libraries that were fully decoded before flight admission. Contract: createVisualFactory() ->
 // { build(entity) }
@@ -3851,7 +3852,25 @@ function hulkPackagedFileForEntity(e) {
   return selection && selection.file || null;
 }
 
+// Mission evidence has a persistent semantic identity. Runtime entity IDs are reallocated
+// on Continue and must never choose which physical source the player is investigating.
+const LAST_SHIFT_FILES = Object.freeze({
+  fairlead: 'places/place_last_shift_fairlead.glb',
+  cargo: 'places/place_aftermath_aft_cargo_module.glb',
+  recorder: 'pods/pod_47a_evidence_spindle.glb',
+});
+export function lastShiftPackagedFile(e) {
+  const data = e?.data;
+  if (e?.type !== 'wreck' || data?.persistenceOwner !== LAST_SHIFT.persistenceOwner
+    || data.lastShiftSiteId !== LAST_SHIFT.siteId
+    || !Object.hasOwn(LAST_SHIFT_FILES, data.lastShiftClueId)
+    || data.lastShiftBodyKey !== lastShiftBodyKey(data.lastShiftClueId)) return null;
+  return LAST_SHIFT_FILES[data.lastShiftClueId];
+}
+
 export function wreckPackagedFile(e) {
+  const lastShiftFile = lastShiftPackagedFile(e);
+  if (lastShiftFile) return lastShiftFile;
   if (isOrchardFrame(e)) return ORCHARD_FRAME_FILE;
   if (isCeresWorkfleetPlace(e)) return ceresWorkfleetPlaceFile(e);
   if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
@@ -5075,7 +5094,7 @@ function buildWreck(e) {
     roughness: 0.68, metalness: 0.72, emissive: 0x230900, emissiveIntensity: 0.1,
     materialRole: 'torn-exposed-metal',
   });
-  const rnd = mulberryLite(hashId(e.id));
+  const rnd = mulberryLite(hashId(lastShiftPackagedFile(e) ? e.data.lastShiftBodyKey : e.id));
 
   // A long, broken load-bearing spine gives wrecks an unmistakable manufactured axis. The old
   // five-box clump plus a broad orange halo read as a molten asteroid at flight scale.
@@ -6312,6 +6331,43 @@ function buildVolatilePod(e) {
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
   bottle.name = 'VolatilePod_Bottle';
+  // Manufactured containment stays inside the existing unit-radius collision envelope.
+  // Parent every fitting to the bottle: pickupMotionPresentation tumbles/scales child zero,
+  // not the outer entity root. The original class-colored shell remains the hazard signal.
+  const fittings = getGeometry('payload:volatile:containment', () => {
+    const parts = [
+      new THREE.TorusGeometry(0.875, 0.04, 4, 20),
+      new THREE.TorusGeometry(0.875, 0.04, 4, 20).rotateY(Math.PI / 2),
+    ];
+    for (const sign of [-1, 1]) {
+      parts.push(
+        new THREE.CylinderGeometry(0.18, 0.18, 0.12, 8).rotateZ(Math.PI / 2).translate(sign * 0.84, 0, 0),
+        new THREE.TorusGeometry(0.18, 0.035, 4, 12).rotateY(Math.PI / 2).translate(sign * 0.9, 0, 0),
+      );
+    }
+    const valveStart = parts.length;
+    parts.push(
+      new THREE.CylinderGeometry(0.1, 0.1, 0.14, 8).rotateZ(Math.PI / 2).translate(0.9, 0, 0),
+      new THREE.BoxGeometry(0.05, 0.25, 0.07).translate(0.95, 0, 0),
+      new THREE.CylinderGeometry(0.12, 0.12, 0.025, 8).rotateZ(Math.PI / 2).translate(-0.92, 0, 0),
+    );
+    // Two construction values in one shared draw; the emissive shell stays separate.
+    for (let i = 0; i < parts.length; i++) {
+      const color = new THREE.Color(i < valveStart ? 0x73818b : 0x16232c);
+      const colors = new Float32Array(parts[i].attributes.position.count * 3);
+      for (let j = 0; j < colors.length; j += 3) color.toArray(colors, j);
+      parts[i].setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    }
+    const merged = mergeGeometries(parts, false);
+    for (const part of parts) part.dispose();
+    return merged;
+  });
+  const cage = new THREE.Mesh(fittings,
+    getMaterial('payload:volatile:containment', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0.68,
+    }), SHARED_MATERIAL_ROLE.HULL)));
+  cage.name = 'VolatilePod_ContainmentAndValve';
+  bottle.add(cage);
   g.add(bottle);
   g.scale.setScalar(R);
   g.userData.kind = e && e.type === 'pickup' ? 'pickup' : 'payload';

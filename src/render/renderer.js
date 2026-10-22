@@ -11261,7 +11261,7 @@ const RIGID_ASHLINE_BODY_SOURCE_NAMES = new Set([0, 1, 2].flatMap((level) => [
 ].map((surface) => `LOD${level}_MOTION_HULL_CORE_${surface}`)));
 const RIGID_ASHLINE_MOTION_IDENTITY = Object.freeze({
   packageAssetId: 'sf.render.ashline-dart',
-  packageContentHash: '091d9605495948305754979e1cce24eb3e475500788375575ea7dcc1f87ef4ac',
+  packageContentHash: '6aae8369e318d6ae16db20bfc3b5f395f615370ac48ff7f6d222f7e8575698e2',
   bankSha256: '89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e',
   sourceAssetId: 'SF_WHOLESHIP_ASHLINE_DART', rigId: 'hull', bindingId: 'hull_core',
 });
@@ -13381,7 +13381,7 @@ export const render = {
       return error;
     };
     const isOwnerInactiveTouchError = (error) => error && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE';
-    const submitExactSubjectTouch = (subject, isActive = null) => {
+    const submitExactSubjectTouch = (subject, isActive = null, urgent = false) => {
       const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
       const submit = () => {
         if (typeof isActive === 'function' && !isActive(subject)) throw ownerInactiveTouchError();
@@ -13393,7 +13393,7 @@ export const render = {
         finally { restore(); }
       };
       const pending = pace?.submit
-        ? pace.submit(submit, { isActive: () => !isActive || isActive(subject) })
+        ? pace.submit(submit, { urgent: urgent === true, isActive: () => !isActive || isActive(subject) })
         : Promise.resolve().then(submit);
       return Promise.resolve(pending).then((result) => {
         // The serial queue can reject a stale owner before running submit. Convert its tagged
@@ -14120,7 +14120,7 @@ export const render = {
           // state — the same touch the opening plan runs — so any residual variant links here,
           // behind the pending latch, instead of inside a presented bloom frame.
           try {
-            await submitExactSubjectTouch(subject, admissionOptions.isActive);
+            await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
           } catch (error) {
             if (isOwnerInactiveTouchError(error)) throw error;
             exactTargetReady = false;
@@ -15104,6 +15104,10 @@ export const render = {
         upgradeJobs: upgrades.pending,
         upgradeInFlight: upgrades.inFlight,
         upgradeCompiling: upgrades.compiling || 0,
+        upgradeOpeningHeld: upgrades.openingHeld === true,
+        upgradeFirstFlightHeld: upgrades.firstFlightHeld === true,
+        upgradeFrameScheduled: upgrades.frameScheduled === true,
+        upgradeRunning: upgrades.running === true,
         meshBuilds: this._meshBuildQueue.length - this._meshBuildQueueHead,
       };
     };
@@ -35867,6 +35871,16 @@ export function applyFirstPlayablePaintRelease(owner) {
     releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null, {
       keepGraphFrozen: !!(owner && owner.state && owner.state.mode === 'flight'),
     });
+    // The software path can skip the cook that normally transfers the opening
+    // cohort's blanket queue hold to the selective first-flight policy. The guarded
+    // pipeline resume below intentionally waits until the hold clock expires; it
+    // must not also leave readable bodies excluded from the existing selective lane.
+    // Transfer only a still-owned blanket hold, so repeated paints/Continue cannot
+    // re-arm a released queue or invalidate an already scheduled selective callback.
+    if (owner?.scene && owner.state?.mode === 'flight'
+        && describeAuthoredUpgradeQueue(owner.scene).openingHeld === true) {
+      holdAuthoredUpgradeQueueForFirstFlight(owner.scene);
+    }
     if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
       // First-picture acceptance does not release the unrelated sector/FX backlog.
       // The existing cook and selective readable-glass first-flight lanes own that policy.

@@ -6,6 +6,8 @@
 // with role-specific dialog that pulls real game data (economy events, market
 // intel, mission boards, sector danger, asteroid fields). Read-only except for
 // the mission-accept button which emits ui:acceptMission.
+import { ILEX_ARK } from '../../data/ilexArk.js';
+import { ilexGreenhouseFor, ilexGreenhouseReply } from '../../data/ilexGreenhouse.js';
 import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
@@ -563,6 +565,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       name: fullName,
       role,
       factionId,
+      ilexGreenhouse: role === 'barkeep' && stationId === ILEX_ARK.stationId && !!ilexGreenhouseFor(state),
       line: barGreetingBarkFor(factionId, role, fnvHash(contactId + '_line')) || ROLE_LINES[role],
       approach: barApproachBarkFor(factionId, fnvHash(contactId + '_approach')),
     });
@@ -718,6 +721,7 @@ export function getChoices(role, contact = null) {
   if (contact && Array.isArray(contact.choices) && contact.choices.length) return contact.choices;
   switch (role) {
     case 'barkeep':       return [
+      ...(contact?.ilexGreenhouse ? [{ id: 'ilex_greenhouse', label: 'How is the Ilex greenhouse doing?' }] : []),
       { id: 'rumors',    label: 'Any rumors?' },
       { id: 'word',      label: 'What\'s the word?' },
       { id: 'drink',     label: 'Just a drink.' },
@@ -1123,6 +1127,9 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   }
   if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
+  if (role === 'barkeep' && choiceId === 'ilex_greenhouse' && stationId === ILEX_ARK.stationId) {
+    return { text: ilexGreenhouseReply(state) || 'No Ilex planting is recorded here.' };
+  }
   if (role === 'barkeep' && choiceId === 'word') {
     const deed = mostCitedShipDeed(state);
     if (deed) return { text: `Your ship's ledger keeps coming back to this: ${deed.text}`, ledgerDeed: deed };

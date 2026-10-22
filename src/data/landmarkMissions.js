@@ -61,6 +61,41 @@ export const SHARD_SPHERE_SONG = Object.freeze({
   }),
 });
 
+// Read-only return guidance from scanner, mission and world authorities. No new saved flags:
+// old saves, rejected voice lines and revisits all resolve from the same durable evidence.
+export function shardSphereSongProgress(state) {
+  const definition = SHARD_SPHERE_SONG;
+  const record = discoveryRecord(state, definition);
+  if (!isFound(record)) return null;
+  const total = definition.requiredSignalScans;
+  let recovered = Math.min(total, signalScanCount(state, definition));
+  if (questComplete(state, definition)) {
+    return { phase: 'filed', recovered: total, total,
+      text: 'Reconstruction filed at the Echo Shrine. The unfinished phrase remains in your archive; there is no second reconstruction payment.' };
+  }
+  const active = state?.missions?.active?.some((mission) =>
+    mission?.source === LANDMARK_QUEST_SOURCE
+    && mission.params?.landmarkProbe?.questId === definition.id);
+  if (active) {
+    return { phase: 'return', recovered, total,
+      text: 'Reconstruction accepted. Return to the Shard Sphere and fire one close scanner pulse to file the song.' };
+  }
+  // Missions keeps an earned offer through board refresh and Save/Continue, even if
+  // scanner's bounded contact history later evicts the original four-pulse record.
+  const posted = state?.missions?.boards?.[definition.stationId]?.slots;
+  if (Array.isArray(posted) && posted.some((offer) =>
+    offer?.id === definition.id && validateLandmarkQuestOffer(offer))) recovered = total;
+  if (recovered < total) {
+    return { phase: 'collecting', recovered, total,
+      text: `Schism fragments ${recovered}/${total}. Return to the Shard Sphere and use active scanner pulses to recover the remaining notes.` };
+  }
+  const rep = Number(state?.factions?.[definition.factionId]?.rep) || 0;
+  return { phase: rep >= definition.minRep ? 'ready' : 'trust', recovered, total,
+    text: rep >= definition.minRep
+      ? 'All four fragments recovered. Dock at the Echo Shrine and accept Reconstruct the Song from its mission board, then take one close reading at the sphere.'
+      : `All four fragments recovered. The Echo Shrine offers Reconstruct the Song only at Vael standing +${definition.minRep} or higher. Earn that trust before accepting the reconstruction.` };
+}
+
 // PQ-048.14: this is deliberately a return survey, not another way to reveal the Obelisk. The
 // ordinary physical investigation remains the sole writer of the discovery Doss later reads.
 export const RESONANCE_OBELISK_SURVEY = Object.freeze({
@@ -283,7 +318,8 @@ function signalScanCount(state, definition) {
   const stableId = `signal:poi:${definition.poiId}`;
   const record = state && state.signalInvestigation && state.signalInvestigation.records
     && state.signalInvestigation.records[stableId];
-  return Math.max(0, Math.trunc(Number(record && record.scanCount) || 0));
+  const count = Number(record && record.scanCount);
+  return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
 }
 
 function questReady(state, definition) {

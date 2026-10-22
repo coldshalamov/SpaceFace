@@ -3531,6 +3531,26 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
     "sourceUrl": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb"
+  },
+  {
+    "assetId": "sf.render.last-shift-fairlead",
+    "expectedContentHash": "6009694b9e959e8eec897815aba641094833b06e3ea23744e063e1e70dc87f0b",
+    "key": "last-shift-fairlead",
+    "metadataUrl": "assets/ships/release/render-packages/last-shift-fairlead/render-package.json",
+    "runtimeAssetId": "place_last_shift_fairlead",
+    "slot": "place",
+    "sourceSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+    "sourceUrl": "assets/ships/release/parts/places/place_last_shift_fairlead.glb"
+  },
+  {
+    "assetId": "sf.render.charon-colony-service-barge",
+    "expectedContentHash": "0d1c169dd2aa0e41131cca9eea87c75317675e96f86f6e9025a73ac7fa252e9d",
+    "key": "charon-colony-service-barge",
+    "metadataUrl": "assets/ships/release/render-packages/charon-colony-service-barge/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CHARON_COLONY_SERVICE_BARGE",
+    "slot": "place",
+    "sourceSha256": "24613d199704a08cf171cae45d5bd9999cd9e880479af97ecb584e87de3e5aaf",
+    "sourceUrl": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb"
   }
 ];
 

@@ -457,3 +457,50 @@ test('rejects an unknown group name rather than silently running nothing', () =>
     /unknown --group "graphics"/,
   );
 });
+
+
+for (const code of [0, 1]) test(`TAP stale-snapshot labels do not manufacture golden debt (exit ${code})`, () => {
+  const stdout = 'TAP version 13\n# Subtest: reentrant canonical removal cannot act on stale snapshot after reuse-id\nok 1 - reentrant canonical removal cannot act on stale snapshot after reuse-id\n';
+  const result = ciReport.createCommandResult({
+    def: { id: 'check-runtime-maturity', command: 'npm run check:runtime-maturity' },
+    code, stdout, stderr: code ? 'AssertionError: unrelated owner assertion failed' : '',
+  });
+  assert.equal(result.structured, null);
+  assert.equal(result.code, code);
+  assert.equal(result.ok, code === 0);
+  assert.equal(result.classification.category, code ? 'assertion_failure' : 'passed');
+  assert.equal(ciReport.buildCiReport({ results: [result] }).ok, code === 0);
+  assert.equal(result.stdoutTail, stdout);
+});
+
+for (const code of [0, 1]) test(`text-only stale expected envelope retains debt without structured JSON (exit ${code})`, () => {
+  const result = ciReport.createCommandResult({
+    def: { id: 'compare', command: 'node compare.mjs' }, code,
+    stdout: '# Subtest: stale snapshot is rejected\nok 1 - stale snapshot is rejected\n',
+    stderr: 'stale expected envelope: expected old, actual current',
+  });
+  assert.equal(result.structured, null);
+  assert.equal(result.code, code);
+  assert.equal(result.ok, false);
+  assert.equal(result.classification.category, 'stale_golden');
+  assert.match(result.reason, /expected old, actual current/);
+  assert.equal(ciReport.buildCiReport({ results: [result] }).ok, false);
+});
+
+test('nested failing TAP labels retain nonzero failure without claiming golden evidence', () => {
+  const result = ciReport.createCommandResult({
+    def: { id: 'fixture', command: 'node --test fixture.mjs' }, code: 1,
+    stdout: '    # Subtest: stale snapshot rejection\n    not ok 2 - stale snapshot rejection\n',
+    stderr: 'AssertionError: expected live body',
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.classification.category, 'assertion_failure');
+  assert.match(result.reason, /expected live body/);
+});
+
+test('optional Charon flag keeps matrix cold-open timeout at its existing180s class',()=>{
+ const matrix=ciReport.buildCommandMatrix('npm run check:47a:live-cold-open',{
+  'check:47a:live-cold-open':'node scripts/check-47a-live-cold-open.mjs --charon-camera-diagnostic',
+ });
+ assert.equal(matrix[0].id,'check-47a-live-cold-open');assert.equal(matrix[0].timeoutMs,180000);
+});

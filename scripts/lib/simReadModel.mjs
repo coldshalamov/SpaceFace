@@ -26,6 +26,7 @@
 //     them; dressing rows ride the same aux channel but keep pushAlive's
 //     _noMesh filter and dedupe against journaled ids.
 
+import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
 import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
 import { isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
@@ -608,6 +609,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'cursor',
   // Bounded live pod facts only: the leaf projector excludes other planet authority.
   'planet.ships', 'planet.orchardForecast',
+  // One finite accepted planting, not the voyage's bodies or the economy custody journal.
+  'ilexGreenhousePublic',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic', 'survivalResultsPublic', 'careers',
   'physicsVenueSession', 'world.wreckCourtRulings',
@@ -785,6 +788,7 @@ const activeDomainConfig = {
 const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
 const COMBAT_TRACE_PRESENTATION_RULE = Object.freeze({ project: 'combatPause' });
 const ORCHARD_FORECAST_MIRROR_RULE = Object.freeze({ project: 'orchardForecast' });
+const ILEX_GREENHOUSE_MIRROR_RULE = Object.freeze({ project: 'ilexGreenhouse' });
 const ORCHARD_EXPOSURE_MIRROR_RULE = Object.freeze({ project: 'orchardExposure' });
 
 // Named diagnostic wire profiles. The ordinary runtime installs the station
@@ -845,6 +849,7 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
   if (activeDomainConfig.combatTraceProjection && isCombatTracePath(segs)) {
@@ -939,6 +944,7 @@ function projectDomainLeaf(rule, v, state) {
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
   if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
@@ -959,7 +965,8 @@ function expandDepthFor(segs) {
   // These roots are bounded presentation projections, even when a diagnostic
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
-  if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast') return 0;
+  if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast'
+    || segs[0] === 'ilexGreenhousePublic') return 0;
   // One live cable changes every tick, while the bounded broken-line history is mostly static.
   // Keep the complete facade, but diff individual attachment records so that live tension does
   // not clone and transport every old cable on every pose reply.

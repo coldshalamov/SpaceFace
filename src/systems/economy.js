@@ -3487,8 +3487,31 @@ export const economy = {
     // earns one (a rejected or duplicate republish moves no stock and yields none).
     const preNeed = info && starvedIndustryNeedFor(info.type, info.tier || 0, market);
     const relievingPostedLeg = !!(preNeed && preNeed.inputId === commodityId);
-    const accepted = { receiptId, stationId, commodityId, qty, source: 'mission_delivery' };
-    intents[intentKey] = { receipt: { ...accepted }, result: { ok: true, qty } };
+    const accepted = { receiptId, stationId, commodityId, qty,
+      source: payload.source === 'anvil_work' ? 'anvil_work' : 'mission_delivery' };
+    // Optional physical-owner handshake: exactly the accepted goods leave their existing
+    // hold before stock or any observer changes. Ordinary mission callers already debit
+    // cargo and retain their original behavior. No second receipt/inventory is introduced.
+    if (typeof payload.commitCustody === 'function') {
+      // Transient reservation is scoped to this exact journal, not saved as acceptance.
+      // Continue installs a different journal; a throwing/refused callback leaves no receipt.
+      const pending = this._physicalFreightPending ||= new WeakMap();
+      let ids = pending.get(intents);
+      if (!ids) { ids = new Set(); pending.set(intents, ids); }
+      if (ids.has(intentKey)) return { ok: false, reason: 'freight_custody_pending' };
+      ids.add(intentKey);
+      try {
+        if (payload.commitCustody({ ...accepted, ok: true, duplicate: false,
+          acceptedLines: [{ commodityId, qty }] }) !== true) {
+          return { ok: false, reason: 'freight_custody_changed' };
+        }
+        intents[intentKey] = { receipt: { ...accepted }, result: { ok: true, qty } };
+      } finally { ids.delete(intentKey); }
+    } else {
+      if (this._physicalFreightPending?.get(intents)?.has(intentKey))
+        return { ok: false, reason: 'freight_custody_pending' };
+      intents[intentKey] = { receipt: { ...accepted }, result: { ok: true, qty } };
+    }
     this.applyStockPressure(stationId, commodityId, 'sell', qty);
     if (relievingPostedLeg) {
       const entry = market[commodityId];

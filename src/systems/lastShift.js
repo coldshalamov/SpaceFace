@@ -1,12 +1,24 @@
 import { LAST_SHIFT as C, LAST_SHIFT_POS, LAST_SHIFT_CLUES, lastShiftClue,
   lastShiftBodyKey, lastShiftFactIds, lastShiftReport, freshLastShiftRecord } from '../data/lastShift.js';
+import { LAST_SHIFT_FAIRLEAD_PROXY } from '../data/lastShiftFairleadGeometry.js';
 import { getCombatKernel } from '../combat/kernel.js';
+import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import { resolveDockRange } from '../core/dockRange.js';
 import { attachmentBindsOccupant } from '../combat/attachments.js';
 
 const terminal = new Set(['destroyed', 'salvaged', 'returned']);
 const distance = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
+const bearingTo = (from, to) => (Math.round(Math.atan2(to.x - from.x, -(to.z - from.z)) * 180 / Math.PI) + 360) % 360;
 const clone = value => JSON.parse(JSON.stringify(value));
+function alignFairleadBody(entity) {
+  if (entity?.type !== 'wreck' || entity.data?.persistenceOwner !== C.persistenceOwner
+    || entity.data.lastShiftSiteId !== C.siteId || entity.data.lastShiftClueId !== 'fairlead'
+    || entity.data.lastShiftBodyKey !== lastShiftBodyKey('fairlead')) return;
+  const body = entity.physicsBody;
+  if (!body || typeof body !== 'object' || body.shape !== 'ball' || body.dynamic !== false
+    || body.radius !== 26 || body.mass !== 1800 || body.collisionProxyManifest) return;
+  entity.physicsBody = { ...body, collisionProxyManifest: LAST_SHIFT_FAIRLEAD_PROXY, revision: (body.revision || 0) + 1 };
+}
 const position = (p, fallback) => p && Number.isFinite(p.x) && Number.isFinite(p.z)
   && Math.abs(p.x) < 1e7 && Math.abs(p.z) < 1e7 ? { x: p.x, z: p.z } : { ...fallback };
 
@@ -16,7 +28,7 @@ export const lastShift = {
   name: 'lastShift',
   init(ctx) {
     this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this._bindings = new Map();
-    this._subs = []; this._restoring = false; this._nextTick = 0; this._lastReturnOffer = null;
+    this._subs = []; this._restoring = false; this._nextTick = 0; this._lastReturnOffer = null; this._nextCueAt = 0; this._revisitPending = false; this._cue = null;
     this._adopt(ctx.state.world?.lastShift);
     const on = (event, fn) => this._subs.push(this.bus.on(event, fn));
     on('scan:pulse', p => this._scan(p));
@@ -31,18 +43,28 @@ export const lastShift = {
         this._offer();
       }
     });
+    on('lastShift:recover', () => this.beginRecovery());
+    on('lastShift:cancelRecovery', () => this.cancelRecovery());
+    on('lastShift:cueSurfaced', p => {
+      if (!this._cue || p?.id !== this._cue.id || this._restoring) return;
+      if (p.id === `${C.siteId}:approach`) this._row.surfaced = true;
+      else this._row.lastRevisitReceiptId = p.id;
+      this._cue = null;
+    });
     on('lastShift:returnRecorder', () => {
       const result = this.returnRecorder();
       if (!result.ok) this.bus.emit('toast', { text: 'LAST SHIFT — return refused. Keep the actual recorder on your line and reel it into the same slow berth as your ship.', kind: 'warn', ttl: 5 });
     });
     on('save:restoring', () => { this._restoring = true; this._bindings.clear(); });
     on('save:loaded', () => this.afterContinue());
-    on('sector:enter', () => { this._nextTick = 0; this._lastReturnOffer = null; });
+    on('sector:enter', () => { this._nextTick = 0; this._nextCueAt = 0; this._lastReturnOffer = null; this._revisitPending = true; });
+    on('sector:exit', () => { this._cue = null; });
   },
   _adopt(raw) {
     const row = freshLastShiftRecord();
     if (raw?.schema === 1 && raw.siteId === C.siteId) {
       row.discovered = raw.discovered === true; row.rumorHeard = raw.rumorHeard === true;
+      row.surfaced = raw.surfaced === true || row.discovered || row.rumorHeard;
       row.knownClueIds = lastShiftFactIds(raw.knownClueIds);
       row.destroyedClueIds = lastShiftFactIds(raw.destroyedClueIds);
       row.revision = Math.max(row.knownClueIds.length, Math.min(16, Math.trunc(Number(raw.revision) || 0)));
@@ -69,25 +91,31 @@ export const lastShift = {
         row.recorderReturn = clone(raw.recorderReturn);
       }
     }
+    row.surfaced ||= row.knownClueIds.length > 0;
+    row.recoveryActive = raw?.recoveryActive === true && row.knownClueIds.includes('recorder')
+      && !terminal.has(row.bodies.recorder?.status) && !row.recorderReturn;
+    row.lastRevisitReceiptId = row.receipts.some(r => r.id === raw?.lastRevisitReceiptId) ? raw.lastRevisitReceiptId : null;
+    this._cue = null; this._guidanceStation = null; this._guidanceStationCount = -1;
     this._row = row;
     const world = this.state.world || (this.state.world = {}); world.lastShift = row;
   },
   newGame() {
     for (const e of this.state.entities.values()) if (e.data?.lastShiftSiteId === C.siteId) this.ctx.helpers.removeEntity(e.id);
-    this._bindings.clear(); this._adopt(null); this._nextTick = 0; this._lastReturnOffer = null; this._restoring = false;
+    this._bindings.clear(); this._adopt(null); this._nextTick = 0; this._lastReturnOffer = null; this._restoring = false; this._nextCueAt = 0; this._revisitPending = false;
   },
   serialize() { this._capture(); return clone(this._row); },
   deserialize(row) { this._bindings.clear(); this._adopt(row); this._nextTick = 0; },
-  afterContinue() { this._restoring = false; this._bindings.clear(); this._nextTick = 0; this._lastReturnOffer = null; },
+  afterContinue() { this._find('fairlead'); this._nextCueAt = 0; this._revisitPending = true; this._restoring = false; this._bindings.clear(); this._nextTick = 0; this._lastReturnOffer = null; },
   _find(clueId) {
     const expected = lastShiftBodyKey(clueId);
     const bound = this._bindings.get(clueId);
     if (bound && this.state.entities.get(bound.id) === bound.entity && bound.entity.alive !== false
-      && bound.entity.occupantGeneration === bound.life && bound.entity.data?.lastShiftBodyKey === expected) return bound.entity;
+      && bound.entity.occupantGeneration === bound.life && bound.entity.data?.lastShiftBodyKey === expected) { alignFairleadBody(bound.entity); return bound.entity; }
     this._bindings.delete(clueId);
     for (const entity of this.state.entities.values()) {
       if (entity.alive !== false && entity.data?.lastShiftSiteId === C.siteId
         && entity.data?.lastShiftBodyKey === expected) {
+        alignFairleadBody(entity);
         this._bindings.set(clueId, { id: entity.id, life: entity.occupantGeneration, entity }); return entity;
       }
     }
@@ -109,7 +137,8 @@ export const lastShift = {
         rot: record?.rot || (clue.id === 'fairlead' ? 0.61 : -0.25), radius: clue.radius,
         mass: clue.mass, hull: clue.id === 'fairlead' ? 360 : 80, hullMax: clue.id === 'fairlead' ? 360 : 80,
         flags: { persistent: true }, physicsBody: { schemaVersion: 1, dynamic: clue.dynamic,
-          shape: 'ball', radius: clue.radius, mass: clue.mass, inertiaY: clue.mass * clue.radius ** 2 / 2, revision: 0 },
+          shape: 'ball', radius: clue.radius, mass: clue.mass, inertiaY: clue.mass * clue.radius ** 2 / 2, revision: 0,
+          ...(clue.id === 'fairlead' ? { collisionProxyManifest: LAST_SHIFT_FAIRLEAD_PROXY } : {}) },
         data: { lastShiftSiteId: C.siteId, lastShiftBodyKey: lastShiftBodyKey(clue.id), lastShiftClueId: clue.id,
           persistenceOwner: C.persistenceOwner, homeSectorId: C.sectorId, scannable: true,
           authoredScanLabel: clue.label, scanLabel: clue.label, parentType: clue.parentType,
@@ -134,6 +163,27 @@ export const lastShift = {
         [id, Math.max(0, Math.min(qty, Math.trunc(Number(e.data.salvagePool?.[id]) || 0)))]));
     }
   },
+  _approach() {
+    const player = this.state.entities.get(this.state.playerId);
+    if (this.state.world?.currentSectorId !== C.sectorId || !player?.alive
+      || distance(player.pos, LAST_SHIFT_POS) > C.discoveryRangeWu || this.state.simTime < this._nextCueAt) return;
+    let cue = null;
+    if (!this._row.surfaced) {
+      cue = { id: `${C.siteId}:approach`, text: `LAST SHIFT — optional wreckage beside the working seam: bearing ${bearingTo(player.pos, LAST_SHIFT_POS)}°, ${Math.round(distance(player.pos, LAST_SHIFT_POS))} WU. Select a source and pulse scan within 320 WU, or keep mining.` };
+    } else if (this._revisitPending) {
+      const filed = this._row.receipts.at(-1);
+      if (filed && filed.id !== this._row.lastRevisitReceiptId) cue = { id: filed.id,
+        text: `LAST SHIFT — ${filed.clueIds.length}/3 sources filed. ${filed.clueIds.length === 3
+          ? 'The filed evidence supports a cargo release to save the ships.'
+          : 'The filed sequence remains incomplete.'}${LAST_SHIFT_CLUES.some(c => this._find(c.id))
+            ? ' Select a source and scan to reopen the register.' : ' Your filed evidence is unchanged.'}` };
+      else this._revisitPending = false;
+    }
+    if (!cue) return;
+    this._nextCueAt = this.state.simTime + 5; this._cue = cue;
+    // Only the receipt adapter's admission acknowledgement marks the cue surfaced.
+    this.bus.emit('lastShift:cue', { ...cue });
+  },
   _scan(payload) {
     if (this._restoring || this.state.mode !== 'flight') return;
     const player = this.state.entities.get(this.state.playerId);
@@ -152,6 +202,7 @@ export const lastShift = {
     const e = this.state.entities.get(entityId), player = this.state.entities.get(this.state.playerId);
     const id = e?.data?.lastShiftClueId, clue = lastShiftClue(id);
     if (!player?.alive || !clue || e !== this._find(id) || distance(e?.pos, player?.pos) > C.scanRangeWu) return { ok: false, reason: 'out_of_range' };
+    this._row.discovered = true;
     if (!this._row.knownClueIds.includes(id)) {
       this._row.knownClueIds = lastShiftFactIds([...this._row.knownClueIds, id]); this._row.revision++;
       this.bus.emit('toast', { text: `${clue.label}: ${clue.fact} ${clue.provisional}`, kind: 'info', ttl: 8 });
@@ -167,14 +218,54 @@ export const lastShift = {
     if (!record || !owner || owner.entity !== e || owner.life !== e.occupantGeneration
       || e?.data?.lastShiftSiteId !== C.siteId || e.data.lastShiftBodyKey !== lastShiftBodyKey(id)
       || terminal.has(record.status)) return;
+    if (id === 'recorder') this._row.recoveryActive = false;
     record.status = outcome; record.remainingPool = {}; this._row.revision++;
     if (!this._row.destroyedClueIds.includes(id)) this._row.destroyedClueIds = lastShiftFactIds([...this._row.destroyedClueIds, id]);
     this._bindings.delete(id); if (this._row.knownClueIds.length) this._offer();
+  },
+  beginRecovery() {
+    if (this._restoring || !this._row.knownClueIds.includes('recorder') || !this._find('recorder')
+      || terminal.has(this._row.bodies.recorder?.status)) return { ok: false, reason: 'recorder_unavailable' };
+    this._row.recoveryActive = true;
+    this._offer(); return { ok: true };
+  },
+  cancelRecovery() { this._row.recoveryActive = false; this._offer(); },
+  _recoveryReceiver() {
+    const player = this.state.entities.get(this.state.playerId);
+    if (!player?.alive) return null;
+    let best = null;
+    for (const station of this.state.entityIndex?.stations || []) {
+      if (!station.alive || station.type !== 'station' || station.data?.isGate || !station.data?.stationId
+        || !Number.isFinite(station.pos?.x) || !Number.isFinite(station.pos?.z)) continue;
+      const manifest = resolveCollisionProxyManifest(station);
+      const anchor = manifest?.docking ? resolveDockAnchor(station, manifest, player) : station.pos;
+      if (!anchor) continue;
+      const range = distance(player.pos, anchor);
+      if (!best || range < best.range) best = { station, anchor, range };
+    }
+    this._guidanceStation = best?.station || null;
+    this._guidanceStationCount = this.state.entityIndex?.stations?.length || 0;
+    return best;
+  },
+  _recoveryGuidance() {
+    if (!this._row.recoveryActive || terminal.has(this._row.bodies.recorder?.status)) return null;
+    const receiver = this._recoveryReceiver();
+    const method = 'Keep the original recorder on your line. Reel both bodies into the same slow exterior berth; return before docking. Keep the evidence, give up hardware salvage value. No extra payment.';
+    if (!receiver) return `No live archive berth is currently available. ${method}`;
+    const { station, anchor, range } = receiver;
+    const name = station.data.name || station.data.label || station.data.stationId;
+    const speed = Number.isFinite(anchor.speedGate) ? ` Approach at or below ${anchor.speedGate} WU/s.` : '';
+    const player = this.state.entities.get(this.state.playerId);
+    const bearing = bearingTo(player.pos, anchor);
+    return `${name}: ${anchor.kind || 'berth'} bearing ${bearing}°, ${Math.round(range)} WU at this reading.${speed} ${method}`;
   },
   readout() {
     return { siteId: C.siteId, revision: this._row.revision, clueIds: [...this._row.knownClueIds],
       text: lastShiftReport(this._row.knownClueIds, this._row.destroyedClueIds),
       canArchive: this._row.knownClueIds.length > 0, canReturnRecorder: this._returnEligibility().ok,
+      recoveryActive: this._row.recoveryActive, recoveryGuidance: this._recoveryGuidance(),
+      canRecoverRecorder: this._row.knownClueIds.includes('recorder') && !!this._find('recorder')
+        && !terminal.has(this._row.bodies.recorder?.status),
       recorderReturned: !!this._row.recorderReturn };
   },
   _offer() { this.bus.emit('lastShift:offer', this.readout()); },
@@ -231,6 +322,7 @@ export const lastShift = {
       const result = gate.attachments.cut(gate.line.id, gate.player.id);
       if (!result?.ok) return { ok: false, reason: 'detach_refused' };
       if (this._find('recorder') !== gate.recorder || gate.recorder.data.persistenceOwner !== C.persistenceOwner) return { ok: false, reason: 'custody_changed' };
+      this._row.recoveryActive = false;
       this._row.bodies.recorder.status = 'returned'; this._row.bodies.recorder.remainingPool = {}; this._row.revision++;
       this._row.recorderReturn = { id: `${C.siteId}:recorder:return`, stationId: gate.receiver.stationId,
         bodyKey: lastShiftBodyKey('recorder'), at: this.state.simTime || 0 };
@@ -244,7 +336,13 @@ export const lastShift = {
     if (this._restoring || state.mode !== 'flight' || (state.run?.kind === 'survival' && state.run.phase !== 'inactive')
       || state.simTime < this._nextTick) return;
     this._nextTick = state.simTime + 0.25;
-    this._capture(); this._materialize();
+    this._capture(); this._materialize(); this._approach();
+    // Recompute bearings only when presenting guidance, not in the fixed-step loop.
+    // A retired receiver or a changed station index invalidates an open direction card.
+    const receiver = this._guidanceStation;
+    if (this._row.recoveryActive && ((receiver && (receiver.alive === false
+      || state.entities.get(receiver.id) !== receiver))
+      || this._guidanceStationCount !== (state.entityIndex?.stations?.length || 0))) this._offer();
     const gate = this._returnEligibility();
     if (gate.ok && this._lastReturnOffer !== gate.receiver.stationId) {
       this._lastReturnOffer = gate.receiver.stationId; this._offer();

@@ -7,10 +7,40 @@
 // after its own _drive and overwrites that frame's intent.
 
 import { hash32 } from '../core/rng.js';
+import { ZONE_TETHYS_TALLY } from '../data/authoredPlaces.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 
 const PLAYER_RANGE = 2200;
 const PARTNER_RANGE = 480;
 const WINDOW_S = 42;
+const TALLY_SECTOR = 'sector_tethys_junction';
+const TALLY_POST = 'poi_tethys_tally_post';
+const TALLY_CENTER = sectorLocalToGlobalForSector(ZONE_TETHYS_TALLY.center, TALLY_SECTOR);
+const POST_ERRANDS = new Set(['tally_creep', 'invoice_match']);
+
+function insideTally(pos) {
+  return !!pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+    && Math.hypot(pos.x - TALLY_CENTER.x, pos.z - TALLY_CENTER.z) <= ZONE_TETHYS_TALLY.radius;
+}
+
+// The gold count post is the authored Tethys POI, not any reused tally-post prop
+// (Charon has a hunter's Tag Post). Its discovery plate keeps it a live world actor.
+// Public world data exposes presence, not a separate gold-blink lifecycle.
+function atLiveTally(state, entity) {
+  if (state.world?.currentSectorId !== TALLY_SECTOR || !insideTally(entity?.pos)) return false;
+  const rows = state.world.activeSector?.pois;
+  if (!Array.isArray(rows)) return false;
+  let carrier = null;
+  for (const row of rows) {
+    if (row?.poiId !== TALLY_POST) continue;
+    if (carrier) return false;
+    carrier = row;
+  }
+  const post = carrier && state.entities?.get(carrier.id);
+  return !!post && post.alive === true && post.data?.poi === true
+    && post.data.poiId === TALLY_POST && post.data.sectorId === TALLY_SECTOR
+    && insideTally(post.pos);
+}
 
 export const LANE_ERRANDS = Object.freeze([
   { id: 'gel_swap', kinds: ['miner', 'tender'], motion: 'brake', seconds: 8, line: 'Miner: Gel\'s brown. Swapping the puck. Don\'t cut my hand.' },
@@ -146,11 +176,14 @@ export function errandsForKind(kind) {
 }
 
 /** Pure pick. Same seed, record, and window → same errand id. */
-export function pickLaneErrand(seed, recordId, window, kind, hasPartner) {
+export function pickLaneErrand(seed, recordId, window, kind, hasPartner, atTally = false) {
   const rows = errandsForKind(kind).filter((row) => !row.partner || hasPartner);
   if (!rows.length) return null;
   const index = hash32(seed, recordId || 'job', window, kind, 'lane-errand') % rows.length;
-  return rows[index];
+  const picked = rows[index];
+  // Reject only this window's out-of-place post beat. Filtering the pool first
+  // would reshuffle every generic pick and disturb unrelated workers' cadence.
+  return POST_ERRANDS.has(picked.id) && !atTally ? null : picked;
 }
 
 /**
@@ -179,7 +212,7 @@ export function armLaneErrands(runtime, simT) {
       continue;
     }
     const partner = partnerOf(runtime, entry, entity);
-    const picked = pickLaneErrand(seed, recordId, window, entry.job.kind, !!partner);
+    const picked = pickLaneErrand(seed, recordId, window, entry.job.kind, !!partner, atLiveTally(runtime.state, entity));
     entry.errandWindow = window;
     if (!picked) continue;
     entry.errand = {
@@ -202,7 +235,8 @@ function writeIntent(runtime, entity, moveX, moveZ, aim, brake) {
 export function applyLaneErrandIntent(runtime, entry, entity, simT) {
   const errand = entry && entry.errand;
   if (!errand || !entity || !entity.pos) return false;
-  if (simT >= errand.until || laneContractOwns(entry, entity, simT)) {
+  if (simT >= errand.until || laneContractOwns(entry, entity, simT)
+    || POST_ERRANDS.has(errand.id) && !atLiveTally(runtime.state, entity)) {
     entry.errand = null;
     return false;
   }

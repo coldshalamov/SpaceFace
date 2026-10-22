@@ -1,5 +1,5 @@
 import { ILEX_ARK as C, ILEX_VAULT_IDS, ILEX_START, ILEX_RECEIVER, ILEX_ROUTE,
-  freshIlexArk, normalizeIlexArk, ilexOutcomeText, ilexReleasePose, validIlexOutcome } from '../data/ilexArk.js';
+  freshIlexArk, normalizeIlexArk, ilexOutcomeText, ilexActiveVoyageText, ilexReleasePose, validIlexOutcome } from '../data/ilexArk.js';
 import { ILEX_ARK_RADIUS, ILEX_ARK_VISUAL_RADIUS, ILEX_VAULT_RADIUS, ilexArkPhysicalBody, ilexVaultPhysicalBody, ilexVaultSocket } from '../data/ilexArkBody.js';
 import { makeShipEntitySpec } from './ships.js';
 import { ManeuverPlanner } from '../ai/maneuver.js';
@@ -225,7 +225,7 @@ offer(){const p=this._player(),carrier=this._find('carrier'),source=carrier||ILE
   this.bus.emit('ilexArk:offer',{revision:this._row.revision,canAccept:this._row.phase==='waiting'&&this._row.eligible,
     canDeliver:tow,canFinish:this._row.phase==='active'&&!!this._receiver(p),canCourse:this._row.phase==='active',delivered:n,
     status:`${n}/6 ARRIVED · ${this._row.carrierStatus==='lost'?'CARRIER LOST':'ORIGINAL VAULTS'}`,
-    text:this._row.phase==='waiting'?'Ilex carries six seed lines that have never seen a sky. Escort is optional. A destroyed or abandoned vault cannot be replaced. Ceres pays for the arrived lines, and its greenhouse plants only those lines.':ilexOutcomeText(this._delivered(),this._row.carrierStatus!=='lost')});return true;
+    text:this._row.phase==='waiting'?'Ilex carries six seed lines that have never seen a sky. Escort is optional. A destroyed or abandoned vault cannot be replaced. Ceres pays for the arrived lines, and its greenhouse plants only those lines.':this._row.phase==='active'?ilexActiveVoyageText(this._row):ilexOutcomeText(this._delivered(),this._row.carrierStatus!=='lost')});return true;
 },
 _say(text){if(this.helpers.voice?.say)this.helpers.voice.say({id:`${C.id}:r${this._row.revision}`,channel:'comms',text:`ILEX: ${text}`,priority:28,ttl:6});
   else this.bus.emit('toast',{text:`ILEX: ${text}`,kind:'info',ttl:6});},
