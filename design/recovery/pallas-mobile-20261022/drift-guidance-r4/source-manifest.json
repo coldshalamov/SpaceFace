@@ -1,0 +1,70 @@
+{
+  "baseCommit": "bcfdd4730a74c2b79b6e53e3bd7111d6d2ec1dc3",
+  "baseTree": "707320df59191f596616b9741c79586fd817e386",
+  "r4OwnedPaths": [
+    "src/systems/pallasReefCrew.js",
+    "src/systems/pallasReefSource.js",
+    "src/systems/npcJobsRuntime.js",
+    "test/pallas-drift-return.test.mjs",
+    "test/pallas-drift-guidance.test.mjs",
+    "test/pallas-drift-guidance-diagnostic.test.mjs"
+  ],
+  "files": {
+    "src/data/pallasReefCrew.js": {
+      "sha256": "c96302d314e48dc817333deeb082b3e2b24c77f1ca8111a7512c8bd46a430515",
+      "baseSha256": "ff2d315aaf3d8854545893759d51b9a42fa2337446168d5ac2e3de72d374bb7c"
+    },
+    "src/systems/pallasReefCrew.js": {
+      "sha256": "1a42186a6179db37db6d63e3d81dacf7aaffe028ce3e2c2d8a72aff5e45e505d",
+      "baseSha256": "2d96672e48a6b93a75b55d0afc59d58a6e82ce0df8defeeb35896b4976b2ccdd"
+    },
+    "src/systems/pallasReefSource.js": {
+      "sha256": "1f10287cd18c931c6073617a068f31fa6772e7038e55c09332a902924f679648",
+      "baseSha256": "f92487f8936a9beb6f697e5402cb2d5deedb5461e63c9ab754f021909c83bed1"
+    },
+    "src/systems/salvage.js": {
+      "sha256": "9688dbb3cead1e2d1b9a39f20f8dbb7c84fe1bcc172e9b47b4c30e8e53f90558",
+      "baseSha256": "8aed7c50d35d4ef87f8f00658f73f89fd607cf4c7b56805401dacdcf28c5fa2c"
+    },
+    "src/systems/economy.js": {
+      "sha256": "bc66820ce384d000e23d339ec564b2c2e39f17e3d18a9518441b5146b1b48945",
+      "baseSha256": "9f5396610bff8d547143479574417edbb33c9f0f3c4d94725fb17070c800a8b8"
+    },
+    "src/data/contactHail.js": {
+      "sha256": "2c149901d81cb0cbc2a5e7c6019213fcc93ada4a99fa0dd4da8d46babf5b779a",
+      "baseSha256": "b6af7aab5dbac19e9dc4631e379eca4a20f05771364d3f1d64a7614c1881d8a6"
+    },
+    "src/systems/npcJobsRuntime.js": {
+      "sha256": "f5da24eedcbc6761b7586ad36be28c32c9598848e7069ff2e46649aecd0967d6",
+      "baseSha256": "c4c9f4ea3536382f1cdd9379c168a7eb356e2c598f3a9987ba83cb213b3ce950"
+    },
+    "test/fixtures/pallas-drift-native.mjs": {
+      "sha256": "03dc28a4b1295b70413d270e418330de364912eee60b8da60f6606eb553e5021",
+      "baseSha256": null
+    },
+    "test/pallas-drift-intake.test.mjs": {
+      "sha256": "e4ad2b13d25880c52ff1a278e5911f6e331b9fc8c5aa286e0f6de8229e304094",
+      "baseSha256": null
+    },
+    "test/pallas-drift-read-model.test.mjs": {
+      "sha256": "fbb07c95b7599bb3074413de28fb54079516b1aaba6e7f950979480ebb36d87b",
+      "baseSha256": null
+    },
+    "test/pallas-reef-read-model.test.mjs": {
+      "sha256": "35e7a986f2b5f6b6a7fee518e11deb428df6b60a6aace2e6a3acf4a7f9f91d18",
+      "baseSha256": "d0d941346c38e30bc80d9de4e6176ece0f03c823fb596c391ad5d6ebca64c79a"
+    },
+    "test/pallas-drift-return.test.mjs": {
+      "sha256": "55ff59c3c51a30a7ba54d1e15e84c1f94b7290f4b1a2f218197c4ba8a1bfbedf",
+      "baseSha256": null
+    },
+    "test/pallas-drift-guidance.test.mjs": {
+      "sha256": "05caff220ea4b6e2799bd3fbf96bf9e7b8f4946b861d141ebaebcd124209481b",
+      "baseSha256": null
+    },
+    "test/pallas-drift-guidance-diagnostic.test.mjs": {
+      "sha256": "c35591aa183cf18d37030241eee7803837f4d2c10930a6625880098c192f29a1",
+      "baseSha256": null
+    }
+  }
+}

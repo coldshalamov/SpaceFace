@@ -1,0 +1,4 @@
+PASS: radio base changed-file overlay + r2 + r3 + r4 exactly reconstructs all 14 manifested files; cumulative patch checks clean.
+r4 patch b58da5e9ed55006dc538b40a06efb9f9d1aaaa731c67761349ceda3ecf93be86
+full patch 3b934bd7614fc59b6fdb74096b4c9cb309f81ae6735316a28a36c715cb67d07b
+manifest ae7246f3320bd2f13d94b00368d52812f6e0427024ab7c25badbf4bea3979b93

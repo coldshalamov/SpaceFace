@@ -1,0 +1,10 @@
+evidence <candidate>/returned-bounded-r4
+✔ production jump departure and return retain original carrier custody, then resume Drift intake (103995.192817ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105963.45806

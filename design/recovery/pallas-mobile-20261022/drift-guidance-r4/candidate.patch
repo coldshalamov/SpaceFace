@@ -1,0 +1,539 @@
+--- a/src/systems/pallasReefCrew.js
++++ b/src/systems/pallasReefCrew.js
+@@ -1,13 +1,198 @@
+ // Traffic owns these three workers. Jobs owns steering; combat owns lines; salvage owns stock.
+ import { PALLAS_REEF_CREW as C, reefBody, normalizeReefCrew, PALLAS_REEF_INTAKE_ID, normalizeReefIntake } from '../data/pallasReefCrew.js';
+-import { pallasReefPhase, pointInsidePallasReef } from '../data/environmentalMachinery.js';
++import { PALLAS_REEF_FIELD, pallasReefPhase, pointInsidePallasReef } from '../data/environmentalMachinery.js';
+ import { makeShipEntitySpec } from './ships.js';
+ import { reefPose, reefDriftApproach } from './pallasReefSource.js';
++import { sweepCollisionProxyInto } from '../core/collisionProxySweep.js';
++import { dressingStaticLayerFor } from '../world/solidDressing.js';
++import { hullEnvelopeWu, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
++import { activeFieldSnapshot } from './fields.js';
+ import { BEAMS } from '../data/mining.js';
+ const cutBeam=BEAMS.find(b=>b.id==='beam_mk1');
+ const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
+ const terminal = new Set(['received','hauling','settling','intaken','recovered','lost']);
+ const lives = new WeakMap();
++let haulRoutes = new WeakMap();
++// Guidance only: these latches are deliberately not persisted and never confer custody/intake.
++function segmentClear(from,to,center,radius) {
++  const dx=to.x-from.x,dz=to.z-from.z,length2=dx*dx+dz*dz;
++  const t=length2?Math.max(0,Math.min(1,((center.x-from.x)*dx+(center.z-from.z)*dz)/length2)):0;
++  return Math.hypot(from.x+dx*t-center.x,from.z+dz*t-center.z)>radius;
++}
++export function reefTowLegClear(from, to, margin = 0) {
++  return segmentClear(from,to,PALLAS_REEF_FIELD.center,PALLAS_REEF_FIELD.radius+margin);
++}
++// A returned pair can be clear even when a full tow-length disk overlaps the reef.
++// Check its actual translated two-body envelope for an outward escape, not an arbitrary
++// exemption for starting inside the larger planning disk.
++export function reefTowEscapeClear(c,s,to,margin) {
++  const f=PALLAS_REEF_FIELD.center,dx=to.x-c.x,dz=to.z-c.z;
++  if((c.x-f.x)*dx+(c.z-f.z)*dz<=0||(s.x-f.x)*dx+(s.z-f.z)*dz<=0)return false;
++  const points=[c,s,to,{x:s.x+dx,z:s.z+dz}];
++  for(let i=0;i<points.length;i++)for(let j=i+1;j<points.length;j++)
++    if(!reefTowLegClear(points[i],points[j],margin))return false;
++  const cross=(a,b,p)=>(b.x-a.x)*(p.z-a.z)-(b.z-a.z)*(p.x-a.x);
++  for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)for(let k=j+1;k<4;k++){
++    const a=points[i],b=points[j],c=points[k];if(Math.abs(cross(a,b,c))<1e-8)continue;
++    const signs=[cross(a,b,f),cross(b,c,f),cross(c,a,f)];
++    if(signs.every(n=>n>=0)||signs.every(n=>n<=0))return false;
++  }
++  return true;
++}
++function separatingLegClear(from,to,center,radius) {
++  return segmentClear(from,to,center,radius)
++    ||distance(from,center)<=radius&&(from.x-center.x)*(to.x-from.x)+(from.z-center.z)*(to.z-from.z)>0;
++}
++export function reefCrewConeEnvelope(field) {
++  if(field?.kind!=='cone'||!(field.radius>0)||!(field.strength>0))return null;
++  const half=field.halfAngleRad+field.edgeSoftRad;
++  if(!Number.isFinite(half)||half<0)return null;
++  // A disk through the apex and both rim corners contains this complete sector.
++  // Wider wedges fall back to their entire reach disk. No field geometry is changed.
++  const shift=half<Math.PI/3?field.radius/(2*Math.cos(half)):0;
++  return {center:{x:field.center.x+field.dir.x*shift,z:field.center.z+field.dir.z*shift},
++    radius:shift||field.radius};
++}
++function crewLegClear(owner,from,to,margin,escape=false) {
++  // The former tug returns through its own native owner. Its live hull is still solid
++  // after handoff; do not route the trailing original section through that teammate.
++  for(const actor of C.actors.slice(0,2)){
++    const e=reefBody(owner.state,actor.id),p=reefPose(owner,e);
++    if(p && !(escape?separatingLegClear:segmentClear)(from,to,p.pos,hullEnvelopeWu(e)+margin))return false;
++    if(!p)continue;
++    for(const field of activeFieldSnapshot(owner.state)){
++      if(field.sourceId!==e.id||field.tag!=='npc')continue;
++      const cone=reefCrewConeEnvelope(field);
++      if(cone&&!segmentClear(from,to,cone.center,cone.radius+margin))return false;
++    }
++  }
++  return true;
++}
++// Query the existing solid-dressing owner too: placed machinery is not in entityList.
++// This is projected guidance clearance, never admission or a physics write.
++export function reefStaticTowLegClear(owner,carrier,a,to) {
++  const dx=to.x-a.c.pos.x,dz=to.z-a.c.pos.z,d=Math.hypot(dx,dz);
++  const span=distance(a.c.pos,a.s.pos);
++  const end={x:to.x-dx/Math.max(.01,d)*span,z:to.z-dz/Math.max(.01,d)*span};
++  const solids=dressingStaticLayerFor(owner.state).statics;
++  for(const obstacle of [...solids,a.station]){
++    if(!obstacle||obstacle.alive===false||obstacle.collides===false)continue;
++    const manifest=resolveCollisionProxyManifest(obstacle);
++    if(sweepCollisionProxyInto({},obstacle,manifest,a.c.pos,to,hullEnvelopeWu(carrier)+2)
++      ||sweepCollisionProxyInto({},obstacle,manifest,a.s.pos,end,hullEnvelopeWu(a.section)+2))return false;
++  }
++  return true;
++}
++function crewTowLegClear(owner,carrier,a,to,escape=false) {
++  const dx=to.x-a.c.pos.x,dz=to.z-a.c.pos.z,d=Math.hypot(dx,dz),span=distance(a.c.pos,a.s.pos);
++  const end=escape?{x:a.s.pos.x+dx,z:a.s.pos.z+dz}
++    :{x:to.x-dx/Math.max(.01,d)*span,z:to.z-dz/Math.max(.01,d)*span};
++  return crewLegClear(owner,a.c.pos,to,hullEnvelopeWu(carrier)+2,escape)
++    &&crewLegClear(owner,a.s.pos,end,hullEnvelopeWu(a.section)+2,escape);
++}
++export function reefRouteRetryPending(route,tick) {
++  return Number.isFinite(route?.retryAt)&&tick>=route.tick&&tick<route.retryAt;
++}
++export function reefLoadedBerthLane(a) {
++  return Math.abs(a.lane.carrier.across)<=a.anchor.dockRadius
++    && Math.abs(a.lane.section.across)<=a.anchor.dockRadius
++    && Math.min(a.lane.carrier.along,a.lane.section.along)>=-a.anchor.dockRadius
++    && Math.max(a.lane.carrier.along,a.lane.section.along)<=a.lead+a.anchor.dockRadius;
++}
++function loadedRoute(owner,entry,entity,a,tick) {
++  let r=haulRoutes.get(entry);
++  if(r && (r.entity!==entity || r.generation!==entity.occupantGeneration || r.section!==a.section
++    || r.sectionGeneration!==a.section.occupantGeneration || r.line!==a.line || r.station!==a.station
++    || r.anchorX!==a.anchor.x || r.anchorZ!==a.anchor.z || r.axisX!==a.axis.x || r.axisZ!==a.axis.z
++    || tick<r.tick || tick-r.tick>60)) r=null;
++  const hull=Math.max(hullEnvelopeWu(entity),hullEnvelopeWu(a.section))+2;
++  const span=Math.max(a.line.restLength,distance(a.c.pos,a.s.pos));
++  const outer=a.stageTarget;
++  if(reefRouteRetryPending(r,tick))return null;
++  if(r?.retryAt)r=null;
++  if(r&&['egress','berth'].includes(r.stage)&&tick-r.checkedTick>=30){
++    const p=r.stage==='egress'?r.egress:a.berthTarget;
++    if(!a.ready&&(!crewTowLegClear(owner,entity,a,p,r.stage==='egress')
++      ||r.stage==='egress'&&!reefTowEscapeClear(a.c.pos,a.s.pos,p,hull)))r=null;
++    else r.checkedTick=tick;
++  }
++  const identity=()=>({entity,generation:entity.occupantGeneration,section:a.section,
++    sectionGeneration:a.section.occupantGeneration,line:a.line,station:a.station,
++    anchorX:a.anchor.x,anchorZ:a.anchor.z,axisX:a.axis.x,axisZ:a.axis.z,tick,checkedTick:tick});
++  const defer=()=>{haulRoutes.set(entry,{...identity(),retryAt:tick+60});return null;};
++  if(r&&['exterior','staging'].includes(r.stage)
++    &&!crewLegClear(owner,a.c.pos,r.stage==='exterior'?r.exterior:outer,hull+span))r=null;
++  if(!r){
++    // A live restored pair already in the receiving lane never retraces an obsolete exterior leg.
++    let stage=reefLoadedBerthLane(a) && (a.ready||crewTowLegClear(owner,entity,a,a.berthTarget)
++      &&reefStaticTowLegClear(owner,entity,a,a.berthTarget))
++      ? 'berth' : 'staging';
++    let exterior=null,egress=null;
++    const tug=reefBody(owner.state,C.actors[1].id),t=reefPose(owner,tug);
++    const nearTug=t&&Math.min(distance(a.c.pos,t.pos),distance(a.s.pos,t.pos))<2*span+2*hull;
++    if(stage!=='berth' && (nearTug||!reefTowLegClear(a.c.pos,a.c.pos,hull+span))){
++      const f=PALLAS_REEF_FIELD.center,radial=distance(a.c.pos,f),away=t?distance(a.c.pos,t.pos):1;
++      const dx=(a.c.pos.x-f.x)/Math.max(1,radial)+(t?(a.c.pos.x-t.pos.x)/Math.max(1,away):0);
++      const dz=(a.c.pos.z-f.z)/Math.max(1,radial)+(t?(a.c.pos.z-t.pos.z)/Math.max(1,away):0);
++      const preferred=Math.atan2(dz,dx),reach=3*span+2*a.anchor.dockRadius;
++      for(let i=0;i<=64;i++){
++        const angle=i===0?preferred:(i-1)*Math.PI/32;
++        const p={x:a.c.pos.x+Math.cos(angle)*reach,z:a.c.pos.z+Math.sin(angle)*reach};
++        const end={x:a.s.pos.x+p.x-a.c.pos.x,z:a.s.pos.z+p.z-a.c.pos.z};
++        if(!reefTowEscapeClear(a.c.pos,a.s.pos,p,hull)
++          ||!separatingLegClear(a.c.pos,p,a.s.pos,hullEnvelopeWu(entity)+hullEnvelopeWu(a.section)+2)
++          ||!crewLegClear(owner,a.c.pos,p,hullEnvelopeWu(entity)+2,true)
++          ||!crewLegClear(owner,a.s.pos,end,hullEnvelopeWu(a.section)+2,true)
++          ||!reefStaticTowLegClear(owner,entity,a,p))continue;
++        egress=p;break;
++      }
++      if(!egress)return defer();
++      stage='egress';
++    }
++    if(stage==='staging' && (!reefTowLegClear(a.c.pos,outer,hull+span)||!reefTowLegClear(a.s.pos,outer,hull)
++      ||!crewLegClear(owner,a.c.pos,outer,hull+span)||!reefStaticTowLegClear(owner,entity,a,outer))){
++      // The expanded carrier leg contains a tow-length disk through turns; also check the
++      // actual trailing body's start. Sampling selects guidance, not new world geometry.
++      const radius=PALLAS_REEF_FIELD.radius+hull+3*span+2*a.anchor.dockRadius;
++      let best=Infinity;
++      for(const scale of [1,1.25,1.5,2])for(let i=0;i<64;i++){
++        const angle=i*Math.PI/32;
++        const p={x:PALLAS_REEF_FIELD.center.x+Math.cos(angle)*radius*scale,
++          z:PALLAS_REEF_FIELD.center.z+Math.sin(angle)*radius*scale};
++        if(!reefTowLegClear(a.c.pos,p,hull+span)||!reefTowLegClear(a.s.pos,p,hull)
++          ||!reefTowLegClear(p,outer,hull+span)||!crewLegClear(owner,a.c.pos,p,hull+span)
++          ||!crewLegClear(owner,p,outer,hull+span))continue;
++        const cost=distance(a.c.pos,p)+distance(p,outer);
++        if(cost<best && reefStaticTowLegClear(owner,entity,a,p)){
++          const d=distance(a.c.pos,p),end={x:p.x-(p.x-a.c.pos.x)/Math.max(.01,d)*span,z:p.z-(p.z-a.c.pos.z)/Math.max(.01,d)*span};
++          if(reefStaticTowLegClear(owner,entity,{...a,c:{pos:p},s:{pos:end}},outer)){best=cost;exterior=p;}
++        }
++      }
++      if(!exterior)return defer(); // no proven clear leg: stop, never take a shortcut through the reef.
++      stage='exterior';
++    }
++    r={...identity(),outer,stage,exterior,egress,token:{}};
++    haulRoutes.set(entry,r);
++  }
++  r.tick=tick;
++  let pos=r.stage==='egress'?r.egress:r.stage==='exterior'?r.exterior:r.stage==='staging'?a.stageTarget:a.berthTarget;
++  const intermediate=['egress','exterior'].includes(r.stage);
++  const settled=Math.hypot(a.c.vel.x,a.c.vel.z)<=(intermediate?18:6)
++    && Math.hypot(a.s.vel.x,a.s.vel.z)<=(intermediate?24:8);
++  // Intermediate legs are fly-throughs, not indefinite parked pivots with a free-orbiting load.
++  // The staging leg alone earns the slow, aligned continuation into the unchanged berth.
++  if(r.stage!=='berth' && distance(a.c.pos,pos)<=(intermediate?Math.max(20,span*.75):16) && settled){
++    if(r.stage==='egress'){haulRoutes.delete(entry);return loadedRoute(owner,entry,entity,a,tick);}
++    if(r.stage==='exterior' && reefTowLegClear(a.c.pos,outer,hull+span) && reefTowLegClear(a.s.pos,outer,hull)
++      && crewLegClear(owner,a.c.pos,outer,hull+span)
++      && reefStaticTowLegClear(owner,entity,a,outer))r.stage='staging';
++    else if(r.stage==='staging' && Math.abs(a.lane.carrier.across)<=a.anchor.dockRadius
++      && reefStaticTowLegClear(owner,entity,a,a.berthTarget))r.stage='berth';
++    pos=r.stage==='exterior'?r.exterior:r.stage==='staging'?a.stageTarget:a.berthTarget;
++  }
++  return {pos,vel:{x:0,z:0},reach:r.stage==='berth'?3:6,reefCrew:true,reefLoaded:true,
++    reefRoute:r.token,routeStage:r.stage,planningSpeed:r.stage==='berth'?5:r.stage==='staging'?9:18};
++}
+ function row(owner) { return owner.state.traffic.pallasReefCrew ||= normalizeReefCrew(null); }
+ function entryFor(owner, entity) {
+   const entry = entity && owner.helpers.npcJobs?.byEntity(entity.id);
+@@ -92,17 +277,17 @@
+   const a=C.actors.find(a=>a.id===entity?.data?.worldRecordId), r=row(owner);
+   if (!a || reefBody(owner.state,a.id)!==entity || entryFor(owner,entity)!==entry
+     || !free(owner,entity) || owner._restoreEpochPending || owner.state.mode!=='flight'
+-    || owner.state.world?.currentSectorId!==C.sectorId) return {blocked:true,reefCrew:true};
++    || owner.state.world?.currentSectorId!==C.sectorId) {haulRoutes.delete(entry);return {blocked:true,reefCrew:true};}
+   const workPose=reefPose(owner,entity), source=owner.helpers.salvage?.source(C.sourceKey);
+   const section=reefBody(owner.state,C.sectionId), s=reefPose(owner,section);
+   if (!workPose) return {blocked:true,reefCrew:true};
+-  if (a.role === 'carrier' && source?.intake) return {blocked:true,reefCrew:true};
++  if (a.role === 'carrier' && source?.intake) {haulRoutes.delete(entry);return {blocked:true,reefCrew:true};}
+   if (a.role === 'carrier' && r.receipt) {
+-    if (source?.extracted || source?.disputedBy || source?.sectionLost) return {blocked:true,reefCrew:true};
++    if (source?.extracted || source?.disputedBy || source?.sectionLost) {haulRoutes.delete(entry);return {blocked:true,reefCrew:true};}
+     const approach = reefDriftApproach(owner,entity);
+-    return approach ? {pos:approach.target,vel:{x:0,z:0},reach:4,workPose,reefCrew:true,
+-      ...(Math.hypot(workPose.pos.x-approach.anchor.x,workPose.pos.z-approach.anchor.z)<160?{planningSpeed:6}:{})}
+-      : {blocked:true,reefCrew:true};
++    if(!approach){haulRoutes.delete(entry);return {blocked:true,reefCrew:true};}
++    const route=loadedRoute(owner,entry,entity,approach,owner.state.tick);
++    return route?{...route,workPose}:{blocked:true,reefCrew:true};
+   }
+   let pos={...a.pos}, vel={x:0,z:0};
+   if (!terminal.has(r.phase) && !r.lost.length) {
+@@ -149,7 +334,7 @@
+   return section;
+ }
+ export function stepReefCrew(owner,dt) {
+-  if(owner.state.world?.currentSectorId!==C.sectorId||owner.state.mode!=='flight'||owner._restoreEpochPending)return;
++  if(owner.state.world?.currentSectorId!==C.sectorId||owner.state.mode!=='flight'||owner._restoreEpochPending){haulRoutes=new WeakMap();return;}
+   manifestCrew(owner);
+   const r=row(owner), source=owner.helpers.salvage?.source(C.sourceKey);
+   const cuttingHull=reefBody(owner.state,C.actors[0].id);
+--- a/src/systems/pallasReefSource.js
++++ b/src/systems/pallasReefSource.js
+@@ -247,7 +247,8 @@
+     && Math.hypot(c.vel.x,c.vel.z) <= anchor.speedGate
+     && Math.hypot(s.vel.x,s.vel.z) <= anchor.speedGate
+     && Math.hypot(c.vel.x-s.vel.x,c.vel.z-s.vel.z) <= 8;
+-  return { station, section, line, c, s, anchor, axis, target, near, ready, clear, lane: {carrier:cp,section:sp} };
++  return { station, section, line, c, s, anchor, axis, target, lead, berthTarget,
++    stageTarget: {x:anchor.x+axis.x*lead,z:anchor.z+axis.z*lead}, near, ready, clear, lane: {carrier:cp,section:sp} };
+ }
+ 
+ export function prepareReefIntake(owner, carrier, requireArrival = true) {
+--- a/src/systems/npcJobsRuntime.js
++++ b/src/systems/npcJobsRuntime.js
+@@ -1,3 +1,5 @@
++import { PALLAS_REEF_CREW } from '../data/pallasReefCrew.js';
++const reefLoadedBrakes = new WeakMap();
+ import { retainReefCustody } from './pallasReefCrew.js';
+ import { pallasShiftOwnsMovement } from '../data/pallasWorkShift.js';
+ import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPallasSeamLife } from './pallasSeamWork.js';
+@@ -4851,6 +4853,29 @@
+         false, aim, false);
+       return;
+     }
++    // Only the exact original loaded Pallas carrier opts into total-momentum settling.
++    // Other workers retain the original controller below, including its default expressions.
++    if(target.reefLoaded===true && target.reefCrew===true && target.reefRoute && typeof target.reefRoute==='object' && !Array.isArray(target.reefRoute)
++      && entry.job.payload?.pallasReefCrew===PALLAS_REEF_CREW.id
++      && entity.data?.worldRecordId===PALLAS_REEF_CREW.actors[2].id){
++      const decel=Math.max(1,profile.maxBrakeAccel||0,profile.reverseAccel||0,(profile.mainAccel||0)*.72);
++      const vx=(vel?.x||0)-(target.vel?.x||0),vz=(vel?.z||0)-(target.vel?.z||0);
++      const speed=Math.hypot(vx,vz),closing=(vx*dx+vz*dz)/Math.max(.01,distance);
++      const desired=Math.min(planningSpeed,Math.sqrt(2*decel*Math.max(0,distance-target.reach)));
++      const misaligned=speed>Math.max(2,planningSpeed*.25) && closing<speed*.96;
++      const overspeed=speed>planningSpeed+2;
++      const stop=speed>2 && distance<=target.reach+speed*.8+speed*speed/(2*decel);
++      let latch=reefLoadedBrakes.get(entry);
++      if(!latch||latch.route!==target.reefRoute)latch={route:target.reefRoute,hold:false};
++      if(misaligned||overspeed||stop)latch.hold=true;
++      if(speed<=2)latch.hold=false;
++      reefLoadedBrakes.set(entry,latch);
++      const brake=close||latch.hold||Math.cos(aim-(entity.rot||0))<.96;
++      const throttle=Math.max((profile.assist?.deadInput||.025)+.001,
++        desired/Math.max(1,profile.combatSpeed||entity.maxSpeed||100));
++      this._writeIntent(entity,0,brake?0:Math.min(1,throttle),false,aim,brake);
++      return;
++    }
+     const decel = Math.max(1, profile.reverseAccel || 0, (profile.mainAccel || 0) * 0.72);
+     // Desired velocity = target drift + a closing term for the remaining gap. Aiming straight at
+     // a moving target's current position spirals into a co-moving orbit: the cutter chased a
+--- a/test/pallas-drift-return.test.mjs
++++ b/test/pallas-drift-return.test.mjs
+@@ -1,15 +1,54 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+-import { writeFileSync } from 'node:fs';
++import { writeFileSync, mkdirSync, mkdtempSync } from 'node:fs';
++import { join } from 'node:path';
++import { tmpdir } from 'node:os';
+ import { pallasDriftNativeFixture } from './fixtures/pallas-drift-native.mjs';
+-import { PALLAS_REEF_CREW as C, PALLAS_REEF_INTAKE_ID as ID, reefBody } from '../src/data/pallasReefCrew.js';
++import { PALLAS_REEF_CREW as C, PALLAS_REEF_INTAKE_ID as ID, reefBody, pallasReefStatus } from '../src/data/pallasReefCrew.js';
++import { reefWorkTarget } from '../src/systems/pallasReefCrew.js';
+ import { reefDriftApproach, reefPose } from '../src/systems/pallasReefSource.js';
+ 
+ test('production jump departure and return retain original carrier custody, then resume Drift intake', {timeout:240000}, async t => {
+  const h=await pallasDriftNativeFixture({worldUpdates:true});t.after(()=>h.close());
+  const {state,sim}=h,source=()=>sim.helpers.salvage.source(C.sourceKey);
++ const dir=process.env.PALLAS_RETURN_OUT||mkdtempSync(join(tmpdir(),'pallas-return-'));mkdirSync(dir,{recursive:true});const output=name=>join(dir,name);console.log('evidence',dir);
++ const economy=sim.registry.get('economy'),original=economy.applyPallasReefIntake;
++ const stocks=()=>Object.fromEntries(Object.keys(C.pool).map(id=>[id,state.economy.markets[C.homeStationId][id].stock]));
++ const walletCargo=()=>structuredClone({credits:state.player.credits,cargo:state.cargo});
++ const request={receiptId:ID,sourceKey:C.sourceKey,stationId:C.homeStationId,sectionRecordId:C.sectionId,carrierRecordId:C.actors[2].id};
++ let boundary=null,readyEnvelope=null,commits=0,callbacks=0;const rejections=[];const callbackErrors=[];
++ sim.bus.on('pallas:reefIntaken',()=>{
++   callbacks++;try {assert.ok(boundary);assert.deepEqual(source().remainingPool,{});
++   assert.deepEqual(source().intake,state.economy.committedIntents[ID].receipt);
++   assert.equal(reefBody(state,C.sectionId),null,'retirement occurs after coherent finite commit');
++   for(const[id,q]of Object.entries(C.pool))assert.equal(stocks()[id],boundary.before.stocks[id]+q);
++   assert.deepEqual(walletCargo(),boundary.before.walletCargo);
++   }catch(error){callbackErrors.push(error);}
++ });
++ economy.applyPallasReefIntake=function(carrier,payload){
++   const a=reefDriftApproach(h.owner,carrier);assert.ok(a?.ready,'both original native bodies must enter the unchanged real gate');
++   boundary={at:state.simTime,carrier:a.c,section:a.s,station:{native:reefPose(h.owner,a.station),entityPos:{...a.station.pos},entityRot:a.station.rot},anchor:a.anchor,axis:a.axis,line:{id:a.line.id,state:a.line.state,restLength:a.line.restLength},before:{stocks:stocks(),walletCargo:walletCargo(),pool:structuredClone(source().remainingPool)}};
++   assert.deepEqual(boundary.before.pool,C.pool);
++   if(!readyEnvelope){readyEnvelope=sim.registry.get('save').serialize('returned-native-ready');
++     writeFileSync(output('return-ready-save.json'),JSON.stringify(readyEnvelope));}
++   const result=original.call(this,carrier,payload);
++   if(!result.ok){
++     assert.equal(result.reason,'source-not-at-intake','Save invalidates the current native observation, never authorization to bypass freshness');
++     assert.equal(rejections.length,0);assert.deepEqual(stocks(),boundary.before.stocks);
++     assert.deepEqual(walletCargo(),boundary.before.walletCargo);assert.deepEqual(source().remainingPool,boundary.before.pool);
++     assert.equal(source().intake,null);assert.equal(state.economy.committedIntents?.[ID],undefined);
++     rejections.push({at:state.simTime,result,before:boundary.before});writeFileSync(output('return-save-rejection.json'),JSON.stringify(rejections,null,2));boundary=null;return result;
++   }
++   commits++;
++   boundary.after={stocks:stocks(),walletCargo:walletCargo(),source:source(),receipt:state.economy.committedIntents[ID].receipt};
++   for(const[id,q]of Object.entries(C.pool))assert.equal(boundary.after.stocks[id],boundary.before.stocks[id]+q);
++   assert.deepEqual(boundary.after.walletCargo,boundary.before.walletCargo);
++   assert.deepEqual(source().remainingPool,{});assert.deepEqual(source().intake,boundary.after.receipt);
++   writeFileSync(output('return-commit-boundary.json'),JSON.stringify(boundary,null,2));return result;
++ };
++ t.after(()=>{economy.applyPallasReefIntake=original;});
+  const trace=[];
+- const record=label=>{const carrier=reefBody(state,C.actors[2].id),section=reefBody(state,C.sectionId),station=state.entityList.find(e=>e.alive!==false&&e.type==='station'&&e.data?.stationId===C.homeStationId);const sr=station&&h.physics._sg02.records.get(station.id);trace.push({stationDiagnostic:station&&{id:station.id,record:!!sr,identity:sr?.entity===station,enabled:sr?.body?.isEnabled(),specDynamic:sr?.spec?.dynamic,colliders:sr?.colliders?.length,partition:station._physicsPartition,inStatic:state.activity?.physicsStatics?.some(e=>e===station)},autopilot:state.nav.autopilot&&{active:state.nav.autopilot.active,status:state.nav.autopilot.status,target:state.nav.autopilot.target},label,tick:state.tick,at:state.simTime,sector:state.world.currentSectorId,jump:state.jump.state,player:{...state.entities.get(state.playerId)?.pos},nativePlayer:reefPose(h.owner,state.entities.get(state.playerId)),carrier:carrier&&{id:carrier.id,pos:{...carrier.pos},generation:carrier.occupantGeneration},section:section&&{id:section.id,pos:{...section.pos}},nativeStation:station&&reefPose(h.owner,station),phase:state.traffic.pallasReefCrew?.phase,pool:source()?.remainingPool,intake:source()?.intake,ready:carrier&&reefDriftApproach(h.owner,carrier)?.ready});writeFileSync('return-route-trace.json',JSON.stringify(trace,null,2));};
++ const record=label=>{const carrier=reefBody(state,C.actors[2].id),section=reefBody(state,C.sectionId),station=state.entityList.find(e=>e.alive!==false&&e.type==='station'&&e.data?.stationId===C.homeStationId);const sr=station&&h.physics._sg02.records.get(station.id);trace.push({stationDiagnostic:station&&{id:station.id,record:!!sr,identity:sr?.entity===station,enabled:sr?.body?.isEnabled(),specDynamic:sr?.spec?.dynamic,colliders:sr?.colliders?.length,partition:station._physicsPartition,inStatic:state.activity?.physicsStatics?.some(e=>e===station)},autopilot:state.nav.autopilot&&{active:state.nav.autopilot.active,status:state.nav.autopilot.status,target:state.nav.autopilot.target},label,tick:state.tick,at:state.simTime,sector:state.world.currentSectorId,jump:state.jump.state,player:{...state.entities.get(state.playerId)?.pos},nativePlayer:reefPose(h.owner,state.entities.get(state.playerId)),carrier:carrier&&{id:carrier.id,pos:{...carrier.pos},generation:carrier.occupantGeneration},section:section&&{id:section.id,pos:{...section.pos}},nativeStation:station&&reefPose(h.owner,station),phase:state.traffic.pallasReefCrew?.phase,pool:source()?.remainingPool,intake:source()?.intake,ready:carrier&&reefDriftApproach(h.owner,carrier)?.ready});writeFileSync(output('return-route-trace.json'),JSON.stringify(trace,null,2));};
+  const runUntil=(predicate,limit)=>{for(let i=0;i<limit&&!predicate();i++)h.step();assert.ok(predicate(),`condition not reached after ${limit} native ticks`);};
+  runUntil(()=>state.traffic.pallasReefCrew?.receipt,60*50);
+  const observationPoint={...state.entities.get(state.playerId).pos};
+@@ -17,7 +56,7 @@
+  const line=sim.registry.get('combat').kernel.attachments.listForEntity(section.id,true).find(a=>a.ownerId===carrier.id);
+  assert.ok(line);assert.deepEqual(source().remainingPool,C.pool);record('original-transferred');
+  const outside='sector_sker_haven';assert.ok(state.world.sectors[C.sectorId].neighbors.includes(outside));
+- const events=[];for(const name of ['jump:chargeStart','jump:chargeAbort','jump:start','jump:arrive'])sim.bus.on(name,p=>{events.push({name,p});writeFileSync('return-travel-events.json',JSON.stringify(events,null,2));});
++ const events=[];for(const name of ['jump:chargeStart','jump:chargeAbort','jump:start','jump:arrive'])sim.bus.on(name,p=>{events.push({name,p});writeFileSync(output('return-travel-events.json'),JSON.stringify(events,null,2));});
+  sim.bus.emit('world:requestJump',{targetSectorId:outside,via:'gate'});
+  assert.equal(state.jump.state,'CHARGING');
+  for(let i=0;i<60*12&&state.world.currentSectorId!==outside;i++)h.step();
+@@ -27,7 +66,7 @@
+  assert.deepEqual(state.traffic.pallasReefCrew.receipt,receipt);
+  const nativePlayer=reefPose(h.owner,state.entities.get(state.playerId));assert.ok(nativePlayer);assert.ok(Math.hypot(nativePlayer.pos.x-carrier.pos.x,nativePlayer.pos.z-carrier.pos.z)>1000,'player actually departed original work site');
+  sim.bus.emit('world:requestJump',{targetSectorId:C.sectorId,via:'gate'});assert.equal(state.jump.state,'CHARGING');
+- runUntil(()=>state.world.currentSectorId===C.sectorId,60*12);h.step(3);record('returned-native');writeFileSync('returned-save.json',JSON.stringify(sim.registry.get('save').serialize('drift-returned-native')));
++ runUntil(()=>state.world.currentSectorId===C.sectorId,60*12);h.step(3);record('returned-native');writeFileSync(output('returned-save.json'),JSON.stringify(sim.registry.get('save').serialize('drift-returned-native')));
+  assert.deepEqual(source().remainingPool,C.pool);assert.equal(source().intake,null);assert.deepEqual(state.traffic.pallasReefCrew.receipt,receipt);
+  assert.equal(reefBody(state,C.actors[2].id),carrier);assert.equal(reefBody(state,C.sectionId),section);
+  assert.ok(sim.registry.get('combat').kernel.attachments.listForEntity(section.id,true).some(a=>a.id===line.id&&a.ownerId===carrier.id));
+@@ -36,6 +75,36 @@
+  sim.bus.emit('ui:setCourse',{pos:observationPoint,label:'Return to observed reef work'});
+  assert.equal(state.nav.autopilot.active,true);h.step(2);assert.equal(state.nav.autopilot.active,true,'production input resampling must not interpret autopilot output as held manual controls');
+  for(let i=0;i<60*360&&!source().intake;i++){h.step();if(i%600===0)record('resume');}
+- record('final');assert.ok(source().intake,'genuine returned native custody must resume physical intake');assert.equal(source().intake.receiptId,ID);assert.deepEqual(source().remainingPool,{});
++ record('final');writeFileSync(output('return-final-save.json'),JSON.stringify(sim.registry.get('save').serialize('return-final-boundary')));assert.ok(source().intake,'genuine returned native custody must resume physical intake');assert.equal(source().intake.receiptId,ID);assert.deepEqual(source().remainingPool,{});
+  assert.ok(trace.some(x=>x.label==='resume'&&x.nativeStation),'ordinary native flight reactivates the real Drift station');
++ assert.equal(rejections.length,1);assert.equal(commits,1);assert.equal(callbacks,1);assert.deepEqual(callbackErrors,[]);
++ assert.deepEqual(source().intake,state.economy.committedIntents[ID].receipt);
++ const beforeDuplicate={stocks:stocks(),walletCargo:walletCargo(),source:structuredClone(source())};
++ assert.equal(original.call(economy,carrier,request).duplicate,true);
++ assert.deepEqual({stocks:stocks(),walletCargo:walletCargo(),source:source()},beforeDuplicate);assert.equal(callbacks,1);
++ const save=sim.registry.get('save'),consumedEnvelope=save.serialize('returned-original-section-intaken');
++ writeFileSync(output('returned-intaken-save.json'),JSON.stringify(consumedEnvelope));
++ // Continue only real captured states. A transaction rejection keeps the genuine ready
++ // bodies observable; it does not create a pose, velocity, claim, load or readiness flag.
++ economy.applyPallasReefIntake=()=>({ok:false,reason:'test-observe-current-gate'});
++ save.loadEnvelope(readyEnvelope);h.physics._finishNativeRestore();state.mode='flight';await h.physics.prepareBackend(state);h.step(3);
++ const restored=reefBody(state,C.actors[2].id),jobs=sim.helpers.npcJobs,entry=jobs.byEntity(restored.id);
++ assert.ok(reefDriftApproach(h.owner,restored)?.ready);
++ const target=reefWorkTarget(h.owner,entry,restored);assert.equal(target.routeStage,'berth','near-berth Continue must not retrace exterior work');
++ assert.equal(jobs.claimControl(restored.data.jobId,{claimId:'test:r4-control',holder:'player'}).granted,true);
++ assert.equal(reefWorkTarget(h.owner,entry,restored).blocked,true);
++ jobs.releaseControl(restored.data.jobId,'test:r4-control');
++ const resumed=reefWorkTarget(h.owner,entry,restored);assert.equal(resumed.routeStage,'berth');assert.notEqual(resumed.reefRoute,target.reefRoute,'control interruption discards ephemeral routing');
++ const attachments=sim.registry.get('combat').kernel.attachments;
++ assert.equal(attachments.breakAttachment(attachments.listForEntity(restored.id,true)[0].id,'test-impact',state.playerId).ok,true);
++ assert.equal(reefWorkTarget(h.owner,entry,restored).blocked,true);assert.equal(original.call(economy,restored,request).ok,false);
++ assert.equal(source().intake,null);assert.deepEqual(source().remainingPool,C.pool);
++ save.loadEnvelope(consumedEnvelope);
++ assert.match(pallasReefStatus(state,reefBody(state,C.actors[2].id)).text,/waiting for a current work report/);
++ h.physics._finishNativeRestore();state.mode='flight';await h.physics.prepareBackend(state);h.step(3);
++ assert.deepEqual(source().remainingPool,{});assert.equal(source().sectionLost,false);
++ assert.deepEqual(source().intake,state.economy.committedIntents[ID].receipt);assert.equal(reefBody(state,C.sectionId),null);
++ const continuedStocks=stocks();assert.equal(original.call(economy,reefBody(state,C.actors[2].id),request).duplicate,true);
++ assert.deepEqual(stocks(),continuedStocks);assert.equal(callbacks,1);
++
+ });
+--- /dev/null
++++ b/test/pallas-drift-guidance.test.mjs
+@@ -0,0 +1,65 @@
++import test from 'node:test';import assert from 'node:assert/strict';
++import {npcJobsRuntime as jobs} from '../src/systems/npcJobsRuntime.js';
++import {PALLAS_REEF_CREW as C} from '../src/data/pallasReefCrew.js';
++import {PALLAS_REEF_FIELD as F} from '../src/data/environmentalMachinery.js';
++import {reefTowLegClear,reefCrewConeEnvelope,reefTowEscapeClear,reefLoadedBerthLane,reefRouteRetryPending} from '../src/systems/pallasReefCrew.js';
++const entity=()=>({pos:{x:0,z:0},vel:{x:0,z:0},rot:0,maxSpeed:170,propulsion:{id:'drive_reaction_l'},data:{worldRecordId:C.actors[2].id}});
++function capture(entry,e,target){let intent; jobs._driveLivingAdventureWorker.call({state:{},_writeIntent:(_e,...args)=>{intent=args}},entry,e,target);return intent;}
++test('loaded momentum branch cannot change absent, invalid or non-Pallas targets',()=>{
++ const entry={job:{speed:18,payload:{pallasReefCrew:C.id}}},e=entity(),target={pos:{x:100,z:0},reach:4,vel:{x:0,z:0}};
++ const base=capture(entry,e,target);assert.deepEqual(base,[0,18/170,false,0,false]);
++ for(const planningSpeed of [undefined,null,0,-1,41,Infinity,NaN,'6',true])assert.deepEqual(capture(entry,e,{...target,planningSpeed}),base);
++ for(const reefLoaded of [undefined,null,0,1,'true',false])assert.deepEqual(capture(entry,e,{...target,reefLoaded,reefCrew:true,reefRoute:{}}),base);
++ for(const patch of [{reefCrew:false},...[null,undefined,0,1,'token',true,[]].map(reefRoute=>({reefRoute}))])assert.deepEqual(capture(entry,e,{...target,reefLoaded:true,reefCrew:true,reefRoute:{},...patch}),base);
++ const ordinary={job:{speed:18,payload:{pallasReefCrew:'other'}}};e.vel={x:0,z:40};
++ assert.deepEqual(capture(ordinary,e,{...target,reefLoaded:true,reefCrew:true,reefRoute:{}}),capture(ordinary,e,target));
++ e.data.worldRecordId='another-worker';assert.deepEqual(capture(entry,e,{...target,reefLoaded:true,reefCrew:true,reefRoute:{}}),capture(entry,e,target));
++});
++test('loaded carrier brakes lateral, outbound and excess total momentum with release hysteresis',()=>{
++ const entry={job:{speed:18,payload:{pallasReefCrew:C.id}}},e=entity(),target={pos:{x:100,z:0},reach:4,vel:{x:0,z:0},reefLoaded:true,reefCrew:true,reefRoute:{},planningSpeed:18};
++ for(const vel of [{x:0,z:30},{x:-30,z:0},{x:30,z:0}]){e.vel=vel;assert.equal(capture(entry,e,target)[4],true);}
++ e.vel={x:10,z:0};assert.equal(capture(entry,e,target)[4],true,'brake does not chatter off immediately');
++ e.vel={x:1,z:0};assert.equal(capture(entry,e,target)[4],false);
++});
++test('tow clearance rejects a crossing even when both endpoints are outside the reef',()=>{
++ const p=(x,z)=>({x:F.center.x+x,z:F.center.z+z});
++ assert.equal(reefTowLegClear(p(-600,0),p(600,0),40),false);
++ assert.equal(reefTowLegClear(p(-600,450),p(600,450),40),false,'center-only clearance misses the expanded tow');
++ assert.equal(reefTowLegClear(p(-600,500),p(600,500),40),true);
++});
++
++test('crew cone avoidance bounds the actual soft-edged wedge, not just the visible inner angle',()=>{
++ const field={kind:'cone',radius:260,strength:260,center:{x:10,z:20},dir:{x:1,z:0},halfAngleRad:.56,edgeSoftRad:.14};
++ for(const halfAngleRad of [.56,1.2]){
++  const f={...field,halfAngleRad},e=reefCrewConeEnvelope(f),half=f.halfAngleRad+f.edgeSoftRad;
++  for(let r=0;r<=260;r+=20)for(let i=0;i<=64;i++){const angle=-half+2*half*i/64;
++   assert.ok(Math.hypot(f.center.x+Math.cos(angle)*r-e.center.x,f.center.z+Math.sin(angle)*r-e.center.z)<=e.radius+1e-8);
++  }
++ }
++ assert.equal(reefCrewConeEnvelope({...field,strength:0}),null);
++ assert.equal(reefCrewConeEnvelope({...field,kind:'well'}),null);
++});
++
++test('actual returned pair can escape outward without exempting a reef crossing',()=>{
++ const c={x:-20625.842025756836,z:20268.34049987793},s={x:-20658.624633789062,z:20304.739700317383};
++ const hull=17.683783,span=Math.hypot(c.x-s.x,c.z-s.z);
++ assert.equal(reefTowLegClear(c,c,hull+span),false,'captured return starts inside conservative swing disk');
++ assert.equal(reefTowEscapeClear(c,s,{x:c.x+120,z:c.z+120},hull),true);
++ assert.equal(reefTowEscapeClear(c,s,{x:c.x-300,z:c.z-300},hull),false);
++ assert.equal(reefTowEscapeClear({x:F.center.x+430,z:F.center.z},s,{x:F.center.x+800,z:F.center.z},hull),false,'actual starting hull overlap is not exempted');
++});
++
++test('restored near-berth classification is bounded along both sides of the actual lane',()=>{
++ const a={anchor:{dockRadius:20},lead:60,lane:{carrier:{along:10,across:0},section:{along:30,across:0}}};
++ assert.equal(reefLoadedBerthLane(a),true);
++ a.lane.carrier.along=-1000;a.lane.section.along=-950;assert.equal(reefLoadedBerthLane(a),false);
++ a.lane.carrier.along=0;a.lane.section.along=81;assert.equal(reefLoadedBerthLane(a),false);
++ a.lane.section.along=10;a.lane.section.across=21;assert.equal(reefLoadedBerthLane(a),false);
++});
++
++test('failed route retry is bounded and cannot survive a backwards native tick',()=>{
++ const route={tick:100,retryAt:160};
++ assert.equal(reefRouteRetryPending(route,100),true);assert.equal(reefRouteRetryPending(route,159),true);
++ assert.equal(reefRouteRetryPending(route,160),false);assert.equal(reefRouteRetryPending(route,99),false);
++ assert.equal(reefRouteRetryPending({},100),false);assert.equal(reefRouteRetryPending(null,100),false);
++});
+--- /dev/null
++++ b/test/pallas-drift-guidance-diagnostic.test.mjs
+@@ -0,0 +1,67 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {writeFileSync,appendFileSync,readFileSync,mkdirSync,mkdtempSync} from 'node:fs';
++import {join} from 'node:path';
++import {tmpdir} from 'node:os';
++import {pallasDriftNativeFixture} from './fixtures/pallas-drift-native.mjs';
++import {PALLAS_REEF_CREW as C,reefBody} from '../src/data/pallasReefCrew.js';
++import {reefDriftApproach,reefPose} from '../src/systems/pallasReefSource.js';
++import {pallasReefPhase,pointInsidePallasReef} from '../src/data/environmentalMachinery.js';
++import {fieldContainsPoint} from '../src/core/fields/fieldKernel.js';
++import {activeFieldSnapshot} from '../src/systems/fields.js';
++import {resolveCollisionProxyManifest,proxyWorldPrimitives,distanceToProxy,hullEnvelopeWu} from '../src/data/collisionProxyManifests.js';
++
++// The public lifetime-paired contact sampler deliberately excludes fixed dressing.
++// Supplement it from the same Rapier manifolds, without adding a collision consumer.
++function fixedContacts(owner,entity){
++ const out=[],record=owner.records.get(entity.id);
++ for(const collider of record?.colliders||[])owner.world.contactPairsWith(collider,other=>{
++  const target=owner._colliderOwners.get(other.handle)?.rec?.entity;
++  if(target?.occupantGeneration>0)return;
++  owner.world.contactPair(collider,other,m=>{for(let i=0;i<m.numContacts();i++)out.push({
++   source:'rapier-fixed-contact',sourceId:entity.id,targetId:target?.id,targetPlaceId:target?.data?.placeId,
++   sourceCollider:collider.handle,targetCollider:other.handle,separation:m.contactDist(i),normalImpulse:m.contactImpulse(i)});});
++ });
++ return out;
++}
++test('capture native loaded guidance without changing its decisions',{timeout:240000},async t=>{
++ const h=await pallasDriftNativeFixture({worldUpdates:true});t.after(()=>h.close());
++ const {state,sim}=h,jobs=sim.registry.get('npcJobsRuntime'),source=()=>sim.helpers.salvage.source(C.sourceKey);
++ const label=process.env.PALLAS_GUIDANCE_LABEL||'guidance';
++ const dir=process.env.PALLAS_GUIDANCE_OUT||mkdtempSync(join(tmpdir(),'pallas-guidance-'));mkdirSync(dir,{recursive:true});const output=name=>join(dir,name);console.log('evidence',dir);
++ if(process.env.PALLAS_GUIDANCE_SAVE){sim.registry.get('save').loadEnvelope(JSON.parse(readFileSync(process.env.PALLAS_GUIDANCE_SAVE)));h.physics._finishNativeRestore();state.mode='flight';await h.physics.prepareBackend(state);h.step(3);}
++ const file=output(`${label}-guidance.jsonl`);writeFileSync(file,'');
++ let lastTarget=null;const drive=jobs._driveLivingAdventureWorker;
++ jobs._driveLivingAdventureWorker=function(entry,entity,target){if(entity.data?.worldRecordId===C.actors[2].id)lastTarget={...target,workPose:undefined};return drive.call(this,entry,entity,target);};
++ t.after(()=>{jobs._driveLivingAdventureWorker=drive;});
++ for(let i=0;i<60*50&&!state.traffic.pallasReefCrew?.receipt;i++)h.step();
++ assert.ok(state.traffic.pallasReefCrew?.receipt);const startedAt=state.simTime;
++ writeFileSync(output(`${label}-loaded-save.json`),JSON.stringify(sim.registry.get('save').serialize('loaded-drift-guidance')));
++ let samples=0,hazardTicks=0,crewConeTicks=0,travel=0,last=null,maxSpeed=0,maxSectionSpeed=0,minClearance=Infinity;
++ const economy=sim.registry.get('economy'),intake=economy.applyPallasReefIntake;
++ economy.applyPallasReefIntake=function(carrier,request){const a=reefDriftApproach(h.owner,carrier);
++  writeFileSync(output(`${label}-admission.json`),JSON.stringify({at:state.simTime,ready:a?.ready,carrier:a?.c,section:a?.s,station:a&&{native:reefPose(h.owner,a.station),pos:a.station.pos,rot:a.station.rot},anchor:a?.anchor,axis:a?.axis,lane:a?.lane,line:a&&{id:a.line.id,state:a.line.state,restLength:a.line.restLength}},null,2));
++  return intake.call(this,carrier,request);};t.after(()=>{economy.applyPallasReefIntake=intake;});
++ for(let i=0;i<60*Number(process.env.PALLAS_GUIDANCE_SECONDS||360)&&!source().intake;i++){
++  h.step();const carrier=reefBody(state,C.actors[2].id),section=reefBody(state,C.sectionId),c=reefPose(h.owner,carrier),s=reefPose(h.owner,section),a=carrier&&reefDriftApproach(h.owner,carrier);
++  if(!c||!s)continue;
++  const phase=pallasReefPhase(state.simTime),inside={carrier:pointInsidePallasReef(c.pos),section:pointInsidePallasReef(s.pos)};
++  if(phase.fieldStrength>0&&(inside.carrier||inside.section))hazardTicks++;
++  if(last)travel+=Math.hypot(c.pos.x-last.x,c.pos.z-last.z);last=c.pos;
++  maxSpeed=Math.max(maxSpeed,Math.hypot(c.vel.x,c.vel.z));maxSectionSpeed=Math.max(maxSectionSpeed,Math.hypot(s.vel.x,s.vel.z));
++  const fields=activeFieldSnapshot(state),membership={carrier:[],section:[]};
++  for(const f of fields)if(f.strength>0&&f.kind==='cone'){for(const [key,p]of [['carrier',c.pos],['section',s.pos]])if(fieldContainsPoint(f,p.x,p.z))membership[key].push(f.id);}
++  const crewFields=fields.filter(f=>f.tag==='npc'&&C.actors.some(a=>state.entities.get(f.sourceId)?.data?.worldRecordId===a.id));
++  if(crewFields.some(f=>membership.carrier.includes(f.id)||membership.section.includes(f.id)))crewConeTicks++;
++  const acceptedFieldAcceleration={carrier:sim.registry.get('fields').readAcceptedFieldAcceleration(carrier),section:sim.registry.get('fields').readAcceptedFieldAcceleration(section)};
++  const primitives=a?proxyWorldPrimitives(a.station,resolveCollisionProxyManifest(a.station)):[];
++  const clearance=primitives.length?Math.min(...primitives.flatMap(p=>[distanceToProxy(c.pos,p)-hullEnvelopeWu(carrier),distanceToProxy(s.pos,p)-hullEnvelopeWu(section)])):null;
++  if(clearance!=null)minClearance=Math.min(minClearance,clearance);
++  const line=sim.registry.get('combat').kernel.attachments.listForEntity(section.id,true).find(l=>l.ownerId===carrier.id);
++  const contacts=[...h.physics._sg02.sampleSolidContacts(carrier.id),...h.physics._sg02.sampleSolidContacts(section.id),...fixedContacts(h.physics._sg02,carrier),...fixedContacts(h.physics._sg02,section)];
++  appendFileSync(file,JSON.stringify({tick:state.tick,at:state.simTime,c,s,contacts,membership,acceptedFieldAcceleration,crewFields:crewFields.map(f=>({id:f.id,sourceId:f.sourceId,recordId:state.entities.get(f.sourceId)?.data?.worldRecordId,generation:state.entities.get(f.sourceId)?.occupantGeneration,center:f.center,dir:f.dir,radius:f.radius,strength:f.strength,halfAngleRad:f.halfAngleRad,edgeSoftRad:f.edgeSoftRad})),hulls:{carrier:hullEnvelopeWu(carrier),section:hullEnvelopeWu(section)},health:{carrier:carrier.hp,section:section.hp,energy:carrier.energy,status:carrier.data.status},target:lastTarget,intent:carrier.data.intent,phase,inside,clearance,line:line&&{id:line.id,state:line.state,restLength:line.restLength,reelRevision:line.reelRevision},anchor:a?.anchor,lane:a?.lane,ready:a?.ready})+'\n');samples++;
++ }
++ const result={startedAt,finishedAt:state.simTime,duration:state.simTime-startedAt,samples,reefActiveConeTicks:hazardTicks,crewConeMembershipTicks:crewConeTicks,travel,maxSpeed,maxSectionSpeed,minClearance,intake:source().intake};
++ writeFileSync(output(`${label}-guidance-summary.json`),JSON.stringify(result,null,2));writeFileSync(output(`${label}-final-save.json`),JSON.stringify(sim.registry.get('save').serialize('guidance-final')));console.log(JSON.stringify(result));assert.ok(source().intake);
++ if(!process.env.PALLAS_GUIDANCE_DIAGNOSTIC_ONLY){assert.equal(hazardTicks,0);assert.equal(crewConeTicks,0);assert.ok(maxSpeed<=20.5);assert.ok(maxSectionSpeed<=24);}
++});

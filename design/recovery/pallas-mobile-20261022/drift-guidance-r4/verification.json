@@ -1,0 +1,17 @@
+{
+  "patchSha256": "b58da5e9ed55006dc538b40a06efb9f9d1aaaa731c67761349ceda3ecf93be86",
+  "baselineRecoveryCommit": "519f3c4dbf7d6dcfee0fd5844f4ad41d54c42389",
+  "radioBaseCommit": "bcfdd4730a74c2b79b6e53e3bd7111d6d2ec1dc3",
+  "radioBaseTree": "707320df59191f596616b9741c79586fd817e386",
+  "outputFiles": 14,
+  "changedPaths": [
+    "src/systems/pallasReefCrew.js",
+    "src/systems/pallasReefSource.js",
+    "src/systems/npcJobsRuntime.js",
+    "test/pallas-drift-return.test.mjs",
+    "test/pallas-drift-guidance.test.mjs",
+    "test/pallas-drift-guidance-diagnostic.test.mjs"
+  ],
+  "sourceManifestSha256": "ae7246f3320bd2f13d94b00368d52812f6e0427024ab7c25badbf4bea3979b93",
+  "status": "reviewed native recovery only; not runtime integration"
+}

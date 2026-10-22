@@ -1,0 +1,15 @@
+✔ loaded momentum branch cannot change absent, invalid or non-Pallas targets (3.812533ms)
+✔ loaded carrier brakes lateral, outbound and excess total momentum with release hysteresis (0.449494ms)
+✔ tow clearance rejects a crossing even when both endpoints are outside the reef (0.470605ms)
+✔ crew cone avoidance bounds the actual soft-edged wedge, not just the visible inner angle (1.305036ms)
+✔ actual returned pair can escape outward without exempting a reef crossing (0.468999ms)
+✔ restored near-berth classification is bounded along both sides of the actual lane (0.21277ms)
+✔ failed route retry is bounded and cannot survive a backwards native tick (0.199795ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1464.847787

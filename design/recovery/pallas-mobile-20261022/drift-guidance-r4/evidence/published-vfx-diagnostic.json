@@ -1,0 +1,18 @@
+{
+  "scope": "Read-only counterfactual: only src/render/vfx.js loaded from exact published PR488; remaining modules and existing test from reviewed r2 closure",
+  "publishedRef": "e7f6122f8d8f2985223940bfbb60eb4f66272561",
+  "test": "test/pallas-reef-read-model.test.mjs",
+  "testName": "reef cutting vitals transport only a current authenticated cutter and exact target life",
+  "result": {
+    "tests": 1,
+    "pass": 0,
+    "fail": 1,
+    "skipped": 0
+  },
+  "assertion": "spawn begins dark: real renderer emits no false work beam or generic pulse",
+  "actual": 1,
+  "expected": 0,
+  "sourceLocation": "test/pallas-reef-read-model.test.mjs:243:12; invoked from line 258",
+  "method": "Node ESM load hook read exact published vfx blob through git show with GIT_NO_LAZY_FETCH=1; no source or test modification",
+  "interpretation": "Omitting renderer delta alone is not a passing truthful presentation increment. This diagnostic is not a final r4 native regression."
+}
