@@ -1769,3 +1769,13 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 | 960x540 / 1280x720 / 1366x768 / 1920x1080 | 0 | 0 | 0 | 0 |
 
 **Checked:** bench clean (0 text + 0 arrival control findings) on all four small-window tabs at 700x460 and 760x420, Factions and Ledger included (they were already repaired earlier on 2026-10-18); both changed tabs clean at 960x540, 1280x720, 1366x768 and 1920x1080 — no rule above matches at those sizes. All PNGs opened. Walks: Shipworks 25 controls at both small sizes (25 at 960x540), Contracts 27 at both small sizes. The post-action UNREACHABLE notes in walk output are the command palette / comms history / help / departure-check layers the walk opens covering the tabs beneath — the same contextual observations the reachability section above documents, present identically at 960x540.
+
+## Save/Load: LOAD clear of EXPORT at 960×540, hull record keys fit, narrow strip stacks (ui-polish-80)
+
+**Before:** at 960×540 the context line wrapped ("FLOWN 29 DAYS / AGO") and GRUDGE wrapped in half a row, which pushed LOAD down over EXPORT. RAP SHEET ran into "Clean" at 761–1280. Side by side, the ~300px slot strip ran CURRENT into SLOT 1 and the two saves' credits together up to ~790 wide.
+
+**After (`saveLayouts.js`, desktop only):** the hull record's key column fits its longest key; at ≤1100 the record's last unpaired line takes the whole row and the context line closes up to one line, so LOAD / SAVE HERE / DELETE sit on their own row above EXPORT / IMPORT / Back. 761–790 above 460 tall and 791–860 at 750+ tall use the stacked page; ≤460-tall windows keep the short-desktop page.
+
+**Checked:** bench clean (no tangled, cut-off or offscreen type; primary controls reachable) at 960×540, 1280×720, 1920×1080, 761×800, 820×600 and 860×800, with the control walk at each. Phone unaffected (desktop-only selectors).
+
+**Leftover:** at 1280×720 the context line still wraps "DAYS AGO" onto a second line.
