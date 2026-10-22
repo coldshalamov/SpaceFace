@@ -1165,6 +1165,9 @@ export const pauseScreen = {
     rootEl.classList.add(phone ? 'orr-pause--phone' : 'orr-pause');
     this._columnAtMount = phone;
     if (phone) list.setAttribute('data-pad-linear', ''); else list.removeAttribute('data-pad-linear');
+    // The dial is two levels, like its foot strip says: the pad steps categories on Up/Down and verbs
+    // on Left/Right (ui-polish-94), not whichever word sits nearest under the last one.
+    if (phone) list.removeAttribute('data-pad-grouped'); else list.setAttribute('data-pad-grouped', '');
     unwatchPauseNarrow();
     const mql = pauseNarrowQuery();
     if (mql) {
