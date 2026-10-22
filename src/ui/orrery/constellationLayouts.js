@@ -455,12 +455,12 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} .con-filters .k-word { font-size:12px; letter-spacing:.02em; }
   ${A} > .k-foot .k-words:not(.con-filters .k-words) { align-self:flex-start; }
 }
-/* the narrowest phones (360): trim the category words so CAREER fits the row, and widen
+/* the narrowest phones (360): tighten the category words (still 12px, the type floor) so CAREER fits the row, and widen
    the scroller into the side padding so the first count (0/22) isn't cut at its left edge */
 @media (max-width:380px) {
   ${A} .k-hang.con-filters { margin:0 -8px; padding:0 8px; }
-  ${A} .con-filters .k-words { gap:4px !important; }
-  ${A} .con-filters .k-word { font-size:11px; letter-spacing:0; }
+  ${A} .con-filters .k-words { gap:3px !important; }
+  ${A} .con-filters .k-word { font-size:12px; letter-spacing:-.01em; }
 }
 /* a short desktop frame: the medal orrery stands down below ~280px of stage height
    (constellationMedals.js). Reclaim padding + foot so the stage clears that floor and the

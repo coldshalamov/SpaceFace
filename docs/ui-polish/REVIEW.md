@@ -1810,4 +1810,4 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 
 **Checked:** bench `achievements` at 390×844 3 → 0 findings, 360×740 0. 960×540, 1280×720 and wider are untouched by construction (the rule only matches ≤560 wide). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish83/compare-achievements-390x844.png`, `after4/`.
 
-At 380px wide and under the category words drop to 11px with tighter gaps, so all five (through CAREER) fit at 360×740, and the row's scroller reaches into the side padding so the first count (0/22) and the focus mark beside ALL are no longer cut.
+At 380px wide and under the category words keep the 12px floor with tighter spacing and gaps, so all five (through CAREER) fit at 360×740, and the row's scroller reaches into the side padding so the first count (0/22) and the focus mark beside ALL are no longer cut.
