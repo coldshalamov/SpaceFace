@@ -249,7 +249,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
    credits read on one line, the name field sits beside its label, the hull record runs tighter. */
 /* ui-polish-95: any width ≤460 tall (was ≤1100), and 941+ wide up to 520 tall. Wider short windows printed
    EXPORT over RAP SHEET with LOAD off the frame (1150–1920 × 440, 1150–1920 × 500). */
-@media (max-height:460px), (min-width:941px) and (max-height:520px) {
+/* ui-polish-96: to 560 tall from 861 wide (was 941+ × ≤520). 1200–1239 × 521–539 (left over from 1200–1600 × 521–560)
+   printed LOAD over EXPORT and buried EXPORT / IMPORT / BACK, and at 861–940 × 461–560 the foot sat under the name
+   field and LOAD, so none of the three took a click. */
+@media (max-height:460px), (min-width:861px) and (max-height:560px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; padding-bottom:12px !important; row-gap:6px !important;
     grid-template-rows:auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:"title stage" "page stage" "page hang" "page foot" !important; }
