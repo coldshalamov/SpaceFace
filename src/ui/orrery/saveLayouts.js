@@ -207,7 +207,9 @@ ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand
 html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "page stage" "page hang" "foot foot" !important; }
 /* ui-polish-79: the hull record's key column fits its longest key (RAP SHEET ran into "Clean" at 761–1280) */
 html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-columns:max(96px, calc(104px * var(--sv))) minmax(0, 1fr); }
-@media (max-width:1100px) {
+/* ui-polish-95: to 1199 (was 1100). At 1101–1199 the reading fell to ~300px: DELETE dropped under LOAD, SAVED wrapped
+   and QUICK's CURRENT ran into SLOT 1 ("CURRENTSLOT 1"). */
+@media (max-width:1199px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-columns:minmax(356px, 38%) minmax(0, 1fr) !important; column-gap:28px !important; }
   /* the context line (QUICK SAVE · CURRENT · FLOWN 20 DAYS AGO) fits the column on one line */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:12px; letter-spacing:.12em; }
@@ -225,7 +227,8 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 }
 /* 960×540-class frames: the credits numeral steps down and the hull
    record reads in two columns, so LOAD stands clear above EXPORT / IMPORT / BACK */
-@media (max-width:1100px) and (max-height:640px) {
+/* ui-polish-95: any width (was ≤1100). Above 1100 at 461–640 tall the name field and LOAD ran into EXPORT / IMPORT. */
+@media (max-height:640px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-n { font-size:calc(48px * var(--sv)); }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-portrait { display:grid; grid-template-columns:max-content minmax(0, 1fr) max-content minmax(0, 1fr);
     column-gap:6px; row-gap:5px; align-items:baseline; margin-bottom:4px; }
@@ -244,7 +247,9 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
    frame and the hull record printed through EXPORT / IMPORT. The way back moves under the filmstrip
    (the right column), the reading takes the left column's full height, and its type steps down:
    credits read on one line, the name field sits beside its label, the hull record runs tighter. */
-@media (max-width:1100px) and (max-height:460px) {
+/* ui-polish-95: any width ≤460 tall (was ≤1100), and 941+ wide up to 520 tall. Wider short windows printed
+   EXPORT over RAP SHEET with LOAD off the frame (1150–1920 × 440, 1150–1920 × 500). */
+@media (max-height:460px), (min-width:941px) and (max-height:520px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; padding-bottom:12px !important; row-gap:6px !important;
     grid-template-rows:auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:"title stage" "page stage" "page hang" "page foot" !important; }
@@ -325,6 +330,14 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.02em; }
+}
+/* ui-polish-95: 941–1199 wide above 460 tall, the ~100px stations still ran a filed save's line to four or five
+   ragged lines ("Adventure· / Hitch·Helios / Prime·1h / 12m played"), and at ~1000 the context line broke
+   FLOWN 29 DAYS AGO onto a second line. The 791–940 treatment carries on: a filed station shows its name and
+   credits (the reading carries the selected save's line), and the context line closes up to one line. */
+@media (min-width:941px) and (max-width:1199px) and (min-height:461px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.05em; }
 }
 /* review: a narrow and short window (≤739 × ≤460) stacks too; the title keeps the short-desktop size so LOAD stays above the fold */
 @media (max-width:739px) and (max-height:460px) {
