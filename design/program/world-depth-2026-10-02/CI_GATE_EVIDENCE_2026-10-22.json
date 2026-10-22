@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "observedAt": "2026-10-22T22:24:41Z",
+  "observedAt": "2026-10-22T22:54:00Z",
   "preload": {
     "run": 39862879739,
     "head": "6783d6c814a3b255c3b6e2764887a610e7b4eef3",
@@ -10,7 +10,13 @@
     "ok": true,
     "exitCode": 0,
     "durationMs": 204,
-    "stdout": "[modulepreload] in sync — 35 main + 2182 registry imports covered."
+    "stdout": "[modulepreload] in sync — 35 main + 2182 registry imports covered.",
+    "workflowConclusion": "failure",
+    "workflowUpdatedAt": "2026-10-22T22:40:15Z",
+    "otherWorkJobs": {
+      "failed": 8,
+      "cancelled": 1
+    }
   },
   "kiln": {
     "run": 39861841707,
@@ -22,7 +28,25 @@
     "targetStep": "Run static check group (shard 1 of 3)",
     "targetConclusion": "skipped",
     "matrixOnly": true,
-    "aggregateExecutedLocally": false
+    "aggregateExecutedLocally": false,
+    "workflowConclusion": "failure",
+    "workflowUpdatedAt": "2026-10-22T22:32:37Z",
+    "workJobs": {
+      "failed": 7,
+      "cancelled": 2
+    },
+    "precedingAssertionComparison": {
+      "baseCommit": "5e5b619b57c53be410e90c7e5f21bbb2fd0127f5",
+      "baseRun": 39852539933,
+      "baseJob": 120082224810,
+      "headJob": 120114454673,
+      "test": "complete production factory commissions the public site worker and yields real cargo to player custody",
+      "assertion": "normal cutoff requires an active recovery",
+      "actual": "head_retract",
+      "expected": "reacquire",
+      "location": "test/ceres-workfleet-runtime.test.mjs:330",
+      "scope": "This exact blocking assertion matches the base. Other failures are not all attributed."
+    }
   },
   "limits": [
     "Passing the preload gate does not establish browser/mobile launch acceptance or an overall green workflow.",

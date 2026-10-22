@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current checkpoint
 
-## 22 October 2026, 22:18 UTC
+## 22 October 2026, 22:54 UTC
 
 All TEN goals remain OPEN. Publication, local checks and offline renders are not whole-game acceptance. Preserve [IMPLEMENTATION](IMPLEMENTATION.md), the [original twenty-concept map](TWENTY_CONCEPT_MAP.json), its [amendment](TWENTY_CONCEPT_AMENDMENT.md), the [build map](../../../build_map.md) and the [25-sector experience register](SECTOR_EXPERIENCE_REGISTER_2026-10-21.md#22-october-2026-verified-increment-update). The [previous checkpoint at 9180a640](https://github.com/coldshalamov/SpaceFace/blob/9180a640e63694708468ccab01e2a8f89c807098/design/program/world-depth-2026-10-02/CURRENT_CHECKPOINT_2026-10-22.md) archives detailed earlier results and recovery history. This concise current register replaces duplicated historical narration, not evidence or scope.
 
@@ -142,3 +142,14 @@ Next substantive implementation: [interrupted Kiln rescue continuity](CLAIM_RUNA
 The next Kiln increment has reproduced the continuity failure through real world/director and Save.save('quick') / Save.load('quick') with explicitly in-memory fixture storage: both Save calls succeed and save:loaded fires, but the active rescue coordinator is absent. This includes PR #515's payload correction. Implementation is active within its allocated paths; no continuity fix or acceptance is claimed yet.
 
 The actual public CI helper's group-then-round-robin selection assigns the Kiln command to static shard 1. Job 120114454673 records the static-group step as skipped after Ceres physical workfleet validation failed. This is definitive non-execution, not an inference merely from a missing log string. The minimal [CI gate evidence](CI_GATE_EVIDENCE_2026-10-22.json) preserves both that result and the independently verified passing preload gate. Full workflow conclusions remain pending, including a cancelled sim job in the Kiln run; no cancellation was requested here.
+
+
+## Current implementation and terminal CI, 22:54 UTC
+
+Both monitored workflows are now terminal failure. PR #515 run 39861841707 has seven failed work jobs and two cancelled jobs; the focused damage gate was skipped as documented. Its exact preceding Ceres assertion matches public-base run 39852539933: head_retract rather than reacquire in ceres-workfleet-runtime.test.mjs:330. This proves that blocking assertion was already present, not that every failure has the same cause. PR #517 run 39862879739 has eight failed work jobs and one cancelled browser job; its preload gate explicitly passes. Neither run was manually restarted or cancelled. See the updated minimal CI evidence file for exact identities.
+
+The active Kiln continuity increment additionally reproduced a production admission defect: real stations use canonical stationId plus numeric entity id. The old lookup missed Depot Three and selected the Forge at the eligible zone center, producing zero drift and immediate unearned settlement. The narrow lookup correction is allocated in the current continuity claim. No authored station/zone positions or rescue thresholds are changed. Earlier displaced-anchor diagnostics are superseded, not ordinary approach evidence.
+
+An initial five-file implementation passed 18 focused and 51 existing checks, but independent review found a BLOCKING native-authority weakness: after native admission, writable projection motion could be captured and used for payout while the actual native body still moved. It is being corrected before publication. Those passing checks are not acceptance. The blocked source candidate and red review probe were independently preserved and read back as a 111,912-byte, 16-member recovery, SHA256 f5089cb2d19aa9dff439356d512ce1a3b8411ba52bdd425ceaefd4f36e49a600. Preserve this failed attempt as evidence; do not publish it as the reviewed fix.
+
+The real attachment/Save probe confirms the existing player tether releases cleanly on load, with no canonical/native line or stale target cache; the player must relatch. One reconstructed Kiln body appears after admission. nativeRestore.exact is false, so the unit is bounded scalar continuity rather than exact whole-world solver restoration. Next action: finish identity-bound authoritative motion capture/settlement, rerun the red regression, obtain independent re-review, then reconcile and publish the coherent unit. All ten goals and existing owners remain open.
