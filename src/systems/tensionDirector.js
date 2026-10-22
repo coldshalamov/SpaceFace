@@ -33,21 +33,30 @@ export function readTensionSensors(state) {
   const shieldMax = nonnegative(player?.shieldMax, nonnegative(player?.shield));
   let liveCombat = 0, nearbyCombat = 0, pendingCombat = 0, pendingCivilian = 0, scanTruncated = false;
   const live = state?.encounterDirector?.live;
-  let liveScanned = 0;
   // Never scan the global entity collection. Only bounded, encounter-owned rosters.
+  // Finished rows, other decks, and other sectors do not spend that budget: a long
+  // log used to mark the scan truncated and the director then published a quiet
+  // policy in the middle of a fight it had already counted.
   if (!suspension && live && typeof live === 'object') {
+    const sectorId = state?.world?.currentSectorId;
+    const combatRows = [];
+    let combatUnread = false;
     for (const key in live) {
       if (!Object.hasOwn(live, key)) continue;
-      if (liveScanned++ >= TENSION_SENSOR_LIMITS.live) { scanTruncated = true; break; }
       const row = live[key];
       if (!row || row.phase === 'done' || row.deck !== 'combat') continue;
-      if (row.sectorId && state?.world?.currentSectorId && row.sectorId !== state.world.currentSectorId) continue;
+      if (row.sectorId && sectorId && row.sectorId !== sectorId) continue;
+      if (combatRows.length >= TENSION_SENSOR_LIMITS.live) { combatUnread = true; break; }
+      combatRows.push(row);
+    }
+    for (let r = 0; r < combatRows.length; r++) {
+      const row = combatRows[r];
       liveCombat++;
       let near = Number.isFinite(row.lastPlayerExchangeAt)
         && timeOf(state) >= row.lastPlayerExchangeAt && timeOf(state) - row.lastPlayerExchangeAt <= 12;
       const ids = Array.isArray(row.ids) ? row.ids : [];
-      if (ids.length > TENSION_SENSOR_LIMITS.idsPerLive) scanTruncated = true;
-      for (let i = 0; !near && i < Math.min(ids.length, TENSION_SENSOR_LIMITS.idsPerLive); i++) {
+      const idLimit = Math.min(ids.length, TENSION_SENSOR_LIMITS.idsPerLive);
+      for (let i = 0; !near && i < idLimit; i++) {
         const e = state.entities.get(ids[i]);
         if (!e || e.alive === false || !e.pos || !player?.pos) continue;
         const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
@@ -55,15 +64,24 @@ export function readTensionSensors(state) {
         if (Number.isFinite(dx) && Number.isFinite(dz)
           && dx * dx + dz * dz <= TENSION_SENSOR_LIMITS.combatRange ** 2) near = true;
       }
+      if (!near && ids.length > TENSION_SENSOR_LIMITS.idsPerLive) combatUnread = true;
       if (near) nearbyCombat++;
     }
     const pending = Array.isArray(state.encounterDirector.pending) ? state.encounterDirector.pending : [];
-    if (pending.length > TENSION_SENSOR_LIMITS.pending) scanTruncated = true;
-    for (let i = 0; i < Math.min(pending.length, TENSION_SENSOR_LIMITS.pending); i++) {
-      const deck = pending[i]?.deck;
+    let pendingSeen = 0;
+    let pendingUnread = false;
+    for (let i = 0; i < pending.length; i++) {
+      const item = pending[i];
+      // A fight queued for another sector is not supply here. Counting it made a
+      // quiet system claim combat was offered and simply not delivered.
+      if (item?.sectorId && sectorId && item.sectorId !== sectorId) continue;
+      if (pendingSeen >= TENSION_SENSOR_LIMITS.pending) { pendingUnread = true; break; }
+      pendingSeen++;
+      const deck = item?.deck;
       if (deck === 'combat') pendingCombat++;
       else if (deck === 'civilian') pendingCivilian++;
     }
+    scanTruncated = pendingUnread || (combatUnread && nearbyCombat === 0);
   }
   return {
     eligible: !suspension, suspension,
