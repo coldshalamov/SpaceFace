@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { boardReport, readBoard } from '../board-chunks.mjs';
+import { readPlanEngine, planEngineUnit } from './planEngine.mjs';
 import {
   readyDispatchUnits,
   selectNextPacket,
@@ -28,6 +29,7 @@ export const PLAN_CHAIN = Object.freeze([
   'defect-ledger',
   'now-adoption',
   'landed-review',
+  'plan-engine',
   'queue-unit',
   'legacy-packet',
   'ledger-change-loop',
@@ -361,6 +363,12 @@ export function nextPlanUnit(root, options = {}) {
     if (unit) return { unit, skipped };
   }
 
+  unit = leg('plan-engine', () => {
+    const engine = readPlanEngine(root);
+    return engine.due ? planEngineUnit(engine) : null;
+  });
+  if (unit) return { unit, skipped };
+
   unit = leg('queue-unit', () => {
     if (!control) {
       skipped.push({ leg: 'queue-unit', reason: `control plane unavailable: ${controlError ? truncate(controlError.message, 200) : 'not provided'}` });
@@ -435,6 +443,7 @@ export function planStatus(root, options = {}) {
   };
 
   const surfaces = {};
+  surfaces.engine = safe('plan-engine', () => readPlanEngine(root));
   surfaces.ledger = safe('defect-ledger', () => {
     const ledger = readDefectLedger(root);
     return {
@@ -499,6 +508,7 @@ export function planStatus(root, options = {}) {
   const { unit, skipped } = nextPlanUnit(root, options);
   const openSurface = Object.entries(surfaces).some(([name, surface]) => {
     if (!surface || surface.error) return false;
+    if (name === 'engine') return surface.due;
     if (name === 'ledger') return surface.open.length + surface.changeLoops.length > 0;
     if (name === 'now') return surface.staleRows.length > 0;
     if (name === 'review') return surface.open.length > 0;

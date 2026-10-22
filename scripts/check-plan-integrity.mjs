@@ -25,6 +25,7 @@ import process from 'node:process';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { ProgramControlError, validateControlPlane } from './lib/programControlPlane.mjs';
+import { readPlanEngine } from './lib/planEngine.mjs';
 import {
   nextPlanUnit,
   readDefectLedger,
@@ -52,6 +53,13 @@ try {
 const ROOT = values.root ? path.resolve(values.root) : path.resolve(SCRIPT_DIR, '..');
 const problems = [];
 const notes = [];
+
+try {
+  const engine = readPlanEngine(ROOT);
+  if (engine.available) notes.push(`plan engine: ${engine.countedRows} counted rows, ${engine.inferenceLines} OPEN lines; ${engine.due ? `due ${engine.cycle}` : 'saturated'}`);
+} catch (error) {
+  problems.push(`plan engine unreadable: ${error.message}`);
+}
 
 // 1. The queue control plane loads; expiry recorded, contradiction fatal.
 let control = null;

@@ -11,6 +11,7 @@ import {
   planStatus,
 } from '../scripts/lib/planFrontDoor.mjs';
 import { validateControlPlane } from '../scripts/lib/programControlPlane.mjs';
+import { readPlanEngine } from '../scripts/lib/planEngine.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIVENESS_SCRIPT = path.join(REPO_ROOT, 'scripts', 'check-now-liveness.mjs');
@@ -152,6 +153,7 @@ test('the precedence chain names every leg in dispatch order', () => {
     'defect-ledger',
     'now-adoption',
     'landed-review',
+    'plan-engine',
     'queue-unit',
     'legacy-packet',
     'ledger-change-loop',
@@ -480,4 +482,53 @@ test('a board seam tells the agent to push and file the second look', () => {
   assert.equal(unit.source, 'board-seam');
   assert.match(unit.instruction, /push origin master/);
   assert.match(unit.instruction, /LANDED_REVIEW\.md/);
+});
+
+function engineRoot({ rows = 25, lines = 30, cycles = ['C1'] } = {}) {
+  const root = makeRoot();
+  writeLedger(root, []);
+  writeReviews(root, []);
+  writeInference(root, Array.from({ length: lines }, (_, i) => `| I-${i} | change | src/a.js | done | don't | OPEN |`));
+  fs.writeFileSync(path.join(root, 'build_map.md'), [
+    '# Map', '## 1C. Board',
+    '| Seam | Claim | Files | Rows, in order |', '|---|---|---|---|',
+    `| work | free | src/a.js | ${Array.from({ length: rows }, (_, i) => i + 1).join(', ')} |`, '',
+    ...Array.from({ length: rows }, (_, i) => `| ${i + 1} | T-${i} | work | BUILD | OPEN |`),
+    '| 900 | lane | not production | LANE | OPEN |',
+    '| 901 | parked | not counted | BUILD | PARKED |',
+    '## 2. Next', '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(root, 'design/program/PLAN_ENGINE.md'), [
+    '# Engine', '## 5. Cycle log', '| Date | Cycle | Scope | Minted |', '|---|---|---|---|',
+    ...cycles.map((cycle) => `| 2026-10-22 | ${cycle} | scope | rows |`), '',
+  ].join('\n'));
+  return root;
+}
+
+test('plan engine uses strict refill thresholds and excludes parked and lane rows', () => {
+  assert.equal(readPlanEngine(engineRoot()).due, false);
+  const root = engineRoot({ rows: 24 });
+  const before = fs.readFileSync(path.join(root, 'build_map.md'), 'utf8');
+  const result = nextPlanUnit(root);
+  assert.equal(result.unit.id, 'PLAN-ENGINE-C2');
+  assert.equal(result.unit.countedRows, 24);
+  assert.equal(result.unit.kind, 'planning-support');
+  assert.equal(fs.readFileSync(path.join(root, 'build_map.md'), 'utf8'), before);
+  assert.equal(planStatus(engineRoot({ lines: 29 })).surfaces.engine.due, true);
+});
+
+test('plan engine prunes above the cap and retains both C1 positions across prune cycles', () => {
+  assert.equal(readPlanEngine(engineRoot({ rows: 120, lines: 200 })).due, false);
+  assert.equal(readPlanEngine(engineRoot({ rows: 121 })).cycle, 'C8');
+  assert.equal(readPlanEngine(engineRoot({ lines: 201 })).cycle, 'C8');
+  const root = engineRoot({ rows: 24, cycles: ['C1', 'C2', 'C3', 'C7', 'C8', 'C1'] });
+  assert.equal(readPlanEngine(root).cycle, 'C4');
+});
+
+test('defects, stale adoptions and landed reviews retain precedence over a due engine cycle', () => {
+  const root = engineRoot({ rows: 1 });
+  writeReviews(root, ['| R-aaa1111 | aaa1111 | work | verify | OPEN |']);
+  assert.equal(nextPlanUnit(root).unit.source, 'landed-review');
+  writeLedger(root, ['| D901 | route | broken | play | OPEN |']);
+  assert.equal(nextPlanUnit(root).unit.source, 'defect-ledger');
 });
