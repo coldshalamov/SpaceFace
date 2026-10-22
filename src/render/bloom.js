@@ -65,6 +65,9 @@ export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, 
 // retains the deliberately cool space-black bias without laying a grey-blue veil over the frame.
 export const DEFAULT_CINEMATIC_TOE = 0.0039;
 export const POST_TOE_TINT = Object.freeze([0.82, 0.92, 1.15]);
+// Static one-LSB triangular dither in the final sRGB encode, gated off exact black so the void
+// stays exactly 0.
+export const POST_DITHER_LSB = 1.0;
 
 // Contrast is normally evaluated with the authored pow() path. The LUT is an opt-in experiment
 // for the measured composite hotspot: it stores the already-squared sigmoid in two normalized
@@ -446,6 +449,13 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
       float noise = spaceGrainNoise(grainCell) - 0.5;
       srgb += noise * grainAmount * (0.25 + 0.75 * (1.0 - luma)) * 0.10;
     }
+    ${POST_DITHER_LSB > 0.0001 ? /* glsl */`
+    // Static 1-LSB triangular dither ahead of the 8-bit encode; the step() gate keeps exact
+    // black exactly black.
+    float sfDitherN = spaceGrainNoise(fragCoord) * 2.0 - 1.0;
+    float sfDither = sign(sfDitherN) * (1.0 - sqrt(1.0 - abs(sfDitherN)));
+    srgb += vec3(sfDither * ${(POST_DITHER_LSB / 255).toFixed(8)}) * step(vec3(0.5 / 255.0), srgb);
+    ` : ''}
     return clamp(srgb, 0.0, 1.0);
   }
 `;

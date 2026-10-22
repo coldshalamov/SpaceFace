@@ -101,10 +101,13 @@ Rules:
 - Engine cores, muzzle cores, explosion cores, nav/beacon/glow finishes, and
   shield seams are the only HDR emissive sources. Paint never emits.
 - Bloom threshold 1.0 (science default −0.15), strength default 0.52, pyramid
-  norm 1.5. The full quality tier builds four pyramid levels (1/2, 1/4, 1/8,
-  1/16) and composites three: tight 1.0, body 0.62, wide 0.48 — the wide levels
-  are what make a lamp read as neon. Sector post scales strength/threshold
-  mildly (±0.16 strength scale, threshold bias ≤ 0).
+  norm 1.32. The full quality tier builds four pyramid levels (1/2, 1/4, 1/8,
+  1/16) and composites three of them — tight 1/2 at weight 1.0, body 1/8 at
+  0.52, wide 1/16 at 0.38; the 1/4 level only feeds the pyramid — the wide
+  levels are what make a lamp read as neon. Sector post scales strength/threshold
+  mildly (±0.16 strength scale, threshold bias ≤ 0). The final 8-bit encode
+  carries a static 1-LSB triangular dither (`POST_DITHER_LSB` in bloom.js;
+  exact black stays black).
 - Grade, contrast, saturation, ink, bloom colour and vignette are Look values
   per mood (`post`): grade amount 0.7–0.9, vignette 0.20–0.26, contrast
   1.12–1.22, saturation 1.10–1.22, ink ≤ 0.26 (the retired pass ran 1.0). Toe
