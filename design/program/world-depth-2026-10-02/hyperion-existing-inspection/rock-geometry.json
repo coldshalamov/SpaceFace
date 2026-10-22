@@ -1,0 +1,31 @@
+{
+  "seamed-asteroid": {
+    "bounds_blender": [
+      [
+        -10.994633674621582,
+        -10.200077056884766,
+        -9.568550109863281
+      ],
+      [
+        9.299869537353516,
+        8.996600151062012,
+        9.5320463180542
+      ]
+    ],
+    "meshes": [
+      "LOD0_Lights_Warm",
+      "LOD0_Stone",
+      "LOD0_Stone_deep",
+      "LOD0_Stone_strata",
+      "LOD0_Stone_vein"
+    ],
+    "triangles": 7494,
+    "materials": [
+      "Material_Stone",
+      "Material_Stone_vein",
+      "Material_Emissive_Warm",
+      "Material_Stone_strata",
+      "Material_Stone_deep"
+    ]
+  }
+}

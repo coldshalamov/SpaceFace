@@ -1,0 +1,62 @@
+[
+  {
+    "path": "README.md",
+    "bytes": 6110,
+    "sha256": "d89c892527ab6689dea7f2aa03bd48f03f8340e4ba1d4f3e54bf662dddd02e57"
+  },
+  {
+    "path": "compose-existing.py",
+    "bytes": 721,
+    "sha256": "ea5d7d139f4011c18fad55d2f9ebba12fc871c17d5e9ea87b29148c5a17251c2"
+  },
+  {
+    "path": "decode-existing.mjs",
+    "bytes": 1207,
+    "sha256": "52bc9b54c6945b5068e7d73c0a66cc5cbe43ec64e2a3aed7c8bcbf00adcb366a"
+  },
+  {
+    "path": "exact-package-provenance.json",
+    "bytes": 754,
+    "sha256": "c323391b3335f97cbce8bb80cf6ebf5e2832c41cc275360fae68ade48e3ae83e"
+  },
+  {
+    "path": "existing-assets-comparison.jpg",
+    "bytes": 70239,
+    "sha256": "3cbd6fb0ce4625f4ef6356473d8787a335f4577ca631646bd48319fe7223682c"
+  },
+  {
+    "path": "geometry.json",
+    "bytes": 2687,
+    "sha256": "2a050eb56200e72ade03d3198acfb6a02e3697a58d2d242bbed855c04328b67a"
+  },
+  {
+    "path": "materials.json",
+    "bytes": 8976,
+    "sha256": "5101c1b54bdf2595919b96a28f2fb96ec18b58f5f9376a93cdec373b6fe1d67d"
+  },
+  {
+    "path": "recover-existing.sh",
+    "bytes": 684,
+    "sha256": "35efaf11906094606c77b9051328f25f1799fc992ceacee47f922ae5cfbafe73"
+  },
+  {
+    "path": "render-existing.py",
+    "bytes": 2077,
+    "sha256": "10ba43aabc058866c31ab15f2d526a39264e8005cd7f0a2d2b029e7e8207bb37"
+  },
+  {
+    "path": "rock-geometry.json",
+    "bytes": 594,
+    "sha256": "89c475221d2a62d40023efd1f6c7314699b229b3e742ff18387dccb49c5238c1"
+  },
+  {
+    "path": "rock-materials.json",
+    "bytes": 1642,
+    "sha256": "a2f29a0e73d4377008feeca558ad5d0ec20043127a36e73cb7d48260646a8152"
+  },
+  {
+    "path": "seamed-asteroid-oblique.jpg",
+    "bytes": 9165,
+    "sha256": "c4f5e5dbfac0a386fb603fc24e720ffb49de2a1bcf015100b90d37bd12ac3df1"
+  }
+]

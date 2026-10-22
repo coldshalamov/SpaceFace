@@ -1,0 +1,89 @@
+{
+  "seamed-asteroid": [
+    {
+      "name": "Material_Emissive_Warm",
+      "baseColor": [
+        0.11551608890295029,
+        0.055778853595256805,
+        0.00846228189766407,
+        1
+      ],
+      "metal": 0,
+      "rough": 0.4000000059604645,
+      "emissive": [
+        1,
+        0.48286654175686095,
+        0.07325630776975317
+      ],
+      "textures": false
+    },
+    {
+      "name": "Material_Stone",
+      "baseColor": [
+        0.08437620848417282,
+        0.06847816705703735,
+        0.05126945674419403,
+        1
+      ],
+      "metal": 0,
+      "rough": 0.9200000166893005,
+      "emissive": [
+        0,
+        0,
+        0
+      ],
+      "textures": false
+    },
+    {
+      "name": "Material_Stone_deep",
+      "baseColor": [
+        0.05126945674419403,
+        0.039546236395835876,
+        0.02955683507025242,
+        1
+      ],
+      "metal": 0,
+      "rough": 0.9200000166893005,
+      "emissive": [
+        0,
+        0,
+        0
+      ],
+      "textures": false
+    },
+    {
+      "name": "Material_Stone_strata",
+      "baseColor": [
+        0.05126945674419403,
+        0.039546236395835876,
+        0.02955683507025242,
+        1
+      ],
+      "metal": 0,
+      "rough": 0.9200000166893005,
+      "emissive": [
+        0,
+        0,
+        0
+      ],
+      "textures": false
+    },
+    {
+      "name": "Material_Stone_vein",
+      "baseColor": [
+        0.05951123684644699,
+        0.1441284716129303,
+        0.09084171056747437,
+        1
+      ],
+      "metal": 0,
+      "rough": 0.9200000166893005,
+      "emissive": [
+        0,
+        0,
+        0
+      ],
+      "textures": false
+    }
+  ]
+}

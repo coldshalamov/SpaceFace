@@ -1,0 +1,128 @@
+{
+  "dead-hulk": {
+    "bounds_blender": [
+      [
+        -27.600000381469727,
+        -7.298333168029785,
+        -6.044650077819824
+      ],
+      [
+        27.600000381469727,
+        7.665945529937744,
+        8.49370288848877
+      ]
+    ],
+    "meshes": [
+      "LOD0_Beacon_Amber",
+      "LOD0_BrushedMetal",
+      "LOD0_deadmetal",
+      "LOD0_deadmetal_deep",
+      "LOD0_deadmetal_faded",
+      "LOD0_deadmetal_rust",
+      "LOD0_HOOK_NAV_PORT",
+      "LOD0_Livery",
+      "LOD0_Mechanical",
+      "LOD0_MechanicalDark",
+      "LOD0_Warning"
+    ],
+    "triangles": 9684,
+    "materials": [
+      "Material_Accent",
+      "Material_Hull",
+      "Material_Emissive_Amber",
+      "Material_MechanicalDark",
+      "Material_Hull_rust",
+      "Material_Emissive_NavRed",
+      "Material_Warning",
+      "Material_Hull_faded",
+      "Material_BrushedMetal",
+      "Material_Mechanical",
+      "Material_Hull_deep"
+    ]
+  },
+  "drill-platform": {
+    "bounds_blender": [
+      [
+        -8.0,
+        -8.0,
+        -8.399999618530273
+      ],
+      [
+        8.0,
+        8.0,
+        12.459988594055176
+      ]
+    ],
+    "meshes": [
+      "LOD0_Armor",
+      "LOD0_Beacon_Amber",
+      "LOD0_HOOK_NAV_PORT",
+      "LOD0_Hull",
+      "LOD0_Hull_aged",
+      "LOD0_Lights_Warm",
+      "LOD0_Mechanical",
+      "LOD0_MechanicalDark",
+      "LOD0_MOTION_DRILL_COLLAR_Warning",
+      "LOD0_MOTION_DRILL_CROWN_Warning",
+      "LOD0_MOTION_DRILL_STRING_BrushedMetal",
+      "LOD0_MOTION_DRILL_STRING_Mechanical",
+      "LOD0_Warning"
+    ],
+    "triangles": 7068,
+    "materials": [
+      "Material_BrushedMetal.001",
+      "Material_Hull_aged",
+      "Material_MechanicalDark.001",
+      "Material_Warning.001",
+      "Material_Emissive_Warm",
+      "Material_Hull.001",
+      "Material_Emissive_Amber.001",
+      "Material_Mechanical.001",
+      "Material_Emissive_NavRed.001",
+      "Material_Armor"
+    ]
+  },
+  "drill-platform-cold": {
+    "bounds_blender": [
+      [
+        -7.300000190734863,
+        -7.300000190734863,
+        -6.1999664306640625
+      ],
+      [
+        7.300000190734863,
+        7.300000190734863,
+        3.9450037479400635
+      ]
+    ],
+    "meshes": [
+      "bit_clamp",
+      "bit_stowed",
+      "column_stub",
+      "foot0",
+      "foot1",
+      "foot2",
+      "foot3",
+      "hatch_dogged",
+      "house",
+      "leg0",
+      "leg1",
+      "leg2",
+      "leg3",
+      "plate",
+      "ring0",
+      "ring1",
+      "ring2",
+      "ring3"
+    ],
+    "triangles": 1688,
+    "materials": [
+      "esk_truss_galv",
+      "esk_armor_plate",
+      "esk_scorch",
+      "esk_paint_industrial_ochre",
+      "esk_bare_steel",
+      "esk_patch_plate"
+    ]
+  }
+}

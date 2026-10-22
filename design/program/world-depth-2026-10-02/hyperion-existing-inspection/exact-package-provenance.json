@@ -1,0 +1,22 @@
+{
+  "dead-hulk": {
+    "bytes": 855884,
+    "sha256": "f1704f1842c463398a9675664b13a3c844eb241889c8f657fc71c19efa94b87a",
+    "gitBlob": "9bc9479fa6d37c63aebcbf364359f872823ef673"
+  },
+  "drill-platform": {
+    "bytes": 665152,
+    "sha256": "c8bd267edb5aea8f03f01e14873b7332ac847fbeddbb21acaf5d131a0d0fbbf9",
+    "gitBlob": "66d1040fb6425d735612c9aa8e5f2998419dc6cc"
+  },
+  "drill-platform-cold": {
+    "bytes": 70344,
+    "sha256": "196a586d12a7376f8f66a272fbb7f2e239e2650d1f85df8d2b26f1b9be0589b9",
+    "gitBlob": "f242cefb416dfab24ad759436f4c54b3b3f9b7fe"
+  },
+  "seamed-asteroid": {
+    "bytes": 874740,
+    "sha256": "835cf508d997f258711291f7e09c5425a1e932f19b310f687174596b803a0702",
+    "gitBlob": "1ef183a3f5d4c4cba087fead01bed0fcfd320cbe"
+  }
+}
