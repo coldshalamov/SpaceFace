@@ -1,0 +1,28 @@
+<!-- LIFETIME: DURABLE -->
+# SpaceFace current checkpoint
+
+## Current mobile delivery and connected Pallas checkpoint — 22 October 2026, 09:28 UTC
+
+All ten goals remain OPEN. Read this concise document as the current checkpoint in preference to older EXECUTION_STATUS.md and OPEN_GOALS.md current-state/next-operation statements; original outcomes, historical evidence and acceptance/reviewer ownership remain intact.
+
+### Actual mobile implementation delivery, with bounded CI
+[Draft PR496](https://github.com/coldshalamov/SpaceFace/pull/496) initially delivered a77bc09d3898cfafc01f96106c5a0af37e808582, tree 1e0324f22dcc2d0d418a8a534b1b1436f277ba01, sole public parent 00250537b2c37b965da6c36482a8a2cd80c71f6e: exactly seven mobile source/test files plus the existing gate addition. Its now-verified successor is eb34d11b9b1711380176a75791653542448a0524, tree bf4ca007236063da82f9fd09d2da0dd288194d6c, sole parent a77bc09d. Fresh upstream-tree validation passes 126/126; browser/computed-layout/native-phone acceptance remains open. Exact-head mobile CI initially stopped before browser execution on six independently reproduced unchanged-master fixture failures. The verified successor changes only test/mobile-probe-startup.test.mjs to the existing reviewed public fixture. Controlled baseline 12/18 becomes 20/20; the 300000 ms/150-observation gates are preserved, with negative clock/flight/trusted-click coverage and no production-probe change. New exact-head [mobile CI](https://github.com/coldshalamov/SpaceFace/actions/runs/39755316891) and [main checks](https://github.com/coldshalamov/SpaceFace/actions/runs/39755316602) are queued or running; no browser result or full-green result exists yet.
+
+### Pallas coherent source and radio: recoverable, not runtime-published
+The sealed coherent candidate is bcfdd4730a74c2b79b6e53e3bd7111d6d2ec1dc3, tree 707320df59191f596616b9741c79586fd817e386, with public e7f6122f8d8f2985223940bfbb60eb4f66272561 parent and exact 70bb667878b654477d762a9add8d8a7e46f3f4ad upstream snapshot, not latest master. At the 09:11 check master 00250537b2c37b965da6c36482a8a2cd80c71f6e differs from that snapshot in two achievements files; PR488 remains open/draft/unmerged at e7.
+
+[Verified recovery c7f275ca](https://github.com/coldshalamov/SpaceFace/commit/c7f275ca1d35a026212f570a96fe7f2529b58c6c), on dot/recovery-pallas-mobile-20261022, has sole parent c9155b39fe955e99f0d04fd136aabf008c98bc23 and root tree d5daad2f2880ac237de14d5bca90cb43205c47b3. It appends 36 artifacts, preserves the prior 43 unchanged and includes a corrected baseline-metadata erratum. Every blob was read back; the complete remote archive reconstructs all 61 outputs and full candidate tree 707320df. This is RECOVERY ONLY, not runtime Pallas publication. Recovery authorization is resolved and the operation completed, not awaiting another user action.
+
+Radio adds 24 state-conditioned lines across the three existing ships while retaining short HUD labels. The real Continue readout defect is corrected: a negative observedTick sentinel no longer presents a historical receipt as current at tick zero. Final wording passes 20 pure plus serialized read-model/Hail checks; the earlier 22 included two physical cases and are not relabeled final-tree results. Independent review is closed for that bounded increment. The final gate adds the voice test while preserving 318 prior leaves. Expanded upstream evidence remains 311/316 with five inherited shunt failures under separate read-only investigation, not full green.
+
+### Active next connected unit and actual-play limit
+dot owns the active original Waiting Room carrier-to-Drift Market intake unit: source/market atomicity, physical approach, Continue and interference. A real native transfer followed by 180 simulation seconds stayed received, establishing the missing destination behavior. Real economy initialization confirms actual Scrap Metal and Salvage Electronics listings. Implementation and acceptance are not yet established; no sale, payment, invented capacity/listings or new crew is claimed or added by this handoff.
+
+SF-PUBLISH now includes genuine mobile draft delivery but still-open coherent Pallas runtime delivery. SF-RECOVER includes verified coherent recovery, not acceptance. SF-LIVING-WORLD and SF-SECTOR-COHERENCE include truthful radio/readout evidence and the active finite intake unit; the larger original P08 episode remains open. SF-GAME, SF-ORCHARD, SF-VISUALS, SF-ASSETBANK and SF-ASSET-QUALITY retain their original acceptance conditions and holds.
+
+SF-PLAY-WORLD remains OPEN: the assistant's cloud-browser tab creation hit profile-in-use at 08:26; the documented application launch was accepted at 09:06 but no browser window appeared. No hands-on flight or browser workaround occurred. The 08:44 source render is a CPU native-pose preview, not gameplay. No new user action is established for these technical browser or large-VFX stalls.
+
+Next: verify both exact eb34 successor runs and their terminal browser evidence; reconcile the coherent Pallas snapshot with freshly read master without retrying the stalled large VFX upload; continue the bounded original-carrier intake implementation and its native/Continue/interference checks. Preserve held PR480 asset operation and original sector register unchanged. No merge, deployment, external execution thread, forbidden receiver test or browser bypass.
+
+
+The large historical register/status files are not rewritten by this checkpoint. Their outcome markers, historical evidence and reviewer fields remain untouched; this document and the bounded Pallas addendum carry the new evidence.
