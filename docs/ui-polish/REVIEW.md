@@ -1801,3 +1801,13 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 **Checked:** bench `station-contracts` clean at 651×600, 720×461, 801×600, 900×600, 960×540, 1024×768, 1100×700, 1280×720, 1920×1080, 844×390; walks at 801×600, 900×600, 960×540, 1024×768 (ACCEPT, every job row and blocked job; post-action UNREACHABLE notes are the palette / comms / receipt layers, as above). ACCEPT on first paint at every in-band size; page scrollWidth = viewport. Pixel Δ vs master: 0% at 651×600, 720×461, 1280×720, 390×844 (1920×1080: 0.01%, the orrery). Focused tests: `station-field-hardware` 7/7, `next-wave-nxi-098` 5/5, `ui-bench-control-reachability` 10/10. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish81/`.
 
 **Leftovers:** at 960×540 the term values wrap in the ~115px value column ("Posted on / success"), and the terms need a scroll there and at 801–900. At 720×461 (651–800 band) the job list still shows only one row and the dossier only its title before scrolling; ACCEPT needs a scroll at 651×600. Save/Load 1280×720 context line still wraps "DAYS AGO".
+
+## Missions route strip: the destination wraps instead of losing its sector (ui-polish-84)
+
+**Before:** at 960×540 (761–1100 wide, ≤640 tall) the route strip's TO end read "Helios Station (Helios Pri…"; the 640–760 band uses the same two-half layout.
+
+**After (`archiveLayouts.js`, two in-band rules per block):** in those two bands FROM and TO wrap between words instead of ellipsizing, and each linked place name stays whole, so TO reads "Helios Station / (Helios Prime)" right-aligned.
+
+**Checked:** bench `mission-log` clean at 960×540, 720×460 and 1280×720 (1280×720 pixel-identical to master). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish84/`.
+
+**Leftover:** at 390×844 the Missions page shows only the list (no dossier or route) until a row is opened; the bench still flags the hidden route names there.
