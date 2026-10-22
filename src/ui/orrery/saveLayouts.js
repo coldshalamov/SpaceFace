@@ -252,7 +252,9 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 /* ui-polish-96: to 560 tall from 861 wide (was 941+ × ≤520). 1200–1239 × 521–539 (left over from 1200–1600 × 521–560)
    printed LOAD over EXPORT and buried EXPORT / IMPORT / BACK, and at 861–940 × 461–560 the foot sat under the name
    field and LOAD, so none of the three took a click. */
-@media (max-height:460px), (min-width:861px) and (max-height:560px) {
+/* ui-polish-97: from 791 wide (was 861) to 560 tall. 791–860 × 461–~500 sat side by side with the name field over
+   EXPORT / IMPORT (860×461) and LOAD over EXPORT (860×480), and EXPORT / IMPORT / BACK took no click. */
+@media (max-height:460px), (min-width:791px) and (max-height:560px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; padding-bottom:12px !important; row-gap:6px !important;
     grid-template-rows:auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:"title stage" "page stage" "page hang" "page foot" !important; }
@@ -296,6 +298,12 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
      TODAY)") and LOAD / SAVE HERE / DELETE fell ~20px off the frame at 801-844x390. The record's last, unpaired
      line (GRUDGE) takes the whole row instead of wrapping in half of it, and the top padding gives back 6px (16 -> 10). */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
+}
+/* ui-polish-97: 791–860 in the short band, QUICK's CURRENT badge (~64px) ran past its ~62px station into SLOT 1
+   and its credits (closing its tracking was not enough). The badge steps aside there: the reading's context line
+   carries it ("QUICK SAVE · CURRENT · …"). */
+@media (min-width:791px) and (max-width:860px) and (min-height:461px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { display:none !important; }
 }
 /* UI polish (ui-polish-68): a narrow desktop window (≤760 wide, not a phone). The reading's 356px floor
    left the hull and its filmstrip a 0–300px column, so at 390–700 the strip vanished or its five slot

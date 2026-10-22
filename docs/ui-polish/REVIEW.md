@@ -1950,3 +1950,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only):** the short-desktop page (way back under the filmstrip, tighter reading) now covers 861+ wide up to 560 tall (was 941+ up to 520). No selector or ID changes.
 
 **Checked:** probe (text overlap, off-frame, `elementFromPoint` on every button and input, action/foot rect intersection) on `save-load` and `save-load-empty` at 1200×521, 1220×530, 1239×539, 1239×521, 1240×540, 1200×560, 1199×530, 940×461, 940×480, 941×461, 960×540, 1280×720, 1920×1080, plus 861×461, 900×520, 940×560, 1240×560: 0 overlaps, 0 dead buttons. 941×461, 1280×720 and 1920×1080 render identical to master. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish96/compare/`.
+
+## Save/Load: short windows at 791–860 × 461–560 take clicks (ui-polish-97)
+
+**Before (master 8ba1b59d4c):** at 791–860 × 461–~500 the page sat side by side with the way back along the foot: the name field printed over EXPORT / IMPORT (860×461, 791×461) and LOAD over EXPORT, SAVE HERE over IMPORT (820×480, 860×480, 860×500), so EXPORT / IMPORT / BACK took no clicks.
+
+**After (`saveLayouts.js`, desktop only):** the short-desktop page now starts at 791 wide (was 861) up to 560 tall. In 791–860 × 461–560 the strip's ~62px stations are too narrow for QUICK's CURRENT badge (it ran into SLOT 1 and its credits even with no tracking), so the badge steps aside there; the reading's context line still says "QUICK SAVE · CURRENT". No selector or ID changes.
+
+**Checked:** probe and rect check on `save-load` and `save-load-empty` at 791×461, 820×480, 860×461, 860×480, 860×500, 860×560, 861×461, 960×540 and 1280×720: 0 overlaps, 0 off-frame, 0 dead buttons, nothing under 12px. 790×461 is outside the band (stacked, scrolling page) and unchanged from master. 860×560 now uses the short page (clean on both). Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish97/compare/`.
