@@ -102,8 +102,13 @@ test('production init + update order lengths match the live browser baseline', (
   // Material reactions join both browser and Node fixed-step runtimes.
   // 201 -> 202 init only: warrantOfferPrompt, the licensed hunter's offer as deck verbs (event-only).
   // BLACK FLAG adds one bounded fixed-step coordinator to both hosts.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 209);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 159);
+  // 209 -> 217 init only: the eight faction-strange owners (rows 517-532) subscribe at init
+  // and never tick — event-driven like the prompt adapters, so update stays flat.
+  // 217 -> 222 init / 159 -> 164 update: §34 faction-signature systems (rows 513/515/516/526/530)
+  // tick real per-step kinematics — sweep-ring reads, formation lock, coupler snap, flag
+  // deviation, pylon settle — so all five join both orders on the table clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 222);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 164);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

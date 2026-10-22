@@ -50,7 +50,13 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
   'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod',
-  'recoveryEncounter', 'factions', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'sectorSim', 'towlineTable', 'towlineTablePrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'npcJobsRuntime', 'careerOrigins',
+  // (the eight faction-signature owners above already init at line 41 — the earlier
+  // duplicate block here was a merge artifact; init ids are unique)
+  'recoveryEncounter', 'factions',
+  // §34 faction-signature rows: mass/heat sensor model (513), Concord formation lock (515),
+  // Meridian cargo spines (516), Helix false-flag packs + lien drones (526), Drift claim pylons (530).
+  'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
+  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
@@ -106,7 +112,12 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
   'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
-  'factions', 'sectorSim', 'towlineTable', 'borrowedVoice', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
+  'factions',
+  // §34 rows 513/515/516/526/530: these five tick real per-step work — the sweep-ring
+  // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
+  // read the settled post-physics positions of this tick, so they sit after 'factions'.
+  'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
+  'sectorSim', 'towlineTable', 'borrowedVoice', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
   // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
@@ -378,6 +389,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // latch already covers the idle pole). Docked-yard job progression is real per-tick
   // service work, so the yard stays on the table.
   'chronicler', 'stationServices',
+  // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
+  // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
+  'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
 ]);
 
 const CLOCK_BY_ID = new Map();

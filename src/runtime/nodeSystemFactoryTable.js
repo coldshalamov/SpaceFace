@@ -130,6 +130,19 @@ import { routeFollower } from '../systems/routeFollower.js';
 import { travelLanes } from '../systems/travelLanes.js';
 import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';
+import { understoryGardens } from '../systems/faction_understory.js';
+import { fulfillmentRoutes } from '../systems/faction_fulfillment.js';
+import { pitbornCull } from '../systems/faction_pitborn.js';
+import { vaelLiens } from '../systems/faction_vael.js';
+import { archiveRedaction } from '../systems/faction_archive.js';
+import { choirResonance } from '../systems/faction_choir.js';
+import { vergeCourt } from '../systems/faction_verge.js';
+import { frontierHomesteads } from '../systems/faction_frontier.js';
+import { massSignature } from '../systems/massSignature.js';
+import { factionConcord } from '../systems/faction_concord.js';
+import { factionMeridian } from '../systems/faction_meridian.js';
+import { factionHelix } from '../systems/faction_helix.js';
+import { factionDrift } from '../systems/faction_drift.js';
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js';
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
@@ -364,6 +377,11 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['choirResonance', choirResonance],
     ['vergeCourt', vergeCourt],
     ['frontierHomesteads', frontierHomesteads],
+    ['massSignature', massSignature],
+    ['faction_concord', factionConcord],
+    ['faction_meridian', factionMeridian],
+    ['faction_helix', factionHelix],
+    ['faction_drift', factionDrift],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],

@@ -286,49 +286,56 @@ import * as encounter282 from './568-false-bloom.js';
 import * as encounter283 from './569-build-your-own-escape.js';
 import * as encounter284 from './585-candle-relighting.js';
 import * as encounter285 from './586-the-blank-page.js';
-import * as encounter286 from './901-last-argument.js';
-import * as encounter287 from './902-scene-fare-dodger-chase.js';
-import * as encounter288 from './903-scene-claim-jump-run.js';
-import * as encounter289 from './904-scene-manifest-stop-and-search.js';
-import * as encounter290 from './905-scene-press-gang-tow.js';
-import * as encounter291 from './906-scene-paperless-dash.js';
-import * as encounter292 from './907-scene-yard-tow.js';
-import * as encounter293 from './908-scene-fresh-wreck-vultures.js';
-import * as encounter294 from './909-scene-funeral-column.js';
-import * as encounter295 from './910-scene-fog-edge-wait.js';
-import * as encounter296 from './911-scene-lane-racers.js';
-import * as encounter297 from './912-scene-mail-through-crossfire.js';
-import * as encounter298 from './913-scene-pilgrim-lamp-walk.js';
-import * as encounter299 from './914-scene-refuel-hookup.js';
-import * as encounter300 from './915-scene-rescue-drill.js';
-import * as encounter301 from './916-scene-archive-record-tail.js';
-import * as encounter302 from './917-scene-fissure-haul-out.js';
-import * as encounter303 from './1100-breakaway-freight.js';
-import * as encounter304 from './1101-salvage-dispute.js';
-import * as encounter305 from './1102-missing-piece.js';
-import * as encounter306 from './1103-harvest-owned.js';
-import * as encounter307 from './1104-dead-letter.js';
-import * as encounter308 from './1105-mason-cover.js';
-import * as encounter309 from './1106-edge-of-order.js';
-import * as encounter310 from './1200-the-wedge.js';
-import * as encounter311 from './1201-the-cold-shoulder.js';
-import * as encounter312 from './1202-the-kick-start.js';
-import * as encounter313 from './1203-the-declaration.js';
-import * as encounter314 from './1204-the-mine-garden.js';
-import * as encounter315 from './1205-the-second-bite.js';
-import * as encounter316 from './1206-the-fire-sale.js';
-import * as encounter317 from './1207-the-witnessed-price.js';
-import * as encounter318 from './1208-the-vetting.js';
-import * as encounter319 from './1209-the-last-tow.js';
-import * as encounter320 from './1210-the-deadweight.js';
-import * as encounter321 from './1211-the-forecastle-vote.js';
-import * as encounter322 from './1212-the-clean-sheet.js';
-import * as encounter323 from './1301-the-runaway-kiln.js';
-import * as encounter324 from './1302-the-working-battlefield.js';
-import * as encounter325 from './1303-glue-meet-mass.js';
-import * as encounter326 from './1304-two-ships-one-mistake.js';
-import * as encounter327 from './1305-the-blind-welder.js';
-import * as encounter328 from './1306-the-drift-auction.js';
+import * as encounter286 from './700-the-weighing.js';
+import * as encounter287 from './701-spine-break.js';
+import * as encounter288 from './702-the-swap.js';
+import * as encounter289 from './703-too-perfect-pack.js';
+import * as encounter290 from './704-claim-jump.js';
+import * as encounter291 from './705-the-nest.js';
+import * as encounter292 from './706-breaker-derby.js';
+import * as encounter293 from './901-last-argument.js';
+import * as encounter294 from './902-scene-fare-dodger-chase.js';
+import * as encounter295 from './903-scene-claim-jump-run.js';
+import * as encounter296 from './904-scene-manifest-stop-and-search.js';
+import * as encounter297 from './905-scene-press-gang-tow.js';
+import * as encounter298 from './906-scene-paperless-dash.js';
+import * as encounter299 from './907-scene-yard-tow.js';
+import * as encounter300 from './908-scene-fresh-wreck-vultures.js';
+import * as encounter301 from './909-scene-funeral-column.js';
+import * as encounter302 from './910-scene-fog-edge-wait.js';
+import * as encounter303 from './911-scene-lane-racers.js';
+import * as encounter304 from './912-scene-mail-through-crossfire.js';
+import * as encounter305 from './913-scene-pilgrim-lamp-walk.js';
+import * as encounter306 from './914-scene-refuel-hookup.js';
+import * as encounter307 from './915-scene-rescue-drill.js';
+import * as encounter308 from './916-scene-archive-record-tail.js';
+import * as encounter309 from './917-scene-fissure-haul-out.js';
+import * as encounter310 from './1100-breakaway-freight.js';
+import * as encounter311 from './1101-salvage-dispute.js';
+import * as encounter312 from './1102-missing-piece.js';
+import * as encounter313 from './1103-harvest-owned.js';
+import * as encounter314 from './1104-dead-letter.js';
+import * as encounter315 from './1105-mason-cover.js';
+import * as encounter316 from './1106-edge-of-order.js';
+import * as encounter317 from './1200-the-wedge.js';
+import * as encounter318 from './1201-the-cold-shoulder.js';
+import * as encounter319 from './1202-the-kick-start.js';
+import * as encounter320 from './1203-the-declaration.js';
+import * as encounter321 from './1204-the-mine-garden.js';
+import * as encounter322 from './1205-the-second-bite.js';
+import * as encounter323 from './1206-the-fire-sale.js';
+import * as encounter324 from './1207-the-witnessed-price.js';
+import * as encounter325 from './1208-the-vetting.js';
+import * as encounter326 from './1209-the-last-tow.js';
+import * as encounter327 from './1210-the-deadweight.js';
+import * as encounter328 from './1211-the-forecastle-vote.js';
+import * as encounter329 from './1212-the-clean-sheet.js';
+import * as encounter330 from './1301-the-runaway-kiln.js';
+import * as encounter331 from './1302-the-working-battlefield.js';
+import * as encounter332 from './1303-glue-meet-mass.js';
+import * as encounter333 from './1304-two-ships-one-mistake.js';
+import * as encounter334 from './1305-the-blind-welder.js';
+import * as encounter335 from './1306-the-drift-auction.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -659,5 +666,12 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter326,
   encounter327,
   encounter328,
+  encounter329,
+  encounter330,
+  encounter331,
+  encounter332,
+  encounter333,
+  encounter334,
+  encounter335,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

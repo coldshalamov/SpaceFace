@@ -134,6 +134,19 @@ import { routeFollower } from '../systems/routeFollower.js';         // reader f
 import { travelLanes } from '../systems/travelLanes.js';             // D8 lane infrastructure: multiplies the pilot's own travel drive
 import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
+import { understoryGardens } from '../systems/faction_understory.js';
+import { fulfillmentRoutes } from '../systems/faction_fulfillment.js';
+import { pitbornCull } from '../systems/faction_pitborn.js';
+import { vaelLiens } from '../systems/faction_vael.js';
+import { archiveRedaction } from '../systems/faction_archive.js';
+import { choirResonance } from '../systems/faction_choir.js';
+import { vergeCourt } from '../systems/faction_verge.js';
+import { frontierHomesteads } from '../systems/faction_frontier.js';
+import { massSignature } from '../systems/massSignature.js';               // §34 row 513 — sweep-ring mass/heat sensor state
+import { factionConcord } from '../systems/faction_concord.js';            // §34 row 515 — commander formations, clamp tenders
+import { factionMeridian } from '../systems/faction_meridian.js';          // §34 row 516 — cargo-spine couplers, hull tickers
+import { factionHelix } from '../systems/faction_helix.js';                // §34 row 526 — false-flag packs, lien drones
+import { factionDrift } from '../systems/faction_drift.js';                // §34 row 530 — claim pylons
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js'; // PQ-014/SF-15/W06 — drives the pure npcJobs kernel into live NPC miner/hauler/patrol hulls
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
@@ -613,6 +626,11 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['choirResonance', choirResonance],
     ['vergeCourt', vergeCourt],
     ['frontierHomesteads', frontierHomesteads],
+    ['massSignature', massSignature],
+    ['faction_concord', factionConcord],
+    ['faction_meridian', factionMeridian],
+    ['faction_helix', factionHelix],
+    ['faction_drift', factionDrift],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],
