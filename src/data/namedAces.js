@@ -692,6 +692,50 @@ export const AUTHORED_ACE_ROUTES = Object.freeze([
     intervalS: 3600,
     rumorLine: "Lounge pilots whisper that Voss of Shaft Seven has a flight route cutting right through Helios Prime.",
   }),
+  // EXP-13 — home-sector routes for the Pitborn crews and the two lawful rivals.
+  // Same window, duration, and interval as Yara. Ost shares Helios with Voss, so his
+  // window is the other half of the same 3600s cycle: the first match still wins,
+  // and the two rumours never talk over each other.
+  Object.freeze({
+    aceId: 'ace_clatter',
+    sectorId: 'sector_sker_haven',
+    windowStartS: 0,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: "Dock hands say Clatter and the Ballast Yard are working Sker Haven — that rock had their name on it.",
+  }),
+  Object.freeze({
+    aceId: 'ace_big_ballast',
+    sectorId: 'sector_ashfall_reach',
+    windowStartS: 0,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: "Dock hands say Big Ballast and Sprocket's Own are screening Ashfall Reach. Heavy's honest.",
+  }),
+  Object.freeze({
+    aceId: 'ace_ratchet_lu',
+    sectorId: 'sector_kepler_scar',
+    windowStartS: 0,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: "Dock hands say Ratchet Lu is fencing broken hulls through Kepler Scar. You break it, it's ammunition.",
+  }),
+  Object.freeze({
+    aceId: 'ace_petra_lusk',
+    sectorId: 'sector_dione_lane',
+    windowStartS: 0,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: 'Dock hands say Commander Petra Lusk is holding Relief Watch on Dione Lane. She will not ask twice.',
+  }),
+  Object.freeze({
+    aceId: 'ace_mael_ost',
+    sectorId: 'sector_helios_prime',
+    windowStartS: 1800,
+    windowDurationS: 1800,
+    intervalS: 3600,
+    rumorLine: 'Dock hands say Adjudicator Mael Ost is running Adjudication 44-C through Helios Prime. Read the invoice.',
+  }),
 ]);
 
 export function isAceRouteActive(route, simTime = 0) {
