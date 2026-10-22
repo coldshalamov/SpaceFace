@@ -15,7 +15,8 @@
 //   'contraband'   — narcotics/stolen goods: the Quiet (smugglers) lean favorable, Concord hostile.
 //   'luxury'       — art/luxury: Meridian (corporate) leans approving.
 //   'industrial'   — fuel/ores/refined: Drift (miners) leans approving.
-// Neutral commodities (ores, gases, components, salvage) carry no moralTag — they are amoral cargo.
+//   'biohazard'    — living samples: Concord and the Frontier read risk, the Quiet read interest.
+// Neutral commodities (ores, gases, components, salvage, lattice tokens) carry no moralTag.
 
 export const COMMODITY_MORAL_TAGS = Object.freeze({
   // Humanitarian — Frontier goodwill
@@ -41,9 +42,25 @@ export const COMMODITY_MORAL_TAGS = Object.freeze({
   cmdty_refined_metals: 'industrial',
   cmdty_alloys: 'industrial',
   cmdty_polymers: 'industrial',
+
+  // Living samples — a hold of them is not an empty moral read.
+  cmdty_filament_sample: 'biohazard',
+  cmdty_live_specimen: 'biohazard',
+  cmdty_calcified_filament: 'biohazard',
+  cmdty_conductive_fiber: 'biohazard',
+  cmdty_relay_nodule: 'biohazard',
+  cmdty_membrane_laminate: 'biohazard',
+  cmdty_cyst_resin: 'biohazard',
+  cmdty_nerve_glass: 'biohazard',
+  cmdty_host_archive_sample: 'biohazard',
+  cmdty_sterile_shell: 'biohazard',
+  cmdty_spore_chimney_core: 'biohazard',
+  cmdty_interface_tissue: 'biohazard',
+  cmdty_glass_back_scale: 'biohazard',
+  cmdty_spore_catalyst: 'biohazard',
 });
 
 // The enumerated set (the conscience module keys off THIS — anything else is neutral/unknown).
-export const MORAL_TAGS = Object.freeze(['humanitarian', 'military', 'contraband', 'luxury', 'industrial']);
+export const MORAL_TAGS = Object.freeze(['humanitarian', 'military', 'contraband', 'luxury', 'industrial', 'biohazard']);
 
 export default COMMODITY_MORAL_TAGS;

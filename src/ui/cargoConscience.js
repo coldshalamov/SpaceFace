@@ -33,6 +33,7 @@ const TAG_FACTION_LEAN = Object.freeze({
   contraband:   Object.freeze({ faction_quiet: +1, faction_scn: -1 }), // Quiet favor, Concord hostile
   luxury:       Object.freeze({ faction_mts: +1 }),                 // Meridian approving
   industrial:   Object.freeze({ faction_dmc: +1 }),                 // Drift approving
+  biohazard:    Object.freeze({ faction_scn: -1, faction_free: -1, faction_quiet: +1 }),
 });
 
 /**
