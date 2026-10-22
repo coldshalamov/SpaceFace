@@ -157,6 +157,40 @@ const VARIETY_ROSTER = Object.freeze([
     baseReturnLevel: 5,
     signatureBark: 'WEIGH-SLIP OPEN: four hulls this cycle. You are the one that falls short.',
   }),
+  // EXP-04 — Pitborn variety. Existing gimmick tags and archetypes only.
+  Object.freeze({
+    id: 'ace_clatter',
+    name: 'Clatter',
+    crew: 'The Ballast Yard',
+    factionId: 'faction_pitborn',
+    gimmickTag: 'tether-scrapline',
+    returnArchetype: 'corsair_raider',
+    escortArchetype: 'reaver_pirate',
+    baseReturnLevel: 4,
+    signatureBark: 'BALLAST YARD: that rock had my name on it. It has your hull on it now.',
+  }),
+  Object.freeze({
+    id: 'ace_big_ballast',
+    name: 'Big Ballast',
+    crew: "Sprocket's Own",
+    factionId: 'faction_pitborn',
+    gimmickTag: 'swarm-screen',
+    returnArchetype: 'reaver_pirate',
+    escortArchetype: 'wasp_swarmer',
+    baseReturnLevel: 5,
+    signatureBark: "SPROCKET'S OWN: heavy's honest. You're light.",
+  }),
+  Object.freeze({
+    id: 'ace_ratchet_lu',
+    name: 'Ratchet Lu',
+    crew: "Lu's Fence",
+    factionId: 'faction_pitborn',
+    gimmickTag: 'salvage-surgeon',
+    returnArchetype: 'bruiser_brawler',
+    escortArchetype: 'corsair_raider',
+    baseReturnLevel: 4,
+    signatureBark: "LU'S FENCE: you break it, it's ammunition. You break, you're inventory.",
+  }),
 ]);
 
 // Persistent-cast expansion (living-world vertical): rivals with a memory of being crossed, and
@@ -198,6 +232,32 @@ const RIVAL_ROSTER = Object.freeze([
     escortArchetype: 'wasp_swarmer',
     baseReturnLevel: 4,
     signatureBark: 'LONG WAGER: two turns is all I ever need. You get three. Charitably.',
+  }),
+  // EXP-05 — Concord and Helix rivals. Lusk rides the lawful cutter; the archetype's
+  // factionLawful flag is what keeps a clean pilot off her guns.
+  Object.freeze({
+    id: 'ace_petra_lusk',
+    name: 'Commander Petra Lusk',
+    crew: 'Relief Watch 9',
+    factionId: 'faction_scn',
+    role: 'rival',
+    gimmickTag: 'duelist',
+    returnArchetype: 'customs_cutter',
+    escortArchetype: 'patrol_lawman',
+    baseReturnLevel: 5,
+    signatureBark: 'RELIEF WATCH: hold for weight. I will not ask twice.',
+  }),
+  Object.freeze({
+    id: 'ace_mael_ost',
+    name: 'Adjudicator Mael Ost',
+    crew: 'Adjudication 44-C',
+    factionId: 'faction_helix',
+    role: 'rival',
+    gimmickTag: 'masked-disengager',
+    returnArchetype: 'customs_cutter',
+    escortArchetype: 'corsair_raider',
+    baseReturnLevel: 6,
+    signatureBark: 'ADJUDICATION 44-C: lawful interdiction. Read the invoice.',
   }),
 ]);
 
