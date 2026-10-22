@@ -1779,3 +1779,13 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 **Checked:** bench clean (no tangled, cut-off or offscreen type; primary controls reachable) at 960×540, 1280×720, 1920×1080, 761×800, 820×600 and 860×800, with the control walk at each. Phone unaffected (desktop-only selectors).
 
 **Leftover:** at 1280×720 the context line still wraps "DAYS AGO" onto a second line.
+
+## Save/Load: the context line wraps between readings, not inside one (ui-polish-82)
+
+**Before:** at 1280×720 and 390×844 the etched line over the hull's name broke mid-phrase ("FLOWN 29 / DAYS AGO", "29 DAYS / AGO").
+
+**After (`saveLoad.js` + one rule in `saveLayouts.js`):** each reading (QUICK SAVE, CURRENT, FLOWN 29 DAYS AGO) is its own no-wrap span, so a narrow column breaks only at a `·`. A save notice stays plain text and may wrap. `textContent` is unchanged.
+
+**Checked:** bench clean at 1280×720, 960×540 (still one line), 390×844 and 1920×1080. `fb-repaired-save-notice` and `instrument-hierarchy-six-screens` pass.
+
+**Leftover:** bench stills catch the SAVED / PLAYED readings mid-decrypt (glyph noise), at every size.
