@@ -1810,4 +1810,6 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 
 **Checked:** bench `mission-log` clean at 960×540, 720×460 and 1280×720 (1280×720 pixel-identical to master). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish84/`.
 
+**Review fix:** the wrapped TO end made the 640–760 strip one line taller, so at 700 tall the tick ruler ran past the stage's visible bottom. That block's route spacing is ~19px tighter (host margin 14→6, top pad 4→0, ends gap 6→3, wrap line-height 1.3→1.2); the ruler now ends at 645/648/605 against a visible bottom of 668/665/662 at 640/700/760×700.
+
 **Leftover:** at 390×844 the Missions page shows only the list (no dossier or route) until a row is opened; the bench still flags the hidden route names there.
