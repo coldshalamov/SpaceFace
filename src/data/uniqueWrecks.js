@@ -678,6 +678,139 @@ export const UNIQUE_WRECK_MATERIALIZE_PHASES = Object.freeze(new Set([
 ]));
 export const CERES_ACTIVITY_WRECKS = Object.freeze([deepFreeze(CERES_REFINERY_TENDER)]);
 
+// EXP-09 / EXP-10 — activity wrecks. They are not D1–D16 slots. Each copies placement,
+// scan-gate, and salvage-law from a same-sector donor (or the nearest neighbor) and
+// pays only the named bonus cargo. A fresh bar source keeps the donor's rumor.
+function activityFromDonor(donor, spec) {
+  const sourceRef = `bar.expansion.${spec.id}`;
+  return wreck({
+    wreckClass: donor.wreckClass,
+    scanRequirement: donor.scanRequirement ?? null,
+    scanGate: donor.scanGate ?? null,
+    salvageLaw: donor.salvageLaw ?? null,
+    placement: donor.placement,
+    salvagePool: donor.salvagePool || { cmdty_scrap_metal: 1 },
+    hazardContext: {
+      label: spec.scanLabel,
+      anchorType: 'sector',
+      anchorId: spec.sectorId,
+      zoneId: null,
+      hazardTypes: Array.isArray(donor.hazardContext && donor.hazardContext.hazardTypes)
+        ? [...donor.hazardContext.hazardTypes]
+        : [],
+      placementRule: donor.hazardContext && donor.hazardContext.placementRule,
+      approachGate: donor.scanGate ? donor.hazardContext.approachGate : null,
+    },
+    bearingSourceRef: sourceRef,
+    rumorSources: [{ id: `${spec.id}_dock`, sourceRef, channelId: 'bar' }],
+    provenance: {
+      lossId: `loss_${spec.id}`,
+      incidentId: `incident_${spec.id}`,
+      sourceRef,
+      recordType: 'activity_loss',
+    },
+    decision: {
+      headline: spec.scanLabel,
+      prompt: 'The hull is quiet. Take the hold, or leave it for the next reader.',
+      choices: [
+        {
+          id: 'claim_hold',
+          label: 'TAKE THE HOLD',
+          consequence: 'The bonus cargo comes aboard. Nothing unique leaves with it.',
+          outcome: 'claimed',
+          uniqueDrop: false,
+          bonusCargo: true,
+          credits: 0,
+          repDelta: 0,
+          receiptTitle: 'HOLD TAKEN',
+          receiptDetail: `${spec.name} paid its cargo and nothing else.`,
+          siteStamp: 'HOLD TAKEN',
+        },
+        {
+          id: 'leave_hull',
+          label: 'LEAVE THE HULL',
+          consequence: 'Leave the cargo where it sits.',
+          outcome: 'left',
+          uniqueDrop: false,
+          bonusCargo: false,
+          credits: 0,
+          repDelta: 0,
+          receiptTitle: 'HULL LEFT',
+          receiptDetail: `${spec.name} stays for the next reader.`,
+          siteStamp: 'LEFT IN PLACE',
+        },
+      ],
+    },
+    followup: { id: `${spec.id}_settled`, text: `${spec.scanLabel} SETTLED.` },
+    ...spec,
+  });
+}
+
+const activityDonor = (id) => UNIQUE_WRECKS.find((row) => row.id === id);
+
+export const EXPANSION_ACTIVITY_WRECKS = Object.freeze([
+  activityFromDonor(activityDonor('wreck_isc_lighthouse'), {
+    id: 'wreck_understory_what_the_wreck_became',
+    programSlot: 'E1',
+    name: '*What-the-Wreck-Became*',
+    victimLabel: '*What-the-Wreck-Became*',
+    factionId: 'faction_understory',
+    sectorId: 'sector_charon_expanse',
+    scanLabel: 'GARDEN HULL · STILL GROWING',
+    bonusCargo: [{ commodityId: 'cmdty_spore_catalyst', qty: 1 }],
+  }),
+  activityFromDonor(activityDonor('wreck_nestbreaker'), {
+    id: 'wreck_pitborn_everything_else',
+    programSlot: 'E2',
+    name: '*Everything Else*',
+    victimLabel: '*Everything Else*',
+    factionId: 'faction_pitborn',
+    sectorId: 'sector_sker_haven',
+    scanLabel: 'BALLAST BARGE · TALLY STILL PAINTED',
+    bonusCargo: [{ commodityId: 'cmdty_scrap_metal', qty: 4 }],
+  }),
+  activityFromDonor(activityDonor('wreck_isc_double_entry'), {
+    id: 'wreck_fulfillment_route_88',
+    programSlot: 'E3',
+    name: 'Re-router Route 88',
+    victimLabel: 'Re-router Route 88',
+    factionId: 'faction_fulfillment',
+    sectorId: 'sector_tethys_junction',
+    scanLabel: 'RE-ROUTER · ORDER 0003-PIT STILL ABOARD',
+    bonusCargo: [{ commodityId: 'cmdty_consumer_goods', qty: 2 }],
+  }),
+  activityFromDonor(activityDonor('wreck_mts_regular'), {
+    id: 'wreck_archive_codex_ix',
+    programSlot: 'E4',
+    name: '*Severed Codex, vol. IX*',
+    victimLabel: '*Severed Codex, vol. IX*',
+    factionId: 'faction_archive',
+    sectorId: 'sector_pallas_drift',
+    scanLabel: 'CENSOR FRIGATE · PAGES LOOSE',
+    bonusCargo: [{ commodityId: 'cmdty_classified_salvage', qty: 1 }],
+  }),
+  activityFromDonor(activityDonor('wreck_isc_vigilant'), {
+    id: 'wreck_vael_page_nine',
+    programSlot: 'E5',
+    name: '*Page Nine*',
+    victimLabel: '*Page Nine*',
+    factionId: 'faction_vael',
+    sectorId: 'sector_veil_nebula',
+    scanLabel: 'OVERRIDE TENDER · ADDENDUM ATTACHED',
+    bonusCargo: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }],
+  }),
+  activityFromDonor(activityDonor('wreck_isc_double_entry'), {
+    id: 'wreck_helix_due_diligence',
+    programSlot: 'E6',
+    name: 'Adjudicator *Due Diligence*',
+    victimLabel: 'Adjudicator *Due Diligence*',
+    factionId: 'faction_helix',
+    sectorId: 'sector_dione_lane',
+    scanLabel: 'ADJUDICATOR · TRANSPONDER READS MTS',
+    bonusCargo: [{ commodityId: 'cmdty_classified_salvage', qty: 1 }],
+  }),
+].map((row) => deepFreeze(row)));
+
 // PQ-133.11 — reserved uniques that never ride a wreck: artifacts recovered at authored sites.
 // The Mirrorjaw Pulse is the Forge's own salvage relic (zone_vesta_forge): the ricochet room's
 // bank-and-relay trick baked into one pulse gun. The loot audit folds these into its non-wreck
@@ -695,6 +828,10 @@ for (const def of UNIQUE_WRECKS) {
   for (const drop of def.uniqueDrops) UNIQUE_WRECK_BY_DROP.set(drop.id, def);
 }
 for (const def of CERES_ACTIVITY_WRECKS) {
+  UNIQUE_WRECK_BY_ID.set(def.id, def);
+  for (const source of def.rumorSources) UNIQUE_WRECK_BY_SOURCE.set(source.sourceRef, def);
+}
+for (const def of EXPANSION_ACTIVITY_WRECKS) {
   UNIQUE_WRECK_BY_ID.set(def.id, def);
   for (const source of def.rumorSources) UNIQUE_WRECK_BY_SOURCE.set(source.sourceRef, def);
 }
