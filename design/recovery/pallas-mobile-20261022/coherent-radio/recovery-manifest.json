@@ -1,0 +1,249 @@
+{
+  "baseCommit": "70bb667878b654477d762a9add8d8a7e46f3f4ad",
+  "baseTree": "4369d4835da0464e2834795445af648bacf357c9",
+  "candidateCommit": "bcfdd4730a74c2b79b6e53e3bd7111d6d2ec1dc3",
+  "candidateTree": "707320df59191f596616b9741c79586fd817e386",
+  "files": 61,
+  "byteForByte": true,
+  "patchSha256": "dcdef1d28c72bb5791ead06151b3a32fdf8b957f856eb429bc1253b6ede187a7",
+  "status": "Recovery only; no runtime integration, PR delivery, full-green CI or final gameplay acceptance.",
+  "archiveSha256": "2082f2ad3f5e2c88afa54509f430aa784f0fabb865702d89c19f6d5f75577858",
+  "compressedSha256": "201f4489e4e351dff9bcfbe247ddb5527511039496d99f5738e0ed3b787f651d",
+  "compressedBytes": 579824,
+  "chunks": [
+    {
+      "path": "recovery.tar.xz.b64.000",
+      "bytes": 24576,
+      "sha256": "be29c367d1358112937483ae45977ab6f8873ad5ab3bad80b8a1917e4ad8d8d0",
+      "blob": "1cc4c2e86333c0ec88d74e8d9c19f1d752c86667"
+    },
+    {
+      "path": "recovery.tar.xz.b64.001",
+      "bytes": 24576,
+      "sha256": "b4c05b98621db8934f76ce84154e15b62b94dc30d7c5439e8c3458c72ad9c727",
+      "blob": "0f1363c3a94c83c22e742efecf39a3944dd315c1"
+    },
+    {
+      "path": "recovery.tar.xz.b64.002",
+      "bytes": 24576,
+      "sha256": "6aaa88dcc779df6e26d8f6101e79d7f17e09ec27b5bd1000ebde64af258ee30d",
+      "blob": "c6d13f16a3faaf0a5607a06254811bf9b44f84e0"
+    },
+    {
+      "path": "recovery.tar.xz.b64.003",
+      "bytes": 24576,
+      "sha256": "ae18e3fba852dc8987c06e7845c9ca3cd107d105d78bba581a973059cfbb425f",
+      "blob": "ff24b7928a36c2291c88874fb9af07cafcac633a"
+    },
+    {
+      "path": "recovery.tar.xz.b64.004",
+      "bytes": 24576,
+      "sha256": "dca32fc88aab515c706346950ee76b18d944eb059153bcc022418bb144bced29",
+      "blob": "724e375c6668d6aa4368a8fbecd912177081b915"
+    },
+    {
+      "path": "recovery.tar.xz.b64.005",
+      "bytes": 24576,
+      "sha256": "8bb40918d7978e2676068664b7186971b3a33bbb26a45397107cba0df6269a85",
+      "blob": "9db3ab8af15e4be8341deb22f5e60aaa78e14871"
+    },
+    {
+      "path": "recovery.tar.xz.b64.006",
+      "bytes": 24576,
+      "sha256": "09aa1d34b17210413efe3c9e66fb4f7931dfe4af0fde88cd88237e300e3459fa",
+      "blob": "f875a82a463b6e9896684f1389df4b848392d145"
+    },
+    {
+      "path": "recovery.tar.xz.b64.007",
+      "bytes": 24576,
+      "sha256": "897784cfa8dd727a60e47cd85794bfe6fb740f14ccb4d711098cfabbde828ddc",
+      "blob": "782f85d4882c85c67b74a061d56bb7cec96daa50"
+    },
+    {
+      "path": "recovery.tar.xz.b64.008",
+      "bytes": 24576,
+      "sha256": "b25068e43b6d0f33b6fda73af1599167659da5dc4af5b7857e380eb5d839cdd8",
+      "blob": "5371adcd552ba8962f210ca89650317ee9808dc2"
+    },
+    {
+      "path": "recovery.tar.xz.b64.009",
+      "bytes": 24576,
+      "sha256": "9895ad174614962d19845944092b07eb693e18d8204d57b6b2b4805bc03929ac",
+      "blob": "ab92d40c01d1d09054ec217e822a9112af5bfe8a"
+    },
+    {
+      "path": "recovery.tar.xz.b64.010",
+      "bytes": 24576,
+      "sha256": "a2d59efc5f4ab97d222c08b7b3d1a04b7c3e936884ee44837d963d06f9404f52",
+      "blob": "8c4da449b206a81828750c62ec80cd6a24e6dcb3"
+    },
+    {
+      "path": "recovery.tar.xz.b64.011",
+      "bytes": 24576,
+      "sha256": "c6bd42d7d70567e0642a7e789e466954937a830e92b2c1fa484ac110cb06a31a",
+      "blob": "58daa434a9d54d4b6ca04d02decda7fa5ee9179d"
+    },
+    {
+      "path": "recovery.tar.xz.b64.012",
+      "bytes": 24576,
+      "sha256": "6dbb6ae4421310d99ed381ac93e468f4ad5b1a49885e519d384ed33d7cf6a9f1",
+      "blob": "a16364b4af63e6781821a763f5e4dafffd631ec4"
+    },
+    {
+      "path": "recovery.tar.xz.b64.013",
+      "bytes": 24576,
+      "sha256": "56689b3dac862db5c1686713da18cdcd91f16bbbf030c340948a4f736a2c25b7",
+      "blob": "98bfca8ea341688c7cd6c57be43725c0c27af1fd"
+    },
+    {
+      "path": "recovery.tar.xz.b64.014",
+      "bytes": 24576,
+      "sha256": "f5972ccbf5cb0e8a1ba95560bab1cf5c2bdbe04236c69891bac0d8630814d356",
+      "blob": "a68b7056b38c7ac6eac41e125f7626e7f657181c"
+    },
+    {
+      "path": "recovery.tar.xz.b64.015",
+      "bytes": 24576,
+      "sha256": "d4395835847bdf04232a981404fe2ea9ad88a4680f4f042cac9d40374e1eefc7",
+      "blob": "10fc1e25753a412583d11e77ca2925a6a14ceda7"
+    },
+    {
+      "path": "recovery.tar.xz.b64.016",
+      "bytes": 24576,
+      "sha256": "fa439a873bf96d4396522809215545f64f598bdaf2e77d0d473dadf7bb70d994",
+      "blob": "4f1eb29589551a74b539de2dd2c25b8502720465"
+    },
+    {
+      "path": "recovery.tar.xz.b64.017",
+      "bytes": 24576,
+      "sha256": "9c1e34f3abb73ac6d32c1dfb5c5f30de7c10422d548ebb5e77d8bbf94ed48a3c",
+      "blob": "9dd2c1fedc11d9ca03bbc71d631d767b013481ff"
+    },
+    {
+      "path": "recovery.tar.xz.b64.018",
+      "bytes": 24576,
+      "sha256": "857d181fac5fd7dbae139c62aa225b88ea8308016da8de9ddeeb554eca95d512",
+      "blob": "b59e42660964190d5af05cc40f7d7c6048bf2c57"
+    },
+    {
+      "path": "recovery.tar.xz.b64.019",
+      "bytes": 24576,
+      "sha256": "a7ad03f45d3b33c41739686bcbb544d14337807e9d1e4def73d661817f97ece3",
+      "blob": "16a1fd3349dfd054cc1551c5d88f6e9cdffe33d1"
+    },
+    {
+      "path": "recovery.tar.xz.b64.020",
+      "bytes": 24576,
+      "sha256": "eb4ac4b7733c09a6bbbe7c9b6ed544d14df7cc5a05657d3caf47e87e4189c0f0",
+      "blob": "51f54aa468d8d0814b63b1499ffd3cdfbc63f7a4"
+    },
+    {
+      "path": "recovery.tar.xz.b64.021",
+      "bytes": 24576,
+      "sha256": "fc18df9c105e5d2b61fe7b8e93d9b99cbb46991ad3d3ffba417eef704d88871f",
+      "blob": "ebad3ef1e7cf694cdf258023c66f2a452e6afa4a"
+    },
+    {
+      "path": "recovery.tar.xz.b64.022",
+      "bytes": 24576,
+      "sha256": "2a2fbe16e901fcd81a2a16c021e81cac25d14ccaac3d29f5f94fffc9164e3ce7",
+      "blob": "7ca7dd430a6231ce1bedd03ab19733421aa77f48"
+    },
+    {
+      "path": "recovery.tar.xz.b64.023",
+      "bytes": 24576,
+      "sha256": "480a0239577adc4c3998dca7a1150dec7dcc86d1af592d71841132e1387ec7c3",
+      "blob": "a2d2f5ff4d8b62bf23374b8aab1d673a5a87ab5b"
+    },
+    {
+      "path": "recovery.tar.xz.b64.024",
+      "bytes": 24576,
+      "sha256": "691c123a2bd77c8a0fb399b876bed96d31f5890263902d6a80d1bb1fc15e8075",
+      "blob": "a1333dd048d3375895dd60c75dd801bad76c53b0"
+    },
+    {
+      "path": "recovery.tar.xz.b64.025",
+      "bytes": 24576,
+      "sha256": "f1c788d1de9254d64019f9f00f50826861866b1c54e849dd768086ccec3ab342",
+      "blob": "6ec67168c455acb901f0c6bdd95a32f41d859fbf"
+    },
+    {
+      "path": "recovery.tar.xz.b64.026",
+      "bytes": 24576,
+      "sha256": "2c129dea8247b9e2c2b767b5978c5df6f6b765b1477d92047d664cbf10142815",
+      "blob": "4e461eda2842736de1b433b2089c6b1622bb0964"
+    },
+    {
+      "path": "recovery.tar.xz.b64.027",
+      "bytes": 24576,
+      "sha256": "5a189fdb68be816017c2ab9736fbd60d0402b6c0f52cbd0af74a062403953850",
+      "blob": "a5860f59d9a714041cc2384d64962dcfa7dc5664"
+    },
+    {
+      "path": "recovery.tar.xz.b64.028",
+      "bytes": 24576,
+      "sha256": "b6b8c30a9d04e2c340b7e0cb07eddc0a771d23a34198ceb702fe2d8773eebf70",
+      "blob": "ef0ebca65f93c4d125930cd1b7a2d65aaabf8d05"
+    },
+    {
+      "path": "recovery.tar.xz.b64.029",
+      "bytes": 24576,
+      "sha256": "afc84e54abebdf5ed249a25fd0d7f9d7ea74a10217f0e3b26dfaaa8dcb1376ef",
+      "blob": "a16f8852c4b97c720d5eaaa0ebbed07d2e7b65c5"
+    },
+    {
+      "path": "recovery.tar.xz.b64.030",
+      "bytes": 24576,
+      "sha256": "c1b568a885b9a6dc1db374863036ae98f63c8c9500b031ed0c6fb6de198ad6a6",
+      "blob": "22b58bfa264d95314deba694995d4f69b6e35e77"
+    },
+    {
+      "path": "recovery.tar.xz.b64.031",
+      "bytes": 11245,
+      "sha256": "f7504d7fe9cb3d09fb46c261f2c39b92c87c798d096edc5ef0de0a08e9f8a698",
+      "blob": "fe86d36aafad011fe4cf97cb9d4f191e96b0d1f8"
+    }
+  ],
+  "archiveFiles": [
+    {
+      "path": "HANDOFF.md",
+      "bytes": 5447,
+      "sha256": "79cd7c781a23b09764f2c96c3c0b9abb6e1b86bf32e0fea864030f02a6a82627"
+    },
+    {
+      "path": "commit-object.txt",
+      "bytes": 265,
+      "sha256": "994f5994b3d166411b96e544243bd2e786600debc7c07aedd92aabd8ba3824b0"
+    },
+    {
+      "path": "current-master.patch",
+      "bytes": 974233,
+      "sha256": "dcdef1d28c72bb5791ead06151b3a32fdf8b957f856eb429bc1253b6ede187a7"
+    },
+    {
+      "path": "delta-manifest.json",
+      "bytes": 1311,
+      "sha256": "1e28ae3a9cabafb7e8ad97a05ae8c52fa6a3c261f897d46dc99c824c19e7d9f1"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 35415,
+      "sha256": "b4f7644a0da247e602e78cc434a34783e3831220ffbe9e0ec7e329429b769df6"
+    },
+    {
+      "path": "narrative-and-gate.patch",
+      "bytes": 13847,
+      "sha256": "b9b466fb39448d7de2501f6bf9239149a063cda566e7189e0a68af3f520e7bac"
+    },
+    {
+      "path": "outputs.json",
+      "bytes": 16114,
+      "sha256": "c07e13dc374bfb754197e0f0bd764405fddaa61e391570633ff9d94d7a84a17b"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 318,
+      "sha256": "472cc88ecfa74a4a91ce2ecaeeb732c494fcd3c680a339f547faace536326c6e"
+    }
+  ]
+}

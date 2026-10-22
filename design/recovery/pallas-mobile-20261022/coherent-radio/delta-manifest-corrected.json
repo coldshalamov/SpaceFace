@@ -1,0 +1,38 @@
+{
+  "baseCommit": "84ba49d3ce0261117f8be16a64fe5c0e41471ee4",
+  "baseTree": "ec18e927938b04bb873cde50636a85f5bc768f17",
+  "commit": "bcfdd4730a74c2b79b6e53e3bd7111d6d2ec1dc3",
+  "tree": "707320df59191f596616b9741c79586fd817e386",
+  "paths": [
+    {
+      "path": "src/data/pallasReefCrew.js",
+      "blob": "7d3d6943929c5dcf00969fe3a628deef8d267c54",
+      "sha256": "ff2d315aaf3d8854545893759d51b9a42fa2337446168d5ac2e3de72d374bb7c",
+      "bytes": 7599,
+      "baselineBlob": "592c356a8e3f4640c9c06c98c55c3c06841a5f4c"
+    },
+    {
+      "path": "test/pallas-reef-read-model.test.mjs",
+      "blob": "6a9fc896caebd669042968e656f5ba0a907a2181",
+      "sha256": "d0d941346c38e30bc80d9de4e6176ece0f03c823fb596c391ad5d6ebca64c79a",
+      "bytes": 19803,
+      "baselineBlob": "125b823705368b51c127fba38dba405b0aeb0d42"
+    },
+    {
+      "path": "test/pallas-reef-contact-voice.test.mjs",
+      "blob": "86a13da074974fa04d481deebf38e602b28f2305",
+      "sha256": "531a28d8b322719f2cf2325e24ff2fecb5d4124820e9823533fbd10d4a8e9e84",
+      "bytes": 4977,
+      "baselineBlob": null
+    },
+    {
+      "path": "package.json",
+      "blob": "1e2b5fca7fced178c77df0f55a6baf060ea29fd6",
+      "sha256": "fb6b4bdadee52952426f2796e4e53e789286e9b723c57eaa0b6cb227e7b11b69",
+      "bytes": 82920,
+      "baselineBlob": "b388c1efe822c19641c79c5eb5ede72418fb27bf"
+    }
+  ],
+  "unchangedInputs": 8500,
+  "correction": "Supersedes only baselineBlob fields in the archived delta-manifest.json. They accidentally described e7, not the stated frozen84ba49 base. Runtime source, final hashes, trees and all patches are unchanged."
+}
