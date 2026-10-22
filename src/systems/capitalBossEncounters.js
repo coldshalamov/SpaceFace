@@ -47,6 +47,12 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(!Array.isArray(ids)) throw new TypeError('spawnWing must synchronously return a bounded ID array');
       bindCapitalBossWing(r,c.wing.id,ids);
       for(const id of ids) if(id!=null) store.orders[capitalOrderKey(id)]={fightId:r.fightId,scoreOwnsAttacks:false,suppressStockFire:true};
+      const bark=typeof c.wing?.bark==='string'?c.wing.bark.trim():'';
+      if(bark) {
+        const say=ctx.helpers.voice?.say;
+        if(say) say.call(ctx.helpers.voice,{channel:'chatter',text:bark,kind:'info',ttl:4,id:`capital-wing:${r.fightId}:${c.wing.id}`});
+        else ctx.bus.emit('toast',{text:bark,kind:'info',ttl:4,channel:'capitalBoss'});
+      }
     } else if(c.type==='voice') {
       const say=ctx.helpers.voice?.say;
       if(say) say.call(ctx.helpers.voice,{channel:c.priority,text:c.text,kind:'info',ttl:4,id:`capital:${r.fightId}`});

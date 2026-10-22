@@ -87,7 +87,7 @@ test('the Tollman fight shows a warning before each of its first five attacks', 
   }
   for (const e of emitted) {
     if (e.event === 'capitalBoss:attack') attacks.push(e.payload);
-    if (e.event === 'toast' && e.payload?.channel === 'capitalBoss') receipts.push(e.payload);
+    if (e.event === 'toast' && e.payload?.channel === 'capitalBoss' && e.payload?.castId != null) receipts.push(e.payload);
   }
   assert.ok(attacks.length >= 5, `expected ≥5 attacks, saw ${attacks.length}`);
   assert.ok(receipts.length >= 5, `expected ≥5 warning receipts, saw ${receipts.length}`);

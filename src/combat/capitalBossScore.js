@@ -23,6 +23,7 @@ export function createCapitalBossFight({ encounterId, fightId, bossId, targetId,
   return { version:1,encounterId,fightId:String(fightId),bossId,targetId,mirror:mirror<0?-1:1,
     lastTick:tick-1,clock:0,started:false,suspended:false,terminal:null,actIndex:-1,
     phase:'intro',actStartedAt:0,nextAt:0,sequence:0,castOrdinal:0,cast:null,
+    disarmedSpoken:false,
     wings:{},lastVoiceAt:-1000000,lastOrderSignature:null,lastWingGate:null,
     telemetry:{casts:0,cancelled:0,hits:0,actsSeen:[],actsSkipped:[],suspensions:0} };
 }
@@ -158,9 +159,10 @@ export function stepCapitalBossFight(r,o) {
     if(next!==r.actIndex) enterAct(next);
   }
   if(r.cast && !usable(getBeat(s,r.cast.beatId))) {
-    const reason=blockReason(getBeat(s,r.cast.beatId));
+    const beat=getBeat(s,r.cast.beatId);
+    const reason=blockReason(beat);
     cancel(reason);r.phase='recovery';r.nextAt=r.clock+150;
-    emit('countered',{reason});order('recovery');
+    emit('countered',{reason,beatId:beat.id,title:beat.title,counter:beat.counter});order('recovery');
   }
   if(r.cast) {
     const c=r.cast,b=getBeat(s,c.beatId),age=r.clock-c.startedAt;
@@ -184,7 +186,7 @@ export function stepCapitalBossFight(r,o) {
         if(!c.hitKeys.includes(k) && bodyIntersectsBossShapes(body,c.shapes,age>b.tellTicks)) {
           c.hitKeys.push(k);r.telemetry.hits++;
           emit('damage',{attackerId:boss.id,targetId:body.id,packet:copy(b.packet),origin:{kind:'capital_score',id:c.id}});
-          emit('hit',{castId:c.id,beatId:b.id,targetId:body.id,counter:b.counter});
+          emit('hit',{castId:c.id,beatId:b.id,targetId:body.id,title:b.title,counter:b.counter});
         }
       }
     } else {
@@ -192,7 +194,7 @@ export function stepCapitalBossFight(r,o) {
       if(b.expose) emit('damage',{attackerId:boss.id,targetId:boss.id,
         packet:{channels:{},statuses:[{id:b.expose.status,stacks:1,durationTicks:b.expose.durationTicks}],flags:{}},
         origin:{kind:'capital_exposure',id:c.id}});
-      emit('recovery',{beatId:b.id,durationTicks:b.recoverTicks,exposure:b.expose});order('recovery');wingGate(true);
+      emit('recovery',{beatId:b.id,title:b.title,counter:b.counter,durationTicks:b.recoverTicks,exposure:b.expose});order('recovery');wingGate(true);
     }
   } else if(r.actIndex>=0 && r.clock>=r.nextAt) {
     const act=s.acts[r.actIndex];let selected=null;
@@ -213,7 +215,10 @@ export function stepCapitalBossFight(r,o) {
       r.cast={id:`${r.fightId}:${r.castOrdinal}`,beatId:b.id,startedAt:r.clock,locked:b.trackTicks===0,
         fired:false,hitKeys:[],heading:lockedHeading(boss,target,b,disabled,r.mirror),shapes:resolveBossShapes(b,boss,target,r.mirror)};
       emit('telegraph',telegraph(r,r.cast,b));order('tell',null,r.cast.heading);wingGate(false);
-    } else {r.phase='disabled';r.nextAt=r.clock+30;order('disabled');wingGate(false);}
+    } else {
+      if(!r.disarmedSpoken) { r.disarmedSpoken=true; emit('disarmed',{}); }
+      r.phase='disabled';r.nextAt=r.clock+30;order('disabled');wingGate(false);
+    }
   } else {order(r.phase);wingGate(r.phase==='recovery');}
   r.clock++;return out;
 }
