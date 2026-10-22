@@ -209,6 +209,7 @@ import {
 import {
   materializeBolus,
   tickBolus,
+  captureBolusRib,
 } from './theBolus.js';
 import {
   materializeMachineLayer,
@@ -1795,6 +1796,7 @@ export const world = {
    * Does not touch structural stations/gates/asteroids (authored rematerialize).
    */
   _captureSectorDurableRecords(sectorId, opts = {}) {
+    captureBolusRib(this, sectorId, opts);
     const state = this.state;
     if (sectorId === TETHYS_BLACK_MARKET_RUN.sectorId) this._captureTethysEntranceParcel();
     const bag = ensureWorldRecords(state.world);

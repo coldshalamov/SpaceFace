@@ -3,11 +3,13 @@
 
 import { addCargo } from './cargo.js';
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
-import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { queuePhysicsImpulse, physicsBodyNativeReady, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { Masks } from '../core/entity.js';
 import {
   BOLUS_SECTOR_ID,
+  BOLUS_RIB_STATE, readBolusRibState, migrateBolusRibState,
   BOLUS_ACID_X0,
   BOLUS_ACID_X1,
   planBolusLayout,
@@ -47,6 +49,96 @@ const SMALL = new Set(['louse', 'mite', 'fingerling']);
 const CROOK_AT = { x: 480, z: -1680 };
 const SPUR_AT = { x: 640, z: 80 };
 
+// Runtime binding is object-and-life specific. IDs and copied data are not custody.
+const ribRuntime = new WeakMap();
+function originalRibBinding(binding, entity = binding?.entity) {
+  return !!entity && binding?.entity === entity && binding.id === entity.id
+    && binding.life === entity.occupantGeneration && binding.data === entity.data
+    && binding.tag === entity.data?.bolus && binding.tag.key === 'bolus_rib'
+    && binding.tag.role === 'rib' && entity.homeSectorId === BOLUS_SECTOR_ID;
+}
+function ribOwner(world) {
+  const flags = ensureAlienEcologyState(world.state).sectorFlags;
+  let runtime = ribRuntime.get(world);
+  if (!runtime) {
+    runtime = { flags, binding: null };
+    ribRuntime.set(world, runtime);
+    world.bus?.on?.('entity:destroyed', event => {
+      const r = ribRuntime.get(world), b = r?.binding, e = event?.entity;
+      if (!originalRibBinding(b, e) || event.id !== b.id
+        || r.flags !== ensureAlienEcologyState(world.state).sectorFlags) return;
+      if (event.reason === 'sector_residency') r.binding = null;
+      else if (e.hull <= 0 && !['save_restore', 'run_reset', 'virtualize'].includes(event.reason)) {
+        r.flags[BOLUS_RIB_STATE] = { version: 1, key: 'bolus_rib', status: 'lost' };
+        r.binding = null;
+      }
+    });
+    world.bus?.on?.('save:restoring', () => { runtime.binding = null; });
+    world.bus?.on?.('game:newGame', () => { runtime.binding = null; });
+    world.bus?.on?.('sector:exit', () => captureBolusRib(world, BOLUS_SECTOR_ID));
+    world.bus?.on?.('save:started', () => captureBolusRib(world, BOLUS_SECTOR_ID));
+  }
+  if (runtime.flags !== flags) { runtime.flags = flags; runtime.binding = null; }
+  return runtime;
+}
+
+function ribPose(world, binding) {
+  const e = binding?.entity, s = world.state;
+  if (!originalRibBinding(binding) || e.alive === false || s.entities?.get(e.id) !== e
+    || !presentationAllowsPlayerFacingAction(e, s)) return null;
+  const origin = world._sectorOrigin?.(BOLUS_SECTOR_ID);
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return null;
+  if (s.settings?.gameplay?.physicsBackend !== 'rapier-dynamic') {
+    return { source: 'scalar', x: e.pos.x - origin.x, z: e.pos.z - origin.z,
+      vx: e.vel?.x ?? 0, vz: e.vel?.z ?? 0, rot: e.rot ?? 0, spin: e.angVel ?? 0, hull: e.hull };
+  }
+  const physics = world.registry?.get('physics'), n = physics?._sg02;
+  const r = n?.records?.get(e.id), b = r?.body, spec = resolvePhysicsBodySpec(e);
+  if (!n?.world || physics._nativeRestorePending || physics._nativeRestoreDeferred
+    || !physicsBodyNativeReady(e) || r?.entity !== e || !b || !spec
+    || r.revision !== spec.revision || r.proxyId !== (e.physicsBody?.collisionProxyManifest?.id ?? null)
+    || spec.dynamic !== true || r.spec.dynamic !== true || r.spec.mass !== spec.mass || r.spec.radius !== spec.radius
+    || r.spec.shape !== spec.shape || r.spec.inertiaY !== spec.inertiaY || r.spec.material !== spec.material
+    || r.spec.ccd !== spec.ccd || r.spec.contact !== spec.contact
+    || r._postStepReadTick !== n.tick || !Number.isInteger(n._simTick)
+    || s.tick - n._simTick < 0 || s.tick - n._simTick > 2) return null;
+  try {
+    if (n.world.getRigidBody(b.handle) !== b || !b.isEnabled() || !r.colliders?.length
+      || b.numColliders() !== r.colliders.length || r.colliders.some((c, i) =>
+        !c.isEnabled() || b.collider(i) !== c || n.world.getCollider(c.handle) !== c || c.parent() !== b)) return null;
+    const p = b.translation(), v = b.linvel(), q = b.rotation(), w = b.angvel(), o = n._frameOrigin;
+    if (!o || ![p.x, p.y, p.z, v.x, v.y, v.z, q.x, q.y, q.z, q.w, w.x, w.y, w.z, o.x, o.z].every(Number.isFinite)) return null;
+    return { source: 'native', x: p.x + o.x - origin.x, z: p.z + o.z - origin.z,
+      vx: v.x, vz: v.z, rot: -Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z)),
+      spin: -w.y, hull: e.hull };
+  } catch { return null; }
+}
+
+// Called at world-owned capture boundaries, before residency removal or Save.
+// Only observes the original body's native state; never writes live native motion.
+export function captureBolusRib(world, sectorId = BOLUS_SECTOR_ID, opts = {}) {
+  if (!world?.state || sectorId !== BOLUS_SECTOR_ID) return false;
+  const runtime = ribOwner(world), bound = runtime.binding;
+  if (originalRibBinding(bound) && world.state.entities?.get(bound.id) === bound.entity
+    && Number.isFinite(bound.entity.hull) && bound.entity.hull <= 0) {
+    runtime.flags[BOLUS_RIB_STATE] = { version: 1, key: 'bolus_rib', status: 'lost' };
+    return true;
+  }
+  const pose = ribPose(world, bound);
+  // The world owner supplies this boundary before its synchronous residency sweep.
+  // Keep the binding until the exact old life is gone; a delayed corpse event must
+  // not erase a replacement that was legitimately constructed in the same tick.
+  if (originalRibBinding(bound) && world.state.entities?.get(bound.id) === bound.entity
+    && !world._isProtectedFromResidency?.(bound.entity)
+    && (opts.reason === 'evict' || opts.reason === 'strip_full' && opts.despawnIds?.has(bound.id))) bound.retiring = true;
+  if (!pose) return false;
+  const row = { version: 1, key: 'bolus_rib', status: 'present', ...pose };
+  const valid = readBolusRibState({ [BOLUS_RIB_STATE]: row });
+  if (!valid) return false;
+  runtime.flags[BOLUS_RIB_STATE] = valid;
+  return true;
+}
+
 export function materializeBolus(world, sector, active) {
   if (!world || !sector || sector.id !== BOLUS_SECTOR_ID) return;
   const spawn = world.helpers && world.helpers.spawnEntity;
@@ -54,18 +146,27 @@ export function materializeBolus(world, sector, active) {
   const state = world.state;
   const seed = state && state.meta ? state.meta.seed : 1;
   const flags = state ? ensureAlienEcologyState(state).sectorFlags : {};
+  const runtime = ribOwner(world);
+  if (runtime.binding?.retiring && (state.entities?.get(runtime.binding.entity.id) !== runtime.binding.entity
+    || runtime.binding.entity.alive === false)) runtime.binding = null;
+  const savedRib = migrateBolusRibState(flags);
   const layout = planBolusLayout(seed);
   for (let i = 0; i < layout.length; i++) {
     const spec = bolusResolvedSpec(layout[i], flags);
-    const pos = world._toGlobal({ x: spec.x, z: spec.z }, sector.id);
+    const isRib = spec.key === 'bolus_rib';
+    if (isRib && (runtime.binding || savedRib?.status === 'lost'
+      || Object.hasOwn(flags, BOLUS_RIB_STATE) && !savedRib)) continue;
+    const restored = isRib && savedRib?.status === 'present' ? savedRib : null;
+    const pos = world._toGlobal(restored || { x: spec.x, z: spec.z }, sector.id);
     const ent = spawn({
       type: 'fauna',
       name: spec.name,
       pos,
-      rot: spec.rot || 0,
+      rot: restored?.rot ?? spec.rot ?? 0,
+      ...(restored ? { vel: { x: restored.vx, y: 0, z: restored.vz }, angVel: restored.spin } : {}),
       radius: spec.radius,
       mass: spec.mass,
-      hull: spec.dynamic ? 48 : 900,
+      hull: restored?.hull ?? (spec.dynamic ? 48 : 900),
       hullMax: spec.dynamic ? 48 : 900,
       collides: true,
       collisionMask: Masks.SHIP | Masks.ASTEROID,
@@ -99,6 +200,7 @@ export function materializeBolus(world, sector, active) {
       },
     });
     if (!ent) continue;
+    if (isRib) runtime.binding = { entity: ent, id: ent.id, life: ent.occupantGeneration, data: ent.data, tag: ent.data.bolus };
     if (typeof world._stampHomeSector === 'function') world._stampHomeSector(ent, sector.id);
     if (active && Array.isArray(active.dressing)) {
       active.dressing.push({ id: ent.id, placeId: null, pos: ent.pos, paletteClass: 'alien' });
@@ -186,6 +288,7 @@ function kickHold(flags, simTime) {
 }
 
 export function tickBolus(world, dt) {
+  captureBolusRib(world);
   const state = world && world.state;
   if (!state || !(dt > 0)) return;
   const sectorId = state.world && state.world.currentSectorId;
@@ -388,10 +491,22 @@ export function tickBolus(world, dt) {
     if (tag.role === 'mite' && !flags['bolus:mite'] && Math.hypot(ex - lx, ez - lz) < 36 && speed < F.limp) {
       miteHit = true;
     }
-    if (tag.role === 'rib' && flags['bolus:ribLodged'] !== true
-        && Math.hypot(ex - P.coughAnchorX, ez - P.coughAnchorZ) < P.ribLodge) {
-      flags['bolus:ribLodged'] = true;
-      drive(world, ent, 0, 0);
+    if (tag.role === 'rib' && flags['bolus:ribLodged'] !== true) {
+      const native = state.settings?.gameplay?.physicsBackend === 'rapier-dynamic';
+      const observed = native ? ribPose(world, ribOwner(world).binding) : null;
+      // The old flag means stopped once, not permanently anchored. Re-towing
+      // keeps the flag and the newly observed position, without a second stop.
+      const atCough = native
+        ? observed && ribOwner(world).binding?.entity === ent
+          && Math.hypot(observed.x - P.coughAnchorX, observed.z - P.coughAnchorZ) < P.ribLodge
+        : Math.hypot(ex - P.coughAnchorX, ez - P.coughAnchorZ) < P.ribLodge;
+      if (atCough) {
+        flags['bolus:ribLodged'] = true;
+        if (native) {
+          const mass = resolvePhysicsBodySpec(ent).mass;
+          queuePhysicsImpulse(ent, { x: -observed.vx * mass, y: 0, z: -observed.vz * mass });
+        } else drive(world, ent, 0, 0);
+      }
     }
     if (tag.role === 'baleen' && boosting && Math.hypot(ex - lx, ez - lz) < F.baleenReach
         && !(Number(flags['bolus:baleenUntil']) > simTime)) {

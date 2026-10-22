@@ -360,3 +360,31 @@ export const BOLUS_ZONES = Object.freeze({
     }),
   ]),
 });
+
+// The original Loose Rib, not a second actor. Coordinates are Bolus-local; native
+// observation and legacy migration are deliberately distinct provenance values.
+export const BOLUS_RIB_STATE = 'bolus:originalRib';
+export function readBolusRibState(flags) {
+  const r = flags?.[BOLUS_RIB_STATE];
+  if (!r || r.version !== 1 || r.key !== 'bolus_rib') return null;
+  if (r.status === 'lost') return { version: 1, key: 'bolus_rib', status: 'lost' };
+  if (r.status !== 'present' || !['native', 'scalar', 'legacy-lodged'].includes(r.source)) return null;
+  if (!['x', 'z', 'vx', 'vz', 'rot', 'spin', 'hull'].every(k => Number.isFinite(r[k]))
+    || Math.abs(r.x) > 1e7 || Math.abs(r.z) > 1e7
+    || Math.abs(r.vx) > 1e5 || Math.abs(r.vz) > 1e5
+    || Math.abs(r.rot) > Math.PI + 1e-6 || Math.abs(r.spin) > 1e4
+    || r.hull <= 0 || r.hull > 48) return null;
+  return { version: 1, key: 'bolus_rib', status: 'present', source: r.source,
+    x: r.x, z: r.z, vx: r.vx, vz: r.vz, rot: r.rot, spin: r.spin, hull: r.hull };
+}
+
+export function migrateBolusRibState(flags) {
+  const saved = readBolusRibState(flags);
+  if (saved || Object.hasOwn(flags, BOLUS_RIB_STATE)) return saved;
+  if (flags['bolus:ribLodged'] !== true) return null;
+  // Old saves retained only the historical stop-once flag. No observed pose can
+  // be recovered. This deterministic authored fallback is migration, not evidence.
+  return flags[BOLUS_RIB_STATE] = { version: 1, key: 'bolus_rib', status: 'present',
+    source: 'legacy-lodged', x: BOLUS_COUGH_POS.x, z: BOLUS_COUGH_POS.z,
+    vx: 0, vz: 0, rot: 0, spin: 0, hull: 48 };
+}
