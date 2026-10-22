@@ -323,6 +323,7 @@ export const encounterDirector = {
         // here would mint loss/news while saveSystem is merely clearing the outgoing entity set.
         clearAllPredationBindings(this.state, 'save_restoring');
       });
+      this.bus.on('save:started', () => this._persistentEncounterLifecycle('captureSave'));
       this.bus.on('save:loaded', () => this._onSaveLoaded());
       this.bus.on('save:error', () => { this._saveRestoring = false; });
       // Canonical fresh-run boundary. encounterDirector is intentionally not in the central reset
@@ -392,6 +393,7 @@ export const encounterDirector = {
   },
 
   newGame() {
+    this._persistentEncounterLifecycle('retire', 'new_game');
     this._saveRestoring = false;
     this._routeToScript('convoy', 'lifecycle', { reason: 'new_game' });
     clearAllPredationBindings(this.state, 'new_game');
@@ -672,6 +674,7 @@ export const encounterDirector = {
   },
 
   _onSaveLoaded() {
+    this._persistentEncounterLifecycle('retire', 'save_loaded');
     this._saveRestoring = false;
     const state = this.state;
     const prev = state.encounterDirector;
@@ -686,6 +689,9 @@ export const encounterDirector = {
     }
     state.encounterDirector = fresh;
     ensureNamed(fresh);
+    for (const runtime of SELF_REGISTERED_RUNTIME_BY_ID.values()) {
+      if (typeof runtime.restoreSaved === 'function') runtime.restoreSaved(this, state);
+    }
     this._restorePersistedFreightCustodies();
     this._rebindPersistedFreightCustodyCarriers();
     // Some load owners publish save:loaded before their final entity-index rebuild. Two bounded
@@ -731,6 +737,25 @@ export const encounterDirector = {
       this._planSector(sectorId);
     }
     this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
+  },
+
+  // Opt-in only: other encounters retain their existing lifecycle and persistence owners.
+  _persistentEncounterLifecycle(method, reason) {
+    for (const live of Object.values(this.state.encounterDirector?.live || {})) {
+      const runtime = encounterScriptFor(live);
+      if (typeof runtime?.[method] === 'function') runtime[method](this, live, this.state, reason);
+    }
+  },
+
+  restoreEncounterRecord(item) {
+    const shape = ENCOUNTERS[item.shapeId];
+    const dir = ensureDirectorState(this.state);
+    if (!shape || dir.live[item.encounterId]) return null;
+    const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
+    dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
+    // Reconstruction is not a new firing: no pressure, spawned/telegraph, or fired counter.
+    return live;
   },
 
   _restorePersistedFreightCustodies() {
@@ -2235,6 +2260,7 @@ export const encounterDirector = {
     o = o || {};
     const dir = ensureDirectorState(this.state);
     if (!dir.live[live.id] || live.phase === 'done') return;
+    encounterScriptFor(live)?.retire?.(this, live, this.state, 'terminal');
     const now = this.now();
     live.phase = 'done';
     live.outcome = outcome;
@@ -2306,6 +2332,7 @@ export const encounterDirector = {
   abort(live, reason) {
     const dir = ensureDirectorState(this.state);
     if (!dir.live[live.id] || live.phase === 'done') return;
+    encounterScriptFor(live)?.retire?.(this, live, this.state, 'terminal');
     const now = this.now();
     live.phase = 'done';
     live.outcome = `aborted:${reason}`;
