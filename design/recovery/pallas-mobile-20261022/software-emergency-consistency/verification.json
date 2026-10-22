@@ -1,0 +1,7 @@
+{
+  "patchSha256": "2889dc9cd85793fc85bcd7887059665565050336f617a44bcdf01cfede4fec99",
+  "changedFilesVerified": 3,
+  "baselineCommit": "eb34d11b9b1711380176a75791653542448a0524",
+  "baseSourceTree": "a39bec406979ab10caf2d486a30ba2a6c2c3902e",
+  "method": "Verify baseline Git blob identities, apply exact patch, compare each output SHA256; unchanged bloom and gameState verified byte-identical."
+}

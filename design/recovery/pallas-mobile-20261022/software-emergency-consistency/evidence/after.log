@@ -1,0 +1,22 @@
+✔ static: integrated tier may enable dynRes; bloom exposes setContentScale (9.024823ms)
+✔ content scale changes cause zero bloom render-target reallocations (8.772831ms)
+✔ scaled render uses target-scoped content sub-rects and never touches the canvas viewport (5.124162ms)
+✔ package script check:dynres-target-pool exists (6.354624ms)
+✔ software GPU drops bloom, starts at its floor, and names the cause — without persisting (2.789394ms)
+✔ bloom is cut only when gpu.software === true — integrated and discrete keep it (0.223281ms)
+✔ the toast contract stays frozen and tier floors stay ordered (0.189884ms)
+ Particle system powered by three.quarks. https://quarks.art/
+✔ software initial scale and refresh stay synchronized (enabled=false) (3.403283ms)
+✔ software initial scale and refresh stay synchronized (enabled=true) (0.28688ms)
+✔ software bloom-off survives ordinary settings sync and sector transition without changing settings (1.314588ms)
+✔ hardware initialization, settings, disable-to-full-resolution and bloom remain unchanged (0.979004ms)
+✔ software probe-up and settings disable return through the same runtime sink (1.290563ms)
+✔ software label without software flag cannot suppress hardware bloom (0.47498ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1902.810699

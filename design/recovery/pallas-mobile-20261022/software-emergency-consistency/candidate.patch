@@ -1,0 +1,162 @@
+--- a/src/render/adaptiveQuality.js
++++ b/src/render/adaptiveQuality.js
+@@ -468,6 +468,10 @@
+   const LOWER_COOLDOWN_S = 4.0;   // resize target reallocs are expensive; do them rarely
+ 
+   let enabled = true;
++  // Runtime emergency intent is independent of the player's adaptive-resolution toggle.
++  // Hardware callers omit both options and retain the full-resolution default.
++  const initialScale = Number.isFinite(opts.initialScale) ? clamp(opts.initialScale, floor, 1) : 1;
++  const disabledScale = Number.isFinite(opts.disabledScale) ? clamp(opts.disabledScale, floor, 1) : 1;
+   let scale = 1;
+   let emaMs = 1000 / 60;
+   let lowerCooldown = 0;
+@@ -481,6 +485,9 @@
+     apply(scale);
+   }
+ 
++  // Publish through the same sink as later steps; never leave runtime and controller split.
++  set(initialScale);
++
+   return {
+     setEnabled(on) {
+       enabled = !!on;
+@@ -488,7 +495,7 @@
+       lowerCooldown = 0;
+       raiseTimer = 0;
+       slowTimer = 0;
+-      if (!enabled) set(1); // restore full internal resolution when disabled
++      if (!enabled) set(disabledScale); // hardware restores full resolution; emergency intent survives
+     },
+     update(frameDt) {
+       if (!enabled) return;
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -13232,8 +13232,14 @@
+     // fast, so let it drop much lower (and drop bloom); the real fix is a hardware context, surfaced
+     // to the player below.
+     const dynFloor = dynResFloorForTier(gpu.tier);
++    const softwareEmergency = softwareRendererEmergencyProfile(gpu);
++    this._dynResAllowed = gpu.tier === 'software' || gpu.tier === 'integrated';
++    // Published for renderGraphDynResBlocked (route selection + buffer sizing read it there).
++    state.render.dynResAllowed = this._dynResAllowed;
+     this._adaptive = createAdaptiveResolution({
+       floor: dynFloor,
++      initialScale: softwareEmergency ? softwareEmergency.dynFloor : 1,
++      disabledScale: softwareEmergency ? softwareEmergency.dynFloor : 1,
+       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
+     });
+     // Dynamic resolution is allowed for SOFTWARE (emergency) and INTEGRATED (opt-in setting).
+@@ -13242,9 +13248,6 @@
+     // target pool now pre-allocates at max size and renders into viewport sub-rects via
+     // setContentScale — zero realloc on scale change — so integrated can opt in safely.
+     // Discrete stays off: steady-state already holds the frame budget at full quality.
+-    this._dynResAllowed = gpu.tier === 'software' || gpu.tier === 'integrated';
+-    // Published for renderGraphDynResBlocked (route selection + buffer sizing read it there).
+-    state.render.dynResAllowed = this._dynResAllowed;
+     this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
+ 
+     // Hardware acceleration OFF (CPU WebGL: SwiftShader/llvmpipe): no in-game setting makes that
+@@ -13252,15 +13255,13 @@
+     // Runtime-only (NOT persisted into settings.video) so it recovers on a hardware context after
+     // relaunch. The profile is authored in adaptiveQuality.js (MACH-04) and only exists when
+     // gpu.software === true; every other tier keeps bloom.
+-    const softwareEmergency = softwareRendererEmergencyProfile(gpu);
+     if (softwareEmergency) {
+       state.render.softwareRenderer = true;
+       try { if (this.bloom) this.bloom.setOptions({ bloom: false }); } catch (_) {}
+       // Do not submit the very first flight frame at full hardware resolution and only react after
+       // it freezes. The software-only emergency profile begins at its established adaptive floor;
+       // hardware contexts remain full-resolution and never enter this branch.
+-      state.render.dynResScale = softwareEmergency.dynFloor;
+-      this._applySize();
++      // The controller has already published this floor through its ordinary apply sink.
+       scheduleTimeout(() => {
+         try {
+           bus.emit('toast', { ...softwareEmergency.toast });
+@@ -25781,7 +25782,10 @@
+   },
+ 
+   _normalizePostVideo(vd = {}) {
+-    return resolveEffectiveSectorPost(vd);
++    const effective = resolveEffectiveSectorPost(vd);
++    // A runtime-only emergency override: settings and sector refreshes must not undo it.
++    if (this.state?.render?.gpu?.software === true) effective.bloom = false;
++    return effective;
+   },
+ 
+   // Budget quality presets are sized for integrated-class silicon: they shed the optional
+@@ -25930,6 +25934,9 @@
+ 
+   _applySectorPostTransitionOptions(options) {
+     if (!options) return;
++    // Transition options are renderer-owned scratch state, not persisted player settings.
++    // Guard an already-active transition as well as newly normalized sector targets.
++    if (this.state?.render?.gpu?.software === true) options.bloom = false;
+     if (this.bloom) this.bloom.setOptions(options);
+     if (this.renderer) {
+       this.renderer.toneMappingExposure = Number.isFinite(options.exposure) ? options.exposure : 1;
+--- /dev/null
++++ b/test/software-emergency-consistency.test.mjs
+@@ -0,0 +1,61 @@
++import assert from 'node:assert/strict';
++import {readFileSync} from 'node:fs';
++import test from 'node:test';
++import {render} from '../src/render/renderer.js';
++import {createAdaptiveResolution,dynResFloorForTier,softwareRendererEmergencyProfile} from '../src/render/adaptiveQuality.js';
++const source=readFileSync(new URL('../src/render/renderer.js',import.meta.url),'utf8');
++// Execute the actual production initialization block, with only GL sizing/toast sinks stubbed.
++const initSource=source.slice(source.indexOf('    const dynFloor = dynResFloorForTier(gpu.tier);'),source.indexOf('    // Opt-in integrated-GPU preset suggestion.'));
++const refreshStatement=source.match(/this\._adaptive\.setEnabled\(this\._dynResAllowed === true && vd\.dynamicResolution !== false\);/)[0];
++const refresh=new Function('vd',refreshStatement);
++const init=new Function('state','gpu','createAdaptiveResolution','dynResFloorForTier','softwareRendererEmergencyProfile','scheduleTimeout','bus',initSource);
++function owner(software=true,dynamicResolution=false) {
++ const calls=[]; const o=Object.create(render);
++ o.state={render:{gpu:{software,tier:software?'software':'integrated'},dynResScale:1},settings:{video:{bloom:true,bloomLevels:2,renderScale:1,dynamicResolution}}};
++ o.bloom={setOptions:p=>calls.push({...p})}; o._applySize=()=>{};
++ o._sectorPostTransition={graphOptions:{}};
++ return {o,calls};
++}
++for(const enabled of [false,true]) test(`software initial scale and refresh stay synchronized (enabled=${enabled})`,()=>{
++ const {o}=owner(true,enabled);const before=structuredClone(o.state.settings);
++ init.call(o,o.state,o.state.render.gpu,createAdaptiveResolution,dynResFloorForTier,softwareRendererEmergencyProfile,()=>{},{});
++ assert.equal(o._adaptive.getScale(),.34);
++ assert.equal(o.state.render.dynResScale,.34);
++ for(let i=0;i<100;i++)o._adaptive.update(.1);
++ assert.equal(o._adaptive.getScale(),.34,'slow frames must not increase the emergency scale');
++ for(const next of [false,true,false,false]) {refresh.call(o,{dynamicResolution:next});assert.equal(o._adaptive.getScale(),o.state.render.dynResScale);assert.equal(o.state.render.dynResScale,.34);}
++ assert.deepEqual(o.state.settings,before);
++});
++test('software bloom-off survives ordinary settings sync and sector transition without changing settings',()=>{
++ const {o,calls}=owner();const before=structuredClone(o.state.settings);
++ init.call(o,o.state,o.state.render.gpu,createAdaptiveResolution,dynResFloorForTier,softwareRendererEmergencyProfile,()=>{},{});
++ o._syncPostOptions();assert.equal(calls.at(-1).bloom,false);
++ o._sectorPost={bloomStrengthScale:1.2,exposure:1.02};o._invalidatePostOptionsCache();o._syncPostOptions();assert.equal(calls.at(-1).bloom,false);
++ o._applySectorPostTransitionOptions({bloom:true,bloomStrength:.52,exposure:1});assert.equal(calls.at(-1).bloom,false);
++ assert.deepEqual(o.state.settings,before);
++});
++test('hardware initialization, settings, disable-to-full-resolution and bloom remain unchanged',()=>{
++ const {o,calls}=owner(false,true);
++ init.call(o,o.state,o.state.render.gpu,createAdaptiveResolution,dynResFloorForTier,softwareRendererEmergencyProfile,()=>{},{});
++ assert.equal(o._adaptive.getScale(),1);assert.equal(o.state.render.dynResScale,1);
++ for(let i=0;i<100;i++)o._adaptive.update(.1);
++ assert.ok(o._adaptive.getScale()<1);o._adaptive.setEnabled(false);assert.equal(o.state.render.dynResScale,1);
++ o._syncPostOptions();assert.equal(calls.at(-1).bloom,true);
++ o.state.settings.video.bloom=false;o._syncPostOptions();assert.equal(calls.at(-1).bloom,false);
++});
++
++test('software probe-up and settings disable return through the same runtime sink',()=>{
++ const {o}=owner(true,true);
++ init.call(o,o.state,o.state.render.gpu,createAdaptiveResolution,dynResFloorForTier,softwareRendererEmergencyProfile,()=>{},{});
++ for(let i=0;i<1300;i++)o._adaptive.update(1/60);
++ assert.ok(o._adaptive.getScale()>.34);
++ assert.equal(o.state.render.dynResScale,o._adaptive.getScale());
++ refresh.call(o,{dynamicResolution:false});
++ assert.equal(o.state.render.dynResScale,.34);assert.equal(o._adaptive.getScale(),.34);
++ refresh.call(o,{dynamicResolution:true});assert.equal(o._adaptive.getScale(),.34);
++});
++test('software label without software flag cannot suppress hardware bloom',()=>{
++ const {o,calls}=owner(false,false);o.state.render.gpu.tier='software';
++ o._syncPostOptions();assert.equal(calls.at(-1).bloom,true);
++ o._applySectorPostTransitionOptions({bloom:true});assert.equal(calls.at(-1).bloom,true);
++});

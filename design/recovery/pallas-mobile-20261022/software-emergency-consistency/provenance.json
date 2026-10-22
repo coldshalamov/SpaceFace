@@ -1,0 +1,35 @@
+{
+  "baselineHead": "eb34d11b9b1711380176a75791653542448a0524",
+  "srcSubtree": "a39bec406979ab10caf2d486a30ba2a6c2c3902e",
+  "files": [
+    {
+      "path": "src/render/adaptiveQuality.js",
+      "baselineGitBlob": "725fb177ba29fd0885544a005ea3d1eca8819633",
+      "baselineVerified": true,
+      "candidateSha256": "52639d29049572b4b8c989c8377686498075be700cf10c7f826342053c2c43c7",
+      "changed": true
+    },
+    {
+      "path": "src/render/renderer.js",
+      "baselineGitBlob": "01c00d7f4ee02d5555e352e062ffd11fa7a23879",
+      "baselineVerified": true,
+      "candidateSha256": "586ba0c1866bc76dbf6a940ad39cd7193162cbc1b024b096286453f0da438be9",
+      "changed": true
+    },
+    {
+      "path": "src/render/bloom.js",
+      "baselineGitBlob": "13a1fb2e7075a8e63121cd65b0f3bc3b602ae00b",
+      "baselineVerified": true,
+      "candidateSha256": "a0466aaeadf3b4c58d708cbb8f50ccb9f3a348b3453cf59666bb33dec5cf5dbc",
+      "changed": false
+    },
+    {
+      "path": "src/core/gameState.js",
+      "baselineGitBlob": "ccfcc968fb3a422790bd825abb93326e30e8534e",
+      "baselineVerified": true,
+      "candidateSha256": "8ca8bc23d87a5a5e08d89822617f1d9472cc737925621d5c1cf81c86094a1610",
+      "changed": false
+    }
+  ],
+  "separateOwnership": "PR479 bloom resize-level cap untouched"
+}

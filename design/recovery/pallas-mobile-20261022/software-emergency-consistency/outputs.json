@@ -1,0 +1,17 @@
+[
+  {
+    "path": "src/render/adaptiveQuality.js",
+    "baseSha256": "a10db18cf297d29a06200f741905d04d3152db68e0a0a49e13c3e1dea6158d4f",
+    "sha256": "52639d29049572b4b8c989c8377686498075be700cf10c7f826342053c2c43c7"
+  },
+  {
+    "path": "src/render/renderer.js",
+    "baseSha256": "b7e4d86afdf33f3517d505f4c63e96dec2b0278c68f8da3a7ebf0315affee36c",
+    "sha256": "586ba0c1866bc76dbf6a940ad39cd7193162cbc1b024b096286453f0da438be9"
+  },
+  {
+    "path": "test/software-emergency-consistency.test.mjs",
+    "baseSha256": null,
+    "sha256": "1146cccdbc7d1832158d113bfc2a2a7bb997d0f992afbea36e892fb2f5f66c79"
+  }
+]
