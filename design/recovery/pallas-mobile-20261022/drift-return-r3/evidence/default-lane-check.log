@@ -1,0 +1,2 @@
+[flight-v3] waiting for rapier-dynamic physics authority; no craft motion commands emitted
+PASS: default fixture keeps input absent and world clock unticked

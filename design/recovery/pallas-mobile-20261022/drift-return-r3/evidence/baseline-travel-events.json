@@ -1,0 +1,12 @@
+[
+  {
+    "name": "jump:chargeStart",
+    "p": {
+      "targetSectorId": "sector_sker_haven",
+      "via": "gate",
+      "chargeNeeded": 3,
+      "playerId": 487,
+      "interdictionPool": null
+    }
+  }
+]

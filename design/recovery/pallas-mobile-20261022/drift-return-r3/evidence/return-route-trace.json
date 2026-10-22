@@ -1,0 +1,996 @@
+[
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "idle",
+      "target": null
+    },
+    "label": "original-transferred",
+    "tick": 1441,
+    "at": 24.016666666666584,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20270,
+      "y": 0,
+      "z": 19840
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20270,
+        "z": 19840
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20627.688888549805,
+        "y": 0,
+        "z": 20312.85186767578
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20627.412796020508,
+        "y": 0,
+        "z": 20291.638626098633
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "received",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "idle",
+      "target": null
+    },
+    "label": "departure-attempt",
+    "tick": 1694,
+    "at": 28.23333333333301,
+    "sector": "sector_sker_haven",
+    "jump": "IDLE",
+    "player": {
+      "x": -26375.371204704323,
+      "y": 0,
+      "z": 29615.937789855863
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20270,
+        "z": 19840
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.422637939453,
+        "y": 0,
+        "z": 20257.93377685547
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20636.770584106445,
+        "y": 0,
+        "z": 20256.94123840332
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "idle",
+      "target": null
+    },
+    "label": "outside-native",
+    "tick": 1697,
+    "at": 28.283333333333008,
+    "sector": "sector_sker_haven",
+    "jump": "IDLE",
+    "player": {
+      "x": -26375.371215820312,
+      "y": 0,
+      "z": 29615.93780517578
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -26375.371215820312,
+        "z": 29615.93780517578
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 2.2004677811532654
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.068115234375,
+        "y": 0,
+        "z": 20257.1455078125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20636.884765625,
+        "y": 0,
+        "z": 20256.51953125
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": false,
+      "identity": false,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "idle",
+      "target": null
+    },
+    "label": "returned-native",
+    "tick": 1953,
+    "at": 32.549999999999436,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22695.556518554688,
+      "y": 0,
+      "z": 23202.39013671875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22695.556518554688,
+        "z": 23202.39013671875
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": -0.8876806243039614
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20613.007080078125,
+        "y": 0,
+        "z": 20245.4970703125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20642.7939453125,
+        "y": 0,
+        "z": 20221.8203125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": false,
+      "identity": false,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": true,
+      "status": "boosting",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 1956,
+    "at": 32.59999999999943,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22695.264770507812,
+      "y": 0,
+      "z": 23202.02197265625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22695.264770507812,
+        "z": 23202.02197265625
+      },
+      "vel": {
+        "x": 11.331095695495605,
+        "z": -14.3336763381958
+      },
+      "yaw": -0.8991637391218648
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20613.059814453125,
+        "y": 0,
+        "z": 20245.4619140625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20642.697265625,
+        "y": 0,
+        "z": 20221.46875
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": false,
+      "identity": false,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": true,
+      "status": "boosting",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 2556,
+    "at": 42.599999999998865,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -21494.2626953125,
+      "y": 0,
+      "z": 21287.9892578125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -21494.2626953125,
+        "z": 21287.9892578125
+      },
+      "vel": {
+        "x": 119.04336547851562,
+        "z": -268.04132080078125
+      },
+      "yaw": -0.884513575159387
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.26953125,
+        "y": 0,
+        "z": 20238.701171875
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20590.900390625,
+        "y": 0,
+        "z": 20197.15234375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": true,
+      "status": "cruising",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 3156,
+    "at": 52.599999999998296,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20444.326656341553,
+      "y": 0,
+      "z": 19850.18896484375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20444.326656341553,
+        "z": 19850.18896484375
+      },
+      "vel": {
+        "x": 101.25233459472656,
+        "z": -43.331504821777344
+      },
+      "yaw": -0.10963991164147147
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20550.705139160156,
+        "y": 0,
+        "z": 20192.2919921875
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20564.338928222656,
+        "y": 0,
+        "z": 20221.502044677734
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "arrived",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 3756,
+    "at": 62.59999999999773,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20271.012771606445,
+      "y": 0,
+      "z": 19838.375732421875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20271.012771606445,
+        "z": 19838.375732421875
+      },
+      "vel": {
+        "x": 1.913081407546997,
+        "z": 0.2483087182044983
+      },
+      "yaw": 0.22730387462212
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20434.716064453125,
+        "y": 0,
+        "z": 20102.358428955078
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20418.45704650879,
+        "y": 0,
+        "z": 20134.651306152344
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "arrived",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 4356,
+    "at": 72.59999999999717,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20267.94073486328,
+      "y": 0,
+      "z": 19837.247680664062
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20267.94073486328,
+        "z": 19837.247680664062
+      },
+      "vel": {
+        "x": 0.22173047065734863,
+        "z": -0.14290018379688263
+      },
+      "yaw": 0.22730387462212
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20278.69175720215,
+        "y": 0,
+        "z": 19996.244232177734
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20238.127212524414,
+        "y": 0,
+        "z": 19969.566345214844
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "arrived",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 4956,
+    "at": 82.5999999999966,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20265.74346923828,
+      "y": 0,
+      "z": 19835.929321289062
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20265.74346923828,
+        "z": 19835.929321289062
+      },
+      "vel": {
+        "x": 0.22173047065734863,
+        "z": -0.14290018379688263
+      },
+      "yaw": 0.22730387462212
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20117.73812866211,
+        "y": 0,
+        "z": 19856.753845214844
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20106.7255859375,
+        "y": 0,
+        "z": 19809.663635253906
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "arrived",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 5556,
+    "at": 92.59999999999603,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20263.54620361328,
+      "y": 0,
+      "z": 19834.610961914062
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20263.54620361328,
+        "z": 19834.610961914062
+      },
+      "vel": {
+        "x": 0.22173047065734863,
+        "z": -0.14290018379688263
+      },
+      "yaw": 0.22730387462212
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -19988.739868164062,
+        "y": 0,
+        "z": 19693.667541503906
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -19977.74609375,
+        "y": 0,
+        "z": 19653.218322753906
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "arrived",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 6156,
+    "at": 102.59999999999546,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20261.34893798828,
+      "y": 0,
+      "z": 19833.292602539062
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20261.34893798828,
+        "z": 19833.292602539062
+      },
+      "vel": {
+        "x": 0.22173047065734863,
+        "z": -0.14290018379688263
+      },
+      "yaw": 0.22730387462212
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -19915.678100585938,
+        "y": 0,
+        "z": 19577.427612304688
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -19892.886474609375,
+        "y": 0,
+        "z": 19557.12677001953
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "arrived",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "resume",
+    "tick": 6756,
+    "at": 112.59999999999489,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20259.15167236328,
+      "y": 0,
+      "z": 19831.974243164062
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20259.15167236328,
+        "z": 19831.974243164062
+      },
+      "vel": {
+        "x": 0.22173047065734863,
+        "z": -0.14290018379688263
+      },
+      "yaw": 0.22730387462212
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -19941.126098632812,
+        "y": 0,
+        "z": 19591.383728027344
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -19908.57861328125,
+        "y": 0,
+        "z": 19592.57598876953
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "stationDiagnostic": {
+      "id": 1,
+      "record": true,
+      "identity": true,
+      "enabled": true,
+      "specDynamic": false,
+      "colliders": 22,
+      "partition": 1
+    },
+    "autopilot": {
+      "active": false,
+      "status": "arrived",
+      "target": {
+        "x": -20270,
+        "z": 19840
+      }
+    },
+    "label": "final",
+    "tick": 7103,
+    "at": 118.3833333333279,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20257.880920410156,
+      "y": 0,
+      "z": 19831.211791992188
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20257.880920410156,
+        "z": 19831.211791992188
+      },
+      "vel": {
+        "x": 0.22173047065734863,
+        "z": -0.14290018379688263
+      },
+      "yaw": 0.22730387462212
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -19930.481567382812,
+        "y": 0,
+        "z": 19600.928161621094
+      },
+      "generation": 98
+    },
+    "section": null,
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "intaken",
+    "pool": {},
+    "intake": {
+      "receiptId": "pallas:reef:light-cut:drift-intake",
+      "sourceKey": "salvage-point:pallas:reef:light-cut",
+      "stationId": "station_drift",
+      "sectionRecordId": "pallas:reef:light-section",
+      "carrierRecordId": "pallas:reef:carrier",
+      "pool": {
+        "cmdty_scrap_metal": 3,
+        "cmdty_salvage_electronics": 1
+      },
+      "at": 118.3833333333279
+    }
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "path": "test/fixtures/pallas-drift-native.mjs",
+    "sha256": "03dc28a4b1295b70413d270e418330de364912eee60b8da60f6606eb553e5021",
+    "baseSha256": "13426a9833d745e7626711634894e51a26db492b64c86c26b0b3c4f208de9b15"
+  },
+  {
+    "path": "test/pallas-drift-return.test.mjs",
+    "sha256": "544bcf7453471a457c2aa97e00ade3859fda3eed3e274167824a2928ad3ec124",
+    "baseSha256": null
+  }
+]

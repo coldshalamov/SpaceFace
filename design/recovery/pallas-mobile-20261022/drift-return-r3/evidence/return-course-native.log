@@ -1,0 +1,25 @@
+✖ production jump departure and return retain original carrier custody, then resume Drift intake (106808.69044ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108853.484562
+
+✖ failing tests:
+
+test at test/pallas-drift-return.test.mjs:8:1
+✖ production jump departure and return retain original carrier custody, then resume Drift intake (106808.69044ms)
+  AssertionError [ERR_ASSERTION]: genuine returned native custody must resume physical intake
+      at TestContext.<anonymous> (file://<candidate>/test/pallas-drift-return.test.mjs:39:25)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

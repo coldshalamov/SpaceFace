@@ -1,0 +1,7 @@
+{
+  "patchSha256": "52e8c23e1d487cc2601aed18376641af2941f9789d8dd2c3e593cbfc0db80aee",
+  "changedFilesVerified": 2,
+  "baselineRecoveryCommit": "79dfc3737d9ea7bdafa72f877f948a38bd7af94d",
+  "baselineSourceManifestSha256": "a2df082009f30cfac7c4f8121b3378dd4cd12e22c6ec720a365f937c733f3233",
+  "method": "Restore exact patch against r2 fixture SHA256; verify both resulting file hashes. No gameplay source edits. Recorded native test evidence preserved, not rerun during publication."
+}

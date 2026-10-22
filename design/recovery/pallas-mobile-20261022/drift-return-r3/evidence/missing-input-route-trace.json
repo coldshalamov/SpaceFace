@@ -1,0 +1,1960 @@
+[
+  {
+    "label": "original-transferred",
+    "tick": 1441,
+    "at": 24.016666666666584,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20270,
+      "y": 0,
+      "z": 19840
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20270,
+        "z": 19840
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20627.688888549805,
+        "y": 0,
+        "z": 20312.85186767578
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20627.412796020508,
+        "y": 0,
+        "z": 20291.638626098633
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "received",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "label": "departure-attempt",
+    "tick": 1694,
+    "at": 28.23333333333301,
+    "sector": "sector_sker_haven",
+    "jump": "IDLE",
+    "player": {
+      "x": -26375.371204704323,
+      "y": 0,
+      "z": 29615.937789855863
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20270,
+        "z": 19840
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.422637939453,
+        "y": 0,
+        "z": 20257.93377685547
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20636.770584106445,
+        "y": 0,
+        "z": 20256.94123840332
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "outside-native",
+    "tick": 1697,
+    "at": 28.283333333333008,
+    "sector": "sector_sker_haven",
+    "jump": "IDLE",
+    "player": {
+      "x": -26375.371215820312,
+      "y": 0,
+      "z": 29615.93780517578
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -26375.371215820312,
+        "z": 29615.93780517578
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 2.2004677811532654
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.068115234375,
+        "y": 0,
+        "z": 20257.1455078125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20636.884765625,
+        "y": 0,
+        "z": 20256.51953125
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "returned-native",
+    "tick": 1953,
+    "at": 32.549999999999436,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22695.556518554688,
+      "y": 0,
+      "z": 23202.39013671875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22695.556518554688,
+        "z": 23202.39013671875
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": -0.8876806243039614
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20613.007080078125,
+        "y": 0,
+        "z": 20245.4970703125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20642.7939453125,
+        "y": 0,
+        "z": 20221.8203125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 1954,
+    "at": 32.5666666666661,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22695.522216796875,
+      "y": 0,
+      "z": 23202.34716796875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22695.522216796875,
+        "z": 23202.34716796875
+      },
+      "vel": {
+        "x": 3.7925803661346436,
+        "z": -4.765649318695068
+      },
+      "yaw": -0.8917919033804341
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20613.024658203125,
+        "y": 0,
+        "z": 20245.4853515625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20642.76171875,
+        "y": 0,
+        "z": 20221.703125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 2554,
+    "at": 42.56666666666553,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24056.86114501953,
+      "y": 0,
+      "z": 21387.90380859375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24056.86114501953,
+        "z": 21387.90380859375
+      },
+      "vel": {
+        "x": -293.5206604003906,
+        "z": 76.47146606445312
+      },
+      "yaw": 2.9246800175930123
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.275390625,
+        "y": 0,
+        "z": 20238.724609375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20591.08203125,
+        "y": 0,
+        "z": 20197.08203125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 3154,
+    "at": 52.566666666664965,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24245.679473876953,
+      "y": 0,
+      "z": 23706.72900390625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24245.679473876953,
+        "z": 23706.72900390625
+      },
+      "vel": {
+        "x": 278.357421875,
+        "z": 124.31959533691406
+      },
+      "yaw": 0.4579907234171779
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20612.95703125,
+        "y": 0,
+        "z": 20235.7919921875
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20567.95166015625,
+        "y": 0,
+        "z": 20240.08984375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 3754,
+    "at": 62.566666666664396,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22641.325805664062,
+      "y": 0,
+      "z": 22005.63623046875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22641.325805664062,
+        "z": 22005.63623046875
+      },
+      "vel": {
+        "x": -140.36892700195312,
+        "z": -272.3623046875
+      },
+      "yaw": -2.0087172027420372
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20610.2666015625,
+        "y": 0,
+        "z": 20236.2109375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20599.18505859375,
+        "y": 0,
+        "z": 20269.62109375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 4354,
+    "at": 72.56666666666383,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24968.589813232422,
+      "y": 0,
+      "z": 22333.0478515625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24968.589813232422,
+        "z": 22333.0478515625
+      },
+      "vel": {
+        "x": -60.88787078857422,
+        "z": 301.88629150390625
+      },
+      "yaw": 1.807767748659771
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20610.384765625,
+        "y": 0,
+        "z": 20239.4111328125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20637.65771484375,
+        "y": 0,
+        "z": 20254.73828125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 4954,
+    "at": 82.56666666666327,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22936.688354492188,
+      "y": 0,
+      "z": 23537.6240234375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22936.688354492188,
+        "z": 23537.6240234375
+      },
+      "vel": {
+        "x": 237.36131286621094,
+        "z": -198.66317749023438
+      },
+      "yaw": -0.6589289168925047
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20613.546875,
+        "y": 0,
+        "z": 20239.4111328125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20643.57568359375,
+        "y": 0,
+        "z": 20216.37109375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 5554,
+    "at": 92.5666666666627,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -23774.758666992188,
+      "y": 0,
+      "z": 21316.322265625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -23774.758666992188,
+        "z": 21316.322265625
+      },
+      "vel": {
+        "x": -311.0286560058594,
+        "z": 6.842092037200928
+      },
+      "yaw": -3.125639413233553
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.443603515625,
+        "y": 0,
+        "z": 20239.3369140625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20617.77392578125,
+        "y": 0,
+        "z": 20193.73046875
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 6154,
+    "at": 102.56666666666213,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24512.044094085693,
+      "y": 0,
+      "z": 23585.80712890625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24512.044094085693,
+        "z": 23585.80712890625
+      },
+      "vel": {
+        "x": 248.37503051757812,
+        "z": 189.9571075439453
+      },
+      "yaw": 0.6908528270668131
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20616.443603515625,
+        "y": 0,
+        "z": 20238.2451171875
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20585.26025390625,
+        "y": 0,
+        "z": 20200.50390625
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 6754,
+    "at": 112.56666666666156,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22508.245849609375,
+      "y": 0,
+      "z": 22267.9033203125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22508.245849609375,
+        "z": 22267.9033203125
+      },
+      "vel": {
+        "x": -75.62078857421875,
+        "z": -305.0425109863281
+      },
+      "yaw": -1.7758539917445848
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20615.13671875,
+        "y": 0,
+        "z": 20237.876953125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20569.00341796875,
+        "y": 0,
+        "z": 20227.17578125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 7354,
+    "at": 122.56666666666099,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24908.348663330078,
+      "y": 0,
+      "z": 22043.791015625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24908.348663330078,
+        "z": 22043.791015625
+      },
+      "vel": {
+        "x": -132.21864318847656,
+        "z": 286.86669921875
+      },
+      "yaw": 2.040627605036377
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20862.1796875,
+        "y": 0,
+        "z": 20221.083984375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20895.689697265625,
+        "y": 0,
+        "z": 20206.28125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 7954,
+    "at": 132.5666666666643,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -23165.634399414062,
+      "y": 0,
+      "z": 23726.8896484375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -23165.634399414062,
+        "z": 23726.8896484375
+      },
+      "vel": {
+        "x": 283.9090270996094,
+        "z": -142.0833282470703
+      },
+      "yaw": -0.42606642370522047
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20874.2978515625,
+        "y": 0,
+        "z": 20229.5068359375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20837.983642578125,
+        "y": 0,
+        "z": 20249.4765625
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 8554,
+    "at": 142.56666666667226,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -23476.246704101562,
+      "y": 0,
+      "z": 21311.66943359375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -23476.246704101562,
+        "z": 21311.66943359375
+      },
+      "vel": {
+        "x": -312.0218811035156,
+        "z": -66.7896728515625
+      },
+      "yaw": -2.8927778260736714
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20866.694091796875,
+        "y": 0,
+        "z": 20229.28125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20844.326416015625,
+        "y": 0,
+        "z": 20186.125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 9154,
+    "at": 152.56666666668022,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24749.209594726562,
+      "y": 0,
+      "z": 23402.0615234375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24749.209594726562,
+        "z": 23402.0615234375
+      },
+      "vel": {
+        "x": 202.9120635986328,
+        "z": 248.3603515625
+      },
+      "yaw": 0.9237126695327154
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20867.53369140625,
+        "y": 0,
+        "z": 20222.380859375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20897.555908203125,
+        "y": 0,
+        "z": 20198.7109375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 9754,
+    "at": 162.56666666668818,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22437.510986328125,
+      "y": 0,
+      "z": 22561.048828125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22437.510986328125,
+        "z": 22561.048828125
+      },
+      "vel": {
+        "x": -3.2674973011016846,
+        "z": -322.3302917480469
+      },
+      "yaw": -1.5429926974804087
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20871.647216796875,
+        "y": 0,
+        "z": 20222.380859375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20892.235595703125,
+        "y": 0,
+        "z": 20245.62109375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 10354,
+    "at": 172.56666666669614,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24779.776641845703,
+      "y": 0,
+      "z": 21769.30810546875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24779.776641845703,
+        "z": 21769.30810546875
+      },
+      "vel": {
+        "x": -199.85592651367188,
+        "z": 255.00033569335938
+      },
+      "yaw": 2.2734879127755696
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20872.691650390625,
+        "y": 0,
+        "z": 20225.6220703125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20847.891845703125,
+        "y": 0,
+        "z": 20254.4453125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 10954,
+    "at": 182.5666666667041,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -23438.931396484375,
+      "y": 0,
+      "z": 23861.560546875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -23438.931396484375,
+        "z": 23861.560546875
+      },
+      "vel": {
+        "x": 316.9753723144531,
+        "z": -74.59951782226562
+      },
+      "yaw": -0.19320315981212718
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20870.64794921875,
+        "y": 0,
+        "z": 20228.2998046875
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20824.489501953125,
+        "y": 0,
+        "z": 20222.1953125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 11554,
+    "at": 192.56666666671205,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -23177.24462890625,
+      "y": 0,
+      "z": 21377.6259765625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -23177.24462890625,
+        "z": 21377.6259765625
+      },
+      "vel": {
+        "x": -295.59271240234375,
+        "z": -140.51219177246094
+      },
+      "yaw": -2.6599154079369693
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20866.95703125,
+        "y": 0,
+        "z": 20228.2998046875
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20838.226806640625,
+        "y": 0,
+        "z": 20188.75
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 12154,
+    "at": 202.56666666672,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24942.459930419922,
+      "y": 0,
+      "z": 23162.54443359375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24942.459930419922,
+        "z": 23162.54443359375
+      },
+      "vel": {
+        "x": 143.7209014892578,
+        "z": 295.8937683105469
+      },
+      "yaw": 1.1565761230698637
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20866.096923828125,
+        "y": 0,
+        "z": 20227.91796875
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20871.329345703125,
+        "y": 0,
+        "z": 20182.92578125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 12754,
+    "at": 212.56666666672797,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22436.309326171875,
+      "y": 0,
+      "z": 22870.4013671875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22436.309326171875,
+        "z": 22870.4013671875
+      },
+      "vel": {
+        "x": 73.03433227539062,
+        "z": -322.45721435546875
+      },
+      "yaw": -1.3101256315891057
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20866.34130859375,
+        "y": 0,
+        "z": 20227.0986328125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20896.603759765625,
+        "y": 0,
+        "z": 20203.8671875
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 13354,
+    "at": 222.56666666673593,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24586.42775630951,
+      "y": 0,
+      "z": 21525.845703125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24586.42775630951,
+        "z": 21525.845703125
+      },
+      "vel": {
+        "x": -259.8050537109375,
+        "z": 207.17755126953125
+      },
+      "yaw": 2.506352262264202
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20869.395263671875,
+        "y": 0,
+        "z": 20227.0986328125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20901.557861328125,
+        "y": 0,
+        "z": 20231.9921875
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 13954,
+    "at": 232.56666666674388,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -23743.550659179688,
+      "y": 0,
+      "z": 23931.1865234375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -23743.550659179688,
+        "z": 23931.1865234375
+      },
+      "vel": {
+        "x": 333.97149658203125,
+        "z": 0.5780512094497681
+      },
+      "yaw": 0.03966415702634324
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20872.979248046875,
+        "y": 0,
+        "z": 20227.0986328125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20886.683837890625,
+        "y": 0,
+        "z": 20254.9375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 14554,
+    "at": 242.56666666675184,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22894.509155273438,
+      "y": 0,
+      "z": 21514.45361328125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22894.509155273438,
+        "z": 21514.45361328125
+      },
+      "vel": {
+        "x": -261.70404052734375,
+        "z": -210.1682891845703
+      },
+      "yaw": -2.4270467434733747
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20874.107177734375,
+        "y": 0,
+        "z": 20227.4130859375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20861.494384765625,
+        "y": 0,
+        "z": 20260.31640625
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 15154,
+    "at": 252.5666666667598,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -25078.301788330078,
+      "y": 0,
+      "z": 22877.66162109375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -25078.301788330078,
+        "z": 22877.66162109375
+      },
+      "vel": {
+        "x": 73.37844848632812,
+        "z": 329.244384765625
+      },
+      "yaw": 1.3894422734214367
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20874.107177734375,
+        "y": 0,
+        "z": 20228.3017578125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20838.900634765625,
+        "y": 0,
+        "z": 20249.44140625
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 15754,
+    "at": 262.56666666675653,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22508.748779296875,
+      "y": 0,
+      "z": 23179.30224609375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22508.748779296875,
+        "z": 23179.30224609375
+      },
+      "vel": {
+        "x": 149.163818359375,
+        "z": -304.42138671875
+      },
+      "yaw": -1.0772573240263614
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20873.191162109375,
+        "y": 0,
+        "z": 20228.3759765625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20827.559814453125,
+        "y": 0,
+        "z": 20228.34765625
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 16354,
+    "at": 272.56666666674744,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24335.52766418457,
+      "y": 0,
+      "z": 21329.18408203125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24335.52766418457,
+        "z": 21329.18408203125
+      },
+      "vel": {
+        "x": -308.18218994140625,
+        "z": 145.2005615234375
+      },
+      "yaw": 2.739218097378761
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20869.90966796875,
+        "y": 0,
+        "z": 20228.3759765625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20826.478759765625,
+        "y": 0,
+        "z": 20207.25390625
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 16954,
+    "at": 282.56666666673834,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24063.885498046875,
+      "y": 0,
+      "z": 23927.8505859375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24063.885498046875,
+        "z": 23927.8505859375
+      },
+      "vel": {
+        "x": 332.97491455078125,
+        "z": 79.58091735839844
+      },
+      "yaw": 0.27252735577665865
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20866.39404296875,
+        "y": 0,
+        "z": 20228.3759765625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20835.844970703125,
+        "y": 0,
+        "z": 20190.61328125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 17554,
+    "at": 292.56666666672925,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22645.338012695312,
+      "y": 0,
+      "z": 21718.39697265625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22645.338012695312,
+        "z": 21718.39697265625
+      },
+      "vel": {
+        "x": -211.28695678710938,
+        "z": -271.5030517578125
+      },
+      "yaw": -2.1941824164265906
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20864.155029296875,
+        "y": 0,
+        "z": 20228.2626953125
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20850.762939453125,
+        "y": 0,
+        "z": 20182.24609375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 18154,
+    "at": 302.56666666672015,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -25145.560302734375,
+      "y": 0,
+      "z": 22561.2802734375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -25145.560302734375,
+        "z": 22561.2802734375
+      },
+      "vel": {
+        "x": -4.6947784423828125,
+        "z": 345.67034912109375
+      },
+      "yaw": 1.6223037408208656
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20864.155029296875,
+        "y": 0,
+        "z": 20228.0458984375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20866.583251953125,
+        "y": 0,
+        "z": 20182.24609375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 18754,
+    "at": 312.56666666671106,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22654.774780273438,
+      "y": 0,
+      "z": 23469.75830078125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22654.774780273438,
+        "z": 23469.75830078125
+      },
+      "vel": {
+        "x": 220.71197509765625,
+        "z": -268.2520446777344
+      },
+      "yaw": -0.8443940577886772
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20864.155029296875,
+        "y": 0,
+        "z": 20227.8447265625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20882.098876953125,
+        "y": 0,
+        "z": 20189.1953125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 19354,
+    "at": 322.56666666670196,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24038.532958984375,
+      "y": 0,
+      "z": 21193.20703125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24038.532958984375,
+        "z": 21193.20703125
+      },
+      "vel": {
+        "x": -341.5723571777344,
+        "z": 71.88771057128906
+      },
+      "yaw": 2.972083512241128
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20864.155029296875,
+        "y": 0,
+        "z": 20227.8359375
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20892.680908203125,
+        "y": 0,
+        "z": 20202.6484375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 19954,
+    "at": 332.56666666669287,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24382.219955444336,
+      "y": 0,
+      "z": 23847.990234375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24382.219955444336,
+        "z": 23847.990234375
+      },
+      "vel": {
+        "x": 313.1039733886719,
+        "z": 158.05099487304688
+      },
+      "yaw": 0.5053941854140671
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20865.526123046875,
+        "y": 0,
+        "z": 20227.7431640625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20899.149658203125,
+        "y": 0,
+        "z": 20216.7109375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 20554,
+    "at": 342.5666666666838,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22445.876953125,
+      "y": 0,
+      "z": 21981.06884765625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22445.876953125,
+        "z": 21981.06884765625
+      },
+      "vel": {
+        "x": -146.4098358154297,
+        "z": -320.557373046875
+      },
+      "yaw": -1.9613143049584592
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20868.035888671875,
+        "y": 0,
+        "z": 20227.7431640625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20900.523681640625,
+        "y": 0,
+        "z": 20230.7734375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 21154,
+    "at": 352.5666666666747,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -25136.9833984375,
+      "y": 0,
+      "z": 22230.05517578125
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -25136.9833984375,
+        "z": 22230.05517578125
+      },
+      "vel": {
+        "x": -86.38399505615234,
+        "z": 343.3861083984375
+      },
+      "yaw": 1.8551695427121961
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20871.551513671875,
+        "y": 0,
+        "z": 20227.7431640625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20898.259033203125,
+        "y": 0,
+        "z": 20243.1015625
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 21754,
+    "at": 362.5666666666656,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22869.5634765625,
+      "y": 0,
+      "z": 23724.18310546875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22869.5634765625,
+        "z": 23724.18310546875
+      },
+      "vel": {
+        "x": 283.3368225097656,
+        "z": -215.14639282226562
+      },
+      "yaw": -0.611524862555414
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20875.067138671875,
+        "y": 0,
+        "z": 20227.7431640625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20894.743408203125,
+        "y": 0,
+        "z": 20250.1328125
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 22354,
+    "at": 372.5666666666565,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -23710.32049560547,
+      "y": 0,
+      "z": 21128.6796875
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -23710.32049560547,
+        "z": 21128.6796875
+      },
+      "vel": {
+        "x": -357.32781982421875,
+        "z": -9.090904235839844
+      },
+      "yaw": -3.0782365539265313
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20878.404296875,
+        "y": 0,
+        "z": 20227.7431640625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20890.366455078125,
+        "y": 0,
+        "z": 20256.49609375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "resume",
+    "tick": 22954,
+    "at": 382.5666666666474,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -24680.143341064453,
+      "y": 0,
+      "z": 23692.505859375
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -24680.143341064453,
+        "z": 23692.505859375
+      },
+      "vel": {
+        "x": 274.5899963378906,
+        "z": 231.44200134277344
+      },
+      "yaw": 0.7382558420764577
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20880.162109375,
+        "y": 0,
+        "z": 20227.7431640625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20881.577392578125,
+        "y": 0,
+        "z": 20256.49609375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  },
+  {
+    "label": "final",
+    "tick": 23553,
+    "at": 392.54999999997165,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -22308.84326171875,
+      "y": 0,
+      "z": 22296.10791015625
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -22308.84326171875,
+        "z": 22296.10791015625
+      },
+      "vel": {
+        "x": -68.65565490722656,
+        "z": -354.197021484375
+      },
+      "yaw": -1.7243382762090835
+    },
+    "carrier": {
+      "id": 496,
+      "pos": {
+        "x": -20881.9169921875,
+        "y": 0,
+        "z": 20227.7431640625
+      },
+      "generation": 98
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20872.802978515625,
+        "y": 0,
+        "z": 20256.49609375
+      }
+    },
+    "nativeStation": null,
+    "phase": "interrupted",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null
+  }
+]

@@ -1,0 +1,118 @@
+[
+  {
+    "label": "original-transferred",
+    "tick": 1441,
+    "at": 24.016666666666584,
+    "sector": "sector_pallas_drift",
+    "jump": "IDLE",
+    "player": {
+      "x": -20270,
+      "y": 0,
+      "z": 19840
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20270,
+        "z": 19840
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "carrier": {
+      "id": 495,
+      "pos": {
+        "x": -20627.688888549805,
+        "y": 0,
+        "z": 20312.85186767578
+      },
+      "generation": 97
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20627.412796020508,
+        "y": 0,
+        "z": 20291.638626098633
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "received",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  },
+  {
+    "label": "departure-attempt",
+    "tick": 2161,
+    "at": 36.016666666665905,
+    "sector": "sector_pallas_drift",
+    "jump": "CHARGING",
+    "player": {
+      "x": -20270,
+      "y": 0,
+      "z": 19840
+    },
+    "nativePlayer": {
+      "pos": {
+        "x": -20270,
+        "z": 19840
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "carrier": {
+      "id": 495,
+      "pos": {
+        "x": -20568.451652526855,
+        "y": 0,
+        "z": 20190.049346923828
+      },
+      "generation": 97
+    },
+    "section": {
+      "id": 468,
+      "pos": {
+        "x": -20599.3111038208,
+        "y": 0,
+        "z": 20168.49444580078
+      }
+    },
+    "nativeStation": {
+      "pos": {
+        "x": -19860,
+        "z": 19600
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "yaw": 0
+    },
+    "phase": "hauling",
+    "pool": {
+      "cmdty_salvage_electronics": 1,
+      "cmdty_scrap_metal": 3
+    },
+    "intake": null,
+    "ready": false
+  }
+]

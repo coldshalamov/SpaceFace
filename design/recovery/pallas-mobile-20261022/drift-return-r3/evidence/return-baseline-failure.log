@@ -1,0 +1,31 @@
+✖ production jump departure and return retain original carrier custody, then resume Drift intake (14148.87284ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16838.626573
+
+✖ failing tests:
+
+test at test/pallas-drift-return.test.mjs:8:1
+✖ production jump departure and return retain original carrier custody, then resume Drift intake (14148.87284ms)
+  AssertionError [ERR_ASSERTION]: ordinary production travel must advance its real world clock
+  + actual - expected
+  
+  + 'sector_pallas_drift'
+  - 'sector_sker_haven'
+            ^
+  
+      at TestContext.<anonymous> (file://<candidate>/test/pallas-drift-return.test.mjs:23:37)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'sector_pallas_drift',
+    expected: 'sector_sker_haven',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,74 @@
+[
+  {
+    "name": "jump:chargeStart",
+    "p": {
+      "targetSectorId": "sector_sker_haven",
+      "via": "gate",
+      "chargeNeeded": 3,
+      "playerId": 487,
+      "interdictionPool": null
+    }
+  },
+  {
+    "name": "jump:start",
+    "p": {
+      "from": "sector_pallas_drift",
+      "to": "sector_sker_haven",
+      "via": "gate",
+      "fromPos": {
+        "x": -20270,
+        "z": 19840
+      },
+      "playerId": 487
+    }
+  },
+  {
+    "name": "jump:arrive",
+    "p": {
+      "sectorId": "sector_sker_haven",
+      "interdicted": false,
+      "ambushCount": 0,
+      "toPos": {
+        "x": -26375.371204704323,
+        "z": 29615.937789855863
+      },
+      "playerId": 487
+    }
+  },
+  {
+    "name": "jump:chargeStart",
+    "p": {
+      "targetSectorId": "sector_pallas_drift",
+      "via": "gate",
+      "chargeNeeded": 3,
+      "playerId": 487,
+      "interdictionPool": null
+    }
+  },
+  {
+    "name": "jump:start",
+    "p": {
+      "from": "sector_sker_haven",
+      "to": "sector_pallas_drift",
+      "via": "gate",
+      "fromPos": {
+        "x": -26375.371215820312,
+        "z": 29615.93780517578
+      },
+      "playerId": 487
+    }
+  },
+  {
+    "name": "jump:arrive",
+    "p": {
+      "sectorId": "sector_pallas_drift",
+      "interdicted": false,
+      "ambushCount": 0,
+      "toPos": {
+        "x": -22695.55650488883,
+        "z": 23202.39037862772
+      },
+      "playerId": 487
+    }
+  }
+]
