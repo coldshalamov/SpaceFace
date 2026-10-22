@@ -7,6 +7,10 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### Row 443 — clean flight plane guard (2026-10-22)
+
+`b87c9f1822`: production input/flight/physics pilot follows Helios spawn → Ceres gate → Ceres station at seed 4242. Before/after both reach Ceres with identical input hashes, 2,642 measured ticks, zero unwanted contacts and 18.713 obstruction-seconds/minute. The radius-capsule obstruction estimate is conservative and separate from real contact receipts. Three focused tests cover episode deduplication, passable decoration, deliberate targets/tows and refusal of incomplete or incomparable results. Run `node scripts/check-clean-flight-plane.mjs --out=.devshots/clean-flight-plane/before.json`, then `--baseline=.devshots/clean-flight-plane/before.json --out=.devshots/clean-flight-plane/after.json`. No rendered or performance claim.
+
 ### Row 455 — plan-engine dispatch (2026-10-22)
 
 `a1074cde7a`: the read-only dispatcher returns the due refill cycle below 25 BUILD/ART/FIX rows or 30 catalog lines, and C8 above 120 rows or 200 lines. Defects, stale work and reviews retain precedence; the cycle log preserves both C1 slots. The integrity check reports counts and cycle. Focused front-door tests: 16 passed; plan integrity passed. No gameplay change or automatic minting.

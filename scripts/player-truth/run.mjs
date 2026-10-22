@@ -563,9 +563,15 @@ async function runOne(args, arena, extra = {}) {
   else log('chrome child not captured; exit code unavailable');
   const page = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1 });
   const pageErrors = [];
+  const consoleErrors = [];
   const browserNotes = [];
   const note = (line) => { if (browserNotes.length < 12) browserNotes.push(String(line).replace(/\s+/g, ' ').trim().slice(0, 180)); };
   page.on('pageerror', (e) => pageErrors.push(String(e.message || e).slice(0, 200)));
+  // Presentation catches its own frame exceptions before opening the recovery screen.
+  // Keep those errors too: pageerror alone otherwise loses the cause of a failed route.
+  page.on('console', (message) => {
+    if (message.type() === 'error' && consoleErrors.length < 24) consoleErrors.push(message.text().slice(0, 1600));
+  });
   browser.on('disconnected', () => note('browser disconnected'));
   page.on('crash', () => note('page crashed'));
   page.on('close', () => note('page closed'));
@@ -994,7 +1000,7 @@ async function runOne(args, arena, extra = {}) {
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
     rowStorage: trace.rowStorage || null,
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: RMB select a reachable hostile, track its visible lead pip or hull while firing, hold 230–400 u range, burn away from packs, chase a fresh public radar bearing with sustained forward thrust and aligned boost, reposition after selection misses, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · public gameplay admission; no probe-owned invulnerability toggle`,
-    stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
+    stopReason, pageErrors: pageErrors.slice(0, 10), consoleErrors, arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
     sessionSignals: seenSignals, chromePid: chrome.pid, chromePgid: chrome.pgid, chromeSid: chrome.sid, chromeOwnSession: chrome.ownGroup,
   });
   trace.playWatch = playWatch.snapshot();
