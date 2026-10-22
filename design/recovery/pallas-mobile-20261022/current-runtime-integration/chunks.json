@@ -1,0 +1,113 @@
+{
+  "format": "pallas-recovery-chunks-v1",
+  "archive": "pallas-runtime-integration-20261022.zip",
+  "archive_bytes": 1441825,
+  "archive_sha256": "40274b742e78621a0a5034348ea193e1c04bcfdde26451cb6bad6b67491224fb",
+  "chunks": [
+    {
+      "path": "payload-000.b64",
+      "bytes": 131073,
+      "sha256": "a1acb78fc9a73244440d08ad549059c6642ef12409870d4d95013ed379da634c",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "8bd5c3b24dabceca3c43fdf5741e95393398ee529bc3a9be9cf00c6c55ef611b"
+    },
+    {
+      "path": "payload-001.b64",
+      "bytes": 131073,
+      "sha256": "a9f5fa223d64f5b35df14ced02ba42e5c973e4106e478983f3d7f5bd160622bb",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "1faea6c7973c9df8af62d99bc056986f09fa966bc749025ee31bc078d16c1429"
+    },
+    {
+      "path": "payload-002.b64",
+      "bytes": 131073,
+      "sha256": "f50a61cef5144ad3c2e9731d1b8aab01e5763bdb6488ee7efa41abe8dff9d46a",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "d3f587c3d8f12b73a2449e9e282dc1c1d1a4ee9e818fc5e6e73c6c683fbdf643"
+    },
+    {
+      "path": "payload-003.b64",
+      "bytes": 131073,
+      "sha256": "f59d35c13f721d535ea637a39f03255e5ae5b7f2d37f42baabb16ff107d64437",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "9ab2958e2a3e5cef3004de1510212402ec01c87797cdf564f57d75b26166044b"
+    },
+    {
+      "path": "payload-004.b64",
+      "bytes": 131073,
+      "sha256": "1d5c29de3a282324e381711b3f5de7742adff765312f525abce07bf208759850",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "07fe59c2b230f895ade344ae6479a59986192cd73b879c1adc176418e5edf81e"
+    },
+    {
+      "path": "payload-005.b64",
+      "bytes": 131073,
+      "sha256": "064487c40c32690484510a64ff72a63b47b75060595dc32aa91668e58629965f",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "95eb2887fbcee42ec18f4a406c22546ecf6abf0db5ca369387e3b847053b6054"
+    },
+    {
+      "path": "payload-006.b64",
+      "bytes": 131073,
+      "sha256": "10d44c5a0c2b06dd5e52970dc0146112c59582ec7397e0d22033a57dcb242acc",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "75f2868aba23c4fadd8a4705ca3bca7b7ea510d88f74ceb12fca382f9f093622"
+    },
+    {
+      "path": "payload-007.b64",
+      "bytes": 131073,
+      "sha256": "f8cbce219ffc83d41f04e00ad1ca321b85f8bb7df564534d98afecb10ed14110",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "0d6b1815cc5c901cb4ec0d29a9c4e2abf3f594c6137a73d8630b0e412be7203c"
+    },
+    {
+      "path": "payload-008.b64",
+      "bytes": 131073,
+      "sha256": "b86bd3dfcd9edd46d9e99805cdfbe3bd9885d970a8785d360a10f8b85e39f09e",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "f62f243f4e5837e95fb57c1ff714d0031f66ad6361f51f6e720894486a002cfa"
+    },
+    {
+      "path": "payload-009.b64",
+      "bytes": 131073,
+      "sha256": "d14ff3a2e204f24e2fb1a947d69c2803bbc537c0a610535926ed867b21e529b1",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "b17c7d6378b886f133e68c719e951f3eddfd559326a9e977b3452f1b3791d6c9"
+    },
+    {
+      "path": "payload-010.b64",
+      "bytes": 131073,
+      "sha256": "590d51b6a9f829e9e4dd3078ea61f4d6778a7e9ef6feb0ac6bea62f10164301a",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "1ca38839ac87d33c9e073f2bd54c6a9e910c65fb293379db7666bcf62424ec5b"
+    },
+    {
+      "path": "payload-011.b64",
+      "bytes": 131073,
+      "sha256": "43d68245245026669ec30cce962297bf47c3ed970926184b897e9f1a5ef593e2",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "974d3d5d9c63389f46839f0e154216142624c275e12d88e68f6b034dc2344019"
+    },
+    {
+      "path": "payload-012.b64",
+      "bytes": 131073,
+      "sha256": "e5b32ccf6ea4fecb43a1ca7772fc29ccf9fe423ef01afb86102c1aa0a10149bb",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "6f0204aa4b361a2329fdbb5232d9dbab24e8f3e5a752733cd46747f3f8c06c37"
+    },
+    {
+      "path": "payload-013.b64",
+      "bytes": 131073,
+      "sha256": "b4b8d6c7552f2fcd100c240532f8f351302a1f485ff30b4c62d8c54caea61afe",
+      "decoded_bytes": 98304,
+      "decoded_sha256": "9741a3542edfead93b789ddb5b120bbfcbba8a3677461e5bfd27aad0f77bc57b"
+    },
+    {
+      "path": "payload-014.b64",
+      "bytes": 87429,
+      "sha256": "e9d08aeae71ef1fdce619e6d2142950bdee3246db9b0dd37f94be93d37795272",
+      "decoded_bytes": 65569,
+      "decoded_sha256": "ef1d573160f260d1684a025a9f06aaec03d70e607b627071eecdead8a0e3b6c8"
+    }
+  ]
+}
