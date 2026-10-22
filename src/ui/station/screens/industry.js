@@ -149,6 +149,7 @@ export function createIndustryScreen(ctx) {
   // ORRERY (design/frontend/ORRERY.md §6 Industry): the blueprint as a production chain -- inputs
   // as nodes, beams into the process, one beam out to the product, pulses when the line can run.
   let chain = null;
+  let footRo = null; // re-seats the key when the rows above the chain reflow without resizing it
   const stopDecrypt = [];
   let visible = false, disposed = false, generation = 0, landingTimer = 0;
 
@@ -298,6 +299,7 @@ export function createIndustryScreen(ctx) {
 
   /** The chain beside the words, the verb as the Lamp Key, the labels resolving. */
   function composeStage(bp, state, r, canBuild, queue = null, progress = 0) {
+    if (footRo) { footRo.disconnect(); footRo = null; }
     if (chain) { chain.dispose(); chain = null; }
     const fab = stageEl.querySelector('.sx-fab');
     if (!fab) return;
@@ -308,12 +310,21 @@ export function createIndustryScreen(ctx) {
     if (heroes && heroes.parentNode) heroes.parentNode.insertBefore(host, heroes); else fab.appendChild(host);
     // the one verb stands on the product's axis: the chain reports its geometry and the key follows
     const foot = fab.querySelector('.sx-fab-foot');
-    chain = createChainBeam(host, { onLayout: (g) => {
-      if (!foot) return;
+    // the chain only re-lays out when its own box resizes, but the words above it (the name, the
+    // description) can reflow after it measured and move it down; the key then sat on 'per run'
+    let lastG = null;
+    const seatFoot = () => {
+      if (!foot || !lastG || !host.isConnected) return;
       const fr = fab.getBoundingClientRect(); const hr = host.getBoundingClientRect();
-      fab.style.setProperty('--fab-foot-x', `${Math.round(hr.left - fr.left + g.xFoot)}px`);
-      fab.style.setProperty('--fab-foot-y', `${Math.round(hr.top - fr.top + g.yFoot)}px`);
-    } });
+      fab.style.setProperty('--fab-foot-x', `${Math.round(hr.left - fr.left + lastG.xFoot)}px`);
+      fab.style.setProperty('--fab-foot-y', `${Math.round(hr.top - fr.top + lastG.yFoot)}px`);
+    };
+    if (footRo) { footRo.disconnect(); footRo = null; }
+    if (foot && typeof ResizeObserver === 'function') {
+      footRo = new ResizeObserver(() => seatFoot());
+      for (const el of fab.querySelectorAll(':scope > .sx-fab-head__cat, :scope > .sx-fab-head__name, :scope > .sx-fab-head__desc')) footRo.observe(el);
+    }
+    chain = createChainBeam(host, { onLayout: (g) => { lastG = g; seatFoot(); } });
     const blocker = !queue ? industryBlocker(bp, r) : null;
     chain.set({
       inputs: Object.keys(bp.inputs || {}).map((id) => {
@@ -583,6 +594,7 @@ export function createIndustryScreen(ctx) {
     if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
     hold = null;
     pendingRender = false;
+    if (footRo) { footRo.disconnect(); footRo = null; }
     if (chain) { chain.dispose(); chain = null; }
   }
 
