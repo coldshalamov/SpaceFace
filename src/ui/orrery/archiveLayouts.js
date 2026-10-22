@@ -1110,6 +1110,40 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__trace-read { bottom:-40px; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-clock__of { display:none; }
 }
+/* under 640 wide (phones and narrow windows): hang|stage stayed two columns, so the 360px hang
+   pushed the stage off the right edge and the chosen contract's dossier never showed. Stack them:
+   a capped hang, then the dossier scrolling beneath it with the dial and verbs in one row. */
+@media (max-width:639px) {
+  ${ML} { --ml-dial:120px; grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title" "hang" "stage" "foot" !important; row-gap:12px !important; }
+  ${ML} > .k-title { grid-area:title !important; }
+  ${ML} > .k-hang.sf-mlog-body { grid-area:hang !important; max-height:min(330px, 40vh) !important; min-height:0 !important; padding-bottom:6px !important; }
+  ${ML} > .k-stage.sf-mlog-stage { grid-area:stage !important; min-height:0 !important; width:auto !important; padding:12px 0 18px !important;
+    border-top:1px solid rgb(${BONE} / .18);
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important; }
+  ${ML} > .k-foot { grid-area:foot !important; }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none; column-gap:0; min-height:0; }
+  ${ML} .sf-mlog-card > .k-hero { display:none !important; }
+  ${ML} .sf-mlog-card > h2.k-t-title { margin-top:4px !important; font-size:20px !important; line-height:1.12 !important; }
+  ${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { margin-top:6px !important; font-size:14px !important; line-height:1.4 !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms { margin-top:8px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { grid-template-columns:104px minmax(0, 1fr) !important; column-gap:10px; padding-top:3px !important; padding-bottom:3px !important; }
+  ${ML} .sf-mlog-side { grid-column:1 !important; grid-row:auto !important; flex-direction:row; align-items:center; justify-content:flex-start; gap:12px 20px; margin:16px 0 0 !important; }
+  ${ML} .sf-mlog-side > .sf-mlog-btns { margin:0 !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { align-items:flex-start; gap:8px; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:flex-start; }
+  ${ML} .orr-mdial__clock-read { bottom:-20px; }
+  ${ML} .orr-mdial__trace-read { bottom:-38px; }
+  ${ML} .ml-clock__of { display:none; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:30px; padding:0 8px; box-sizing:border-box; }
+  ${ML} .ml-route { --ml-disc:44px; padding-top:0; }
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:4px !important; }
+  ${ML} .ml-route__mid { grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  ${ML} .ml-route__from { grid-row:2; grid-column:1; }
+  ${ML} .ml-route__to { grid-row:2; grid-column:2; }
+  ${ML} :is(.ml-route__from, .ml-route__to) { font-size:13px !important; white-space:normal; text-overflow:clip; line-height:1.25; }
+  ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
+}
 @media (forced-colors:active) {
   ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }
 }
