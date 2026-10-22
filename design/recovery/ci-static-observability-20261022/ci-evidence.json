@@ -1,0 +1,166 @@
+[
+  {
+    "id": 119811969256,
+    "run_id": 39775114111,
+    "workflow_name": "check",
+    "head_branch": "dot/settings-schema-parity-20261022",
+    "run_url": "https://api.github.com/repos/coldshalamov/SpaceFace/actions/runs/39775114111",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOS-7Bl88AAAAb5VmQ6A",
+    "head_sha": "47a4a8f55c36f472ec73081acae63332fb497575",
+    "url": "https://api.github.com/repos/coldshalamov/SpaceFace/actions/jobs/119811969256",
+    "html_url": "https://github.com/coldshalamov/SpaceFace/actions/runs/39775114111/job/119811969256",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-22T12:02:10Z",
+    "started_at": "2026-10-22T12:02:12Z",
+    "completed_at": "2026-10-22T12:11:18Z",
+    "name": "static (1)",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-22T12:02:13Z",
+        "completed_at": "2026-10-22T12:02:13Z"
+      },
+      {
+        "name": "Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-22T12:02:13Z",
+        "completed_at": "2026-10-22T12:04:06Z"
+      },
+      {
+        "name": "Setup Node.js",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-22T12:04:06Z",
+        "completed_at": "2026-10-22T12:04:14Z"
+      },
+      {
+        "name": "Install dependencies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-22T12:04:14Z",
+        "completed_at": "2026-10-22T12:04:44Z"
+      },
+      {
+        "name": "Validate immutable thruster history",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-10-22T12:04:44Z",
+        "completed_at": "2026-10-22T12:04:45Z"
+      },
+      {
+        "name": "Validate visual continuity",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-10-22T12:04:45Z",
+        "completed_at": "2026-10-22T12:04:49Z"
+      },
+      {
+        "name": "Validate planar physics and attachment residency",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-10-22T12:04:49Z",
+        "completed_at": "2026-10-22T12:04:51Z"
+      },
+      {
+        "name": "Validate native restore transactions",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-10-22T12:04:51Z",
+        "completed_at": "2026-10-22T12:04:56Z"
+      },
+      {
+        "name": "Validate Orchard worker Continue",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 9,
+        "started_at": "2026-10-22T12:04:56Z",
+        "completed_at": "2026-10-22T12:05:06Z"
+      },
+      {
+        "name": "Validate Ceres physical workfleet and Continue",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 10,
+        "started_at": "2026-10-22T12:05:06Z",
+        "completed_at": "2026-10-22T12:10:35Z"
+      },
+      {
+        "name": "Validate Ceres authored assets and exact census",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-10-22T12:10:35Z",
+        "completed_at": "2026-10-22T12:11:16Z"
+      },
+      {
+        "name": "Validate program control plane",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 12,
+        "started_at": "2026-10-22T12:11:16Z",
+        "completed_at": "2026-10-22T12:11:16Z"
+      },
+      {
+        "name": "Run static check group (shard 1 of 3)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 13,
+        "started_at": "2026-10-22T12:11:16Z",
+        "completed_at": "2026-10-22T12:11:16Z"
+      },
+      {
+        "name": "Upload check report",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 14,
+        "started_at": "2026-10-22T12:11:16Z",
+        "completed_at": "2026-10-22T12:11:16Z"
+      },
+      {
+        "name": "Post Setup Node.js",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 27,
+        "started_at": "2026-10-22T12:11:16Z",
+        "completed_at": "2026-10-22T12:11:16Z"
+      },
+      {
+        "name": "Post Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 28,
+        "started_at": "2026-10-22T12:11:16Z",
+        "completed_at": "2026-10-22T12:11:17Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 29,
+        "started_at": "2026-10-22T12:11:17Z",
+        "completed_at": "2026-10-22T12:11:17Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/coldshalamov/SpaceFace/check-runs/119811969256",
+    "labels": [
+      "ubuntu-latest"
+    ],
+    "runner_id": 1000365927,
+    "runner_name": "GitHub Actions 1000365927",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  }
+]

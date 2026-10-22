@@ -1,0 +1,6 @@
+PASS: 512 setup/precheck/cancellation condition cases; existing YAML semantics unchanged outside two fields
+PASS: final aggregation static=success: exit 0
+PASS: final aggregation static=failure: exit 1
+PASS: final aggregation static=skipped: exit 1
+PASS: final aggregation static=cancelled: exit 1
+PASS: precheck failure and independent check failure remain job failures (no continue-on-error)

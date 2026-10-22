@@ -1,0 +1,38 @@
+✔ classifies an assertion failure (10.553386ms)
+✔ classifies a deterministic candidate with expected-envelope diffs as a stale golden (0.372149ms)
+✔ treats a code-zero compare with expected-envelope diffs as non-passing verification debt (1.277585ms)
+✔ does not call an actual deterministic divergence a stale golden (1.829259ms)
+✔ classifies a stale source pin (0.378451ms)
+✔ classifies an explicit browser launch failure (7.98314ms)
+✔ classifies a connection reset as Electron-specific only with Electron context (0.618267ms)
+✔ classifies runner-enforced timeouts ahead of their kill signal (0.283824ms)
+✔ classifies a child signal and retains the specific signal (0.197775ms)
+✔ classifies a performance budget regression (0.312168ms)
+✔ classifies missing required evidence (0.265052ms)
+✔ classifies an explicitly detected orphan process (1.380462ms)
+✔ does not infer an orphan process from a port conflict alone (13.272875ms)
+✔ keeps an unrecognized nonzero exit honest (0.220956ms)
+✔ reports a flake only when repeated attempts contain both pass and failure (0.179862ms)
+✔ expands the broad check chain into a complete independently runnable matrix (201.549032ms)
+✔ recursively expands composite npm scripts so nested failures do not hide sibling checks (1.152248ms)
+✔ builds a stable ignored artifact path from the run time and command id (0.222407ms)
+✔ builds a command result with classification, duration, and artifact path (0.708548ms)
+✔ builds a schema-v2 complete diagnostic matrix with compact failing entries (0.418959ms)
+✔ shards partition the whole matrix exactly: union is the matrix, and no two shards overlap (203.887098ms)
+✔ shard selection is stable across calls and preserves matrix order (11.669602ms)
+✔ rejects a shard argument that cannot name a partition (1.875994ms)
+✔ groups partition the whole matrix exactly, and every command is classified (192.753906ms)
+✔ an unrecognized command shape fails closed instead of defaulting into static (0.865695ms)
+✔ classifies by what a command actually runs, not by what its name suggests (1.157939ms)
+✔ the browser group holds the whole Playwright/Chromium surface and resolves to real leaves (14.188204ms)
+✔ --list-groups output is stable and orders groups canonically (12.027491ms)
+✔ a named group and shard are recorded in the report so a failure names its job (1.949433ms)
+✔ rejects an unknown group name rather than silently running nothing (11.030071ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2321.733872

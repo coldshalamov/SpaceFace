@@ -1,0 +1,20 @@
+--- a/.github/workflows/check.yml
++++ b/.github/workflows/check.yml
+@@ -70,6 +70,7 @@
+           cache: 'npm'
+ 
+       - name: Install dependencies
++        id: install_dependencies
+         run: npm ci
+ 
+       # Keep the VFX contract independently observable even when an unrelated program-control
+@@ -119,7 +120,9 @@
+       # position, so the shards take roughly the same wall time. The shard COUNT lives in exactly one
+       # place — `strategy.matrix.shard` above — and `strategy.job-total` reads it back, so adding a
+       # runner is a one-line edit.
++      # Run independent checks after failed prechecks, but never after failed setup or cancellation.
+       - name: Run static check group (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
++        if: ${{ !cancelled() && steps.install_dependencies.outcome == 'success' }}
+         run: node scripts/check-ci-report.mjs --group=static --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+ 
+       - name: Upload check report
