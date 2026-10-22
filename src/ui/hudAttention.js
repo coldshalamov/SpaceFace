@@ -77,7 +77,85 @@ export function admitReceipt({
   if (combat && k !== 'error' && channel !== 'stunt' && channel !== 'capitalBoss' && !COMBAT_KEEP.test(line)) {
     return { admit: false, reason: 'combat-quiet' };
   }
+  // D240: the flight glass's never tier — legends, authority receipts, jurisdiction notes and
+  // debug stat strings belong to docked screens, not the in-flight deck.
+  if (flightGlassNever(k, line)) return { admit: false, reason: 'tier-never' };
   return { admit: true, reason: 'receipt' };
+}
+
+// ── Glass in three tiers (row 494 / D240) ────────────────────────────────────
+// ALWAYS: hull/shield arc at the ship + cooldown pips. WHEN IT MATTERS: one aimed-target line.
+// NEVER in flight: colour legends, authority receipts, jurisdiction notes, debug stat strings.
+const FLIGHT_NEVER_KINDS = new Set(['legend', 'authority', 'jurisdiction', 'debug']);
+const FLIGHT_DEBUG_STAT = /[·•].*·|VULN|[A-Z]—/;
+
+/** True while `kind`/`text` names a surface the flight glass never shows. */
+export function flightGlassNever(kind, text) {
+  if (FLIGHT_NEVER_KINDS.has(String(kind || ''))) return true;
+  const line = String(text || '');
+  return line.length > 0 && FLIGHT_DEBUG_STAT.test(line);
+}
+
+// ── Glass that breathes (row 474 / RC-GLASS) ─────────────────────────────────
+/** Hull fractions at which danger-quiet dims non-critical instruments, and releases. */
+export const DANGER_QUIET_ARM = 0.20;
+export const DANGER_QUIET_RELEASE = 0.30;
+/** Fuel fraction at which the BINGO line speaks (deeper than FUEL LOW). */
+export const BINGO_FUEL_FRAC = 0.06;
+
+/**
+ * Danger-quiet is hysteretic, same envelope as the low-hull alert: arm at ≤20% hull, stay quiet
+ * until the hull climbs back to 30%. `armed` is the caller's latched flag; returns the next flag.
+ */
+export function dangerQuietArmed(hullFrac, armed) {
+  const f = Number(hullFrac);
+  if (!(f > 0)) return false;
+  return f < (armed ? DANGER_QUIET_RELEASE : DANGER_QUIET_ARM);
+}
+
+/** The three glass presets — which instrument ids stay bright; everything else dims. */
+export const GLASS_PRESETS = Object.freeze({
+  clean: Object.freeze({ id: 'clean', lit: Object.freeze(['hull', 'shield']) }),
+  hauler: Object.freeze({ id: 'hauler', lit: Object.freeze(['hull', 'shield', 'cargo', 'fuel', 'massline']) }),
+  fighter: Object.freeze({ id: 'fighter', lit: Object.freeze(['hull', 'shield', 'ordnance', 'speed', 'target']) }),
+});
+
+export function glassPresetFor(id) {
+  return GLASS_PRESETS[id] || GLASS_PRESETS.clean;
+}
+
+/** The bingo-fuel line: 'BINGO FUEL — 4%' when the tank is under the reserve, else ''. */
+export function bingoFuelLine(fuelFrac) {
+  const f = Number(fuelFrac);
+  if (!(f > 0) || f > BINGO_FUEL_FRAC) return '';
+  return `BINGO FUEL — ${Math.max(0, Math.round(f * 100))}%`;
+}
+
+/** The sortie tally read on dock: kills · rocks cracked · credits earned this outing. */
+export function sortieTallyLine({ kills = 0, rocks = 0, credits = 0 } = {}) {
+  const parts = [];
+  if (kills > 0) parts.push(`${kills} kill${kills === 1 ? '' : 's'}`);
+  if (rocks > 0) parts.push(`${rocks} rock${rocks === 1 ? '' : 's'}`);
+  if (credits > 0) parts.push(`${credits} cr`);
+  return parts.length ? `SORTIE — ${parts.join(' · ')}` : '';
+}
+
+/** Tether load + strain for the hull-adjacent ring read (massline mirror, read-only). */
+export function tetherRingRead(tether) {
+  if (!tether || typeof tether !== 'object') return null;
+  const load = Math.max(0, Math.min(1, Number(tether.load) || 0));
+  const strain = Math.max(0, Math.min(1, Number(tether.strain) || 0));
+  if (!Number.isFinite(load) && !Number.isFinite(strain)) return null;
+  return Object.freeze({ load, strain, hot: load >= 0.5 || strain >= 0.5 });
+}
+
+/** The release-read receipt line: tonnage and strain the moment the Line lets go. */
+export function releaseReadReceipt({ tonnageU = 0, load = 0, strain = 0 } = {}) {
+  const t = Math.max(0, Math.round(Number(tonnageU) || 0));
+  const l = Math.max(0, Math.min(1, Number(load) || 0));
+  const s = Math.max(0, Math.min(1, Number(strain) || 0));
+  if (!t && !l && !s) return '';
+  return `RELEASED ${t}t · LOAD ${Math.round(l * 100)}% · STRAIN ${Math.round(s * 100)}%`;
 }
 
 /** VERB-05 — one receipt, the trick's name. Amendments are a different event and stay quiet. */

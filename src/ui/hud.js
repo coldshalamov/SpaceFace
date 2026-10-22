@@ -95,6 +95,7 @@ import {
   formatRosterCount,
   hudJobFromState,
   flightInstrumentRects,
+  bingoFuelLine,
   masslineInstrumentReadout,
   masslineInstrumentVisible,
   openingInstructionSolo,
@@ -4188,6 +4189,7 @@ export function createHud(ctx, alerts) {
   // 60Hz cheap path
   // ---------------------------------------------------------------------------
   let lowShieldActive = false, lowHullActive = false, lowFuelActive = false, fuelWarnArmed = false;
+  let bingoFuelActive = false;
   let elReticle = null;
   let cachedNavStationId = null;
   let cachedNavEntity = null;
@@ -4221,6 +4223,12 @@ export function createHud(ctx, alerts) {
     if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
     if (!lowHull && lowHullActive) alerts.clear('low-hull');
     lowHullActive = lowHull;
+    // RC-GLASS 474 — danger-quiet: while the hull is critical the tape and tracker dim so the
+    // vital instruments breathe; the class releases on the same 30% retire boundary.
+    if (root && root.classList) root.classList.toggle('sf-hud--danger-quiet', lowHull);
+    // The glass preset survives reload through settings and re-reads each sync.
+    const preset = state && state.settings ? String(state.settings.glassPreset || 'clean') : 'clean';
+    if (root && root.dataset && root.dataset.glassPreset !== preset) root.dataset.glassPreset = preset;
     // A hidden-HUD tick calls this without a fuel sample. Leaving the lamp alone
     // keeps a menu from clearing FUEL LOW and speaking it again on the way back.
     if (fuelFrac == null) return;
@@ -4238,6 +4246,11 @@ export function createHud(ctx, alerts) {
     if (fuel.clear) alerts.clear('low-fuel');
     lowFuelActive = fuel.low;
     fuelWarnArmed = fuel.nextArmed;
+    // RC-GLASS 474 — the bingo-fuel line speaks once, deeper than FUEL LOW.
+    const bingoLine = bingoFuelLine(fuelFrac);
+    if (bingoLine && !bingoFuelActive) alerts.raise({ key: 'bingo-fuel', sev: 'danger', text: bingoLine, ttl: Infinity });
+    if (!bingoLine && bingoFuelActive) alerts.clear('bingo-fuel');
+    bingoFuelActive = !!bingoLine;
   }
 
   function escapeHtml(s) {

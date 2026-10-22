@@ -12,6 +12,9 @@ function defaultSettings() {
   return {
     uiScale: 1,
     showDamageNumbers: true,
+    // RC-GLASS 474: the glass preset (clean | hauler | fighter) — which instruments stay lit;
+    // persisted with the rest of settings, so it survives reload.
+    glassPreset: 'clean',
     audio: {
       master: 0.55,
       sfx: 0.7,
@@ -20,6 +23,8 @@ function defaultSettings() {
       // Stored profiles keep the player's own choice (graphicsProfileBootstrap owns that migration).
       muted: false,
       muteOnFocusLoss: false,
+      mono: false,
+      nightMode: false,
       // FB-100: the voice gate (barkDirector reads `audio.voice !== 0`) and the five channel
       // buses (audioSystem falls back to 0.7 when absent) are real keys now — same values as
       // the fallbacks they replace, so the shipped mix is unchanged.

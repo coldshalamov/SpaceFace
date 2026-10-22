@@ -299,3 +299,25 @@ html.sf-reduce-motion .sf-gloc-vignette,
 html.sf-reduce-flash .sf-gloc-vignette {
   transition: none !important;
 }
+
+/* RC-GLASS 474 — danger-quiet: at critical hull the non-critical instruments (tape, tracker,
+   context feeds) dim so the vital ring and alerts breathe; releases at the same 30% boundary. */
+#hud.sf-hud--danger-quiet .sf-commtape,
+#hud.sf-hud--danger-quiet .sf-mt-obj,
+#hud.sf-hud--danger-quiet .sf-caption,
+#hud.sf-hud--danger-quiet .sf-nav-label,
+#hud.sf-hud--danger-quiet .sf-receipt {
+  opacity: .32;
+  transition: opacity .25s ease-out;
+}
+#hud .sf-commtape, #hud .sf-mt-obj, #hud .sf-caption, #hud .sf-nav-label, #hud .sf-receipt {
+  transition: opacity .25s ease-in;
+}
+
+/* RC-GLASS 474 — glass presets: the preset dims the instruments it does not name lit.
+   Clean keeps hull+shield; hauler adds cargo/fuel/massline; fighter adds ordnance/speed/target. */
+#hud[data-glass-preset="clean"] .sf-glass-hauler,
+#hud[data-glass-preset="clean"] .sf-glass-fighter,
+#hud[data-glass-preset="hauler"] .sf-glass-fighter {
+  opacity: .45;
+}

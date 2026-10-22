@@ -44,6 +44,7 @@ import { targetDisplayName } from './targetPanel.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
 import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
 import { announceStrokeGrade } from './stuntCallout.js';
+import { releaseReadReceipt } from './hudAttention.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -1128,6 +1129,15 @@ export const masslineHud = {
           atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
           untilSimTime: now + MASSLINE_VERDICT_PILL_S,
         };
+        // RC-GLASS 474 — the release-read receipt: tonnage and strain the moment the Line lets go.
+        const receipt = releaseReadReceipt({
+          tonnageU: Number(p.tonnageU) || (target && Number(target.mass)) || 0,
+          load: Number(p.load) || 0,
+          strain: Number(p.strain) || 0,
+        });
+        if (receipt && ctx.bus && typeof ctx.bus.emit === 'function') {
+          ctx.bus.emit('ui:receipt', { text: receipt, kind: 'info', channel: 'massline' });
+        }
       });
       // SFQ-B023 — overload snap names itself. A deliberate cut emits tether:broken
       // with reason tether_cut and must keep the release grade, not LINE BROKE.
