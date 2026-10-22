@@ -322,6 +322,8 @@ export const NORTH_SECTORS = Object.freeze([
     fields: Object.freeze([
       Object.freeze({ id: 'f_phoebe_1', type: 'ast_rare_exotic', countWeight: 1.0 }),
       Object.freeze({ id: 'f_phoebe_2', type: 'ast_gas_cloud', countWeight: 0.85 }),
+      // 04 "Throw: singing crystals" — the Song Field's struck-stone ammunition (row 540).
+      Object.freeze({ id: 'f_phoebe_3', type: 'ast_crystalline', countWeight: 0.6 }),
     ]),
     hazards: Object.freeze([
       Object.freeze({
@@ -507,6 +509,8 @@ export const NORTH_ANCHORS = Object.freeze({
     fields: Object.freeze([
       Object.freeze({ id: 'f_phoebe_1', center: Object.freeze({ x: 640, z: 320 }), clusterRadius: 480 }),
       Object.freeze({ id: 'f_phoebe_2', center: Object.freeze({ x: -880, z: -240 }), clusterRadius: 520 }),
+      // Singing crystals ring the Shard Sphere shrine — close enough to hear, inside the hot zone.
+      Object.freeze({ id: 'f_phoebe_3', center: Object.freeze({ x: 900, z: -820 }), clusterRadius: 380 }),
     ]),
     pois: Object.freeze([
       Object.freeze({
