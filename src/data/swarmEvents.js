@@ -138,17 +138,52 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     id: 'supply_drop', name: 'Supply pod', kind: 'supply', credits: 60, windupS: 6, windowS: 0,
     telegraph: 'SUPPLY POD — salvage riding in. Staying for it is a choice.',
   }),
+
+  // EXP-07 / EXP-08 — same kinds and install keys as the named donors, scaled.
+  rock_rain: event({
+    id: 'rock_rain', name: 'Rock rain', kind: 'surge', factor: 1.9, windupS: 4, windowS: 12,
+    telegraph: 'ROCK RAIN — catch what you can, throw what you catch',
+    install: {
+      cover: true,
+      fields: [{ kind: 'well', bearing: 'spin', dist: 300, radius: 520, strength: 70, damping: 0.85, falloff: 1.15 }],
+    },
+  }),
+  slag_spill: event({
+    id: 'slag_spill', name: 'Slag spill', kind: 'surge', factor: 2.4, windupS: 5, windowS: 9,
+    telegraph: 'SLAG SPILL — the floor runs hot, and so does anything you throw through it',
+    install: {
+      fields: [{ kind: 'repulsor', bearing: 'center', radius: 480, strength: 170, falloff: 1.55 }],
+    },
+  }),
+  lantern_drift: event({
+    id: 'lantern_drift', name: 'Lantern drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
+    telegraph: "LANTERN DRIFT — they want your heat. Give them someone else's.",
+  }),
+  reef_surge: event({
+    id: 'reef_surge', name: 'Reef surge', kind: 'pulse', windupS: 4, windowS: 8,
+    telegraph: 'REEF SURGE — the room moves. Let it throw for you.',
+    field: { kind: 'well', bearing: 'player', radius: 320, strength: 180, falloff: 1.0 },
+  }),
+  shepherd_pulse: event({
+    id: 'shepherd_pulse', name: 'Shepherd pulse', kind: 'pulse', windupS: 4, windowS: 8,
+    telegraph: 'SHEPHERD PULSE — they fly as one. Break the one.',
+    field: { kind: 'repulsor', bearing: 'spin', dist: 280, radius: 380, strength: 190, falloff: 1.2 },
+  }),
+  sprocket_crate: event({
+    id: 'sprocket_crate', name: "Sprocket's crate", kind: 'supply', credits: 80, windupS: 6, windowS: 0,
+    telegraph: 'MA SPROCKET SENDS A CRATE — catch it before they do.',
+  }),
 });
 
 /** The signature cards each arena can draw — its own name for its own tricks. */
 export const SWARM_EVENT_TABLES = Object.freeze({
-  helios_core: Object.freeze(['shutter_storm', 'furnace_flare', 'plate_drift']),
+  helios_core: Object.freeze(['shutter_storm', 'furnace_flare', 'plate_drift', 'sprocket_crate']),
   lagrange_crucible: Object.freeze(['well_swing', 'sling_gust']),
-  cinder_sluice: Object.freeze(['sluice_surge', 'undertow_snap']),
+  cinder_sluice: Object.freeze(['sluice_surge', 'undertow_snap', 'slag_spill']),
   cryo_drift: Object.freeze(['freeze_front', 'plate_shatter']),
-  storm_lattice: Object.freeze(['relay_arc', 'grid_surge']),
-  asteroid_mill: Object.freeze(['mill_surge', 'seam_burst']),
-  the_hive: Object.freeze(['spore_breath', 'wall_bloom', 'egg_drift']),
+  storm_lattice: Object.freeze(['relay_arc', 'grid_surge', 'reef_surge']),
+  asteroid_mill: Object.freeze(['mill_surge', 'seam_burst', 'rock_rain']),
+  the_hive: Object.freeze(['spore_breath', 'wall_bloom', 'egg_drift', 'lantern_drift', 'shepherd_pulse']),
 });
 
 /** Cards every room can draw — hazards and salvage are not the arena's law. */
