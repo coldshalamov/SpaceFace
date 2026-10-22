@@ -181,7 +181,7 @@ export function resolveExampleCite(cite) {
 }
 
 // Which house does a cite belong to? Bark cites name their house; narrative cites
-// belong to Helix, the one house with no bark table.
+// belong to Helix. Narrative cites still name Helix even though the house now has barks.
 export function citeHouseId(cite) {
   const bark = String(cite || '').match(BARK_CITE);
   if (bark) return bark[1];
@@ -325,8 +325,8 @@ export function validateFactionRegisterCorpus(dir = FACTION_SHEET_DIR) {
   return reports;
 }
 
-// Every live bark line a house speaks, for corpus sweeps. Helix has no bark
-// table; its register rests on its cited narrative comm (see its sheet).
+// Every live bark line a house speaks, for corpus sweeps. Helix lines live in BARKS
+// like the other houses; the sheet example is still the cited narrative comm.
 export function liveHouseLines(houseId) {
   const table = BARKS[houseId];
   if (!table) return [];

@@ -1,6 +1,6 @@
-// PQ-158.04 — directed synthetic voice for the 439-line bark corpus.
+// PQ-158.04 — directed synthetic voice for the 471-line bark corpus.
 //
-// Thirteen faction registers + the mechanic. No recorded actors. Speech params, radio processing,
+// Fourteen faction registers + the mechanic. No recorded actors. Speech params, radio processing,
 // and caption text are pure functions of (faction, situation, line). Sim RNG is never read.
 // Agents run scripts/generate-bark-voice.mjs to emit representative WAVs.
 
@@ -11,7 +11,7 @@ import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 export const BARK_VOICE_SEED = 15804;
 // Authored count follows the BARKS table (deep-faction + distress additions raised it past
 // the original 437); this pin exists so unauthored corpus drift fails loudly.
-export const BARK_CORPUS_TARGET = 439;
+export const BARK_CORPUS_TARGET = 471;
 
 export const BARK_RECIPE_ID = 'sfx_bark_radio';
 
@@ -40,7 +40,7 @@ function register(id, label, spec) {
   });
 }
 
-// Thirteen registers a stranger can tell apart blind: pitch, cadence, filter, and grit.
+// Fourteen registers a stranger can tell apart blind: pitch, cadence, filter, and grit.
 export const FACTION_VOICE_REGISTERS = Object.freeze({
   faction_scn: register('faction_scn', 'Concord', {
     sampleId: 'bark_scn', f0: 110, pitch: 0.88, rate: 0.94,
@@ -113,6 +113,12 @@ export const FACTION_VOICE_REGISTERS = Object.freeze({
     sampleId: 'bark_verge', f0: 182, pitch: 1.26, rate: 0.80,
     filterHz: 2600, q: 4.5, noise: 0.05, bandpassLo: 540, bandpassHi: 3600, drive: 0.15,
     formants: [900, 1550, 2900],
+  }),
+  faction_helix: register('faction_helix', 'Helix', {
+    // Tariff clerk: clipped and clean, between Reach and the Choir so the fine has its own pitch.
+    sampleId: 'bark_helix', f0: 163, pitch: 1.10, rate: 0.98,
+    filterHz: 1900, q: 1.2, noise: 0.03, bandpassLo: 460, bandpassHi: 3100, drive: 0.05,
+    formants: [640, 1500, 2750],
   }),
 });
 
