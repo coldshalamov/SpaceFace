@@ -1915,3 +1915,22 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 **After (`saveLayouts.js`, desktop only):** one block for 791–860 × 461–749 and 861–940 × 461+. A filed station shows its name and credits only (the reading on the left carries the selected save's line, as the stacked and short bands already do), and the slot name and badge close up their letter-spacing. Empty stations keep "Empty slot". No selector or ID changes.
 
 **Checked:** 791×600, 820×600, 860×600, 860×749, 861×600, 900×600 and 940×700 clean by eye and bench; 790×600 (stacked), 941×600, 960×540, 1280×720 and 1920×1080 unchanged. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish92/`.
+
+## ui-polish-94 — pause dial (>760): grouped d-pad order, as the foot strip says
+
+- **Bug:** on the 1280 dial the d-pad was purely geometric. Down from RESUME went Settings → Mission Log →
+  Photo → Physics → Sandbox → Main Menu (Reference never reached by Down), while the strip promises
+  `↑↓ CATEGORY / ←→ ITEM` and the keyboard (arcRail `onKey`) already walks that grid.
+- **Fix:** `padFocusTarget` (`src/ui/input.js`) learns a second mark beside #506's `data-pad-linear`:
+  inside a `data-pad-grouped` ancestor, rows are consecutive focusables sharing a `data-group` (the rows the
+  grouped rail seats; Resume is its own). Up/Down go to the neighbouring row's first verb; Left/Right step
+  verb by verb in list order and stop at the first/last verb (like the keyboard). Off the top/bottom row the
+  geometric fallback is kept but only to targets outside the dial (Up from Resume → the tracked-contract
+  link, as in the column), and any fallback must have `focus()`. `pause.js` sets `data-pad-grouped` on the
+  dial only (removed in the column, re-applied on a resize remount). No selector or id changes.
+- **The "SPAN" Up from Resume:** measured in Chromium it is the brief's tracked-contract link
+  (`span.sf-entity-link`, `role=link`, `tabindex=0`); it does take focus (activeElement after focus()).
+  Kept reachable as the edge fallback, matching #506's column behaviour.
+- **Tests:** `test/ui-polish-88-pause-narrow.test.mjs` +3 with Chromium-measured 1280×720 rects
+  (ui-bench pause, one run): category Down/Up order, Left/Right order and ends, edge fallback to the
+  contract link / outside-only / focusable-only, mark swaps across 760.

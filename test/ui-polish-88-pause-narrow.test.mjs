@@ -271,3 +271,97 @@ test('d-pad off either end of the column at 700 falls back to geometry (Up from 
     assert.equal(padFocusTarget(all, list[0], 'down'), list[1], 'inside the list it still steps in order');
   } finally { dom.restore(); }
 });
+
+// ---- ui-polish-94: the 1280 dial walks its categories, as its foot strip says ----
+
+// The dial as Chromium lays it out at 1280x720 (tools/ui-bench.html?screen=pause, measured once):
+// [left, top, width, height] by verb. Rows: Resume | Game | Ship | Reference | Media | Play | Dev | Exit.
+// The bench's state also offers Local Map (M) in Ship; the stub state here does not, and runs as the
+// web build (no Quit Game), so every mounted verb has a measured box. The tracked-contract link (a
+// role=link SPAN, tabindex 0) sits up right in the brief.
+const DIAL_1280 = {
+  'Resume': [299, 263, 154, 32],
+  'Settings': [414, 304, 67, 16], 'Save': [503, 304, 35, 16], 'Load': [560, 304, 36, 16],
+  'Mission Log (J)': [411, 338, 94, 16], 'My Ship': [527, 338, 59, 16], 'Operations (Automation)': [608, 338, 198, 16],
+  'Help / Controls': [515, 371, 125, 16], 'Codex': [662, 371, 48, 16], 'Achievements': [732, 371, 110, 16], 'Statistics': [864, 371, 81, 16],
+  'Photo': [437, 405, 48, 16], 'Replay': [507, 405, 54, 16], 'Clips': [583, 405, 42, 16],
+  'Physics challenges': [414, 438, 151, 16], 'Sandbox': [392, 472, 67, 16], 'Main Menu': [385, 505, 76, 16],
+};
+const CONTRACT_1280 = [820, 146, 282, 48];
+const ROW_FIRSTS_1280 = ['Resume', 'Settings', 'Mission Log (J)', 'Help / Controls', 'Photo', 'Physics challenges', 'Sandbox', 'Main Menu'];
+const label = (b) => b && b.textContent.trim();
+const labels = (xs) => xs.map(label);
+
+function mountDial1280() {
+  const dom = installMiniDom({ width: 1280, desktop: false });
+  const root = globalThis.document.createElement('div');
+  pauseScreen.mount(root, makeCtx());
+  const box = ([left, top, width, height]) => ({ left, top, width, height, right: left + width, bottom: top + height });
+  const list = verbs(root);
+  for (const b of list) { const r = DIAL_1280[label(b)]; assert.ok(r, `measured box for ${label(b)}`); const rect = box(r); b.getBoundingClientRect = () => rect; }
+  const contract = globalThis.document.createElement('span');
+  contract.setAttribute('role', 'link'); contract.setAttribute('tabindex', '0'); contract.textContent = 'Contract 47-A';
+  contract.getBoundingClientRect = () => box(CONTRACT_1280);
+  root.append(contract);
+  const by = (name) => list.find((b) => label(b) === name);
+  return { dom, root, list, contract, by, all: [contract, ...list] };
+}
+
+const walk = (items, from, dir) => { const out = [from]; for (let at = from, n; (n = padFocusTarget(items, at, dir)); at = n) { out.push(n); if (out.length > 40) break; } return out; };
+
+test('d-pad Down/Up on the 1280 dial steps category by category (no skipped rows)', () => {
+  const { dom, root, list, by, all } = mountDial1280();
+  try {
+    assert.ok(dial(root));
+    assert.equal(list.length, 17);
+    // the cause: pure geometry from Resume skips whole categories (Reference here)
+    const geo = [list[0]];
+    for (let at = list[0], n; (n = spatialFocusTarget(list, at, 'down')); at = n) { geo.push(n); if (geo.length > 40) break; }
+    assert.notDeepEqual(labels(geo), ROW_FIRSTS_1280, 'geometry alone skips a category');
+    assert.deepEqual(labels(walk(list, list[0], 'down')), ROW_FIRSTS_1280, 'Down lands on each category\'s first verb in turn');
+    assert.deepEqual(labels(walk(list, by('Main Menu'), 'up')), [...ROW_FIRSTS_1280].reverse(), 'Up walks the categories back to Resume');
+    // from inside a row, Up/Down go to the neighbouring category's first verb, not the word underneath
+    assert.equal(label(padFocusTarget(all, by('Achievements'), 'down')), 'Photo');
+    assert.equal(label(padFocusTarget(all, by('Achievements'), 'up')), 'Mission Log (J)');
+  } finally { dom.restore(); }
+});
+
+test('d-pad Left/Right on the 1280 dial step verb by verb in list order', () => {
+  const { dom, list, by, all } = mountDial1280();
+  try {
+    assert.deepEqual(labels(walk(list, list[0], 'right')), labels(list), 'Right walks every verb, rows in order');
+    assert.deepEqual(labels(walk(list, list[list.length - 1], 'left')), labels([...list].reverse()), 'Left walks them back');
+    assert.equal(label(padFocusTarget(all, by('My Ship'), 'right')), 'Operations (Automation)');
+    // the ends stop, like the keyboard walk: no geometric bounce (Right from Main Menu was Sandbox)
+    assert.equal(padFocusTarget(all, by('Main Menu'), 'right'), null);
+    assert.equal(padFocusTarget(all, list[0], 'left'), null);
+  } finally { dom.restore(); }
+});
+
+test('d-pad off the 1280 dial falls back to geometry, and only onto focusable targets', () => {
+  const { dom, root, list, contract, by, all } = mountDial1280();
+  try {
+    // Up from Resume leaves the dial for the tracked-contract link, as the column does
+    const upTarget = padFocusTarget(all, list[0], 'up');
+    assert.equal(upTarget, spatialFocusTarget(all, list[0], 'up'));
+    assert.ok(upTarget === contract, 'Up from Resume -> the contract link');
+    assert.equal(typeof upTarget.focus, 'function');
+    assert.equal(upTarget.getAttribute('tabindex'), '0', 'the link takes focus');
+    const last = by('Main Menu');
+    assert.equal(padFocusTarget(all, last, 'down'), null, 'nothing below Main Menu: Down stops');
+    const below = globalThis.document.createElement('button');
+    below.getBoundingClientRect = () => ({ left: 385, top: 560, width: 80, height: 16, right: 465, bottom: 576 });
+    root.append(below);
+    assert.ok(padFocusTarget([...all, below], last, 'down') === below, 'Down from Main Menu leaves the dial by geometry');
+    // a candidate without focus() is never handed back
+    const inert = { getBoundingClientRect: () => ({ left: 385, top: 560, width: 80, height: 16, right: 465, bottom: 576 }), getAttribute: () => null };
+    assert.equal(padFocusTarget([...list, inert], last, 'down'), null);
+    const marked = (attr) => (b) => { for (let p = b.parentElement; p; p = p.parentElement) if (p.getAttribute(attr) != null) return true; return false; };
+    dom.resize(700);
+    assert.ok(column(root));
+    assert.ok(!verbs(root).some(marked('data-pad-grouped')), 'the column is not grouped');
+    dom.resize(1280);
+    assert.ok(dial(root));
+    assert.ok(verbs(root).every(marked('data-pad-grouped')), 'the dial is grouped again');
+  } finally { dom.restore(); }
+});

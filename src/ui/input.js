@@ -75,24 +75,74 @@ function padLinearHost(el) {
   return null;
 }
 
+/** The nearest ancestor marked `data-pad-grouped` (a two-level dial of category rows, e.g. the pause dial). */
+function padGroupedHost(el) {
+  for (let p = el && (el.parentElement || el.parentNode); p; p = p.parentElement || p.parentNode) {
+    if (typeof p.getAttribute === 'function' && p.getAttribute('data-pad-grouped') != null) return p;
+  }
+  return null;
+}
+
+// A control's category: the data-group of the row item (li) that holds it. Consecutive controls of
+// one group make one row, the same rows the grouped arc rail seats (Resume, ungrouped, is its own).
+function padGroupOf(el, host) {
+  for (let p = el; p && p !== host; p = p.parentElement || p.parentNode) {
+    const g = typeof p.getAttribute === 'function' ? p.getAttribute('data-group') : null;
+    if (g != null) return g;
+  }
+  return null;
+}
+
 /**
  * Where a d-pad press goes from `active`. Inside a `data-pad-linear` list, Up/Down step through its
  * items in document order (the order the list reads), so a full-width row over left-aligned banked
- * runs cannot hand Down to whichever word happens to sit under its centre. Everything else, and
- * Left/Right everywhere, stays geometric (spatialFocusTarget), as do Up/Down off either end of the list.
+ * runs cannot hand Down to whichever word happens to sit under its centre. Inside a `data-pad-grouped`
+ * list (the pause dial) the pad walks the same grid the keyboard does and the foot strip names:
+ * Up/Down step between CATEGORIES (to the row's first verb), Left/Right step verb by verb in list
+ * order. Everything else stays geometric (spatialFocusTarget), as do presses off either end.
  */
 export function padFocusTarget(items, active, dir) {
-  if ((dir === 'up' || dir === 'down') && active && items.includes(active)) {
-    const host = padLinearHost(active);
-    if (host && typeof host.contains === 'function') {
-      const run = items.filter((el) => host.contains(el));
+  if (active && items.includes(active)) {
+    const vertical = dir === 'up' || dir === 'down';
+    const step = dir === 'down' || dir === 'right' ? 1 : -1;
+    const linear = vertical ? padLinearHost(active) : null;
+    if (linear && typeof linear.contains === 'function') {
+      const run = items.filter((el) => linear.contains(el));
       const at = run.indexOf(active);
       // at either end of the list, fall through to geometry so the d-pad can still leave the
       // list (e.g. Up from Resume to the tracked-contract link above the column)
-      if (at >= 0 && run[at + (dir === 'down' ? 1 : -1)]) return run[at + (dir === 'down' ? 1 : -1)];
+      if (at >= 0 && run[at + step]) return run[at + step];
+    }
+    const grouped = padGroupedHost(active);
+    if (grouped && typeof grouped.contains === 'function') {
+      const run = items.filter((el) => grouped.contains(el));
+      const rows = [];
+      for (const el of run) {
+        const g = padGroupOf(el, grouped);
+        const last = rows[rows.length - 1];
+        if (g != null && last && last.group === g) last.items.push(el);
+        else rows.push({ group: g, items: [el] });
+      }
+      if (vertical) {
+        const ri = rows.findIndex((row) => row.items.includes(active));
+        const row = ri >= 0 ? rows[ri + step] : null;
+        if (row) return row.items[0];
+      } else {
+        const at = run.indexOf(active);
+        if (at >= 0 && run[at + step]) return run[at + step];
+      }
+      // Left/Right end at the first and last verb, as the dial's keyboard walk does.
+      if (!vertical) return null;
+      // off the top or bottom row the press may only leave the dial (Up from Resume to the contract
+      // link): geometry back onto its own verbs would undo the grid
+      const outside = items.filter((el) => el === active || !grouped.contains(el));
+      const away = spatialFocusTarget(outside, active, dir);
+      return away && typeof away.focus === 'function' ? away : null;
     }
   }
-  return spatialFocusTarget(items, active, dir);
+  const next = spatialFocusTarget(items, active, dir);
+  // the geometric fallback only ever hands focus to something that takes it
+  return next && typeof next.focus === 'function' ? next : null;
 }
 
 const PAD_WIDGET_TAG = /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/;
