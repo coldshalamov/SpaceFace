@@ -257,8 +257,10 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
     assert.ok(DEFAULT_BLOOM_STRENGTH * profile.post.bloomStrengthScale >= DEFAULT_BLOOM_STRENGTH,
       `${profile.id} must retain at least the default bloom energy`);
     const effective = resolveEffectiveSectorPost(state.settings.video, profile.post);
+    // _applySectorPost reads this.state for the preset gate (_budgetPostQualityPreset) —
+    // the stub must carry the same game state the live renderer would.
     const rendererEffective = render._applySectorPost.call(
-      { _sectorPost: profile.post },
+      Object.assign(Object.create(render), { _sectorPost: profile.post, state }),
       render._normalizePostVideo(state.settings.video),
     );
     assertClose(effective.bloomStrength, expected[profile.id].bloomStrength,
@@ -281,7 +283,7 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
   assert.equal(clamped.bloomThreshold, 0, 'negative sector bias cannot produce an invalid threshold');
 
   const anomaly = render._applySectorPost.call(
-    { _sectorPost: SECTOR_VISUAL_PROFILES.anomaly.post },
+    Object.assign(Object.create(render), { _sectorPost: SECTOR_VISUAL_PROFILES.anomaly.post, state }),
     render._normalizePostVideo(state.settings.video),
   );
   let bloomPatch = null;
@@ -300,7 +302,9 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
     assertClose(graphPatch[key], bloomPatch[key], `post routes share ${key}`);
   }
   assert.equal(graphPatch.acesToneMapping, bloomPatch.acesToneMapping);
-  assert.equal(graphPatch.grain, 0);
+  // The live banding dither (SECTOR_POST_GRAIN) is on for non-budget presets — the graph
+  // route must carry the same grain the bloom route got.
+  assert.equal(graphPatch.grain, anomaly.grain);
 
   const graph = new SpaceRenderGraph({
     isWebGLRenderer: true,

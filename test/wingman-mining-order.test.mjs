@@ -89,10 +89,10 @@ function mineWing(state, id, wingId, x, z) {
   return { e, fs };
 }
 
-function rock(state, id, x, z, hp = 400) {
+function rock(state, id, x, z, hp = 400, data = null) {
   return place(state, {
     id, type: 'asteroid', team: -1, pos: { x, z }, radius: 10, hull: hp, hullMax: hp,
-    data: { typeId: 'ast_common_rock', oreHP: hp, oreHPMax: hp },
+    data: { typeId: 'ast_common_rock', oreHP: hp, oreHPMax: hp, ...(data || {}) },
   });
 }
 
@@ -164,6 +164,34 @@ test('no rock in reach holds formation without crashing', () => {
   ticks(wings, state, 10);
   assert.equal(e.data.wingmanMining, null);
   assert.equal(fs._mineRockId, null);
+});
+
+test('surface-tagged ore — metal and diamond — are ordinary rocks to mining wingmen (D227)', () => {
+  // environmentSurfaceData stamps opticMaterial 'metal'/'diamond' onto ordinary ore as a surface
+  // tag; only lattice cells (opticStructureId) are refused. Two wings, two tagged faces.
+  const { state, wings } = rig();
+  mineWing(state, 'w1', 11, 100, 0);
+  mineWing(state, 'w2', 12, 120, 0);
+  const metal = rock(state, 21, 250, 0, 400, { typeId: 'ast_metallic', opticMaterial: 'metal' });
+  const diamond = rock(state, 22, 260, 0, 400, { typeId: 'ast_crystalline', opticMaterial: 'diamond' });
+  ticks(wings, state, 10);
+  const faces = state.automation.fleet.map((fs) => fs._mineRockId).sort();
+  assert.deepEqual(faces, [metal.id, diamond.id].sort(), 'each wing works a tagged ore face');
+  ticks(wings, state, 600);
+  assert.ok(metal.data.oreHP < 400, `the metal face is being cut (${metal.data.oreHP})`);
+  assert.ok(diamond.data.oreHP < 400, `the diamond face is being cut (${diamond.data.oreHP})`);
+});
+
+test('a lattice cell is not a wingman mining face — even when the player marks it', () => {
+  const { state, wings } = rig();
+  const { e, fs } = mineWing(state, 'w1', 11, 100, 0);
+  const cell = rock(state, 21, 250, 0, 400, {
+    typeId: 'ast_metallic', opticMaterial: 'metal', opticStructureId: 'test_lattice_cell',
+  });
+  state.player.targetId = cell.id; // a marked target is the strongest claim a rock can have
+  ticks(wings, state, 10);
+  assert.equal(fs._mineRockId, null, 'a lattice cell never becomes the working face');
+  assert.equal(e.data.wingmanMining, null, 'the wing never holds a beam on it');
 });
 
 test('mining:tick names its source hull so the beam fan draws from the wingman', () => {

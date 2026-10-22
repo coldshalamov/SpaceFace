@@ -101,8 +101,9 @@ test('production init + update order lengths match the live browser baseline', (
   // Hasp follows palletJack; HOOK-LEFT follows ruckus before physics.
   // Material reactions join both browser and Node fixed-step runtimes.
   // 201 -> 202 init only: warrantOfferPrompt, the licensed hunter's offer as deck verbs (event-only).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 208);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 158);
+  // BLACK FLAG adds one bounded fixed-step coordinator to both hosts.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 209);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 159);
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

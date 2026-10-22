@@ -64,6 +64,8 @@ test('paint never emits: the pigment ceiling sits under the bloom knee in every 
   // bloom.js: threshold 1.0, knee 0.25 -> spill starts at 0.75 scene-linear luminance.
   for (const id of Object.keys(LOOK_MOODS)) {
     assert.ok(resolveLookMood(id).surface.paintCeiling <= 0.75, `${id} paint ceiling`);
+    // A coat-tint channel above 1 could push glints past the bloom threshold: paint never emits.
+    assert.ok(Math.max(...resolveLookMood(id).surface.coatTint) <= 1.0, `${id} coat tint`);
   }
   assert.ok(resolveLookEmissiveGain('signal', 'glow_cyan') > 2 && resolveLookEmissiveGain('drive', 'glow_drive') > 1,
     'lamps are lifted above paint');

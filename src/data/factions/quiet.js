@@ -12,12 +12,47 @@ export const faction = {
     hull: '#706080', emissive: '#9070D0', thruster: '#A080D0',
   },
   shipRoles: [
-    { role: 'contracted-lance', weight: 0.45, hullIds: ['ship_hornet', 'ship_wasp', 'ship_bastion'] },
-    { role: 'quiet-transport', weight: 0.35, hullIds: ['ship_drifter', 'ship_mule', 'ship_ranger'] },
-    { role: 'retained-heavy', weight: 0.2, hullIds: ['ship_warden', 'ship_atlas', 'ship_colossus'] },
+    { role: 'contracted-lance', weight: 0.4, hullIds: ['ship_hornet', 'ship_wasp', 'ship_bastion'] },
+    { role: 'quiet-transport', weight: 0.32, hullIds: ['ship_drifter', 'ship_mule', 'ship_ranger'] },
+    { role: 'retained-heavy', weight: 0.18, hullIds: ['ship_warden', 'ship_atlas', 'ship_colossus'] },
+    // Row 525 additions (02 §5 roster): runners juggle sealed crates between hulls; the
+    // relay buoy-ship sells what it saw.
+    { role: 'runner', weight: 0.07, hullIds: ['ship_drifter', 'ship_kestrel'] },
+    { role: 'relay-buoy', weight: 0.03, hullIds: ['ship_ranger'] },
   ],
   illegalCommodities: [],
-  custom: {},
+  custom: {
+    // §34 row 525 — Quiet identity mechanics (02 §5).
+    juggling: {
+      // Two runners toss a sealed crate between hulls to break your lock — catching it
+      // mid-air with the Line is the game's cleanest skill shot.
+      windupS: 2.2,               // telegraphed crouch before the throw
+      handoffFlightS: 4.5,        // crate airtime, runner to runner
+      catchRadiusWu: 60,          // a runner's catch volume
+      throws: 2,                  // the SECOND throw carries the real crate (E-07 twist)
+    },
+    decoyPods: {
+      // Dropped to break a lock or fake a manifest — reads as a fat hull on any scale.
+      spoofMassT: 220,
+      scanLabel: 'QUIET DECOY — READS 220 T',
+    },
+    hushHead: {
+      // While your Line holds an object its mass does not show on any scale — built for
+      // the Weighing. Row 513's signature model reads data.signatureHidden; the head
+      // writes it onto held bodies.
+      hidesMass: true,
+      heldStamp: 'signatureHidden',
+    },
+    soldRoutes: {
+      // The mark they leave: a route you used gets sold — next time it is patrolled.
+      // The encounter stamps state.story.flags[markFlag]; patrol planners read it.
+      markFlag: 'quiet_sold_route',
+    },
+    theSwap: {
+      encounterId: 'the_swap',    // src/data/encounters/702-the-swap.js (E-07)
+      realCrateValueCr: 2600,
+    },
+  },
   voiceRegister: 'smuggler',
 };
 

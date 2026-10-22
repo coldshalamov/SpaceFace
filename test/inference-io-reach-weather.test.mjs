@@ -55,7 +55,8 @@ test('Io Reach weather: volumes sit clear of stations, gates, fields, and named 
 
 test('Io Reach weather: phases cycle and the sector slice resolves both volumes', () => {
   const slice = weatherVolumesForSector(IO_REACH_WEATHER_SECTOR_ID);
-  assert.equal(slice.length, 2);
+  assert.equal(slice.filter(volume => !volume.seasonal).length, 2);
+  assert.deepEqual(slice.filter(volume => volume.seasonal).map(volume => volume.role).sort(), ['ion_storm', 'meteor_shower', 'solar_wind']);
   for (const simTime of [0, 37, 113, 600, 4242]) {
     for (const volume of slice) {
       const phase = weatherPhase(volume, simTime);

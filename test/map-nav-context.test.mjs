@@ -218,6 +218,50 @@ test('a route with no executor still reports a destination and a first leg', () 
   assert.equal(ctx.nextLeg.index, 0);
 });
 
+test('a mission destination in the pilot\'s own sector reads LOCAL, never "no known route"', () => {
+  // R479 — the 47-A berth is inside Helios Prime: an unplotted contract destination in the
+  // sector the pilot is flying in has no jump to find, so it must not render the unreachable
+  // sentence. `local` outranks `unreachable` on purpose.
+  const ctx = resolveMapNavContext({
+    playerGlobal: { x: HELIOS_ORIGIN.x + 200, z: HELIOS_ORIGIN.z + 100 },
+    missionDestination: { sectorId: HELIOS, stationId: 'station_helios', missionId: 'm_1' },
+    sectorNames: { [HELIOS]: 'Helios Prime' },
+  });
+  assert.equal(ctx.playerSectorId, HELIOS, 'the address resolves the pilot sector');
+  assert.equal(ctx.destination.local, true);
+  assert.equal(ctx.destination.unreachable, false);
+  assert.equal(ctx.destination.planned, false);
+  const byKey = new Map(ctx.rows.map((r) => [r.key, r]));
+  assert.match(byKey.get('destination').detail, /in this sector/i);
+  assert.doesNotMatch(byKey.get('destination').detail, /no known route/i);
+  assert.match(byKey.get('leg').detail, /in this sector/i);
+  assert.doesNotMatch(byKey.get('leg').detail, /no known path/i);
+});
+
+test('a mission destination in ANOTHER sector without a preview stays honestly unreachable', () => {
+  const ctx = resolveMapNavContext({
+    playerGlobal: { x: HELIOS_ORIGIN.x + 200, z: HELIOS_ORIGIN.z + 100 },
+    missionDestination: { sectorId: TETHYS, stationId: 'station_tethys', missionId: 'm_9' },
+    sectorNames: { [TETHYS]: 'Tethys Junction' },
+  });
+  assert.equal(ctx.destination.local, false);
+  assert.equal(ctx.destination.unreachable, true);
+  const byKey = new Map(ctx.rows.map((r) => [r.key, r]));
+  assert.match(byKey.get('destination').detail, /no known route/i);
+  assert.match(byKey.get('leg').detail, /no known path/i);
+});
+
+test('an explicitly passed playerSectorId marks the same-sector destination local too', () => {
+  // The chart names the sector directly (galaxyMap passes currentSectorId) even when the
+  // position would not resolve to one — the local reading must not depend on the address.
+  const ctx = resolveMapNavContext({
+    playerSectorId: HELIOS,
+    missionDestination: { sectorId: HELIOS, stationId: 'station_helios', missionId: 'm_1' },
+  });
+  assert.equal(ctx.destination.local, true);
+  assert.equal(ctx.destination.unreachable, false);
+});
+
 // ---------------------------------------------------------------------------------------------
 // Framing controls — visibly unavailable, and they say why
 // ---------------------------------------------------------------------------------------------

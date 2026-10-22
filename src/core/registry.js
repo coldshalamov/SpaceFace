@@ -57,6 +57,7 @@ import { pirateDisguise } from '../systems/pirateDisguise.js';
 import { pirateParley } from '../systems/pirateParley.js';
 import { pirateDisengage } from '../systems/pirateDisengage.js';
 import { surrenderRecovery } from '../systems/surrenderRecovery.js';
+import { shipjack } from '../systems/shipjack.js';
 import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { deedRecord } from '../systems/deedRecord.js';
@@ -578,6 +579,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['wingMorale', wingMorale],
     ['tetherGameplay', tetherGameplay],
     ['surrenderRecovery', surrenderRecovery],
+    ['shipjack', shipjack],
     ['custodyConsequences', custodyConsequences],
     ['masslineTelemetry', masslineTelemetry],
     ['masslineThreats', masslineThreats],
@@ -603,6 +605,14 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['provenanceLedger', provenanceLedger],
     ['chronicler', chronicler],
     ['factionPresence', factionPresence],
+    ['understoryGardens', understoryGardens],
+    ['fulfillmentRoutes', fulfillmentRoutes],
+    ['pitbornCull', pitbornCull],
+    ['vaelLiens', vaelLiens],
+    ['archiveRedaction', archiveRedaction],
+    ['choirResonance', choirResonance],
+    ['vergeCourt', vergeCourt],
+    ['frontierHomesteads', frontierHomesteads],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],

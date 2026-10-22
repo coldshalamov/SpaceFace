@@ -79,8 +79,13 @@ test('the worker resizes a transferred VideoFrame beside the JPEG encode', async
 });
 
 class TrackReader {
-  constructor() { this.pending = []; this.cancelled = false; }
-  read() { return new Promise((resolve) => this.pending.push(resolve)); }
+  constructor() { this.pending = []; this.queue = []; this.cancelled = false; }
+  read() {
+    // A real stream answers a read from its queue inside the call; a read only pends
+    // once the queue is empty.
+    if (this.queue.length) return Promise.resolve({ done: false, value: this.queue.shift() });
+    return new Promise((resolve) => this.pending.push(resolve));
+  }
   cancel() {
     this.cancelled = true;
     for (const resolve of this.pending.splice(0)) resolve({ done: true, value: undefined });
@@ -91,6 +96,8 @@ class TrackReader {
     assert.ok(resolve, 'the processor keeps one bounded read pending');
     resolve({ done: false, value: frame });
   }
+  // A frame the processor queued while no read was waiting — the shape teardown must drain.
+  enqueue(frame) { this.queue.push(frame); }
 }
 
 test('the opt-in track source transfers VideoFrames directly and keeps the 640x340 ring contract', async () => {
@@ -191,7 +198,14 @@ test('the opt-in track source transfers VideoFrames directly and keeps the 640x3
     reader.push({ displayWidth: 1832, displayHeight: 973, close() {} });
     for (let i = 0; i < 4; i += 1) await Promise.resolve();
     assert.equal(footage.ring.frames.length, 2);
+
+    // A frame the processor queued but the loop never read is closed by the teardown drain,
+    // not discarded unclosed by reader.cancel().
+    const stranded = { closed: false, close() { this.closed = true; } };
+    reader.enqueue(stranded);
     footage.dispose();
+    for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    assert.equal(stranded.closed, true, 'teardown drained the queued frame closed before cancelling');
     assert.equal(reader.cancelled, true);
     assert.equal(tracks[0].stopped, true);
   } finally {

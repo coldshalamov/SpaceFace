@@ -328,7 +328,9 @@ function mineDiamond() {
     radius: 13,
     mass: 400,
     collides: true,
-    data: { opticMaterial: 'diamond', typeId: 'ast_crystalline', tint: OPTIC_MATERIALS.diamond.tint },
+    // The lattice marker is opticStructureId — world.js stamps it beside opticMaterial on real
+    // lattice cells; the surface tag alone is what ordinary tagged ore also carries (D227).
+    data: { opticMaterial: 'diamond', opticStructureId: 'optic_test_diamond', typeId: 'ast_crystalline', tint: OPTIC_MATERIALS.diamond.tint },
   };
 }
 

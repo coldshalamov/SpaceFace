@@ -13,12 +13,45 @@ export const faction = {
     hull: '#C8D8F0', emissive: '#3A78FF', thruster: '#88AAFF',
   },
   shipRoles: [
-    { role: 'customs-cutter', weight: 0.4, hullIds: ['ship_kestrel', 'ship_drifter', 'ship_ranger'] },
-    { role: 'patrol-wing', weight: 0.35, hullIds: ['ship_wasp', 'ship_hornet', 'ship_bastion'] },
-    { role: 'fleet-auxiliary', weight: 0.25, hullIds: ['ship_mule', 'ship_atlas', 'ship_warden'] },
+    { role: 'customs-cutter', weight: 0.35, hullIds: ['ship_kestrel', 'ship_drifter', 'ship_ranger'] },
+    { role: 'patrol-wing', weight: 0.3, hullIds: ['ship_wasp', 'ship_hornet', 'ship_bastion'] },
+    { role: 'fleet-auxiliary', weight: 0.2, hullIds: ['ship_mule', 'ship_atlas', 'ship_warden'] },
+    // Row 515 additions (02 §1 roster): the commander carries the beacon mast; the tender is
+    // flat-hulled with clamp arms; the barge is a weighing deck — terrain and job, not an enemy.
+    { role: 'formation-commander', weight: 0.08, hullIds: ['ship_drifter', 'ship_bastion'] },
+    { role: 'clamp-tender', weight: 0.04, hullIds: ['ship_mule', 'ship_pelican'] },
+    { role: 'scale-barge', weight: 0.03, hullIds: ['ship_bastion', 'ship_warden'] },
   ],
   illegalCommodities: [],
-  custom: {},
+  custom: {
+    // §34 row 515 — Concord identity mechanics (02 §1).
+    commander: {
+      // Formations hold shape around a commander hull. Fling or kill it past this distance
+      // from the wing's centroid and the rest lock their last formation and coast rigid —
+      // the best bowling-pin set in the game. They never re-form without a new commander.
+      lockRadiusWu: 120,
+      stamp: { aiKey: 'formationLocked' },
+    },
+    clampTender: {
+      // A Clamp Tender grabs loose CARGO, never ships — it has no rule for a hull.
+      grabRadiusWu: 200,
+      breakRadiusWu: 320,      // out-pull distance that tears the clamp (E-03 tug-of-war)
+      maxClampMassT: 400,
+    },
+    scaleBarge: {
+      scannerProfile: 'scale_barge',  // src/data/massSignature.js (row 513)
+      finePerTonneCr: 38,
+      toleranceT: 2,
+    },
+    weighing: {
+      encounterId: 'the_weighing',    // src/data/encounters/700-the-weighing.js (E-04)
+      deck: 'patrol',
+      choiceWindowS: 22,
+    },
+    // Bowling Pins (E-02): a rigid locked formation is throwable set-dressing — drift it into
+    // lane traffic and the traffic problem is the game's.
+    evidenceLocker: { seizesOutcome: 'weighing_evaded' },
+  },
   voiceRegister: 'lawful',
 };
 

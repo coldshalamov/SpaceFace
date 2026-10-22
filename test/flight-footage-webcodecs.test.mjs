@@ -95,6 +95,7 @@ function makeFallbackBrowser(mode, { holdJpeg = true } = {}) {
     setTimeout: globalThis.setTimeout,
   };
   const calls = { streams: 0, videoElements: 0, bitmaps: 0 };
+  const createdFrames = [];
   let poll = null;
   let acceleratedTimeout = false;
   CodecWorker.instances.length = 0;
@@ -119,6 +120,7 @@ function makeFallbackBrowser(mode, { holdJpeg = true } = {}) {
     constructor(canvas, { timestamp }) {
       this.canvas = canvas; this.timestamp = timestamp;
       this.displayWidth = 1466; this.displayHeight = 779;
+      createdFrames.push(this);
     }
     close() { this.closed = true; }
   }
@@ -173,7 +175,7 @@ function makeFallbackBrowser(mode, { holdJpeg = true } = {}) {
   });
   poll();
   return {
-    calls, source, state, footage,
+    calls, source, state, footage, frames: createdFrames,
     worker: (name) => CodecWorker.instances.find((entry) => entry.options.name === name),
     async settle({ timer = false } = {}) {
       for (let i = 0; i < 6; i += 1) await Promise.resolve();
@@ -458,6 +460,56 @@ test('codec and JPEG frames can share the ring and both remain exportable after 
     assert.equal(await decodeFootageFrameToBlob(browser.footage.ring.frames[1]), browser.footage.ring.frames[1].blob);
   } finally {
     browser.cleanup();
+  }
+});
+
+test('a codec encode timeout closes the VideoFrame the request still owned', async () => {
+  const browser = makeFallbackBrowser('timeout');
+  try {
+    await browser.settle();
+    browser.capture(6);
+    await browser.settle({ timer: true });
+    assert.equal(browser.frames.length, 1, 'one presented frame was minted');
+    assert.equal(browser.frames[0].closed, true,
+      'the timed-out request released its frame instead of leaving it for the GC warning');
+    assert.equal(browser.footage.status().captureBackend, 'jpeg');
+  } finally {
+    browser.cleanup();
+  }
+});
+
+test('the codec worker closes transferred frames that arrive without a live encoder', async () => {
+  const saved = {
+    self: Object.getOwnPropertyDescriptor(globalThis, 'self'),
+    encoder: Object.getOwnPropertyDescriptor(globalThis, 'VideoEncoder'),
+  };
+  const posts = [];
+  class RejectingEncoder {
+    static async isConfigSupported() { return { supported: false }; }
+  }
+  Object.defineProperty(globalThis, 'self', {
+    configurable: true, writable: true, value: { postMessage: (data) => posts.push(data) },
+  });
+  Object.defineProperty(globalThis, 'VideoEncoder', { configurable: true, writable: true, value: RejectingEncoder });
+  try {
+    // Before any configure the worker has no encoder; a delivered encode still owns its frame.
+    footageVideoCodecRuntime();
+    const noEncoder = { closed: 0, close() { this.closed += 1; } };
+    await globalThis.self.onmessage({ data: { kind: 'encode', id: 1, frame: noEncoder } });
+    assert.equal(noEncoder.closed, 1, 'a frame delivered without an encoder is closed');
+
+    // After a fatal configure failure the same contract holds for late deliveries.
+    footageVideoCodecRuntime();
+    await globalThis.self.onmessage({ data: { kind: 'configure', configs: [{ codec: 'vp8', width: 640, height: 340 }] } });
+    assert.ok(posts.some((post) => post.kind === 'error'), 'the configure failure was reported');
+    const afterFailure = { closed: 0, close() { this.closed += 1; } };
+    await globalThis.self.onmessage({ data: { kind: 'encode', id: 2, frame: afterFailure } });
+    assert.equal(afterFailure.closed, 1, 'a frame delivered after failure is closed');
+  } finally {
+    for (const [name, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
   }
 });
 

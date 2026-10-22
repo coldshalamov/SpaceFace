@@ -114,7 +114,39 @@ export const FACTION_CONDUCT = freeze({
   }),
   // The paper faction: no ships, so no guns. A grudge is a variance — the desk is closed until
   // the paperwork is put right. A filing cycle lapses it eventually.
-  faction_helix: freeze({
+    // Re-routers hold grudges as order records — a derail files a delay, never a vendetta.
+  faction_fulfillment: freeze({
+    short: 'fulfillment', kinAt: 25, waryBelow: -15, kinServed: 2, waryAfterS: 600,
+    forgive: freeze({ afterS: 900, acts: freeze(['order_fulfilled']) }),
+    kin: freeze({ kind: 'loiter', range: 300, reason: 'fulfillment_escort_shadow' }),
+    wary: freeze({ kind: 'hail_hold', range: 0, reason: 'fulfillment_audit_hold' }),
+    grudge: freeze({ kind: 'disengage', hostile: false, closesDesk: true, reason: 'fulfillment_order_flagged' }),
+    lines: freeze({ kin: 'Your order history precedes you. The route makes time for you.',
+      grudge: 'ORDER FLAGGED: deliveries to you are suspended pending review.' }),
+  }),
+  // The Vael keep accounts, not grudges. A cut anchor is a line item; settlement clears it.
+  faction_vael: freeze({
+    short: 'vael', kinAt: 25, waryBelow: -15, kinServed: 2, waryAfterS: 600,
+    forgive: freeze({ afterS: 1200, acts: freeze(['lien_settled']) }),
+    kin: freeze({ kind: 'loiter', range: 400, reason: 'vael_tender_shadow' }),
+    wary: freeze({ kind: 'hail_hold', range: 0, reason: 'vael_invoice_pending' }),
+    grudge: freeze({ kind: 'disengage', hostile: false, closesDesk: true, reason: 'vael_lien_outstanding' }),
+    lines: freeze({ kin: 'Your payment history is exemplary. The Vael invoice your punctuality.',
+      grudge: 'LIEN OUTSTANDING: the Vael do not pursue. The ledger waits.',
+      forgive: 'Addendum settled. The Vael invoice your punctuality.' }),
+  }),
+  // Machines do not hold grudges — violations and exceptions are the record itself.
+  faction_verge_layers: freeze({
+    short: 'verge_layers', kinAt: 25, waryBelow: -15, kinServed: 2, waryAfterS: 900,
+    forgive: freeze({ afterS: 1800, acts: freeze(['appeal_granted']) }),
+    kin: freeze({ kind: 'loiter', range: 500, reason: 'verge_prism_shadow' }),
+    wary: freeze({ kind: 'hail_hold', range: 0, reason: 'verge_directive_pending' }),
+    grudge: freeze({ kind: 'disengage', hostile: false, closesDesk: true, reason: 'verge_verdict_revoked' }),
+    lines: freeze({ kin: 'PROTOCOL: WITNESSED.',
+      grudge: 'VERDICT: REVOKED. Appeal is your only route back.',
+      forgive: 'APPEAL HEARD. The record is amended.' }),
+  }),
+faction_helix: freeze({
     short: 'helix',
     kinAt: 35, waryBelow: -10, kinServed: 2, waryAfterS: 900,
     forgive: freeze({ afterS: 1800, acts: freeze(['berth_returned']) }),

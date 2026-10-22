@@ -36,9 +36,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
   // memorialThief is a uniqueWrecks sub-object (no id, no clock). Do not add it here.
-  'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
+  'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
   'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
-  'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
+  'masslineImpactDamage', 'lootShards', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
   'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake',
@@ -50,7 +50,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
   'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod',
-  'recoveryEncounter', 'factions', 'sectorSim', 'towlineTable', 'towlineTablePrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'npcJobsRuntime', 'careerOrigins',
+  'recoveryEncounter', 'factions', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens', 'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads', 'sectorSim', 'towlineTable', 'towlineTablePrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
@@ -95,7 +95,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
   'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
-  'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
+  'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
   // so it runs on the full-rate table clock beside lootShards/fragileCargo.
@@ -358,7 +358,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Anchored set-pieces queue physics impulses every tick.
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud',
   // Combat island: damage/attachment/custody owners at combat cadence.
-  'combat', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
+  'combat', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
   'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   // Debris/damage owners with live bodies or timed expiry.

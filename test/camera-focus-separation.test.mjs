@@ -1428,7 +1428,8 @@ test('Flyby Focus only acquires valid high-speed hostile near-miss and owns time
     id: 71,
     type: 'asteroid',
     alive: true,
-    pos: { x: 40, z: 0 },
+    // Keep a nearer persistent selection without physically obstructing the Focus rope.
+    pos: { x: 40, z: 40 },
     radius: 10,
     vel: { x: 0, z: 0 },
   };
