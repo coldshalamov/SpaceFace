@@ -8,6 +8,10 @@ existing row identities, current claims and acceptance remain authoritative.
 
 This is the repository's implementation front door. It routes an agent to the smallest authoritative packet and the live owners it must respect. It deliberately contains no current queue snapshot, branch name, lease, test transcript, or completion history.
 
+The owner-commissioned [BLACK FLAG integration](docs/BLACK_FLAG.md) maps ship custody,
+physical control transfer, registry and chop-shop owners. Its acceptance gaps remain explicit;
+this supporting crosswalk adds no second queue or completion claim.
+
 The owner-directed weapons and powers audit is [Arsenal experience](design/program/ARSENAL_EXPERIENCE.md):
 the complete built-kit lifecycle matrix and implementation plan for physical world effects,
 distinct attack/target presentation, custom SVG identities and usable controls.
@@ -1152,22 +1156,22 @@ production units, and never build what they write.
 | 514 | W-KITS | Faction hull kits plus the Overgrowth and junk kits (§34.5) | ART | OPEN |
 | 515 | W-CONCORD | Concord — commanders, Clamp Tender, Scale Barge, the Weighing (§34.5) | BUILD | OPEN — after 513 for the Weighing |
 | 516 | W-MERIDIAN | Meridian — cargo spines, couplers, hull tickers, Spine Break (§34.5) | BUILD | OPEN |
-| 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | OPEN |
-| 518 | W-FULFILLMENT | Fulfillment — route trains, hitchhike, derail spill, boarding, Order #0000001 (§34.5) | BUILD | OPEN |
-| 519 | W-PITBORN | Pitborn — Cull dressing, Ma Sprocket, Yardmaster, Ballast (§34.5) | BUILD | OPEN |
+| 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 518 | W-FULFILLMENT | Fulfillment — route trains, hitchhike, derail spill, boarding, Order #0000001 (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 519 | W-PITBORN | Pitborn — Cull dressing, Ma Sprocket, Yardmaster, Ballast (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 520 | W-TIDE | The Bloom tide — per-sector infestation on the chart, persisted (§34.6) | BUILD | OPEN |
 | 521 | W-AUDITS | The Gate Audits — one gate per Book behind a wreckable scaffold; never strands a sector (§34.6) | BUILD | OPEN |
 | 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | OPEN |
 | 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | OPEN — after 520 and 521 |
-| 524 | W-VAEL | Vael — Override Tender, the transferable Lien Anchor, Page Nine (§34.5) | BUILD | OPEN |
+| 524 | W-VAEL | Vael — Override Tender, the transferable Lien Anchor, Page Nine (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 525 | W-QUIET | Quiet — juggling runners, The Swap, sold routes (§34.5) | BUILD | OPEN |
 | 526 | W-HELIX | Helix — too-perfect false flags, Lien drones, Gate Audit platforms, Adjudicator 44-C (§34.5) | BUILD | OPEN |
-| 527 | W-ARCHIVE | Archive — Redaction, reading rooms, page drones, Index Head (§34.5) | BUILD | OPEN |
-| 528 | W-CHOIR | Choir — Bells, resonance, the Carried Relic (§34.5) | BUILD | OPEN |
-| 529 | W-VERGE | Verge-Layers — machine bodies, flyable directives, the Appeal, the Sleeping Jury, the Line trial (§34.5) | BUILD | OPEN |
+| 527 | W-ARCHIVE | Archive — Redaction, reading rooms, page drones, Index Head (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 528 | W-CHOIR | Choir — Bells, resonance, the Carried Relic (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 529 | W-VERGE | Verge-Layers — machine bodies, flyable directives, the Appeal, the Sleeping Jury, the Line trial (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 530 | W-DRIFT | Drift — claim pylons, the Claim Jump, the Breaker Derby (§34.5) | BUILD | OPEN |
 | 531 | W-REACH | Reach — the Nest Carrier, the Trophy Wall, chained gate camps (§34.5) | BUILD | OPEN |
-| 532 | W-FRONTIER | Frontier — homestead modules, Barn Raising, Weld Head (§34.5) | BUILD | OPEN |
+| 532 | W-FRONTIER | Frontier — homestead modules, Barn Raising, Weld Head (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
 | 533 | W-BOOKS-0-2 | Books 0–2 play per `design/expansion/06_CAMPAIGN_SCRIPT.md` (§34.7) | BUILD | OPEN |
 | 534 | W-BOOKS-3-4 | Books 3–4 play — VARIANCE ADJUSTMENT, the three doors, the doubled contract (§34.7) | BUILD | OPEN — after 533 |
 | 535 | W-BOOKS-5-7 | Books 5–7 play — heists, the Empire Seed, the Iron Maw dismantle, the Witness (§34.7) | BUILD | OPEN — after 534 |
@@ -6710,7 +6714,6 @@ row 501 head), its conduct entry (`factionConduct.js`, where missing), and its p
 | 529 | **Verge-Layers** | bodies for Measure Engine, Gate Auditor, Surveyor Prism and Debris Sorter (then Executor, Appeals Clerk, Witness, Sleeping Jury); directives shown as one capitalised word on the glass; **The Appeal** (weighed evidence, E-30); the Sleeping Jury (E-34); the Line-site Class trial | 02 §14, 03 §3 |
 | 530 | **Drift** | claim pylons (throwable); the **Claim Jump** set piece (E-06); the Breaker Derby (E-39); Breaker Head | 02 §3 |
 | 531 | **Reach** | the **Nest Carrier** mini-boss (E-08); the Trophy Wall at Sker Haven (your kills hang there; steal them back); gate camps of chained rock (E-42); Barb Head | 02 §4 |
-| 532 | **Free Frontier** | six homestead modules plus a frame; **Barn Raising** (E-21); a raised homestead persists, gains traffic and asks for supply runs when stranded; Weld Head | 02 §7 |
 
 ### 34.6 The world moves (rows 520–523)
 
@@ -6725,6 +6728,7 @@ row 501 head), its conduct entry (`factionConduct.js`, where missing), and its p
 
 | Row | Name | Feeling | Done when | Bible |
 |---|---|---|---|---|
+| 532 | **Free Frontier** | six homestead modules plus a frame; **Barn Raising** (E-21); a raised homestead persists, gains traffic and asks for supply runs when stranded; Weld Head | 02 §7 |
 | 533 | **Books 0–2 play** | "B0 taught me the Line in two minutes; B2 cut to silence." | The 06 mission lists for B0–B2 are wired on the default route: the Skim's 12.4 t strain reading, Scale 4's variance object, the Infested Hauler furnace disposal, the Compost Run, the Nest, and the Elroy beat in the terminal register. Protected lines are exact (R-rulings). Player-truth adventure passes | 06 |
 | 534 | **Books 3–4 play** | "The fourth spike is real." | VARIANCE ADJUSTMENT (a Hawser-class tug with Slate's seam failing at the fourth strain spike); Feed the Maw; the Foreman; the first Gate Audit; the three doors each running their operation (Spine Break, the Weighing plus the Too-Perfect Pack, Barn Raising); the doubled contract as a player choice, with the canon wall line only if taken | 06 |
 | 535 | **Books 5–7 play** | "I took apart the Iron Maw." | The Reunion (canon dialogue), the Ninth Toll, the Reading Room and Redaction, the Locker heist; the Empire Seed built by towed modules, its first tide, Gate 3's waived fine, and Shaft 7's Hive-hulk; the Iron Maw dismantled into the Gutted Maw, the Long Field broken by shepherds, and the Witness room as terminal register | 06 |
