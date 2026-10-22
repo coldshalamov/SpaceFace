@@ -255,6 +255,47 @@ test('continuous sector handoff defers the seam recovery scan through the visual
   assert.deepEqual(calls, ['poll']);
 });
 
+test('hold-expiry releases the pinned incoming sector prewarm instead of faulting', () => {
+  const calls = [];
+  const released = [];
+  const aborted = [];
+  const prewarm = {
+    active: true,
+    sectorId: 'sector_ceres_belt',
+    owner: { id: 'prewarm-residency-owner' },
+    boundaryRecords: [{ id: 'boundary-1' }],
+  };
+  const owner = {
+    _deferNoncriticalMeshStreaming: false,
+    _renderResidencyPollS: 0,
+    _meshReconcileDirty: true,
+    _sectorHandoffStreamHoldS: 0.4,
+    _sectorHandoffSectorId: 'sector_ceres_belt',
+    _incomingSectorPrewarm: prewarm,
+    _sectorBoundaryPreparations: {
+      abortRecords: (records, reason) => { aborted.push([records, reason]); return Promise.resolve([]); },
+    },
+    _assetResidency: {
+      releaseOwner: (residencyOwner, reason) => { released.push([residencyOwner, reason]); return 1; },
+    },
+    _meshBuildQueue: [],
+    _meshBuildQueueHead: 0,
+    reconcileMeshes() { calls.push('full'); },
+    reconcileMeshResidency() { calls.push('poll'); },
+    _drainPendingMeshBuilds() { calls.push('drain'); },
+  };
+
+  // The hold draining to zero on this tick used to reach a `releaseSectorPrewarm` that
+  // only existed inside the prewarm controller's method scope — a ReferenceError that
+  // tryPresentedCall swallowed, leaking the record's residency pin and stranding the
+  // rest of the hold-expiry cleanup. Now the same module release path serves both sites.
+  assert.equal(serviceRenderMeshResidency(owner, 0.5), 'deferred');
+  assert.equal(prewarm.active, false);
+  assert.equal(owner._incomingSectorPrewarm, null);
+  assert.deepEqual(released, [[prewarm.owner, 'continuous-sector-entry-uses-spatial-runway']]);
+  assert.deepEqual(aborted, [[prewarm.boundaryRecords, 'continuous-sector-entry-uses-spatial-runway']]);
+});
+
 test('stable 400-entity poll halves collection visits and removes all redundant rebinds', () => {
   const player = entity(1, { type: 'ship', sectorId: 'sector_current' });
   player.isPlayer = true;

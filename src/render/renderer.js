@@ -3048,6 +3048,20 @@ function settleRebuildBridges(owner) {
   }
 }
 
+// One release path for a sector-prewarm record, shared by the prewarm controller's
+// closure scope and module-level residency drives — the handoff-hold tail below runs
+// far outside the controller method where `releaseSectorPrewarm` is defined.
+function releaseSectorPrewarmRecord(owner, record, reason) {
+  if (!record || record.active !== true) return 0;
+  record.active = false;
+  record.boundaryAbort = owner._sectorBoundaryPreparations
+    ? owner._sectorBoundaryPreparations.abortRecords(record.boundaryRecords, reason)
+    : null;
+  return owner._assetResidency
+    ? owner._assetResidency.releaseOwner(record.owner, reason)
+    : 0;
+}
+
 export function serviceRenderMeshResidency(owner, frameDt) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
@@ -3369,7 +3383,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // not lose its pin to this seam's tail (mirror of the pending-id guard below).
       if (owner._incomingSectorPrewarm
           && owner._incomingSectorPrewarm.sectorId === owner._sectorHandoffSectorId) {
-        releaseSectorPrewarm(owner._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
+        releaseSectorPrewarmRecord(owner, owner._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
         owner._incomingSectorPrewarm = null;
       }
       if (owner._authoredSectorPrewarmPendingId === owner._sectorHandoffSectorId) {
@@ -21194,17 +21208,7 @@ export const render = {
           : null,
       });
     };
-    const releaseSectorPrewarm = (record, reason) => {
-      if (!record || record.active !== true) return 0;
-      record.active = false;
-      record.boundaryAbort = this._sectorBoundaryPreparations.abortRecords(
-        record.boundaryRecords,
-        reason,
-      );
-      return this._assetResidency
-        ? this._assetResidency.releaseOwner(record.owner, reason)
-        : 0;
-    };
+    const releaseSectorPrewarm = (record, reason) => releaseSectorPrewarmRecord(this, record, reason);
     const appendSectorPrewarmRequests = (record, requests) => {
       if (!record || record.active !== true) return Promise.resolve([]);
       const additions = [];
