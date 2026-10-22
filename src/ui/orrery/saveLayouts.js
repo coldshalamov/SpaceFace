@@ -335,18 +335,18 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 }
 /* ui-polish-98: the stacked page under 750 tall (641–790 × 461–749, and ≤739 × ≤460) runs ~630–710px, so on a
    790×461–561 window EXPORT / IMPORT / BACK and 12–15 lines sat under the fold until the page was scrolled, and a
-   probe at the frame took no click on them. The way back pins to the frame's foot as the page scrolls (on a shade
-   band so the strip reads behind it), so the three are always on screen and take a click; the rest scrolls up. */
+   probe at the frame took no click on them. The way back moves up beside the title (top right), so the three are on
+   screen and take a click without a scroll and nothing scrolls under a pinned bar (#516's first cut pinned it to the foot,
+   which covered LOAD at 461 tall and the strip's labels at 500). */
 @media (max-width:739px) and (max-height:749px), (max-width:790px) and (min-height:461px) and (max-height:749px) {
-  /* focus and scrollIntoView keep a control clear of the pinned foot */
-  html:root:not([data-sf-mobile="1"]) ${SLD} { scroll-padding-bottom:104px; padding-top:12px !important; row-gap:6px !important; }
-  /* the title takes the short-desktop size so LOAD / SAVE HERE / DELETE stand above the pinned foot on first view */
+  /* the way back rides the title's row (top right), so it is on screen without a scroll and nothing scrolls under it */
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:12px !important; row-gap:6px !important;
+    grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:max-content max-content minmax(max-content, 1fr) !important;
+    grid-template-areas:"title foot" "page page" "hang hang" !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-title { font-size:34px !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-title .k-t-emph { margin-top:4px; font-size:13px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-stage__foot.sf-save-ledger { gap:4px; }
-  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-foot { position:sticky !important; bottom:0; z-index:5;
-    margin:0 -24px !important; padding:8px 24px 12px !important;
-    background:linear-gradient(to top, rgb(4 6 9) 78%, rgb(4 6 9 / 0)) !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-foot { align-self:start; justify-self:end; gap:22px; padding-top:4px !important; }
 }
 /* ui-polish-92: from 791 (the stack's edge) to ~940 wide above 460 tall the strip sits beside the reading with
    ~67-80px stations: QUICK's CURRENT ran into SLOT 1 and each filed save's line broke mid-word ("Adventur /
