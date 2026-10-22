@@ -11,6 +11,8 @@ const BONE = '236 230 216';
 const HOT = '248 244 234';
 const P = 'html body #screens > .of-pause.orr-pause.orr-pause';
 const PH = 'html body #screens > .of-pause.orr-pause--phone.orr-pause--phone';
+// the phone column in a narrow desktop window (no data-sf-mobile, so the phone sheet's flow rules don't apply)
+const PN = 'html:root:not([data-sf-mobile="1"]) body #screens > .of-pause.orr-pause--phone.orr-pause--phone';
 const BOTH = 'html body #screens > .of-pause:is(.orr-pause, .orr-pause--phone)';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 const HALO = 'text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9), 0 0 18px rgb(4 6 9 / .75) !important;';
@@ -228,6 +230,24 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${PH} .sf-pause-brief > .dp-etch.sf-slot-sub:first-child::after {
     content:"" !important; flex:0 0 40px; height:1px;
     background:linear-gradient(90deg, rgb(${BONE} / .4), rgb(${BONE} / 0)) !important; }
+}
+
+/* narrow desktop window (≤760 wide, no touch): pause.js gives it the phone column, but the phone sheet's
+   flow rules are keyed to data-sf-mobile, so the grid cut the verb list off under REFERENCE and long
+   names ran off the right edge. The same flow here: one scroll owner (the screen), rows that wrap. */
+@media (max-width:760px) {
+  ${PN} { --dp-margin:clamp(20px, 6vw, 48px); display:flex !important; flex-direction:column !important;
+    justify-content:flex-start !important; gap:18px !important; overflow-y:auto !important; overflow-x:hidden !important;
+    min-height:0 !important; height:100% !important; max-height:100dvh !important; scroll-padding:12px 0 90px; }
+  ${PN} > :is(.dp-frame__head, .dp-frame__body, .dp-frame__foot) {
+    position:relative !important; inset:auto !important; width:100% !important; min-width:0 !important;
+    max-height:none !important; flex:none !important; align-self:stretch !important; }
+  ${PN} > .dp-frame__body { grid-template-columns:minmax(0, 1fr) !important; }
+  ${PN} > .dp-frame__body > .dp-frame__col { min-width:0 !important; max-width:100% !important; }
+  ${PN} .dp-title__name { font-size:clamp(28px, 8vw, 42px) !important; }
+  ${PN} .sf-pause-brief { max-width:100% !important; }
+  ${PN} .sf-pause-brief .sf-slot-name { font-size:20px !important; overflow-wrap:anywhere; }
+  ${PN} .k-words--row { flex-wrap:wrap !important; gap:8px 18px !important; }
 }
 `;
 
