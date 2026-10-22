@@ -1,0 +1,33 @@
+{
+  "files": [
+    {
+      "path": "src/render/npcJobSignatureVfx.js",
+      "base_sha256": "231947f7e10ec9128fd5e3903150481b82d71d603311878f10394f91250c8108",
+      "sha256": "3c7f9e18da7c089ce724ada36ca51a621cfebc7ed9f79abf6851cf8c911a4490",
+      "bytes": 48313
+    },
+    {
+      "path": "test/pallas-reef-read-model.test.mjs",
+      "base_sha256": "35e7a986f2b5f6b6a7fee518e11deb428df6b60a6aace2e6a3acf4a7f9f91d18",
+      "sha256": "dd09a41999bffe963e9ab5c7bfa7669d5e27c5ec1293476f88b348055166cbb6",
+      "bytes": 19905
+    },
+    {
+      "path": "test/pallas-modular-cutter-vfx.test.mjs",
+      "base_sha256": null,
+      "sha256": "2d9643729f085ba5894e44721e14bf3344d5b2f5086e2b9858663c5c208ce668",
+      "bytes": 12110
+    }
+  ],
+  "validation_vfx": {
+    "commit": "e7f6122f8d8f2985223940bfbb60eb4f66272561",
+    "blob": "7ab066945cefa7bec490cef4129fc9dce7aafe49",
+    "sha256": "011206ed8caecd9929b5a173d6e107c5010c3bbdea541687541129aaa9c48fcb",
+    "bytes": 828373,
+    "deliverable": false
+  },
+  "patch_sha256": "3fe7d9e46a4bf02aab70b6a96c6b37f753e86a6ef433474f3f1f98f2058d826b",
+  "purpose": "Recovery-only reviewed modular cutter source delta, not runtime integration or visual acceptance.",
+  "required_base_npc_blob": "deca5ecc044797d7e168ea0f9e0dfab2cdab07a3",
+  "new_test_must_be_absent": true
+}

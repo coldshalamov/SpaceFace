@@ -1,0 +1,447 @@
+diff --git a/src/render/npcJobSignatureVfx.js b/src/render/npcJobSignatureVfx.js
+--- a/src/render/npcJobSignatureVfx.js
++++ b/src/render/npcJobSignatureVfx.js
+@@ -1,12 +1,13 @@
++import { PALLAS_REEF_CREW } from '../data/pallasReefCrew.js';
+ import { FIELD_JOB_SIGNATURE_CRAFT } from '../data/occupationalTrafficCraft.js';
+ import { shouldDrawTableVfx, tableLookAtDelta, tableVfxDrawWuFromState } from './tabletopPolicy.js';
+ 
+ // Pure presentation grammar for the NPC job seam — "The Working Light" made visible.
+ //
+ // WHAT THIS IS: the read-only mapping from a job's (kind, phase, loaded) triple to the visual code a
+-// working ship shows the lane. It owns no state, allocates nothing per frame, and knows nothing about
+-// Three.js, the scene, entities or the bus. `src/render/vfx.js` is the only consumer; it holds the
+-// pool and does the drawing.
++// working ship shows the lane. The profile grammar allocates nothing per frame. The bounded live
++// adapter below reads entities and bus cues, owning presentation scratch only. renderUpdatePhase.js
++// installs it on the VFX instance; vfx.js owns slots, culling and particle primitives.
+ //
+ // WHAT THIS IS NOT: it is not a simulation input. Nothing here can change where a ship goes, how fast
+ // it flies, or what phase it is in. `src/systems/npcJobs.js` decides all of that and this module only
+@@ -714,6 +715,118 @@
+   };
+ }
+ 
++// Authored identity only: inactive/retired cutters must also stay free of generic work lights.
++export function isPallasReefCutter(entity) {
++  const d = entity?.data, a = PALLAS_REEF_CREW.actors[0];
++  return entity?.type === 'ship' && d?.worldRecordId === a.id && d.identityKey === a.id
++    && d.pallasReefRole === a.role && d.defId === a.ship
++    && d.homeSectorId === PALLAS_REEF_CREW.sectorId && d.sectorId === PALLAS_REEF_CREW.sectorId;
++}
++
++// Only the current transported contact and its exact occupant life authorize a cut.
++export function resolvePallasReefCutTarget(state, ent, job) {
++  const d = ent?.data, report = state?.traffic?.pallasReefCrew;
++  if (!isPallasReefCutter(ent) || ent.alive === false || d.minerShiftActive !== true
++    || state?.mode !== 'flight' || state.world?.currentSectorId !== PALLAS_REEF_CREW.sectorId
++    || state.entities?.get(ent.id) !== ent || report?.id !== PALLAS_REEF_CREW.id
++    || report.phase !== 'cutting' || !Number.isSafeInteger(report.observedTick) || report.observedTick < 0
++    || !Number.isSafeInteger(state.tick) || state.tick - report.observedTick < 0
++    || state.tick - report.observedTick > 2) return null;
++  const entry = state.npcJobs?.byId?.[d.jobId];
++  if (!entry || entry.entityId !== ent.id || entry.worldRecordId !== d.worldRecordId
++    || entry.job !== job || !job || job.id !== d.jobId || entry.control || entry.towAssist
++    || job.phase === 'flee' || job.phase === 'complete') return null;
++  const id = d.minerShiftRockId;
++  const target = Number.isSafeInteger(id) && id > 0 ? state.entities.get(id) : null;
++  if (!target || target.alive === false || target.type !== 'wreck'
++    || target.data?.worldRecordId !== PALLAS_REEF_CREW.sectionId
++    || target.data.salvageSourceKey !== PALLAS_REEF_CREW.sourceKey
++    || target.data.salvagePointId !== PALLAS_REEF_CREW.salvagePointId
++    || !Number.isSafeInteger(target.occupantGeneration) || target.occupantGeneration < 1
++    || target.occupantGeneration !== d.pallasReefCutTargetGeneration
++    || !Number.isFinite(ent.pos?.x) || !Number.isFinite(ent.pos?.z)
++    || !Number.isFinite(target.pos?.x) || !Number.isFinite(target.pos?.z)
++    || Math.hypot(target.pos.x - ent.pos.x, target.pos.z - ent.pos.z) > 95) return null;
++  return target;
++}
++
++function emitPallasReefCut(host, ent, target, reduced) {
++  const x = ent.pos.x, z = ent.pos.z, ax = target.pos.x - x, az = target.pos.z - z;
++  const distance = Math.hypot(ax, az);
++  const r = Math.max(3, Number.isFinite(ent.radius) ? ent.radius : 6);
++  const targetR = Math.max(2, Number.isFinite(target.radius) ? target.radius : 6);
++  const start = r * 0.8, end = distance - targetR;
++  if (end <= start || distance < 0.01) return 0;
++  const ux = ax / distance, uz = az / distance, y = Math.max(2, r * 0.38);
++  let emitted = host._spawnStationSideEventStreak(
++    x + ux * (start + end) * 0.5, y, z + uz * (start + end) * 0.5,
++    reduced ? 0.34 : 0.20, r * 0.09, end - start, 0.62, '#ffcf7a', 0, 0, ux, uz,
++  );
++  if (!reduced) emitted += host._spawnStationSideEventStreak(
++    x + ux * end, y, z + uz * end, 0.20, r * 0.04, r * 0.35,
++    0.5, '#ffe0a8', -ux * 6, -uz * 6, -ux, -uz,
++  );
++  return emitted;
++}
++
++function resetCutterScratch(scratch) {
++  scratch.slot = null;
++  scratch.entity = null;
++  scratch.entityGeneration = null;
++  scratch.jobId = null;
++  scratch.elapsed = 0;
++  scratch.lastEmitStep = -1;
++}
++
++function clearCutterScratch(host) {
++  const scratches = Object.hasOwn(host, '_npcReefCutterScratch') && host._npcReefCutterScratch;
++  if (scratches) for (let i = 0; i < scratches.length; i++) resetCutterScratch(scratches[i]);
++}
++
++function drawClaimedCutters(host, step, previousGen) {
++  const gen = host._npcJobSignatureGen;
++  // origDraw can return before advancing its generation; those retained slots are not live claims.
++  if (gen === previousGen) { clearCutterScratch(host); return 0; }
++  const slots = host._npcJobSignatureSlots;
++  if (!slots) { clearCutterScratch(host); return 0; }
++  if (!Object.hasOwn(host, '_npcReefCutterScratch')) {
++    host._npcReefCutterScratch = Array.from({ length: NPC_JOB_SIGNATURE_CAPACITY }, () => {
++      const scratch = {};
++      resetCutterScratch(scratch);
++      scratch.frame = createNpcJobSignatureFrameScratch();
++      return scratch;
++    });
++  }
++  const scratches = host._npcReefCutterScratch, reduced = reducedMotionOf(host.state);
++  let emitted = 0;
++  for (let i = 0; i < scratches.length; i++) {
++    const scratch = scratches[i], slot = slots[i];
++    const entry = slot && slot.gen === gen && slot.jobId != null
++      ? host.state?.npcJobs?.byId?.[slot.jobId] : null;
++    const ent = entry && hostEntity(host, entry.entityId);
++    if (!entry?.job || entry.job.corrupt || !isPallasReefCutter(ent)) {
++      resetCutterScratch(scratch);
++      continue;
++    }
++    if (scratch.slot !== slot || scratch.entity !== ent
++      || scratch.jobId !== slot.jobId || scratch.entityGeneration !== ent.occupantGeneration) {
++      resetCutterScratch(scratch);
++      scratch.slot = slot;
++      scratch.entity = ent;
++      scratch.entityGeneration = ent.occupantGeneration;
++      scratch.jobId = slot.jobId;
++    }
++    scratch.elapsed += Number.isFinite(step) && step > 0 ? step : 0;
++    const frame = writeNpcJobSignatureFrame(BLIND_CONE, scratch.elapsed, 0, 0, 0,
++      slot.seed, reduced, scratch.frame);
++    if (frame.emitStep === scratch.lastEmitStep) continue;
++    scratch.lastEmitStep = frame.emitStep;
++    const target = resolvePallasReefCutTarget(host.state, ent, entry.job);
++    if (target) emitted += emitPallasReefCut(host, ent, target, reduced);
++  }
++  return emitted;
++}
++
+ function reducedMotionOf(state) {
+   const settings = state && state.settings || null;
+   const video = settings && settings.video || null;
+@@ -730,6 +843,7 @@
+ 
+ function clearLiveCueState(host) {
+   ensureLiveCueState(host);
++  clearCutterScratch(host);
+   host._npcIntakePending.clear();
+   host._npcIntakeSeen.clear();
+   host._npcThreatPending.clear();
+@@ -840,6 +954,7 @@
+       pending.delete(key);
+       continue;
+     }
++    if (isPallasReefCutter(ent)) { pending.delete(key); continue; }
+     const located = minerJobForCarrier(host, rec.carrierId);
+     const job = located ? located.job : { kind: 'miner', phase: 'load' };
+     writeNpcJobSignatureFrame(
+@@ -869,7 +984,7 @@
+     const onGlass = !!(ent && signatureSubjectOnGlass(host.state, ent) && slot);
+     pending.delete(jobId);
+     host._npcThreatShown.add(jobId);
+-    if (!onGlass || !close || close.id === NPC_JOB_REACTION.NONE) continue;
++    if (!onGlass || isPallasReefCutter(ent) || !close || close.id === NPC_JOB_REACTION.NONE) continue;
+     if (slot.reaction !== close.id) {
+       slot.reaction = close.id;
+       slot.reactionT = close.intensity;
+@@ -920,6 +1035,23 @@
+ export function installNpcJobLiveSignatureDraw(vfxSystem) {
+   if (!vfxSystem || vfxSystem._npcJobLiveSignatureInstalled) return vfxSystem;
+   vfxSystem._npcJobLiveSignatureInstalled = true;
++  // Permanent narrow dispatch guards; unrelated calls keep receiver, arguments and return value.
++  for (const name of ['_emitNpcJobSignature', '_emitNpcJobContact', '_emitNpcJobReaction']) {
++    const original = vfxSystem[name];
++    if (typeof original !== 'function') continue;
++    const entityIndex = name === '_emitNpcJobReaction' ? 1 : 2;
++    vfxSystem[name] = function npcJobAuthoredDispatch() {
++      if (isPallasReefCutter(arguments[entityIndex])) return 0;
++      return original.apply(this, arguments);
++    };
++  }
++  const origDestroy = vfxSystem.destroy;
++  if (typeof origDestroy === 'function') {
++    vfxSystem.destroy = function npcJobLiveDestroy() {
++      clearCutterScratch(this);
++      return origDestroy.apply(this, arguments);
++    };
++  }
+   const origInit = vfxSystem.init;
+   vfxSystem.init = function npcJobLiveInit(ctx) {
+     const result = origInit.apply(this, arguments);
+@@ -928,8 +1060,9 @@
+   };
+   const origDraw = vfxSystem._updateNpcJobSignatures;
+   vfxSystem._updateNpcJobSignatures = function npcJobLiveDraw(step) {
++    const gen = this._npcJobSignatureGen;
+     const emitted = origDraw.apply(this, arguments) || 0;
+-    return emitted + drawPendingIntakes(this) + drawPendingThreats(this);
++    return emitted + drawClaimedCutters(this, step, gen) + drawPendingIntakes(this) + drawPendingThreats(this);
+   };
+   const origUpdate = vfxSystem.update;
+   if (typeof origUpdate === 'function') {
+diff --git a/test/pallas-reef-read-model.test.mjs b/test/pallas-reef-read-model.test.mjs
+--- a/test/pallas-reef-read-model.test.mjs
++++ b/test/pallas-reef-read-model.test.mjs
+@@ -9,7 +9,7 @@
+ } from '../scripts/lib/simReadModel.mjs';
+ import { collectEntityVitals, entityVitalsOf } from '../scripts/lib/simWorkerHost.mjs';
+ import { vfx, initNpcJobContactScratch } from '../src/render/vfx.js';
+-import { createNpcJobSignatureFrameScratch } from '../src/render/npcJobSignatureVfx.js';
++import { createNpcJobSignatureFrameScratch, installNpcJobLiveSignatureDraw, resolvePallasReefCutTarget } from '../src/render/npcJobSignatureVfx.js';
+ 
+ // Production worker serializer, JSON wire, main-side domain receiver and entity SPAWN shape.
+ // The fixture supplies real authored crew/jobs, with native physics deliberately disabled.
+@@ -224,6 +224,7 @@
+     _spawnStationSideEventStreak(...args) { strokes.push(args); return 1; },
+     _spawnSprite() { assert.fail('reef cutter must not show a generic survey or work pulse'); },
+   });
++  installNpcJobLiveSignatureDraw(renderer);
+   function render(reduced = false) {
+     strokes.length = 0;
+     main.settings = { video: { motionReduce: reduced } };
+@@ -290,7 +291,7 @@
+     ['stale job binding', () => { main.npcJobs.byId[cutter.data.jobId].entityId = -1; }, () => { main.npcJobs.byId[cutter.data.jobId].entityId = cutter.id; }],
+   ]) {
+     invalidate();
+-    assert.equal(renderer._pallasReefCutTarget(mainCutter, mainJob), null, label);
++    assert.equal(resolvePallasReefCutTarget(main, mainCutter, mainJob), null, label);
+     assert.equal(render().length, 0, label);
+     restore();
+   }
+@@ -344,5 +345,5 @@
+   applyEntityVitals(model, [[unrelated.id, fields]]);
+   assert.equal(model.entities.get(unrelated.id).data.minerShiftActive, false, 'receiver rejects an unrelated role marker');
+   assert.equal(model.entities.get(unrelated.id).data.minerShiftRockId, null);
+-  assert.equal(renderer._pallasReefCutTarget(model.entities.get(unrelated.id), main.npcJobs.byId[cutter.data.jobId].job), null);
++  assert.equal(resolvePallasReefCutTarget(main, model.entities.get(unrelated.id), main.npcJobs.byId[cutter.data.jobId].job), null);
+ });
+diff --git a/test/pallas-modular-cutter-vfx.test.mjs b/test/pallas-modular-cutter-vfx.test.mjs
+--- /dev/null
++++ b/test/pallas-modular-cutter-vfx.test.mjs
+@@ -0,0 +1,208 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { vfx, initNpcJobContactScratch } from '../src/render/vfx.js';
++import { PALLAS_REEF_CREW as C } from '../src/data/pallasReefCrew.js';
++import {
++  installNpcJobLiveSignatureDraw, createNpcJobSignatureFrameScratch, isPallasReefCutter,
++  resolvePallasReefCutTarget, NPC_JOB_SIGNATURE_PROFILES,
++} from '../src/render/npcJobSignatureVfx.js';
++
++function fixture({ installed = true, capacity = 12 } = {}) {
++  const ent = { id: 1, type: 'ship', alive: true, occupantGeneration: 1, radius: 8,
++    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
++    data: { worldRecordId: C.actors[0].id, identityKey: C.actors[0].id,
++      pallasReefRole: C.actors[0].role, defId: C.actors[0].ship,
++      homeSectorId: C.sectorId, sectorId: C.sectorId, jobId: 'cut',
++      minerShiftActive: true, minerShiftRockId: 2, pallasReefCutTargetGeneration: 2 } };
++  const target = { id: 2, type: 'wreck', alive: true, occupantGeneration: 2, radius: 6,
++    pos: { x: 40, z: 20 }, data: { worldRecordId: C.sectionId,
++      salvageSourceKey: C.sourceKey, salvagePointId: C.salvagePointId } };
++  const job = { id: 'cut', kind: 'salvor', phase: 'work', route: [], payload: { role: 'cutter' } };
++  const entry = { entityId: 1, worldRecordId: C.actors[0].id, kind: 'salvor', job };
++  const state = { mode: 'flight', tick: 30, simTime: 0, world: { currentSectorId: C.sectorId },
++    traffic: { pallasReefCrew: { id: C.id, phase: 'cutting', observedTick: 30 } },
++    entities: new Map([[1, ent], [2, target]]), entityList: [ent, target],
++    npcJobs: { byId: { cut: entry } }, settings: { video: { motionReduce: false } } };
++  const output = [];
++  const host = Object.assign(Object.create(vfx), {
++    state, _ent: id => state.entities.get(id), _npcJobSignatureGen: 0,
++    _npcJobSignatureSlots: Array.from({ length: capacity }, () => initNpcJobContactScratch({
++      jobId: null, profileId: null, elapsed: 0, lastEmitStep: -1, seed: 0, gen: -1,
++      deploy: 0, reaction: 'none', reactionT: 0, frame: createNpcJobSignatureFrameScratch(),
++    })), _pirateInterceptScratch: null,
++    _spawnStationSideEventStreak(...args) { output.push(['streak', ...args]); return 1; },
++    _spawnJobLamp(...args) { output.push(['lamp', ...args]); return 1; },
++    _spawnSprite(...args) { output.push(['sprite', ...args]); return true; },
++  });
++  if (installed) installNpcJobLiveSignatureDraw(host);
++  const draw = (step = 1) => { output.length = 0; return host._updateNpcJobSignatures(step); };
++  return { host, ent, target, job, entry, state, output, draw };
++}
++
++test('all generic output channels remain dark for authored cutter in every non-cut state', () => {
++  for (const invalidate of [
++    f => { f.ent.data.minerShiftActive = false; },
++    f => { f.state.traffic.pallasReefCrew.phase = 'retired'; },
++    f => { f.job.phase = 'flee'; }, f => { f.job.phase = 'complete'; },
++    f => { f.entry.control = {}; }, f => { f.entry.towAssist = {}; },
++    f => { f.ent.alive = false; }, f => { f.job.corrupt = true; },
++    f => { f.state.mode = 'docked'; },
++  ]) {
++    const f = fixture(); invalidate(f);
++    for (const phase of ['spawn', 'transit', 'work', 'load', 'return']) {
++      // Preserve explicit flee/complete invalidation; otherwise stress every generic profile.
++      if (!['flee', 'complete'].includes(f.job.phase)) f.job.phase = phase;
++      assert.equal(f.draw(), 0); assert.deepEqual(f.output, []);
++    }
++  }
++});
++
++test('each generic dispatcher suppresses cutter before lamp, streak or sprite primitives', () => {
++  const f = fixture(); f.draw(); const slot = f.host._npcJobSignatureSlots[0];
++  for (const profile of Object.values(NPC_JOB_SIGNATURE_PROFILES)) {
++    f.output.length = 0;
++    assert.equal(f.host._emitNpcJobSignature(slot, profile, f.ent, f.job, false), 0);
++    assert.equal(f.host._emitNpcJobContact(slot, profile, f.ent, f.job, false), 0);
++    assert.equal(f.host._emitNpcJobReaction(slot, f.ent, false), 0);
++    assert.deepEqual(f.output, []);
++  }
++});
++
++test('exact identities and authority reject malformed and lookalike snapshots', () => {
++  for (const key of ['worldRecordId', 'identityKey', 'pallasReefRole', 'defId', 'homeSectorId', 'sectorId']) {
++    const f = fixture(); f.ent.data[key] = 'lookalike';
++    assert.equal(isPallasReefCutter(f.ent), false, key);
++    assert.equal(resolvePallasReefCutTarget(f.state, f.ent, f.job), null, key);
++  }
++  for (const invalidate of [
++    f => { f.ent.type = 'wreck'; }, f => { f.ent.pos.x = Infinity; },
++    f => { f.target.pos.z = NaN; }, f => { f.target.pos.x = 96; f.target.pos.z = 0; },
++    f => { f.target.occupantGeneration = 2.1; }, f => { f.target.data.salvagePointId = 'foreign'; },
++    f => { f.target.type = 'asteroid'; }, f => { f.ent.data.minerShiftRockId = '2'; },
++    f => { f.state.entities.set(1, { ...f.ent }); }, f => { f.entry.worldRecordId = 'foreign'; },
++    f => { f.job.id = 'different'; }, f => { f.state.traffic.pallasReefCrew.id = 'foreign'; },
++    f => { f.state.tick = NaN; }, f => { f.state.traffic.pallasReefCrew.observedTick = 31; },
++  ]) {
++    const f = fixture(); invalidate(f);
++    assert.equal(resolvePallasReefCutTarget(f.state, f.ent, f.job), null);
++  }
++  assert.equal(isPallasReefCutter(null), false);
++  assert.equal(resolvePallasReefCutTarget(null, null, null), null);
++});
++
++test('finite beam geometry and normal/reduced particle counts', () => {
++  const f = fixture(); assert.equal(f.draw(), 2);
++  for (const row of f.output) for (const value of row.slice(1)) {
++    if (typeof value === 'number') assert.ok(Number.isFinite(value));
++  }
++  f.state.settings.video.motionReduce = true; assert.equal(f.draw(), 1);
++  f.ent.radius = Infinity; f.target.radius = NaN; assert.equal(f.draw(), 1);
++  for (const value of f.output[0].slice(1)) if (typeof value === 'number') assert.ok(Number.isFinite(value));
++});
++
++test('cutter cadence is miner 5.5/2 Hz regardless of generic phases, cues or projected job replacement', () => {
++  for (const reduced of [false, true]) {
++    const stable = fixture(), varied = fixture();
++    stable.state.settings.video.motionReduce = varied.state.settings.video.motionReduce = reduced;
++    const expected = [], actual = [];
++    for (let i = 0; i < 120; i++) {
++      varied.entry.job = { ...varied.entry.job, phase: ['work', 'transit', 'load'][i % 3] };
++      varied.ent.data.ceresCausalCue = ['extraction', 'ore_intake', null][i % 3];
++      expected.push(stable.draw(1 / 60)); actual.push(varied.draw(1 / 60));
++      const s = stable.host._npcReefCutterScratch[0];
++      assert.equal(s.frame.emitStep, Math.floor(s.elapsed * (reduced ? 2 : 5.5)
++        + stable.host._npcJobSignatureSlots[0].seed / 1000 * 4));
++    }
++    assert.deepEqual(actual, expected);
++  }
++});
++
++test('duplicate installation preserves wrappers and unrelated delegate this, arguments and return', () => {
++  const calls = [], result = {};
++  const host = { init() {}, _updateNpcJobSignatures() { return 0; } };
++  for (const name of ['_emitNpcJobSignature', '_emitNpcJobContact', '_emitNpcJobReaction']) {
++    host[name] = function (...args) { calls.push([this, args]); return result; };
++  }
++  installNpcJobLiveSignatureDraw(host);
++  const wrapped = host._emitNpcJobSignature;
++  installNpcJobLiveSignatureDraw(host); assert.equal(host._emitNpcJobSignature, wrapped);
++  const ent = { type: 'ship', data: {} }, args = [{}, {}, ent, {}, false, 'extra'];
++  assert.equal(host._emitNpcJobSignature(...args), result);
++  assert.equal(calls[0][0], host); assert.deepEqual(calls[0][1], args);
++  assert.equal(host._emitNpcJobContact(...args), result);
++  assert.equal(host._emitNpcJobReaction(args[0], ent, true, 'extra'), result);
++});
++
++test('unrelated worker real output is identical before and after installation', () => {
++  for (const kind of ['miner', 'salvor', 'tender', 'hauler', 'surveyor', 'patrol']) {
++    const plain = fixture({ installed: false }), guarded = fixture();
++    for (const f of [plain, guarded]) {
++      f.ent.data = { jobId: 'cut' }; f.entry.kind = f.job.kind = kind;
++    }
++    for (const phase of ['spawn', 'transit', 'approach', 'work', 'load', 'return', 'flee', 'complete']) {
++      plain.job.phase = guarded.job.phase = phase;
++      assert.equal(guarded.draw(), plain.draw(), `${kind}/${phase}`);
++      assert.deepEqual(guarded.output, plain.output, `${kind}/${phase}`);
++      assert.deepEqual(guarded.host._npcJobSignatureSlots.map(({ contactVisit, ...s }) => s),
++        plain.host._npcJobSignatureSlots.map(({ contactVisit, ...s }) => s));
++    }
++  }
++});
++
++test('early returns cannot replay stale generation and no-slot cases stay dark', () => {
++  const f = fixture(); assert.equal(f.draw(), 2);
++  const saved = f.state.npcJobs; f.state.npcJobs = null;
++  assert.equal(f.draw(), 0); assert.deepEqual(f.output, []);
++  assert.equal(f.host._npcReefCutterScratch[0].entity, null);
++  f.state.npcJobs = saved; assert.equal(f.draw(), 2);
++  const noSlots = fixture({ capacity: 0 }); assert.equal(noSlots.draw(), 0);
++});
++
++test('slot release, reuse and occupant replacement reset only bounded private scratch', () => {
++  const f = fixture({ capacity: 1 }); f.draw(0.01);
++  const scratch = f.host._npcReefCutterScratch[0]; assert.equal(scratch.elapsed, 0.01);
++  f.state.npcJobs.byId = {}; f.draw(); assert.equal(scratch.entity, null);
++  f.state.npcJobs.byId = { cut: f.entry }; f.draw(0.01); assert.equal(scratch.elapsed, 0.01);
++  f.ent.occupantGeneration++; f.draw(0.01); assert.equal(scratch.elapsed, 0.01);
++  assert.equal(f.host._npcReefCutterScratch.length, 12);
++  const ordinary = { ...f.ent, id: 3, data: { jobId: 'ordinary' } };
++  f.state.entities.set(3, ordinary);
++  f.state.npcJobs.byId = { ordinary: { entityId: 3, kind: 'hauler', job: { id: 'ordinary', phase: 'transit' } }, cut: f.entry };
++  f.draw(); assert.equal(scratch.entity, null, 'saturated pool does not invent an extra cutter slot');
++});
++
++test('queued intake and threat emit no cutter work, including skipped cadence fallback', () => {
++  const f = fixture(); f.draw(); f.entry.kind = f.job.kind = 'miner';
++  f.ent.data.minerShiftActive = false;
++  f.host._npcIntakePending = new Map([['one', { carrierId: 1 }]]);
++  f.host._npcThreatPending = new Map([['cut', {}]]); f.host._npcThreatShown = new Set();
++  assert.equal(f.draw(), 0); assert.deepEqual(f.output, []);
++  assert.equal(f.host._npcIntakePending.size, 0); assert.equal(f.host._npcThreatPending.size, 0);
++  const skipped = fixture({ installed: false });
++  skipped.host.update = function () { return 77; };
++  installNpcJobLiveSignatureDraw(skipped.host);
++  skipped.host._npcIntakePending = new Map([['one', { carrierId: 1 }]]);
++  assert.equal(skipped.host.update(0.001, skipped.state), 77);
++  assert.deepEqual(skipped.output, []); assert.equal(skipped.host._npcIntakePending.size, 0);
++});
++
++test('new game, initialization and destroy reset cutter lifetime scratch', () => {
++  const f = fixture({ installed: false }), listeners = new Map();
++  f.host.bus = { on(name, fn) { listeners.set(name, fn); }, off(name) { listeners.delete(name); } };
++  f.host.init = function () { return 19; }; f.host.destroy = function () { return 23; };
++  installNpcJobLiveSignatureDraw(f.host); assert.equal(f.host.init(), 19);
++  f.draw(); const scratch = f.host._npcReefCutterScratch[0];
++  listeners.get('game:newGame')(); assert.equal(scratch.entity, null);
++  f.draw(); f.host.init(); assert.equal(scratch.entity, null);
++  f.draw(); assert.equal(f.host.destroy(), 23); assert.equal(scratch.entity, null);
++});
++
++test('stop changes authorize no new particles and never mutate simulation facts', () => {
++  const f = fixture(); const before = JSON.stringify({ ent: f.ent, target: f.target, job: f.job, report: f.state.traffic });
++  assert.equal(f.draw(), 2);
++  assert.equal(JSON.stringify({ ent: f.ent, target: f.target, job: f.job, report: f.state.traffic }), before);
++  f.ent.data.minerShiftActive = false;
++  for (let i = 0; i < 60; i++) { assert.equal(f.draw(1 / 60), 0); assert.deepEqual(f.output, []); }
++  // Already submitted 0.20/0.34-second strokes belong to the existing particle pool's fade clock.
++  // No cancellation or invented instantaneous-clear behavior is asserted here.
++});
