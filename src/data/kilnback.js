@@ -14,7 +14,7 @@ export const KILNBACK_ENEMY = Object.freeze({
   silhouette: 'kilnback', factionId: 'faction_reach', aiArchetype: 'brawler',
   combatDoctrineId: 'brawler_commit', levelRange: [2, 4],
   hull: 220, armor: 24, armorFlat: 1, shield: 0, shieldRegen: 0,
-  cap: 80, capRegen: 0, maxSpeed: 45, accel: 18, turnRate: 0.55,
+  cap: 80, capRegen: 0, maxSpeed: 92, accel: 18, turnRate: 0.55,
   collisionRadius: 23, mass: 180, weapons: [],
   aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 140, leashRadius: 1000 },
   rareSpecialist: true, physicalClass: 'specialist', shipClass: 'freighter', bountyCr: 240,

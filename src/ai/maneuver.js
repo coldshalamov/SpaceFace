@@ -263,6 +263,11 @@ const DEFAULTS = Object.freeze({
 const ZERO_VEL = Object.freeze({ x: 0, z: 0 });
 const EMPTY_TRAJECTORY = Object.freeze([]);
 
+// Row 491: at most one heading reversal per REVERSAL_WINDOW_TICKS of sim time (0.4/s at 60 Hz).
+// A direction change sharper than REVERSAL_DOT (≈120°) counts as a reversal.
+export const REVERSAL_WINDOW_TICKS = 150;
+export const REVERSAL_DOT = -0.5;
+
 export class ManeuverPlanner {
   constructor({ seed = 1, trace = null, config = {} } = {}) {
     this.seed = seed >>> 0;
@@ -540,7 +545,33 @@ export class ManeuverPlanner {
       runtime.stationaryTicks = 0;
     }
 
-    const desiredUnit = unit2(desired.x, desired.z, Math.cos(selfPose.rot), Math.sin(selfPose.rot));
+    const rawDesiredUnit = unit2(desired.x, desired.z, Math.cos(selfPose.rot), Math.sin(selfPose.rot));
+    // Row 491 (FIGHT-READ): a reversal is the ship committing to a new arc. More than 0.4 of them
+    // per second reads as thrashing, not piloting — no attack cycle stays visible. Outside an
+    // emergency lane (obstacle dodge, retreat, tether escape, deadlock clear) or a live reflex
+    // dodge (the rare telegraphed dodge), a second reversal inside the window is denied: the
+    // pilot finishes the committed arc instead of snap-reversing on the spot.
+    let desiredUnit = rawDesiredUnit;
+    {
+      const reversing = Number.isFinite(runtime.lastDesiredUnitX)
+        && (runtime.lastDesiredUnitX * rawDesiredUnit.x + runtime.lastDesiredUnitZ * rawDesiredUnit.z) < REVERSAL_DOT;
+      if (reversing) {
+        const exempt = desired.obstacleAvoidance === true
+          || reflex != null
+          || kind === ManeuverKind.RETREAT
+          || kind === ManeuverKind.ESCAPE_TETHER
+          || kind === ManeuverKind.CLEAR_DEADLOCK;
+        if (!exempt) {
+          if (tick < (runtime.reversalHoldUntilTick || -1)) {
+            desiredUnit = { x: runtime.lastDesiredUnitX, z: runtime.lastDesiredUnitZ };
+          } else {
+            runtime.reversalHoldUntilTick = tick + REVERSAL_WINDOW_TICKS;
+          }
+        }
+      }
+      runtime.lastDesiredUnitX = desiredUnit.x;
+      runtime.lastDesiredUnitZ = desiredUnit.z;
+    }
     // Some combat phases hold or return to a formation point while charging a fixed gun. Keep the
     // translational request pointed at that slot, but let the authored intent explicitly aim the
     // ship's nose at its target so HOLD does not turn a firing window into deterministic misses.

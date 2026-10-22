@@ -101,6 +101,7 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import { foundryPlateShape } from '../data/foundryPlate.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
+import { engineGlowForSilhouette } from '../data/enemyEngineGlow.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -149,6 +150,11 @@ function resolvePalette(e) {
       ? { hull: fp.hull, accent: fp.accent || fp.primary, emissive: fp.emissive || fp.primary, thruster: fp.thruster || fp.accent }
       : NEUTRAL_PAL;
   }
+  // Row 490 (CRAFT-READ): a hostile's drive glow is its role read — the silhouette family picks
+  // the burn colour so a stranger names the role before any ring exists. Never mutate the shared
+  // PAL constants; clone once the glow applies.
+  const roleGlow = e.data && engineGlowForSilhouette(e.data.silhouette);
+  if (roleGlow && roleGlow !== colors.thruster) colors = { ...colors, thruster: roleGlow };
   const appearance = paletteWithShipAppearance(e, colors);
   if (Number.isFinite(Number(appearance.wear))) profile.grime = appearance.wear;
   // A hull with no appearance record wears its faction's stencils; an explicit record (even a

@@ -9,7 +9,7 @@ export const MOTH_ENEMY = Object.freeze({ id: MOTHLIGHT.enemyId, name: 'Mothligh
   silhouette: 'mothlight', factionId: 'faction_reach', aiArchetype: 'sniper',
   combatDoctrineId: 'ranged_disengager', levelRange: [5, 8], hull: 95, armor: 10,
   armorFlat: 0, shield: 40, shieldRegen: 1.5, cap: 70, capRegen: 8,
-  maxSpeed: 85, accel: 35, turnRate: 1.9, collisionRadius: 16, mass: 60,
+  maxSpeed: 96, accel: 35, turnRate: 1.9, collisionRadius: 16, mass: 60,
   weapons: [{ id: MOTHLIGHT.weaponId }], rareSpecialist: true, physicalClass: 'specialist', shipClass: 'fighter',
   aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 460, leashRadius: 1400 },
   bountyCr: 340, loot: null,

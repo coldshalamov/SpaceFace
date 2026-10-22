@@ -275,6 +275,11 @@ import {
   writeMasslineSwingTraceGeometry,
 } from './masslineSwingTrace.js';
 import {
+  createMasslineLatchRim,
+  resolveMasslineLatchRimPlan,
+  updateMasslineLatchRim,
+} from './masslineLatchRim.js';
+import {
   createMasslineChainReadout,
   createMasslineChainReadoutGeometry,
   resetMasslineChainReadout,
@@ -1082,6 +1087,7 @@ function emptyVfxSubsystemDiag() {
     miningBeam: 0,
     tetherCable: 0,
     masslineReleaseArc: 0,
+    masslineLatchRim: 0, // latched body's Line-colour rim ring (row 492)
     swingTrace: 0,      // attached-body swept-path ribbon (luminous arc of the flail's travel)
     brood: 0,           // SWARM-07: the Brood tier, instanced bodies drawn this frame
     masslineChainReadout: 0, // thrown mass's accepted release→contact→kill ancestry trace
@@ -2033,6 +2039,7 @@ export const vfx = {
     }
     add(this._arcPreview && this._arcPreview.mesh);
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
+    add(this._masslineLatchRim && this._masslineLatchRim.mesh);
     add(this._apexFlare && this._apexFlare.mesh);
     add(this._monofilamentBlade && this._monofilamentBlade.mesh);
     add(this._selectionSigil && this._selectionSigil.mesh);
@@ -2307,6 +2314,7 @@ export const vfx = {
     this._initArcPreview();
     this._initMasslineReleaseArc();
     this._initMasslineSwingTrace();
+    this._initMasslineLatchRim();
     this._initMasslineChainReadout();
     this._initMonofilamentBlade();
     this._initDockingCradle();
@@ -9468,6 +9476,38 @@ export const vfx = {
     this._swingTraceQuietIdle = false;
   },
 
+  _masslineLatchRim: null,
+  _initMasslineLatchRim() {
+    if (!this._scene) return;
+    const rim = createMasslineLatchRim();
+    rim.mesh.name = 'sf-massline-latch-rim';
+    rim.mesh.renderOrder = 7;
+    this._scene.add(rim.mesh);
+    this._masslineLatchRim = rim;
+  },
+
+  // Row 492: the latched body wears the Line's colour on its rim. Reads the same presented
+  // tether mirror the swing trace uses (remote massline wins, player tether otherwise); load
+  // and whip are the published presentation reads — no second strain law here.
+  _updateMasslineLatchRim(dt) {
+    const rim = this._masslineLatchRim;
+    if (!rim) return false;
+    const state = this.state;
+    const playerTether = state && state.player && state.player.tether;
+    const remoteTether = state && state.player && state.player.remoteMassline;
+    const remote = !!(remoteTether && remoteTether.active
+      && remoteTether.sourceId != null && remoteTether.targetId != null);
+    const tether = remote ? remoteTether : playerTether;
+    const target = tether && tether.active && tether.targetId != null ? this._ent(tether.targetId) : null;
+    const plan = resolveMasslineLatchRimPlan(
+      tether, target,
+      target ? (tether && Number.isFinite(tether.load) ? tether.load : 0) : 0,
+      target ? resolveMasslineWhipGlow(tether) : 0,
+      rim.plan,
+    );
+    return updateMasslineLatchRim(rim, plan, dt, (x, z) => this._toLocalXZ(x, z, this._spawnLocalXZ));
+  },
+
   _resetMasslineSwingTrace() {
     const st = this._masslineSwingTrace;
     if (!st) return;
@@ -12761,6 +12801,7 @@ export const vfx = {
     } else {
       sub.masslineReleaseArc = 0;
     }
+    sub.masslineLatchRim = this._updateMasslineLatchRim(dt) ? 1 : 0;
     if (this._stationSideEventsRelevant()) {
       const stationStep = this._consumeCadence(
         '_cadenceStationSideEvent',

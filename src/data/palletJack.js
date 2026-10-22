@@ -11,7 +11,7 @@ export const PALLET_JACK_ENEMY = Object.freeze({ id: PALLET_JACK.enemyId, name: 
   shipId: 'ship_hawser', silhouette: 'pallet_jack', factionId: 'faction_reach',
   aiArchetype: 'pirate', combatDoctrineId: 'brawler_commit', levelRange: [2, 4],
   hull: 160, armor: 12, armorFlat: 1, shield: 0, shieldRegen: 0, cap: 100, capRegen: 0,
-  collisionRadius: 20, mass: 100, maxSpeed: 55, accel: 24, turnRate: .8,
+  collisionRadius: 20, mass: 100, maxSpeed: 92, accel: 24, turnRate: .8,
   combatProfileId: 'combat_profile_pallet_jack', weapons: [], rareSpecialist: true,
   physicalClass: 'specialist', shipClass: 'freighter', bountyCr: 180,
   aiDoctrine: { defaultActivity: 'reposition', roe: 'defensive', preferredRange: 100, leashRadius: 14000 },
@@ -46,7 +46,7 @@ export function palletJackCargoEligible(e, now = 0, adopted = false) {
 }
 export function palletJackFlightModel(body, base = {}) {
   return { ...base, flightClass: 'hauler', mass: body.mass, inertia: body.inertiaY,
-    mainAccel: 24, reverseAccel: 30, strafeAccel: 9, maxSpeed: 55,
+    mainAccel: 24, reverseAccel: 30, strafeAccel: 9, maxSpeed: 92,
     maxYawRate: .8, angularAccel: 2.4, angularBrake: 4,
     normalMaxSpeedMult: 1, boostMult: 1, boostMaxSpeedMult: 1 };
 }

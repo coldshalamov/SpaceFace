@@ -474,6 +474,7 @@ export const ENEMY_TYPES = [
     hull: 360, armor: 105, armorFlat: 3, shield: 120, shieldRegen: 10, shieldRegenCapable: true,
     cap: 210, capRegen: 24,
     maxSpeed: 48, accel: 30, turnRate: 0.65, collisionRadius: 32, mass: 420,
+    anchored: true, // row 491: a fixture unit — the snare field is the weapon; it does not pursue
     weapons: [
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
       { id: 'wpn_autocannon_m' },
@@ -515,7 +516,7 @@ export const ENEMY_TYPES = [
     combatDoctrineId: 'brawler_commit',
     hull: 720, armor: 120, armorFlat: 2, shield: 160, shieldRegen: 0,
     cap: 240, capRegen: 26,
-    maxSpeed: 84, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
+    maxSpeed: 96, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
     weapons: [
       { id: 'wpn_concussion_cannon_m' },
       { id: 'wpn_pulse_laser_s', dmgOverride: 6, rofOverride: 2.4 },
@@ -572,7 +573,7 @@ export const ENEMY_TYPES = [
     combatDoctrineId: 'brawler_commit',
     hull: 720, armor: 120, armorFlat: 2, shield: 160, shieldRegen: 0,
     cap: 240, capRegen: 26,
-    maxSpeed: 84, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
+    maxSpeed: 96, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
     weapons: [
       { id: 'wpn_concussion_cannon_m' },
       { id: 'wpn_beam_laser_m' },
@@ -614,7 +615,7 @@ export const ENEMY_TYPES = [
     combatDoctrineId: 'pack_pursuit',
     hull: 900, armor: 140, armorFlat: 2, shield: 0, shieldRegen: 0,
     cap: 300, capRegen: 30,
-    maxSpeed: 46, accel: 30, turnRate: 1.0, collisionRadius: 34, mass: 520,
+    maxSpeed: 92, accel: 30, turnRate: 1.0, collisionRadius: 34, mass: 520,
     weapons: [
       // The three sacs: each turret mount is a destructible subsystem (subsystems.turretHp),
       // so "break the sacs" is a literal verb — a dead mount goes silent through the ordinary
