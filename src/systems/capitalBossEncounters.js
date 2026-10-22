@@ -1,4 +1,5 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { spawnSwarmCapitalBallast } from '../missions/capitalBossSpawn.js';
 import { createCapitalBossFight,restoreCapitalBossFight,rebindCapitalBossFight,
   bindCapitalBossWing,stepCapitalBossFight,validFightId } from '../combat/capitalBossScore.js';
 import { capitalOrderKey } from '../ai/capitalBossOrders.js';
@@ -85,9 +86,24 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
     start({encounterId,fightId,bossId,targetId,mirror=1}) {
       if(!validFightId(fightId)) throw new TypeError('Invalid fight id');
       const store=root(),id=fightId,old=store.fights[id];
+      // A swarm champion's hull is already on the field. The throw-mass is not. The ledger
+      // keeps a second start from doubling rocks, including ones the player already spent.
+      const placeSwarmBallast=(liveBossId)=>{
+        if(typeof id!=='string'||!id.startsWith('swarm:')) return;
+        const spawn=ctx.helpers&&ctx.helpers.spawnEntity;
+        if(typeof spawn!=='function') return;
+        const boss=ctx.state.entities&&ctx.state.entities.get(liveBossId);
+        if(!boss||boss.alive===false||!boss.pos) return;
+        const ledgers=(store.swarmBallastLedgers??={});
+        const ledger=(ledgers[id]??={});
+        spawnSwarmCapitalBallast({
+          fightId:id,encounter:requireCapitalBossEncounter(encounterId),boss,ledger,spawnEntity:spawn,
+        });
+      };
       if(old) {
         if(old.encounterId!==encounterId) throw new Error('Fight id reused for a different encounter');
         if(old.bossId!==bossId||old.targetId!==targetId) system.rebind(id,{bossId,targetId});
+        placeSwarmBallast(old.bossId);
         return old;
       }
       if(Object.keys(store.fights).length>=16) throw new Error('Detach settled capital fights before creating another');
@@ -96,6 +112,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       store.fights[id]=r;
       // Close the stock-fire gate BEFORE the first AI tick, not on the first authored cast.
       store.orders[capitalOrderKey(bossId)]={fightId:id,scoreOwnsAttacks:true,suppressStockFire:true,forward:0,brake:true,phase:'intro'};
+      placeSwarmBallast(bossId);
       return r;
     },
     update(_dt,state=ctx?.state) {
