@@ -375,6 +375,12 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 ---
 
+## Achievements in a 561–760 window — session notes (2026-10-22, ui-polish-85)
+
+**Before (master b3f8807d64):** at 561–~650 wide the stage column was under the orrery's 320px floor, so the medal orrery stood down and left the left half empty, and the category row (with its own left margin) ran CAREER off the frame (bench: OFF FRAME at 600×800).
+
+**After (`constellationLayouts.js` only, `min-width:561px and max-width:760px`):** the reading column is 190px (its dial 132px), side padding is 16px and the gap 16px, so the stage keeps ≥320px and the orrery stands at 561. The categories take their own full-width row over Back. Bench is 0 findings at 561×800, 600×800, 700×800, 760×800 and 640×540. ≤560 and ≥761 don't match the query. Selectors and IDs are unchanged. Shots: `ui-shots/polish85/{before,after}/`, `compare-achievements-600x800.png`.
+
 ## Statistics — session notes (2026-10-12)
 
 **Before:** kit `k-screen--stage` list with fh title; amber primary Back (no ‹ / ESC keycap); group caps / row hairlines / secondary copy soft on void; no ORRERY composition sheet; no 1.12 zoom in the 1080p band; LAW rows fell under the fold at 720p.
