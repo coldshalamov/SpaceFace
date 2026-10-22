@@ -1,13 +1,13 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current checkpoint
 
-## 22 October 2026, 20:24 UTC
+## 22 October 2026, 20:44 UTC
 
 All TEN goals remain OPEN. Publication, local checks and offline renders are not whole-game acceptance. Preserve [IMPLEMENTATION](IMPLEMENTATION.md), the [original twenty-concept map](TWENTY_CONCEPT_MAP.json), its [amendment](TWENTY_CONCEPT_AMENDMENT.md), the [build map](../../../build_map.md) and the [25-sector experience register](https://github.com/coldshalamov/SpaceFace/blob/ff62ac4261b4debaff798f46cbe56a6473f8cf2e/design/program/world-depth-2026-10-02/SECTOR_EXPERIENCE_REGISTER_2026-10-21.md). The [previous checkpoint at 9180a640](https://github.com/coldshalamov/SpaceFace/blob/9180a640e63694708468ccab01e2a8f89c807098/design/program/world-depth-2026-10-02/CURRENT_CHECKPOINT_2026-10-22.md) archives detailed earlier results and recovery history. This concise current register replaces duplicated historical narration, not evidence or scope.
 
 ## Active exact-path claim: one reusable gradiometer
 
-Owner: dot. State: scoped authoring allocation before first model mutation, not an exported or integrated asset. Current public ownership and inventory were checked: no exact gradiometer body claim or equivalent bank ID was found; the faction-art row permits unclaimed bodies. Existing graphics, C6 landmark, Proteus route and production integration owners remain untouched.
+Owner: dot. State: authored and exported, independent source/actual-export review in progress, not yet frozen/published/integrated/accepted. Root identified disconnected stop supports, a low-LOD floating handle and base gaps; the builder is correcting load paths and adding exported-component regression checks before final renders. Current public ownership and inventory were checked: no exact gradiometer body claim or equivalent bank ID was found; the faction-art row permits unclaimed bodies. Existing graphics, C6 landmark, Proteus route and production integration owners remain untouched.
 
 Grounded outcome: one compact gravity-gradient calibration frame for the existing reusable authoring bank, appropriate to research/sounding scenes. It must have a mechanically legible open cage, reference masses/pivots, restrained Forge materials and a readable top-down silhouette. It does not implement measurements, Low's route or gravity control. Count one distinct model, never three LODs or demonstration poses.
 
@@ -22,7 +22,23 @@ Exact new write set:
 - design/asset-bank/reviews/gradiometer-20261022/export-contact-sheet.jpg
 - design/asset-bank/reviews/gradiometer-20261022/export-top-detail.jpg
 
-No shared exporter/material/contract, catalog, render, loader, release allowlist, world placement, NOW or build-map mutation is included. Source/export/review/publication/integration/acceptance must be recorded separately. Next action: author and export within this allocation, inspect actual exported models, fix weak forms, validate costs/bounds/interfaces, then review and publish a coherent draft increment. Runtime placement remains separate owner work.
+No shared exporter/material/contract, catalog, render, loader, release allowlist, world placement, NOW or build-map mutation is included. Source/export/review/publication/integration/acceptance must be recorded separately. Next action: finish support corrections and actual-export visual review, freeze verified costs/bounds/interfaces, then publish a coherent draft increment. Runtime placement remains separate owner work.
+
+## Active exact-hunk claim: unaccepted replay-branch previews
+
+Owner: dot, limited to preview selection before acceptance. Outcome: a player may inspect either branch at its actual station without the first visit silently monopolizing an unaccepted choice; accepting still commits exactly one branch. This is an implementation allocation following executable reproduction, not a completed fix.
+
+Exact write set:
+- src/systems/postEndingReplay.js: only capture the existing missions-owner API from runtime context and the unaccepted stage-one preview/reboarding path around _offerAtStation. Do not change _settle, accepted mission handling, payouts, receipts, completed-route presentation, consequences, chain data or other owners.
+- test/post-ending-replay-preview-choice.test.mjs: new actual-owner regression.
+- package.json: append only this regression to the existing mission-handoff gate, reconciling the latest public package before delivery.
+- design/program/world-depth-2026-10-02/POST_ENDING_PREVIEW_CHOICE_2026-10-22.md: evidence/limits/handoff.
+
+Current source basis: master8ec03f2f7250b50a21c92d37c73217dceef953fc; replay blob a7e30eb19fc873312ac74ea00f415b67ee295b1e; missions API blob29bde8af6a0c750b4225d509282b2501a7039b93. Use existing missions.pruneBoardOffers, never direct cross-owner board writes or a second mission authority. Retire only this run's exact unaccepted preview by source/id/fingerprint/chain/cycle/stage; preserve unrelated rows and every active mission. Check repeated/same/unrelated visits, both branch orders, Save/Continue before acceptance, stale old-offer refusal and post-accept locking. No synthetic completion/payout evidence.
+
+Coordination basis: current repository rules protect exact dirty hunks rather than broad future file reservations. AL-LG-06/07 describe completed-route standing receipts and lasting regional consequences; those hunks remain reserved and unchanged. Public replay source has not changed since9September, canonical replay source is clean and identical, and current open-PR searches for this file and AL-LG-06 returned no matches. These facts do not prove an external writer dead or exclude unpublished changes. Local liveness output only covers the older restored Fleet row and is not external liveness evidence. No claims are deleted or broad owners released. Before publication, re-read actual public source/PR state and reconcile newer changes; stop the exact hunk if a live overlapping diff becomes evident. Protected traffic/mining/npcJobsRuntime and all held operations remain untouched.
+
+Next action: implement the bounded preview correction, run actual-owner and existing replay checks, independently review, preserve, and deliver a coherent draft PR. Not ordinary flight/phone acceptance.
 
 ## Latest delivered implementation: five finite Bolus specimens
 
@@ -63,7 +79,7 @@ These extend the linked sector register with evidence, not checklist completion:
 - Proteus: an exact-source itinerary proof puts Low's nearest generic grid mark 1,344.62 WU from the Funnel and 1,332.22 WU from the range buoy, with no explicit Den filing stop. This is not a native-flight proof. No existing data-only named-contact itinerary hook was found; protected traffic/runtime coordination is needed.
 - Nereid: physical ice-claim binding overlaps protected mining/traffic/Pallas work. No competing controller was made.
 - Station broadcasts: real earlier-envelope load retains future cosmetic timestamps and extends silence. Public stationBroadcast claims belong to pulse-voice; no patch was made. The fixture manually mounts/drives cosmetics with a voice spy, not audio/browser acceptance.
-- Post-ending branch preview: source suggests first visited branch board can block another unaccepted branch, but no runtime reproduction was made. Exact public NOW/INFERENCE assign postEndingReplay to devin-inf20b, and world-answers-2 to codex-bm30. The canonical 'free' row was stale. Do not promote this hypothesis to a confirmed gameplay failure or infer release from a broad old row.
+- Post-ending branch preview: now reproduced in both branch orders through actual public missions/cargo/economy/world/Save owners. Helios-to-Tethys opening completes through acceptance and destination docking, producing its real receipt and793-credit payout; Dione preview then blocks Veil (and vice versa) without acceptance or branchId selection. Leave/return and actual Save/Continue preserve the blockage. Endgame continuity and accelerated travel/dock inputs are disclosed fixtures, not a physically flown campaign. Exact8ec source overlay:1061 relative-ESM inputs and1060 actually loaded source files, zero public mismatches after complete upstream-delta reconciliation. Assets/vendor/dependencies are reused, not a complete checkout verification. Earlier compatibility runs and the failed partial rollback remain diagnostic evidence. The narrow new allocation below preserves completed-route/consequence owners.
 
 Current public coordination identities: build_map `89c00174eaf0e9cca16d374cebbe5d2db5d03b16`, NOW `28c49d3e8aa779e931c7830e7bebcdf8ae1e13fd`, INFERENCE `3cd583ea750d98ee721fbb7271d946033d028765`. Exact dirty hunks and actual liveness matter; a broad lane label does not reserve every future asset. No protected shared checkout/index was changed.
 
@@ -84,7 +100,7 @@ Original Orchard, Pallas, Guide, Shard and generated-JSON holds are unchanged. S
 | SF-VISUALS | Frequent genuine work images and visual review; OPEN | dot | Rib export views; existing-package inspection | Inspect new gradiometer exports and share honest views | Live camera access unresolved |
 | SF-ASSETBANK | Broad distinct reusable bank; OPEN | dot and asset owners | Existing156-candidate bank; scoped new body | Build/export/review one distinct gradiometer, then publish | None for this isolated authoring allocation |
 | SF-ASSET-QUALITY | Detailed coherent silhouettes/materials; OPEN | dot and graphics owners | Rib repair; actual package inspection | Iterate new exported model; retain C6 mismatch for its owner | Live acceptance; C6 integration allocation |
-| SF-LIVING-WORLD | Consequential recurring world; OPEN | dot and sector owners | Five-body Bolus continuity; Charon/Hyperion | Resolve exact ownership/liveness for next connected sector work | Earlier runtime/source holds |
+| SF-LIVING-WORLD | Consequential recurring world; OPEN | dot and sector owners | Five-body Bolus continuity; Charon/Hyperion | Implement narrowly allocated unaccepted replay-preview correction | Earlier runtime/source holds |
 | SF-SECTOR-COHERENCE | Every sector coherent and persistent; OPEN | dot and sector owners | Linked25-sector register and bounded findings above | Extend evidence with actual implementations, not proposals alone | C6 scanner prerequisite and visual allocation |
 | SF-PLAY-WORLD | Personally operate ordinary gameplay; BLOCKED/OPEN | dot | Native/API/offline evidence only | Resume permitted live play; validate controls and phone | Live-browser resolution pending |
 
