@@ -543,3 +543,10 @@ The actual eligible zone center is the Forge (-480,17104); Depot Three remains (
 The local continuity increment now includes the narrowly allocated stationId lookup correction and tests the unchanged eligible zone, not an arbitrary displaced anchor. It remains unpublished and under review. An initial 18 focused / 51 existing pass set did not catch a native-motion authority defect; independent review did, and publication is blocked on its correction. Do not close Vesta or promote fixture results to player acceptance.
 
 Real attachment and Save owners demonstrate clean tether release and one reconstructed body; manual relatching is required. Scalar motion/health/timing/counter continuation is the bounded objective, not exact native solver restore or live flight acceptance. The next executable action remains correction and re-review of native motion capture/settlement in the allocated unit, rather than a new unrelated sector controller.
+
+
+### Vesta continuity delivery and actual visual identity, 23:30 UTC
+
+The independent native-projection blocker is corrected and reviewed. PR #515 now contains the targeting and bounded scalar Continue unit at09ecc5633e6397003fbc1dd70a040b3d4ac17cc0, with73 named checks and independent re-review. CI39870336885 remains active; no whole-game or live towing acceptance. Manual relatching and the native admission displacement bound remain explicit.
+
+Renderer inspection corrects the scope of the earlier image: the336-triangle canister was a procedural source preview. A successfully admitted ordinary payload instead mounts pods/pod_cargo_container.glb. Default radius23 fits its longest axis to46WU, while the native core spans27.716478 by13.6WU. The full crewed kilnback tug also does not fit. The next allocated visual unit reuses the appropriate unmanned furnace-core elements and measures the true export/package fit. No such derivative is exported or integrated yet. See CLAIM_RUNAWAY_KILN_VISUAL_2026-10-22.md.
