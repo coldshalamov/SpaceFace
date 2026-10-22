@@ -58,3 +58,12 @@ verify those facts rather than treating yesterday's failure as today's diagnosis
 These observations disprove the blanket access blocker, not every possible tool failure.
 This runbook and checker cannot force an assistant to follow them. Evaluate the correction
 by subsequent tested changes and verified delivery, not by another promise or setup report.
+
+
+## Current recovery boundary — 22 October 2026
+
+Read the latest EXECUTION_STATUS.md checkpoint and PALLAS_LIGHT_CUT_EXPERIENCE_ADDENDUM_2026-10-22.md before resuming. The c9155b39 recovery commit preserves historical Pallas, mobile, upstream-overlay and residency artifacts, not an integrated runtime branch. Its public recovery README and hash-checking restoration scripts describe the exact separate bases. Never apply those snapshots blindly over current master or sum their test counts into a combined result.
+
+Work only in the assistant's own environment; do not create or resume external Work/Codex execution threads. Preserve canonical dirty paths and held PR480 sector-register/asset operations. Re-read remote refs, reconstruct separately, reconcile newer work, register the explicit residency test and run the bounded permitted tests before sealing a combined candidate. Do not rerun the forbidden receiver test. Do not retry the twice-stalled large VFX blob. Small verified recovery/document writes do not clear that runtime-delivery gap.
+
+Keep the current browser failure distinct from historical graphics failures. No failed startup, CPU render, simulated lifecycle call or Chromium job success proves personally piloted play or world visibility. Resume ordinary-play acceptance only with an actually functioning permitted browser. Preserve all ten open outcome markers until their original acceptance conditions are met.

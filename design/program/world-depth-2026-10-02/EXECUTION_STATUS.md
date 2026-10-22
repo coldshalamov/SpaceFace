@@ -1,7 +1,31 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Current delivery checkpoint — 22 October 2026, 04:04 UTC
+## Current recovery and integration checkpoint — 22 October 2026, 08:38 UTC
+
+All ten outcomes remain OPEN, including SF-PLAY-WORLD and SF-SECTOR-COHERENCE. This checkpoint supersedes historical current-head, pending-CI, browser-blocker and next-operation statements below; it does not erase their evidence or acceptance/reviewer fields. Scope remains [IMPLEMENTATION](IMPLEMENTATION.md), the [original twenty-concept map](TWENTY_CONCEPT_MAP.json) and the [real build map](../../../build_map.md). The new [Pallas light-cut experience addendum](PALLAS_LIGHT_CUT_EXPERIENCE_ADDENDUM_2026-10-22.md) supplements, never rewrites, the held PR480 sector register.
+
+### Delivered, recoverable and still not delivered
+
+- PR488 remains open/draft at e7f6122f8d8f2985223940bfbb60eb4f66272561; PR480 remains open/draft at ff62ac4261b4debaff798f46cbe56a6473f8cf2e (08:30 observations). The original PR480 asset operation remains unchanged and held. Do not repeat or bypass it.
+- [Recovery commit c9155b39](https://github.com/coldshalamov/SpaceFace/commit/c9155b39fe955e99f0d04fd136aabf008c98bc23), tree 175d9fca6e535ec9bfddf1dca0f857fa00bb6a19, has sole parent 5072f4251a39fcf51d6dc5d6209f75fc4af4dbaf. All 43 artifact identities were verified. Original 33 artifacts are unchanged; ten additions preserve the complete 69-path upstream overlay and four-path residency derivative. This is RECOVERY ONLY: no runtime paths or workflows changed and no implementation PR delivery is implied.
+- Recovery reconstructs the distinct 34-path Pallas snapshot 77b7e2b1161b850783a2940b9ab8b19e5bed4dbe / tree 958959c62a2ceee1966795904a9c4beef6205983, the 14b80eeba8da81b81224286d133f34972dfdff30 reconciliation / tree 61eba1857f51cabf27f6a69f633421a1e998ac72, and its residency derivative tree 8df4859e6b74ac0ec8caaaac79880336cd27d1cd. The separate seven-path mobile snapshot is not silently combined with any of them.
+- Pallas focused validation is 85/85 on the reconciled snapshot; expanded checks stand at 309/314 after sparse input repair, with five shunt failures independently reproduced in a Pallas-independent public-source control. This is not full green. Fresh residency validation is separately 51/51 on the four-path derivative (17 native lifecycle/physical/read-model and 34 generic towing/wiring/restore). Mobile source/stand-in DOM validation is separately 126/126. No combined current-master pass exists at this checkpoint.
+- The Pallas cassette is an actual distinct editable Blender model with source/release/runtime GLBs, not an image-only proposal. Geometry/identity checks and native simulation are not live-camera acceptance. Residency retains exact already-admitted live actors and lines; it does not prove their destruction/rematerialization or personally piloted travel. Destination/offload/sale and full episode remain unfinished.
+
+### Terminal CI and current play limit
+
+Exact e7 [main CI](https://github.com/coldshalamov/SpaceFace/actions/runs/39719962776) is terminal failed despite 53 focused cases passing. [Mobile CI](https://github.com/coldshalamov/SpaceFace/actions/runs/39719962956) has Chromium success without verified world visibility; WebKit crashed. These are not newer integration results. At 08:26 the assistant's cloud-browser public-demo attempt failed because the browser profile was already in use and tab enumeration was empty. No actual play occurred. The 03:40 WebGL failure is historical, not the diagnosis of this latest attempt.
+
+### Owner, next operation and pending user action
+
+Root integration owns reconciling the Pallas, residency and mobile candidates against current master, preserving all newer paths, registering the explicit residency test and verifying the combined source before implementation publication. Exact feature and reviewer ownership remains unchanged. Master was b3f8807d642c6f12a5ca5acea959a479d91e0478 at 08:30; a fresh 08:37 read is 70bb667878b654477d762a9add8d8a7e46f3f4ad. Neither historical candidate is therefore described as current-master integrated. Recheck refs immediately before publication.
+
+The large VFX blob 10148d3c0832f5ff07c09f16c936b48ed23cae42 stalled twice (04:42–05:53 and 05:59–08:20) and still returned 404 at 08:20. Do not retry that upload. Small connector artifact writes work. At 05:56 public CLI reads worked while dry-run HTTPS push lacked credentials; no login or credential change is needed for these docs or recovery. Do not conflate those operation-specific limits with blanket GitHub failure.
+
+Continue permitted own-environment integration and evidence work. No external Work/Codex task, credential change, merge, deployment, production-gate relaxation, forbidden receiver test or browser bypass is authorized here. No optional creative decision is pending. The original held asset operation remains separately pending; gameplay/visual/device/whole-sector acceptance still requires adequate evidence and user acceptance.
+
+## Historical delivery checkpoint — 22 October 2026, 04:04 UTC
 
 All ten outcomes remain OPEN, including SF-PLAY-WORLD. This checkpoint supersedes historical current-head, pending-CI and next-operation statements below without removing their evidence or acceptance limits.
 
@@ -1417,3 +1441,4 @@ The contact-budget regression was correctly registered but fell into static1, wh
 Latest source head96b9124 has green simulation/save-reload and Chromium mobile checks, but overall CI remains red. New timeout snapshots reached accepted first picture and residency and mode flight/tick0 after the outer playable deadline; these observations differ from the earlier pending-submission snapshots. No blanket timeout expansion or acceptable-load-time claim is made. Active renderer performance owners retain census/composition scope.
 
 Owner: continuation save/route implementation and independent reviewer. Next action: verify this exact published increment and CI, then validate both reviewed restore repairs on the pinned route before a separately bounded hazard-aware approach. Original exterior exhaustion and 19,218 prior actual calls remain recorded, with no replayed acquisition or payment. All seven larger goals stay open; the separate model-publication approval is still pending.
+
