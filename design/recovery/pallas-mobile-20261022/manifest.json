@@ -1,0 +1,462 @@
+{
+  "format": 1,
+  "status": "Recovery only; separate snapshots, not integrated or accepted. Later residency work is excluded.",
+  "snapshots": {
+    "pallas": {
+      "base_commit": "e7f6122f8d8f2985223940bfbb60eb4f66272561",
+      "candidate_commit": "77b7e2b1161b850783a2940b9ab8b19e5bed4dbe",
+      "candidate_tree": "958959c62a2ceee1966795904a9c4beef6205983",
+      "recorded_focused_tests": 85,
+      "test_scope": "Historical separate snapshot result; not rerun or combined integration acceptance.",
+      "patch_sha256": "960613ea4bff2b3f2ba9a348190eb6d6657673cf2644f6abcc674d9f962301fc",
+      "compressed_sha256": "77d9785043928dacf937c09ce26cf43d95523733eab170b90ef8b612a211a1db",
+      "patch_bytes": 771471,
+      "compressed_bytes": 523632,
+      "chunks": [
+        {
+          "path": "pallas.patch.xz.b64.000",
+          "bytes": 24576,
+          "sha256": "9dd8a341eff408739b1a8db4a46009db4b7812fc9694b275de12955c6ea4225b",
+          "blob": "6a80c423269f3d66f29ee5b317383d185a60b465"
+        },
+        {
+          "path": "pallas.patch.xz.b64.001",
+          "bytes": 24576,
+          "sha256": "d907b779a1ad8594da05e1e1ed250ccc8fb7e2ac7668c33a16034f27445850ea",
+          "blob": "63b312b867ddf09a199b0ba6cb2899fd2511094c"
+        },
+        {
+          "path": "pallas.patch.xz.b64.002",
+          "bytes": 24576,
+          "sha256": "12d22fb1c7939fa78be481abd27af9446ecc42846560f7f539788b1932d286ad",
+          "blob": "0e4d76e6476e3ed55a18a33f06427d14b64ef626"
+        },
+        {
+          "path": "pallas.patch.xz.b64.003",
+          "bytes": 24576,
+          "sha256": "8be5650bce2d1f05b1f532b39a56e5944f8818f095dd3f9215fba83a6374e78f",
+          "blob": "2a5db418c4487d3d6d31733d584c57e84d52ec47"
+        },
+        {
+          "path": "pallas.patch.xz.b64.004",
+          "bytes": 24576,
+          "sha256": "bd4951d0b56da36dbabb39555e8204555819b6f9104e85536fbcf15c3db02e21",
+          "blob": "ebb9793e765653d321dac621b28af3c009f76219"
+        },
+        {
+          "path": "pallas.patch.xz.b64.005",
+          "bytes": 24576,
+          "sha256": "f5c9f6a4a9130950abdeac1082c6d54f769322fa51c884e751cbbf1045d0bb0a",
+          "blob": "1a70aba7db71f2c7b717a200f687b26ae6b46121"
+        },
+        {
+          "path": "pallas.patch.xz.b64.006",
+          "bytes": 24576,
+          "sha256": "a477a98a2d045a190891d02178357c6341b7db8d28ea16e28364967973dfb4b1",
+          "blob": "5054f81c28e73d631ca079bd9a2337afa643bab8"
+        },
+        {
+          "path": "pallas.patch.xz.b64.007",
+          "bytes": 24576,
+          "sha256": "60d3306a220df180dcb8ae85549b43d5cf9a57a3504414dd40c3408c6562a9cd",
+          "blob": "3878c8b59871e679afb56e655463b1a4ee275cbd"
+        },
+        {
+          "path": "pallas.patch.xz.b64.008",
+          "bytes": 24576,
+          "sha256": "d4285c0844a8fa9ab7cb4eaa3ef14ea9e064a1900381c9913625d625bff34283",
+          "blob": "e6968e2e80ca14bb9d52fac953676f523f51bc97"
+        },
+        {
+          "path": "pallas.patch.xz.b64.009",
+          "bytes": 24576,
+          "sha256": "07b8b17c0e204183871cb947cfa625fa3295839a87f57ac4eeecf773b3802a0b",
+          "blob": "e8e8afb0896ad8d769bfbc9eb1829f175c88f2a4"
+        },
+        {
+          "path": "pallas.patch.xz.b64.010",
+          "bytes": 24576,
+          "sha256": "fd2e573db346585a0c6e55faf44322df065b4d73d1dfaa5b733f5f5375908d6a",
+          "blob": "38b20d0b408fea84069f8b309118a43c46035f4d"
+        },
+        {
+          "path": "pallas.patch.xz.b64.011",
+          "bytes": 24576,
+          "sha256": "ec422160766ea5d62df91823c01e3c8f00c79c24f287960f697359266616a611",
+          "blob": "d39b994ba0cc2a9ee2188f51fb471278904b8722"
+        },
+        {
+          "path": "pallas.patch.xz.b64.012",
+          "bytes": 24576,
+          "sha256": "94a9f7b70c18232a30ad532a295af88107747d868f369e9be7a0063bd9f9d580",
+          "blob": "27e1134772a4c246f9e01b0b072ba5ed883acddd"
+        },
+        {
+          "path": "pallas.patch.xz.b64.013",
+          "bytes": 24576,
+          "sha256": "1bf88afd22abe8efd67d7124a85147d1c53a17b3bdbed9cb98a85912c8f9254e",
+          "blob": "e5e93fe3a0afff3521d6d26f0ddeadf39f6c7b0d"
+        },
+        {
+          "path": "pallas.patch.xz.b64.014",
+          "bytes": 24576,
+          "sha256": "169c237043a0a2751eb0602f4fce1aae8cf599fbb34079cfb4c5fa5f5b338493",
+          "blob": "9039ed6b9a2e32ea3848896273c4b37b818e1d7f"
+        },
+        {
+          "path": "pallas.patch.xz.b64.015",
+          "bytes": 24576,
+          "sha256": "8682767e73c42c1b3bdb11fc9ecffb38c7d296b2399ff6d29004454173cae697",
+          "blob": "91453b92f498b6b828e6bb940d67d0081c67fcf1"
+        },
+        {
+          "path": "pallas.patch.xz.b64.016",
+          "bytes": 24576,
+          "sha256": "cc92f78a3235af5df348a44f02931f39d90619d1b2ee12a5c0fb5ab288526a70",
+          "blob": "ca3069ed1e5c27889b5b5ac73e98badf0af40179"
+        },
+        {
+          "path": "pallas.patch.xz.b64.017",
+          "bytes": 24576,
+          "sha256": "ce6990a4e51ccd72883d3055a81982419ec8a4d567d38d24a4ac9cb8439753db",
+          "blob": "0ee06cd51a86d7a7a7a777dc2aebaf1826240891"
+        },
+        {
+          "path": "pallas.patch.xz.b64.018",
+          "bytes": 24576,
+          "sha256": "43100de94ece7f148bd82554c9635aa4b100599657d3e4fc6ce7510f5f9955b7",
+          "blob": "5d672651fc6de8e673b459b2cf690dd2a5011105"
+        },
+        {
+          "path": "pallas.patch.xz.b64.019",
+          "bytes": 24576,
+          "sha256": "d185bd1e90527068fbc34de3d107fd7e2dd9288f7f91b454db820c788e10546f",
+          "blob": "b650cbbe3952bfa98c89658cc4dd2055a0c2212a"
+        },
+        {
+          "path": "pallas.patch.xz.b64.020",
+          "bytes": 24576,
+          "sha256": "7bc83be04014ed43847b1b87c72dd3ada33bdba1a2cf8d443f859009c33b89d0",
+          "blob": "2da0e0f393b9af82f86ad838a4433d043cd7c345"
+        },
+        {
+          "path": "pallas.patch.xz.b64.021",
+          "bytes": 24576,
+          "sha256": "fbdc87c9ea47922499c79636b200a694b14434bdb150e2896f7311a94b6a4795",
+          "blob": "68970c494d514120c56e8f4977dd4a9e23e98b15"
+        },
+        {
+          "path": "pallas.patch.xz.b64.022",
+          "bytes": 24576,
+          "sha256": "20c13551b38a230ba613725a988887fcef44d0bc015a205050524c745b0f2a50",
+          "blob": "4e01abed5b5dd221dc7494258b11548f44ddab79"
+        },
+        {
+          "path": "pallas.patch.xz.b64.023",
+          "bytes": 24576,
+          "sha256": "aac963b3149832eef813d57e2e475f356103bb550fa78cd062f5313acebda967",
+          "blob": "39e37696c77a39825fd0a2677abdf829273f720d"
+        },
+        {
+          "path": "pallas.patch.xz.b64.024",
+          "bytes": 24576,
+          "sha256": "6b88f0b5735d53ac052ba135afc33c08238cf3d4e8a4e34088bdd5be1d1990d6",
+          "blob": "591d3f94f78634faa2e9d7080f09e9082247fe0b"
+        },
+        {
+          "path": "pallas.patch.xz.b64.025",
+          "bytes": 24576,
+          "sha256": "9ade2f4010abb7ce3ad0e08c9c916cde174774d25c66ec349ea1dbc430d6f0ff",
+          "blob": "339ace6547897ab60b8932d293a5a17a17f6839e"
+        },
+        {
+          "path": "pallas.patch.xz.b64.026",
+          "bytes": 24576,
+          "sha256": "253b10509eca3cec10a4dbe9b7c3b5a9ea38343105534ea6b0f8db7bae9939c4",
+          "blob": "0a15a171fa322343cb8a9e69869255d79a6ce90e"
+        },
+        {
+          "path": "pallas.patch.xz.b64.027",
+          "bytes": 24576,
+          "sha256": "c4ca7cd8bf20b875b696c326b0324da3cd2185afd779fdc82fc80450cf43af92",
+          "blob": "992918dcc17f41446480c58006f0d66ee5e9e6ee"
+        },
+        {
+          "path": "pallas.patch.xz.b64.028",
+          "bytes": 10049,
+          "sha256": "429a96a03b7428cfbf61fcd3f57db2f1a987d57c33adb5127b4dec7212eab766",
+          "blob": "f2411dd27e3840535d9a169271136dc700f0dd55"
+        }
+      ],
+      "files": [
+        {
+          "path": "src/render/vfx.js",
+          "baseline_blob": "7ab066945cefa7bec490cef4129fc9dce7aafe49",
+          "blob": "10148d3c0832f5ff07c09f16c936b48ed23cae42",
+          "sha256": "da3495715513b36ce38217d535a4a447aca4754c7ec494231cfe520fdf61e5c8"
+        },
+        {
+          "path": "src/systems/salvage.js",
+          "baseline_blob": "d6402245c3c6f608ef0c34c34d8c233ba04091e0",
+          "blob": "38700ce6723458149a8a38b4132fbf7c65dfca7d",
+          "sha256": "8aed7c50d35d4ef87f8f00658f73f89fd607cf4c7b56805401dacdcf28c5fa2c"
+        },
+        {
+          "path": "src/systems/traffic.js",
+          "baseline_blob": "9e281368d7f30837af26dd54335850436120ca26",
+          "blob": "6d92b03791748fd5ccc1cca73f7bad95d21a1a22",
+          "sha256": "663b923ecd675b227f0ef2e194bab3d23b4c9926a20ba0733aa6c663aa790f95"
+        },
+        {
+          "path": "src/systems/npcJobsRuntime.js",
+          "baseline_blob": "bd1a0839c4e6a46877fac8f99045aa7502b5c8fd",
+          "blob": "c117788496bd80718265121564068918c15da297",
+          "sha256": "f1ea9ee97f1e80d7ed30a649346787e3ec62ce314c4f9469c055abc12a3667c1"
+        },
+        {
+          "path": "src/data/contactHail.js",
+          "baseline_blob": "e40b804bcce064730080a813358fc88c38c3cab5",
+          "blob": "ac5fd941d7c4e965184c15dd0b884402932e17f9",
+          "sha256": "b6af7aab5dbac19e9dc4631e379eca4a20f05771364d3f1d64a7614c1881d8a6"
+        },
+        {
+          "path": "test/pallas-shift-read-model.test.mjs",
+          "baseline_blob": "c1def2b6289a0770ccdd038a3b7ab0092cf5ebbe",
+          "blob": "f7e3e554267205deffd6d105a023a7cc17332c49",
+          "sha256": "f09a342feaebc10a5ab9e01c2aab3c06a1d29c87692410036cd685c3b8ec94cf"
+        },
+        {
+          "path": "scripts/lib/simWorkerHost.mjs",
+          "baseline_blob": "aa976251ca71a470535a6c5f688716918b11f533",
+          "blob": "e95ea08f466eaf7df87f89a8323257b9d972f981",
+          "sha256": "b22d791789c536897a3684db2b5f3d4c28f84a2051c582fba49017d9ab9dd377"
+        },
+        {
+          "path": "scripts/lib/simReadModel.mjs",
+          "baseline_blob": "f4447136aabe73558fff6cbc037c87b89cdafd0c",
+          "blob": "c403ff9f90c8d254f4995d073c6437938dadbcf2",
+          "sha256": "34381d1c60e43c75d08648e323b5d9e3f563de5e04a7b6997e87ab0cd9a86d17"
+        },
+        {
+          "path": "src/data/pallasReefCrew.js",
+          "baseline_blob": null,
+          "blob": "592c356a8e3f4640c9c06c98c55c3c06841a5f4c",
+          "sha256": "e7c01820ddef81697dac8041f5b47d758dbdbf8906dfb47c58b882651bc1c813"
+        },
+        {
+          "path": "src/systems/pallasReefSource.js",
+          "baseline_blob": null,
+          "blob": "11f8ea4fa26cf8d2217a3f23c6e6634cf56b105f",
+          "sha256": "f92487f8936a9beb6f697e5402cb2d5deedb5461e63c9ab754f021909c83bed1"
+        },
+        {
+          "path": "src/systems/pallasReefCrew.js",
+          "baseline_blob": null,
+          "blob": "1a496d125878f4af9add497893c00d9746ec57dc",
+          "sha256": "9bf87318ac7722ec4affb98fa9888f10bb61ea05c93d60603ad23d28e105baab"
+        },
+        {
+          "path": "test/fixtures/pallas-reef-native.mjs",
+          "baseline_blob": null,
+          "blob": "5298b4232e5416bc26c8849e4510ec7fcd14e964",
+          "sha256": "3749e17312b6f6239d6e698c53199e56524224711f0b0491f765705a7a5378a4"
+        },
+        {
+          "path": "test/pallas-reef-physical.test.mjs",
+          "baseline_blob": null,
+          "blob": "60b785c2ed8a95386912226ef44e0f3895ae2ec3",
+          "sha256": "310325c3eb494e2aa01cc35e4948729075c32aaf76f65ee4ee0c2bbf21c10dfc"
+        },
+        {
+          "path": "test/pallas-reef-read-model.test.mjs",
+          "baseline_blob": null,
+          "blob": "125b823705368b51c127fba38dba405b0aeb0d42",
+          "sha256": "2cc99406c58380ecac003a9eb3e1cdab380a0f1a797a1ec62897a7a0e52083e9"
+        },
+        {
+          "path": "src/render/visualFactory.js",
+          "baseline_blob": "7702a3e2eda120fad7f5bdc2dc674eeb3aee64bd",
+          "blob": "35fb3e61d15020ddf45c945619dd294a7312aaa1",
+          "sha256": "a1a288809a7e5fd4da928af18f92e3f8d8ba3241aa9ea834fc0e2edd8759ba2b"
+        },
+        {
+          "path": "src/render/renderPackageManifest.js",
+          "baseline_blob": "2626bc6f656c50369b8eccb08467bdfd6cca5dc0",
+          "blob": "5db550ea5ac3969bcd0f8dc6e3bcba7a742d8490",
+          "sha256": "1de081a7e46760bd0436bf838648ca7bc1aae337aac84f337fe1c41d2aaf41b6"
+        },
+        {
+          "path": "assets/ships/render-packages/pilots.json",
+          "baseline_blob": "4a01e3ecb59281ac58db413ba1579c9b3f003ec4",
+          "blob": "ce025b54b6a37acbefde7d61e1525d9edf5104bd",
+          "sha256": "f8d15d7b9e8ead867df5275ba6dc86ca5fe9e070fa2cd35b480ceb7bf65a3b50"
+        },
+        {
+          "path": "assets/ships/release/release_manifest.json",
+          "baseline_blob": "6eccc5d4492e93afce7de14eeeed6c24ace230a3",
+          "blob": "891429a3d980bd3128afd4531b722bd5f25c6f6e",
+          "sha256": "23651a2df64c6dcd11e397f460744735f8c382acbf317b7cf6e02841e284d9c5"
+        },
+        {
+          "path": "assets/ships/parts/places/place_pallas_cut_section.glb",
+          "baseline_blob": null,
+          "blob": "3ed66b0cb10aac32045de83426995ef0e499526a",
+          "sha256": "14912e8eba969bef606021c7dee346bb611dd783114dff1a8e62fc6ff6c47542"
+        },
+        {
+          "path": "assets/ships/release/parts/places/place_pallas_cut_section.glb",
+          "baseline_blob": null,
+          "blob": "203b9cf7d99dbe41c407ee73efedc7c9f6e68511",
+          "sha256": "a20b699a8084b8205ca3e8a8deae6b5a299a50eae4ba3767b533c54827c76f79"
+        },
+        {
+          "path": "assets/ships/release/render-packages/pallas-cut-section/render.glb",
+          "baseline_blob": null,
+          "blob": "30f9828de75f6700b74bff88678f579f0fe2559f",
+          "sha256": "cfa30a07fc09c377ffdc29f0204e8d932060678d55f9733cfc284ae7045d82e3"
+        },
+        {
+          "path": "assets/ships/release/render-packages/pallas-cut-section/render-package.json",
+          "baseline_blob": null,
+          "blob": "19e4bc79a4362cf03dd5c7a82ad3cea3fa3ecc95",
+          "sha256": "1358099de43282a5d2780c93e8c376445f021ad26690c6a09231b946b6da4cf6"
+        },
+        {
+          "path": "assets/ships/forge/sources/pallas_cut_section/pallas_cut_section.blend",
+          "baseline_blob": null,
+          "blob": "532fb6eb95dc9e65ca04becabc4f13d7608fa4e3",
+          "sha256": "b6fea5b1a4164569da12c734c61127ae512a67ab0e54bd731a7bcfa6d7e952a0"
+        },
+        {
+          "path": "tools/blender/pallas_cut_section_source.py",
+          "baseline_blob": null,
+          "blob": "9e11d43cc90dc5276ea1fd6d1c217d4e635c0320",
+          "sha256": "9f63c320b78614a37f0e2ba00dfdbe9eb396ebc0ebb13e92dd5a73cb26b877de"
+        },
+        {
+          "path": "test/pallas-cut-section-visual-identity.test.mjs",
+          "baseline_blob": null,
+          "blob": "e04da6096ccabbe75efe3e8753746eef18ea536d",
+          "sha256": "a5d87f2f516f1ab9c09cfb09607d967b785123590cfdd8bdf5d69f1f8cb0e853"
+        },
+        {
+          "path": "test/pallas-cut-section-geometry.test.mjs",
+          "baseline_blob": null,
+          "blob": "3dc9091db1cab94f2425ae64e34874c7bb311ff5",
+          "sha256": "797cbbdd21ca03f531563605f17464686185373a04da0397bc82ec75922bc7f4"
+        },
+        {
+          "path": "design/pallas-cut-section-model.md",
+          "baseline_blob": null,
+          "blob": "b79acf5e0a73a3d4551ed7d5ec691fb91553c0e7",
+          "sha256": "923545b87fa8f099cf2fc13eaac746e52c0ac9b35f288e4df4c4222b551db010"
+        },
+        {
+          "path": "design/program/LANDED_REVIEW.md",
+          "baseline_blob": "5ee7cecfdaf4aabd099bd8eabfbff751a7d13bc8",
+          "blob": "bca00324ad78da841020fb2392413a484a75fca2",
+          "sha256": "7114d002dfb5706edd37b9b3e4ed70476ec19515887584b6e7dddf8ff6f2a161"
+        },
+        {
+          "path": "docs/ui-polish/REVIEW.md",
+          "baseline_blob": "1c6b99f784d3be7712f2de0be72113678bd518d7",
+          "blob": "4b55e48ca4824c53bcea48da72580010cc8fde93",
+          "sha256": "373fe87905c173c29b6be24e8eb415e20cf02fb6004e7ff569050108ad903cf3"
+        },
+        {
+          "path": "src/ui/orrery/saveLayouts.js",
+          "baseline_blob": "d358a5c9dd72c4f63cb8feacfcc2227587ed1e20",
+          "blob": "3a15798da03aa09ceaa0ff64ad4f842d00bf78e3",
+          "sha256": "043fa8302792c0a9f248d44387c849e69b21f387afed7982ce3a6e402a61bb42"
+        },
+        {
+          "path": "test/cloud02-arrival-intelligence.test.mjs",
+          "baseline_blob": "0b79cafde72932a1ab64ff4b35442b0e1e240db8",
+          "blob": "38019c52861139a2a362a0c2b54cf4ce97a592fd",
+          "sha256": "1a607a5aa59e32cbe9825b661ab53eaa764377947bb03e1970aae6014a74dfd7"
+        },
+        {
+          "path": "test/d236-salvor-dropped-job.test.mjs",
+          "baseline_blob": "117d18ddf205142064f0c8dd500485a0da73d279",
+          "blob": "16752cf61f99854e62ac8466cef0ad2134c1a2eb",
+          "sha256": "f5e6785348771b77b4d8d8e168536e55653e52439482c8f32fe24431f43579b3"
+        },
+        {
+          "path": "test/sg02-player-compound-wall-motion.test.mjs",
+          "baseline_blob": "487d50303c0dd8202b6b2b09a4811e5f3345f571",
+          "blob": "d7aa8259f8d2e76077d125e7ae1b752cd2f75ce3",
+          "sha256": "df0cdc347aa76fdbe247e8db68ce1af89dc4620038506e319beb25782536cdc8"
+        },
+        {
+          "path": "package.json",
+          "baseline_blob": "4f8919804c52ff5efe507d0e282950900001f6ec",
+          "blob": "759513c14da1b6f425ce04a0d8623af4a0f2bc9a",
+          "sha256": "7513bdfa164d9e8f72959a195e1b66a6dcb92e97ed1dbe9169dc3098f429fee6"
+        }
+      ]
+    },
+    "mobile": {
+      "base_commit": "e7f6122f8d8f2985223940bfbb60eb4f66272561",
+      "candidate_commit": null,
+      "candidate_tree": null,
+      "recorded_focused_tests": 126,
+      "test_scope": "Historical separate snapshot result; not rerun or combined integration acceptance.",
+      "patch_sha256": "a67c89f76a3499464b4686354c9963ab70e54fe867bd3d4a73aead0ae9eb39d9",
+      "compressed_sha256": "ecc5692078972b842259cda819827080b9fc304e83c8b0246ccafda9ea52ad8a",
+      "patch_bytes": 36809,
+      "compressed_bytes": 9052,
+      "chunks": [
+        {
+          "path": "mobile.patch.xz.b64.000",
+          "bytes": 12073,
+          "sha256": "fa3354d0fcd7197694af33bb2cd9f0cb56333a9933969d1c97a924dac3aceeb7",
+          "blob": "e8910f385147d4b7d9befee4ab6ac5f306f59ce4"
+        }
+      ],
+      "files": [
+        {
+          "path": "src/systems/mobile/styles.js",
+          "baseline_blob": "7a9044682215aa22168d3b5113e37de1f2bc4ac9",
+          "blob": "2501aa9dc2930f5804eb39ae997e4f2bb29c0d22",
+          "sha256": "99d6e72eb2ef297dd1a489b24238fcd7990572c5484738d3203074f99f21eeb8"
+        },
+        {
+          "path": "src/systems/mobile/view.js",
+          "baseline_blob": "1f46bd43d610938430d5bdfe85d228b3750924ea",
+          "blob": "c6379687e0eb9ad15bca9f60bc82ea839cac3f30",
+          "sha256": "12b18112c08f50c8c5506599c16b086699c45f49916c8234bee251290d874e78"
+        },
+        {
+          "path": "src/ui/views/hudStyles.js",
+          "baseline_blob": "aca8ccdb1130d22dce17f615e5843cbcae50f0bd",
+          "blob": "0892118bab8e97efa4d9e319c1e0dfc92ade0034",
+          "sha256": "da1e5db791434cb3f669d6428c496267f3ce952966765927faa72b05a1212a29"
+        },
+        {
+          "path": "test/mobile-deck-instrument.test.mjs",
+          "baseline_blob": "180704793b425b9fe602668d873111ed659432eb",
+          "blob": "a0a84cf6700acd7aadd365958fcc8b8fdc0d852a",
+          "sha256": "cfc9c8fe172541235823bba2e9a2e109eb2e48b186d2c59d209be1bcead7f6c0"
+        },
+        {
+          "path": "test/mobile-control-lifecycle.test.mjs",
+          "baseline_blob": "e4cf2774e413c9e4658fce4ed98ccffb35059e23",
+          "blob": "6df832b5fea1f6d72b5dfe24940f68e689adaf32",
+          "sha256": "2286197e299ec27ed21d5fae4316c345ba40175d695ef2cbbfd269d62e52637d"
+        },
+        {
+          "path": "test/r2-d202b-phone-hud.test.mjs",
+          "baseline_blob": "b2cbd96d91396cb7c6438ebbfe0b6c4a1d841fc8",
+          "blob": "2841dd2d1824bbbd13d9d05625d89206341fcd62",
+          "sha256": "61a5c6943ebb62b2614381c2b18c451d3789d9ce1d6cff6a582ce9655da90c1f"
+        },
+        {
+          "path": "test/mobile-hud-lanes.test.mjs",
+          "baseline_blob": null,
+          "blob": "fffd4e948a246ac9dc0592472ba9e4e58b16612b",
+          "sha256": "f6933b81ddedfe0e0a90e6e83591200973b74de5967742683dbdc2753d7f2742"
+        }
+      ]
+    }
+  }
+}
