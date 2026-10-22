@@ -455,6 +455,17 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} .con-filters .k-word { font-size:12px; letter-spacing:.02em; }
   ${A} > .k-foot .k-words:not(.con-filters .k-words) { align-self:flex-start; }
 }
+/* a 561–760 window at least 520 tall: the orrery stands down under 320px of width, so the reading narrows to
+   190px (its dial to 132px) and the categories take their own row over Back, at full width, so CAREER isn't cut.
+   Shorter windows (phone landscape, 640x461) keep the default layout, where the extra row would crush the stage */
+@media (min-width:561px) and (max-width:760px) and (min-height:520px) {
+  ${A} { grid-template-columns:minmax(0, 1fr) 190px !important; column-gap:16px !important; padding-left:16px !important; padding-right:16px !important; }
+  ${A} .con-medal-read__dial { width:132px; height:132px; --ms:132px; }
+  ${A} > .k-foot.con-foot { display:flex !important; flex-direction:column-reverse !important; align-items:stretch !important; gap:10px !important; }
+  ${A} .k-hang.con-filters { margin:0; align-self:stretch; }
+  ${A} .con-filters .k-words { justify-content:space-between; padding:0; }
+  ${A} > .k-foot .k-words:not(.con-filters .k-words) { align-self:flex-start; }
+}
 /* the narrowest phones (360): tighten the category words (still 12px, the type floor) so CAREER fits the row, and widen
    the scroller into the side padding so the first count (0/22) isn't cut at its left edge */
 @media (max-width:380px) {
