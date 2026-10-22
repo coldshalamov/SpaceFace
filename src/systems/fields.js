@@ -3085,7 +3085,10 @@ export function readFieldFamily(input, shell) {
   const bombs = copyBucket(state, 'bombs', 'bomb');
   for (let i = 0; i < bombs.length; i++) if (isLiveGoo(bombs[i], now)) _goo.push(bombs[i]);
   const player = playerEntity(state);
+  // The escape cue belongs to the cloud the hull is deepest in. The first
+  // containing id used to win, so a thin overlap hid the tar the player was inside.
   let focus = null;
+  let focusFall = 0;
   const cloudCount = Math.min(_goo.length, FIELD_FAMILY_READ.maxClouds);
   for (let i = 0; i < cloudCount; i++) {
     const bomb = _goo[i];
@@ -3110,12 +3113,16 @@ export function readFieldFamily(input, shell) {
     let hx = 1;
     let hz = 0;
     let tracked = null;
-    if (player && bombSurfaceFalloff(Math.hypot(player.pos.x - bomb.pos.x, player.pos.z - bomb.pos.z), 0, radius) > 0) {
-      tracked = player;
-      const dx = player.pos.x - bomb.pos.x;
-      const dz = player.pos.z - bomb.pos.z;
-      const len = Math.hypot(dx, dz);
-      if (len > 1) { hx = dx / len; hz = dz / len; }
+    let playerFall = 0;
+    if (player) {
+      playerFall = bombSurfaceFalloff(Math.hypot(player.pos.x - bomb.pos.x, player.pos.z - bomb.pos.z), 0, radius);
+      if (playerFall > 0) {
+        tracked = player;
+        const dx = player.pos.x - bomb.pos.x;
+        const dz = player.pos.z - bomb.pos.z;
+        const len = Math.hypot(dx, dz);
+        if (len > 1) { hx = dx / len; hz = dz / len; }
+      }
     }
     const status = gooStatus(state, tracked);
     _famFrame.x = bomb.vel && Number.isFinite(bomb.vel.x) ? bomb.vel.x : 0;
@@ -3144,7 +3151,10 @@ export function readFieldFamily(input, shell) {
     cloud.controlFrozen = false;
     cloud.probeLight = gooResidual(FIELD_FAMILY_READ.gooProbeSpeed, FIELD_COUPLING.refMass, centerDrag, _famFrame, dt);
     cloud.probeHeavy = gooResidual(FIELD_FAMILY_READ.gooProbeSpeed, 400, centerDrag, _famFrame, dt);
-    if (!focus && tracked) focus = cloud.id;
+    if (tracked && playerFall > focusFall) {
+      focus = cloud.id;
+      focusFall = playerFall;
+    }
   }
   out.edge.clouds.length = cloudCount;
   out.edge.active = cloudCount > 0;
