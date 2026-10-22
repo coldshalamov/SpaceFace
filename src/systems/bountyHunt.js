@@ -626,6 +626,9 @@ function fizzleHunterTrick(entity, state, trick, rt, bus) {
     reason: 'damage_interrupt',
     at: now,
   });
+  // The telegraph already promised the counter. A silent fizzle reads as a miss.
+  const label = trick && trick.label ? trick.label : 'The trick';
+  emit(bus, 'toast', { text: `${label} interrupted.`, kind: 'good', ttl: 3 });
 }
 
 function startHunterTrickTelegraph(entity, state, trick, rt, bus, helpers) {
