@@ -1,7 +1,45 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current checkpoint
 
-## Current mobile delivery and connected Pallas checkpoint — 22 October 2026, 09:28 UTC
+## Current checkpoint — 22 October 2026, 10:27 UTC
+
+All ten goals remain OPEN. This section supersedes the historical checkpoint below, not original scope or reviewer acceptance.
+
+### Delivered code and verified recovery
+- [Draft PR496](https://github.com/coldshalamov/SpaceFace/pull/496), verified head eb34d11b9b1711380176a75791653542448a0524: focused checks 126/126, startup fixture checks 20/20 and CI HUD lane gate 22/22. Scripted Chromium New Game/controls/Continue completed with zero renderer errors; world visibility remains unverified. WebKit crashed before New Game. Both workflows are terminal: broad CI failed and one browser shard was cancelled. These are not native-phone or full-game acceptance.
+- [Draft PR498](https://github.com/coldshalamov/SpaceFace/pull/498), verified head 0c3ee79707b122f0dc79bde9cdb31aca02048bbe, tree d7a2b4a0dc85447a6a01406ec70ab159a81f152a: shunt receipts and effects use actual delivered impulse without changing ship speed, player protection or recoil policy. The follow-on adds only two test registrations to existing gates. [Living VFX CI](https://github.com/coldshalamov/SpaceFace/actions/runs/39761426726/job/119766272728) passed 179/179; [feel CI](https://github.com/coldshalamov/SpaceFace/actions/runs/39761426737/job/119766758420) ran all 16 shunt cases successfully, while its two existing unrelated scenarios failed. Broader CI remains running/failing; not every newly observed failure has established baseline attribution.
+- [Drift intake r2 recovery](https://github.com/coldshalamov/SpaceFace/commit/79dfc3737d9ea7bdafa72f877f948a38bd7af94d) and [software emergency recovery](https://github.com/coldshalamov/SpaceFace/commit/92495f3bd99893ae30cfb4ebec6dbc8cf9a826db) preserve exact source patches, tests, manifests, restoration scripts and evidence. All 28 remote artifacts passed byte readback; reconstruction matched all 11 Drift outputs and 2,399 source hashes, plus all three software outputs. These commits add recovery artifacts only, NOT runtime integration or a substitute for requested PR delivery. Earlier recovery remains unchanged.
+- Drift r2 completes the original finite cut/transfer/haul/intake with actual native bodies and atomic source/market accounting. Fresh native route 11/11, restored-ready checks 11/11, read models 9/9. Independent review accepts the narrow native station-yaw correction; no admission threshold was relaxed. Source patch SHA256: 0f3536afb6a95fe2eadf01dedc5d5d52b97fe0c054271003140d078cca45c53f.
+- Software emergency consistency has independent 13/13 focused checks and preserves hardware defaults/player preferences. It synchronizes emergency resolution state and keeps effective bloom off without mutating saved preferences. It has no fresh full-renderer/visual acceptance and is not runtime-published.
+
+### Active connected work and evidence limits
+The next native revision enables the production world update and uses real jump requests and autopilot course commands. An initial jump out and back preserves the original carrier, section, finite pool and tow. The authored return entry is about 4.6 km from Drift, but the cause of the missing station native record is unresolved: production activity rules explicitly include stations. The course attempt also exposed an omitted production input owner in the harness, causing autopilot output to be mistaken for manual input. The real input owner and station/input telemetry are being added before another long run. Actual flight back and resumed intake are not yet proven. No synthetic station, cargo, native readiness or body repositioning is permitted.
+
+The existing haul takes 218.30 simulated seconds after transfer. Sparse samples cover at least 3,750.1 world units versus 1,005.8 direct; both original bodies intersect the authored active reef cone at t=44.033 seconds. A staged hazard-clear loaded-haul approach is the prioritized next guidance increment. The exact cause of the later large excursion is not yet established by pose-only samples. Preserve current native admission and existing flight/attachment ownership.
+
+New CPU source previews show actual native poses and exported meshes, not live gameplay. The station roof partly hides the carrier overhead; a visible receiving animation and ordinary-camera comprehension remain open. No new receiver asset or successful unloading animation is claimed.
+
+At 10:16 UTC the assistant's cloud-browser state call returned “Browser tool runtime unavailable”; no personally piloted demo session occurred. Shell execution briefly disconnected at 10:05 and was confirmed working again at 10:10. Fresh 10:25 CLI authentication/dry-run still failed at the username prompt; the authenticated connector continues to publish verified small Git objects. No new credential or setup action is required for that route. The previously stalled large VFX upload and original held receiver operation are not retried or bypassed.
+
+### Durable open-goal register
+Original outcomes and larger build-map obligations remain in the historical register and twenty-concept map. Owners below coordinate existing packet owners rather than replacing them.
+
+| Marker | Outcome and current state | Owner | Evidence | Next executable action | Awaiting user |
+|---|---|---|---|---|---|
+| SF-GAME | Mature and finish the original full game scope; OPEN | dot and existing packet owners | Original twenty-concept map; bounded increments above | Complete connected Pallas return and safer haul, then next evidence-backed sector increment | Final acceptance, not requested prematurely |
+| SF-ORCHARD | Complete Orchard assets, native custody and ordinary route; OPEN | Existing Orchard owner, dot coordinating | Original receiver/Continue handoffs retained | Continue permitted independent acceptance work without retrying held upload | Original held receiver operation unchanged |
+| SF-PUBLISH | Tested coherent draft-PR delivery; PARTIAL/OPEN | dot | PR496 and PR498 verified; Pallas remains recovery-only | Follow exact-head CI and reconcile runtime increment against fresh master | No new request; original hold retained |
+| SF-RECOVER | Code/assets/tests/handoff survive VM loss; OPEN | dot | Verified recovery through 92495f3 | Preserve next meaningful return/guidance revision with restoration proof | None |
+| SF-VISUALS | Frequent new actual-work images and visual review; OPEN | dot | New native-pose CPU previews and Chromium captures | Obtain permitted ordinary-camera evidence after browser recovery; fix roof readability | None |
+| SF-ASSETBANK | Broad bank of distinct usable pieces; OPEN | Existing asset owners, dot coordinating | Existing asset stocktake and inspected station/ship/prop inventory | Reuse appropriate existing pieces in connected sectors; do not count variants as new models | None |
+| SF-ASSET-QUALITY | Coherent materials, silhouettes and reviewed exports; OPEN | Existing asset owners, dot coordinating | Exported Drift/Mule/section inspection; roof occlusion remains | Address legibility without inventing a receiver or claiming source previews are acceptance | None |
+| SF-LIVING-WORLD | Consequential recurring world experience; OPEN | dot and sector owners | Finite native intake and state-conditioned crew radio | Complete actual return/resumption and hazard-aware loaded guidance | None |
+| SF-SECTOR-COHERENCE | Evidence-backed coherent experiences across every actual sector; OPEN | dot and sector owners | Existing 25-sector register plus connected Pallas evidence | Update the Pallas experience after the next tested behavior; retain other sectors' unknowns | None |
+| SF-PLAY-WORLD | Personally operate ordinary gameplay and use findings to expand it; BLOCKED/OPEN | dot | Fresh cloud-browser runtime failure at 10:16 | Resume supported cloud gameplay when runtime is usable, without bypass routes | No new user action established |
+
+Fresh master read at 10:22: 0d4073e4230c53f081d71b6e6a114642462249c1. No merge, deployment, external execution thread, forbidden receiver test, private ancestry publication or browser bypass.
+
+## Historical mobile delivery and connected Pallas checkpoint — 22 October 2026, 09:28 UTC
 
 All ten goals remain OPEN. Read this concise document as the current checkpoint in preference to older EXECUTION_STATUS.md and OPEN_GOALS.md current-state/next-operation statements; original outcomes, historical evidence and acceptance/reviewer ownership remain intact.
 
