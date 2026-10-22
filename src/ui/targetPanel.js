@@ -48,7 +48,7 @@ import { SECTORS, stationContactServices } from '../data/sectors.js';
 import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { stationServiceLabel } from './station/stationHubModel.js';
-import { faunaSpeciesById } from '../data/alienFauna.js';
+import { faunaPileFact, faunaSpeciesById, faunaTollFact } from '../data/alienFauna.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -569,6 +569,10 @@ export function faunaFieldNote(t, state) {
   if (typeof species.role === 'string' && species.role) facts.push(species.role.toUpperCase());
   const posture = FAUNA_POSTURE_WORD[eco.driveState];
   if (posture) facts.push(posture);
+  const pileFact = faunaPileFact(species, eco);
+  if (pileFact) facts.push(pileFact);
+  const tollFact = faunaTollFact(species, eco);
+  if (tollFact) facts.push(tollFact);
   const an = species.anatomy && typeof species.anatomy === 'object' ? species.anatomy : null;
   if (an) {
     if (typeof an.hostTissue === 'string' && an.hostTissue) facts.push(`HOST: ${an.hostTissue.toUpperCase()}`);
