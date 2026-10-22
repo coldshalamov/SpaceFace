@@ -1125,7 +1125,9 @@ export const pauseScreen = {
     injectPauseLayouts();
     // A phone has no room for the dial: the verbs stay the plain banked Deckplate column and the brief stays
     // above them in it, like the title's phone composition.
-    const phone = isPhoneLayout();
+    // A narrow desktop window (≤760 wide) has no room for the dial either:
+    // its group banks ran off the right edge and the brief printed over RESUME, so it takes the column too.
+    const phone = isPhoneLayout() || (globalThis.window?.innerWidth || Infinity) <= 760;
     // add/remove, not toggle: the headless shims the pause tests mount on carry no classList.toggle
     rootEl.classList.add(phone ? 'orr-pause--phone' : 'orr-pause');
     const brief = briefKicker.parentElement;
