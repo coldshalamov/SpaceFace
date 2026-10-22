@@ -26,6 +26,7 @@ import {
   UNIQUE_WRECK_RECEIPT_LIMIT,
   UNIQUE_WRECK_SCAN_RADIUS,
   UNIQUE_WRECK_STATE_SCHEMA_VERSION,
+  EXPANSION_ACTIVITY_WRECKS,
   UNIQUE_WRECKS,
   placementForUniqueWreck,
   programSeedFor,
@@ -117,6 +118,38 @@ export const SECTOR_RUMOR_SURFACES = Object.freeze({
     channelId: 'campaign',
     eventName: 'comms:popup',
     extra: { sender: 'CASSANDRA DIPLOMATIC THREAD', beatIndex: 6 },
+  },
+  // Activity hulls with no flavor page. Entering the sector speaks the scan line and charts
+  // the bearing. Sectors that already have a canonical surface keep that surface.
+  sector_charon_expanse: {
+    wreckId: 'wreck_understory_what_the_wreck_became',
+    channelId: 'bar',
+    eventName: 'uniqueWreck:rumorHeard',
+    extra: { sender: 'EXPANSE DOCK' },
+  },
+  sector_sker_haven: {
+    wreckId: 'wreck_pitborn_everything_else',
+    channelId: 'bar',
+    eventName: 'uniqueWreck:rumorHeard',
+    extra: { sender: 'SKER DOCK' },
+  },
+  sector_tethys_junction: {
+    wreckId: 'wreck_fulfillment_route_88',
+    channelId: 'bar',
+    eventName: 'uniqueWreck:rumorHeard',
+    extra: { sender: 'TETHYS DOCK' },
+  },
+  sector_pallas_drift: {
+    wreckId: 'wreck_archive_codex_ix',
+    channelId: 'bar',
+    eventName: 'uniqueWreck:rumorHeard',
+    extra: { sender: 'PALLAS DOCK' },
+  },
+  sector_dione_lane: {
+    wreckId: 'wreck_helix_due_diligence',
+    channelId: 'bar',
+    eventName: 'uniqueWreck:rumorHeard',
+    extra: { sender: 'DIONE DOCK' },
   },
 });
 
@@ -989,7 +1022,8 @@ export const uniqueWrecks = {
     const def = uniqueWreckById(wreckId);
     const own = this._ensureState();
     if (!def || own.bearings[def.id] || own.published[def.id]) return own.bearings[def && def.id] || null;
-    const text = sourceText(def.bearingSourceRef);
+    const text = sourceText(def.bearingSourceRef)
+      || (EXPANSION_ACTIVITY_WRECKS.some((row) => row.id === def.id) ? def.scanLabel : '');
     if (!text) return null;
     const payload = {
       ...extra,
