@@ -52,6 +52,7 @@ ${SL} > .k-stage__foot.sf-save-ledger { grid-area:page; position:relative !impor
 ${SL} > .sf-save-ledger::before { content:""; position:absolute; inset:-40px -64px -30px -56px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .72), rgb(4 6 9 / .5) 58%, transparent); }
 ${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(12px, calc(11.5px * var(--sv))); letter-spacing:.2em; line-height:1.35; color:rgb(${BONE} / .86); }
+${SL} .sf-save-ledger .sf-slot-context__part { white-space:nowrap; }
 ${SL} .sf-save-ledger .sf-slot-card-title { all:unset; display:block; ${DISPLAY} margin:0; font-size:calc(44px * var(--sv)); line-height:.95; letter-spacing:.01em;
   color:rgb(246 241 230); text-shadow:0 2px 16px rgb(0 0 0 / .5); overflow-wrap:anywhere; cursor:default; }
 ${SL} .sf-save-ledger .sf-slot-card-title.sf-entity-link { cursor:pointer; border:0 !important; text-decoration:none !important; }
