@@ -3,7 +3,7 @@
   "id": "drill.power.well",
   "powerId": "well",
   "action": "deployWell",
-  "railSlot": 5,
+  "railSlot": 1,
   "volume": "ring",
   "title": "Well golf",
   "rule": "A RING PULLS LOOSE MASS INTO ONE PILE",

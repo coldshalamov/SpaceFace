@@ -97,7 +97,7 @@ test('planting one more well past the cap toasts that the oldest well was replac
     assert.equal(ended[0].p.kind, 'well');
     assert.equal(toasts.length, 1, 'exactly one replaced toast');
     assert.equal(toasts[0].tick, ended[0].tick);
-    assert.deepEqual(toasts[0].p, { text: 'Oldest Well was replaced', kind: 'warn', ttl: 1.6 });
+    assert.deepEqual(toasts[0].p, { text: 'Oldest Pull well was replaced', kind: 'warn', ttl: 1.6 });
     assert.equal(step.filter((e) => e.name === 'audio:cue').length, 0, 'replacement does not take the explosion cue');
     const first = t.events.find((e) => e.name === 'fields:deployed');
     assert.equal(ended[0].p.fieldId, first.p.fieldId, 'the retired field is the oldest deploy');
@@ -111,7 +111,7 @@ test('planting one more repulsor past the cap names the repulsor', () => {
     assert.equal(ended.length, 1);
     assert.equal(ended[0].p.kind, 'repulsor');
     assert.equal(toasts.length, 1);
-    assert.deepEqual(toasts[0].p, { text: 'Oldest Repulsor was replaced', kind: 'warn', ttl: 1.6 });
+    assert.deepEqual(toasts[0].p, { text: 'Oldest Shove field was replaced', kind: 'warn', ttl: 1.6 });
   });
 });
 
@@ -134,7 +134,7 @@ test('a repulsor that replaces an older well names the well', () => {
     assert.equal(replaced.ended[0].p.kind, 'well');
     const toasts = replacedToasts(replaced.step);
     assert.equal(toasts.length, 1);
-    assert.equal(toasts[0].p.text, 'Oldest Well was replaced');
+    assert.equal(toasts[0].p.text, 'Oldest Pull well was replaced');
     assert.equal(toasts[0].tick, replaced.ended[0].tick);
   });
 });

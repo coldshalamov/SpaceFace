@@ -3,7 +3,7 @@
   "id": "drill.power.seed",
   "powerId": "seed",
   "action": "deployMassSeed",
-  "railSlot": 4,
+  "railSlot": 3,
   "volume": "ring",
   "title": "Lock-ring anchor",
   "rule": "A LOCK-RING BECOMES AN ANCHOR YOU CAN HITCH",

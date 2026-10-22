@@ -85,7 +85,7 @@ function repulsorHarness() {
 test('a SHOVE press on a cooling repulsor names the recharge', () => {
   const { seen, state, system, rt } = repulsorHarness();
   system._deployRadial(state, rt, 'repulsor');
-  assert.deepEqual(seen, ['Repulsor recharging — 4s']);
+  assert.deepEqual(seen, ['Shove recharging — 4s']);
 });
 
 test('a SHOVE press that set off armed ordnance is not answered with a recharge warning', () => {
@@ -104,7 +104,7 @@ test('a SHOVE press that set off armed ordnance is not answered with a recharge 
     const { bus, seen, state, system, rt } = repulsorHarness();
     bus.emit('charge:detonated', payload);
     system._deployRadial(state, rt, 'repulsor');
-    assert.deepEqual(seen, ['Repulsor recharging — 4s']);
+    assert.deepEqual(seen, ['Shove recharging — 4s']);
   }
 });
 

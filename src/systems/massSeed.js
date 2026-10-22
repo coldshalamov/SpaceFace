@@ -154,7 +154,7 @@ export const massSeed = {
       ms.lastDenial = { reason: 'cooldown', at: now, readyAt: ps.cooldownUntil };
       this.bus.emit('massSeed:deployDenied', { reason: 'cooldown', readyAt: ps.cooldownUntil });
       this.bus.emit('toast', {
-        text: `Mass seed recharging — ${Math.ceil(ps.cooldownUntil - now)}s`,
+        text: `Pin recharging — ${Math.ceil(ps.cooldownUntil - now)}s`,
         kind: 'warn',
         ttl: 1.6,
       });
@@ -168,7 +168,7 @@ export const massSeed = {
     if (ms.phase !== 'idle') {
       this._retireLiveSeed(state, ms, MASS_SEED_CUT_REASONS.replaced);
       if (this.bus) {
-        this.bus.emit('toast', { text: 'Previous mass seed replaced', kind: 'warn', ttl: 1.6 });
+        this.bus.emit('toast', { text: 'Previous Pin anchor replaced', kind: 'warn', ttl: 1.6 });
       }
     }
 

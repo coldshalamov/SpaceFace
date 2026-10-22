@@ -306,9 +306,6 @@ const SHIPPED_WEAPONS = [
     // never as a projectile — impulsePerHit is the blast momentum the detonation imparts through the
     // physics authority (756 at centre = 45 % of Wasp cruise). dmg 0 is honest: the mine throws,
     // it does not damage.
-    // Retired from sale (owner 2026-10-22): the SHOVE power is the shove pulse. Owned copies keep working;
-    // the Crucible draft is the swarm seam's to align.
-    retiredInto: 'shove',
     id: 'wpn_vector_mine_m', name: 'Vector Mine M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 22000, requiresTech: 'tech_guided_ordnance',
     sentence: 'A dropped scatter charge: shoves every hull nearby, damages none.',
     mount: 'launcher',

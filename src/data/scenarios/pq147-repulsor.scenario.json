@@ -3,7 +3,7 @@
   "id": "drill.power.repulsor",
   "powerId": "repulsor",
   "action": "deployRepulsor",
-  "railSlot": 6,
+  "railSlot": 2,
   "volume": "ring",
   "title": "Gravity bowling",
   "rule": "A RING SHOVES MASS OUT TO A BERM",

@@ -3,7 +3,7 @@
   "id": "drill.power.cone",
   "powerId": "cone",
   "action": "toggleClearingCone",
-  "railSlot": 7,
+  "railSlot": 5,
   "volume": "cone",
   "title": "Clearing lane",
   "rule": "A WEDGE PLOWS A LANE AHEAD OF THE NOSE",

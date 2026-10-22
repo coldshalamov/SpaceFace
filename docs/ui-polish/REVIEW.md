@@ -1802,6 +1802,16 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 
 **Leftovers:** at 960×540 the term values wrap in the ~115px value column ("Posted on / success"), and the terms need a scroll there and at 801–900. At 720×461 (651–800 band) the job list still shows only one row and the dossier only its title before scrolling; ACCEPT needs a scroll at 651×600. Save/Load 1280×720 context line still wraps "DAYS AGO".
 
+## Achievements on an upright phone — one column (ui-polish-83)
+
+**Before (master 8d34976b84):** under 560px wide the screen kept its desktop two-column grid (the stage column plus a fixed ≥290px reading column). At 390×844 the stage column was a sliver, so the medal orrery stood down entirely (it needs 320px) and no medal could be picked. The "Next: Berth Assigned" line broke into three one-word lines, and the category words ran off the right edge (bench: MASSLINE, CRUCIBLE and CAREER offscreen).
+
+**After (`constellationLayouts.js`, one `max-width:560px` block):** one column. Title, then the orrery at full width (320–440px tall), then the chosen medal's reading (the big dial is hidden, since the orrery already shows that medal), then the category words on their own row over Back. The screen scrolls if the reading runs long. Selectors and IDs are unchanged; nothing above 560px wide matches.
+
+**Checked:** bench `achievements` at 390×844 3 → 0 findings, 360×740 0. 960×540, 1280×720 and wider are untouched by construction (the rule only matches ≤560 wide). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish83/compare-achievements-390x844.png`, `after4/`.
+
+At 380px wide and under the category words keep the 12px floor with tighter spacing and gaps, so all five (through CAREER) fit at 360×740, and the row's scroller reaches into the side padding so the first count (0/22) and the focus mark beside ALL are no longer cut.
+
 ## Missions route strip: the destination wraps instead of losing its sector (ui-polish-84)
 
 **Before:** at 960×540 (761–1100 wide, ≤640 tall) the route strip's TO end read "Helios Station (Helios Pri…"; the 640–760 band uses the same two-half layout.

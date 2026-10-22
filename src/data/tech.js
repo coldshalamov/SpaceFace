@@ -27,7 +27,7 @@ export const TECH_NODES = [
   {
     id: 'tech_guided_ordnance', name: 'Guided Ordnance', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 4000, rp: 7 },
-    unlocks: { modules: ['wpn_missile_rack_m'] },
+    unlocks: { modules: ['wpn_missile_rack_m', 'wpn_vector_mine_m'] },
   },
   {
     id: 'tech_plasma_dynamics', name: 'Plasma Dynamics', branch: 'combat', prereqs: ['tech_kinetic_drivers', 'tech_beam_focusing'],

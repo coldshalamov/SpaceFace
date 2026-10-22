@@ -306,16 +306,18 @@ export const FIELD_END_REASONS = Object.freeze({
   disrupted: 'field_disrupted',
 });
 
-// PQ-147.00 — the five number-key powers. Fitting-screen `sentence` answers "what can I do now?"
-// Rail slots 4–8 already bind; this roster is the data the rail and drills read. Volume is never
-// a sphere.
+// PQ-147.00 — the five field verbs. Fitting-screen `sentence` answers "what can I do now?"
+// `railSlot` is the rail index of the power key that fires each one since the five powers
+// (owner 2026-10-22, src/systems/powerVerbs.js): seed → PIN 3, well → PULL 1, repulsor → SHOVE 2,
+// cone and skim → RIG 5. `action` stays the internal flag the owner consumes. Volume is never a
+// sphere.
 export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'seed',
     defKey: 'seed',
     name: 'Mass Seed',
     action: 'deployMassSeed',
-    railSlot: 4,
+    railSlot: 3,
     volume: FIELD_VOLUMES.RING,
     sentence: FIELD_DEFS.seed.sentence,
     drillId: 'drill.power.seed',
@@ -325,7 +327,7 @@ export const POWER_ROSTER = Object.freeze([
     defKey: 'well',
     name: 'Well',
     action: 'deployWell',
-    railSlot: 5,
+    railSlot: 1,
     volume: FIELD_VOLUMES.RING,
     sentence: FIELD_DEFS.well.sentence,
     drillId: 'drill.power.well',
@@ -335,7 +337,7 @@ export const POWER_ROSTER = Object.freeze([
     defKey: 'repulsor',
     name: 'Repulsor',
     action: 'deployRepulsor',
-    railSlot: 6,
+    railSlot: 2,
     volume: FIELD_VOLUMES.RING,
     sentence: FIELD_DEFS.repulsor.sentence,
     drillId: 'drill.power.repulsor',
@@ -345,7 +347,7 @@ export const POWER_ROSTER = Object.freeze([
     defKey: 'cone',
     name: 'Clearing Cone',
     action: 'toggleClearingCone',
-    railSlot: 7,
+    railSlot: 5,
     volume: FIELD_VOLUMES.CONE,
     sentence: FIELD_DEFS.cone.sentence,
     drillId: 'drill.power.cone',
@@ -355,7 +357,7 @@ export const POWER_ROSTER = Object.freeze([
     defKey: 'skim',
     name: 'Skim Collector',
     action: 'toggleSkimCollector',
-    railSlot: 8,
+    railSlot: 5,
     volume: FIELD_VOLUMES.SHEET,
     sentence: FIELD_DEFS.skim.sentence,
     drillId: 'drill.power.skim',
