@@ -79,7 +79,7 @@ function padLinearHost(el) {
  * Where a d-pad press goes from `active`. Inside a `data-pad-linear` list, Up/Down step through its
  * items in document order (the order the list reads), so a full-width row over left-aligned banked
  * runs cannot hand Down to whichever word happens to sit under its centre. Everything else, and
- * Left/Right everywhere, stays geometric (spatialFocusTarget).
+ * Left/Right everywhere, stays geometric (spatialFocusTarget), as do Up/Down off either end of the list.
  */
 export function padFocusTarget(items, active, dir) {
   if ((dir === 'up' || dir === 'down') && active && items.includes(active)) {
@@ -87,7 +87,9 @@ export function padFocusTarget(items, active, dir) {
     if (host && typeof host.contains === 'function') {
       const run = items.filter((el) => host.contains(el));
       const at = run.indexOf(active);
-      if (at >= 0) return run[at + (dir === 'down' ? 1 : -1)] || null;
+      // at either end of the list, fall through to geometry so the d-pad can still leave the
+      // list (e.g. Up from Resume to the tracked-contract link above the column)
+      if (at >= 0 && run[at + (dir === 'down' ? 1 : -1)]) return run[at + (dir === 'down' ? 1 : -1)];
     }
   }
   return spatialFocusTarget(items, active, dir);

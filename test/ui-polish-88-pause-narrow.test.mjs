@@ -243,3 +243,31 @@ test('d-pad Down/Up at 700 step every verb in list order from Resume (no jump to
     assert.ok(verbs(root).every((b) => { for (let p = b.parentElement; p; p = p.parentElement) if (p.getAttribute('data-pad-linear') != null) return false; return true; }), 'the dial list is not linear');
   } finally { dom.restore(); }
 });
+
+test('d-pad off either end of the column at 700 falls back to geometry (Up from Resume reaches the contract link)', () => {
+  const dom = installMiniDom({ width: 700 });
+  try {
+    const root = globalThis.document.createElement('div');
+    pauseScreen.mount(root, makeCtx());
+    assert.ok(column(root));
+    const list = verbs(root);
+    list.forEach((b, i) => { const [left, top, width, height] = COLUMN_700[i]; const rect = { left, top, width, height, right: left + width, bottom: top + height }; b.getBoundingClientRect = () => rect; });
+    const box = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
+    const minTop = Math.min(...COLUMN_700.map((r) => r[1]));
+    const maxBottom = Math.max(...COLUMN_700.map((r) => r[1] + r[3]));
+    const contract = globalThis.document.createElement('a');
+    contract.textContent = 'Contract 47-A';
+    contract.getBoundingClientRect = () => box(COLUMN_700[0][0], Math.max(0, minTop - 40), 160, 24);
+    const below = globalThis.document.createElement('button');
+    below.textContent = 'below';
+    below.getBoundingClientRect = () => box(COLUMN_700[0][0], maxBottom + 16, 160, 24);
+    root.append(contract, below);
+    const all = [contract, ...list, below];
+    assert.equal(padFocusTarget(all, list[0], 'up'), contract, 'Up from Resume leaves the column for the contract link');
+    assert.equal(padFocusTarget(all, list[0], 'up'), spatialFocusTarget(all, list[0], 'up'));
+    const last = list[list.length - 1];
+    assert.equal(padFocusTarget(all, last, 'down'), spatialFocusTarget(all, last, 'down'), 'Down from the last verb is geometric');
+    assert.equal(padFocusTarget(all, last, 'down'), below);
+    assert.equal(padFocusTarget(all, list[0], 'down'), list[1], 'inside the list it still steps in order');
+  } finally { dom.restore(); }
+});
