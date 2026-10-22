@@ -1082,15 +1082,15 @@ production units, and never build what they write.
 | 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | OPEN — clips judged through Theater after 407 |
 | 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | OPEN |
 | 432 | PULSE-RADIO | Radio that's about this galaxy — ≥2 h per channel before a repeat, live-fact segments, The Margin as a show; FILL lines after (§31.6) | BUILD | OPEN |
-| 433 | PULSE-SIGNS | Screens and signs that talk back — billboards, bay screens, news crawls, wanted posters with the player's hull (§31.6) | BUILD | OPEN |
+| 433 | PULSE-SIGNS | Screens and signs that talk back — billboards, bay screens, news crawls, wanted posters with the player's hull (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 434 | PULSE-CHATTER | Every ship is somebody — name, registry, captain, cargo, destination, mood; ≥3,000 hail/chatter lines; manifests feed 423 (§31.6) | BUILD | OPEN |
-| 435 | PULSE-MAIL | Mail — event-triggered inbox: cast, offers, spam, fan/hate mail, bills, Maera's lost crew; ≥120 letters (§31.6) | BUILD | OPEN |
+| 435 | PULSE-MAIL | Mail — event-triggered inbox: cast, offers, spam, fan/hate mail, bills, Maera's lost crew; ≥120 letters (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 436 | PULSE-STATION | Stations breathe — PA, berth calls, shift bells, crowd tone, scheduled bay traffic (§31.6) | BUILD | OPEN — beside 431 |
-| 437 | PULSE-CODEX | Everything has a page — codex for every commodity, hull, module, weapon, faction, sector, species and character (§31.6) | BUILD | OPEN |
+| 437 | PULSE-CODEX | Everything has a page — codex for every commodity, hull, module, weapon, faction, sector, species and character (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 438 | PULSE-HORIZON | The horizon is busy — sim-driven far-plane life above/below the flight plane, zero collision (§31.6) | BUILD | OPEN — coordinate with L-PICTURE |
-| 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | OPEN |
+| 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | OPEN |
-| 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | OPEN |
+| 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | DONE devin-thirty-oct22 |
 | 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | OPEN |
 | 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | OPEN — M3; after 423 in the seam |
 | 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | BUILD | OPEN — M3 |
