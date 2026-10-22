@@ -213,7 +213,7 @@ export const FIELD_DEFS = Object.freeze({
     cooldownS: 0,
     originGap: 10,        // wedge apex sits just ahead of the hull nose
   }),
-  // SKIM COLLECTOR — Digit8. A ship-attached scoop SHEET (toggle). Harvests by grazing; pulls
+  // SKIM COLLECTOR — RIG (5) inside a planet band. A ship-attached scoop SHEET (toggle). Harvests by grazing; pulls
   // loose mass onto the flight line. Not a spawned entity. PlanetRuntime owns collectorOn;
   // this def is the field volume + fitting sentence the rail and drills read.
   skim: Object.freeze({
@@ -230,7 +230,7 @@ export const FIELD_DEFS = Object.freeze({
     cooldownS: 0,
     originGap: 14,
   }),
-  // MASS SEED — Digit4. A lock-RING around the thrown anchor. No continuous gravity (the seed
+  // MASS SEED — PIN (3). A lock-RING around the thrown anchor. No continuous gravity (the seed
   // is a Rapier fixed body); the ring is the legible volume so it never reads as a glowing orb.
   seed: Object.freeze({
     id: 'field_seed_standard',

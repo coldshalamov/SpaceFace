@@ -5414,6 +5414,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
 
   const seedAction = await triggerCeresPublicFlightAction(page, {
     key: 'Digit3', // PIN: the anchor Mass Seed (the five powers, owner 2026-10-22)
+    trigger: 'release', // row 493: a power key previews while held and fires on its release
     deadlineTick: toolkitActionDeadlineTick,
     expectedEvent: {
       event: 'massSeed:deployed',
@@ -5517,6 +5518,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
 
   await triggerCeresPublicFlightAction(page, {
     key: 'Digit2', // SHOVE: the repulsor (the same press sets off armed ordnance)
+    trigger: 'release', // row 493: fires on the key-up
     deadlineTick: toolkitActionDeadlineTick,
     expectedEvent: {
       event: 'fields:deployed',

@@ -123,15 +123,18 @@ function flightSim(systems) {
 test('real key codes drive exactly the internal flags each power owns', () => {
   const { sim, state } = flightSim([input]);
   const host = sim.registry.get('input');
+  const FLAGS = ['deployWell', 'deployRepulsor', 'chargeDetonate', 'deployMassSeed', 'dropBomb', 'chargeThrow', 'toggleClearingCone', 'toggleSkimCollector', 'cycleBomb'];
+  // Row 493: a power grips on the key-down and fires on the key-up; the ordnance cycle answers the
+  // press. One key press is both steps, so collect what either step fired.
   const press = (code) => {
     applyFlightKeyEvent(host, { code, pressed: true });
     sim.step();
     const a = { ...state.input.actions };
     applyFlightKeyEvent(host, { code, pressed: false });
     sim.step();
+    for (const f of FLAGS) if (state.input.actions[f] === true) a[f] = true;
     return a;
   };
-  const FLAGS = ['deployWell', 'deployRepulsor', 'chargeDetonate', 'deployMassSeed', 'dropBomb', 'chargeThrow', 'toggleClearingCone', 'toggleSkimCollector', 'cycleBomb'];
   const on = (a) => FLAGS.filter((f) => a[f] === true).sort();
   assert.deepEqual(on(press('Digit1')), ['deployWell']);
   assert.deepEqual(on(press('Digit2')), ['chargeDetonate', 'deployRepulsor']);

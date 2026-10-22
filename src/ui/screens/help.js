@@ -22,6 +22,7 @@ import { ORES, ASTEROIDS } from '../../data/mining.js';
 import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
 import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
+import { powersFireOnPress } from '../../systems/powerVerbs.js';
 import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS, gamepadButtonNames, gamepadButtonLabels } from '../../systems/gamepad.js';
 import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
@@ -226,7 +227,11 @@ export function controlSections(state) {
       ['Massline directional control', null, directional || '—'],
       ['Massline dedicated reel in', 'reelIn'],
       ['Massline dedicated pay out', 'reelOut'],
-      // The five powers (owner 2026-10-22): one row each, in number-row order.
+      // The five powers (owner 2026-10-22): one row each, in number-row order. Row 493: how a
+      // power key behaves follows Settings → Gameplay → Powers.
+      powersFireOnPress(state)
+        ? ['Powers 1–5 use on press (Settings → Gameplay → Powers)', null, 'Press']
+        : ['Powers 1–5: hold to outline every body it will move and where it goes; let go to use it', null, 'Hold, then let go'],
       ['Pull — drop a gravity well at your aim; it grips your locked target three times as hard', 'pull'],
       ['Shove — blast everything outward from your ship, and set off every armed charge and bomb', 'shove'],
       ['Pin — fire an anchor that locks where it lands, then latch your Line to it', 'pin'],

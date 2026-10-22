@@ -23,6 +23,7 @@ import {
   resolveGamepadBindings,
 } from '../src/systems/gamepad.js';
 import { DEFAULTS as INPUT_DEFAULTS, input } from '../src/systems/input.js';
+import { heldPower } from '../src/systems/powerVerbs.js';
 import { GAMEPAD_REBINDABLE } from '../src/ui/screens/settings.js';
 import { createBus } from '../src/core/eventBus.js';
 
@@ -314,12 +315,13 @@ test('each new pad verb merges into state.input.actions like a stock pad verb', 
     ['cruise', 'edge', 'cruise'],
     ['deployBeacon', 'edge', 'deployBeacon'],
     // The five powers drive the owners' internal flags: no charge aboard, so BOMB drops the
-    // selected drift bomb, and in open space RIG is the cone.
-    ['pin', 'edge', 'deployMassSeed'],
-    ['pull', 'edge', 'deployWell'],
-    ['rig', 'edge', 'toggleClearingCone'],
-    ['bomb', 'edge', 'dropBomb'],
-    ['shove', 'edge', 'deployRepulsor'],
+    // selected drift bomb, and in open space RIG is the cone. Row 493: a power grips on the press
+    // (the held-key preview draws) and fires on the release.
+    ['pin', 'power', 'deployMassSeed'],
+    ['pull', 'power', 'deployWell'],
+    ['rig', 'power', 'toggleClearingCone'],
+    ['bomb', 'power', 'dropBomb'],
+    ['shove', 'power', 'deployRepulsor'],
     ['jettisonLot', 'edge', 'jettisonLot'],
     ['cloak', 'edge', 'cloakToggle'],
     ['bulletTime', 'held', 'bulletTime'],
@@ -330,6 +332,20 @@ test('each new pad verb merges into state.input.actions like a stock pad verb', 
     gp.actions = nullActions();
     gp.actions[verb] = { held: true, pressed: true, released: false, value: 1 };
     host.update(1 / 60, state);
+    if (kind === 'power') {
+      assert.equal(state.input.actions[act], false, `pad ${verb} press grips; it does not fire yet`);
+      assert.equal(heldPower(state), verb, `pad ${verb} press publishes the held power for the preview`);
+      gp.actions = nullActions();
+      gp.actions[verb] = { held: false, pressed: false, released: true, value: 0 };
+      host.update(1 / 60, state);
+      assert.equal(state.input.actions[act], true, `pad ${verb} release → actions.${act}`);
+      assert.equal(heldPower(state), null, `pad ${verb} release ends the preview`);
+      gp.actions = nullActions();
+      host.update(1 / 60, state);
+      assert.equal(state.input.actions[act], false, `pad ${verb} fires once`);
+      state.tick += 1;
+      continue;
+    }
     assert.equal(state.input.actions[act], true, `pad ${verb} → actions.${act}`);
     // Release: the act channel goes quiet on the next sample.
     gp.actions = nullActions();

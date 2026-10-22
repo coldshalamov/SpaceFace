@@ -280,7 +280,7 @@ import {
   updateMasslineLatchRim,
 } from './masslineLatchRim.js';
 import { createPowerPreview } from './powerPreview.js';
-import { powerPreviewPlan } from '../data/powerPreview.js';
+import { powerHeld, powerPreviewPlan } from '../data/powerPreview.js';
 import {
   createMasslineChainReadout,
   createMasslineChainReadoutGeometry,
@@ -953,6 +953,8 @@ const VFX_PROJECTILE_TRAILS_HZ = 45;
 // Ambient station movers are event-driven, pooled VFX. Twelve pose writes per second is enough for
 // their slow docking/orbit paths and leaves the ordinary frame asleep when no side-event is active.
 const VFX_STATION_SIDE_EVENTS_HZ = 12;
+// Row 493: the held-key preview re-plans this often; between plans its rings follow their bodies.
+const VFX_POWER_PREVIEW_HZ = 15;
 // NPC work signatures ("The Working Light"). Same 12 Hz as the station movers: the underlying job
 // phases change on the order of seconds, so a faster pose write would buy nothing, and the shared
 // cadence keeps the two ambient layers from beating against each other. Slept entirely when no live
@@ -1867,6 +1869,9 @@ export const vfx = {
     disposeVfxRoot(this._monofilamentBlade && this._monofilamentBlade.mesh, disposeState);
     invokeVfxDisposer(this._selectionSigil, 'selection sigil');
     this._selectionSigil = null;
+    invokeVfxDisposer(this._powerPreview, 'power preview');
+    this._powerPreview = null;
+    this._powerPreviewPlan = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
     disposeVfxRoot(this._masslineSwingTrace && this._masslineSwingTrace.mesh, disposeState);
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
@@ -9512,19 +9517,36 @@ export const vfx = {
   },
 
   _powerPreview: null,
+  _powerPreviewPlan: null,
+  _powerPreviewLocalize: null,
   _initPowerPreview() {
     if (!this._scene) return;
     this._powerPreview = createPowerPreview({ THREE, scene: this._scene });
+    this._powerPreviewLocalize = (x, z, out) => this._toLocalXZ(x, z, out);
   },
 
-  // Row 493: hold a power's key and every body it would move shows an outline + predicted path
-  // in that power's tint. The plan is the deterministic data seam; this only draws it.
-  _updatePowerPreview() {
+  // Row 493: hold a power's key and every body letting go will move shows an outline and its
+  // predicted path in that power's tint. The plan is the deterministic, read-only data seam,
+  // re-planned at VFX_POWER_PREVIEW_HZ (and at once when the held power changes); this only
+  // draws it. No key held costs one WeakMap read.
+  _updatePowerPreview(dt) {
     const pv = this._powerPreview;
     if (!pv) return false;
-    const plan = this.state ? powerPreviewPlan(this.state) : null;
-    pv.update(plan, (x, z, out) => this._toLocalXZ(x, z, out));
-    return !!(plan && plan.moves && plan.moves.length);
+    const state = this.state;
+    const held = state ? powerHeld(state) : null;
+    if (!held) {
+      if (this._powerPreviewPlan || pv.group.visible) {
+        this._powerPreviewPlan = null;
+        this._cadencePowerPreview = 0;
+        pv.update(null);
+      }
+      return false;
+    }
+    const replan = this._consumeCadence('_cadencePowerPreview', dt, VFX_POWER_PREVIEW_HZ);
+    if (replan || !this._powerPreviewPlan || this._powerPreviewPlan.power !== held) {
+      this._powerPreviewPlan = powerPreviewPlan(state, held);
+    }
+    return pv.update(this._powerPreviewPlan, this._powerPreviewLocalize, state);
   },
 
   _resetMasslineSwingTrace() {
@@ -12821,7 +12843,7 @@ export const vfx = {
       sub.masslineReleaseArc = 0;
     }
     sub.masslineLatchRim = this._updateMasslineLatchRim(dt) ? 1 : 0;
-    this._updatePowerPreview();
+    this._updatePowerPreview(dt);
     if (this._stationSideEventsRelevant()) {
       const stationStep = this._consumeCadence(
         '_cadenceStationSideEvent',

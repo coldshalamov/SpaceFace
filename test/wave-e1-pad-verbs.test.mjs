@@ -70,12 +70,15 @@ test('a pad shove reaches state.input the way the keyboard edge does', () => {
   host.gamepad = gp;
   host.touch = null;
   host.update(1 / 60, state);
-  assert.equal(state.input.actions.deployRepulsor, true, 'shove');
+  // Row 493: the pad shove grips on the press (the preview draws) and fires on the release,
+  // exactly as the keyboard key does.
+  assert.equal(state.input.actions.deployRepulsor, false, 'shove held: previewing');
   assert.equal(state.input.fire, true, 'fire');
   assert.ok(state.input.moveZ > 0, 'thrust is the left stick');
   gp.actions.brake = { held: true, pressed: true, released: false, value: 1 };
   gp.axes.leftY = 0;
   gp.actions.shove = { held: false, pressed: false, released: true, value: 0 };
   host.update(1 / 60, state);
+  assert.equal(state.input.actions.deployRepulsor, true, 'shove released: used');
   assert.equal(state.input.brake, true, 'brake');
 });

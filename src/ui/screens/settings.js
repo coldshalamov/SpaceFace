@@ -1039,6 +1039,13 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
+      // Row 493: the five powers preview while held. Absent = hold (the shipped default);
+      // powerVerbs.powersFireOnPress reads only 'press'.
+      rowSelect('Powers', () => (g.powerFire === 'press' ? 'press' : 'hold'), [
+        ['hold', 'Hold to preview, release to use'],
+        ['press', 'Use on press'],
+      ], (v) => this._set(ctx, 'gameplay', 'powerFire', v));
+      build.note('Hold a power key (1–5) to outline every body it will move and where it will go; let go to use it. A quick tap still uses it at once.');
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       const masslineFamilyOn = massline2Flag('enabled');
