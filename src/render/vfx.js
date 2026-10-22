@@ -279,6 +279,8 @@ import {
   resolveMasslineLatchRimPlan,
   updateMasslineLatchRim,
 } from './masslineLatchRim.js';
+import { createPowerPreview } from './powerPreview.js';
+import { powerPreviewPlan } from '../data/powerPreview.js';
 import {
   createMasslineChainReadout,
   createMasslineChainReadoutGeometry,
@@ -2315,6 +2317,7 @@ export const vfx = {
     this._initMasslineReleaseArc();
     this._initMasslineSwingTrace();
     this._initMasslineLatchRim();
+    this._initPowerPreview();
     this._initMasslineChainReadout();
     this._initMonofilamentBlade();
     this._initDockingCradle();
@@ -9508,6 +9511,22 @@ export const vfx = {
     return updateMasslineLatchRim(rim, plan, dt, (x, z) => this._toLocalXZ(x, z, this._spawnLocalXZ));
   },
 
+  _powerPreview: null,
+  _initPowerPreview() {
+    if (!this._scene) return;
+    this._powerPreview = createPowerPreview({ THREE, scene: this._scene });
+  },
+
+  // Row 493: hold a power's key and every body it would move shows an outline + predicted path
+  // in that power's tint. The plan is the deterministic data seam; this only draws it.
+  _updatePowerPreview() {
+    const pv = this._powerPreview;
+    if (!pv) return false;
+    const plan = this.state ? powerPreviewPlan(this.state) : null;
+    pv.update(plan, (x, z, out) => this._toLocalXZ(x, z, out));
+    return !!(plan && plan.moves && plan.moves.length);
+  },
+
   _resetMasslineSwingTrace() {
     const st = this._masslineSwingTrace;
     if (!st) return;
@@ -12802,6 +12821,7 @@ export const vfx = {
       sub.masslineReleaseArc = 0;
     }
     sub.masslineLatchRim = this._updateMasslineLatchRim(dt) ? 1 : 0;
+    this._updatePowerPreview();
     if (this._stationSideEventsRelevant()) {
       const stationStep = this._consumeCadence(
         '_cadenceStationSideEvent',

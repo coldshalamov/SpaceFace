@@ -16,6 +16,8 @@
 // The HUD READS state for display and never mutates sim state (§5, §0.6).
 
 import { createRadar } from './radar.js';
+import { mountIonStormHud } from './ionStormHud.js';
+import { mountTravelVectorHud } from './travelVectorHud.js';
 import { createTargetPanel, targetDisplayName } from './targetPanel.js';
 import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { createFloatingText } from './floatingText.js';
@@ -44,6 +46,7 @@ import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
+import { livingWorkStatusText } from '../data/contactHail.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
 import { holdLeanChips } from './cargoConscience.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
@@ -1695,6 +1698,8 @@ export function createHud(ctx, alerts) {
   // attaches itself into this existing column only while the SP-07 load is the player's situation
   // (towing it, or bringing it to the catcher fork) and fully detaches when it is not.
   const forkInstrument = createForkInstrument();
+  const ionStormHud = mountIonStormHud(root, state);
+  const travelVectorHud = mountTravelVectorHud(root, state, helpers);
   forkInstrument.mount(leftContext);
 
   // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
@@ -1884,8 +1889,8 @@ export function createHud(ctx, alerts) {
     '<div class="sf-vtape__track">' +
       '<div class="sf-vtape__grat"></div>' +
       '<div class="sf-vtape__fill" data-k="tfill"></div>' +
-      '<div class="sf-vtape__cap" data-k="tcap"><span class="sf-vtape__caplabel mono">CAP</span></div>' +
-      '<div class="sf-vtape__vmax" data-k="tvmax"><span class="sf-vtape__vmaxlabel mono" data-k="tvmaxtext">V-MAX</span></div>' +
+      '<div class="sf-vtape__cap" data-k="tcap"><span class="sf-vtape__caplabel mono">LIMIT</span></div>' +
+      '<div class="sf-vtape__vmax" data-k="tvmax"><span class="sf-vtape__vmaxlabel mono" data-k="tvmaxtext">TOP SPEED</span></div>' +
     '</div>' +
     '<div class="sf-vtape__approach" data-k="tapproach">' +
       '<div class="sf-vtape__arc"><div class="sf-vtape__arcstop" data-k="tarcstop"></div>' +
@@ -4477,6 +4482,10 @@ export function createHud(ctx, alerts) {
     let detail = '';
     if (c.isWreck) {
       detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${e.data.weakPoint || '—'}` : '??? UNSCANNED';
+    } else {
+      // RC-NPC-READ 477: a working hull's job phase rides the detail line — HAULER · LOADING.
+      const work = livingWorkStatusText(e, { depth: 'lock', state });
+      if (work) detail = work;
     }
 
     const rvx = ((e.vel && e.vel.x) || 0) - ((player.vel && player.vel.x) || 0);
@@ -4946,22 +4955,22 @@ export function createHud(ctx, alerts) {
     setClass(vt.cap, 'sf-vtape__cap--label-right', capPct <= 8);
 
     if (slow) {
-      setText(vt.vmaxText, 'V-MAX ' + Math.round(ceiling));
+      setText(vt.vmaxText, 'TOP SPEED ' + Math.round(ceiling));
       // Every state prints its NAME — hue is never the only carrier (WCAG 1.4.1).
       setText(vt.state, driveState === 'off'
         ? (brakeStop ? 'BRAKING' : 'DRIVE OFF')
         : 'DRIVE ' + driveState.toUpperCase());
       let note = '';
-      if (driveState === 'spooling') note = 'SPOOLING…';
+      if (driveState === 'spooling') note = 'DRIVE SPINNING UP…';
       else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
       // The state label already prints DRIVE COOLDOWN — the note carries only WHY it broke.
       // Known reasons get a word a pilot would use; unknown ones still humanize, never a raw slug.
       else if (driveState === 'cooldown') {
         const reason = drive && drive.breakReason ? String(drive.breakReason) : '';
-        note = reason === 'energy' ? 'CAPACITOR DRAINED'
+        note = reason === 'energy' ? 'OUT OF POWER'
           : reason ? reason.replace(/_/g, ' ').toUpperCase() : '';
       }
-      else if (nearCeiling) note = 'AT CEILING';
+      else if (nearCeiling) note = 'AT TOP SPEED';
       // INST-35: speed the pilot earned (above the thruster cap) reads differently from speed
       // the thrusters bought — a text mark on the existing note, never a second gauge.
       if (buildVelocityReadout(p, profile).earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
@@ -5108,6 +5117,8 @@ export function createHud(ctx, alerts) {
     // PQ-195.02: the fork instrument rides the slow clock like the rail — its own change detection
     // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
     if (slow) forkInstrument.update(state);
+    if (slow) ionStormHud.update();
+    travelVectorHud.update(p);
 
     // Safety alerts stay live independently of the visual instrument owner.
     if (p) {
@@ -5687,6 +5698,8 @@ export function createHud(ctx, alerts) {
       if (hudMeta && typeof hudMeta.destroy === 'function') hudMeta.destroy();
       if (orreryCluster) orreryCluster.dispose();
       forkInstrument.destroy();
+      ionStormHud.destroy();
+      travelVectorHud.destroy();
       threatHalo.destroy();
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
       if (typeof window !== 'undefined' && window.removeEventListener) {
