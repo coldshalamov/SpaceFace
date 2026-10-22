@@ -1,7 +1,55 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace current checkpoint
 
-## Current checkpoint — 22 October 2026, 17:38 UTC
+## Current checkpoint — 22 October 2026, 18:10 UTC
+
+All TEN goals remain OPEN. This section supersedes older current-state and next-operation statements, not scope, historical evidence or reviewer acceptance. The [original implementation scope](IMPLEMENTATION.md), [twenty-concept map](TWENTY_CONCEPT_MAP.json), [amendment](TWENTY_CONCEPT_AMENDMENT.md), [build map](../../../build_map.md) and existing 25-sector register remain authoritative. Earlier detailed evidence is retained below.
+
+### Bolus: coherent continuity increment delivered
+
+- [Draft PR510](https://github.com/coldshalamov/SpaceFace/pull/510) is open, draft, unmerged and mergeable at independently verified head `d83ac6ff37a531533616499a0d3ed09894289536`. Its sole parent is public master `94e492c035c98e99d6b4feca150fb763b4137196`. That newer master changed only build_map.md and LANDED_REVIEW.md; those changes are preserved.
+- Exactly five reviewed implementation paths plus the [sanitized handoff](https://github.com/coldshalamov/SpaceFace/blob/d83ac6ff37a531533616499a0d3ed09894289536/design/program/world-depth-2026-10-02/BOLUS_RIB_CONTINUITY_2026-10-22.md) are published. All five remote blobs match the frozen manifest. The package change only appends the focused file to existing check:save-envelope-fidelity; no unrelated pending package change was carried.
+- Original Loose Rib native-observed pose and motion now survive Save/Continue and sector retirement/return through a bounded, versioned ecology record. Historical lodged semantics, re-towing, explicit legacy migration, destruction and New Game behavior are covered. No native setters, rewards, geometry, physics radius/mass or timing were changed.
+- Focused checks pass 30/30; the exact updated gate targets pass 11/11; independent lifecycle review passes six targeted checks. These sets overlap and are not summed. The 1,534-file relative ESM closure has no unauthorized overrides. Actual Massline/native movement and production Save capture were exercised.
+- The whole-world native snapshot fallback identity_or_contract_changed also reproduces on the exact public baseline. Rib reconstruction preserves observed native pose independently; this does not prove exact whole-world native snapshot restoration or ordinary browser play.
+- Local reviewed source commit `526770a8b99a177765f02b5825031248a68b7948` has sole public e641 parent. Four-path source recovery and a separate final commit/gate companion were independently downloaded and byte/member verified before publication. Source recovery SHA256 `0b191c6edf69166275701db4dc969756b87310d3e99a93f233d69a96315540ff`; companion SHA256 `c7c680a40d4df3c1e7a7bc78c28a4a516eb6c29956fd91ddb86b89454a5ad757`. GitHub source/tests/handoff are now durable, not merely a backup.
+- Exact-head workflow run 39828415218 was queued at 18:08. CI follow-through remains active; no remote pass is claimed. Ordinary gate flight, camera, comprehension and phone acceptance remain open.
+
+### Visual evidence and next exact seam
+
+A genuinely new procedural-source/native-pose preview was inspected and delivered at 17:59 UTC. It projects actual rib_hook/rib_return runtime geometry before movement, after native movement and after reconstruction. It is not a Three.js/game-camera render, textured export, new model or visual acceptance.
+
+Fresh public board, NOW, LANDED_REVIEW, graphics program, finish lanes and referenced graphics handoff show no exact reservation for the following rib seam. The broader devin-graphics L-PICTURE claim remains active and untouched. dot claims only:
+1. src/render/bolusSilhouettes.js: buildRib and optional UV/authored-normal preservation in clonePart.
+2. src/render/faunaVisuals.js: optional UV/authored-normal attribute installation inside buildBolusFauna's cached geometry callback, preserving computed normals for all other recipes.
+3. New focused rib geometry tests and a small repeatable offline inspection script/evidence.
+
+Implementation is starting, not yet reviewed or published. The existing rib is two open XYZ quads, four triangles total; the Bolus builder lacks UV attributes despite its existing mapped tissue material. The intended increment is a closed tapered hook using the existing material, two meshes, names/order, cache and motion contracts. Physics radius16/mass200 and continuity source are out of scope. Actual runtime parent orientation, UV seam shading, moving-part joint continuity, topology, bounds and unchanged non-rib recipes must be checked. An actual diagnostic geometry export and matched offline source/export views are required before a quality claim. No new shipping asset route or broad material/renderer rewrite is authorized by this narrow claim.
+
+The live cloud-browser route remains unavailable for acceptance. Source/export work is independent of that limitation; no browser workaround or live-camera claim is permitted.
+
+### Charon CI is terminal, not green
+
+PR509 remains a separate open draft at `431cdab40663f1cab96d536512aa0ed61693da71`. Its run 39820716591 ended with ten failed jobs, one canceled browser job and one successful character job. The last browser shard was canceled at 17:45:38; the cause is unknown. The new focused test's pass is inferred from the exact guarded CI graph and a completed failure-only static2 report, not raw per-command TAP. Several failures have exact-base matches, including UI-budget, selected static/phone-source fixtures and feel assertions; other failures lack attribution. No claim that all failures predate the increment, and no unrelated fix or suppression, is justified.
+
+### Durable open-goal register
+
+| Marker | Outcome and current state | Owner | Evidence | Next executable action | Awaiting user input |
+| --- | --- | --- | --- | --- | --- |
+| SF-GAME | Finish original full game scope; OPEN | dot and existing packet owners | Original scope plus reviewed PR509/PR510 increments | Complete CI follow-through, current rib-quality increment and ordinary-play acceptance | Existing publication holds; full acceptance remains open |
+| SF-ORCHARD | Complete Orchard assets, native custody and ordinary route; OPEN | Existing Orchard owner; dot coordinating | PR480 and retained receiver/Continue evidence | Continue independent acceptance without duplicating owned paths | Original asset operation unchanged |
+| SF-PUBLISH | Tested coherent draft PR delivery; PARTIAL/OPEN | dot | PR510 remote blobs/head verified; PR509 delivered but overall CI red; held Shard/Pallas/guide unchanged | Follow exact PR510 CI and fix only attributable failures; deliver legitimately cleared held work | Existing asset/source publication confirmations unchanged |
+| SF-RECOVER | Recover source, models, tests and handoff after VM loss; OPEN | dot | PR510 source/tests/handoff; independently verified companion; prior repository recovery and source archives | Preserve the new rendering increment before interruption and through verified commits | Held source/model publication remains unresolved |
+| SF-VISUALS | Frequent actual-work images and meaningful visual review; OPEN | dot | New 17:59 native-pose source preview; earlier reviewed 15:50 production-export view | Produce matched actual rib source/export comparisons; obtain supported live-camera evidence | Live browser access remains unresolved |
+| SF-ASSETBANK | Broad bank of genuinely distinct usable pieces; OPEN | Existing asset owners; dot coordinating | Existing inventory and one 60-piece Shard landmark, not60 models | Finish held landmark delivery; continue distinct stock without counting this rib repair as a new model | Existing landmark publication hold |
+| SF-ASSET-QUALITY | Coherent materials, silhouettes and reviewed exports; OPEN | dot on exact rib seam; existing graphics owners retained | Four-triangle rib and missing UV transport confirmed in actual runtime source | Implement closed hook and mapped existing tissue; inspect actual export and motion/bounds | Live visual acceptance remains open |
+| SF-LIVING-WORLD | Consequential recurring world experience; OPEN | dot and sector owners | Charon consequences; Bolus physical return/Continue conservation; earlier Pallas/Phoebe/Eris evidence | Mature the connected rib experience and preserve existing stories/owners | Earlier runtime/source publication holds unchanged |
+| SF-SECTOR-COHERENCE | Coherent experience in every actual sector; OPEN | dot and sector owners | Existing25-sector register plus bounded Bolus persistence evidence | Continue sector-specific experience work and ordinary-play validation, not checklist closure | No new sector-content decision needed |
+| SF-PLAY-WORLD | Personally operate ordinary gameplay and build from findings; BLOCKED/OPEN | dot | Source/native fixtures only; live browser startup/access still unresolved | Resume a permitted cloud-browser route when available; keep phone/camera/flight gaps explicit | Live browser access resolution pending |
+
+The original Shard, Pallas, guide, Orchard and generated-JSON holds remain unchanged. Existing held inputs and successful remote objects are preserved. Eris remains locally reviewed/recovered with its guide prerequisite, not independently published. No goal is closed by this document, a local test, an offline render or draft delivery.
+
+## Historical checkpoint — 22 October 2026, 17:38 UTC
 
 All TEN goals remain OPEN. This update supersedes prior integration-pending and next-operation statements, not original scope, historical evidence or reviewer acceptance. Scope remains [IMPLEMENTATION](IMPLEMENTATION.md), [original twenty-concept map](TWENTY_CONCEPT_MAP.json), [twenty-concept amendment](TWENTY_CONCEPT_AMENDMENT.md) and [real build map](../../../build_map.md). The existing 25-sector register, Orchard PR480 hold and Pallas addendum remain intact. Ceres Last Shift's existing parent-reserved four-path arrival priority and fairlead/arrival evidence are retained. Fresh 16:05 PR480 is open/draft at `ff62ac4261b4debaff798f46cbe56a6473f8cf2e` and ALREADY modifies Last Shift data/system/prompt; its sector-experience register is public at that head (blob `1bdc9d977ec851dabebc516b1e426d1fbc514d85`). That inspection now confirms the arrival/recovery/revisit, fairlead and visual-identity work is already present in PR480; it is not a new missing feature to rebuild. Existing Last Shift ownership and evidence remain protected. Eris Metronome is now locally implemented, reviewed and recovered with its explicit held prerequisite. Charon Borrowed Voice is now delivered as independent draft PR509; its CI and ordinary-play acceptance remain open, with the next connected sector candidate under review.
 
