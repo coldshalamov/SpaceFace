@@ -1934,3 +1934,11 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 - **Tests:** `test/ui-polish-88-pause-narrow.test.mjs` +3 with Chromium-measured 1280×720 rects
   (ui-bench pause, one run): category Down/Up order, Left/Right order and ends, edge fallback to the
   contract link / outside-only / focusable-only, mark swaps across 760.
+
+## Save/Load: 941–1199 strip, 1101–1199 reading, and short wide windows (ui-polish-95)
+
+**Before (master e6418e4a7c):** at 941–1100 × 461+ a filed save's line under its station ran four or five ragged lines and, near 1000 wide, the context line dropped FLOWN 29 DAYS AGO to a second line. At 1101–1199 the reading fell to ~300px: DELETE dropped under LOAD, SAVED wrapped, and QUICK's CURRENT ran into SLOT 1. Above 1100 wide, short windows broke outright: at ≤460 tall EXPORT printed over RAP SHEET with LOAD off the frame (bench 10 findings at 1150–1920 × 440), at 461–520 the name field or LOAD ran into EXPORT, and at 1150×500 LOAD / SAVE HERE / DELETE were off the frame.
+
+**After (`saveLayouts.js`, desktop only):** the ≤1100 column rule now runs to 1199; 941–1199 × 461+ uses the 791–940 station treatment (name and credits; the reading carries the selected save's line) and closes up the context line. The 640-tall two-column hull record and the short-desktop page no longer stop at 1100 wide; the short page also covers 941+ wide up to 520 tall. No selector or ID changes.
+
+**Checked:** bench `save-load` and `save-load-empty` clean (0 findings) at 390×844, 790×600, 844×390, 860×600, 900×420, 941×600, 960×540, 1000×700, 1024×440, 1150×700, 1250×440, 1280×500, 1280×600, 1280×720 and 1920×1080; also 1101×700, 1199×800, 1280×521, 1920×440/460/520/600. 960×540, 1280×720 and 1920×1080 are outside every changed band. Type floor OK. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish95/`.
