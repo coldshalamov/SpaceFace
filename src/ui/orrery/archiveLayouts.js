@@ -1061,6 +1061,9 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} .ml-route__from { grid-row:2; grid-column:1; }
   ${ML} .ml-route__to { grid-row:2; grid-column:2; }
   ${ML} .ml-route__from, ${ML} .ml-route__to { font-size:13px !important; }
+  /* each end has half the card: wrap between place names rather than ellipsize the sector away */
+  ${ML} .ml-route__from, ${ML} .ml-route__to { white-space:normal; text-overflow:clip; line-height:1.3; }
+  ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
   ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:44px !important; }
   ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { gap:4px; }
   ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; font-size:12px !important; }
@@ -1093,14 +1096,16 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { margin-top:8px !important; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row {
     grid-template-columns:96px minmax(0, 1fr) !important; column-gap:10px; padding-top:3px !important; padding-bottom:3px !important; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > .ml-route-host { margin-top:14px; padding:0 10px; box-sizing:border-box; }
-  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route { --ml-disc:44px; padding-top:4px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > .ml-route-host { margin-top:6px; padding:0 10px; box-sizing:border-box; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route { --ml-disc:44px; padding-top:0; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__ends {
-    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:6px !important; }
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:3px !important; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__mid {
     grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__from { grid-row:2; grid-column:1; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__to { grid-row:2; grid-column:2; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog :is(.ml-route__from, .ml-route__to) { white-space:normal; text-overflow:clip; line-height:1.2; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__to .sf-entity-link { white-space:nowrap; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__clock-read { bottom:-22px; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__trace-read { bottom:-40px; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-clock__of { display:none; }

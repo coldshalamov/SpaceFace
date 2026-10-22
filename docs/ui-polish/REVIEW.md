@@ -1811,3 +1811,15 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 **Checked:** bench `achievements` at 390×844 3 → 0 findings, 360×740 0. 960×540, 1280×720 and wider are untouched by construction (the rule only matches ≤560 wide). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish83/compare-achievements-390x844.png`, `after4/`.
 
 At 380px wide and under the category words keep the 12px floor with tighter spacing and gaps, so all five (through CAREER) fit at 360×740, and the row's scroller reaches into the side padding so the first count (0/22) and the focus mark beside ALL are no longer cut.
+
+## Missions route strip: the destination wraps instead of losing its sector (ui-polish-84)
+
+**Before:** at 960×540 (761–1100 wide, ≤640 tall) the route strip's TO end read "Helios Station (Helios Pri…"; the 640–760 band uses the same two-half layout.
+
+**After (`archiveLayouts.js`, two in-band rules per block):** in those two bands FROM and TO wrap between words instead of ellipsizing, and each linked place name stays whole, so TO reads "Helios Station / (Helios Prime)" right-aligned.
+
+**Checked:** bench `mission-log` clean at 960×540, 720×460 and 1280×720 (1280×720 pixel-identical to master). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish84/`.
+
+**Review fix:** the wrapped TO end made the 640–760 strip one line taller, so at 700 tall the tick ruler ran past the stage's visible bottom. That block's route spacing is ~19px tighter (host margin 14→6, top pad 4→0, ends gap 6→3, wrap line-height 1.3→1.2); the ruler now ends at 645/648/605 against a visible bottom of 668/665/662 at 640/700/760×700.
+
+**Leftover:** at 390×844 the Missions page shows only the list (no dossier or route) until a row is opened; the bench still flags the hidden route names there.
