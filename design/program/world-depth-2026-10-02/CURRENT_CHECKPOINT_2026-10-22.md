@@ -108,3 +108,7 @@ Original Orchard, Pallas, Guide, Shard and generated-JSON holds are unchanged. S
 | SF-PLAY-WORLD | Personally operate ordinary gameplay; BLOCKED/OPEN | dot | Native/API/offline evidence only | Resume permitted live play; validate controls and phone | Live-browser resolution pending |
 
 No open marker has been removed. A document, test, artifact or draft PR alone cannot close a sector or whole-game goal.
+
+## Active bounded allocation: Runaway Kiln
+
+The [exact Runaway Kiln claim](CLAIM_RUNAWAY_KILN_2026-10-22.md) assigns only its fire() crucible type/verified existing visual metadata, a new focused test, a unique package command and evidence. Ordinary combat currently rejects the beacon-type crucible; a fixture-only payload substitution reaches the existing warning and detonation. No protected Vesta/Winnow or combat writer is assigned. Interrupted rescue persistence remains an existing, explicitly unsolved gap.
