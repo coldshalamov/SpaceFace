@@ -1779,3 +1779,13 @@ Focused tests: `station-field-hardware` 7/7, `inf-024-screen-station` 3/3; `ui-b
 **Checked:** bench clean (no tangled, cut-off or offscreen type; primary controls reachable) at 960×540, 1280×720, 1920×1080, 761×800, 820×600 and 860×800, with the control walk at each. Phone unaffected (desktop-only selectors).
 
 **Leftover:** at 1280×720 the context line still wraps "DAYS AGO" onto a second line.
+
+## Achievements on an upright phone — one column (ui-polish-83)
+
+**Before (master 8d34976b84):** under 560px wide the screen kept its desktop two-column grid (the stage column plus a fixed ≥290px reading column). At 390×844 the stage column was a sliver, so the medal orrery stood down entirely (it needs 320px) and no medal could be picked. The "Next: Berth Assigned" line broke into three one-word lines, and the category words ran off the right edge (bench: MASSLINE, CRUCIBLE and CAREER offscreen).
+
+**After (`constellationLayouts.js`, one `max-width:560px` block):** one column. Title, then the orrery at full width (320–440px tall), then the chosen medal's reading (the big dial is hidden, since the orrery already shows that medal), then the category words on their own row over Back. The screen scrolls if the reading runs long. Selectors and IDs are unchanged; nothing above 560px wide matches.
+
+**Checked:** bench `achievements` at 390×844 3 → 0 findings, 360×740 0. 960×540, 1280×720 and wider are untouched by construction (the rule only matches ≤560 wide). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish83/compare-achievements-390x844.png`, `after4/`.
+
+**Leftover:** at 360 wide the category row is ~20px too long, so CAREER is reached by scrolling the row sideways.

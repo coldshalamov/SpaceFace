@@ -437,6 +437,24 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
 @media (max-width:1400px) {
   ${A} { grid-template-columns:minmax(0, 1fr) clamp(260px, 26vw, 340px) !important; }
 }
+/* an upright phone or a window under 560px wide: one column. Title, then the medal orrery at full width
+   (it stands down under 320px wide), then the chosen medal's reading, then the categories on
+   their own row over Back. The screen scrolls if the reading runs long. */
+@media (max-width:560px) {
+  ${A} { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto auto auto !important;
+    grid-template-areas:"title" "stage" "read" "foot" !important; padding:clamp(16px, 3vh, 28px) 20px clamp(12px, 2vh, 20px) !important;
+    row-gap:clamp(10px, 2vh, 18px) !important; overflow-y:auto !important; align-content:start; }
+  ${A} > .k-title .con-title { font-size:clamp(26px, 7.8vw, 44px) !important; }
+  ${A} > .k-stage.con-medal-stage { grid-area:stage; grid-column:auto; grid-row:auto; height:clamp(320px, 96vw, 440px); margin:0 -10px; }
+  ${A} > .con-medal-read { grid-area:read; align-self:start; padding:0; }
+  ${A} .con-medal-read__dial { display:none; }
+  ${A} .con-medal-read__name { font-size:clamp(22px, 6.4vw, 28px); }
+  ${A} > .k-foot.con-foot { display:flex !important; flex-direction:column-reverse !important; align-items:stretch !important; gap:14px !important; }
+  ${A} .k-hang.con-filters { margin:0; align-self:stretch; overflow-x:auto !important; scrollbar-width:none; }
+  ${A} .con-filters .k-words { gap:6px !important; padding:0; justify-content:space-between; }
+  ${A} .con-filters .k-word { font-size:12px; letter-spacing:.02em; }
+  ${A} > .k-foot .k-words:not(.con-filters .k-words) { align-self:flex-start; }
+}
 /* a short desktop frame: the medal orrery stands down below ~280px of stage height
    (constellationMedals.js). Reclaim padding + foot so the stage clears that floor and the
    dial keeps room for its title without wrapping the kicker. */
