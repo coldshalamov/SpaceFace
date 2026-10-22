@@ -129,6 +129,14 @@ function hullFracOf(entity) {
   return Math.max(0, Math.min(1, (Number(entity.hull) || 0) / max));
 }
 
+/** The mass row 487 scales hit-stop by — physicsBody spec first, then the live field. */
+function victimMassOf(entity) {
+  if (!entity || typeof entity !== 'object') return 0;
+  const spec = entity.physicsBody;
+  const m = spec && Number.isFinite(spec.mass) ? spec.mass : Number(entity.mass);
+  return Number.isFinite(m) ? m : 0;
+}
+
 /** The boss card for a capital score id — matched back to the authored rotation row. */
 function capitalBossCard(scoreId) {
   const row = SWARM_BOSS_ROTATION.find((b) => b && b.scoreId === scoreId);
@@ -302,9 +310,10 @@ export const swarmJuice = {
     if (player && hullFracOf(player) < SWARM_CLOSE_CALL_HULL) {
       this._emit('swarm:announce', { kind: 'closecall', text: 'CLOSE CALL', count: 1 });
     }
-    // Physical punch: the multi-kill is the beat worth the dip; the tier carries its size.
+    // Physical punch: the multi-kill is the beat worth the dip; the tier carries its size
+    // and row 487 scales the dip by the victim's mass — heavy bodies hit-stop harder.
     if (count >= 3) {
-      this._requestHitStop(run);
+      this._requestHitStop(run, undefined, victimMassOf(victim));
       this._emit('camera:shake', {
         amount: Math.min(1, 0.25 + 0.08 * count),
         position: payload.pos || (victim && victim.pos) || null,
@@ -617,11 +626,11 @@ export const swarmJuice = {
    * effects keep every word and drop this dip; the accessibility flags already read
    * as reduced inside arcadeEffectsLevel.
    */
-  _requestHitStop(run, forceSeconds) {
+  _requestHitStop(run, forceSeconds, victimMass) {
     void run;
     if (arcadeEffectsLevel(this.state && this.state.settings) !== 'full') return;
     const seconds = Number.isFinite(forceSeconds) ? forceSeconds
-      : Math.max(0.06, swarmHitStopSeconds(this._lastChain || 0));
+      : Math.max(0.06, swarmHitStopSeconds(this._lastChain || 0, victimMass));
     if (!this.timeEffects) return;
     // Storm retriggers wait for the live dip plus one beat of silence (SWARM_HITSTOP_REARM_GAP_S)
     // so the floor releases between beats; forced dips (boss down) always land.

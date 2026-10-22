@@ -5,6 +5,7 @@
 // commands and measured telemetry out of saves, replays, and renderer-facing entity graphs.
 
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { rockSubstanceFor } from '../data/rockSubstances.js';
 import { PLAYER_EXTERNAL_RESPONSE, isAnchoredPhysicalBody } from './physicalResponse.js';
 
 const EXTERNAL_BUDGETS = new WeakMap();
@@ -600,6 +601,12 @@ export function resolvePhysicsBodySpec(entity) {
   if (body.density != null) spec.density = body.density;
   const resolvedContact = normalizedContactFor(body.contact, revision);
   if (resolvedContact) spec.contact = resolvedContact;
+  // Row 509: a stamped rock substance carries its own restitution — an explicit contact override
+  // still wins; otherwise the substance answers how the body comes off a throw.
+  if (!(spec.contact && spec.contact.restitution != null)) {
+    const sub = rockSubstanceFor(entity.data && entity.data.substance);
+    if (sub) spec.contact = { ...(spec.contact || {}), restitution: sub.restitution };
+  }
   if (body.impactDamageScale != null) spec.impactDamageScale = body.impactDamageScale;
   if (body.fieldResponseMult != null) spec.fieldResponseMult = body.fieldResponseMult;
   RESOLVED_BODY_CACHE.set(entity, { body, revision, spec });

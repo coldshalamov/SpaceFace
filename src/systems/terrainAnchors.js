@@ -18,6 +18,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { applyRockSubstance, rockSubstanceForSlot } from '../data/rockSubstances.js';
 import { Masks } from '../core/entity.js';
 import { bumpCollidesFlipEpoch, indexedTypeScan } from '../world/livingWorldViews.js';
 import {
@@ -172,7 +173,7 @@ export const terrainAnchors = {
     const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
     const survivalCover = payload.kind === 'survival_arena';
     const ownership = sectorOwnershipFor(pos);
-    const spawnAnchor = (dx, dz, size) => {
+    const spawnAnchor = (dx, dz, size, i = 0) => {
       const oreHP = Math.round(360 + size * 14);
       const data = {
         typeId: ANCHOR_TYPE_ID,
@@ -186,6 +187,9 @@ export const terrainAnchors = {
         despawnAt: now + ANCHOR_TTL_S,
         ...ownership.dataExtras,
       };
+      // Row 509: cover rocks carry the substance layer — the throw reads how the rock answers.
+      const anchorDensity = applyRockSubstance(data,
+        rockSubstanceForSlot(payload.encounterId || 'anchor', 'cover', i));
       this.helpers.spawnEntity({
         type: 'asteroid',
         homeSectorId: ownership.homeSectorId,
@@ -194,7 +198,7 @@ export const terrainAnchors = {
         radius: size,
         physicsBody: { radius: asteroidColliderRadius(ANCHOR_TYPE_ID, size) },
         // 2D-area-ish density scaling: these read (and sling, §4.1 anchor-mass bonus) as monoliths.
-        mass: Math.round(size * size * 40),
+        mass: Math.round(size * size * 40 * anchorDensity),
         angVel: (this._rng() - 0.5) * 0.12,
         hull: oreHP, hullMax: oreHP,
         collides: true,
@@ -235,7 +239,7 @@ export const terrainAnchors = {
       if (opening && segmentDistance(0, 0, opening.dx, opening.dz, dx, dz) < OPENING_CORRIDOR_HALF) {
         continue;
       }
-      spawnAnchor(dx, dz, size);
+      spawnAnchor(dx, dz, size, i);
       placed++;
     }
     // NXI-076 — replenishment is explained only when a real replacement is admitted: adopting

@@ -1,4 +1,6 @@
 import { environmentMaterialOf, stampEnvironmentMaterial, environmentSurfaceData, CRYO_QUENCH } from '../data/environmentMaterials.js';
+import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius } from '../data/rockSubstances.js';
+import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
 import { queryAsteroidField } from '../world/asteroidField.js';
@@ -73,7 +75,10 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
     && Number(entity.data.gyreLaunchMeta?.holdUntilSim) > Number(state.simTime);
   if (held || flight) return false;
   const material = environmentMaterialOf(entity);
-  const impactThreshold = material === 'rock' ? 110 : 60;
+  // Row 509/510: a stamped substance names its own break speed; the family default stands.
+  const impactThreshold = Number.isFinite(entity?.data?.breakSpeed)
+    ? entity.data.breakSpeed
+    : (material === 'rock' ? 110 : 60);
   // Debris (wrecks) detonates through heat cook-off only, never from a kinetic impact. A fresh
   // kill's companion shard shares the victim's momentum and grazes the new wreck above the
   // impact bar, which erased the wreck — and its salvage — within a tenth of a second of the
@@ -117,7 +122,8 @@ export const environmentMaterials = {
   },
   _persist(body) { this.registry?.get('world')?.persistResourceBody?.(body); },
   _cue(body, kind, count = 0) {
-    const p = { id: body.id, pos: { ...body.pos }, x: body.pos.x, z: body.pos.z, radius: body.radius, material: body.data.material, count };
+    const p = { id: body.id, pos: { ...body.pos }, x: body.pos.x, z: body.pos.z, radius: body.radius, material: body.data.material,
+      substance: body.data.substance, vfxFamily: body.data.impactVfx, count };
     this.bus?.emit(`environment:${kind}`, p);
     this.bus?.emit(kind === 'fractured' ? 'asteroid:destroyed' : 'bomb:exploded', p);
     this.bus?.emit('emergent:audio', { id: kind === 'fractured' ? 'sfx_emergent_crumple' : 'sfx_emergent_cook', x: p.x, z: p.z, gain: 0.8, impulse: 900 });
@@ -147,6 +153,9 @@ export const environmentMaterials = {
           gyreCore: undefined, gyreLaunched: undefined, gyreLaunchMeta: undefined,
           gyrePrevImpactScale: undefined, gyrePrevDespawnAt: undefined, gyrePrevTtl: undefined,
           size: childRadius, isChunk: true, materialFragment: true, fractured: true, tetherPayload: true,
+          // Row 510: a break steps the ladder down one tier — the piece stays a live throwable.
+          tier: Math.max(0, num(d.tier) - 1),
+          substance: d.substance, impactVfx: d.impactVfx, breakSpeed: d.breakSpeed,
           yieldU: remaining / count, yieldRemainingU: remaining / count, yieldMaxU: remaining / count, pctEjected: 0,
           oreHP: Math.max(30, num(body.hullMax) / count), oreHPMax: Math.max(30, num(body.hullMax) / count),
           materialCondition: { heat: 0, reacted: true }, asteroidSlotId: `${d.asteroidSlotId ?? body.id}:shard:${i}`,
@@ -202,6 +211,9 @@ export const environmentMaterials = {
   update(dt, state = this.state) {
     this.state = state;
     if (state.mode !== 'flight') return;
+    // Rows 509/510: substance behaviours tick on a slow cadence — sunlight melts ice mass and a
+    // survival arena restocks ammunition instead of running dry. 90 ticks ≈ 1.5 s at 60 Hz.
+    if (((this._substanceTick = (this._substanceTick || 0) + 1) % 90) === 0) this._tickRockSubstance(state);
     this._drainBlasts();
     // Scratch `waiting` + in-place drain: the old shape allocated a fresh live queue and a
     // spill array every flight tick. Reactions queued mid-drain (queueMaterialReaction inside
@@ -235,6 +247,71 @@ export const environmentMaterials = {
     queue.length -= drained;
     for (let i = 0; i < waiting.length; i++) queue.push(waiting[i]);
     this._drainBlasts();
+  },
+
+  /**
+   * Row 509 — ice sublimates in sunlight: a `sublimatesPerS` asteroid sheds a live fraction of
+   * its mass while the sector reads sunlit, and evaporates outright under 15% of its spawn mass.
+   * Row 510 — a survival arena never runs dry: fewer than THROWABLE_FLOOR tetherable bodies in
+   * the play radius restocks the ring with substance-stamped ammunition.
+   */
+  _tickRockSubstance(state) {
+    const sector = state.sector || (state.world && state.world.sectors && state.world.sectors[state.sectorId]) || null;
+    const profile = sector ? resolveSectorVisualProfile(sector) : null;
+    const sunlit = !!(profile && profile.lighting && Number(profile.lighting.key) >= 3.0);
+    const now = num(state.simTime);
+    if (sunlit) {
+      for (const body of state.entityList || []) {
+        if (!body || body.type !== 'asteroid' || body.alive === false) continue;
+        const d = body.data || {};
+        const rate = num(d.sublimatesPerS);
+        if (!(rate > 0)) continue;
+        const spawnMass = Number.isFinite(d.spawnMass) ? d.spawnMass : (d.spawnMass = num(body.mass, 1));
+        body.mass = Math.max(1, num(body.mass, 1) * (1 - rate * 1.5));
+        if (Number.isFinite(body.radius) && body.radius > 1) body.radius = Math.max(1, body.radius * Math.sqrt(body.mass / spawnMass) ** 0.5);
+        if (body.physicsBody && Number.isFinite(body.physicsBody.mass)) body.physicsBody.mass = body.mass;
+        if (body.mass <= spawnMass * 0.15) d.despawnAt = now;
+      }
+    }
+    // Restock: only a live survival run owes the floor; open flight keeps ambient fields.
+    if (!(state.run && state.run.kind === 'survival')) return;
+    const player = state.player;
+    if (!player || !player.pos || typeof this.helpers?.spawnEntity !== 'function') return;
+    const PLAY_RADIUS = 800, FLOOR = 6;
+    let live = 0;
+    for (const body of state.entityList || []) {
+      if (!body || body.alive === false || body.type !== 'asteroid') continue;
+      if (!(body.data && (body.data.tetherPayload || body.data.terrainAnchor || body.data.isChunk))) continue;
+      if (Math.hypot(body.pos.x - player.pos.x, body.pos.z - player.pos.z) <= PLAY_RADIUS) live++;
+    }
+    if (live >= FLOOR) return;
+    const want = FLOOR - live;
+    const seed = (state.meta && state.meta.seed) || 1;
+    for (let i = 0; i < want; i++) {
+      const bearing = (i * 2.4 + live) + (num(state.tick) % 60) * 0.017;
+      const dist = PLAY_RADIUS * 0.75;
+      const radius = 14 + ((i + live) % 3) * 6;
+      const subId = rockSubstanceForSlot(seed, 'restock', i + num(state.tick));
+      const data = {
+        typeId: 'ast_common_rock', size: radius, tier: rockTierForRadius(radius),
+        terrainAnchor: true, tetherPayload: true, restock: true,
+        oreHP: 360, oreHPMax: 360, yieldU: 6, despawnAt: now + 120,
+      };
+      const density = applyRockSubstance(data, subId);
+      this.helpers.spawnEntity({
+        type: 'asteroid',
+        homeSectorId: player.homeSectorId || (player.data && player.data.homeSectorId) || null,
+        pos: { x: player.pos.x + Math.cos(bearing) * dist, z: player.pos.z + Math.sin(bearing) * dist },
+        vel: { x: 0, z: 0 },
+        radius,
+        mass: Math.round(radius * radius * 40 * density),
+        angVel: 0.04,
+        hull: 360, hullMax: 360,
+        collides: true,
+        physicsBody: { radius: asteroidColliderRadius('ast_common_rock', radius) },
+        data,
+      });
+    }
   },
   serialize() {
     // Recipe-spawned rocks are not persistent entities: record their partial heat too.

@@ -304,9 +304,11 @@ export const FODDER_RIVER_RECIPE = Object.freeze({
   memberCount: 12,
   cruiseSpeed: 50,
   speedBand: Object.freeze({ min: 38, max: 58 }),
-  densityTarget: 44,
-  laneSpacing: 46,
-  alongSpacing: 46,
+  // Row 486 (ROCK-WAVES): packed tight enough that a T2+ thrown body crosses ≥2 hulls on a
+  // lane pass — lane/along spacing inside the throw corridor, density raised to match.
+  densityTarget: 52,
+  laneSpacing: 38,
+  alongSpacing: 40,
   corridorWidth: 150,
   standoff: 0,
   pressureGain: 0.18,

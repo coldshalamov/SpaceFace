@@ -185,11 +185,22 @@ export const SWARM_HITSTOP_SCALE = 0.35;
 /** The time-effects source id the juice layer requests with. */
 export const SWARM_HITSTOP_SOURCE = 'swarm:juice-hitstop';
 
-/** Hit-stop seconds for a kill at this chain: 40 ms + 10 ms per chain tier reached, ≤ 80 ms. */
-export function swarmHitStopSeconds(chain) {
+/** Heavy mass kills may stretch the dip past the chain cap — a thrown boulder lands harder. */
+export const SWARM_HITSTOP_MASS_MAX_S = 0.14;
+/** Victim-mass units at which the mass term saturates (a T3 boulder, not a mite). */
+export const SWARM_HITSTOP_MASS_REF = 2200;
+
+/**
+ * Hit-stop seconds for a kill at this chain: 40 ms + 10 ms per chain tier reached, ≤ 80 ms.
+ * Row 487: the dip is also scaled by the victim's mass — chain tier sets the base, then up to
+ * +60 ms as victim mass approaches SWARM_HITSTOP_MASS_REF, capped at SWARM_HITSTOP_MASS_MAX_S.
+ */
+export function swarmHitStopSeconds(chain, victimMass = 0) {
   const index = swarmChainTierIndex(swarmChainTier(chain));
   const s = SWARM_HITSTOP_MIN_S + Math.max(0, index + 1) * 0.01;
-  return Math.min(SWARM_HITSTOP_MAX_S, Math.max(SWARM_HITSTOP_MIN_S, s));
+  const massFrac = Math.max(0, Math.min(1, (Number(victimMass) || 0) / SWARM_HITSTOP_MASS_REF));
+  const massTerm = massFrac * (SWARM_HITSTOP_MASS_MAX_S - SWARM_HITSTOP_MAX_S);
+  return Math.min(SWARM_HITSTOP_MASS_MAX_S, Math.max(SWARM_HITSTOP_MIN_S, s + massTerm));
 }
 
 // --- Round clear tally (§5.5) ---------------------------------------------------------

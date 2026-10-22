@@ -80,6 +80,7 @@ import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drif
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
 import { adventureMaterialFor, environmentSurfaceData } from '../data/environmentMaterials.js';
+import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius, ROCK_LADDER_RADII, ROCK_LADDER_MIN_PER_TIER } from '../data/rockSubstances.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import {
@@ -2663,6 +2664,7 @@ export const world = {
           }
         }
       }
+      this._ensureRockLadderBedrock(sector, fdef, params, centerLocal, clusterR, count, astIds);
       active.fields.push({ id: fdef.id, type: fdef.type, center: { x: center.x, z: center.z }, asteroidIds: astIds });
     }
   },
@@ -2731,6 +2733,9 @@ export const world = {
         ? { activityCollisionAnchorSlotId: collisionAnchorBinding.id }
         : {}),
     });
+    // Row 509: the substance layer rides on the material read — pick deterministically per slot,
+    // stamp the contract on data, and let density answer the body's mass.
+    const densityMult = applyRockSubstance(data, rockSubstanceForSlot(this.state.meta.seed, fdef.id, slotIndex));
     const keepLive = shouldKeepLiveAsteroid({
       activityBinding,
       collisionAnchorBinding,
@@ -2739,7 +2744,7 @@ export const world = {
     const ent = keepLive
       ? this.helpers.spawnEntity({
         type: 'asteroid', pos,
-        radius: size, mass: asteroidMass(params && params._homeSectorId, size), angVel,
+        radius: size, mass: Math.round(asteroidMass(params && params._homeSectorId, size) * densityMult), angVel,
         hull: oreHP, hullMax: oreHP, collides: true,
         // The render mesh's displaced bumps exceed entity.radius; the collider covers them.
         physicsBody: { radius: asteroidColliderRadius(def.id, size) },
@@ -2750,7 +2755,7 @@ export const world = {
         rot: 0,
         angVel,
         radius: size,
-        mass: asteroidMass(params && params._homeSectorId, size),
+        mass: Math.round(asteroidMass(params && params._homeSectorId, size) * densityMult),
         hull: oreHP,
         hullMax: oreHP,
         data,
@@ -2794,12 +2799,13 @@ export const world = {
       asteroidSlotId: `boulder:${b.id}`,
       authoredBoulderId: b.id,
     });
+    const boulderDensity = applyRockSubstance(data, rockSubstanceForSlot(this.state.meta.seed, fdef.id, `boulder:${b.id}`));
     const ent = insertAsteroidFieldRock(this.state, {
       pos,
       rot: 0,
       angVel: 0, // pinned seam bedrock — authored bodies do not tumble
       radius,
-      mass: asteroidMass(params && params._homeSectorId, radius),
+      mass: Math.round(asteroidMass(params && params._homeSectorId, radius) * boulderDensity),
       hull: oreHP,
       hullMax: oreHP,
       data,
@@ -2812,6 +2818,37 @@ export const world = {
     });
     this._restoreResourceBody(ent);
     return ent;
+  },
+
+  /**
+   * Row 511 (W-LADDER): pin ladder bedrock so every stocked field carries the Katamari rungs —
+   * ROCK_LADDER_MIN_PER_TIER bodies on each tier T0–T4. Scatter coverage counts at the field's
+   * sizeRange midpoint band; authored boulders count at their own radius; the ladder tops each
+   * short band up with pinned bodies riding the authored-boulder path (durable records, zero rng).
+   */
+  _ensureRockLadderBedrock(sector, fdef, params, centerLocal, clusterR, scatterCount, astIds) {
+    const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
+    const [szLo, szHi] = def.sizeRange || [6, 14];
+    const counts = [0, 0, 0, 0, 0];
+    counts[Math.min(4, rockTierForRadius((szLo + szHi) / 2))] += Math.max(0, scatterCount | 0);
+    for (const b of fdef.boulders || []) {
+      const r = Math.max(1, Number(b && b.radius) || szHi);
+      counts[Math.min(4, rockTierForRadius(r))] += 1;
+    }
+    for (let tier = 0; tier <= 4; tier++) {
+      for (let k = counts[tier]; k < ROCK_LADDER_MIN_PER_TIER; k++) {
+        const ang = k * 2.399963 + tier * 1.31;
+        const cr = Math.max(60, clusterR * (0.55 + 0.09 * (k % 3)));
+        const ent = this._spawnAuthoredBoulder(sector, fdef, params, {
+          id: `ladder_${fdef.id}_${tier}_${k}`,
+          pos: { x: (centerLocal ? centerLocal.x : 0) + Math.cos(ang) * cr,
+                 z: (centerLocal ? centerLocal.z : 0) + Math.sin(ang) * cr },
+          radius: ROCK_LADDER_RADII[tier],
+          type: fdef.type,
+        });
+        if (ent) { this._stampHomeSector(ent, sector.id); astIds.push(ent.id); counts[tier]++; }
+      }
+    }
   },
 
   _restoreResourceBody(ent) {
