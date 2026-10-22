@@ -64,6 +64,37 @@ export function spatialFocusTarget(items, active, dir) {
   return best;
 }
 
+/**
+ * The linear list an element walks, if it sits in one: the nearest ancestor marked
+ * `data-pad-linear` (a one-column menu whose banked rows break the geometry, e.g. the pause column).
+ */
+function padLinearHost(el) {
+  for (let p = el && (el.parentElement || el.parentNode); p; p = p.parentElement || p.parentNode) {
+    if (typeof p.getAttribute === 'function' && p.getAttribute('data-pad-linear') != null) return p;
+  }
+  return null;
+}
+
+/**
+ * Where a d-pad press goes from `active`. Inside a `data-pad-linear` list, Up/Down step through its
+ * items in document order (the order the list reads), so a full-width row over left-aligned banked
+ * runs cannot hand Down to whichever word happens to sit under its centre. Everything else, and
+ * Left/Right everywhere, stays geometric (spatialFocusTarget), as do Up/Down off either end of the list.
+ */
+export function padFocusTarget(items, active, dir) {
+  if ((dir === 'up' || dir === 'down') && active && items.includes(active)) {
+    const host = padLinearHost(active);
+    if (host && typeof host.contains === 'function') {
+      const run = items.filter((el) => host.contains(el));
+      const at = run.indexOf(active);
+      // at either end of the list, fall through to geometry so the d-pad can still leave the
+      // list (e.g. Up from Resume to the tracked-contract link above the column)
+      if (at >= 0 && run[at + (dir === 'down' ? 1 : -1)]) return run[at + (dir === 'down' ? 1 : -1)];
+    }
+  }
+  return spatialFocusTarget(items, active, dir);
+}
+
 const PAD_WIDGET_TAG = /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/;
 
 function isPadWidget(el) {
@@ -1021,7 +1052,7 @@ export function createUiInput(ctx, screenManager) {
       if (mate) { try { mate.focus(); } catch (e) {} }
       return;
     }
-    const next = spatialFocusTarget(items, active, dir);
+    const next = padFocusTarget(items, active, dir);
     if (next) { try { next.focus(); } catch (e) {} }
   }
 

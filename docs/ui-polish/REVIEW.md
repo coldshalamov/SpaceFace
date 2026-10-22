@@ -1894,6 +1894,20 @@ At 380px wide and under the category words keep the 12px floor with tighter spac
 
 **Leftovers:** at 720×800 the blocked reason ("NEEDS REFINERY / FIND A REFINERY ON THE CHART") still runs past the right edge (pre-existing); 700×600 Titanium Ore / Source in market overlap.
 
+## ui-polish-93 — pause column: d-pad Up/Down step every verb in order
+
+- **Bug (since #499):** at 700 wide, d-pad Down from RESUME jumped to ACHIEVEMENTS, skipping Settings..Help.
+- **Cause:** `moveFocus` used geometric `spatialFocusTarget` (primary distance + 2.35 × cross offset). In the
+  column RESUME is full-width (centre x≈350) above left-aligned banked rows, so the word sitting under
+  Resume's centre (cross ≈16px, three rows down) beat Settings (cross ≈262px, next row).
+- **Fix:** new `padFocusTarget` in `src/ui/input.js`: inside an ancestor marked `data-pad-linear`, Up/Down
+  step through the focusables in document order; Left/Right and every other screen stay geometric.
+  `pause.js` marks its list `data-pad-linear` only in the column (removed on the dial, re-applied on a
+  resize remount). No selector or id changes.
+- **Tests:** `test/ui-polish-88-pause-narrow.test.mjs` asserts the exact Down and Up order from Resume with
+  the Chromium-measured 700×800 rects, that pure geometry would skip, and that the dial is not linear.
+- **Chromium (ui-bench pause, real layout, padFocusTarget over listGamepadFocusables):** 390×844, 600×800,
+  700×800 Down = pause-0…17 in order, Up = 16…0; 1280×720 dial unchanged.
 ## Save/Load: QUICK's CURRENT clear of SLOT 1 at 791–940 wide (ui-polish-92)
 
 **Before (master 2d35c9be33):** from 791 (where the page stops stacking) to ~940 wide above 460 tall, the filmstrip sits beside the reading with ~67–80px stations. QUICK's CURRENT ran into SLOT 1, and each filed save's line broke mid-word ("Adventur / e·Hitch") down to six lines; at 861×600 the quick save's credits fell off the frame.

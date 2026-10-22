@@ -1129,6 +1129,10 @@ export const pauseScreen = {
       },
     });
     list.classList.add('sf-pause-words', 'dp-menu--banked');
+    // The column is one list read top to bottom, but its banked runs share rows left-aligned under a
+    // full-width RESUME: geometric d-pad picking sent Down from Resume to whatever word sat under
+    // Resume's centre (ACHIEVEMENTS at 700). Mark it linear so Up/Down step verb by verb in order.
+    // Set below once `phone` is known.
     // ORRERY tiers: Resume is the lamp key; the interruption choices (Game) and the way out (Exit)
     // are mid; the Ship, Reference, Media and Dev verbs are the quiet tier.
     const LOW_TIER = new Set(['Ship', 'Reference', 'Media', 'Dev']);
@@ -1160,6 +1164,7 @@ export const pauseScreen = {
     rootEl.classList.remove('orr-pause', 'orr-pause--phone');
     rootEl.classList.add(phone ? 'orr-pause--phone' : 'orr-pause');
     this._columnAtMount = phone;
+    if (phone) list.setAttribute('data-pad-linear', ''); else list.removeAttribute('data-pad-linear');
     unwatchPauseNarrow();
     const mql = pauseNarrowQuery();
     if (mql) {
