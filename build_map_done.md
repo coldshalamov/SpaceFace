@@ -7,6 +7,14 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### Row 455 — plan-engine dispatch (2026-10-22)
+
+`a1074cde7a`: the read-only dispatcher returns the due refill cycle below 25 BUILD/ART/FIX rows or 30 catalog lines, and C8 above 120 rows or 200 lines. Defects, stale work and reviews retain precedence; the cycle log preserves both C1 slots. The integrity check reports counts and cycle. Focused front-door tests: 16 passed; plan integrity passed. No gameplay change or automatic minting.
+
+### Graphics second look R-6ef5b52 (2026-10-22)
+
+Reviewed the four named commits and their existing frame-solid JSON pair (2026-10-21 02:42:14 and 09:15:30). Final: one root swap on asteroid 24 with zero missing frames/blinks on that object, zero total blinks/stuck-missing/regressions, 25 flight links and zero in-frame links. Star buffers allocate full faint-tail capacity before upload; the deep-field refill preserves allocation. Focused boot-tier/deep-field tests passed 6 cases. This closes the named second look; the contended historic timing is not a new performance certification.
+
 ### PR maturation — optics/admission sweep (2026-10-12, closed 2026-10-15)
 
 The PR_MATURATION_2026-10-12 sitting landed its maturation bands and player-truth verdict
