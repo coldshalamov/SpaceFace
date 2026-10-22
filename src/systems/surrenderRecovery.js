@@ -108,6 +108,16 @@ export const surrenderRecovery = {
     this.state.surrenderRecovery = freshState();
   },
 
+  // Explicit player custody retires the recovery offer without paying or changing title.
+  relinquishToVesselCustody(entityId) {
+    const own=ensureState(this.state);
+    const record=recordForEntity(own,entityId);
+    if(record){record.resolved=true;record.phase='transferred';}
+    const entity=entityFor(this.state,entityId);
+    if(entity?.data?.surrenderRecovery)entity.data.surrenderRecovery.phase='transferred';
+    return true;
+  },
+
   update(_dt, state) {
     if (state.mode && state.mode !== 'flight') return;
     const own = ensureState(state);
@@ -1195,6 +1205,7 @@ function relinquishAnnotatedPersistence(entity, annotation) {
 function eligibleCommon(entity, state) {
   if (!entity || entity.alive === false || entity.id === state.playerId || !['ship', 'drone'].includes(entity.type)) return false;
   const data = entity.data || {};
+  if (data.shipjackCustody === 'player') return false;
   const ai = data.ai || {};
   if (data.isBoss || data.encounterBoss || data.missionBoss || data.aceMemory
     || ai.isBoss || ai.fanatic || ai.ace || ai.moraleImmune || ai.surrenderImmune) return false;

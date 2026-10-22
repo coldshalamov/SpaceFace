@@ -40,6 +40,7 @@ import { mountRacingHud } from './racingHud.js';
 import { installPhysicsVenueHooks, mountPhysicsVenueHud } from './physicsVenues.js';
 import { mountSpectrumOverlay } from '../render/spectrum/overlay.js';
 import { createPhysicalJobsPrompt } from './physicalJobsPrompt.js';
+import { createBlackFlagPrompt } from './blackFlag.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -734,6 +735,8 @@ export const ui = {
     this._physicsVenueHooks = installPhysicsVenueHooks(this.bus, () => this.ctx);
     this.physicalJobsPrompt?.dispose();
     this.physicalJobsPrompt = createPhysicalJobsPrompt(this.ctx);
+    this.blackFlagPrompt?.dispose();
+    this.blackFlagPrompt = createBlackFlagPrompt(this.ctx);
     if (typeof this._racingArmOff === 'function') {
       try { this._racingArmOff(); } catch (_) { /* previous init */ }
     }
@@ -1908,6 +1911,7 @@ export const ui = {
       this.physicsVenueHud?.frame(st);
       this.spectrumOverlay?.frame(st);
       this.physicalJobsPrompt?.frame();
+      this.blackFlagPrompt?.frame();
       // Authored capital warnings draw over the flight picture and hold still while the sim is
       // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
@@ -1931,6 +1935,8 @@ export const ui = {
   },
 
   destroy() {
+    this.blackFlagPrompt?.dispose();
+    this.blackFlagPrompt = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();

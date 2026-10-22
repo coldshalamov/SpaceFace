@@ -262,6 +262,24 @@ export const pirateDisengage = {
     });
   },
 
+  // A negotiated safe-passage offer uses the same AI authority as a combat surrender.
+  acceptCrewSurrender(entityId, reason = 'safe_passage') {
+    const entity = this.state.entities.get(entityId);
+    if (!entity?.alive || entity.id === this.state.playerId) return false;
+    const rec = { squadId: `parley:${entityId}`, reason, until: (this.state.simTime || 0) + 90 };
+    markSurrendered(entity, rec, this.state);
+    this._emit('combat:surrendered', { entityId, reason, factionId: entity.factionId, t: this.state.simTime });
+    return true;
+  },
+
+  attemptCustodyBreakout(entityId) {
+    const entity=this.state.entities.get(entityId),pilot=this.state.entities.get(this.state.playerId);
+    if(!entity?.alive||!pilot?.alive)return false;
+    markFleeing(entity,pilot,{squadId:`custody:${entityId}`,reason:'maintenance_intrusion',until:(this.state.simTime||0)+20},this.state);
+    this._emit('ai:flee',{entityId,reason:'intrusion_breakout'});
+    return true;
+  },
+
   _onYieldVerdict(payload) {
     const state = this.state;
     if (!state || !payload || payload.squadId == null) return;

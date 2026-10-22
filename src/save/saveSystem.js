@@ -13,6 +13,7 @@ import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrc
 // candidate and validates (fmt → version ≤ CURRENT → checksum → migrate) BEFORE any destructive
 // restore, so a bad save aborts with save:error and leaves live state untouched.
 import { fnv1a } from './checksum.js';
+import { normalizeShipjack } from '../shipjack/model.js';
 import { DEFAULT_CONFIG as CHRONICLER_CONFIG, MAX_RETAINED_FACTS } from '../chronicler/schema.js';
 import {
   PROVENANCE_CHAIN_CAP, PROVENANCE_NODE_CAP, PROVENANCE_OPEN_INCIDENT_CAP,
@@ -500,7 +501,7 @@ export const save = {
     for (const eventName of [
       'ship:purchased', 'ship:sold', 'ship:livingHullChanged', 'ship:appearanceSaved',
       'ship:loadoutPresetApplied', 'module:purchased', 'module:granted', 'module:equipped',
-      'module:unequipped', 'craft:complete',
+      'module:unequipped', 'craft:complete', 'ship:controlTransferred', 'ship:captured', 'ship:released', 'shipjack:yardReceipt',
     ]) bus.on(eventName, markPlayerCollectionChanged);
     bus.on('pickup:collected', (payload) => {
       if (payload && payload.kind === 'module' && payload.collectorId === this.state.playerId) {
@@ -7300,6 +7301,10 @@ export const save = {
   _restorePlayer(p) {
     if (!p) return; // missing key → keep newGame defaults
     const player = this.state.player;
+    // Optional property facts replace as one record; older slots cannot inherit later custody.
+    delete player.shipjack;
+    delete player.shipControlTransfers;
+    delete this.state.shipjack;
     const cargo = player.cargo; // preserved; restored separately (§4.5 cargo key)
     for (const k in p) {
       if (k === 'cargo') continue;
@@ -8465,6 +8470,18 @@ function normalizeRestorableData(data) {
 
 function normalizePlayerSaveRecord(player, savedEntity) {
   const out = (player && typeof player === 'object' && !Array.isArray(player)) ? player : {};
+  if (out.shipjack != null) {
+    const shipjack = normalizeShipjack(out.shipjack);
+    if (shipjack) out.shipjack = shipjack;
+    else delete out.shipjack;
+  }
+  if(out.shipControlTransfers != null){
+    const journal=out.shipControlTransfers;
+    if(!journal||journal.version!==1||!Array.isArray(journal.receipts)||journal.receipts.length>1024
+      ||journal.receipts.some(r=>!r||typeof r.operationId!=='string'||r.operationId.length>128||typeof r.vesselId!=='string'||r.vesselId.length>128)){
+      out.shipControlTransfers={version:0,receipts:[]}; // fail closed, never reopen a lost terminal key
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(out, 'loadoutPresets') && !Array.isArray(out.loadoutPresets)) out.loadoutPresets = [];
   const defId = resolveSavedDefId(out, savedEntity);
   const fittings = resolveSavedFittings(out, savedEntity, defId);

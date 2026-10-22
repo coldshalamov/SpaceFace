@@ -55,6 +55,7 @@ export const cruise = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._wasCruiseAction = false;
+    this.bus.on('ship:controlChanging', () => this._drop(DROP_REASONS.MANUAL));
 
     this.bus.on('combat:damage', (p) => {
       if (!p || p.targetId !== this.state.playerId) return;

@@ -2265,7 +2265,8 @@ export function weaponBankReadiness(mount, runtime) {
   const subsystemId = (mount && mount.subsystemId) || 'subsystem_weapon';
   const subsystems = runtime && runtime.subsystems;
   const sub = subsystems && subsystems[subsystemId];
-  const disabled = !!(sub && (sub.effectiveDisabled === true || sub.destroyed === true));
+  const disabled = runtime?.capabilities?.weapon === false
+    || !!(sub && (sub.effectiveDisabled === true || sub.destroyed === true));
   const cooling = !!mount && (mount._cooldown || 0) > 0;
   const heatMax = mount && Number.isFinite(mount.heatMax) && mount.heatMax > 0 ? mount.heatMax : null;
   const hot = heatMax != null && (mount._heat || 0) >= heatMax;
